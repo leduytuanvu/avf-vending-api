@@ -1,0 +1,45 @@
+-- vending_schema.sql — commerce (catalog, images, pricing, promotions)
+--
+-- Canonical merged DDL for sqlc and local tooling: db/schema/01_platform.sql
+-- Forward migration: migrations/00005_catalog_pricing_promotions.sql
+--
+-- Tables introduced or extended by 00005: categories, brands, product_images;
+-- products (category_id, brand_id, primary_image_id, compliance columns);
+-- price_books (scope_type, site_id, machine_id, priority); price_book_items (organization_id);
+-- machine_price_overrides; promotions; promotion_rules; promotion_targets.
+--
+-- Image policy: product_images is authoritative; do not add products.image_url.
+-- Price book resolution: machine > site > organization; then higher priority; then effective_from.
+--
+-- Command / protocol traceability (migration 00006_command_protocol_traceability.sql):
+-- command_ledger → machine_command_attempts → machine_transport_sessions / device_messages_raw
+-- → protocol_ack_events → device_command_receipts; vend_sessions.final_command_attempt_id.
+-- Do not add sqlc-facing VIEW aliases here unless you also add them to sqlc schema inputs.
+--
+-- Finance / reconciliation (migration 00007_financial_ledger_reconciliation.sql):
+-- financial_ledger_entries (append-only, signed_amount_minor), settlement_batches,
+-- machine_reconciliation_sessions, cash_events, cash_collections, payment_provider_events,
+-- payment_reconciliations, cash_reconciliations; payments/refunds/cash_collections extended.
+-- Application follow-up: INSERT ledger rows from commerce/payment flows and reconciler jobs (separate change).
+--
+-- Machine operator sessions (migration 00008_machine_operator_sessions.sql):
+-- machine_operator_sessions, machine_operator_auth_events, machine_action_attributions;
+-- operator_session_id on cash_collections and command_ledger (machine_commands alias);
+-- conditional ALTER for refill_sessions, machine_configs, incidents, machine_commands when those tables exist;
+-- partial unique ux_machine_operator_sessions_one_active (one ACTIVE session per machine);
+-- indexes: org+machine history, org ACTIVE list, auth correlation, attribution by machine+resource;
+-- plain VIEW v_machine_current_operator (not materialized; cardinality follows partial unique). Enum-like domains use text + CHECK (not CREATE TYPE).
+--
+-- Operator action attribution (migration 00009_operator_action_attribution_correlation.sql):
+-- machine_action_attributions.correlation_id with global and (machine_id, correlation_id) partial indexes for tracing.
+--
+-- Operator session activity (migration 00010_operator_session_activity_end_reason.sql):
+-- machine_operator_sessions.last_activity_at, ended_reason; nullable operator_session_id on auth_events for login_failure.
+--
+-- Operator domain resources (migration 00011_operator_domain_resources.sql):
+-- refill_sessions, machine_configs, incidents (operator_session_id + transactional attributions);
+-- org-scoped time indexes on those tables for admin/audit listing;
+-- machine-originated commands remain command_ledger (no separate machine_commands table in this repo).
+--
+-- Operator read APIs (HTTP): /v1/machines/{id}/operator-sessions/{current,history,auth-events,action-attributions,timeline};
+-- /v1/operator-insights/technicians/{id}/action-attributions and /users/action-attributions (JWT + role gates).

@@ -1,0 +1,3162 @@
+{
+  "basePath": "/",
+  "definitions": {
+    "V1BearerAuthError": {
+      "properties": {
+        "error": {
+          "properties": {
+            "message": {
+              "example": "unauthenticated",
+              "type": "string"
+            }
+          },
+          "required": [
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "type": "object"
+    },
+    "V1CapabilityNotConfiguredError": {
+      "properties": {
+        "error": {
+          "properties": {
+            "capability": {
+              "type": "string"
+            },
+            "code": {
+              "example": "capability_not_configured",
+              "type": "string"
+            },
+            "implemented": {
+              "example": false,
+              "type": "boolean"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "capability",
+            "implemented"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "type": "object"
+    },
+    "V1CommerceCreateOrderResponse": {
+      "properties": {
+        "order_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "order_status": {
+          "$ref": "#/definitions/V1CommerceOrderStatus"
+        },
+        "replay": {
+          "type": "boolean"
+        },
+        "vend_session_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "vend_state": {
+          "$ref": "#/definitions/V1VendSessionState"
+        }
+      },
+      "required": [
+        "order_id",
+        "vend_session_id",
+        "replay",
+        "order_status",
+        "vend_state"
+      ],
+      "type": "object"
+    },
+    "V1CommerceOrderStatus": {
+      "description": "Persisted order.status CHECK (see migrations).",
+      "enum": [
+        "created",
+        "quoted",
+        "paid",
+        "vending",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "V1ListViewEnvelope": {
+      "properties": {
+        "items": {
+          "items": {},
+          "type": "array"
+        },
+        "meta": {}
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "V1NotImplementedError": {
+      "properties": {
+        "error": {
+          "properties": {
+            "capability": {
+              "type": "string"
+            },
+            "code": {
+              "example": "not_implemented",
+              "type": "string"
+            },
+            "implemented": {
+              "example": false,
+              "type": "boolean"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "capability",
+            "implemented"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "type": "object"
+    },
+    "V1OperatorActorType": {
+      "enum": [
+        "TECHNICIAN",
+        "USER"
+      ],
+      "type": "string"
+    },
+    "V1OperatorAuthMethod": {
+      "enum": [
+        "pin",
+        "password",
+        "badge",
+        "oidc",
+        "device_cert",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "V1OperatorCurrentEnvelope": {
+      "properties": {
+        "active_session": {
+          "description": "null when no ACTIVE session"
+        },
+        "technician_display_name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "V1OperatorListEnvelope": {
+      "properties": {
+        "items": {
+          "items": {},
+          "type": "array"
+        },
+        "meta": {
+          "properties": {
+            "limit": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "returned": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "limit",
+            "returned"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "items",
+        "meta"
+      ],
+      "type": "object"
+    },
+    "V1OperatorSessionEnvelope": {
+      "properties": {
+        "session": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "session"
+      ],
+      "type": "object"
+    },
+    "V1OperatorSessionStatus": {
+      "enum": [
+        "ACTIVE",
+        "ENDED",
+        "EXPIRED",
+        "REVOKED"
+      ],
+      "type": "string"
+    },
+    "V1PaymentState": {
+      "description": "Normalized payment.state for commerce APIs.",
+      "enum": [
+        "created",
+        "authorized",
+        "captured",
+        "failed",
+        "refunded"
+      ],
+      "type": "string"
+    },
+    "V1StandardError": {
+      "properties": {
+        "error": {
+          "properties": {
+            "code": {
+              "example": "invalid_json",
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "type": "object"
+    },
+    "V1VendSessionState": {
+      "enum": [
+        "pending",
+        "in_progress",
+        "success",
+        "failed"
+      ],
+      "type": "string"
+    }
+  },
+  "host": "localhost:8080",
+  "info": {
+    "contact": {
+      "name": "AVF Engineering",
+      "url": "https://github.com/avf/avf-vending-system"
+    },
+    "description": "HTTP API for the AVF vending platform (cmd/api). All `/v1/*` routes require `Authorization: Bearer <JWT>` unless noted (health, optional metrics, Swagger when enabled). Bearer middleware failures use minimal JSON `{\"error\":{\"message\":\"...\"}}` without `error.code`. Most `/v1` handlers use `{\"error\":{\"code\":\"...\",\"message\":\"...\"}}` (see writeAPIError). **501** list stubs return `not_implemented` plus `capability` and `implemented:false`. **503** `capability_not_configured` is used when optional wiring (MQTT dispatch, commerce persistence, outbox defaults) is missing. Request tracing: responses echo `X-Request-ID` and `X-Correlation-ID` when middleware is enabled.",
+    "license": {
+      "name": "License terms apply per your deployment agreement; see repository NOTICE if present."
+    },
+    "termsOfService": "https://github.com/avf/avf-vending-system/tree/main/avf-vending-api",
+    "title": "AVF Vending HTTP API",
+    "version": "1.0"
+  },
+  "paths": {
+    "/health/live": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Returns 200 with body `ok` when the process is running. No authentication. Response echoes `X-Request-ID` / `X-Correlation-ID` when sent.",
+        "produces": [
+          "text/plain"
+        ],
+        "responses": {
+          "200": {
+            "description": "Liveness probe",
+            "schema": {
+              "example": "ok",
+              "type": "string"
+            }
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Returns 200 with body `ok` when readiness checks pass. When READINESS_STRICT and dependencies fail, returns **503** with plain text body `not ready` (not the JSON error envelope).",
+        "produces": [
+          "text/plain"
+        ],
+        "responses": {
+          "200": {
+            "description": "Readiness probe",
+            "schema": {
+              "example": "ok",
+              "type": "string"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "summary": "Readiness probe",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/metrics": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Exposed only when METRICS_ENABLED=true; otherwise the route is not registered (clients may observe connection-level 404).",
+        "produces": [
+          "text/plain"
+        ],
+        "responses": {
+          "200": {
+            "description": "Prometheus metrics scrape",
+            "schema": {
+              "example": "ok",
+              "type": "string"
+            }
+          }
+        },
+        "summary": "Prometheus metrics scrape",
+        "tags": [
+          "Reliability"
+        ]
+      }
+    },
+    "/swagger/doc.json": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Served when HTTP_SWAGGER_UI_ENABLED=true. Same JSON the UI loads; no `Authorization` header required.",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OpenAPI 2.0 document (embedded)",
+            "schema": {
+              "type": "object"
+            }
+          }
+        },
+        "summary": "OpenAPI 2.0 document (embedded)",
+        "tags": [
+          "Documentation"
+        ]
+      }
+    },
+    "/swagger/index.html": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Browser UI entrypoint when Swagger is enabled; loads `/swagger/doc.json`.",
+        "produces": [
+          "text/html"
+        ],
+        "responses": {
+          "200": {
+            "description": "Swagger UI (HTML)",
+            "schema": {
+              "example": "ok",
+              "type": "string"
+            }
+          }
+        },
+        "summary": "Swagger UI (HTML)",
+        "tags": [
+          "Documentation"
+        ]
+      }
+    },
+    "/v1/admin/assignments": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Returns **501** with capability `v1.admin.assignments.list`.",
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "501": {
+            "description": "List technician assignments (admin)",
+            "schema": {
+              "$ref": "#/definitions/V1NotImplementedError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List technician assignments (admin)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/commands": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Returns **501** with capability `v1.admin.commands.list`.",
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "501": {
+            "description": "List commands (admin)",
+            "schema": {
+              "$ref": "#/definitions/V1NotImplementedError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List commands (admin)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/machines": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Postgres-backed fleet listing when Fleet service is wired. Returns **501** with `not_implemented` when fleet is nil or misconfigured (`v1.admin.machines.list`). Platform admin must supply tenant scope (organization_id on principal) or receives **400** `tenant_scope_required`.",
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "List machines (admin)",
+            "schema": {
+              "$ref": "#/definitions/V1ListViewEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "501": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1NotImplementedError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List machines (admin)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/organizations/{orgId}/artifacts": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Organization UUID",
+            "in": "path",
+            "name": "orgId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "List artifacts",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List artifacts",
+        "tags": [
+          "Artifacts"
+        ]
+      },
+      "post": {
+        "consumes": [
+          "json"
+        ],
+        "description": "Routes are **not mounted** unless API_ARTIFACTS_ENABLED=true and object store is configured. Requires org_admin for orgId or platform_admin. Uses sensitive-write rate limiting when HTTP_RATE_LIMIT_SENSITIVE_WRITES_ENABLED=true \u2192 **429** `rate_limited`.",
+        "parameters": [
+          {
+            "description": "Organization UUID",
+            "in": "path",
+            "name": "orgId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "201": {
+            "description": "Reserve artifact id",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Reserve artifact id",
+        "tags": [
+          "Artifacts"
+        ]
+      }
+    },
+    "/v1/admin/organizations/{orgId}/artifacts/{artifactId}": {
+      "delete": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Organization UUID",
+            "in": "path",
+            "name": "orgId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Artifact UUID",
+            "in": "path",
+            "name": "artifactId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Delete artifact",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete artifact",
+        "tags": [
+          "Artifacts"
+        ]
+      },
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Organization UUID",
+            "in": "path",
+            "name": "orgId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Artifact UUID",
+            "in": "path",
+            "name": "artifactId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Get artifact metadata",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get artifact metadata",
+        "tags": [
+          "Artifacts"
+        ]
+      }
+    },
+    "/v1/admin/organizations/{orgId}/artifacts/{artifactId}/content": {
+      "put": {
+        "consumes": [
+          "octet-stream"
+        ],
+        "description": "Request body is raw bytes. Required headers: **Content-Length**; optional **Content-Type**, **X-Artifact-SHA256**, **X-Artifact-Filename**. Sensitive-write rate limit may return **429**.",
+        "parameters": [
+          {
+            "description": "Organization UUID",
+            "in": "path",
+            "name": "orgId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Artifact UUID",
+            "in": "path",
+            "name": "artifactId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Upload artifact bytes",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Upload artifact bytes",
+        "tags": [
+          "Artifacts"
+        ]
+      }
+    },
+    "/v1/admin/organizations/{orgId}/artifacts/{artifactId}/download": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Organization UUID",
+            "in": "path",
+            "name": "orgId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Artifact UUID",
+            "in": "path",
+            "name": "artifactId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Presigned download URL",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Presigned download URL",
+        "tags": [
+          "Artifacts"
+        ]
+      }
+    },
+    "/v1/admin/ota": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Returns **501** with capability `v1.admin.ota.list`.",
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "501": {
+            "description": "List OTA artifacts (admin)",
+            "schema": {
+              "$ref": "#/definitions/V1NotImplementedError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List OTA artifacts (admin)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/technicians": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Returns **501** with `not_implemented` and capability `v1.admin.technicians.list` until a repository is wired.",
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "501": {
+            "description": "List technicians (admin)",
+            "schema": {
+              "$ref": "#/definitions/V1NotImplementedError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List technicians (admin)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/commerce/orders": {
+      "post": {
+        "consumes": [
+          "json"
+        ],
+        "description": "Commerce routes not mounted when commerce service nil. Requires org on JWT for non-platform users. **Idempotency-Key** or **X-Idempotency-Key** required. Not configured \u2192 **503** `capability_not_configured` (`v1.commerce.persistence`). Rate limit \u2192 **429**.",
+        "parameters": [
+          {
+            "description": "machine_id, product_id, slot_index, currency, subtotal_minor, tax_minor, total_minor",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "201": {
+            "description": "Create order and initial vend session",
+            "schema": {
+              "$ref": "#/definitions/V1CommerceCreateOrderResponse"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1CapabilityNotConfiguredError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create order and initial vend session",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
+    "/v1/commerce/orders/{orderId}": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Optional **slot_index** query (default 0). Response nests `order`, `vend`, and `payment` (nullable).",
+        "parameters": [
+          {
+            "description": "Order UUID",
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Slot index (default 0)",
+            "in": "query",
+            "name": "slot_index",
+            "required": false,
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkout status for order",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1CapabilityNotConfiguredError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Checkout status for order",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
+    "/v1/commerce/orders/{orderId}/payment-session": {
+      "post": {
+        "consumes": [
+          "json"
+        ],
+        "description": "When commerce outbox env (topic/event/aggregate) is unset \u2192 **503** `capability_not_configured` (`v1.commerce.payment_session.outbox`). Requires idempotency header.",
+        "parameters": [
+          {
+            "description": "Order UUID",
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "provider, payment_state, amount_minor, currency, outbox_payload_json",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Start payment with outbox row",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1CapabilityNotConfiguredError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Start payment with outbox row",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
+    "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks": {
+      "post": {
+        "consumes": [
+          "json"
+        ],
+        "parameters": [
+          {
+            "description": "Order UUID",
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Payment UUID",
+            "in": "path",
+            "name": "paymentId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "provider, provider_reference, event_type, normalized_payment_state, payload_json, ...",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Apply provider webhook",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "409": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1CapabilityNotConfiguredError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Apply provider webhook",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
+    "/v1/commerce/orders/{orderId}/reconciliation": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Returns `{kind, status}` where **status** matches checkout status JSON.",
+        "parameters": [
+          {
+            "description": "Order UUID",
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Slot index",
+            "in": "query",
+            "name": "slot_index",
+            "required": false,
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Reconciliation snapshot wrapper",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1CapabilityNotConfiguredError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Reconciliation snapshot wrapper",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
+    "/v1/commerce/orders/{orderId}/vend/failure": {
+      "post": {
+        "consumes": [
+          "json"
+        ],
+        "parameters": [
+          {
+            "description": "Order UUID",
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "slot_index, failure_reason",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Finalize vend failure",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "409": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1CapabilityNotConfiguredError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Finalize vend failure",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
+    "/v1/commerce/orders/{orderId}/vend/start": {
+      "post": {
+        "consumes": [
+          "json"
+        ],
+        "description": "Idempotency header required for write contract; value not yet used for dedupe on this transition. Illegal state \u2192 **409** `illegal_transition`.",
+        "parameters": [
+          {
+            "description": "Order UUID",
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "slot_index",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Advance vend to in_progress",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "409": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1CapabilityNotConfiguredError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Advance vend to in_progress",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
+    "/v1/commerce/orders/{orderId}/vend/success": {
+      "post": {
+        "consumes": [
+          "json"
+        ],
+        "description": "Requires captured payment or **409** `payment_not_settled`.",
+        "parameters": [
+          {
+            "description": "Order UUID",
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "slot_index",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Finalize vend success",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "409": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1CapabilityNotConfiguredError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Finalize vend success",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/commands/dispatch": {
+      "post": {
+        "consumes": [
+          "json"
+        ],
+        "description": "Requires **Idempotency-Key** or **X-Idempotency-Key**. Org/platform admin only. When MQTT publisher is missing \u2192 **503** `capability_not_configured` (`mqtt_command_dispatch`). Nil RemoteCommands wiring \u2192 **500**. Rate limiter may return **429** `rate_limited`.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "command_type, payload, desired_state, optional correlation_id, operator_session_id",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Dispatch remote MQTT command",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1CapabilityNotConfiguredError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Dispatch remote MQTT command",
+        "tags": [
+          "Device"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/commands/receipts": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Mounted when RemoteCommands service is configured. If app wiring is nil, handler returns **500** `internal` (not 503). Optional **limit** query (default 50, max 500).",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Default 50, max 500",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "List recent command receipts",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorListEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List recent command receipts",
+        "tags": [
+          "Device"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/commands/{sequence}/status": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "**sequence** must be a non-negative integer. Unknown sequence \u2192 **404** `command_not_found`.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Ledger sequence (non-negative integer)",
+            "in": "path",
+            "name": "sequence",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Get command dispatch status by sequence",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get command dispatch status by sequence",
+        "tags": [
+          "Device"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/operator-sessions/action-attributions": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Default 50, max 500",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "List action attributions for machine",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorListEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List action attributions for machine",
+        "tags": [
+          "Operator"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/operator-sessions/auth-events": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Default 50, max 500",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "List auth events",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorListEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List auth events",
+        "tags": [
+          "Operator"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/operator-sessions/current": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Routes not mounted when operator service is nil. Response is `{\"active_session\":null}` or `{\"active_session\":{...}}` (optional `technician_display_name`).",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Get current operator session",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorCurrentEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get current operator session",
+        "tags": [
+          "Operator"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/operator-sessions/history": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Default 50, max 500",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "List session history",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorListEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List session history",
+        "tags": [
+          "Operator"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/operator-sessions/login": {
+      "post": {
+        "consumes": [
+          "json"
+        ],
+        "description": "Actor (TECHNICIAN vs USER) comes from JWT claims only. Optional **force_admin_takeover** (org/platform admin). Conflicts \u2192 **409** `active_session_exists`. Technician without assignment checker returns **503** with JSON `code` **assignment_checker_misconfigured** (standard envelope, not capability_not_configured). Rate limit \u2192 **429**.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "auth_method (defaults oidc), expires_at, client_metadata, force_admin_takeover",
+            "in": "body",
+            "name": "body",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Start or resume operator session",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorSessionEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "409": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "503": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Start or resume operator session",
+        "tags": [
+          "Operator"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/operator-sessions/logout": {
+      "post": {
+        "consumes": [
+          "json"
+        ],
+        "description": "**final_status** empty or ENDED (default) or REVOKED (org/platform admin only). **session_id** may be omitted when an ACTIVE session exists for the machine.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "session_id, ended_reason, auth_method, optional final_status (ENDED|REVOKED)",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "End operator session",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorSessionEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "409": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "End operator session",
+        "tags": [
+          "Operator"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/operator-sessions/timeline": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Default 50, max 500",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Combined operator timeline",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorListEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Combined operator timeline",
+        "tags": [
+          "Operator"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Session UUID",
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Session activity heartbeat",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorSessionEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "409": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "429": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Session activity heartbeat",
+        "tags": [
+          "Operator"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/shadow": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Requires Bearer JWT and RequireMachineURLAccess(machineId). Invalid UUID in path \u2192 **400** from middleware or handler (`invalid_machine_id`). Missing shadow row \u2192 **404** `machine_shadow_not_found`.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Get machine shadow JSON",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get machine shadow JSON",
+        "tags": [
+          "Fleet"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/telemetry/incidents": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Returns deduped incident rows from Postgres (fed by `incident.*` telemetry via JetStream workers). Optional `limit` query (default 50, max 500).",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Default 50, max 500",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent persisted machine incidents",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Recent persisted machine incidents",
+        "tags": [
+          "Fleet"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/telemetry/rollups": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Aggregated `telemetry_rollups` only \u2014 not raw high-frequency streams. Query `from`/`to` as RFC3339 (default last 24h), `granularity` (`1m` default, `1h`).",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "RFC3339 lower bound",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "RFC3339 upper bound",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "1m or 1h",
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Telemetry rollup buckets (1m / 1h)",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Telemetry rollup buckets (1m / 1h)",
+        "tags": [
+          "Fleet"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/telemetry/snapshot": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Read-only `machine_current_snapshot` row (rollups + shadow projection). **404** when no snapshot exists yet. Not a raw MQTT history API.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "Current machine telemetry snapshot (projected)",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "404": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Current machine telemetry snapshot (projected)",
+        "tags": [
+          "Fleet"
+        ]
+      }
+    },
+    "/v1/operator-insights/technicians/{technicianId}/action-attributions": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Mounted only when operator service is configured. **organization_id** query is required when the caller is platform_admin without tenant org on the JWT.",
+        "parameters": [
+          {
+            "description": "Technician UUID",
+            "in": "path",
+            "name": "technicianId",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Required for platform_admin without org scope",
+            "in": "query",
+            "name": "organization_id",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "Default 50, max 500",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "List action attributions for a technician",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorListEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List action attributions for a technician",
+        "tags": [
+          "Operator"
+        ]
+      }
+    },
+    "/v1/operator-insights/users/action-attributions": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "**user_principal** query parameter is required. Same organization_id rules as technician insights.",
+        "parameters": [
+          {
+            "description": "Required for platform_admin without org scope",
+            "in": "query",
+            "name": "organization_id",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "description": "User subject / principal string",
+            "in": "query",
+            "name": "user_principal",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "description": "Default 50, max 500",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "type": "integer"
+          }
+        ],
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "200": {
+            "description": "List action attributions for a user principal",
+            "schema": {
+              "$ref": "#/definitions/V1OperatorListEnvelope"
+            }
+          },
+          "400": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List action attributions for a user principal",
+        "tags": [
+          "Operator"
+        ]
+      }
+    },
+    "/v1/orders": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "**501** with capability `v1.orders.org_list`. Same auth and 403 behavior as payments list.",
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "501": {
+            "description": "List orders for organization",
+            "schema": {
+              "$ref": "#/definitions/V1NotImplementedError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List orders for organization",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
+    "/v1/payments": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "description": "Requires Bearer JWT and RequireOrganizationScope. **501** `not_implemented` with capability `v1.payments.org_list` until implemented. Non-platform callers without org on JWT get **403** from middleware (minimal JSON, no `code`).",
+        "produces": [
+          "json"
+        ],
+        "responses": {
+          "401": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "403": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1BearerAuthError"
+            }
+          },
+          "500": {
+            "description": "error",
+            "schema": {
+              "$ref": "#/definitions/V1StandardError"
+            }
+          },
+          "501": {
+            "description": "List payments for organization",
+            "schema": {
+              "$ref": "#/definitions/V1NotImplementedError"
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List payments for organization",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    }
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "securityDefinitions": {
+    "BearerAuth": {
+      "description": "Send: Bearer <JWT>. JWT mode is selected by HTTP_AUTH_MODE (hs256 default, rs256_pem, rs256_jwks). 401/403 responses from this layer use JSON {\"error\":{\"message\":\"...\"}} without error.code.",
+      "in": "header",
+      "name": "Authorization",
+      "type": "apiKey"
+    }
+  },
+  "swagger": "2.0",
+  "tags": [
+    {
+      "description": "Liveness/readiness without Bearer auth.",
+      "name": "Health"
+    },
+    {
+      "description": "Operational endpoints such as Prometheus metrics when enabled.",
+      "name": "Reliability"
+    },
+    {
+      "description": "Platform/org administrator collection APIs.",
+      "name": "Admin"
+    },
+    {
+      "description": "S3-backed artifact APIs (mounted only when API_ARTIFACTS_ENABLED=true).",
+      "name": "Artifacts"
+    },
+    {
+      "description": "Operator sessions and cross-machine insights.",
+      "name": "Operator"
+    },
+    {
+      "description": "Checkout, payments, vend lifecycle (organization-scoped).",
+      "name": "Commerce"
+    },
+    {
+      "description": "Machine shadow and fleet reads.",
+      "name": "Fleet"
+    },
+    {
+      "description": "Remote command dispatch and receipts (requires MQTT wiring for dispatch).",
+      "name": "Device"
+    },
+    {
+      "description": "Embedded Swagger UI and OpenAPI JSON (no Bearer auth; mounted when HTTP_SWAGGER_UI_ENABLED).",
+      "name": "Documentation"
+    }
+  ]
+}

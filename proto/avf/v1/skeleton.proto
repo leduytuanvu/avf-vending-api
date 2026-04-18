@@ -1,0 +1,12 @@
+// Buf / codegen smoke test only. This file does not define a gRPC service and nothing in
+// internal/grpcserver registers generated stubs — the API listener is grpc.health.v1 only.
+syntax = "proto3";
+
+package avf.v1;
+
+option go_package = "github.com/avf/avf-vending-api/gen/go/avf/v1;avfv1";
+
+// SkeletonMeta is a placeholder message to validate buf + Go protobuf generation.
+message SkeletonMeta {
+  string service = 1;
+}

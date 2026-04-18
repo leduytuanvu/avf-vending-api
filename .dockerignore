@@ -1,0 +1,12 @@
+# Speed up docker build context (production image)
+.git
+.github
+**/node_modules
+bin/
+dist/
+*.md
+!README.md
+deployments/prod/.env.production
+deployments/prod/backups
+**/*_test.go
+**/testdata

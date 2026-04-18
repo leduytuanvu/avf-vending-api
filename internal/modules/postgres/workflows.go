@@ -1,0 +1,729 @@
+package postgres
+
+import (
+	"context"
+	"errors"
+	"strings"
+
+	"github.com/avf/avf-vending-api/internal/domain/commerce"
+	"github.com/avf/avf-vending-api/internal/domain/device"
+	"github.com/avf/avf-vending-api/internal/gen/db"
+	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+)
+
+// CommandWorkflowAudit is optional persistence-side audit metadata (callers supply org + actor context).
+type CommandWorkflowAudit struct {
+	OrganizationID uuid.UUID
+	ActorType      string
+	ActorID        string
+	Action         string
+	ResourceType   string
+	Payload        []byte
+	IP             *string
+}
+
+// AppendCommandWithOutboxInput binds command ledger + desired shadow + durable outbox emission in one transaction.
+type AppendCommandWithOutboxInput struct {
+	Command device.AppendCommandInput
+
+	OrganizationID       uuid.UUID
+	OutboxTopic          string
+	OutboxEventType      string
+	OutboxPayload        []byte
+	OutboxAggregateType  string
+	OutboxAggregateID    uuid.UUID
+	OutboxIdempotencyKey string
+
+	Audit *CommandWorkflowAudit
+}
+
+// AppendCommandWithOutboxResult is the transactional outcome for AppendCommandUpdateShadowAndOutbox.
+type AppendCommandWithOutboxResult struct {
+	CommandReplay bool
+	Sequence      int64
+	Outbox        commerce.OutboxEvent
+	OutboxReplay  bool
+}
+
+// CommandReceiptTransitionParams applies a command receipt row with optional reported shadow and connectivity bump.
+type CommandReceiptTransitionParams struct {
+	MachineID          uuid.UUID
+	Sequence           int64
+	Status             string
+	CorrelationID      *uuid.UUID
+	Payload            []byte
+	DedupeKey          string
+	CommandAttemptID   *uuid.UUID
+	ReportedShadowJSON []byte
+
+	Audit *CommandWorkflowAudit
+}
+
+// CommandReceiptTransitionResult indicates whether the receipt insert was skipped due to dedupe.
+type CommandReceiptTransitionResult struct {
+	ReceiptReplay bool
+}
+
+// CreateOrderWithVendSession inserts an order and its first vend session in one transaction.
+// It is idempotent on (organization_id, idempotency_key) for orders and will return the existing pair when replayed.
+func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.CreateOrderVendInput) (commerce.CreateOrderVendResult, error) {
+	if in.IdempotencyKey == "" {
+		return commerce.CreateOrderVendResult{}, errors.New("postgres: idempotency_key is required")
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return commerce.CreateOrderVendResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := db.New(tx)
+
+	var orderRow db.Order
+	existingOrder, err := q.GetOrderByOrgIdempotency(ctx, db.GetOrderByOrgIdempotencyParams{
+		OrganizationID: in.OrganizationID,
+		IdempotencyKey: in.IdempotencyKey,
+	})
+	switch {
+	case err == nil:
+		orderRow = existingOrder
+	case isNoRows(err):
+		idem := in.IdempotencyKey
+		orderRow, err = q.InsertOrder(ctx, db.InsertOrderParams{
+			OrganizationID: in.OrganizationID,
+			MachineID:      in.MachineID,
+			Status:         in.OrderStatus,
+			Currency:       in.Currency,
+			SubtotalMinor:  in.SubtotalMinor,
+			TaxMinor:       in.TaxMinor,
+			TotalMinor:     in.TotalMinor,
+			IdempotencyKey: &idem,
+		})
+		if err != nil {
+			if isUniqueViolation(err) {
+				return commerce.CreateOrderVendResult{}, errors.New("postgres: duplicate order idempotency key race")
+			}
+			return commerce.CreateOrderVendResult{}, err
+		}
+	default:
+		return commerce.CreateOrderVendResult{}, err
+	}
+
+	vendRow, vErr := q.GetVendSessionByOrderAndSlot(ctx, db.GetVendSessionByOrderAndSlotParams{
+		OrderID:   orderRow.ID,
+		SlotIndex: in.SlotIndex,
+	})
+	if vErr == nil {
+		if err := tx.Commit(ctx); err != nil {
+			return commerce.CreateOrderVendResult{}, err
+		}
+		return commerce.CreateOrderVendResult{
+			Order:  mapOrder(orderRow),
+			Vend:   mapVend(vendRow),
+			Replay: true,
+		}, nil
+	}
+	if !isNoRows(vErr) {
+		return commerce.CreateOrderVendResult{}, vErr
+	}
+
+	vRow, err := q.InsertVendSession(ctx, db.InsertVendSessionParams{
+		OrderID:   orderRow.ID,
+		MachineID: in.MachineID,
+		SlotIndex: in.SlotIndex,
+		ProductID: in.ProductID,
+		State:     in.VendState,
+	})
+	if err != nil {
+		return commerce.CreateOrderVendResult{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return commerce.CreateOrderVendResult{}, err
+	}
+
+	return commerce.CreateOrderVendResult{
+		Order:  mapOrder(orderRow),
+		Vend:   mapVend(vRow),
+		Replay: false,
+	}, nil
+}
+
+// CreatePaymentWithOutbox inserts a payment and an outbox event in one transaction.
+// It is idempotent on payment (order_id, idempotency_key) and outbox (topic, idempotency_key).
+func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.PaymentOutboxInput) (commerce.PaymentOutboxResult, error) {
+	if in.IdempotencyKey == "" || in.OutboxIdempotencyKey == "" {
+		return commerce.PaymentOutboxResult{}, errors.New("postgres: idempotency keys are required")
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return commerce.PaymentOutboxResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := db.New(tx)
+
+	existingPay, err := q.GetPaymentByOrderAndIdempotencyKey(ctx, db.GetPaymentByOrderAndIdempotencyKeyParams{
+		OrderID:        in.OrderID,
+		IdempotencyKey: in.IdempotencyKey,
+	})
+	if err == nil {
+		ob, oErr := q.GetOutboxByTopicAndIdempotency(ctx, db.GetOutboxByTopicAndIdempotencyParams{
+			Topic:          in.OutboxTopic,
+			IdempotencyKey: in.OutboxIdempotencyKey,
+		})
+		if oErr == nil {
+			if err := tx.Commit(ctx); err != nil {
+				return commerce.PaymentOutboxResult{}, err
+			}
+			return commerce.PaymentOutboxResult{
+				Payment: mapPayment(existingPay),
+				Outbox:  mapOutbox(ob),
+				Replay:  true,
+			}, nil
+		}
+		if !isNoRows(oErr) {
+			return commerce.PaymentOutboxResult{}, oErr
+		}
+
+		obRow, insErr := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
+			OrganizationID: &in.OrganizationID,
+			Topic:          in.OutboxTopic,
+			EventType:      in.OutboxEventType,
+			Payload:        in.OutboxPayload,
+			AggregateType:  in.OutboxAggregateType,
+			AggregateID:    in.OutboxAggregateID,
+			IdempotencyKey: strPtr(in.OutboxIdempotencyKey),
+		})
+		if insErr != nil {
+			return commerce.PaymentOutboxResult{}, insErr
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return commerce.PaymentOutboxResult{}, err
+		}
+		return commerce.PaymentOutboxResult{
+			Payment: mapPayment(existingPay),
+			Outbox:  mapOutbox(obRow),
+			Replay:  true,
+		}, nil
+	}
+	if !isNoRows(err) {
+		return commerce.PaymentOutboxResult{}, err
+	}
+
+	pidem := in.IdempotencyKey
+	pRow, err := q.InsertPayment(ctx, db.InsertPaymentParams{
+		OrderID:        in.OrderID,
+		Provider:       in.Provider,
+		State:          in.PaymentState,
+		AmountMinor:    in.AmountMinor,
+		Currency:       in.Currency,
+		IdempotencyKey: &pidem,
+	})
+	if err != nil {
+		return commerce.PaymentOutboxResult{}, err
+	}
+
+	obRow, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
+		OrganizationID: &in.OrganizationID,
+		Topic:          in.OutboxTopic,
+		EventType:      in.OutboxEventType,
+		Payload:        in.OutboxPayload,
+		AggregateType:  in.OutboxAggregateType,
+		AggregateID:    in.OutboxAggregateID,
+		IdempotencyKey: strPtr(in.OutboxIdempotencyKey),
+	})
+	if err != nil {
+		return commerce.PaymentOutboxResult{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return commerce.PaymentOutboxResult{}, err
+	}
+
+	return commerce.PaymentOutboxResult{
+		Payment: mapPayment(pRow),
+		Outbox:  mapOutbox(obRow),
+		Replay:  false,
+	}, nil
+}
+
+func strPtr(s string) *string {
+	return &s
+}
+
+func mapDeviceReceiptToAttemptStatus(receiptStatus string) string {
+	switch strings.ToLower(strings.TrimSpace(receiptStatus)) {
+	case "acked":
+		return "completed"
+	case "nacked":
+		return "nack"
+	case "failed":
+		return "failed"
+	case "timeout":
+		return "ack_timeout"
+	default:
+		return ""
+	}
+}
+
+func auditPayloadBytes(p []byte) []byte {
+	if len(p) == 0 {
+		return []byte("{}")
+	}
+	return p
+}
+
+// maybeInsertAuditLog appends an audit row when audit metadata is present (best-effort correlation for workflows).
+func maybeInsertAuditLog(ctx context.Context, q *db.Queries, audit *CommandWorkflowAudit, resourceID uuid.UUID) error {
+	if audit == nil || audit.OrganizationID == uuid.Nil || audit.Action == "" {
+		return nil
+	}
+	_, err := q.InsertAuditLog(ctx, db.InsertAuditLogParams{
+		OrganizationID: audit.OrganizationID,
+		ActorType:      audit.ActorType,
+		ActorID:        audit.ActorID,
+		Action:         audit.Action,
+		ResourceType:   audit.ResourceType,
+		ResourceID:     &resourceID,
+		Payload:        auditPayloadBytes(audit.Payload),
+		Ip:             audit.IP,
+	})
+	return err
+}
+
+// AppendCommandUpdateShadow bumps command_sequence, inserts command_ledger, and upserts machine_shadow.
+// It is idempotent on (machine_id, idempotency_key) for the ledger.
+// The machine row is locked for update so concurrent writers serialize per device; command replays still refresh desired shadow.
+func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendCommandInput) (device.AppendCommandResult, error) {
+	if in.IdempotencyKey == "" {
+		return device.AppendCommandResult{}, errors.New("postgres: idempotency_key is required")
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return device.AppendCommandResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := db.New(tx)
+
+	m, err := q.GetMachineByIDForUpdate(ctx, in.MachineID)
+	if err != nil {
+		return device.AppendCommandResult{}, err
+	}
+
+	idem := in.IdempotencyKey
+	existing, err := q.GetCommandLedgerByMachineIdempotency(ctx, db.GetCommandLedgerByMachineIdempotencyParams{
+		MachineID:      in.MachineID,
+		IdempotencyKey: idem,
+	})
+	if err == nil {
+		if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
+			MachineID:    in.MachineID,
+			DesiredState: in.DesiredState,
+		}); err != nil {
+			return device.AppendCommandResult{}, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return device.AppendCommandResult{}, err
+		}
+		return device.AppendCommandResult{CommandID: existing.ID, Sequence: existing.Sequence, Replay: true}, nil
+	}
+	if !isNoRows(err) {
+		return device.AppendCommandResult{}, err
+	}
+
+	seq, err := q.BumpMachineCommandSequence(ctx, in.MachineID)
+	if err != nil {
+		return device.AppendCommandResult{}, err
+	}
+
+	idemPtr := idem
+	cmdRow, err := q.InsertCommandLedgerEntry(ctx, db.InsertCommandLedgerEntryParams{
+		MachineID:         in.MachineID,
+		Sequence:          seq,
+		CommandType:       in.CommandType,
+		Payload:           in.Payload,
+		CorrelationID:     in.CorrelationID,
+		IdempotencyKey:    &idemPtr,
+		OperatorSessionID: in.OperatorSessionID,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return device.AppendCommandResult{}, errors.New("postgres: duplicate command idempotency race")
+		}
+		return device.AppendCommandResult{}, err
+	}
+
+	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
+		MachineID:         in.MachineID,
+		OrganizationID:    m.OrganizationID,
+		OperatorSessionID: in.OperatorSessionID,
+		ActionDomain:      "commands",
+		ActionType:        in.CommandType,
+		ResourceTable:     "command_ledger",
+		ResourceID:        cmdRow.ID.String(),
+		CorrelationID:     in.CorrelationID,
+		OccurredAt:        &cmdRow.CreatedAt,
+	}); err != nil {
+		return device.AppendCommandResult{}, err
+	}
+
+	if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
+		MachineID:    in.MachineID,
+		DesiredState: in.DesiredState,
+	}); err != nil {
+		return device.AppendCommandResult{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return device.AppendCommandResult{}, err
+	}
+
+	return device.AppendCommandResult{CommandID: cmdRow.ID, Sequence: seq, Replay: false}, nil
+}
+
+// AppendCommandUpdateShadowAndOutbox performs AppendCommandUpdateShadow work plus a durable outbox row in the same transaction.
+// It repairs missing outbox rows on command replay (idempotent command + outbox fan-out).
+func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in AppendCommandWithOutboxInput) (AppendCommandWithOutboxResult, error) {
+	if in.Command.IdempotencyKey == "" {
+		return AppendCommandWithOutboxResult{}, errors.New("postgres: command idempotency_key is required")
+	}
+	if in.OutboxTopic == "" || in.OutboxIdempotencyKey == "" {
+		return AppendCommandWithOutboxResult{}, errors.New("postgres: outbox topic and idempotency_key are required")
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return AppendCommandWithOutboxResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := db.New(tx)
+
+	m, err := q.GetMachineByIDForUpdate(ctx, in.Command.MachineID)
+	if err != nil {
+		return AppendCommandWithOutboxResult{}, err
+	}
+
+	idem := in.Command.IdempotencyKey
+	existing, err := q.GetCommandLedgerByMachineIdempotency(ctx, db.GetCommandLedgerByMachineIdempotencyParams{
+		MachineID:      in.Command.MachineID,
+		IdempotencyKey: idem,
+	})
+	if err == nil {
+		if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
+			MachineID:    in.Command.MachineID,
+			DesiredState: in.Command.DesiredState,
+		}); err != nil {
+			return AppendCommandWithOutboxResult{}, err
+		}
+
+		ob, oErr := q.GetOutboxByTopicAndIdempotency(ctx, db.GetOutboxByTopicAndIdempotencyParams{
+			Topic:          in.OutboxTopic,
+			IdempotencyKey: in.OutboxIdempotencyKey,
+		})
+		switch {
+		case oErr == nil:
+			if err := maybeInsertAuditLog(ctx, q, in.Audit, in.Command.MachineID); err != nil {
+				return AppendCommandWithOutboxResult{}, err
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return AppendCommandWithOutboxResult{}, err
+			}
+			return AppendCommandWithOutboxResult{
+				CommandReplay: true,
+				Sequence:      existing.Sequence,
+				Outbox:        mapOutbox(ob),
+				OutboxReplay:  true,
+			}, nil
+		case isNoRows(oErr):
+			obRow, insErr := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
+				OrganizationID: &in.OrganizationID,
+				Topic:          in.OutboxTopic,
+				EventType:      in.OutboxEventType,
+				Payload:        in.OutboxPayload,
+				AggregateType:  in.OutboxAggregateType,
+				AggregateID:    in.OutboxAggregateID,
+				IdempotencyKey: strPtr(in.OutboxIdempotencyKey),
+			})
+			if insErr != nil {
+				return AppendCommandWithOutboxResult{}, insErr
+			}
+			if err := maybeInsertAuditLog(ctx, q, in.Audit, in.Command.MachineID); err != nil {
+				return AppendCommandWithOutboxResult{}, err
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return AppendCommandWithOutboxResult{}, err
+			}
+			return AppendCommandWithOutboxResult{
+				CommandReplay: true,
+				Sequence:      existing.Sequence,
+				Outbox:        mapOutbox(obRow),
+				OutboxReplay:  false,
+			}, nil
+		default:
+			return AppendCommandWithOutboxResult{}, oErr
+		}
+	}
+	if !isNoRows(err) {
+		return AppendCommandWithOutboxResult{}, err
+	}
+
+	seq, err := q.BumpMachineCommandSequence(ctx, in.Command.MachineID)
+	if err != nil {
+		return AppendCommandWithOutboxResult{}, err
+	}
+
+	idemPtr := idem
+	cmdRow, err := q.InsertCommandLedgerEntry(ctx, db.InsertCommandLedgerEntryParams{
+		MachineID:         in.Command.MachineID,
+		Sequence:          seq,
+		CommandType:       in.Command.CommandType,
+		Payload:           in.Command.Payload,
+		CorrelationID:     in.Command.CorrelationID,
+		IdempotencyKey:    &idemPtr,
+		OperatorSessionID: in.Command.OperatorSessionID,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return AppendCommandWithOutboxResult{}, errors.New("postgres: duplicate command idempotency race")
+		}
+		return AppendCommandWithOutboxResult{}, err
+	}
+
+	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
+		MachineID:         in.Command.MachineID,
+		OrganizationID:    m.OrganizationID,
+		OperatorSessionID: in.Command.OperatorSessionID,
+		ActionDomain:      "commands",
+		ActionType:        in.Command.CommandType,
+		ResourceTable:     "command_ledger",
+		ResourceID:        cmdRow.ID.String(),
+		CorrelationID:     in.Command.CorrelationID,
+		OccurredAt:        &cmdRow.CreatedAt,
+	}); err != nil {
+		return AppendCommandWithOutboxResult{}, err
+	}
+
+	if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
+		MachineID:    in.Command.MachineID,
+		DesiredState: in.Command.DesiredState,
+	}); err != nil {
+		return AppendCommandWithOutboxResult{}, err
+	}
+
+	obRow, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
+		OrganizationID: &in.OrganizationID,
+		Topic:          in.OutboxTopic,
+		EventType:      in.OutboxEventType,
+		Payload:        in.OutboxPayload,
+		AggregateType:  in.OutboxAggregateType,
+		AggregateID:    in.OutboxAggregateID,
+		IdempotencyKey: strPtr(in.OutboxIdempotencyKey),
+	})
+	if err != nil {
+		return AppendCommandWithOutboxResult{}, err
+	}
+
+	if err := maybeInsertAuditLog(ctx, q, in.Audit, in.Command.MachineID); err != nil {
+		return AppendCommandWithOutboxResult{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return AppendCommandWithOutboxResult{}, err
+	}
+
+	return AppendCommandWithOutboxResult{
+		CommandReplay: false,
+		Sequence:      seq,
+		Outbox:        mapOutbox(obRow),
+		OutboxReplay:  false,
+	}, nil
+}
+
+// ApplyCommandReceiptTransition inserts a command receipt, optionally updates reported shadow, bumps connectivity, and audits in one transaction.
+// Duplicate dedupe_key rolls back and returns ReceiptReplay=true without mutating shadow (callers must use a fresh dedupe to attach new shadow data).
+func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandReceiptTransitionParams) (CommandReceiptTransitionResult, error) {
+	if p.MachineID == uuid.Nil {
+		return CommandReceiptTransitionResult{}, errors.New("postgres: machine_id is required")
+	}
+	if p.DedupeKey == "" {
+		return CommandReceiptTransitionResult{}, errors.New("postgres: dedupe_key is required")
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return CommandReceiptTransitionResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := db.New(tx)
+
+	if _, err := q.GetMachineByIDForUpdate(ctx, p.MachineID); err != nil {
+		return CommandReceiptTransitionResult{}, err
+	}
+
+	payload := p.Payload
+	if len(payload) == 0 {
+		payload = []byte("{}")
+	}
+
+	var attemptID *uuid.UUID
+	if p.CommandAttemptID != nil {
+		attemptID = p.CommandAttemptID
+	} else {
+		cmdRow, cErr := q.GetCommandLedgerByMachineSequence(ctx, db.GetCommandLedgerByMachineSequenceParams{
+			MachineID: p.MachineID,
+			Sequence:  p.Sequence,
+		})
+		if cErr == nil {
+			openAtt, aErr := q.GetLatestOpenMachineCommandAttemptForCommand(ctx, cmdRow.ID)
+			if aErr == nil {
+				attemptID = &openAtt.ID
+			} else if !isNoRows(aErr) {
+				return CommandReceiptTransitionResult{}, aErr
+			}
+		} else if !isNoRows(cErr) {
+			return CommandReceiptTransitionResult{}, cErr
+		}
+	}
+
+	_, err = q.InsertDeviceCommandReceipt(ctx, db.InsertDeviceCommandReceiptParams{
+		MachineID:        p.MachineID,
+		Sequence:         p.Sequence,
+		Status:           p.Status,
+		CorrelationID:    p.CorrelationID,
+		Payload:          payload,
+		DedupeKey:        p.DedupeKey,
+		CommandAttemptID: attemptID,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return CommandReceiptTransitionResult{ReceiptReplay: true}, nil
+		}
+		return CommandReceiptTransitionResult{}, err
+	}
+
+	if attemptID != nil {
+		if newStatus := mapDeviceReceiptToAttemptStatus(p.Status); newStatus != "" {
+			if uErr := q.UpdateMachineCommandAttemptAfterDeviceReceipt(ctx, db.UpdateMachineCommandAttemptAfterDeviceReceiptParams{
+				ID:     *attemptID,
+				Status: newStatus,
+			}); uErr != nil {
+				return CommandReceiptTransitionResult{}, uErr
+			}
+		}
+	}
+
+	if len(p.ReportedShadowJSON) > 0 {
+		if _, err := q.UpsertMachineShadowReported(ctx, db.UpsertMachineShadowReportedParams{
+			MachineID:     p.MachineID,
+			ReportedState: p.ReportedShadowJSON,
+		}); err != nil {
+			return CommandReceiptTransitionResult{}, err
+		}
+	}
+
+	if err := q.TouchMachineConnectivity(ctx, p.MachineID); err != nil {
+		return CommandReceiptTransitionResult{}, err
+	}
+
+	if err := maybeInsertAuditLog(ctx, q, p.Audit, p.MachineID); err != nil {
+		return CommandReceiptTransitionResult{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return CommandReceiptTransitionResult{}, err
+	}
+
+	return CommandReceiptTransitionResult{ReceiptReplay: false}, nil
+}
+
+var _ platformmqtt.DeviceIngest = (*Store)(nil)
+
+// IngestTelemetry persists a telemetry row and bumps machine connectivity (idempotent on dedupe_key).
+func (s *Store) IngestTelemetry(ctx context.Context, in platformmqtt.TelemetryIngest) error {
+	if in.MachineID == uuid.Nil {
+		return errors.New("postgres: machine_id is required")
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := db.New(tx)
+	if _, err := q.GetMachineByIDForUpdate(ctx, in.MachineID); err != nil {
+		return err
+	}
+	_, err = q.InsertDeviceTelemetryEvent(ctx, db.InsertDeviceTelemetryEventParams{
+		MachineID: in.MachineID,
+		EventType: in.EventType,
+		Payload:   in.Payload,
+		DedupeKey: in.DedupeKey,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return nil
+		}
+		return err
+	}
+	if err := q.TouchMachineConnectivity(ctx, in.MachineID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// IngestShadowReported merges reported_state into machine_shadow and bumps connectivity.
+func (s *Store) IngestShadowReported(ctx context.Context, in platformmqtt.ShadowReportedIngest) error {
+	if in.MachineID == uuid.Nil {
+		return errors.New("postgres: machine_id is required")
+	}
+	if len(in.ReportedJSON) == 0 {
+		return errors.New("postgres: reported json is required")
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := db.New(tx)
+	if _, err := q.GetMachineByIDForUpdate(ctx, in.MachineID); err != nil {
+		return err
+	}
+	if _, err := q.UpsertMachineShadowReported(ctx, db.UpsertMachineShadowReportedParams{
+		MachineID:     in.MachineID,
+		ReportedState: in.ReportedJSON,
+	}); err != nil {
+		return err
+	}
+	if err := q.TouchMachineConnectivity(ctx, in.MachineID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// IngestCommandReceipt records an edge command outcome and bumps connectivity (idempotent on dedupe_key).
+func (s *Store) IngestCommandReceipt(ctx context.Context, in platformmqtt.CommandReceiptIngest) error {
+	if in.MachineID == uuid.Nil {
+		return errors.New("postgres: machine_id is required")
+	}
+	if in.DedupeKey == "" {
+		return errors.New("postgres: dedupe_key is required")
+	}
+	_, err := s.ApplyCommandReceiptTransition(ctx, CommandReceiptTransitionParams{
+		MachineID:     in.MachineID,
+		Sequence:      in.Sequence,
+		Status:        in.Status,
+		CorrelationID: in.CorrelationID,
+		Payload:       in.Payload,
+		DedupeKey:     in.DedupeKey,
+	})
+	return err
+}

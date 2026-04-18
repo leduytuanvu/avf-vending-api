@@ -1,0 +1,25 @@
+/.env
+/repomix-output.xml
+/bin/
+/dist/
+/gen/
+
+# Production deployment secrets and artifacts (see deployments/prod/README.md)
+deployments/prod/.env.production
+deployments/prod/.deploy/
+deployments/prod/backups/
+deployments/prod/**/*.pem
+deployments/prod/**/*.key
+deployments/prod/**/*.crt
+deployments/prod/**/*.csr
+deployments/prod/**/*.p12
+deployments/prod/**/*.sql.gz
+deployments/prod/**/*.dump
+deployments/prod/**/*.tmp
+deployments/prod/**/*.bak
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+Thumbs.db

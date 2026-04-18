@@ -1,0 +1,10 @@
+# Proto workspace for buf lint/generate. Only avf/v1/skeleton.proto today — not a public API contract.
+version: v2
+modules:
+  - path: .
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

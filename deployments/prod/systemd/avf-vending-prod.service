@@ -1,0 +1,20 @@
+[Unit]
+Description=AVF Vending production stack (Docker Compose)
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=AVF_DEPLOY_DIR_PLACEHOLDER
+Environment=COMPOSE_PROJECT_NAME=avf-vending-prod
+ExecStartPre=/usr/bin/test -f .env.production
+ExecStart=/usr/bin/docker compose --env-file .env.production -f docker-compose.prod.yml up -d --remove-orphans postgres nats emqx api worker mqtt-ingest reconciler caddy
+ExecStop=/usr/bin/docker compose --env-file .env.production -f docker-compose.prod.yml down --remove-orphans --timeout 90
+TimeoutStartSec=0
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

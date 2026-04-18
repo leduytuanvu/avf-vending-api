@@ -1,0 +1,322 @@
+# Lean production stack: single Ubuntu 24.04 VPS (target: 2 vCPU / 8 GB RAM).
+# Copy .env.production.example -> .env.production and fill secrets before `docker compose up`.
+#
+# Intentionally NOT included: ClickHouse, Temporal, Prometheus, Grafana, Loki, MinIO, Redis
+# (Redis is optional for this API — leave unset unless you enable features that require it).
+#
+# Usage (from this directory):
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+
+name: avf-vending-prod
+
+networks:
+  edge:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: true
+
+volumes:
+  postgres_data:
+  nats_data:
+  emqx_data:
+  caddy_data:
+  caddy_config:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: avf-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Single app database owned by POSTGRES_USER (avoids brittle init scripts for credentials).
+      POSTGRES_DB: avf_vending
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d avf_vending']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: avf-prod-nats
+    restart: unless-stopped
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    volumes:
+      - nats_data:/data
+    networks:
+      - internal
+    # No host ports — JetStream / core NATS reachable only inside `internal` network.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8222/healthz >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  emqx:
+    image: emqx/emqx:5.6.0
+    container_name: avf-prod-emqx
+    hostname: emqx
+    restart: unless-stopped
+    environment:
+      EMQX_NAME: emqx
+      EMQX_HOST: emqx
+      EMQX_NODE__NAME: emqx@emqx
+      EMQX_CLUSTER__DISCOVERY_STRATEGY: manual
+      EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:?set EMQX_DASHBOARD_USERNAME in .env.production}
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?set EMQX_DASHBOARD_PASSWORD in .env.production}
+      EMQX_DASHBOARD__LISTENERS__HTTP__BIND: "127.0.0.1:18083"
+      EMQX_LISTENERS__TCP__DEFAULT__BIND: "0.0.0.0:1883"
+      EMQX_ALLOW_ANONYMOUS: "false"
+      EMQX_AUTHENTICATION__1__MECHANISM: password_based
+      EMQX_AUTHENTICATION__1__BACKEND: built_in_database
+      EMQX_AUTHENTICATION__1__ENABLE: "true"
+      EMQX_NODE__COOKIE: ${EMQX_NODE_COOKIE:?set EMQX_NODE_COOKIE in .env.production}
+    volumes:
+      - emqx_data:/opt/emqx/data
+    networks:
+      internal:
+        aliases:
+          - emqx
+      edge: {}
+    ports:
+      - "1883:1883"
+      - "127.0.0.1:18083:18083"
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx_ctl", "status"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    build:
+      context: ../..
+      dockerfile: deployments/prod/Dockerfile
+    image: avf-vending-api:${IMAGE_TAG:-local}
+    container_name: avf-prod-api
+    restart: unless-stopped
+    command: ["/app/api"]
+    env_file:
+      - .env.production
+    environment:
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_API:?set MQTT_CLIENT_ID_API in .env.production}
+    networks:
+      - internal
+      - edge
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      emqx:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health/live"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.60"
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker:
+    image: avf-vending-api:${IMAGE_TAG:-local}
+    container_name: avf-prod-worker
+    restart: unless-stopped
+    command: ["/app/worker"]
+    env_file:
+      - .env.production
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", 'read -r cmd </proc/1/comm && [ "$$cmd" = "worker" ]']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.35"
+          memory: 384M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mqtt-ingest:
+    image: avf-vending-api:${IMAGE_TAG:-local}
+    container_name: avf-prod-mqtt-ingest
+    restart: unless-stopped
+    command: ["/app/mqtt-ingest"]
+    env_file:
+      - .env.production
+    environment:
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_INGEST:?set MQTT_CLIENT_ID_INGEST in .env.production}
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      emqx:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'read -r cmd </proc/1/comm && [ "$$cmd" = "mqtt-ingest" ]',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  reconciler:
+    image: avf-vending-api:${IMAGE_TAG:-local}
+    container_name: avf-prod-reconciler
+    restart: unless-stopped
+    command: ["/app/reconciler"]
+    env_file:
+      - .env.production
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", 'read -r cmd </proc/1/comm && [ "$$cmd" = "reconciler" ]']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.goose
+    image: avf-vending-goose:${IMAGE_TAG:-local}
+    container_name: avf-prod-migrate
+    restart: "no"
+    env_file:
+      - .env.production
+    networks:
+      - internal
+    volumes:
+      - ../../migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint:
+      [
+        "/bin/sh",
+        "-c",
+        'exec /usr/local/bin/goose -dir /migrations postgres "$$DATABASE_URL" up',
+      ]
+
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: avf-prod-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-api.ldtv.dev}
+      CADDY_ACME_EMAIL: ${CADDY_ACME_EMAIL:?set CADDY_ACME_EMAIL in .env.production for ACME}
+      UPSTREAM_API: ${UPSTREAM_API:-api:8080}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+    depends_on:
+      api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
