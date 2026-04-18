@@ -36,7 +36,7 @@ func EnsureTelemetryDurableConsumers(js natssrv.JetStreamContext) error {
 			Durable:       s.Durable,
 			AckPolicy:     natssrv.AckExplicitPolicy,
 			AckWait:       time.Duration(s.AckWait) * time.Second,
-			MaxAckPending: uint64(s.MaxAck),
+			MaxAckPending: s.MaxAck,
 			MaxDeliver:    s.MaxDeliv,
 			FilterSubject: s.Filter,
 			DeliverPolicy: natssrv.DeliverAllPolicy,
