@@ -1,13 +1,7 @@
-# Lean production stack: single Ubuntu 24.04 VPS (target: 2 vCPU / 8 GB RAM).
-# Copy .env.production.example -> .env.production and fill secrets + image refs before `docker compose up`.
-#
-# Intentionally NOT included: ClickHouse, Temporal, Prometheus, Grafana, Loki, MinIO, Redis
-# (Redis is optional for this API — leave unset unless you enable features that require it).
-#
-# Usage (from this directory):
-#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+# Lean staging stack: same artifact pattern as production, isolated under a staging project name.
+# Copy .env.staging.example -> .env.staging and fill secrets + image refs before `docker compose up`.
 
-name: avf-vending-prod
+name: avf-vending-staging
 
 networks:
   edge:
@@ -26,12 +20,11 @@ volumes:
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: avf-prod-postgres
+    container_name: avf-staging-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      # Single app database owned by POSTGRES_USER (avoids brittle init scripts for credentials).
       POSTGRES_DB: avf_vending
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -55,14 +48,13 @@ services:
 
   nats:
     image: nats:2.10-alpine
-    container_name: avf-prod-nats
+    container_name: avf-staging-nats
     restart: unless-stopped
     command: ["-js", "-sd", "/data", "-m", "8222"]
     volumes:
       - nats_data:/data
     networks:
       - internal
-    # No host ports — JetStream / core NATS reachable only inside `internal` network.
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8222/healthz >/dev/null"]
       interval: 15s
@@ -82,7 +74,7 @@ services:
 
   emqx:
     image: emqx/emqx:5.6.0
-    container_name: avf-prod-emqx
+    container_name: avf-staging-emqx
     hostname: emqx
     restart: unless-stopped
     environment:
@@ -90,15 +82,15 @@ services:
       EMQX_HOST: emqx
       EMQX_NODE__NAME: emqx@emqx
       EMQX_CLUSTER__DISCOVERY_STRATEGY: manual
-      EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:?set EMQX_DASHBOARD_USERNAME in .env.production}
-      EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?set EMQX_DASHBOARD_PASSWORD in .env.production}
+      EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:?set EMQX_DASHBOARD_USERNAME in .env.staging}
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?set EMQX_DASHBOARD_PASSWORD in .env.staging}
       EMQX_DASHBOARD__LISTENERS__HTTP__BIND: "127.0.0.1:18083"
       EMQX_LISTENERS__TCP__DEFAULT__BIND: "0.0.0.0:1883"
       EMQX_ALLOW_ANONYMOUS: "false"
       EMQX_AUTHENTICATION__1__MECHANISM: password_based
       EMQX_AUTHENTICATION__1__BACKEND: built_in_database
       EMQX_AUTHENTICATION__1__ENABLE: "true"
-      EMQX_NODE__COOKIE: ${EMQX_NODE_COOKIE:?set EMQX_NODE_COOKIE in .env.production}
+      EMQX_NODE__COOKIE: ${EMQX_NODE_COOKIE:?set EMQX_NODE_COOKIE in .env.staging}
     volumes:
       - ./emqx/base.hocon:/opt/emqx/etc/base.hocon:ro
       - ./emqx/certs:/opt/emqx/etc/certs:ro
@@ -111,17 +103,12 @@ services:
     ports:
       - "8883:8883"
       - "127.0.0.1:18083:18083"
-    # Prefer `ping` (lightweight); fall back to `status` for older CLI layouts.
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "/opt/emqx/bin/emqx_ctl ping >/dev/null 2>&1 || /opt/emqx/bin/emqx_ctl status >/dev/null 2>&1",
-        ]
+      test: ["CMD", "/opt/emqx/bin/emqx_ctl", "status"]
       interval: 15s
       timeout: 10s
       retries: 30
-      start_period: 90s
+      start_period: 60s
     deploy:
       resources:
         limits:
@@ -134,14 +121,14 @@ services:
         max-file: "3"
 
   api:
-    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.production}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.production}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.production}
-    container_name: avf-prod-api
+    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.staging}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.staging}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.staging}
+    container_name: avf-staging-api
     restart: unless-stopped
     command: ["/app/api"]
     env_file:
-      - ${PROD_ENV_FILE:-.env.production}
+      - ${STAGING_ENV_FILE:-.env.staging}
     environment:
-      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_API:?set MQTT_CLIENT_ID_API in .env.production}
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_API:?set MQTT_CLIENT_ID_API in .env.staging}
     networks:
       - internal
       - edge
@@ -170,12 +157,12 @@ services:
         max-file: "3"
 
   worker:
-    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.production}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.production}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.production}
-    container_name: avf-prod-worker
+    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.staging}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.staging}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.staging}
+    container_name: avf-staging-worker
     restart: unless-stopped
     command: ["/app/worker"]
     env_file:
-      - ${PROD_ENV_FILE:-.env.production}
+      - ${STAGING_ENV_FILE:-.env.staging}
     networks:
       - internal
     depends_on:
@@ -201,14 +188,14 @@ services:
         max-file: "3"
 
   mqtt-ingest:
-    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.production}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.production}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.production}
-    container_name: avf-prod-mqtt-ingest
+    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.staging}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.staging}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.staging}
+    container_name: avf-staging-mqtt-ingest
     restart: unless-stopped
     command: ["/app/mqtt-ingest"]
     env_file:
-      - ${PROD_ENV_FILE:-.env.production}
+      - ${STAGING_ENV_FILE:-.env.staging}
     environment:
-      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_INGEST:?set MQTT_CLIENT_ID_INGEST in .env.production}
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_INGEST:?set MQTT_CLIENT_ID_INGEST in .env.staging}
     networks:
       - internal
     depends_on:
@@ -226,8 +213,8 @@ services:
         ]
       interval: 30s
       timeout: 5s
-      retries: 5
-      start_period: 60s
+      retries: 3
+      start_period: 20s
     deploy:
       resources:
         limits:
@@ -240,12 +227,12 @@ services:
         max-file: "3"
 
   reconciler:
-    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.production}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.production}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.production}
-    container_name: avf-prod-reconciler
+    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.staging}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.staging}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.staging}
+    container_name: avf-staging-reconciler
     restart: unless-stopped
     command: ["/app/reconciler"]
     env_file:
-      - ${PROD_ENV_FILE:-.env.production}
+      - ${STAGING_ENV_FILE:-.env.staging}
     networks:
       - internal
     depends_on:
@@ -272,11 +259,11 @@ services:
         max-file: "3"
 
   migrate:
-    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.production}/${GOOSE_IMAGE_REPOSITORY:?set GOOSE_IMAGE_REPOSITORY in .env.production}:${GOOSE_IMAGE_TAG:?set GOOSE_IMAGE_TAG in .env.production}
-    container_name: avf-prod-migrate
+    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.staging}/${GOOSE_IMAGE_REPOSITORY:?set GOOSE_IMAGE_REPOSITORY in .env.staging}:${GOOSE_IMAGE_TAG:?set GOOSE_IMAGE_TAG in .env.staging}
+    container_name: avf-staging-migrate
     restart: "no"
     env_file:
-      - ${PROD_ENV_FILE:-.env.production}
+      - ${STAGING_ENV_FILE:-.env.staging}
     networks:
       - internal
     volumes:
@@ -293,14 +280,14 @@ services:
 
   caddy:
     image: caddy:2.8-alpine
-    container_name: avf-prod-caddy
+    container_name: avf-staging-caddy
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     environment:
-      API_DOMAIN: ${API_DOMAIN:-api.ldtv.dev}
-      CADDY_ACME_EMAIL: ${CADDY_ACME_EMAIL:?set CADDY_ACME_EMAIL in .env.production for ACME}
+      API_DOMAIN: ${API_DOMAIN:-staging-api.ldtv.dev}
+      CADDY_ACME_EMAIL: ${CADDY_ACME_EMAIL:?set CADDY_ACME_EMAIL in .env.staging for ACME}
       UPSTREAM_API: ${UPSTREAM_API:-api:8080}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
@@ -311,16 +298,6 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -fsS http://api:8080/health/live | grep -qx ok",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 8
-      start_period: 30s
     deploy:
       resources:
         limits:

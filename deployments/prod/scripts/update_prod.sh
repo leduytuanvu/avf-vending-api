@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
-# Rolling update: git pull (optional), rebuild, migrate, restart stack.
+# Artifact-based update helper: deploy the image tags already configured in .env.production.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-REPO_ROOT="$(cd "${ROOT}/../.." && pwd)"
-
-if [[ "${GIT_PULL:-1}" == "1" ]] && [[ -d "${REPO_ROOT}/.git" ]]; then
-	echo "==> git pull (disable with GIT_PULL=0)"
-	git -C "${REPO_ROOT}" pull --ff-only
+if [[ "${GIT_PULL:-}" == "1" ]]; then
+	echo "update_prod: GIT_PULL is ignored; production updates are artifact-based now" >&2
 fi
+
+echo "update_prod: deploying image tags from .env.production via deploy_prod.sh"
 
 exec bash "${ROOT}/scripts/deploy_prod.sh"

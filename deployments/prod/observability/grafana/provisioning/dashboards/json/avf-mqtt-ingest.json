@@ -1,0 +1,51 @@
+{
+  "uid": "avf-mqtt-ingest",
+  "title": "AVF MQTT ingest — dispatch outcomes",
+  "tags": ["avf", "mqtt"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Scrape up",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "up{job=\"avf_mqtt_ingest\"}", "legendFormat": "up" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 2,
+      "title": "Ingest dispatch rate by kind & result (from avf_mqtt_ingest_dispatch_total)",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 18, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(avf_mqtt_ingest_dispatch_total{job=\"avf_mqtt_ingest\"}[5m])) by (kind, result)",
+          "legendFormat": "{{kind}} {{result}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Error share (ok vs error) /s by kind",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(avf_mqtt_ingest_dispatch_total{job=\"avf_mqtt_ingest\",result=\"error\"}[5m])) by (kind)",
+          "legendFormat": "error {{kind}}"
+        }
+      ]
+    }
+  ],
+  "templating": { "list": [] },
+  "annotations": { "list": [] }
+}

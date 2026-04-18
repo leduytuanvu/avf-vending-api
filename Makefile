@@ -48,7 +48,7 @@ check-wiring:
 check-migrations:
 	bash scripts/check_migrations.sh
 
-# Repo-local gates (no Postgres). Use before push; CI runs the same scripts plus goose and full tests.
+# Repo-local gates (no Postgres or unit tests). Use before push; GitHub Actions runs `make ci-gates` and compose validation separately.
 ci-gates: fmt-check vet check-placeholders check-wiring check-migrations sqlc-check swagger-check
 
 # Fast local check (skips postgres integration tests via -short).
@@ -120,8 +120,9 @@ prod-backup:
 	bash $(PROD_DIR)/scripts/backup_postgres.sh
 
 prod-restore:
-	@test -n "$(FILE)" || (echo "usage: make prod-restore FILE=deployments/prod/backups/avf_vending_....sql.gz" && exit 1)
-	bash $(PROD_DIR)/scripts/restore_postgres.sh "$(FILE)"
+	@test -n "$(FILE)" || (echo "usage: make prod-restore FILE=deployments/prod/backups/avf_vending_....sql.gz CONFIRM=YES" && exit 1)
+	@test "$(CONFIRM)" = "YES" || (echo "refusing destructive restore; rerun with CONFIRM=YES" && exit 1)
+	bash $(PROD_DIR)/scripts/restore_postgres.sh --yes "$(FILE)"
 
 prod-smoke:
 	bash $(PROD_DIR)/scripts/healthcheck_prod.sh
