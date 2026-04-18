@@ -1,0 +1,86 @@
+{
+  "uid": "avf-worker-outbox",
+  "title": "AVF Worker — outbox pipeline",
+  "tags": ["avf", "worker", "outbox"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Pending / dead-lettered (gauges)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avf_worker_outbox_pending_total{job=\"avf_worker\"}",
+          "legendFormat": "pending"
+        },
+        {
+          "refId": "B",
+          "expr": "avf_worker_outbox_dead_lettered_total{job=\"avf_worker\"}",
+          "legendFormat": "dead_lettered"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Oldest pending age (s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avf_worker_outbox_oldest_pending_age_seconds{job=\"avf_worker\"}",
+          "legendFormat": "age_s"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Publish outcomes /s",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(avf_worker_outbox_dispatch_published_total{job=\"avf_worker\"}[5m])",
+          "legendFormat": "published/s"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(avf_worker_outbox_dispatch_publish_failed_total{job=\"avf_worker\"}[5m])",
+          "legendFormat": "publish_failed/s"
+        },
+        {
+          "refId": "C",
+          "expr": "rate(avf_worker_outbox_dispatch_dead_lettered_total{job=\"avf_worker\"}[5m])",
+          "legendFormat": "dead_lettered/s"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Publish success lag p95 (s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(avf_worker_outbox_publish_success_lag_seconds_bucket{job=\"avf_worker\"}[5m])) by (le))",
+          "legendFormat": "p95_lag"
+        }
+      ]
+    }
+  ],
+  "templating": { "list": [] },
+  "annotations": { "list": [] }
+}

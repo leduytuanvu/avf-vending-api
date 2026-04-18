@@ -1,0 +1,66 @@
+{
+  "uid": "avf-reconciler",
+  "title": "AVF Reconciler — cycles & job volume",
+  "tags": ["avf", "reconciler"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Scrape up",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "up{job=\"avf_reconciler\"}", "legendFormat": "up" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 2,
+      "title": "Cycle duration p95 by job (s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(avf_reconciler_cycle_duration_seconds_bucket{job=\"avf_reconciler\"}[10m])) by (le, reconciler_job))",
+          "legendFormat": "{{reconciler_job}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Rows selected /s (avf_reconciler_rows_selected_total)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(avf_reconciler_rows_selected_total{job=\"avf_reconciler\"}[10m])) by (reconciler_job)",
+          "legendFormat": "{{reconciler_job}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Cycle completions by result",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(avf_reconciler_cycle_completions_total{job=\"avf_reconciler\"}[10m])) by (reconciler_job, result)",
+          "legendFormat": "{{reconciler_job}} {{result}}"
+        }
+      ]
+    }
+  ],
+  "templating": { "list": [] },
+  "annotations": { "list": [] }
+}

@@ -11,6 +11,18 @@ if [[ ! -f .env.production ]]; then
 	exit 1
 fi
 
+set_env_value() {
+	local key="$1"
+	local value="$2"
+	local file="$3"
+
+	if grep -q "^${key}=" "${file}"; then
+		sed -i "s|^${key}=.*|${key}=${value}|" "${file}"
+	else
+		printf '%s=%s\n' "${key}" "${value}" >> "${file}"
+	fi
+}
+
 PREV="${ROOT}/.deploy/previous_image_tag"
 if [[ ! -f "${PREV}" ]]; then
 	echo "error: missing ${PREV} — nothing to roll back to (run deploy_prod.sh at least twice)." >&2
@@ -23,12 +35,25 @@ if [[ -z "${TAG}" ]]; then
 	exit 1
 fi
 
-export IMAGE_TAG="${TAG}"
 COMPOSE=(docker compose --env-file .env.production -f docker-compose.prod.yml)
 LONG_LIVED_SERVICES=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 
-echo "rollback_prod: IMAGE_TAG=${IMAGE_TAG}"
-"${COMPOSE[@]}" up -d --remove-orphans "${LONG_LIVED_SERVICES[@]}"
-echo "${IMAGE_TAG}" >"${ROOT}/.deploy/current_image_tag"
+compose_supports_wait() {
+	"${COMPOSE[@]}" up --help 2>/dev/null | grep -qE '(^|[[:space:]])--wait([[:space:]]|$)'
+}
+
+set_env_value "APP_IMAGE_TAG" "${TAG}" "${ROOT}/.env.production"
+set_env_value "GOOSE_IMAGE_TAG" "${TAG}" "${ROOT}/.env.production"
+set_env_value "IMAGE_TAG" "${TAG}" "${ROOT}/.env.production"
+
+echo "rollback_prod: APP_IMAGE_TAG=${TAG}"
+if compose_supports_wait; then
+	"${COMPOSE[@]}" up -d --wait --wait-timeout 300 --remove-orphans "${LONG_LIVED_SERVICES[@]}"
+else
+	"${COMPOSE[@]}" up -d --remove-orphans "${LONG_LIVED_SERVICES[@]}"
+fi
+echo "${TAG}" >"${ROOT}/.deploy/current_image_tag"
+echo "${TAG}" >"${ROOT}/.deploy/current_app_image_tag"
+echo "${TAG}" >"${ROOT}/.deploy/current_goose_image_tag"
 
 echo "rollback_prod: done (DB schema unchanged — verify migrations if needed)"

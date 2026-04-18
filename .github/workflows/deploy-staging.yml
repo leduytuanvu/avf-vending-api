@@ -1,0 +1,101 @@
+name: Deploy Staging
+
+on:
+  workflow_run:
+    workflows:
+      - Build and Push Images
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Optional prebuilt image tag to deploy, for example sha-<commit> or v1.2.3"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    name: Deploy to staging VPS
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Deploy staging over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          APP_DIR: /opt/avf-vending/avf-vending-api
+          DISPATCH_IMAGE_TAG: ${{ inputs.image_tag }}
+          EVENT_NAME: ${{ github.event_name }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ github.token }}
+          GIT_SHA: ${{ github.event.workflow_run.head_sha }}
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          port: ${{ secrets.STAGING_PORT }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          envs: APP_DIR,DISPATCH_IMAGE_TAG,EVENT_NAME,GHCR_USER,GHCR_TOKEN,GIT_SHA
+          script: |
+            set -euo pipefail
+
+            STAGING_DIR="${APP_DIR}/deployments/staging"
+            ENV_FILE="${STAGING_DIR}/.env.staging"
+            DEPLOY_SCRIPT="${STAGING_DIR}/scripts/deploy_staging.sh"
+            HEALTHCHECK_SCRIPT="${STAGING_DIR}/scripts/healthcheck_staging.sh"
+
+            fail() {
+              echo "error: $*" >&2
+              exit 1
+            }
+
+            set_env_value() {
+              local key="$1"
+              local value="$2"
+              local file="$3"
+
+              if grep -q "^${key}=" "${file}"; then
+                sed -i "s|^${key}=.*|${key}=${value}|" "${file}"
+              else
+                printf '%s=%s\n' "${key}" "${value}" >> "${file}"
+              fi
+            }
+
+            if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+              DEPLOY_IMAGE_TAG="${DISPATCH_IMAGE_TAG}"
+              [[ -n "${DEPLOY_IMAGE_TAG}" ]] || fail "workflow_dispatch requires image_tag"
+            else
+              [[ -n "${GIT_SHA}" ]] || fail "workflow_run did not provide a head SHA"
+              DEPLOY_IMAGE_TAG="sha-${GIT_SHA}"
+            fi
+
+            [[ -d "${STAGING_DIR}" ]] || fail "missing staging directory: ${STAGING_DIR}"
+            [[ -f "${ENV_FILE}" ]] || fail "missing env file: ${ENV_FILE}"
+            [[ -f "${DEPLOY_SCRIPT}" ]] || fail "missing deploy script: ${DEPLOY_SCRIPT}"
+            [[ -f "${HEALTHCHECK_SCRIPT}" ]] || fail "missing healthcheck script: ${HEALTHCHECK_SCRIPT}"
+
+            printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+
+            set_env_value "APP_IMAGE_TAG" "${DEPLOY_IMAGE_TAG}" "${ENV_FILE}"
+            set_env_value "GOOSE_IMAGE_TAG" "${DEPLOY_IMAGE_TAG}" "${ENV_FILE}"
+            set_env_value "IMAGE_TAG" "${DEPLOY_IMAGE_TAG}" "${ENV_FILE}"
+
+            cd "${STAGING_DIR}"
+            bash "${DEPLOY_SCRIPT}"
+            bash "${HEALTHCHECK_SCRIPT}"

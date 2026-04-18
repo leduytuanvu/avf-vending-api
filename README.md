@@ -32,7 +32,11 @@ The repo still follows a **strangler** posture for traffic cutover from any lega
 
 ## CI and local gates
 
-In the **AVF monorepo**, GitHub Actions runs [`.github/workflows/avf-vending-api-ci.yml`](../.github/workflows/avf-vending-api-ci.yml) at the repository root when this subtree changes: `gofmt` check, `go vet`, `go test`, **sqlc** drift detection (`sqlc generate` + `git diff`), **OpenAPI / Swagger** drift detection (`python3 tools/build_openapi.py` + `git diff` on [`docs/swagger`](docs/swagger)), **goose** `up` on an ephemeral Postgres, and [`scripts/`](scripts/) gates for placeholder wiring regressions. If you use this tree as a standalone git repository, copy or symlink that workflow under `.github/workflows/` at the repo root and drop the `avf-vending-api/` path prefixes from the workflow file.
+This repository's GitHub Actions CI foundation lives under `.github/workflows/`:
+
+- `ci.yml` runs on pull requests and pushes to `main`, runs `make ci-gates`, and validates `deployments/docker/docker-compose.yml`
+- `security.yml` runs dependency review on pull requests and `govulncheck` on the repo
+- `build-push.yml` builds and pushes the production app and goose images
 
 Local equivalents:
 
@@ -97,4 +101,4 @@ Integration-style tests under [`internal/modules/postgres`](internal/modules/pos
 
 ## Makefile
 
-Run `make help` for common targets.
+See `Makefile` for common targets such as `make ci-gates`, `make ci`, `make build`, and the `prod-*` helpers.

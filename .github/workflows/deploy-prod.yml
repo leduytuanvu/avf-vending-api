@@ -1,0 +1,75 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Prebuilt image tag to deploy, for example sha-<commit> or v1.2.3"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    name: Deploy to production VPS
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy chosen image tag over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          APP_DIR: /opt/avf-vending/avf-vending-api
+          DEPLOY_IMAGE_TAG: ${{ inputs.image_tag }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ github.token }}
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          port: ${{ secrets.PROD_PORT }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script_stop: true
+          envs: APP_DIR,DEPLOY_IMAGE_TAG,GHCR_USER,GHCR_TOKEN
+          script: |
+            set -euo pipefail
+
+            PROD_DIR="${APP_DIR}/deployments/prod"
+            ENV_FILE="${PROD_DIR}/.env.production"
+            DEPLOY_SCRIPT="${PROD_DIR}/scripts/deploy_prod.sh"
+            HEALTHCHECK_SCRIPT="${PROD_DIR}/scripts/healthcheck_prod.sh"
+
+            fail() {
+              echo "error: $*" >&2
+              exit 1
+            }
+
+            set_env_value() {
+              local key="$1"
+              local value="$2"
+              local file="$3"
+
+              if grep -q "^${key}=" "${file}"; then
+                sed -i "s|^${key}=.*|${key}=${value}|" "${file}"
+              else
+                printf '%s=%s\n' "${key}" "${value}" >> "${file}"
+              fi
+            }
+
+            [[ -d "${PROD_DIR}" ]] || fail "missing production directory: ${PROD_DIR}"
+            [[ -f "${ENV_FILE}" ]] || fail "missing env file: ${ENV_FILE}"
+            [[ -f "${DEPLOY_SCRIPT}" ]] || fail "missing deploy script: ${DEPLOY_SCRIPT}"
+            [[ -f "${HEALTHCHECK_SCRIPT}" ]] || fail "missing healthcheck script: ${HEALTHCHECK_SCRIPT}"
+            [[ -n "${DEPLOY_IMAGE_TAG}" ]] || fail "workflow input image_tag must not be empty"
+
+            printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+
+            set_env_value "APP_IMAGE_TAG" "${DEPLOY_IMAGE_TAG}" "${ENV_FILE}"
+            set_env_value "GOOSE_IMAGE_TAG" "${DEPLOY_IMAGE_TAG}" "${ENV_FILE}"
+            set_env_value "IMAGE_TAG" "${DEPLOY_IMAGE_TAG}" "${ENV_FILE}"
+
+            cd "${PROD_DIR}"
+            bash "${DEPLOY_SCRIPT}"
+            bash "${HEALTHCHECK_SCRIPT}"

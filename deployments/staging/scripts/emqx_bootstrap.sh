@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Idempotent: create built-in MQTT user for app clients (requires EMQX dashboard auth on loopback).
+# Idempotent: create built-in MQTT user for staging app clients.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-ENVF=".env.production"
+ENVF=".env.staging"
 if [[ ! -f "${ENVF}" ]]; then
 	echo "error: missing ${ENVF} in ${ROOT}" >&2
 	exit 1
@@ -56,32 +56,22 @@ code="$(
 		-d "${BODY}" || true
 )"
 
-if [[ -z "${code}" || "${code}" == "000" ]]; then
-	echo "emqx_bootstrap: failed to reach EMQX dashboard at ${BASE} (curl HTTP code=${code:-empty})" >&2
-	echo "emqx_bootstrap: ensure the emqx container is running and port 18083 is published to 127.0.0.1 on the host" >&2
-	if [[ -s "${tmp}" ]]; then
-		cat "${tmp}" >&2
-	fi
-	rm -f "${tmp}"
-	exit 1
-fi
-
 if [[ "${code}" == "200" || "${code}" == "201" ]]; then
-	echo "emqx_bootstrap: MQTT user created"
+	echo "emqx_bootstrap(staging): MQTT user created"
 	rm -f "${tmp}"
 	exit 0
 fi
 
 if [[ "${code}" == "409" ]]; then
-	echo "emqx_bootstrap: MQTT user already exists (409) — idempotent ok"
+	echo "emqx_bootstrap(staging): MQTT user already exists (409) — ok"
 	rm -f "${tmp}"
 	exit 0
 fi
 
-echo "emqx_bootstrap: failed (HTTP ${code})" >&2
+echo "emqx_bootstrap(staging): failed (HTTP ${code})" >&2
 if [[ -s "${tmp}" ]]; then
 	cat "${tmp}" >&2
 fi
 rm -f "${tmp}"
-echo "hint: tunnel dashboard (ssh -L 18083:127.0.0.1:18083 ...) and verify EMQX_DASHBOARD_* and authentication chain." >&2
+echo "hint: verify EMQX_DASHBOARD_* values and staging dashboard reachability on loopback 127.0.0.1:18083" >&2
 exit 1

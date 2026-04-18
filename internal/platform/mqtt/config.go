@@ -16,14 +16,30 @@ type BrokerConfig struct {
 }
 
 // LoadBrokerFromEnv reads MQTT_* variables. Defaults TopicPrefix to "avf/devices".
+// Client ID resolution matches production Compose, which often sets MQTT_CLIENT_ID from
+// MQTT_CLIENT_ID_API / MQTT_CLIENT_ID_INGEST at deploy time; we also accept those names
+// directly so local runs and mis-ordered env still wire a non-empty client ID.
 func LoadBrokerFromEnv() BrokerConfig {
 	return BrokerConfig{
-		BrokerURL:   strings.TrimSpace(os.Getenv("MQTT_BROKER_URL")),
-		ClientID:    strings.TrimSpace(os.Getenv("MQTT_CLIENT_ID")),
+		BrokerURL: strings.TrimSpace(os.Getenv("MQTT_BROKER_URL")),
+		ClientID: firstNonEmptyTrimmed(
+			os.Getenv("MQTT_CLIENT_ID"),
+			os.Getenv("MQTT_CLIENT_ID_API"),
+			os.Getenv("MQTT_CLIENT_ID_INGEST"),
+		),
 		Username:    strings.TrimSpace(os.Getenv("MQTT_USERNAME")),
 		Password:    os.Getenv("MQTT_PASSWORD"),
 		TopicPrefix: strings.TrimSpace(getenvDefault("MQTT_TOPIC_PREFIX", "avf/devices")),
 	}
+}
+
+func firstNonEmptyTrimmed(values ...string) string {
+	for _, v := range values {
+		if s := strings.TrimSpace(v); s != "" {
+			return s
+		}
+	}
+	return ""
 }
 
 func getenvDefault(key, def string) string {

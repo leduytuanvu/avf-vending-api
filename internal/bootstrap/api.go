@@ -47,16 +47,33 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	defer rt.Close()
 
 	mqttBroker := platformmqtt.LoadBrokerFromEnv()
-	if strings.TrimSpace(mqttBroker.BrokerURL) != "" {
+	log.Info("mqtt bootstrap config",
+		zap.Bool("require_mqtt_publisher", cfg.APIWiring.RequireMQTTPublisher),
+		zap.String("mqtt_broker_url", mqttBroker.BrokerURL),
+		zap.String("mqtt_client_id", mqttBroker.ClientID),
+		zap.String("mqtt_username", mqttBroker.Username),
+		zap.String("mqtt_topic_prefix", mqttBroker.TopicPrefix),
+	)
+	switch {
+	case cfg.APIWiring.RequireMQTTPublisher:
+		if err := mqttBroker.Validate(); err != nil {
+			return fmt.Errorf("bootstrap mqtt validate failed: %w", err)
+		}
 		pub, perr := platformmqtt.NewPublisher(mqttBroker, log, "-api-publish")
 		if perr != nil {
-			if cfg.APIWiring.RequireMQTTPublisher {
-				return fmt.Errorf("bootstrap: mqtt publisher: %w", perr)
+			return fmt.Errorf("bootstrap mqtt publisher init failed: %w", perr)
+		}
+		rt.Deps.MQTTPublisher = pub
+		rt.SetMQTTDisconnect(pub.Close)
+	default:
+		if strings.TrimSpace(mqttBroker.BrokerURL) != "" {
+			pub, perr := platformmqtt.NewPublisher(mqttBroker, log, "-api-publish")
+			if perr != nil {
+				log.Warn("mqtt publisher disabled", zap.Error(perr))
+			} else {
+				rt.Deps.MQTTPublisher = pub
+				rt.SetMQTTDisconnect(pub.Close)
 			}
-			log.Warn("mqtt publisher disabled", zap.Error(perr))
-		} else {
-			rt.Deps.MQTTPublisher = pub
-			rt.SetMQTTDisconnect(pub.Close)
 		}
 	}
 

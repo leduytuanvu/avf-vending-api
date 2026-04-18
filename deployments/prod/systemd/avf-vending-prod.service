@@ -9,10 +9,13 @@ Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=AVF_DEPLOY_DIR_PLACEHOLDER
 Environment=COMPOSE_PROJECT_NAME=avf-vending-prod
+Restart=no
 ExecStartPre=/usr/bin/test -f .env.production
+ExecStartPre=/usr/bin/test -f docker-compose.prod.yml
 ExecStart=/usr/bin/docker compose --env-file .env.production -f docker-compose.prod.yml up -d --remove-orphans postgres nats emqx api worker mqtt-ingest reconciler caddy
 ExecStop=/usr/bin/docker compose --env-file .env.production -f docker-compose.prod.yml down --remove-orphans --timeout 90
 TimeoutStartSec=0
+TimeoutStopSec=120
 StandardOutput=journal
 StandardError=journal
 
