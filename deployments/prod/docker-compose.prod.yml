@@ -102,7 +102,9 @@ services:
       EMQX_CLUSTER__DISCOVERY_STRATEGY: manual
       EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:?set EMQX_DASHBOARD_USERNAME in .env.production}
       EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?set EMQX_DASHBOARD_PASSWORD in .env.production}
-      EMQX_DASHBOARD__LISTENERS__HTTP__BIND: "127.0.0.1:18083"
+      # Listen on all interfaces inside the container so host port publish 127.0.0.1:18083:18083 works.
+      # Host binding stays loopback-only; do not publish 18083 as 0.0.0.0:18083.
+      EMQX_DASHBOARD__LISTENERS__HTTP__BIND: "0.0.0.0:18083"
       EMQX_LISTENERS__TCP__DEFAULT__BIND: "0.0.0.0:1883"
       EMQX_AUTHENTICATION__1__MECHANISM: password_based
       EMQX_AUTHENTICATION__1__BACKEND: built_in_database
