@@ -11,6 +11,9 @@ COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
 STATE="${ROOT}/.deploy"
 LONG_LIVED_SERVICES=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 ARTIFACT_SERVICES=(migrate api worker mqtt-ingest reconciler)
+# Monitored after `compose up` until healthy (compose service name, container_name).
+ROLLUP_GATE_SVCS=(api caddy emqx mqtt-ingest worker reconciler)
+ROLLUP_GATE_CTRS=(avf-prod-api avf-prod-caddy avf-prod-emqx avf-prod-mqtt-ingest avf-prod-worker avf-prod-reconciler)
 
 fail() {
 	echo "release.sh: error: $*" >&2
@@ -24,13 +27,15 @@ note() {
 usage() {
 	cat <<'USAGE' >&2
 usage:
-  release.sh deploy <tag>
-  release.sh rollback [tag]
+  release.sh deploy [app_tag [goose_tag]]
+  release.sh rollback [app_tag [goose_tag]]
   release.sh status
   release.sh logs [service] [tail]
 
-  <tag>     Image tag for APP_IMAGE_TAG and GOOSE_IMAGE_TAG (e.g. sha-abc123...).
-  [tag]     For rollback: optional; defaults to last recorded previous tag.
+  deploy: With args, sets APP_IMAGE_TAG and GOOSE_IMAGE_TAG (goose defaults to app). With no args,
+          reads APP_IMAGE_TAG or falls back to IMAGE_TAG; GOOSE_IMAGE_TAG or IMAGE_TAG or same as app.
+  rollback: With no args, uses .deploy/previous_app_image_tag and previous_goose_image_tag
+          (or legacy previous_image_tag for both when goose file is absent).
   [service] For logs: optional docker compose service name; omit to tail all services.
   [tail]    For logs: line count (default 200).
 
@@ -44,6 +49,9 @@ Environment (deploy / rollback):
 
   Optional after deploy:
     SKIP_SMOKE=1 — skip scripts/healthcheck_prod.sh
+
+  Optional rollout wait (deploy / rollback; polls Docker health for core app stack):
+    ROLLUP_HEALTH_WAIT_SECS (default 180), ROLLUP_HEALTH_POLL_SECS (default 5)
 USAGE
 	exit 1
 }
@@ -83,6 +91,40 @@ require_env_resolved() {
 	printf '%s' "${value}"
 }
 
+try_read_env_file() {
+	local key="$1"
+	local line
+	line="$(grep -E "^${key}=" "${ENV_FILE}" 2>/dev/null | tail -n1 || true)"
+	if [[ -z "${line}" ]]; then
+		printf ''
+		return 0
+	fi
+	line="${line#"${key}="}"
+	line="${line%$'\r'}"
+	if [[ "${line}" == \"*\" ]]; then
+		line="${line#\"}"
+		line="${line%\"}"
+	fi
+	printf '%s' "${line}"
+}
+
+# Resolve APP_IMAGE_TAG or GOOSE_IMAGE_TAG; falls back to legacy IMAGE_TAG when primary is unset.
+resolve_image_tag_from_env() {
+	local primary_key="$1"
+	local v
+	v="$(try_read_env_file "${primary_key}")"
+	if [[ -n "${v}" ]]; then
+		printf '%s' "${v}"
+		return 0
+	fi
+	v="$(try_read_env_file IMAGE_TAG)"
+	if [[ -n "${v}" ]]; then
+		printf '%s' "${v}"
+		return 0
+	fi
+	return 1
+}
+
 set_env_value() {
 	local key="$1"
 	local value="$2"
@@ -95,10 +137,6 @@ set_env_value() {
 	fi
 }
 
-compose_supports_wait() {
-	"${COMPOSE[@]}" up --help 2>/dev/null | grep -qE '(^|[[:space:]])--wait([[:space:]]|$)'
-}
-
 registry_login_optional() {
 	if [[ -n "${GHCR_PULL_USERNAME:-}" ]] && [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
 		note "docker login ghcr.io (GHCR_PULL_USERNAME / GHCR_PULL_TOKEN)"
@@ -108,29 +146,20 @@ registry_login_optional() {
 	fi
 }
 
-record_deploy_state() {
-	local new_tag="$1"
+persist_rollout_image_state() {
+	local new_app="$1" new_goose="$2" old_app="${3:-}" old_goose="${4:-}" log_label="$5"
 	mkdir -p "${STATE}"
-	if [[ -f "${STATE}/current_image_tag" ]]; then
-		local prev
-		prev="$(tr -d '\r\n' <"${STATE}/current_image_tag" || true)"
-		if [[ -n "${prev}" ]] && [[ "${prev}" != "${new_tag}" ]]; then
-			printf '%s\n' "${prev}" >"${STATE}/previous_image_tag"
-		fi
+	if [[ -n "${old_app}" ]]; then
+		printf '%s\n' "${old_app}" >"${STATE}/previous_app_image_tag"
+		printf '%s\n' "${old_app}" >"${STATE}/previous_image_tag"
 	fi
-	printf '%s\n' "${new_tag}" >"${STATE}/current_image_tag"
-	printf '%s\n' "${new_tag}" >"${STATE}/current_app_image_tag"
-	printf '%s\n' "${new_tag}" >"${STATE}/current_goose_image_tag"
-	printf '%s\t%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "deploy ${new_tag}" >>"${STATE}/history.log"
-}
-
-record_rollback_state() {
-	local tag="$1"
-	mkdir -p "${STATE}"
-	printf '%s\n' "${tag}" >"${STATE}/current_image_tag"
-	printf '%s\n' "${tag}" >"${STATE}/current_app_image_tag"
-	printf '%s\n' "${tag}" >"${STATE}/current_goose_image_tag"
-	printf '%s\trollback %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${tag}" >>"${STATE}/history.log"
+	if [[ -n "${old_goose}" ]]; then
+		printf '%s\n' "${old_goose}" >"${STATE}/previous_goose_image_tag"
+	fi
+	printf '%s\n' "${new_app}" >"${STATE}/current_app_image_tag"
+	printf '%s\n' "${new_goose}" >"${STATE}/current_goose_image_tag"
+	printf '%s\n' "${new_app}" >"${STATE}/current_image_tag"
+	printf '%s\t%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${log_label} app=${new_app} goose=${new_goose}" >>"${STATE}/history.log"
 }
 
 verify_long_lived_running() {
@@ -143,11 +172,111 @@ verify_long_lived_running() {
 	done
 }
 
+rollout_container_ok() {
+	local c="$1" state has_h h
+	state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
+	[[ "${state}" == "running" ]] || return 1
+	has_h="$(docker inspect -f '{{if .State.Health}}yes{{else}}no{{end}}' "${c}" 2>/dev/null || echo no)"
+	if [[ "${has_h}" == "yes" ]]; then
+		h="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c}" 2>/dev/null || true)"
+		[[ "${h}" == "healthy" ]] || return 1
+	fi
+	return 0
+}
+
+print_rollout_gate_status() {
+	local i c svc state has_h h
+	for i in "${!ROLLUP_GATE_CTRS[@]}"; do
+		c="${ROLLUP_GATE_CTRS[$i]}"
+		svc="${ROLLUP_GATE_SVCS[$i]}"
+		state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
+		has_h="$(docker inspect -f '{{if .State.Health}}yes{{else}}no{{end}}' "${c}" 2>/dev/null || echo no)"
+		if [[ "${has_h}" == "yes" ]]; then
+			h="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c}" 2>/dev/null || echo "?")"
+		else
+			h="n/a"
+		fi
+		printf '  %-16s %-24s status=%s health=%s\n' "${svc}" "${c}" "${state}" "${h}"
+	done
+}
+
+print_rollout_timeout_diagnostics() {
+	note "rollout health gate exceeded — docker compose ps"
+	"${COMPOSE[@]}" ps 2>&1 || true
+	local i c svc
+	for i in "${!ROLLUP_GATE_CTRS[@]}"; do
+		c="${ROLLUP_GATE_CTRS[$i]}"
+		svc="${ROLLUP_GATE_SVCS[$i]}"
+		if rollout_container_ok "${c}"; then
+			continue
+		fi
+		echo "" >&2
+		echo "==> failing: ${svc} (${c})" >&2
+		docker inspect -f 'status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}} failing_streak={{.State.Health.FailingStreak}}{{else}}n/a{{end}} exit={{.State.ExitCode}}' "${c}" 2>/dev/null >&2 || echo "  docker inspect failed for ${c}" >&2
+		if command -v jq >/dev/null 2>&1; then
+			docker inspect "${c}" 2>/dev/null | jq -r '.[0].State.Health.Log // [] | .[-3:][] | "  health_log: \(.Output)"' 2>/dev/null >&2 || true
+		fi
+		echo "  docker logs --tail=100 ${c}:" >&2
+		docker logs --tail 100 "${c}" 2>&1 | sed 's/^/    /' >&2 || true
+	done
+}
+
+wait_for_rollout_health() {
+	local wait_secs poll start_ts now_ts elapsed bad_list c
+	wait_secs="${ROLLUP_HEALTH_WAIT_SECS:-180}"
+	poll="${ROLLUP_HEALTH_POLL_SECS:-5}"
+	[[ "${wait_secs}" =~ ^[0-9]+$ ]] || wait_secs=180
+	[[ "${poll}" =~ ^[0-9]+$ ]] || poll=5
+	[[ "${poll}" -ge 1 ]] || poll=1
+	start_ts="$(date +%s)"
+	note "waiting for rollout health (api, caddy, emqx, mqtt-ingest, worker, reconciler) — up to ${wait_secs}s, poll every ${poll}s"
+	while true; do
+		bad_list=()
+		for c in "${ROLLUP_GATE_CTRS[@]}"; do
+			if ! rollout_container_ok "${c}"; then
+				bad_list+=("${c}")
+			fi
+		done
+		if [[ "${#bad_list[@]}" -eq 0 ]]; then
+			note "rollout health gate: all monitored containers healthy"
+			return 0
+		fi
+		now_ts="$(date +%s)"
+		elapsed=$((now_ts - start_ts))
+		if [[ "${elapsed}" -ge "${wait_secs}" ]]; then
+			print_rollout_timeout_diagnostics
+			fail "rollout health gate: timed out after ${wait_secs}s — not healthy: ${bad_list[*]}"
+		fi
+		note "rollout health gate (${elapsed}s / ${wait_secs}s) — waiting on: ${bad_list[*]}"
+		print_rollout_gate_status
+		sleep "${poll}"
+	done
+}
+
 cmd_deploy() {
-	local tag="${1:-}"
-	[[ -n "${tag}" ]] || fail "deploy requires <tag>"
+	local arg1="${1:-}" arg2="${2:-}"
+	local old_app old_goose new_app new_goose reg repo_app repo_goose
 
 	[[ -f "${ENV_FILE}" ]] || fail "missing ${ENV_FILE}"
+
+	old_app="$(try_read_env_file APP_IMAGE_TAG)"
+	old_goose="$(try_read_env_file GOOSE_IMAGE_TAG)"
+
+	if [[ -n "${arg1}" ]]; then
+		new_app="${arg1}"
+		new_goose="${arg2:-${arg1}}"
+	else
+		if ! new_app="$(resolve_image_tag_from_env APP_IMAGE_TAG)" || [[ -z "${new_app}" ]]; then
+			fail "deploy needs [app_tag [goose_tag]] or APP_IMAGE_TAG / IMAGE_TAG in ${ENV_FILE}"
+		fi
+		new_goose="$(try_read_env_file GOOSE_IMAGE_TAG)"
+		if [[ -z "${new_goose}" ]]; then
+			new_goose="$(try_read_env_file IMAGE_TAG)"
+		fi
+		if [[ -z "${new_goose}" ]]; then
+			new_goose="${new_app}"
+		fi
+	fi
 
 	note "validate required image / stack env"
 	require_env_resolved IMAGE_REGISTRY >/dev/null
@@ -155,18 +284,17 @@ cmd_deploy() {
 	require_env_resolved GOOSE_IMAGE_REPOSITORY >/dev/null
 	require_env_resolved DATABASE_URL >/dev/null
 
-	note "write image tags and registry metadata to ${ENV_FILE}"
+	note "write image tags and registry metadata to ${ENV_FILE} (APP_IMAGE_TAG=${new_app} GOOSE_IMAGE_TAG=${new_goose})"
 	# Prefer exported CI/VPS env over existing file values when set.
-	local reg app goose
 	reg="$(require_env_resolved IMAGE_REGISTRY)"
-	app="$(require_env_resolved APP_IMAGE_REPOSITORY)"
-	goose="$(require_env_resolved GOOSE_IMAGE_REPOSITORY)"
+	repo_app="$(require_env_resolved APP_IMAGE_REPOSITORY)"
+	repo_goose="$(require_env_resolved GOOSE_IMAGE_REPOSITORY)"
 	set_env_value "IMAGE_REGISTRY" "${reg}" "${ENV_FILE}"
-	set_env_value "APP_IMAGE_REPOSITORY" "${app}" "${ENV_FILE}"
-	set_env_value "GOOSE_IMAGE_REPOSITORY" "${goose}" "${ENV_FILE}"
-	set_env_value "APP_IMAGE_TAG" "${tag}" "${ENV_FILE}"
-	set_env_value "GOOSE_IMAGE_TAG" "${tag}" "${ENV_FILE}"
-	set_env_value "IMAGE_TAG" "${tag}" "${ENV_FILE}"
+	set_env_value "APP_IMAGE_REPOSITORY" "${repo_app}" "${ENV_FILE}"
+	set_env_value "GOOSE_IMAGE_REPOSITORY" "${repo_goose}" "${ENV_FILE}"
+	set_env_value "APP_IMAGE_TAG" "${new_app}" "${ENV_FILE}"
+	set_env_value "GOOSE_IMAGE_TAG" "${new_goose}" "${ENV_FILE}"
+	set_env_value "IMAGE_TAG" "${new_app}" "${ENV_FILE}"
 
 	registry_login_optional
 
@@ -203,16 +331,11 @@ cmd_deploy() {
 	fi
 
 	note "docker compose up -d (${LONG_LIVED_SERVICES[*]})"
-	if compose_supports_wait; then
-		if ! "${COMPOSE[@]}" up -d --wait --wait-timeout 300 --remove-orphans "${LONG_LIVED_SERVICES[@]}"; then
-			fail "compose up --wait failed"
-		fi
-	else
-		if ! "${COMPOSE[@]}" up -d --remove-orphans "${LONG_LIVED_SERVICES[@]}"; then
-			fail "compose up failed"
-		fi
+	if ! "${COMPOSE[@]}" up -d --remove-orphans "${LONG_LIVED_SERVICES[@]}"; then
+		fail "compose up failed"
 	fi
 
+	wait_for_rollout_health
 	verify_long_lived_running
 
 	note "post-deploy health checks"
@@ -222,31 +345,50 @@ cmd_deploy() {
 		fi
 	fi
 
-	record_deploy_state "${tag}"
-	note "deploy complete (tag=${tag})"
+	persist_rollout_image_state "${new_app}" "${new_goose}" "${old_app}" "${old_goose}" "deploy"
+	note "deploy complete (APP_IMAGE_TAG=${new_app} GOOSE_IMAGE_TAG=${new_goose})"
 }
 
 cmd_rollback() {
-	local tag="${1:-}"
+	local arg1="${1:-}" arg2="${2:-}"
+	local old_app old_goose rb_app rb_goose
 
 	[[ -f "${ENV_FILE}" ]] || fail "missing ${ENV_FILE}"
 
-	if [[ -z "${tag}" ]]; then
+	old_app="$(try_read_env_file APP_IMAGE_TAG)"
+	old_goose="$(try_read_env_file GOOSE_IMAGE_TAG)"
+
+	if [[ -n "${arg1}" ]]; then
+		rb_app="${arg1}"
+		rb_goose="${arg2:-${arg1}}"
+	else
 		mkdir -p "${STATE}"
-		local prev_file="${STATE}/previous_image_tag"
-		[[ -f "${prev_file}" ]] || fail "no previous tag recorded at ${prev_file}; pass an explicit tag: rollback <tag>"
-		tag="$(tr -d '\r\n' <"${prev_file}")"
-		[[ -n "${tag}" ]] || fail "previous_image_tag is empty"
+		local prev_app="${STATE}/previous_app_image_tag"
+		local prev_legacy="${STATE}/previous_image_tag"
+		if [[ -f "${prev_app}" ]]; then
+			rb_app="$(tr -d '\r\n' <"${prev_app}")"
+		elif [[ -f "${prev_legacy}" ]]; then
+			rb_app="$(tr -d '\r\n' <"${prev_legacy}")"
+		else
+			fail "no previous_app_image_tag or previous_image_tag in ${STATE}; pass: rollback <app_tag> [goose_tag]"
+		fi
+		[[ -n "${rb_app}" ]] || fail "previous app tag is empty"
+		local prev_goose="${STATE}/previous_goose_image_tag"
+		if [[ -f "${prev_goose}" ]]; then
+			rb_goose="$(tr -d '\r\n' <"${prev_goose}")"
+		else
+			rb_goose="${rb_app}"
+		fi
 	fi
 
-	note "rollback to tag=${tag}"
+	note "rollback to APP_IMAGE_TAG=${rb_app} GOOSE_IMAGE_TAG=${rb_goose}"
 	require_env_resolved IMAGE_REGISTRY >/dev/null
 	require_env_resolved APP_IMAGE_REPOSITORY >/dev/null
 	require_env_resolved GOOSE_IMAGE_REPOSITORY >/dev/null
 
-	set_env_value "APP_IMAGE_TAG" "${tag}" "${ENV_FILE}"
-	set_env_value "GOOSE_IMAGE_TAG" "${tag}" "${ENV_FILE}"
-	set_env_value "IMAGE_TAG" "${tag}" "${ENV_FILE}"
+	set_env_value "APP_IMAGE_TAG" "${rb_app}" "${ENV_FILE}"
+	set_env_value "GOOSE_IMAGE_TAG" "${rb_goose}" "${ENV_FILE}"
+	set_env_value "IMAGE_TAG" "${rb_app}" "${ENV_FILE}"
 
 	registry_login_optional
 
@@ -257,27 +399,28 @@ cmd_rollback() {
 	"${COMPOSE[@]}" pull "${ARTIFACT_SERVICES[@]}"
 
 	note "docker compose up -d (${LONG_LIVED_SERVICES[*]})"
-	if compose_supports_wait; then
-		"${COMPOSE[@]}" up -d --wait --wait-timeout 300 --remove-orphans "${LONG_LIVED_SERVICES[@]}"
-	else
-		"${COMPOSE[@]}" up -d --remove-orphans "${LONG_LIVED_SERVICES[@]}"
+	if ! "${COMPOSE[@]}" up -d --remove-orphans "${LONG_LIVED_SERVICES[@]}"; then
+		fail "compose up failed"
 	fi
 
+	wait_for_rollout_health
 	verify_long_lived_running
 
 	if [[ "${SKIP_SMOKE:-0}" != "1" ]]; then
 		note "post-rollback health checks"
-		bash "${ROOT}/scripts/healthcheck_prod.sh"
+		if ! bash "${ROOT}/scripts/healthcheck_prod.sh"; then
+			fail "healthcheck_prod.sh failed"
+		fi
 	fi
 
-	record_rollback_state "${tag}"
-	note "rollback complete (tag=${tag})"
+	persist_rollout_image_state "${rb_app}" "${rb_goose}" "${old_app}" "${old_goose}" "rollback"
+	note "rollback complete (APP_IMAGE_TAG=${rb_app} GOOSE_IMAGE_TAG=${rb_goose})"
 }
 
 cmd_status() {
 	note "release state (${STATE})"
 	if [[ -d "${STATE}" ]]; then
-		for f in current_image_tag previous_image_tag current_app_image_tag current_goose_image_tag; do
+		for f in current_image_tag previous_image_tag current_app_image_tag current_goose_image_tag previous_app_image_tag previous_goose_image_tag; do
 			if [[ -f "${STATE}/${f}" ]]; then
 				printf '  %s: %s\n' "${f}" "$(tr -d '\r\n' <"${STATE}/${f}")"
 			fi
@@ -315,10 +458,10 @@ main() {
 
 	case "${sub}" in
 		deploy)
-			cmd_deploy "${1:-}"
+			cmd_deploy "${1:-}" "${2:-}"
 			;;
 		rollback)
-			cmd_rollback "${1:-}"
+			cmd_rollback "${1:-}" "${2:-}"
 			;;
 		status)
 			cmd_status

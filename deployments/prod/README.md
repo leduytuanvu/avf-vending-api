@@ -185,8 +185,8 @@ Important values:
 - `IMAGE_REGISTRY`: registry host, for example `ghcr.io`
 - `APP_IMAGE_REPOSITORY`: GHCR path segment for the **app** image (e.g. `myorg/avf-vending-api`), matching CI pushes
 - `GOOSE_IMAGE_REPOSITORY`: GHCR path segment for the **goose** image (e.g. `myorg/avf-vending-api-goose`, i.e. `<APP_IMAGE_REPOSITORY>-goose`), matching `build-push.yml` / `deploy-prod.yml`
-- `APP_IMAGE_TAG` / `GOOSE_IMAGE_TAG`: same tag for both in normal rollouts (e.g. `sha-<commit>`); `release.sh deploy <tag>` writes these
-- `IMAGE_TAG`: legacy single-tag field; `release.sh` keeps it aligned with `APP_IMAGE_TAG`
+- `APP_IMAGE_TAG` / `GOOSE_IMAGE_TAG`: immutable tags for app vs migrate images (often the same `sha-<commit>`); `release.sh deploy [app [goose]]` writes these
+- `IMAGE_TAG` (optional): legacy convenience; if `APP_IMAGE_TAG` or `GOOSE_IMAGE_TAG` is unset, deploy helpers fall back to `IMAGE_TAG` for that slot. It does **not** need to match `APP_IMAGE_TAG`
 - `PUBLIC_BASE_URL`: public HTTPS base URL for your API (documentation / integrations; example: `https://api.example.com`)
 - `API_DOMAIN=api.ldtv.dev`
 - `CADDY_ACME_EMAIL`: required for Let's Encrypt
@@ -267,6 +267,8 @@ Firewall expectation:
 
 ## First deployment (image-only)
 
+See also: [GHCR image-only deploy / rollback](../../docs/runbooks/prod-ghcr-image-only-deploy.md).
+
 After `.env.production` is filled out and images for your chosen tag exist in GHCR:
 
 **Preferred (canonical):** `scripts/release.sh` — same entrypoint GitHub Actions uses over SSH.
@@ -277,13 +279,13 @@ cd /opt/avf-vending/avf-vending-api/deployments/prod
 bash scripts/release.sh deploy sha-0123456789abcdef0123456789abcdef01234567
 ```
 
-`release.sh deploy <tag>`:
+`release.sh deploy [app_tag [goose_tag]]` (or no args to re-apply tags already in `.env.production`):
 
 1. Validates required env (including `IMAGE_*`, `DATABASE_URL`, etc.)
-2. Writes `IMAGE_REGISTRY`, `APP_IMAGE_REPOSITORY`, `GOOSE_IMAGE_REPOSITORY`, `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and `IMAGE_TAG` into `.env.production` (exported CI vars override file values when set)
+2. Writes `IMAGE_REGISTRY`, `APP_IMAGE_REPOSITORY`, `GOOSE_IMAGE_REPOSITORY`, `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and sets legacy `IMAGE_TAG` to the **app** tag (exported CI vars override file values when set)
 3. Optionally runs `docker login ghcr.io` when `GHCR_PULL_USERNAME` and `GHCR_PULL_TOKEN` are set in the shell
-4. Runs `docker compose config`, `docker compose pull` for app/goose-related services, starts data plane, runs **`docker compose up migrate`**, runs `emqx_bootstrap.sh`, brings up the long-lived stack, runs `healthcheck_prod.sh` unless `SKIP_SMOKE=1`
-5. Records `.deploy/current_image_tag`, `.deploy/previous_image_tag`, and `history.log`
+4. Runs `docker compose config`, `docker compose pull` for app/goose-related services, starts data plane, runs **`docker compose up migrate`**, runs `emqx_bootstrap.sh`, brings up the long-lived stack, waits on Docker health, runs `healthcheck_prod.sh` unless `SKIP_SMOKE=1`
+5. Records `.deploy/current_*` / `previous_*` image tags (app and goose separately) plus `history.log`
 
 If migrations fail, the script exits before switching the full app stack.
 
@@ -486,7 +488,7 @@ bash scripts/release.sh deploy sha-<new-commit-sha>
 
 **Alternate:** `bash scripts/update_prod.sh` remains a thin wrapper around the same image-pull / compose flow; it does not `git pull`, compile Go, or `docker build` app images on the server.
 
-If you insist on editing tags by hand, set `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and `IMAGE_TAG` in `.env.production` to the same value, then run `release.sh deploy <that-tag>` (or `update_prod.sh`) so pulls and health checks still run in order.
+If you edit tags by hand, set `APP_IMAGE_TAG` and `GOOSE_IMAGE_TAG` (or rely on `IMAGE_TAG` as fallback for missing slots), then run `release.sh deploy` with no arguments, `bash scripts/update_prod.sh`, or `release.sh deploy <app_tag> [goose_tag]` so pulls and health checks still run in order.
 
 Restart the long-lived stack without running migrations:
 
@@ -510,17 +512,18 @@ From the repo root you can still use `make prod-status` / `make prod-logs` as co
 
 ## Rollback
 
-**Preferred:** `release.sh rollback` uses the last successful **previous** tag recorded under `.deploy/previous_image_tag` (written when a newer `deploy` succeeds), or pass an explicit tag:
+**Preferred:** `release.sh rollback` restores tags from `.deploy/previous_app_image_tag` and `.deploy/previous_goose_image_tag` (when present; otherwise falls back to legacy `.deploy/previous_image_tag` for both), or pass explicit tags:
 
 ```bash
 cd /opt/avf-vending/avf-vending-api/deployments/prod
 bash scripts/release.sh rollback
-bash scripts/release.sh rollback sha-<known-good-sha>
+bash scripts/release.sh rollback sha-<known-good-app>
+bash scripts/release.sh rollback sha-<known-good-app> sha-<known-good-goose>
 ```
 
 What it does:
 
-- updates `.env.production` so `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and `IMAGE_TAG` target the rollback tag
+- updates `.env.production` so `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and legacy `IMAGE_TAG` (set to the app tag) target the rollback selection
 - optional GHCR login when pull secrets are present in the environment
 - `docker compose pull` + `up -d` for the long-lived stack, container checks, and `healthcheck_prod.sh` (unless `SKIP_SMOKE=1`)
 - appends a line to `.deploy/history.log`
@@ -529,7 +532,7 @@ What it does not do:
 
 - it does not roll back the database schema
 - it does not restore deleted data
-- default `rollback` without a tag requires a prior successful `release.sh deploy` that recorded `.deploy/previous_image_tag`
+- default `rollback` without tags requires a prior successful `release.sh deploy` that recorded `.deploy/previous_app_image_tag` or legacy `.deploy/previous_image_tag`
 
 **Legacy:** `bash scripts/rollback_prod.sh` performs a similar **image-only** rollback using the same `.deploy/previous_image_tag` convention. Prefer `release.sh rollback` for consistency with CI.
 
