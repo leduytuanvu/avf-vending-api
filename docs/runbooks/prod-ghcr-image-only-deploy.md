@@ -45,8 +45,8 @@ bash scripts/update_prod.sh
 1. Validates compose env and writes registry + tag fields to `.env.production`.
 2. `docker compose pull` for migrate + app images.
 3. Starts Postgres, NATS, EMQX; runs **migrate** once; EMQX bootstrap.
-4. `docker compose up -d` for the long-lived stack; waits for Docker health (see `ROLLUP_HEALTH_*` in `release.sh`).
-5. Runs `scripts/healthcheck_prod.sh` unless `SKIP_SMOKE=1`.
+4. `docker compose up -d` for the long-lived stack; **polls** until all gate containers are ready: **running** for every service, **healthy** only where Compose defines a Docker healthcheck (eight services: postgres, nats, emqx, api, worker, mqtt-ingest, reconciler, caddy). Tune with `ROLLUP_HEALTH_WAIT_SECS` (default **180**, clamped **30–3600**) and `ROLLUP_HEALTH_POLL_SECS` (default **5**). On timeout: `docker compose ps`, `docker inspect` state/health, and log tails for failing gate containers.
+5. Runs `scripts/healthcheck_prod.sh` unless `SKIP_SMOKE=1` — it uses the same readiness rule with `STACK_DOCKER_HEALTH_WAIT_SECS` / `STACK_DOCKER_HEALTH_POLL_SECS` (same defaults and clamp) before deeper checks.
 6. Records current/previous app and goose tags under `.deploy/` for rollback.
 
 ## Rollback

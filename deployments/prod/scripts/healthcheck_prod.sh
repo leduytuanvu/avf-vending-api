@@ -58,6 +58,10 @@ API_DOMAIN="$(read_env API_DOMAIN)"
 COMPOSE=(docker compose --env-file .env.production -f docker-compose.prod.yml)
 failures=0
 
+# Same eight containers as release.sh rollout gate (compose service name, container_name).
+STACK_GATE_SVCS=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
+STACK_GATE_CTRS=(avf-prod-postgres avf-prod-nats avf-prod-emqx avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-caddy)
+
 pass() {
 	echo "PASS: $1"
 }
@@ -82,6 +86,124 @@ check_compose_health() {
 		return
 	fi
 	pass "${name} docker health=healthy"
+}
+
+stack_container_ready() {
+	local c="$1" state has_h h
+	state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
+	[[ "${state}" == "running" ]] || return 1
+	has_h="$(docker inspect -f '{{if .State.Health}}yes{{else}}no{{end}}' "${c}" 2>/dev/null || echo no)"
+	if [[ "${has_h}" == "yes" ]]; then
+		h="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c}" 2>/dev/null || true)"
+		[[ "${h}" == "healthy" ]] || return 1
+	fi
+	return 0
+}
+
+stack_container_fail_reason() {
+	local c="$1" state has_h h
+	state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
+	if [[ "${state}" == "missing" ]]; then
+		printf '%s' "container_not_found"
+		return
+	fi
+	if [[ "${state}" != "running" ]]; then
+		printf '%s' "state=${state}"
+		return
+	fi
+	has_h="$(docker inspect -f '{{if .State.Health}}yes{{else}}no{{end}}' "${c}" 2>/dev/null || echo no)"
+	if [[ "${has_h}" != "yes" ]]; then
+		printf '%s' "running_no_docker_health"
+		return
+	fi
+	h="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c}" 2>/dev/null || true)"
+	if [[ "${h}" == "healthy" ]]; then
+		printf '%s' "ok"
+		return
+	fi
+	if [[ -z "${h}" ]]; then
+		printf '%s' "health=starting_or_empty"
+		return
+	fi
+	printf '%s' "health=${h}"
+}
+
+print_stack_gate_status() {
+	local i c svc state has_h h
+	for i in "${!STACK_GATE_CTRS[@]}"; do
+		c="${STACK_GATE_CTRS[$i]}"
+		svc="${STACK_GATE_SVCS[$i]}"
+		state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
+		has_h="$(docker inspect -f '{{if .State.Health}}yes{{else}}no{{end}}' "${c}" 2>/dev/null || echo no)"
+		if [[ "${has_h}" == "yes" ]]; then
+			h="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c}" 2>/dev/null || echo "?")"
+		else
+			h="n/a"
+		fi
+		printf '  %-16s %-24s status=%s health=%s\n' "${svc}" "${c}" "${state}" "${h}"
+	done
+}
+
+print_stack_docker_health_timeout_diagnostics() {
+	note "stack docker health gate exceeded — docker compose ps"
+	"${COMPOSE[@]}" ps 2>&1 || true
+	local i c svc
+	for i in "${!STACK_GATE_CTRS[@]}"; do
+		c="${STACK_GATE_CTRS[$i]}"
+		svc="${STACK_GATE_SVCS[$i]}"
+		if stack_container_ready "${c}"; then
+			continue
+		fi
+		echo "" >&2
+		echo "==> failing: ${svc} (${c})" >&2
+		docker inspect -f 'status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}} failing_streak={{.State.Health.FailingStreak}}{{else}}n/a{{end}} exit={{.State.ExitCode}}' "${c}" 2>/dev/null >&2 || echo "  docker inspect failed for ${c}" >&2
+		if command -v jq >/dev/null 2>&1; then
+			docker inspect "${c}" 2>/dev/null | jq -r '.[0].State.Health.Log // [] | .[-3:][] | "  health_log: \(.Output)"' 2>/dev/null >&2 || true
+		fi
+		echo "  docker logs --tail=100 ${c}:" >&2
+		docker logs --tail 100 "${c}" 2>&1 | sed 's/^/    /' >&2 || true
+	done
+}
+
+wait_stack_docker_health() {
+	local wait_secs poll start_ts now_ts elapsed bad_list c
+	wait_secs="${STACK_DOCKER_HEALTH_WAIT_SECS:-180}"
+	poll="${STACK_DOCKER_HEALTH_POLL_SECS:-5}"
+	[[ "${wait_secs}" =~ ^[0-9]+$ ]] || wait_secs=180
+	[[ "${poll}" =~ ^[0-9]+$ ]] || poll=5
+	[[ "${poll}" -ge 1 ]] || poll=1
+	if [[ "${wait_secs}" -lt 30 ]]; then
+		wait_secs=30
+	fi
+	if [[ "${wait_secs}" -gt 3600 ]]; then
+		wait_secs=3600
+	fi
+	start_ts="$(date +%s)"
+	note "poll stack docker health (postgres, nats, emqx, api, worker, mqtt-ingest, reconciler, caddy) — up to ${wait_secs}s, poll every ${poll}s"
+	while true; do
+		bad_list=()
+		for c in "${STACK_GATE_CTRS[@]}"; do
+			if ! stack_container_ready "${c}"; then
+				bad_list+=("${c}")
+			fi
+		done
+		if [[ "${#bad_list[@]}" -eq 0 ]]; then
+			note "stack docker health gate: all monitored containers ready"
+			return 0
+		fi
+		now_ts="$(date +%s)"
+		elapsed=$((now_ts - start_ts))
+		if [[ "${elapsed}" -ge "${wait_secs}" ]]; then
+			print_stack_docker_health_timeout_diagnostics
+			return 1
+		fi
+		note "stack docker health (${elapsed}s / ${wait_secs}s) — waiting on: ${bad_list[*]}"
+		for c in "${bad_list[@]}"; do
+			printf '    %s: %s\n' "${c}" "$(stack_container_fail_reason "${c}")" >&2
+		done
+		print_stack_gate_status
+		sleep "${poll}"
+	done
 }
 
 show_container_diagnostics() {
@@ -147,17 +269,22 @@ need_running=(avf-prod-caddy avf-prod-api avf-prod-worker avf-prod-mqtt-ingest a
 for c in "${need_running[@]}"; do
 	state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
 	if [[ "${state}" != "running" ]]; then
-		fail "container ${c} running (state=${state})"
+		fail "container ${c} not running (state=${state})"
 		show_container_diagnostics "${c}"
 		continue
 	fi
 	pass "container ${c} running"
 done
 
-note "docker healthchecks (where defined)"
-for c in avf-prod-postgres avf-prod-nats avf-prod-emqx avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-caddy; do
-	check_compose_health "${c}"
-done
+note "docker health gate (poll)"
+if wait_stack_docker_health; then
+	note "docker healthchecks (verify)"
+	for c in "${STACK_GATE_CTRS[@]}"; do
+		check_compose_health "${c}"
+	done
+else
+	fail "stack docker health gate timed out (see diagnostics above)"
+fi
 
 note "internal service checks"
 check_cmd "postgres pg_isready" "check postgres container logs and DATABASE_URL / POSTGRES_* values" "${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d avf_vending >/dev/null'
@@ -193,10 +320,10 @@ if (( failures > 0 )); then
 	note "healthcheck failed — docker compose ps (refresh)"
 	"${COMPOSE[@]}" ps 2>&1 || true
 
-	# Same six as release.sh rollout gate, then postgres/nats when unhealthy (not running or Docker health != healthy).
-	rollout_critical=(avf-prod-api avf-prod-caddy avf-prod-emqx avf-prod-mqtt-ingest avf-prod-worker avf-prod-reconciler)
+	# Same eight as release.sh / STACK_GATE rollout gate.
+	rollout_critical=(avf-prod-postgres avf-prod-nats avf-prod-emqx avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-caddy)
 	echo "==> deep container diagnostics (unhealthy or not running)" >&2
-	for c in "${rollout_critical[@]}" avf-prod-postgres avf-prod-nats; do
+	for c in "${rollout_critical[@]}"; do
 		if container_warrants_deep_diag "${c}"; then
 			show_container_diagnostics_deep "${c}"
 		fi
