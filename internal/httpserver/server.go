@@ -109,11 +109,8 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 	r.Route("/v1", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
 			mountAuthRoutes(r, app)
-		})
-
-		r.Group(func(r chi.Router) {
-			r.Use(v1Auth)
-			r.Route("/auth", func(r chi.Router) {
+			r.Group(func(r chi.Router) {
+				r.Use(v1Auth)
 				mountAuthBearerRoutes(r, app)
 			})
 		})
