@@ -28,11 +28,13 @@ func TestTelemetrySubjectShape(t *testing.T) {
 	}
 }
 
-func TestBoundedRetentionDurations(t *testing.T) {
-	// Sanity: documented JetStream max-age targets remain in expected ratios.
-	_ = 2 * time.Hour
-	_ = 6 * time.Hour
-	_ = 24 * time.Hour
-	_ = 72 * time.Hour
-	_ = 7 * 24 * time.Hour
+func TestStreamMaxAgeScaling(t *testing.T) {
+	t.Parallel()
+	base := 168 * time.Hour
+	if g := streamMaxAge(base, 2); g < 5*time.Minute || g > 3*time.Hour {
+		t.Fatalf("heartbeat age: %v", g)
+	}
+	if g := streamMaxAge(base, 168); g != base {
+		t.Fatalf("diagnostic age want %v got %v", base, g)
+	}
 }

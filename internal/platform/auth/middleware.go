@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/apierr"
 	appmw "github.com/avf/avf-vending-api/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -21,12 +22,11 @@ const (
 	DefaultClockLeeway = 45 * time.Second
 )
 
-func writeAuthJSON(w http.ResponseWriter, status int, message string) {
+func writeAuthError(w http.ResponseWriter, r *http.Request, status int, code, message string) {
+	rid := appmw.RequestIDFromContext(r.Context())
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"error": map[string]any{"message": message},
-	})
+	_ = json.NewEncoder(w).Encode(apierr.V1(rid, code, message, nil))
 }
 
 func logBearerAuthReject(log *zap.Logger, r *http.Request, err error) {
@@ -57,7 +57,7 @@ func BearerAccessTokenMiddlewareWithValidator(v AccessTokenValidator, log *zap.L
 			raw := strings.TrimSpace(strings.TrimPrefix(h, "Bearer "))
 			if raw == "" {
 				logBearerAuthReject(log, r, ErrUnauthenticated)
-				writeAuthJSON(w, http.StatusUnauthorized, ErrUnauthenticated.Error())
+				writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
 				return
 			}
 			p, err := v.ValidateAccessToken(r.Context(), raw)
@@ -70,11 +70,11 @@ func BearerAccessTokenMiddlewareWithValidator(v AccessTokenValidator, log *zap.L
 							zap.String("correlation_id", appmw.CorrelationIDFromContext(r.Context())),
 						)
 					})
-					writeAuthJSON(w, http.StatusServiceUnavailable, err.Error())
+					writeAuthError(w, r, http.StatusServiceUnavailable, "auth_misconfigured", err.Error())
 					return
 				}
 				logBearerAuthReject(log, r, err)
-				writeAuthJSON(w, http.StatusUnauthorized, ErrUnauthenticated.Error())
+				writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
 				return
 			}
 			next.ServeHTTP(w, r.WithContext(WithPrincipal(r.Context(), p)))
@@ -103,11 +103,11 @@ func RequireAnyRole(roles ...string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p, ok := PrincipalFromContext(r.Context())
 			if !ok {
-				writeAuthJSON(w, http.StatusUnauthorized, ErrUnauthenticated.Error())
+				writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
 				return
 			}
 			if !p.HasAnyRole(roles...) {
-				writeAuthJSON(w, http.StatusForbidden, ErrForbidden.Error())
+				writeAuthError(w, r, http.StatusForbidden, "forbidden", ErrForbidden.Error())
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -121,7 +121,7 @@ func RequireOrganizationScope(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p, ok := PrincipalFromContext(r.Context())
 		if !ok {
-			writeAuthJSON(w, http.StatusUnauthorized, ErrUnauthenticated.Error())
+			writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
 			return
 		}
 		if p.HasRole(RolePlatformAdmin) {
@@ -129,7 +129,7 @@ func RequireOrganizationScope(next http.Handler) http.Handler {
 			return
 		}
 		if !p.HasOrganization() {
-			writeAuthJSON(w, http.StatusForbidden, "organization scope required")
+			writeAuthError(w, r, http.StatusForbidden, "organization_scope_required", "organization scope required")
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -142,17 +142,17 @@ func RequireMachineURLAccess(machineParam string) func(http.Handler) http.Handle
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p, ok := PrincipalFromContext(r.Context())
 			if !ok {
-				writeAuthJSON(w, http.StatusUnauthorized, ErrUnauthenticated.Error())
+				writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
 				return
 			}
 			raw := chi.URLParam(r, machineParam)
 			machineID, err := uuid.Parse(strings.TrimSpace(raw))
 			if err != nil {
-				writeAuthJSON(w, http.StatusBadRequest, "invalid machine id")
+				writeAuthError(w, r, http.StatusBadRequest, "invalid_machine_id", "invalid machine id")
 				return
 			}
 			if !p.CanAccessMachineRead(machineID) {
-				writeAuthJSON(w, http.StatusForbidden, ErrForbidden.Error())
+				writeAuthError(w, r, http.StatusForbidden, "forbidden", ErrForbidden.Error())
 				return
 			}
 			next.ServeHTTP(w, r)

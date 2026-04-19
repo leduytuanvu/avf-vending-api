@@ -10,7 +10,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/telemetry"
 )
 
-// Telemetry JetStream buffers (bounded age + bytes). Not durable analytics storage.
+// Telemetry stream names and subject prefix.
 const (
 	StreamTelemetryHeartbeat             = "AVF_TELEMETRY_HEARTBEAT"
 	StreamTelemetryState                 = "AVF_TELEMETRY_STATE"
@@ -20,8 +20,6 @@ const (
 	StreamTelemetryDiagnosticBundleReady = "AVF_TELEMETRY_DIAGNOSTIC_READY"
 
 	SubjectTelemetryPrefix = "avf.telemetry."
-
-	telemetryMaxBytesPerStream int64 = 256 << 20 // 256 MiB — honest bound for ~1k machines on a small VPS
 )
 
 // TelemetryStreamName returns the JetStream stream backing a telemetry class.
@@ -68,17 +66,19 @@ func TelemetrySubject(c telemetry.Class, machineID uuid.UUID) (string, error) {
 }
 
 // EnsureTelemetryStreams creates or updates bounded telemetry streams (idempotent).
-func EnsureTelemetryStreams(js natssrv.JetStreamContext) error {
+func EnsureTelemetryStreams(js natssrv.JetStreamContext, lim TelemetryBrokerLimits) error {
 	if js == nil {
 		return fmt.Errorf("nats: nil jetstream context")
 	}
+	lim = normalizeTelemetryBrokerLimits(lim)
+	b := lim.StreamMaxAgeBaseline
 	base := []streamSpec{
 		{
 			Name:       StreamTelemetryHeartbeat,
 			Subjects:   []string{SubjectTelemetryPrefix + "heartbeat.>"},
 			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     2 * time.Hour,
-			MaxBytes:   telemetryMaxBytesPerStream,
+			MaxAge:     streamMaxAge(b, 2),
+			MaxBytes:   lim.StreamMaxBytes,
 			Discard:    natssrv.DiscardOld,
 			Storage:    natssrv.FileStorage,
 			Duplicates: 30 * time.Second,
@@ -87,8 +87,8 @@ func EnsureTelemetryStreams(js natssrv.JetStreamContext) error {
 			Name:       StreamTelemetryState,
 			Subjects:   []string{SubjectTelemetryPrefix + "state.>"},
 			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     6 * time.Hour,
-			MaxBytes:   telemetryMaxBytesPerStream,
+			MaxAge:     streamMaxAge(b, 6),
+			MaxBytes:   lim.StreamMaxBytes,
 			Discard:    natssrv.DiscardOld,
 			Storage:    natssrv.FileStorage,
 			Duplicates: 30 * time.Second,
@@ -97,8 +97,8 @@ func EnsureTelemetryStreams(js natssrv.JetStreamContext) error {
 			Name:       StreamTelemetryMetrics,
 			Subjects:   []string{SubjectTelemetryPrefix + "metrics.>"},
 			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     6 * time.Hour,
-			MaxBytes:   telemetryMaxBytesPerStream,
+			MaxAge:     streamMaxAge(b, 6),
+			MaxBytes:   lim.StreamMaxBytes,
 			Discard:    natssrv.DiscardOld,
 			Storage:    natssrv.FileStorage,
 			Duplicates: 30 * time.Second,
@@ -107,8 +107,8 @@ func EnsureTelemetryStreams(js natssrv.JetStreamContext) error {
 			Name:       StreamTelemetryIncidents,
 			Subjects:   []string{SubjectTelemetryPrefix + "incident.>"},
 			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     24 * time.Hour,
-			MaxBytes:   telemetryMaxBytesPerStream,
+			MaxAge:     streamMaxAge(b, 24),
+			MaxBytes:   lim.StreamMaxBytes,
 			Discard:    natssrv.DiscardOld,
 			Storage:    natssrv.FileStorage,
 			Duplicates: 2 * time.Minute,
@@ -117,8 +117,8 @@ func EnsureTelemetryStreams(js natssrv.JetStreamContext) error {
 			Name:       StreamTelemetryCommandReceipts,
 			Subjects:   []string{SubjectTelemetryPrefix + "command_receipt.>"},
 			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     72 * time.Hour,
-			MaxBytes:   telemetryMaxBytesPerStream,
+			MaxAge:     streamMaxAge(b, 72),
+			MaxBytes:   lim.StreamMaxBytes,
 			Discard:    natssrv.DiscardOld,
 			Storage:    natssrv.FileStorage,
 			Duplicates: 2 * time.Minute,
@@ -127,8 +127,8 @@ func EnsureTelemetryStreams(js natssrv.JetStreamContext) error {
 			Name:       StreamTelemetryDiagnosticBundleReady,
 			Subjects:   []string{SubjectTelemetryPrefix + "diagnostic_bundle_ready.>"},
 			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     7 * 24 * time.Hour,
-			MaxBytes:   telemetryMaxBytesPerStream,
+			MaxAge:     streamMaxAge(b, 168),
+			MaxBytes:   lim.StreamMaxBytes,
 			Discard:    natssrv.DiscardOld,
 			Storage:    natssrv.FileStorage,
 			Duplicates: 5 * time.Minute,

@@ -7,6 +7,7 @@ import (
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var _ appcommerce.CommerceLifecycleStore = (*Store)(nil)
@@ -52,11 +53,15 @@ func (s *Store) GetVendSessionByOrderAndSlot(ctx context.Context, orderID uuid.U
 }
 
 func (s *Store) UpdateVendSessionState(ctx context.Context, p appcommerce.UpdateVendSessionParams) (domaincommerce.VendSession, error) {
+	var fr pgtype.Text
+	if p.FailureReason != nil {
+		fr = pgtype.Text{String: *p.FailureReason, Valid: true}
+	}
 	row, err := db.New(s.pool).UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{
 		OrderID:       p.OrderID,
 		SlotIndex:     p.SlotIndex,
 		State:         p.ToState,
-		FailureReason: p.FailureReason,
+		FailureReason: fr,
 	})
 	if err != nil {
 		if isNoRows(err) {
@@ -93,9 +98,13 @@ func (s *Store) InsertPaymentAttempt(ctx context.Context, in appcommerce.InsertP
 	if in.Payload == nil {
 		in.Payload = []byte("{}")
 	}
+	var pref pgtype.Text
+	if in.ProviderReference != nil {
+		pref = pgtype.Text{String: *in.ProviderReference, Valid: true}
+	}
 	row, err := db.New(s.pool).InsertPaymentAttempt(ctx, db.InsertPaymentAttemptParams{
 		PaymentID:         in.PaymentID,
-		ProviderReference: in.ProviderReference,
+		ProviderReference: pref,
 		State:             in.State,
 		Payload:           in.Payload,
 	})

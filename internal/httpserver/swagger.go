@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// MountSwaggerUI serves Swagger UI and /swagger/doc.json (OpenAPI 2.0) without Bearer auth.
+// MountSwaggerUI serves Swagger UI and /swagger/doc.json (OpenAPI 3.0) without Bearer auth.
 // Wire only when config.Config.SwaggerUIEnabled is true (default off in production).
 func MountSwaggerUI(r chi.Router, log *zap.Logger) {
 	if log != nil {

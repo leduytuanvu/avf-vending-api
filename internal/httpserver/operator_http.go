@@ -47,10 +47,10 @@ func operatorFetchMachine(w http.ResponseWriter, svc *operator.Service, ctx cont
 	machine, err := svc.MachineByID(ctx, machineID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			writeAPIError(w, http.StatusNotFound, "machine_not_found", "machine not found")
+			writeAPIError(w, ctx, http.StatusNotFound, "machine_not_found", "machine not found")
 			return fleet.Machine{}, false
 		}
-		writeAPIError(w, http.StatusInternalServerError, "internal", err.Error())
+		writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
 		return fleet.Machine{}, false
 	}
 	return machine, true
@@ -64,7 +64,7 @@ func decodeOperatorLoginBody(w http.ResponseWriter, r *http.Request) (operatorLo
 	case nil, io.EOF:
 		return body, true
 	default:
-		writeAPIError(w, http.StatusBadRequest, "invalid_json", "invalid request body")
+		writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "invalid request body")
 		return body, false
 	}
 }
@@ -77,7 +77,7 @@ func decodeOperatorLogoutBody(w http.ResponseWriter, r *http.Request) (operatorL
 	case nil, io.EOF:
 		return body, true
 	default:
-		writeAPIError(w, http.StatusBadRequest, "invalid_json", "invalid request body")
+		writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "invalid request body")
 		return body, false
 	}
 }
@@ -155,12 +155,12 @@ func operatorLoginHandler(svc *operator.Service) http.HandlerFunc {
 		ctx := r.Context()
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		p, ok := auth.PrincipalFromContext(ctx)
 		if !ok {
-			writeAPIError(w, http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
 		machine, ok := operatorFetchMachine(w, svc, ctx, machineID)
@@ -168,7 +168,7 @@ func operatorLoginHandler(svc *operator.Service) http.HandlerFunc {
 			return
 		}
 		if err := authorizeMachineOperatorAccess(p, machine); err != nil {
-			writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		body, ok := decodeOperatorLoginBody(w, r)
@@ -176,7 +176,7 @@ func operatorLoginHandler(svc *operator.Service) http.HandlerFunc {
 			return
 		}
 		if body.ForceAdminTakeover && !sessionRevokeAllowed(p, machine) {
-			writeAPIError(w, http.StatusForbidden, "admin_takeover_forbidden", "force_admin_takeover requires org admin or platform admin")
+			writeAPIError(w, r.Context(), http.StatusForbidden, "admin_takeover_forbidden", "force_admin_takeover requires org admin or platform admin")
 			return
 		}
 		authMethod := strings.TrimSpace(body.AuthMethod)
@@ -186,7 +186,7 @@ func operatorLoginHandler(svc *operator.Service) http.HandlerFunc {
 		actorType, techID, userPrincipal, err := deriveOperatorActor(p)
 		if err != nil {
 			_ = recordLoginFailure(ctx, svc, machine.OrganizationID, machineID, authMethod, correlationUUIDFromRequest(ctx), loginFailureMetadata(err, appmw.CorrelationIDFromContext(ctx)))
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		meta := []byte("{}")
@@ -212,7 +212,7 @@ func operatorLoginHandler(svc *operator.Service) http.HandlerFunc {
 		})
 		if err != nil {
 			_ = recordLoginFailure(ctx, svc, machine.OrganizationID, machineID, authMethod, corr, loginFailureMetadata(err, appmw.CorrelationIDFromContext(ctx)))
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"session": sessionView(sess)})
@@ -224,12 +224,12 @@ func operatorLogoutHandler(svc *operator.Service) http.HandlerFunc {
 		ctx := r.Context()
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		p, ok := auth.PrincipalFromContext(ctx)
 		if !ok {
-			writeAPIError(w, http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
 		machine, ok := operatorFetchMachine(w, svc, ctx, machineID)
@@ -237,7 +237,7 @@ func operatorLogoutHandler(svc *operator.Service) http.HandlerFunc {
 			return
 		}
 		if err := authorizeMachineOperatorAccess(p, machine); err != nil {
-			writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		body, ok := decodeOperatorLogoutBody(w, r)
@@ -253,38 +253,38 @@ func operatorLogoutHandler(svc *operator.Service) http.HandlerFunc {
 		if rawSid != "" {
 			parsed, perr := uuid.Parse(rawSid)
 			if perr != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_session_id", "session_id must be a valid UUID")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_session_id", "session_id must be a valid UUID")
 				return
 			}
 			sid = parsed
 		} else {
 			active, aerr := svc.ActiveSessionForMachine(ctx, machineID)
 			if aerr != nil {
-				writeAPIError(w, http.StatusInternalServerError, "internal", aerr.Error())
+				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", aerr.Error())
 				return
 			}
 			if active == nil {
-				writeAPIError(w, http.StatusBadRequest, "session_id_required", "session_id is required when no active session exists")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "session_id_required", "session_id is required when no active session exists")
 				return
 			}
 			sid = active.ID
 		}
 		sess, err := svc.GetSessionIfMatchesMachine(ctx, sid, machineID)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		if err := assertSessionMutableByPrincipal(p, machine, sess); err != nil {
-			writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		finalStatus, err := parseOperatorLogoutFinalStatus(body.FinalStatus)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		if finalStatus == domainoperator.SessionStatusRevoked && !sessionRevokeAllowed(p, machine) {
-			writeAPIError(w, http.StatusForbidden, "forbidden", "revoke requires org admin or platform admin")
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "revoke requires org admin or platform admin")
 			return
 		}
 		corr := correlationUUIDFromRequest(ctx)
@@ -299,7 +299,7 @@ func operatorLogoutHandler(svc *operator.Service) http.HandlerFunc {
 			LogoutMetadata:      mergeCorrelationMetadata([]byte("{}"), appmw.CorrelationIDFromContext(ctx)),
 		})
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"session": sessionView(ended)})
@@ -311,17 +311,17 @@ func operatorHeartbeatHandler(svc *operator.Service) http.HandlerFunc {
 		ctx := r.Context()
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		sessionID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "sessionId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_session_id", "invalid sessionId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_session_id", "invalid sessionId")
 			return
 		}
 		p, ok := auth.PrincipalFromContext(ctx)
 		if !ok {
-			writeAPIError(w, http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
 		machine, ok := operatorFetchMachine(w, svc, ctx, machineID)
@@ -329,21 +329,21 @@ func operatorHeartbeatHandler(svc *operator.Service) http.HandlerFunc {
 			return
 		}
 		if err := authorizeMachineOperatorAccess(p, machine); err != nil {
-			writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		sess, err := svc.GetSessionIfMatchesMachine(ctx, sessionID, machineID)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		if err := assertSessionMutableByPrincipal(p, machine, sess); err != nil {
-			writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		out, err := svc.HeartbeatOperatorSession(ctx, machine.OrganizationID, machineID, sessionID)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"session": sessionView(out)})
@@ -355,12 +355,12 @@ func operatorCurrentHandler(svc *operator.Service) http.HandlerFunc {
 		ctx := r.Context()
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		p, ok := auth.PrincipalFromContext(ctx)
 		if !ok {
-			writeAPIError(w, http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
 		machine, ok := operatorFetchMachine(w, svc, ctx, machineID)
@@ -368,12 +368,12 @@ func operatorCurrentHandler(svc *operator.Service) http.HandlerFunc {
 			return
 		}
 		if err := authorizeMachineOperatorAccess(p, machine); err != nil {
-			writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		res, err := svc.ResolveCurrentOperatorForMachine(ctx, machine.OrganizationID, machineID)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		if res.ActiveSession == nil {
@@ -393,12 +393,12 @@ func operatorHistoryHandler(svc *operator.Service) http.HandlerFunc {
 		ctx := r.Context()
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		p, ok := auth.PrincipalFromContext(ctx)
 		if !ok {
-			writeAPIError(w, http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
 		machine, ok := operatorFetchMachine(w, svc, ctx, machineID)
@@ -406,17 +406,17 @@ func operatorHistoryHandler(svc *operator.Service) http.HandlerFunc {
 			return
 		}
 		if err := authorizeMachineOperatorAccess(p, machine); err != nil {
-			writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		limit, lerr := parseOperatorListLimit(r)
 		if lerr != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_limit", lerr.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
 		items, err := svc.ListSessionsByMachine(ctx, machine.OrganizationID, machineID, limit)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		out := make([]map[string]any, 0, len(items))
@@ -432,12 +432,12 @@ func operatorAuthEventsHandler(svc *operator.Service) http.HandlerFunc {
 		ctx := r.Context()
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		p, ok := auth.PrincipalFromContext(ctx)
 		if !ok {
-			writeAPIError(w, http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
 		machine, ok := operatorFetchMachine(w, svc, ctx, machineID)
@@ -445,17 +445,17 @@ func operatorAuthEventsHandler(svc *operator.Service) http.HandlerFunc {
 			return
 		}
 		if err := authorizeMachineOperatorAccess(p, machine); err != nil {
-			writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		limit, lerr := parseOperatorListLimit(r)
 		if lerr != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_limit", lerr.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
 		items, err := svc.ListAuthEventsForMachine(ctx, machine.OrganizationID, machineID, limit)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		out := make([]operator.AuthEventView, 0, len(items))
@@ -471,12 +471,12 @@ func operatorActionAttributionsMachineHandler(svc *operator.Service) http.Handle
 		ctx := r.Context()
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		p, ok := auth.PrincipalFromContext(ctx)
 		if !ok {
-			writeAPIError(w, http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
 		machine, ok := operatorFetchMachine(w, svc, ctx, machineID)
@@ -484,17 +484,17 @@ func operatorActionAttributionsMachineHandler(svc *operator.Service) http.Handle
 			return
 		}
 		if err := authorizeMachineOperatorAccess(p, machine); err != nil {
-			writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		limit, lerr := parseOperatorListLimit(r)
 		if lerr != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_limit", lerr.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
 		items, err := svc.ListActionAttributionsForMachine(ctx, machine.OrganizationID, machineID, limit)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		out := make([]operator.ActionAttributionView, 0, len(items))
@@ -510,12 +510,12 @@ func operatorTimelineHandler(svc *operator.Service) http.HandlerFunc {
 		ctx := r.Context()
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		p, ok := auth.PrincipalFromContext(ctx)
 		if !ok {
-			writeAPIError(w, http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
 		machine, ok := operatorFetchMachine(w, svc, ctx, machineID)
@@ -523,17 +523,17 @@ func operatorTimelineHandler(svc *operator.Service) http.HandlerFunc {
 			return
 		}
 		if err := authorizeMachineOperatorAccess(p, machine); err != nil {
-			writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		limit, lerr := parseOperatorListLimit(r)
 		if lerr != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_limit", lerr.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
 		items, err := svc.BuildMachineOperatorTimeline(ctx, machine.OrganizationID, machineID, limit)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		writeOperatorListEnvelope(w, items, limit, len(items))
@@ -545,35 +545,35 @@ func operatorActionAttributionsTechnicianHandler(svc *operator.Service) http.Han
 		ctx := r.Context()
 		p, ok := auth.PrincipalFromContext(ctx)
 		if !ok {
-			writeAPIError(w, http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
 		orgID, err := resolveOrgScopeForInsight(p, r)
 		if err != nil {
 			if errors.Is(err, auth.ErrForbidden) {
-				writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 				return
 			}
 			if errors.Is(err, errInsightOrgIDRequired) {
-				writeAPIError(w, http.StatusBadRequest, "missing_organization_id", err.Error())
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_organization_id", err.Error())
 				return
 			}
-			writeAPIError(w, http.StatusBadRequest, "bad_request", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
 		tid, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "technicianId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_technician_id", "invalid technicianId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_technician_id", "invalid technicianId")
 			return
 		}
 		limit, lerr := parseOperatorListLimit(r)
 		if lerr != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_limit", lerr.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
 		items, err := svc.ListActionAttributionsForTechnician(ctx, orgID, tid, limit)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		out := make([]operator.ActionAttributionView, 0, len(items))
@@ -589,35 +589,35 @@ func operatorActionAttributionsUserHandler(svc *operator.Service) http.HandlerFu
 		ctx := r.Context()
 		p, ok := auth.PrincipalFromContext(ctx)
 		if !ok {
-			writeAPIError(w, http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
 		orgID, err := resolveOrgScopeForInsight(p, r)
 		if err != nil {
 			if errors.Is(err, auth.ErrForbidden) {
-				writeAPIError(w, http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 				return
 			}
 			if errors.Is(err, errInsightOrgIDRequired) {
-				writeAPIError(w, http.StatusBadRequest, "missing_organization_id", err.Error())
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_organization_id", err.Error())
 				return
 			}
-			writeAPIError(w, http.StatusBadRequest, "bad_request", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
 		principal := strings.TrimSpace(r.URL.Query().Get("user_principal"))
 		if principal == "" {
-			writeAPIError(w, http.StatusBadRequest, "missing_user_principal", "user_principal query is required")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_user_principal", "user_principal query is required")
 			return
 		}
 		limit, lerr := parseOperatorListLimit(r)
 		if lerr != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_limit", lerr.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
 		items, err := svc.ListActionAttributionsForUserPrincipal(ctx, orgID, principal, limit)
 		if err != nil {
-			writeOperatorError(w, err)
+			writeOperatorError(w, r.Context(), err)
 			return
 		}
 		out := make([]operator.ActionAttributionView, 0, len(items))
@@ -785,7 +785,7 @@ func sessionView(s domainoperator.Session) map[string]any {
 	return out
 }
 
-func writeOperatorError(w http.ResponseWriter, err error) {
+func writeOperatorError(w http.ResponseWriter, ctx context.Context, err error) {
 	switch {
 	case errors.Is(err, domainoperator.ErrInvalidActor),
 		errors.Is(err, domainoperator.ErrInvalidAuthMethod),
@@ -796,26 +796,26 @@ func writeOperatorError(w http.ResponseWriter, err error) {
 		errors.Is(err, domainoperator.ErrSessionMachineMismatch),
 		errors.Is(err, domainoperator.ErrMachineContextRequired),
 		errors.Is(err, domainoperator.ErrTimeoutNotApplicable):
-		writeAPIError(w, http.StatusBadRequest, "bad_request", err.Error())
+		writeAPIError(w, ctx, http.StatusBadRequest, "bad_request", err.Error())
 	case errors.Is(err, domainoperator.ErrOrganizationMismatch):
-		writeAPIError(w, http.StatusForbidden, "forbidden", err.Error())
+		writeAPIError(w, ctx, http.StatusForbidden, "forbidden", err.Error())
 	case errors.Is(err, domainoperator.ErrSessionNotFound):
-		writeAPIError(w, http.StatusNotFound, "not_found", err.Error())
+		writeAPIError(w, ctx, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, domainoperator.ErrSessionNotActive):
-		writeAPIError(w, http.StatusConflict, "session_not_active", err.Error())
+		writeAPIError(w, ctx, http.StatusConflict, "session_not_active", err.Error())
 	case errors.Is(err, domainoperator.ErrActiveSessionExists):
-		writeAPIError(w, http.StatusConflict, "active_session_exists", err.Error())
+		writeAPIError(w, ctx, http.StatusConflict, "active_session_exists", err.Error())
 	case errors.Is(err, domainoperator.ErrAdminTakeoverUnauthorized):
-		writeAPIError(w, http.StatusForbidden, "admin_takeover_forbidden", err.Error())
+		writeAPIError(w, ctx, http.StatusForbidden, "admin_takeover_forbidden", err.Error())
 	case errors.Is(err, domainoperator.ErrTechnicianNotAssignedToMachine):
-		writeAPIError(w, http.StatusForbidden, "technician_not_assigned", err.Error())
+		writeAPIError(w, ctx, http.StatusForbidden, "technician_not_assigned", err.Error())
 	case errors.Is(err, domainoperator.ErrTechnicianAssignmentCheckerRequired):
-		writeAPIError(w, http.StatusServiceUnavailable, "assignment_checker_misconfigured", err.Error())
+		writeAPIError(w, ctx, http.StatusServiceUnavailable, "assignment_checker_misconfigured", err.Error())
 	default:
 		if errors.Is(err, pgx.ErrNoRows) {
-			writeAPIError(w, http.StatusNotFound, "not_found", "not found")
+			writeAPIError(w, ctx, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		writeAPIError(w, http.StatusInternalServerError, "internal", err.Error())
+		writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
 	}
 }

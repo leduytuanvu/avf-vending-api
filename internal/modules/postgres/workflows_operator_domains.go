@@ -49,7 +49,7 @@ func (s *Store) CreateCashCollectionWithAttribution(ctx context.Context, in Crea
 		AmountMinor:       in.AmountMinor,
 		Currency:          in.Currency,
 		Metadata:          meta,
-		OperatorSessionID: in.OperatorSessionID,
+		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
 	})
 	if err != nil {
 		return db.CashCollection{}, err
@@ -109,8 +109,8 @@ func (s *Store) CreateRefillSessionWithAttribution(ctx context.Context, in Creat
 		OrganizationID:    in.OrganizationID,
 		MachineID:         in.MachineID,
 		StartedAt:         in.StartedAt,
-		EndedAt:           in.EndedAt,
-		OperatorSessionID: in.OperatorSessionID,
+		EndedAt:           optionalTimeToPgTimestamptz(in.EndedAt),
+		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
 		Metadata:          meta,
 	})
 	if err != nil {
@@ -178,7 +178,7 @@ func (s *Store) RecordMachineConfigApplicationWithAttribution(ctx context.Contex
 		AppliedAt:         in.AppliedAt,
 		ConfigRevision:    in.ConfigRevision,
 		ConfigPayload:     payload,
-		OperatorSessionID: in.OperatorSessionID,
+		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
 		Metadata:          meta,
 	})
 	if err != nil {
@@ -244,7 +244,7 @@ func (s *Store) CreateIncidentWithAttribution(ctx context.Context, in CreateInci
 		Title:             in.Title,
 		OpenedAt:          in.OpenedAt,
 		UpdatedAt:         now,
-		OperatorSessionID: in.OperatorSessionID,
+		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
 		Metadata:          meta,
 	})
 	if err != nil {
@@ -298,7 +298,7 @@ func (s *Store) UpdateIncidentFromOperatorWithAttribution(ctx context.Context, i
 		Status:            in.Status,
 		Title:             in.Title,
 		Metadata:          meta,
-		OperatorSessionID: in.OperatorSessionID,
+		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
 		OrganizationID:    in.OrganizationID,
 	})
 	if err != nil {

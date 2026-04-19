@@ -48,7 +48,9 @@ make ci-gates    # formatting, vet, sqlc drift, swagger drift, placeholder/wirin
 
 Install **sqlc** for `make sqlc-check` / `make ci-gates`: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0` (pin should match the workflow).
 
-**Swagger / OpenAPI** (embedded in the API process): annotations live in [`cmd/api/main.go`](cmd/api/main.go) (API metadata) and [`internal/httpserver/swagger_operations.go`](internal/httpserver/swagger_operations.go) (per-route docs). Regenerate committed artifacts with `make swagger` (uses Python 3 via `PY=python3` by default; on Windows use `make swagger PY=python` if needed). CI and `make swagger-check` fail when [`docs/swagger`](docs/swagger) is stale. With Swagger enabled (default in non-production; see `HTTP_SWAGGER_UI_ENABLED` in [`.env.example`](.env.example)), the server serves **Swagger UI** at `/swagger/index.html` and raw OpenAPI 2.0 JSON at `/swagger/doc.json`.
+**Swagger / OpenAPI** (embedded in the API process): annotations live in [`cmd/api/main.go`](cmd/api/main.go) (API metadata) and [`internal/httpserver/swagger_operations.go`](internal/httpserver/swagger_operations.go) (per-route docs). Regenerate committed artifacts with `make swagger` (uses Python 3 via `PY=python3` by default; on Windows use `make swagger PY=python` if needed). CI and `make swagger-check` fail when [`docs/swagger`](docs/swagger) is stale. With Swagger enabled (default in non-production; see `HTTP_SWAGGER_UI_ENABLED` in [`.env.example`](.env.example)), the server serves **Swagger UI** at `/swagger/index.html` and raw **OpenAPI 3.0** JSON at `/swagger/doc.json` (multi-environment **Servers** + shared error model).
+
+**Reporting** (`platform_admin` or `org_admin`, Bearer JWT): read-only JSON under **`/v1/reports/*`** (sales, payments, fleet health, inventory exceptions). Every report requires **`from`** and **`to`** (RFC3339) with a maximum span of **366 days**; **`organization_id`** is required when the caller is `platform_admin`, same as other tenant-picked admin routes. There is no CSV export or async job in this API surface—clients consume aggregates directly.
 
 ## Local dependencies (Docker)
 
@@ -102,3 +104,15 @@ Integration-style tests under [`internal/modules/postgres`](internal/modules/pos
 ## Makefile
 
 See `Makefile` for common targets such as `make ci-gates`, `make ci`, `make build`, and the `prod-*` helpers.
+
+## Lean production (telemetry hardening checks)
+
+Before merging or promoting a release that touches production telemetry wiring, from the repository root (with a filled `deployments/prod/.env.production`, usually copied from `.env.production.example`):
+
+```powershell
+docker compose --env-file deployments/prod/.env.production -f deployments/prod/docker-compose.prod.yml config
+bash deployments/prod/scripts/validate_prod_telemetry.sh
+go build ./...
+```
+
+On the VPS after `docker compose up`, run `bash deployments/prod/scripts/healthcheck_prod.sh` (or `make prod-smoke` / `make prod-smoke-full` from `deployments/prod`). Operator runbooks: [docs/runbooks/telemetry-production-rollout.md](docs/runbooks/telemetry-production-rollout.md), [docs/runbooks/telemetry-jetstream-resilience.md](docs/runbooks/telemetry-jetstream-resilience.md).

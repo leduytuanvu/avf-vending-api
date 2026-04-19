@@ -63,11 +63,11 @@ SET
     last_publish_error = $2,
     last_publish_attempt_at = now(),
     next_publish_after = CASE
-        WHEN $4 THEN NULL
+        WHEN $4::boolean THEN NULL
         ELSE $3
     END,
     dead_lettered_at = CASE
-        WHEN $4 THEN now()
+        WHEN $4::boolean THEN now()
         ELSE dead_lettered_at
     END
 WHERE

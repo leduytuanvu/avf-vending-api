@@ -1,4 +1,4 @@
-.PHONY: tidy fmt fmt-check vet test build proto sqlc sqlc-check swagger swagger-check ci ci-gates check-placeholders check-wiring check-migrations run-api run-worker migrate-up migrate-down docker-up docker-down prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke
+.PHONY: tidy fmt fmt-check vet test build proto sqlc sqlc-check swagger swagger-check ci ci-gates check-placeholders check-wiring check-migrations run-api run-worker migrate-up migrate-down docker-up docker-down prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full
 
 BIN_DIR := bin
 GO ?= go
@@ -31,7 +31,7 @@ sqlc-check:
 	$(SQLC) generate
 	git diff --exit-code -- internal/gen/db/
 
-# Regenerate embedded OpenAPI 2.0 + docs/swagger/docs.go from swag-style comments (see tools/build_openapi.py).
+# Regenerate embedded OpenAPI 3.0 + docs/swagger/docs.go from swag-style comments (see tools/build_openapi.py).
 swagger:
 	@"$(PY)" tools/build_openapi.py
 
@@ -126,3 +126,12 @@ prod-restore:
 
 prod-smoke:
 	bash $(PROD_DIR)/scripts/healthcheck_prod.sh
+
+prod-compose-config:
+	cd $(PROD_DIR) && $(PROD_COMPOSE) config >/dev/null
+	@echo "prod-compose-config: OK"
+
+prod-validate-telemetry:
+	bash $(PROD_DIR)/scripts/validate_prod_telemetry.sh
+
+prod-smoke-full: prod-validate-telemetry prod-smoke

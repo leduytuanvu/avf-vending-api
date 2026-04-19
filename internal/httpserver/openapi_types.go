@@ -1,54 +1,36 @@
 package httpserver
 
+import "encoding/json"
+
 // OpenAPI / Swagger documentation types (runtime responses use compatible JSON shapes).
 // Handlers may return additional fields; these structs capture stable fields for spec generation.
 
-// V1StandardError is the usual JSON error envelope for /v1 handlers (see writeAPIError).
+// V1ErrorBody is the inner object for all JSON API errors under /v1 (handlers and auth middleware).
+type V1ErrorBody struct {
+	Code      string         `json:"code" example:"invalid_json"`
+	Message   string         `json:"message"`
+	Details   map[string]any `json:"details"`
+	RequestID string         `json:"requestId" example:"550e8400-e29b-41d4-a716-446655440000"`
+}
+
+// V1StandardError is the usual handler JSON error (see writeAPIError).
 type V1StandardError struct {
-	Error V1StandardErrorBody `json:"error"`
+	Error V1ErrorBody `json:"error"`
 }
 
-// V1StandardErrorBody is the inner object for V1StandardError.
-type V1StandardErrorBody struct {
-	Code    string `json:"code" example:"invalid_json"`
-	Message string `json:"message"`
-}
-
-// V1NotImplementedError is returned for some list endpoints that are not yet backed (HTTP 501).
+// V1NotImplementedError is HTTP **501**; error.details carries capability + implemented.
 type V1NotImplementedError struct {
-	Error V1NotImplementedBody `json:"error"`
+	Error V1ErrorBody `json:"error"`
 }
 
-// V1NotImplementedBody extends the standard envelope with capability metadata.
-type V1NotImplementedBody struct {
-	Code        string `json:"code" example:"not_implemented"`
-	Message     string `json:"message"`
-	Capability  string `json:"capability" example:"v1.admin.commands.list"`
-	Implemented bool   `json:"implemented" example:"false"`
-}
-
-// V1CapabilityNotConfiguredError is returned when optional wiring is missing (HTTP 503).
+// V1CapabilityNotConfiguredError is HTTP **503** when optional wiring is missing; details carry capability + implemented.
 type V1CapabilityNotConfiguredError struct {
-	Error V1CapabilityNotConfiguredBody `json:"error"`
+	Error V1ErrorBody `json:"error"`
 }
 
-// V1CapabilityNotConfiguredBody extends the standard envelope for optional infrastructure gaps.
-type V1CapabilityNotConfiguredBody struct {
-	Code        string `json:"code" example:"capability_not_configured"`
-	Message     string `json:"message"`
-	Capability  string `json:"capability" example:"mqtt_command_dispatch"`
-	Implemented bool   `json:"implemented" example:"false"`
-}
-
-// V1BearerAuthError is returned by Bearer middleware for auth failures (HTTP 401/403/503 from auth layer).
-// Note: misconfiguration responses may use plain text from http.Error on readiness; Bearer paths use JSON.
+// V1BearerAuthError is returned by Bearer and RBAC middleware (HTTP 401/403/400/503 from auth layer).
 type V1BearerAuthError struct {
-	Error V1BearerAuthErrorBody `json:"error"`
-}
-
-// V1BearerAuthErrorBody is a minimal shape (no `code` field — branch on HTTP status and message text).
-type V1BearerAuthErrorBody struct {
-	Message string `json:"message" example:"unauthenticated"`
+	Error V1ErrorBody `json:"error"`
 }
 
 // V1OperatorListEnvelope matches writeOperatorListEnvelope (items + meta.limit + meta.returned).
@@ -87,4 +69,359 @@ type V1ListViewEnvelope struct {
 type V1ListMeta struct {
 	Limit    int32 `json:"limit" example:"50"`
 	Returned int   `json:"returned" example:"12"`
+}
+
+// --- Auth session (POST /v1/auth/login, /v1/auth/refresh; GET /v1/auth/me; POST /v1/auth/logout) ---
+
+// V1AuthLoginRequest is documented in tools/build_openapi.py (example organizationId + email + password).
+type V1AuthLoginRequest struct {
+	OrganizationID string `json:"organizationId" example:"11111111-1111-1111-1111-111111111111"`
+	Email          string `json:"email" example:"admin@example.com"`
+	Password       string `json:"password" example:"••••••••"`
+}
+
+// V1AuthTokenPair is nested under login/refresh responses.
+type V1AuthTokenPair struct {
+	AccessToken      string `json:"accessToken"`
+	AccessExpiresAt  string `json:"accessExpiresAt"`
+	RefreshToken     string `json:"refreshToken"`
+	RefreshExpiresAt string `json:"refreshExpiresAt"`
+	TokenType        string `json:"tokenType" example:"Bearer"`
+}
+
+// V1AuthLoginResponse documents POST /v1/auth/login success.
+type V1AuthLoginResponse struct {
+	AccountID      string          `json:"accountId"`
+	OrganizationID string          `json:"organizationId"`
+	Email          string          `json:"email"`
+	Roles          []string        `json:"roles"`
+	Tokens         V1AuthTokenPair `json:"tokens"`
+}
+
+// V1AuthMeResponse documents GET /v1/auth/me success.
+type V1AuthMeResponse struct {
+	AccountID      string   `json:"accountId"`
+	OrganizationID string   `json:"organizationId"`
+	Email          string   `json:"email"`
+	Roles          []string `json:"roles"`
+}
+
+// V1AuthRefreshRequest is the refresh body.
+type V1AuthRefreshRequest struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
+// V1AuthRefreshResponse is POST /v1/auth/refresh success.
+type V1AuthRefreshResponse struct {
+	Tokens V1AuthTokenPair `json:"tokens"`
+}
+
+// V1AuthLogoutRequest optionally revokes a single refresh token or all sessions.
+type V1AuthLogoutRequest struct {
+	RefreshToken string `json:"refreshToken,omitempty"`
+	RevokeAll    bool   `json:"revokeAll,omitempty"`
+}
+
+// --- Admin catalog (read-only) ---
+
+// V1AdminPageMeta is pagination metadata for admin catalog lists.
+type V1AdminPageMeta struct {
+	Limit      int32 `json:"limit"`
+	Offset     int32 `json:"offset"`
+	Returned   int   `json:"returned"`
+	TotalCount int64 `json:"totalCount"`
+}
+
+// V1AdminProductListItem is a row in GET /v1/admin/products.
+type V1AdminProductListItem struct {
+	ID             string  `json:"id"`
+	OrganizationID string  `json:"organizationId"`
+	Sku            string  `json:"sku"`
+	Name           string  `json:"name"`
+	Description    string  `json:"description"`
+	Active         bool    `json:"active"`
+	CategoryID     *string `json:"categoryId,omitempty"`
+	BrandID        *string `json:"brandId,omitempty"`
+	CreatedAt      string  `json:"createdAt"`
+	UpdatedAt      string  `json:"updatedAt"`
+}
+
+// V1AdminProductListEnvelope matches listAdminProducts success JSON.
+type V1AdminProductListEnvelope struct {
+	Items []V1AdminProductListItem `json:"items"`
+	Meta  V1AdminPageMeta          `json:"meta"`
+}
+
+// V1AdminProduct is GET /v1/admin/products/{productId} success.
+type V1AdminProduct struct {
+	ID              string          `json:"id"`
+	OrganizationID  string          `json:"organizationId"`
+	Sku             string          `json:"sku"`
+	Name            string          `json:"name"`
+	Description     string          `json:"description"`
+	Attrs           json.RawMessage `json:"attrs,omitempty"`
+	Active          bool            `json:"active"`
+	CategoryID      *string         `json:"categoryId,omitempty"`
+	BrandID         *string         `json:"brandId,omitempty"`
+	PrimaryImageID  *string         `json:"primaryImageId,omitempty"`
+	CountryOfOrigin *string         `json:"countryOfOrigin,omitempty"`
+	AgeRestricted   bool            `json:"ageRestricted"`
+	AllergenCodes   []string        `json:"allergenCodes"`
+	NutritionalNote *string         `json:"nutritionalNote,omitempty"`
+	CreatedAt       string          `json:"createdAt"`
+	UpdatedAt       string          `json:"updatedAt"`
+}
+
+// V1AdminPriceBook is a row in GET /v1/admin/price-books.
+type V1AdminPriceBook struct {
+	ID             string  `json:"id"`
+	OrganizationID string  `json:"organizationId"`
+	Name           string  `json:"name"`
+	Currency       string  `json:"currency"`
+	EffectiveFrom  string  `json:"effectiveFrom"`
+	EffectiveTo    *string `json:"effectiveTo,omitempty"`
+	IsDefault      bool    `json:"isDefault"`
+	ScopeType      string  `json:"scopeType"`
+	SiteID         *string `json:"siteId,omitempty"`
+	MachineID      *string `json:"machineId,omitempty"`
+	Priority       int32   `json:"priority"`
+	CreatedAt      string  `json:"createdAt"`
+}
+
+// V1AdminPriceBookListEnvelope matches listAdminPriceBooks success JSON.
+type V1AdminPriceBookListEnvelope struct {
+	Items []V1AdminPriceBook `json:"items"`
+	Meta  V1AdminPageMeta    `json:"meta"`
+}
+
+// V1AdminPlanogram is a planogram summary row.
+type V1AdminPlanogram struct {
+	ID             string          `json:"id"`
+	OrganizationID string          `json:"organizationId"`
+	Name           string          `json:"name"`
+	Revision       int32           `json:"revision"`
+	Status         string          `json:"status"`
+	Meta           json.RawMessage `json:"meta,omitempty"`
+	CreatedAt      string          `json:"createdAt"`
+}
+
+// V1AdminPlanogramListEnvelope matches GET /v1/admin/planograms.
+type V1AdminPlanogramListEnvelope struct {
+	Items []V1AdminPlanogram `json:"items"`
+	Meta  V1AdminPageMeta    `json:"meta"`
+}
+
+// V1AdminPlanogramSlot is a slot assignment on a planogram.
+type V1AdminPlanogramSlot struct {
+	ID          string  `json:"id"`
+	PlanogramID string  `json:"planogramId"`
+	SlotIndex   int32   `json:"slotIndex"`
+	ProductID   *string `json:"productId,omitempty"`
+	MaxQuantity int32   `json:"maxQuantity"`
+	ProductSku  *string `json:"productSku,omitempty"`
+	ProductName *string `json:"productName,omitempty"`
+	CreatedAt   string  `json:"createdAt"`
+}
+
+// V1AdminPlanogramDetail is GET /v1/admin/planograms/{planogramId} (includes slot layout).
+type V1AdminPlanogramDetail struct {
+	Planogram V1AdminPlanogram       `json:"planogram"`
+	Slots     []V1AdminPlanogramSlot `json:"slots"`
+}
+
+// --- Admin inventory (read-only) ---
+
+// V1AdminMachineSlot is a machine slot projection with catalog joins.
+type V1AdminMachineSlot struct {
+	MachineID                string  `json:"machineId"`
+	MachineName              string  `json:"machineName"`
+	MachineStatus            string  `json:"machineStatus"`
+	PlanogramID              string  `json:"planogramId"`
+	PlanogramName            string  `json:"planogramName"`
+	SlotIndex                int32   `json:"slotIndex"`
+	CurrentQuantity          int32   `json:"currentQuantity"`
+	MaxQuantity              int32   `json:"maxQuantity"`
+	PriceMinor               int64   `json:"priceMinor"`
+	PlanogramRevisionApplied int32   `json:"planogramRevisionApplied"`
+	UpdatedAt                string  `json:"updatedAt"`
+	ProductID                *string `json:"productId,omitempty"`
+	ProductSku               *string `json:"productSku,omitempty"`
+	ProductName              *string `json:"productName,omitempty"`
+	IsEmpty                  bool    `json:"isEmpty"`
+	LowStock                 bool    `json:"lowStock"`
+}
+
+// V1AdminMachineSlotListEnvelope is GET /v1/admin/machines/{machineId}/slots.
+type V1AdminMachineSlotListEnvelope struct {
+	Items []V1AdminMachineSlot `json:"items"`
+}
+
+// V1AdminMachineInventoryLine is a rolled-up inventory row per product.
+type V1AdminMachineInventoryLine struct {
+	MachineID          string `json:"machineId"`
+	MachineName        string `json:"machineName"`
+	MachineStatus      string `json:"machineStatus"`
+	ProductID          string `json:"productId"`
+	ProductName        string `json:"productName"`
+	ProductSku         string `json:"productSku"`
+	TotalQuantity      int64  `json:"totalQuantity"`
+	SlotCount          int64  `json:"slotCount"`
+	MaxCapacityAnySlot int32  `json:"maxCapacityAnySlot"`
+	LowStock           bool   `json:"lowStock"`
+}
+
+// V1AdminMachineInventoryEnvelope is GET /v1/admin/machines/{machineId}/inventory.
+type V1AdminMachineInventoryEnvelope struct {
+	Items []V1AdminMachineInventoryLine `json:"items"`
+}
+
+// --- Operational collection lists (GET /v1/orders, /v1/payments, /v1/admin/* lists) ---
+
+// V1CollectionListMeta is shared pagination metadata (limit, offset, returned, total).
+type V1CollectionListMeta struct {
+	Limit    int32 `json:"limit"`
+	Offset   int32 `json:"offset"`
+	Returned int   `json:"returned"`
+	Total    int64 `json:"total"`
+}
+
+// V1OrderListItem is one row in GET /v1/orders.
+type V1OrderListItem struct {
+	OrderID        string  `json:"orderId"`
+	OrganizationID string  `json:"organizationId"`
+	MachineID      string  `json:"machineId"`
+	Status         string  `json:"status"`
+	Currency       string  `json:"currency"`
+	SubtotalMinor  int64   `json:"subtotalMinor"`
+	TaxMinor       int64   `json:"taxMinor"`
+	TotalMinor     int64   `json:"totalMinor"`
+	IdempotencyKey *string `json:"idempotencyKey,omitempty"`
+	CreatedAt      string  `json:"createdAt"`
+	UpdatedAt      string  `json:"updatedAt"`
+}
+
+// V1OrdersListResponse is GET /v1/orders success body.
+type V1OrdersListResponse struct {
+	Items []V1OrderListItem    `json:"items"`
+	Meta  V1CollectionListMeta `json:"meta"`
+}
+
+// V1PaymentListItem is one row in GET /v1/payments.
+type V1PaymentListItem struct {
+	PaymentID            string `json:"paymentId"`
+	OrderID              string `json:"orderId"`
+	OrganizationID       string `json:"organizationId"`
+	MachineID            string `json:"machineId"`
+	Provider             string `json:"provider"`
+	PaymentState         string `json:"paymentState"`
+	OrderStatus          string `json:"orderStatus"`
+	AmountMinor          int64  `json:"amountMinor"`
+	Currency             string `json:"currency"`
+	ReconciliationStatus string `json:"reconciliationStatus"`
+	SettlementStatus     string `json:"settlementStatus"`
+	CreatedAt            string `json:"createdAt"`
+	UpdatedAt            string `json:"updatedAt"`
+}
+
+// V1PaymentsListResponse is GET /v1/payments success body.
+type V1PaymentsListResponse struct {
+	Items []V1PaymentListItem  `json:"items"`
+	Meta  V1CollectionListMeta `json:"meta"`
+}
+
+// V1AdminMachineListItem is one machine in GET /v1/admin/machines.
+type V1AdminMachineListItem struct {
+	MachineID         string  `json:"machineId"`
+	OrganizationID    string  `json:"organizationId"`
+	SiteID            string  `json:"siteId"`
+	HardwareProfileID *string `json:"hardwareProfileId,omitempty"`
+	SerialNumber      string  `json:"serialNumber"`
+	Name              string  `json:"name"`
+	Status            string  `json:"status"`
+	CommandSequence   int64   `json:"commandSequence"`
+	CreatedAt         string  `json:"createdAt"`
+	UpdatedAt         string  `json:"updatedAt"`
+}
+
+// V1AdminMachinesListResponse is GET /v1/admin/machines success body.
+type V1AdminMachinesListResponse struct {
+	Items []V1AdminMachineListItem `json:"items"`
+	Meta  V1CollectionListMeta     `json:"meta"`
+}
+
+// V1AdminTechnicianListItem is one technician in GET /v1/admin/technicians.
+type V1AdminTechnicianListItem struct {
+	TechnicianID    string  `json:"technicianId"`
+	OrganizationID  string  `json:"organizationId"`
+	DisplayName     string  `json:"displayName"`
+	Email           *string `json:"email,omitempty"`
+	Phone           *string `json:"phone,omitempty"`
+	ExternalSubject *string `json:"externalSubject,omitempty"`
+	CreatedAt       string  `json:"createdAt"`
+}
+
+// V1AdminTechniciansListResponse is GET /v1/admin/technicians success body.
+type V1AdminTechniciansListResponse struct {
+	Items []V1AdminTechnicianListItem `json:"items"`
+	Meta  V1CollectionListMeta        `json:"meta"`
+}
+
+// V1AdminAssignmentListItem is one assignment in GET /v1/admin/assignments.
+type V1AdminAssignmentListItem struct {
+	AssignmentID          string  `json:"assignmentId"`
+	TechnicianID          string  `json:"technicianId"`
+	TechnicianDisplayName string  `json:"technicianDisplayName"`
+	MachineID             string  `json:"machineId"`
+	MachineName           string  `json:"machineName"`
+	MachineSerialNumber   string  `json:"machineSerialNumber"`
+	Role                  string  `json:"role"`
+	ValidFrom             string  `json:"validFrom"`
+	ValidTo               *string `json:"validTo,omitempty"`
+	CreatedAt             string  `json:"createdAt"`
+}
+
+// V1AdminAssignmentsListResponse is GET /v1/admin/assignments success body.
+type V1AdminAssignmentsListResponse struct {
+	Items []V1AdminAssignmentListItem `json:"items"`
+	Meta  V1CollectionListMeta        `json:"meta"`
+}
+
+// V1AdminCommandListItem is one command in GET /v1/admin/commands.
+type V1AdminCommandListItem struct {
+	CommandID           string  `json:"commandId"`
+	MachineID           string  `json:"machineId"`
+	OrganizationID      string  `json:"organizationId"`
+	MachineName         string  `json:"machineName"`
+	MachineSerialNumber string  `json:"machineSerialNumber"`
+	Sequence            int64   `json:"sequence"`
+	CommandType         string  `json:"commandType"`
+	CreatedAt           string  `json:"createdAt"`
+	AttemptCount        int32   `json:"attemptCount"`
+	LatestAttemptStatus string  `json:"latestAttemptStatus"`
+	CorrelationID       *string `json:"correlationId,omitempty"`
+}
+
+// V1AdminCommandsListResponse is GET /v1/admin/commands success body.
+type V1AdminCommandsListResponse struct {
+	Items []V1AdminCommandListItem `json:"items"`
+	Meta  V1CollectionListMeta     `json:"meta"`
+}
+
+// V1AdminOTAListItem is one OTA campaign in GET /v1/admin/ota.
+type V1AdminOTAListItem struct {
+	CampaignID         string  `json:"campaignId"`
+	OrganizationID     string  `json:"organizationId"`
+	CampaignName       string  `json:"campaignName"`
+	Strategy           string  `json:"strategy"`
+	CampaignStatus     string  `json:"campaignStatus"`
+	CreatedAt          string  `json:"createdAt"`
+	ArtifactID         string  `json:"artifactId"`
+	ArtifactSemver     *string `json:"artifactSemver,omitempty"`
+	ArtifactStorageKey string  `json:"artifactStorageKey"`
+}
+
+// V1AdminOTAListResponse is GET /v1/admin/ota success body.
+type V1AdminOTAListResponse struct {
+	Items []V1AdminOTAListItem `json:"items"`
+	Meta  V1CollectionListMeta `json:"meta"`
 }

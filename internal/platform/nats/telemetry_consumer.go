@@ -3,7 +3,6 @@ package nats
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	natssrv "github.com/nats-io/nats.go"
 )
@@ -13,42 +12,69 @@ type telemetryConsumerSpec struct {
 	Stream   string
 	Durable  string
 	Filter   string
-	AckWait  int // seconds
-	MaxAck   int
-	MaxDeliv int
 }
 
-// EnsureTelemetryDurableConsumers registers pull consumers for all telemetry streams (idempotent).
-func EnsureTelemetryDurableConsumers(js natssrv.JetStreamContext) error {
+// EnsureTelemetryDurableConsumers registers or updates pull consumers for all telemetry streams.
+func EnsureTelemetryDurableConsumers(js natssrv.JetStreamContext, lim TelemetryBrokerLimits) error {
 	if js == nil {
 		return fmt.Errorf("nats: nil jetstream context")
 	}
+	lim = normalizeTelemetryBrokerLimits(lim)
 	specs := []telemetryConsumerSpec{
-		{Stream: StreamTelemetryHeartbeat, Durable: "avf-w-telemetry-heartbeat", Filter: SubjectTelemetryPrefix + "heartbeat.>", AckWait: 30, MaxAck: 2048, MaxDeliv: 12},
-		{Stream: StreamTelemetryState, Durable: "avf-w-telemetry-state", Filter: SubjectTelemetryPrefix + "state.>", AckWait: 30, MaxAck: 2048, MaxDeliv: 12},
-		{Stream: StreamTelemetryMetrics, Durable: "avf-w-telemetry-metrics", Filter: SubjectTelemetryPrefix + "metrics.>", AckWait: 30, MaxAck: 4096, MaxDeliv: 12},
-		{Stream: StreamTelemetryIncidents, Durable: "avf-w-telemetry-incidents", Filter: SubjectTelemetryPrefix + "incident.>", AckWait: 30, MaxAck: 1024, MaxDeliv: 12},
-		{Stream: StreamTelemetryCommandReceipts, Durable: "avf-w-telemetry-command-receipts", Filter: SubjectTelemetryPrefix + "command_receipt.>", AckWait: 30, MaxAck: 2048, MaxDeliv: 12},
-		{Stream: StreamTelemetryDiagnosticBundleReady, Durable: "avf-w-telemetry-diagnostic", Filter: SubjectTelemetryPrefix + "diagnostic_bundle_ready.>", AckWait: 60, MaxAck: 512, MaxDeliv: 8},
+		{Stream: StreamTelemetryHeartbeat, Durable: "avf-w-telemetry-heartbeat", Filter: SubjectTelemetryPrefix + "heartbeat.>"},
+		{Stream: StreamTelemetryState, Durable: "avf-w-telemetry-state", Filter: SubjectTelemetryPrefix + "state.>"},
+		{Stream: StreamTelemetryMetrics, Durable: "avf-w-telemetry-metrics", Filter: SubjectTelemetryPrefix + "metrics.>"},
+		{Stream: StreamTelemetryIncidents, Durable: "avf-w-telemetry-incidents", Filter: SubjectTelemetryPrefix + "incident.>"},
+		{Stream: StreamTelemetryCommandReceipts, Durable: "avf-w-telemetry-command-receipts", Filter: SubjectTelemetryPrefix + "command_receipt.>"},
+		{Stream: StreamTelemetryDiagnosticBundleReady, Durable: "avf-w-telemetry-diagnostic", Filter: SubjectTelemetryPrefix + "diagnostic_bundle_ready.>"},
 	}
 	for _, s := range specs {
 		cfg := &natssrv.ConsumerConfig{
 			Durable:       s.Durable,
 			AckPolicy:     natssrv.AckExplicitPolicy,
-			AckWait:       time.Duration(s.AckWait) * time.Second,
-			MaxAckPending: s.MaxAck,
-			MaxDeliver:    s.MaxDeliv,
+			AckWait:       lim.ConsumerAckWait,
+			MaxAckPending: lim.ConsumerMaxAckPending,
+			MaxDeliver:    lim.ConsumerMaxDeliver,
 			FilterSubject: s.Filter,
 			DeliverPolicy: natssrv.DeliverAllPolicy,
 		}
-		if _, err := js.ConsumerInfo(s.Stream, s.Durable); err == nil {
-			continue
-		} else if !errors.Is(err, natssrv.ErrConsumerNotFound) {
-			return fmt.Errorf("nats: consumer info %s/%s: %w", s.Stream, s.Durable, err)
-		}
-		if _, err := js.AddConsumer(s.Stream, cfg); err != nil {
-			return fmt.Errorf("nats: add consumer %s/%s: %w", s.Stream, s.Durable, err)
+		if err := ensureTelemetryConsumer(js, s.Stream, cfg); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func ensureTelemetryConsumer(js natssrv.JetStreamContext, stream string, want *natssrv.ConsumerConfig) error {
+	info, err := js.ConsumerInfo(stream, want.Durable)
+	if err != nil {
+		if errors.Is(err, natssrv.ErrConsumerNotFound) {
+			_, err = js.AddConsumer(stream, want)
+			if err != nil {
+				return fmt.Errorf("nats: add consumer %s/%s: %w", stream, want.Durable, err)
+			}
+			return nil
+		}
+		return fmt.Errorf("nats: consumer info %s/%s: %w", stream, want.Durable, err)
+	}
+	if telemetryConsumerConfigMatches(&info.Config, want) {
+		return nil
+	}
+	if _, err := js.UpdateConsumer(stream, want); err != nil {
+		return fmt.Errorf("nats: update consumer %s/%s: %w", stream, want.Durable, err)
+	}
+	return nil
+}
+
+func telemetryConsumerConfigMatches(have, want *natssrv.ConsumerConfig) bool {
+	if have == nil || want == nil {
+		return false
+	}
+	return have.Durable == want.Durable &&
+		have.FilterSubject == want.FilterSubject &&
+		have.AckPolicy == want.AckPolicy &&
+		have.DeliverPolicy == want.DeliverPolicy &&
+		have.AckWait == want.AckWait &&
+		have.MaxAckPending == want.MaxAckPending &&
+		have.MaxDeliver == want.MaxDeliver
 }

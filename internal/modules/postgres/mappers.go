@@ -15,7 +15,7 @@ func mapOrder(row db.Order) commerce.Order {
 		SubtotalMinor:  row.SubtotalMinor,
 		TaxMinor:       row.TaxMinor,
 		TotalMinor:     row.TotalMinor,
-		IdempotencyKey: row.IdempotencyKey,
+		IdempotencyKey: pgTextToStringPtr(row.IdempotencyKey),
 		CreatedAt:      row.CreatedAt,
 		UpdatedAt:      row.UpdatedAt,
 	}
@@ -29,7 +29,7 @@ func mapVend(row db.VendSession) commerce.VendSession {
 		SlotIndex:             row.SlotIndex,
 		ProductID:             row.ProductID,
 		State:                 row.State,
-		FinalCommandAttemptID: row.FinalCommandAttemptID,
+		FinalCommandAttemptID: pgUUIDToPtr(row.FinalCommandAttemptID),
 		CreatedAt:             row.CreatedAt,
 	}
 }
@@ -42,7 +42,7 @@ func mapVendFromStuckReconcileRow(row db.ListVendSessionsStuckForReconciliationR
 		SlotIndex:             row.SlotIndex,
 		ProductID:             row.ProductID,
 		State:                 row.State,
-		FinalCommandAttemptID: row.FinalCommandAttemptID,
+		FinalCommandAttemptID: pgUUIDToPtr(row.FinalCommandAttemptID),
 		CreatedAt:             row.CreatedAt,
 	}
 }
@@ -55,10 +55,10 @@ func mapPayment(row db.Payment) commerce.Payment {
 		State:                row.State,
 		AmountMinor:          row.AmountMinor,
 		Currency:             row.Currency,
-		IdempotencyKey:       row.IdempotencyKey,
+		IdempotencyKey:       pgTextToStringPtr(row.IdempotencyKey),
 		ReconciliationStatus: row.ReconciliationStatus,
 		SettlementStatus:     row.SettlementStatus,
-		SettlementBatchID:    row.SettlementBatchID,
+		SettlementBatchID:    pgUUIDToPtr(row.SettlementBatchID),
 		CreatedAt:            row.CreatedAt,
 	}
 }
@@ -66,19 +66,19 @@ func mapPayment(row db.Payment) commerce.Payment {
 func mapOutbox(row db.OutboxEvent) commerce.OutboxEvent {
 	return commerce.OutboxEvent{
 		ID:                   row.ID,
-		OrganizationID:       row.OrganizationID,
+		OrganizationID:       pgUUIDToPtr(row.OrganizationID),
 		Topic:                row.Topic,
 		EventType:            row.EventType,
 		Payload:              row.Payload,
 		AggregateType:        row.AggregateType,
 		AggregateID:          row.AggregateID,
-		IdempotencyKey:       row.IdempotencyKey,
+		IdempotencyKey:       pgTextToStringPtr(row.IdempotencyKey),
 		CreatedAt:            row.CreatedAt,
-		PublishedAt:          row.PublishedAt,
+		PublishedAt:          pgTimestamptzToTimePtr(row.PublishedAt),
 		PublishAttemptCount:  row.PublishAttemptCount,
-		LastPublishError:     row.LastPublishError,
-		LastPublishAttemptAt: row.LastPublishAttemptAt,
-		NextPublishAfter:     row.NextPublishAfter,
-		DeadLetteredAt:       row.DeadLetteredAt,
+		LastPublishError:     pgTextToStringPtr(row.LastPublishError),
+		LastPublishAttemptAt: pgTimestamptzToTimePtr(row.LastPublishAttemptAt),
+		NextPublishAfter:     pgTimestamptzToTimePtr(row.NextPublishAfter),
+		DeadLetteredAt:       pgTimestamptzToTimePtr(row.DeadLetteredAt),
 	}
 }

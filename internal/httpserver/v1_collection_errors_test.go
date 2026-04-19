@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +12,7 @@ import (
 
 func TestWriteCapabilityNotConfigured(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeCapabilityNotConfigured(rec, "mqtt_command_dispatch", "MQTT broker client is not configured")
+	writeCapabilityNotConfigured(rec, context.Background(), "mqtt_command_dispatch", "MQTT broker client is not configured")
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status: got %d want %d", rec.Code, http.StatusServiceUnavailable)
 	}
@@ -26,17 +27,24 @@ func TestWriteCapabilityNotConfigured(t *testing.T) {
 	if errObj["code"] != "capability_not_configured" {
 		t.Fatalf("code: got %v", errObj["code"])
 	}
-	if errObj["implemented"] != false {
-		t.Fatalf("implemented: got %v", errObj["implemented"])
+	details, ok := errObj["details"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing details: %#v", errObj)
 	}
-	if errObj["capability"] != "mqtt_command_dispatch" {
-		t.Fatalf("capability: got %v", errObj["capability"])
+	if details["implemented"] != false {
+		t.Fatalf("implemented: got %v", details["implemented"])
+	}
+	if details["capability"] != "mqtt_command_dispatch" {
+		t.Fatalf("capability: got %v", details["capability"])
+	}
+	if _, ok := errObj["requestId"].(string); !ok {
+		t.Fatalf("requestId: got %v", errObj["requestId"])
 	}
 }
 
 func TestWriteV1ListError_NotImplemented(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeV1ListError(rec, &api.CapabilityError{
+	writeV1ListError(rec, context.Background(), &api.CapabilityError{
 		Capability: "v1.admin.commands.list",
 		Message:    "command listing is not implemented for this API revision",
 	})
@@ -54,17 +62,21 @@ func TestWriteV1ListError_NotImplemented(t *testing.T) {
 	if errObj["code"] != "not_implemented" {
 		t.Fatalf("code: got %v", errObj["code"])
 	}
-	if errObj["implemented"] != false {
-		t.Fatalf("implemented: got %v", errObj["implemented"])
+	details, ok := errObj["details"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing details: %#v", errObj)
 	}
-	if errObj["capability"] != "v1.admin.commands.list" {
-		t.Fatalf("capability: got %v", errObj["capability"])
+	if details["implemented"] != false {
+		t.Fatalf("implemented: got %v", details["implemented"])
+	}
+	if details["capability"] != "v1.admin.commands.list" {
+		t.Fatalf("capability: got %v", details["capability"])
 	}
 }
 
 func TestWriteV1ListError_TenantScopeRequired(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeV1ListError(rec, api.ErrAdminTenantScopeRequired)
+	writeV1ListError(rec, context.Background(), api.ErrAdminTenantScopeRequired)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status: got %d want %d", rec.Code, http.StatusBadRequest)
 	}
@@ -72,7 +84,7 @@ func TestWriteV1ListError_TenantScopeRequired(t *testing.T) {
 
 func TestWriteMachineShadowLoadError_NotFound(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeMachineShadowLoadError(rec, api.ErrMachineShadowNotFound)
+	writeMachineShadowLoadError(rec, context.Background(), api.ErrMachineShadowNotFound)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status: got %d want %d", rec.Code, http.StatusNotFound)
 	}

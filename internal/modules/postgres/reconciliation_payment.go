@@ -11,6 +11,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ApplyReconciledPaymentTransition updates payment state only from created|authorized, records a payment_attempt row.
@@ -72,7 +73,7 @@ func (s *Store) ApplyReconciledPaymentTransition(ctx context.Context, in domainc
 	ref := "reconciler:provider_probe"
 	if _, err := qtx.InsertPaymentAttempt(ctx, db.InsertPaymentAttemptParams{
 		PaymentID:         in.PaymentID,
-		ProviderReference: &ref,
+		ProviderReference: pgtype.Text{String: ref, Valid: true},
 		State:             "reconciliation.probe." + to,
 		Payload:           attemptPayload,
 	}); err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/observability"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
+	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -26,6 +28,9 @@ import (
 func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	if cfg == nil || log == nil {
 		return fmt.Errorf("bootstrap: nil dependency")
+	}
+	if cfg.AppEnv == config.AppEnvProduction && strings.TrimSpace(os.Getenv(platformnats.EnvNATSURL)) == "" {
+		return fmt.Errorf("bootstrap: APP_ENV=production requires non-empty %s (NATS/JetStream is mandatory for telemetry and related async paths)", platformnats.EnvNATSURL)
 	}
 
 	shutdownTracer, err := observability.InitTracer(ctx, cfg)
@@ -112,6 +117,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		Commerce:           commerceSvc,
 		MQTTCommandPublish: rt.Deps.MQTTPublisher,
 		Artifacts:          artifactSvc,
+		HTTPAuth:           cfg.HTTPAuth,
 	})
 
 	httpSrv, err := httpserver.NewHTTPServer(cfg, log, rt, httpApp)

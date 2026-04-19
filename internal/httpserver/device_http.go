@@ -36,26 +36,26 @@ type postCommandDispatchBody struct {
 func postMachineCommandDispatch(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if app == nil || app.RemoteCommands == nil {
-			writeAPIError(w, http.StatusInternalServerError, "internal", "application not configured")
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "application not configured")
 			return
 		}
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		idem, err := requireWriteIdempotencyKey(r)
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "missing_idempotency_key", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
 		var body postCommandDispatchBody
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_json", "request body must be JSON")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 			return
 		}
 		if strings.TrimSpace(body.CommandType) == "" {
-			writeAPIError(w, http.StatusBadRequest, "invalid_command", "command_type is required")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_command", "command_type is required")
 			return
 		}
 		payload := []byte(body.Payload)
@@ -63,7 +63,7 @@ func postMachineCommandDispatch(app *api.HTTPApplication) http.HandlerFunc {
 			payload = []byte("{}")
 		}
 		if !json.Valid(payload) {
-			writeAPIError(w, http.StatusBadRequest, "invalid_payload", "payload must be JSON")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_payload", "payload must be JSON")
 			return
 		}
 		desired := []byte(body.DesiredState)
@@ -71,7 +71,7 @@ func postMachineCommandDispatch(app *api.HTTPApplication) http.HandlerFunc {
 			desired = []byte("{}")
 		}
 		if !json.Valid(desired) {
-			writeAPIError(w, http.StatusBadRequest, "invalid_desired_state", "desired_state must be JSON when set")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_desired_state", "desired_state must be JSON when set")
 			return
 		}
 
@@ -93,10 +93,10 @@ func postMachineCommandDispatch(app *api.HTTPApplication) http.HandlerFunc {
 		})
 		if err != nil {
 			if errors.Is(err, appdevice.ErrMQTTCommandPublisherMissing) {
-				writeCapabilityNotConfigured(w, "mqtt_command_dispatch", "MQTT broker client is not configured for this API process (set MQTT_BROKER_URL and MQTT_CLIENT_ID)")
+				writeCapabilityNotConfigured(w, r.Context(), "mqtt_command_dispatch", "MQTT broker client is not configured for this API process (set MQTT_BROKER_URL and MQTT_CLIENT_ID)")
 				return
 			}
-			writeAPIError(w, http.StatusInternalServerError, "dispatch_failed", err.Error())
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "dispatch_failed", err.Error())
 			return
 		}
 		writeJSON(w, http.StatusOK, out)
@@ -106,27 +106,27 @@ func postMachineCommandDispatch(app *api.HTTPApplication) http.HandlerFunc {
 func getMachineCommandDispatchStatus(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if app == nil || app.RemoteCommands == nil {
-			writeAPIError(w, http.StatusInternalServerError, "internal", "application not configured")
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "application not configured")
 			return
 		}
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		seqStr := strings.TrimSpace(chi.URLParam(r, "sequence"))
 		seq, err := strconv.ParseInt(seqStr, 10, 64)
 		if err != nil || seq < 0 {
-			writeAPIError(w, http.StatusBadRequest, "invalid_sequence", "sequence must be a non-negative integer")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_sequence", "sequence must be a non-negative integer")
 			return
 		}
 		out, err := app.RemoteCommands.GetRemoteCommandStatus(r.Context(), machineID, seq)
 		if err != nil {
 			if errors.Is(err, appdevice.ErrNotFound) {
-				writeAPIError(w, http.StatusNotFound, "command_not_found", "no command ledger row for this machine and sequence")
+				writeAPIError(w, r.Context(), http.StatusNotFound, "command_not_found", "no command ledger row for this machine and sequence")
 				return
 			}
-			writeAPIError(w, http.StatusInternalServerError, "internal", err.Error())
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
 		writeJSON(w, http.StatusOK, out)
@@ -136,22 +136,22 @@ func getMachineCommandDispatchStatus(app *api.HTTPApplication) http.HandlerFunc 
 func listMachineCommandReceipts(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if app == nil || app.RemoteCommands == nil {
-			writeAPIError(w, http.StatusInternalServerError, "internal", "application not configured")
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "application not configured")
 			return
 		}
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		limit, lerr := parseOperatorListLimit(r)
 		if lerr != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_limit", lerr.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
 		items, err := app.RemoteCommands.ListRecentCommandReceipts(r.Context(), machineID, limit)
 		if err != nil {
-			writeAPIError(w, http.StatusInternalServerError, "internal", err.Error())
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{

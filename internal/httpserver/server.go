@@ -43,6 +43,10 @@ func NewHTTPServer(cfg *config.Config, log *zap.Logger, probe ReadinessProbe, ht
 	if err != nil {
 		return nil, fmt.Errorf("httpserver: auth validator: %w", err)
 	}
+	if sec := auth.TrimSecret(cfg.HTTPAuth.LoginJWTSecret); len(sec) > 0 {
+		secondary := auth.NewHS256AccessTokenValidator(sec, cfg.HTTPAuth.JWTLeeway)
+		validator = auth.ChainAccessTokenValidators(validator, secondary)
+	}
 	mode := strings.ToLower(strings.TrimSpace(cfg.HTTPAuth.Mode))
 	if mode == "rs256_jwks" && !cfg.HTTPAuth.JWKSSkipStartupWarm {
 		if err := auth.MaybeWarmJWKS(context.Background(), validator); err != nil {
@@ -103,84 +107,117 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 	v1Auth := auth.BearerAccessTokenMiddlewareWithValidator(validator, log)
 
 	r.Route("/v1", func(r chi.Router) {
-		r.Use(v1Auth)
-
-		r.Route("/admin", func(r chi.Router) {
-			r.Use(auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin))
-			r.Get("/machines", func(w http.ResponseWriter, r *http.Request) {
-				out, err := app.AdminMachines.ListMachines(r.Context(), adminListScope(r))
-				writeV1ListView(w, out, err)
-			})
-			r.Get("/technicians", func(w http.ResponseWriter, r *http.Request) {
-				out, err := app.AdminTechnicians.ListTechnicians(r.Context(), adminListScope(r))
-				writeV1ListView(w, out, err)
-			})
-			r.Get("/assignments", func(w http.ResponseWriter, r *http.Request) {
-				out, err := app.AdminAssignments.ListAssignments(r.Context(), adminListScope(r))
-				writeV1ListView(w, out, err)
-			})
-			r.Get("/commands", func(w http.ResponseWriter, r *http.Request) {
-				out, err := app.AdminCommands.ListCommands(r.Context(), adminListScope(r))
-				writeV1ListView(w, out, err)
-			})
-			r.Get("/ota", func(w http.ResponseWriter, r *http.Request) {
-				out, err := app.AdminOTA.ListOTA(r.Context(), adminListScope(r))
-				writeV1ListView(w, out, err)
-			})
-			mountArtifactAdminRoutes(r, app, writeRL)
-		})
-
-		// Operator cross-machine read APIs for support (wider role gate than /admin).
-		r.Route("/operator-insights", func(r chi.Router) {
-			r.Use(auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin, auth.RoleOrgMember))
-			mountOperatorAdminInsightRoutes(r, app)
+		r.Route("/auth", func(r chi.Router) {
+			mountAuthRoutes(r, app)
 		})
 
 		r.Group(func(r chi.Router) {
-			r.Use(auth.RequireOrganizationScope)
-			r.Get("/payments", func(w http.ResponseWriter, r *http.Request) {
-				out, err := app.Payments.ListPayments(r.Context(), tenantCommerceScope(r))
-				writeV1ListView(w, out, err)
-			})
-			r.Get("/orders", func(w http.ResponseWriter, r *http.Request) {
-				out, err := app.Orders.ListOrders(r.Context(), tenantCommerceScope(r))
-				writeV1ListView(w, out, err)
+			r.Use(v1Auth)
+			r.Route("/auth", func(r chi.Router) {
+				mountAuthBearerRoutes(r, app)
 			})
 		})
 
-		r.With(auth.RequireMachineURLAccess("machineId")).Get("/machines/{machineId}/shadow", machineShadowGet(app.MachineShadow))
-		mountMachineTelemetryRoutes(r, app)
-
-		// Sensitive writes: commerce, operator sessions, remote command dispatch (token bucket per IP when enabled).
 		r.Group(func(r chi.Router) {
-			r.Use(writeRL)
-			mountDeviceCommandRoutes(r, app)
-			mountOperatorSessionRoutes(r, app)
-			mountCommerceRoutes(r, app, cfg)
+			r.Use(v1Auth)
+
+			r.Route("/admin", func(r chi.Router) {
+				r.Use(auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin))
+				mountAdminCatalogRoutes(r, app)
+				mountAdminInventoryRoutes(r, app)
+				r.Get("/machines", func(w http.ResponseWriter, r *http.Request) {
+					scope, err := parseAdminFleetListScope(r)
+					if err != nil {
+						writeV1ListError(w, r.Context(), err)
+						return
+					}
+					out, err := app.AdminMachines.ListMachines(r.Context(), scope)
+					writeV1Collection(w, r.Context(), out, err)
+				})
+				r.Get("/technicians", func(w http.ResponseWriter, r *http.Request) {
+					scope, err := parseAdminFleetListScope(r)
+					if err != nil {
+						writeV1ListError(w, r.Context(), err)
+						return
+					}
+					out, err := app.AdminTechnicians.ListTechnicians(r.Context(), scope)
+					writeV1Collection(w, r.Context(), out, err)
+				})
+				r.Get("/assignments", func(w http.ResponseWriter, r *http.Request) {
+					scope, err := parseAdminFleetListScope(r)
+					if err != nil {
+						writeV1ListError(w, r.Context(), err)
+						return
+					}
+					out, err := app.AdminAssignments.ListAssignments(r.Context(), scope)
+					writeV1Collection(w, r.Context(), out, err)
+				})
+				r.Get("/commands", func(w http.ResponseWriter, r *http.Request) {
+					scope, err := parseAdminFleetListScope(r)
+					if err != nil {
+						writeV1ListError(w, r.Context(), err)
+						return
+					}
+					out, err := app.AdminCommands.ListCommands(r.Context(), scope)
+					writeV1Collection(w, r.Context(), out, err)
+				})
+				r.Get("/ota", func(w http.ResponseWriter, r *http.Request) {
+					scope, err := parseAdminFleetListScope(r)
+					if err != nil {
+						writeV1ListError(w, r.Context(), err)
+						return
+					}
+					out, err := app.AdminOTA.ListOTA(r.Context(), scope)
+					writeV1Collection(w, r.Context(), out, err)
+				})
+				mountArtifactAdminRoutes(r, app, writeRL)
+			})
+
+			r.Route("/reports", func(r chi.Router) {
+				r.Use(auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin))
+				mountReportingRoutes(r, app)
+			})
+
+			// Operator cross-machine read APIs for support (wider role gate than /admin).
+			r.Route("/operator-insights", func(r chi.Router) {
+				r.Use(auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin, auth.RoleOrgMember))
+				mountOperatorAdminInsightRoutes(r, app)
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireOrganizationScope)
+				r.Get("/payments", func(w http.ResponseWriter, r *http.Request) {
+					scope, err := parseTenantCommerceListScope(r)
+					if err != nil {
+						writeV1ListError(w, r.Context(), err)
+						return
+					}
+					out, err := app.Payments.ListPayments(r.Context(), scope)
+					writeV1Collection(w, r.Context(), out, err)
+				})
+				r.Get("/orders", func(w http.ResponseWriter, r *http.Request) {
+					scope, err := parseTenantCommerceListScope(r)
+					if err != nil {
+						writeV1ListError(w, r.Context(), err)
+						return
+					}
+					out, err := app.Orders.ListOrders(r.Context(), scope)
+					writeV1Collection(w, r.Context(), out, err)
+				})
+			})
+
+			r.With(auth.RequireMachineURLAccess("machineId")).Get("/machines/{machineId}/shadow", machineShadowGet(app.MachineShadow))
+			mountMachineTelemetryRoutes(r, app)
+
+			// Sensitive writes: commerce, operator sessions, remote command dispatch (token bucket per IP when enabled).
+			r.Group(func(r chi.Router) {
+				r.Use(writeRL)
+				mountDeviceCommandRoutes(r, app)
+				mountOperatorSessionRoutes(r, app)
+				mountCommerceRoutes(r, app, cfg)
+			})
 		})
 	})
-}
-
-func adminListScope(r *http.Request) api.AdminListScope {
-	p, ok := auth.PrincipalFromContext(r.Context())
-	if !ok {
-		return api.AdminListScope{}
-	}
-	return api.AdminListScope{
-		IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin),
-		OrganizationID:  p.OrganizationID,
-	}
-}
-
-func tenantCommerceScope(r *http.Request) api.TenantCommerceScope {
-	p, ok := auth.PrincipalFromContext(r.Context())
-	if !ok {
-		return api.TenantCommerceScope{}
-	}
-	return api.TenantCommerceScope{
-		IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin),
-		OrganizationID:  p.OrganizationID,
-	}
 }
 
 func machineShadowGet(svc api.MachineShadowService) http.HandlerFunc {
@@ -188,12 +225,12 @@ func machineShadowGet(svc api.MachineShadowService) http.HandlerFunc {
 		raw := chi.URLParam(r, "machineId")
 		id, err := uuid.Parse(raw)
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		out, err := svc.GetShadow(r.Context(), id)
 		if err != nil {
-			writeMachineShadowLoadError(w, err)
+			writeMachineShadowLoadError(w, r.Context(), err)
 			return
 		}
 		writeJSON(w, http.StatusOK, out)

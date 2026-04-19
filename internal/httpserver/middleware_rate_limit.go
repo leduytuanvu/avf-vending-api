@@ -88,7 +88,7 @@ func SensitiveWriteRateLimitIfEnabled(cfg config.HTTPRateLimitConfig, log *zap.L
 					zap.String("request_id", reqID),
 					zap.String("correlation_id", corr),
 				)
-				writeAPIError(w, http.StatusTooManyRequests, "rate_limited", "too many requests")
+				writeAPIError(w, r.Context(), http.StatusTooManyRequests, "rate_limited", "too many requests")
 				return
 			}
 			next.ServeHTTP(w, r)

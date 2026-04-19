@@ -10,6 +10,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -67,7 +68,7 @@ func (r *fleetRepository) InsertMachine(ctx context.Context, p appfleet.InsertMa
 	row, err := db.New(r.pool).InsertMachine(ctx, db.InsertMachineParams{
 		OrganizationID:    p.OrganizationID,
 		SiteID:            p.SiteID,
-		HardwareProfileID: p.HardwareProfileID,
+		HardwareProfileID: optionalUUIDToPg(p.HardwareProfileID),
 		SerialNumber:      p.SerialNumber,
 		Name:              p.Name,
 		Status:            p.Status,
@@ -95,13 +96,15 @@ func (r *fleetRepository) UpdateMachineMetadata(ctx context.Context, p appfleet.
 	if p.Status != nil {
 		status = *p.Status
 	}
-	hw := cur.HardwareProfileID
+	var hw pgtype.UUID
 	if p.HardwareProfileID != nil {
-		hw = p.HardwareProfileID
+		hw = optionalUUIDToPg(p.HardwareProfileID)
+	} else {
+		hw = optionalUUIDToPg(cur.HardwareProfileID)
 	}
 
 	row, err := db.New(r.pool).UpdateMachineMetadataRow(ctx, db.UpdateMachineMetadataRowParams{
-		MachineID:         p.MachineID,
+		ID:                p.MachineID,
 		OrganizationID:    p.OrganizationID,
 		Name:              name,
 		Status:            status,
@@ -157,7 +160,7 @@ func mapTechnicianMachineAssignment(row db.TechnicianMachineAssignment) domainfl
 		MachineID:    row.MachineID,
 		Role:         row.Role,
 		ValidFrom:    row.ValidFrom,
-		ValidTo:      row.ValidTo,
+		ValidTo:      pgTimestamptzToTimePtr(row.ValidTo),
 		CreatedAt:    row.CreatedAt,
 	}
 }

@@ -21,6 +21,7 @@ import (
 	platformdb "github.com/avf/avf-vending-api/internal/platform/db"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
 	"github.com/joho/godotenv"
+	natssrv "github.com/nats-io/nats.go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
@@ -71,6 +72,8 @@ func main() {
 
 	var outboxPub domaincommerce.OutboxPublisher
 	var outboxDLQ appbackground.OutboxDeadLetterPublisher
+	var telemetryWorkers *telemetryapp.JetStreamWorkers
+	var telemetryJS natssrv.JetStreamContext
 	if natsURL := strings.TrimSpace(os.Getenv(platformnats.EnvNATSURL)); natsURL != "" {
 		nc, err := platformnats.ConnectJetStream(ctx, natsURL, "avf-worker-outbox")
 		if err != nil {
@@ -80,10 +83,11 @@ func main() {
 		if err := platformnats.EnsureInternalStreams(nc.JS); err != nil {
 			log.Fatal("nats streams", zap.Error(err))
 		}
-		if err := platformnats.EnsureTelemetryStreams(nc.JS); err != nil {
+		jsLim := cfg.TelemetryJetStream.NATSBrokerLimits()
+		if err := platformnats.EnsureTelemetryStreams(nc.JS, jsLim); err != nil {
 			log.Fatal("nats telemetry streams", zap.Error(err))
 		}
-		if err := platformnats.EnsureTelemetryDurableConsumers(nc.JS); err != nil {
+		if err := platformnats.EnsureTelemetryDurableConsumers(nc.JS, jsLim); err != nil {
 			log.Fatal("nats telemetry consumers", zap.Error(err))
 		}
 		outboxPub = platformnats.NewJetStreamOutboxPublisher(nc.JS)
@@ -92,7 +96,16 @@ func main() {
 			zap.String("stream_outbox", platformnats.StreamOutbox),
 			zap.String("stream_dlq", platformnats.StreamDLQ),
 		)
-		tw := &telemetryapp.JetStreamWorkers{Log: log, NC: nc.Conn, Store: store}
+		tw := telemetryapp.NewJetStreamWorkers(telemetryapp.JetStreamWorkersConfig{
+			Log:         log,
+			NC:          nc.Conn,
+			JS:          nc.JS,
+			Store:       store,
+			Telemetry:   cfg.TelemetryJetStream,
+			Limits:      jsLim,
+		})
+		telemetryWorkers = tw
+		telemetryJS = nc.JS
 		go func() {
 			if err := tw.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				log.Error("telemetry jetstream workers exited", zap.Error(err))
@@ -106,12 +119,33 @@ func main() {
 		if addr == "" {
 			addr = "127.0.0.1:9091"
 		}
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		mux.HandleFunc("/health/live", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+		})
+		mux.HandleFunc("/health/ready", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			if telemetryWorkers == nil || telemetryJS == nil {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte("ok"))
+				return
+			}
+			if err := telemetryWorkers.Ready(r.Context(), telemetryJS); err != nil {
+				http.Error(w, "not ready", http.StatusServiceUnavailable)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ok"))
+		})
 		metricsSrv = &http.Server{
 			Addr:    addr,
-			Handler: promhttp.Handler(),
+			Handler: mux,
 		}
 		go func() {
-			log.Info("worker_metrics_listen", zap.String("addr", addr), zap.String("path", "/metrics"))
+			log.Info("worker_metrics_listen", zap.String("addr", addr), zap.Strings("paths", []string{"/metrics", "/health/live", "/health/ready"}))
 			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				log.Error("worker metrics server exited", zap.Error(err))
 			}

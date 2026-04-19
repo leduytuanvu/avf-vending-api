@@ -7,7 +7,9 @@ import (
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var _ appcommerce.PaymentWebhookPersistence = (*Store)(nil)
@@ -39,10 +41,10 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 
 	existingEv, err := q.GetPaymentProviderEventByProviderRef(ctx, db.GetPaymentProviderEventByProviderRefParams{
 		Provider:    in.Provider,
-		ProviderRef: in.ProviderReference,
+		ProviderRef: pgtype.Text{String: in.ProviderReference, Valid: true},
 	})
 	if err == nil {
-		if existingEv.PaymentID == nil || *existingEv.PaymentID != in.PaymentID {
+		if !existingEv.PaymentID.Valid || uuid.UUID(existingEv.PaymentID.Bytes) != in.PaymentID {
 			return appcommerce.ApplyPaymentProviderWebhookResult{}, errors.Join(appcommerce.ErrOrgMismatch, errors.New("provider reference already bound to a different payment"))
 		}
 		pay, pErr := q.GetPaymentByID(ctx, in.PaymentID)
@@ -94,12 +96,20 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		}
 	}
 
+	var amt pgtype.Int8
+	if in.ProviderAmountMinor != nil {
+		amt = pgtype.Int8{Int64: *in.ProviderAmountMinor, Valid: true}
+	}
+	var cur pgtype.Text
+	if in.Currency != nil {
+		cur = pgtype.Text{String: *in.Currency, Valid: true}
+	}
 	ev, err := q.InsertPaymentProviderEvent(ctx, db.InsertPaymentProviderEventParams{
-		PaymentID:           in.PaymentID,
+		PaymentID:           pgtype.UUID{Bytes: in.PaymentID, Valid: true},
 		Provider:            in.Provider,
-		ProviderRef:         in.ProviderReference,
-		ProviderAmountMinor: in.ProviderAmountMinor,
-		Currency:            in.Currency,
+		ProviderRef:         pgtype.Text{String: in.ProviderReference, Valid: true},
+		ProviderAmountMinor: amt,
+		Currency:            cur,
 		EventType:           in.EventType,
 		Payload:             in.Payload,
 	})
@@ -111,10 +121,9 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 	}
 
-	provRef := in.ProviderReference
 	attemptRow, err := q.InsertPaymentAttempt(ctx, db.InsertPaymentAttemptParams{
 		PaymentID:         in.PaymentID,
-		ProviderReference: &provRef,
+		ProviderReference: pgtype.Text{String: in.ProviderReference, Valid: true},
 		State:             target,
 		Payload:           in.Payload,
 	})
@@ -150,12 +159,12 @@ func (s *Store) webhookReplayByProviderRef(ctx context.Context, in appcommerce.A
 	q := db.New(s.pool)
 	existingEv, err := q.GetPaymentProviderEventByProviderRef(ctx, db.GetPaymentProviderEventByProviderRefParams{
 		Provider:    in.Provider,
-		ProviderRef: in.ProviderReference,
+		ProviderRef: pgtype.Text{String: in.ProviderReference, Valid: true},
 	})
 	if err != nil {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 	}
-	if existingEv.PaymentID == nil || *existingEv.PaymentID != in.PaymentID {
+	if !existingEv.PaymentID.Valid || uuid.UUID(existingEv.PaymentID.Bytes) != in.PaymentID {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, errors.Join(appcommerce.ErrOrgMismatch, errors.New("provider reference already bound to a different payment"))
 	}
 	pay, err := q.GetPaymentByID(ctx, in.PaymentID)
