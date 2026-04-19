@@ -2,46 +2,59 @@
 
 This directory is the production profile for the existing `avf-vending-api` backend. It is intended for a **single Ubuntu 24.04 VPS** with roughly **2 vCPU, 8 GB RAM, and 100 GB NVMe**.
 
-It reuses the main application image and keeps the stack intentionally small.
+**Architecture (default):** GitHub Actions builds Linux images and pushes them to **GHCR**. The VPS **only pulls images and restarts containers** via `docker compose` and `scripts/release.sh` — there is **no** `docker compose build` for app/goose on the server and **no** Go toolchain required on the VPS for releases.
+
+> **Deprecated as the default path:** treating the VPS as a place to compile the API or `docker build` application images. If you maintain a custom fork workflow, keep it out of the default documented runbook; align with image refs in `.env.production` instead.
 
 ## CI/CD foundation
 
-This repo now has a minimal GitHub Actions foundation for quality gates, artifact publishing, security checks, staging validation, and manual production promotion.
+This repo has GitHub Actions for quality gates, security, optional standalone image publishing, staging, and **production deploy**.
 
-- `ci.yml` runs on every pull request and every push to `main`. It uses the Go version from `go.mod`, runs `make ci-gates`, and validates `deployments/docker/docker-compose.yml` with `docker compose config`.
-- `security.yml` runs dependency-review on pull requests and `govulncheck` on the repository so supply-chain issues show up before production promotion.
-- `build-push.yml` runs on pushes to `main`, tags matching `v*`, and manual dispatch. It builds and pushes the production app image from `deployments/prod/Dockerfile` and the migration image from `deployments/prod/Dockerfile.goose` to GHCR.
-- `build-push.yml` now also emits image provenance and SBOM attestations for the pushed production images.
-- `deploy-staging.yml` deploys the same prebuilt artifacts to the staging VPS. After a successful `build-push.yml` run for `main`, it deploys the matching `sha-<commit>` automatically; on `workflow_dispatch` it can deploy a chosen image tag through the GitHub `staging` environment.
-- `deploy-prod.yml` runs on `workflow_dispatch` only. It promotes a chosen prebuilt image tag to the production VPS over SSH, updates the runtime tag values in `deployments/prod/.env.production` on the server, logs in to GHCR, runs `deployments/prod/scripts/deploy_prod.sh`, and then runs `deployments/prod/scripts/healthcheck_prod.sh`.
-- Published image tags include `sha-<commit>`, `main` for the main branch, and the Git tag name when the workflow is triggered from a version tag.
-- Production runtime now expects those prebuilt registry artifacts. `deployments/prod/docker-compose.prod.yml` no longer builds the app or goose images locally on the server.
-- Production deployment automation is intentionally simple in this pass: a manual GitHub Actions promotion that deploys already-built artifacts to the VPS.
+- `ci.yml` runs on pull requests and pushes to `main` (`make ci-gates`, etc.).
+- `security.yml` runs dependency review and `govulncheck`.
+- `build-push.yml` (optional parallel path) can build/push app + goose images on `main` / tags; provenance/SBOM may be enabled there.
+- `deploy-staging.yml` deploys prebuilt artifacts to the staging VPS (GitHub `staging` environment).
+- **`deploy-prod.yml`** (GitHub `production` environment): on **push to `main`** or **`workflow_dispatch`**, it **builds and pushes** the app image (`deployments/prod/Dockerfile`) and goose image (`deployments/prod/Dockerfile.goose`) to GHCR, then **SSHs to the VPS** and runs `release.sh deploy` with `RELEASE_TAG=sha-<GITHUB_SHA>`. **`VPS_DEPLOY_PATH` must be the git repository root** (the directory that contains `deployments/prod/`). Equivalent manual command on the server:
+
+  ```bash
+  bash "${VPS_DEPLOY_PATH}/deployments/prod/scripts/release.sh" deploy sha-<full-git-sha>
+  ```
+
+  The VPS does **not** compile source; it pulls tags and runs compose + smoke checks.
+
+Published tags for `main` builds typically include `sha-<commit>`, `main`, and `latest` on both image repositories (see workflow for exact naming).
 
 Intended promotion path:
 
 1. PR CI runs `ci.yml`
-2. merge to `main` runs security checks, then builds and pushes artifacts
-3. `deploy-staging.yml` deploys the matching artifact to staging
-4. after staging validation, `deploy-prod.yml` manually promotes a chosen tag to production
+2. Merge to `main` runs `deploy-prod.yml` (build/push + production SSH) when that workflow is enabled, **or** use `build-push.yml` plus a manual `release.sh deploy <tag>` on the VPS
+3. `deploy-staging.yml` can track `main` for staging validation
+4. Production is gated by the `production` environment (approvals optional)
 
-## GitHub Actions production promotion
+## GitHub Actions production deploy (`deploy-prod.yml`)
 
-Manual production deploys now go through `.github/workflows/deploy-prod.yml`.
+The workflow runs in the **`production`** environment (use branch protection / required reviewers as needed).
 
-- Trigger it with `workflow_dispatch` and provide `image_tag`.
-- The workflow runs in the GitHub `production` environment, so environment protection rules and approvals can gate the deploy.
-- Expected `image_tag` values are the same artifact tags produced by CI, typically `sha-<commit>` for an immutable promotion or a release tag like `v1.2.3`.
-- The workflow assumes the VPS checkout path is `/opt/avf-vending/avf-vending-api`, logs in to `ghcr.io`, updates `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and legacy `IMAGE_TAG` in `deployments/prod/.env.production`, then runs the existing deploy and healthcheck scripts on the server.
+**Jobs:**
 
-Required GitHub `production` environment secrets:
+1. **build-and-push** — checkout, Buildx, login to GHCR with `GITHUB_TOKEN`, push  
+   `ghcr.io/<lowercase-github-repository>` and `ghcr.io/<lowercase-github-repository>-goose` (same naming as `build-push.yml`), with tags `sha-<sha>`, and on `main` also `main` and `latest` on both images.
+2. **deploy-prod** — SSH to the VPS, export `IMAGE_REGISTRY`, `APP_IMAGE_REPOSITORY`, `GOOSE_IMAGE_REPOSITORY`, `RELEASE_TAG`, run `docker login` when pull secrets are set, then  
+   `bash "$VPS_DEPLOY_PATH/deployments/prod/scripts/release.sh" deploy "$RELEASE_TAG"`.
 
-- `PROD_HOST`
-- `PROD_PORT`
-- `PROD_USER`
-- `PROD_SSH_KEY`
+**Repository or `production` environment secrets** (names must match the workflow):
 
-This workflow promotes prebuilt artifacts only. It does not build source code on the VPS.
+| Secret | Purpose |
+|--------|---------|
+| `VPS_HOST` | SSH hostname or IP |
+| `VPS_SSH_PORT` | SSH port (e.g. `22`) |
+| `VPS_USER` | SSH login user |
+| `VPS_SSH_PRIVATE_KEY` | PEM private key for SSH |
+| `VPS_DEPLOY_PATH` | Repo root on the server (e.g. `/opt/avf-vending/avf-vending-api`) |
+| `GHCR_PULL_USERNAME` | Optional: `docker login ghcr.io` user on the VPS when images are **private** |
+| `GHCR_PULL_TOKEN` | Optional: PAT or token with `read:packages` (set **both** with username, or **neither** for public packages — matches `release.sh`) |
+
+The workflow never runs `go build` or `docker compose build` **on the VPS** for app/goose images.
 
 ## GitHub Actions staging deployment
 
@@ -122,6 +135,40 @@ This production directory is then:
 
 All commands below assume you run them from `deployments/prod` unless noted otherwise.
 
+## Pre-rollout checks (telemetry + compose)
+
+Run these **before** increasing fleet traffic or merging deployment changes. Paths below use the repository root; on the VPS that is typically `/opt/avf-vending/avf-vending-api`.
+
+1. **Compose must render** (substitution and `:?` placeholders satisfied in your real `.env.production`):
+
+   ```bash
+   docker compose --env-file deployments/prod/.env.production -f deployments/prod/docker-compose.prod.yml config
+   ```
+
+2. **Telemetry production rules** (`APP_ENV=production` requires `NATS_URL`; forbids `TELEMETRY_LEGACY_POSTGRES_INGEST=true`). Exits non-zero on failure:
+
+   ```bash
+   bash deployments/prod/scripts/validate_prod_telemetry.sh
+   ```
+
+   Optional: `STRICT_METRICS_WARNINGS=1 bash deployments/prod/scripts/validate_prod_telemetry.sh` fails if `METRICS_ENABLED` is not `true` (use in CI when you require metrics on).
+
+3. **Go build** (optional; on a **developer or CI machine** only — not on the VPS release path):
+
+   ```bash
+   go build ./...
+   ```
+
+4. **Post-deploy smoke** (containers must be running; from `deployments/prod`):
+
+   ```bash
+   bash scripts/healthcheck_prod.sh
+   ```
+
+   From the repo root you can use `make prod-smoke-full` (runs validate, then healthcheck) if your working directory is `deployments/prod` and `.env.production` exists there—see `Makefile` targets `prod-validate-telemetry`, `prod-compose-config`, `prod-smoke`, `prod-smoke-full`.
+
+**Runbooks:** [telemetry-production-rollout.md](../../docs/runbooks/telemetry-production-rollout.md), [telemetry-jetstream-resilience.md](../../docs/runbooks/telemetry-jetstream-resilience.md). **Burst observation checklist:** `bash scripts/telemetry_load_smoke.sh`.
+
 ## Environment setup
 
 Create the real env file from the committed template:
@@ -136,20 +183,23 @@ Fill in every `CHANGE_ME_*` value before deploying.
 Important values:
 
 - `IMAGE_REGISTRY`: registry host, for example `ghcr.io`
-- `APP_IMAGE_REPOSITORY`: app repository path, for example `avf/avf-vending-api`
-- `APP_IMAGE_TAG`: immutable app artifact tag to deploy, for example `sha-<commit>` or `v1.2.3`
-- `GOOSE_IMAGE_REPOSITORY`: goose repository path, for example `avf/avf-vending-api-goose`
-- `GOOSE_IMAGE_TAG`: goose artifact tag to deploy
-- `IMAGE_TAG`: temporary legacy bookkeeping value for older helper scripts; keep it aligned with `APP_IMAGE_TAG` until those scripts are updated
+- `APP_IMAGE_REPOSITORY`: GHCR path segment for the **app** image (e.g. `myorg/avf-vending-api`), matching CI pushes
+- `GOOSE_IMAGE_REPOSITORY`: GHCR path segment for the **goose** image (e.g. `myorg/avf-vending-api-goose`, i.e. `<APP_IMAGE_REPOSITORY>-goose`), matching `build-push.yml` / `deploy-prod.yml`
+- `APP_IMAGE_TAG` / `GOOSE_IMAGE_TAG`: same tag for both in normal rollouts (e.g. `sha-<commit>`); `release.sh deploy <tag>` writes these
+- `IMAGE_TAG`: legacy single-tag field; `release.sh` keeps it aligned with `APP_IMAGE_TAG`
+- `PUBLIC_BASE_URL`: public HTTPS base URL for your API (documentation / integrations; example: `https://api.example.com`)
 - `API_DOMAIN=api.ldtv.dev`
 - `CADDY_ACME_EMAIL`: required for Let's Encrypt
 - `POSTGRES_USER` / `POSTGRES_PASSWORD`
 - `DATABASE_URL=postgres://...@postgres:5432/avf_vending?sslmode=disable`
-- `NATS_URL=nats://nats:4222`
+- `NATS_URL=nats://nats:4222` (required for `APP_ENV=production`; see **Telemetry safety** block in `.env.production.example`)
+- `TELEMETRY_*` / `TELEMETRY_LEGACY_POSTGRES_INGEST=false` — single grouped section in `.env.production.example`; do not enable legacy Postgres telemetry ingest in production
 - `EMQX_DASHBOARD_USERNAME` / `EMQX_DASHBOARD_PASSWORD` / `EMQX_NODE_COOKIE`
 - `MQTT_USERNAME` / `MQTT_PASSWORD`
-- `MQTT_CLIENT_ID_API` / `MQTT_CLIENT_ID_INGEST`
+- `MQTT_CLIENT_ID_API` for the API process when you want an in-process publisher identity
+- `MQTT_CLIENT_ID_INGEST` for `mqtt-ingest`; if omitted, Compose falls back to `avf-prod-mqtt-ingest`
 - `MQTT_BROKER_URL=tcp://emqx:1883`
+- `API_REQUIRE_MQTT_PUBLISHER=false` when the API publisher is optional in this deployment; set it to `true` only when API startup must fail if the in-process MQTT publisher cannot initialize
 - `HTTP_AUTH_JWT_SECRET`
 - if `API_ARTIFACTS_ENABLED=true`, also set `S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and either `AWS_REGION` or `S3_REGION`
 - for non-AWS providers, also set `S3_ENDPOINT` and enable `S3_USE_PATH_STYLE` only when the provider requires it
@@ -215,29 +265,43 @@ Firewall expectation:
 - if you use a non-standard SSH port, adjust UFW separately before or immediately after bootstrap
 - Postgres, NATS, and the EMQX dashboard remain non-public in this profile
 
-## First deployment
+## First deployment (image-only)
 
-After `.env.production` is ready and the referenced images have already been published to your registry:
+After `.env.production` is filled out and images for your chosen tag exist in GHCR:
+
+**Preferred (canonical):** `scripts/release.sh` — same entrypoint GitHub Actions uses over SSH.
 
 ```bash
 cd /opt/avf-vending/avf-vending-api/deployments/prod
-bash scripts/deploy_prod.sh
+# Example: deploy the tag produced by CI for this commit (replace with your real tag)
+bash scripts/release.sh deploy sha-0123456789abcdef0123456789abcdef01234567
 ```
 
-Artifact-based rollout flow:
+`release.sh deploy <tag>`:
 
-1. validates `.env.production`
-2. resolves image references from `IMAGE_REGISTRY`, `APP_IMAGE_REPOSITORY`, `APP_IMAGE_TAG`, `GOOSE_IMAGE_REPOSITORY`, and `GOOSE_IMAGE_TAG`
-3. fails early if the required image variables are missing, or if legacy `IMAGE_TAG` does not match `APP_IMAGE_TAG`
-4. pulls the prebuilt application image and goose image from the registry
-5. starts `postgres`, `nats`, and `emqx`
-6. runs migrations with the one-shot `migrate` service
-7. bootstraps the EMQX MQTT user
-8. starts the long-lived stack: `postgres nats emqx api worker mqtt-ingest reconciler caddy`
-9. records deployment state under `.deploy/` after a successful rollout and smoke check
-10. runs `scripts/healthcheck_prod.sh` unless `SKIP_SMOKE=1`
+1. Validates required env (including `IMAGE_*`, `DATABASE_URL`, etc.)
+2. Writes `IMAGE_REGISTRY`, `APP_IMAGE_REPOSITORY`, `GOOSE_IMAGE_REPOSITORY`, `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and `IMAGE_TAG` into `.env.production` (exported CI vars override file values when set)
+3. Optionally runs `docker login ghcr.io` when `GHCR_PULL_USERNAME` and `GHCR_PULL_TOKEN` are set in the shell
+4. Runs `docker compose config`, `docker compose pull` for app/goose-related services, starts data plane, runs **`docker compose up migrate`**, runs `emqx_bootstrap.sh`, brings up the long-lived stack, runs `healthcheck_prod.sh` unless `SKIP_SMOKE=1`
+5. Records `.deploy/current_image_tag`, `.deploy/previous_image_tag`, and `history.log`
 
-If migrations fail, deploy stops immediately.
+If migrations fail, the script exits before switching the full app stack.
+
+**Legacy (still supported, not the primary doc path):** `bash scripts/deploy_prod.sh` performs a similar image-only pull + migrate + stack rollout. Prefer `release.sh` for new automation and operator training.
+
+**Render compose before you trust a new env file:**
+
+```bash
+cd /opt/avf-vending/avf-vending-api/deployments/prod
+docker compose --env-file .env.production -f docker-compose.prod.yml config >/dev/null && echo OK
+```
+
+MQTT deployment note:
+
+- `mqtt-ingest` is always part of the long-lived production stack and always needs a concrete MQTT client ID
+- Compose injects `MQTT_CLIENT_ID` into `mqtt-ingest` from `MQTT_CLIENT_ID_INGEST`, with a fallback of `avf-prod-mqtt-ingest`
+- the API's in-process MQTT publisher is a separate concern controlled by `API_REQUIRE_MQTT_PUBLISHER`
+- when `API_REQUIRE_MQTT_PUBLISHER=false`, the API can still boot even if the publisher cannot initialize; when `true`, API startup fails fast on publisher bootstrap errors
 
 ## Optional observability overlay
 
@@ -306,10 +370,10 @@ Schema migrations come from repo-root `migrations/*.sql`.
 
 Important behavior:
 
-- `scripts/deploy_prod.sh` runs migrations before starting the application stack
-- `make prod-up` and the systemd service do **not** run migrations
+- **`scripts/release.sh deploy`** and **`scripts/deploy_prod.sh`** both run migrations (goose one-shot) before / as part of bringing the application stack to the new images
+- `make prod-up` and the systemd service do **not** run migrations by themselves
 - `make prod-migrate` runs migrations only
-- migration failure is fatal to deploy
+- migration failure is fatal to `release.sh deploy` / `deploy_prod.sh`
 
 Run migrations manually if needed:
 
@@ -320,15 +384,42 @@ make prod-migrate
 
 Honest limitation:
 
-- `scripts/rollback_prod.sh` rolls back the **image tag only**
-- it does **not** downgrade the database schema
+- **`scripts/release.sh rollback`** and **`scripts/rollback_prod.sh`** roll back the **image tag only**
+- they do **not** downgrade the database schema
 - if you need to undo a bad schema deploy, restore from backup or ship a forward-fix migration
 
 Also note that `migrations/00003_seed_dev.sql` is still in the repo's migration chain. On a brand-new production database it may insert deterministic demo data unless that migration history is changed separately.
 
 ## Verification
 
-Main verification command:
+Preflight config render:
+
+```bash
+cd /opt/avf-vending/avf-vending-api/deployments/prod
+docker compose --env-file .env.production -f docker-compose.prod.yml config >/dev/null
+```
+
+Inspect compose state:
+
+```bash
+cd /opt/avf-vending/avf-vending-api/deployments/prod
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
+```
+
+Internal API live check from inside the running container:
+
+```bash
+cd /opt/avf-vending/avf-vending-api/deployments/prod
+docker compose --env-file .env.production -f docker-compose.prod.yml exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/live | grep -qx ok'
+```
+
+Public HTTPS live check:
+
+```bash
+curl -fsS "https://${API_DOMAIN}/health/live"
+```
+
+Main verification helper:
 
 ```bash
 cd /opt/avf-vending/avf-vending-api/deployments/prod
@@ -343,9 +434,10 @@ The health script checks:
 - NATS responds on its internal health endpoint
 - EMQX reports broker status
 - API `/health/live` and `/health/ready` inside the container
-- public HTTPS `https://api.ldtv.dev/health/live`
-- public HTTPS `https://api.ldtv.dev/health/ready`
+- public HTTPS `https://${API_DOMAIN}/health/live`
+- public HTTPS `https://${API_DOMAIN}/health/ready`
 - when a check fails, recent container status/log context and an operator hint are printed to make post-deploy debugging faster
+- if the internal checks pass but the public HTTPS checks fail, treat that as DNS/TLS/routing investigation first; use `SKIP_PUBLIC_HTTPS=1 bash scripts/healthcheck_prod.sh` while external DNS or ACME issuance is still converging
 
 Repo-root shortcut:
 
@@ -383,14 +475,18 @@ Operational notes:
 
 ## Day-2 operations
 
-Deploy updated images:
+**Deploy updated images (recommended):**
 
 ```bash
 cd /opt/avf-vending/avf-vending-api/deployments/prod
-bash scripts/update_prod.sh
+bash scripts/release.sh deploy sha-<new-commit-sha>
 ```
 
-If you are rotating to a different artifact tag, update `APP_IMAGE_TAG` and `GOOSE_IMAGE_TAG` in `.env.production` first, then rerun `bash scripts/update_prod.sh`. `update_prod.sh` is now a thin wrapper around the artifact-based deploy flow; it does not `git pull`, build source, or rebuild images on the server.
+`release.sh deploy` updates image tags in `.env.production`, pulls from GHCR, migrates, restarts the stack, and runs smoke checks — **no source build on the VPS**.
+
+**Alternate:** `bash scripts/update_prod.sh` remains a thin wrapper around the same image-pull / compose flow; it does not `git pull`, compile Go, or `docker build` app images on the server.
+
+If you insist on editing tags by hand, set `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and `IMAGE_TAG` in `.env.production` to the same value, then run `release.sh deploy <that-tag>` (or `update_prod.sh`) so pulls and health checks still run in order.
 
 Restart the long-lived stack without running migrations:
 
@@ -401,40 +497,45 @@ make prod-restart
 make prod-down
 ```
 
-Inspect status and logs:
-
-```bash
-cd /opt/avf-vending/avf-vending-api
-make prod-status
-make prod-logs
-```
-
-## Rollback
-
-Rollback command:
+Inspect status and logs (compose-wide or per service):
 
 ```bash
 cd /opt/avf-vending/avf-vending-api/deployments/prod
-bash scripts/rollback_prod.sh
+bash scripts/release.sh status
+bash scripts/release.sh logs           # all long-lived services, tail 200
+bash scripts/release.sh logs api 400   # api only, last 400 lines
+```
+
+From the repo root you can still use `make prod-status` / `make prod-logs` as convenience wrappers.
+
+## Rollback
+
+**Preferred:** `release.sh rollback` uses the last successful **previous** tag recorded under `.deploy/previous_image_tag` (written when a newer `deploy` succeeds), or pass an explicit tag:
+
+```bash
+cd /opt/avf-vending/avf-vending-api/deployments/prod
+bash scripts/release.sh rollback
+bash scripts/release.sh rollback sha-<known-good-sha>
 ```
 
 What it does:
 
-- reads the previously recorded legacy image tag state from `.deploy/previous_image_tag`
-- still uses the older single-tag helper flow
-- updates `.env.production` so `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and legacy `IMAGE_TAG` all move back to the recorded previous tag
-- works best when normal deploys keep app and goose on the same artifact tag
+- updates `.env.production` so `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and `IMAGE_TAG` target the rollback tag
+- optional GHCR login when pull secrets are present in the environment
+- `docker compose pull` + `up -d` for the long-lived stack, container checks, and `healthcheck_prod.sh` (unless `SKIP_SMOKE=1`)
+- appends a line to `.deploy/history.log`
 
 What it does not do:
 
 - it does not roll back the database schema
 - it does not restore deleted data
-- it only works if a previous tag was recorded by an earlier successful deploy
-- it assumes a single rollback tag for both app and goose images
+- default `rollback` without a tag requires a prior successful `release.sh deploy` that recorded `.deploy/previous_image_tag`
+
+**Legacy:** `bash scripts/rollback_prod.sh` performs a similar **image-only** rollback using the same `.deploy/previous_image_tag` convention. Prefer `release.sh rollback` for consistency with CI.
 
 The practical distinction:
 
-- `rollback_prod.sh` is an **image rollback helper only**
+- **`release.sh rollback`** / `rollback_prod.sh` are **image rollback helpers only**
 - `backup_postgres.sh` creates the database recovery artifact
 - `restore_postgres.sh` is the **destructive data recovery path** when schema/data must be put back from backup
 
@@ -551,6 +652,8 @@ make prod-backup
 make prod-restore FILE=deployments/prod/backups/avf_vending_YYYYMMDDTHHMMSSZ.sql.gz CONFIRM=YES
 make prod-smoke
 ```
+
+`make prod-deploy` invokes `deployments/prod/scripts/deploy_prod.sh` (wrapper → `release.sh`). For parity with GitHub Actions, from **`deployments/prod`** on the VPS run **`bash scripts/release.sh deploy <tag>`** (same path shape as CI: `"${VPS_DEPLOY_PATH}/deployments/prod/scripts/release.sh"` from repo root).
 
 ## Common failure points
 

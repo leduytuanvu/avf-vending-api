@@ -1,6 +1,16 @@
 # Lean production stack: single Ubuntu 24.04 VPS (target: 2 vCPU / 8 GB RAM).
 # Copy .env.production.example -> .env.production and fill secrets + image refs before `docker compose up`.
 #
+# Image-only deployment (GHCR): there is no `build:` anywhere. The VPS pulls prebuilt images only.
+# App binaries (`api`, `worker`, `reconciler`, `mqtt-ingest`) share one image ref:
+#   ${IMAGE_REGISTRY}/${APP_IMAGE_REPOSITORY}:${APP_IMAGE_TAG}
+# Migrations use the goose image:
+#   ${IMAGE_REGISTRY}/${GOOSE_IMAGE_REPOSITORY}:${GOOSE_IMAGE_TAG}
+#
+# Telemetry / NATS / MQTT safety: `api`, `worker`, `mqtt-ingest`, and `reconciler` load `env_file`
+# (PROD_ENV_FILE or `.env.production`) for NATS_URL, APP_ENV, TELEMETRY_*, MQTT_*, METRICS_*, etc.
+# Avoid duplicating large `environment:` blocks per service unless you need Compose-time overrides (e.g. MQTT_CLIENT_ID).
+#
 # Intentionally NOT included: ClickHouse, Temporal, Prometheus, Grafana, Loki, MinIO, Redis
 # (Redis is optional for this API — leave unset unless you enable features that require it).
 #
@@ -94,7 +104,6 @@ services:
       EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?set EMQX_DASHBOARD_PASSWORD in .env.production}
       EMQX_DASHBOARD__LISTENERS__HTTP__BIND: "127.0.0.1:18083"
       EMQX_LISTENERS__TCP__DEFAULT__BIND: "0.0.0.0:1883"
-      EMQX_ALLOW_ANONYMOUS: "false"
       EMQX_AUTHENTICATION__1__MECHANISM: password_based
       EMQX_AUTHENTICATION__1__BACKEND: built_in_database
       EMQX_AUTHENTICATION__1__ENABLE: "true"
@@ -138,6 +147,7 @@ services:
     container_name: avf-prod-api
     restart: unless-stopped
     command: ["/app/api"]
+    # Shared prod env: NATS_URL, APP_ENV, TELEMETRY_*, METRICS_*, etc.
     env_file:
       - ${PROD_ENV_FILE:-.env.production}
     environment:
@@ -153,7 +163,11 @@ services:
       emqx:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health/live"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:8080/health/live | grep -qx ok && curl -fsS http://127.0.0.1:8080/health/ready | grep -qx ok",
+        ]
       interval: 20s
       timeout: 5s
       retries: 5
@@ -174,6 +188,7 @@ services:
     container_name: avf-prod-worker
     restart: unless-stopped
     command: ["/app/worker"]
+    # JetStream projection + metrics/health: NATS_URL, TELEMETRY_*, METRICS_ENABLED, WORKER_METRICS_LISTEN.
     env_file:
       - ${PROD_ENV_FILE:-.env.production}
     networks:
@@ -205,10 +220,11 @@ services:
     container_name: avf-prod-mqtt-ingest
     restart: unless-stopped
     command: ["/app/mqtt-ingest"]
+    # Bounded MQTT → NATS: NATS_URL, MQTT_*, TELEMETRY_* (ingress + stream limits), METRICS_*.
     env_file:
       - ${PROD_ENV_FILE:-.env.production}
     environment:
-      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_INGEST:?set MQTT_CLIENT_ID_INGEST in .env.production}
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_INGEST:-avf-prod-mqtt-ingest}
     networks:
       - internal
     depends_on:
@@ -244,6 +260,7 @@ services:
     container_name: avf-prod-reconciler
     restart: unless-stopped
     command: ["/app/reconciler"]
+    # Same env_file as other app services for consistent validation; reconciler does not host telemetry projection.
     env_file:
       - ${PROD_ENV_FILE:-.env.production}
     networks:

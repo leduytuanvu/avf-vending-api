@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Post-deploy checks from the VPS host (Caddy + API + core containers).
-set -euo pipefail
+# Post-deploy health and status checks from the VPS host (compose + HTTP/MQTT signals).
+# Does not build images, compile source, run migrations, or invoke release.sh — read-only / curl / docker inspect only.
+set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -25,6 +26,24 @@ read_env() {
 	if [[ -z "${line}" ]]; then
 		echo "error: ${key} not set in .env.production" >&2
 		exit 1
+	fi
+	line="${line#"${key}="}"
+	line="${line%$'\r'}"
+	if [[ "${line}" == \"*\" ]]; then
+		line="${line#\"}"
+		line="${line%\"}"
+	fi
+	printf '%s' "${line}"
+}
+
+read_env_default() {
+	local key="$1"
+	local default="$2"
+	local line
+	line="$(grep -E "^${key}=" .env.production | tail -n1 || true)"
+	if [[ -z "${line}" ]]; then
+		printf '%s' "${default}"
+		return
 	fi
 	line="${line#"${key}="}"
 	line="${line%$'\r'}"
@@ -118,12 +137,27 @@ check_cmd "emqx broker status" "check avf-prod-emqx logs and dashboard/bootstrap
 check_cmd "api live endpoint inside container" "check avf-prod-api logs and upstream dependency readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/live | grep -qx ok'
 check_cmd "api readiness inside container" "check avf-prod-api logs plus postgres/nats/emqx readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/ready | grep -qx ok'
 
+note "telemetry metrics + worker readiness (when METRICS_ENABLED=true in .env.production)"
+METRICS_FLAG="$(read_env_default METRICS_ENABLED false | tr '[:upper:]' '[:lower:]')"
+if [[ "${METRICS_FLAG}" == "true" ]]; then
+	check_cmd "worker /metrics exposes avf_telemetry_* series" "confirm METRICS_ENABLED=true and WORKER_METRICS_LISTEN; see ops/METRICS.md" "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/metrics" | grep -Eq "avf_telemetry_(consumer|projection|duplicate)"'
+	check_cmd "mqtt-ingest /metrics exposes avf_mqtt_ingest_dispatch_total" "confirm METRICS_ENABLED=true and MQTT_INGEST_METRICS_LISTEN" "${COMPOSE[@]}" exec -T mqtt-ingest sh -c 'addr="${MQTT_INGEST_METRICS_LISTEN:-127.0.0.1:9093}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/metrics" | grep -q "avf_mqtt_ingest_dispatch_total"'
+	if [[ "${SKIP_WORKER_READY_STRICT:-0}" == "1" ]]; then
+		echo "SKIP_WORKER_READY_STRICT=1 set; skipping worker /health/ready on metrics port (503 may indicate JetStream backlog)"
+	else
+		check_cmd "worker /health/ready on metrics port" "if 503, see TELEMETRY_READINESS_* and docs/runbooks/telemetry-jetstream-resilience.md" "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/health/ready" | grep -qx ok'
+	fi
+else
+	pass "METRICS_ENABLED not true; skipping worker/mqtt-ingest telemetry metrics scrape (set true for fleet observability)"
+fi
+
 note "reverse proxy / API health (public HTTPS)"
 if [[ "${SKIP_PUBLIC_HTTPS:-0}" == "1" ]]; then
 	echo "SKIP_PUBLIC_HTTPS=1 set; skipping public HTTPS checks (use when DNS/TLS is still propagating)"
 else
-	check_cmd "public /health/live over HTTPS" "if internal checks above passed, this failure is usually DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
-	check_cmd "public /health/ready over HTTPS" "if internal checks above passed, this failure is usually DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/ready' | grep -qx ok"
+	echo "note: if the internal checks above pass but the public HTTPS checks fail, focus on DNS, external routing/firewall, or ACME/TLS issuance before debugging the API process itself"
+	check_cmd "public /health/live over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
+	check_cmd "public /health/ready over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/ready' | grep -qx ok"
 fi
 
 if (( failures > 0 )); then

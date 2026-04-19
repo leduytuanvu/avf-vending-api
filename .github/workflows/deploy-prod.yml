@@ -1,75 +1,127 @@
 name: Deploy Production
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      image_tag:
-        description: "Prebuilt image tag to deploy, for example sha-<commit> or v1.2.3"
-        required: true
-        type: string
+
+concurrency:
+  group: prod-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read
-  packages: read
+  packages: write
 
 jobs:
-  deploy:
+  build-and-push:
+    name: Build and push images
+    runs-on: ubuntu-latest
+    outputs:
+      repo_lc: ${{ steps.meta.outputs.repo_lc }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image names and tags
+        id: meta
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # Match `.github/workflows/build-push.yml`: ghcr.io/<lowercase-owner/repo> and ghcr.io/<lowercase-owner/repo>-goose
+          repo_lc="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          sha_tag="sha-${GITHUB_SHA}"
+          app_base="ghcr.io/${repo_lc}"
+          goose_base="ghcr.io/${repo_lc}-goose"
+
+          app_tags="${app_base}:${sha_tag}"
+          goose_tags="${goose_base}:${sha_tag}"
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            app_tags="${app_tags}"$'\n'"${app_base}:main"$'\n'"${app_base}:latest"
+            goose_tags="${goose_tags}"$'\n'"${goose_base}:main"$'\n'"${goose_base}:latest"
+          fi
+
+          {
+            echo "app_tags<<EOF"
+            printf '%s\n' "${app_tags}"
+            echo "EOF"
+            echo "goose_tags<<EOF"
+            printf '%s\n' "${goose_tags}"
+            echo "EOF"
+            echo "repo_lc=${repo_lc}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Build and push app image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployments/prod/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.app_tags }}
+
+      - name: Build and push goose image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployments/prod/Dockerfile.goose
+          push: true
+          tags: ${{ steps.meta.outputs.goose_tags }}
+
+  deploy-prod:
     name: Deploy to production VPS
     runs-on: ubuntu-latest
+    needs: build-and-push
     environment: production
-
     steps:
-      - name: Deploy chosen image tag over SSH
+      - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         env:
-          APP_DIR: /opt/avf-vending/avf-vending-api
-          DEPLOY_IMAGE_TAG: ${{ inputs.image_tag }}
-          GHCR_USER: ${{ github.actor }}
-          GHCR_TOKEN: ${{ github.token }}
+          IMAGE_REGISTRY: ghcr.io
+          APP_IMAGE_REPOSITORY: ${{ needs.build-and-push.outputs.repo_lc }}
+          GOOSE_IMAGE_REPOSITORY: ${{ format('{0}-goose', needs.build-and-push.outputs.repo_lc) }}
+          RELEASE_TAG: sha-${{ github.sha }}
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
         with:
-          host: ${{ secrets.PROD_HOST }}
-          port: ${{ secrets.PROD_PORT }}
-          username: ${{ secrets.PROD_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           script_stop: true
-          envs: APP_DIR,DEPLOY_IMAGE_TAG,GHCR_USER,GHCR_TOKEN
+          envs: IMAGE_REGISTRY,APP_IMAGE_REPOSITORY,GOOSE_IMAGE_REPOSITORY,RELEASE_TAG,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,VPS_DEPLOY_PATH
           script: |
-            set -euo pipefail
+            set -Eeuo pipefail
 
-            PROD_DIR="${APP_DIR}/deployments/prod"
-            ENV_FILE="${PROD_DIR}/.env.production"
-            DEPLOY_SCRIPT="${PROD_DIR}/scripts/deploy_prod.sh"
-            HEALTHCHECK_SCRIPT="${PROD_DIR}/scripts/healthcheck_prod.sh"
+            tolower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 
-            fail() {
-              echo "error: $*" >&2
+            export IMAGE_REGISTRY="${IMAGE_REGISTRY}"
+            export APP_IMAGE_REPOSITORY="$(tolower "${APP_IMAGE_REPOSITORY}")"
+            export GOOSE_IMAGE_REPOSITORY="$(tolower "${GOOSE_IMAGE_REPOSITORY}")"
+            export RELEASE_TAG="${RELEASE_TAG}"
+
+            if [[ -z "${VPS_DEPLOY_PATH}" ]]; then
+              echo "error: VPS_DEPLOY_PATH is empty" >&2
               exit 1
-            }
+            fi
 
-            set_env_value() {
-              local key="$1"
-              local value="$2"
-              local file="$3"
+            # Match release.sh: docker login only when both pull secrets are set (public GHCR images need neither).
+            if [[ -n "${GHCR_PULL_USERNAME:-}" ]] && [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
+              printf '%s' "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "${GHCR_PULL_USERNAME}" --password-stdin
+            elif [[ -n "${GHCR_PULL_USERNAME:-}" ]] || [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
+              echo "error: set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN, or omit both for anonymous pulls" >&2
+              exit 1
+            fi
 
-              if grep -q "^${key}=" "${file}"; then
-                sed -i "s|^${key}=.*|${key}=${value}|" "${file}"
-              else
-                printf '%s=%s\n' "${key}" "${value}" >> "${file}"
-              fi
-            }
-
-            [[ -d "${PROD_DIR}" ]] || fail "missing production directory: ${PROD_DIR}"
-            [[ -f "${ENV_FILE}" ]] || fail "missing env file: ${ENV_FILE}"
-            [[ -f "${DEPLOY_SCRIPT}" ]] || fail "missing deploy script: ${DEPLOY_SCRIPT}"
-            [[ -f "${HEALTHCHECK_SCRIPT}" ]] || fail "missing healthcheck script: ${HEALTHCHECK_SCRIPT}"
-            [[ -n "${DEPLOY_IMAGE_TAG}" ]] || fail "workflow input image_tag must not be empty"
-
-            printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
-
-            set_env_value "APP_IMAGE_TAG" "${DEPLOY_IMAGE_TAG}" "${ENV_FILE}"
-            set_env_value "GOOSE_IMAGE_TAG" "${DEPLOY_IMAGE_TAG}" "${ENV_FILE}"
-            set_env_value "IMAGE_TAG" "${DEPLOY_IMAGE_TAG}" "${ENV_FILE}"
-
-            cd "${PROD_DIR}"
-            bash "${DEPLOY_SCRIPT}"
-            bash "${HEALTHCHECK_SCRIPT}"
+            bash "${VPS_DEPLOY_PATH}/deployments/prod/scripts/release.sh" deploy "${RELEASE_TAG}"
