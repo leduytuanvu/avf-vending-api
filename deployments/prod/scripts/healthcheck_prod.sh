@@ -92,6 +92,35 @@ show_container_diagnostics() {
 	docker logs --tail 20 "${container}" 2>&1 | sed 's/^/    /' >&2 || true
 }
 
+# Used only on final healthcheck failure: longer logs + health probe history when available.
+show_container_diagnostics_deep() {
+	local container="$1"
+	echo "  === deep diagnostics: ${container} ===" >&2
+	docker inspect -f '    status={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}} failing_streak={{.State.Health.FailingStreak}}{{else}}n/a{{end}} started={{.State.StartedAt}} exit={{.State.ExitCode}}' "${container}" 2>/dev/null >&2 || true
+	if command -v jq >/dev/null 2>&1; then
+		docker inspect "${container}" 2>/dev/null | jq -r '.[0].State.Health.Log // [] | .[-3:][] | "    health_log: \(.Output)"' 2>/dev/null >&2 || true
+	fi
+	echo "    logs (tail 100): ${container}" >&2
+	docker logs --tail 100 "${container}" 2>&1 | sed 's/^/    /' >&2 || true
+}
+
+container_warrants_deep_diag() {
+	local c="$1" state has_h h
+	state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
+	if [[ "${state}" != "running" ]]; then
+		return 0
+	fi
+	has_h="$(docker inspect -f '{{if .State.Health}}yes{{else}}no{{end}}' "${c}" 2>/dev/null || echo no)"
+	if [[ "${has_h}" != "yes" ]]; then
+		return 1
+	fi
+	h="$(docker inspect -f '{{.State.Health.Status}}' "${c}" 2>/dev/null || true)"
+	if [[ "${h}" != "healthy" ]]; then
+		return 0
+	fi
+	return 1
+}
+
 check_cmd() {
 	local label="$1"
 	local diagnostics="${2:-}"
@@ -161,13 +190,18 @@ else
 fi
 
 if (( failures > 0 )); then
-	echo "==> failing container summary" >&2
-	for c in "${need_running[@]}"; do
-		state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
-		if [[ "${state}" != "running" ]]; then
-			show_container_diagnostics "${c}"
+	note "healthcheck failed — docker compose ps (refresh)"
+	"${COMPOSE[@]}" ps 2>&1 || true
+
+	# Same six as release.sh rollout gate, then postgres/nats when unhealthy (not running or Docker health != healthy).
+	rollout_critical=(avf-prod-api avf-prod-caddy avf-prod-emqx avf-prod-mqtt-ingest avf-prod-worker avf-prod-reconciler)
+	echo "==> deep container diagnostics (unhealthy or not running)" >&2
+	for c in "${rollout_critical[@]}" avf-prod-postgres avf-prod-nats; do
+		if container_warrants_deep_diag "${c}"; then
+			show_container_diagnostics_deep "${c}"
 		fi
 	done
+	echo "hint: for logical check failures (e.g. public HTTPS) with healthy containers, see FAIL lines above." >&2
 	echo "healthcheck_prod: FAIL (${failures} checks failed)" >&2
 	exit 1
 fi

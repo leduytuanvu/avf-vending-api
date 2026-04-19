@@ -8,7 +8,7 @@ This runbook complements [telemetry-jetstream-resilience.md](./telemetry-jetstre
    - Run `bash deployments/prod/scripts/validate_prod_telemetry.sh` against the real `.env.production`.
    - Run `docker compose --env-file deployments/prod/.env.production -f deployments/prod/docker-compose.prod.yml config` (or `make prod-compose-config` from repo root with a populated `deployments/prod/.env.production`).
 2. **Images and data plane**
-   - Deploy **immutable** image tags (`APP_IMAGE_TAG` / `GOOSE_IMAGE_TAG`); record previous tag for rollback.
+   - Deploy **immutable** image tags (`APP_IMAGE_TAG` / `GOOSE_IMAGE_TAG`); record previous tag for rollback. Tag resolution and GHCR flow: [prod-ghcr-image-only-deploy.md](./prod-ghcr-image-only-deploy.md).
    - Run migrations (`make prod-migrate` or documented compose `migrate` service) before or with the rollout policy you already use.
 3. **NATS JetStream disk**
    - Ensure the `nats_data` volume has headroom for `TELEMETRY_STREAM_MAX_BYTES` and burst retention; monitor NATS container logs and host disk.
