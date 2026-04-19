@@ -11,9 +11,9 @@ COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
 STATE="${ROOT}/.deploy"
 LONG_LIVED_SERVICES=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 ARTIFACT_SERVICES=(migrate api worker mqtt-ingest reconciler)
-# Monitored after `compose up` until healthy (compose service name, container_name).
-ROLLUP_GATE_SVCS=(api caddy emqx mqtt-ingest worker reconciler)
-ROLLUP_GATE_CTRS=(avf-prod-api avf-prod-caddy avf-prod-emqx avf-prod-mqtt-ingest avf-prod-worker avf-prod-reconciler)
+# Monitored after `compose up`: running always; Docker health=healthy only when a healthcheck exists on the container.
+ROLLUP_GATE_SVCS=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
+ROLLUP_GATE_CTRS=(avf-prod-postgres avf-prod-nats avf-prod-emqx avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-caddy)
 
 fail() {
 	echo "release.sh: error: $*" >&2
@@ -50,8 +50,9 @@ Environment (deploy / rollback):
   Optional after deploy:
     SKIP_SMOKE=1 — skip scripts/healthcheck_prod.sh
 
-  Optional rollout wait (deploy / rollback; polls Docker health for core app stack):
-    ROLLUP_HEALTH_WAIT_SECS (default 180), ROLLUP_HEALTH_POLL_SECS (default 5)
+  Optional rollout wait (deploy / rollback; polls container state / Docker health):
+    ROLLUP_HEALTH_WAIT_SECS (default 180; clamped to 30–3600 so 0 cannot instant-fail),
+    ROLLUP_HEALTH_POLL_SECS (default 5; minimum 1)
 USAGE
 	exit 1
 }
@@ -184,6 +185,35 @@ rollout_container_ok() {
 	return 0
 }
 
+# One-line reason for rollout_container_ok failure (for operator logs).
+rollout_container_fail_reason() {
+	local c="$1" state has_h h
+	state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
+	if [[ "${state}" == "missing" ]]; then
+		printf '%s' "container_not_found"
+		return
+	fi
+	if [[ "${state}" != "running" ]]; then
+		printf '%s' "state=${state}"
+		return
+	fi
+	has_h="$(docker inspect -f '{{if .State.Health}}yes{{else}}no{{end}}' "${c}" 2>/dev/null || echo no)"
+	if [[ "${has_h}" != "yes" ]]; then
+		printf '%s' "running_no_docker_health"
+		return
+	fi
+	h="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c}" 2>/dev/null || true)"
+	if [[ "${h}" == "healthy" ]]; then
+		printf '%s' "ok"
+		return
+	fi
+	if [[ -z "${h}" ]]; then
+		printf '%s' "health=starting_or_empty"
+		return
+	fi
+	printf '%s' "health=${h}"
+}
+
 print_rollout_gate_status() {
 	local i c svc state has_h h
 	for i in "${!ROLLUP_GATE_CTRS[@]}"; do
@@ -228,8 +258,15 @@ wait_for_rollout_health() {
 	[[ "${wait_secs}" =~ ^[0-9]+$ ]] || wait_secs=180
 	[[ "${poll}" =~ ^[0-9]+$ ]] || poll=5
 	[[ "${poll}" -ge 1 ]] || poll=1
+	# ROLLUP_HEALTH_WAIT_SECS=0 (or other tiny values) would otherwise time out on the first iteration.
+	if [[ "${wait_secs}" -lt 30 ]]; then
+		wait_secs=30
+	fi
+	if [[ "${wait_secs}" -gt 3600 ]]; then
+		wait_secs=3600
+	fi
 	start_ts="$(date +%s)"
-	note "waiting for rollout health (api, caddy, emqx, mqtt-ingest, worker, reconciler) — up to ${wait_secs}s, poll every ${poll}s"
+	note "waiting for rollout gate (postgres, nats, emqx, api, worker, mqtt-ingest, reconciler, caddy) — up to ${wait_secs}s, poll every ${poll}s"
 	while true; do
 		bad_list=()
 		for c in "${ROLLUP_GATE_CTRS[@]}"; do
@@ -238,16 +275,19 @@ wait_for_rollout_health() {
 			fi
 		done
 		if [[ "${#bad_list[@]}" -eq 0 ]]; then
-			note "rollout health gate: all monitored containers healthy"
+			note "rollout health gate: all monitored containers ready (running; healthy where Docker defines a healthcheck)"
 			return 0
 		fi
 		now_ts="$(date +%s)"
 		elapsed=$((now_ts - start_ts))
 		if [[ "${elapsed}" -ge "${wait_secs}" ]]; then
 			print_rollout_timeout_diagnostics
-			fail "rollout health gate: timed out after ${wait_secs}s — not healthy: ${bad_list[*]}"
+			fail "rollout health gate: timed out after ${wait_secs}s — not ready: ${bad_list[*]}"
 		fi
 		note "rollout health gate (${elapsed}s / ${wait_secs}s) — waiting on: ${bad_list[*]}"
+		for c in "${bad_list[@]}"; do
+			printf '    %s: %s\n' "${c}" "$(rollout_container_fail_reason "${c}")" >&2
+		done
 		print_rollout_gate_status
 		sleep "${poll}"
 	done

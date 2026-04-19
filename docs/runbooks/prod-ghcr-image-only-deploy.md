@@ -45,7 +45,7 @@ bash scripts/update_prod.sh
 1. Validates compose env and writes registry + tag fields to `.env.production`.
 2. `docker compose pull` for migrate + app images.
 3. Starts Postgres, NATS, EMQX; runs **migrate** once; EMQX bootstrap.
-4. `docker compose up -d` for the long-lived stack; waits for Docker health (see `ROLLUP_HEALTH_*` in `release.sh`).
+4. `docker compose up -d` for the long-lived stack; polls container readiness (running; healthy when a Docker healthcheck exists — see `ROLLUP_HEALTH_*` in `release.sh`).
 5. Runs `scripts/healthcheck_prod.sh` unless `SKIP_SMOKE=1`.
 6. Records current/previous app and goose tags under `.deploy/` for rollback.
 
