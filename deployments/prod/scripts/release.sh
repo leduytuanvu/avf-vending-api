@@ -11,7 +11,7 @@ COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
 STATE="${ROOT}/.deploy"
 LONG_LIVED_SERVICES=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 ARTIFACT_SERVICES=(migrate api worker mqtt-ingest reconciler)
-# Monitored after `compose up`: running required; Docker health=healthy only when a healthcheck exists.
+# Monitored after `compose up`: running always; Docker health=healthy only when a healthcheck exists on the container.
 ROLLUP_GATE_SVCS=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 ROLLUP_GATE_CTRS=(avf-prod-postgres avf-prod-nats avf-prod-emqx avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-caddy)
 
@@ -51,7 +51,7 @@ Environment (deploy / rollback):
     SKIP_SMOKE=1 — skip scripts/healthcheck_prod.sh
 
   Optional rollout wait (deploy / rollback; polls container state / Docker health):
-    ROLLUP_HEALTH_WAIT_SECS (default 180; clamped 30–3600 so 0 cannot instant-fail),
+    ROLLUP_HEALTH_WAIT_SECS (default 180; clamped to 30–3600 so 0 cannot instant-fail),
     ROLLUP_HEALTH_POLL_SECS (default 5; minimum 1)
 USAGE
 	exit 1
@@ -185,6 +185,7 @@ rollout_container_ok() {
 	return 0
 }
 
+# One-line reason for rollout_container_ok failure (for operator logs).
 rollout_container_fail_reason() {
 	local c="$1" state has_h h
 	state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
@@ -257,6 +258,7 @@ wait_for_rollout_health() {
 	[[ "${wait_secs}" =~ ^[0-9]+$ ]] || wait_secs=180
 	[[ "${poll}" =~ ^[0-9]+$ ]] || poll=5
 	[[ "${poll}" -ge 1 ]] || poll=1
+	# ROLLUP_HEALTH_WAIT_SECS=0 (or other tiny values) would otherwise time out on the first iteration.
 	if [[ "${wait_secs}" -lt 30 ]]; then
 		wait_secs=30
 	fi
