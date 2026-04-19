@@ -284,8 +284,9 @@ bash scripts/release.sh deploy sha-0123456789abcdef0123456789abcdef01234567
 1. Validates required env (including `IMAGE_*`, `DATABASE_URL`, etc.)
 2. Writes `IMAGE_REGISTRY`, `APP_IMAGE_REPOSITORY`, `GOOSE_IMAGE_REPOSITORY`, `APP_IMAGE_TAG`, `GOOSE_IMAGE_TAG`, and sets legacy `IMAGE_TAG` to the **app** tag (exported CI vars override file values when set)
 3. Optionally runs `docker login ghcr.io` when `GHCR_PULL_USERNAME` and `GHCR_PULL_TOKEN` are set in the shell
-4. Runs `docker compose config`, `docker compose pull` for app/goose-related services, starts data plane, runs **`docker compose up migrate`**, runs `emqx_bootstrap.sh`, brings up the long-lived stack, waits on Docker health, runs `healthcheck_prod.sh` unless `SKIP_SMOKE=1`
-5. Records `.deploy/current_*` / `previous_*` image tags (app and goose separately) plus `history.log`
+4. Runs `docker compose config`, `docker compose pull` for app/goose-related services, starts data plane, runs **`docker compose up migrate`**, runs `emqx_bootstrap.sh`, brings up the long-lived stack, then **polls the rollout gate** (postgres, nats, emqx, api, worker, mqtt-ingest, reconciler, caddy): each container must be **running**, and if Docker defines a healthcheck it must reach **healthy** before the wait ends. Env: `ROLLUP_HEALTH_WAIT_SECS` (default **180**, clamped **30–3600** so `0` cannot instant-fail), `ROLLUP_HEALTH_POLL_SECS` (default **5**, minimum **1**). On timeout the script prints `docker compose ps`, per-container `docker inspect` state/health, and log tails for failing gate services, then exits non-zero.
+5. Runs `healthcheck_prod.sh` unless `SKIP_SMOKE=1` (that script **also** polls the same eight containers for Docker health with `STACK_DOCKER_HEALTH_WAIT_SECS` / `STACK_DOCKER_HEALTH_POLL_SECS`, same defaults and clamp, before one-shot verification and internal/public checks).
+6. Records `.deploy/current_*` / `previous_*` image tags (app and goose separately) plus `history.log`
 
 If migrations fail, the script exits before switching the full app stack.
 
