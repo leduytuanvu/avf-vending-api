@@ -74,6 +74,10 @@ type Config struct {
 	Temporal TemporalConfig
 
 	Telemetry TelemetryConfig
+	// MQTTDeviceTelemetry bounds device MQTT ingest in cmd/mqtt-ingest (payload, rate, queue).
+	MQTTDeviceTelemetry MQTTDeviceTelemetryConfig
+	// TelemetryJetStream bounds JetStream streams/consumers and worker projection (cmd/worker, mqtt-ingest).
+	TelemetryJetStream TelemetryJetStreamConfig
 
 	// HTTPAuth selects JWT validation mode (HS256 dev secret vs RS256 PEM vs RS256 JWKS).
 	HTTPAuth HTTPAuthConfig
@@ -104,6 +108,15 @@ type HTTPAuthConfig struct {
 	// HS256 (and optional previous secret for rotation).
 	JWTSecret         []byte
 	JWTSecretPrevious []byte
+
+	// LoginJWTSecret signs interactive session access tokens (HS256) when set; required for rs256_pem/rs256_jwks.
+	// When empty in hs256 mode, session tokens fall back to JWTSecret so dev stacks can use a single secret.
+	LoginJWTSecret []byte
+
+	// AccessTokenTTL is the lifetime for session access JWTs issued by POST /v1/auth/login and /v1/auth/refresh.
+	AccessTokenTTL time.Duration
+	// RefreshTokenTTL is the server-side refresh token persistence horizon.
+	RefreshTokenTTL time.Duration
 
 	// RS256 PEM (single public key; rotation = deploy new PEM / JWKS).
 	RSAPublicKeyPEM []byte
@@ -219,6 +232,15 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.Temporal.validate(); err != nil {
+		return err
+	}
+	if err := c.MQTTDeviceTelemetry.validate(); err != nil {
+		return err
+	}
+	if err := c.TelemetryJetStream.validate(); err != nil {
+		return err
+	}
+	if err := c.validateProductionTelemetryNATS(); err != nil {
 		return err
 	}
 
@@ -346,6 +368,11 @@ func (h HTTPAuthConfig) validate() error {
 	if mode == "rs256_jwks" && strings.TrimSpace(h.JWKSURL) == "" {
 		return errors.New("config: HTTP_AUTH_MODE=rs256_jwks requires HTTP_AUTH_JWT_JWKS_URL")
 	}
+	if mode == "rs256_pem" || mode == "rs256_jwks" {
+		if len(strings.TrimSpace(string(h.LoginJWTSecret))) == 0 {
+			return errors.New("config: HTTP_AUTH_LOGIN_JWT_SECRET is required when HTTP_AUTH_MODE is rs256_pem or rs256_jwks (session access tokens are HS256-signed)")
+		}
+	}
 	return nil
 }
 
@@ -455,7 +482,9 @@ func Load() (*Config, error) {
 			Insecure:     getenvBool("OTEL_INSECURE", true),
 			SDKDisabled:  getenvBool("OTEL_SDK_DISABLED", false),
 		},
-		HTTPAuth:      httpAuth,
+		MQTTDeviceTelemetry: loadMQTTDeviceTelemetryConfig(),
+		TelemetryJetStream:  loadTelemetryJetStreamConfig(),
+		HTTPAuth:          httpAuth,
 		HTTPRateLimit: loadHTTPRateLimitConfig(),
 		Artifacts:     loadArtifactsConfig(),
 		Analytics:     loadAnalyticsConfig(),
@@ -483,12 +512,17 @@ func loadHTTPAuthConfig() (HTTPAuthConfig, error) {
 	}
 
 	jwksTTL := mustParseDuration("HTTP_AUTH_JWT_JWKS_CACHE_TTL", getenv("HTTP_AUTH_JWT_JWKS_CACHE_TTL", "5m"))
+	accessTTL := mustParseDuration("HTTP_AUTH_ACCESS_TTL", getenv("HTTP_AUTH_ACCESS_TTL", "15m"))
+	refreshTTL := mustParseDuration("HTTP_AUTH_REFRESH_TTL", getenv("HTTP_AUTH_REFRESH_TTL", "720h"))
 
 	return HTTPAuthConfig{
 		Mode:                mode,
 		JWTLeeway:           leeway,
 		JWTSecret:           []byte(strings.TrimSpace(os.Getenv("HTTP_AUTH_JWT_SECRET"))),
 		JWTSecretPrevious:   []byte(strings.TrimSpace(os.Getenv("HTTP_AUTH_JWT_SECRET_PREVIOUS"))),
+		LoginJWTSecret:      []byte(strings.TrimSpace(os.Getenv("HTTP_AUTH_LOGIN_JWT_SECRET"))),
+		AccessTokenTTL:      accessTTL,
+		RefreshTokenTTL:     refreshTTL,
 		RSAPublicKeyPEM:     rsaPEM,
 		JWKSURL:             strings.TrimSpace(os.Getenv("HTTP_AUTH_JWT_JWKS_URL")),
 		JWKSCacheTTL:        jwksTTL,
@@ -587,6 +621,18 @@ func getenvInt(key string, def int) int {
 		return def
 	}
 	v, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return def
+	}
+	return v
+}
+
+func getenvInt64(key string, def int64) int64 {
+	raw, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return def
+	}
+	v, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
 	if err != nil {
 		return def
 	}

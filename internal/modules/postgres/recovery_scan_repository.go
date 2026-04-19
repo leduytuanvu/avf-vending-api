@@ -24,7 +24,10 @@ var _ appreliability.OrphanVendFinder = (*RecoveryScanRepository)(nil)
 
 func (r *RecoveryScanRepository) FindStuckPayments(ctx context.Context, run appreliability.ScanRunContext, policy appreliability.RecoveryPolicy, limits appreliability.ScanLimits) ([]appreliability.StuckPaymentCandidate, error) {
 	before := run.Now.Add(-policy.PaymentMinAge)
-	rows, err := db.New(r.pool).ListPaymentsPendingTimeout(ctx, before, limits.MaxItems)
+	rows, err := db.New(r.pool).ListPaymentsPendingTimeout(ctx, db.ListPaymentsPendingTimeoutParams{
+		CreatedAt: before,
+		Limit:     limits.MaxItems,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +50,10 @@ func (r *RecoveryScanRepository) FindStuckPayments(ctx context.Context, run appr
 
 func (r *RecoveryScanRepository) FindStaleCommands(ctx context.Context, run appreliability.ScanRunContext, policy appreliability.RecoveryPolicy, limits appreliability.ScanLimits) ([]appreliability.StuckCommandCandidate, error) {
 	before := run.Now.Add(-policy.CommandMinAge)
-	rows, err := db.New(r.pool).ListStaleCommandLedgerEntries(ctx, before, limits.MaxItems)
+	rows, err := db.New(r.pool).ListStaleCommandLedgerEntries(ctx, db.ListStaleCommandLedgerEntriesParams{
+		CreatedAt: before,
+		Limit:     limits.MaxItems,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +72,10 @@ func (r *RecoveryScanRepository) FindStaleCommands(ctx context.Context, run appr
 
 func (r *RecoveryScanRepository) FindOrphanVendSessions(ctx context.Context, run appreliability.ScanRunContext, policy appreliability.RecoveryPolicy, limits appreliability.ScanLimits) ([]appreliability.OrphanVendCandidate, error) {
 	before := run.Now.Add(-policy.VendMinAge)
-	rows, err := db.New(r.pool).ListVendSessionsStuckForReconciliation(ctx, before, limits.MaxItems)
+	rows, err := db.New(r.pool).ListVendSessionsStuckForReconciliation(ctx, db.ListVendSessionsStuckForReconciliationParams{
+		CreatedAt: before,
+		Limit:     limits.MaxItems,
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -50,7 +50,6 @@ func TestValidateReconciler_actionsEnabled_badPlaceholderCount(t *testing.T) {
 }
 
 func TestValidateReconciler_actionsEnabled_missingNATSURL(t *testing.T) {
-	t.Parallel()
 	prev := os.Getenv(platformnats.EnvNATSURL)
 	_ = os.Unsetenv(platformnats.EnvNATSURL)
 	t.Cleanup(func() {
@@ -73,7 +72,6 @@ func TestValidateReconciler_actionsEnabled_missingNATSURL(t *testing.T) {
 }
 
 func TestValidateReconciler_actionsEnabled_ok(t *testing.T) {
-	t.Parallel()
 	prev := os.Getenv(platformnats.EnvNATSURL)
 	_ = os.Setenv(platformnats.EnvNATSURL, "nats://127.0.0.1:4222")
 	t.Cleanup(func() {
@@ -96,7 +94,6 @@ func TestValidateReconciler_actionsEnabled_ok(t *testing.T) {
 }
 
 func TestValidateReconciler_actionsEnabled_emptyRefundSubject(t *testing.T) {
-	t.Parallel()
 	prev := os.Getenv(platformnats.EnvNATSURL)
 	_ = os.Setenv(platformnats.EnvNATSURL, "nats://127.0.0.1:4222")
 	t.Cleanup(func() {
@@ -119,7 +116,6 @@ func TestValidateReconciler_actionsEnabled_emptyRefundSubject(t *testing.T) {
 }
 
 func TestValidateReconciler_actionsEnabled_nonPositiveBatch(t *testing.T) {
-	t.Parallel()
 	prev := os.Getenv(platformnats.EnvNATSURL)
 	_ = os.Setenv(platformnats.EnvNATSURL, "nats://127.0.0.1:4222")
 	t.Cleanup(func() {

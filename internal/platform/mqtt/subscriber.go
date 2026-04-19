@@ -14,21 +14,24 @@ import (
 type IngestHooks struct {
 	// OnDispatchOutcome is invoked after each MQTT message Dispatch to ing; success false when Dispatch returned an error.
 	OnDispatchOutcome func(success bool, topic string, payloadBytes int)
+	// OnIngressRejected is invoked when Dispatch rejects a message before DeviceIngest (validation, size, complexity).
+	OnIngressRejected func(topic string, reason string, payloadBytes int)
 }
 
 // Subscriber connects to a broker and routes device publications to DeviceIngest.
 type Subscriber struct {
-	cfg   BrokerConfig
-	log   *zap.Logger
-	hooks *IngestHooks
+	cfg    BrokerConfig
+	log    *zap.Logger
+	hooks  *IngestHooks
+	limits *TelemetryIngressLimits
 }
 
-// NewSubscriber validates cfg and returns a subscriber handle. hooks may be nil.
-func NewSubscriber(cfg BrokerConfig, log *zap.Logger, hooks *IngestHooks) (*Subscriber, error) {
+// NewSubscriber validates cfg and returns a subscriber handle. hooks and limits may be nil.
+func NewSubscriber(cfg BrokerConfig, log *zap.Logger, hooks *IngestHooks, limits *TelemetryIngressLimits) (*Subscriber, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	return &Subscriber{cfg: cfg, log: log, hooks: hooks}, nil
+	return &Subscriber{cfg: cfg, log: log, hooks: hooks, limits: limits}, nil
 }
 
 // Run connects, subscribes to device topics, and blocks until ctx is cancelled.
@@ -61,7 +64,7 @@ func (s *Subscriber) Run(ctx context.Context, ing DeviceIngest) error {
 			return
 		}
 		n := len(msg.Payload())
-		err := Dispatch(ctx, s.cfg.TopicPrefix, msg.Topic(), msg.Payload(), ing)
+		err := Dispatch(ctx, s.cfg.TopicPrefix, msg.Topic(), msg.Payload(), ing, s.limits, s.hooks)
 		if s.hooks != nil && s.hooks.OnDispatchOutcome != nil {
 			s.hooks.OnDispatchOutcome(err == nil, msg.Topic(), n)
 		}

@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -27,17 +28,17 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 		r.Post("/orders", func(w http.ResponseWriter, r *http.Request) {
 			idem, err := requireWriteIdempotencyKey(r)
 			if err != nil {
-				writeAPIError(w, http.StatusBadRequest, "missing_idempotency_key", err.Error())
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 				return
 			}
 			var body commerceCreateOrderRequest
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_json", "request body must be JSON")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
 			org := tenantOrgID(r)
 			if org == uuid.Nil {
-				writeAPIError(w, http.StatusForbidden, "organization_required", "organization scope required")
+				writeAPIError(w, r.Context(), http.StatusForbidden, "organization_required", "organization scope required")
 				return
 			}
 			in := appcommerce.CreateOrderInput{
@@ -53,7 +54,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			}
 			out, err := svc.CreateOrder(r.Context(), in)
 			if err != nil {
-				writeCommerceServiceError(w, err)
+				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
 			writeJSON(w, http.StatusCreated, commerceCreateOrderResponse{
@@ -68,29 +69,29 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 		r.Post("/orders/{orderId}/payment-session", func(w http.ResponseWriter, r *http.Request) {
 			idem, err := requireWriteIdempotencyKey(r)
 			if err != nil {
-				writeAPIError(w, http.StatusBadRequest, "missing_idempotency_key", err.Error())
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 				return
 			}
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
 				return
 			}
 			var body commercePaymentSessionRequest
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_json", "request body must be JSON")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
 			org := tenantOrgID(r)
 			if err := svc.EnsureOrderOrganization(r.Context(), org, orderID); err != nil {
-				writeCommerceServiceError(w, err)
+				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
 			topic := cfg.Commerce.PaymentOutboxTopic
 			evType := cfg.Commerce.PaymentOutboxEventType
 			aggType := cfg.Commerce.PaymentOutboxAggregateType
 			if strings.TrimSpace(topic) == "" || strings.TrimSpace(evType) == "" || strings.TrimSpace(aggType) == "" {
-				writeCapabilityNotConfigured(w, "v1.commerce.payment_session.outbox", "commerce outbox defaults are not configured")
+				writeCapabilityNotConfigured(w, r.Context(), "v1.commerce.payment_session.outbox", "commerce outbox defaults are not configured")
 				return
 			}
 			payload := body.OutboxPayloadJSON
@@ -98,7 +99,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				payload = []byte(`{"source":"http_api"}`)
 			}
 			if !json.Valid(payload) {
-				writeAPIError(w, http.StatusBadRequest, "invalid_json", "outbox_payload_json must be valid JSON")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "outbox_payload_json must be valid JSON")
 				return
 			}
 			outboxIdem := idem + ":outbox:" + orderID.String()
@@ -119,7 +120,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			}
 			res, err := svc.StartPaymentWithOutbox(r.Context(), in)
 			if err != nil {
-				writeCommerceServiceError(w, err)
+				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
 			writeJSON(w, http.StatusOK, commercePaymentSessionResponse{
@@ -133,14 +134,14 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 		r.Get("/orders/{orderId}", func(w http.ResponseWriter, r *http.Request) {
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
 				return
 			}
 			slot := int32(parseSlotQuery(r, 0))
 			org := tenantOrgID(r)
 			st, err := svc.GetCheckoutStatus(r.Context(), org, orderID, slot)
 			if err != nil {
-				writeCommerceServiceError(w, err)
+				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
 			writeJSON(w, http.StatusOK, checkoutStatusToJSON(st))
@@ -149,14 +150,14 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 		r.Get("/orders/{orderId}/reconciliation", func(w http.ResponseWriter, r *http.Request) {
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
 				return
 			}
 			slot := int32(parseSlotQuery(r, 0))
 			org := tenantOrgID(r)
 			st, err := svc.GetCheckoutStatus(r.Context(), org, orderID, slot)
 			if err != nil {
-				writeCommerceServiceError(w, err)
+				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
 			writeJSON(w, http.StatusOK, map[string]any{
@@ -167,22 +168,22 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 
 		r.Post("/orders/{orderId}/payments/{paymentId}/webhooks", func(w http.ResponseWriter, r *http.Request) {
 			if _, err := requireWriteIdempotencyKey(r); err != nil {
-				writeAPIError(w, http.StatusBadRequest, "missing_idempotency_key", err.Error())
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 				return
 			}
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
 				return
 			}
 			paymentID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "paymentId")))
 			if err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_payment_id", "invalid paymentId")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_payment_id", "invalid paymentId")
 				return
 			}
 			var body commerceWebhookRequest
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_json", "request body must be JSON")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
 			org := tenantOrgID(r)
@@ -200,7 +201,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			}
 			res, err := svc.ApplyPaymentProviderWebhook(r.Context(), in)
 			if err != nil {
-				writeCommerceServiceError(w, err)
+				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
 			resp := commerceWebhookResponse{
@@ -221,17 +222,17 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			// Require Idempotency-Key on mutating routes for a uniform client contract; AdvanceVend
 			// persistence does not yet key off this value (duplicate POSTs are rejected by state machine).
 			if _, err := requireWriteIdempotencyKey(r); err != nil {
-				writeAPIError(w, http.StatusBadRequest, "missing_idempotency_key", err.Error())
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 				return
 			}
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
 				return
 			}
 			var body commerceVendStartRequest
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_json", "request body must be JSON")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
 			org := tenantOrgID(r)
@@ -242,7 +243,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				ToState:        "in_progress",
 			})
 			if err != nil {
-				writeCommerceServiceError(w, err)
+				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
 			writeJSON(w, http.StatusOK, commerceVendStateResponse{VendState: v.State, SlotIndex: v.SlotIndex})
@@ -250,17 +251,17 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 
 		r.Post("/orders/{orderId}/vend/success", func(w http.ResponseWriter, r *http.Request) {
 			if _, err := requireWriteIdempotencyKey(r); err != nil {
-				writeAPIError(w, http.StatusBadRequest, "missing_idempotency_key", err.Error())
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 				return
 			}
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
 				return
 			}
 			var body commerceVendFinalizeRequest
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_json", "request body must be JSON")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
 			org := tenantOrgID(r)
@@ -272,7 +273,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				FailureReason:     nil,
 			})
 			if err != nil {
-				writeCommerceServiceError(w, err)
+				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
 			writeJSON(w, http.StatusOK, commerceVendFinalizeResponse{
@@ -284,17 +285,17 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 
 		r.Post("/orders/{orderId}/vend/failure", func(w http.ResponseWriter, r *http.Request) {
 			if _, err := requireWriteIdempotencyKey(r); err != nil {
-				writeAPIError(w, http.StatusBadRequest, "missing_idempotency_key", err.Error())
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 				return
 			}
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
 				return
 			}
 			var body commerceVendFinalizeRequest
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				writeAPIError(w, http.StatusBadRequest, "invalid_json", "request body must be JSON")
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
 			org := tenantOrgID(r)
@@ -306,7 +307,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				FailureReason:     body.FailureReason,
 			})
 			if err != nil {
-				writeCommerceServiceError(w, err)
+				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
 			writeJSON(w, http.StatusOK, commerceVendFinalizeResponse{
@@ -378,24 +379,24 @@ func checkoutStatusToJSON(st appcommerce.CheckoutStatusView) map[string]any {
 	return out
 }
 
-func writeCommerceServiceError(w http.ResponseWriter, err error) {
+func writeCommerceServiceError(w http.ResponseWriter, ctx context.Context, err error) {
 	switch {
 	case errors.Is(err, appcommerce.ErrNotConfigured):
-		writeCapabilityNotConfigured(w, "v1.commerce.persistence", "commerce persistence or webhook pipeline is not configured for this process")
+		writeCapabilityNotConfigured(w, ctx, "v1.commerce.persistence", "commerce persistence or webhook pipeline is not configured for this process")
 	case errors.Is(err, appcommerce.ErrNotFound):
-		writeAPIError(w, http.StatusNotFound, "not_found", err.Error())
+		writeAPIError(w, ctx, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, appcommerce.ErrOrgMismatch):
-		writeAPIError(w, http.StatusForbidden, "forbidden", "organization scope does not match this resource")
+		writeAPIError(w, ctx, http.StatusForbidden, "forbidden", "organization scope does not match this resource")
 	case errors.Is(err, appcommerce.ErrIllegalTransition):
-		writeAPIError(w, http.StatusConflict, "illegal_transition", err.Error())
+		writeAPIError(w, ctx, http.StatusConflict, "illegal_transition", err.Error())
 	case errors.Is(err, appcommerce.ErrPaymentNotSettled):
-		writeAPIError(w, http.StatusConflict, "payment_not_settled", err.Error())
+		writeAPIError(w, ctx, http.StatusConflict, "payment_not_settled", err.Error())
 	default:
 		if errors.Is(err, appcommerce.ErrInvalidArgument) {
-			writeAPIError(w, http.StatusBadRequest, "invalid_argument", err.Error())
+			writeAPIError(w, ctx, http.StatusBadRequest, "invalid_argument", err.Error())
 			return
 		}
-		writeAPIError(w, http.StatusInternalServerError, "internal", err.Error())
+		writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
 	}
 }
 

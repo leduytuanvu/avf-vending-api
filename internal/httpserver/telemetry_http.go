@@ -29,21 +29,21 @@ func telemetrySnapshotHandler(st *postgres.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := uuid.Parse(chi.URLParam(r, "machineId"))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		row, err := st.GetTelemetrySnapshot(r.Context(), id)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				writeAPIError(w, http.StatusNotFound, "telemetry_snapshot_not_found", "no telemetry snapshot yet for this machine")
+				writeAPIError(w, r.Context(), http.StatusNotFound, "telemetry_snapshot_not_found", "no telemetry snapshot yet for this machine")
 				return
 			}
-			writeAPIError(w, http.StatusInternalServerError, "internal", err.Error())
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"machine_id":          row.MachineID,
+			"machine_id":        row.MachineID,
 			"organization_id":   row.OrganizationID,
 			"site_id":           row.SiteID,
 			"reported_state":    json.RawMessage(row.ReportedState),
@@ -60,7 +60,7 @@ func telemetryIncidentsHandler(st *postgres.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := uuid.Parse(chi.URLParam(r, "machineId"))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		limit := int32(50)
@@ -71,7 +71,7 @@ func telemetryIncidentsHandler(st *postgres.Store) http.HandlerFunc {
 		}
 		rows, err := st.ListMachineIncidentsRecent(r.Context(), id, limit)
 		if err != nil {
-			writeAPIError(w, http.StatusInternalServerError, "internal", err.Error())
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
 		items := make([]map[string]any, 0, len(rows))
@@ -96,7 +96,7 @@ func telemetryRollupsHandler(st *postgres.Store) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := uuid.Parse(chi.URLParam(r, "machineId"))
 		if err != nil {
-			writeAPIError(w, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
 		granularity := r.URL.Query().Get("granularity")
@@ -119,7 +119,7 @@ func telemetryRollupsHandler(st *postgres.Store) http.HandlerFunc {
 		limit := int32(500)
 		rows, err := st.ListTelemetryRollupsInRange(r.Context(), id, from, to, granularity, limit)
 		if err != nil {
-			writeAPIError(w, http.StatusInternalServerError, "internal", err.Error())
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
 		items := make([]map[string]any, 0, len(rows))

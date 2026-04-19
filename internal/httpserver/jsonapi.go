@@ -1,70 +1,91 @@
 package httpserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/avf/avf-vending-api/internal/apierr"
 	"github.com/avf/avf-vending-api/internal/app/api"
+	appmw "github.com/avf/avf-vending-api/internal/middleware"
 )
 
-// apiErrJSON returns the standard v1 error envelope: {"error":{"code":"...","message":"..."}}.
-// All JSON APIs under /v1 should use this shape so clients can branch on `error.code` reliably.
-func apiErrJSON(code, message string) map[string]any {
-	return map[string]any{"error": map[string]any{"code": code, "message": message}}
+func writeAPIError(w http.ResponseWriter, ctx context.Context, status int, code, message string) {
+	writeAPIErrorDetails(w, ctx, status, code, message, nil)
 }
 
-func writeAPIError(w http.ResponseWriter, status int, code, message string) {
-	writeJSON(w, status, apiErrJSON(code, message))
+func writeAPIErrorDetails(w http.ResponseWriter, ctx context.Context, status int, code, message string, details map[string]any) {
+	rid := appmw.RequestIDFromContext(ctx)
+	writeJSON(w, status, apierr.V1(rid, code, message, details))
 }
 
-func writeV1ListError(w http.ResponseWriter, err error) {
+func writeV1ListError(w http.ResponseWriter, ctx context.Context, err error) {
+	if errors.Is(err, api.ErrInvalidListQuery) {
+		writeAPIError(w, ctx, http.StatusBadRequest, "invalid_query", "invalid list query parameters")
+		return
+	}
+	if errors.Is(err, api.ErrCommerceOrganizationQueryRequired) {
+		writeAPIError(w, ctx, http.StatusBadRequest, "organization_id_required", "organization_id query parameter is required for platform administrators")
+		return
+	}
 	var capErr *api.CapabilityError
 	if errors.As(err, &capErr) {
-		writeJSON(w, http.StatusNotImplemented, map[string]any{
-			"error": map[string]any{
-				"code":        "not_implemented",
-				"message":     capErr.Message,
+		writeJSON(w, http.StatusNotImplemented, apierr.V1(
+			appmw.RequestIDFromContext(ctx),
+			"not_implemented",
+			capErr.Message,
+			map[string]any{
 				"capability":  capErr.Capability,
 				"implemented": false,
 			},
-		})
+		))
 		return
 	}
 	if errors.Is(err, api.ErrAdminTenantScopeRequired) {
-		writeAPIError(w, http.StatusBadRequest, "tenant_scope_required", "organization scope is required for this list")
+		writeAPIError(w, ctx, http.StatusBadRequest, "tenant_scope_required", "organization scope is required for this list")
 		return
 	}
-	writeAPIError(w, http.StatusInternalServerError, "internal", err.Error())
+	writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
 }
 
-func writeV1ListView(w http.ResponseWriter, out *api.ListView, err error) {
+func writeV1ListView(w http.ResponseWriter, ctx context.Context, out *api.ListView, err error) {
 	if err != nil {
-		writeV1ListError(w, err)
+		writeV1ListError(w, ctx, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
 }
 
-func writeMachineShadowLoadError(w http.ResponseWriter, err error) {
-	if errors.Is(err, api.ErrMachineShadowNotFound) {
-		writeAPIError(w, http.StatusNotFound, "machine_shadow_not_found", "machine shadow row does not exist")
+// writeV1Collection writes a typed JSON list envelope (items + meta) or maps list errors.
+func writeV1Collection(w http.ResponseWriter, ctx context.Context, v any, err error) {
+	if err != nil {
+		writeV1ListError(w, ctx, err)
 		return
 	}
-	writeAPIError(w, http.StatusInternalServerError, "internal", err.Error())
+	writeJSON(w, http.StatusOK, v)
 }
 
-func writeCapabilityNotConfigured(w http.ResponseWriter, capability, message string) {
-	writeJSON(w, http.StatusServiceUnavailable, map[string]any{
-		"error": map[string]any{
-			"code":        "capability_not_configured",
-			"message":     message,
+func writeMachineShadowLoadError(w http.ResponseWriter, ctx context.Context, err error) {
+	if errors.Is(err, api.ErrMachineShadowNotFound) {
+		writeAPIError(w, ctx, http.StatusNotFound, "machine_shadow_not_found", "machine shadow row does not exist")
+		return
+	}
+	writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
+}
+
+func writeCapabilityNotConfigured(w http.ResponseWriter, ctx context.Context, capability, message string) {
+	writeJSON(w, http.StatusServiceUnavailable, apierr.V1(
+		appmw.RequestIDFromContext(ctx),
+		"capability_not_configured",
+		message,
+		map[string]any{
 			"capability":  capability,
 			"implemented": false,
 		},
-	})
+	))
 }
 
 // Operator list endpoints share the same limit semantics as app/operator clampListLimit (defaults + cap).

@@ -11,6 +11,7 @@ import (
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // CommandWorkflowAudit is optional persistence-side audit metadata (callers supply org + actor context).
@@ -84,13 +85,12 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 	var orderRow db.Order
 	existingOrder, err := q.GetOrderByOrgIdempotency(ctx, db.GetOrderByOrgIdempotencyParams{
 		OrganizationID: in.OrganizationID,
-		IdempotencyKey: in.IdempotencyKey,
+		IdempotencyKey: optionalStringToPgText(in.IdempotencyKey),
 	})
 	switch {
 	case err == nil:
 		orderRow = existingOrder
 	case isNoRows(err):
-		idem := in.IdempotencyKey
 		orderRow, err = q.InsertOrder(ctx, db.InsertOrderParams{
 			OrganizationID: in.OrganizationID,
 			MachineID:      in.MachineID,
@@ -99,7 +99,7 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 			SubtotalMinor:  in.SubtotalMinor,
 			TaxMinor:       in.TaxMinor,
 			TotalMinor:     in.TotalMinor,
-			IdempotencyKey: &idem,
+			IdempotencyKey: optionalStringToPgText(in.IdempotencyKey),
 		})
 		if err != nil {
 			if isUniqueViolation(err) {
@@ -168,12 +168,12 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 
 	existingPay, err := q.GetPaymentByOrderAndIdempotencyKey(ctx, db.GetPaymentByOrderAndIdempotencyKeyParams{
 		OrderID:        in.OrderID,
-		IdempotencyKey: in.IdempotencyKey,
+		IdempotencyKey: optionalStringToPgText(in.IdempotencyKey),
 	})
 	if err == nil {
 		ob, oErr := q.GetOutboxByTopicAndIdempotency(ctx, db.GetOutboxByTopicAndIdempotencyParams{
 			Topic:          in.OutboxTopic,
-			IdempotencyKey: in.OutboxIdempotencyKey,
+			IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
 		})
 		if oErr == nil {
 			if err := tx.Commit(ctx); err != nil {
@@ -190,13 +190,13 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 		}
 
 		obRow, insErr := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-			OrganizationID: &in.OrganizationID,
+			OrganizationID: uuidToPg(in.OrganizationID),
 			Topic:          in.OutboxTopic,
 			EventType:      in.OutboxEventType,
 			Payload:        in.OutboxPayload,
 			AggregateType:  in.OutboxAggregateType,
 			AggregateID:    in.OutboxAggregateID,
-			IdempotencyKey: strPtr(in.OutboxIdempotencyKey),
+			IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
 		})
 		if insErr != nil {
 			return commerce.PaymentOutboxResult{}, insErr
@@ -214,27 +214,26 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 		return commerce.PaymentOutboxResult{}, err
 	}
 
-	pidem := in.IdempotencyKey
 	pRow, err := q.InsertPayment(ctx, db.InsertPaymentParams{
 		OrderID:        in.OrderID,
 		Provider:       in.Provider,
 		State:          in.PaymentState,
 		AmountMinor:    in.AmountMinor,
 		Currency:       in.Currency,
-		IdempotencyKey: &pidem,
+		IdempotencyKey: optionalStringToPgText(in.IdempotencyKey),
 	})
 	if err != nil {
 		return commerce.PaymentOutboxResult{}, err
 	}
 
 	obRow, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-		OrganizationID: &in.OrganizationID,
+		OrganizationID: uuidToPg(in.OrganizationID),
 		Topic:          in.OutboxTopic,
 		EventType:      in.OutboxEventType,
 		Payload:        in.OutboxPayload,
 		AggregateType:  in.OutboxAggregateType,
 		AggregateID:    in.OutboxAggregateID,
-		IdempotencyKey: strPtr(in.OutboxIdempotencyKey),
+		IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
 	})
 	if err != nil {
 		return commerce.PaymentOutboxResult{}, err
@@ -249,10 +248,6 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 		Outbox:  mapOutbox(obRow),
 		Replay:  false,
 	}, nil
-}
-
-func strPtr(s string) *string {
-	return &s
 }
 
 func mapDeviceReceiptToAttemptStatus(receiptStatus string) string {
@@ -288,9 +283,9 @@ func maybeInsertAuditLog(ctx context.Context, q *db.Queries, audit *CommandWorkf
 		ActorID:        audit.ActorID,
 		Action:         audit.Action,
 		ResourceType:   audit.ResourceType,
-		ResourceID:     &resourceID,
+		ResourceID:     optionalUUIDToPg(&resourceID),
 		Payload:        auditPayloadBytes(audit.Payload),
-		Ip:             audit.IP,
+		Ip:             optionalStringPtrToPgText(audit.IP),
 	})
 	return err
 }
@@ -319,7 +314,7 @@ func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendC
 	idem := in.IdempotencyKey
 	existing, err := q.GetCommandLedgerByMachineIdempotency(ctx, db.GetCommandLedgerByMachineIdempotencyParams{
 		MachineID:      in.MachineID,
-		IdempotencyKey: idem,
+		IdempotencyKey: optionalStringToPgText(idem),
 	})
 	if err == nil {
 		if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
@@ -342,15 +337,14 @@ func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendC
 		return device.AppendCommandResult{}, err
 	}
 
-	idemPtr := idem
 	cmdRow, err := q.InsertCommandLedgerEntry(ctx, db.InsertCommandLedgerEntryParams{
 		MachineID:         in.MachineID,
 		Sequence:          seq,
 		CommandType:       in.CommandType,
 		Payload:           in.Payload,
-		CorrelationID:     in.CorrelationID,
-		IdempotencyKey:    &idemPtr,
-		OperatorSessionID: in.OperatorSessionID,
+		CorrelationID:     optionalUUIDToPg(in.CorrelationID),
+		IdempotencyKey:    optionalStringToPgText(idem),
+		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -413,7 +407,7 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 	idem := in.Command.IdempotencyKey
 	existing, err := q.GetCommandLedgerByMachineIdempotency(ctx, db.GetCommandLedgerByMachineIdempotencyParams{
 		MachineID:      in.Command.MachineID,
-		IdempotencyKey: idem,
+		IdempotencyKey: optionalStringToPgText(idem),
 	})
 	if err == nil {
 		if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
@@ -425,7 +419,7 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 
 		ob, oErr := q.GetOutboxByTopicAndIdempotency(ctx, db.GetOutboxByTopicAndIdempotencyParams{
 			Topic:          in.OutboxTopic,
-			IdempotencyKey: in.OutboxIdempotencyKey,
+			IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
 		})
 		switch {
 		case oErr == nil:
@@ -443,13 +437,13 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 			}, nil
 		case isNoRows(oErr):
 			obRow, insErr := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-				OrganizationID: &in.OrganizationID,
+				OrganizationID: uuidToPg(in.OrganizationID),
 				Topic:          in.OutboxTopic,
 				EventType:      in.OutboxEventType,
 				Payload:        in.OutboxPayload,
 				AggregateType:  in.OutboxAggregateType,
 				AggregateID:    in.OutboxAggregateID,
-				IdempotencyKey: strPtr(in.OutboxIdempotencyKey),
+				IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
 			})
 			if insErr != nil {
 				return AppendCommandWithOutboxResult{}, insErr
@@ -479,15 +473,14 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 		return AppendCommandWithOutboxResult{}, err
 	}
 
-	idemPtr := idem
 	cmdRow, err := q.InsertCommandLedgerEntry(ctx, db.InsertCommandLedgerEntryParams{
 		MachineID:         in.Command.MachineID,
 		Sequence:          seq,
 		CommandType:       in.Command.CommandType,
 		Payload:           in.Command.Payload,
-		CorrelationID:     in.Command.CorrelationID,
-		IdempotencyKey:    &idemPtr,
-		OperatorSessionID: in.Command.OperatorSessionID,
+		CorrelationID:     optionalUUIDToPg(in.Command.CorrelationID),
+		IdempotencyKey:    optionalStringToPgText(idem),
+		OperatorSessionID: optionalUUIDToPg(in.Command.OperatorSessionID),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -518,13 +511,13 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 	}
 
 	obRow, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-		OrganizationID: &in.OrganizationID,
+		OrganizationID: uuidToPg(in.OrganizationID),
 		Topic:          in.OutboxTopic,
 		EventType:      in.OutboxEventType,
 		Payload:        in.OutboxPayload,
 		AggregateType:  in.OutboxAggregateType,
 		AggregateID:    in.OutboxAggregateID,
-		IdempotencyKey: strPtr(in.OutboxIdempotencyKey),
+		IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
 	})
 	if err != nil {
 		return AppendCommandWithOutboxResult{}, err
@@ -593,14 +586,18 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 		}
 	}
 
+	var cmdAttempt pgtype.UUID
+	if attemptID != nil {
+		cmdAttempt = uuidToPg(*attemptID)
+	}
 	_, err = q.InsertDeviceCommandReceipt(ctx, db.InsertDeviceCommandReceiptParams{
 		MachineID:        p.MachineID,
 		Sequence:         p.Sequence,
 		Status:           p.Status,
-		CorrelationID:    p.CorrelationID,
+		CorrelationID:    optionalUUIDToPg(p.CorrelationID),
 		Payload:          payload,
 		DedupeKey:        p.DedupeKey,
-		CommandAttemptID: attemptID,
+		CommandAttemptID: cmdAttempt,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -665,7 +662,7 @@ func (s *Store) IngestTelemetry(ctx context.Context, in platformmqtt.TelemetryIn
 		MachineID: in.MachineID,
 		EventType: in.EventType,
 		Payload:   in.Payload,
-		DedupeKey: in.DedupeKey,
+		DedupeKey: optionalStringPtrToPgText(in.DedupeKey),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {

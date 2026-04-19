@@ -7,6 +7,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ListDeviceCommandReceiptsByMachine returns recent command receipts for a machine (newest first).
@@ -19,7 +20,7 @@ func (s *Store) ListDeviceCommandReceiptsByMachine(ctx context.Context, machineI
 
 // ApplyMQTTCommandAckTimeouts marks sent attempts whose ack deadline passed as ack_timeout.
 func (s *Store) ApplyMQTTCommandAckTimeouts(ctx context.Context, before time.Time) error {
-	return db.New(s.pool).ApplyMachineCommandAckTimeouts(ctx, before)
+	return db.New(s.pool).ApplyMachineCommandAckTimeouts(ctx, pgtype.Timestamptz{Time: before, Valid: true})
 }
 
 // GetCommandLedgerByMachineSequence loads a ledger row by machine and monotonic sequence.
@@ -44,18 +45,22 @@ func (s *Store) InsertMQTTDispatchAttemptWithLedgerMeta(ctx context.Context, com
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
+	var corr pgtype.UUID
+	if correlationID != nil {
+		corr = pgtype.UUID{Bytes: *correlationID, Valid: true}
+	}
 	att, err := q.InsertMachineCommandAttempt(ctx, db.InsertMachineCommandAttemptParams{
 		CommandID:          commandID,
 		MachineID:          machineID,
-		CorrelationID:      correlationID,
-		RequestPayloadJSON: requestWireJSON,
+		CorrelationID:      corr,
+		RequestPayloadJson: requestWireJSON,
 	})
 	if err != nil {
 		return db.MachineCommandAttempt{}, err
 	}
 	if err := q.UpdateCommandLedgerMQTTDispatchMeta(ctx, db.UpdateCommandLedgerMQTTDispatchMetaParams{
 		ID:        commandID,
-		TimeoutAt: ledgerTimeoutAt,
+		TimeoutAt: pgtype.Timestamptz{Time: ledgerTimeoutAt, Valid: true},
 	}); err != nil {
 		return db.MachineCommandAttempt{}, err
 	}
@@ -69,7 +74,7 @@ func (s *Store) InsertMQTTDispatchAttemptWithLedgerMeta(ctx context.Context, com
 func (s *Store) MarkMQTTDispatchAttemptSent(ctx context.Context, attemptID uuid.UUID, ackDeadline time.Time) error {
 	return db.New(s.pool).UpdateMachineCommandAttemptSent(ctx, db.UpdateMachineCommandAttemptSentParams{
 		ID:            attemptID,
-		AckDeadlineAt: ackDeadline,
+		AckDeadlineAt: pgtype.Timestamptz{Time: ackDeadline, Valid: true},
 	})
 }
 
@@ -77,6 +82,6 @@ func (s *Store) MarkMQTTDispatchAttemptSent(ctx context.Context, attemptID uuid.
 func (s *Store) MarkMQTTDispatchAttemptPublishFailed(ctx context.Context, attemptID uuid.UUID, reason string) error {
 	return db.New(s.pool).UpdateMachineCommandAttemptPublishFailed(ctx, db.UpdateMachineCommandAttemptPublishFailedParams{
 		ID:            attemptID,
-		TimeoutReason: reason,
+		TimeoutReason: pgtype.Text{String: reason, Valid: true},
 	})
 }

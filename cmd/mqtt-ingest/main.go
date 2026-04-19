@@ -14,7 +14,6 @@ import (
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/observability"
-	"github.com/avf/avf-vending-api/internal/observability/mqttingestprom"
 	platformdb "github.com/avf/avf-vending-api/internal/platform/db"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
@@ -63,7 +62,7 @@ func main() {
 	var ingestHooks *platformmqtt.IngestHooks
 	var metricsSrv *http.Server
 	if cfg.MetricsEnabled {
-		ingestHooks = mqttingestprom.NewIngestHooks()
+		ingestHooks = telemetryapp.NewIngestHooks()
 		addr := strings.TrimSpace(cfg.MQTTIngestMetricsListen)
 		if addr == "" {
 			addr = "127.0.0.1:9093"
@@ -90,27 +89,42 @@ func main() {
 		}
 	}()
 
+	natsURL := strings.TrimSpace(os.Getenv(platformnats.EnvNATSURL))
 	var js natssrv.JetStreamContext
-	if natsURL := strings.TrimSpace(os.Getenv(platformnats.EnvNATSURL)); natsURL != "" {
+	if natsURL != "" {
 		nc, err := platformnats.ConnectJetStream(ctx, natsURL, "avf-mqtt-ingest-telemetry")
 		if err != nil {
 			log.Fatal("nats connect", zap.Error(err))
 		}
 		defer func() { _ = nc.Conn.Drain() }()
 		js = nc.JS
-		if err := platformnats.EnsureTelemetryStreams(js); err != nil {
+		if err := platformnats.EnsureTelemetryStreams(js, cfg.TelemetryJetStream.NATSBrokerLimits()); err != nil {
 			log.Fatal("nats telemetry streams", zap.Error(err))
 		}
+	} else if cfg.AppEnv == config.AppEnvProduction {
+		log.Fatal("mqtt-ingest production requires NATS_URL (validated at config load; set NATS_URL in the process environment)")
 	}
 
-	ing := telemetryapp.SelectIngest(log, store, js)
+	ing, err := telemetryapp.SelectIngest(log, store, js, cfg.AppEnv, cfg.MQTTDeviceTelemetry.LegacyPostgresIngest)
+	if err != nil {
+		log.Fatal("telemetry ingest mode", zap.Error(err))
+	}
 
-	sub, err := platformmqtt.NewSubscriber(mqttCfg, log, ingestHooks)
+	pipeline := telemetryapp.NewBoundedDeviceIngest(log, ing, cfg.MQTTDeviceTelemetry)
+	defer pipeline.Close()
+
+	limits := &platformmqtt.TelemetryIngressLimits{
+		MaxPayloadBytes: cfg.MQTTDeviceTelemetry.MaxPayloadBytes,
+		MaxPoints:       cfg.MQTTDeviceTelemetry.MaxPointsPerMessage,
+		MaxTags:         cfg.MQTTDeviceTelemetry.MaxTagsPerMessage,
+	}
+
+	sub, err := platformmqtt.NewSubscriber(mqttCfg, log, ingestHooks, limits)
 	if err != nil {
 		log.Fatal("mqtt subscriber", zap.Error(err))
 	}
 
-	if err := sub.Run(ctx, ing); err != nil && !errors.Is(err, context.Canceled) {
+	if err := sub.Run(ctx, pipeline); err != nil && !errors.Is(err, context.Canceled) {
 		log.Fatal("mqtt-ingest stopped with error", zap.Error(err))
 	}
 

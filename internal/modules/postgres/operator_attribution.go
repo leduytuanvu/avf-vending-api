@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
@@ -63,12 +64,13 @@ func insertOperatorSessionAttribution(ctx context.Context, q *db.Queries, spec o
 		"resource_table":      spec.ResourceTable,
 		"resource_id":         spec.ResourceID,
 	}
-	if sess.TechnicianID != nil {
-		meta["technician_id"] = sess.TechnicianID.String()
+	if sess.TechnicianID.Valid {
+		meta["technician_id"] = uuid.UUID(sess.TechnicianID.Bytes).String()
 	}
-	if sess.UserPrincipal != nil && *sess.UserPrincipal != "" {
-		meta["user_principal"] = *sess.UserPrincipal
-		meta["user_id"] = *sess.UserPrincipal
+	if sess.UserPrincipal.Valid && strings.TrimSpace(sess.UserPrincipal.String) != "" {
+		up := strings.TrimSpace(sess.UserPrincipal.String)
+		meta["user_principal"] = up
+		meta["user_id"] = up
 	}
 
 	metaBytes, err := json.Marshal(meta)
@@ -76,21 +78,17 @@ func insertOperatorSessionAttribution(ctx context.Context, q *db.Queries, spec o
 		return fmt.Errorf("operator attribution: metadata: %w", err)
 	}
 
-	occ := spec.OccurredAt
-	if occ == nil {
-		now := time.Now().UTC()
-		occ = &now
-	}
+	occAt := ptrTimeOrNow(spec.OccurredAt)
 
 	_, err = q.InsertMachineActionAttribution(ctx, db.InsertMachineActionAttributionParams{
-		OperatorSessionID: spec.OperatorSessionID,
+		OperatorSessionID: optionalUUIDToPg(spec.OperatorSessionID),
 		MachineID:         spec.MachineID,
 		ActionOriginType:  domainoperator.ActionOriginOperatorSession,
 		ResourceType:      spec.ResourceTable,
 		ResourceID:        spec.ResourceID,
-		OccurredAt:        occ,
+		Column6:           occAt,
 		Metadata:          metaBytes,
-		CorrelationID:     spec.CorrelationID,
+		CorrelationID:     optionalUUIDToPg(spec.CorrelationID),
 	})
 	if err != nil {
 		return fmt.Errorf("operator attribution: insert: %w", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
@@ -14,6 +15,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -103,7 +105,10 @@ func NewTechnicianAssignmentRepository(pool *pgxpool.Pool) *TechnicianAssignment
 }
 
 func (r *TechnicianAssignmentRepository) HasActiveAssignment(ctx context.Context, technicianID, machineID uuid.UUID) (bool, error) {
-	return db.New(r.pool).TechnicianActiveAssignmentExists(ctx, technicianID, machineID)
+	return db.New(r.pool).TechnicianActiveAssignmentExists(ctx, db.TechnicianActiveAssignmentExistsParams{
+		TechnicianID: technicianID,
+		MachineID:    machineID,
+	})
 }
 
 var _ fleet.TechnicianMachineAssignmentChecker = (*TechnicianAssignmentRepository)(nil)
@@ -143,9 +148,9 @@ func (r *AuditRepository) Record(ctx context.Context, in compliance.AuditRecord)
 		ActorID:        in.ActorID,
 		Action:         in.Action,
 		ResourceType:   in.ResourceType,
-		ResourceID:     in.ResourceID,
+		ResourceID:     optionalUUIDToPg(in.ResourceID),
 		Payload:        in.Payload,
-		Ip:             in.IP,
+		Ip:             optionalStringPtrToPgText(in.IP),
 	})
 	if err != nil {
 		return compliance.AuditLog{}, err
@@ -198,9 +203,9 @@ func (r *OutboxRepository) RecordOutboxPublishFailure(ctx context.Context, rec r
 	msg := truncateOutboxPublishErrMsg(rec.ErrorMessage)
 	return db.New(r.pool).RecordOutboxPublishFailure(ctx, db.RecordOutboxPublishFailureParams{
 		ID:               rec.EventID,
-		LastPublishError: msg,
-		NextPublishAfter: rec.NextPublishAfter,
-		DeadLettered:     rec.DeadLettered,
+		LastPublishError: pgtype.Text{String: msg, Valid: true},
+		NextPublishAfter: optionalTimeToPgTimestamptz(rec.NextPublishAfter),
+		Column4:          rec.DeadLettered,
 	})
 }
 
@@ -214,9 +219,27 @@ func (r *OutboxRepository) GetOutboxPipelineStats(ctx context.Context) (reliabil
 		PendingTotal:           row.PendingTotal,
 		PendingDueNow:          row.PendingDueNow,
 		DeadLetteredTotal:      row.DeadLetteredTotal,
-		OldestPendingCreatedAt: row.OldestPendingCreatedAt,
+		OldestPendingCreatedAt: coerceOldestPendingCreatedAt(row.OldestPendingCreatedAt),
 		MaxPendingAttempts:     row.MaxPendingAttempts,
 	}, nil
+}
+
+func coerceOldestPendingCreatedAt(v interface{}) *time.Time {
+	switch t := v.(type) {
+	case time.Time:
+		x := t.UTC()
+		return &x
+	case *time.Time:
+		if t == nil {
+			return nil
+		}
+		x := t.UTC()
+		return &x
+	case pgtype.Timestamptz:
+		return pgTimestamptzToTimePtr(t)
+	default:
+		return nil
+	}
 }
 
 // MarkOutboxPublished sets published_at when still null.

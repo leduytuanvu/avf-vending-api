@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
@@ -61,6 +62,7 @@ func (b *NATSBridge) IngestTelemetry(ctx context.Context, in platformmqtt.Teleme
 		dedupe = fmt.Sprintf("%s:%s:%d", in.MachineID.String(), in.EventType, now.UnixNano())
 	}
 	if err := platformnats.PublishTelemetry(b.JS, cls, in.MachineID, body, dedupe); err != nil {
+		RecordTelemetryPublishFailure()
 		return err
 	}
 	if err := b.Store.TouchMachineConnectivityFast(ctx, in.MachineID); err != nil {
@@ -108,6 +110,7 @@ func (b *NATSBridge) IngestShadowReported(ctx context.Context, in platformmqtt.S
 	}
 	dedupe := fmt.Sprintf("shadow:%s:%d", in.MachineID.String(), now.UnixNano())
 	if err := platformnats.PublishTelemetry(b.JS, tel.ClassState, in.MachineID, body, dedupe); err != nil {
+		RecordTelemetryPublishFailure()
 		return err
 	}
 	if err := b.Store.TouchMachineConnectivityFast(ctx, in.MachineID); err != nil && b.Log != nil {
@@ -151,6 +154,7 @@ func (b *NATSBridge) IngestCommandReceipt(ctx context.Context, in platformmqtt.C
 		return err
 	}
 	if err := platformnats.PublishTelemetry(b.JS, tel.ClassCommandReceipt, in.MachineID, body, in.DedupeKey); err != nil {
+		RecordTelemetryPublishFailure()
 		return err
 	}
 	if err := b.Store.TouchMachineConnectivityFast(ctx, in.MachineID); err != nil && b.Log != nil {
@@ -178,20 +182,40 @@ func (l *LegacyStoreIngest) IngestCommandReceipt(ctx context.Context, in platfor
 	return l.Store.IngestCommandReceipt(ctx, in)
 }
 
-// SelectIngest returns JetStream bridge when JS is configured, otherwise legacy store path.
-func SelectIngest(log *zap.Logger, store *postgres.Store, js natssrv.JetStreamContext) platformmqtt.DeviceIngest {
+// SelectIngest returns JetStream bridge when JS is configured. In production, JetStream is mandatory
+// and TELEMETRY_LEGACY_POSTGRES_INGEST must be false (also enforced in config.Validate).
+func SelectIngest(log *zap.Logger, store *postgres.Store, js natssrv.JetStreamContext, appEnv config.AppEnvironment, legacyPostgres bool) (platformmqtt.DeviceIngest, error) {
 	if store == nil {
 		panic("telemetryapp.SelectIngest: nil store")
+	}
+	if appEnv == config.AppEnvProduction {
+		if js == nil {
+			return nil, fmt.Errorf("telemetryapp: APP_ENV=production requires NATS JetStream for device telemetry (set %s and ensure mqtt-ingest can connect)", platformnats.EnvNATSURL)
+		}
+		if legacyPostgres {
+			return nil, fmt.Errorf("telemetryapp: APP_ENV=production forbids legacy Postgres telemetry hot path (TELEMETRY_LEGACY_POSTGRES_INGEST)")
+		}
+		if log != nil {
+			log.Info("mqtt_ingest_telemetry_mode", zap.String("mode", "nats_jetstream_bridge"))
+		}
+		return &NATSBridge{Log: log, JS: js, Store: store}, nil
 	}
 	if js != nil {
 		if log != nil {
 			log.Info("mqtt_ingest_telemetry_mode", zap.String("mode", "nats_jetstream_bridge"))
 		}
-		return &NATSBridge{Log: log, JS: js, Store: store}
+		return &NATSBridge{Log: log, JS: js, Store: store}, nil
+	}
+	if legacyPostgres {
+		if log != nil {
+			log.Info("mqtt_ingest_telemetry_mode", zap.String("mode", "legacy_postgres_hot_path"),
+				zap.String("reason", "TELEMETRY_LEGACY_POSTGRES_INGEST=true"))
+		}
+		return &LegacyStoreIngest{Store: store}, nil
 	}
 	if log != nil {
 		log.Warn("mqtt_ingest_telemetry_mode", zap.String("mode", "legacy_postgres_hot_path"),
-			zap.String("note", "set NATS_URL to enable bounded telemetry JetStream + worker consumers"))
+			zap.String("note", "set NATS_URL for JetStream-backed telemetry; TELEMETRY_LEGACY_POSTGRES_INGEST=false by default"))
 	}
-	return &LegacyStoreIngest{Store: store}
+	return &LegacyStoreIngest{Store: store}, nil
 }

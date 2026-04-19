@@ -25,7 +25,7 @@ func mapSite(row db.Site) org.Site {
 	return org.Site{
 		ID:             row.ID,
 		OrganizationID: row.OrganizationID,
-		RegionID:       row.RegionID,
+		RegionID:       pgUUIDToPtr(row.RegionID),
 		Name:           row.Name,
 		CreatedAt:      row.CreatedAt,
 	}
@@ -36,7 +36,7 @@ func mapMachine(row db.Machine) fleet.Machine {
 		ID:                row.ID,
 		OrganizationID:    row.OrganizationID,
 		SiteID:            row.SiteID,
-		HardwareProfileID: row.HardwareProfileID,
+		HardwareProfileID: pgUUIDToPtr(row.HardwareProfileID),
 		SerialNumber:      row.SerialNumber,
 		Name:              row.Name,
 		Status:            row.Status,
@@ -76,9 +76,9 @@ func mapAuditLog(row db.AuditLog) compliance.AuditLog {
 		ActorID:        row.ActorID,
 		Action:         row.Action,
 		ResourceType:   row.ResourceType,
-		ResourceID:     row.ResourceID,
+		ResourceID:     pgUUIDToPtr(row.ResourceID),
 		Payload:        row.Payload,
-		IP:             row.Ip,
+		IP:             pgTextToStringPtr(row.Ip),
 		CreatedAt:      row.CreatedAt,
 	}
 }
@@ -86,20 +86,20 @@ func mapAuditLog(row db.AuditLog) compliance.AuditLog {
 func mapReliabilityOutbox(row db.OutboxEvent) reliability.OutboxEvent {
 	return reliability.OutboxEvent{
 		ID:                   row.ID,
-		OrganizationID:       row.OrganizationID,
+		OrganizationID:       pgUUIDToPtr(row.OrganizationID),
 		Topic:                row.Topic,
 		EventType:            row.EventType,
 		Payload:              row.Payload,
 		AggregateType:        row.AggregateType,
 		AggregateID:          row.AggregateID,
-		IdempotencyKey:       row.IdempotencyKey,
+		IdempotencyKey:       pgTextToStringPtr(row.IdempotencyKey),
 		CreatedAt:            row.CreatedAt,
-		PublishedAt:          row.PublishedAt,
+		PublishedAt:          pgTimestamptzToTimePtr(row.PublishedAt),
 		PublishAttemptCount:  row.PublishAttemptCount,
-		LastPublishError:     row.LastPublishError,
-		LastPublishAttemptAt: row.LastPublishAttemptAt,
-		NextPublishAfter:     row.NextPublishAfter,
-		DeadLetteredAt:       row.DeadLetteredAt,
+		LastPublishError:     pgTextToStringPtr(row.LastPublishError),
+		LastPublishAttemptAt: pgTimestamptzToTimePtr(row.LastPublishAttemptAt),
+		NextPublishAfter:     pgTimestamptzToTimePtr(row.NextPublishAfter),
+		DeadLetteredAt:       pgTimestamptzToTimePtr(row.DeadLetteredAt),
 	}
 }
 
@@ -109,15 +109,15 @@ func mapOperatorSession(row db.MachineOperatorSession) domainoperator.Session {
 		OrganizationID: row.OrganizationID,
 		MachineID:      row.MachineID,
 		ActorType:      row.ActorType,
-		TechnicianID:   row.TechnicianID,
-		UserPrincipal:  row.UserPrincipal,
+		TechnicianID:   pgUUIDToPtr(row.TechnicianID),
+		UserPrincipal:  pgTextToStringPtr(row.UserPrincipal),
 		Status:         row.Status,
 		StartedAt:      row.StartedAt,
-		EndedAt:        row.EndedAt,
-		ExpiresAt:      row.ExpiresAt,
+		EndedAt:        pgTimestamptzToTimePtr(row.EndedAt),
+		ExpiresAt:      pgTimestamptzToTimePtr(row.ExpiresAt),
 		ClientMetadata: row.ClientMetadata,
 		LastActivityAt: row.LastActivityAt,
-		EndedReason:    row.EndedReason,
+		EndedReason:    pgTextToStringPtr(row.EndedReason),
 		CreatedAt:      row.CreatedAt,
 		UpdatedAt:      row.UpdatedAt,
 	}
@@ -126,12 +126,12 @@ func mapOperatorSession(row db.MachineOperatorSession) domainoperator.Session {
 func mapOperatorAuthEvent(row db.MachineOperatorAuthEvent) domainoperator.AuthEvent {
 	return domainoperator.AuthEvent{
 		ID:                row.ID,
-		OperatorSessionID: row.OperatorSessionID,
+		OperatorSessionID: pgUUIDToPtr(row.OperatorSessionID),
 		MachineID:         row.MachineID,
 		EventType:         row.EventType,
 		AuthMethod:        row.AuthMethod,
 		OccurredAt:        row.OccurredAt,
-		CorrelationID:     row.CorrelationID,
+		CorrelationID:     pgUUIDToPtr(row.CorrelationID),
 		Metadata:          row.Metadata,
 	}
 }
@@ -139,13 +139,13 @@ func mapOperatorAuthEvent(row db.MachineOperatorAuthEvent) domainoperator.AuthEv
 func mapOperatorActionAttribution(row db.MachineActionAttribution) domainoperator.ActionAttribution {
 	return domainoperator.ActionAttribution{
 		ID:                row.ID,
-		OperatorSessionID: row.OperatorSessionID,
+		OperatorSessionID: pgUUIDToPtr(row.OperatorSessionID),
 		MachineID:         row.MachineID,
 		ActionOriginType:  row.ActionOriginType,
 		ResourceType:      row.ResourceType,
 		ResourceID:        row.ResourceID,
 		OccurredAt:        row.OccurredAt,
 		Metadata:          row.Metadata,
-		CorrelationID:     row.CorrelationID,
+		CorrelationID:     pgUUIDToPtr(row.CorrelationID),
 	}
 }

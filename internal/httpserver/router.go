@@ -2,11 +2,12 @@ package httpserver
 
 // Route registration for the public API is implemented in server.go (NewHTTPServer → mountV1).
 //
-// JSON error envelope for most /v1 JSON handlers: {"error":{"code":"...","message":"..."}}.
-// List handlers that intentionally omit persistence return *api.CapabilityError → HTTP 501 with:
-// {"error":{"code":"not_implemented","message":"...","capability":"...","implemented":false}}.
+// JSON error envelope for /v1 JSON handlers and auth middleware:
+// {"error":{"code":"...","message":"...","details":{...},"requestId":"..."}}.
+// Optional features that are not wired return *api.CapabilityError → HTTP 501 with
+// code "not_implemented" and details { "capability": "...", "implemented": false }.
 // Optional runtime wiring that is missing in this process (MQTT publisher, commerce store, etc.) uses
-// writeCapabilityNotConfigured → HTTP 503 with code "capability_not_configured" (retryable / ops action).
+// writeCapabilityNotConfigured → HTTP 503 with code "capability_not_configured" and the same details keys.
 // Prefer branching on error.code; message is diagnostic text and may change.
 //
 // Request tracing: middleware.RequestID runs on the root router. Clients may send X-Request-ID and
@@ -50,6 +51,13 @@ package httpserver
 // and return {"items":[...],"meta":{"limit":N,"returned":M}}.
 //
 // See mountOperatorSessionRoutes in operator_http.go for the concrete paths (login, logout, current, …).
+//
+// Reporting reads (Bearer JWT + platform_admin or org_admin):
+//
+//	GET /v1/reports/sales-summary
+//	GET /v1/reports/payments-summary
+//	GET /v1/reports/fleet-health
+//	GET /v1/reports/inventory-exceptions
 //
 // OpenAPI: every mounted path above must stay in sync with tools/build_openapi.py REQUIRED_OPERATIONS
 // and the DocOp* stubs in swagger_operations.go (generation fails on drift).

@@ -30,7 +30,10 @@ func (r *CommerceReconcileRepository) GetOrderByID(ctx context.Context, id uuid.
 }
 
 func (r *CommerceReconcileRepository) ListPaymentsPendingTimeout(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.Payment, error) {
-	rows, err := db.New(r.pool).ListPaymentsPendingTimeout(ctx, before, limit)
+	rows, err := db.New(r.pool).ListPaymentsPendingTimeout(ctx, db.ListPaymentsPendingTimeoutParams{
+		CreatedAt: before,
+		Limit:     limit,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +45,10 @@ func (r *CommerceReconcileRepository) ListPaymentsPendingTimeout(ctx context.Con
 }
 
 func (r *CommerceReconcileRepository) ListOrdersWithUnresolvedPayment(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.Order, error) {
-	rows, err := db.New(r.pool).ListOrdersWithUnresolvedPayment(ctx, before, limit)
+	rows, err := db.New(r.pool).ListOrdersWithUnresolvedPayment(ctx, db.ListOrdersWithUnresolvedPaymentParams{
+		CreatedAt: before,
+		Limit:     limit,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +60,10 @@ func (r *CommerceReconcileRepository) ListOrdersWithUnresolvedPayment(ctx contex
 }
 
 func (r *CommerceReconcileRepository) ListVendSessionsStuckForReconciliation(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.VendReconciliationCandidate, error) {
-	rows, err := db.New(r.pool).ListVendSessionsStuckForReconciliation(ctx, before, limit)
+	rows, err := db.New(r.pool).ListVendSessionsStuckForReconciliation(ctx, db.ListVendSessionsStuckForReconciliationParams{
+		CreatedAt: before,
+		Limit:     limit,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +78,10 @@ func (r *CommerceReconcileRepository) ListVendSessionsStuckForReconciliation(ctx
 }
 
 func (r *CommerceReconcileRepository) ListPotentialDuplicatePayments(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.Payment, error) {
-	rows, err := db.New(r.pool).ListPotentialDuplicatePayments(ctx, before, limit)
+	rows, err := db.New(r.pool).ListPotentialDuplicatePayments(ctx, db.ListPotentialDuplicatePaymentsParams{
+		CreatedAt: before,
+		Limit:     limit,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +93,10 @@ func (r *CommerceReconcileRepository) ListPotentialDuplicatePayments(ctx context
 }
 
 func (r *CommerceReconcileRepository) ListPaymentsForRefundReview(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.Payment, error) {
-	rows, err := db.New(r.pool).ListPaymentsForRefundReview(ctx, before, limit)
+	rows, err := db.New(r.pool).ListPaymentsForRefundReview(ctx, db.ListPaymentsForRefundReviewParams{
+		CreatedAt: before,
+		Limit:     limit,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +108,10 @@ func (r *CommerceReconcileRepository) ListPaymentsForRefundReview(ctx context.Co
 }
 
 func (r *CommerceReconcileRepository) ListStaleCommandLedgerEntries(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.CommandLedgerSummary, error) {
-	rows, err := db.New(r.pool).ListStaleCommandLedgerEntries(ctx, before, limit)
+	rows, err := db.New(r.pool).ListStaleCommandLedgerEntries(ctx, db.ListStaleCommandLedgerEntriesParams{
+		CreatedAt: before,
+		Limit:     limit,
+	})
 	if err != nil {
 		return nil, err
 	}

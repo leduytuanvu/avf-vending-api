@@ -3,13 +3,13 @@ package httpserver
 // Swag-style operation documentation for the HTTP API.
 //
 // These declarations are not executed at runtime; they exist so tools/build_openapi.py can
-// parse @Router and related annotations and emit docs/swagger/swagger.json (OpenAPI 2.0).
+// parse @Router and related annotations and emit docs/swagger/swagger.json (OpenAPI 3.0).
 // Run: make swagger
 //
-// Auth contract: `/v1/*` uses BearerAccessTokenMiddlewareWithValidator — missing/invalid JWT → 401 JSON
-// `{"error":{"message":"..."}}` (no `code` field). Role/scope denials → same shape with 403.
-// Misconfigured auth (e.g. JWKS) → 503 with the same minimal JSON body.
-// Most handler JSON errors use writeAPIError → `{"error":{"code":"...","message":"..."}}`.
+// Auth contract: `/v1/*` uses BearerAccessTokenMiddlewareWithValidator plus route-level RBAC
+// (RequireAnyRole, RequireOrganizationScope, RequireMachineURLAccess). All JSON errors—including
+// bearer, scope, and handler failures—use the same envelope:
+// `{"error":{"code":"...","message":"...","details":{},"requestId":"..."}}`.
 //
 // Keep each func body empty: func DocOpXxx() {}
 
@@ -46,7 +46,7 @@ func DocOpMetrics() {}
 // --- OpenAPI / Swagger UI (no Bearer auth) ---
 
 // DocOpSwaggerDocJSON godoc
-// @Summary OpenAPI 2.0 document (embedded)
+// @Summary OpenAPI 3.0 document (embedded)
 // @Description Served when HTTP_SWAGGER_UI_ENABLED=true. Same JSON the UI loads; no `Authorization` header required.
 // @Tags Documentation
 // @Produce application/json
@@ -63,30 +63,303 @@ func DocOpSwaggerDocJSON() {}
 // @Router /swagger/index.html [get]
 func DocOpSwaggerIndex() {}
 
+// --- Auth (session APIs) ---
+
+// DocOpV1AuthLogin godoc
+// @Summary Exchange email/password for JWT session tokens
+// @Description Authenticates an **API account** for a specific organization. Returns access + refresh tokens and resolved roles. On failure returns **401** with `unauthenticated` or credential-specific codes. Rate limiting may apply when `HTTP_RATE_LIMIT_SENSITIVE_WRITES_ENABLED=true` (sensitive-write bucket).
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body V1AuthLoginRequest true "Login credentials"
+// @Success 200 {object} V1AuthLoginResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 429 {object} V1StandardError "rate_limited when sensitive-write rate limit trips"
+// @Failure 500 {object} V1StandardError
+// @Router /v1/auth/login [post]
+func DocOpV1AuthLogin() {}
+
+// DocOpV1AuthRefresh godoc
+// @Summary Rotate access token using a refresh token
+// @Description Validates a non-revoked refresh token and returns a new access/refresh pair. Refresh token may be rotated server-side; clients must persist the latest refresh token from the response body.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body V1AuthRefreshRequest true "Refresh token"
+// @Success 200 {object} V1AuthRefreshResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/auth/refresh [post]
+func DocOpV1AuthRefresh() {}
+
+// DocOpV1AuthMe godoc
+// @Summary Current authenticated principal
+// @Description Returns account id, organization id (when scoped), email, and roles for the Bearer access token. Requires `Authorization: Bearer` on `/v1/auth/*` bearer group.
+// @Tags Auth
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} V1AuthMeResponse
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/auth/me [get]
+func DocOpV1AuthMe() {}
+
+// DocOpV1AuthLogout godoc
+// @Summary Revoke refresh token(s)
+// @Description Optionally revokes a single refresh token or all refresh tokens for the account when `revokeAll` is true. Access tokens remain valid until expiry; clients should discard local copies after logout.
+// @Tags Auth
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param body body V1AuthLogoutRequest false "Optional body (omit for default revoke current refresh)"
+// @Success 204 {string} string "empty body"
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/auth/logout [post]
+func DocOpV1AuthLogout() {}
+
+// --- Admin catalog (read-only) ---
+
+// DocOpV1AdminProductsList godoc
+// @Summary List products (admin catalog)
+// @Description Paginated product directory for an organization. **platform_admin** must pass **organization_id** query; **org_admin** is scoped to JWT organization. Supports `q` substring search on sku/name, `active_only` boolean, and standard **limit**/**offset** pagination (default 50, max 500).
+// @Tags Admin
+// @Security BearerAuth
+// @Produce json
+// @Param organization_id query string false "Required for platform_admin"
+// @Param q query string false "Search substring (sku / name)"
+// @Param active_only query bool false "When true, only active products"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset"
+// @Success 200 {object} V1AdminProductListEnvelope
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/products [get]
+func DocOpV1AdminProductsList() {}
+
+// DocOpV1AdminProductGet godoc
+// @Summary Get product by id (admin catalog)
+// @Description Returns full product attributes including JSON `attrs`, allergen codes, and merchandising metadata. **platform_admin** must pass **organization_id** matching the product's organization.
+// @Tags Admin
+// @Security BearerAuth
+// @Produce json
+// @Param productId path string true "Product UUID"
+// @Param organization_id query string false "Required for platform_admin"
+// @Success 200 {object} V1AdminProduct
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/products/{productId} [get]
+func DocOpV1AdminProductGet() {}
+
+// DocOpV1AdminPriceBooksList godoc
+// @Summary List price books (admin catalog)
+// @Description Operational pricing tables for the organization (effective windows, default flag, scope). **platform_admin** requires **organization_id** query.
+// @Tags Admin
+// @Security BearerAuth
+// @Produce json
+// @Param organization_id query string false "Required for platform_admin"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset"
+// @Success 200 {object} V1AdminPriceBookListEnvelope
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/price-books [get]
+func DocOpV1AdminPriceBooksList() {}
+
+// DocOpV1AdminPlanogramsList godoc
+// @Summary List planograms (admin catalog)
+// @Description Planogram revisions for slot layouts (draft/published/archived). **platform_admin** requires **organization_id** query.
+// @Tags Admin
+// @Security BearerAuth
+// @Produce json
+// @Param organization_id query string false "Required for platform_admin"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset"
+// @Success 200 {object} V1AdminPlanogramListEnvelope
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/planograms [get]
+func DocOpV1AdminPlanogramsList() {}
+
+// DocOpV1AdminPlanogramGet godoc
+// @Summary Get planogram detail with slots
+// @Description Returns planogram header plus ordered slot rows (product assignment, max quantity, joined sku/name when configured). **platform_admin** requires **organization_id** matching the planogram organization.
+// @Tags Admin
+// @Security BearerAuth
+// @Produce json
+// @Param planogramId path string true "Planogram UUID"
+// @Param organization_id query string false "Required for platform_admin"
+// @Success 200 {object} V1AdminPlanogramDetail
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/planograms/{planogramId} [get]
+func DocOpV1AdminPlanogramGet() {}
+
+// --- Admin inventory (read-only) ---
+
+// DocOpV1AdminMachineSlots godoc
+// @Summary List live slot inventory for a machine
+// @Description Joins `machine_slot_state` to planograms/slots/products for the machine's current fill levels, price projection, and low-stock heuristics. **platform_admin** must pass **organization_id** for tenant pick; machine must belong to that organization.
+// @Tags Admin
+// @Security BearerAuth
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Param organization_id query string false "Required for platform_admin"
+// @Success 200 {object} V1AdminMachineSlotListEnvelope
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/slots [get]
+func DocOpV1AdminMachineSlots() {}
+
+// DocOpV1AdminMachineInventory godoc
+// @Summary Aggregate inventory by product for a machine
+// @Description Rolls up slot quantities per product for refill planning (totals, slot coverage, low-stock flag). Same scoping rules as slot list.
+// @Tags Admin
+// @Security BearerAuth
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Param organization_id query string false "Required for platform_admin"
+// @Success 200 {object} V1AdminMachineInventoryEnvelope
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/inventory [get]
+func DocOpV1AdminMachineInventory() {}
+
+// --- Reporting (read-only analytics) ---
+
+// DocOpV1ReportsSalesSummary godoc
+// @Summary Sales rollup and trend breakdown
+// @Description Aggregates `orders` for an organization in a half-open time window **[from, to)** (RFC3339, required). **platform_admin** must pass **organization_id**; maximum span **366 days**. `group_by` controls the breakdown dimension: **day** (default), **site**, **machine** (top 500 by revenue), **payment_method** (joins authorized/captured payments), or **none** (summary only). Amounts are integer minor units as stored in OLTP.
+// @Tags Reporting
+// @Security BearerAuth
+// @Produce json
+// @Param organization_id query string false "Required for platform_admin"
+// @Param from query string true "Inclusive window start (RFC3339)"
+// @Param to query string true "Exclusive window end (RFC3339)"
+// @Param group_by query string false "day | site | machine | payment_method | none (default day)"
+// @Success 200 {object} V1ReportingSalesSummaryResponse
+// @Failure 400 {object} V1StandardError "invalid_query / organization_id_required / invalid date span"
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/reports/sales-summary [get]
+func DocOpV1ReportsSalesSummary() {}
+
+// DocOpV1ReportsPaymentsSummary godoc
+// @Summary Payment outcomes and method/status breakdown
+// @Description Aggregates `payments` joined to `orders` for the organization in **[from, to)** on `payments.created_at`. Counts authorized/captured/failed/refunded plus amount sums per state bucket. `group_by` selects **day** (default), **payment_method** (provider roll-up), **status** (state roll-up), or **none** (summary only). Requires same org scoping rules as other reports.
+// @Tags Reporting
+// @Security BearerAuth
+// @Produce json
+// @Param organization_id query string false "Required for platform_admin"
+// @Param from query string true "Inclusive window start (RFC3339)"
+// @Param to query string true "Exclusive window end (RFC3339)"
+// @Param group_by query string false "day | payment_method | status | none (default day)"
+// @Success 200 {object} V1ReportingPaymentsSummaryResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/reports/payments-summary [get]
+func DocOpV1ReportsPaymentsSummary() {}
+
+// DocOpV1ReportsFleetHealth godoc
+// @Summary Machine posture and incident rollups
+// @Description `machineSummary` buckets interpret `machines.status` (online/offline/maintenance/provisioning/retired). Incident sections filter `incidents.opened_at` and `machine_incidents.opened_at` to **[from, to)** for operational correlation. Machine counts themselves are current state (not time-filtered). **group_by** is not supported on this route.
+// @Tags Reporting
+// @Security BearerAuth
+// @Produce json
+// @Param organization_id query string false "Required for platform_admin"
+// @Param from query string true "Inclusive window start (RFC3339)"
+// @Param to query string true "Exclusive window end (RFC3339)"
+// @Success 200 {object} V1ReportingFleetHealthResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/reports/fleet-health [get]
+func DocOpV1ReportsFleetHealth() {}
+
+// DocOpV1ReportsInventoryExceptions godoc
+// @Summary Slots needing refill or restock attention
+// @Description Current-state scan of `machine_slot_state` vs planogram `slots`: **out_of_stock** (`current_quantity <= 0`) and **low_stock** (filled below 15% of configured `max_quantity` when max > 0). `exception_kind` filters rows: **all** (default), **low_stock**, or **out_of_stock**. **from/to** are validated for consistency with other reporting routes but do not filter rows in this version. Pagination uses **limit**/**offset** (default 50, max 500).
+// @Tags Reporting
+// @Security BearerAuth
+// @Produce json
+// @Param organization_id query string false "Required for platform_admin"
+// @Param from query string true "RFC3339 (validated; reserved for future time filtering)"
+// @Param to query string true "RFC3339 (validated; reserved for future time filtering)"
+// @Param exception_kind query string false "all | low_stock | out_of_stock (default all)"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset"
+// @Success 200 {object} V1ReportingInventoryExceptionsResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/reports/inventory-exceptions [get]
+func DocOpV1ReportsInventoryExceptions() {}
+
 // --- Admin (platform_admin or org_admin) ---
 
 // DocOpV1AdminMachinesList godoc
 // @Summary List machines (admin)
-// @Description Postgres-backed fleet listing when Fleet service is wired. Returns **501** with `not_implemented` when fleet is nil or misconfigured (`v1.admin.machines.list`). Platform admin must supply tenant scope (organization_id on principal) or receives **400** `tenant_scope_required`.
+// @Description Read-only operational list of machines for an organization. **platform_admin** must pass **organization_id** query (tenant pick). **org_admin** uses JWT organization scope. Optional filters: **site_id**, **machine_id**, **status** (machine.status), **from** / **to** on `updated_at` (RFC3339), **search** is ignored for this resource. Pagination: **limit** (default 50, max 500), **offset**.
 // @Tags Admin
 // @Security BearerAuth
 // @Produce json
-// @Success 200 {object} V1ListViewEnvelope
+// @Param organization_id query string false "Required for platform_admin"
+// @Param site_id query string false "Filter by site UUID"
+// @Param machine_id query string false "Filter to a single machine UUID"
+// @Param status query string false "Filter by machine status (e.g. online, offline)"
+// @Param from query string false "Inclusive lower bound for updated_at (RFC3339)"
+// @Param to query string false "Inclusive upper bound for updated_at (RFC3339)"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset for pagination"
+// @Success 200 {object} V1AdminMachinesListResponse
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Failure 501 {object} V1NotImplementedError
 // @Failure 500 {object} V1StandardError
 // @Router /v1/admin/machines [get]
 func DocOpV1AdminMachinesList() {}
 
 // DocOpV1AdminTechniciansList godoc
 // @Summary List technicians (admin)
-// @Description Returns **501** with `not_implemented` and capability `v1.admin.technicians.list` until a repository is wired.
+// @Description Directory of technicians for the organization. **platform_admin** requires **organization_id** query. Optional **technician_id**, **search** (matches display_name or email), **from** / **to** on `created_at`, pagination **limit** / **offset**.
 // @Tags Admin
 // @Security BearerAuth
 // @Produce json
-// @Success 501 {object} V1NotImplementedError
+// @Param organization_id query string false "Required for platform_admin"
+// @Param technician_id query string false "Filter to one technician UUID"
+// @Param search query string false "Case-insensitive substring on name or email"
+// @Param from query string false "created_at lower bound (RFC3339)"
+// @Param to query string false "created_at upper bound (RFC3339)"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset"
+// @Success 200 {object} V1AdminTechniciansListResponse
+// @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 500 {object} V1StandardError
@@ -95,11 +368,19 @@ func DocOpV1AdminTechniciansList() {}
 
 // DocOpV1AdminAssignmentsList godoc
 // @Summary List technician assignments (admin)
-// @Description Returns **501** with capability `v1.admin.assignments.list`.
+// @Description Joins technician, machine, and assignment rows for the organization. **platform_admin** requires **organization_id**. Optional **technician_id**, **machine_id**, **from** / **to** on assignment `created_at`, pagination **limit** / **offset**.
 // @Tags Admin
 // @Security BearerAuth
 // @Produce json
-// @Success 501 {object} V1NotImplementedError
+// @Param organization_id query string false "Required for platform_admin"
+// @Param technician_id query string false "Filter by technician UUID"
+// @Param machine_id query string false "Filter by machine UUID"
+// @Param from query string false "created_at lower bound (RFC3339)"
+// @Param to query string false "created_at upper bound (RFC3339)"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset"
+// @Success 200 {object} V1AdminAssignmentsListResponse
+// @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 500 {object} V1StandardError
@@ -107,12 +388,20 @@ func DocOpV1AdminTechniciansList() {}
 func DocOpV1AdminAssignmentsList() {}
 
 // DocOpV1AdminCommandsList godoc
-// @Summary List commands (admin)
-// @Description Returns **501** with capability `v1.admin.commands.list`.
+// @Summary List machine commands (admin)
+// @Description Operational view of `command_ledger` joined to machines and latest `machine_command_attempts` status. **platform_admin** requires **organization_id**. Optional **machine_id**, **status** (filters latest attempt status; pending used when no attempts yet), **from** / **to** on command `created_at`, pagination **limit** / **offset**.
 // @Tags Admin
 // @Security BearerAuth
 // @Produce json
-// @Success 501 {object} V1NotImplementedError
+// @Param organization_id query string false "Required for platform_admin"
+// @Param machine_id query string false "Filter by machine UUID"
+// @Param status query string false "Latest attempt status (pending, sent, completed, …)"
+// @Param from query string false "created_at lower bound (RFC3339)"
+// @Param to query string false "created_at upper bound (RFC3339)"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset"
+// @Success 200 {object} V1AdminCommandsListResponse
+// @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 500 {object} V1StandardError
@@ -120,12 +409,19 @@ func DocOpV1AdminAssignmentsList() {}
 func DocOpV1AdminCommandsList() {}
 
 // DocOpV1AdminOTAList godoc
-// @Summary List OTA artifacts (admin)
-// @Description Returns **501** with capability `v1.admin.ota.list`.
+// @Summary List OTA campaigns (admin)
+// @Description Read-only list of `ota_campaigns` with joined artifact metadata. **platform_admin** requires **organization_id**. Optional **status** (draft, active, paused, completed), **from** / **to** on campaign `created_at`, pagination **limit** / **offset**.
 // @Tags Admin
 // @Security BearerAuth
 // @Produce json
-// @Success 501 {object} V1NotImplementedError
+// @Param organization_id query string false "Required for platform_admin"
+// @Param status query string false "Campaign status filter"
+// @Param from query string false "created_at lower bound (RFC3339)"
+// @Param to query string false "created_at upper bound (RFC3339)"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset"
+// @Success 200 {object} V1AdminOTAListResponse
+// @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 500 {object} V1StandardError
@@ -269,15 +565,25 @@ func DocOpV1OperatorInsightsTechnicianAttributions() {}
 // @Router /v1/operator-insights/users/action-attributions [get]
 func DocOpV1OperatorInsightsUserAttributions() {}
 
-// --- Tenant commerce lists (not implemented) ---
+// --- Tenant commerce operational lists ---
 
 // DocOpV1PaymentsList godoc
 // @Summary List payments for organization
-// @Description Requires Bearer JWT and RequireOrganizationScope. **501** `not_implemented` with capability `v1.payments.org_list` until implemented. Non-platform callers without org on JWT get **403** from middleware (minimal JSON, no `code`).
+// @Description Read-only operational list: each row joins `payments` to its parent `orders` for machine and order status context. **platform_admin** must pass **organization_id** query; **org_admin** uses JWT organization scope (optional `organization_id` must match). Filters: **status** (payment.state enum), **payment_method** (exact provider string, e.g. stripe), **machine_id** (UUID on parent order), **search** (substring on payment id, order id, or idempotency key), **from** / **to** inclusive bounds on `payments.created_at` (defaults to wide internal bounds when omitted — prefer explicit windows for large tenants). Pagination: **limit** default 50, max **500**, **offset** for pages. Response is typed `items` + `meta.total` for UI virtualization.
 // @Tags Commerce
 // @Security BearerAuth
 // @Produce json
-// @Success 501 {object} V1NotImplementedError
+// @Param organization_id query string false "Required for platform_admin"
+// @Param status query string false "Payment state filter (created, authorized, captured, failed, refunded)"
+// @Param payment_method query string false "Provider filter (e.g. stripe)"
+// @Param machine_id query string false "Filter by order.machine_id"
+// @Param search query string false "Substring search on ids / idempotency key"
+// @Param from query string false "created_at lower bound (RFC3339)"
+// @Param to query string false "created_at upper bound (RFC3339)"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset"
+// @Success 200 {object} V1PaymentsListResponse
+// @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 500 {object} V1StandardError
@@ -286,11 +592,20 @@ func DocOpV1PaymentsList() {}
 
 // DocOpV1OrdersList godoc
 // @Summary List orders for organization
-// @Description **501** with capability `v1.orders.org_list`. Same auth and 403 behavior as payments list.
+// @Description Read-only `orders` rows for reconciliation and support dashboards. **platform_admin** requires **organization_id** query; **org_admin** is JWT-scoped. Filters: **status** (order.status lifecycle), **machine_id** (UUID), **search** (substring on order id or idempotency key), **from** / **to** inclusive on `orders.created_at` (defaults apply when omitted). Pagination: **limit** default 50, max **500**, **offset**. Typed `items` + `meta.total` envelope matches payments list for shared client parsing.
 // @Tags Commerce
 // @Security BearerAuth
 // @Produce json
-// @Success 501 {object} V1NotImplementedError
+// @Param organization_id query string false "Required for platform_admin"
+// @Param status query string false "Order status filter"
+// @Param machine_id query string false "Filter by machine UUID"
+// @Param search query string false "Substring search on order id or idempotency key"
+// @Param from query string false "created_at lower bound (RFC3339)"
+// @Param to query string false "created_at upper bound (RFC3339)"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Row offset"
+// @Success 200 {object} V1OrdersListResponse
+// @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 500 {object} V1StandardError
@@ -301,7 +616,7 @@ func DocOpV1OrdersList() {}
 
 // DocOpV1MachineShadowGet godoc
 // @Summary Get machine shadow JSON
-// @Description Requires Bearer JWT and RequireMachineURLAccess(machineId). Invalid UUID in path → **400** from middleware or handler (`invalid_machine_id`). Missing shadow row → **404** `machine_shadow_not_found`.
+// @Description Returns the persisted desired/reported JSON documents used for fleet remote configuration. Requires Bearer JWT and `RequireMachineURLAccess(machineId)` (same org or platform admin). Invalid UUID in path → **400** (`invalid_machine_id`). Missing shadow row → **404** `machine_shadow_not_found`. This is not live MQTT; it is the last reconciled projection in Postgres.
 // @Tags Fleet
 // @Security BearerAuth
 // @Param machineId path string true "Machine UUID"
@@ -633,6 +948,7 @@ func DocOpV1CommerceReconciliationSnapshot() {}
 
 // DocOpV1CommercePaymentWebhook godoc
 // @Summary Apply provider webhook
+// @Description Idempotency header is required (same key space as other commerce writes). Treat **200** with `replay:true` as the provider having retried the same logical event; responses remain JSON-safe for your payment connector. Conflicting provider state may yield **409** with a commerce-specific `error.code`.
 // @Tags Commerce
 // @Security BearerAuth
 // @Param orderId path string true "Order UUID"

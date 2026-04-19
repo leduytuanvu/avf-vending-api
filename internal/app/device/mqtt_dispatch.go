@@ -13,6 +13,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ErrMQTTCommandPublisherMissing means outbound MQTT is not wired for this API process.
@@ -148,8 +149,8 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 		Sequence:       appendRes.Sequence,
 		CommandType:    ledgerRow.CommandType,
 		Payload:        json.RawMessage(payloadWire),
-		CorrelationID:  ledgerRow.CorrelationID,
-		IdempotencyKey: derefString(ledgerRow.IdempotencyKey),
+		CorrelationID:  pgUUIDPtr(ledgerRow.CorrelationID),
+		IdempotencyKey: pgTextString(ledgerRow.IdempotencyKey),
 	}
 	wireBytes, err := json.Marshal(wire)
 	if err != nil {
@@ -168,29 +169,29 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, ledgerRow.CorrelationID, wireBytes, ledgerDeadline)
+		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline)
 		if err != nil {
 			return RemoteCommandDispatchResult{}, err
 		}
 	case latest.Status == "pending":
 		att = latest
 	case latest.Status == "sent":
-		if latest.AckDeadlineAt != nil && time.Now().Before(*latest.AckDeadlineAt) {
+		if ackAt := pgTimestamptzPtr(latest.AckDeadlineAt); ackAt != nil && time.Now().Before(*ackAt) {
 			att = latest
 			skippedRepublish = true
 		} else {
-			att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, ledgerRow.CorrelationID, wireBytes, ledgerDeadline)
+			att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline)
 			if err != nil {
 				return RemoteCommandDispatchResult{}, err
 			}
 		}
 	case latest.Status == "ack_timeout" && appendRes.Replay:
-		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, ledgerRow.CorrelationID, wireBytes, ledgerDeadline)
+		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline)
 		if err != nil {
 			return RemoteCommandDispatchResult{}, err
 		}
 	case latest.Status == "failed" && appendRes.Replay && isPublishFailure(latest):
-		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, ledgerRow.CorrelationID, wireBytes, ledgerDeadline)
+		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline)
 		if err != nil {
 			return RemoteCommandDispatchResult{}, err
 		}
@@ -247,10 +248,10 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 }
 
 func isPublishFailure(a db.MachineCommandAttempt) bool {
-	if a.TimeoutReason == nil {
+	if !a.TimeoutReason.Valid {
 		return false
 	}
-	return strings.Contains(strings.ToLower(strings.TrimSpace(*a.TimeoutReason)), "mqtt_publish")
+	return strings.Contains(strings.ToLower(strings.TrimSpace(a.TimeoutReason.String)), "mqtt_publish")
 }
 
 func isTerminalAttemptStatus(s string) bool {
@@ -262,11 +263,35 @@ func isTerminalAttemptStatus(s string) bool {
 	}
 }
 
-func derefString(p *string) string {
-	if p == nil {
+func pgUUIDPtr(u pgtype.UUID) *uuid.UUID {
+	if !u.Valid {
+		return nil
+	}
+	id := uuid.UUID(u.Bytes)
+	return &id
+}
+
+func pgTextString(t pgtype.Text) string {
+	if !t.Valid {
 		return ""
 	}
-	return *p
+	return t.String
+}
+
+func pgTextPtr(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	s := t.String
+	return &s
+}
+
+func pgTimestamptzPtr(ts pgtype.Timestamptz) *time.Time {
+	if !ts.Valid {
+		return nil
+	}
+	tt := ts.Time.UTC()
+	return &tt
 }
 
 func truncateErr(err error, max int) string {
@@ -335,9 +360,9 @@ func (d *MQTTCommandDispatcher) GetRemoteCommandStatus(ctx context.Context, mach
 		AttemptNo:     latest.AttemptNo,
 		Status:        latest.Status,
 		SentAt:        latest.SentAt,
-		AckDeadlineAt: latest.AckDeadlineAt,
-		ResultAt:      latest.ResultReceivedAt,
-		TimeoutReason: latest.TimeoutReason,
+		AckDeadlineAt: pgTimestamptzPtr(latest.AckDeadlineAt),
+		ResultAt:      pgTimestamptzPtr(latest.ResultReceivedAt),
+		TimeoutReason: pgTextPtr(latest.TimeoutReason),
 	}
 	return out, nil
 }
@@ -374,10 +399,10 @@ func (d *MQTTCommandDispatcher) ListRecentCommandReceipts(ctx context.Context, m
 			ID:               r.ID,
 			Sequence:         r.Sequence,
 			Status:           r.Status,
-			CorrelationID:    r.CorrelationID,
+			CorrelationID:    pgUUIDPtr(r.CorrelationID),
 			DedupeKey:        r.DedupeKey,
 			ReceivedAt:       r.ReceivedAt,
-			CommandAttemptID: r.CommandAttemptID,
+			CommandAttemptID: pgUUIDPtr(r.CommandAttemptID),
 		})
 	}
 	return out, nil
