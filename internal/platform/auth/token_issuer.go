@@ -62,14 +62,14 @@ func (s *SessionIssuer) RefreshTokenTTL() time.Duration {
 }
 
 type sessionAccessClaims struct {
-	Sub    string   `json:"sub"`
-	Roles  []string `json:"roles"`
-	OrgID  string   `json:"org_id"`
-	Iss    string   `json:"iss,omitempty"`
-	Aud    string   `json:"aud,omitempty"`
-	Iat    int64    `json:"iat"`
-	Exp    int64    `json:"exp"`
-	TokenUse string `json:"token_use,omitempty"`
+	Sub      string   `json:"sub"`
+	Roles    []string `json:"roles"`
+	OrgID    string   `json:"org_id"`
+	Iss      string   `json:"iss,omitempty"`
+	Aud      string   `json:"aud,omitempty"`
+	Iat      int64    `json:"iat"`
+	Exp      int64    `json:"exp"`
+	TokenUse string   `json:"token_use,omitempty"`
 }
 
 // IssueAccessJWT returns a signed HS256 JWT string for the given account subject and tenant claims.

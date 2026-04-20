@@ -6,13 +6,13 @@ import "strings"
 type Class string
 
 const (
-	ClassHeartbeat              Class = "heartbeat"
-	ClassState                  Class = "state"
-	ClassMetrics                Class = "metrics"
-	ClassIncident               Class = "incident"
-	ClassCommandReceipt         Class = "command_receipt"
+	ClassHeartbeat             Class = "heartbeat"
+	ClassState                 Class = "state"
+	ClassMetrics               Class = "metrics"
+	ClassIncident              Class = "incident"
+	ClassCommandReceipt        Class = "command_receipt"
 	ClassDiagnosticBundleReady Class = "diagnostic_bundle_ready"
-	ClassUnknown                Class = "unknown"
+	ClassUnknown               Class = "unknown"
 )
 
 // ClassifyEventType maps device telemetry event_type strings into a Class.

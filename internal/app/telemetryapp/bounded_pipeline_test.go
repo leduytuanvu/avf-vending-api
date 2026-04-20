@@ -41,12 +41,12 @@ func TestBoundedDeviceIngest_queueFullDrop(t *testing.T) {
 	// Buffer must allow at least two queued jobs while the single worker is blocked on the first
 	// (otherwise the second submit races with the worker dequeue and can be dropped as "queue_full").
 	tel := config.MQTTDeviceTelemetryConfig{
-		GlobalMaxInflight:     2,
-		WorkerConcurrency:     1,
-		DropOnBackpressure:    true,
-		PerMachineMsgsPerSec:  1000,
-		PerMachineBurst:       1000,
-		SubmitWaitMs:          5000,
+		GlobalMaxInflight:    2,
+		WorkerConcurrency:    1,
+		DropOnBackpressure:   true,
+		PerMachineMsgsPerSec: 1000,
+		PerMachineBurst:      1000,
+		SubmitWaitMs:         5000,
 	}
 	p := NewBoundedDeviceIngest(zap.NewNop(), stub, tel)
 	defer p.Close()
@@ -84,12 +84,12 @@ func TestBoundedDeviceIngest_perMachineRateLimit(t *testing.T) {
 	t.Parallel()
 	stub := &stubIngest{}
 	tel := config.MQTTDeviceTelemetryConfig{
-		GlobalMaxInflight:     32,
-		WorkerConcurrency:     2,
-		DropOnBackpressure:    true,
-		PerMachineMsgsPerSec:  0.25,
-		PerMachineBurst:       1,
-		SubmitWaitMs:          1000,
+		GlobalMaxInflight:    32,
+		WorkerConcurrency:    2,
+		DropOnBackpressure:   true,
+		PerMachineMsgsPerSec: 0.25,
+		PerMachineBurst:      1,
+		SubmitWaitMs:         1000,
 	}
 	p := NewBoundedDeviceIngest(zap.NewNop(), stub, tel)
 	defer p.Close()

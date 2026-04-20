@@ -14,8 +14,8 @@ import (
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
 	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
-	natssrv "github.com/nats-io/nats.go"
 	"github.com/google/uuid"
+	natssrv "github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
@@ -23,12 +23,12 @@ import (
 
 // JetStreamWorkersConfig wires durable telemetry consumers into Postgres projections.
 type JetStreamWorkersConfig struct {
-	Log         *zap.Logger
-	NC          *natssrv.Conn
-	JS          natssrv.JetStreamContext
-	Store       *postgres.Store
-	Telemetry   config.TelemetryJetStreamConfig
-	Limits      platformnats.TelemetryBrokerLimits
+	Log       *zap.Logger
+	NC        *natssrv.Conn
+	JS        natssrv.JetStreamContext
+	Store     *postgres.Store
+	Telemetry config.TelemetryJetStreamConfig
+	Limits    platformnats.TelemetryBrokerLimits
 }
 
 // JetStreamWorkers runs durable pull consumers that project telemetry into Postgres.
@@ -101,12 +101,24 @@ func (w *JetStreamWorkers) Start(ctx context.Context) error {
 	go w.lagPollLoop(pollCtx)
 
 	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error { return w.pullLoop(gctx, js, platformnats.StreamTelemetryHeartbeat, "avf-w-telemetry-heartbeat", platformnats.SubjectTelemetryPrefix+"heartbeat.>", false, w.handleHeartbeat) })
-	g.Go(func() error { return w.pullLoop(gctx, js, platformnats.StreamTelemetryState, "avf-w-telemetry-state", platformnats.SubjectTelemetryPrefix+"state.>", false, w.handleState) })
-	g.Go(func() error { return w.pullLoop(gctx, js, platformnats.StreamTelemetryMetrics, "avf-w-telemetry-metrics", platformnats.SubjectTelemetryPrefix+"metrics.>", true, w.handleMetrics) })
-	g.Go(func() error { return w.pullLoop(gctx, js, platformnats.StreamTelemetryIncidents, "avf-w-telemetry-incidents", platformnats.SubjectTelemetryPrefix+"incident.>", false, w.handleIncident) })
-	g.Go(func() error { return w.pullLoop(gctx, js, platformnats.StreamTelemetryCommandReceipts, "avf-w-telemetry-command-receipts", platformnats.SubjectTelemetryPrefix+"command_receipt.>", false, w.handleCommandReceipt) })
-	g.Go(func() error { return w.pullLoop(gctx, js, platformnats.StreamTelemetryDiagnosticBundleReady, "avf-w-telemetry-diagnostic", platformnats.SubjectTelemetryPrefix+"diagnostic_bundle_ready.>", false, w.handleDiagnostic) })
+	g.Go(func() error {
+		return w.pullLoop(gctx, js, platformnats.StreamTelemetryHeartbeat, "avf-w-telemetry-heartbeat", platformnats.SubjectTelemetryPrefix+"heartbeat.>", false, w.handleHeartbeat)
+	})
+	g.Go(func() error {
+		return w.pullLoop(gctx, js, platformnats.StreamTelemetryState, "avf-w-telemetry-state", platformnats.SubjectTelemetryPrefix+"state.>", false, w.handleState)
+	})
+	g.Go(func() error {
+		return w.pullLoop(gctx, js, platformnats.StreamTelemetryMetrics, "avf-w-telemetry-metrics", platformnats.SubjectTelemetryPrefix+"metrics.>", true, w.handleMetrics)
+	})
+	g.Go(func() error {
+		return w.pullLoop(gctx, js, platformnats.StreamTelemetryIncidents, "avf-w-telemetry-incidents", platformnats.SubjectTelemetryPrefix+"incident.>", false, w.handleIncident)
+	})
+	g.Go(func() error {
+		return w.pullLoop(gctx, js, platformnats.StreamTelemetryCommandReceipts, "avf-w-telemetry-command-receipts", platformnats.SubjectTelemetryPrefix+"command_receipt.>", false, w.handleCommandReceipt)
+	})
+	g.Go(func() error {
+		return w.pullLoop(gctx, js, platformnats.StreamTelemetryDiagnosticBundleReady, "avf-w-telemetry-diagnostic", platformnats.SubjectTelemetryPrefix+"diagnostic_bundle_ready.>", false, w.handleDiagnostic)
+	})
 	if w.log != nil {
 		w.log.Info("telemetry_jetstream_workers_started")
 	}

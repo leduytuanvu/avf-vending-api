@@ -21,14 +21,14 @@ type SalesSummaryRollup struct {
 
 // SalesBreakdownRow is one grouping row; only the dimension fields matching groupBy are set.
 type SalesBreakdownRow struct {
-	BucketStart       *string `json:"bucketStart,omitempty"`
-	SiteID            *string `json:"siteId,omitempty"`
-	MachineID         *string `json:"machineId,omitempty"`
-	PaymentProvider   *string `json:"paymentProvider,omitempty"`
-	OrderCount        int64   `json:"orderCount"`
-	TotalMinor        int64   `json:"totalMinor"`
-	SubtotalMinor     int64   `json:"subtotalMinor"`
-	TaxMinor          int64   `json:"taxMinor"`
+	BucketStart     *string `json:"bucketStart,omitempty"`
+	SiteID          *string `json:"siteId,omitempty"`
+	MachineID       *string `json:"machineId,omitempty"`
+	PaymentProvider *string `json:"paymentProvider,omitempty"`
+	OrderCount      int64   `json:"orderCount"`
+	TotalMinor      int64   `json:"totalMinor"`
+	SubtotalMinor   int64   `json:"subtotalMinor"`
+	TaxMinor        int64   `json:"taxMinor"`
 }
 
 // PaymentsSummaryResponse is GET /v1/reports/payments-summary.
@@ -43,44 +43,44 @@ type PaymentsSummaryResponse struct {
 
 // PaymentsSummaryRollup aggregates payment rows joined to orders in the window.
 type PaymentsSummaryRollup struct {
-	AuthorizedCount        int64 `json:"authorizedCount"`
-	CapturedCount          int64 `json:"capturedCount"`
-	FailedCount            int64 `json:"failedCount"`
-	RefundedCount          int64 `json:"refundedCount"`
-	CapturedAmountMinor    int64 `json:"capturedAmountMinor"`
+	AuthorizedCount       int64 `json:"authorizedCount"`
+	CapturedCount         int64 `json:"capturedCount"`
+	FailedCount           int64 `json:"failedCount"`
+	RefundedCount         int64 `json:"refundedCount"`
+	CapturedAmountMinor   int64 `json:"capturedAmountMinor"`
 	AuthorizedAmountMinor int64 `json:"authorizedAmountMinor"`
-	FailedAmountMinor      int64 `json:"failedAmountMinor"`
-	RefundedAmountMinor    int64 `json:"refundedAmountMinor"`
+	FailedAmountMinor     int64 `json:"failedAmountMinor"`
+	RefundedAmountMinor   int64 `json:"refundedAmountMinor"`
 }
 
 // PaymentsBreakdownRow supports day, payment_method (provider), or status grouping.
 type PaymentsBreakdownRow struct {
-	BucketStart   *string `json:"bucketStart,omitempty"`
-	Provider      *string `json:"provider,omitempty"`
-	State         *string `json:"state,omitempty"`
-	PaymentCount  int64   `json:"paymentCount"`
-	AmountMinor   int64   `json:"amountMinor"`
+	BucketStart  *string `json:"bucketStart,omitempty"`
+	Provider     *string `json:"provider,omitempty"`
+	State        *string `json:"state,omitempty"`
+	PaymentCount int64   `json:"paymentCount"`
+	AmountMinor  int64   `json:"amountMinor"`
 }
 
 // FleetHealthResponse is GET /v1/reports/fleet-health.
 type FleetHealthResponse struct {
-	OrganizationID              string                        `json:"organizationId"`
-	From                        string                        `json:"from"`
-	To                          string                        `json:"to"`
-	MachineSummary              FleetMachineHealthSummary     `json:"machineSummary"`
-	MachinesByStatus            []FleetStatusCountRow         `json:"machinesByStatus"`
-	IncidentsByStatus           []FleetStatusCountRow         `json:"incidentsByStatus"`
-	MachineIncidentsBySeverity  []FleetSeverityCountRow       `json:"machineIncidentsBySeverity"`
+	OrganizationID             string                    `json:"organizationId"`
+	From                       string                    `json:"from"`
+	To                         string                    `json:"to"`
+	MachineSummary             FleetMachineHealthSummary `json:"machineSummary"`
+	MachinesByStatus           []FleetStatusCountRow     `json:"machinesByStatus"`
+	IncidentsByStatus          []FleetStatusCountRow     `json:"incidentsByStatus"`
+	MachineIncidentsBySeverity []FleetSeverityCountRow   `json:"machineIncidentsBySeverity"`
 }
 
 // FleetMachineHealthSummary maps machine.status into operational buckets for dashboards.
 type FleetMachineHealthSummary struct {
-	Total    int64 `json:"total"`
-	Online   int64 `json:"online"`
-	Offline  int64 `json:"offline"`
-	Fault    int64 `json:"fault"`
-	Warn     int64 `json:"warn"`
-	Retired  int64 `json:"retired"`
+	Total   int64 `json:"total"`
+	Online  int64 `json:"online"`
+	Offline int64 `json:"offline"`
+	Fault   int64 `json:"fault"`
+	Warn    int64 `json:"warn"`
+	Retired int64 `json:"retired"`
 }
 
 // FleetStatusCountRow is a status label with a count (machines or incidents table).

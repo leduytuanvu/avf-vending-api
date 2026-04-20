@@ -3,11 +3,11 @@ package reporting
 import (
 	"context"
 	"fmt"
-	"time"
 	"github.com/avf/avf-vending-api/internal/app/listscope"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 // Service runs read-only reporting queries (sqlc-backed).
@@ -179,14 +179,14 @@ func (s *Service) PaymentsSummary(ctx context.Context, q listscope.ReportingQuer
 		To:             rfc3339(q.To),
 		GroupBy:        q.GroupBy,
 		Summary: PaymentsSummaryRollup{
-			AuthorizedCount:        tot.AuthorizedCount,
-			CapturedCount:          tot.CapturedCount,
-			FailedCount:            tot.FailedCount,
-			RefundedCount:          tot.RefundedCount,
-			CapturedAmountMinor:    tot.CapturedAmountMinor,
+			AuthorizedCount:       tot.AuthorizedCount,
+			CapturedCount:         tot.CapturedCount,
+			FailedCount:           tot.FailedCount,
+			RefundedCount:         tot.RefundedCount,
+			CapturedAmountMinor:   tot.CapturedAmountMinor,
 			AuthorizedAmountMinor: tot.AuthorizedAmountMinor,
-			FailedAmountMinor:      tot.FailedAmountMinor,
-			RefundedAmountMinor:    tot.RefundedAmountMinor,
+			FailedAmountMinor:     tot.FailedAmountMinor,
+			RefundedAmountMinor:   tot.RefundedAmountMinor,
 		},
 	}
 	switch q.GroupBy {

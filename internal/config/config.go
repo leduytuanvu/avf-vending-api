@@ -484,10 +484,10 @@ func Load() (*Config, error) {
 		},
 		MQTTDeviceTelemetry: loadMQTTDeviceTelemetryConfig(),
 		TelemetryJetStream:  loadTelemetryJetStreamConfig(),
-		HTTPAuth:          httpAuth,
-		HTTPRateLimit: loadHTTPRateLimitConfig(),
-		Artifacts:     loadArtifactsConfig(),
-		Analytics:     loadAnalyticsConfig(),
+		HTTPAuth:            httpAuth,
+		HTTPRateLimit:       loadHTTPRateLimitConfig(),
+		Artifacts:           loadArtifactsConfig(),
+		Analytics:           loadAnalyticsConfig(),
 	}
 
 	if err := cfg.Validate(); err != nil {

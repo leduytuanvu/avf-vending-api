@@ -11,8 +11,8 @@ import (
 	"time"
 
 	appbackground "github.com/avf/avf-vending-api/internal/app/background"
-	"github.com/avf/avf-vending-api/internal/app/telemetryapp"
 	appreliability "github.com/avf/avf-vending-api/internal/app/reliability"
+	"github.com/avf/avf-vending-api/internal/app/telemetryapp"
 	"github.com/avf/avf-vending-api/internal/config"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
@@ -97,12 +97,12 @@ func main() {
 			zap.String("stream_dlq", platformnats.StreamDLQ),
 		)
 		tw := telemetryapp.NewJetStreamWorkers(telemetryapp.JetStreamWorkersConfig{
-			Log:         log,
-			NC:          nc.Conn,
-			JS:          nc.JS,
-			Store:       store,
-			Telemetry:   cfg.TelemetryJetStream,
-			Limits:      jsLim,
+			Log:       log,
+			NC:        nc.Conn,
+			JS:        nc.JS,
+			Store:     store,
+			Telemetry: cfg.TelemetryJetStream,
+			Limits:    jsLim,
 		})
 		telemetryWorkers = tw
 		telemetryJS = nc.JS
@@ -165,18 +165,18 @@ func main() {
 	ob, pay, cmd, _ := appbackground.DefaultWorkerTickSchedule()
 	retention := 24 * time.Hour
 	deps := appbackground.WorkerDeps{
-		Log:                    log,
-		Reliability:            relSvc,
-		Policy:                 policy,
-		Limits:                 appreliability.ScanLimits{MaxItems: 200},
-		OutboxList:             outboxRepo,
-		OutboxMark:             outboxRepo,
-		OutboxPub:              outboxPub,
-		OutboxDeadLetter:       outboxDLQ,
-		OutboxTick:             ob,
-		PaymentTimeoutTick:     pay,
-		StuckCommandTick:       cmd,
-		RetentionTick:          retention,
+		Log:                log,
+		Reliability:        relSvc,
+		Policy:             policy,
+		Limits:             appreliability.ScanLimits{MaxItems: 200},
+		OutboxList:         outboxRepo,
+		OutboxMark:         outboxRepo,
+		OutboxPub:          outboxPub,
+		OutboxDeadLetter:   outboxDLQ,
+		OutboxTick:         ob,
+		PaymentTimeoutTick: pay,
+		StuckCommandTick:   cmd,
+		RetentionTick:      retention,
 		TelemetryRetention: func(c context.Context) error {
 			return postgres.RunTelemetryRetention(c, pool, time.Now().UTC())
 		},

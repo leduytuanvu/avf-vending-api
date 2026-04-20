@@ -26,11 +26,11 @@ type BoundedDeviceIngest struct {
 	inner platformmqtt.DeviceIngest
 	cfg   config.MQTTDeviceTelemetryConfig
 
-	ch       chan pipelineJob
-	wg       sync.WaitGroup
+	ch        chan pipelineJob
+	wg        sync.WaitGroup
 	closeOnce sync.Once
-	limMu    sync.Mutex
-	limits   map[uuid.UUID]*rate.Limiter
+	limMu     sync.Mutex
+	limits    map[uuid.UUID]*rate.Limiter
 
 	queued atomic.Int32
 }

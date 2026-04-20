@@ -58,8 +58,8 @@ type LoginResponse struct {
 	AccountID      uuid.UUID `json:"accountId"`
 	OrganizationID uuid.UUID `json:"organizationId"`
 	Email          string    `json:"email"`
-	Roles          []string    `json:"roles"`
-	Tokens         TokenPair   `json:"tokens"`
+	Roles          []string  `json:"roles"`
+	Tokens         TokenPair `json:"tokens"`
 }
 
 // RefreshRequest is the JSON body for POST /v1/auth/refresh.
