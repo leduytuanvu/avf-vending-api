@@ -97,16 +97,7 @@ jobs:
               ;;
             workflow_run)
               [[ -f image-metadata.json ]] || { echo "error: missing image-metadata.json artifact payload" >&2; exit 1; }
-              mapfile -t image_metadata < <(python3 - <<'PY'
-import json
-with open("image-metadata.json", "r", encoding="utf-8") as fh:
-    data = json.load(fh)
-print(data["app"]["ref"])
-print(data["app"]["tag"])
-print(data["goose"]["ref"])
-print(data["goose"]["tag"])
-PY
-)
+              mapfile -t image_metadata < <(python3 -c 'import json; data=json.load(open("image-metadata.json", "r", encoding="utf-8")); print(data["app"]["ref"]); print(data["app"]["tag"]); print(data["goose"]["ref"]); print(data["goose"]["tag"])')
               app_image_ref="${image_metadata[0]}"
               app_image_tag="${image_metadata[1]}"
               goose_image_ref="${image_metadata[2]}"
