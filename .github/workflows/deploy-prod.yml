@@ -84,6 +84,53 @@ jobs:
     needs: build-and-push
     environment: production
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate deploy secrets
+        shell: bash
+        env:
+          EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
+          EMQX_API_SECRET: ${{ secrets.EMQX_API_SECRET }}
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+        run: |
+          set -Eeuo pipefail
+
+          if [[ -z "${VPS_DEPLOY_PATH}" ]]; then
+            echo "error: VPS_DEPLOY_PATH is empty" >&2
+            exit 1
+          fi
+
+          if [[ -n "${EMQX_API_KEY:-}" ]] && [[ -n "${EMQX_API_SECRET:-}" ]]; then
+            :
+          elif [[ -n "${EMQX_API_KEY:-}" ]] || [[ -n "${EMQX_API_SECRET:-}" ]]; then
+            echo "error: set both EMQX_API_KEY and EMQX_API_SECRET, or neither" >&2
+            exit 1
+          else
+            echo "error: production deploy requires both EMQX_API_KEY and EMQX_API_SECRET secrets" >&2
+            exit 1
+          fi
+
+          if [[ -n "${GHCR_PULL_USERNAME:-}" ]] && [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
+            :
+          elif [[ -n "${GHCR_PULL_USERNAME:-}" ]] || [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
+            echo "error: set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN, or omit both for anonymous pulls" >&2
+            exit 1
+          fi
+
+      - name: Sync production runtime assets
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          overwrite: true
+          source: deployments/prod/docker-compose.prod.yml,deployments/prod/emqx/base.hocon,deployments/prod/scripts/*,deployments/prod/caddy/Caddyfile,deployments/prod/.env.production.example,deployments/prod/README.md
+          target: ${{ secrets.VPS_DEPLOY_PATH }}
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         env:
@@ -93,6 +140,8 @@ jobs:
           RELEASE_TAG: sha-${{ github.sha }}
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
+          EMQX_API_SECRET: ${{ secrets.EMQX_API_SECRET }}
           VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -100,7 +149,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           script_stop: true
-          envs: IMAGE_REGISTRY,APP_IMAGE_REPOSITORY,GOOSE_IMAGE_REPOSITORY,RELEASE_TAG,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,VPS_DEPLOY_PATH
+          envs: IMAGE_REGISTRY,APP_IMAGE_REPOSITORY,GOOSE_IMAGE_REPOSITORY,RELEASE_TAG,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,EMQX_API_KEY,EMQX_API_SECRET,VPS_DEPLOY_PATH
           script: |
             set -Eeuo pipefail
 
@@ -110,9 +159,18 @@ jobs:
             export APP_IMAGE_REPOSITORY="$(tolower "${APP_IMAGE_REPOSITORY}")"
             export GOOSE_IMAGE_REPOSITORY="$(tolower "${GOOSE_IMAGE_REPOSITORY}")"
             export RELEASE_TAG="${RELEASE_TAG}"
+            export EMQX_API_KEY="${EMQX_API_KEY}"
+            export EMQX_API_SECRET="${EMQX_API_SECRET}"
 
             if [[ -z "${VPS_DEPLOY_PATH}" ]]; then
               echo "error: VPS_DEPLOY_PATH is empty" >&2
+              exit 1
+            fi
+
+            if [[ -n "${EMQX_API_KEY:-}" ]] && [[ -n "${EMQX_API_SECRET:-}" ]]; then
+              :
+            else
+              echo "error: production deploy requires both EMQX_API_KEY and EMQX_API_SECRET" >&2
               exit 1
             fi
 
