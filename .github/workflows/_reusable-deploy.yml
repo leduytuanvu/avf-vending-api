@@ -23,7 +23,7 @@ on:
         default: ""
         type: string
     secrets:
-      github_token:
+      gh_api_token:
         required: false
     outputs:
       app_image_ref:
@@ -53,13 +53,13 @@ jobs:
       - name: Download build image metadata
         if: inputs.resolution_mode == 'workflow_run'
         env:
-          GH_TOKEN: ${{ secrets.github_token }}
+          GH_TOKEN: ${{ secrets.gh_api_token }}
           RUN_ID: ${{ inputs.workflow_run_id }}
         shell: bash
         run: |
           set -euo pipefail
 
-          [[ -n "${GH_TOKEN:-}" ]] || { echo "error: github_token is required for workflow_run resolution" >&2; exit 1; }
+          [[ -n "${GH_TOKEN:-}" ]] || { echo "error: gh_api_token is required for workflow_run resolution" >&2; exit 1; }
           [[ -n "${RUN_ID}" ]] || { echo "error: workflow_run_id is required for workflow_run resolution" >&2; exit 1; }
 
           artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq 'first(.artifacts[] | select(.name == "image-metadata") | .id)')"
