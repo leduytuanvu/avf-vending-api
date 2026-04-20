@@ -64,6 +64,45 @@ jobs:
     environment: staging
 
     steps:
+      - name: Validate staging SSH configuration
+        shell: bash
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_PORT: ${{ secrets.STAGING_PORT }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        run: |
+          set -euo pipefail
+
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          [[ -n "${STAGING_HOST:-}" ]] || fail "missing staging environment secret STAGING_HOST"
+          [[ -n "${STAGING_PORT:-}" ]] || fail "missing staging environment secret STAGING_PORT"
+          [[ -n "${STAGING_USER:-}" ]] || fail "missing staging environment secret STAGING_USER"
+          [[ -n "${STAGING_SSH_KEY:-}" ]] || fail "missing staging environment secret STAGING_SSH_KEY"
+
+          [[ "${STAGING_PORT}" =~ ^[0-9]+$ ]] || fail "STAGING_PORT must be numeric"
+          (( STAGING_PORT >= 1 && STAGING_PORT <= 65535 )) || fail "STAGING_PORT must be between 1 and 65535"
+
+          [[ "${STAGING_HOST}" != *$'\n'* && "${STAGING_HOST}" != *$'\r'* && "${STAGING_HOST}" != *" "* ]] || {
+            fail "STAGING_HOST must be a single hostname or IP without whitespace"
+          }
+
+          [[ "${STAGING_USER}" != *$'\n'* && "${STAGING_USER}" != *$'\r'* && "${STAGING_USER}" != *" "* ]] || {
+            fail "STAGING_USER must be a single SSH username without whitespace"
+          }
+
+          [[ "${STAGING_SSH_KEY}" == *"BEGIN "* && "${STAGING_SSH_KEY}" == *"PRIVATE KEY"* ]] || {
+            fail "STAGING_SSH_KEY must contain the full private key PEM/OpenSSH block, not a .pub key or truncated value"
+          }
+
+          python3 -c "import socket,sys; socket.getaddrinfo(sys.argv[1], None)" "${STAGING_HOST}" || {
+            fail "STAGING_HOST must resolve from GitHub-hosted runners; use a public DNS name or IP"
+          }
+
       - name: Deploy staging over SSH
         id: deploy_staging
         continue-on-error: true
