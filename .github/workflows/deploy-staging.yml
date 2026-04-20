@@ -47,7 +47,7 @@ jobs:
       app_image_ref: ${{ github.event_name == 'workflow_dispatch' && inputs.app_image_ref || '' }}
       goose_image_ref: ${{ github.event_name == 'workflow_dispatch' && inputs.goose_image_ref || '' }}
     secrets:
-      gh_api_token: ${{ github.token }}
+      gh_api_token: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     if: |
