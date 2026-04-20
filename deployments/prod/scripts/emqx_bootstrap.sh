@@ -31,8 +31,18 @@ read_env() {
 
 MQTT_USERNAME="$(read_env MQTT_USERNAME)"
 MQTT_PASSWORD="$(read_env MQTT_PASSWORD)"
-EMQX_API_KEY="$(read_env EMQX_API_KEY)"
-EMQX_API_SECRET="$(read_env EMQX_API_SECRET)"
+EMQX_API_KEY="${EMQX_API_KEY:-}"
+EMQX_API_SECRET="${EMQX_API_SECRET:-}"
+
+if [[ -n "${EMQX_API_KEY}" || -n "${EMQX_API_SECRET}" ]]; then
+	if [[ -z "${EMQX_API_KEY}" || -z "${EMQX_API_SECRET}" ]]; then
+		echo "error: EMQX_API_KEY / EMQX_API_SECRET must both be set together in environment or ${ENVF}" >&2
+		exit 1
+	fi
+else
+	EMQX_API_KEY="$(read_env EMQX_API_KEY)"
+	EMQX_API_SECRET="$(read_env EMQX_API_SECRET)"
+fi
 
 if [[ -z "${MQTT_USERNAME}" || -z "${MQTT_PASSWORD}" ]]; then
 	echo "error: MQTT_USERNAME / MQTT_PASSWORD must be non-empty" >&2
@@ -65,7 +75,7 @@ code="$(
 
 if [[ -z "${code}" || "${code}" == "000" ]]; then
 	echo "emqx_bootstrap: failed to reach EMQX management API at ${BASE} (curl HTTP code=${code:-empty})" >&2
-	echo "emqx_bootstrap: ensure the emqx container is running, port 18083 is published to 127.0.0.1, and emqx/default_api_key.conf is mounted" >&2
+	echo "emqx_bootstrap: ensure avf-prod-emqx is running, port 18083 is published to 127.0.0.1, and release.sh rendered emqx/default_api_key.conf on the VPS" >&2
 	if [[ -s "${tmp}" ]]; then
 		cat "${tmp}" >&2
 	fi
@@ -85,10 +95,20 @@ if [[ "${code}" == "409" ]]; then
 	exit 0
 fi
 
+if [[ "${code}" == "401" ]]; then
+	echo "emqx_bootstrap: EMQX management API auth failed (HTTP 401 BAD_API_KEY_OR_SECRET)" >&2
+	if [[ -s "${tmp}" ]]; then
+		cat "${tmp}" >&2
+	fi
+	rm -f "${tmp}"
+	echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET, verify deployments/prod/emqx/default_api_key.conf on the VPS, verify /opt/emqx/etc/default_api_key.conf inside the running avf-prod-emqx container, and verify EMQX was recreated after config changes." >&2
+	exit 1
+fi
+
 echo "emqx_bootstrap: create MQTT user failed (HTTP ${code})" >&2
 if [[ -s "${tmp}" ]]; then
 	cat "${tmp}" >&2
 fi
 rm -f "${tmp}"
-echo "hint: verify HTTP Basic uses EMQX_API_KEY / EMQX_API_SECRET matching emqx/default_api_key.conf; 401 often means mismatch or missing bootstrap file inside EMQX. Dashboard login credentials are not used for this API." >&2
+echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET match deployments/prod/emqx/default_api_key.conf on the VPS and /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx. Dashboard credentials are UI-only and not used for /api/v5/*." >&2
 exit 1

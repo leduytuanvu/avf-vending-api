@@ -9,11 +9,14 @@ ENV_FILE="${ROOT}/.env.production"
 COMPOSE_FILE="${ROOT}/docker-compose.prod.yml"
 COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
 STATE="${ROOT}/.deploy"
+DEFAULT_API_KEY_FILE="${ROOT}/emqx/default_api_key.conf"
 LONG_LIVED_SERVICES=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 ARTIFACT_SERVICES=(migrate api worker mqtt-ingest reconciler)
 # Monitored after `compose up`: running always; Docker health=healthy only when a healthcheck exists on the container.
 ROLLUP_GATE_SVCS=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 ROLLUP_GATE_CTRS=(avf-prod-postgres avf-prod-nats avf-prod-emqx avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-caddy)
+EMQX_API_KEY_RESOLVED=""
+EMQX_API_SECRET_RESOLVED=""
 
 fail() {
 	echo "release.sh: error: $*" >&2
@@ -42,7 +45,7 @@ usage:
 Environment (deploy / rollback):
   Required in .env.production (or exported before deploy for registry/repo overrides):
     IMAGE_REGISTRY, APP_IMAGE_REPOSITORY, GOOSE_IMAGE_REPOSITORY, DATABASE_URL, POSTGRES_*,
-    EMQX_*, MQTT_CLIENT_ID_API, CADDY_ACME_EMAIL, ...
+    EMQX_DASHBOARD_*, EMQX_API_*, MQTT_CLIENT_ID_API, CADDY_ACME_EMAIL, ...
 
   Optional registry pull (VPS):
     GHCR_PULL_USERNAME, GHCR_PULL_TOKEN — if both set, runs docker login ghcr.io before pull.
@@ -145,6 +148,111 @@ registry_login_optional() {
 	elif [[ -n "${GHCR_PULL_USERNAME:-}" ]] || [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
 		fail "set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN, or neither, for registry login"
 	fi
+}
+
+resolve_emqx_api_credentials() {
+	local file_key file_secret
+
+	if [[ -n "${EMQX_API_KEY:-}" ]] || [[ -n "${EMQX_API_SECRET:-}" ]]; then
+		if [[ -z "${EMQX_API_KEY:-}" ]] || [[ -z "${EMQX_API_SECRET:-}" ]]; then
+			fail "EMQX_API_KEY and EMQX_API_SECRET must both be set together in environment or ${ENV_FILE}"
+		fi
+		EMQX_API_KEY_RESOLVED="${EMQX_API_KEY}"
+		EMQX_API_SECRET_RESOLVED="${EMQX_API_SECRET}"
+	else
+		file_key="$(try_read_env_file EMQX_API_KEY)"
+		file_secret="$(try_read_env_file EMQX_API_SECRET)"
+		if [[ -z "${file_key}" ]] || [[ -z "${file_secret}" ]]; then
+			fail "missing required EMQX_API_KEY / EMQX_API_SECRET (set in environment or ${ENV_FILE})"
+		fi
+		EMQX_API_KEY_RESOLVED="${file_key}"
+		EMQX_API_SECRET_RESOLVED="${file_secret}"
+	fi
+}
+
+validate_release_assets_or_fail() {
+	local validator="${ROOT}/scripts/validate_release_assets.sh"
+	[[ -f "${validator}" ]] || fail "missing ${validator}"
+	if ! bash "${validator}" "${ENV_FILE}"; then
+		fail "validate_release_assets.sh failed"
+	fi
+}
+
+render_emqx_api_key_file() {
+	local dir tmp
+	resolve_emqx_api_credentials
+
+	dir="$(dirname "${DEFAULT_API_KEY_FILE}")"
+	mkdir -p "${dir}"
+	tmp="$(mktemp "${dir}/default_api_key.conf.tmp.XXXXXX")"
+	if ! printf '%s:%s:administrator\n' "${EMQX_API_KEY_RESOLVED}" "${EMQX_API_SECRET_RESOLVED}" >"${tmp}"; then
+		rm -f "${tmp}"
+		fail "failed to write temporary EMQX API bootstrap file"
+	fi
+	chmod 600 "${tmp}"
+	mv -f "${tmp}" "${DEFAULT_API_KEY_FILE}"
+	[[ -s "${DEFAULT_API_KEY_FILE}" ]] || fail "rendered ${DEFAULT_API_KEY_FILE} is missing or empty"
+	note "rendered EMQX API bootstrap file at ${DEFAULT_API_KEY_FILE}"
+}
+
+wait_for_emqx_control_plane() {
+	local attempts="${1:-90}"
+	local sleep_secs="${2:-2}"
+	local i
+	note "waiting for EMQX control plane readiness"
+	for i in $(seq 1 "${attempts}"); do
+		if "${COMPOSE[@]}" exec -T emqx emqx_ctl status >/dev/null 2>&1; then
+			note "EMQX control plane is responding"
+			return 0
+		fi
+		sleep "${sleep_secs}"
+	done
+	fail "EMQX control plane did not become ready — inspect avf-prod-emqx logs"
+}
+
+preflight_emqx_api_auth() {
+	local timeout_secs="${EMQX_API_PREFLIGHT_WAIT_SECS:-90}"
+	local poll_secs="${EMQX_API_PREFLIGHT_POLL_SECS:-3}"
+	local start_ts now_ts elapsed code tmp saw_401="0"
+
+	[[ "${timeout_secs}" =~ ^[0-9]+$ ]] || timeout_secs=90
+	[[ "${poll_secs}" =~ ^[0-9]+$ ]] || poll_secs=3
+	[[ "${poll_secs}" -ge 1 ]] || poll_secs=1
+	tmp="$(mktemp)"
+	start_ts="$(date +%s)"
+
+	note "preflight EMQX management API auth via /api/v5/status"
+	while true; do
+		code="$(
+			curl -sS -o "${tmp}" -w "%{http_code}" \
+				-u "${EMQX_API_KEY_RESOLVED}:${EMQX_API_SECRET_RESOLVED}" \
+				"http://127.0.0.1:18083/api/v5/status" || true
+		)"
+		if [[ "${code}" == "200" ]]; then
+			rm -f "${tmp}"
+			note "EMQX API auth preflight passed"
+			return 0
+		fi
+
+		now_ts="$(date +%s)"
+		elapsed=$((now_ts - start_ts))
+		if [[ "${code}" == "401" && "${saw_401}" == "0" ]]; then
+			saw_401="1"
+			echo "release.sh: EMQX API preflight got HTTP 401 — verify EMQX_API_KEY / EMQX_API_SECRET, ${ROOT}/emqx/default_api_key.conf on the VPS, /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx, and that EMQX was force-recreated after config changes" >&2
+		else
+			note "EMQX API preflight pending (HTTP ${code:-empty}, ${elapsed}s/${timeout_secs}s)"
+		fi
+
+		if [[ "${elapsed}" -ge "${timeout_secs}" ]]; then
+			if [[ -s "${tmp}" ]]; then
+				cat "${tmp}" >&2
+			fi
+			rm -f "${tmp}"
+			fail "EMQX API preflight failed after ${timeout_secs}s — verify EMQX_API_KEY / EMQX_API_SECRET, ${ROOT}/emqx/default_api_key.conf on the VPS, /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx, and that EMQX was force-recreated after config changes"
+		fi
+
+		sleep "${poll_secs}"
+	done
 }
 
 persist_rollout_image_state() {
@@ -323,6 +431,9 @@ cmd_deploy() {
 	require_env_resolved APP_IMAGE_REPOSITORY >/dev/null
 	require_env_resolved GOOSE_IMAGE_REPOSITORY >/dev/null
 	require_env_resolved DATABASE_URL >/dev/null
+	resolve_emqx_api_credentials
+	export EMQX_API_KEY="${EMQX_API_KEY_RESOLVED}"
+	export EMQX_API_SECRET="${EMQX_API_SECRET_RESOLVED}"
 
 	note "write image tags and registry metadata to ${ENV_FILE} (APP_IMAGE_TAG=${new_app} GOOSE_IMAGE_TAG=${new_goose})"
 	# Prefer exported CI/VPS env over existing file values when set.
@@ -337,6 +448,7 @@ cmd_deploy() {
 	set_env_value "IMAGE_TAG" "${new_app}" "${ENV_FILE}"
 
 	registry_login_optional
+	validate_release_assets_or_fail
 
 	note "docker compose config"
 	if ! "${COMPOSE[@]}" config >/dev/null; then
@@ -348,9 +460,9 @@ cmd_deploy() {
 		fail "docker compose pull failed — check registry auth and tags"
 	fi
 
-	note "start data plane (postgres, nats, emqx) before migrations"
-	if ! "${COMPOSE[@]}" up -d postgres nats emqx; then
-		fail "failed to start postgres/nats/emqx"
+	note "start data plane (postgres, nats) before migrations"
+	if ! "${COMPOSE[@]}" up -d postgres nats; then
+		fail "failed to start postgres/nats"
 	fi
 
 	note "docker compose up migrate (foreground; one-shot migration)"
@@ -359,13 +471,15 @@ cmd_deploy() {
 		fail "migrate failed — fix database before retrying"
 	fi
 
+	render_emqx_api_key_file
+	note "force-recreate EMQX so updated bootstrap assets are reloaded"
+	if ! "${COMPOSE[@]}" up -d --force-recreate emqx; then
+		fail "failed to force-recreate emqx"
+	fi
+	wait_for_emqx_control_plane
+	preflight_emqx_api_auth
+
 	note "EMQX MQTT user bootstrap"
-	for _ in $(seq 1 90); do
-		if "${COMPOSE[@]}" exec -T emqx emqx_ctl status >/dev/null 2>&1; then
-			break
-		fi
-		sleep 2
-	done
 	if ! bash "${ROOT}/scripts/emqx_bootstrap.sh"; then
 		fail "emqx_bootstrap.sh failed"
 	fi

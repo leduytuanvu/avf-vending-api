@@ -14,7 +14,7 @@ This repo has GitHub Actions for quality gates, security, optional standalone im
 - `security.yml` runs dependency review and `govulncheck`.
 - `build-push.yml` (optional parallel path) can build/push app + goose images on `main` / tags; provenance/SBOM may be enabled there.
 - `deploy-staging.yml` deploys prebuilt artifacts to the staging VPS (GitHub `staging` environment).
-- **`deploy-prod.yml`** (GitHub `production` environment): on **push to `main`** or **`workflow_dispatch`**, it **builds and pushes** the app image (`deployments/prod/Dockerfile`) and goose image (`deployments/prod/Dockerfile.goose`) to GHCR, then **SSHs to the VPS** and runs `release.sh deploy` with `RELEASE_TAG=sha-<GITHUB_SHA>`. **`VPS_DEPLOY_PATH` must be the git repository root** (the directory that contains `deployments/prod/`). Equivalent manual command on the server:
+- **`deploy-prod.yml`** (GitHub `production` environment): on **push to `main`** or **`workflow_dispatch`**, it **builds and pushes** the app image (`deployments/prod/Dockerfile`) and goose image (`deployments/prod/Dockerfile.goose`) to GHCR, then **syncs the required `deployments/prod` runtime assets** to the VPS, **SSHs to the VPS**, and runs `release.sh deploy` with `RELEASE_TAG=sha-<GITHUB_SHA>`. **`VPS_DEPLOY_PATH` must be the deploy root on the server** (the directory that contains `deployments/prod/`); it does **not** need to be a git checkout. Equivalent manual command on the server:
 
   ```bash
   bash "${VPS_DEPLOY_PATH}/deployments/prod/scripts/release.sh" deploy sha-<full-git-sha>
@@ -39,7 +39,7 @@ The workflow runs in the **`production`** environment (use branch protection / r
 
 1. **build-and-push** — checkout, Buildx, login to GHCR with `GITHUB_TOKEN`, push  
    `ghcr.io/<lowercase-github-repository>` and `ghcr.io/<lowercase-github-repository>-goose` (same naming as `build-push.yml`), with tags `sha-<sha>`, and on `main` also `main` and `latest` on both images.
-2. **deploy-prod** — SSH to the VPS, export `IMAGE_REGISTRY`, `APP_IMAGE_REPOSITORY`, `GOOSE_IMAGE_REPOSITORY`, `RELEASE_TAG`, run `docker login` when pull secrets are set, then  
+2. **deploy-prod** — checks out the repo on the GitHub runner, validates deploy secrets, syncs the required `deployments/prod` runtime assets to the VPS (compose, scripts, Caddyfile, EMQX base config, docs/examples), then SSHes to the VPS, exports `IMAGE_REGISTRY`, `APP_IMAGE_REPOSITORY`, `GOOSE_IMAGE_REPOSITORY`, `RELEASE_TAG`, `EMQX_API_KEY`, `EMQX_API_SECRET`, runs `docker login` when pull secrets are set, and finally runs  
    `bash "$VPS_DEPLOY_PATH/deployments/prod/scripts/release.sh" deploy "$RELEASE_TAG"`.
 
 **Repository or `production` environment secrets** (names must match the workflow):
@@ -50,7 +50,9 @@ The workflow runs in the **`production`** environment (use branch protection / r
 | `VPS_SSH_PORT` | SSH port (e.g. `22`) |
 | `VPS_USER` | SSH login user |
 | `VPS_SSH_PRIVATE_KEY` | PEM private key for SSH |
-| `VPS_DEPLOY_PATH` | Repo root on the server (e.g. `/opt/avf-vending/avf-vending-api`) |
+| `VPS_DEPLOY_PATH` | Deploy root on the server containing `deployments/prod` (e.g. `/opt/avf-vending/avf-vending-api`); it does not need to be a git checkout |
+| `EMQX_API_KEY` | Required: EMQX management API key used for `/api/v5/*` bootstrap on the VPS |
+| `EMQX_API_SECRET` | Required: EMQX management API secret paired with `EMQX_API_KEY` |
 | `GHCR_PULL_USERNAME` | Optional: `docker login ghcr.io` user on the VPS when images are **private** |
 | `GHCR_PULL_TOKEN` | Optional: PAT or token with `read:packages` (set **both** with username, or **neither** for public packages — matches `release.sh`) |
 
@@ -486,7 +488,7 @@ cd /opt/avf-vending/avf-vending-api/deployments/prod
 bash scripts/release.sh deploy sha-<new-commit-sha>
 ```
 
-`release.sh deploy` updates image tags in `.env.production`, pulls from GHCR, migrates, restarts the stack, and runs smoke checks — **no source build on the VPS**.
+`release.sh deploy` updates image tags in `.env.production`, validates the synced prod runtime assets, renders `emqx/default_api_key.conf` from `EMQX_API_*`, force-recreates EMQX, preflights `/api/v5/status`, bootstraps the MQTT user, restarts the stack, and runs smoke checks — **no source build on the VPS**.
 
 **Alternate:** `bash scripts/update_prod.sh` remains a thin wrapper around the same image-pull / compose flow; it does not `git pull`, compile Go, or `docker build` app images on the server.
 
@@ -617,7 +619,7 @@ EMQX uses **three separate credential classes** in this deployment:
 
 1. **Dashboard (web UI)** — `EMQX_DASHBOARD_USERNAME` / `EMQX_DASHBOARD_PASSWORD` in `.env.production` feed Compose defaults for the loopback dashboard only. They are **not** read by `scripts/emqx_bootstrap.sh`.
 
-2. **Management REST API** — `EMQX_API_KEY` / `EMQX_API_SECRET` in `.env.production` are used by `scripts/emqx_bootstrap.sh` as **HTTP Basic** authentication (`-u key:secret`) against `/api/v5/*`. The broker loads API keys from **`emqx/default_api_key.conf`** (`api_key.bootstrap_file` in [`emqx/base.hocon`](emqx/base.hocon)). Copy [`emqx/default_api_key.conf.example`](emqx/default_api_key.conf.example) to **`emqx/default_api_key.conf`**, set one line `api_key_id:secret:administrator`, and use the same `api_key_id` and `secret` as `EMQX_API_KEY` and `EMQX_API_SECRET`. Do **not** commit `default_api_key.conf`. When rotating, update **both** the file and `.env.production`, then restart EMQX so the bootstrap file is re-read as documented by EMQX.
+2. **Management REST API** — `EMQX_API_KEY` / `EMQX_API_SECRET` in `.env.production` are used by `scripts/emqx_bootstrap.sh` as **HTTP Basic** authentication (`-u key:secret`) against `/api/v5/*`. The broker loads API keys from **`emqx/default_api_key.conf`** (`api_key.bootstrap_file` in [`emqx/base.hocon`](emqx/base.hocon)). During GitHub Actions deploys, `release.sh` renders `emqx/default_api_key.conf` on the VPS from `EMQX_API_KEY` / `EMQX_API_SECRET`, `chmod 600`s it, force-recreates `avf-prod-emqx`, preflights `http://127.0.0.1:18083/api/v5/status`, and only then runs `emqx_bootstrap.sh`. Do **not** commit `default_api_key.conf`.
 
 3. **MQTT application / devices** — `MQTT_USERNAME` / `MQTT_PASSWORD` are the built-in-database MQTT users; `emqx_bootstrap.sh` creates them idempotently via the management API.
 
@@ -664,7 +666,7 @@ make prod-restore FILE=deployments/prod/backups/avf_vending_YYYYMMDDTHHMMSSZ.sql
 make prod-smoke
 ```
 
-`make prod-deploy` invokes `deployments/prod/scripts/deploy_prod.sh` (wrapper → `release.sh`). For parity with GitHub Actions, from **`deployments/prod`** on the VPS run **`bash scripts/release.sh deploy <tag>`** (same path shape as CI: `"${VPS_DEPLOY_PATH}/deployments/prod/scripts/release.sh"` from repo root).
+`make prod-deploy` invokes `deployments/prod/scripts/deploy_prod.sh` (wrapper → `release.sh`). For parity with GitHub Actions, from **`deployments/prod`** on the VPS run **`bash scripts/release.sh deploy <tag>`** (same path shape as CI under `"${VPS_DEPLOY_PATH}/deployments/prod/scripts/release.sh"`). The GitHub workflow syncs the runtime deploy assets first, then `release.sh` renders `emqx/default_api_key.conf`, force-recreates EMQX, preflights `/api/v5/status`, and only then bootstraps the MQTT user.
 
 ## Common failure points
 
@@ -672,9 +674,11 @@ make prod-smoke
 - ports `80/443` are blocked upstream, so HTTPS never becomes ready
 - `.env.production` is missing or still contains placeholder values
 - `DATABASE_URL` does not match `POSTGRES_USER` / `POSTGRES_PASSWORD`
-- `emqx/default_api_key.conf` is missing on the VPS (Compose bind mount fails or EMQX cannot load keys) — copy from `default_api_key.conf.example` first
-- `EMQX_API_KEY` / `EMQX_API_SECRET` in `.env.production` do not match the `api_key_id:secret` line in `emqx/default_api_key.conf` (HTTP **401** on bootstrap)
+- GitHub Actions did not sync the latest `deployments/prod` runtime assets to the VPS, so `release.sh`, `docker-compose.prod.yml`, or `emqx/base.hocon` are stale
+- `release.sh` could not render `emqx/default_api_key.conf` on the VPS (permissions, missing directory, or bad `EMQX_API_*`)
+- `EMQX_API_KEY` / `EMQX_API_SECRET` supplied by GitHub Actions or `.env.production` do not match the generated `emqx/default_api_key.conf` (HTTP **401** on EMQX preflight / bootstrap)
 - EMQX management API unreachable (broker down, or loopback `18083` not reachable from the host running `emqx_bootstrap.sh`)
+- EMQX was not recreated after `base.hocon` or `default_api_key.conf` changed, so `/opt/emqx/etc/default_api_key.conf` inside `avf-prod-emqx` is stale
 - `EMQX_DASHBOARD_USERNAME` / `EMQX_DASHBOARD_PASSWORD` do not match the initialized EMQX data volume (dashboard login only; unrelated to bootstrap API auth)
 - `MQTT_USERNAME` / `MQTT_PASSWORD` were not bootstrapped successfully after fixing API credentials
 - `8883/tcp` is blocked by UFW or upstream firewall rules when testing MQTT TLS exposure
