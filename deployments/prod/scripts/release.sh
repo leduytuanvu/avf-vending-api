@@ -17,9 +17,13 @@ ROLLUP_GATE_SVCS=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 ROLLUP_GATE_CTRS=(avf-prod-postgres avf-prod-nats avf-prod-emqx avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-caddy)
 EMQX_API_KEY_RESOLVED=""
 EMQX_API_SECRET_RESOLVED=""
+CURRENT_PHASE="startup"
+VERIFY_FAILURE_EXIT_CODE=42
+
+trap 'rc=$?; if [[ "${rc}" -ne 0 ]]; then echo "release.sh: step failed: ${CURRENT_PHASE}" >&2; fi' ERR
 
 fail() {
-	echo "release.sh: error: $*" >&2
+	echo "release.sh: error during ${CURRENT_PHASE}: $*" >&2
 	exit 1
 }
 
@@ -30,15 +34,15 @@ note() {
 usage() {
 	cat <<'USAGE' >&2
 usage:
-  release.sh deploy [app_tag [goose_tag]]
-  release.sh rollback [app_tag [goose_tag]]
+  release.sh deploy [app_image_ref [goose_image_ref]]
+  release.sh rollback [app_image_ref [goose_image_ref]]
   release.sh status
   release.sh logs [service] [tail]
 
-  deploy: With args, sets APP_IMAGE_TAG and GOOSE_IMAGE_TAG (goose defaults to app). With no args,
-          reads APP_IMAGE_TAG or falls back to IMAGE_TAG; GOOSE_IMAGE_TAG or IMAGE_TAG or same as app.
-  rollback: With no args, uses .deploy/previous_app_image_tag and previous_goose_image_tag
-          (or legacy previous_image_tag for both when goose file is absent).
+  deploy: With args, deploys the explicit image refs (goose defaults to app). With no args,
+          reads APP_IMAGE_REF / GOOSE_IMAGE_REF, or falls back to APP_IMAGE_TAG / GOOSE_IMAGE_TAG / IMAGE_TAG.
+  rollback: With no args, restores .deploy/last_known_good_app_image_ref and
+          .deploy/last_known_good_goose_image_ref (or older legacy tag state when needed).
   [service] For logs: optional docker compose service name; omit to tail all services.
   [tail]    For logs: line count (default 200).
 
@@ -56,6 +60,9 @@ Environment (deploy / rollback):
   Optional rollout wait (deploy / rollback; polls container state / Docker health):
     ROLLUP_HEALTH_WAIT_SECS (default 180; clamped to 30–3600 so 0 cannot instant-fail),
     ROLLUP_HEALTH_POLL_SECS (default 5; minimum 1)
+
+  Optional release label (deploy only):
+    RELEASE_LABEL — human-readable release tag for logs / env bookkeeping (for example v1.2.3)
 USAGE
 	exit 1
 }
@@ -126,6 +133,59 @@ resolve_image_tag_from_env() {
 		printf '%s' "${v}"
 		return 0
 	fi
+	return 1
+}
+
+build_image_ref_from_tag() {
+	local repository_key="$1"
+	local tag="$2"
+	local registry repository
+	registry="$(require_env_resolved IMAGE_REGISTRY)"
+	repository="$(require_env_resolved "${repository_key}")"
+	printf '%s/%s:%s' "${registry}" "${repository}" "${tag}"
+}
+
+normalize_image_ref() {
+	local label="$1"
+	local ref="$2"
+	[[ -n "${ref}" ]] || fail "missing required ${label}"
+	if [[ "${ref}" == *":latest" ]]; then
+		fail "${label} must not use latest"
+	fi
+	printf '%s' "${ref}"
+}
+
+resolve_image_ref() {
+	local label="$1"
+	local repository_key="$2"
+	local explicit="${3:-}"
+	local ref tag
+
+	if [[ -n "${explicit}" ]]; then
+		if [[ "${explicit}" == *@sha256:* || "${explicit}" == */*:* ]]; then
+			ref="${explicit}"
+		else
+			ref="$(build_image_ref_from_tag "${repository_key}" "${explicit}")"
+		fi
+		normalize_image_ref "${label}" "${ref}"
+		return 0
+	fi
+
+	if ref="$(resolve_env "${label}" 2>/dev/null)" && [[ -n "${ref}" ]]; then
+		normalize_image_ref "${label}" "${ref}"
+		return 0
+	fi
+
+	if [[ "${label}" == "APP_IMAGE_REF" ]]; then
+		tag="$(resolve_image_tag_from_env APP_IMAGE_TAG || true)"
+	else
+		tag="$(resolve_image_tag_from_env GOOSE_IMAGE_TAG || true)"
+	fi
+	if [[ -n "${tag}" ]]; then
+		normalize_image_ref "${label}" "$(build_image_ref_from_tag "${repository_key}" "${tag}")"
+		return 0
+	fi
+
 	return 1
 }
 
@@ -259,15 +319,15 @@ persist_rollout_image_state() {
 	local new_app="$1" new_goose="$2" old_app="${3:-}" old_goose="${4:-}" log_label="$5"
 	mkdir -p "${STATE}"
 	if [[ -n "${old_app}" ]]; then
-		printf '%s\n' "${old_app}" >"${STATE}/previous_app_image_tag"
-		printf '%s\n' "${old_app}" >"${STATE}/previous_image_tag"
+		printf '%s\n' "${old_app}" >"${STATE}/previous_app_image_ref"
 	fi
 	if [[ -n "${old_goose}" ]]; then
-		printf '%s\n' "${old_goose}" >"${STATE}/previous_goose_image_tag"
+		printf '%s\n' "${old_goose}" >"${STATE}/previous_goose_image_ref"
 	fi
-	printf '%s\n' "${new_app}" >"${STATE}/current_app_image_tag"
-	printf '%s\n' "${new_goose}" >"${STATE}/current_goose_image_tag"
-	printf '%s\n' "${new_app}" >"${STATE}/current_image_tag"
+	printf '%s\n' "${new_app}" >"${STATE}/current_app_image_ref"
+	printf '%s\n' "${new_goose}" >"${STATE}/current_goose_image_ref"
+	printf '%s\n' "${new_app}" >"${STATE}/last_known_good_app_image_ref"
+	printf '%s\n' "${new_goose}" >"${STATE}/last_known_good_goose_image_ref"
 	printf '%s\t%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${log_label} app=${new_app} goose=${new_goose}" >>"${STATE}/history.log"
 }
 
@@ -403,30 +463,22 @@ wait_for_rollout_health() {
 
 cmd_deploy() {
 	local arg1="${1:-}" arg2="${2:-}"
-	local old_app old_goose new_app new_goose reg repo_app repo_goose
+	local old_app old_goose new_app new_goose reg repo_app repo_goose release_label
 
 	[[ -f "${ENV_FILE}" ]] || fail "missing ${ENV_FILE}"
 
-	old_app="$(try_read_env_file APP_IMAGE_TAG)"
-	old_goose="$(try_read_env_file GOOSE_IMAGE_TAG)"
+	old_app="$(try_read_env_file APP_IMAGE_REF)"
+	old_goose="$(try_read_env_file GOOSE_IMAGE_REF)"
 
-	if [[ -n "${arg1}" ]]; then
-		new_app="${arg1}"
-		new_goose="${arg2:-${arg1}}"
-	else
-		if ! new_app="$(resolve_image_tag_from_env APP_IMAGE_TAG)" || [[ -z "${new_app}" ]]; then
-			fail "deploy needs [app_tag [goose_tag]] or APP_IMAGE_TAG / IMAGE_TAG in ${ENV_FILE}"
-		fi
-		new_goose="$(try_read_env_file GOOSE_IMAGE_TAG)"
-		if [[ -z "${new_goose}" ]]; then
-			new_goose="$(try_read_env_file IMAGE_TAG)"
-		fi
-		if [[ -z "${new_goose}" ]]; then
-			new_goose="${new_app}"
-		fi
+	if ! new_app="$(resolve_image_ref APP_IMAGE_REF APP_IMAGE_REPOSITORY "${arg1}")" || [[ -z "${new_app}" ]]; then
+		fail "deploy needs [app_image_ref [goose_image_ref]] or APP_IMAGE_REF / APP_IMAGE_TAG / IMAGE_TAG in ${ENV_FILE}"
+	fi
+	if ! new_goose="$(resolve_image_ref GOOSE_IMAGE_REF GOOSE_IMAGE_REPOSITORY "${arg2:-${arg1}}")" || [[ -z "${new_goose}" ]]; then
+		fail "deploy needs goose image selection via arg, GOOSE_IMAGE_REF, GOOSE_IMAGE_TAG, or IMAGE_TAG"
 	fi
 
-	note "validate required image / stack env"
+	CURRENT_PHASE="validate"
+	note "validate required image refs and stack env"
 	require_env_resolved IMAGE_REGISTRY >/dev/null
 	require_env_resolved APP_IMAGE_REPOSITORY >/dev/null
 	require_env_resolved GOOSE_IMAGE_REPOSITORY >/dev/null
@@ -434,8 +486,11 @@ cmd_deploy() {
 	resolve_emqx_api_credentials
 	export EMQX_API_KEY="${EMQX_API_KEY_RESOLVED}"
 	export EMQX_API_SECRET="${EMQX_API_SECRET_RESOLVED}"
+	export APP_IMAGE_REF="${new_app}"
+	export GOOSE_IMAGE_REF="${new_goose}"
+	release_label="${RELEASE_LABEL:-}"
 
-	note "write image tags and registry metadata to ${ENV_FILE} (APP_IMAGE_TAG=${new_app} GOOSE_IMAGE_TAG=${new_goose})"
+	note "write image refs and registry metadata to ${ENV_FILE}"
 	# Prefer exported CI/VPS env over existing file values when set.
 	reg="$(require_env_resolved IMAGE_REGISTRY)"
 	repo_app="$(require_env_resolved APP_IMAGE_REPOSITORY)"
@@ -443,9 +498,13 @@ cmd_deploy() {
 	set_env_value "IMAGE_REGISTRY" "${reg}" "${ENV_FILE}"
 	set_env_value "APP_IMAGE_REPOSITORY" "${repo_app}" "${ENV_FILE}"
 	set_env_value "GOOSE_IMAGE_REPOSITORY" "${repo_goose}" "${ENV_FILE}"
-	set_env_value "APP_IMAGE_TAG" "${new_app}" "${ENV_FILE}"
-	set_env_value "GOOSE_IMAGE_TAG" "${new_goose}" "${ENV_FILE}"
-	set_env_value "IMAGE_TAG" "${new_app}" "${ENV_FILE}"
+	set_env_value "APP_IMAGE_REF" "${new_app}" "${ENV_FILE}"
+	set_env_value "GOOSE_IMAGE_REF" "${new_goose}" "${ENV_FILE}"
+	if [[ -n "${release_label}" ]]; then
+		set_env_value "APP_IMAGE_TAG" "${release_label}" "${ENV_FILE}"
+		set_env_value "GOOSE_IMAGE_TAG" "${release_label}" "${ENV_FILE}"
+		set_env_value "IMAGE_TAG" "${release_label}" "${ENV_FILE}"
+	fi
 
 	registry_login_optional
 	validate_release_assets_or_fail
@@ -457,9 +516,20 @@ cmd_deploy() {
 
 	note "docker compose pull (app + goose images)"
 	if ! "${COMPOSE[@]}" pull "${ARTIFACT_SERVICES[@]}"; then
-		fail "docker compose pull failed — check registry auth and tags"
+		fail "docker compose pull failed — check registry auth and image refs"
 	fi
 
+	CURRENT_PHASE="backup"
+	note "start postgres for pre-migrate backup"
+	if ! "${COMPOSE[@]}" up -d postgres; then
+		fail "failed to start postgres for backup"
+	fi
+	note "backup database before migrations"
+	if ! bash "${ROOT}/scripts/backup_postgres.sh"; then
+		fail "backup_postgres.sh failed"
+	fi
+
+	CURRENT_PHASE="migrate"
 	note "start data plane (postgres, nats) before migrations"
 	if ! "${COMPOSE[@]}" up -d postgres nats; then
 		fail "failed to start postgres/nats"
@@ -471,6 +541,7 @@ cmd_deploy() {
 		fail "migrate failed — fix database before retrying"
 	fi
 
+	CURRENT_PHASE="deploy"
 	render_emqx_api_key_file
 	note "force-recreate EMQX so updated bootstrap assets are reloaded"
 	if ! "${COMPOSE[@]}" up -d --force-recreate emqx; then
@@ -492,15 +563,17 @@ cmd_deploy() {
 	wait_for_rollout_health
 	verify_long_lived_running
 
+	CURRENT_PHASE="verify"
 	note "post-deploy health checks"
 	if [[ "${SKIP_SMOKE:-0}" != "1" ]]; then
 		if ! bash "${ROOT}/scripts/healthcheck_prod.sh"; then
-			fail "healthcheck_prod.sh failed"
+			return "${VERIFY_FAILURE_EXIT_CODE}"
 		fi
 	fi
 
+	CURRENT_PHASE="persist"
 	persist_rollout_image_state "${new_app}" "${new_goose}" "${old_app}" "${old_goose}" "deploy"
-	note "deploy complete (APP_IMAGE_TAG=${new_app} GOOSE_IMAGE_TAG=${new_goose})"
+	note "deploy complete (APP_IMAGE_REF=${new_app} GOOSE_IMAGE_REF=${new_goose})"
 }
 
 cmd_rollback() {
@@ -509,46 +582,55 @@ cmd_rollback() {
 
 	[[ -f "${ENV_FILE}" ]] || fail "missing ${ENV_FILE}"
 
-	old_app="$(try_read_env_file APP_IMAGE_TAG)"
-	old_goose="$(try_read_env_file GOOSE_IMAGE_TAG)"
+	old_app="$(try_read_env_file APP_IMAGE_REF)"
+	old_goose="$(try_read_env_file GOOSE_IMAGE_REF)"
 
 	if [[ -n "${arg1}" ]]; then
-		rb_app="${arg1}"
-		rb_goose="${arg2:-${arg1}}"
+		rb_app="$(resolve_image_ref APP_IMAGE_REF APP_IMAGE_REPOSITORY "${arg1}")"
+		rb_goose="$(resolve_image_ref GOOSE_IMAGE_REF GOOSE_IMAGE_REPOSITORY "${arg2:-${arg1}}")"
 	else
 		mkdir -p "${STATE}"
-		local prev_app="${STATE}/previous_app_image_tag"
+		local last_good_app="${STATE}/last_known_good_app_image_ref"
+		local last_good_goose="${STATE}/last_known_good_goose_image_ref"
+		local prev_app="${STATE}/previous_app_image_ref"
+		local prev_goose="${STATE}/previous_goose_image_ref"
 		local prev_legacy="${STATE}/previous_image_tag"
-		if [[ -f "${prev_app}" ]]; then
+		if [[ -f "${last_good_app}" ]]; then
+			rb_app="$(tr -d '\r\n' <"${last_good_app}")"
+		elif [[ -f "${prev_app}" ]]; then
 			rb_app="$(tr -d '\r\n' <"${prev_app}")"
 		elif [[ -f "${prev_legacy}" ]]; then
-			rb_app="$(tr -d '\r\n' <"${prev_legacy}")"
+			rb_app="$(build_image_ref_from_tag APP_IMAGE_REPOSITORY "$(tr -d '\r\n' <"${prev_legacy}")")"
 		else
-			fail "no previous_app_image_tag or previous_image_tag in ${STATE}; pass: rollback <app_tag> [goose_tag]"
+			fail "no last-known-good production image ref in ${STATE}; pass: rollback <app_image_ref> [goose_image_ref]"
 		fi
-		[[ -n "${rb_app}" ]] || fail "previous app tag is empty"
-		local prev_goose="${STATE}/previous_goose_image_tag"
-		if [[ -f "${prev_goose}" ]]; then
+		[[ -n "${rb_app}" ]] || fail "last-known-good app image ref is empty"
+		if [[ -f "${last_good_goose}" ]]; then
+			rb_goose="$(tr -d '\r\n' <"${last_good_goose}")"
+		elif [[ -f "${prev_goose}" ]]; then
 			rb_goose="$(tr -d '\r\n' <"${prev_goose}")"
 		else
 			rb_goose="${rb_app}"
 		fi
 	fi
 
-	note "rollback to APP_IMAGE_TAG=${rb_app} GOOSE_IMAGE_TAG=${rb_goose}"
+	CURRENT_PHASE="rollback-validate"
+	note "rollback to APP_IMAGE_REF=${rb_app} GOOSE_IMAGE_REF=${rb_goose}"
 	require_env_resolved IMAGE_REGISTRY >/dev/null
 	require_env_resolved APP_IMAGE_REPOSITORY >/dev/null
 	require_env_resolved GOOSE_IMAGE_REPOSITORY >/dev/null
+	export APP_IMAGE_REF="${rb_app}"
+	export GOOSE_IMAGE_REF="${rb_goose}"
 
-	set_env_value "APP_IMAGE_TAG" "${rb_app}" "${ENV_FILE}"
-	set_env_value "GOOSE_IMAGE_TAG" "${rb_goose}" "${ENV_FILE}"
-	set_env_value "IMAGE_TAG" "${rb_app}" "${ENV_FILE}"
+	set_env_value "APP_IMAGE_REF" "${rb_app}" "${ENV_FILE}"
+	set_env_value "GOOSE_IMAGE_REF" "${rb_goose}" "${ENV_FILE}"
 
 	registry_login_optional
 
 	note "docker compose config"
 	"${COMPOSE[@]}" config >/dev/null
 
+	CURRENT_PHASE="rollback-deploy"
 	note "docker compose pull"
 	"${COMPOSE[@]}" pull "${ARTIFACT_SERVICES[@]}"
 
@@ -560,6 +642,7 @@ cmd_rollback() {
 	wait_for_rollout_health
 	verify_long_lived_running
 
+	CURRENT_PHASE="rollback-verify"
 	if [[ "${SKIP_SMOKE:-0}" != "1" ]]; then
 		note "post-rollback health checks"
 		if ! bash "${ROOT}/scripts/healthcheck_prod.sh"; then
@@ -567,14 +650,15 @@ cmd_rollback() {
 		fi
 	fi
 
+	CURRENT_PHASE="rollback-persist"
 	persist_rollout_image_state "${rb_app}" "${rb_goose}" "${old_app}" "${old_goose}" "rollback"
-	note "rollback complete (APP_IMAGE_TAG=${rb_app} GOOSE_IMAGE_TAG=${rb_goose})"
+	note "rollback complete (APP_IMAGE_REF=${rb_app} GOOSE_IMAGE_REF=${rb_goose})"
 }
 
 cmd_status() {
 	note "release state (${STATE})"
 	if [[ -d "${STATE}" ]]; then
-		for f in current_image_tag previous_image_tag current_app_image_tag current_goose_image_tag previous_app_image_tag previous_goose_image_tag; do
+		for f in current_app_image_ref current_goose_image_ref last_known_good_app_image_ref last_known_good_goose_image_ref previous_app_image_ref previous_goose_image_ref current_image_tag previous_image_tag current_app_image_tag current_goose_image_tag previous_app_image_tag previous_goose_image_tag; do
 			if [[ -f "${STATE}/${f}" ]]; then
 				printf '  %s: %s\n' "${f}" "$(tr -d '\r\n' <"${STATE}/${f}")"
 			fi

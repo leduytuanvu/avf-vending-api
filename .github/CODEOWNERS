@@ -1,0 +1,6 @@
+# Conservative default based on the repository owner handle.
+# Replace with the correct team or owners if ownership expands later.
+* @leduytuanvu
+/.github/** @leduytuanvu
+/.github/workflows/** @leduytuanvu
+/deployments/** @leduytuanvu

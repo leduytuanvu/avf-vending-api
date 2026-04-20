@@ -49,6 +49,15 @@ require_env() {
 	printf '%s' "${value}"
 }
 
+require_non_latest_ref() {
+	local label="$1"
+	local ref="$2"
+	[[ -n "${ref}" ]] || fail "missing required ${label}"
+	if [[ "${ref}" == *":latest" ]]; then
+		fail "${label} must not use the latest tag"
+	fi
+}
+
 STATE="${ROOT}/.deploy"
 mkdir -p "${STATE}"
 COMPOSE=(docker compose --env-file .env.staging -f docker-compose.staging.yml)
@@ -57,17 +66,26 @@ ARTIFACT_SERVICES=(migrate api worker mqtt-ingest reconciler)
 
 IMAGE_REGISTRY="$(require_env IMAGE_REGISTRY)"
 APP_IMAGE_REPOSITORY="$(require_env APP_IMAGE_REPOSITORY)"
-APP_IMAGE_TAG="$(require_env APP_IMAGE_TAG)"
 GOOSE_IMAGE_REPOSITORY="$(require_env GOOSE_IMAGE_REPOSITORY)"
-GOOSE_IMAGE_TAG="$(require_env GOOSE_IMAGE_TAG)"
-LEGACY_IMAGE_TAG="$(resolve_env IMAGE_TAG || true)"
+APP_IMAGE_TAG="$(resolve_env APP_IMAGE_TAG || true)"
+GOOSE_IMAGE_TAG="$(resolve_env GOOSE_IMAGE_TAG || true)"
+APP_IMAGE_REF="$(resolve_env APP_IMAGE_REF || true)"
+GOOSE_IMAGE_REF="$(resolve_env GOOSE_IMAGE_REF || true)"
 
-if [[ -n "${LEGACY_IMAGE_TAG}" ]] && [[ "${LEGACY_IMAGE_TAG}" != "${APP_IMAGE_TAG}" ]]; then
-	fail "IMAGE_TAG=${LEGACY_IMAGE_TAG} must match APP_IMAGE_TAG=${APP_IMAGE_TAG} while legacy rollback tracking still depends on a single app tag"
+if [[ -z "${APP_IMAGE_REF}" ]]; then
+	[[ -n "${APP_IMAGE_TAG}" ]] || fail "set APP_IMAGE_REF or APP_IMAGE_TAG in .env.staging"
+	APP_IMAGE_REF="${IMAGE_REGISTRY}/${APP_IMAGE_REPOSITORY}:${APP_IMAGE_TAG}"
 fi
 
-APP_IMAGE_REF="${IMAGE_REGISTRY}/${APP_IMAGE_REPOSITORY}:${APP_IMAGE_TAG}"
-GOOSE_IMAGE_REF="${IMAGE_REGISTRY}/${GOOSE_IMAGE_REPOSITORY}:${GOOSE_IMAGE_TAG}"
+if [[ -z "${GOOSE_IMAGE_REF}" ]]; then
+	[[ -n "${GOOSE_IMAGE_TAG}" ]] || fail "set GOOSE_IMAGE_REF or GOOSE_IMAGE_TAG in .env.staging"
+	GOOSE_IMAGE_REF="${IMAGE_REGISTRY}/${GOOSE_IMAGE_REPOSITORY}:${GOOSE_IMAGE_TAG}"
+fi
+
+require_non_latest_ref "APP_IMAGE_REF" "${APP_IMAGE_REF}"
+require_non_latest_ref "GOOSE_IMAGE_REF" "${GOOSE_IMAGE_REF}"
+export APP_IMAGE_REF GOOSE_IMAGE_REF
+
 PREVIOUS_TAG=""
 if [[ -f "${STATE}/current_image_tag" ]]; then
 	PREVIOUS_TAG="$(<"${STATE}/current_image_tag")"
@@ -111,13 +129,19 @@ fi
 if [[ -n "${PREVIOUS_TAG}" ]]; then
 	echo "${PREVIOUS_TAG}" >"${STATE}/previous_image_tag"
 fi
-echo "${APP_IMAGE_TAG}" >"${STATE}/current_image_tag"
-echo "${APP_IMAGE_TAG}" >"${STATE}/current_app_image_tag"
-echo "${GOOSE_IMAGE_TAG}" >"${STATE}/current_goose_image_tag"
-echo "deploy_staging: recorded APP_IMAGE_TAG=${APP_IMAGE_TAG} in ${STATE}/current_image_tag"
-echo "deploy_staging: recorded app/goose tags in ${STATE}/current_app_image_tag and ${STATE}/current_goose_image_tag"
+if [[ -n "${APP_IMAGE_TAG}" ]]; then
+	echo "${APP_IMAGE_TAG}" >"${STATE}/current_image_tag"
+	echo "${APP_IMAGE_TAG}" >"${STATE}/current_app_image_tag"
+	echo "deploy_staging: recorded APP_IMAGE_TAG=${APP_IMAGE_TAG} in ${STATE}/current_image_tag"
+fi
+if [[ -n "${GOOSE_IMAGE_TAG}" ]]; then
+	echo "${GOOSE_IMAGE_TAG}" >"${STATE}/current_goose_image_tag"
+fi
+echo "${APP_IMAGE_REF}" >"${STATE}/current_app_image_ref"
+echo "${GOOSE_IMAGE_REF}" >"${STATE}/current_goose_image_ref"
+echo "deploy_staging: recorded app/goose refs in ${STATE}/current_app_image_ref and ${STATE}/current_goose_image_ref"
 
-if [[ "${APP_IMAGE_TAG}" != "${GOOSE_IMAGE_TAG}" ]]; then
+if [[ -n "${APP_IMAGE_TAG}" ]] && [[ -n "${GOOSE_IMAGE_TAG}" ]] && [[ "${APP_IMAGE_TAG}" != "${GOOSE_IMAGE_TAG}" ]]; then
 	echo "deploy_staging: warning: staging rollback still tracks a single legacy tag; app=${APP_IMAGE_TAG}, goose=${GOOSE_IMAGE_TAG}" >&2
 fi
 

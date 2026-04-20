@@ -1,95 +1,103 @@
 name: Deploy Production
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag for this deploy, for example v1.2.3"
+        required: true
+        type: string
+      source_commit_sha:
+        description: "Optional source commit SHA that produced the selected image refs"
+        required: false
+        type: string
+      app_image_ref:
+        description: "Exact app image reference to deploy, preferably ghcr.io/...@sha256:..."
+        required: true
+        type: string
+      goose_image_ref:
+        description: "Exact goose image reference to deploy, preferably ghcr.io/...@sha256:..."
+        required: true
+        type: string
 
 concurrency:
-  group: prod-deploy
+  group: deploy-production
   cancel-in-progress: false
 
 permissions:
   contents: read
-  packages: write
+  id-token: write
+  packages: read
 
 jobs:
-  build-and-push:
-    name: Build and push images
+  resolve-image-refs:
+    name: Resolve Production Image Refs
+    uses: ./.github/workflows/_reusable-deploy.yml
+    with:
+      resolution_mode: manual
+      app_image_ref: ${{ inputs.app_image_ref }}
+      goose_image_ref: ${{ inputs.goose_image_ref }}
+
+  prepare-promotion-context:
+    name: Prepare Production Promotion Context
     runs-on: ubuntu-latest
+    needs: resolve-image-refs
     outputs:
-      repo_lc: ${{ steps.meta.outputs.repo_lc }}
+      auth_mode: ${{ steps.context.outputs.auth_mode }}
+      deploy_transport: ${{ steps.context.outputs.deploy_transport }}
+      provenance_verification_mode: ${{ steps.context.outputs.provenance_verification_mode }}
+      provenance_verification_status: ${{ steps.context.outputs.provenance_verification_status }}
+
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Compute image names and tags
-        id: meta
+      - name: Select active deploy/auth mode
+        id: context
         shell: bash
         run: |
-          set -Eeuo pipefail
-          # Match `.github/workflows/build-push.yml`: ghcr.io/<lowercase-owner/repo> and ghcr.io/<lowercase-owner/repo>-goose
-          repo_lc="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
-          sha_tag="sha-${GITHUB_SHA}"
-          app_base="ghcr.io/${repo_lc}"
-          goose_base="ghcr.io/${repo_lc}-goose"
+          {
+            echo "deploy_transport=vps-ssh"
+            echo "auth_mode=static-ssh-key"
+            echo "provenance_verification_mode=report-only-extension-point"
+            echo "provenance_verification_status=not-configured-currently-non-blocking"
+          } >> "$GITHUB_OUTPUT"
 
-          app_tags="${app_base}:${sha_tag}"
-          goose_tags="${goose_base}:${sha_tag}"
-          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            app_tags="${app_tags}"$'\n'"${app_base}:main"$'\n'"${app_base}:latest"
-            goose_tags="${goose_tags}"$'\n'"${goose_base}:main"$'\n'"${goose_base}:latest"
-          fi
+      - name: Future provenance verification hook
+        shell: bash
+        env:
+          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+          MODE: ${{ steps.context.outputs.provenance_verification_mode }}
+          STATUS: ${{ steps.context.outputs.provenance_verification_status }}
+        run: |
+          [[ "${APP_IMAGE_REF}" == *@sha256:* ]] || { echo "error: app image ref must remain digest-pinned" >&2; exit 1; }
+          [[ "${GOOSE_IMAGE_REF}" == *@sha256:* ]] || { echo "error: goose image ref must remain digest-pinned" >&2; exit 1; }
 
           {
-            echo "app_tags<<EOF"
-            printf '%s\n' "${app_tags}"
-            echo "EOF"
-            echo "goose_tags<<EOF"
-            printf '%s\n' "${goose_tags}"
-            echo "EOF"
-            echo "repo_lc=${repo_lc}"
-          } >> "${GITHUB_OUTPUT}"
-
-      - name: Build and push app image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: deployments/prod/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.app_tags }}
-
-      - name: Build and push goose image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: deployments/prod/Dockerfile.goose
-          push: true
-          tags: ${{ steps.meta.outputs.goose_tags }}
+            echo "## Production Promotion Context"
+            echo "- deploy transport: \`vps-ssh\`"
+            echo "- auth mode: \`static-ssh-key\`"
+            echo "- provenance verification mode: \`${MODE}\`"
+            echo "- provenance verification status: \`${STATUS}\`"
+            echo "- future hook target: \`insert attestation / provenance verification before Sync production runtime assets\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-prod:
-    name: Deploy to production VPS
+    name: Deploy production release
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs:
+      - resolve-image-refs
+      - prepare-promotion-context
     environment: production
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Validate deploy secrets
+      - name: Validate production deploy inputs
         shell: bash
         env:
+          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
           EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
           EMQX_API_SECRET: ${{ secrets.EMQX_API_SECRET }}
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
@@ -97,6 +105,36 @@ jobs:
           VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
         run: |
           set -Eeuo pipefail
+
+          [[ "${RELEASE_TAG}" =~ ^v[0-9A-Za-z._-]+$ ]] || {
+            echo "error: release_tag must look like a release tag (for example v1.2.3)" >&2
+            exit 1
+          }
+
+          if [[ -n "${SOURCE_COMMIT_SHA:-}" ]] && [[ ! "${SOURCE_COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "error: source_commit_sha must be a full 40-character lowercase git SHA when provided" >&2
+            exit 1
+          fi
+
+          [[ "${APP_IMAGE_REF}" == *@sha256:* ]] || {
+            echo "error: app_image_ref must be digest-pinned (...@sha256:...)" >&2
+            exit 1
+          }
+
+          [[ "${GOOSE_IMAGE_REF}" == *@sha256:* ]] || {
+            echo "error: goose_image_ref must be digest-pinned (...@sha256:...)" >&2
+            exit 1
+          }
+
+          [[ "${APP_IMAGE_REF}" != *":latest" ]] || {
+            echo "error: app_image_ref must not use latest" >&2
+            exit 1
+          }
+
+          [[ "${GOOSE_IMAGE_REF}" != *":latest" ]] || {
+            echo "error: goose_image_ref must not use latest" >&2
+            exit 1
+          }
 
           if [[ -z "${VPS_DEPLOY_PATH}" ]]; then
             echo "error: VPS_DEPLOY_PATH is empty" >&2
@@ -120,7 +158,25 @@ jobs:
             exit 1
           fi
 
+      - name: Confirm active production deploy path
+        if: needs.prepare-promotion-context.outputs.deploy_transport == 'vps-ssh'
+        shell: bash
+        env:
+          AUTH_MODE: ${{ needs.prepare-promotion-context.outputs.auth_mode }}
+          DEPLOY_TRANSPORT: ${{ needs.prepare-promotion-context.outputs.deploy_transport }}
+          PROVENANCE_MODE: ${{ needs.prepare-promotion-context.outputs.provenance_verification_mode }}
+          PROVENANCE_STATUS: ${{ needs.prepare-promotion-context.outputs.provenance_verification_status }}
+        run: |
+          {
+            echo "### Active production deploy path"
+            echo "- deploy transport: \`${DEPLOY_TRANSPORT}\`"
+            echo "- auth mode: \`${AUTH_MODE}\`"
+            echo "- provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\`"
+            echo "- current supported mode: \`VPS over SSH\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Sync production runtime assets
+        if: needs.prepare-promotion-context.outputs.deploy_transport == 'vps-ssh'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -132,12 +188,14 @@ jobs:
           target: ${{ secrets.VPS_DEPLOY_PATH }}
 
       - name: Deploy over SSH
+        if: needs.prepare-promotion-context.outputs.deploy_transport == 'vps-ssh'
+        id: deploy_production
+        continue-on-error: true
         uses: appleboy/ssh-action@v1.2.0
         env:
-          IMAGE_REGISTRY: ghcr.io
-          APP_IMAGE_REPOSITORY: ${{ needs.build-and-push.outputs.repo_lc }}
-          GOOSE_IMAGE_REPOSITORY: ${{ format('{0}-goose', needs.build-and-push.outputs.repo_lc) }}
-          RELEASE_TAG: sha-${{ github.sha }}
+          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+          RELEASE_LABEL: ${{ inputs.release_tag }}
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
           EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
@@ -149,16 +207,13 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           script_stop: true
-          envs: IMAGE_REGISTRY,APP_IMAGE_REPOSITORY,GOOSE_IMAGE_REPOSITORY,RELEASE_TAG,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,EMQX_API_KEY,EMQX_API_SECRET,VPS_DEPLOY_PATH
+          envs: APP_IMAGE_REF,GOOSE_IMAGE_REF,RELEASE_LABEL,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,EMQX_API_KEY,EMQX_API_SECRET,VPS_DEPLOY_PATH
           script: |
             set -Eeuo pipefail
 
-            tolower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
-
-            export IMAGE_REGISTRY="${IMAGE_REGISTRY}"
-            export APP_IMAGE_REPOSITORY="$(tolower "${APP_IMAGE_REPOSITORY}")"
-            export GOOSE_IMAGE_REPOSITORY="$(tolower "${GOOSE_IMAGE_REPOSITORY}")"
-            export RELEASE_TAG="${RELEASE_TAG}"
+            export APP_IMAGE_REF="${APP_IMAGE_REF}"
+            export GOOSE_IMAGE_REF="${GOOSE_IMAGE_REF}"
+            export RELEASE_LABEL="${RELEASE_LABEL}"
             export EMQX_API_KEY="${EMQX_API_KEY}"
             export EMQX_API_SECRET="${EMQX_API_SECRET}"
 
@@ -182,4 +237,104 @@ jobs:
               exit 1
             fi
 
-            bash "${VPS_DEPLOY_PATH}/deployments/prod/scripts/release.sh" deploy "${RELEASE_TAG}"
+            set +e
+            bash "${VPS_DEPLOY_PATH}/deployments/prod/scripts/release.sh" deploy "${APP_IMAGE_REF}" "${GOOSE_IMAGE_REF}"
+            deploy_rc=$?
+            set -e
+            if [[ "${deploy_rc}" -eq 0 ]]; then
+              exit 0
+            fi
+
+            if [[ "${deploy_rc}" -eq 42 ]]; then
+              echo "post-deploy verification failed; attempting one automatic rollback" >&2
+              if ! bash "${VPS_DEPLOY_PATH}/deployments/prod/scripts/rollback_prod.sh"; then
+                echo "automatic rollback failed" >&2
+              fi
+            fi
+
+            exit 1
+
+      - name: Write production deployment summary
+        if: always()
+        shell: bash
+        env:
+          ACTOR: ${{ github.actor }}
+          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          DEPLOY_STEP_OUTCOME: ${{ steps.deploy_production.outcome }}
+          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
+          TRIGGER_NAME: ${{ github.event_name }}
+          AUTH_MODE: ${{ needs.prepare-promotion-context.outputs.auth_mode }}
+          DEPLOY_TRANSPORT: ${{ needs.prepare-promotion-context.outputs.deploy_transport }}
+          PROVENANCE_MODE: ${{ needs.prepare-promotion-context.outputs.provenance_verification_mode }}
+          PROVENANCE_STATUS: ${{ needs.prepare-promotion-context.outputs.provenance_verification_status }}
+          WORKFLOW_REF_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p deployment-evidence
+
+          if [[ -n "${SOURCE_COMMIT_SHA:-}" ]]; then
+            deploy_source_sha="${SOURCE_COMMIT_SHA}"
+            deploy_source_sha_note="operator-supplied"
+          else
+            deploy_source_sha="${WORKFLOW_REF_SHA}"
+            deploy_source_sha_note="workflow-ref-fallback"
+          fi
+
+          if [[ "${DEPLOY_STEP_OUTCOME}" == "success" ]]; then
+            healthcheck_result="passed"
+            rollback_status="not-triggered"
+          else
+            healthcheck_result="failed-or-not-reached"
+            rollback_status="see-deploy-step-logs"
+          fi
+
+          cat > deployment-evidence/production-deployment-manifest.json <<EOF
+          {
+            "environment": "production",
+            "source_commit_sha": "${deploy_source_sha}",
+            "source_commit_sha_note": "${deploy_source_sha_note}",
+            "release_tag": "${RELEASE_TAG}",
+            "app_image_ref": "${APP_IMAGE_REF}",
+            "goose_image_ref": "${GOOSE_IMAGE_REF}",
+            "actor": "${ACTOR}",
+            "trigger": "${TRIGGER_NAME}",
+            "deploy_transport": "${DEPLOY_TRANSPORT}",
+            "auth_mode": "${AUTH_MODE}",
+            "provenance_verification_mode": "${PROVENANCE_MODE}",
+            "provenance_verification_status": "${PROVENANCE_STATUS}",
+            "healthcheck_result": "${healthcheck_result}",
+            "rollback_status": "${rollback_status}"
+          }
+          EOF
+
+          {
+            echo "## Production Deployment"
+            echo "- environment: \`production\`"
+            echo "- source commit SHA: \`${deploy_source_sha}\`"
+            echo "- source commit note: \`${deploy_source_sha_note}\`"
+            echo "- release tag: \`${RELEASE_TAG}\`"
+            echo "- app image: \`${APP_IMAGE_REF}\`"
+            echo "- goose image: \`${GOOSE_IMAGE_REF}\`"
+            echo "- actor: \`${ACTOR}\`"
+            echo "- trigger: \`${TRIGGER_NAME}\`"
+            echo "- deploy transport: \`${DEPLOY_TRANSPORT}\`"
+            echo "- auth mode: \`${AUTH_MODE}\`"
+            echo "- provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\`"
+            echo "- healthcheck result: \`${healthcheck_result}\`"
+            echo "- rollback status: \`${rollback_status}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload production deployment manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-deployment-manifest
+          path: deployment-evidence/production-deployment-manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fail if production deployment failed
+        if: steps.deploy_production.outcome == 'failure'
+        shell: bash
+        run: exit 1

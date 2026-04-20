@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Thin wrapper: historic rollback entrypoint. Delegates to release.sh rollback (image-only; no DB schema undo).
+# Thin wrapper: delegates to release.sh rollback using the last known good image refs
+# (image-only; no DB schema undo).
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

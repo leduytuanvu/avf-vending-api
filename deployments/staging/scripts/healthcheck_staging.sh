@@ -38,6 +38,8 @@ read_env() {
 API_DOMAIN="$(read_env API_DOMAIN)"
 COMPOSE=(docker compose --env-file .env.staging -f docker-compose.staging.yml)
 failures=0
+HEALTH_WAIT_SECS="${STAGING_HEALTH_WAIT_SECS:-120}"
+HEALTH_POLL_SECS="${STAGING_HEALTH_POLL_SECS:-5}"
 
 pass() {
 	echo "PASS: $1"
@@ -75,10 +77,29 @@ check_cmd() {
 	fi
 }
 
+wait_for_health() {
+	local container="$1"
+	local waited=0
+	local status
+	while (( waited <= HEALTH_WAIT_SECS )); do
+		status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${container}" 2>/dev/null || echo missing)"
+		if [[ "${status}" == "healthy" || "${status}" == "none" ]]; then
+			return 0
+		fi
+		if [[ "${status}" == "unhealthy" || "${status}" == "missing" ]]; then
+			return 1
+		fi
+		sleep "${HEALTH_POLL_SECS}"
+		waited=$((waited + HEALTH_POLL_SECS))
+	done
+	return 1
+}
+
 note "compose ps"
 "${COMPOSE[@]}" ps
 
 need_running=(avf-staging-caddy avf-staging-api avf-staging-worker avf-staging-mqtt-ingest avf-staging-reconciler avf-staging-postgres avf-staging-nats avf-staging-emqx)
+need_healthy=(avf-staging-api avf-staging-worker avf-staging-mqtt-ingest avf-staging-reconciler avf-staging-postgres avf-staging-nats avf-staging-emqx)
 for c in "${need_running[@]}"; do
 	state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
 	if [[ "${state}" != "running" ]]; then
@@ -87,6 +108,17 @@ for c in "${need_running[@]}"; do
 		continue
 	fi
 	pass "container ${c} running"
+done
+
+note "container health status"
+for c in "${need_healthy[@]}"; do
+	if wait_for_health "${c}"; then
+		pass "container ${c} healthy"
+	else
+		health_state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' "${c}" 2>/dev/null || echo missing)"
+		fail "container ${c} healthy (health=${health_state})"
+		show_container_diagnostics "${c}"
+	fi
 done
 
 note "internal service checks"

@@ -57,6 +57,8 @@ read_env_default() {
 API_DOMAIN="$(read_env API_DOMAIN)"
 COMPOSE=(docker compose --env-file .env.production -f docker-compose.prod.yml)
 failures=0
+SMOKE_RETRY_COUNT="${SMOKE_RETRY_COUNT:-6}"
+SMOKE_RETRY_SLEEP_SECS="${SMOKE_RETRY_SLEEP_SECS:-5}"
 
 # Same eight containers as release.sh rollout gate (compose service name, container_name).
 STACK_GATE_SVCS=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
@@ -262,6 +264,29 @@ check_cmd() {
 	fi
 }
 
+retry_check_cmd() {
+	local label="$1"
+	local diagnostics="$2"
+	shift 2
+	local attempt output
+	for attempt in $(seq 1 "${SMOKE_RETRY_COUNT}"); do
+		if output="$("$@" 2>&1)"; then
+			pass "${label}"
+			return 0
+		fi
+		if [[ "${attempt}" -lt "${SMOKE_RETRY_COUNT}" ]]; then
+			sleep "${SMOKE_RETRY_SLEEP_SECS}"
+		fi
+	done
+	fail "${label}"
+	if [[ -n "${output:-}" ]]; then
+		echo "${output}" | sed 's/^/  output: /' >&2
+	fi
+	if [[ -n "${diagnostics}" ]]; then
+		echo "  hint: ${diagnostics}" >&2
+	fi
+}
+
 note "compose ps"
 "${COMPOSE[@]}" ps
 
@@ -290,8 +315,15 @@ note "internal service checks"
 check_cmd "postgres pg_isready" "check postgres container logs and DATABASE_URL / POSTGRES_* values" "${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d avf_vending >/dev/null'
 check_cmd "nats health endpoint" "check avf-prod-nats logs and JetStream startup" "${COMPOSE[@]}" exec -T nats sh -c 'wget -qO- http://127.0.0.1:8222/healthz >/dev/null'
 check_cmd "emqx broker status" "check avf-prod-emqx logs and dashboard/bootstrap credentials" "${COMPOSE[@]}" exec -T emqx sh -c 'emqx_ctl status >/dev/null'
-check_cmd "api live endpoint inside container" "check avf-prod-api logs and upstream dependency readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/live | grep -qx ok'
-check_cmd "api readiness inside container" "check avf-prod-api logs plus postgres/nats/emqx readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/ready | grep -qx ok'
+retry_check_cmd "api live endpoint inside container" "check avf-prod-api logs and upstream dependency readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/live | grep -qx ok'
+retry_check_cmd "api readiness inside container" "check avf-prod-api logs plus postgres/nats/emqx readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/ready | grep -qx ok'
+
+note "minimum production smoke"
+if [[ "${SKIP_PUBLIC_HTTPS:-0}" == "1" ]]; then
+	pass "public API live smoke over HTTPS skipped (SKIP_PUBLIC_HTTPS=1)"
+else
+	retry_check_cmd "public API live smoke over HTTPS" "check DNS, firewall, Caddy logs, and TLS issuance for ${API_DOMAIN}" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
+fi
 
 note "telemetry metrics + worker readiness (when METRICS_ENABLED=true in .env.production)"
 METRICS_FLAG="$(read_env_default METRICS_ENABLED false | tr '[:upper:]' '[:lower:]')"
@@ -312,8 +344,8 @@ if [[ "${SKIP_PUBLIC_HTTPS:-0}" == "1" ]]; then
 	echo "SKIP_PUBLIC_HTTPS=1 set; skipping public HTTPS checks (use when DNS/TLS is still propagating)"
 else
 	echo "note: if the internal checks above pass but the public HTTPS checks fail, focus on DNS, external routing/firewall, or ACME/TLS issuance before debugging the API process itself"
-	check_cmd "public /health/live over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
-	check_cmd "public /health/ready over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/ready' | grep -qx ok"
+	retry_check_cmd "public /health/live over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
+	retry_check_cmd "public /health/ready over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/ready' | grep -qx ok"
 fi
 
 if (( failures > 0 )); then
