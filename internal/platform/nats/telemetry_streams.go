@@ -1,12 +1,11 @@
-
 package nats
 
 import (
 	"fmt"
 	"time"
 
-	natssrv "github.com/nats-io/nats.go"
 	"github.com/google/uuid"
+	natssrv "github.com/nats-io/nats.go"
 
 	"github.com/avf/avf-vending-api/internal/platform/telemetry"
 )
