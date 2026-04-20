@@ -90,39 +90,39 @@ services:
         max-size: "5m"
         max-file: "2"
 
-  emqx:
-    image: emqx/emqx:5.6.0
-    container_name: avf-prod-emqx
-    hostname: emqx
-    restart: unless-stopped
-    environment:
-      EMQX_NAME: emqx
-      EMQX_HOST: emqx
-      EMQX_NODE__NAME: emqx@emqx
-      EMQX_CLUSTER__DISCOVERY_STRATEGY: manual
-      EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:?set EMQX_DASHBOARD_USERNAME in .env.production}
-      EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?set EMQX_DASHBOARD_PASSWORD in .env.production}
-      # Listen on all interfaces inside the container so host port publish 127.0.0.1:18083:18083 works.
-      # Host binding stays loopback-only; do not publish 18083 as 0.0.0.0:18083.
-      EMQX_DASHBOARD__LISTENERS__HTTP__BIND: "0.0.0.0:18083"
-      EMQX_LISTENERS__TCP__DEFAULT__BIND: "0.0.0.0:1883"
-      EMQX_AUTHENTICATION__1__MECHANISM: password_based
-      EMQX_AUTHENTICATION__1__BACKEND: built_in_database
-      EMQX_AUTHENTICATION__1__ENABLE: "true"
-      EMQX_NODE__COOKIE: ${EMQX_NODE_COOKIE:?set EMQX_NODE_COOKIE in .env.production}
-    volumes:
-      - ./emqx/base.hocon:/opt/emqx/etc/base.hocon:ro
-      - ./emqx/default_api_key.conf:/opt/emqx/etc/default_api_key.conf:ro
-      - ./emqx/certs:/opt/emqx/etc/certs:ro
-      - emqx_data:/opt/emqx/data
-    networks:
-      internal:
-        aliases:
-          - emqx
-      edge: {}
-    ports:
-      - "8883:8883"
-      - "127.0.0.1:18083:18083"
+    emqx:
+      image: emqx/emqx:5.6.0
+      container_name: avf-prod-emqx
+      hostname: emqx
+      restart: unless-stopped
+      environment:
+        EMQX_NAME: emqx
+        EMQX_HOST: emqx
+        EMQX_NODE__NAME: emqx@emqx
+        EMQX_CLUSTER__DISCOVERY_STRATEGY: manual
+        EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USERNAME:?set EMQX_DASHBOARD_USERNAME in .env.production}
+        EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD:?set EMQX_DASHBOARD_PASSWORD in .env.production}
+        EMQX_DASHBOARD__LISTENERS__HTTP__BIND: "0.0.0.0:18083"
+        EMQX_LISTENERS__TCP__DEFAULT__BIND: "0.0.0.0:1883"
+        EMQX_LISTENERS__SSL__DEFAULT__ENABLED: "false"
+        EMQX_LISTENERS__WS__DEFAULT__ENABLED: "false"
+        EMQX_LISTENERS__WSS__DEFAULT__ENABLED: "false"
+        EMQX_AUTHENTICATION__1__MECHANISM: password_based
+        EMQX_AUTHENTICATION__1__BACKEND: built_in_database
+        EMQX_AUTHENTICATION__1__ENABLE: "true"
+        EMQX_NODE__COOKIE: ${EMQX_NODE_COOKIE:?set EMQX_NODE_COOKIE in .env.production}
+      volumes:
+        - ./emqx/base.hocon:/opt/emqx/etc/base.hocon:ro
+        - ./emqx/default_api_key.conf:/opt/emqx/etc/default_api_key.conf:ro
+        - ./emqx/certs:/opt/emqx/etc/certs:ro
+        - emqx_data:/opt/emqx/data
+      networks:
+        internal:
+          aliases:
+            - emqx
+        edge: {}
+      ports:
+        - "127.0.0.1:18083:18083"
     # Prefer `ping` (lightweight); fall back to `status` for older CLI layouts.
     healthcheck:
       test:
