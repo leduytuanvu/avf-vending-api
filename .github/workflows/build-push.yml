@@ -16,69 +16,72 @@ permissions:
 
 jobs:
   build-and-push:
+    name: Build and Publish Images
+    uses: ./.github/workflows/_reusable-build.yml
+    secrets: inherit
+
+  publish-build-metadata:
+    name: Published Image Metadata
     runs-on: ubuntu-latest
+    needs: build-and-push
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Derive image tags
-        id: tags
+      - name: Write build metadata summary
         shell: bash
+        env:
+          ACTOR: ${{ github.actor }}
+          APP_DIGEST: ${{ needs.build-and-push.outputs.app_digest }}
+          APP_IMAGE: ${{ needs.build-and-push.outputs.app_image }}
+          APP_REF: ${{ needs.build-and-push.outputs.app_ref }}
+          APP_TAG: ${{ needs.build-and-push.outputs.app_tag }}
+          BUILD_COMMIT_SHA: ${{ github.sha }}
+          GOOSE_DIGEST: ${{ needs.build-and-push.outputs.goose_digest }}
+          GOOSE_IMAGE: ${{ needs.build-and-push.outputs.goose_image }}
+          GOOSE_REF: ${{ needs.build-and-push.outputs.goose_ref }}
+          GOOSE_TAG: ${{ needs.build-and-push.outputs.goose_tag }}
+          TRIGGER_NAME: ${{ github.event_name }}
         run: |
-          repo="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
-          app_image="ghcr.io/${repo}"
-          goose_image="ghcr.io/${repo}-goose"
-          sha_tag="sha-${GITHUB_SHA}"
+          mkdir -p build-evidence
 
-          app_tags=("${app_image}:${sha_tag}")
-          goose_tags=("${goose_image}:${sha_tag}")
-
-          if [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "main" ]]; then
-            app_tags+=("${app_image}:main")
-            goose_tags+=("${goose_image}:main")
-          fi
-
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            app_tags+=("${app_image}:${GITHUB_REF_NAME}")
-            goose_tags+=("${goose_image}:${GITHUB_REF_NAME}")
-          fi
+          cat > build-evidence/image-build-metadata.json <<EOF
+          {
+            "commit_sha": "${BUILD_COMMIT_SHA}",
+            "trigger": "${TRIGGER_NAME}",
+            "actor": "${ACTOR}",
+            "sbom_enabled": true,
+            "provenance_enabled": true,
+            "app": {
+              "image": "${APP_IMAGE}",
+              "tag": "${APP_TAG}",
+              "digest": "${APP_DIGEST}",
+              "ref": "${APP_REF}"
+            },
+            "goose": {
+              "image": "${GOOSE_IMAGE}",
+              "tag": "${GOOSE_TAG}",
+              "digest": "${GOOSE_DIGEST}",
+              "ref": "${GOOSE_REF}"
+            }
+          }
+          EOF
 
           {
-            echo "app_tags<<EOF"
-            printf '%s\n' "${app_tags[@]}"
-            echo "EOF"
-            echo "goose_tags<<EOF"
-            printf '%s\n' "${goose_tags[@]}"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+            echo "## Published Image Metadata"
+            echo "- commit SHA: \`${BUILD_COMMIT_SHA}\`"
+            echo "- trigger: \`${TRIGGER_NAME}\`"
+            echo "- actor: \`${ACTOR}\`"
+            echo "- app image: \`${APP_REF}\`"
+            echo "- goose image: \`${GOOSE_REF}\`"
+            echo "- app digest: \`${APP_DIGEST}\`"
+            echo "- goose digest: \`${GOOSE_DIGEST}\`"
+            echo "- SBOM: \`enabled\`"
+            echo "- provenance: \`enabled (mode=max)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Build and push app image
-        uses: docker/build-push-action@v6
+      - name: Upload build metadata manifest
+        uses: actions/upload-artifact@v4
         with:
-          context: .
-          file: deployments/prod/Dockerfile
-          push: true
-          provenance: mode=max
-          sbom: true
-          tags: ${{ steps.tags.outputs.app_tags }}
-
-      - name: Build and push goose image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: deployments/prod/Dockerfile.goose
-          push: true
-          provenance: mode=max
-          sbom: true
-          tags: ${{ steps.tags.outputs.goose_tags }}
+          name: image-build-metadata
+          path: build-evidence/image-build-metadata.json
+          if-no-files-found: error
+          retention-days: 14

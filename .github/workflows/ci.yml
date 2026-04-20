@@ -2,16 +2,24 @@ name: CI
 
 on:
   pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  ci:
+  go-ci:
+    name: Go CI Gates
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Check out repository
@@ -21,6 +29,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Install CI tools
         shell: bash
@@ -30,8 +40,31 @@ jobs:
           go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
-      - name: Run canonical CI gates
-        run: make ci-gates
+      - name: Verify gofmt cleanliness
+        run: make fmt-check
+
+      - name: Verify go.mod/go.sum are tidy
+        run: |
+          make tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Run go vet
+        run: make vet
+
+      - name: Validate generated specs and repository invariants
+        run: make check-placeholders check-wiring check-migrations sqlc-check swagger-check
+
+      - name: Run short Go test suite
+        run: make test-short
+
+  compose-config:
+    name: Docker Compose Config Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
       - name: Validate local Docker Compose config
         run: docker compose -f deployments/docker/docker-compose.yml config

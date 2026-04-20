@@ -1,0 +1,129 @@
+name: Reusable Resolve Immutable Image Refs
+
+on:
+  workflow_call:
+    inputs:
+      resolution_mode:
+        description: "`manual` or `workflow_run`"
+        required: true
+        type: string
+      workflow_run_id:
+        description: "Workflow run id to read the image-metadata artifact from"
+        required: false
+        default: ""
+        type: string
+      app_image_ref:
+        description: "Manual app image ref"
+        required: false
+        default: ""
+        type: string
+      goose_image_ref:
+        description: "Manual goose image ref"
+        required: false
+        default: ""
+        type: string
+    secrets:
+      github_token:
+        required: false
+    outputs:
+      app_image_ref:
+        description: "Resolved immutable app image ref"
+        value: ${{ jobs.resolve-image-refs.outputs.app_image_ref }}
+      app_image_tag:
+        description: "Resolved app tag label when available"
+        value: ${{ jobs.resolve-image-refs.outputs.app_image_tag }}
+      goose_image_ref:
+        description: "Resolved immutable goose image ref"
+        value: ${{ jobs.resolve-image-refs.outputs.goose_image_ref }}
+      goose_image_tag:
+        description: "Resolved goose tag label when available"
+        value: ${{ jobs.resolve-image-refs.outputs.goose_image_tag }}
+
+jobs:
+  resolve-image-refs:
+    name: Resolve Immutable Image Refs
+    runs-on: ubuntu-latest
+    outputs:
+      app_image_ref: ${{ steps.resolve.outputs.app_image_ref }}
+      app_image_tag: ${{ steps.resolve.outputs.app_image_tag }}
+      goose_image_ref: ${{ steps.resolve.outputs.goose_image_ref }}
+      goose_image_tag: ${{ steps.resolve.outputs.goose_image_tag }}
+
+    steps:
+      - name: Download build image metadata
+        if: inputs.resolution_mode == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ secrets.github_token }}
+          RUN_ID: ${{ inputs.workflow_run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          [[ -n "${GH_TOKEN:-}" ]] || { echo "error: github_token is required for workflow_run resolution" >&2; exit 1; }
+          [[ -n "${RUN_ID}" ]] || { echo "error: workflow_run_id is required for workflow_run resolution" >&2; exit 1; }
+
+          artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq 'first(.artifacts[] | select(.name == "image-metadata") | .id)')"
+          [[ -n "${artifact_id}" && "${artifact_id}" != "null" ]] || { echo "error: image-metadata artifact not found for workflow run ${RUN_ID}" >&2; exit 1; }
+
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > image-metadata.zip
+          python3 -m zipfile -e image-metadata.zip .
+
+      - name: Resolve image refs
+        id: resolve
+        shell: bash
+        env:
+          INPUT_APP_IMAGE_REF: ${{ inputs.app_image_ref }}
+          INPUT_GOOSE_IMAGE_REF: ${{ inputs.goose_image_ref }}
+          RESOLUTION_MODE: ${{ inputs.resolution_mode }}
+        run: |
+          set -euo pipefail
+
+          require_digest_ref() {
+            local label="$1"
+            local ref="$2"
+            [[ -n "${ref}" ]] || { echo "error: missing ${label}" >&2; exit 1; }
+            if [[ "${ref}" != *@sha256:* ]]; then
+              echo "error: ${label} must be a digest-pinned reference (...@sha256:...)" >&2
+              exit 1
+            fi
+          }
+
+          case "${RESOLUTION_MODE}" in
+            manual)
+              app_image_ref="${INPUT_APP_IMAGE_REF}"
+              goose_image_ref="${INPUT_GOOSE_IMAGE_REF}"
+              app_image_tag=""
+              goose_image_tag=""
+              ;;
+            workflow_run)
+              [[ -f image-metadata.json ]] || { echo "error: missing image-metadata.json artifact payload" >&2; exit 1; }
+              mapfile -t image_metadata < <(python3 - <<'PY'
+import json
+with open("image-metadata.json", "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+print(data["app"]["ref"])
+print(data["app"]["tag"])
+print(data["goose"]["ref"])
+print(data["goose"]["tag"])
+PY
+)
+              app_image_ref="${image_metadata[0]}"
+              app_image_tag="${image_metadata[1]}"
+              goose_image_ref="${image_metadata[2]}"
+              goose_image_tag="${image_metadata[3]}"
+              ;;
+            *)
+              echo "error: unsupported resolution_mode: ${RESOLUTION_MODE}" >&2
+              exit 1
+              ;;
+          esac
+
+          require_digest_ref "app_image_ref" "${app_image_ref}"
+          require_digest_ref "goose_image_ref" "${goose_image_ref}"
+
+          {
+            echo "app_image_ref=${app_image_ref}"
+            echo "app_image_tag=${app_image_tag}"
+            echo "goose_image_ref=${goose_image_ref}"
+            echo "goose_image_tag=${goose_image_tag}"
+          } >> "$GITHUB_OUTPUT"

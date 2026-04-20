@@ -2,10 +2,10 @@
 # Copy .env.production.example -> .env.production and fill secrets + image refs before `docker compose up`.
 #
 # Image-only deployment (GHCR): there is no `build:` anywhere. The VPS pulls prebuilt images only.
-# App binaries (`api`, `worker`, `reconciler`, `mqtt-ingest`) share one image ref:
-#   ${IMAGE_REGISTRY}/${APP_IMAGE_REPOSITORY}:${APP_IMAGE_TAG}
-# Migrations use the goose image:
-#   ${IMAGE_REGISTRY}/${GOOSE_IMAGE_REPOSITORY}:${GOOSE_IMAGE_TAG}
+# App binaries (`api`, `worker`, `reconciler`, `mqtt-ingest`) share one immutable image ref:
+#   ${APP_IMAGE_REF}
+# Migrations use the goose image ref:
+#   ${GOOSE_IMAGE_REF}
 #
 # Telemetry / NATS / MQTT safety: `api`, `worker`, `mqtt-ingest`, and `reconciler` load `env_file`
 # (PROD_ENV_FILE or `.env.production`) for NATS_URL, APP_ENV, TELEMETRY_*, MQTT_*, METRICS_*, etc.
@@ -146,7 +146,7 @@ services:
         max-file: "3"
 
   api:
-    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.production}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.production}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.production}
+    image: ${APP_IMAGE_REF:?set APP_IMAGE_REF in .env.production or via environment}
     container_name: avf-prod-api
     restart: unless-stopped
     command: ["/app/api"]
@@ -187,7 +187,7 @@ services:
         max-file: "3"
 
   worker:
-    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.production}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.production}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.production}
+    image: ${APP_IMAGE_REF:?set APP_IMAGE_REF in .env.production or via environment}
     container_name: avf-prod-worker
     restart: unless-stopped
     command: ["/app/worker"]
@@ -219,7 +219,7 @@ services:
         max-file: "3"
 
   mqtt-ingest:
-    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.production}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.production}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.production}
+    image: ${APP_IMAGE_REF:?set APP_IMAGE_REF in .env.production or via environment}
     container_name: avf-prod-mqtt-ingest
     restart: unless-stopped
     command: ["/app/mqtt-ingest"]
@@ -259,7 +259,7 @@ services:
         max-file: "3"
 
   reconciler:
-    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.production}/${APP_IMAGE_REPOSITORY:?set APP_IMAGE_REPOSITORY in .env.production}:${APP_IMAGE_TAG:?set APP_IMAGE_TAG in .env.production}
+    image: ${APP_IMAGE_REF:?set APP_IMAGE_REF in .env.production or via environment}
     container_name: avf-prod-reconciler
     restart: unless-stopped
     command: ["/app/reconciler"]
@@ -292,7 +292,7 @@ services:
         max-file: "3"
 
   migrate:
-    image: ${IMAGE_REGISTRY:?set IMAGE_REGISTRY in .env.production}/${GOOSE_IMAGE_REPOSITORY:?set GOOSE_IMAGE_REPOSITORY in .env.production}:${GOOSE_IMAGE_TAG:?set GOOSE_IMAGE_TAG in .env.production}
+    image: ${GOOSE_IMAGE_REF:?set GOOSE_IMAGE_REF in .env.production or via environment}
     container_name: avf-prod-migrate
     restart: "no"
     env_file:

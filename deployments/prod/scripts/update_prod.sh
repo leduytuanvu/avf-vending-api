@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Thin wrapper: re-applies image tags from .env.production via release.sh (pull + migrate + stack).
+# Thin wrapper: re-applies image refs from .env.production via release.sh (pull + migrate + stack).
 # Does not git pull, compile Go, or docker build application images on the server.
 set -Eeuo pipefail
 
@@ -36,22 +36,28 @@ fi
 [[ -f "${ENV_FILE}" ]] || fail "missing ${ENV_FILE}"
 [[ -f "${RELEASE_SH}" ]] || fail "missing ${RELEASE_SH}"
 
-app_tag="$(read_env_value APP_IMAGE_TAG)"
-if [[ -z "${app_tag}" ]]; then
-	app_tag="$(read_env_value IMAGE_TAG)"
+app_ref="$(read_env_value APP_IMAGE_REF)"
+if [[ -z "${app_ref}" ]]; then
+	app_ref="$(read_env_value APP_IMAGE_TAG)"
 fi
-[[ -n "${app_tag}" ]] || fail "set APP_IMAGE_TAG or legacy IMAGE_TAG in .env.production"
+if [[ -z "${app_ref}" ]]; then
+	app_ref="$(read_env_value IMAGE_TAG)"
+fi
+[[ -n "${app_ref}" ]] || fail "set APP_IMAGE_REF or legacy APP_IMAGE_TAG / IMAGE_TAG in .env.production"
 
-goose_tag="$(read_env_value GOOSE_IMAGE_TAG)"
-if [[ -z "${goose_tag}" ]]; then
-	goose_tag="$(read_env_value IMAGE_TAG)"
+goose_ref="$(read_env_value GOOSE_IMAGE_REF)"
+if [[ -z "${goose_ref}" ]]; then
+	goose_ref="$(read_env_value GOOSE_IMAGE_TAG)"
 fi
-if [[ -z "${goose_tag}" ]]; then
-	goose_tag="${app_tag}"
+if [[ -z "${goose_ref}" ]]; then
+	goose_ref="$(read_env_value IMAGE_TAG)"
+fi
+if [[ -z "${goose_ref}" ]]; then
+	goose_ref="${app_ref}"
 fi
 
-echo "update_prod: redeploying APP_IMAGE_TAG=${app_tag} GOOSE_IMAGE_TAG=${goose_tag} via release.sh (no source build)"
-if [[ "${app_tag}" == "${goose_tag}" ]]; then
-	exec bash "${RELEASE_SH}" deploy "${app_tag}"
+echo "update_prod: redeploying APP_IMAGE_REF=${app_ref} GOOSE_IMAGE_REF=${goose_ref} via release.sh (no source build)"
+if [[ "${app_ref}" == "${goose_ref}" ]]; then
+	exec bash "${RELEASE_SH}" deploy "${app_ref}"
 fi
-exec bash "${RELEASE_SH}" deploy "${app_tag}" "${goose_tag}"
+exec bash "${RELEASE_SH}" deploy "${app_ref}" "${goose_ref}"

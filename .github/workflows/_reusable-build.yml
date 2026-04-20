@@ -1,0 +1,161 @@
+name: Reusable Build and Push
+
+on:
+  workflow_call:
+    outputs:
+      app_image:
+        description: "Base app image name"
+        value: ${{ jobs.build-and-push.outputs.app_image }}
+      app_tag:
+        description: "Primary sha-based app tag"
+        value: ${{ jobs.build-and-push.outputs.app_tag }}
+      app_digest:
+        description: "Published app image digest"
+        value: ${{ jobs.build-and-push.outputs.app_digest }}
+      app_ref:
+        description: "Published immutable app image ref"
+        value: ${{ jobs.build-and-push.outputs.app_ref }}
+      goose_image:
+        description: "Base goose image name"
+        value: ${{ jobs.build-and-push.outputs.goose_image }}
+      goose_tag:
+        description: "Primary sha-based goose tag"
+        value: ${{ jobs.build-and-push.outputs.goose_tag }}
+      goose_digest:
+        description: "Published goose image digest"
+        value: ${{ jobs.build-and-push.outputs.goose_digest }}
+      goose_ref:
+        description: "Published immutable goose image ref"
+        value: ${{ jobs.build-and-push.outputs.goose_ref }}
+
+jobs:
+  build-and-push:
+    name: Build and Publish Images
+    runs-on: ubuntu-latest
+    outputs:
+      app_image: ${{ steps.tags.outputs.app_image }}
+      app_tag: ${{ steps.tags.outputs.sha_tag }}
+      app_digest: ${{ steps.metadata.outputs.app_digest }}
+      app_ref: ${{ steps.metadata.outputs.app_ref }}
+      goose_image: ${{ steps.tags.outputs.goose_image }}
+      goose_tag: ${{ steps.tags.outputs.sha_tag }}
+      goose_digest: ${{ steps.metadata.outputs.goose_digest }}
+      goose_ref: ${{ steps.metadata.outputs.goose_ref }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tags
+        id: tags
+        shell: bash
+        run: |
+          repo="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          app_image="ghcr.io/${repo}"
+          goose_image="ghcr.io/${repo}-goose"
+          sha_tag="sha-${GITHUB_SHA}"
+
+          app_tags=("${app_image}:${sha_tag}")
+          goose_tags=("${goose_image}:${sha_tag}")
+
+          if [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "main" ]]; then
+            app_tags+=("${app_image}:main")
+            goose_tags+=("${goose_image}:main")
+          fi
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            app_tags+=("${app_image}:${GITHUB_REF_NAME}")
+            goose_tags+=("${goose_image}:${GITHUB_REF_NAME}")
+          fi
+
+          {
+            echo "app_image=${app_image}"
+            echo "goose_image=${goose_image}"
+            echo "sha_tag=${sha_tag}"
+            echo "app_tags<<EOF"
+            printf '%s\n' "${app_tags[@]}"
+            echo "EOF"
+            echo "goose_tags<<EOF"
+            printf '%s\n' "${goose_tags[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push app image
+        id: build_app
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployments/prod/Dockerfile
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ${{ steps.tags.outputs.app_tags }}
+
+      - name: Build and push goose image
+        id: build_goose
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployments/prod/Dockerfile.goose
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ${{ steps.tags.outputs.goose_tags }}
+
+      - name: Publish image metadata
+        id: metadata
+        shell: bash
+        run: |
+          app_ref="${{ steps.tags.outputs.app_image }}@${{ steps.build_app.outputs.digest }}"
+          goose_ref="${{ steps.tags.outputs.goose_image }}@${{ steps.build_goose.outputs.digest }}"
+
+          {
+            echo "app_digest=${{ steps.build_app.outputs.digest }}"
+            echo "app_ref=${app_ref}"
+            echo "goose_digest=${{ steps.build_goose.outputs.digest }}"
+            echo "goose_ref=${goose_ref}"
+          } >> "$GITHUB_OUTPUT"
+
+          cat > image-metadata.json <<EOF
+          {
+            "git_sha": "${GITHUB_SHA}",
+            "event_name": "${GITHUB_EVENT_NAME}",
+            "ref_name": "${GITHUB_REF_NAME}",
+            "app": {
+              "image": "${{ steps.tags.outputs.app_image }}",
+              "tag": "${{ steps.tags.outputs.sha_tag }}",
+              "digest": "${{ steps.build_app.outputs.digest }}",
+              "ref": "${app_ref}"
+            },
+            "goose": {
+              "image": "${{ steps.tags.outputs.goose_image }}",
+              "tag": "${{ steps.tags.outputs.sha_tag }}",
+              "digest": "${{ steps.build_goose.outputs.digest }}",
+              "ref": "${goose_ref}"
+            }
+          }
+          EOF
+
+          {
+            echo "### Published image metadata"
+            echo "- app: \`${app_ref}\`"
+            echo "- goose: \`${goose_ref}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload image metadata artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-metadata
+          path: image-metadata.json
+          if-no-files-found: error
+          retention-days: 14

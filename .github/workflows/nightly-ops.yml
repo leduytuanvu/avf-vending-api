@@ -1,0 +1,86 @@
+name: Nightly Ops
+
+on:
+  schedule:
+    - cron: "42 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-ops-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-maintenance-report:
+    name: Go Dependency Maintenance Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Generate Go maintenance report
+        shell: bash
+        run: |
+          mkdir -p nightly-reports
+          go mod verify > nightly-reports/go-mod-verify.txt
+          go list -u -m -json all > nightly-reports/go-module-updates.json
+          {
+            echo "### Nightly ops summary"
+            echo "- Verified the committed Go module cache with \`go mod verify\`."
+            echo "- Captured available Go module updates in \`go-module-updates.json\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Go maintenance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-go-maintenance-report
+          path: |
+            nightly-reports/go-mod-verify.txt
+            nightly-reports/go-module-updates.json
+          if-no-files-found: error
+          retention-days: 14
+
+  ci-cd-inventory:
+    name: CI/CD Inventory Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Generate CI/CD inventory
+        shell: bash
+        run: |
+          mkdir -p nightly-reports
+          {
+            echo "Nightly CI/CD inventory"
+            echo
+            echo "[Workflow files]"
+            ls .github/workflows/*.yml
+            echo
+            echo "[Dependabot coverage]"
+            rg -n "package-ecosystem|directory:|interval:|day:|time:" .github/dependabot.yml
+            echo
+            echo "[Production Docker build inputs]"
+            rg -n "^FROM " deployments/prod/Dockerfile*
+          } > nightly-reports/ci-cd-inventory.txt
+
+      - name: Upload CI/CD inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-ci-cd-inventory
+          path: nightly-reports/ci-cd-inventory.txt
+          if-no-files-found: error
+          retention-days: 14
