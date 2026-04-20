@@ -17,9 +17,9 @@ func TestParseMetricsPayloadSamples(t *testing.T) {
 
 func TestParseIncidentPayload(t *testing.T) {
 	b, _ := json.Marshal(map[string]any{
-		"severity": "high",
-		"code":     "door_open",
-		"title":    "Door",
+		"severity":   "high",
+		"code":       "door_open",
+		"title":      "Door",
 		"dedupe_key": "d1",
 	})
 	sev, code, title, dedupe, err := ParseIncidentPayload(b)

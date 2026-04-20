@@ -77,7 +77,7 @@ func (s *Service) GetProduct(ctx context.Context, organizationID, productID uuid
 	}
 	row, err := s.q.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
 		OrganizationID: organizationID,
-		ID:               productID,
+		ID:             productID,
 	})
 	if err != nil {
 		return db.Product{}, err

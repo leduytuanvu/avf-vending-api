@@ -5,8 +5,8 @@ import "time"
 // TelemetryBrokerLimits configures JetStream telemetry stream retention and pull consumer fetch tuning.
 // Zero values in EnsureTelemetryStreams / EnsureTelemetryDurableConsumers are replaced with defaults.
 type TelemetryBrokerLimits struct {
-	StreamMaxBytes       int64
-	StreamMaxAgeBaseline time.Duration
+	StreamMaxBytes        int64
+	StreamMaxAgeBaseline  time.Duration
 	ConsumerMaxAckPending int
 	ConsumerAckWait       time.Duration
 	ConsumerMaxDeliver    int

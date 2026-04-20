@@ -37,7 +37,7 @@ type HTTPApplication struct {
 	Artifacts        *appartifacts.Service
 	// TelemetryStore serves read-only telemetry projection endpoints (rollups / incidents / snapshot).
 	TelemetryStore *postgres.Store
-	Reporting        ReportingService
+	Reporting      ReportingService
 }
 
 // HTTPApplicationDeps wires real domain services for the HTTP API process.

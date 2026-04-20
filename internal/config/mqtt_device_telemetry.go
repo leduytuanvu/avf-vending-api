@@ -10,31 +10,31 @@ import (
 )
 
 const (
-	envTelemetryMaxPayloadBytes       = "TELEMETRY_MAX_PAYLOAD_BYTES"
-	envTelemetryMaxPointsPerMessage   = "TELEMETRY_MAX_POINTS_PER_MESSAGE"
-	envTelemetryMaxTagsPerMessage     = "TELEMETRY_MAX_TAGS_PER_MESSAGE"
-	envTelemetryPerMachineMsgsPerSec  = "TELEMETRY_PER_MACHINE_MSGS_PER_SEC"
-	envTelemetryPerMachineBurst       = "TELEMETRY_PER_MACHINE_BURST"
-	envTelemetryGlobalMaxInflight     = "TELEMETRY_GLOBAL_MAX_INFLIGHT"
-	envTelemetryWorkerConcurrency     = "TELEMETRY_WORKER_CONCURRENCY"
-	envTelemetryDropOnBackpressure    = "TELEMETRY_DROP_ON_BACKPRESSURE"
-	envTelemetryLegacyPostgresIngest  = "TELEMETRY_LEGACY_POSTGRES_INGEST"
-	envTelemetrySubmitWaitMs          = "TELEMETRY_SUBMIT_WAIT_MS"
+	envTelemetryMaxPayloadBytes      = "TELEMETRY_MAX_PAYLOAD_BYTES"
+	envTelemetryMaxPointsPerMessage  = "TELEMETRY_MAX_POINTS_PER_MESSAGE"
+	envTelemetryMaxTagsPerMessage    = "TELEMETRY_MAX_TAGS_PER_MESSAGE"
+	envTelemetryPerMachineMsgsPerSec = "TELEMETRY_PER_MACHINE_MSGS_PER_SEC"
+	envTelemetryPerMachineBurst      = "TELEMETRY_PER_MACHINE_BURST"
+	envTelemetryGlobalMaxInflight    = "TELEMETRY_GLOBAL_MAX_INFLIGHT"
+	envTelemetryWorkerConcurrency    = "TELEMETRY_WORKER_CONCURRENCY"
+	envTelemetryDropOnBackpressure   = "TELEMETRY_DROP_ON_BACKPRESSURE"
+	envTelemetryLegacyPostgresIngest = "TELEMETRY_LEGACY_POSTGRES_INGEST"
+	envTelemetrySubmitWaitMs         = "TELEMETRY_SUBMIT_WAIT_MS"
 )
 
 // MQTTDeviceTelemetryConfig bounds high-frequency device MQTT → NATS/OLTP ingress (cmd/mqtt-ingest).
 // OpenTelemetry SDK settings remain on TelemetryConfig; this struct is device-pipeline only.
 type MQTTDeviceTelemetryConfig struct {
-	MaxPayloadBytes       int
-	MaxPointsPerMessage   int
-	MaxTagsPerMessage     int
-	PerMachineMsgsPerSec  float64
-	PerMachineBurst       int
-	GlobalMaxInflight     int
-	WorkerConcurrency     int
-	DropOnBackpressure    bool
-	LegacyPostgresIngest  bool
-	SubmitWaitMs          int
+	MaxPayloadBytes      int
+	MaxPointsPerMessage  int
+	MaxTagsPerMessage    int
+	PerMachineMsgsPerSec float64
+	PerMachineBurst      int
+	GlobalMaxInflight    int
+	WorkerConcurrency    int
+	DropOnBackpressure   bool
+	LegacyPostgresIngest bool
+	SubmitWaitMs         int
 }
 
 func loadMQTTDeviceTelemetryConfig() MQTTDeviceTelemetryConfig {

@@ -248,15 +248,15 @@ VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb, now(), $8)`
 
 // TelemetrySnapshotRow is a read model for admin APIs.
 type TelemetrySnapshotRow struct {
-	MachineID         uuid.UUID
-	OrganizationID    uuid.UUID
-	SiteID            uuid.UUID
-	ReportedState     []byte
-	MetricsState      []byte
-	LastHeartbeatAt   *time.Time
-	AppVersion        *string
-	FirmwareVersion   *string
-	UpdatedAt         time.Time
+	MachineID       uuid.UUID
+	OrganizationID  uuid.UUID
+	SiteID          uuid.UUID
+	ReportedState   []byte
+	MetricsState    []byte
+	LastHeartbeatAt *time.Time
+	AppVersion      *string
+	FirmwareVersion *string
+	UpdatedAt       time.Time
 }
 
 // GetTelemetrySnapshot returns current snapshot or ErrNoRows.
@@ -273,29 +273,29 @@ FROM machine_current_snapshot WHERE machine_id = $1`
 
 // MachineIncidentRow is a persisted incident read model.
 type MachineIncidentRow struct {
-	ID         uuid.UUID
-	MachineID  uuid.UUID
-	Severity   string
-	Code       string
-	Title      *string
-	Detail     []byte
-	DedupeKey  *string
-	OpenedAt   time.Time
-	UpdatedAt  time.Time
+	ID        uuid.UUID
+	MachineID uuid.UUID
+	Severity  string
+	Code      string
+	Title     *string
+	Detail    []byte
+	DedupeKey *string
+	OpenedAt  time.Time
+	UpdatedAt time.Time
 }
 
 // TelemetryRollupRow is a persisted rollup read model.
 type TelemetryRollupRow struct {
-	MachineID    uuid.UUID
-	BucketStart  time.Time
-	Granularity  string
-	MetricKey    string
-	SampleCount  int64
-	SumVal       *float64
-	MinVal       *float64
-	MaxVal       *float64
-	LastVal      *float64
-	Extra        []byte
+	MachineID   uuid.UUID
+	BucketStart time.Time
+	Granularity string
+	MetricKey   string
+	SampleCount int64
+	SumVal      *float64
+	MinVal      *float64
+	MaxVal      *float64
+	LastVal     *float64
+	Extra       []byte
 }
 
 // ListTelemetryRollupsInRange returns rollups for charts (not raw MQTT history).
@@ -356,7 +356,7 @@ func RunTelemetryRetention(ctx context.Context, pool *pgxpool.Pool, now time.Tim
 		return errors.New("postgres: nil pool")
 	}
 	// Defaults per ops/TELEMETRY_PIPELINE.md
-	st := now.Add(-60 * 24 * time.Hour)  // state transitions 60d
+	st := now.Add(-60 * 24 * time.Hour) // state transitions 60d
 	incLow := now.Add(-90 * 24 * time.Hour)
 	incHi := now.Add(-180 * 24 * time.Hour)
 	r1m := now.Add(-30 * 24 * time.Hour)
@@ -443,11 +443,11 @@ func ParseIncidentPayload(payload []byte) (severity, code, title, dedupe string,
 // ParseDiagnosticManifestPayload extracts cold storage pointer from MQTT JSON.
 func ParseDiagnosticManifestPayload(payload []byte) (storageKey, provider, contentType string, size *int64, sha string, err error) {
 	var m struct {
-		StorageKey   string `json:"storage_key"`
-		Provider     string `json:"storage_provider"`
-		ContentType  string `json:"content_type"`
-		SizeBytes    *int64 `json:"size_bytes"`
-		SHA256       string `json:"sha256_hex"`
+		StorageKey  string `json:"storage_key"`
+		Provider    string `json:"storage_provider"`
+		ContentType string `json:"content_type"`
+		SizeBytes   *int64 `json:"size_bytes"`
+		SHA256      string `json:"sha256_hex"`
 	}
 	if err = json.Unmarshal(payload, &m); err != nil {
 		return "", "", "", nil, "", err

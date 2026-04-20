@@ -62,11 +62,38 @@ jobs:
           [[ -n "${GH_TOKEN:-}" ]] || { echo "error: gh_api_token is required for workflow_run resolution" >&2; exit 1; }
           [[ -n "${RUN_ID}" ]] || { echo "error: workflow_run_id is required for workflow_run resolution" >&2; exit 1; }
 
-          artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq 'first(.artifacts[] | select(.name == "image-metadata") | .id)')"
-          [[ -n "${artifact_id}" && "${artifact_id}" != "null" ]] || { echo "error: image-metadata artifact not found for workflow run ${RUN_ID}" >&2; exit 1; }
+          artifact_id=""
+          for attempt in 1 2 3 4 5; do
+            if artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '[.artifacts[]? | select(.name == "image-metadata") | .id] | .[0] // empty')"; then
+              if [[ -n "${artifact_id}" ]]; then
+                break
+              fi
+            else
+              artifact_id=""
+            fi
 
-          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > image-metadata.zip
-          python3 -m zipfile -e image-metadata.zip .
+            if [[ "${attempt}" -lt 5 ]]; then
+              echo "image-metadata artifact not visible yet for workflow run ${RUN_ID}; retrying (${attempt}/5)" >&2
+              sleep 5
+            fi
+          done
+
+          [[ -n "${artifact_id}" ]] || { echo "error: image-metadata artifact not found for workflow run ${RUN_ID}" >&2; exit 1; }
+
+          for attempt in 1 2 3 4 5; do
+            rm -f image-metadata.zip
+            if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > image-metadata.zip; then
+              python3 -m zipfile -e image-metadata.zip .
+              break
+            fi
+
+            if [[ "${attempt}" -lt 5 ]]; then
+              echo "image-metadata artifact ${artifact_id} is not downloadable yet; retrying (${attempt}/5)" >&2
+              sleep 5
+            fi
+          done
+
+          [[ -f image-metadata.json ]] || { echo "error: missing image-metadata.json artifact payload for workflow run ${RUN_ID}" >&2; exit 1; }
 
       - name: Resolve image refs
         id: resolve

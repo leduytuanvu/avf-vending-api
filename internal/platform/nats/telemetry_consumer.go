@@ -9,9 +9,9 @@ import (
 
 // telemetryConsumerSpec registers a durable pull consumer per telemetry stream.
 type telemetryConsumerSpec struct {
-	Stream   string
-	Durable  string
-	Filter   string
+	Stream  string
+	Durable string
+	Filter  string
 }
 
 // EnsureTelemetryDurableConsumers registers or updates pull consumers for all telemetry streams.
