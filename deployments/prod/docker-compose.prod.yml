@@ -112,6 +112,7 @@ services:
       EMQX_NODE__COOKIE: ${EMQX_NODE_COOKIE:?set EMQX_NODE_COOKIE in .env.production}
     volumes:
       - ./emqx/base.hocon:/opt/emqx/etc/base.hocon:ro
+      - ./emqx/default_api_key.conf:/opt/emqx/etc/default_api_key.conf:ro
       - ./emqx/certs:/opt/emqx/etc/certs:ro
       - emqx_data:/opt/emqx/data
     networks:

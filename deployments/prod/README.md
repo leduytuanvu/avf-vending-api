@@ -195,6 +195,7 @@ Important values:
 - `NATS_URL=nats://nats:4222` (required for `APP_ENV=production`; see **Telemetry safety** block in `.env.production.example`)
 - `TELEMETRY_*` / `TELEMETRY_LEGACY_POSTGRES_INGEST=false` — single grouped section in `.env.production.example`; do not enable legacy Postgres telemetry ingest in production
 - `EMQX_DASHBOARD_USERNAME` / `EMQX_DASHBOARD_PASSWORD` / `EMQX_NODE_COOKIE`
+- `EMQX_API_KEY` / `EMQX_API_SECRET` (must match `emqx/default_api_key.conf`; see EMQX dashboard section)
 - `MQTT_USERNAME` / `MQTT_PASSWORD`
 - `MQTT_CLIENT_ID_API` for the API process when you want an in-process publisher identity
 - `MQTT_CLIENT_ID_INGEST` for `mqtt-ingest`; if omitted, Compose falls back to `avf-prod-mqtt-ingest`
@@ -610,7 +611,15 @@ Restore caveats:
 - if the running image expects newer schema than the restored dump provides, you may need a forward-fix migration or a coordinated image/tag rollback plan
 - `migrations/00003_seed_dev.sql` remains in the migration chain, so be careful when reasoning about very old or freshly initialized databases
 
-## EMQX dashboard
+## EMQX dashboard and credentials
+
+EMQX uses **three separate credential classes** in this deployment:
+
+1. **Dashboard (web UI)** — `EMQX_DASHBOARD_USERNAME` / `EMQX_DASHBOARD_PASSWORD` in `.env.production` feed Compose defaults for the loopback dashboard only. They are **not** read by `scripts/emqx_bootstrap.sh`.
+
+2. **Management REST API** — `EMQX_API_KEY` / `EMQX_API_SECRET` in `.env.production` are used by `scripts/emqx_bootstrap.sh` as **HTTP Basic** authentication (`-u key:secret`) against `/api/v5/*`. The broker loads API keys from **`emqx/default_api_key.conf`** (`api_key.bootstrap_file` in [`emqx/base.hocon`](emqx/base.hocon)). Copy [`emqx/default_api_key.conf.example`](emqx/default_api_key.conf.example) to **`emqx/default_api_key.conf`**, set one line `api_key_id:secret:administrator`, and use the same `api_key_id` and `secret` as `EMQX_API_KEY` and `EMQX_API_SECRET`. Do **not** commit `default_api_key.conf`. When rotating, update **both** the file and `.env.production`, then restart EMQX so the bootstrap file is re-read as documented by EMQX.
+
+3. **MQTT application / devices** — `MQTT_USERNAME` / `MQTT_PASSWORD` are the built-in-database MQTT users; `emqx_bootstrap.sh` creates them idempotently via the management API.
 
 The dashboard is intentionally not public.
 
@@ -625,8 +634,6 @@ Then open:
 ```text
 http://127.0.0.1:18083
 ```
-
-The MQTT application user is created by `scripts/emqx_bootstrap.sh` using the dashboard API and the credentials from `.env.production`.
 
 ## MQTT TLS status
 
@@ -665,8 +672,11 @@ make prod-smoke
 - ports `80/443` are blocked upstream, so HTTPS never becomes ready
 - `.env.production` is missing or still contains placeholder values
 - `DATABASE_URL` does not match `POSTGRES_USER` / `POSTGRES_PASSWORD`
-- EMQX dashboard credentials in `.env.production` do not match the initialized EMQX data volume
-- `MQTT_USERNAME` / `MQTT_PASSWORD` were not bootstrapped successfully
+- `emqx/default_api_key.conf` is missing on the VPS (Compose bind mount fails or EMQX cannot load keys) — copy from `default_api_key.conf.example` first
+- `EMQX_API_KEY` / `EMQX_API_SECRET` in `.env.production` do not match the `api_key_id:secret` line in `emqx/default_api_key.conf` (HTTP **401** on bootstrap)
+- EMQX management API unreachable (broker down, or loopback `18083` not reachable from the host running `emqx_bootstrap.sh`)
+- `EMQX_DASHBOARD_USERNAME` / `EMQX_DASHBOARD_PASSWORD` do not match the initialized EMQX data volume (dashboard login only; unrelated to bootstrap API auth)
+- `MQTT_USERNAME` / `MQTT_PASSWORD` were not bootstrapped successfully after fixing API credentials
 - `8883/tcp` is blocked by UFW or upstream firewall rules when testing MQTT TLS exposure
 - readiness fails because `READINESS_STRICT=true` and Postgres is not actually healthy
 
@@ -679,4 +689,4 @@ The repo root `.gitignore` excludes:
 - `deployments/prod/backups/`
 - local cert/key material and other restore artifacts under `deployments/prod/`
 
-Only `.env.production.example` should be committed.
+Only `.env.production.example` and `emqx/default_api_key.conf.example` should be committed; keep `emqx/default_api_key.conf` (secrets) out of git.

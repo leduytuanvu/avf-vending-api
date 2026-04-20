@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Idempotent: create built-in MQTT user for app clients (requires EMQX dashboard auth on loopback).
+# Idempotent: create built-in MQTT user for app clients (requires EMQX management API on loopback).
+# Authenticates with EMQX_API_KEY / EMQX_API_SECRET (HTTP Basic), not dashboard credentials.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -30,11 +31,16 @@ read_env() {
 
 MQTT_USERNAME="$(read_env MQTT_USERNAME)"
 MQTT_PASSWORD="$(read_env MQTT_PASSWORD)"
-EMQX_DASHBOARD_USERNAME="$(read_env EMQX_DASHBOARD_USERNAME)"
-EMQX_DASHBOARD_PASSWORD="$(read_env EMQX_DASHBOARD_PASSWORD)"
+EMQX_API_KEY="$(read_env EMQX_API_KEY)"
+EMQX_API_SECRET="$(read_env EMQX_API_SECRET)"
 
 if [[ -z "${MQTT_USERNAME}" || -z "${MQTT_PASSWORD}" ]]; then
 	echo "error: MQTT_USERNAME / MQTT_PASSWORD must be non-empty" >&2
+	exit 1
+fi
+
+if [[ -z "${EMQX_API_KEY}" || -z "${EMQX_API_SECRET}" ]]; then
+	echo "error: EMQX_API_KEY / EMQX_API_SECRET must be non-empty" >&2
 	exit 1
 fi
 
@@ -50,15 +56,16 @@ AUTH_PATH="authentication/password_based%3Abuilt_in_database/users"
 
 tmp="$(mktemp)"
 code="$(
-	curl -sS -o "${tmp}" -w "%{http_code}" -u "${EMQX_DASHBOARD_USERNAME}:${EMQX_DASHBOARD_PASSWORD}" \
+	curl -sS -o "${tmp}" -w "%{http_code}" \
+		-u "${EMQX_API_KEY}:${EMQX_API_SECRET}" \
 		-X POST "${BASE}/${AUTH_PATH}" \
 		-H "Content-Type: application/json" \
 		-d "${BODY}" || true
 )"
 
 if [[ -z "${code}" || "${code}" == "000" ]]; then
-	echo "emqx_bootstrap: failed to reach EMQX dashboard at ${BASE} (curl HTTP code=${code:-empty})" >&2
-	echo "emqx_bootstrap: ensure the emqx container is running and port 18083 is published to 127.0.0.1 on the host" >&2
+	echo "emqx_bootstrap: failed to reach EMQX management API at ${BASE} (curl HTTP code=${code:-empty})" >&2
+	echo "emqx_bootstrap: ensure the emqx container is running, port 18083 is published to 127.0.0.1, and emqx/default_api_key.conf is mounted" >&2
 	if [[ -s "${tmp}" ]]; then
 		cat "${tmp}" >&2
 	fi
@@ -78,10 +85,10 @@ if [[ "${code}" == "409" ]]; then
 	exit 0
 fi
 
-echo "emqx_bootstrap: failed (HTTP ${code})" >&2
+echo "emqx_bootstrap: create MQTT user failed (HTTP ${code})" >&2
 if [[ -s "${tmp}" ]]; then
 	cat "${tmp}" >&2
 fi
 rm -f "${tmp}"
-echo "hint: tunnel dashboard (ssh -L 18083:127.0.0.1:18083 ...) and verify EMQX_DASHBOARD_* and authentication chain." >&2
+echo "hint: verify HTTP Basic uses EMQX_API_KEY / EMQX_API_SECRET matching emqx/default_api_key.conf; 401 often means mismatch or missing bootstrap file inside EMQX. Dashboard login credentials are not used for this API." >&2
 exit 1
