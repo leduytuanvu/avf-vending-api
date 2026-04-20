@@ -6,7 +6,7 @@ When `API_REQUIRE_MQTT_PUBLISHER=true`, the API process **must** connect to the 
 
 - `MQTT_BROKER_URL` (e.g. `tcp://emqx:1883` from inside Compose)
 - `MQTT_CLIENT_ID` **or** `MQTT_CLIENT_ID_API` (Compose often maps the latter into the container)
-- `MQTT_USERNAME` / `MQTT_PASSWORD` after `deployments/prod/scripts/emqx_bootstrap.sh` has run
+- `MQTT_USERNAME` / `MQTT_PASSWORD` after `deployments/prod/scripts/emqx_bootstrap.sh` has run (that script uses **`EMQX_API_KEY` / `EMQX_API_SECRET`** as HTTP Basic auth on `/api/v5/*` to create the built-in MQTT user; dashboard credentials are not involved)
 
 If the API exits with a MQTT wiring error, fix env + broker reachability before re-running deploy.
 

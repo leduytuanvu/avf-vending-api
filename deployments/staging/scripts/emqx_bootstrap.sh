@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Idempotent: create built-in MQTT user for staging app clients.
+# Authenticates with EMQX_API_KEY / EMQX_API_SECRET (HTTP Basic), not dashboard credentials.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -30,11 +31,16 @@ read_env() {
 
 MQTT_USERNAME="$(read_env MQTT_USERNAME)"
 MQTT_PASSWORD="$(read_env MQTT_PASSWORD)"
-EMQX_DASHBOARD_USERNAME="$(read_env EMQX_DASHBOARD_USERNAME)"
-EMQX_DASHBOARD_PASSWORD="$(read_env EMQX_DASHBOARD_PASSWORD)"
+EMQX_API_KEY="$(read_env EMQX_API_KEY)"
+EMQX_API_SECRET="$(read_env EMQX_API_SECRET)"
 
 if [[ -z "${MQTT_USERNAME}" || -z "${MQTT_PASSWORD}" ]]; then
 	echo "error: MQTT_USERNAME / MQTT_PASSWORD must be non-empty" >&2
+	exit 1
+fi
+
+if [[ -z "${EMQX_API_KEY}" || -z "${EMQX_API_SECRET}" ]]; then
+	echo "error: EMQX_API_KEY / EMQX_API_SECRET must be non-empty" >&2
 	exit 1
 fi
 
@@ -50,11 +56,22 @@ AUTH_PATH="authentication/password_based%3Abuilt_in_database/users"
 
 tmp="$(mktemp)"
 code="$(
-	curl -sS -o "${tmp}" -w "%{http_code}" -u "${EMQX_DASHBOARD_USERNAME}:${EMQX_DASHBOARD_PASSWORD}" \
+	curl -sS -o "${tmp}" -w "%{http_code}" \
+		-u "${EMQX_API_KEY}:${EMQX_API_SECRET}" \
 		-X POST "${BASE}/${AUTH_PATH}" \
 		-H "Content-Type: application/json" \
 		-d "${BODY}" || true
 )"
+
+if [[ -z "${code}" || "${code}" == "000" ]]; then
+	echo "emqx_bootstrap(staging): failed to reach EMQX management API at ${BASE} (curl HTTP code=${code:-empty})" >&2
+	echo "emqx_bootstrap(staging): ensure emqx is running, 127.0.0.1:18083 is reachable, and emqx/default_api_key.conf is mounted" >&2
+	if [[ -s "${tmp}" ]]; then
+		cat "${tmp}" >&2
+	fi
+	rm -f "${tmp}"
+	exit 1
+fi
 
 if [[ "${code}" == "200" || "${code}" == "201" ]]; then
 	echo "emqx_bootstrap(staging): MQTT user created"
@@ -68,10 +85,10 @@ if [[ "${code}" == "409" ]]; then
 	exit 0
 fi
 
-echo "emqx_bootstrap(staging): failed (HTTP ${code})" >&2
+echo "emqx_bootstrap(staging): create MQTT user failed (HTTP ${code})" >&2
 if [[ -s "${tmp}" ]]; then
 	cat "${tmp}" >&2
 fi
 rm -f "${tmp}"
-echo "hint: verify EMQX_DASHBOARD_* values and staging dashboard reachability on loopback 127.0.0.1:18083" >&2
+echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET match emqx/default_api_key.conf; 401 often means mismatch. Dashboard login credentials are not used for this API." >&2
 exit 1
