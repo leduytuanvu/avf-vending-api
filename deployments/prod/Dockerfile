@@ -1,7 +1,7 @@
 # Production image: all Go binaries in one small image (pick command in Compose).
 # Build from repository root: docker build -f deployments/prod/Dockerfile .
 
-ARG GO_VERSION=1.24.0
+ARG GO_VERSION=1.25.9
 
 FROM golang:${GO_VERSION}-bookworm AS build
 WORKDIR /src
