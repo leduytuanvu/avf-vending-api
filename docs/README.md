@@ -20,4 +20,4 @@ Runtime-oriented package docs (see each `doc.go`): `internal/platform/mqtt`, `na
 
 ## Repository root
 
-See [../README.md](../README.md) for build commands, migration notes, layout, integration test requirements (`TEST_DATABASE_URL`), and CI / local gate targets (`make ci-gates`, `make ci`).
+See [../README.md](../README.md) for build commands, migration notes, layout, integration test requirements (`TEST_DATABASE_URL`), aand CI / local gate targets (`make ci-gates`, `make ci`).

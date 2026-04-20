@@ -2,6 +2,8 @@ module github.com/avf/avf-vending-api
 
 go 1.25.0
 
+toolchain go1.25.9
+
 require (
 	github.com/aws/aws-sdk-go-v2 v1.32.5
 	github.com/aws/aws-sdk-go-v2/config v1.27.33
