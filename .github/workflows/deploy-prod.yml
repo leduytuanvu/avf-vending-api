@@ -202,6 +202,50 @@ jobs:
             exit 1
           fi
 
+      - name: Validate production SSH configuration
+        if: needs.prepare-promotion-context.outputs.deploy_transport == 'vps-ssh'
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -Eeuo pipefail
+
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          [[ -n "${VPS_HOST:-}" ]] || fail "missing production secret VPS_HOST"
+          [[ -n "${VPS_SSH_PORT:-}" ]] || fail "missing production secret VPS_SSH_PORT"
+          [[ -n "${VPS_USER:-}" ]] || fail "missing production secret VPS_USER"
+          [[ -n "${VPS_SSH_PRIVATE_KEY:-}" ]] || fail "missing production secret VPS_SSH_PRIVATE_KEY"
+
+          [[ "${VPS_SSH_PORT}" =~ ^[0-9]+$ ]] || fail "VPS_SSH_PORT must be numeric"
+          (( VPS_SSH_PORT >= 1 && VPS_SSH_PORT <= 65535 )) || fail "VPS_SSH_PORT must be between 1 and 65535"
+
+          [[ "${VPS_HOST}" != *$'\n'* && "${VPS_HOST}" != *$'\r'* && "${VPS_HOST}" != *" "* ]] || {
+            fail "VPS_HOST must be a single hostname or IP without whitespace"
+          }
+
+          [[ "${VPS_USER}" != *$'\n'* && "${VPS_USER}" != *$'\r'* && "${VPS_USER}" != *" "* ]] || {
+            fail "VPS_USER must be a single SSH username without whitespace"
+          }
+
+          [[ "${VPS_SSH_PRIVATE_KEY}" == *"BEGIN "* && "${VPS_SSH_PRIVATE_KEY}" == *"PRIVATE KEY"* ]] || {
+            fail "VPS_SSH_PRIVATE_KEY must contain the full private key PEM/OpenSSH block, not a .pub key or truncated value"
+          }
+
+          python3 -c "import socket,sys; socket.getaddrinfo(sys.argv[1], None)" "${VPS_HOST}" || {
+            fail "VPS_HOST must resolve from GitHub-hosted runners; use a public DNS name or IP"
+          }
+
+          python3 -c "import socket,sys; s=socket.create_connection((sys.argv[1], int(sys.argv[2])), timeout=10); s.close()" "${VPS_HOST}" "${VPS_SSH_PORT}" || {
+            fail "cannot reach ${VPS_HOST}:${VPS_SSH_PORT} from this GitHub-hosted runner; check SSH port, firewall, security groups, and provider ACLs before SCP/SSH deploy"
+          }
+
       - name: Confirm active production deploy path
         if: needs.prepare-promotion-context.outputs.deploy_transport == 'vps-ssh'
         shell: bash
