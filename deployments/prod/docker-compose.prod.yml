@@ -336,11 +336,12 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    # `caddy:2.8-alpine` does not ship `curl`; use busybox `wget` (same pattern as `nats` above).
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "curl -fsS http://api:8080/health/live | grep -qx ok",
+          "wget -qO- http://api:8080/health/live | grep -qx ok",
         ]
       interval: 30s
       timeout: 5s
