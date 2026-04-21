@@ -75,7 +75,7 @@ code="$(
 
 if [[ -z "${code}" || "${code}" == "000" ]]; then
 	echo "emqx_bootstrap: failed to reach EMQX management API at ${BASE} (curl HTTP code=${code:-empty})" >&2
-	echo "emqx_bootstrap: ensure avf-prod-emqx is running, port 18083 is published to 127.0.0.1, and release.sh rendered emqx/default_api_key.conf on the VPS" >&2
+	echo "emqx_bootstrap: ensure avf-prod-emqx is running, port 18083 is published to 127.0.0.1, and the configured EMQX API key still exists in EMQX" >&2
 	if [[ -s "${tmp}" ]]; then
 		cat "${tmp}" >&2
 	fi
@@ -101,7 +101,7 @@ if [[ "${code}" == "401" ]]; then
 		cat "${tmp}" >&2
 	fi
 	rm -f "${tmp}"
-	echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET, verify deployments/prod/emqx/default_api_key.conf on the VPS, verify /opt/emqx/etc/default_api_key.conf inside the running avf-prod-emqx container is readable by the EMQX runtime user, and verify EMQX was recreated after config changes." >&2
+	echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET match a pre-provisioned EMQX REST API key, verify that key still exists in EMQX, and verify dashboard credentials are not being used for /api/v5/*." >&2
 	exit 1
 fi
 
@@ -110,5 +110,5 @@ if [[ -s "${tmp}" ]]; then
 	cat "${tmp}" >&2
 fi
 rm -f "${tmp}"
-echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET match deployments/prod/emqx/default_api_key.conf on the VPS and verify /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx is readable by the EMQX runtime user. Dashboard credentials are UI-only and not used for /api/v5/*." >&2
+echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET match a pre-provisioned EMQX REST API key with permission to call /api/v5/*; dashboard credentials are UI-only and are not used for this API." >&2
 exit 1

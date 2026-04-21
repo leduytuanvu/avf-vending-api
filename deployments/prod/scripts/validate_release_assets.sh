@@ -91,7 +91,6 @@ main() {
 	fi
 
 	require_compose_mount "./emqx/base.hocon:/opt/emqx/etc/base.hocon:ro"
-	require_compose_mount "./emqx/default_api_key.conf:/opt/emqx/etc/default_api_key.conf:ro"
 
 	note "validated production release assets (${env_file})"
 	echo "validate_release_assets: PASS"

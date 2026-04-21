@@ -9,7 +9,6 @@ ENV_FILE="${ROOT}/.env.production"
 COMPOSE_FILE="${ROOT}/docker-compose.prod.yml"
 COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
 STATE="${ROOT}/.deploy"
-DEFAULT_API_KEY_FILE="${ROOT}/emqx/default_api_key.conf"
 LONG_LIVED_SERVICES=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 ARTIFACT_SERVICES=(migrate api worker mqtt-ingest reconciler)
 # Monitored after `compose up`: running required; Docker health=healthy only when a healthcheck exists.
@@ -242,25 +241,6 @@ validate_release_assets_or_fail() {
 	fi
 }
 
-render_emqx_api_key_file() {
-	local dir tmp
-	resolve_emqx_api_credentials
-
-	dir="$(dirname "${DEFAULT_API_KEY_FILE}")"
-	mkdir -p "${dir}"
-	tmp="$(mktemp "${dir}/default_api_key.conf.tmp.XXXXXX")"
-	if ! printf '%s:%s:administrator\n' "${EMQX_API_KEY_RESOLVED}" "${EMQX_API_SECRET_RESOLVED}" >"${tmp}"; then
-		rm -f "${tmp}"
-		fail "failed to write temporary EMQX API bootstrap file"
-	fi
-	# The file is bind-mounted read-only into the EMQX container, where the runtime
-	# user is non-root. Keep it non-executable but readable after the mount.
-	chmod 644 "${tmp}"
-	mv -f "${tmp}" "${DEFAULT_API_KEY_FILE}"
-	[[ -s "${DEFAULT_API_KEY_FILE}" ]] || fail "rendered ${DEFAULT_API_KEY_FILE} is missing or empty"
-	note "rendered EMQX API bootstrap file at ${DEFAULT_API_KEY_FILE}"
-}
-
 wait_for_emqx_control_plane() {
 	local attempts="${1:-90}"
 	local sleep_secs="${2:-2}"
@@ -317,7 +297,7 @@ preflight_emqx_api_auth() {
 		elapsed=$((now_ts - start_ts))
 		if [[ "${code}" == "401" && "${saw_401}" == "0" ]]; then
 			saw_401="1"
-			echo "release.sh: EMQX API preflight got HTTP 401 — verify EMQX_API_KEY / EMQX_API_SECRET, verify ${ROOT}/emqx/default_api_key.conf on the VPS, verify /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx is readable by the EMQX runtime user, and verify EMQX was force-recreated after config changes" >&2
+			echo "release.sh: EMQX API preflight got HTTP 401 — verify EMQX_API_KEY / EMQX_API_SECRET match a pre-provisioned EMQX REST API key, verify the key still exists in EMQX, and verify dashboard credentials are not being used for /api/v5/*" >&2
 		else
 			note "EMQX API preflight pending (HTTP ${code:-empty}, ${elapsed}s/${timeout_secs}s)"
 		fi
@@ -327,7 +307,7 @@ preflight_emqx_api_auth() {
 				cat "${tmp}" >&2
 			fi
 			rm -f "${tmp}"
-			fail "EMQX API preflight failed after ${timeout_secs}s — verify EMQX_API_KEY / EMQX_API_SECRET, verify ${ROOT}/emqx/default_api_key.conf on the VPS, verify /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx is readable by the EMQX runtime user, and verify EMQX was force-recreated after config changes"
+			fail "EMQX API preflight failed after ${timeout_secs}s — verify EMQX_API_KEY / EMQX_API_SECRET match a pre-provisioned EMQX REST API key, verify the key still exists in EMQX, and verify dashboard credentials are not being used for /api/v5/*"
 		fi
 
 		sleep "${poll_secs}"
@@ -559,8 +539,8 @@ cmd_deploy() {
 	fi
 
 	CURRENT_PHASE="deploy"
-	render_emqx_api_key_file
-	note "force-recreate EMQX so updated bootstrap assets are reloaded"
+	resolve_emqx_api_credentials
+	note "force-recreate EMQX so the latest config is loaded before API auth preflight"
 	if ! "${COMPOSE[@]}" up -d --force-recreate emqx; then
 		fail "failed to force-recreate emqx"
 	fi
