@@ -101,7 +101,7 @@ if [[ "${code}" == "401" ]]; then
 		cat "${tmp}" >&2
 	fi
 	rm -f "${tmp}"
-	echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET, verify deployments/prod/emqx/default_api_key.conf on the VPS, verify /opt/emqx/etc/default_api_key.conf inside the running avf-prod-emqx container, and verify EMQX was recreated after config changes." >&2
+	echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET, verify deployments/prod/emqx/default_api_key.conf on the VPS, verify /opt/emqx/etc/default_api_key.conf inside the running avf-prod-emqx container is readable by the EMQX runtime user, and verify EMQX was recreated after config changes." >&2
 	exit 1
 fi
 
@@ -110,5 +110,5 @@ if [[ -s "${tmp}" ]]; then
 	cat "${tmp}" >&2
 fi
 rm -f "${tmp}"
-echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET match deployments/prod/emqx/default_api_key.conf on the VPS and /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx. Dashboard credentials are UI-only and not used for /api/v5/*." >&2
+echo "hint: verify EMQX_API_KEY / EMQX_API_SECRET match deployments/prod/emqx/default_api_key.conf on the VPS and verify /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx is readable by the EMQX runtime user. Dashboard credentials are UI-only and not used for /api/v5/*." >&2
 exit 1

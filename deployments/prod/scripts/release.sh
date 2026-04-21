@@ -253,7 +253,9 @@ render_emqx_api_key_file() {
 		rm -f "${tmp}"
 		fail "failed to write temporary EMQX API bootstrap file"
 	fi
-	chmod 600 "${tmp}"
+	# The file is bind-mounted read-only into the EMQX container, where the runtime
+	# user is non-root. Keep it non-executable but readable after the mount.
+	chmod 644 "${tmp}"
 	mv -f "${tmp}" "${DEFAULT_API_KEY_FILE}"
 	[[ -s "${DEFAULT_API_KEY_FILE}" ]] || fail "rendered ${DEFAULT_API_KEY_FILE} is missing or empty"
 	note "rendered EMQX API bootstrap file at ${DEFAULT_API_KEY_FILE}"
@@ -315,7 +317,7 @@ preflight_emqx_api_auth() {
 		elapsed=$((now_ts - start_ts))
 		if [[ "${code}" == "401" && "${saw_401}" == "0" ]]; then
 			saw_401="1"
-			echo "release.sh: EMQX API preflight got HTTP 401 — verify EMQX_API_KEY / EMQX_API_SECRET, ${ROOT}/emqx/default_api_key.conf on the VPS, /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx, and that EMQX was force-recreated after config changes" >&2
+			echo "release.sh: EMQX API preflight got HTTP 401 — verify EMQX_API_KEY / EMQX_API_SECRET, verify ${ROOT}/emqx/default_api_key.conf on the VPS, verify /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx is readable by the EMQX runtime user, and verify EMQX was force-recreated after config changes" >&2
 		else
 			note "EMQX API preflight pending (HTTP ${code:-empty}, ${elapsed}s/${timeout_secs}s)"
 		fi
@@ -325,7 +327,7 @@ preflight_emqx_api_auth() {
 				cat "${tmp}" >&2
 			fi
 			rm -f "${tmp}"
-			fail "EMQX API preflight failed after ${timeout_secs}s — verify EMQX_API_KEY / EMQX_API_SECRET, ${ROOT}/emqx/default_api_key.conf on the VPS, /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx, and that EMQX was force-recreated after config changes"
+			fail "EMQX API preflight failed after ${timeout_secs}s — verify EMQX_API_KEY / EMQX_API_SECRET, verify ${ROOT}/emqx/default_api_key.conf on the VPS, verify /opt/emqx/etc/default_api_key.conf inside avf-prod-emqx is readable by the EMQX runtime user, and verify EMQX was force-recreated after config changes"
 		fi
 
 		sleep "${poll_secs}"
