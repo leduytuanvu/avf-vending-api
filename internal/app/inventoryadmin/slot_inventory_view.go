@@ -12,6 +12,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// defaultAdminCabinetCode is returned when no cabinet row exists for this machine (pure legacy inventory).
+// Keep in sync with db/queries/inventory_admin.sql coalesce(..., 'CAB-A').
+const defaultAdminCabinetCode = "CAB-A"
+
 // SlotInventoryViewItem is the merged legacy planogram slot state plus cabinet slot config context for admin UIs.
 type SlotInventoryViewItem struct {
 	MachineID         uuid.UUID
@@ -19,6 +23,7 @@ type SlotInventoryViewItem struct {
 	PlanogramName     string
 	SlotIndex         int32
 	CabinetCode       string
+	CabinetIndex      int32
 	SlotCode          string
 	ProductID         *uuid.UUID
 	ProductSku        string
@@ -64,7 +69,11 @@ func (s *Service) ListSlotInventoryView(ctx context.Context, machineID uuid.UUID
 		capacity := row.MaxQuantity
 		parLevel := row.MaxQuantity
 		priceMinor := row.PriceMinor
-		cabinetCode := ""
+		cabinetCode := strings.TrimSpace(row.CabinetCode)
+		if cabinetCode == "" {
+			cabinetCode = defaultAdminCabinetCode
+		}
+		cabinetIndex := row.CabinetIndex
 		slotCode := fmt.Sprintf("legacy-%d", row.SlotIndex)
 		if cfg != nil {
 			if cfg.MaxQuantity > 0 {
@@ -74,7 +83,10 @@ func (s *Service) ListSlotInventoryView(ctx context.Context, machineID uuid.UUID
 			if cfg.PriceMinor != 0 {
 				priceMinor = cfg.PriceMinor
 			}
-			cabinetCode = cfg.CabinetCode
+			if cc := strings.TrimSpace(cfg.CabinetCode); cc != "" {
+				cabinetCode = cc
+			}
+			cabinetIndex = cfg.CabinetIndex
 			if sc := strings.TrimSpace(cfg.SlotCode); sc != "" {
 				slotCode = sc
 			}
@@ -92,6 +104,7 @@ func (s *Service) ListSlotInventoryView(ctx context.Context, machineID uuid.UUID
 			PlanogramName:     row.PlanogramName,
 			SlotIndex:         row.SlotIndex,
 			CabinetCode:       cabinetCode,
+			CabinetIndex:      cabinetIndex,
 			SlotCode:          slotCode,
 			ProductID:         pid,
 			ProductSku:        textFromPg(row.ProductSku),

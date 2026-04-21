@@ -64,8 +64,8 @@ func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
 				Active:         row.Active,
 				CategoryID:     uuidPtrFromPgUUID(row.CategoryID),
 				BrandID:        uuidPtrFromPgUUID(row.BrandID),
-				CreatedAt:      row.CreatedAt.UTC().Format(timeRFC3339Nano),
-				UpdatedAt:      row.UpdatedAt.UTC().Format(timeRFC3339Nano),
+				CreatedAt:      formatAPITimeRFC3339Nano(row.CreatedAt),
+				UpdatedAt:      formatAPITimeRFC3339Nano(row.UpdatedAt),
 			})
 		}
 		writeJSON(w, http.StatusOK, V1AdminProductListEnvelope{
@@ -207,7 +207,7 @@ func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 				MaxQuantity: s.MaxQuantity,
 				ProductSku:  textFromPgText(s.ProductSku),
 				ProductName: textFromPgText(s.ProductName),
-				CreatedAt:   s.CreatedAt.UTC().Format(timeRFC3339Nano),
+				CreatedAt:   formatAPITimeRFC3339Nano(s.CreatedAt),
 			})
 		}
 		writeJSON(w, http.StatusOK, V1AdminPlanogramDetail{
@@ -216,8 +216,6 @@ func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 		})
 	}
 }
-
-const timeRFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
 
 func uuidPtrFromPgUUID(u pgtype.UUID) *string {
 	if !u.Valid {
@@ -250,8 +248,8 @@ func mapAdminProduct(p db.Product) V1AdminProduct {
 		AgeRestricted:   p.AgeRestricted,
 		AllergenCodes:   append([]string(nil), p.AllergenCodes...),
 		NutritionalNote: textFromPgText(p.NutritionalNote),
-		CreatedAt:       p.CreatedAt.UTC().Format(timeRFC3339Nano),
-		UpdatedAt:       p.UpdatedAt.UTC().Format(timeRFC3339Nano),
+		CreatedAt:       formatAPITimeRFC3339Nano(p.CreatedAt),
+		UpdatedAt:       formatAPITimeRFC3339Nano(p.UpdatedAt),
 	}
 	if len(p.Attrs) > 0 && json.Valid(p.Attrs) {
 		out.Attrs = json.RawMessage(p.Attrs)
@@ -267,14 +265,14 @@ func mapPriceBook(pb db.PriceBook) V1AdminPriceBook {
 		OrganizationID: pb.OrganizationID.String(),
 		Name:           pb.Name,
 		Currency:       pb.Currency,
-		EffectiveFrom:  pb.EffectiveFrom.UTC().Format(timeRFC3339Nano),
+		EffectiveFrom:  formatAPITimeRFC3339Nano(pb.EffectiveFrom),
 		EffectiveTo:    timePtrFromTimestamptz(pb.EffectiveTo),
 		IsDefault:      pb.IsDefault,
 		ScopeType:      pb.ScopeType,
 		SiteID:         uuidPtrFromPgUUID(pb.SiteID),
 		MachineID:      uuidPtrFromPgUUID(pb.MachineID),
 		Priority:       pb.Priority,
-		CreatedAt:      pb.CreatedAt.UTC().Format(timeRFC3339Nano),
+		CreatedAt:      formatAPITimeRFC3339Nano(pb.CreatedAt),
 	}
 }
 
@@ -285,7 +283,7 @@ func mapPlanogram(pg db.Planogram) V1AdminPlanogram {
 		Name:           pg.Name,
 		Revision:       pg.Revision,
 		Status:         pg.Status,
-		CreatedAt:      pg.CreatedAt.UTC().Format(timeRFC3339Nano),
+		CreatedAt:      formatAPITimeRFC3339Nano(pg.CreatedAt),
 	}
 	if len(pg.Meta) > 0 && json.Valid(pg.Meta) {
 		out.Meta = json.RawMessage(pg.Meta)
@@ -297,6 +295,6 @@ func timePtrFromTimestamptz(ts pgtype.Timestamptz) *string {
 	if !ts.Valid {
 		return nil
 	}
-	s := ts.Time.UTC().Format(timeRFC3339Nano)
+	s := formatAPITimeRFC3339Nano(ts.Time)
 	return &s
 }

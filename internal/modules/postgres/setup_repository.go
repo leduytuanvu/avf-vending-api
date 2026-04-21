@@ -10,6 +10,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -58,11 +59,14 @@ func (r *SetupRepository) UpsertMachineTopology(ctx context.Context, machineID u
 			return errors.New("postgres: cabinet code is required")
 		}
 		_, err = q.FleetAdminUpsertMachineCabinet(ctx, db.FleetAdminUpsertMachineCabinetParams{
-			MachineID:   machineID,
-			CabinetCode: code,
-			Title:       strings.TrimSpace(c.Title),
-			SortOrder:   c.SortOrder,
-			Metadata:    defaultJSONB(c.Metadata),
+			MachineID:    machineID,
+			CabinetCode:  code,
+			Title:        strings.TrimSpace(c.Title),
+			SortOrder:    c.SortOrder,
+			CabinetIndex: c.SortOrder,
+			SlotCapacity: pgtype.Int4{}, // unset; optional per-cabinet capacity for slot-range mapping on reads
+			Status:       "active",
+			Metadata:     defaultJSONB(c.Metadata),
 		})
 		if err != nil {
 			return err

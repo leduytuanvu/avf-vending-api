@@ -251,6 +251,7 @@ type V1AdminMachineSlot struct {
 	PlanogramName            string  `json:"planogramName"`
 	SlotIndex                int32   `json:"slotIndex"`
 	CabinetCode              string  `json:"cabinetCode"`
+	CabinetIndex             int32   `json:"cabinetIndex"`
 	SlotCode                 string  `json:"slotCode"`
 	CurrentQuantity          int32   `json:"currentQuantity"`
 	CurrentStock             int32   `json:"currentStock"`
@@ -286,6 +287,7 @@ type V1AdminStockAdjustmentItem struct {
 type V1AdminStockAdjustmentsRequest struct {
 	OperatorSessionID string                       `json:"operator_session_id"`
 	Reason            string                       `json:"reason"`
+	OccurredAt        *string                      `json:"occurredAt,omitempty"`
 	Items             []V1AdminStockAdjustmentItem `json:"items"`
 }
 
@@ -295,6 +297,36 @@ type V1AdminStockAdjustmentsResponse struct {
 	EventIds []int64 `json:"eventIds,omitempty"`
 }
 
+// V1AdminInventoryEvent is one append-only inventory_events row (audit / refill / future vend).
+type V1AdminInventoryEvent struct {
+	ID                        int64   `json:"id"`
+	OrganizationID            string  `json:"organizationId"`
+	MachineID                 string  `json:"machineId"`
+	CabinetCode               *string `json:"cabinetCode,omitempty"`
+	SlotCode                  *string `json:"slotCode,omitempty"`
+	ProductID                 *string `json:"productId,omitempty"`
+	EventType                 string  `json:"eventType"`
+	ReasonCode                *string `json:"reasonCode,omitempty"`
+	QuantityBefore            *int32  `json:"quantityBefore,omitempty"`
+	QuantityDelta             int32   `json:"quantityDelta"`
+	QuantityAfter             *int32  `json:"quantityAfter,omitempty"`
+	UnitPriceMinor            int64   `json:"unitPriceMinor"`
+	Currency                  string  `json:"currency"`
+	CorrelationID             *string `json:"correlationId,omitempty"`
+	OperatorSessionID         *string `json:"operatorSessionId,omitempty"`
+	TechnicianID              *string `json:"technicianId,omitempty"`
+	TechnicianDisplayName     *string `json:"technicianDisplayName,omitempty"`
+	RefillSessionID           *string `json:"refillSessionId,omitempty"`
+	InventoryCountSessionID   *string `json:"inventoryCountSessionId,omitempty"`
+	OccurredAt                string  `json:"occurredAt"`
+	RecordedAt                string  `json:"recordedAt"`
+}
+
+// V1AdminInventoryEventListEnvelope is GET /v1/admin/machines/{machineId}/inventory-events.
+type V1AdminInventoryEventListEnvelope struct {
+	Items []V1AdminInventoryEvent `json:"items"`
+}
+
 // V1AdminMachineSlotListEnvelope is GET /v1/admin/machines/{machineId}/slots.
 type V1AdminMachineSlotListEnvelope struct {
 	Items []V1AdminMachineSlot `json:"items"`
@@ -302,16 +334,18 @@ type V1AdminMachineSlotListEnvelope struct {
 
 // V1AdminMachineInventoryLine is a rolled-up inventory row per product.
 type V1AdminMachineInventoryLine struct {
-	MachineID          string `json:"machineId"`
-	MachineName        string `json:"machineName"`
-	MachineStatus      string `json:"machineStatus"`
-	ProductID          string `json:"productId"`
-	ProductName        string `json:"productName"`
-	ProductSku         string `json:"productSku"`
-	TotalQuantity      int64  `json:"totalQuantity"`
-	SlotCount          int64  `json:"slotCount"`
-	MaxCapacityAnySlot int32  `json:"maxCapacityAnySlot"`
-	LowStock           bool   `json:"lowStock"`
+	MachineID          string  `json:"machineId"`
+	MachineName        string  `json:"machineName"`
+	MachineStatus      string  `json:"machineStatus"`
+	ProductID          string  `json:"productId"`
+	ProductName        string  `json:"productName"`
+	ProductSku         string  `json:"productSku"`
+	TotalQuantity      int64   `json:"totalQuantity"`
+	SlotCount          int64   `json:"slotCount"`
+	MaxCapacityAnySlot int32   `json:"maxCapacityAnySlot"`
+	LowStock           bool    `json:"lowStock"`
+	CabinetCode        *string `json:"cabinetCode,omitempty"`
+	CabinetIndex       *int32  `json:"cabinetIndex,omitempty"`
 }
 
 // V1AdminMachineInventoryEnvelope is GET /v1/admin/machines/{machineId}/inventory.
@@ -464,18 +498,132 @@ type V1PaymentsListResponse struct {
 	Meta  V1CollectionListMeta `json:"meta"`
 }
 
-// V1AdminMachineListItem is one machine in GET /v1/admin/machines.
+// V1AdminMachineInventorySummary is slot-derived counts for admin machine payloads.
+type V1AdminMachineInventorySummary struct {
+	TotalSlots      int64 `json:"totalSlots"`
+	OccupiedSlots   int64 `json:"occupiedSlots"`
+	LowStockSlots   int64 `json:"lowStockSlots"`
+	OutOfStockSlots int64 `json:"outOfStockSlots"`
+}
+
+// V1AdminAssignedTechnician is an active technician–machine assignment.
+type V1AdminAssignedTechnician struct {
+	TechnicianID string  `json:"technicianId"`
+	DisplayName  string  `json:"displayName"`
+	Role         string  `json:"role"`
+	ValidFrom    string  `json:"validFrom"`
+	ValidTo      *string `json:"validTo,omitempty"`
+}
+
+// V1AdminCurrentOperator is the active operator session on a machine (if any).
+type V1AdminCurrentOperator struct {
+	SessionID             string  `json:"sessionId"`
+	ActorType             string  `json:"actorType"`
+	TechnicianID          *string `json:"technicianId,omitempty"`
+	TechnicianDisplayName *string `json:"technicianDisplayName,omitempty"`
+	UserPrincipal         *string `json:"userPrincipal,omitempty"`
+	SessionStartedAt      string  `json:"sessionStartedAt"`
+	SessionStatus         string  `json:"sessionStatus"`
+	SessionExpiresAt      *string `json:"sessionExpiresAt,omitempty"`
+}
+
+// V1AdminMachineListItem is one machine in GET /v1/admin/machines and GET /v1/admin/machines/{machineId}.
 type V1AdminMachineListItem struct {
-	MachineID         string  `json:"machineId"`
-	OrganizationID    string  `json:"organizationId"`
-	SiteID            string  `json:"siteId"`
-	HardwareProfileID *string `json:"hardwareProfileId,omitempty"`
-	SerialNumber      string  `json:"serialNumber"`
-	Name              string  `json:"name"`
-	Status            string  `json:"status"`
-	CommandSequence   int64   `json:"commandSequence"`
-	CreatedAt         string  `json:"createdAt"`
-	UpdatedAt         string  `json:"updatedAt"`
+	MachineID            string                         `json:"machineId"`
+	MachineName          string                         `json:"machineName"`
+	OrganizationID       string                         `json:"organizationId"`
+	SiteID               string                         `json:"siteId"`
+	SiteName             string                         `json:"siteName"`
+	HardwareProfileID    *string                        `json:"hardwareProfileId,omitempty"`
+	SerialNumber         string                         `json:"serialNumber"`
+	Name                 string                         `json:"name"`
+	Status               string                         `json:"status"`
+	CommandSequence      int64                          `json:"commandSequence"`
+	CreatedAt            string                         `json:"createdAt"`
+	UpdatedAt            string                         `json:"updatedAt"`
+	AndroidID            *string                        `json:"androidId,omitempty"`
+	SimSerial            *string                        `json:"simSerial,omitempty"`
+	SimIccid             *string                        `json:"simIccid,omitempty"`
+	AppVersion           *string                        `json:"appVersion,omitempty"`
+	FirmwareVersion      *string                        `json:"firmwareVersion,omitempty"`
+	LastHeartbeatAt      *string                        `json:"lastHeartbeatAt,omitempty"`
+	EffectiveTimezone    string                         `json:"effectiveTimezone"`
+	AssignedTechnicians  []V1AdminAssignedTechnician    `json:"assignedTechnicians"`
+	CurrentOperator      *V1AdminCurrentOperator        `json:"currentOperator"`
+	InventorySummary     V1AdminMachineInventorySummary `json:"inventorySummary"`
+}
+
+// V1MachineTelemetrySnapshotResponse is GET /v1/machines/{machineId}/telemetry/snapshot.
+// All timestamps are RFC3339Nano strings with explicit timezone offset (responses use UTC, "Z").
+type V1MachineTelemetrySnapshotResponse struct {
+	MachineID         string          `json:"machineId"`
+	OrganizationID    string          `json:"organizationId"`
+	SiteID            string          `json:"siteId"`
+	ReportedState     json.RawMessage `json:"reportedState"`
+	MetricsState      json.RawMessage `json:"metricsState"`
+	LastHeartbeatAt   *string         `json:"lastHeartbeatAt,omitempty"`
+	AppVersion        *string         `json:"appVersion,omitempty"`
+	FirmwareVersion   *string         `json:"firmwareVersion,omitempty"`
+	UpdatedAt         string          `json:"updatedAt"`
+	AndroidID         *string         `json:"androidId,omitempty"`
+	SimSerial         *string         `json:"simSerial,omitempty"`
+	SimIccid          *string         `json:"simIccid,omitempty"`
+	DeviceModel       *string         `json:"deviceModel,omitempty"`
+	OSVersion         *string         `json:"osVersion,omitempty"`
+	LastIdentityAt    *string         `json:"lastIdentityAt,omitempty"`
+	EffectiveTimezone string          `json:"effectiveTimezone"`
+}
+
+// V1MachineTelemetryIncidentItem is one element of GET /v1/machines/{machineId}/telemetry/incidents items.
+type V1MachineTelemetryIncidentItem struct {
+	ID        string          `json:"id"`
+	Severity  string          `json:"severity"`
+	Code      string          `json:"code"`
+	Title     *string         `json:"title,omitempty"`
+	Detail    json.RawMessage `json:"detail"`
+	DedupeKey *string         `json:"dedupeKey,omitempty"`
+	OpenedAt  string          `json:"openedAt"`
+	UpdatedAt string          `json:"updatedAt"`
+}
+
+// V1MachineTelemetryIncidentsMeta is the meta object for telemetry incidents.
+type V1MachineTelemetryIncidentsMeta struct {
+	Limit    int32 `json:"limit"`
+	Returned int   `json:"returned"`
+}
+
+// V1MachineTelemetryIncidentsResponse is GET /v1/machines/{machineId}/telemetry/incidents.
+type V1MachineTelemetryIncidentsResponse struct {
+	Items []V1MachineTelemetryIncidentItem `json:"items"`
+	Meta  V1MachineTelemetryIncidentsMeta   `json:"meta"`
+}
+
+// V1MachineTelemetryRollupItem is one telemetry rollup bucket row.
+type V1MachineTelemetryRollupItem struct {
+	BucketStart  string          `json:"bucketStart"`
+	Granularity  string          `json:"granularity"`
+	MetricKey    string          `json:"metricKey"`
+	SampleCount  int64           `json:"sampleCount"`
+	Sum          *float64        `json:"sum,omitempty"`
+	Min          *float64        `json:"min,omitempty"`
+	Max          *float64        `json:"max,omitempty"`
+	Last         *float64        `json:"last,omitempty"`
+	Extra        json.RawMessage `json:"extra"`
+}
+
+// V1MachineTelemetryRollupsMeta documents the window and query echo for rollup listing.
+type V1MachineTelemetryRollupsMeta struct {
+	Granularity string `json:"granularity"`
+	From        string `json:"from"`
+	To          string `json:"to"`
+	Returned    int    `json:"returned"`
+	Note        string `json:"note"`
+}
+
+// V1MachineTelemetryRollupsResponse is GET /v1/machines/{machineId}/telemetry/rollups.
+type V1MachineTelemetryRollupsResponse struct {
+	Items []V1MachineTelemetryRollupItem `json:"items"`
+	Meta  V1MachineTelemetryRollupsMeta  `json:"meta"`
 }
 
 // V1AdminMachinesListResponse is GET /v1/admin/machines success body.

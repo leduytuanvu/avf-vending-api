@@ -42,11 +42,17 @@ package httpserver
 //	POST /v1/admin/machines/{machineId}/planograms/publish  (requires Idempotency-Key header)
 //	POST /v1/admin/machines/{machineId}/sync               (requires Idempotency-Key header)
 //
+// Admin machine directory (Bearer JWT + platform_admin or org_admin):
+//
+//	GET /v1/admin/machines
+//	GET /v1/admin/machines/{machineId}   (optional organization_id query for platform_admin)
+//
 // Admin inventory reads and stock writes (Bearer JWT + platform_admin or org_admin; stock-adjustments uses writeRL + Idempotency-Key):
 //
-//	GET  /v1/admin/machines/{machineId}/slots
+//	GET  /v1/admin/machines/{machineId}/slots (cabinetCode, cabinetIndex, slotCode; legacy-only machines default cabinet CAB-A)
 //	POST /v1/admin/machines/{machineId}/stock-adjustments
-//	GET  /v1/admin/machines/{machineId}/inventory
+//	GET  /v1/admin/machines/{machineId}/inventory (optional cabinetCode/cabinetIndex when unambiguous)
+//	GET  /v1/admin/machines/{machineId}/inventory-events (append-only ledger; optional from/to, limit, offset)
 //
 // Telemetry reads (Bearer JWT + RequireMachineURLAccess("machineId")):
 //

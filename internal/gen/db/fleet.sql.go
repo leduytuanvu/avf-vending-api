@@ -30,7 +30,7 @@ func (q *Queries) BumpMachineCommandSequence(ctx context.Context, id uuid.UUID) 
 }
 
 const GetMachineByID = `-- name: GetMachineByID :one
-SELECT id, organization_id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, created_at, updated_at
+SELECT id, organization_id, site_id, hardware_profile_id, serial_number, timezone_override, name, status, command_sequence, created_at, updated_at
 FROM machines
 WHERE id = $1
 `
@@ -44,6 +44,7 @@ func (q *Queries) GetMachineByID(ctx context.Context, id uuid.UUID) (Machine, er
 		&i.SiteID,
 		&i.HardwareProfileID,
 		&i.SerialNumber,
+		&i.TimezoneOverride,
 		&i.Name,
 		&i.Status,
 		&i.CommandSequence,
@@ -54,7 +55,7 @@ func (q *Queries) GetMachineByID(ctx context.Context, id uuid.UUID) (Machine, er
 }
 
 const GetMachineByIDForUpdate = `-- name: GetMachineByIDForUpdate :one
-SELECT id, organization_id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, created_at, updated_at
+SELECT id, organization_id, site_id, hardware_profile_id, serial_number, timezone_override, name, status, command_sequence, created_at, updated_at
 FROM machines
 WHERE id = $1
 FOR UPDATE
@@ -69,6 +70,7 @@ func (q *Queries) GetMachineByIDForUpdate(ctx context.Context, id uuid.UUID) (Ma
 		&i.SiteID,
 		&i.HardwareProfileID,
 		&i.SerialNumber,
+		&i.TimezoneOverride,
 		&i.Name,
 		&i.Status,
 		&i.CommandSequence,
@@ -79,7 +81,7 @@ func (q *Queries) GetMachineByIDForUpdate(ctx context.Context, id uuid.UUID) (Ma
 }
 
 const GetOrganizationByID = `-- name: GetOrganizationByID :one
-SELECT id, name, slug, status, created_at, updated_at
+SELECT id, name, slug, status, default_timezone, created_at, updated_at
 FROM organizations
 WHERE id = $1
 `
@@ -92,6 +94,7 @@ func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organi
 		&i.Name,
 		&i.Slug,
 		&i.Status,
+		&i.DefaultTimezone,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -99,7 +102,7 @@ func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organi
 }
 
 const GetSiteByID = `-- name: GetSiteByID :one
-SELECT id, organization_id, region_id, name, address, created_at
+SELECT id, organization_id, region_id, name, address, timezone, created_at
 FROM sites
 WHERE id = $1
 `
@@ -113,6 +116,7 @@ func (q *Queries) GetSiteByID(ctx context.Context, id uuid.UUID) (Site, error) {
 		&i.RegionID,
 		&i.Name,
 		&i.Address,
+		&i.Timezone,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -169,6 +173,7 @@ RETURNING
     site_id,
     hardware_profile_id,
     serial_number,
+    timezone_override,
     name,
     status,
     command_sequence,
@@ -201,6 +206,7 @@ func (q *Queries) InsertMachine(ctx context.Context, arg InsertMachineParams) (M
 		&i.SiteID,
 		&i.HardwareProfileID,
 		&i.SerialNumber,
+		&i.TimezoneOverride,
 		&i.Name,
 		&i.Status,
 		&i.CommandSequence,
@@ -258,6 +264,7 @@ SELECT
     site_id,
     hardware_profile_id,
     serial_number,
+    timezone_override,
     name,
     status,
     command_sequence,
@@ -285,6 +292,7 @@ func (q *Queries) ListMachinesByOrganizationID(ctx context.Context, organization
 			&i.SiteID,
 			&i.HardwareProfileID,
 			&i.SerialNumber,
+			&i.TimezoneOverride,
 			&i.Name,
 			&i.Status,
 			&i.CommandSequence,
@@ -308,6 +316,7 @@ SELECT
     site_id,
     hardware_profile_id,
     serial_number,
+    timezone_override,
     name,
     status,
     command_sequence,
@@ -341,6 +350,7 @@ func (q *Queries) ListMachinesBySiteAndOrganization(ctx context.Context, arg Lis
 			&i.SiteID,
 			&i.HardwareProfileID,
 			&i.SerialNumber,
+			&i.TimezoneOverride,
 			&i.Name,
 			&i.Status,
 			&i.CommandSequence,
@@ -364,6 +374,7 @@ SELECT
     m.site_id,
     m.hardware_profile_id,
     m.serial_number,
+    m.timezone_override,
     m.name,
     m.status,
     m.command_sequence,
@@ -403,6 +414,7 @@ func (q *Queries) ListMachinesForTechnicianExternalSubject(ctx context.Context, 
 			&i.SiteID,
 			&i.HardwareProfileID,
 			&i.SerialNumber,
+			&i.TimezoneOverride,
 			&i.Name,
 			&i.Status,
 			&i.CommandSequence,
@@ -426,6 +438,7 @@ SELECT
     m.site_id,
     m.hardware_profile_id,
     m.serial_number,
+    m.timezone_override,
     m.name,
     m.status,
     m.command_sequence,
@@ -458,6 +471,7 @@ func (q *Queries) ListMachinesForTechnicianID(ctx context.Context, technicianID 
 			&i.SiteID,
 			&i.HardwareProfileID,
 			&i.SerialNumber,
+			&i.TimezoneOverride,
 			&i.Name,
 			&i.Status,
 			&i.CommandSequence,
@@ -517,6 +531,7 @@ RETURNING
     site_id,
     hardware_profile_id,
     serial_number,
+    timezone_override,
     name,
     status,
     command_sequence,
@@ -547,6 +562,7 @@ func (q *Queries) UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachin
 		&i.SiteID,
 		&i.HardwareProfileID,
 		&i.SerialNumber,
+		&i.TimezoneOverride,
 		&i.Name,
 		&i.Status,
 		&i.CommandSequence,

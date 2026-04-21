@@ -1,4 +1,4 @@
--- Canonical DDL mirror of goose migrations (00002 platform, 00004 device ingest, 00005 catalog/pricing/promotions, 00006 command protocol traceability, 00007 financial ledger reconciliation, 00008 machine operator sessions, 00009 operator action attribution correlation, 00010 operator session activity end reason, 00011 operator domain resources, 00014 platform auth API accounts, 00015 machine cabinets/assortments/inventory, 00016 machine slot layouts/configs) for sqlc.
+-- Canonical DDL mirror of goose migrations (00002 platform, 00004 device ingest, 00005 catalog/pricing/promotions, 00006 command protocol traceability, 00007 financial ledger reconciliation, 00008 machine operator sessions, 00009 operator action attribution correlation, 00010 operator session activity end reason, 00011 operator domain resources, 00014 platform auth API accounts, 00015 machine cabinets/assortments/inventory, 00016 machine slot layouts/configs, 00017 platform timezones and machine identity snapshot columns, 00018 machine cabinet index/slot_capacity/status, 00019 inventory ledger columns and refill_session_lines) for sqlc.
 -- When changing schema, update migrations first, then sync this file.
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
@@ -8,6 +8,7 @@ CREATE TABLE organizations (
     name text NOT NULL,
     slug text NOT NULL,
     status text NOT NULL CHECK (status IN ('active', 'suspended')),
+    default_timezone text NOT NULL DEFAULT 'UTC',
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -31,6 +32,7 @@ CREATE TABLE sites (
     region_id uuid REFERENCES regions (id) ON DELETE SET NULL,
     name text NOT NULL,
     address jsonb NOT NULL DEFAULT '{}'::jsonb,
+    timezone text NOT NULL DEFAULT 'UTC',
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -55,6 +57,7 @@ CREATE TABLE machines (
     site_id uuid NOT NULL REFERENCES sites (id) ON DELETE RESTRICT,
     hardware_profile_id uuid REFERENCES machine_hardware_profiles (id) ON DELETE SET NULL,
     serial_number text NOT NULL,
+    timezone_override text NULL,
     name text NOT NULL DEFAULT '',
     status text NOT NULL CHECK (status IN ('provisioning', 'online', 'offline', 'maintenance', 'retired')),
     command_sequence bigint NOT NULL DEFAULT 0,
@@ -1054,6 +1057,12 @@ CREATE TABLE machine_current_snapshot (
     last_heartbeat_at timestamptz,
     app_version text,
     firmware_version text,
+    android_id text NULL,
+    sim_serial text NULL,
+    sim_iccid text NULL,
+    device_model text NULL,
+    os_version text NULL,
+    last_identity_at timestamptz NULL,
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -1200,6 +1209,32 @@ WHERE
 
 COMMENT ON TABLE refill_sessions IS 'Field refill visit context; link operator_session_id for attribution.';
 
+CREATE TABLE refill_session_lines (
+    id bigserial PRIMARY KEY,
+    refill_session_id uuid NOT NULL REFERENCES refill_sessions (id) ON DELETE CASCADE,
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    cabinet_code text NOT NULL,
+    slot_code text NOT NULL,
+    product_id uuid,
+    before_quantity int NOT NULL,
+    added_quantity int NOT NULL,
+    after_quantity int NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ck_refill_session_lines_codes_nonempty CHECK (
+        btrim(cabinet_code) <> ''
+        AND btrim(slot_code) <> ''
+    ),
+    CONSTRAINT ck_refill_session_lines_nonneg CHECK (
+        before_quantity >= 0
+        AND after_quantity >= 0
+    ),
+    CONSTRAINT fk_refill_session_lines_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE SET NULL
+);
+
+CREATE INDEX ix_refill_session_lines_session ON refill_session_lines (refill_session_id, created_at DESC);
+
+COMMENT ON TABLE refill_session_lines IS 'Per-slot deltas recorded during a refill session; append-only.';
+
 CREATE TABLE machine_configs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
@@ -1301,6 +1336,9 @@ CREATE TABLE machine_cabinets (
     cabinet_code text NOT NULL,
     title text NOT NULL DEFAULT '',
     sort_order int NOT NULL DEFAULT 0,
+    cabinet_index int NOT NULL DEFAULT 0,
+    slot_capacity int CHECK (slot_capacity IS NULL OR slot_capacity >= 0),
+    status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'maintenance')),
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -1390,6 +1428,7 @@ CREATE TABLE inventory_events (
     organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     machine_cabinet_id uuid REFERENCES machine_cabinets (id) ON DELETE SET NULL,
+    cabinet_code text,
     slot_code text,
     product_id uuid,
     event_type text NOT NULL CHECK (
@@ -1407,17 +1446,24 @@ CREATE TABLE inventory_events (
             'other'
         )
     ),
+    reason_code text,
+    quantity_before int,
     quantity_delta int NOT NULL,
     quantity_after int,
+    unit_price_minor bigint NOT NULL DEFAULT 0,
+    currency text NOT NULL DEFAULT 'USD',
     correlation_id uuid,
     operator_session_id uuid REFERENCES machine_operator_sessions (id) ON DELETE SET NULL,
+    technician_id uuid REFERENCES technicians (id) ON DELETE SET NULL,
     refill_session_id uuid REFERENCES refill_sessions (id) ON DELETE SET NULL,
     inventory_count_session_id uuid REFERENCES inventory_count_sessions (id) ON DELETE SET NULL,
     occurred_at timestamptz NOT NULL DEFAULT now(),
+    recorded_at timestamptz NOT NULL DEFAULT now(),
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     CONSTRAINT fk_inventory_events_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
     CONSTRAINT fk_inventory_events_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE SET NULL,
-    CONSTRAINT ck_inventory_events_slot_code_nonempty CHECK (slot_code IS NULL OR btrim(slot_code) <> '')
+    CONSTRAINT ck_inventory_events_slot_code_nonempty CHECK (slot_code IS NULL OR btrim(slot_code) <> ''),
+    CONSTRAINT ck_inventory_events_cabinet_code_nonempty CHECK (cabinet_code IS NULL OR btrim(cabinet_code) <> '')
 );
 
 CREATE INDEX ix_inventory_events_machine_occurred ON inventory_events (machine_id, occurred_at DESC);

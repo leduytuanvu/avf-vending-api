@@ -263,16 +263,23 @@ type InventoryEvent struct {
 	OrganizationID          uuid.UUID
 	MachineID               uuid.UUID
 	MachineCabinetID        pgtype.UUID
+	CabinetCode             pgtype.Text
 	SlotCode                pgtype.Text
 	ProductID               pgtype.UUID
 	EventType               string
+	ReasonCode              pgtype.Text
+	QuantityBefore          pgtype.Int4
 	QuantityDelta           int32
 	QuantityAfter           pgtype.Int4
+	UnitPriceMinor          int64
+	Currency                string
 	CorrelationID           pgtype.UUID
 	OperatorSessionID       pgtype.UUID
+	TechnicianID            pgtype.UUID
 	RefillSessionID         pgtype.UUID
 	InventoryCountSessionID pgtype.UUID
 	OccurredAt              time.Time
+	RecordedAt              time.Time
 	Metadata                []byte
 }
 
@@ -282,6 +289,7 @@ type Machine struct {
 	SiteID            uuid.UUID
 	HardwareProfileID pgtype.UUID
 	SerialNumber      string
+	TimezoneOverride  pgtype.Text
 	Name              string
 	Status            string
 	CommandSequence   int64
@@ -318,14 +326,17 @@ type MachineAssortmentBinding struct {
 
 // Logical cabinets on a machine; cabinet_code is stable within machine_id.
 type MachineCabinet struct {
-	ID          uuid.UUID
-	MachineID   uuid.UUID
-	CabinetCode string
-	Title       string
-	SortOrder   int32
-	Metadata    []byte
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID           uuid.UUID
+	MachineID    uuid.UUID
+	CabinetCode  string
+	Title        string
+	SortOrder    int32
+	CabinetIndex int32
+	SlotCapacity pgtype.Int4
+	Status       string
+	Metadata     []byte
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // Per-send attempt for a command_ledger row; machine_id denormalized for index locality—must match parent command row (enforced in application).
@@ -377,6 +388,12 @@ type MachineCurrentSnapshot struct {
 	LastHeartbeatAt     pgtype.Timestamptz
 	AppVersion          pgtype.Text
 	FirmwareVersion     pgtype.Text
+	AndroidID           pgtype.Text
+	SimSerial           pgtype.Text
+	SimIccid            pgtype.Text
+	DeviceModel         pgtype.Text
+	OsVersion           pgtype.Text
+	LastIdentityAt      pgtype.Timestamptz
 	UpdatedAt           time.Time
 }
 
@@ -568,12 +585,13 @@ type Order struct {
 }
 
 type Organization struct {
-	ID        uuid.UUID
-	Name      string
-	Slug      string
-	Status    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID              uuid.UUID
+	Name            string
+	Slug            string
+	Status          string
+	DefaultTimezone string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type OtaArtifact struct {
@@ -811,6 +829,20 @@ type RefillSession struct {
 	CreatedAt         time.Time
 }
 
+// Per-slot deltas recorded during a refill session; append-only.
+type RefillSessionLine struct {
+	ID              int64
+	RefillSessionID uuid.UUID
+	OrganizationID  uuid.UUID
+	CabinetCode     string
+	SlotCode        string
+	ProductID       pgtype.UUID
+	BeforeQuantity  int32
+	AddedQuantity   int32
+	AfterQuantity   int32
+	CreatedAt       time.Time
+}
+
 type Refund struct {
 	ID                   uuid.UUID
 	PaymentID            uuid.UUID
@@ -849,6 +881,7 @@ type Site struct {
 	RegionID       pgtype.UUID
 	Name           string
 	Address        []byte
+	Timezone       string
 	CreatedAt      time.Time
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -41,6 +42,7 @@ func mountAdminInventoryRoutes(r chi.Router, app *api.HTTPApplication, writeRL f
 	svc := app.InventoryAdmin
 	r.Get("/machines/{machineId}/slots", listAdminMachineSlots(svc))
 	r.Get("/machines/{machineId}/inventory", getAdminMachineInventory(svc))
+	r.Get("/machines/{machineId}/inventory-events", listAdminMachineInventoryEvents(app))
 	r.With(writeRL).Post("/machines/{machineId}/stock-adjustments", postAdminMachineStockAdjustments(app))
 	r.With(writeRL).Put("/machines/{machineId}/topology", putAdminMachineTopology(app))
 	r.With(writeRL).Put("/machines/{machineId}/planograms/draft", putAdminMachinePlanogramDraft(app))
@@ -80,6 +82,7 @@ func listAdminMachineSlots(svc *appinventoryadmin.Service) http.HandlerFunc {
 				PlanogramName:            row.PlanogramName,
 				SlotIndex:                row.SlotIndex,
 				CabinetCode:              row.CabinetCode,
+				CabinetIndex:             row.CabinetIndex,
 				SlotCode:                 row.SlotCode,
 				CurrentQuantity:          row.CurrentStock,
 				CurrentStock:             row.CurrentStock,
@@ -91,7 +94,7 @@ func listAdminMachineSlots(svc *appinventoryadmin.Service) http.HandlerFunc {
 				Currency:                 row.Currency,
 				Status:                   row.Status,
 				PlanogramRevisionApplied: row.PlanogramRevision,
-				UpdatedAt:                row.UpdatedAt.UTC().Format(timeRFC3339Nano),
+				UpdatedAt:                formatAPITimeRFC3339Nano(row.UpdatedAt),
 				ProductID:                pid,
 				ProductSku:               strPtrOrNil(row.ProductSku),
 				ProductName:              strPtrOrNil(row.ProductName),
@@ -114,6 +117,7 @@ func strPtrOrNil(s string) *string {
 type stockAdjustmentsRequest struct {
 	OperatorSessionID string                     `json:"operator_session_id"`
 	Reason            string                     `json:"reason"`
+	OccurredAt        *string                    `json:"occurredAt,omitempty"`
 	Items             []stockAdjustmentsItemJSON `json:"items"`
 }
 
@@ -172,6 +176,20 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 			return
 		}
 
+		var occurredAt *time.Time
+		if body.OccurredAt != nil && strings.TrimSpace(*body.OccurredAt) != "" {
+			t, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(*body.OccurredAt))
+			if err != nil {
+				t, err = time.Parse(time.RFC3339, strings.TrimSpace(*body.OccurredAt))
+			}
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_occurred_at", "occurredAt must be RFC3339 or RFC3339Nano with timezone")
+				return
+			}
+			tu := t.UTC()
+			occurredAt = &tu
+		}
+
 		q := db.New(app.TelemetryStore.Pool())
 		items := make([]inventoryapp.AdjustmentItem, 0, len(body.Items))
 		for _, it := range body.Items {
@@ -204,6 +222,7 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 				SlotIndex:        it.SlotIndex,
 				QuantityBefore:   it.QuantityBefore,
 				QuantityAfter:    it.QuantityAfter,
+				CabinetCode:      strings.TrimSpace(it.CabinetCode),
 				SlotCode:         strings.TrimSpace(it.SlotCode),
 				MachineCabinetID: cabID,
 				ProductID:        pid,
@@ -218,6 +237,7 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 			CorrelationID:     correlationUUIDFromRequest(r.Context()),
 			Reason:            strings.TrimSpace(body.Reason),
 			IdempotencyKey:    idem,
+			OccurredAt:        occurredAt,
 			Items:             items,
 		})
 		if err != nil {
@@ -260,7 +280,7 @@ func getAdminMachineInventory(svc *appinventoryadmin.Service) http.HandlerFunc {
 		}
 		items := make([]V1AdminMachineInventoryLine, 0, len(rows))
 		for _, row := range rows {
-			items = append(items, V1AdminMachineInventoryLine{
+			line := V1AdminMachineInventoryLine{
 				MachineID:          head.ID.String(),
 				MachineName:        head.Name,
 				MachineStatus:      head.Status,
@@ -271,10 +291,153 @@ func getAdminMachineInventory(svc *appinventoryadmin.Service) http.HandlerFunc {
 				SlotCount:          row.SlotCount,
 				MaxCapacityAnySlot: row.MaxCapacityAnySlot,
 				LowStock:           row.LowStock,
-			})
+			}
+			if row.CabinetCode != "" {
+				cc := row.CabinetCode
+				line.CabinetCode = &cc
+				ci := row.CabinetIndex
+				line.CabinetIndex = &ci
+			}
+			items = append(items, line)
 		}
 		writeJSON(w, http.StatusOK, V1AdminMachineInventoryEnvelope{Items: items})
 	}
+}
+
+func listAdminMachineInventoryEvents(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app == nil || app.InventoryAdmin == nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "inventory admin not configured")
+			return
+		}
+		if app.TelemetryStore == nil || app.TelemetryStore.Pool() == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		mid, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil || mid == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		_, err = resolveInventoryMachine(r, app.InventoryAdmin, mid)
+		if err != nil {
+			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
+		limit, offset, err := parseAdminLimitOffset(r)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", err.Error())
+			return
+		}
+		fromT, hasFrom, err := parseOptionalQueryTime(r, "from")
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_from", err.Error())
+			return
+		}
+		toT, hasTo, err := parseOptionalQueryTime(r, "to")
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_to", err.Error())
+			return
+		}
+
+		q := db.New(app.TelemetryStore.Pool())
+		rows, err := q.InventoryAdminListInventoryEventsByMachine(r.Context(), db.InventoryAdminListInventoryEventsByMachineParams{
+			MachineID: mid,
+			Column2:   hasFrom,
+			Column3:   fromT,
+			Column4:   hasTo,
+			Column5:   toT,
+			Limit:     limit,
+			Offset:    offset,
+		})
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		out := make([]V1AdminInventoryEvent, 0, len(rows))
+		for _, row := range rows {
+			out = append(out, mapInventoryEventRow(row))
+		}
+		writeJSON(w, http.StatusOK, V1AdminInventoryEventListEnvelope{Items: out})
+	}
+}
+
+func parseOptionalQueryTime(r *http.Request, name string) (time.Time, bool, error) {
+	v := strings.TrimSpace(r.URL.Query().Get(name))
+	if v == "" {
+		return time.Time{}, false, nil
+	}
+	t, err := time.Parse(time.RFC3339Nano, v)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, v)
+	}
+	if err != nil {
+		return time.Time{}, false, fmt.Errorf("%s must be RFC3339 or RFC3339Nano with timezone", name)
+	}
+	return t.UTC(), true, nil
+}
+
+func mapInventoryEventRow(row db.InventoryAdminListInventoryEventsByMachineRow) V1AdminInventoryEvent {
+	ev := V1AdminInventoryEvent{
+		ID:             row.ID,
+		OrganizationID: row.OrganizationID.String(),
+		MachineID:      row.MachineID.String(),
+		EventType:      row.EventType,
+		QuantityDelta:  row.QuantityDelta,
+		UnitPriceMinor: row.UnitPriceMinor,
+		Currency:       row.Currency,
+		OccurredAt:     formatAPITimeRFC3339Nano(row.OccurredAt),
+		RecordedAt:     formatAPITimeRFC3339Nano(row.RecordedAt),
+	}
+	if row.CabinetCode.Valid {
+		s := row.CabinetCode.String
+		ev.CabinetCode = &s
+	}
+	if row.SlotCode.Valid {
+		s := row.SlotCode.String
+		ev.SlotCode = &s
+	}
+	if row.ProductID.Valid {
+		s := uuid.UUID(row.ProductID.Bytes).String()
+		ev.ProductID = &s
+	}
+	if row.ReasonCode.Valid {
+		s := row.ReasonCode.String
+		ev.ReasonCode = &s
+	}
+	if row.QuantityBefore.Valid {
+		x := row.QuantityBefore.Int32
+		ev.QuantityBefore = &x
+	}
+	if row.QuantityAfter.Valid {
+		x := row.QuantityAfter.Int32
+		ev.QuantityAfter = &x
+	}
+	if row.CorrelationID.Valid {
+		s := uuid.UUID(row.CorrelationID.Bytes).String()
+		ev.CorrelationID = &s
+	}
+	if row.OperatorSessionID.Valid {
+		s := uuid.UUID(row.OperatorSessionID.Bytes).String()
+		ev.OperatorSessionID = &s
+	}
+	if row.TechnicianID.Valid {
+		s := uuid.UUID(row.TechnicianID.Bytes).String()
+		ev.TechnicianID = &s
+	}
+	if row.TechnicianDisplayName.Valid {
+		s := row.TechnicianDisplayName.String
+		ev.TechnicianDisplayName = &s
+	}
+	if row.RefillSessionID.Valid {
+		s := uuid.UUID(row.RefillSessionID.Bytes).String()
+		ev.RefillSessionID = &s
+	}
+	if row.InventoryCountSessionID.Valid {
+		s := uuid.UUID(row.InventoryCountSessionID.Bytes).String()
+		ev.InventoryCountSessionID = &s
+	}
+	return ev
 }
 
 func resolveInventoryMachine(r *http.Request, svc *appinventoryadmin.Service, machineID uuid.UUID) (appinventoryadmin.MachineHead, error) {

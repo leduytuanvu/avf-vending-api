@@ -9,8 +9,24 @@ SELECT
     m.status,
     m.command_sequence,
     m.created_at,
-    m.updated_at
+    m.updated_at,
+    s.name AS site_name,
+    snap.android_id,
+    snap.sim_serial,
+    snap.sim_iccid,
+    snap.app_version,
+    snap.firmware_version,
+    snap.last_heartbeat_at,
+    COALESCE(
+        NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
+        s.timezone,
+        o.default_timezone
+    ) AS effective_timezone
 FROM machines m
+INNER JOIN sites s ON s.id = m.site_id
+    AND s.organization_id = m.organization_id
+INNER JOIN organizations o ON o.id = m.organization_id
+LEFT JOIN machine_current_snapshot snap ON snap.machine_id = m.id
 WHERE
     m.organization_id = $1
     AND ($2::boolean IS FALSE OR m.site_id = $3::uuid)
@@ -22,6 +38,76 @@ ORDER BY
     m.updated_at DESC,
     m.name ASC
 LIMIT $10 OFFSET $11;
+
+-- name: FleetAdminGetMachineDetail :one
+SELECT
+    m.id,
+    m.organization_id,
+    m.site_id,
+    m.hardware_profile_id,
+    m.serial_number,
+    m.name,
+    m.status,
+    m.command_sequence,
+    m.created_at,
+    m.updated_at,
+    s.name AS site_name,
+    snap.android_id,
+    snap.sim_serial,
+    snap.sim_iccid,
+    snap.app_version,
+    snap.firmware_version,
+    snap.last_heartbeat_at,
+    COALESCE(
+        NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
+        s.timezone,
+        o.default_timezone
+    ) AS effective_timezone
+FROM machines m
+INNER JOIN sites s ON s.id = m.site_id
+    AND s.organization_id = m.organization_id
+INNER JOIN organizations o ON o.id = m.organization_id
+LEFT JOIN machine_current_snapshot snap ON snap.machine_id = m.id
+WHERE
+    m.id = $1
+    AND m.organization_id = $2;
+
+-- name: FleetAdminListViewOperatorsForMachines :many
+SELECT
+    v.machine_id,
+    v.operator_session_id,
+    v.actor_type,
+    v.technician_id,
+    v.technician_display_name,
+    v.user_principal,
+    v.session_started_at,
+    v.session_status,
+    v.session_expires_at
+FROM v_machine_current_operator v
+WHERE
+    v.organization_id = $1
+    AND v.machine_id = ANY($2::uuid[]);
+
+-- name: FleetAdminListActiveTechnicianAssignmentsForMachines :many
+SELECT
+    tma.machine_id,
+    tma.technician_id,
+    t.display_name AS technician_display_name,
+    tma.role,
+    tma.valid_from,
+    tma.valid_to
+FROM technician_machine_assignments tma
+INNER JOIN technicians t ON t.id = tma.technician_id
+WHERE
+    t.organization_id = $1
+    AND tma.machine_id = ANY($2::uuid[])
+    AND (
+        tma.valid_to IS NULL
+        OR tma.valid_to > now()
+    )
+ORDER BY
+    tma.machine_id ASC,
+    t.display_name ASC;
 
 -- name: FleetAdminCountMachines :one
 SELECT
@@ -214,13 +300,19 @@ INSERT INTO machine_cabinets (
     cabinet_code,
     title,
     sort_order,
+    cabinet_index,
+    slot_capacity,
+    status,
     metadata
 )
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (machine_id, cabinet_code) DO UPDATE
 SET
     title = EXCLUDED.title,
     sort_order = EXCLUDED.sort_order,
+    cabinet_index = EXCLUDED.cabinet_index,
+    slot_capacity = EXCLUDED.slot_capacity,
+    status = EXCLUDED.status,
     metadata = EXCLUDED.metadata,
     updated_at = now()
 RETURNING
@@ -229,6 +321,9 @@ RETURNING
     cabinet_code,
     title,
     sort_order,
+    cabinet_index,
+    slot_capacity,
+    status,
     metadata,
     created_at,
     updated_at;
@@ -492,6 +587,9 @@ SELECT
     cabinet_code,
     title,
     sort_order,
+    cabinet_index,
+    slot_capacity,
+    status,
     metadata,
     created_at,
     updated_at
@@ -510,6 +608,9 @@ SELECT
     cabinet_code,
     title,
     sort_order,
+    cabinet_index,
+    slot_capacity,
+    status,
     metadata,
     created_at,
     updated_at

@@ -26,6 +26,7 @@ type ShadowView struct {
 // MachinesAdminService is the application port for admin machine operations.
 type MachinesAdminService interface {
 	ListMachines(ctx context.Context, scope listscope.AdminFleet) (*appfleetadmin.MachinesListResponse, error)
+	GetMachine(ctx context.Context, organizationID, machineID uuid.UUID) (*appfleetadmin.AdminMachineListItem, error)
 }
 
 // TechniciansAdminService is the application port for admin technician operations.

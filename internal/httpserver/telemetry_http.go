@@ -41,18 +41,25 @@ func telemetrySnapshotHandler(st *postgres.Store) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"machine_id":        row.MachineID,
-			"organization_id":   row.OrganizationID,
-			"site_id":           row.SiteID,
-			"reported_state":    json.RawMessage(row.ReportedState),
-			"metrics_state":     json.RawMessage(row.MetricsState),
-			"last_heartbeat_at": row.LastHeartbeatAt,
-			"app_version":       row.AppVersion,
-			"firmware_version":  row.FirmwareVersion,
-			"updated_at":        row.UpdatedAt,
-		})
+		resp := V1MachineTelemetrySnapshotResponse{
+			MachineID:         row.MachineID.String(),
+			OrganizationID:  row.OrganizationID.String(),
+			SiteID:            row.SiteID.String(),
+			ReportedState:     json.RawMessage(row.ReportedState),
+			MetricsState:      json.RawMessage(row.MetricsState),
+			LastHeartbeatAt:   formatAPITimeRFC3339NanoPtr(row.LastHeartbeatAt),
+			AppVersion:        row.AppVersion,
+			FirmwareVersion:   row.FirmwareVersion,
+			UpdatedAt:         formatAPITimeRFC3339Nano(row.UpdatedAt),
+			AndroidID:         row.AndroidID,
+			SimSerial:         row.SimSerial,
+			SimIccid:          row.SimIccid,
+			DeviceModel:       row.DeviceModel,
+			OSVersion:         row.OSVersion,
+			LastIdentityAt:    formatAPITimeRFC3339NanoPtr(row.LastIdentityAt),
+			EffectiveTimezone: row.EffectiveTimezone,
+		}
+		writeJSON(w, http.StatusOK, resp)
 	}
 }
 
@@ -74,21 +81,26 @@ func telemetryIncidentsHandler(st *postgres.Store) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		items := make([]map[string]any, 0, len(rows))
+		items := make([]V1MachineTelemetryIncidentItem, 0, len(rows))
 		for _, x := range rows {
-			items = append(items, map[string]any{
-				"id":         x.ID,
-				"severity":   x.Severity,
-				"code":       x.Code,
-				"title":      x.Title,
-				"detail":     json.RawMessage(x.Detail),
-				"dedupe_key": x.DedupeKey,
-				"opened_at":  x.OpenedAt,
-				"updated_at": x.UpdatedAt,
+			items = append(items, V1MachineTelemetryIncidentItem{
+				ID:        x.ID.String(),
+				Severity:  x.Severity,
+				Code:      x.Code,
+				Title:     x.Title,
+				Detail:    json.RawMessage(x.Detail),
+				DedupeKey: x.DedupeKey,
+				OpenedAt:  formatAPITimeRFC3339Nano(x.OpenedAt),
+				UpdatedAt: formatAPITimeRFC3339Nano(x.UpdatedAt),
 			})
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"items": items, "meta": map[string]any{"limit": limit, "returned": len(items)}})
+		writeJSON(w, http.StatusOK, V1MachineTelemetryIncidentsResponse{
+			Items: items,
+			Meta: V1MachineTelemetryIncidentsMeta{
+				Limit:    limit,
+				Returned: len(items),
+			},
+		})
 	}
 }
 
@@ -107,12 +119,16 @@ func telemetryRollupsHandler(st *postgres.Store) http.HandlerFunc {
 		from := now.Add(-24 * time.Hour)
 		to := now
 		if v := r.URL.Query().Get("from"); v != "" {
-			if t, err := time.Parse(time.RFC3339, v); err == nil {
+			if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+				from = t.UTC()
+			} else if t, err := time.Parse(time.RFC3339, v); err == nil {
 				from = t.UTC()
 			}
 		}
 		if v := r.URL.Query().Get("to"); v != "" {
-			if t, err := time.Parse(time.RFC3339, v); err == nil {
+			if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+				to = t.UTC()
+			} else if t, err := time.Parse(time.RFC3339, v); err == nil {
 				to = t.UTC()
 			}
 		}
@@ -122,29 +138,28 @@ func telemetryRollupsHandler(st *postgres.Store) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		items := make([]map[string]any, 0, len(rows))
+		items := make([]V1MachineTelemetryRollupItem, 0, len(rows))
 		for _, x := range rows {
-			items = append(items, map[string]any{
-				"bucket_start": x.BucketStart,
-				"granularity":  x.Granularity,
-				"metric_key":   x.MetricKey,
-				"sample_count": x.SampleCount,
-				"sum":          x.SumVal,
-				"min":          x.MinVal,
-				"max":          x.MaxVal,
-				"last":         x.LastVal,
-				"extra":        json.RawMessage(x.Extra),
+			items = append(items, V1MachineTelemetryRollupItem{
+				BucketStart: formatAPITimeRFC3339Nano(x.BucketStart),
+				Granularity: x.Granularity,
+				MetricKey:   x.MetricKey,
+				SampleCount: x.SampleCount,
+				Sum:         x.SumVal,
+				Min:         x.MinVal,
+				Max:         x.MaxVal,
+				Last:        x.LastVal,
+				Extra:       json.RawMessage(x.Extra),
 			})
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"items": items,
-			"meta": map[string]any{
-				"granularity": granularity,
-				"from":        from,
-				"to":          to,
-				"returned":    len(items),
-				"note":        "Rollup buckets only — not raw MQTT telemetry history.",
+		writeJSON(w, http.StatusOK, V1MachineTelemetryRollupsResponse{
+			Items: items,
+			Meta: V1MachineTelemetryRollupsMeta{
+				Granularity: granularity,
+				From:        formatAPITimeRFC3339Nano(from),
+				To:          formatAPITimeRFC3339Nano(to),
+				Returned:    len(items),
+				Note:        "Rollup buckets only — not raw MQTT telemetry history.",
 			},
 		})
 	}

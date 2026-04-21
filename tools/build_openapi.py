@@ -27,6 +27,13 @@ _U = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
 _U2 = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 _U3 = "7c9e6679-7425-40de-944b-e07fc1f90ae7"
 
+# Shared OpenAPI schema for API timestamps (handlers emit time.RFC3339Nano in UTC).
+_TS_SCHEMA: dict[str, Any] = {
+    "type": "string",
+    "format": "date-time",
+    "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+}
+
 
 def parse_general_info(src: str) -> dict[str, str]:
     out: dict[str, str] = {}
@@ -245,7 +252,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
         "required": ["limit", "offset", "returned", "total"],
     }
     uuid_s = {"type": "string", "format": "uuid"}
-    ts = {"type": "string", "format": "date-time"}
+    ts = dict(_TS_SCHEMA)
     return {
         "V1CollectionListMeta": meta,
         "V1OrderListItem": {
@@ -325,12 +332,49 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             },
             "required": ["items", "meta"],
         },
+        "V1AdminMachineInventorySummary": {
+            "type": "object",
+            "properties": {
+                "totalSlots": {"type": "integer", "format": "int64"},
+                "occupiedSlots": {"type": "integer", "format": "int64"},
+                "lowStockSlots": {"type": "integer", "format": "int64"},
+                "outOfStockSlots": {"type": "integer", "format": "int64"},
+            },
+            "required": ["totalSlots", "occupiedSlots", "lowStockSlots", "outOfStockSlots"],
+        },
+        "V1AdminAssignedTechnician": {
+            "type": "object",
+            "properties": {
+                "technicianId": uuid_s,
+                "displayName": {"type": "string"},
+                "role": {"type": "string"},
+                "validFrom": ts,
+                "validTo": ts,
+            },
+            "required": ["technicianId", "displayName", "role", "validFrom"],
+        },
+        "V1AdminCurrentOperator": {
+            "type": "object",
+            "properties": {
+                "sessionId": uuid_s,
+                "actorType": {"type": "string"},
+                "technicianId": uuid_s,
+                "technicianDisplayName": {"type": "string"},
+                "userPrincipal": {"type": "string"},
+                "sessionStartedAt": ts,
+                "sessionStatus": {"type": "string"},
+                "sessionExpiresAt": ts,
+            },
+            "required": ["sessionId", "actorType", "sessionStartedAt", "sessionStatus"],
+        },
         "V1AdminMachineListItem": {
             "type": "object",
             "properties": {
                 "machineId": uuid_s,
+                "machineName": {"type": "string"},
                 "organizationId": uuid_s,
                 "siteId": uuid_s,
+                "siteName": {"type": "string"},
                 "hardwareProfileId": uuid_s,
                 "serialNumber": {"type": "string"},
                 "name": {"type": "string"},
@@ -338,18 +382,142 @@ def operational_collection_component_schemas() -> dict[str, Any]:
                 "commandSequence": {"type": "integer", "format": "int64"},
                 "createdAt": ts,
                 "updatedAt": ts,
+                "androidId": {"type": "string"},
+                "simSerial": {"type": "string"},
+                "simIccid": {"type": "string"},
+                "appVersion": {"type": "string"},
+                "firmwareVersion": {"type": "string"},
+                "lastHeartbeatAt": ts,
+                "effectiveTimezone": {"type": "string"},
+                "assignedTechnicians": {
+                    "type": "array",
+                    "items": {"$ref": "#/components/schemas/V1AdminAssignedTechnician"},
+                },
+                "currentOperator": {
+                    "nullable": True,
+                    "allOf": [{"$ref": "#/components/schemas/V1AdminCurrentOperator"}],
+                },
+                "inventorySummary": {"$ref": "#/components/schemas/V1AdminMachineInventorySummary"},
             },
             "required": [
                 "machineId",
+                "machineName",
                 "organizationId",
                 "siteId",
+                "siteName",
                 "serialNumber",
                 "name",
                 "status",
                 "commandSequence",
                 "createdAt",
                 "updatedAt",
+                "effectiveTimezone",
+                "assignedTechnicians",
+                "inventorySummary",
             ],
+        },
+        "V1MachineTelemetrySnapshotResponse": {
+            "type": "object",
+            "properties": {
+                "machineId": uuid_s,
+                "organizationId": uuid_s,
+                "siteId": uuid_s,
+                "reportedState": {"type": "object", "additionalProperties": True},
+                "metricsState": {"type": "object", "additionalProperties": True},
+                "lastHeartbeatAt": ts,
+                "appVersion": {"type": "string"},
+                "firmwareVersion": {"type": "string"},
+                "updatedAt": ts,
+                "androidId": {"type": "string"},
+                "simSerial": {"type": "string"},
+                "simIccid": {"type": "string"},
+                "deviceModel": {"type": "string"},
+                "osVersion": {"type": "string"},
+                "lastIdentityAt": ts,
+                "effectiveTimezone": {
+                    "type": "string",
+                    "description": "IANA zone name for business-local interpretation alongside UTC timestamps.",
+                },
+            },
+            "required": [
+                "machineId",
+                "organizationId",
+                "siteId",
+                "reportedState",
+                "metricsState",
+                "updatedAt",
+                "effectiveTimezone",
+            ],
+        },
+        "V1MachineTelemetryIncidentItem": {
+            "type": "object",
+            "properties": {
+                "id": uuid_s,
+                "severity": {"type": "string"},
+                "code": {"type": "string"},
+                "title": {"type": "string"},
+                "detail": {"type": "object", "additionalProperties": True},
+                "dedupeKey": {"type": "string"},
+                "openedAt": ts,
+                "updatedAt": ts,
+            },
+            "required": ["id", "severity", "code", "detail", "openedAt", "updatedAt"],
+        },
+        "V1MachineTelemetryIncidentsMeta": {
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "format": "int32"},
+                "returned": {"type": "integer"},
+            },
+            "required": ["limit", "returned"],
+        },
+        "V1MachineTelemetryIncidentsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {"$ref": "#/components/schemas/V1MachineTelemetryIncidentItem"},
+                },
+                "meta": {"$ref": "#/components/schemas/V1MachineTelemetryIncidentsMeta"},
+            },
+            "required": ["items", "meta"],
+        },
+        "V1MachineTelemetryRollupItem": {
+            "type": "object",
+            "properties": {
+                "bucketStart": ts,
+                "granularity": {"type": "string"},
+                "metricKey": {"type": "string"},
+                "sampleCount": {"type": "integer", "format": "int64"},
+                "sum": {"type": "number", "format": "double", "nullable": True},
+                "min": {"type": "number", "format": "double", "nullable": True},
+                "max": {"type": "number", "format": "double", "nullable": True},
+                "last": {"type": "number", "format": "double", "nullable": True},
+                "extra": {"type": "object", "additionalProperties": True},
+            },
+            "required": ["bucketStart", "granularity", "metricKey", "sampleCount", "extra"],
+        },
+        "V1MachineTelemetryRollupsMeta": {
+            "type": "object",
+            "properties": {
+                "granularity": {"type": "string"},
+                "from": ts,
+                "to": ts,
+                "returned": {"type": "integer"},
+                "note": {"type": "string"},
+            },
+            "required": ["granularity", "from", "to", "returned", "note"],
+        },
+        "V1MachineTelemetryRollupsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {"$ref": "#/components/schemas/V1MachineTelemetryRollupItem"},
+                },
+                "meta": {"$ref": "#/components/schemas/V1MachineTelemetryRollupsMeta"},
+            },
+            "required": ["items", "meta"],
         },
         "V1AdminMachinesListResponse": {
             "type": "object",
@@ -488,7 +656,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
 def machine_setup_component_schemas() -> dict[str, Any]:
     """OpenAPI schemas for machine technician setup (bootstrap + admin topology/planogram)."""
     uuid_s = {"type": "string", "format": "uuid"}
-    ts = {"type": "string", "format": "date-time"}
+    ts = dict(_TS_SCHEMA)
     i32 = {"type": "integer", "format": "int32"}
     i64 = {"type": "integer", "format": "int64"}
     meta_obj = {"type": "object", "additionalProperties": True}
@@ -591,6 +759,7 @@ def machine_setup_component_schemas() -> dict[str, Any]:
             "planogramName": {"type": "string"},
             "slotIndex": i32,
             "cabinetCode": {"type": "string"},
+            "cabinetIndex": i32,
             "slotCode": {"type": "string"},
             "currentQuantity": i32,
             "currentStock": i32,
@@ -617,6 +786,7 @@ def machine_setup_component_schemas() -> dict[str, Any]:
             "planogramName",
             "slotIndex",
             "cabinetCode",
+            "cabinetIndex",
             "slotCode",
             "currentQuantity",
             "currentStock",
@@ -630,6 +800,42 @@ def machine_setup_component_schemas() -> dict[str, Any]:
             "planogramRevisionApplied",
             "updatedAt",
             "isEmpty",
+            "lowStock",
+        ],
+    }
+    inv_line = {
+        "type": "object",
+        "properties": {
+            "machineId": uuid_s,
+            "machineName": {"type": "string"},
+            "machineStatus": {"type": "string"},
+            "productId": uuid_s,
+            "productName": {"type": "string"},
+            "productSku": {"type": "string"},
+            "totalQuantity": i64,
+            "slotCount": i64,
+            "maxCapacityAnySlot": i32,
+            "lowStock": {"type": "boolean"},
+            "cabinetCode": {
+                "type": "string",
+                "description": "When all slots for this product map to one cabinet; omitted when stock spans multiple cabinets.",
+            },
+            "cabinetIndex": {
+                "format": "int32",
+                "type": "integer",
+                "description": "Parallel to cabinetCode when present.",
+            },
+        },
+        "required": [
+            "machineId",
+            "machineName",
+            "machineStatus",
+            "productId",
+            "productName",
+            "productSku",
+            "totalQuantity",
+            "slotCount",
+            "maxCapacityAnySlot",
             "lowStock",
         ],
     }
@@ -686,6 +892,56 @@ def machine_setup_component_schemas() -> dict[str, Any]:
             "properties": {"items": {"type": "array", "items": {"$ref": "#/components/schemas/V1AdminMachineSlot"}}},
             "required": ["items"],
         },
+        "V1AdminMachineInventoryLine": inv_line,
+        "V1AdminMachineInventoryEnvelope": {
+            "type": "object",
+            "properties": {"items": {"type": "array", "items": {"$ref": "#/components/schemas/V1AdminMachineInventoryLine"}}},
+            "required": ["items"],
+        },
+        "V1AdminInventoryEvent": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "integer", "format": "int64"},
+                "organizationId": uuid_s,
+                "machineId": uuid_s,
+                "cabinetCode": {"type": "string"},
+                "slotCode": {"type": "string"},
+                "productId": uuid_s,
+                "eventType": {"type": "string"},
+                "reasonCode": {"type": "string"},
+                "quantityBefore": i32,
+                "quantityDelta": i32,
+                "quantityAfter": i32,
+                "unitPriceMinor": i64,
+                "currency": {"type": "string"},
+                "correlationId": uuid_s,
+                "operatorSessionId": uuid_s,
+                "technicianId": uuid_s,
+                "technicianDisplayName": {"type": "string"},
+                "refillSessionId": uuid_s,
+                "inventoryCountSessionId": uuid_s,
+                "occurredAt": ts,
+                "recordedAt": ts,
+            },
+            "required": [
+                "id",
+                "organizationId",
+                "machineId",
+                "eventType",
+                "quantityDelta",
+                "unitPriceMinor",
+                "currency",
+                "occurredAt",
+                "recordedAt",
+            ],
+        },
+        "V1AdminInventoryEventListEnvelope": {
+            "type": "object",
+            "properties": {
+                "items": {"type": "array", "items": {"$ref": "#/components/schemas/V1AdminInventoryEvent"}},
+            },
+            "required": ["items"],
+        },
         "V1AdminStockAdjustmentsRequest": {
             "type": "object",
             "properties": {
@@ -694,6 +950,7 @@ def machine_setup_component_schemas() -> dict[str, Any]:
                     "type": "string",
                     "enum": ["restock", "cycle_count", "manual_adjustment", "machine_reconcile"],
                 },
+                "occurredAt": ts,
                 "items": {"type": "array", "items": adj_item, "minItems": 1},
             },
             "required": ["operator_session_id", "reason", "items"],
@@ -712,7 +969,7 @@ def machine_setup_component_schemas() -> dict[str, Any]:
 def reporting_component_schemas() -> dict[str, Any]:
     """OpenAPI schemas for GET /v1/reports/* (read-only analytics)."""
     uuid_s = {"type": "string", "format": "uuid"}
-    ts = {"type": "string", "format": "date-time"}
+    ts = dict(_TS_SCHEMA)
     int64 = {"type": "integer", "format": "int64"}
     i32 = {"type": "integer", "format": "int32"}
     sales_rollup = {
@@ -1207,14 +1464,79 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     mach_item = {
         "machineId": _U3,
+        "machineName": "Lobby A",
         "organizationId": _U2,
         "siteId": "11111111-2222-3333-4444-555555555555",
+        "siteName": "Main Campus",
         "serialNumber": "SN-001",
         "name": "Lobby A",
         "status": "online",
         "commandSequence": 12,
-        "createdAt": "2026-01-01T00:00:00Z",
-        "updatedAt": "2026-04-19T10:00:00Z",
+        "createdAt": "2026-01-01T00:00:00.000000000Z",
+        "updatedAt": "2026-04-19T10:00:00.000000000Z",
+        "effectiveTimezone": "America/Los_Angeles",
+        "assignedTechnicians": [],
+        "inventorySummary": {
+            "totalSlots": 24,
+            "occupiedSlots": 18,
+            "lowStockSlots": 2,
+            "outOfStockSlots": 0,
+        },
+    }
+    telemetry_snapshot_ex = {
+        "machineId": _U3,
+        "organizationId": _U2,
+        "siteId": "11111111-2222-3333-4444-555555555555",
+        "reportedState": {"temperature_c": 4.5},
+        "metricsState": {"cpu_pct": 12.3},
+        "lastHeartbeatAt": "2026-04-19T12:34:56.789012345Z",
+        "appVersion": "1.2.3",
+        "firmwareVersion": "fw-9",
+        "updatedAt": "2026-04-19T12:35:00.000000001Z",
+        "androidId": "dev123",
+        "simSerial": "89012601234567890123",
+        "simIccid": "89012601234567890123",
+        "deviceModel": "Pixel",
+        "osVersion": "14",
+        "lastIdentityAt": "2026-04-19T12:30:00.111111111Z",
+        "effectiveTimezone": "America/Los_Angeles",
+    }
+    telemetry_incidents_ex = {
+        "items": [
+            {
+                "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "severity": "warning",
+                "code": "TEMP_HIGH",
+                "title": "Cabinet warm",
+                "detail": {"threshold_c": 8},
+                "dedupeKey": "TEMP_HIGH:slot3",
+                "openedAt": "2026-04-19T12:00:00.000000000Z",
+                "updatedAt": "2026-04-19T12:05:00.000000000Z",
+            }
+        ],
+        "meta": {"limit": 50, "returned": 1},
+    }
+    telemetry_rollups_ex = {
+        "items": [
+            {
+                "bucketStart": "2026-04-19T12:00:00.000000000Z",
+                "granularity": "1m",
+                "metricKey": "temperature_c",
+                "sampleCount": 60,
+                "sum": 420.5,
+                "min": 6.5,
+                "max": 8.2,
+                "last": 7.1,
+                "extra": {},
+            }
+        ],
+        "meta": {
+            "granularity": "1m",
+            "from": "2026-04-18T12:00:00.000000000Z",
+            "to": "2026-04-19T12:00:00.000000000Z",
+            "returned": 1,
+            "note": "Rollup buckets only — not raw MQTT telemetry history.",
+        },
     }
     tech_item = {
         "technicianId": "eeeeeeee-ffff-0000-1111-222222222222",
@@ -1353,6 +1675,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     stock_adj_req = {
         "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
         "reason": "restock",
+        "occurredAt": "2026-04-19T12:00:00.000000000Z",
         "items": [
             {
                 "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
@@ -1540,12 +1863,43 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ),
         ("get", "/v1/machines/{machineId}/commands/{sequence}/status"): ex(resp={"200": (st, None)}),
         ("get", "/v1/machines/{machineId}/shadow"): ex(resp={"200": (shadow, None)}),
+        ("get", "/v1/machines/{machineId}/telemetry/snapshot"): ex(resp={"200": (telemetry_snapshot_ex, None)}),
+        ("get", "/v1/machines/{machineId}/telemetry/incidents"): ex(resp={"200": (telemetry_incidents_ex, None)}),
+        ("get", "/v1/machines/{machineId}/telemetry/rollups"): ex(resp={"200": (telemetry_rollups_ex, None)}),
         ("get", "/v1/setup/machines/{machineId}/bootstrap"): ex(resp={"200": (bootstrap_resp, None)}),
         ("put", "/v1/admin/machines/{machineId}/topology"): ex(req_body=topology_req),
         ("put", "/v1/admin/machines/{machineId}/planograms/draft"): ex(req_body=planogram_draft_req),
         ("post", "/v1/admin/machines/{machineId}/planograms/publish"): ex(
             req_body=planogram_draft_req,
             resp={"200": (planogram_publish_resp, None)},
+        ),
+        ("get", "/v1/admin/machines/{machineId}/inventory-events"): ex(
+            resp={
+                "200": (
+                    {
+                        "items": [
+                            {
+                                "id": 1001,
+                                "organizationId": _U2,
+                                "machineId": _U3,
+                                "cabinetCode": "CAB-A",
+                                "slotCode": "legacy-0",
+                                "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                                "eventType": "adjustment",
+                                "reasonCode": "manual_adjustment",
+                                "quantityBefore": 5,
+                                "quantityDelta": 2,
+                                "quantityAfter": 7,
+                                "unitPriceMinor": 199,
+                                "currency": "USD",
+                                "occurredAt": "2026-04-19T12:34:56.123456789Z",
+                                "recordedAt": "2026-04-19T12:34:57.000000000Z",
+                            }
+                        ]
+                    },
+                    None,
+                ),
+            },
         ),
         ("post", "/v1/admin/machines/{machineId}/stock-adjustments"): ex(
             req_body=stock_adj_req,
@@ -1609,6 +1963,7 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/v1/admin/machines/{machineId}/slots"),
     ("post", "/v1/admin/machines/{machineId}/stock-adjustments"),
     ("get", "/v1/admin/machines/{machineId}/inventory"),
+    ("get", "/v1/admin/machines/{machineId}/inventory-events"),
     ("get", "/v1/setup/machines/{machineId}/bootstrap"),
     ("put", "/v1/admin/machines/{machineId}/topology"),
     ("put", "/v1/admin/machines/{machineId}/planograms/draft"),

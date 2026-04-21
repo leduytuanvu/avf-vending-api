@@ -212,9 +212,30 @@ func DocOpV1AdminPlanogramGet() {}
 
 // --- Admin inventory (read-only) ---
 
+// DocOpV1AdminMachineInventoryEvents godoc
+// @Summary List append-only inventory ledger events for a machine
+// @Description Returns **inventory_events** with **quantityBefore**, **quantityDelta**, **quantityAfter**, **reasonCode**, **cabinetCode**, **slotCode**, **operatorSessionId**, **technician** attribution, prices (**unitPriceMinor** + **currency**), and **occurredAt** / **recordedAt** as RFC3339Nano strings with explicit timezone offset (examples use UTC **Z**). Optional **from** / **to** filter `occurredAt` (inclusive bounds). Same auth scoping as other machine inventory routes.
+// @Tags Admin
+// @Security BearerAuth
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Param organization_id query string false "Required for platform_admin"
+// @Param from query string false "Lower bound on occurredAt, inclusive (RFC3339Nano with explicit timezone offset)"
+// @Param to query string false "Upper bound on occurredAt, inclusive (RFC3339Nano with explicit timezone offset)"
+// @Param limit query int false "Page size (default 50, max 500)"
+// @Param offset query int false "Offset"
+// @Success 200 {object} V1AdminInventoryEventListEnvelope
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/inventory-events [get]
+func DocOpV1AdminMachineInventoryEvents() {}
+
 // DocOpV1AdminMachineSlots godoc
 // @Summary List live slot inventory for a machine (restock / cycle-count UI)
-// @Description Merges `machine_slot_state` (legacy planogram slots) with current `machine_slot_configs` for **cabinetCode** / **slotCode**, derives **capacity**, **parLevel**, **lowStockThreshold**, **status** (`ok` | `low_stock` | `out_of_stock`), and resolves **currency** from the organization's default price book (falls back to **USD**). **platform_admin** must pass **organization_id** for tenant pick.
+// @Description Merges `machine_slot_state` (legacy planogram slots) with current `machine_slot_configs` for **cabinetCode** / **cabinetIndex** / **slotCode**. Machines without cabinet rows get **cabinetCode** **CAB-A** (see `inventory_admin` coalesce). Derives **capacity**, **parLevel**, **lowStockThreshold**, **status** (`ok` | `low_stock` | `out_of_stock`), and resolves **currency** from the organization's default price book (falls back to **USD**). **platform_admin** must pass **organization_id** for tenant pick.
 // @Tags Admin
 // @Security BearerAuth
 // @Produce json
@@ -231,7 +252,7 @@ func DocOpV1AdminMachineSlots() {}
 
 // DocOpV1AdminMachineStockAdjustmentsPost godoc
 // @Summary Apply stock adjustments (restock, cycle count, manual, reconcile)
-// @Description Validates **quantityBefore** against `machine_slot_state`, writes append-only **inventory_events** (typed by **reason**), then updates the read model in the same transaction. Requires **operator_session_id** for an **ACTIVE** session and **Idempotency-Key** (replay returns **replay=true** without double-applying inventory). Reasons: **restock**, **cycle_count**, **manual_adjustment**, **machine_reconcile**.
+// @Description Validates **quantityBefore** against `machine_slot_state`, appends **inventory_events** with **reasonCode**, **cabinetCode**, **slotCode**, **quantityBefore** / **quantityDelta** / **quantityAfter**, **unitPriceMinor**, **currency**, **operatorSessionId**, **technicianId** (from session), **occurredAt** / **recordedAt**, then updates `machine_slot_state` in the same transaction. Optional **occurredAt** on the body backdates the business time (defaults to now). Requires **operator_session_id** for an **ACTIVE** session and **Idempotency-Key** (replay returns **replay=true** without double-applying inventory). Reasons: **restock**, **cycle_count**, **manual_adjustment**, **machine_reconcile**.
 // @Tags Admin
 // @Security BearerAuth
 // @Accept json
@@ -252,7 +273,7 @@ func DocOpV1AdminMachineStockAdjustmentsPost() {}
 
 // DocOpV1AdminMachineInventory godoc
 // @Summary Aggregate inventory by product for a machine
-// @Description Rolls up slot quantities per product for refill planning (totals, slot coverage, low-stock flag). Same scoping rules as slot list.
+// @Description Rolls up slot quantities per product for refill planning (totals, slot coverage, low-stock flag). **cabinetCode** / **cabinetIndex** appear only when all slots for that SKU map to a single cabinet; omitted when stock spans multiple cabinets. Same scoping rules as slot list.
 // @Tags Admin
 // @Security BearerAuth
 // @Produce json
@@ -434,8 +455,8 @@ func DocOpV1ReportsFleetHealth() {}
 // @Security BearerAuth
 // @Produce json
 // @Param organization_id query string false "Required for platform_admin"
-// @Param from query string true "RFC3339 (validated; reserved for future time filtering)"
-// @Param to query string true "RFC3339 (validated; reserved for future time filtering)"
+// @Param from query string true "RFC3339Nano with explicit timezone offset (validated; reserved for future time filtering)"
+// @Param to query string true "RFC3339Nano with explicit timezone offset (validated; reserved for future time filtering)"
 // @Param exception_kind query string false "all | low_stock | out_of_stock (default all)"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
@@ -451,7 +472,7 @@ func DocOpV1ReportsInventoryExceptions() {}
 
 // DocOpV1AdminMachinesList godoc
 // @Summary List machines (admin)
-// @Description Read-only operational list of machines for an organization. **platform_admin** must pass **organization_id** query (tenant pick). **org_admin** uses JWT organization scope. Optional filters: **site_id**, **machine_id**, **status** (machine.status), **from** / **to** on `updated_at` (RFC3339), **search** is ignored for this resource. Pagination: **limit** (default 50, max 500), **offset**.
+// @Description Read-only operational list of machines for an organization. Each row includes site name, device snapshot identity, effective timezone, active technician assignments, current operator (when any), and `machine_slot_state` inventory summary—loaded in batch after the machine page query (**no N+1**). **platform_admin** must pass **organization_id** query (tenant pick). **org_admin** uses JWT organization scope. Optional filters: **site_id**, **machine_id**, **status** (machine.status), **from** / **to** on `updated_at` (RFC3339), **search** is ignored for this resource. Pagination: **limit** (default 50, max 500), **offset**.
 // @Tags Admin
 // @Security BearerAuth
 // @Produce json
@@ -459,8 +480,8 @@ func DocOpV1ReportsInventoryExceptions() {}
 // @Param site_id query string false "Filter by site UUID"
 // @Param machine_id query string false "Filter to a single machine UUID"
 // @Param status query string false "Filter by machine status (e.g. online, offline)"
-// @Param from query string false "Inclusive lower bound for updated_at (RFC3339)"
-// @Param to query string false "Inclusive upper bound for updated_at (RFC3339)"
+// @Param from query string false "Inclusive lower bound for updated_at (RFC3339Nano, explicit timezone offset)"
+// @Param to query string false "Inclusive upper bound for updated_at (RFC3339Nano, explicit timezone offset)"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset for pagination"
 // @Success 200 {object} V1AdminMachinesListResponse
@@ -470,6 +491,23 @@ func DocOpV1ReportsInventoryExceptions() {}
 // @Failure 500 {object} V1StandardError
 // @Router /v1/admin/machines [get]
 func DocOpV1AdminMachinesList() {}
+
+// DocOpV1AdminMachineGet godoc
+// @Summary Get machine (admin)
+// @Description Single-machine fleet view: site, device identity from snapshot, effective timezone, active technician assignments, current operator session (from `v_machine_current_operator`), and slot inventory summary. **platform_admin** must pass **organization_id** query (tenant pick). **org_admin** uses JWT organization scope.
+// @Tags Admin
+// @Security BearerAuth
+// @Param organization_id query string false "Required for platform_admin"
+// @Param machineId path string true "Machine UUID"
+// @Produce json
+// @Success 200 {object} V1AdminMachineListItem
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId} [get]
+func DocOpV1AdminMachineGet() {}
 
 // DocOpV1AdminTechniciansList godoc
 // @Summary List technicians (admin)
@@ -758,12 +796,12 @@ func DocOpV1MachineShadowGet() {}
 
 // DocOpV1MachineTelemetrySnapshot godoc
 // @Summary Current machine telemetry snapshot (projected)
-// @Description Read-only `machine_current_snapshot` row (rollups + shadow projection). **404** when no snapshot exists yet. Not a raw MQTT history API.
+// @Description Read-only `machine_current_snapshot` row (rollups + shadow projection). **404** when no snapshot exists yet. Not a raw MQTT history API. Timestamps are RFC3339Nano strings with explicit timezone offset (responses use UTC **Z**); **effectiveTimezone** is an IANA name for business-local context.
 // @Tags Fleet
 // @Security BearerAuth
 // @Param machineId path string true "Machine UUID"
 // @Produce json
-// @Success 200 {object} object
+// @Success 200 {object} V1MachineTelemetrySnapshotResponse
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
@@ -780,7 +818,7 @@ func DocOpV1MachineTelemetrySnapshot() {}
 // @Param machineId path string true "Machine UUID"
 // @Param limit query int false "Default 50, max 500"
 // @Produce json
-// @Success 200 {object} object
+// @Success 200 {object} V1MachineTelemetryIncidentsResponse
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
@@ -790,15 +828,15 @@ func DocOpV1MachineTelemetryIncidents() {}
 
 // DocOpV1MachineTelemetryRollups godoc
 // @Summary Telemetry rollup buckets (1m / 1h)
-// @Description Aggregated `telemetry_rollups` only — not raw high-frequency streams. Query `from`/`to` as RFC3339 (default last 24h), `granularity` (`1m` default, `1h`).
+// @Description Aggregated `telemetry_rollups` only — not raw high-frequency streams. Query `from`/`to` as RFC3339Nano with explicit timezone offset (default last 24h), `granularity` (`1m` default, `1h`).
 // @Tags Fleet
 // @Security BearerAuth
 // @Param machineId path string true "Machine UUID"
-// @Param from query string false "RFC3339 lower bound"
-// @Param to query string false "RFC3339 upper bound"
+// @Param from query string false "Lower bound for buckets (RFC3339Nano, explicit offset)"
+// @Param to query string false "Upper bound for buckets (RFC3339Nano, explicit offset)"
 // @Param granularity query string false "1m or 1h"
 // @Produce json
-// @Success 200 {object} object
+// @Success 200 {object} V1MachineTelemetryRollupsResponse
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError

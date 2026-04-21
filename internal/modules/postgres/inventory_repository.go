@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,23 @@ func legacyRevisionForSlot(rows []db.InventoryAdminListMachineSlotsRow, planogra
 		}
 	}
 	return 0
+}
+
+func resolveAdjustmentCabinetCode(it inventoryapp.AdjustmentItem, legacy []db.InventoryAdminListMachineSlotsRow) string {
+	cc := strings.TrimSpace(it.CabinetCode)
+	if cc != "" {
+		return cc
+	}
+	for _, snap := range legacy {
+		if snap.PlanogramID == it.PlanogramID && snap.SlotIndex == it.SlotIndex {
+			if strings.TrimSpace(snap.CabinetCode) != "" {
+				return strings.TrimSpace(snap.CabinetCode)
+			}
+			break
+		}
+	}
+	// Align with inventory_admin slot resolution default for legacy-only machines.
+	return "CAB-A"
 }
 
 // CreateInventoryAdjustmentBatch appends adjustment events and updates legacy machine_slot_state in one transaction.
@@ -99,6 +117,34 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		return inventoryapp.AdjustmentBatchResult{}, err
 	}
 
+	currency, err := q.InventoryAdminGetOrgDefaultCurrency(ctx, m.OrganizationID)
+	if err != nil {
+		return inventoryapp.AdjustmentBatchResult{}, err
+	}
+	currency = strings.TrimSpace(currency)
+	if currency == "" {
+		currency = "USD"
+	}
+
+	var technicianID *uuid.UUID
+	if in.OperatorSessionID != nil {
+		sess, serr := q.GetOperatorSessionByID(ctx, *in.OperatorSessionID)
+		if serr != nil {
+			if !isNoRows(serr) {
+				return inventoryapp.AdjustmentBatchResult{}, serr
+			}
+		} else if sess.TechnicianID.Valid {
+			tid := uuid.UUID(sess.TechnicianID.Bytes)
+			technicianID = &tid
+		}
+	}
+
+	recordedAt := time.Now().UTC()
+	occurredAt := recordedAt
+	if in.OccurredAt != nil {
+		occurredAt = in.OccurredAt.UTC()
+	}
+
 	for _, it := range in.Items {
 		if it.QuantityAfter < 0 {
 			return inventoryapp.AdjustmentBatchResult{}, errors.New("postgres: quantity_after must be non-negative")
@@ -120,7 +166,6 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		}
 	}
 
-	now := time.Now().UTC()
 	objs := make([]map[string]any, 0, len(in.Items))
 	for _, it := range in.Items {
 		delta := it.QuantityDelta()
@@ -133,13 +178,28 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 			meta["idempotency_key"] = key
 		}
 
+		slotCode := strings.TrimSpace(it.SlotCode)
+		if slotCode == "" {
+			slotCode = fmt.Sprintf("legacy-%d", it.SlotIndex)
+		}
+		cabinetCode := resolveAdjustmentCabinetCode(it, legacySnapshot)
+		price := legacyPriceForSlot(legacySnapshot, it.PlanogramID, it.SlotIndex)
+
 		row := map[string]any{
-			"organization_id": in.OrganizationID.String(),
-			"machine_id":      in.MachineID.String(),
-			"event_type":      eventType,
-			"quantity_delta":  delta,
-			"occurred_at":     now.Format(time.RFC3339Nano),
-			"metadata":        meta,
+			"organization_id":   in.OrganizationID.String(),
+			"machine_id":        in.MachineID.String(),
+			"event_type":        eventType,
+			"reason_code":       strings.TrimSpace(in.Reason),
+			"quantity_delta":    int(delta),
+			"quantity_before":   strconv.FormatInt(int64(it.QuantityBefore), 10),
+			"quantity_after":    strconv.FormatInt(int64(it.QuantityAfter), 10),
+			"unit_price_minor":  strconv.FormatInt(price, 10),
+			"currency":          currency,
+			"cabinet_code":      cabinetCode,
+			"slot_code":         slotCode,
+			"occurred_at":       occurredAt.Format(time.RFC3339Nano),
+			"recorded_at":       recordedAt.Format(time.RFC3339Nano),
+			"metadata":          meta,
 		}
 		if in.CorrelationID != nil {
 			row["correlation_id"] = in.CorrelationID.String()
@@ -147,16 +207,15 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		if in.OperatorSessionID != nil {
 			row["operator_session_id"] = in.OperatorSessionID.String()
 		}
+		if technicianID != nil {
+			row["technician_id"] = technicianID.String()
+		}
 		if it.MachineCabinetID != nil {
 			row["machine_cabinet_id"] = it.MachineCabinetID.String()
-		}
-		if strings.TrimSpace(it.SlotCode) != "" {
-			row["slot_code"] = strings.TrimSpace(it.SlotCode)
 		}
 		if it.ProductID != nil {
 			row["product_id"] = it.ProductID.String()
 		}
-		row["quantity_after"] = it.QuantityAfter
 
 		objs = append(objs, row)
 	}
@@ -200,7 +259,7 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 	}
 
 	if len(eventIDs) > 0 && in.OperatorSessionID != nil {
-		occ := now
+		occ := occurredAt
 		if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 			MachineID:         in.MachineID,
 			OrganizationID:    in.OrganizationID,
