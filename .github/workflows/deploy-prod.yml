@@ -194,7 +194,7 @@ jobs:
         if: needs.prepare-promotion-context.outputs.deploy_transport == 'vps-ssh'
         id: deploy_production
         continue-on-error: true
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         env:
           APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
           GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}

@@ -106,7 +106,7 @@ jobs:
       - name: Deploy staging over SSH
         id: deploy_staging
         continue-on-error: true
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.2.5
         env:
           APP_DIR: /opt/avf-vending-api
           EVENT_NAME: ${{ github.event_name }}
