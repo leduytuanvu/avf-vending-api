@@ -250,22 +250,22 @@ VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb, now(), $8)`
 
 // TelemetrySnapshotRow is a read model for admin APIs.
 type TelemetrySnapshotRow struct {
-	MachineID          uuid.UUID
-	OrganizationID     uuid.UUID
-	SiteID             uuid.UUID
-	ReportedState      []byte
-	MetricsState       []byte
-	LastHeartbeatAt    *time.Time
-	AppVersion         *string
-	FirmwareVersion    *string
-	UpdatedAt          time.Time
-	AndroidID          *string
-	SimSerial          *string
-	SimIccid           *string
-	DeviceModel        *string
-	OSVersion          *string
-	LastIdentityAt     *time.Time
-	EffectiveTimezone  string
+	MachineID         uuid.UUID
+	OrganizationID    uuid.UUID
+	SiteID            uuid.UUID
+	ReportedState     []byte
+	MetricsState      []byte
+	LastHeartbeatAt   *time.Time
+	AppVersion        *string
+	FirmwareVersion   *string
+	UpdatedAt         time.Time
+	AndroidID         *string
+	SimSerial         *string
+	SimIccid          *string
+	DeviceModel       *string
+	OSVersion         *string
+	LastIdentityAt    *time.Time
+	EffectiveTimezone string
 }
 
 func snapshotTextPtr(t pgtype.Text) *string {

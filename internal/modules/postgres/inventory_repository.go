@@ -186,20 +186,20 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		price := legacyPriceForSlot(legacySnapshot, it.PlanogramID, it.SlotIndex)
 
 		row := map[string]any{
-			"organization_id":   in.OrganizationID.String(),
-			"machine_id":        in.MachineID.String(),
-			"event_type":        eventType,
-			"reason_code":       strings.TrimSpace(in.Reason),
-			"quantity_delta":    int(delta),
-			"quantity_before":   strconv.FormatInt(int64(it.QuantityBefore), 10),
-			"quantity_after":    strconv.FormatInt(int64(it.QuantityAfter), 10),
-			"unit_price_minor":  strconv.FormatInt(price, 10),
-			"currency":          currency,
-			"cabinet_code":      cabinetCode,
-			"slot_code":         slotCode,
-			"occurred_at":       occurredAt.Format(time.RFC3339Nano),
-			"recorded_at":       recordedAt.Format(time.RFC3339Nano),
-			"metadata":          meta,
+			"organization_id":  in.OrganizationID.String(),
+			"machine_id":       in.MachineID.String(),
+			"event_type":       eventType,
+			"reason_code":      strings.TrimSpace(in.Reason),
+			"quantity_delta":   int(delta),
+			"quantity_before":  strconv.FormatInt(int64(it.QuantityBefore), 10),
+			"quantity_after":   strconv.FormatInt(int64(it.QuantityAfter), 10),
+			"unit_price_minor": strconv.FormatInt(price, 10),
+			"currency":         currency,
+			"cabinet_code":     cabinetCode,
+			"slot_code":        slotCode,
+			"occurred_at":      occurredAt.Format(time.RFC3339Nano),
+			"recorded_at":      recordedAt.Format(time.RFC3339Nano),
+			"metadata":         meta,
 		}
 		if in.CorrelationID != nil {
 			row["correlation_id"] = in.CorrelationID.String()
