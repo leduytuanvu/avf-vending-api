@@ -262,16 +262,27 @@ render_emqx_api_key_file() {
 wait_for_emqx_control_plane() {
 	local attempts="${1:-90}"
 	local sleep_secs="${2:-2}"
-	local i
-	note "waiting for EMQX control plane readiness"
+	local i code tmp
+	tmp="$(mktemp)"
+	note "waiting for EMQX HTTP management API readiness via /api/v5/status"
 	for i in $(seq 1 "${attempts}"); do
-		if "${COMPOSE[@]}" exec -T emqx emqx_ctl status >/dev/null 2>&1; then
-			note "EMQX control plane is responding"
+		code="$(
+			curl -sS -o "${tmp}" -w "%{http_code}" \
+				"http://127.0.0.1:18083/api/v5/status" || true
+		)"
+		if [[ "${code}" == "200" ]]; then
+			rm -f "${tmp}"
+			note "EMQX HTTP management API is responding"
 			return 0
 		fi
+		note "EMQX control plane pending (HTTP ${code:-empty}, attempt ${i}/${attempts})"
 		sleep "${sleep_secs}"
 	done
-	fail "EMQX control plane did not become ready — inspect avf-prod-emqx logs"
+	if [[ -s "${tmp}" ]]; then
+		cat "${tmp}" >&2
+	fi
+	rm -f "${tmp}"
+	fail "EMQX control plane did not become ready via HTTP API — inspect avf-prod-emqx logs and curl http://127.0.0.1:18083/api/v5/status on the VPS"
 }
 
 preflight_emqx_api_auth() {
