@@ -38,7 +38,97 @@ SELECT
     (
         COALESCE(s.max_quantity, 0) > 0
         AND mss.current_quantity::float / NULLIF(s.max_quantity, 0)::float < 0.15
-    ) AS low_stock
+    ) AS low_stock,
+    coalesce(
+        (
+            SELECT
+                w.cabinet_code
+            FROM (
+                SELECT
+                    cabinet_code,
+                    cabinet_index,
+                    sort_order,
+                    slot_capacity,
+                    sum(coalesce(slot_capacity, 0)) OVER (
+                        ORDER BY cabinet_index, sort_order ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                    ) AS cum_before
+                FROM machine_cabinets
+                WHERE
+                    machine_id = mss.machine_id
+            ) w
+            WHERE
+                EXISTS (
+                    SELECT 1
+                    FROM machine_cabinets h
+                    WHERE
+                        h.machine_id = mss.machine_id
+                        AND h.slot_capacity IS NOT NULL
+                )
+                AND mss.slot_index >= coalesce(w.cum_before, 0)
+                AND mss.slot_index < coalesce(w.cum_before, 0) + coalesce(w.slot_capacity, 2147483647)
+            ORDER BY
+                w.cabinet_index,
+                w.sort_order
+            LIMIT 1
+        ),
+        (
+            SELECT
+                mc2.cabinet_code
+            FROM machine_cabinets mc2
+            WHERE
+                mc2.machine_id = mss.machine_id
+            ORDER BY
+                mc2.cabinet_index,
+                mc2.sort_order
+            LIMIT 1
+        ),
+        'CAB-A'::text
+    )::text AS cabinet_code,
+    coalesce(
+        (
+            SELECT
+                w.cabinet_index
+            FROM (
+                SELECT
+                    cabinet_code,
+                    cabinet_index,
+                    sort_order,
+                    slot_capacity,
+                    sum(coalesce(slot_capacity, 0)) OVER (
+                        ORDER BY cabinet_index, sort_order ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                    ) AS cum_before
+                FROM machine_cabinets
+                WHERE
+                    machine_id = mss.machine_id
+            ) w
+            WHERE
+                EXISTS (
+                    SELECT 1
+                    FROM machine_cabinets h
+                    WHERE
+                        h.machine_id = mss.machine_id
+                        AND h.slot_capacity IS NOT NULL
+                )
+                AND mss.slot_index >= coalesce(w.cum_before, 0)
+                AND mss.slot_index < coalesce(w.cum_before, 0) + coalesce(w.slot_capacity, 2147483647)
+            ORDER BY
+                w.cabinet_index,
+                w.sort_order
+            LIMIT 1
+        ),
+        (
+            SELECT
+                mc2.cabinet_index
+            FROM machine_cabinets mc2
+            WHERE
+                mc2.machine_id = mss.machine_id
+            ORDER BY
+                mc2.cabinet_index,
+                mc2.sort_order
+            LIMIT 1
+        ),
+        0
+    )::int AS cabinet_index
 FROM machine_slot_state mss
 JOIN planograms pg ON pg.id = mss.planogram_id
 LEFT JOIN slots s ON s.planogram_id = mss.planogram_id
@@ -58,11 +148,114 @@ SELECT
     bool_or(
         COALESCE(s.max_quantity, 0) > 0
         AND mss.current_quantity::float / NULLIF(s.max_quantity, 0)::float < 0.15
-    ) AS low_stock
+    ) AS low_stock,
+    CASE
+        WHEN count(DISTINCT cab.cabinet_code) = 1
+        AND count(DISTINCT cab.cabinet_index) = 1 THEN max(cab.cabinet_code::text)
+        ELSE ''
+    END::text AS cabinet_code,
+    CASE
+        WHEN count(DISTINCT cab.cabinet_code) = 1
+        AND count(DISTINCT cab.cabinet_index) = 1 THEN max(cab.cabinet_index)::int
+        ELSE 0
+    END::int AS cabinet_index
 FROM machine_slot_state mss
 JOIN slots s ON s.planogram_id = mss.planogram_id
     AND s.slot_index = mss.slot_index
 JOIN products pr ON pr.id = s.product_id
+LEFT JOIN LATERAL (
+    SELECT
+        coalesce(
+            (
+                SELECT
+                    w.cabinet_code
+                FROM (
+                    SELECT
+                        cabinet_code,
+                        cabinet_index,
+                        sort_order,
+                        slot_capacity,
+                        sum(coalesce(slot_capacity, 0)) OVER (
+                            ORDER BY cabinet_index, sort_order ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                        ) AS cum_before
+                    FROM machine_cabinets
+                    WHERE
+                        machine_id = mss.machine_id
+                ) w
+                WHERE
+                    EXISTS (
+                        SELECT 1
+                        FROM machine_cabinets h
+                        WHERE
+                            h.machine_id = mss.machine_id
+                            AND h.slot_capacity IS NOT NULL
+                    )
+                    AND mss.slot_index >= coalesce(w.cum_before, 0)
+                    AND mss.slot_index < coalesce(w.cum_before, 0) + coalesce(w.slot_capacity, 2147483647)
+                ORDER BY
+                    w.cabinet_index,
+                    w.sort_order
+                LIMIT 1
+            ),
+            (
+                SELECT
+                    mc2.cabinet_code
+                FROM machine_cabinets mc2
+                WHERE
+                    mc2.machine_id = mss.machine_id
+                ORDER BY
+                    mc2.cabinet_index,
+                    mc2.sort_order
+                LIMIT 1
+            ),
+            'CAB-A'::text
+        ) AS cabinet_code,
+        coalesce(
+            (
+                SELECT
+                    w.cabinet_index
+                FROM (
+                    SELECT
+                        cabinet_code,
+                        cabinet_index,
+                        sort_order,
+                        slot_capacity,
+                        sum(coalesce(slot_capacity, 0)) OVER (
+                            ORDER BY cabinet_index, sort_order ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                        ) AS cum_before
+                    FROM machine_cabinets
+                    WHERE
+                        machine_id = mss.machine_id
+                ) w
+                WHERE
+                    EXISTS (
+                        SELECT 1
+                        FROM machine_cabinets h
+                        WHERE
+                            h.machine_id = mss.machine_id
+                            AND h.slot_capacity IS NOT NULL
+                    )
+                    AND mss.slot_index >= coalesce(w.cum_before, 0)
+                    AND mss.slot_index < coalesce(w.cum_before, 0) + coalesce(w.slot_capacity, 2147483647)
+                ORDER BY
+                    w.cabinet_index,
+                    w.sort_order
+                LIMIT 1
+            ),
+            (
+                SELECT
+                    mc2.cabinet_index
+                FROM machine_cabinets mc2
+                WHERE
+                    mc2.machine_id = mss.machine_id
+                ORDER BY
+                    mc2.cabinet_index,
+                    mc2.sort_order
+                LIMIT 1
+            ),
+            0
+        )::int AS cabinet_index
+) cab ON TRUE
 WHERE mss.machine_id = $1
 GROUP BY pr.id, pr.name, pr.sku
 ORDER BY pr.name;
@@ -74,6 +267,7 @@ SELECT
     msc.machine_id,
     msc.machine_cabinet_id,
     mc.cabinet_code,
+    mc.cabinet_index,
     msc.machine_slot_layout_id,
     msc.slot_code,
     msc.slot_index,
@@ -132,32 +326,49 @@ INSERT INTO inventory_events (
     organization_id,
     machine_id,
     machine_cabinet_id,
+    cabinet_code,
     slot_code,
     product_id,
     event_type,
+    reason_code,
+    quantity_before,
     quantity_delta,
     quantity_after,
+    unit_price_minor,
+    currency,
     correlation_id,
     operator_session_id,
+    technician_id,
     refill_session_id,
     inventory_count_session_id,
     occurred_at,
+    recorded_at,
     metadata
 )
 SELECT
     (e->>'organization_id')::uuid AS organization_id,
     (e->>'machine_id')::uuid AS machine_id,
     NULLIF (e->>'machine_cabinet_id', '')::uuid AS machine_cabinet_id,
+    NULLIF (btrim(e->>'cabinet_code'), '') AS cabinet_code,
     NULLIF (e->>'slot_code', '') AS slot_code,
     NULLIF (e->>'product_id', '')::uuid AS product_id,
     e->>'event_type' AS event_type,
+    NULLIF (btrim(e->>'reason_code'), '') AS reason_code,
+    NULLIF (e->>'quantity_before', '')::int AS quantity_before,
     (e->>'quantity_delta')::int AS quantity_delta,
     NULLIF (e->>'quantity_after', '')::int AS quantity_after,
+    coalesce((e->>'unit_price_minor')::bigint, 0) AS unit_price_minor,
+    coalesce(
+        NULLIF (btrim(e->>'currency'), ''),
+        'USD'::text
+    ) AS currency,
     NULLIF (e->>'correlation_id', '')::uuid AS correlation_id,
     NULLIF (e->>'operator_session_id', '')::uuid AS operator_session_id,
+    NULLIF (e->>'technician_id', '')::uuid AS technician_id,
     NULLIF (e->>'refill_session_id', '')::uuid AS refill_session_id,
     NULLIF (e->>'inventory_count_session_id', '')::uuid AS inventory_count_session_id,
     coalesce((e->>'occurred_at')::timestamptz, now()) AS occurred_at,
+    coalesce((e->>'recorded_at')::timestamptz, now()) AS recorded_at,
     coalesce(e->'metadata', '{}'::jsonb) AS metadata
 FROM
     jsonb_array_elements(sqlc.arg(events_json)::jsonb) AS e
@@ -166,30 +377,40 @@ RETURNING
 
 -- name: InventoryAdminListInventoryEventsByMachine :many
 SELECT
-    id,
-    organization_id,
-    machine_id,
-    machine_cabinet_id,
-    slot_code,
-    product_id,
-    event_type,
-    quantity_delta,
-    quantity_after,
-    correlation_id,
-    operator_session_id,
-    refill_session_id,
-    inventory_count_session_id,
-    occurred_at,
-    metadata
+    ie.id,
+    ie.organization_id,
+    ie.machine_id,
+    ie.machine_cabinet_id,
+    ie.cabinet_code,
+    ie.slot_code,
+    ie.product_id,
+    ie.event_type,
+    ie.reason_code,
+    ie.quantity_before,
+    ie.quantity_delta,
+    ie.quantity_after,
+    ie.unit_price_minor,
+    ie.currency,
+    ie.correlation_id,
+    ie.operator_session_id,
+    ie.technician_id,
+    t.display_name AS technician_display_name,
+    ie.refill_session_id,
+    ie.inventory_count_session_id,
+    ie.occurred_at,
+    ie.recorded_at,
+    ie.metadata
 FROM
-    inventory_events
+    inventory_events ie
+    LEFT JOIN technicians t ON t.id = ie.technician_id
+    AND t.organization_id = ie.organization_id
 WHERE
-    machine_id = $1
-    AND ($2::boolean IS FALSE OR occurred_at >= $3::timestamptz)
-    AND ($4::boolean IS FALSE OR occurred_at <= $5::timestamptz)
+    ie.machine_id = $1
+    AND ($2::boolean IS FALSE OR ie.occurred_at >= $3::timestamptz)
+    AND ($4::boolean IS FALSE OR ie.occurred_at <= $5::timestamptz)
 ORDER BY
-    occurred_at DESC,
-    id DESC
+    ie.occurred_at DESC,
+    ie.id DESC
 LIMIT $6 OFFSET $7;
 
 -- name: InventoryAdminCountInventoryEventsByIdempotencyKey :one
@@ -200,3 +421,37 @@ FROM
 WHERE
     machine_id = $1
     AND (metadata ->> 'idempotency_key') = $2::text;
+
+-- Slot aggregates aligned with InventoryAdminListMachineSlots (machine_slot_state + slots).
+-- name: InventoryAdminSummarizeSlotsForMachine :one
+SELECT
+    coalesce(count(*), 0)::bigint AS total_slots,
+    coalesce(count(*) FILTER (WHERE mss.current_quantity > 0), 0)::bigint AS occupied_slots,
+    coalesce(count(*) FILTER (WHERE
+        COALESCE(s.max_quantity, 0) > 0
+        AND mss.current_quantity::float / NULLIF(s.max_quantity, 0)::float < 0.15
+    ), 0)::bigint AS low_stock_slots,
+    coalesce(count(*) FILTER (WHERE mss.current_quantity <= 0), 0)::bigint AS out_of_stock_slots
+FROM machine_slot_state mss
+LEFT JOIN slots s ON s.planogram_id = mss.planogram_id
+    AND s.slot_index = mss.slot_index
+WHERE
+    mss.machine_id = $1;
+
+-- name: InventoryAdminSummarizeSlotsForMachines :many
+SELECT
+    mss.machine_id,
+    coalesce(count(*), 0)::bigint AS total_slots,
+    coalesce(count(*) FILTER (WHERE mss.current_quantity > 0), 0)::bigint AS occupied_slots,
+    coalesce(count(*) FILTER (WHERE
+        COALESCE(s.max_quantity, 0) > 0
+        AND mss.current_quantity::float / NULLIF(s.max_quantity, 0)::float < 0.15
+    ), 0)::bigint AS low_stock_slots,
+    coalesce(count(*) FILTER (WHERE mss.current_quantity <= 0), 0)::bigint AS out_of_stock_slots
+FROM machine_slot_state mss
+LEFT JOIN slots s ON s.planogram_id = mss.planogram_id
+    AND s.slot_index = mss.slot_index
+WHERE
+    mss.machine_id = ANY($1::uuid[])
+GROUP BY
+    mss.machine_id;

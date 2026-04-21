@@ -250,26 +250,84 @@ VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb, now(), $8)`
 
 // TelemetrySnapshotRow is a read model for admin APIs.
 type TelemetrySnapshotRow struct {
-	MachineID       uuid.UUID
-	OrganizationID  uuid.UUID
-	SiteID          uuid.UUID
-	ReportedState   []byte
-	MetricsState    []byte
-	LastHeartbeatAt *time.Time
-	AppVersion      *string
-	FirmwareVersion *string
-	UpdatedAt       time.Time
+	MachineID          uuid.UUID
+	OrganizationID     uuid.UUID
+	SiteID             uuid.UUID
+	ReportedState      []byte
+	MetricsState       []byte
+	LastHeartbeatAt    *time.Time
+	AppVersion         *string
+	FirmwareVersion    *string
+	UpdatedAt          time.Time
+	AndroidID          *string
+	SimSerial          *string
+	SimIccid           *string
+	DeviceModel        *string
+	OSVersion          *string
+	LastIdentityAt     *time.Time
+	EffectiveTimezone  string
+}
+
+func snapshotTextPtr(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	s := t.String
+	return &s
+}
+
+func snapshotTimestamptzTimePtr(ts pgtype.Timestamptz) *time.Time {
+	if !ts.Valid {
+		return nil
+	}
+	tt := ts.Time
+	return &tt
 }
 
 // GetTelemetrySnapshot returns current snapshot or ErrNoRows.
 func (s *Store) GetTelemetrySnapshot(ctx context.Context, machineID uuid.UUID) (TelemetrySnapshotRow, error) {
-	const q = `SELECT machine_id, organization_id, site_id, reported_state, metrics_state, last_heartbeat_at, app_version, firmware_version, updated_at
-FROM machine_current_snapshot WHERE machine_id = $1`
+	const q = `
+SELECT
+	snap.machine_id,
+	snap.organization_id,
+	snap.site_id,
+	snap.reported_state,
+	snap.metrics_state,
+	snap.last_heartbeat_at,
+	snap.app_version,
+	snap.firmware_version,
+	snap.updated_at,
+	snap.android_id,
+	snap.sim_serial,
+	snap.sim_iccid,
+	snap.device_model,
+	snap.os_version,
+	snap.last_identity_at,
+	COALESCE(
+		NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
+		s.timezone,
+		o.default_timezone
+	) AS effective_timezone
+FROM machine_current_snapshot snap
+INNER JOIN machines m ON m.id = snap.machine_id
+INNER JOIN sites s ON s.id = m.site_id AND s.organization_id = m.organization_id
+INNER JOIN organizations o ON o.id = m.organization_id
+WHERE snap.machine_id = $1`
 	var r TelemetrySnapshotRow
+	var androidID, simSerial, simIccid, deviceModel, osVer pgtype.Text
+	var lastIdentity pgtype.Timestamptz
 	err := s.pool.QueryRow(ctx, q, machineID).Scan(
 		&r.MachineID, &r.OrganizationID, &r.SiteID, &r.ReportedState, &r.MetricsState,
 		&r.LastHeartbeatAt, &r.AppVersion, &r.FirmwareVersion, &r.UpdatedAt,
+		&androidID, &simSerial, &simIccid, &deviceModel, &osVer, &lastIdentity,
+		&r.EffectiveTimezone,
 	)
+	r.AndroidID = snapshotTextPtr(androidID)
+	r.SimSerial = snapshotTextPtr(simSerial)
+	r.SimIccid = snapshotTextPtr(simIccid)
+	r.DeviceModel = snapshotTextPtr(deviceModel)
+	r.OSVersion = snapshotTextPtr(osVer)
+	r.LastIdentityAt = snapshotTimestamptzTimePtr(lastIdentity)
 	return r, err
 }
 

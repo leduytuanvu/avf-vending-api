@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -8,8 +9,40 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/app/listscope"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
+
+// parseAdminFleetOrganizationScope resolves the tenant organization for org_admin vs platform_admin (organization_id query).
+func parseAdminFleetOrganizationScope(r *http.Request) (uuid.UUID, error) {
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return uuid.Nil, listscope.ErrInvalidListQuery
+	}
+	q := r.URL.Query()
+	var orgID uuid.UUID
+	if p.HasRole(auth.RolePlatformAdmin) {
+		raw := strings.TrimSpace(q.Get("organization_id"))
+		id, perr := uuid.Parse(raw)
+		if perr != nil || id == uuid.Nil {
+			return uuid.Nil, api.ErrAdminTenantScopeRequired
+		}
+		orgID = id
+	} else {
+		if !p.HasOrganization() {
+			return uuid.Nil, api.ErrAdminTenantScopeRequired
+		}
+		orgID = p.OrganizationID
+		if raw := strings.TrimSpace(q.Get("organization_id")); raw != "" {
+			qid, perr := uuid.Parse(raw)
+			if perr != nil || qid != orgID {
+				return uuid.Nil, listscope.ErrInvalidListQuery
+			}
+		}
+	}
+	return orgID, nil
+}
 
 func parseAdminFleetListScope(r *http.Request) (listscope.AdminFleet, error) {
 	p, ok := auth.PrincipalFromContext(r.Context())
@@ -20,27 +53,11 @@ func parseAdminFleetListScope(r *http.Request) (listscope.AdminFleet, error) {
 	if err != nil {
 		return listscope.AdminFleet{}, listscope.ErrInvalidListQuery
 	}
-	q := r.URL.Query()
-	var orgID uuid.UUID
-	if p.HasRole(auth.RolePlatformAdmin) {
-		raw := strings.TrimSpace(q.Get("organization_id"))
-		id, perr := uuid.Parse(raw)
-		if perr != nil || id == uuid.Nil {
-			return listscope.AdminFleet{}, api.ErrAdminTenantScopeRequired
-		}
-		orgID = id
-	} else {
-		if !p.HasOrganization() {
-			return listscope.AdminFleet{}, api.ErrAdminTenantScopeRequired
-		}
-		orgID = p.OrganizationID
-		if raw := strings.TrimSpace(q.Get("organization_id")); raw != "" {
-			qid, perr := uuid.Parse(raw)
-			if perr != nil || qid != orgID {
-				return listscope.AdminFleet{}, listscope.ErrInvalidListQuery
-			}
-		}
+	orgID, err := parseAdminFleetOrganizationScope(r)
+	if err != nil {
+		return listscope.AdminFleet{}, err
 	}
+	q := r.URL.Query()
 	var siteID *uuid.UUID
 	if raw := strings.TrimSpace(q.Get("site_id")); raw != "" {
 		sid, perr := uuid.Parse(raw)
@@ -102,4 +119,33 @@ func parseAdminFleetListScope(r *http.Request) (listscope.AdminFleet, error) {
 		Limit:           limit,
 		Offset:          offset,
 	}, nil
+}
+
+func serveAdminMachineGet(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app == nil || app.AdminMachines == nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "application not configured")
+			return
+		}
+		machineID, err := uuid.Parse(chi.URLParam(r, "machineId"))
+		if err != nil || machineID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		orgID, err := parseAdminFleetOrganizationScope(r)
+		if err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		out, err := app.AdminMachines.GetMachine(r.Context(), orgID, machineID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found or not in organization")
+				return
+			}
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, out)
+	}
 }

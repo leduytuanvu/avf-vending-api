@@ -3,6 +3,7 @@ package inventoryapp
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -19,6 +20,7 @@ type AdjustmentItem struct {
 	SlotIndex        int32
 	QuantityBefore   int32
 	QuantityAfter    int32
+	CabinetCode      string
 	SlotCode         string
 	MachineCabinetID *uuid.UUID
 	ProductID        *uuid.UUID
@@ -35,9 +37,10 @@ type AdjustmentBatchInput struct {
 	MachineID         uuid.UUID
 	OperatorSessionID *uuid.UUID
 	CorrelationID     *uuid.UUID
-	Reason            string
-	IdempotencyKey    string
-	Items             []AdjustmentItem
+	Reason              string
+	IdempotencyKey      string
+	Items               []AdjustmentItem
+	OccurredAt          *time.Time
 }
 
 // AdjustmentBatchResult reports inserted event ids or a replayed idempotent outcome.

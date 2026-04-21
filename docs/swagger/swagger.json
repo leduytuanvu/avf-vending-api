@@ -71,6 +71,37 @@
         ],
         "type": "object"
       },
+      "V1AdminAssignedTechnician": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "technicianId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "validFrom": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "validTo": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "technicianId",
+          "displayName",
+          "role",
+          "validFrom"
+        ],
+        "type": "object"
+      },
       "V1AdminAssignmentListItem": {
         "properties": {
           "assignmentId": {
@@ -78,6 +109,7 @@
             "type": "string"
           },
           "createdAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
@@ -102,10 +134,12 @@
             "type": "string"
           },
           "validFrom": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
           "validTo": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           }
@@ -159,6 +193,7 @@
             "type": "string"
           },
           "createdAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
@@ -216,22 +251,313 @@
         ],
         "type": "object"
       },
+      "V1AdminCurrentOperator": {
+        "properties": {
+          "actorType": {
+            "type": "string"
+          },
+          "sessionExpiresAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "sessionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "sessionStartedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "sessionStatus": {
+            "type": "string"
+          },
+          "technicianDisplayName": {
+            "type": "string"
+          },
+          "technicianId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "userPrincipal": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionId",
+          "actorType",
+          "sessionStartedAt",
+          "sessionStatus"
+        ],
+        "type": "object"
+      },
+      "V1AdminInventoryEvent": {
+        "properties": {
+          "cabinetCode": {
+            "type": "string"
+          },
+          "correlationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "inventoryCountSessionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "machineId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "occurredAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "operatorSessionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "organizationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "productId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "quantityAfter": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "quantityBefore": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "quantityDelta": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "recordedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "refillSessionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "slotCode": {
+            "type": "string"
+          },
+          "technicianDisplayName": {
+            "type": "string"
+          },
+          "technicianId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "unitPriceMinor": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "machineId",
+          "eventType",
+          "quantityDelta",
+          "unitPriceMinor",
+          "currency",
+          "occurredAt",
+          "recordedAt"
+        ],
+        "type": "object"
+      },
+      "V1AdminInventoryEventListEnvelope": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/V1AdminInventoryEvent"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "V1AdminMachineInventoryEnvelope": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/V1AdminMachineInventoryLine"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "V1AdminMachineInventoryLine": {
+        "properties": {
+          "cabinetCode": {
+            "description": "When all slots for this product map to one cabinet; omitted when stock spans multiple cabinets.",
+            "type": "string"
+          },
+          "cabinetIndex": {
+            "description": "Parallel to cabinetCode when present.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "lowStock": {
+            "type": "boolean"
+          },
+          "machineId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "machineName": {
+            "type": "string"
+          },
+          "machineStatus": {
+            "type": "string"
+          },
+          "maxCapacityAnySlot": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "productId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "productSku": {
+            "type": "string"
+          },
+          "slotCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "totalQuantity": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "machineId",
+          "machineName",
+          "machineStatus",
+          "productId",
+          "productName",
+          "productSku",
+          "totalQuantity",
+          "slotCount",
+          "maxCapacityAnySlot",
+          "lowStock"
+        ],
+        "type": "object"
+      },
+      "V1AdminMachineInventorySummary": {
+        "properties": {
+          "lowStockSlots": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "occupiedSlots": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "outOfStockSlots": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "totalSlots": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "totalSlots",
+          "occupiedSlots",
+          "lowStockSlots",
+          "outOfStockSlots"
+        ],
+        "type": "object"
+      },
       "V1AdminMachineListItem": {
         "properties": {
+          "androidId": {
+            "type": "string"
+          },
+          "appVersion": {
+            "type": "string"
+          },
+          "assignedTechnicians": {
+            "items": {
+              "$ref": "#/components/schemas/V1AdminAssignedTechnician"
+            },
+            "type": "array"
+          },
           "commandSequence": {
             "format": "int64",
             "type": "integer"
           },
           "createdAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
+            "type": "string"
+          },
+          "currentOperator": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/V1AdminCurrentOperator"
+              }
+            ],
+            "nullable": true
+          },
+          "effectiveTimezone": {
+            "type": "string"
+          },
+          "firmwareVersion": {
             "type": "string"
           },
           "hardwareProfileId": {
             "format": "uuid",
             "type": "string"
           },
+          "inventorySummary": {
+            "$ref": "#/components/schemas/V1AdminMachineInventorySummary"
+          },
+          "lastHeartbeatAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
           "machineId": {
             "format": "uuid",
+            "type": "string"
+          },
+          "machineName": {
             "type": "string"
           },
           "name": {
@@ -244,28 +570,43 @@
           "serialNumber": {
             "type": "string"
           },
+          "simIccid": {
+            "type": "string"
+          },
+          "simSerial": {
+            "type": "string"
+          },
           "siteId": {
             "format": "uuid",
+            "type": "string"
+          },
+          "siteName": {
             "type": "string"
           },
           "status": {
             "type": "string"
           },
           "updatedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           }
         },
         "required": [
           "machineId",
+          "machineName",
           "organizationId",
           "siteId",
+          "siteName",
           "serialNumber",
           "name",
           "status",
           "commandSequence",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "effectiveTimezone",
+          "assignedTechnicians",
+          "inventorySummary"
         ],
         "type": "object"
       },
@@ -273,6 +614,10 @@
         "properties": {
           "cabinetCode": {
             "type": "string"
+          },
+          "cabinetIndex": {
+            "format": "int32",
+            "type": "integer"
           },
           "capacity": {
             "format": "int32",
@@ -358,6 +703,7 @@
             "type": "string"
           },
           "updatedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           }
@@ -370,6 +716,7 @@
           "planogramName",
           "slotIndex",
           "cabinetCode",
+          "cabinetIndex",
           "slotCode",
           "currentQuantity",
           "currentStock",
@@ -459,6 +806,7 @@
             "type": "string"
           },
           "createdAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
@@ -594,6 +942,11 @@
             "minItems": 1,
             "type": "array"
           },
+          "occurredAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
           "operator_session_id": {
             "format": "uuid",
             "type": "string"
@@ -636,6 +989,7 @@
       "V1AdminTechnicianListItem": {
         "properties": {
           "createdAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
@@ -831,6 +1185,257 @@
         ],
         "type": "object"
       },
+      "V1MachineTelemetryIncidentItem": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "dedupeKey": {
+            "type": "string"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "openedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "severity",
+          "code",
+          "detail",
+          "openedAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "V1MachineTelemetryIncidentsMeta": {
+        "properties": {
+          "limit": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "returned": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "returned"
+        ],
+        "type": "object"
+      },
+      "V1MachineTelemetryIncidentsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/V1MachineTelemetryIncidentItem"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/V1MachineTelemetryIncidentsMeta"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "V1MachineTelemetryRollupItem": {
+        "properties": {
+          "bucketStart": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "granularity": {
+            "type": "string"
+          },
+          "last": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "max": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "metricKey": {
+            "type": "string"
+          },
+          "min": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
+          "sampleCount": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sum": {
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "bucketStart",
+          "granularity",
+          "metricKey",
+          "sampleCount",
+          "extra"
+        ],
+        "type": "object"
+      },
+      "V1MachineTelemetryRollupsMeta": {
+        "properties": {
+          "from": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "granularity": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "returned": {
+            "type": "integer"
+          },
+          "to": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "granularity",
+          "from",
+          "to",
+          "returned",
+          "note"
+        ],
+        "type": "object"
+      },
+      "V1MachineTelemetryRollupsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/V1MachineTelemetryRollupItem"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/V1MachineTelemetryRollupsMeta"
+          }
+        },
+        "required": [
+          "items",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "V1MachineTelemetrySnapshotResponse": {
+        "properties": {
+          "androidId": {
+            "type": "string"
+          },
+          "appVersion": {
+            "type": "string"
+          },
+          "deviceModel": {
+            "type": "string"
+          },
+          "effectiveTimezone": {
+            "description": "IANA zone name for business-local interpretation alongside UTC timestamps.",
+            "type": "string"
+          },
+          "firmwareVersion": {
+            "type": "string"
+          },
+          "lastHeartbeatAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastIdentityAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "machineId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "metricsState": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "organizationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "osVersion": {
+            "type": "string"
+          },
+          "reportedState": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "simIccid": {
+            "type": "string"
+          },
+          "simSerial": {
+            "type": "string"
+          },
+          "siteId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "machineId",
+          "organizationId",
+          "siteId",
+          "reportedState",
+          "metricsState",
+          "updatedAt",
+          "effectiveTimezone"
+        ],
+        "type": "object"
+      },
       "V1NotImplementedError": {
         "properties": {
           "error": {
@@ -944,6 +1549,7 @@
       "V1OrderListItem": {
         "properties": {
           "createdAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
@@ -983,6 +1589,7 @@
             "type": "integer"
           },
           "updatedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           }
@@ -1026,6 +1633,7 @@
             "type": "integer"
           },
           "createdAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
@@ -1064,6 +1672,7 @@
             "type": "string"
           },
           "updatedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           }
@@ -1117,6 +1726,7 @@
       "V1ReportingFleetHealthResponse": {
         "properties": {
           "from": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
@@ -1219,6 +1829,7 @@
             "type": "string"
           },
           "to": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           }
@@ -1245,6 +1856,7 @@
             "type": "string"
           },
           "from": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
@@ -1352,6 +1964,7 @@
             "type": "string"
           },
           "to": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           }
@@ -1376,6 +1989,7 @@
                   "type": "integer"
                 },
                 "bucketStart": {
+                  "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
                   "format": "date-time",
                   "type": "string"
                 },
@@ -1399,6 +2013,7 @@
             "type": "array"
           },
           "from": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
@@ -1458,6 +2073,7 @@
             "type": "object"
           },
           "to": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           }
@@ -1478,6 +2094,7 @@
             "items": {
               "properties": {
                 "bucketStart": {
+                  "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
                   "format": "date-time",
                   "type": "string"
                 },
@@ -1520,6 +2137,7 @@
             "type": "array"
           },
           "from": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           },
@@ -1564,6 +2182,7 @@
             "type": "object"
           },
           "to": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
             "format": "date-time",
             "type": "string"
           }
@@ -1632,6 +2251,7 @@
                 "type": "integer"
               },
               "createdAt": {
+                "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
                 "format": "date-time",
                 "type": "string"
               },
@@ -1661,6 +2281,7 @@
                 "type": "string"
               },
               "updatedAt": {
+                "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
                 "format": "date-time",
                 "type": "string"
               }
@@ -1702,6 +2323,7 @@
                             "type": "string"
                           },
                           "effectiveFrom": {
+                            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
                             "format": "date-time",
                             "type": "string"
                           },
@@ -2312,7 +2934,7 @@
     },
     "/v1/admin/machines": {
       "get": {
-        "description": "Read-only operational list of machines for an organization. **platform_admin** must pass **organization_id** query (tenant pick). **org_admin** uses JWT organization scope. Optional filters: **site_id**, **machine_id**, **status** (machine.status), **from** / **to** on `updated_at` (RFC3339), **search** is ignored for this resource. Pagination: **limit** (default 50, max 500), **offset**.",
+        "description": "Read-only operational list of machines for an organization. Each row includes site name, device snapshot identity, effective timezone, active technician assignments, current operator (when any), and `machine_slot_state` inventory summary\u2014loaded in batch after the machine page query (**no N+1**). **platform_admin** must pass **organization_id** query (tenant pick). **org_admin** uses JWT organization scope. Optional filters: **site_id**, **machine_id**, **status** (machine.status), **from** / **to** on `updated_at` (RFC3339), **search** is ignored for this resource. Pagination: **limit** (default 50, max 500), **offset**.",
         "parameters": [
           {
             "description": "Required for platform_admin",
@@ -2351,7 +2973,7 @@
             }
           },
           {
-            "description": "Inclusive lower bound for updated_at (RFC3339)",
+            "description": "Inclusive lower bound for updated_at (RFC3339Nano, explicit timezone offset)",
             "in": "query",
             "name": "from",
             "required": false,
@@ -2360,7 +2982,7 @@
             }
           },
           {
-            "description": "Inclusive upper bound for updated_at (RFC3339)",
+            "description": "Inclusive upper bound for updated_at (RFC3339Nano, explicit timezone offset)",
             "in": "query",
             "name": "to",
             "required": false,
@@ -2405,15 +3027,25 @@
                 "example": {
                   "items": [
                     {
+                      "assignedTechnicians": [],
                       "commandSequence": 12,
-                      "createdAt": "2026-01-01T00:00:00Z",
+                      "createdAt": "2026-01-01T00:00:00.000000000Z",
+                      "effectiveTimezone": "America/Los_Angeles",
+                      "inventorySummary": {
+                        "lowStockSlots": 2,
+                        "occupiedSlots": 18,
+                        "outOfStockSlots": 0,
+                        "totalSlots": 24
+                      },
                       "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                      "machineName": "Lobby A",
                       "name": "Lobby A",
                       "organizationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                       "serialNumber": "SN-001",
                       "siteId": "11111111-2222-3333-4444-555555555555",
+                      "siteName": "Main Campus",
                       "status": "online",
-                      "updatedAt": "2026-04-19T10:00:00Z"
+                      "updatedAt": "2026-04-19T10:00:00.000000000Z"
                     }
                   ],
                   "meta": {
@@ -2482,9 +3114,114 @@
         ]
       }
     },
+    "/v1/admin/machines/{machineId}": {
+      "get": {
+        "description": "Single-machine fleet view: site, device identity from snapshot, effective timezone, active technician assignments, current operator session (from `v_machine_current_operator`), and slot inventory summary. **platform_admin** must pass **organization_id** query (tenant pick). **org_admin** uses JWT organization scope.",
+        "parameters": [
+          {
+            "description": "Required for platform_admin",
+            "in": "query",
+            "name": "organization_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1AdminMachineListItem"
+                }
+              }
+            },
+            "description": "Get machine (admin)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get machine (admin)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
     "/v1/admin/machines/{machineId}/inventory": {
       "get": {
-        "description": "Rolls up slot quantities per product for refill planning (totals, slot coverage, low-stock flag). Same scoping rules as slot list.",
+        "description": "Rolls up slot quantities per product for refill planning (totals, slot coverage, low-stock flag). **cabinetCode** / **cabinetIndex** appear only when all slots for that SKU map to a single cabinet; omitted when stock spans multiple cabinets. Same scoping rules as slot list.",
         "parameters": [
           {
             "description": "Machine UUID",
@@ -2582,6 +3319,170 @@
           }
         ],
         "summary": "Aggregate inventory by product for a machine",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/inventory-events": {
+      "get": {
+        "description": "Returns **inventory_events** with **quantityBefore**, **quantityDelta**, **quantityAfter**, **reasonCode**, **cabinetCode**, **slotCode**, **operatorSessionId**, **technician** attribution, prices (**unitPriceMinor** + **currency**), and **occurredAt** / **recordedAt** as RFC3339Nano strings with explicit timezone offset (examples use UTC **Z**). Optional **from** / **to** filter `occurredAt` (inclusive bounds). Same auth scoping as other machine inventory routes.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required for platform_admin",
+            "in": "query",
+            "name": "organization_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Lower bound on occurredAt, inclusive (RFC3339Nano with explicit timezone offset)",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Upper bound on occurredAt, inclusive (RFC3339Nano with explicit timezone offset)",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size (default 50, max 500)",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Offset",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "cabinetCode": "CAB-A",
+                      "currency": "USD",
+                      "eventType": "adjustment",
+                      "id": 1001,
+                      "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                      "occurredAt": "2026-04-19T12:34:56.123456789Z",
+                      "organizationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+                      "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                      "quantityAfter": 7,
+                      "quantityBefore": 5,
+                      "quantityDelta": 2,
+                      "reasonCode": "manual_adjustment",
+                      "recordedAt": "2026-04-19T12:34:57.000000000Z",
+                      "slotCode": "legacy-0",
+                      "unitPriceMinor": 199
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1AdminInventoryEventListEnvelope"
+                }
+              }
+            },
+            "description": "List append-only inventory ledger events for a machine"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List append-only inventory ledger events for a machine",
         "tags": [
           "Admin"
         ]
@@ -2934,7 +3835,7 @@
     },
     "/v1/admin/machines/{machineId}/slots": {
       "get": {
-        "description": "Merges `machine_slot_state` (legacy planogram slots) with current `machine_slot_configs` for **cabinetCode** / **slotCode**, derives **capacity**, **parLevel**, **lowStockThreshold**, **status** (`ok` | `low_stock` | `out_of_stock`), and resolves **currency** from the organization's default price book (falls back to **USD**). **platform_admin** must pass **organization_id** for tenant pick.",
+        "description": "Merges `machine_slot_state` (legacy planogram slots) with current `machine_slot_configs` for **cabinetCode** / **cabinetIndex** / **slotCode**. Machines without cabinet rows get **cabinetCode** **CAB-A** (see `inventory_admin` coalesce). Derives **capacity**, **parLevel**, **lowStockThreshold**, **status** (`ok` | `low_stock` | `out_of_stock`), and resolves **currency** from the organization's default price book (falls back to **USD**). **platform_admin** must pass **organization_id** for tenant pick.",
         "parameters": [
           {
             "description": "Machine UUID",
@@ -3039,7 +3940,7 @@
     },
     "/v1/admin/machines/{machineId}/stock-adjustments": {
       "post": {
-        "description": "Validates **quantityBefore** against `machine_slot_state`, writes append-only **inventory_events** (typed by **reason**), then updates the read model in the same transaction. Requires **operator_session_id** for an **ACTIVE** session and **Idempotency-Key** (replay returns **replay=true** without double-applying inventory). Reasons: **restock**, **cycle_count**, **manual_adjustment**, **machine_reconcile**.",
+        "description": "Validates **quantityBefore** against `machine_slot_state`, appends **inventory_events** with **reasonCode**, **cabinetCode**, **slotCode**, **quantityBefore** / **quantityDelta** / **quantityAfter**, **unitPriceMinor**, **currency**, **operatorSessionId**, **technicianId** (from session), **occurredAt** / **recordedAt**, then updates `machine_slot_state` in the same transaction. Optional **occurredAt** on the body backdates the business time (defaults to now). Requires **operator_session_id** for an **ACTIVE** session and **Idempotency-Key** (replay returns **replay=true** without double-applying inventory). Reasons: **restock**, **cycle_count**, **manual_adjustment**, **machine_reconcile**.",
         "parameters": [
           {
             "description": "Machine UUID",
@@ -3087,6 +3988,7 @@
                     "slotIndex": 3
                   }
                 ],
+                "occurredAt": "2026-04-19T12:00:00.000000000Z",
                 "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
                 "reason": "restock"
               },
@@ -8204,8 +9106,28 @@
           "200": {
             "content": {
               "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "code": "TEMP_HIGH",
+                      "dedupeKey": "TEMP_HIGH:slot3",
+                      "detail": {
+                        "threshold_c": 8
+                      },
+                      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                      "openedAt": "2026-04-19T12:00:00.000000000Z",
+                      "severity": "warning",
+                      "title": "Cabinet warm",
+                      "updatedAt": "2026-04-19T12:05:00.000000000Z"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "returned": 1
+                  }
+                },
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/V1MachineTelemetryIncidentsResponse"
                 }
               }
             },
@@ -8265,7 +9187,7 @@
     },
     "/v1/machines/{machineId}/telemetry/rollups": {
       "get": {
-        "description": "Aggregated `telemetry_rollups` only \u2014 not raw high-frequency streams. Query `from`/`to` as RFC3339 (default last 24h), `granularity` (`1m` default, `1h`).",
+        "description": "Aggregated `telemetry_rollups` only \u2014 not raw high-frequency streams. Query `from`/`to` as RFC3339Nano with explicit timezone offset (default last 24h), `granularity` (`1m` default, `1h`).",
         "parameters": [
           {
             "description": "Machine UUID",
@@ -8277,7 +9199,7 @@
             }
           },
           {
-            "description": "RFC3339 lower bound",
+            "description": "Lower bound for buckets (RFC3339Nano, explicit offset)",
             "in": "query",
             "name": "from",
             "required": false,
@@ -8286,7 +9208,7 @@
             }
           },
           {
-            "description": "RFC3339 upper bound",
+            "description": "Upper bound for buckets (RFC3339Nano, explicit offset)",
             "in": "query",
             "name": "to",
             "required": false,
@@ -8317,8 +9239,30 @@
           "200": {
             "content": {
               "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "bucketStart": "2026-04-19T12:00:00.000000000Z",
+                      "extra": {},
+                      "granularity": "1m",
+                      "last": 7.1,
+                      "max": 8.2,
+                      "metricKey": "temperature_c",
+                      "min": 6.5,
+                      "sampleCount": 60,
+                      "sum": 420.5
+                    }
+                  ],
+                  "meta": {
+                    "from": "2026-04-18T12:00:00.000000000Z",
+                    "granularity": "1m",
+                    "note": "Rollup buckets only \u2014 not raw MQTT telemetry history.",
+                    "returned": 1,
+                    "to": "2026-04-19T12:00:00.000000000Z"
+                  }
+                },
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/V1MachineTelemetryRollupsResponse"
                 }
               }
             },
@@ -8378,7 +9322,7 @@
     },
     "/v1/machines/{machineId}/telemetry/snapshot": {
       "get": {
-        "description": "Read-only `machine_current_snapshot` row (rollups + shadow projection). **404** when no snapshot exists yet. Not a raw MQTT history API.",
+        "description": "Read-only `machine_current_snapshot` row (rollups + shadow projection). **404** when no snapshot exists yet. Not a raw MQTT history API. Timestamps are RFC3339Nano strings with explicit timezone offset (responses use UTC **Z**); **effectiveTimezone** is an IANA name for business-local context.",
         "parameters": [
           {
             "description": "Machine UUID",
@@ -8403,8 +9347,30 @@
           "200": {
             "content": {
               "application/json": {
+                "example": {
+                  "androidId": "dev123",
+                  "appVersion": "1.2.3",
+                  "deviceModel": "Pixel",
+                  "effectiveTimezone": "America/Los_Angeles",
+                  "firmwareVersion": "fw-9",
+                  "lastHeartbeatAt": "2026-04-19T12:34:56.789012345Z",
+                  "lastIdentityAt": "2026-04-19T12:30:00.111111111Z",
+                  "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "metricsState": {
+                    "cpu_pct": 12.3
+                  },
+                  "organizationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+                  "osVersion": "14",
+                  "reportedState": {
+                    "temperature_c": 4.5
+                  },
+                  "simIccid": "89012601234567890123",
+                  "simSerial": "89012601234567890123",
+                  "siteId": "11111111-2222-3333-4444-555555555555",
+                  "updatedAt": "2026-04-19T12:35:00.000000001Z"
+                },
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/V1MachineTelemetrySnapshotResponse"
                 }
               }
             },
@@ -9158,7 +10124,7 @@
             }
           },
           {
-            "description": "RFC3339 (validated; reserved for future time filtering)",
+            "description": "RFC3339Nano with explicit timezone offset (validated; reserved for future time filtering)",
             "in": "query",
             "name": "from",
             "required": true,
@@ -9167,7 +10133,7 @@
             }
           },
           {
-            "description": "RFC3339 (validated; reserved for future time filtering)",
+            "description": "RFC3339Nano with explicit timezone offset (validated; reserved for future time filtering)",
             "in": "query",
             "name": "to",
             "required": true,

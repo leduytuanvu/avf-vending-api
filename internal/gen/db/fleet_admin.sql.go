@@ -384,6 +384,9 @@ SELECT
     cabinet_code,
     title,
     sort_order,
+    cabinet_index,
+    slot_capacity,
+    status,
     metadata,
     created_at,
     updated_at
@@ -408,9 +411,98 @@ func (q *Queries) FleetAdminGetMachineCabinetByMachineAndCode(ctx context.Contex
 		&i.CabinetCode,
 		&i.Title,
 		&i.SortOrder,
+		&i.CabinetIndex,
+		&i.SlotCapacity,
+		&i.Status,
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const FleetAdminGetMachineDetail = `-- name: FleetAdminGetMachineDetail :one
+SELECT
+    m.id,
+    m.organization_id,
+    m.site_id,
+    m.hardware_profile_id,
+    m.serial_number,
+    m.name,
+    m.status,
+    m.command_sequence,
+    m.created_at,
+    m.updated_at,
+    s.name AS site_name,
+    snap.android_id,
+    snap.sim_serial,
+    snap.sim_iccid,
+    snap.app_version,
+    snap.firmware_version,
+    snap.last_heartbeat_at,
+    COALESCE(
+        NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
+        s.timezone,
+        o.default_timezone
+    ) AS effective_timezone
+FROM machines m
+INNER JOIN sites s ON s.id = m.site_id
+    AND s.organization_id = m.organization_id
+INNER JOIN organizations o ON o.id = m.organization_id
+LEFT JOIN machine_current_snapshot snap ON snap.machine_id = m.id
+WHERE
+    m.id = $1
+    AND m.organization_id = $2
+`
+
+type FleetAdminGetMachineDetailParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+type FleetAdminGetMachineDetailRow struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	SiteID            uuid.UUID
+	HardwareProfileID pgtype.UUID
+	SerialNumber      string
+	Name              string
+	Status            string
+	CommandSequence   int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	SiteName          string
+	AndroidID         pgtype.Text
+	SimSerial         pgtype.Text
+	SimIccid          pgtype.Text
+	AppVersion        pgtype.Text
+	FirmwareVersion   pgtype.Text
+	LastHeartbeatAt   pgtype.Timestamptz
+	EffectiveTimezone string
+}
+
+func (q *Queries) FleetAdminGetMachineDetail(ctx context.Context, arg FleetAdminGetMachineDetailParams) (FleetAdminGetMachineDetailRow, error) {
+	row := q.db.QueryRow(ctx, FleetAdminGetMachineDetail, arg.ID, arg.OrganizationID)
+	var i FleetAdminGetMachineDetailRow
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.SiteID,
+		&i.HardwareProfileID,
+		&i.SerialNumber,
+		&i.Name,
+		&i.Status,
+		&i.CommandSequence,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SiteName,
+		&i.AndroidID,
+		&i.SimSerial,
+		&i.SimIccid,
+		&i.AppVersion,
+		&i.FirmwareVersion,
+		&i.LastHeartbeatAt,
+		&i.EffectiveTimezone,
 	)
 	return i, err
 }
@@ -610,6 +702,69 @@ func (q *Queries) FleetAdminInsertMachineSlotConfigDraft(ctx context.Context, ar
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const FleetAdminListActiveTechnicianAssignmentsForMachines = `-- name: FleetAdminListActiveTechnicianAssignmentsForMachines :many
+SELECT
+    tma.machine_id,
+    tma.technician_id,
+    t.display_name AS technician_display_name,
+    tma.role,
+    tma.valid_from,
+    tma.valid_to
+FROM technician_machine_assignments tma
+INNER JOIN technicians t ON t.id = tma.technician_id
+WHERE
+    t.organization_id = $1
+    AND tma.machine_id = ANY($2::uuid[])
+    AND (
+        tma.valid_to IS NULL
+        OR tma.valid_to > now()
+    )
+ORDER BY
+    tma.machine_id ASC,
+    t.display_name ASC
+`
+
+type FleetAdminListActiveTechnicianAssignmentsForMachinesParams struct {
+	OrganizationID uuid.UUID
+	Column2        []uuid.UUID
+}
+
+type FleetAdminListActiveTechnicianAssignmentsForMachinesRow struct {
+	MachineID             uuid.UUID
+	TechnicianID          uuid.UUID
+	TechnicianDisplayName string
+	Role                  string
+	ValidFrom             time.Time
+	ValidTo               pgtype.Timestamptz
+}
+
+func (q *Queries) FleetAdminListActiveTechnicianAssignmentsForMachines(ctx context.Context, arg FleetAdminListActiveTechnicianAssignmentsForMachinesParams) ([]FleetAdminListActiveTechnicianAssignmentsForMachinesRow, error) {
+	rows, err := q.db.Query(ctx, FleetAdminListActiveTechnicianAssignmentsForMachines, arg.OrganizationID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FleetAdminListActiveTechnicianAssignmentsForMachinesRow{}
+	for rows.Next() {
+		var i FleetAdminListActiveTechnicianAssignmentsForMachinesRow
+		if err := rows.Scan(
+			&i.MachineID,
+			&i.TechnicianID,
+			&i.TechnicianDisplayName,
+			&i.Role,
+			&i.ValidFrom,
+			&i.ValidTo,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const FleetAdminListAssignments = `-- name: FleetAdminListAssignments :many
@@ -883,6 +1038,9 @@ SELECT
     cabinet_code,
     title,
     sort_order,
+    cabinet_index,
+    slot_capacity,
+    status,
     metadata,
     created_at,
     updated_at
@@ -910,6 +1068,9 @@ func (q *Queries) FleetAdminListMachineCabinets(ctx context.Context, machineID u
 			&i.CabinetCode,
 			&i.Title,
 			&i.SortOrder,
+			&i.CabinetIndex,
+			&i.SlotCapacity,
+			&i.Status,
 			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -1044,8 +1205,24 @@ SELECT
     m.status,
     m.command_sequence,
     m.created_at,
-    m.updated_at
+    m.updated_at,
+    s.name AS site_name,
+    snap.android_id,
+    snap.sim_serial,
+    snap.sim_iccid,
+    snap.app_version,
+    snap.firmware_version,
+    snap.last_heartbeat_at,
+    COALESCE(
+        NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
+        s.timezone,
+        o.default_timezone
+    ) AS effective_timezone
 FROM machines m
+INNER JOIN sites s ON s.id = m.site_id
+    AND s.organization_id = m.organization_id
+INNER JOIN organizations o ON o.id = m.organization_id
+LEFT JOIN machine_current_snapshot snap ON snap.machine_id = m.id
 WHERE
     m.organization_id = $1
     AND ($2::boolean IS FALSE OR m.site_id = $3::uuid)
@@ -1073,7 +1250,28 @@ type FleetAdminListMachinesParams struct {
 	Offset         int32
 }
 
-func (q *Queries) FleetAdminListMachines(ctx context.Context, arg FleetAdminListMachinesParams) ([]Machine, error) {
+type FleetAdminListMachinesRow struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	SiteID            uuid.UUID
+	HardwareProfileID pgtype.UUID
+	SerialNumber      string
+	Name              string
+	Status            string
+	CommandSequence   int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	SiteName          string
+	AndroidID         pgtype.Text
+	SimSerial         pgtype.Text
+	SimIccid          pgtype.Text
+	AppVersion        pgtype.Text
+	FirmwareVersion   pgtype.Text
+	LastHeartbeatAt   pgtype.Timestamptz
+	EffectiveTimezone string
+}
+
+func (q *Queries) FleetAdminListMachines(ctx context.Context, arg FleetAdminListMachinesParams) ([]FleetAdminListMachinesRow, error) {
 	rows, err := q.db.Query(ctx, FleetAdminListMachines,
 		arg.OrganizationID,
 		arg.Column2,
@@ -1091,9 +1289,9 @@ func (q *Queries) FleetAdminListMachines(ctx context.Context, arg FleetAdminList
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Machine{}
+	items := []FleetAdminListMachinesRow{}
 	for rows.Next() {
-		var i Machine
+		var i FleetAdminListMachinesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OrganizationID,
@@ -1105,6 +1303,14 @@ func (q *Queries) FleetAdminListMachines(ctx context.Context, arg FleetAdminList
 			&i.CommandSequence,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SiteName,
+			&i.AndroidID,
+			&i.SimSerial,
+			&i.SimIccid,
+			&i.AppVersion,
+			&i.FirmwareVersion,
+			&i.LastHeartbeatAt,
+			&i.EffectiveTimezone,
 		); err != nil {
 			return nil, err
 		}
@@ -1277,6 +1483,70 @@ func (q *Queries) FleetAdminListTechnicians(ctx context.Context, arg FleetAdminL
 	return items, nil
 }
 
+const FleetAdminListViewOperatorsForMachines = `-- name: FleetAdminListViewOperatorsForMachines :many
+SELECT
+    v.machine_id,
+    v.operator_session_id,
+    v.actor_type,
+    v.technician_id,
+    v.technician_display_name,
+    v.user_principal,
+    v.session_started_at,
+    v.session_status,
+    v.session_expires_at
+FROM v_machine_current_operator v
+WHERE
+    v.organization_id = $1
+    AND v.machine_id = ANY($2::uuid[])
+`
+
+type FleetAdminListViewOperatorsForMachinesParams struct {
+	OrganizationID uuid.UUID
+	Column2        []uuid.UUID
+}
+
+type FleetAdminListViewOperatorsForMachinesRow struct {
+	MachineID             uuid.UUID
+	OperatorSessionID     pgtype.UUID
+	ActorType             pgtype.Text
+	TechnicianID          pgtype.UUID
+	TechnicianDisplayName pgtype.Text
+	UserPrincipal         pgtype.Text
+	SessionStartedAt      pgtype.Timestamptz
+	SessionStatus         pgtype.Text
+	SessionExpiresAt      pgtype.Timestamptz
+}
+
+func (q *Queries) FleetAdminListViewOperatorsForMachines(ctx context.Context, arg FleetAdminListViewOperatorsForMachinesParams) ([]FleetAdminListViewOperatorsForMachinesRow, error) {
+	rows, err := q.db.Query(ctx, FleetAdminListViewOperatorsForMachines, arg.OrganizationID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FleetAdminListViewOperatorsForMachinesRow{}
+	for rows.Next() {
+		var i FleetAdminListViewOperatorsForMachinesRow
+		if err := rows.Scan(
+			&i.MachineID,
+			&i.OperatorSessionID,
+			&i.ActorType,
+			&i.TechnicianID,
+			&i.TechnicianDisplayName,
+			&i.UserPrincipal,
+			&i.SessionStartedAt,
+			&i.SessionStatus,
+			&i.SessionExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const FleetAdminUpdateAssortment = `-- name: FleetAdminUpdateAssortment :one
 UPDATE assortments
 SET
@@ -1389,13 +1659,19 @@ INSERT INTO machine_cabinets (
     cabinet_code,
     title,
     sort_order,
+    cabinet_index,
+    slot_capacity,
+    status,
     metadata
 )
-VALUES ($1, $2, $3, $4, $5)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (machine_id, cabinet_code) DO UPDATE
 SET
     title = EXCLUDED.title,
     sort_order = EXCLUDED.sort_order,
+    cabinet_index = EXCLUDED.cabinet_index,
+    slot_capacity = EXCLUDED.slot_capacity,
+    status = EXCLUDED.status,
     metadata = EXCLUDED.metadata,
     updated_at = now()
 RETURNING
@@ -1404,17 +1680,23 @@ RETURNING
     cabinet_code,
     title,
     sort_order,
+    cabinet_index,
+    slot_capacity,
+    status,
     metadata,
     created_at,
     updated_at
 `
 
 type FleetAdminUpsertMachineCabinetParams struct {
-	MachineID   uuid.UUID
-	CabinetCode string
-	Title       string
-	SortOrder   int32
-	Metadata    []byte
+	MachineID    uuid.UUID
+	CabinetCode  string
+	Title        string
+	SortOrder    int32
+	CabinetIndex int32
+	SlotCapacity pgtype.Int4
+	Status       string
+	Metadata     []byte
 }
 
 func (q *Queries) FleetAdminUpsertMachineCabinet(ctx context.Context, arg FleetAdminUpsertMachineCabinetParams) (MachineCabinet, error) {
@@ -1423,6 +1705,9 @@ func (q *Queries) FleetAdminUpsertMachineCabinet(ctx context.Context, arg FleetA
 		arg.CabinetCode,
 		arg.Title,
 		arg.SortOrder,
+		arg.CabinetIndex,
+		arg.SlotCapacity,
+		arg.Status,
 		arg.Metadata,
 	)
 	var i MachineCabinet
@@ -1432,6 +1717,9 @@ func (q *Queries) FleetAdminUpsertMachineCabinet(ctx context.Context, arg FleetA
 		&i.CabinetCode,
 		&i.Title,
 		&i.SortOrder,
+		&i.CabinetIndex,
+		&i.SlotCapacity,
+		&i.Status,
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,

@@ -131,6 +131,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 					out, err := app.AdminMachines.ListMachines(r.Context(), scope)
 					writeV1Collection(w, r.Context(), out, err)
 				})
+				r.Get("/machines/{machineId}", serveAdminMachineGet(app))
 				r.Get("/technicians", func(w http.ResponseWriter, r *http.Request) {
 					scope, err := parseAdminFleetListScope(r)
 					if err != nil {
