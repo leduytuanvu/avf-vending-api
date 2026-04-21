@@ -106,11 +106,12 @@ services:
       - "127.0.0.1:18083:18083"
     # Align Docker health with the management HTTP API (same class of signal as production).
     # `emqx_ctl` can report failures while the HTTP listener is already up.
+    # The official EMQX image may not ship `curl`/`wget`, so use bash `/dev/tcp` instead.
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "curl -fsS http://127.0.0.1:18083/api/v5/status >/dev/null || wget -qO- http://127.0.0.1:18083/api/v5/status >/dev/null",
+          "bash -lc 'exec 3<>/dev/tcp/127.0.0.1/18083; printf %b \"GET /api/v5/status HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -Fq \"emqx is running\" <&3'",
         ]
       interval: 10s
       timeout: 5s
