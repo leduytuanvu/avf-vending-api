@@ -111,7 +111,7 @@ fi
 
 echo "==> EMQX MQTT user bootstrap (before api / mqtt-ingest connect)"
 for _ in $(seq 1 90); do
-	if "${COMPOSE[@]}" exec -T emqx emqx_ctl status >/dev/null 2>&1; then
+	if "${COMPOSE[@]}" exec -T emqx bash -lc 'exec 3<>/dev/tcp/127.0.0.1/18083; printf %b "GET /api/v5/status HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; grep -Fq "emqx is running" <&3' >/dev/null 2>&1; then
 		break
 	fi
 	sleep 2
