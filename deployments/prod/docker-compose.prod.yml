@@ -42,13 +42,17 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       # Single app database owned by POSTGRES_USER (avoids brittle init scripts for credentials).
-      POSTGRES_DB: avf_vending
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env.production}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d avf_vending']
+      test:
+        [
+          "CMD-SHELL",
+          'pg_isready -U "$$POSTGRES_USER" -d "${POSTGRES_DB:?set POSTGRES_DB in .env.production}"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 12
