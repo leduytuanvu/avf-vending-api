@@ -134,6 +134,8 @@ EMQX_API_SECRET=CHANGE_ME_LONG_RANDOM_EMQX_API_SECRET
   `STAGING_HOST` không resolve được từ public DNS hoặc secret có ký tự thừa / whitespace.
 - Workflow fail ngay trước `Deploy staging over SSH`
   Kiểm tra lại GitHub Environment `staging` có đủ cả 4 secret bắt buộc hay chưa.
+- `Run Command Timeout` từ `appleboy/ssh-action` (thường rơi vào khoảng ~10 phút nếu workflow đang dùng default `command_timeout`)
+  Đây là **timeout phía GitHub Actions** khi remote script chạy quá lâu, không nhất thiết có nghĩa VPS đã fail. Kiểm tra log phía VPS (`release.sh` / `docker compose`) xem deploy có đang tiếp tục chạy không, rồi rerun workflow sau khi đã tăng `command_timeout` trong workflow (repo hiện set `60m` cho staging/production SSH).
 
 ### Check nhanh khi production SSH / SCP fail
 
@@ -145,6 +147,8 @@ EMQX_API_SECRET=CHANGE_ME_LONG_RANDOM_EMQX_API_SECRET
   `VPS_HOST` đang là hostname nội bộ, sai DNS public, hoặc chứa ký tự thừa / whitespace.
 - `VPS_SSH_PRIVATE_KEY must contain the full private key PEM/OpenSSH block`
   Secret đang chứa public key, value bị cắt mất đầu/cuối, hoặc format private key không hợp lệ.
+- `Run Command Timeout` từ `appleboy/ssh-action` / `appleboy/scp-action` (thường rơi vào khoảng ~10 phút nếu workflow đang dùng default `command_timeout`)
+  Đây là **timeout phía GitHub Actions** khi remote script/transfer chạy quá lâu, không nhất thiết có nghĩa VPS đã fail. Kiểm tra log phía VPS (`release.sh deploy`, `docker compose`) xem deploy có đang tiếp tục chạy không, rồi rerun workflow sau khi đã tăng `command_timeout` trong workflow (repo hiện set `60m` cho production SSH/SCP).
 
 ### Check nhanh khi production GHCR login fail
 

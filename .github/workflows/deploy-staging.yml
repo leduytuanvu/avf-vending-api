@@ -97,6 +97,8 @@ jobs:
           port: ${{ secrets.STAGING_PORT }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 60m
           script_stop: true
           envs: APP_DIR,EVENT_NAME,APP_IMAGE_REF,APP_IMAGE_TAG,GHCR_USER,GHCR_TOKEN,GOOSE_IMAGE_REF,GOOSE_IMAGE_TAG
           script: |
