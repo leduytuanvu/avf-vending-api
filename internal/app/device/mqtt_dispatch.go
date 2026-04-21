@@ -379,6 +379,35 @@ type RemoteCommandReceiptView struct {
 }
 
 // ListRecentCommandReceipts returns recent device command receipts for a machine.
+// PollRemoteCommands returns dispatch payloads for commands still awaiting device handling (HTTP fallback when MQTT is degraded).
+func (d *MQTTCommandDispatcher) PollRemoteCommands(ctx context.Context, machineID uuid.UUID, limit int32) ([]dispatchWire, error) {
+	if d == nil || d.store == nil {
+		return nil, errors.New("device: nil MQTT command dispatcher")
+	}
+	rows, err := d.store.ListMachineCommandsForHTTPPoll(ctx, machineID, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]dispatchWire, 0, len(rows))
+	for _, row := range rows {
+		pl := row.Payload
+		if len(pl) == 0 {
+			pl = []byte("{}")
+		}
+		if !json.Valid(pl) {
+			pl = []byte("{}")
+		}
+		out = append(out, dispatchWire{
+			Sequence:       row.Sequence,
+			CommandType:    row.CommandType,
+			Payload:        json.RawMessage(pl),
+			CorrelationID:  row.CorrelationID,
+			IdempotencyKey: row.IdempotencyKey,
+		})
+	}
+	return out, nil
+}
+
 func (d *MQTTCommandDispatcher) ListRecentCommandReceipts(ctx context.Context, machineID uuid.UUID, limit int32) ([]RemoteCommandReceiptView, error) {
 	if d == nil || d.store == nil {
 		return nil, errors.New("device: nil MQTT command dispatcher")

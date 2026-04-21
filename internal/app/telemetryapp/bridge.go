@@ -40,18 +40,31 @@ func (b *NATSBridge) IngestTelemetry(ctx context.Context, in platformmqtt.Teleme
 		return err
 	}
 	now := time.Now().UTC()
-	env := tel.Envelope{
-		SchemaVersion: tel.DefaultSchemaVersion,
-		Class:         cls,
-		MachineID:     in.MachineID,
-		TenantID:      &loc.OrganizationID,
-		SiteID:        &loc.SiteID,
-		ReceivedAt:    now,
-		SourceEvent:   in.EventType,
-		Payload:       wrapTelemetryPayload(in.EventType, in.Payload),
+	sv := in.SchemaVersion
+	if sv == 0 {
+		sv = tel.DefaultSchemaVersion
 	}
-	if in.DedupeKey != nil && *in.DedupeKey != "" {
-		env.Idempotency = *in.DedupeKey
+	env := tel.Envelope{
+		SchemaVersion:     sv,
+		Class:             cls,
+		MachineID:         in.MachineID,
+		TenantID:          &loc.OrganizationID,
+		SiteID:            &loc.SiteID,
+		ReceivedAt:        now,
+		SourceEvent:       in.EventType,
+		Payload:           wrapTelemetryPayload(in.EventType, in.Payload),
+		EventID:           in.EventID,
+		BootID:            in.BootID,
+		SeqNo:             in.SeqNo,
+		CorrelationID:     in.CorrelationID,
+		OperatorSessionID: in.OperatorSessionID,
+	}
+	if in.OccurredAt != nil {
+		t := in.OccurredAt.UTC()
+		env.EmittedAt = &t
+	}
+	if idem := platformmqtt.TelemetryIdempotencyKey(in.MachineID, in); idem != "" {
+		env.Idempotency = idem
 	}
 	body, err := env.Marshal()
 	if err != nil {
@@ -119,6 +132,43 @@ func (b *NATSBridge) IngestShadowReported(ctx context.Context, in platformmqtt.S
 	return nil
 }
 
+func (b *NATSBridge) IngestShadowDesired(ctx context.Context, in platformmqtt.ShadowDesiredIngest) error {
+	if b == nil || b.Store == nil || b.JS == nil {
+		return errors.New("telemetryapp: nil NATSBridge")
+	}
+	if len(in.DesiredJSON) > tel.MaxIngestPayloadBytes() {
+		return fmt.Errorf("telemetryapp: shadow desired payload too large")
+	}
+	loc, err := b.Store.GetMachineOrgSite(ctx, in.MachineID)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	env := tel.Envelope{
+		SchemaVersion: tel.DefaultSchemaVersion,
+		Class:         tel.ClassState,
+		MachineID:     in.MachineID,
+		TenantID:      &loc.OrganizationID,
+		SiteID:        &loc.SiteID,
+		ReceivedAt:    now,
+		SourceEvent:   "shadow.desired",
+		Payload:       in.DesiredJSON,
+	}
+	body, err := env.Marshal()
+	if err != nil {
+		return err
+	}
+	dedupe := fmt.Sprintf("shadow-desired:%s:%d", in.MachineID.String(), now.UnixNano())
+	if err := platformnats.PublishTelemetry(b.JS, tel.ClassState, in.MachineID, body, dedupe); err != nil {
+		RecordTelemetryPublishFailure()
+		return err
+	}
+	if err := b.Store.TouchMachineConnectivityFast(ctx, in.MachineID); err != nil && b.Log != nil {
+		b.Log.Warn("telemetry_bridge_touch_connectivity", zap.Error(err), zap.String("machine_id", in.MachineID.String()))
+	}
+	return nil
+}
+
 func (b *NATSBridge) IngestCommandReceipt(ctx context.Context, in platformmqtt.CommandReceiptIngest) error {
 	if b == nil || b.Store == nil || b.JS == nil {
 		return errors.New("telemetryapp: nil NATSBridge")
@@ -176,6 +226,10 @@ func (l *LegacyStoreIngest) IngestTelemetry(ctx context.Context, in platformmqtt
 
 func (l *LegacyStoreIngest) IngestShadowReported(ctx context.Context, in platformmqtt.ShadowReportedIngest) error {
 	return l.Store.IngestShadowReported(ctx, in)
+}
+
+func (l *LegacyStoreIngest) IngestShadowDesired(ctx context.Context, in platformmqtt.ShadowDesiredIngest) error {
+	return l.Store.IngestShadowDesired(ctx, in)
 }
 
 func (l *LegacyStoreIngest) IngestCommandReceipt(ctx context.Context, in platformmqtt.CommandReceiptIngest) error {

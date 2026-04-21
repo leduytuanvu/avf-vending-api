@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
@@ -126,4 +127,20 @@ func (r *CommerceReconcileRepository) ListStaleCommandLedgerEntries(ctx context.
 		})
 	}
 	return out, nil
+}
+
+// TouchVendSessionCorrelation preserves the first correlation_id written for a vend session (device HTTP traceability).
+func (s *Store) TouchVendSessionCorrelation(ctx context.Context, orderID uuid.UUID, slotIndex int32, correlationID uuid.UUID) error {
+	if s == nil || s.pool == nil {
+		return errors.New("postgres: nil store")
+	}
+	if correlationID == uuid.Nil {
+		return nil
+	}
+	_, err := s.pool.Exec(ctx, `
+UPDATE vend_sessions
+SET correlation_id = COALESCE(correlation_id, $3::uuid)
+WHERE order_id = $1 AND slot_index = $2`,
+		orderID, slotIndex, correlationID)
+	return err
 }

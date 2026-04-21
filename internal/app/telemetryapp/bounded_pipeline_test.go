@@ -1,3 +1,5 @@
+//go:build !windows
+
 package telemetryapp
 
 import (
@@ -28,6 +30,10 @@ func (s *stubIngest) IngestTelemetry(ctx context.Context, in platformmqtt.Teleme
 
 func (s *stubIngest) IngestShadowReported(ctx context.Context, in platformmqtt.ShadowReportedIngest) error {
 	return errors.New("unexpected shadow")
+}
+
+func (s *stubIngest) IngestShadowDesired(ctx context.Context, in platformmqtt.ShadowDesiredIngest) error {
+	return errors.New("unexpected shadow desired")
 }
 
 func (s *stubIngest) IngestCommandReceipt(ctx context.Context, in platformmqtt.CommandReceiptIngest) error {

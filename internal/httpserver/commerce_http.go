@@ -66,6 +66,84 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			})
 		})
 
+		r.Post("/cash-checkout", func(w http.ResponseWriter, r *http.Request) {
+			idem, err := requireWriteIdempotencyKey(r)
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
+				return
+			}
+			var body commerceCashCheckoutRequest
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
+				return
+			}
+			org := tenantOrgID(r)
+			if org == uuid.Nil {
+				writeAPIError(w, r.Context(), http.StatusForbidden, "organization_required", "organization scope required")
+				return
+			}
+			topic := cfg.Commerce.PaymentOutboxTopic
+			evType := cfg.Commerce.PaymentOutboxEventType
+			aggType := cfg.Commerce.PaymentOutboxAggregateType
+			if strings.TrimSpace(topic) == "" || strings.TrimSpace(evType) == "" || strings.TrimSpace(aggType) == "" {
+				writeCapabilityNotConfigured(w, r.Context(), "v1.commerce.payment_session.outbox", "commerce outbox defaults are not configured")
+				return
+			}
+			createOut, err := svc.CreateOrder(r.Context(), appcommerce.CreateOrderInput{
+				OrganizationID: org,
+				MachineID:      body.MachineID,
+				ProductID:      body.ProductID,
+				SlotIndex:      body.SlotIndex,
+				Currency:       body.Currency,
+				SubtotalMinor:  body.SubtotalMinor,
+				TaxMinor:       body.TaxMinor,
+				TotalMinor:     body.TotalMinor,
+				IdempotencyKey: idem,
+			})
+			if err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			outboxIdem := idem + ":cash:payment:outbox:" + createOut.Order.ID.String()
+			payRes, err := svc.StartPaymentWithOutbox(r.Context(), appcommerce.StartPaymentInput{
+				OrganizationID:       org,
+				OrderID:              createOut.Order.ID,
+				Provider:             "cash",
+				PaymentState:         "captured",
+				AmountMinor:          body.TotalMinor,
+				Currency:             body.Currency,
+				IdempotencyKey:       idem + ":cash:payment",
+				OutboxTopic:          topic,
+				OutboxEventType:      evType,
+				OutboxPayload:        []byte(`{"source":"cash_checkout"}`),
+				OutboxAggregateType:  aggType,
+				OutboxAggregateID:    createOut.Order.ID,
+				OutboxIdempotencyKey: outboxIdem,
+			})
+			if err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			if _, err := svc.MarkOrderPaidAfterPaymentCapture(r.Context(), org, createOut.Order.ID); err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			st, err := svc.GetCheckoutStatus(r.Context(), org, createOut.Order.ID, body.SlotIndex)
+			if err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			replay := createOut.Replay || payRes.Replay
+			writeJSON(w, http.StatusOK, commerceCashCheckoutResponse{
+				OrderID:       createOut.Order.ID.String(),
+				VendSessionID: createOut.Vend.ID.String(),
+				PaymentID:     payRes.Payment.ID.String(),
+				OrderStatus:   st.Order.Status,
+				PaymentState:  payRes.Payment.State,
+				Replay:        replay,
+			})
+		})
+
 		r.Post("/orders/{orderId}/payment-session", func(w http.ResponseWriter, r *http.Request) {
 			idem, err := requireWriteIdempotencyKey(r)
 			if err != nil {
@@ -417,6 +495,26 @@ type commerceCreateOrderRequest struct {
 	SubtotalMinor int64     `json:"subtotal_minor"`
 	TaxMinor      int64     `json:"tax_minor"`
 	TotalMinor    int64     `json:"total_minor"`
+}
+
+// commerceCashCheckoutRequest mirrors create-order totals; records a captured cash payment and marks the order paid.
+type commerceCashCheckoutRequest struct {
+	MachineID     uuid.UUID `json:"machine_id"`
+	ProductID     uuid.UUID `json:"product_id"`
+	SlotIndex     int32     `json:"slot_index"`
+	Currency      string    `json:"currency"`
+	SubtotalMinor int64     `json:"subtotal_minor"`
+	TaxMinor      int64     `json:"tax_minor"`
+	TotalMinor    int64     `json:"total_minor"`
+}
+
+type commerceCashCheckoutResponse struct {
+	OrderID       string `json:"order_id"`
+	VendSessionID string `json:"vend_session_id"`
+	PaymentID     string `json:"payment_id"`
+	OrderStatus   string `json:"order_status"`
+	PaymentState  string `json:"payment_state"`
+	Replay        bool   `json:"replay"`
 }
 
 type commerceCreateOrderResponse struct {

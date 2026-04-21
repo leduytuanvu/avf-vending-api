@@ -21,6 +21,7 @@ package httpserver
 //
 // Commerce endpoints (Bearer JWT + RequireOrganizationScope) are mounted under:
 //
+//	/v1/commerce/cash-checkout
 //	/v1/commerce/orders
 //	/v1/commerce/orders/{orderId}/payment-session
 //	/v1/commerce/orders/{orderId}
@@ -29,6 +30,23 @@ package httpserver
 //	/v1/commerce/orders/{orderId}/vend/start
 //	/v1/commerce/orders/{orderId}/vend/success
 //	/v1/commerce/orders/{orderId}/vend/failure
+//
+// Machine setup bootstrap (Bearer JWT + RequireMachineURLAccess("machineId")):
+//
+//	GET /v1/setup/machines/{machineId}/bootstrap
+//
+// Admin machine setup writes (Bearer JWT + platform_admin or org_admin + sensitive-write rate limit when enabled):
+//
+//	PUT  /v1/admin/machines/{machineId}/topology
+//	PUT  /v1/admin/machines/{machineId}/planograms/draft
+//	POST /v1/admin/machines/{machineId}/planograms/publish  (requires Idempotency-Key header)
+//	POST /v1/admin/machines/{machineId}/sync               (requires Idempotency-Key header)
+//
+// Admin inventory reads and stock writes (Bearer JWT + platform_admin or org_admin; stock-adjustments uses writeRL + Idempotency-Key):
+//
+//	GET  /v1/admin/machines/{machineId}/slots
+//	POST /v1/admin/machines/{machineId}/stock-adjustments
+//	GET  /v1/admin/machines/{machineId}/inventory
 //
 // Telemetry reads (Bearer JWT + RequireMachineURLAccess("machineId")):
 //
@@ -41,6 +59,11 @@ package httpserver
 //	POST /v1/machines/{machineId}/commands/dispatch
 //	GET  /v1/machines/{machineId}/commands/{sequence}/status
 //	GET  /v1/machines/{machineId}/commands/receipts
+//
+// Device commerce bridge (Bearer JWT + RequireMachineURLAccess("machineId") + org/platform admin; same write rate limit group as command dispatch):
+//
+//	POST /v1/device/machines/{machineId}/vend-results   (requires Idempotency-Key)
+//	POST /v1/device/machines/{machineId}/commands/poll  (HTTP fallback when MQTT is degraded)
 //
 // Machine operator session endpoints (Bearer JWT + RequireMachineURLAccess("machineId")) are
 // mounted under:

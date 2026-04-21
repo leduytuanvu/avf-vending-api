@@ -84,3 +84,44 @@ RETURNING
     updated_at,
     operator_session_id,
     metadata;
+
+-- name: InsertInventoryCountSession :one
+INSERT INTO inventory_count_sessions (
+    organization_id,
+    machine_id,
+    operator_session_id,
+    status,
+    started_at,
+    metadata
+)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING
+    id,
+    organization_id,
+    machine_id,
+    operator_session_id,
+    status,
+    started_at,
+    ended_at,
+    metadata,
+    created_at;
+
+-- name: UpdateInventoryCountSessionClose :one
+UPDATE inventory_count_sessions
+SET
+    status = $2,
+    ended_at = now(),
+    metadata = metadata || $3::jsonb
+WHERE
+    id = $1
+    AND organization_id = $4
+RETURNING
+    id,
+    organization_id,
+    machine_id,
+    operator_session_id,
+    status,
+    started_at,
+    ended_at,
+    metadata,
+    created_at;

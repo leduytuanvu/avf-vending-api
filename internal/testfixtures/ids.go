@@ -10,4 +10,5 @@ var (
 	DevTechnicianID   = uuid.MustParse("66666666-6666-6666-6666-666666666666")
 	DevProductCola    = uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-000000000001")
 	DevProductWater   = uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-000000000002")
+	DevPlanogramID    = uuid.MustParse("cccccccc-cccc-cccc-cccc-000000000001")
 )

@@ -27,6 +27,13 @@ func pgTextToStringPtr(t pgtype.Text) *string {
 	return &s
 }
 
+func pgTextToString(t pgtype.Text) string {
+	if !t.Valid {
+		return ""
+	}
+	return t.String
+}
+
 func pgUUIDToPtr(u pgtype.UUID) *uuid.UUID {
 	if !u.Valid {
 		return nil
@@ -70,4 +77,11 @@ func ptrTimeOrNow(t *time.Time) time.Time {
 		return time.Now().UTC()
 	}
 	return t.UTC()
+}
+
+func optionalInt32ToPgInt4(v *int32) pgtype.Int4 {
+	if v == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: *v, Valid: true}
 }

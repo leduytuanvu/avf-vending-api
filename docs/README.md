@@ -1,5 +1,13 @@
 # Documentation
 
+## HTTP API (integration)
+
+- [Machine setup: bootstrap, topology, planogram](api/setup-machine.md) — technician/admin flows and links to commerce.
+- [Stock adjustments](api/inventory-adjustments.md) — `POST …/stock-adjustments`, idempotency, reasons.
+- [MQTT device contract + HTTP command/vend fallbacks](api/mqtt-contract.md) — topics, QoS, retain, envelope, `vend-results` / `commands/poll`.
+
+OpenAPI 3.0 (generated from `internal/httpserver/swagger_operations.go`): **`swagger/swagger.json`** — regenerate with `python tools/build_openapi.py` (see repo `Makefile` **`swagger`** / **`swagger-check`**).
+
 ## Architecture
 
 - [Target architecture](architecture/target-architecture.md) — north-star vs **what runs in `cmd/*` today** (including optional NATS publish, MQTT ingest, reconciler list vs optional close-the-loop actions).
@@ -20,4 +28,4 @@ Runtime-oriented package docs (see each `doc.go`): `internal/platform/mqtt`, `na
 
 ## Repository root
 
-See [../README.md](../README.md) for build commands, migration notes, layout, integration test requirements (`TEST_DATABASE_URL`), aand CI / local gate targets (`make ci-gates`, `make ci`).
+See [../README.md](../README.md) for build commands, migration notes, layout, integration test requirements (`TEST_DATABASE_URL`), and CI / local gate targets (`make ci-gates`, `make ci`).

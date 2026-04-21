@@ -3,7 +3,6 @@ package mqtt
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
@@ -38,12 +37,7 @@ func NewSubscriber(cfg BrokerConfig, log *zap.Logger, hooks *IngestHooks, limits
 //
 // Ops: warn logs "mqtt ingest failed" / "mqtt subscribe failed"; optional hooks for Prometheus — see ops/METRICS.md.
 func (s *Subscriber) Run(ctx context.Context, ing DeviceIngest) error {
-	p := strings.TrimSuffix(strings.TrimSpace(s.cfg.TopicPrefix), "/")
-	topics := []string{
-		fmt.Sprintf("%s/+/telemetry", p),
-		fmt.Sprintf("%s/+/shadow/reported", p),
-		fmt.Sprintf("%s/+/commands/receipt", p),
-	}
+	topics := InboundDeviceTopicPatterns(s.cfg.TopicPrefix)
 
 	opts := pahomqtt.NewClientOptions()
 	opts.AddBroker(s.cfg.BrokerURL)

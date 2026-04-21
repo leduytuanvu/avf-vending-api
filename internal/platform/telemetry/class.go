@@ -22,15 +22,25 @@ func ClassifyEventType(eventType string) Class {
 	switch {
 	case t == "":
 		return ClassUnknown
-	case t == "heartbeat" || t == "ping" || strings.HasPrefix(t, "heartbeat.") || strings.HasPrefix(t, "health."):
+	case t == "heartbeat" || t == "ping" || t == "presence" || strings.HasPrefix(t, "heartbeat.") || strings.HasPrefix(t, "health."):
+		return ClassHeartbeat
+	case t == "state.heartbeat" || strings.HasPrefix(t, "state.heartbeat."):
 		return ClassHeartbeat
 	case strings.HasPrefix(t, "incident.") || strings.HasPrefix(t, "alert.") || t == "incident":
 		return ClassIncident
+	case t == "telemetry.incident" || strings.HasPrefix(t, "telemetry.incident."):
+		return ClassIncident
 	case strings.HasPrefix(t, "diagnostic.") || t == "diagnostic_bundle_ready":
 		return ClassDiagnosticBundleReady
-	case strings.HasPrefix(t, "state.") || strings.HasPrefix(t, "shadow.") || t == "state":
+	case strings.HasPrefix(t, "shadow.desired"):
+		return ClassState
+	case strings.HasPrefix(t, "shadow.") && !strings.HasPrefix(t, "shadow.desired"):
+		return ClassState
+	case strings.HasPrefix(t, "state.") || t == "state":
 		return ClassState
 	case strings.HasPrefix(t, "metric") || strings.HasPrefix(t, "metrics."):
+		return ClassMetrics
+	case strings.HasPrefix(t, "telemetry.snapshot") || strings.HasPrefix(t, "events."):
 		return ClassMetrics
 	default:
 		// High-frequency unknown telemetry must not default to OLTP incident path.

@@ -12,6 +12,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
 	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
 	"github.com/google/uuid"
@@ -344,10 +345,41 @@ func (w *JetStreamWorkers) handleHeartbeat(ctx context.Context, env tel.Envelope
 }
 
 func (w *JetStreamWorkers) handleState(ctx context.Context, env tel.Envelope) error {
-	return w.store.ApplyShadowReportedProjection(ctx, env.MachineID, env.Payload, ptrStr(env.AppVersion), ptrStr(env.FirmwareVer))
+	switch strings.TrimSpace(env.SourceEvent) {
+	case "shadow.desired":
+		if len(env.Payload) == 0 {
+			return nil
+		}
+		return w.store.IngestShadowDesired(ctx, platformmqtt.ShadowDesiredIngest{
+			MachineID:   env.MachineID,
+			DesiredJSON: env.Payload,
+		})
+	default:
+		return w.store.ApplyShadowReportedProjection(ctx, env.MachineID, env.Payload, ptrStr(env.AppVersion), ptrStr(env.FirmwareVer))
+	}
 }
 
 func (w *JetStreamWorkers) handleMetrics(ctx context.Context, env tel.Envelope) error {
+	se := strings.TrimSpace(env.SourceEvent)
+	switch se {
+	case "events.vend", "events.cash":
+		data := unwrapTelemetryData(env.Payload)
+		if len(data) == 0 {
+			data = []byte("{}")
+		}
+		idem := strings.TrimSpace(env.Idempotency)
+		if idem == "" {
+			return fmt.Errorf("telemetryapp: %s requires idempotency_key", se)
+		}
+		return w.store.AppendDeviceTelemetryEdgeEvent(ctx, env.MachineID, se, data, idem)
+	case "events.inventory":
+		data := unwrapTelemetryData(env.Payload)
+		if len(data) == 0 {
+			return fmt.Errorf("telemetryapp: events.inventory requires payload")
+		}
+		return w.store.AppendInventoryEventFromDeviceTelemetry(ctx, env, data)
+	default:
+	}
 	data := unwrapTelemetryData(env.Payload)
 	samples := postgres.ParseMetricsPayload(data)
 	if len(samples) == 0 {

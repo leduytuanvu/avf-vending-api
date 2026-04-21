@@ -1,7 +1,10 @@
+// Package postgres implements MQTT command transport helpers (dispatch attempts, ack deadlines).
+// Device command outcomes are accepted on MQTT topics commands/receipt or commands/ack (see mqtt.Dispatch).
 package postgres
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -84,4 +87,61 @@ func (s *Store) MarkMQTTDispatchAttemptPublishFailed(ctx context.Context, attemp
 		ID:            attemptID,
 		TimeoutReason: pgtype.Text{String: reason, Valid: true},
 	})
+}
+
+// HTTPCommandPollRow is a machine command still awaiting device-side handling (pending/sent attempt).
+type HTTPCommandPollRow struct {
+	Sequence       int64
+	CommandType    string
+	Payload        []byte
+	CorrelationID  *uuid.UUID
+	IdempotencyKey string
+	AttemptStatus  string
+}
+
+// ListMachineCommandsForHTTPPoll returns open dispatch work for a machine (oldest sequence first).
+func (s *Store) ListMachineCommandsForHTTPPoll(ctx context.Context, machineID uuid.UUID, limit int32) ([]HTTPCommandPollRow, error) {
+	if s == nil || s.pool == nil {
+		return nil, fmt.Errorf("postgres: nil store")
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	const q = `
+SELECT cl.sequence, cl.command_type, cl.payload, cl.correlation_id, cl.idempotency_key, mca.status
+FROM command_ledger cl
+INNER JOIN machine_command_attempts mca ON mca.command_id = cl.id
+    AND mca.attempt_no = (
+        SELECT MAX(attempt_no) FROM machine_command_attempts m2 WHERE m2.command_id = cl.id
+    )
+WHERE cl.machine_id = $1
+  AND mca.status IN ('pending', 'sent')
+ORDER BY cl.sequence ASC
+LIMIT $2`
+	rows, err := s.pool.Query(ctx, q, machineID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []HTTPCommandPollRow
+	for rows.Next() {
+		var r HTTPCommandPollRow
+		var corr pgtype.UUID
+		var idem pgtype.Text
+		if err := rows.Scan(&r.Sequence, &r.CommandType, &r.Payload, &corr, &idem, &r.AttemptStatus); err != nil {
+			return nil, err
+		}
+		if corr.Valid {
+			u := uuid.UUID(corr.Bytes)
+			r.CorrelationID = &u
+		}
+		if idem.Valid {
+			r.IdempotencyKey = idem.String
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }

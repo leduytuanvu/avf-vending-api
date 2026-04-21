@@ -706,6 +706,36 @@ func (s *Store) IngestShadowReported(ctx context.Context, in platformmqtt.Shadow
 	return tx.Commit(ctx)
 }
 
+// IngestShadowDesired merges desired_state into machine_shadow and bumps connectivity (MQTT shadow/desired).
+func (s *Store) IngestShadowDesired(ctx context.Context, in platformmqtt.ShadowDesiredIngest) error {
+	if in.MachineID == uuid.Nil {
+		return errors.New("postgres: machine_id is required")
+	}
+	if len(in.DesiredJSON) == 0 {
+		return errors.New("postgres: desired json is required")
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := db.New(tx)
+	if _, err := q.GetMachineByIDForUpdate(ctx, in.MachineID); err != nil {
+		return err
+	}
+	if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
+		MachineID:    in.MachineID,
+		DesiredState: in.DesiredJSON,
+	}); err != nil {
+		return err
+	}
+	if err := q.TouchMachineConnectivity(ctx, in.MachineID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 // IngestCommandReceipt records an edge command outcome and bumps connectivity (idempotent on dedupe_key).
 func (s *Store) IngestCommandReceipt(ctx context.Context, in platformmqtt.CommandReceiptIngest) error {
 	if in.MachineID == uuid.Nil {

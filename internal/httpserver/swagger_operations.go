@@ -213,8 +213,8 @@ func DocOpV1AdminPlanogramGet() {}
 // --- Admin inventory (read-only) ---
 
 // DocOpV1AdminMachineSlots godoc
-// @Summary List live slot inventory for a machine
-// @Description Joins `machine_slot_state` to planograms/slots/products for the machine's current fill levels, price projection, and low-stock heuristics. **platform_admin** must pass **organization_id** for tenant pick; machine must belong to that organization.
+// @Summary List live slot inventory for a machine (restock / cycle-count UI)
+// @Description Merges `machine_slot_state` (legacy planogram slots) with current `machine_slot_configs` for **cabinetCode** / **slotCode**, derives **capacity**, **parLevel**, **lowStockThreshold**, **status** (`ok` | `low_stock` | `out_of_stock`), and resolves **currency** from the organization's default price book (falls back to **USD**). **platform_admin** must pass **organization_id** for tenant pick.
 // @Tags Admin
 // @Security BearerAuth
 // @Produce json
@@ -228,6 +228,27 @@ func DocOpV1AdminPlanogramGet() {}
 // @Failure 500 {object} V1StandardError
 // @Router /v1/admin/machines/{machineId}/slots [get]
 func DocOpV1AdminMachineSlots() {}
+
+// DocOpV1AdminMachineStockAdjustmentsPost godoc
+// @Summary Apply stock adjustments (restock, cycle count, manual, reconcile)
+// @Description Validates **quantityBefore** against `machine_slot_state`, writes append-only **inventory_events** (typed by **reason**), then updates the read model in the same transaction. Requires **operator_session_id** for an **ACTIVE** session and **Idempotency-Key** (replay returns **replay=true** without double-applying inventory). Reasons: **restock**, **cycle_count**, **manual_adjustment**, **machine_reconcile**.
+// @Tags Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Param organization_id query string false "Required for platform_admin"
+// @Param body body V1AdminStockAdjustmentsRequest true "operator_session_id, reason, items[]"
+// @Success 200 {object} V1AdminStockAdjustmentsResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 409 {object} V1StandardError "quantity_before_mismatch"
+// @Failure 429 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/stock-adjustments [post]
+func DocOpV1AdminMachineStockAdjustmentsPost() {}
 
 // DocOpV1AdminMachineInventory godoc
 // @Summary Aggregate inventory by product for a machine
@@ -245,6 +266,111 @@ func DocOpV1AdminMachineSlots() {}
 // @Failure 500 {object} V1StandardError
 // @Router /v1/admin/machines/{machineId}/inventory [get]
 func DocOpV1AdminMachineInventory() {}
+
+// DocOpV1SetupMachineBootstrap godoc
+// @Summary Machine setup bootstrap (topology + catalog)
+// @Description Returns machine identity, nested topology (**cabinets** with **slots** from current cabinet slot configs), and **catalog.products** from the machine's primary assortment binding. Requires **machine read** access via JWT claims (`RequireMachineURLAccess`).
+// @Tags Fleet
+// @Security BearerAuth
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} V1SetupMachineBootstrapResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 503 {object} V1CapabilityNotConfiguredError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/setup/machines/{machineId}/bootstrap [get]
+func DocOpV1SetupMachineBootstrap() {}
+
+// DocOpV1AdminMachineTopologyPut godoc
+// @Summary Upsert machine cabinet topology and slot layouts
+// @Description Upserts **cabinets** then **layouts** (cabinet-scoped `machine_slot_layouts`). Body requires **operator_session_id** for an **ACTIVE** session on this machine. **platform_admin** must pass **organization_id** query for tenant pick.
+// @Tags Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Param organization_id query string false "Required for platform_admin"
+// @Param body body object true "operator_session_id, cabinets[], layouts[]"
+// @Success 204 {string} string "No Content"
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 409 {object} V1StandardError "session_not_active"
+// @Failure 429 {object} V1StandardError "rate_limited when sensitive-write rate limit trips"
+// @Failure 503 {object} V1CapabilityNotConfiguredError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/topology [put]
+func DocOpV1AdminMachineTopologyPut() {}
+
+// DocOpV1AdminMachinePlanogramDraftPut godoc
+// @Summary Save draft cabinet slot planogram assignments
+// @Description Writes **draft** `machine_slot_configs` rows (not current) and optionally syncs legacy `machine_slot_state` when **syncLegacyReadModel** is true. Requires **operator_session_id** for an **ACTIVE** session on this machine.
+// @Tags Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Param organization_id query string false "Required for platform_admin"
+// @Param body body object true "operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]"
+// @Success 204 {string} string "No Content"
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 409 {object} V1StandardError
+// @Failure 429 {object} V1StandardError
+// @Failure 503 {object} V1CapabilityNotConfiguredError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/planograms/draft [put]
+func DocOpV1AdminMachinePlanogramDraftPut() {}
+
+// DocOpV1AdminMachinePlanogramPublishPost godoc
+// @Summary Publish draft planogram as current and dispatch device command
+// @Description Applies current slot configs, records a **machine_configs** snapshot (monotonic **desiredConfigVersion** / `config_revision`), updates shadow **desired_state**, and enqueues **machine_planogram_publish** on the MQTT command path. **Idempotency-Key** header is required (same semantics as command dispatch). **operator_session_id** must reference an **ACTIVE** session on this machine.
+// @Tags Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Param organization_id query string false "Required for platform_admin"
+// @Param body body object true "operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]"
+// @Success 200 {object} V1AdminPlanogramPublishResponse
+// @Failure 400 {object} V1StandardError "missing_idempotency_key / invalid_json"
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 409 {object} V1StandardError
+// @Failure 429 {object} V1StandardError
+// @Failure 503 {object} V1CapabilityNotConfiguredError "mqtt_command_dispatch or database"
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/planograms/publish [post]
+func DocOpV1AdminMachinePlanogramPublishPost() {}
+
+// DocOpV1AdminMachineSetupSyncPost godoc
+// @Summary Queue a machine setup / inventory sync command
+// @Description Dispatches **machine_setup_sync** with optional **reason** in the payload. **Idempotency-Key** is required. **operator_session_id** must reference an **ACTIVE** session on this machine.
+// @Tags Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Param organization_id query string false "Required for platform_admin"
+// @Param body body object true "operator_session_id, optional reason"
+// @Success 200 {object} V1AdminMachineSyncResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 409 {object} V1StandardError "idempotency_key_conflict"
+// @Failure 429 {object} V1StandardError
+// @Failure 503 {object} V1CapabilityNotConfiguredError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/sync [post]
+func DocOpV1AdminMachineSetupSyncPost() {}
 
 // --- Reporting (read-only analytics) ---
 
@@ -734,6 +860,43 @@ func DocOpV1MachineCommandStatus() {}
 // @Router /v1/machines/{machineId}/commands/dispatch [post]
 func DocOpV1MachineCommandDispatch() {}
 
+// DocOpV1DeviceMachineVendResults godoc
+// @Summary Report vend outcome for an order (HTTP bridge)
+// @Description Idempotency header required. **outcome** is **success** or **failed**. On **success**, order is finalized and inventory is decremented once (idempotent on the same key). On **failed**, inventory is not changed; **correlation_id** is preserved on the vend session when provided. Requires **commerce** and **telemetry store** wiring.
+// @Tags Device
+// @Security BearerAuth
+// @Param machineId path string true "Machine UUID"
+// @Accept json
+// @Produce json
+// @Param body body object true "order_id, slot_index, outcome, optional failure_reason, optional correlation_id"
+// @Success 200 {object} object "{order_id,order_status,vend_state,replay}"
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Failure 404 {object} V1StandardError
+// @Failure 429 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/device/machines/{machineId}/vend-results [post]
+func DocOpV1DeviceMachineVendResults() {}
+
+// DocOpV1DeviceMachineCommandsPoll godoc
+// @Summary Poll pending remote commands over HTTP (MQTT fallback)
+// @Description Returns commands whose latest attempt is **pending** or **sent** (oldest sequence first). Optional JSON body **limit** (default 20, max 100). Nil RemoteCommands → **500**. OpenAPI example uses **`machine_planogram_publish`** payload shape (any `command_type` the ledger holds may appear).
+// @Tags Device
+// @Security BearerAuth
+// @Param machineId path string true "Machine UUID"
+// @Accept json
+// @Produce json
+// @Param body body object false "limit"
+// @Success 200 {object} object "{items:[{sequence,command_type,payload,correlation_id,idempotency_key}],meta}"
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Failure 429 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/device/machines/{machineId}/commands/poll [post]
+func DocOpV1DeviceMachineCommandsPoll() {}
+
 // --- Operator sessions (machine-scoped) ---
 
 // DocOpV1OperatorSessionCurrent godoc
@@ -871,6 +1034,24 @@ func DocOpV1OperatorSessionLogout() {}
 func DocOpV1OperatorSessionHeartbeat() {}
 
 // --- Commerce ---
+
+// DocOpV1CommerceCashCheckout godoc
+// @Summary Create order, record captured cash payment, mark paid
+// @Description Same body as **POST /v1/commerce/orders**; runs **StartPaymentWithOutbox** with **provider=cash** and **payment_state=captured**, then marks the order paid. Requires commerce outbox env (same guard as payment-session). **Idempotency-Key** required.
+// @Tags Commerce
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param body body object true "machine_id, product_id, slot_index, currency, subtotal_minor, tax_minor, total_minor"
+// @Success 200 {object} V1CommerceCashCheckoutResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Failure 429 {object} V1StandardError
+// @Failure 503 {object} V1CapabilityNotConfiguredError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/commerce/cash-checkout [post]
+func DocOpV1CommerceCashCheckout() {}
 
 // DocOpV1CommerceCreateOrder godoc
 // @Summary Create order and initial vend session
