@@ -276,6 +276,8 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          timeout: 60s
+          command_timeout: 60m
           overwrite: true
           source: deployments/prod/docker-compose.prod.yml,deployments/prod/emqx/base.hocon,deployments/prod/scripts/*,deployments/prod/caddy/Caddyfile,deployments/prod/.env.production.example,deployments/prod/README.md
           target: ${{ secrets.VPS_DEPLOY_PATH }}
@@ -299,6 +301,8 @@ jobs:
           port: ${{ secrets.VPS_SSH_PORT }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          timeout: 60s
+          command_timeout: 60m
           script_stop: true
           envs: APP_IMAGE_REF,GOOSE_IMAGE_REF,RELEASE_LABEL,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,EMQX_API_KEY,EMQX_API_SECRET,VPS_DEPLOY_PATH
           script: |
