@@ -289,6 +289,8 @@ preflight_emqx_api_auth() {
 	local timeout_secs="${EMQX_API_PREFLIGHT_WAIT_SECS:-90}"
 	local poll_secs="${EMQX_API_PREFLIGHT_POLL_SECS:-3}"
 	local start_ts now_ts elapsed code tmp saw_401="0"
+	local emqx_api_base="http://127.0.0.1:18083/api/v5"
+	local emqx_auth_probe="${emqx_api_base}/authentication/password_based%3Abuilt_in_database/users"
 
 	[[ "${timeout_secs}" =~ ^[0-9]+$ ]] || timeout_secs=90
 	[[ "${poll_secs}" =~ ^[0-9]+$ ]] || poll_secs=3
@@ -296,12 +298,12 @@ preflight_emqx_api_auth() {
 	tmp="$(mktemp)"
 	start_ts="$(date +%s)"
 
-	note "preflight EMQX management API auth via /api/v5/status"
+	note "preflight EMQX management API auth via protected authentication endpoint"
 	while true; do
 		code="$(
 			curl -sS -o "${tmp}" -w "%{http_code}" \
 				-u "${EMQX_API_KEY_RESOLVED}:${EMQX_API_SECRET_RESOLVED}" \
-				"http://127.0.0.1:18083/api/v5/status" || true
+				"${emqx_auth_probe}" || true
 		)"
 		if [[ "${code}" == "200" ]]; then
 			rm -f "${tmp}"
