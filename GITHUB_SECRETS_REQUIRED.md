@@ -13,8 +13,8 @@ File này tổng hợp các GitHub Secrets / Inputs mà workflow hiện tại đ
 | `VPS_DEPLOY_PATH` | Yes | Không tìm thấy value thật trong repo/local files đã quét |
 | `EMQX_API_KEY` | Yes | Chỉ thấy placeholder: `CHANGE_ME_EMQX_API_KEY` |
 | `EMQX_API_SECRET` | Yes | Chỉ thấy placeholder: `CHANGE_ME_LONG_RANDOM_EMQX_API_SECRET` |
-| `GHCR_PULL_USERNAME` | Optional | Không tìm thấy value thật; file example chỉ comment: `myorg` |
-| `GHCR_PULL_TOKEN` | Optional | Chỉ thấy placeholder comment: `CHANGE_ME_GHCR_READ_TOKEN_OR_PAT` |
+| `GHCR_PULL_USERNAME` | Yes | Không tìm thấy value thật; file example chỉ comment: `myorg` |
+| `GHCR_PULL_TOKEN` | Yes | Chỉ thấy placeholder comment: `CHANGE_ME_GHCR_READ_TOKEN_OR_PAT` |
 
 ### Lưu ý bắt buộc cho production SSH/SCP
 
@@ -22,6 +22,13 @@ File này tổng hợp các GitHub Secrets / Inputs mà workflow hiện tại đ
 - `VPS_SSH_PRIVATE_KEY` phải là full private key block, ví dụ bắt đầu bằng `-----BEGIN OPENSSH PRIVATE KEY-----` hoặc `-----BEGIN RSA PRIVATE KEY-----`.
 - Không paste `.pub`, không paste dòng trong `authorized_keys`, không thêm dấu nháy, và không dùng key có passphrase nếu workflow chưa truyền thêm `passphrase`.
 - Nếu VPS chỉ mở SSH trong mạng nội bộ, sau VPN, hoặc allowlist IP quá chặt, `scp-action` sẽ fail trước khi `release.sh` kịp chạy.
+
+### Lưu ý bắt buộc cho production GHCR
+
+- Hai package production `ghcr.io/leduytuanvu/avf-vending-api` và `ghcr.io/leduytuanvu/avf-vending-api-goose` hiện đang là `Private`.
+- Vì vậy production deploy bắt buộc phải có cả `GHCR_PULL_USERNAME` và `GHCR_PULL_TOKEN`; không được dựa vào anonymous pull.
+- `GHCR_PULL_TOKEN` nên là PAT hoặc token có ít nhất quyền `read:packages`.
+- `GHCR_PULL_USERNAME` phải là GitHub username của account sở hữu token đó và account này phải thực sự có quyền đọc package private.
 
 ## Staging secrets đang được workflow dùng
 
@@ -89,8 +96,8 @@ EMQX_API_SECRET=CHANGE_ME_LONG_RANDOM_EMQX_API_SECRET
 - `VPS_SSH_PRIVATE_KEY`: private key tương ứng với public key đã add trên VPS
 - `VPS_DEPLOY_PATH`: đường dẫn deploy root trên VPS, ví dụ `/opt/avf-vending/avf-vending-api`
 - `EMQX_API_KEY` / `EMQX_API_SECRET`: phải khớp với `.env.production` thật và file bootstrap EMQX trên VPS
-- `GHCR_PULL_USERNAME`: username/org dùng pull GHCR nếu image private
-- `GHCR_PULL_TOKEN`: token có quyền `read:packages`
+- `GHCR_PULL_USERNAME`: username GitHub của account có quyền đọc package private trên GHCR
+- `GHCR_PULL_TOKEN`: PAT hoặc token có quyền `read:packages`
 
 ## Bảng Name / Value để copy-paste
 
@@ -107,8 +114,8 @@ EMQX_API_SECRET=CHANGE_ME_LONG_RANDOM_EMQX_API_SECRET
 | `VPS_DEPLOY_PATH` | `</opt/avf-vending/avf-vending-api>` |
 | `EMQX_API_KEY` | `<doc-tu-.env.production-thuc>` |
 | `EMQX_API_SECRET` | `<doc-tu-.env.production-thuc>` |
-| `GHCR_PULL_USERNAME` | `<username-hoac-org-pull-ghcr-neu-private>` |
-| `GHCR_PULL_TOKEN` | `<token-read:packages-neu-private>` |
+| `GHCR_PULL_USERNAME` | `<github-username-co-quyen-read-package>` |
+| `GHCR_PULL_TOKEN` | `<PAT-hoac-token-co-read:packages>` |
 
 ### Staging
 
@@ -138,6 +145,17 @@ EMQX_API_SECRET=CHANGE_ME_LONG_RANDOM_EMQX_API_SECRET
   `VPS_HOST` đang là hostname nội bộ, sai DNS public, hoặc chứa ký tự thừa / whitespace.
 - `VPS_SSH_PRIVATE_KEY must contain the full private key PEM/OpenSSH block`
   Secret đang chứa public key, value bị cắt mất đầu/cuối, hoặc format private key không hợp lệ.
+
+### Check nhanh khi production GHCR login fail
+
+- `Get "https://ghcr.io/v2/": denied: denied`
+  `GHCR_PULL_USERNAME` / `GHCR_PULL_TOKEN` đang sai, token không có `read:packages`, hoặc account của token không có quyền đọc package private.
+- `production deploy requires GHCR_PULL_USERNAME and GHCR_PULL_TOKEN because ghcr.io/leduytuanvu/avf-vending-api and ghcr.io/leduytuanvu/avf-vending-api-goose are private packages`
+  Hai secret GHCR đang bị thiếu trong production environment/repository secrets.
+- `set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN together for production GHCR pulls`
+  Chỉ mới set một nửa cặp secret, nên workflow chặn trước khi remote deploy.
+- Kiểm tra nhanh trên GitHub Packages UI:
+  package phải hiện dưới đúng owner/repo, và account của token phải nhìn thấy package private đó.
 
 ## Template nhanh để paste vào chỗ khác
 

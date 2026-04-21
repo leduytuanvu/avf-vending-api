@@ -204,9 +204,13 @@ set_env_value() {
 registry_login_optional() {
 	if [[ -n "${GHCR_PULL_USERNAME:-}" ]] && [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
 		note "docker login ghcr.io (GHCR_PULL_USERNAME / GHCR_PULL_TOKEN)"
-		printf '%s' "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "${GHCR_PULL_USERNAME}" --password-stdin
+		if ! printf '%s' "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "${GHCR_PULL_USERNAME}" --password-stdin; then
+			fail "docker login ghcr.io failed; production packages are private, so verify GHCR_PULL_USERNAME can read the package and GHCR_PULL_TOKEN has read:packages"
+		fi
 	elif [[ -n "${GHCR_PULL_USERNAME:-}" ]] || [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
-		fail "set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN, or neither, for registry login"
+		fail "set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN together for private GHCR registry login"
+	else
+		fail "missing GHCR_PULL_USERNAME / GHCR_PULL_TOKEN for private GHCR production packages"
 	fi
 }
 

@@ -198,7 +198,10 @@ jobs:
           if [[ -n "${GHCR_PULL_USERNAME:-}" ]] && [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
             :
           elif [[ -n "${GHCR_PULL_USERNAME:-}" ]] || [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
-            echo "error: set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN, or omit both for anonymous pulls" >&2
+            echo "error: set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN together for production GHCR pulls" >&2
+            exit 1
+          else
+            echo "error: production deploy requires GHCR_PULL_USERNAME and GHCR_PULL_TOKEN because ghcr.io/leduytuanvu/avf-vending-api and ghcr.io/leduytuanvu/avf-vending-api-goose are private packages" >&2
             exit 1
           fi
 
@@ -261,6 +264,8 @@ jobs:
             echo "- auth mode: \`${AUTH_MODE}\`"
             echo "- provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\`"
             echo "- current supported mode: \`VPS over SSH\`"
+            echo "- GHCR package visibility: \`private\`"
+            echo "- GHCR auth requirement: \`GHCR_PULL_USERNAME\` + \`GHCR_PULL_TOKEN\` with package read access"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Sync production runtime assets
@@ -317,11 +322,16 @@ jobs:
               exit 1
             fi
 
-            # Match release.sh: docker login only when both pull secrets are set (public GHCR images need neither).
             if [[ -n "${GHCR_PULL_USERNAME:-}" ]] && [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
-              printf '%s' "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "${GHCR_PULL_USERNAME}" --password-stdin
+              if ! printf '%s' "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "${GHCR_PULL_USERNAME}" --password-stdin; then
+                echo "error: docker login ghcr.io failed for private production packages. Verify GHCR_PULL_USERNAME matches the GitHub account that can read the package and GHCR_PULL_TOKEN has read:packages access." >&2
+                exit 1
+              fi
             elif [[ -n "${GHCR_PULL_USERNAME:-}" ]] || [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
-              echo "error: set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN, or omit both for anonymous pulls" >&2
+              echo "error: set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN together for production GHCR pulls" >&2
+              exit 1
+            else
+              echo "error: production deploy requires GHCR_PULL_USERNAME and GHCR_PULL_TOKEN because the production GHCR packages are private" >&2
               exit 1
             fi
 
