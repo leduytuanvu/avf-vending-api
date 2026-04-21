@@ -269,6 +269,149 @@
         ],
         "type": "object"
       },
+      "V1AdminMachineSlot": {
+        "properties": {
+          "cabinetCode": {
+            "type": "string"
+          },
+          "capacity": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "currentQuantity": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "currentStock": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "isEmpty": {
+            "type": "boolean"
+          },
+          "lowStock": {
+            "type": "boolean"
+          },
+          "lowStockThreshold": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "machineId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "machineName": {
+            "type": "string"
+          },
+          "machineStatus": {
+            "type": "string"
+          },
+          "maxQuantity": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "parLevel": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "planogramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "planogramName": {
+            "type": "string"
+          },
+          "planogramRevisionApplied": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "priceMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "productId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "productSku": {
+            "type": "string"
+          },
+          "slotCode": {
+            "type": "string"
+          },
+          "slotIndex": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "low_stock",
+              "out_of_stock"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "machineId",
+          "machineName",
+          "machineStatus",
+          "planogramId",
+          "planogramName",
+          "slotIndex",
+          "cabinetCode",
+          "slotCode",
+          "currentQuantity",
+          "currentStock",
+          "maxQuantity",
+          "capacity",
+          "parLevel",
+          "lowStockThreshold",
+          "priceMinor",
+          "currency",
+          "status",
+          "planogramRevisionApplied",
+          "updatedAt",
+          "isEmpty",
+          "lowStock"
+        ],
+        "type": "object"
+      },
+      "V1AdminMachineSlotListEnvelope": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/V1AdminMachineSlot"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "V1AdminMachineSyncResponse": {
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/V1AdminPlanogramCommandInfo"
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "type": "object"
+      },
       "V1AdminMachinesListResponse": {
         "properties": {
           "items": {
@@ -354,6 +497,139 @@
         "required": [
           "items",
           "meta"
+        ],
+        "type": "object"
+      },
+      "V1AdminPlanogramCommandInfo": {
+        "properties": {
+          "commandId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "dispatchState": {
+            "type": "string"
+          },
+          "replay": {
+            "type": "boolean"
+          },
+          "sequence": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "commandId",
+          "sequence",
+          "dispatchState",
+          "replay"
+        ],
+        "type": "object"
+      },
+      "V1AdminPlanogramPublishResponse": {
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/V1AdminPlanogramCommandInfo"
+          },
+          "desiredConfigVersion": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "planogramId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "planogramRevision": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "desiredConfigVersion",
+          "planogramId",
+          "planogramRevision",
+          "command"
+        ],
+        "type": "object"
+      },
+      "V1AdminStockAdjustmentsRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "properties": {
+                "cabinetCode": {
+                  "type": "string"
+                },
+                "planogramId": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "productId": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "quantityAfter": {
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "quantityBefore": {
+                  "format": "int32",
+                  "type": "integer"
+                },
+                "slotCode": {
+                  "type": "string"
+                },
+                "slotIndex": {
+                  "format": "int32",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "planogramId",
+                "slotIndex",
+                "quantityBefore",
+                "quantityAfter"
+              ],
+              "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "operator_session_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "restock",
+              "cycle_count",
+              "manual_adjustment",
+              "machine_reconcile"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "operator_session_id",
+          "reason",
+          "items"
+        ],
+        "type": "object"
+      },
+      "V1AdminStockAdjustmentsResponse": {
+        "properties": {
+          "eventIds": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "replay": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "replay"
         ],
         "type": "object"
       },
@@ -1302,6 +1578,220 @@
         ],
         "type": "object"
       },
+      "V1SetupMachineBootstrapResponse": {
+        "properties": {
+          "catalog": {
+            "properties": {
+              "products": {
+                "items": {
+                  "properties": {
+                    "assortmentId": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "assortmentName": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "productId": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "sku": {
+                      "type": "string"
+                    },
+                    "sortOrder": {
+                      "format": "int32",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "productId",
+                    "sku",
+                    "name",
+                    "sortOrder",
+                    "assortmentId",
+                    "assortmentName"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "products"
+            ],
+            "type": "object"
+          },
+          "machine": {
+            "properties": {
+              "commandSequence": {
+                "format": "int64",
+                "type": "integer"
+              },
+              "createdAt": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "hardwareProfileId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "machineId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "organizationId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "serialNumber": {
+                "type": "string"
+              },
+              "siteId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "format": "date-time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "machineId",
+              "organizationId",
+              "siteId",
+              "serialNumber",
+              "name",
+              "status",
+              "commandSequence",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "topology": {
+            "properties": {
+              "cabinets": {
+                "items": {
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "format": "uuid",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "additionalProperties": true,
+                      "type": "object"
+                    },
+                    "slots": {
+                      "items": {
+                        "properties": {
+                          "configId": {
+                            "format": "uuid",
+                            "type": "string"
+                          },
+                          "effectiveFrom": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "isCurrent": {
+                            "type": "boolean"
+                          },
+                          "machineSlotLayoutId": {
+                            "format": "uuid",
+                            "type": "string"
+                          },
+                          "maxQuantity": {
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "metadata": {
+                            "additionalProperties": true,
+                            "type": "object"
+                          },
+                          "priceMinor": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "productId": {
+                            "format": "uuid",
+                            "type": "string"
+                          },
+                          "productName": {
+                            "type": "string"
+                          },
+                          "productSku": {
+                            "type": "string"
+                          },
+                          "slotCode": {
+                            "type": "string"
+                          },
+                          "slotIndex": {
+                            "format": "int32",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "configId",
+                          "slotCode",
+                          "productSku",
+                          "productName",
+                          "maxQuantity",
+                          "priceMinor",
+                          "effectiveFrom",
+                          "isCurrent",
+                          "machineSlotLayoutId",
+                          "metadata"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "sortOrder": {
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "title",
+                    "sortOrder",
+                    "metadata",
+                    "slots"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "cabinets"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "machine",
+          "topology",
+          "catalog"
+        ],
+        "type": "object"
+      },
       "V1StandardError": {
         "properties": {
           "error": {
@@ -2097,9 +2587,354 @@
         ]
       }
     },
+    "/v1/admin/machines/{machineId}/planograms/draft": {
+      "put": {
+        "description": "Writes **draft** `machine_slot_configs` rows (not current) and optionally syncs legacy `machine_slot_state` when **syncLegacyReadModel** is true. Requires **operator_session_id** for an **ACTIVE** session on this machine.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required for platform_admin",
+            "in": "query",
+            "name": "organization_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "items": [
+                  {
+                    "cabinetCode": "A",
+                    "layoutKey": "grid-4x6",
+                    "layoutRevision": 1,
+                    "legacySlotIndex": 3,
+                    "maxQuantity": 12,
+                    "metadata": {},
+                    "priceMinor": 150,
+                    "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                    "slotCode": "A3"
+                  }
+                ],
+                "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+                "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                "planogramRevision": 3,
+                "syncLegacyReadModel": true
+              },
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]",
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "example": "ok",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Save draft cabinet slot planogram assignments"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Save draft cabinet slot planogram assignments",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/planograms/publish": {
+      "post": {
+        "description": "Applies current slot configs, records a **machine_configs** snapshot (monotonic **desiredConfigVersion** / `config_revision`), updates shadow **desired_state**, and enqueues **machine_planogram_publish** on the MQTT command path. **Idempotency-Key** header is required (same semantics as command dispatch). **operator_session_id** must reference an **ACTIVE** session on this machine.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required for platform_admin",
+            "in": "query",
+            "name": "organization_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "items": [
+                  {
+                    "cabinetCode": "A",
+                    "layoutKey": "grid-4x6",
+                    "layoutRevision": 1,
+                    "legacySlotIndex": 3,
+                    "maxQuantity": 12,
+                    "metadata": {},
+                    "priceMinor": 150,
+                    "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                    "slotCode": "A3"
+                  }
+                ],
+                "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+                "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                "planogramRevision": 3,
+                "syncLegacyReadModel": true
+              },
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "command": {
+                    "commandId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                    "dispatchState": "published",
+                    "replay": false,
+                    "sequence": 43
+                  },
+                  "desiredConfigVersion": 7,
+                  "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "planogramRevision": 3
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1AdminPlanogramPublishResponse"
+                }
+              }
+            },
+            "description": "Publish draft planogram as current and dispatch device command"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Publish draft planogram as current and dispatch device command",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
     "/v1/admin/machines/{machineId}/slots": {
       "get": {
-        "description": "Joins `machine_slot_state` to planograms/slots/products for the machine's current fill levels, price projection, and low-stock heuristics. **platform_admin** must pass **organization_id** for tenant pick; machine must belong to that organization.",
+        "description": "Merges `machine_slot_state` (legacy planogram slots) with current `machine_slot_configs` for **cabinetCode** / **slotCode**, derives **capacity**, **parLevel**, **lowStockThreshold**, **status** (`ok` | `low_stock` | `out_of_stock`), and resolves **currency** from the organization's default price book (falls back to **USD**). **platform_admin** must pass **organization_id** for tenant pick.",
         "parameters": [
           {
             "description": "Machine UUID",
@@ -2138,7 +2973,7 @@
                 }
               }
             },
-            "description": "List live slot inventory for a machine"
+            "description": "List live slot inventory for a machine (restock / cycle-count UI)"
           },
           "400": {
             "content": {
@@ -2196,7 +3031,487 @@
             "bearerAuth": []
           }
         ],
-        "summary": "List live slot inventory for a machine",
+        "summary": "List live slot inventory for a machine (restock / cycle-count UI)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/stock-adjustments": {
+      "post": {
+        "description": "Validates **quantityBefore** against `machine_slot_state`, writes append-only **inventory_events** (typed by **reason**), then updates the read model in the same transaction. Requires **operator_session_id** for an **ACTIVE** session and **Idempotency-Key** (replay returns **replay=true** without double-applying inventory). Reasons: **restock**, **cycle_count**, **manual_adjustment**, **machine_reconcile**.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required for platform_admin",
+            "in": "query",
+            "name": "organization_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "items": [
+                  {
+                    "cabinetCode": "A",
+                    "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                    "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                    "quantityAfter": 10,
+                    "quantityBefore": 2,
+                    "slotCode": "A3",
+                    "slotIndex": 3
+                  }
+                ],
+                "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+                "reason": "restock"
+              },
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "operator_session_id, reason, items[]",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "eventIds": [
+                    1001,
+                    1002
+                  ],
+                  "replay": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1AdminStockAdjustmentsResponse"
+                }
+              }
+            },
+            "description": "Apply stock adjustments (restock, cycle count, manual, reconcile)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Apply stock adjustments (restock, cycle count, manual, reconcile)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/sync": {
+      "post": {
+        "description": "Dispatches **machine_setup_sync** with optional **reason** in the payload. **Idempotency-Key** is required. **operator_session_id** must reference an **ACTIVE** session on this machine.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required for platform_admin",
+            "in": "query",
+            "name": "organization_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "operator_session_id, optional reason",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1AdminMachineSyncResponse"
+                }
+              }
+            },
+            "description": "Queue a machine setup / inventory sync command"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Queue a machine setup / inventory sync command",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/topology": {
+      "put": {
+        "description": "Upserts **cabinets** then **layouts** (cabinet-scoped `machine_slot_layouts`). Body requires **operator_session_id** for an **ACTIVE** session on this machine. **platform_admin** must pass **organization_id** query for tenant pick.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required for platform_admin",
+            "in": "query",
+            "name": "organization_id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "cabinets": [
+                  {
+                    "code": "A",
+                    "metadata": {},
+                    "sortOrder": 1,
+                    "title": "Main cabinet"
+                  }
+                ],
+                "layouts": [
+                  {
+                    "cabinetCode": "A",
+                    "layoutKey": "grid-4x6",
+                    "layoutSpec": {
+                      "cols": 6,
+                      "rows": 4
+                    },
+                    "revision": 1,
+                    "status": "active"
+                  }
+                ],
+                "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111"
+              },
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "operator_session_id, cabinets[], layouts[]",
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "example": "ok",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Upsert machine cabinet topology and slot layouts"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Upsert machine cabinet topology and slot layouts",
         "tags": [
           "Admin"
         ]
@@ -3963,6 +5278,145 @@
         ]
       }
     },
+    "/v1/commerce/cash-checkout": {
+      "post": {
+        "description": "Same body as **POST /v1/commerce/orders**; runs **StartPaymentWithOutbox** with **provider=cash** and **payment_state=captured**, then marks the order paid. Requires commerce outbox env (same guard as payment-session). **Idempotency-Key** required.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "currency": "USD",
+                "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                "product_id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                "slot_index": 3,
+                "subtotal_minor": 125,
+                "tax_minor": 10,
+                "total_minor": 135
+              },
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "machine_id, product_id, slot_index, currency, subtotal_minor, tax_minor, total_minor",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "order_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "order_status": "paid",
+                  "payment_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "payment_state": "captured",
+                  "replay": false,
+                  "vend_session_id": "8d3e2f10-1111-2222-3333-444455556666"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1CommerceCashCheckoutResponse"
+                }
+              }
+            },
+            "description": "Create order, record captured cash payment, mark paid"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "capability_not_configured",
+                    "details": {
+                      "capability": "v1.commerce.payment_session.outbox",
+                      "implemented": false
+                    },
+                    "message": "commerce outbox defaults are not configured",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create order, record captured cash payment, mark paid",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
     "/v1/commerce/orders": {
       "post": {
         "description": "Commerce routes not mounted when commerce service nil. Requires org on JWT for non-platform users. **Idempotency-Key** or **X-Idempotency-Key** required. Not configured \u2192 **503** `capability_not_configured` (`v1.commerce.persistence`). Rate limit \u2192 **429**.",
@@ -5107,6 +6561,266 @@
         "summary": "Finalize vend success",
         "tags": [
           "Commerce"
+        ]
+      }
+    },
+    "/v1/device/machines/{machineId}/commands/poll": {
+      "post": {
+        "description": "Returns commands whose latest attempt is **pending** or **sent** (oldest sequence first). Optional JSON body **limit** (default 20, max 100). Nil RemoteCommands \u2192 **500**. OpenAPI example uses **`machine_planogram_publish`** payload shape (any `command_type` the ledger holds may appear).",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "limit": 10
+              },
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "limit",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "items": [
+                    {
+                      "command_type": "machine_planogram_publish",
+                      "correlation_id": "11111111-2222-3333-4444-555555555555",
+                      "idempotency_key": "planogram-publish-001",
+                      "payload": {
+                        "desiredConfigVersion": 7,
+                        "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                        "planogramRevision": 3
+                      },
+                      "sequence": 42
+                    }
+                  ],
+                  "meta": {
+                    "returned": 1
+                  }
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Poll pending remote commands over HTTP (MQTT fallback)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Poll pending remote commands over HTTP (MQTT fallback)",
+        "tags": [
+          "Device"
+        ]
+      }
+    },
+    "/v1/device/machines/{machineId}/vend-results": {
+      "post": {
+        "description": "Idempotency header required. **outcome** is **success** or **failed**. On **success**, order is finalized and inventory is decremented once (idempotent on the same key). On **failed**, inventory is not changed; **correlation_id** is preserved on the vend session when provided. Requires **commerce** and **telemetry store** wiring.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "correlation_id": "11111111-2222-3333-4444-555555555555",
+                "order_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "outcome": "success",
+                "slot_index": 3
+              },
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "order_id, slot_index, outcome, optional failure_reason, optional correlation_id",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "order_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "order_status": "completed",
+                  "replay": false,
+                  "vend_state": "success"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Report vend outcome for an order (HTTP bridge)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Report vend outcome for an order (HTTP bridge)",
+        "tags": [
+          "Device"
         ]
       }
     },
@@ -7786,6 +9500,163 @@
         "summary": "Sales rollup and trend breakdown",
         "tags": [
           "Reporting"
+        ]
+      }
+    },
+    "/v1/setup/machines/{machineId}/bootstrap": {
+      "get": {
+        "description": "Returns machine identity, nested topology (**cabinets** with **slots** from current cabinet slot configs), and **catalog.products** from the machine's primary assortment binding. Requires **machine read** access via JWT claims (`RequireMachineURLAccess`).",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "catalog": {
+                    "products": [
+                      {
+                        "assortmentId": "dddddddd-eeee-ffff-0000-111111111111",
+                        "assortmentName": "Standard",
+                        "name": "Cola 12oz",
+                        "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                        "sku": "COLA-12",
+                        "sortOrder": 1
+                      }
+                    ]
+                  },
+                  "machine": {
+                    "commandSequence": 42,
+                    "createdAt": "2026-01-01T00:00:00.000000000Z",
+                    "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "name": "Lobby A",
+                    "organizationId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+                    "serialNumber": "SN-LOBBY-001",
+                    "siteId": "11111111-2222-3333-4444-555555555555",
+                    "status": "online",
+                    "updatedAt": "2026-04-19T12:00:00.000000000Z"
+                  },
+                  "topology": {
+                    "cabinets": [
+                      {
+                        "code": "A",
+                        "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                        "slots": [
+                          {
+                            "configId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                            "effectiveFrom": "2026-04-01T00:00:00.000000000Z",
+                            "isCurrent": true,
+                            "machineSlotLayout": "cccccccc-dddd-eeee-ffff-000000000001",
+                            "maxQuantity": 10,
+                            "metadata": {},
+                            "priceMinor": 150,
+                            "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                            "productName": "Cola 12oz",
+                            "productSku": "COLA-12",
+                            "slotCode": "A1",
+                            "slotIndex": 1
+                          }
+                        ],
+                        "sortOrder": 1,
+                        "title": "Main"
+                      }
+                    ]
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1SetupMachineBootstrapResponse"
+                }
+              }
+            },
+            "description": "Machine setup bootstrap (topology + catalog)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Machine setup bootstrap (topology + catalog)",
+        "tags": [
+          "Fleet"
         ]
       }
     }
