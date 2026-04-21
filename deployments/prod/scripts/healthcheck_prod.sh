@@ -55,6 +55,24 @@ read_env_default() {
 }
 
 API_DOMAIN="$(read_env API_DOMAIN)"
+resolve_database_name() {
+	local db_name db_url
+	db_name="$(read_env_default POSTGRES_DB "")"
+	if [[ -n "${db_name}" ]]; then
+		printf '%s' "${db_name}"
+		return 0
+	fi
+
+	db_url="$(read_env_default DATABASE_URL "")"
+	[[ -n "${db_url}" ]] || fail_fast "POSTGRES_DB or DATABASE_URL must be set in .env.production"
+
+	db_name="${db_url##*/}"
+	db_name="${db_name%%\?*}"
+	[[ -n "${db_name}" ]] || fail_fast "could not derive database name from DATABASE_URL"
+	printf '%s' "${db_name}"
+}
+
+DB_NAME="$(resolve_database_name)"
 COMPOSE=(docker compose --env-file .env.production -f docker-compose.prod.yml)
 failures=0
 SMOKE_RETRY_COUNT="${SMOKE_RETRY_COUNT:-6}"
@@ -312,7 +330,7 @@ else
 fi
 
 note "internal service checks"
-check_cmd "postgres pg_isready" "check postgres container logs and DATABASE_URL / POSTGRES_* values" "${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d avf_vending >/dev/null'
+check_cmd "postgres pg_isready" "check postgres container logs and DATABASE_URL / POSTGRES_* values" "${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$1" >/dev/null' sh "${DB_NAME}"
 check_cmd "nats health endpoint" "check avf-prod-nats logs and JetStream startup" "${COMPOSE[@]}" exec -T nats sh -c 'wget -qO- http://127.0.0.1:8222/healthz >/dev/null'
 check_cmd "emqx broker status" "check avf-prod-emqx logs and dashboard/bootstrap credentials" "${COMPOSE[@]}" exec -T emqx sh -c 'emqx_ctl status >/dev/null'
 retry_check_cmd "api live endpoint inside container" "check avf-prod-api logs and upstream dependency readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/live | grep -qx ok'

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Restore from a gzip SQL dump produced by backup_postgres.sh.
-# This is disruptive and destructive: it replaces schema/data in avf_vending.
+# This is disruptive and destructive: it replaces schema/data in the configured production database.
 set -euo pipefail
 
 INVOCATION_PWD="$(pwd -P)"
@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 usage() {
-	echo "usage: $0 [--preflight] [--yes] path/to/avf_vending_TIMESTAMP.sql.gz" >&2
+	echo "usage: $0 [--preflight] [--yes] path/to/<database>_TIMESTAMP.sql.gz" >&2
 }
 
 log() {
@@ -60,6 +60,40 @@ if [[ ! -f .env.production ]]; then
 	fail "missing .env.production"
 fi
 
+read_env_optional() {
+	local key="$1"
+	local line
+	line="$(grep -E "^${key}=" .env.production | tail -n1 || true)"
+	if [[ -z "${line}" ]]; then
+		printf ''
+		return 0
+	fi
+	line="${line#"${key}="}"
+	line="${line%$'\r'}"
+	if [[ "${line}" == \"*\" ]]; then
+		line="${line#\"}"
+		line="${line%\"}"
+	fi
+	printf '%s' "${line}"
+}
+
+resolve_database_name() {
+	local db_name db_url
+	db_name="$(read_env_optional POSTGRES_DB)"
+	if [[ -n "${db_name}" ]]; then
+		printf '%s' "${db_name}"
+		return 0
+	fi
+
+	db_url="$(read_env_optional DATABASE_URL)"
+	[[ -n "${db_url}" ]] || fail "POSTGRES_DB or DATABASE_URL must be set in .env.production"
+
+	db_name="${db_url##*/}"
+	db_name="${db_name%%\?*}"
+	[[ -n "${db_name}" ]] || fail "could not derive database name from DATABASE_URL"
+	printf '%s' "${db_name}"
+}
+
 dump_input="$1"
 case "${dump_input}" in
 	/*)
@@ -85,6 +119,7 @@ done
 COMPOSE=(docker compose --env-file .env.production -f docker-compose.prod.yml)
 WRITER_SERVICES=(api worker mqtt-ingest reconciler caddy)
 LONG_LIVED_SERVICES=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
+DB_NAME="$(resolve_database_name)"
 restore_started=0
 
 warn_restore_failure() {
@@ -103,9 +138,10 @@ gzip -t "${dump_abs}" || fail "gzip integrity check failed for ${dump_abs}"
 
 dump_size_bytes="$(wc -c <"${dump_abs}" | tr -d ' ')"
 log "dump size: ${dump_size_bytes} bytes"
+log "configured database name: ${DB_NAME}"
 
 log "preflight: validate postgres readiness"
-"${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d avf_vending >/dev/null' || fail "postgres is not ready inside the prod compose stack"
+"${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$1" >/dev/null' sh "${DB_NAME}" || fail "postgres is not ready inside the prod compose stack for database ${DB_NAME}"
 
 if (( PREFLIGHT_ONLY )); then
 	log "preflight only; no services were stopped and no data was modified"
@@ -116,7 +152,7 @@ if (( ! CONFIRMED )); then
 	fail "destructive restore requires explicit confirmation; rerun with --yes or use --preflight first"
 fi
 
-echo "restore_postgres: WARNING — this will replace schema/data in avf_vending using ${dump_abs}" >&2
+echo "restore_postgres: WARNING — this will replace schema/data in ${DB_NAME} using ${dump_abs}" >&2
 echo "restore_postgres: WARNING — image rollback does not undo database state; restore is the data recovery path" >&2
 
 log "stopping writers (api / worker / mqtt-ingest / reconciler / caddy)"
@@ -125,7 +161,7 @@ restore_started=1
 
 log "restoring schema/data from ${dump_abs}"
 gunzip -c "${dump_abs}" | "${COMPOSE[@]}" exec -T postgres \
-	sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d avf_vending'
+	sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$1"' sh "${DB_NAME}"
 
 log "starting long-lived stack"
 "${COMPOSE[@]}" up -d --remove-orphans "${LONG_LIVED_SERVICES[@]}"

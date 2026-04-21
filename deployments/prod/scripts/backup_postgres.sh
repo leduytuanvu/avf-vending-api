@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Logical backup of the `avf_vending` database (gzip SQL). Requires a running postgres service.
+# Logical backup of the configured production database (gzip SQL). Requires a running postgres service.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -35,6 +35,40 @@ read_env() {
 	printf '%s' "${line}"
 }
 
+read_env_optional() {
+	local key="$1"
+	local line
+	line="$(grep -E "^${key}=" .env.production | tail -n1 || true)"
+	if [[ -z "${line}" ]]; then
+		printf ''
+		return 0
+	fi
+	line="${line#"${key}="}"
+	line="${line%$'\r'}"
+	if [[ "${line}" == \"*\" ]]; then
+		line="${line#\"}"
+		line="${line%\"}"
+	fi
+	printf '%s' "${line}"
+}
+
+resolve_database_name() {
+	local db_name db_url
+	db_name="$(read_env_optional POSTGRES_DB)"
+	if [[ -n "${db_name}" ]]; then
+		printf '%s' "${db_name}"
+		return 0
+	fi
+
+	db_url="$(read_env_optional DATABASE_URL)"
+	[[ -n "${db_url}" ]] || fail "POSTGRES_DB or DATABASE_URL must be set in .env.production"
+
+	db_name="${db_url##*/}"
+	db_name="${db_name%%\?*}"
+	[[ -n "${db_name}" ]] || fail "could not derive database name from DATABASE_URL"
+	printf '%s' "${db_name}"
+}
+
 for cmd in docker gzip wc; do
 	command -v "${cmd}" >/dev/null 2>&1 || fail "required command not found on PATH: ${cmd}"
 done
@@ -42,9 +76,10 @@ done
 BACK_ROOT="$(read_env PROD_BACKUP_DIR)"
 mkdir -p "${BACK_ROOT}"
 BACK_ROOT_ABS="$(cd "${BACK_ROOT}" && pwd -P)"
+DB_NAME="$(resolve_database_name)"
 
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
-out="${BACK_ROOT_ABS}/avf_vending_${ts}.sql.gz"
+out="${BACK_ROOT_ABS}/${DB_NAME}_${ts}.sql.gz"
 tmp="${out}.tmp"
 COMPOSE=(docker compose --env-file .env.production -f docker-compose.prod.yml)
 
@@ -55,12 +90,13 @@ trap cleanup EXIT
 
 log "backup destination directory: ${BACK_ROOT_ABS}"
 log "backup output file: ${out}"
+log "configured database name: ${DB_NAME}"
 
 log "preflight: validate compose config"
 "${COMPOSE[@]}" config >/dev/null
 
 log "preflight: validate postgres readiness"
-"${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d avf_vending >/dev/null' || fail "postgres is not ready inside the prod compose stack"
+"${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$1" >/dev/null' sh "${DB_NAME}" || fail "postgres is not ready inside the prod compose stack for database ${DB_NAME}"
 
 if [[ "${DRY_RUN:-0}" == "1" ]]; then
 	log "DRY_RUN=1 set; preflight passed and no backup was written"
@@ -69,7 +105,7 @@ fi
 
 log "writing compressed logical backup"
 "${COMPOSE[@]}" exec -T postgres \
-	sh -c 'pg_dump --if-exists --clean -U "$POSTGRES_USER" avf_vending' | gzip -c >"${tmp}"
+	sh -c 'pg_dump --if-exists --clean -U "$POSTGRES_USER" "$1"' sh "${DB_NAME}" | gzip -c >"${tmp}"
 
 [[ -s "${tmp}" ]] || fail "backup file is empty: ${tmp}"
 gzip -t "${tmp}" || fail "gzip integrity check failed for ${tmp}"

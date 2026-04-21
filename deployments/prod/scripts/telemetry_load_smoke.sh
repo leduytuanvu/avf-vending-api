@@ -48,8 +48,8 @@ Observe:
 - mqtt-ingest logs for rate limiting, drops, or publish errors
 - avf_telemetry_consumer_lag and avf_telemetry_projection_backlog rising then draining
 - avf_telemetry_projection_flush_seconds histogram
-- Postgres: docker compose exec -T postgres psql -U "$POSTGRES_USER" -d avf_vending -c \
-    "SELECT count(*) AS active FROM pg_stat_activity WHERE state = 'active';"
+- Postgres: docker compose --env-file .env.production -f docker-compose.prod.yml exec -T postgres sh -c \
+    'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT count(*) AS active FROM pg_stat_activity WHERE state = '\''active'\'';"'
 
 3) Stop conditions
 ------------------
