@@ -124,7 +124,8 @@ done
 note "internal service checks"
 check_cmd "postgres pg_isready" "check staging postgres logs and DATABASE_URL / POSTGRES_* values" "${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d avf_vending >/dev/null'
 check_cmd "nats health endpoint" "check avf-staging-nats logs and JetStream startup" "${COMPOSE[@]}" exec -T nats sh -c 'wget -qO- http://127.0.0.1:8222/healthz >/dev/null'
-check_cmd "emqx broker status" "check avf-staging-emqx logs and dashboard/bootstrap credentials" "${COMPOSE[@]}" exec -T emqx sh -c 'emqx_ctl status >/dev/null'
+# `emqx_ctl` can fail while the HTTP management API is already up (parity with production healthcheck_prod).
+check_cmd "emqx management HTTP /api/v5/status" "check avf-staging-emqx logs; confirm listener on 18083 and /api/v5/status" "${COMPOSE[@]}" exec -T emqx bash -lc 'exec 3<>/dev/tcp/127.0.0.1/18083; printf %b "GET /api/v5/status HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; grep -Fq "emqx is running" <&3'
 check_cmd "api live endpoint inside container" "check avf-staging-api logs and upstream dependency readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/live | grep -qx ok'
 check_cmd "api readiness inside container" "check avf-staging-api logs plus postgres/nats/emqx readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/ready | grep -qx ok'
 
