@@ -105,6 +105,7 @@ Common failure areas:
 - invalid or unavailable GHCR image ref
 - Postgres not ready, causing migrate or readiness failure
 - EMQX API credentials do not match the pre-provisioned EMQX REST API key
+- EMQX container marked `unhealthy` in `docker compose ps` even though `curl http://127.0.0.1:18083/api/v5/status` works — usually means the Docker healthcheck signal is wrong; inspect `docker inspect -f '{{json .State.Health}}' avf-prod-emqx`
 - DNS / TLS / upstream firewall issues causing public HTTPS healthcheck failures
 
 Recovery guidance:

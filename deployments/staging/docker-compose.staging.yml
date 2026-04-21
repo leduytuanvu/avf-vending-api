@@ -104,12 +104,18 @@ services:
     ports:
       - "8883:8883"
       - "127.0.0.1:18083:18083"
+    # Align Docker health with the management HTTP API (same class of signal as production).
+    # `emqx_ctl` can report failures while the HTTP listener is already up.
     healthcheck:
-      test: ["CMD", "/opt/emqx/bin/emqx_ctl", "status"]
-      interval: 15s
-      timeout: 10s
-      retries: 30
-      start_period: 60s
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:18083/api/v5/status >/dev/null || wget -qO- http://127.0.0.1:18083/api/v5/status >/dev/null",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 120s
     deploy:
       resources:
         limits:
