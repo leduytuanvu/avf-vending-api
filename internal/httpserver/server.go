@@ -121,7 +121,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 			r.Route("/admin", func(r chi.Router) {
 				r.Use(auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin))
 				mountAdminCatalogRoutes(r, app)
-				mountAdminInventoryRoutes(r, app)
+				mountAdminInventoryRoutes(r, app, writeRL)
 				r.Get("/machines", func(w http.ResponseWriter, r *http.Request) {
 					scope, err := parseAdminFleetListScope(r)
 					if err != nil {
@@ -203,6 +203,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 				})
 			})
 
+			mountSetupBootstrapRoutes(r, app)
 			r.With(auth.RequireMachineURLAccess("machineId")).Get("/machines/{machineId}/shadow", machineShadowGet(app.MachineShadow))
 			mountMachineTelemetryRoutes(r, app)
 
@@ -210,6 +211,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 			r.Group(func(r chi.Router) {
 				r.Use(writeRL)
 				mountDeviceCommandRoutes(r, app)
+				mountDeviceBridgeRoutes(r, app)
 				mountOperatorSessionRoutes(r, app)
 				mountCommerceRoutes(r, app, cfg)
 			})

@@ -485,6 +485,230 @@ def operational_collection_component_schemas() -> dict[str, Any]:
     }
 
 
+def machine_setup_component_schemas() -> dict[str, Any]:
+    """OpenAPI schemas for machine technician setup (bootstrap + admin topology/planogram)."""
+    uuid_s = {"type": "string", "format": "uuid"}
+    ts = {"type": "string", "format": "date-time"}
+    i32 = {"type": "integer", "format": "int32"}
+    i64 = {"type": "integer", "format": "int64"}
+    meta_obj = {"type": "object", "additionalProperties": True}
+    topo_slot = {
+        "type": "object",
+        "properties": {
+            "configId": uuid_s,
+            "slotCode": {"type": "string"},
+            "slotIndex": i32,
+            "productId": uuid_s,
+            "productSku": {"type": "string"},
+            "productName": {"type": "string"},
+            "maxQuantity": i32,
+            "priceMinor": i64,
+            "effectiveFrom": ts,
+            "isCurrent": {"type": "boolean"},
+            "machineSlotLayoutId": uuid_s,
+            "metadata": meta_obj,
+        },
+        "required": [
+            "configId",
+            "slotCode",
+            "productSku",
+            "productName",
+            "maxQuantity",
+            "priceMinor",
+            "effectiveFrom",
+            "isCurrent",
+            "machineSlotLayoutId",
+            "metadata",
+        ],
+    }
+    topo_cab = {
+        "type": "object",
+        "properties": {
+            "id": uuid_s,
+            "code": {"type": "string"},
+            "title": {"type": "string"},
+            "sortOrder": i32,
+            "metadata": meta_obj,
+            "slots": {"type": "array", "items": topo_slot},
+        },
+        "required": ["id", "code", "title", "sortOrder", "metadata", "slots"],
+    }
+    cat_prod = {
+        "type": "object",
+        "properties": {
+            "productId": uuid_s,
+            "sku": {"type": "string"},
+            "name": {"type": "string"},
+            "sortOrder": i32,
+            "assortmentId": uuid_s,
+            "assortmentName": {"type": "string"},
+        },
+        "required": ["productId", "sku", "name", "sortOrder", "assortmentId", "assortmentName"],
+    }
+    mach = {
+        "type": "object",
+        "properties": {
+            "machineId": uuid_s,
+            "organizationId": uuid_s,
+            "siteId": uuid_s,
+            "hardwareProfileId": uuid_s,
+            "serialNumber": {"type": "string"},
+            "name": {"type": "string"},
+            "status": {"type": "string"},
+            "commandSequence": i64,
+            "createdAt": ts,
+            "updatedAt": ts,
+        },
+        "required": [
+            "machineId",
+            "organizationId",
+            "siteId",
+            "serialNumber",
+            "name",
+            "status",
+            "commandSequence",
+            "createdAt",
+            "updatedAt",
+        ],
+    }
+    cmd_info = {
+        "type": "object",
+        "properties": {
+            "commandId": uuid_s,
+            "sequence": i64,
+            "dispatchState": {"type": "string"},
+            "replay": {"type": "boolean"},
+        },
+        "required": ["commandId", "sequence", "dispatchState", "replay"],
+    }
+    slot_item = {
+        "type": "object",
+        "properties": {
+            "machineId": uuid_s,
+            "machineName": {"type": "string"},
+            "machineStatus": {"type": "string"},
+            "planogramId": uuid_s,
+            "planogramName": {"type": "string"},
+            "slotIndex": i32,
+            "cabinetCode": {"type": "string"},
+            "slotCode": {"type": "string"},
+            "currentQuantity": i32,
+            "currentStock": i32,
+            "maxQuantity": i32,
+            "capacity": i32,
+            "parLevel": i32,
+            "lowStockThreshold": i32,
+            "priceMinor": i64,
+            "currency": {"type": "string"},
+            "status": {"type": "string", "enum": ["ok", "low_stock", "out_of_stock"]},
+            "planogramRevisionApplied": i32,
+            "updatedAt": ts,
+            "productId": uuid_s,
+            "productSku": {"type": "string"},
+            "productName": {"type": "string"},
+            "isEmpty": {"type": "boolean"},
+            "lowStock": {"type": "boolean"},
+        },
+        "required": [
+            "machineId",
+            "machineName",
+            "machineStatus",
+            "planogramId",
+            "planogramName",
+            "slotIndex",
+            "cabinetCode",
+            "slotCode",
+            "currentQuantity",
+            "currentStock",
+            "maxQuantity",
+            "capacity",
+            "parLevel",
+            "lowStockThreshold",
+            "priceMinor",
+            "currency",
+            "status",
+            "planogramRevisionApplied",
+            "updatedAt",
+            "isEmpty",
+            "lowStock",
+        ],
+    }
+    adj_item = {
+        "type": "object",
+        "properties": {
+            "planogramId": uuid_s,
+            "slotIndex": i32,
+            "quantityBefore": i32,
+            "quantityAfter": i32,
+            "cabinetCode": {"type": "string"},
+            "slotCode": {"type": "string"},
+            "productId": uuid_s,
+        },
+        "required": ["planogramId", "slotIndex", "quantityBefore", "quantityAfter"],
+    }
+    return {
+        "V1SetupMachineBootstrapResponse": {
+            "type": "object",
+            "properties": {
+                "machine": mach,
+                "topology": {
+                    "type": "object",
+                    "properties": {"cabinets": {"type": "array", "items": topo_cab}},
+                    "required": ["cabinets"],
+                },
+                "catalog": {
+                    "type": "object",
+                    "properties": {"products": {"type": "array", "items": cat_prod}},
+                    "required": ["products"],
+                },
+            },
+            "required": ["machine", "topology", "catalog"],
+        },
+        "V1AdminPlanogramCommandInfo": cmd_info,
+        "V1AdminPlanogramPublishResponse": {
+            "type": "object",
+            "properties": {
+                "desiredConfigVersion": i32,
+                "planogramId": uuid_s,
+                "planogramRevision": i32,
+                "command": {"$ref": "#/components/schemas/V1AdminPlanogramCommandInfo"},
+            },
+            "required": ["desiredConfigVersion", "planogramId", "planogramRevision", "command"],
+        },
+        "V1AdminMachineSyncResponse": {
+            "type": "object",
+            "properties": {"command": {"$ref": "#/components/schemas/V1AdminPlanogramCommandInfo"}},
+            "required": ["command"],
+        },
+        "V1AdminMachineSlot": slot_item,
+        "V1AdminMachineSlotListEnvelope": {
+            "type": "object",
+            "properties": {"items": {"type": "array", "items": {"$ref": "#/components/schemas/V1AdminMachineSlot"}}},
+            "required": ["items"],
+        },
+        "V1AdminStockAdjustmentsRequest": {
+            "type": "object",
+            "properties": {
+                "operator_session_id": uuid_s,
+                "reason": {
+                    "type": "string",
+                    "enum": ["restock", "cycle_count", "manual_adjustment", "machine_reconcile"],
+                },
+                "items": {"type": "array", "items": adj_item, "minItems": 1},
+            },
+            "required": ["operator_session_id", "reason", "items"],
+        },
+        "V1AdminStockAdjustmentsResponse": {
+            "type": "object",
+            "properties": {
+                "replay": {"type": "boolean"},
+                "eventIds": {"type": "array", "items": {"type": "integer", "format": "int64"}},
+            },
+            "required": ["replay"],
+        },
+    }
+
+
 def reporting_component_schemas() -> dict[str, Any]:
     """OpenAPI schemas for GET /v1/reports/* (read-only analytics)."""
     uuid_s = {"type": "string", "format": "uuid"}
@@ -776,6 +1000,7 @@ def components() -> dict[str, Any]:
         },
     }
     schemas.update(operational_collection_component_schemas())
+    schemas.update(machine_setup_component_schemas())
     schemas.update(reporting_component_schemas())
     return {
         "schemas": schemas,
@@ -851,12 +1076,17 @@ def merge_global_parameters(path: str, op: dict[str, Any]) -> None:
 
 IDEMPOTENCY_OPS: set[tuple[str, str]] = {
     ("post", "/v1/commerce/orders"),
+    ("post", "/v1/commerce/cash-checkout"),
     ("post", "/v1/commerce/orders/{orderId}/payment-session"),
     ("post", "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks"),
     ("post", "/v1/commerce/orders/{orderId}/vend/start"),
     ("post", "/v1/commerce/orders/{orderId}/vend/success"),
     ("post", "/v1/commerce/orders/{orderId}/vend/failure"),
+    ("post", "/v1/device/machines/{machineId}/vend-results"),
     ("post", "/v1/machines/{machineId}/commands/dispatch"),
+    ("post", "/v1/admin/machines/{machineId}/planograms/publish"),
+    ("post", "/v1/admin/machines/{machineId}/sync"),
+    ("post", "/v1/admin/machines/{machineId}/stock-adjustments"),
 }
 
 
@@ -1026,6 +1256,117 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "artifactStorageKey": "org/acme/ota/fw.bin",
     }
 
+    bootstrap_resp = {
+        "machine": {
+            "machineId": _U3,
+            "organizationId": _U2,
+            "siteId": "11111111-2222-3333-4444-555555555555",
+            "serialNumber": "SN-LOBBY-001",
+            "name": "Lobby A",
+            "status": "online",
+            "commandSequence": 42,
+            "createdAt": "2026-01-01T00:00:00.000000000Z",
+            "updatedAt": "2026-04-19T12:00:00.000000000Z",
+        },
+        "topology": {
+            "cabinets": [
+                {
+                    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                    "code": "A",
+                    "title": "Main",
+                    "sortOrder": 1,
+                    "slots": [
+                        {
+                            "configId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                            "slotCode": "A1",
+                            "slotIndex": 1,
+                            "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                            "productSku": "COLA-12",
+                            "productName": "Cola 12oz",
+                            "maxQuantity": 10,
+                            "priceMinor": 150,
+                            "effectiveFrom": "2026-04-01T00:00:00.000000000Z",
+                            "isCurrent": True,
+                            "machineSlotLayout": "cccccccc-dddd-eeee-ffff-000000000001",
+                            "metadata": {},
+                        }
+                    ],
+                }
+            ]
+        },
+        "catalog": {
+            "products": [
+                {
+                    "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                    "sku": "COLA-12",
+                    "name": "Cola 12oz",
+                    "sortOrder": 1,
+                    "assortmentId": "dddddddd-eeee-ffff-0000-111111111111",
+                    "assortmentName": "Standard",
+                }
+            ]
+        },
+    }
+    topology_req = {
+        "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+        "cabinets": [{"code": "A", "title": "Main cabinet", "sortOrder": 1, "metadata": {}}],
+        "layouts": [
+            {
+                "cabinetCode": "A",
+                "layoutKey": "grid-4x6",
+                "revision": 1,
+                "layoutSpec": {"rows": 4, "cols": 6},
+                "status": "active",
+            }
+        ],
+    }
+    planogram_draft_req = {
+        "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+        "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+        "planogramRevision": 3,
+        "syncLegacyReadModel": True,
+        "items": [
+            {
+                "cabinetCode": "A",
+                "layoutKey": "grid-4x6",
+                "layoutRevision": 1,
+                "slotCode": "A3",
+                "legacySlotIndex": 3,
+                "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                "maxQuantity": 12,
+                "priceMinor": 150,
+                "metadata": {},
+            }
+        ],
+    }
+    planogram_publish_resp = {
+        "desiredConfigVersion": 7,
+        "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+        "planogramRevision": 3,
+        "command": {
+            "commandId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+            "sequence": 43,
+            "dispatchState": "published",
+            "replay": False,
+        },
+    }
+    stock_adj_req = {
+        "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+        "reason": "restock",
+        "items": [
+            {
+                "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                "slotIndex": 3,
+                "quantityBefore": 2,
+                "quantityAfter": 10,
+                "cabinetCode": "A",
+                "slotCode": "A3",
+                "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+            }
+        ],
+    }
+    stock_adj_resp = {"replay": False, "eventIds": [1001, 1002]}
+
     def ex(
         req_body: Any | None = None,
         resp: dict[str, tuple[Any | None, Any | None]] | None = None,
@@ -1039,6 +1380,38 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         return out
 
     return {
+        ("post", "/v1/commerce/cash-checkout"): ex(
+            req_body={
+                "machine_id": _U3,
+                "product_id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                "slot_index": 3,
+                "currency": "USD",
+                "subtotal_minor": 125,
+                "tax_minor": 10,
+                "total_minor": 135,
+            },
+            resp={
+                "200": (
+                    {
+                        "order_id": _U,
+                        "vend_session_id": "8d3e2f10-1111-2222-3333-444455556666",
+                        "payment_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                        "order_status": "paid",
+                        "payment_state": "captured",
+                        "replay": False,
+                    },
+                    None,
+                ),
+                "503": (
+                    v1_error_example(
+                        "capability_not_configured",
+                        "commerce outbox defaults are not configured",
+                        {"capability": "v1.commerce.payment_session.outbox", "implemented": False},
+                    ),
+                    None,
+                ),
+            },
+        ),
         ("post", "/v1/commerce/orders"): ex(
             req_body={
                 "machine_id": _U3,
@@ -1104,6 +1477,49 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             req_body={"slot_index": 3, "failure_reason": "motor_timeout"},
             resp={"200": ({"order_id": _U, "order_status": "failed", "vend_state": "failed"}, None)},
         ),
+        ("post", "/v1/device/machines/{machineId}/vend-results"): ex(
+            req_body={
+                "order_id": _U,
+                "slot_index": 3,
+                "outcome": "success",
+                "correlation_id": "11111111-2222-3333-4444-555555555555",
+            },
+            resp={
+                "200": (
+                    {
+                        "order_id": _U,
+                        "order_status": "completed",
+                        "vend_state": "success",
+                        "replay": False,
+                    },
+                    None,
+                ),
+            },
+        ),
+        ("post", "/v1/device/machines/{machineId}/commands/poll"): ex(
+            req_body={"limit": 10},
+            resp={
+                "200": (
+                    {
+                        "items": [
+                            {
+                                "sequence": 42,
+                                "command_type": "machine_planogram_publish",
+                                "payload": {
+                                    "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                                    "planogramRevision": 3,
+                                    "desiredConfigVersion": 7,
+                                },
+                                "correlation_id": "11111111-2222-3333-4444-555555555555",
+                                "idempotency_key": "planogram-publish-001",
+                            }
+                        ],
+                        "meta": {"returned": 1},
+                    },
+                    None,
+                ),
+            },
+        ),
         ("post", "/v1/machines/{machineId}/commands/dispatch"): ex(
             req_body={
                 "command_type": "SET_TEMPERATURE",
@@ -1124,6 +1540,17 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ),
         ("get", "/v1/machines/{machineId}/commands/{sequence}/status"): ex(resp={"200": (st, None)}),
         ("get", "/v1/machines/{machineId}/shadow"): ex(resp={"200": (shadow, None)}),
+        ("get", "/v1/setup/machines/{machineId}/bootstrap"): ex(resp={"200": (bootstrap_resp, None)}),
+        ("put", "/v1/admin/machines/{machineId}/topology"): ex(req_body=topology_req),
+        ("put", "/v1/admin/machines/{machineId}/planograms/draft"): ex(req_body=planogram_draft_req),
+        ("post", "/v1/admin/machines/{machineId}/planograms/publish"): ex(
+            req_body=planogram_draft_req,
+            resp={"200": (planogram_publish_resp, None)},
+        ),
+        ("post", "/v1/admin/machines/{machineId}/stock-adjustments"): ex(
+            req_body=stock_adj_req,
+            resp={"200": (stock_adj_resp, None)},
+        ),
         ("post", "/v1/machines/{machineId}/operator-sessions/login"): ex(
             req_body={"auth_method": "oidc", "client_metadata": {"kiosk": "A12"}},
             resp={"200": (op_login, None)},
@@ -1180,7 +1607,13 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/v1/admin/planograms"),
     ("get", "/v1/admin/planograms/{planogramId}"),
     ("get", "/v1/admin/machines/{machineId}/slots"),
+    ("post", "/v1/admin/machines/{machineId}/stock-adjustments"),
     ("get", "/v1/admin/machines/{machineId}/inventory"),
+    ("get", "/v1/setup/machines/{machineId}/bootstrap"),
+    ("put", "/v1/admin/machines/{machineId}/topology"),
+    ("put", "/v1/admin/machines/{machineId}/planograms/draft"),
+    ("post", "/v1/admin/machines/{machineId}/planograms/publish"),
+    ("post", "/v1/admin/machines/{machineId}/sync"),
     ("get", "/v1/reports/sales-summary"),
     ("get", "/v1/reports/payments-summary"),
     ("get", "/v1/reports/fleet-health"),
@@ -1215,6 +1648,7 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("post", "/v1/machines/{machineId}/operator-sessions/login"),
     ("post", "/v1/machines/{machineId}/operator-sessions/logout"),
     ("post", "/v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat"),
+    ("post", "/v1/commerce/cash-checkout"),
     ("post", "/v1/commerce/orders"),
     ("post", "/v1/commerce/orders/{orderId}/payment-session"),
     ("get", "/v1/commerce/orders/{orderId}"),
@@ -1223,6 +1657,8 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("post", "/v1/commerce/orders/{orderId}/vend/start"),
     ("post", "/v1/commerce/orders/{orderId}/vend/success"),
     ("post", "/v1/commerce/orders/{orderId}/vend/failure"),
+    ("post", "/v1/device/machines/{machineId}/vend-results"),
+    ("post", "/v1/device/machines/{machineId}/commands/poll"),
 ]
 
 

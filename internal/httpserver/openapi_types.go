@@ -59,6 +59,17 @@ type V1CommerceCreateOrderResponse struct {
 	VendState     string `json:"vend_state" enums:"pending,in_progress,success,failed"`
 }
 
+// V1CommerceCashCheckoutResponse matches commerceCashCheckoutResponse JSON (POST /v1/commerce/cash-checkout).
+// See docs/api/setup-machine.md (commerce) and OpenAPI example on that path.
+type V1CommerceCashCheckoutResponse struct {
+	OrderID       string `json:"order_id"`
+	VendSessionID string `json:"vend_session_id"`
+	PaymentID     string `json:"payment_id"`
+	OrderStatus   string `json:"order_status" enums:"created,quoted,paid,vending,completed,failed,cancelled"`
+	PaymentState  string `json:"payment_state" enums:"created,authorized,captured,failed,refunded"`
+	Replay        bool   `json:"replay"`
+}
+
 // V1ListViewEnvelope is the success shape for admin and tenant list endpoints.
 type V1ListViewEnvelope struct {
 	Items []any `json:"items"`
@@ -239,9 +250,17 @@ type V1AdminMachineSlot struct {
 	PlanogramID              string  `json:"planogramId"`
 	PlanogramName            string  `json:"planogramName"`
 	SlotIndex                int32   `json:"slotIndex"`
+	CabinetCode              string  `json:"cabinetCode"`
+	SlotCode                 string  `json:"slotCode"`
 	CurrentQuantity          int32   `json:"currentQuantity"`
+	CurrentStock             int32   `json:"currentStock"`
 	MaxQuantity              int32   `json:"maxQuantity"`
+	Capacity                 int32   `json:"capacity"`
+	ParLevel                 int32   `json:"parLevel"`
+	LowStockThreshold        int32   `json:"lowStockThreshold"`
 	PriceMinor               int64   `json:"priceMinor"`
+	Currency                 string  `json:"currency"`
+	Status                   string  `json:"status"`
 	PlanogramRevisionApplied int32   `json:"planogramRevisionApplied"`
 	UpdatedAt                string  `json:"updatedAt"`
 	ProductID                *string `json:"productId,omitempty"`
@@ -249,6 +268,31 @@ type V1AdminMachineSlot struct {
 	ProductName              *string `json:"productName,omitempty"`
 	IsEmpty                  bool    `json:"isEmpty"`
 	LowStock                 bool    `json:"lowStock"`
+}
+
+// V1AdminStockAdjustmentItem is one slot adjustment in POST /v1/admin/machines/{machineId}/stock-adjustments.
+type V1AdminStockAdjustmentItem struct {
+	PlanogramID    string  `json:"planogramId"`
+	SlotIndex      int32   `json:"slotIndex"`
+	QuantityBefore int32   `json:"quantityBefore"`
+	QuantityAfter  int32   `json:"quantityAfter"`
+	CabinetCode    string  `json:"cabinetCode,omitempty"`
+	SlotCode       string  `json:"slotCode,omitempty"`
+	ProductID      *string `json:"productId,omitempty"`
+}
+
+// V1AdminStockAdjustmentsRequest is POST /v1/admin/machines/{machineId}/stock-adjustments.
+// See docs/api/inventory-adjustments.md and OpenAPI examples on that path.
+type V1AdminStockAdjustmentsRequest struct {
+	OperatorSessionID string                       `json:"operator_session_id"`
+	Reason            string                       `json:"reason"`
+	Items             []V1AdminStockAdjustmentItem `json:"items"`
+}
+
+// V1AdminStockAdjustmentsResponse is the success body for stock adjustments.
+type V1AdminStockAdjustmentsResponse struct {
+	Replay   bool    `json:"replay"`
+	EventIds []int64 `json:"eventIds,omitempty"`
 }
 
 // V1AdminMachineSlotListEnvelope is GET /v1/admin/machines/{machineId}/slots.
@@ -273,6 +317,97 @@ type V1AdminMachineInventoryLine struct {
 // V1AdminMachineInventoryEnvelope is GET /v1/admin/machines/{machineId}/inventory.
 type V1AdminMachineInventoryEnvelope struct {
 	Items []V1AdminMachineInventoryLine `json:"items"`
+}
+
+// --- Machine setup (technician bootstrap + admin topology / planogram) ---
+
+// V1SetupMachineBootstrapResponse is GET /v1/setup/machines/{machineId}/bootstrap.
+// Integration notes: docs/api/setup-machine.md; copy-paste examples in docs/swagger/swagger.json.
+type V1SetupMachineBootstrapResponse struct {
+	Machine  V1SetupMachineSummary `json:"machine"`
+	Topology V1SetupTopology       `json:"topology"`
+	Catalog  V1SetupCatalog        `json:"catalog"`
+}
+
+// V1SetupMachineSummary is machine identity for setup clients.
+type V1SetupMachineSummary struct {
+	MachineID         string  `json:"machineId"`
+	OrganizationID    string  `json:"organizationId"`
+	SiteID            string  `json:"siteId"`
+	HardwareProfileID *string `json:"hardwareProfileId,omitempty"`
+	SerialNumber      string  `json:"serialNumber"`
+	Name              string  `json:"name"`
+	Status            string  `json:"status"`
+	CommandSequence   int64   `json:"commandSequence"`
+	CreatedAt         string  `json:"createdAt"`
+	UpdatedAt         string  `json:"updatedAt"`
+}
+
+// V1SetupTopology is nested cabinets with current slot assignments.
+type V1SetupTopology struct {
+	Cabinets []V1SetupTopologyCabinet `json:"cabinets"`
+}
+
+// V1SetupTopologyCabinet is one cabinet and its current slots.
+type V1SetupTopologyCabinet struct {
+	ID        string                `json:"id"`
+	Code      string                `json:"code"`
+	Title     string                `json:"title"`
+	SortOrder int32                 `json:"sortOrder"`
+	Metadata  json.RawMessage       `json:"metadata,omitempty"`
+	Slots     []V1SetupTopologySlot `json:"slots"`
+}
+
+// V1SetupTopologySlot is a current cabinet slot config row.
+type V1SetupTopologySlot struct {
+	ConfigID          string          `json:"configId"`
+	SlotCode          string          `json:"slotCode"`
+	SlotIndex         *int32          `json:"slotIndex,omitempty"`
+	ProductID         *string         `json:"productId,omitempty"`
+	ProductSku        string          `json:"productSku"`
+	ProductName       string          `json:"productName"`
+	MaxQuantity       int32           `json:"maxQuantity"`
+	PriceMinor        int64           `json:"priceMinor"`
+	EffectiveFrom     string          `json:"effectiveFrom"`
+	IsCurrent         bool            `json:"isCurrent"`
+	MachineSlotLayout string          `json:"machineSlotLayoutId"`
+	Metadata          json.RawMessage `json:"metadata,omitempty"`
+}
+
+// V1SetupCatalog lists assortment products available for slot assignment on this machine.
+type V1SetupCatalog struct {
+	Products []V1SetupCatalogProduct `json:"products"`
+}
+
+// V1SetupCatalogProduct is one assortment line for the machine's primary binding.
+type V1SetupCatalogProduct struct {
+	ProductID      string `json:"productId"`
+	Sku            string `json:"sku"`
+	Name           string `json:"name"`
+	SortOrder      int32  `json:"sortOrder"`
+	AssortmentID   string `json:"assortmentId"`
+	AssortmentName string `json:"assortmentName"`
+}
+
+// V1AdminPlanogramPublishResponse is POST /v1/admin/machines/{machineId}/planograms/publish.
+type V1AdminPlanogramPublishResponse struct {
+	DesiredConfigVersion int32                       `json:"desiredConfigVersion"`
+	PlanogramID          string                      `json:"planogramId"`
+	PlanogramRevision    int32                       `json:"planogramRevision"`
+	Command              V1AdminPlanogramCommandInfo `json:"command"`
+}
+
+// V1AdminPlanogramCommandInfo summarizes the MQTT command ledger row after publish/sync dispatch.
+type V1AdminPlanogramCommandInfo struct {
+	CommandID     string `json:"commandId"`
+	Sequence      int64  `json:"sequence"`
+	DispatchState string `json:"dispatchState"`
+	Replay        bool   `json:"replay"`
+}
+
+// V1AdminMachineSyncResponse is POST /v1/admin/machines/{machineId}/sync.
+type V1AdminMachineSyncResponse struct {
+	Command V1AdminPlanogramCommandInfo `json:"command"`
 }
 
 // --- Operational collection lists (GET /v1/orders, /v1/payments, /v1/admin/* lists) ---

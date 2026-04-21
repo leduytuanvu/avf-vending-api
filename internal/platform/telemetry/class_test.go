@@ -8,7 +8,13 @@ func TestClassifyEventType(t *testing.T) {
 		want Class
 	}{
 		{"heartbeat", ClassHeartbeat},
+		{"presence", ClassHeartbeat},
+		{"state.heartbeat", ClassHeartbeat},
 		{"health.ping", ClassHeartbeat},
+		{"telemetry.incident.door", ClassIncident},
+		{"telemetry.snapshot.board", ClassMetrics},
+		{"events.vend", ClassMetrics},
+		{"shadow.desired.patch", ClassState},
 		{"metrics.cpu", ClassMetrics},
 		{"metric.temp", ClassMetrics},
 		{"incident.door", ClassIncident},

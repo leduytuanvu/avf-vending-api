@@ -1,4 +1,4 @@
--- Canonical DDL mirror of goose migrations (00002 platform, 00004 device ingest, 00005 catalog/pricing/promotions, 00006 command protocol traceability, 00007 financial ledger reconciliation, 00008 machine operator sessions, 00009 operator action attribution correlation, 00010 operator session activity end reason, 00011 operator domain resources, 00014 platform auth API accounts) for sqlc.
+-- Canonical DDL mirror of goose migrations (00002 platform, 00004 device ingest, 00005 catalog/pricing/promotions, 00006 command protocol traceability, 00007 financial ledger reconciliation, 00008 machine operator sessions, 00009 operator action attribution correlation, 00010 operator session activity end reason, 00011 operator domain resources, 00014 platform auth API accounts, 00015 machine cabinets/assortments/inventory, 00016 machine slot layouts/configs) for sqlc.
 -- When changing schema, update migrations first, then sync this file.
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
@@ -1293,3 +1293,230 @@ CREATE TABLE auth_refresh_tokens (
 CREATE INDEX ix_auth_refresh_tokens_account_created ON auth_refresh_tokens (account_id, created_at DESC);
 CREATE UNIQUE INDEX ux_auth_refresh_tokens_active_hash ON auth_refresh_tokens (token_hash)
 WHERE revoked_at IS NULL;
+
+-- Multi-cabinet, assortments, inventory ledger (migrations/00015_machine_cabinets_assortments_inventory.sql).
+CREATE TABLE machine_cabinets (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    cabinet_code text NOT NULL,
+    title text NOT NULL DEFAULT '',
+    sort_order int NOT NULL DEFAULT 0,
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ck_machine_cabinets_cabinet_code_nonempty CHECK (btrim(cabinet_code) <> '')
+);
+
+CREATE UNIQUE INDEX ux_machine_cabinets_machine_cabinet_code ON machine_cabinets (machine_id, cabinet_code);
+
+CREATE INDEX ix_machine_cabinets_machine_sort ON machine_cabinets (machine_id, sort_order ASC, id ASC);
+
+CREATE TABLE assortments (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    name text NOT NULL,
+    status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
+    description text NOT NULL DEFAULT '',
+    meta jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ck_assortments_name_nonempty CHECK (btrim(name) <> '')
+);
+
+CREATE UNIQUE INDEX ux_assortments_org_id ON assortments (organization_id, id);
+
+CREATE UNIQUE INDEX ux_assortments_org_name_lower ON assortments (organization_id, lower(name));
+
+CREATE INDEX ix_assortments_organization_id ON assortments (organization_id);
+
+CREATE TABLE assortment_items (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    assortment_id uuid NOT NULL REFERENCES assortments (id) ON DELETE CASCADE,
+    product_id uuid NOT NULL,
+    sort_order int NOT NULL DEFAULT 0,
+    notes jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT fk_assortment_items_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_assortment_items_org_assortment FOREIGN KEY (organization_id, assortment_id) REFERENCES assortments (organization_id, id) ON DELETE CASCADE,
+    CONSTRAINT ux_assortment_items_assortment_product UNIQUE (assortment_id, product_id)
+);
+
+CREATE INDEX ix_assortment_items_assortment_sort ON assortment_items (assortment_id, sort_order ASC, id ASC);
+
+CREATE INDEX ix_assortment_items_product_id ON assortment_items (product_id);
+
+CREATE TABLE machine_assortment_bindings (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    assortment_id uuid NOT NULL REFERENCES assortments (id) ON DELETE RESTRICT,
+    is_primary boolean NOT NULL DEFAULT false,
+    valid_from timestamptz NOT NULL DEFAULT now(),
+    valid_to timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT fk_machine_assortment_bindings_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_machine_assortment_bindings_org_assortment FOREIGN KEY (organization_id, assortment_id) REFERENCES assortments (organization_id, id) ON DELETE RESTRICT
+);
+
+CREATE UNIQUE INDEX ux_machine_assortment_bindings_one_active_primary ON machine_assortment_bindings (machine_id)
+WHERE
+    is_primary
+    AND valid_to IS NULL;
+
+CREATE INDEX ix_machine_assortment_bindings_machine_valid_from ON machine_assortment_bindings (machine_id, valid_from DESC);
+
+CREATE INDEX ix_machine_assortment_bindings_assortment ON machine_assortment_bindings (assortment_id);
+
+CREATE TABLE inventory_count_sessions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    operator_session_id uuid REFERENCES machine_operator_sessions (id) ON DELETE SET NULL,
+    status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed', 'cancelled')),
+    started_at timestamptz NOT NULL DEFAULT now(),
+    ended_at timestamptz,
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT fk_inventory_count_sessions_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE
+);
+
+CREATE INDEX ix_inventory_count_sessions_machine_started ON inventory_count_sessions (machine_id, started_at DESC);
+
+CREATE INDEX ix_inventory_count_sessions_org_started ON inventory_count_sessions (organization_id, started_at DESC);
+
+CREATE TABLE inventory_events (
+    id bigserial PRIMARY KEY,
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    machine_cabinet_id uuid REFERENCES machine_cabinets (id) ON DELETE SET NULL,
+    slot_code text,
+    product_id uuid,
+    event_type text NOT NULL CHECK (
+        event_type IN (
+            'sale',
+            'restock',
+            'adjustment',
+            'audit',
+            'waste',
+            'transfer_in',
+            'transfer_out',
+            'count',
+            'reconcile',
+            'correction',
+            'other'
+        )
+    ),
+    quantity_delta int NOT NULL,
+    quantity_after int,
+    correlation_id uuid,
+    operator_session_id uuid REFERENCES machine_operator_sessions (id) ON DELETE SET NULL,
+    refill_session_id uuid REFERENCES refill_sessions (id) ON DELETE SET NULL,
+    inventory_count_session_id uuid REFERENCES inventory_count_sessions (id) ON DELETE SET NULL,
+    occurred_at timestamptz NOT NULL DEFAULT now(),
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    CONSTRAINT fk_inventory_events_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_inventory_events_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE SET NULL,
+    CONSTRAINT ck_inventory_events_slot_code_nonempty CHECK (slot_code IS NULL OR btrim(slot_code) <> '')
+);
+
+CREATE INDEX ix_inventory_events_machine_occurred ON inventory_events (machine_id, occurred_at DESC);
+
+CREATE INDEX ix_inventory_events_org_occurred ON inventory_events (organization_id, occurred_at DESC);
+
+CREATE INDEX ix_inventory_events_machine_slot_occurred ON inventory_events (machine_id, slot_code, occurred_at DESC)
+WHERE
+    slot_code IS NOT NULL;
+
+CREATE INDEX ix_inventory_events_machine_product_occurred ON inventory_events (machine_id, product_id, occurred_at DESC)
+WHERE
+    product_id IS NOT NULL;
+
+CREATE INDEX ix_inventory_events_correlation ON inventory_events (correlation_id, occurred_at DESC)
+WHERE
+    correlation_id IS NOT NULL;
+
+CREATE INDEX ix_inventory_events_count_session ON inventory_events (inventory_count_session_id, occurred_at DESC)
+WHERE
+    inventory_count_session_id IS NOT NULL;
+
+COMMENT ON TABLE machine_cabinets IS 'Logical cabinets on a machine; cabinet_code is stable within machine_id.';
+
+COMMENT ON TABLE assortments IS 'Named product bundles for machine-specific merchandising.';
+
+COMMENT ON TABLE assortment_items IS 'Products belonging to an assortment; sort_order drives UI and default sequencing.';
+
+COMMENT ON TABLE machine_assortment_bindings IS 'Links machines to assortments; at most one active primary binding per machine (valid_to IS NULL, is_primary).';
+
+COMMENT ON TABLE inventory_events IS 'Append-only inventory ledger; application INSERT-only.';
+
+COMMENT ON TABLE inventory_count_sessions IS 'Optional physical count visit context; link operator_session_id when known.';
+
+-- Slot layouts and configs (migrations/00016_machine_slot_layouts_configs.sql).
+CREATE TABLE machine_slot_layouts (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    machine_cabinet_id uuid NOT NULL REFERENCES machine_cabinets (id) ON DELETE CASCADE,
+    layout_key text NOT NULL,
+    revision int NOT NULL DEFAULT 1,
+    layout_spec jsonb NOT NULL DEFAULT '{}'::jsonb,
+    status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ck_machine_slot_layouts_layout_key_nonempty CHECK (btrim(layout_key) <> ''),
+    CONSTRAINT ck_machine_slot_layouts_revision_positive CHECK (revision >= 1),
+    CONSTRAINT fk_machine_slot_layouts_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_machine_slot_layouts_machine_cabinet FOREIGN KEY (machine_cabinet_id) REFERENCES machine_cabinets (id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX ux_machine_slot_layouts_machine_cabinet_key_revision ON machine_slot_layouts (machine_id, machine_cabinet_id, layout_key, revision);
+
+CREATE INDEX ix_machine_slot_layouts_machine_cabinet ON machine_slot_layouts (machine_id, machine_cabinet_id, created_at DESC);
+
+CREATE INDEX ix_machine_slot_layouts_org ON machine_slot_layouts (organization_id, created_at DESC);
+
+CREATE TABLE machine_slot_configs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    machine_cabinet_id uuid NOT NULL REFERENCES machine_cabinets (id) ON DELETE CASCADE,
+    machine_slot_layout_id uuid NOT NULL REFERENCES machine_slot_layouts (id) ON DELETE RESTRICT,
+    slot_code text NOT NULL,
+    slot_index int CHECK (
+        slot_index IS NULL
+        OR slot_index >= 0
+    ),
+    product_id uuid,
+    max_quantity int NOT NULL DEFAULT 0 CHECK (max_quantity >= 0),
+    price_minor bigint NOT NULL DEFAULT 0 CHECK (price_minor >= 0),
+    effective_from timestamptz NOT NULL DEFAULT now(),
+    effective_to timestamptz,
+    is_current boolean NOT NULL DEFAULT false,
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ck_machine_slot_configs_slot_code_nonempty CHECK (btrim(slot_code) <> ''),
+    CONSTRAINT fk_machine_slot_configs_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_machine_slot_configs_machine_cabinet FOREIGN KEY (machine_cabinet_id) REFERENCES machine_cabinets (id) ON DELETE CASCADE,
+    CONSTRAINT fk_machine_slot_configs_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX ux_machine_slot_configs_current_machine_slot ON machine_slot_configs (machine_id, slot_code)
+WHERE
+    is_current;
+
+CREATE INDEX ix_machine_slot_configs_machine_current ON machine_slot_configs (machine_id)
+WHERE
+    is_current;
+
+CREATE INDEX ix_machine_slot_configs_layout ON machine_slot_configs (machine_slot_layout_id);
+
+CREATE INDEX ix_machine_slot_configs_machine_cabinet_current ON machine_slot_configs (machine_cabinet_id)
+WHERE
+    is_current;
+
+COMMENT ON TABLE machine_slot_layouts IS 'Cabinet-scoped slot grid / wiring metadata; layout_spec holds structured slot definitions.';
+
+COMMENT ON TABLE machine_slot_configs IS 'Per-slot merchandising config; history via is_current / effective_*; at most one is_current row per (machine_id, slot_code).';
+
+COMMENT ON INDEX ux_machine_slot_configs_current_machine_slot IS 'Partial unique: one current config row per physical slot_code on a machine.';

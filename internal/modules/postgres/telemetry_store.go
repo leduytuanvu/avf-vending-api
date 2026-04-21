@@ -12,9 +12,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
 )
 
 // MachineOrgSite is tenant + site for a machine row.
@@ -459,4 +461,247 @@ func ParseDiagnosticManifestPayload(payload []byte) (storageKey, provider, conte
 		m.Provider = "s3"
 	}
 	return m.StorageKey, m.Provider, m.ContentType, m.SizeBytes, strings.TrimSpace(m.SHA256), nil
+}
+
+var allowedDeviceInventoryEventTypes = map[string]struct{}{
+	"sale": {}, "restock": {}, "adjustment": {}, "audit": {}, "waste": {},
+	"transfer_in": {}, "transfer_out": {}, "count": {}, "reconcile": {}, "correction": {}, "other": {},
+}
+
+// AppendDeviceTelemetryEdgeEvent records a low-frequency device edge signal (vend/cash) with idempotent dedupe_key.
+func (s *Store) AppendDeviceTelemetryEdgeEvent(ctx context.Context, machineID uuid.UUID, eventType string, payload []byte, dedupe string) error {
+	if s == nil || s.pool == nil {
+		return errors.New("postgres: nil store")
+	}
+	if strings.TrimSpace(dedupe) == "" {
+		return errors.New("postgres: dedupe_key is required")
+	}
+	if len(payload) == 0 {
+		payload = []byte("{}")
+	}
+	q := db.New(s.pool)
+	_, err := q.InsertDeviceTelemetryEvent(ctx, db.InsertDeviceTelemetryEventParams{
+		MachineID: machineID,
+		EventType: eventType,
+		Payload:   payload,
+		DedupeKey: pgtype.Text{String: dedupe, Valid: true},
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+type deviceInventoryWire struct {
+	EventType     string     `json:"event_type"`
+	SlotCode      string     `json:"slot_code"`
+	ProductID     *uuid.UUID `json:"product_id"`
+	QuantityDelta int        `json:"quantity_delta"`
+	QuantityAfter *int       `json:"quantity_after"`
+}
+
+// AppendInventoryEventFromDeviceTelemetry inserts one inventory_events row; idempotent via metadata.idempotency_key.
+func (s *Store) AppendInventoryEventFromDeviceTelemetry(ctx context.Context, env tel.Envelope, data []byte) error {
+	if s == nil || s.pool == nil {
+		return errors.New("postgres: nil store")
+	}
+	if env.TenantID == nil {
+		return errors.New("postgres: tenant_id is required for inventory projection")
+	}
+	idem := strings.TrimSpace(env.Idempotency)
+	if idem == "" {
+		return errors.New("postgres: idempotency_key is required for device inventory ingest")
+	}
+	var wire deviceInventoryWire
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	if _, ok := allowedDeviceInventoryEventTypes[wire.EventType]; !ok {
+		return fmt.Errorf("postgres: invalid inventory event_type %q", wire.EventType)
+	}
+	if strings.TrimSpace(wire.SlotCode) == "" {
+		return errors.New("postgres: slot_code is required for device inventory ingest")
+	}
+	n, err := db.New(s.pool).InventoryAdminCountInventoryEventsByIdempotencyKey(ctx, db.InventoryAdminCountInventoryEventsByIdempotencyKeyParams{
+		MachineID: env.MachineID,
+		Column2:   idem,
+	})
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return nil
+	}
+	meta := map[string]any{
+		"idempotency_key": idem,
+		"source":          "mqtt",
+	}
+	if env.BootID != nil {
+		meta["boot_id"] = env.BootID.String()
+	}
+	if env.SeqNo != nil {
+		meta["seq_no"] = *env.SeqNo
+	}
+	metaJSON, err := json.Marshal(meta)
+	if err != nil {
+		return err
+	}
+	occ := env.ReceivedAt.UTC()
+	if env.EmittedAt != nil {
+		occ = env.EmittedAt.UTC()
+	}
+	elem := map[string]any{
+		"organization_id": env.TenantID.String(),
+		"machine_id":      env.MachineID.String(),
+		"slot_code":       strings.TrimSpace(wire.SlotCode),
+		"event_type":      wire.EventType,
+		"quantity_delta":  wire.QuantityDelta,
+		"occurred_at":     occ.Format(time.RFC3339Nano),
+		"metadata":        json.RawMessage(metaJSON),
+	}
+	if wire.ProductID != nil {
+		elem["product_id"] = wire.ProductID.String()
+	}
+	if wire.QuantityAfter != nil {
+		elem["quantity_after"] = *wire.QuantityAfter
+	}
+	if env.CorrelationID != nil {
+		elem["correlation_id"] = env.CorrelationID.String()
+	}
+	if env.OperatorSessionID != nil {
+		elem["operator_session_id"] = env.OperatorSessionID.String()
+	}
+	batch, err := json.Marshal([]map[string]any{elem})
+	if err != nil {
+		return err
+	}
+	_, err = db.New(s.pool).InventoryAdminInsertInventoryEventsBatch(ctx, batch)
+	return err
+}
+
+func pickSlotSnapshotForVend(slots []db.InventoryAdminListMachineSlotsRow, slotIndex int32, productID uuid.UUID) (*db.InventoryAdminListMachineSlotsRow, error) {
+	for i := range slots {
+		s := &slots[i]
+		if s.SlotIndex != slotIndex || !s.ProductID.Valid {
+			continue
+		}
+		if uuid.UUID(s.ProductID.Bytes) == productID {
+			return s, nil
+		}
+	}
+	return nil, fmt.Errorf("postgres: no machine_slot_state for slot_index=%d product=%s", slotIndex, productID)
+}
+
+// ApplyCommerceVendSuccessInventory decrements machine_slot_state after a successful vend (idempotent on idempotencyKey).
+func (s *Store) ApplyCommerceVendSuccessInventory(ctx context.Context, orgID, machineID, orderID uuid.UUID, slotIndex int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
+	if s == nil || s.pool == nil {
+		return false, errors.New("postgres: nil store")
+	}
+	if strings.TrimSpace(idempotencyKey) == "" {
+		return false, errors.New("postgres: idempotency_key is required for vend inventory")
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := db.New(tx)
+	m, err := q.GetMachineByIDForUpdate(ctx, machineID)
+	if err != nil {
+		return false, err
+	}
+	if m.OrganizationID != orgID {
+		return false, errOrganizationMachineMismatch
+	}
+	vend, err := q.GetVendSessionByOrderAndSlot(ctx, db.GetVendSessionByOrderAndSlotParams{
+		OrderID:   orderID,
+		SlotIndex: slotIndex,
+	})
+	if err != nil {
+		return false, err
+	}
+	if vend.MachineID != machineID || vend.ProductID != productID {
+		return false, fmt.Errorf("postgres: vend session does not match machine/product")
+	}
+	if vend.State != "success" {
+		return false, fmt.Errorf("postgres: vend session must be success before inventory decrement")
+	}
+	cnt, err := q.InventoryAdminCountInventoryEventsByIdempotencyKey(ctx, db.InventoryAdminCountInventoryEventsByIdempotencyKeyParams{
+		MachineID: machineID,
+		Column2:   idempotencyKey,
+	})
+	if err != nil {
+		return false, err
+	}
+	if cnt > 0 {
+		if err := tx.Commit(ctx); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	slots, err := q.InventoryAdminListMachineSlots(ctx, machineID)
+	if err != nil {
+		return false, err
+	}
+	snap, err := pickSlotSnapshotForVend(slots, slotIndex, productID)
+	if err != nil {
+		return false, err
+	}
+	cur := snap.CurrentQuantity
+	if cur < 1 {
+		return false, fmt.Errorf("postgres: insufficient stock for vend sale (slot_index=%d)", slotIndex)
+	}
+	newQty := cur - 1
+	meta := map[string]any{
+		"idempotency_key": idempotencyKey,
+		"source":          "commerce_vend_success",
+		"order_id":        orderID.String(),
+	}
+	if correlationID != nil {
+		meta["correlation_id"] = correlationID.String()
+	}
+	metaJSON, err := json.Marshal(meta)
+	if err != nil {
+		return false, err
+	}
+	slotCode := fmt.Sprintf("S%d", slotIndex)
+	elem := map[string]any{
+		"organization_id": orgID.String(),
+		"machine_id":      machineID.String(),
+		"slot_code":       slotCode,
+		"event_type":      "sale",
+		"quantity_delta":  -1,
+		"quantity_after":  newQty,
+		"product_id":      productID.String(),
+		"occurred_at":     time.Now().UTC().Format(time.RFC3339Nano),
+		"metadata":        json.RawMessage(metaJSON),
+	}
+	if correlationID != nil {
+		elem["correlation_id"] = correlationID.String()
+	}
+	batch, err := json.Marshal([]map[string]any{elem})
+	if err != nil {
+		return false, err
+	}
+	if _, err := q.InventoryAdminInsertInventoryEventsBatch(ctx, batch); err != nil {
+		return false, err
+	}
+	if _, err := q.InventoryAdminUpsertMachineSlotState(ctx, db.InventoryAdminUpsertMachineSlotStateParams{
+		MachineID:                machineID,
+		PlanogramID:              snap.PlanogramID,
+		SlotIndex:                slotIndex,
+		CurrentQuantity:          newQty,
+		PriceMinor:               snap.PriceMinor,
+		PlanogramRevisionApplied: snap.PlanogramRevisionApplied,
+	}); err != nil {
+		return false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return false, err
+	}
+	return false, nil
 }

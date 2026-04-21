@@ -11,9 +11,11 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/app/operator"
+	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/domain/fleet"
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
 	appmw "github.com/avf/avf-vending-api/internal/middleware"
+	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -818,4 +820,126 @@ func writeOperatorError(w http.ResponseWriter, ctx context.Context, err error) {
 		}
 		writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
 	}
+}
+
+// mountSetupBootstrapRoutes registers GET /setup/machines/{machineId}/bootstrap under the /v1 router.
+func mountSetupBootstrapRoutes(r chi.Router, app *api.HTTPApplication) {
+	if app == nil {
+		return
+	}
+	r.With(auth.RequireMachineURLAccess("machineId")).Get("/setup/machines/{machineId}/bootstrap", getMachineSetupBootstrap(app))
+}
+
+func getMachineSetupBootstrap(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil || machineID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		if app.TelemetryStore == nil || app.TelemetryStore.Pool() == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		repo := postgres.NewSetupRepository(app.TelemetryStore.Pool())
+		b, err := repo.GetMachineBootstrap(r.Context(), machineID)
+		if err != nil {
+			if errors.Is(err, setupapp.ErrNotFound) {
+				writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found")
+				return
+			}
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, buildSetupBootstrapV1(b))
+	}
+}
+
+func buildSetupBootstrapV1(b setupapp.MachineBootstrap) V1SetupMachineBootstrapResponse {
+	byCab := make(map[string][]setupapp.CabinetSlotConfigView)
+	for _, s := range b.CurrentCabinetSlots {
+		byCab[s.CabinetCode] = append(byCab[s.CabinetCode], s)
+	}
+	cabinets := make([]V1SetupTopologyCabinet, 0, len(b.Cabinets))
+	for _, c := range b.Cabinets {
+		slots := byCab[c.Code]
+		if slots == nil {
+			slots = []setupapp.CabinetSlotConfigView{}
+		}
+		sk := make([]V1SetupTopologySlot, 0, len(slots))
+		for _, sl := range slots {
+			var pid *string
+			if sl.ProductID != nil {
+				s := sl.ProductID.String()
+				pid = &s
+			}
+			var idx *int32
+			if sl.SlotIndex != nil {
+				v := *sl.SlotIndex
+				idx = &v
+			}
+			sk = append(sk, V1SetupTopologySlot{
+				ConfigID:          sl.ConfigID.String(),
+				SlotCode:          sl.SlotCode,
+				SlotIndex:         idx,
+				ProductID:         pid,
+				ProductSku:        sl.ProductSKU,
+				ProductName:       sl.ProductName,
+				MaxQuantity:       sl.MaxQuantity,
+				PriceMinor:        sl.PriceMinor,
+				EffectiveFrom:     sl.EffectiveFrom.UTC().Format(time.RFC3339Nano),
+				IsCurrent:         sl.IsCurrent,
+				MachineSlotLayout: sl.MachineSlotLayout.String(),
+				Metadata:          json.RawMessage("{}"),
+			})
+		}
+		cabinets = append(cabinets, V1SetupTopologyCabinet{
+			ID:        c.ID.String(),
+			Code:      c.Code,
+			Title:     c.Title,
+			SortOrder: c.SortOrder,
+			Metadata:  rawJSONMeta(c.Metadata),
+			Slots:     sk,
+		})
+	}
+	products := make([]V1SetupCatalogProduct, 0, len(b.AssortmentProducts))
+	for _, p := range b.AssortmentProducts {
+		products = append(products, V1SetupCatalogProduct{
+			ProductID:      p.ProductID.String(),
+			Sku:            p.SKU,
+			Name:           p.Name,
+			SortOrder:      p.SortOrder,
+			AssortmentID:   p.AssortmentID.String(),
+			AssortmentName: p.AssortmentName,
+		})
+	}
+	m := b.Machine
+	var hw *string
+	if m.HardwareProfileID != nil {
+		s := m.HardwareProfileID.String()
+		hw = &s
+	}
+	return V1SetupMachineBootstrapResponse{
+		Machine: V1SetupMachineSummary{
+			MachineID:         m.ID.String(),
+			OrganizationID:    m.OrganizationID.String(),
+			SiteID:            m.SiteID.String(),
+			HardwareProfileID: hw,
+			SerialNumber:      m.SerialNumber,
+			Name:              m.Name,
+			Status:            m.Status,
+			CommandSequence:   m.CommandSequence,
+			CreatedAt:         m.CreatedAt.UTC().Format(time.RFC3339Nano),
+			UpdatedAt:         m.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		},
+		Topology: V1SetupTopology{Cabinets: cabinets},
+		Catalog:  V1SetupCatalog{Products: products},
+	}
+}
+
+func rawJSONMeta(b []byte) json.RawMessage {
+	if len(b) == 0 || !json.Valid(b) {
+		return json.RawMessage("{}")
+	}
+	return json.RawMessage(b)
 }

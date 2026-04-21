@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -14,8 +15,165 @@ var allowedReceiptStatuses = map[string]struct{}{
 	"acked": {}, "nacked": {}, "failed": {}, "timeout": {},
 }
 
+var receiptStatusAliases = map[string]string{
+	"ack":     "acked",
+	"success": "acked",
+	"ok":      "acked",
+}
+
+type deviceWire struct {
+	SchemaVersion     int             `json:"schema_version"`
+	EventID           string          `json:"event_id"`
+	MachineID         *uuid.UUID      `json:"machine_id"`
+	BootID            *uuid.UUID      `json:"boot_id"`
+	SeqNo             *int64          `json:"seq_no"`
+	OccurredAt        *time.Time      `json:"occurred_at"`
+	CorrelationID     *uuid.UUID      `json:"correlation_id"`
+	OperatorSessionID *uuid.UUID      `json:"operator_session_id"`
+	Payload           json.RawMessage `json:"payload"`
+	EventType         string          `json:"event_type"`
+	DedupeKey         *string         `json:"dedupe_key"`
+	Reported          json.RawMessage `json:"reported"`
+	Desired           json.RawMessage `json:"desired"`
+}
+
+func decodeDeviceWire(payload []byte) (deviceWire, error) {
+	var w deviceWire
+	if err := json.Unmarshal(payload, &w); err != nil {
+		return deviceWire{}, err
+	}
+	return w, nil
+}
+
+func wireTelemetryFields(mid uuid.UUID, w deviceWire) TelemetryIngest {
+	return TelemetryIngest{
+		MachineID:         mid,
+		SchemaVersion:     w.SchemaVersion,
+		EventID:           strings.TrimSpace(w.EventID),
+		BootID:            w.BootID,
+		SeqNo:             w.SeqNo,
+		OccurredAt:        w.OccurredAt,
+		CorrelationID:     w.CorrelationID,
+		OperatorSessionID: w.OperatorSessionID,
+		DedupeKey:         w.DedupeKey,
+	}
+}
+
+func assertWireMachine(mid uuid.UUID, w deviceWire) error {
+	if w.MachineID == nil {
+		return nil
+	}
+	if *w.MachineID != mid {
+		return fmt.Errorf("mqtt: machine_id mismatch (topic %s vs body %s)", mid, w.MachineID)
+	}
+	return nil
+}
+
+func innerPayloadFromWire(w deviceWire, fallback json.RawMessage) []byte {
+	if len(w.Payload) > 0 && string(w.Payload) != "null" {
+		return []byte(w.Payload)
+	}
+	if len(fallback) > 0 {
+		return []byte(fallback)
+	}
+	return []byte("{}")
+}
+
+func extractReportedJSON(w deviceWire) ([]byte, error) {
+	if len(w.Reported) > 0 && string(w.Reported) != "null" {
+		var probe map[string]any
+		if err := json.Unmarshal(w.Reported, &probe); err != nil || probe == nil {
+			return nil, errors.New("mqtt: shadow.reported must be a JSON object")
+		}
+		return w.Reported, nil
+	}
+	if len(w.Payload) > 0 {
+		var nested struct {
+			Reported map[string]any `json:"reported"`
+		}
+		if err := json.Unmarshal(w.Payload, &nested); err == nil && nested.Reported != nil {
+			b, err := json.Marshal(nested.Reported)
+			if err != nil {
+				return nil, err
+			}
+			return b, nil
+		}
+		var asMap map[string]any
+		if err := json.Unmarshal(w.Payload, &asMap); err == nil && asMap != nil {
+			return w.Payload, nil
+		}
+	}
+	return nil, errors.New("mqtt: shadow.reported object is required")
+}
+
+func extractDesiredJSON(w deviceWire) ([]byte, error) {
+	if len(w.Desired) > 0 && string(w.Desired) != "null" {
+		var probe map[string]any
+		if err := json.Unmarshal(w.Desired, &probe); err != nil || probe == nil {
+			return nil, errors.New("mqtt: shadow.desired must be a JSON object")
+		}
+		return w.Desired, nil
+	}
+	if len(w.Payload) > 0 {
+		var nested struct {
+			Desired map[string]any `json:"desired"`
+		}
+		if err := json.Unmarshal(w.Payload, &nested); err == nil && nested.Desired != nil {
+			b, err := json.Marshal(nested.Desired)
+			if err != nil {
+				return nil, err
+			}
+			return b, nil
+		}
+		var asMap map[string]any
+		if err := json.Unmarshal(w.Payload, &asMap); err == nil && asMap != nil {
+			return w.Payload, nil
+		}
+	}
+	return nil, errors.New("mqtt: shadow.desired object is required")
+}
+
+func normalizeReceiptStatus(raw string) (string, bool) {
+	st := strings.TrimSpace(strings.ToLower(raw))
+	if st == "" {
+		return "", false
+	}
+	if mapped, ok := receiptStatusAliases[st]; ok {
+		st = mapped
+	}
+	if _, ok := allowedReceiptStatuses[st]; !ok {
+		return "", false
+	}
+	return st, true
+}
+
+func eventTypeForChannel(channel string, w deviceWire) (string, error) {
+	if et := strings.TrimSpace(w.EventType); et != "" {
+		return et, nil
+	}
+	switch channel {
+	case "telemetry":
+		return "", errors.New("mqtt: telemetry.event_type is required when not topic-derived")
+	case "presence":
+		return "presence", nil
+	case "state/heartbeat":
+		return "state.heartbeat", nil
+	case "telemetry/snapshot":
+		return "telemetry.snapshot", nil
+	case "telemetry/incident":
+		return "telemetry.incident", nil
+	case "events/vend":
+		return "events.vend", nil
+	case "events/cash":
+		return "events.cash", nil
+	case "events/inventory":
+		return "events.inventory", nil
+	default:
+		return "", fmt.Errorf("mqtt: unsupported channel %q", channel)
+	}
+}
+
 // ParseDeviceTopic extracts machine id and channel key from a subscription topic under TopicPrefix.
-// Supported channels: "telemetry", "shadow/reported", "commands/receipt".
 func ParseDeviceTopic(prefix, topic string) (machineID uuid.UUID, channel string, err error) {
 	p := strings.TrimSuffix(strings.TrimSpace(prefix), "/")
 	if p == "" {
@@ -50,10 +208,28 @@ func channelFromPathParts(parts []string) (string, bool) {
 	switch {
 	case len(parts) == 1 && parts[0] == "telemetry":
 		return "telemetry", true
+	case len(parts) == 1 && parts[0] == "presence":
+		return "presence", true
+	case len(parts) == 2 && parts[0] == "state" && parts[1] == "heartbeat":
+		return "state/heartbeat", true
+	case len(parts) == 2 && parts[0] == "telemetry" && parts[1] == "snapshot":
+		return "telemetry/snapshot", true
+	case len(parts) == 2 && parts[0] == "telemetry" && parts[1] == "incident":
+		return "telemetry/incident", true
+	case len(parts) == 2 && parts[0] == "events" && parts[1] == "vend":
+		return "events/vend", true
+	case len(parts) == 2 && parts[0] == "events" && parts[1] == "cash":
+		return "events/cash", true
+	case len(parts) == 2 && parts[0] == "events" && parts[1] == "inventory":
+		return "events/inventory", true
 	case len(parts) == 2 && parts[0] == "shadow" && parts[1] == "reported":
 		return "shadow/reported", true
+	case len(parts) == 2 && parts[0] == "shadow" && parts[1] == "desired":
+		return "shadow/desired", true
 	case len(parts) == 2 && parts[0] == "commands" && parts[1] == "receipt":
 		return "commands/receipt", true
+	case len(parts) == 2 && parts[0] == "commands" && parts[1] == "ack":
+		return "commands/ack", true
 	default:
 		return "", false
 	}
@@ -82,25 +258,25 @@ func Dispatch(ctx context.Context, prefix, topic string, payload []byte, ing Dev
 		ingestReject(hooks, topic, "invalid_json", len(payload))
 		return errors.New("mqtt: payload is not valid JSON")
 	}
+
+	w, err := decodeDeviceWire(payload)
+	if err != nil {
+		ingestReject(hooks, topic, "json_decode", len(payload))
+		return fmt.Errorf("mqtt: json: %w", err)
+	}
+	if err := assertWireMachine(mid, w); err != nil {
+		ingestReject(hooks, topic, "machine_id_mismatch", len(payload))
+		return err
+	}
+
 	switch channel {
-	case "telemetry":
-		var body struct {
-			EventType string          `json:"event_type"`
-			Data      json.RawMessage `json:"payload"`
-			DedupeKey *string         `json:"dedupe_key"`
-		}
-		if err := json.Unmarshal(payload, &body); err != nil {
-			ingestReject(hooks, topic, "telemetry_json", len(payload))
-			return fmt.Errorf("mqtt: telemetry json: %w", err)
-		}
-		if strings.TrimSpace(body.EventType) == "" {
+	case "telemetry", "presence", "state/heartbeat", "telemetry/snapshot", "telemetry/incident", "events/vend", "events/cash", "events/inventory":
+		et, err := eventTypeForChannel(channel, w)
+		if err != nil {
 			ingestReject(hooks, topic, "telemetry_missing_event_type", len(payload))
-			return errors.New("mqtt: telemetry.event_type is required")
+			return err
 		}
-		raw := []byte(body.Data)
-		if len(raw) == 0 {
-			raw = []byte("{}")
-		}
+		raw := innerPayloadFromWire(w, nil)
 		if !json.Valid(raw) {
 			ingestReject(hooks, topic, "telemetry_invalid_inner_json", len(payload))
 			return errors.New("mqtt: telemetry.payload must be valid JSON")
@@ -111,34 +287,42 @@ func Dispatch(ctx context.Context, prefix, topic string, payload []byte, ing Dev
 				return fmt.Errorf("mqtt: %w", err)
 			}
 		}
-		return ing.IngestTelemetry(ctx, TelemetryIngest{
-			MachineID: mid,
-			EventType: strings.TrimSpace(body.EventType),
-			Payload:   raw,
-			DedupeKey: body.DedupeKey,
-		})
+		ti := wireTelemetryFields(mid, w)
+		ti.EventType = et
+		ti.Payload = raw
+		return ing.IngestTelemetry(ctx, ti)
+
 	case "shadow/reported":
-		var body struct {
-			Reported map[string]any `json:"reported"`
-		}
-		if err := json.Unmarshal(payload, &body); err != nil {
-			ingestReject(hooks, topic, "shadow_json", len(payload))
-			return fmt.Errorf("mqtt: shadow json: %w", err)
-		}
-		if body.Reported == nil {
-			ingestReject(hooks, topic, "shadow_missing_reported", len(payload))
-			return errors.New("mqtt: shadow.reported object is required")
-		}
-		b, err := json.Marshal(body.Reported)
+		rep, err := extractReportedJSON(w)
 		if err != nil {
-			ingestReject(hooks, topic, "shadow_marshal", len(payload))
-			return fmt.Errorf("mqtt: shadow marshal: %w", err)
+			ingestReject(hooks, topic, "shadow_missing_reported", len(payload))
+			return err
+		}
+		if !json.Valid(rep) {
+			ingestReject(hooks, topic, "shadow_invalid_inner_json", len(payload))
+			return errors.New("mqtt: shadow.reported must be valid JSON")
 		}
 		return ing.IngestShadowReported(ctx, ShadowReportedIngest{
 			MachineID:    mid,
-			ReportedJSON: b,
+			ReportedJSON: rep,
 		})
-	case "commands/receipt":
+
+	case "shadow/desired":
+		des, err := extractDesiredJSON(w)
+		if err != nil {
+			ingestReject(hooks, topic, "shadow_missing_desired", len(payload))
+			return err
+		}
+		if !json.Valid(des) {
+			ingestReject(hooks, topic, "shadow_invalid_desired_json", len(payload))
+			return errors.New("mqtt: shadow.desired must be valid JSON")
+		}
+		return ing.IngestShadowDesired(ctx, ShadowDesiredIngest{
+			MachineID:   mid,
+			DesiredJSON: des,
+		})
+
+	case "commands/receipt", "commands/ack":
 		var body struct {
 			Sequence      int64           `json:"sequence"`
 			Status        string          `json:"status"`
@@ -154,8 +338,8 @@ func Dispatch(ctx context.Context, prefix, topic string, payload []byte, ing Dev
 			ingestReject(hooks, topic, "receipt_bad_sequence", len(payload))
 			return errors.New("mqtt: commands.receipt.sequence must be >= 0")
 		}
-		st := strings.TrimSpace(strings.ToLower(body.Status))
-		if _, ok := allowedReceiptStatuses[st]; !ok {
+		st, ok := normalizeReceiptStatus(body.Status)
+		if !ok {
 			ingestReject(hooks, topic, "receipt_bad_status", len(payload))
 			return fmt.Errorf("mqtt: invalid receipt status %q", body.Status)
 		}
@@ -179,6 +363,7 @@ func Dispatch(ctx context.Context, prefix, topic string, payload []byte, ing Dev
 			Payload:       raw,
 			DedupeKey:     strings.TrimSpace(body.DedupeKey),
 		})
+
 	default:
 		ingestReject(hooks, topic, "unsupported_channel", len(payload))
 		return fmt.Errorf("mqtt: unsupported channel %q", channel)

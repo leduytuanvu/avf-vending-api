@@ -151,6 +151,12 @@ func (p *BoundedDeviceIngest) IngestShadowReported(ctx context.Context, in platf
 	})
 }
 
+func (p *BoundedDeviceIngest) IngestShadowDesired(ctx context.Context, in platformmqtt.ShadowDesiredIngest) error {
+	return p.submit(ctx, "shadow_desired", func(exec context.Context) error {
+		return p.inner.IngestShadowDesired(exec, in)
+	})
+}
+
 func (p *BoundedDeviceIngest) IngestCommandReceipt(ctx context.Context, in platformmqtt.CommandReceiptIngest) error {
 	return p.submit(ctx, "command_receipt", func(exec context.Context) error {
 		return p.inner.IngestCommandReceipt(exec, in)

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
+	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	appdevice "github.com/avf/avf-vending-api/internal/app/device"
 	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
@@ -23,6 +24,17 @@ func mountDeviceCommandRoutes(r chi.Router, app *api.HTTPApplication) {
 		Get("/machines/{machineId}/commands/{sequence}/status", getMachineCommandDispatchStatus(app))
 	r.With(auth.RequireMachineURLAccess("machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin)).
 		Post("/machines/{machineId}/commands/dispatch", postMachineCommandDispatch(app))
+}
+
+func mountDeviceBridgeRoutes(r chi.Router, app *api.HTTPApplication) {
+	if app == nil {
+		return
+	}
+	r.Route("/device/machines/{machineId}", func(r chi.Router) {
+		r.Use(auth.RequireMachineURLAccess("machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin))
+		r.Post("/vend-results", postDeviceVendResults(app))
+		r.Post("/commands/poll", postDeviceCommandsPoll(app))
+	})
 }
 
 type postCommandDispatchBody struct {
@@ -158,6 +170,157 @@ func listMachineCommandReceipts(app *api.HTTPApplication) http.HandlerFunc {
 			"items": items,
 			"meta": map[string]any{
 				"limit":    limit,
+				"returned": len(items),
+			},
+		})
+	}
+}
+
+type deviceVendResultsBody struct {
+	OrderID       uuid.UUID  `json:"order_id"`
+	SlotIndex     int32      `json:"slot_index"`
+	Outcome       string     `json:"outcome"`
+	FailureReason *string    `json:"failure_reason"`
+	CorrelationID *uuid.UUID `json:"correlation_id"`
+}
+
+func postDeviceVendResults(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		if app == nil || app.Commerce == nil || app.TelemetryStore == nil {
+			writeAPIError(w, ctx, http.StatusInternalServerError, "internal", "application not configured")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil {
+			writeAPIError(w, ctx, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		idem, err := requireWriteIdempotencyKey(r)
+		if err != nil {
+			writeAPIError(w, ctx, http.StatusBadRequest, "missing_idempotency_key", err.Error())
+			return
+		}
+		var body deviceVendResultsBody
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeAPIError(w, ctx, http.StatusBadRequest, "invalid_json", "request body must be JSON")
+			return
+		}
+		if body.OrderID == uuid.Nil {
+			writeAPIError(w, ctx, http.StatusBadRequest, "invalid_order_id", "order_id is required")
+			return
+		}
+		outcome := strings.ToLower(strings.TrimSpace(body.Outcome))
+		if outcome != "success" && outcome != "failed" {
+			writeAPIError(w, ctx, http.StatusBadRequest, "invalid_outcome", "outcome must be success or failed")
+			return
+		}
+		order, err := app.TelemetryStore.GetOrderByID(ctx, body.OrderID)
+		if err != nil {
+			if errors.Is(err, appcommerce.ErrNotFound) {
+				writeAPIError(w, ctx, http.StatusNotFound, "not_found", "order not found")
+				return
+			}
+			writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		if order.MachineID != machineID {
+			writeAPIError(w, ctx, http.StatusForbidden, "forbidden", "order does not belong to this machine")
+			return
+		}
+		if body.CorrelationID != nil && *body.CorrelationID != uuid.Nil {
+			_ = app.TelemetryStore.TouchVendSessionCorrelation(ctx, body.OrderID, body.SlotIndex, *body.CorrelationID)
+		}
+		st, err := app.Commerce.GetCheckoutStatus(ctx, order.OrganizationID, body.OrderID, body.SlotIndex)
+		if err != nil {
+			writeCommerceServiceError(w, ctx, err)
+			return
+		}
+		if st.Vend.State == "pending" && (st.Order.Status == "paid" || st.Order.Status == "vending") {
+			if _, err := app.Commerce.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
+				OrganizationID: order.OrganizationID,
+				OrderID:        body.OrderID,
+				SlotIndex:      body.SlotIndex,
+				ToState:        "in_progress",
+			}); err != nil && !errors.Is(err, appcommerce.ErrIllegalTransition) {
+				writeCommerceServiceError(w, ctx, err)
+				return
+			}
+		}
+		if outcome == "success" {
+			fout, err := app.Commerce.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
+				OrganizationID:    order.OrganizationID,
+				OrderID:           body.OrderID,
+				SlotIndex:         body.SlotIndex,
+				TerminalVendState: "success",
+				FailureReason:     nil,
+			})
+			if err != nil {
+				writeCommerceServiceError(w, ctx, err)
+				return
+			}
+			invKey := idem + ":vend_sale_inventory"
+			invReplay, err := app.TelemetryStore.ApplyCommerceVendSuccessInventory(ctx, order.OrganizationID, machineID, body.OrderID, body.SlotIndex, st.Vend.ProductID, invKey, body.CorrelationID)
+			if err != nil {
+				writeAPIError(w, ctx, http.StatusInternalServerError, "inventory_projection_failed", err.Error())
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"order_id":     fout.Order.ID.String(),
+				"order_status": fout.Order.Status,
+				"vend_state":   fout.Vend.State,
+				"replay":       invReplay,
+			})
+			return
+		}
+		fout, err := app.Commerce.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
+			OrganizationID:    order.OrganizationID,
+			OrderID:           body.OrderID,
+			SlotIndex:         body.SlotIndex,
+			TerminalVendState: "failed",
+			FailureReason:     body.FailureReason,
+		})
+		if err != nil {
+			writeCommerceServiceError(w, ctx, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"order_id":     fout.Order.ID.String(),
+			"order_status": fout.Order.Status,
+			"vend_state":   fout.Vend.State,
+			"replay":       false,
+		})
+	}
+}
+
+type deviceCommandsPollBody struct {
+	Limit int32 `json:"limit"`
+}
+
+func postDeviceCommandsPoll(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		if app == nil || app.RemoteCommands == nil {
+			writeAPIError(w, ctx, http.StatusInternalServerError, "internal", "application not configured")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil {
+			writeAPIError(w, ctx, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		var body deviceCommandsPollBody
+		if r.Body != nil {
+			_ = json.NewDecoder(r.Body).Decode(&body)
+		}
+		items, err := app.RemoteCommands.PollRemoteCommands(ctx, machineID, body.Limit)
+		if err != nil {
+			writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"items": items,
+			"meta": map[string]any{
 				"returned": len(items),
 			},
 		})
