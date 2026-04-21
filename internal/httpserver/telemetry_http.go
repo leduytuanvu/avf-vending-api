@@ -43,7 +43,7 @@ func telemetrySnapshotHandler(st *postgres.Store) http.HandlerFunc {
 		}
 		resp := V1MachineTelemetrySnapshotResponse{
 			MachineID:         row.MachineID.String(),
-			OrganizationID:  row.OrganizationID.String(),
+			OrganizationID:    row.OrganizationID.String(),
 			SiteID:            row.SiteID.String(),
 			ReportedState:     json.RawMessage(row.ReportedState),
 			MetricsState:      json.RawMessage(row.MetricsState),

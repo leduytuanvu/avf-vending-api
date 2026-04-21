@@ -299,27 +299,27 @@ type V1AdminStockAdjustmentsResponse struct {
 
 // V1AdminInventoryEvent is one append-only inventory_events row (audit / refill / future vend).
 type V1AdminInventoryEvent struct {
-	ID                        int64   `json:"id"`
-	OrganizationID            string  `json:"organizationId"`
-	MachineID                 string  `json:"machineId"`
-	CabinetCode               *string `json:"cabinetCode,omitempty"`
-	SlotCode                  *string `json:"slotCode,omitempty"`
-	ProductID                 *string `json:"productId,omitempty"`
-	EventType                 string  `json:"eventType"`
-	ReasonCode                *string `json:"reasonCode,omitempty"`
-	QuantityBefore            *int32  `json:"quantityBefore,omitempty"`
-	QuantityDelta             int32   `json:"quantityDelta"`
-	QuantityAfter             *int32  `json:"quantityAfter,omitempty"`
-	UnitPriceMinor            int64   `json:"unitPriceMinor"`
-	Currency                  string  `json:"currency"`
-	CorrelationID             *string `json:"correlationId,omitempty"`
-	OperatorSessionID         *string `json:"operatorSessionId,omitempty"`
-	TechnicianID              *string `json:"technicianId,omitempty"`
-	TechnicianDisplayName     *string `json:"technicianDisplayName,omitempty"`
-	RefillSessionID           *string `json:"refillSessionId,omitempty"`
-	InventoryCountSessionID   *string `json:"inventoryCountSessionId,omitempty"`
-	OccurredAt                string  `json:"occurredAt"`
-	RecordedAt                string  `json:"recordedAt"`
+	ID                      int64   `json:"id"`
+	OrganizationID          string  `json:"organizationId"`
+	MachineID               string  `json:"machineId"`
+	CabinetCode             *string `json:"cabinetCode,omitempty"`
+	SlotCode                *string `json:"slotCode,omitempty"`
+	ProductID               *string `json:"productId,omitempty"`
+	EventType               string  `json:"eventType"`
+	ReasonCode              *string `json:"reasonCode,omitempty"`
+	QuantityBefore          *int32  `json:"quantityBefore,omitempty"`
+	QuantityDelta           int32   `json:"quantityDelta"`
+	QuantityAfter           *int32  `json:"quantityAfter,omitempty"`
+	UnitPriceMinor          int64   `json:"unitPriceMinor"`
+	Currency                string  `json:"currency"`
+	CorrelationID           *string `json:"correlationId,omitempty"`
+	OperatorSessionID       *string `json:"operatorSessionId,omitempty"`
+	TechnicianID            *string `json:"technicianId,omitempty"`
+	TechnicianDisplayName   *string `json:"technicianDisplayName,omitempty"`
+	RefillSessionID         *string `json:"refillSessionId,omitempty"`
+	InventoryCountSessionID *string `json:"inventoryCountSessionId,omitempty"`
+	OccurredAt              string  `json:"occurredAt"`
+	RecordedAt              string  `json:"recordedAt"`
 }
 
 // V1AdminInventoryEventListEnvelope is GET /v1/admin/machines/{machineId}/inventory-events.
@@ -529,28 +529,28 @@ type V1AdminCurrentOperator struct {
 
 // V1AdminMachineListItem is one machine in GET /v1/admin/machines and GET /v1/admin/machines/{machineId}.
 type V1AdminMachineListItem struct {
-	MachineID            string                         `json:"machineId"`
-	MachineName          string                         `json:"machineName"`
-	OrganizationID       string                         `json:"organizationId"`
-	SiteID               string                         `json:"siteId"`
-	SiteName             string                         `json:"siteName"`
-	HardwareProfileID    *string                        `json:"hardwareProfileId,omitempty"`
-	SerialNumber         string                         `json:"serialNumber"`
-	Name                 string                         `json:"name"`
-	Status               string                         `json:"status"`
-	CommandSequence      int64                          `json:"commandSequence"`
-	CreatedAt            string                         `json:"createdAt"`
-	UpdatedAt            string                         `json:"updatedAt"`
-	AndroidID            *string                        `json:"androidId,omitempty"`
-	SimSerial            *string                        `json:"simSerial,omitempty"`
-	SimIccid             *string                        `json:"simIccid,omitempty"`
-	AppVersion           *string                        `json:"appVersion,omitempty"`
-	FirmwareVersion      *string                        `json:"firmwareVersion,omitempty"`
-	LastHeartbeatAt      *string                        `json:"lastHeartbeatAt,omitempty"`
-	EffectiveTimezone    string                         `json:"effectiveTimezone"`
-	AssignedTechnicians  []V1AdminAssignedTechnician    `json:"assignedTechnicians"`
-	CurrentOperator      *V1AdminCurrentOperator        `json:"currentOperator"`
-	InventorySummary     V1AdminMachineInventorySummary `json:"inventorySummary"`
+	MachineID           string                         `json:"machineId"`
+	MachineName         string                         `json:"machineName"`
+	OrganizationID      string                         `json:"organizationId"`
+	SiteID              string                         `json:"siteId"`
+	SiteName            string                         `json:"siteName"`
+	HardwareProfileID   *string                        `json:"hardwareProfileId,omitempty"`
+	SerialNumber        string                         `json:"serialNumber"`
+	Name                string                         `json:"name"`
+	Status              string                         `json:"status"`
+	CommandSequence     int64                          `json:"commandSequence"`
+	CreatedAt           string                         `json:"createdAt"`
+	UpdatedAt           string                         `json:"updatedAt"`
+	AndroidID           *string                        `json:"androidId,omitempty"`
+	SimSerial           *string                        `json:"simSerial,omitempty"`
+	SimIccid            *string                        `json:"simIccid,omitempty"`
+	AppVersion          *string                        `json:"appVersion,omitempty"`
+	FirmwareVersion     *string                        `json:"firmwareVersion,omitempty"`
+	LastHeartbeatAt     *string                        `json:"lastHeartbeatAt,omitempty"`
+	EffectiveTimezone   string                         `json:"effectiveTimezone"`
+	AssignedTechnicians []V1AdminAssignedTechnician    `json:"assignedTechnicians"`
+	CurrentOperator     *V1AdminCurrentOperator        `json:"currentOperator"`
+	InventorySummary    V1AdminMachineInventorySummary `json:"inventorySummary"`
 }
 
 // V1MachineTelemetrySnapshotResponse is GET /v1/machines/{machineId}/telemetry/snapshot.
@@ -595,20 +595,20 @@ type V1MachineTelemetryIncidentsMeta struct {
 // V1MachineTelemetryIncidentsResponse is GET /v1/machines/{machineId}/telemetry/incidents.
 type V1MachineTelemetryIncidentsResponse struct {
 	Items []V1MachineTelemetryIncidentItem `json:"items"`
-	Meta  V1MachineTelemetryIncidentsMeta   `json:"meta"`
+	Meta  V1MachineTelemetryIncidentsMeta  `json:"meta"`
 }
 
 // V1MachineTelemetryRollupItem is one telemetry rollup bucket row.
 type V1MachineTelemetryRollupItem struct {
-	BucketStart  string          `json:"bucketStart"`
-	Granularity  string          `json:"granularity"`
-	MetricKey    string          `json:"metricKey"`
-	SampleCount  int64           `json:"sampleCount"`
-	Sum          *float64        `json:"sum,omitempty"`
-	Min          *float64        `json:"min,omitempty"`
-	Max          *float64        `json:"max,omitempty"`
-	Last         *float64        `json:"last,omitempty"`
-	Extra        json.RawMessage `json:"extra"`
+	BucketStart string          `json:"bucketStart"`
+	Granularity string          `json:"granularity"`
+	MetricKey   string          `json:"metricKey"`
+	SampleCount int64           `json:"sampleCount"`
+	Sum         *float64        `json:"sum,omitempty"`
+	Min         *float64        `json:"min,omitempty"`
+	Max         *float64        `json:"max,omitempty"`
+	Last        *float64        `json:"last,omitempty"`
+	Extra       json.RawMessage `json:"extra"`
 }
 
 // V1MachineTelemetryRollupsMeta documents the window and query echo for rollup listing.

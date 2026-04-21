@@ -37,10 +37,10 @@ type AdjustmentBatchInput struct {
 	MachineID         uuid.UUID
 	OperatorSessionID *uuid.UUID
 	CorrelationID     *uuid.UUID
-	Reason              string
-	IdempotencyKey      string
-	Items               []AdjustmentItem
-	OccurredAt          *time.Time
+	Reason            string
+	IdempotencyKey    string
+	Items             []AdjustmentItem
+	OccurredAt        *time.Time
 }
 
 // AdjustmentBatchResult reports inserted event ids or a replayed idempotent outcome.
