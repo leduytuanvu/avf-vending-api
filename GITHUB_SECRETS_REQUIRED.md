@@ -16,6 +16,13 @@ File này tổng hợp các GitHub Secrets / Inputs mà workflow hiện tại đ
 | `GHCR_PULL_USERNAME` | Optional | Không tìm thấy value thật; file example chỉ comment: `myorg` |
 | `GHCR_PULL_TOKEN` | Optional | Chỉ thấy placeholder comment: `CHANGE_ME_GHCR_READ_TOKEN_OR_PAT` |
 
+### Lưu ý bắt buộc cho production SSH/SCP
+
+- `deploy-prod.yml` dùng cả `scp` và `ssh` tới `VPS_HOST:VPS_SSH_PORT`, nên host/port này phải reachable từ GitHub-hosted runner qua public internet.
+- `VPS_SSH_PRIVATE_KEY` phải là full private key block, ví dụ bắt đầu bằng `-----BEGIN OPENSSH PRIVATE KEY-----` hoặc `-----BEGIN RSA PRIVATE KEY-----`.
+- Không paste `.pub`, không paste dòng trong `authorized_keys`, không thêm dấu nháy, và không dùng key có passphrase nếu workflow chưa truyền thêm `passphrase`.
+- Nếu VPS chỉ mở SSH trong mạng nội bộ, sau VPN, hoặc allowlist IP quá chặt, `scp-action` sẽ fail trước khi `release.sh` kịp chạy.
+
 ## Staging secrets đang được workflow dùng
 
 | Tên biến | Bắt buộc | Value hiện tìm thấy |
@@ -120,6 +127,17 @@ EMQX_API_SECRET=CHANGE_ME_LONG_RANDOM_EMQX_API_SECRET
   `STAGING_HOST` không resolve được từ public DNS hoặc secret có ký tự thừa / whitespace.
 - Workflow fail ngay trước `Deploy staging over SSH`
   Kiểm tra lại GitHub Environment `staging` có đủ cả 4 secret bắt buộc hay chưa.
+
+### Check nhanh khi production SSH / SCP fail
+
+- `dial tcp <host>:<port>: i/o timeout`
+  GitHub-hosted runner không mở được kết nối TCP tới `VPS_HOST:VPS_SSH_PORT`. Kiểm tra lại `VPS_HOST`, `VPS_SSH_PORT`, firewall VPS, cloud security group, router/NAT, và mọi allowlist IP ở phía server/provider.
+- `missing production secret VPS_HOST` / `VPS_SSH_PORT` / `VPS_USER` / `VPS_SSH_PRIVATE_KEY`
+  Secret production đang thiếu hoặc đang được đặt sai scope.
+- `VPS_HOST must resolve from GitHub-hosted runners`
+  `VPS_HOST` đang là hostname nội bộ, sai DNS public, hoặc chứa ký tự thừa / whitespace.
+- `VPS_SSH_PRIVATE_KEY must contain the full private key PEM/OpenSSH block`
+  Secret đang chứa public key, value bị cắt mất đầu/cuối, hoặc format private key không hợp lệ.
 
 ## Template nhanh để paste vào chỗ khác
 
