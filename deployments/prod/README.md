@@ -23,12 +23,12 @@ Optional operator label:
 ## Deploy flow
 
 GitHub Actions production deploy:
-1. Run `deploy-prod.yml` manually in the `production` environment.
-2. Provide `release_tag`, `app_image_ref`, and `goose_image_ref`.
-3. If you are promoting a digest that was built from a different commit than the current workflow ref, also set `source_commit_sha` so the deployment evidence stays accurate.
-4. The workflow resolves digest-pinned image refs, records promotion metadata, then syncs deploy assets to the VPS and runs `release.sh deploy`.
-5. The release path is: `validate -> backup -> migrate -> deploy -> verify`.
-6. If post-deploy verify fails, the workflow attempts one automatic image rollback and then marks the run failed.
+1. A successful `Build and Push Images` run from `main` now auto-triggers `deploy-prod.yml` through `workflow_run`.
+2. The workflow resolves digest-pinned image refs from the build artifact, records promotion metadata, then syncs deploy assets to the VPS and runs `release.sh deploy`.
+3. The release path is: `validate -> backup -> migrate -> deploy -> verify`.
+4. If post-deploy verify fails, the workflow attempts one automatic image rollback and then marks the run failed.
+5. Manual `workflow_dispatch` remains available when an operator needs to promote explicit refs.
+6. Manual runs still require `release_tag`, `app_image_ref`, and `goose_image_ref`; set `source_commit_sha` too when promoting a digest built from a different commit than the workflow ref.
 
 Manual VPS deploy:
 

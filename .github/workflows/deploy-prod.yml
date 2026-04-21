@@ -4,6 +4,11 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
+  workflow_run:
+    workflows:
+      - Build and Push Images
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       release_tag:
@@ -28,6 +33,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
+  actions: read
   contents: read
   id-token: write
   packages: read
@@ -35,14 +41,33 @@ permissions:
 jobs:
   resolve-image-refs:
     name: Resolve Production Image Refs
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
     uses: ./.github/workflows/_reusable-deploy.yml
     with:
-      resolution_mode: manual
-      app_image_ref: ${{ inputs.app_image_ref }}
-      goose_image_ref: ${{ inputs.goose_image_ref }}
+      resolution_mode: ${{ github.event_name == 'workflow_run' && 'workflow_run' || 'manual' }}
+      workflow_run_id: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || '' }}
+      app_image_ref: ${{ github.event_name == 'workflow_dispatch' && inputs.app_image_ref || '' }}
+      goose_image_ref: ${{ github.event_name == 'workflow_dispatch' && inputs.goose_image_ref || '' }}
+    secrets:
+      gh_api_token: ${{ secrets.GITHUB_TOKEN }}
 
   prepare-promotion-context:
     name: Prepare Production Promotion Context
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
     runs-on: ubuntu-latest
     needs: resolve-image-refs
     outputs:
@@ -85,6 +110,14 @@ jobs:
 
   deploy-prod:
     name: Deploy production release
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
     runs-on: ubuntu-latest
     needs:
       - resolve-image-refs
@@ -99,8 +132,9 @@ jobs:
         env:
           APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
           GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_run' && needs.resolve-image-refs.outputs.app_image_tag || inputs.release_tag }}
+          SOURCE_COMMIT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.source_commit_sha }}
           EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
           EMQX_API_SECRET: ${{ secrets.EMQX_API_SECRET }}
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
@@ -109,10 +143,17 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          [[ "${RELEASE_TAG}" =~ ^v[0-9A-Za-z._-]+$ ]] || {
-            echo "error: release_tag must look like a release tag (for example v1.2.3)" >&2
-            exit 1
-          }
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            [[ "${RELEASE_TAG}" =~ ^v[0-9A-Za-z._-]+$ ]] || {
+              echo "error: release_tag must look like a release tag (for example v1.2.3)" >&2
+              exit 1
+            }
+          else
+            [[ -n "${RELEASE_TAG}" ]] || {
+              echo "error: resolved production release label is empty" >&2
+              exit 1
+            }
+          fi
 
           if [[ -n "${SOURCE_COMMIT_SHA:-}" ]] && [[ ! "${SOURCE_COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
             echo "error: source_commit_sha must be a full 40-character lowercase git SHA when provided" >&2
@@ -198,7 +239,7 @@ jobs:
         env:
           APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
           GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
-          RELEASE_LABEL: ${{ inputs.release_tag }}
+          RELEASE_LABEL: ${{ github.event_name == 'workflow_run' && needs.resolve-image-refs.outputs.app_image_tag || inputs.release_tag }}
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
           EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
@@ -264,9 +305,10 @@ jobs:
           ACTOR: ${{ github.actor }}
           APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
           DEPLOY_STEP_OUTCOME: ${{ steps.deploy_production.outcome }}
+          EVENT_NAME: ${{ github.event_name }}
           GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_run' && needs.resolve-image-refs.outputs.app_image_tag || inputs.release_tag }}
+          SOURCE_COMMIT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.source_commit_sha }}
           TRIGGER_NAME: ${{ github.event_name }}
           AUTH_MODE: ${{ needs.prepare-promotion-context.outputs.auth_mode }}
           DEPLOY_TRANSPORT: ${{ needs.prepare-promotion-context.outputs.deploy_transport }}
@@ -276,7 +318,10 @@ jobs:
         run: |
           mkdir -p deployment-evidence
 
-          if [[ -n "${SOURCE_COMMIT_SHA:-}" ]]; then
+          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
+            deploy_source_sha="${SOURCE_COMMIT_SHA}"
+            deploy_source_sha_note="workflow-run-head-sha"
+          elif [[ -n "${SOURCE_COMMIT_SHA:-}" ]]; then
             deploy_source_sha="${SOURCE_COMMIT_SHA}"
             deploy_source_sha_note="operator-supplied"
           else
