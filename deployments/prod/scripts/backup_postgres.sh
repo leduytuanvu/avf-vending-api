@@ -82,6 +82,20 @@ ts="$(date -u +%Y%m%dT%H%M%SZ)"
 out="${BACK_ROOT_ABS}/${DB_NAME}_${ts}.sql.gz"
 tmp="${out}.tmp"
 COMPOSE=(docker compose --env-file .env.production -f docker-compose.prod.yml)
+BACKUP_READY_WAIT_SECS="${BACKUP_POSTGRES_READY_WAIT_SECS:-90}"
+BACKUP_READY_POLL_SECS="${BACKUP_POSTGRES_READY_POLL_SECS:-3}"
+
+wait_for_postgres_ready() {
+	local waited=0
+	while (( waited <= BACKUP_READY_WAIT_SECS )); do
+		if "${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$1" >/dev/null' sh "${DB_NAME}"; then
+			return 0
+		fi
+		sleep "${BACKUP_READY_POLL_SECS}"
+		waited=$((waited + BACKUP_READY_POLL_SECS))
+	done
+	return 1
+}
 
 cleanup() {
 	rm -f "${tmp}"
@@ -91,12 +105,13 @@ trap cleanup EXIT
 log "backup destination directory: ${BACK_ROOT_ABS}"
 log "backup output file: ${out}"
 log "configured database name: ${DB_NAME}"
+log "postgres readiness wait budget: ${BACKUP_READY_WAIT_SECS}s"
 
 log "preflight: validate compose config"
 "${COMPOSE[@]}" config >/dev/null
 
 log "preflight: validate postgres readiness"
-"${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$1" >/dev/null' sh "${DB_NAME}" || fail "postgres is not ready inside the prod compose stack for database ${DB_NAME}"
+wait_for_postgres_ready || fail "postgres is not ready inside the prod compose stack for database ${DB_NAME} after ${BACKUP_READY_WAIT_SECS}s"
 
 if [[ "${DRY_RUN:-0}" == "1" ]]; then
 	log "DRY_RUN=1 set; preflight passed and no backup was written"
