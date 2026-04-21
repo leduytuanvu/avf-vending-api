@@ -25,6 +25,12 @@ File này tổng hợp các GitHub Secrets / Inputs mà workflow hiện tại đ
 | `STAGING_USER` | Yes | Không tìm thấy value thật trong repo/local files đã quét |
 | `STAGING_SSH_KEY` | Yes | Không tìm thấy value thật trong repo/local files đã quét |
 
+### Staging deploy root hiện tại
+
+- Workflow staging hiện dùng deploy root: `/opt/avf-vending-api`
+- Thư mục staging đầy đủ được kỳ vọng là: `/opt/avf-vending-api/deployments/staging`
+- Path này khác production root `/opt/avf-vending/avf-vending-api`, nên không nên copy nguyên path production sang staging
+
 ### Lưu ý bắt buộc cho staging GitHub Environment
 
 - Bốn secret `STAGING_HOST`, `STAGING_PORT`, `STAGING_USER`, `STAGING_SSH_KEY` phải được tạo trong GitHub Environment tên `staging` vì workflow `deploy-staging.yml` chạy với `environment: staging`.
