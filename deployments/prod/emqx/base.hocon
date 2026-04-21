@@ -17,7 +17,3 @@ listeners.ssl.default {
     fail_if_no_peer_cert = false
   }
 }
-
-api_key {
-  bootstrap_file = "/opt/emqx/etc/default_api_key.conf"
-}

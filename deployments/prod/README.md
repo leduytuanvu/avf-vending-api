@@ -13,6 +13,9 @@ Required:
 - `APP_IMAGE_REF`
 - `GOOSE_IMAGE_REF`
 
+Operator prerequisite:
+- `EMQX_API_KEY` / `EMQX_API_SECRET` must already belong to a REST API key created in EMQX (for example via `System > API Key` in the dashboard). Production deploys use that pre-provisioned key for `/api/v5/*`; they do not create or sync EMQX API keys from files in this repo.
+
 Preferred image format:
 - `ghcr.io/<owner>/<repo>@sha256:<digest>`
 - `ghcr.io/<owner>/<repo>-goose@sha256:<digest>`
@@ -101,7 +104,7 @@ Common failure areas:
 - `.env.production` missing or still contains placeholders
 - invalid or unavailable GHCR image ref
 - Postgres not ready, causing migrate or readiness failure
-- EMQX API credentials do not match the rendered bootstrap file
+- EMQX API credentials do not match the pre-provisioned EMQX REST API key
 - DNS / TLS / upstream firewall issues causing public HTTPS healthcheck failures
 
 Recovery guidance:

@@ -95,7 +95,7 @@ EMQX_API_SECRET=CHANGE_ME_LONG_RANDOM_EMQX_API_SECRET
 - `VPS_USER`: user deploy trên VPS, ví dụ `ubuntu`
 - `VPS_SSH_PRIVATE_KEY`: private key tương ứng với public key đã add trên VPS
 - `VPS_DEPLOY_PATH`: đường dẫn deploy root trên VPS, ví dụ `/opt/avf-vending/avf-vending-api`
-- `EMQX_API_KEY` / `EMQX_API_SECRET`: phải khớp với `.env.production` thật và file bootstrap EMQX trên VPS
+- `EMQX_API_KEY` / `EMQX_API_SECRET`: phải khớp với một EMQX REST API key đã được tạo sẵn trong EMQX và với `.env.production` thật
 - `GHCR_PULL_USERNAME`: username GitHub của account có quyền đọc package private trên GHCR
 - `GHCR_PULL_TOKEN`: PAT hoặc token có quyền `read:packages`
 
@@ -112,8 +112,8 @@ EMQX_API_SECRET=CHANGE_ME_LONG_RANDOM_EMQX_API_SECRET
 | `VPS_USER` | `<vi-du-ubuntu>` |
 | `VPS_SSH_PRIVATE_KEY` | `<toan-bo-private-key-PEM>` |
 | `VPS_DEPLOY_PATH` | `</opt/avf-vending/avf-vending-api>` |
-| `EMQX_API_KEY` | `<doc-tu-.env.production-thuc>` |
-| `EMQX_API_SECRET` | `<doc-tu-.env.production-thuc>` |
+| `EMQX_API_KEY` | `<api-key-da-provision-truoc-trong-emqx>` |
+| `EMQX_API_SECRET` | `<api-secret-tu-api-key-da-provision-truoc>` |
 | `GHCR_PULL_USERNAME` | `<github-username-co-quyen-read-package>` |
 | `GHCR_PULL_TOKEN` | `<PAT-hoac-token-co-read:packages>` |
 
@@ -201,12 +201,43 @@ Thông thường path sẽ là:
 /opt/avf-vending/avf-vending-api
 ```
 
-### 3. Đọc `EMQX_API_KEY` và `EMQX_API_SECRET` từ `.env.production`
+### 3. Provision và đồng bộ `EMQX_API_KEY` / `EMQX_API_SECRET`
+
+Tạo API key một lần trực tiếp trong EMQX, rồi copy cùng cặp giá trị đó vào `.env.production` và GitHub Secrets.
+
+Ví dụ một cách làm an toàn:
+
+1. SSH tunnel vào dashboard EMQX:
+
+```bash
+ssh -L 18083:127.0.0.1:18083 -p <VPS_SSH_PORT> <VPS_USER>@<VPS_HOST>
+```
+
+2. Mở dashboard EMQX tại `http://127.0.0.1:18083`
+3. Vào `System > API Key`
+4. Tạo một API key mới dành cho production deploy (một số bản EMQX Open Source không hiện dropdown role; cứ tạo key bình thường)
+5. Lưu lại chính xác `EMQX_API_KEY` và `EMQX_API_SECRET`
+6. Ghi cùng cặp giá trị đó vào `.env.production` và GitHub Secrets
+
+Nếu bạn đã có sẵn key đang dùng, chỉ cần đọc lại từ `.env.production` thực:
 
 ```bash
 cd <VPS_DEPLOY_PATH>/deployments/prod
 grep -E '^(EMQX_API_KEY|EMQX_API_SECRET)=' .env.production
 ```
+
+Lưu ý quan trọng về `.env.production`:
+
+- Trong file **chỉ nên có đúng một dòng** `EMQX_API_KEY=...` và **đúng một dòng** `EMQX_API_SECRET=...`.
+- Nếu có **trùng key** (ví dụ hai dòng `EMQX_API_KEY=`), shell `source ./.env.production` sẽ lấy **dòng cuối cùng**, dễ khiến bạn tưởng đã cập nhật nhưng thực tế vẫn đang dùng giá trị cũ.
+- Kiểm tra nhanh có trùng hay không:
+
+```bash
+cd <VPS_DEPLOY_PATH>/deployments/prod
+grep -nE '^EMQX_API_(KEY|SECRET)=' .env.production
+```
+
+Sau khi bạn đã validate trên VPS bằng `curl` (HTTP 200), bước tiếp theo là **cập nhật GitHub Secrets** `EMQX_API_KEY` / `EMQX_API_SECRET` cho đúng **cặp giá trị đang hoạt động** trong `.env.production`, rồi rerun workflow `Deploy Production`.
 
 ### 4. Kiểm tra `GHCR_PULL_USERNAME` và `GHCR_PULL_TOKEN`
 
