@@ -3,7 +3,9 @@
 BIN_DIR := bin
 GO ?= go
 BUF ?= buf
-SQLC ?= sqlc
+# Pin sqlc to match CI (.github/workflows/ci.yml); uses go run so PATH sqlc is not required.
+SQLC_VERSION := v1.29.0
+SQLC_GEN := $(GO) run github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION)
 # Python 3 for OpenAPI/Swagger generation (use `PY=python` on Windows if `python3` is not on PATH).
 PY ?= python3
 
@@ -28,7 +30,7 @@ test-short:
 
 # Regenerate sqlc and fail if generated Go drifts from what is committed.
 sqlc-check:
-	$(SQLC) generate
+	$(SQLC_GEN) generate
 	git diff --exit-code -- internal/gen/db/
 
 # Regenerate embedded OpenAPI 3.0 + docs/swagger/docs.go from swag-style comments (see tools/build_openapi.py).
@@ -60,9 +62,9 @@ ci-full: ci-gates test
 proto:
 	cd proto && $(BUF) generate
 
-# Regenerate internal/gen/db after editing db/queries/*.sql or db/schema (requires sqlc on PATH or via Docker).
+# Regenerate internal/gen/db after editing db/queries/*.sql or db/schema (pinned sqlc via SQLC_VERSION).
 sqlc:
-	$(SQLC) generate
+	$(SQLC_GEN) generate
 
 build:
 	mkdir -p $(BIN_DIR)
