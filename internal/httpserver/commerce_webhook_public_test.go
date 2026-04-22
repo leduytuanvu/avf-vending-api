@@ -17,7 +17,7 @@ func TestCommercePublicPaymentWebhook_DoesNotRequireIdempotencyKey(t *testing.T)
 
 	app := &api.HTTPApplication{}
 	cfg := &config.Config{}
-	cfg.Commerce.PaymentWebhookHMACSecret = "test-webhook-secret"
+	cfg.Commerce.PaymentWebhookHMACSecret = "fixture"
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/commerce/orders/11111111-1111-1111-1111-111111111111/payments/22222222-2222-2222-2222-222222222222/webhooks", strings.NewReader(`{"provider":"psp","provider_reference":"ref-1"}`))
 	req.Header.Set("X-AVF-Webhook-Timestamp", strconv.FormatInt(time.Now().UTC().Unix(), 10))

@@ -1,6 +1,7 @@
 package grpcserver
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
@@ -78,7 +79,7 @@ func TestNewServer_InternalQueryServices(t *testing.T) {
 		LogFormat: "json",
 		HTTPAuth: config.HTTPAuthConfig{
 			Mode:            "hs256",
-			JWTSecret:       []byte("test-secret-at-least-32-bytes-long-for-jwt!!"),
+			JWTSecret:       bytes.Repeat([]byte("x"), 32),
 			JWTLeeway:       45 * time.Second,
 			AccessTokenTTL:  15 * time.Minute,
 			RefreshTokenTTL: 720 * time.Hour,

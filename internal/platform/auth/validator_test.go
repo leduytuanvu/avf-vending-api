@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -14,8 +15,8 @@ import (
 )
 
 func TestHS256Validator_previousSecretRotation(t *testing.T) {
-	primary := []byte("primary-secret-32bytes-minimum!!")
-	previous := []byte("old-secret-before-rotation-32b")
+	primary := bytes.Repeat([]byte("x"), 32)
+	previous := bytes.Repeat([]byte("y"), 32)
 	v := newHS256Validator(primary, previous, time.Minute)
 
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -36,14 +37,14 @@ func TestHS256Validator_previousSecretRotation(t *testing.T) {
 }
 
 func TestHS256Validator_rejectsBadSignature(t *testing.T) {
-	secret := []byte("primary-secret-32bytes-minimum!!")
+	secret := bytes.Repeat([]byte("x"), 32)
 	v := newHS256Validator(secret, nil, time.Minute)
 
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": "u",
 		"exp": time.Now().Add(time.Hour).Unix(),
 	})
-	raw, err := tok.SignedString([]byte("other-secret-32bytes-minimum!!"))
+	raw, err := tok.SignedString(bytes.Repeat([]byte("z"), 32))
 	if err != nil {
 		t.Fatal(err)
 	}

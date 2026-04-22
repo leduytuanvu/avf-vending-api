@@ -4,8 +4,8 @@ import "testing"
 
 func TestConfigFromEnv_ObjectStorageAliases(t *testing.T) {
 	t.Setenv("OBJECT_STORAGE_BUCKET", "avf-vending-prod-assets")
-	t.Setenv("OBJECT_STORAGE_ACCESS_KEY", "access-key")
-	t.Setenv("OBJECT_STORAGE_SECRET_KEY", "secret-key")
+	t.Setenv("OBJECT_STORAGE_ACCESS_KEY", "fixture")
+	t.Setenv("OBJECT_STORAGE_SECRET_KEY", "fixture")
 	t.Setenv("OBJECT_STORAGE_REGION", "ap-southeast-1")
 	t.Setenv("OBJECT_STORAGE_ENDPOINT", "https://storage.example.com")
 
@@ -16,7 +16,7 @@ func TestConfigFromEnv_ObjectStorageAliases(t *testing.T) {
 	if cfg.Bucket != "avf-vending-prod-assets" {
 		t.Fatalf("bucket: %q", cfg.Bucket)
 	}
-	if cfg.AccessKeyID != "access-key" || cfg.SecretAccessKey != "secret-key" {
+	if cfg.AccessKeyID != "fixture" || cfg.SecretAccessKey != "fixture" {
 		t.Fatalf("unexpected credentials: %+v", cfg)
 	}
 	if cfg.Region != "ap-southeast-1" {
@@ -31,8 +31,8 @@ func TestConfigFromEnv_ObjectStorageAliases(t *testing.T) {
 }
 
 func TestConfigFromEnv_MissingBucketRejected(t *testing.T) {
-	t.Setenv("OBJECT_STORAGE_ACCESS_KEY", "access-key")
-	t.Setenv("OBJECT_STORAGE_SECRET_KEY", "secret-key")
+	t.Setenv("OBJECT_STORAGE_ACCESS_KEY", "fixture")
+	t.Setenv("OBJECT_STORAGE_SECRET_KEY", "fixture")
 
 	_, err := ConfigFromEnv()
 	if err == nil {

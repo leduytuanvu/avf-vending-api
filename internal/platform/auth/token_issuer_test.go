@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -14,7 +15,7 @@ func TestSessionIssuer_IssueAndValidate(t *testing.T) {
 	acct := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 
 	iss, err := NewSessionIssuerFromHTTPAuth(config.HTTPAuthConfig{
-		JWTSecret:        []byte("unit-test-secret"),
+		JWTSecret:        bytes.Repeat([]byte("x"), 32),
 		JWTLeeway:        30 * time.Second,
 		ExpectedIssuer:   "test-iss",
 		ExpectedAudience: "test-aud",
@@ -27,7 +28,7 @@ func TestSessionIssuer_IssueAndValidate(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, exp.IsZero())
 
-	v := newHS256Validator([]byte("unit-test-secret"), nil, 30*time.Second)
+	v := newHS256Validator(bytes.Repeat([]byte("x"), 32), nil, 30*time.Second)
 	p, err := v.ValidateAccessToken(t.Context(), tok)
 	require.NoError(t, err)
 	require.Equal(t, acct.String(), p.Subject)

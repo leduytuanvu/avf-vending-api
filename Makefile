@@ -82,10 +82,10 @@ run-worker:
 	$(GO) run ./cmd/worker
 
 migrate-up:
-	$(GO) run github.com/pressly/goose/v3/cmd/goose@v3.24.1 -dir migrations postgres "$${DATABASE_URL}" up
+	$(GO) run github.com/pressly/goose/v3/cmd/goose@v3.27.0 -dir migrations postgres "$${DATABASE_URL}" up
 
 migrate-down:
-	$(GO) run github.com/pressly/goose/v3/cmd/goose@v3.24.1 -dir migrations postgres "$${DATABASE_URL}" down
+	$(GO) run github.com/pressly/goose/v3/cmd/goose@v3.27.0 -dir migrations postgres "$${DATABASE_URL}" down
 
 docker-up:
 	docker compose -f deployments/docker/docker-compose.yml up -d

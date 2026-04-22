@@ -104,7 +104,7 @@ func TestLoad_GRPCEnabledRequiresAddr(t *testing.T) {
 
 func TestLoad_RedisPasswordWithoutAddrRejected(t *testing.T) {
 	setMinimalValidLoadEnv(t)
-	t.Setenv("REDIS_PASSWORD", "secret")
+	t.Setenv("REDIS_PASSWORD", "fixture")
 	t.Setenv("REDIS_ADDR", "")
 
 	_, err := Load()
@@ -137,7 +137,7 @@ func TestLoad_ProductionAppEnvStillValidatedStrictly(t *testing.T) {
 	t.Setenv("LOG_FORMAT", "json")
 	t.Setenv("HTTP_ADDR", ":8080")
 	t.Setenv("OTEL_SERVICE_NAME", "avf-api-prod")
-	t.Setenv("HTTP_AUTH_JWT_SECRET", "unit-test-production-hs256-secret-key-material")
+	t.Setenv("HTTP_AUTH_JWT_SECRET", strings.Repeat("x", 32))
 	t.Setenv("NATS_URL", "nats://127.0.0.1:4222")
 	t.Setenv("APP_NODE_NAME", "prod-node-a")
 	t.Setenv("APP_INSTANCE_ID", "prod-node-a-api-1")
@@ -211,7 +211,7 @@ func TestLoad_RedisTLSRequiresAddr(t *testing.T) {
 func TestLoad_RedisURLAlias(t *testing.T) {
 	setMinimalValidLoadEnv(t)
 	t.Setenv("REDIS_ADDR", "")
-	t.Setenv("REDIS_URL", "rediss://default:redis-secret@127.0.0.1:6380/2")
+	t.Setenv("REDIS_URL", "rediss://default:fixture@127.0.0.1:6380/2")
 
 	cfg, err := Load()
 	if err != nil {
@@ -220,7 +220,7 @@ func TestLoad_RedisURLAlias(t *testing.T) {
 	if cfg.Redis.Addr != "127.0.0.1:6380" {
 		t.Fatalf("redis addr: %q", cfg.Redis.Addr)
 	}
-	if cfg.Redis.Username != "default" || cfg.Redis.Password != "redis-secret" {
+	if cfg.Redis.Username != "default" || cfg.Redis.Password != "fixture" {
 		t.Fatalf("unexpected redis auth: %+v", cfg.Redis)
 	}
 	if cfg.Redis.DB != 2 || !cfg.Redis.TLSEnabled {
@@ -523,13 +523,13 @@ func TestLoad_Production_requiresHS256Secret(t *testing.T) {
 
 func TestLoad_PaymentWebhookSecretAlias(t *testing.T) {
 	setMinimalValidLoadEnv(t)
-	t.Setenv("PAYMENT_WEBHOOK_SECRET", "webhook-secret")
+	t.Setenv("PAYMENT_WEBHOOK_SECRET", "fixture")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Commerce.PaymentWebhookHMACSecret != "webhook-secret" {
+	if cfg.Commerce.PaymentWebhookHMACSecret != "fixture" {
 		t.Fatalf("payment webhook secret: %q", cfg.Commerce.PaymentWebhookHMACSecret)
 	}
 }
@@ -539,7 +539,7 @@ func TestLoad_SMTPConfig(t *testing.T) {
 	t.Setenv("SMTP_HOST", "smtp.example.com")
 	t.Setenv("SMTP_PORT", "587")
 	t.Setenv("SMTP_USER", "mailer")
-	t.Setenv("SMTP_PASSWORD", "secret")
+	t.Setenv("SMTP_PASSWORD", "fixture")
 
 	cfg, err := Load()
 	if err != nil {
@@ -548,7 +548,7 @@ func TestLoad_SMTPConfig(t *testing.T) {
 	if cfg.SMTP.Host != "smtp.example.com" || cfg.SMTP.Port != 587 {
 		t.Fatalf("unexpected smtp config: %+v", cfg.SMTP)
 	}
-	if cfg.SMTP.Username != "mailer" || cfg.SMTP.Password != "secret" {
+	if cfg.SMTP.Username != "mailer" || cfg.SMTP.Password != "fixture" {
 		t.Fatalf("unexpected smtp credentials: %+v", cfg.SMTP)
 	}
 }
