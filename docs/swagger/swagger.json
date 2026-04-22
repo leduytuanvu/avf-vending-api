@@ -7522,7 +7522,7 @@
                     {
                       "command_type": "machine_planogram_publish",
                       "correlation_id": "11111111-2222-3333-4444-555555555555",
-                      "idempotency_key": "planogram-publish-001",
+                      "idempotency_key": "example",
                       "payload": {
                         "desiredConfigVersion": 7,
                         "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
