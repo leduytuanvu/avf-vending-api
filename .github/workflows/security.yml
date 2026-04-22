@@ -494,7 +494,7 @@ jobs:
                     '    print("reason=push security-verdict schema_version is unsupported")' \
                     '    raise SystemExit(3)' \
                     'if payload.get("event_name") != "push":' \
-                    '    print(f"reason=expected push security evidence but found event_name={payload.get(\"event_name\", \"\")}")' \
+                    '    print("reason=expected push security evidence but found event_name={}".format(payload.get("event_name", "")))' \
                     '    raise SystemExit(3)' \
                     'if payload.get("source_sha", "") != expected_source_sha:' \
                     '    raise SystemExit(2)' \
