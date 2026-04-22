@@ -451,7 +451,7 @@ jobs:
             for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
               candidate_runs="$(
                 gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs?event=push&status=completed&per_page=100" | \
-                  python3 -c 'import json, sys; source_sha = sys.argv[1]; payload = json.load(sys.stdin); print("\n".join(f"{run.get(\"id\", \"\")}\t{run.get(\"conclusion\", \"\")}" for run in payload.get("workflow_runs", []) if run.get("head_sha", "") == source_sha))' "${release_source_sha}"
+                  python3 -c 'import json, sys; source_sha = sys.argv[1]; payload = json.load(sys.stdin); print("\n".join("{}\t{}".format(run.get("id", ""), run.get("conclusion", "")) for run in payload.get("workflow_runs", []) if run.get("head_sha", "") == source_sha))' "${release_source_sha}"
               )"
 
               if [[ -n "${candidate_runs}" ]]; then
