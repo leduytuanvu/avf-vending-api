@@ -20,6 +20,7 @@ permissions:
 jobs:
   analyze:
     name: Analyze Go with CodeQL
+    if: vars.ENABLE_CODE_SCANNING == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:

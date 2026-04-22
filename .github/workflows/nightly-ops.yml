@@ -281,8 +281,10 @@ jobs:
           export RESTORE_DRILL_CONFIGURED="${configured}"
           export RESTORE_DRILL_SOURCE_ID="${source_identifier}"
           export RESTORE_DRILL_TARGET_ID="${target_identifier}"
-          export RESTORE_DRILL_TARGET_DISPOSABLE_NORMALIZED="$(normalize_bool "${RESTORE_DRILL_TARGET_DISPOSABLE:-0}")"
-          export RESTORE_DRILL_TIMESTAMP="$(utc_timestamp)"
+          restore_drill_target_disposable_normalized="$(normalize_bool "${RESTORE_DRILL_TARGET_DISPOSABLE:-0}")"
+          restore_drill_timestamp="$(utc_timestamp)"
+          export RESTORE_DRILL_TARGET_DISPOSABLE_NORMALIZED="${restore_drill_target_disposable_normalized}"
+          export RESTORE_DRILL_TIMESTAMP="${restore_drill_timestamp}"
           python3 - <<'PY'
           import json
           import os
