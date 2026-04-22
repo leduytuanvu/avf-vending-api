@@ -1,5 +1,5 @@
 # One-shot migrations: goose CLI on Alpine (matches prod migrate service).
-FROM golang:1.24-alpine AS build
+FROM golang:1.26-alpine AS build
 RUN apk add --no-cache git \
     && go install github.com/pressly/goose/v3/cmd/goose@v3.24.1
 
