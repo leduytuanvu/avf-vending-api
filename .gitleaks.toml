@@ -19,3 +19,11 @@ paths = [
   '''^deployments/docker/postgres-init/01-init\.sql$''',
   '''^deployments/docker/README\.md$'''
 ]
+
+[[allowlists]]
+description = "Known false positives in release/runtime helper and generated OpenAPI artifacts"
+paths = [
+  '''^deployments/prod/scripts/release\.sh$''',
+  '''^tools/build_openapi\.py$''',
+  '''^docs/swagger/swagger\.json$'''
+]
