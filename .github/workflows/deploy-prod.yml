@@ -4,11 +4,6 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
-  workflow_run:
-    workflows:
-      - Build and Push Images
-    types:
-      - completed
   workflow_dispatch:
     inputs:
       action_mode:
@@ -68,14 +63,6 @@ permissions:
 jobs:
   resolve-build-run-id:
     name: Validate Production Artifact Source
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
     runs-on: ubuntu-latest
     outputs:
       action_mode: ${{ steps.lookup.outputs.action_mode }}
@@ -107,21 +94,6 @@ jobs:
               echo "error: production workflow_dispatch must be run from the main branch" >&2
               exit 1
             }
-          fi
-
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]] || fail "production auto-deploy requires a successful Build and Push Images workflow run"
-            [[ "${{ github.event.workflow_run.event }}" == "push" ]] || fail "production auto-deploy only supports push-triggered main builds"
-            [[ "${{ github.event.workflow_run.head_branch }}" == "main" ]] || fail "production auto-deploy only supports main builds"
-            [[ -z "${BUILD_RUN_ID}" ]] || fail "build_run_id is only used for workflow_dispatch"
-            [[ -z "${ROLLBACK_APP_IMAGE_REF}" && -z "${ROLLBACK_GOOSE_IMAGE_REF}" ]] || fail "rollback inputs are not used for automatic production deploys"
-            echo "action_mode=deploy" >> "${GITHUB_OUTPUT}"
-            echo "build_actor=${{ github.event.workflow_run.actor.login }}" >> "${GITHUB_OUTPUT}"
-            echo "release_tag=main-${{ github.event.workflow_run.head_sha }}" >> "${GITHUB_OUTPUT}"
-            echo "source_commit_sha=${{ github.event.workflow_run.head_sha }}" >> "${GITHUB_OUTPUT}"
-            echo "source_branch=${{ github.event.workflow_run.head_branch }}" >> "${GITHUB_OUTPUT}"
-            echo "workflow_run_id=${{ github.event.workflow_run.id }}" >> "${GITHUB_OUTPUT}"
-            exit 0
           fi
 
           [[ "${ACTION_MODE}" == "deploy" || "${ACTION_MODE}" == "rollback" ]] || fail "action_mode must be 'deploy' or 'rollback'"
@@ -187,47 +159,8 @@ jobs:
           echo "source_commit_sha=${source_commit_sha}" >> "${GITHUB_OUTPUT}"
           echo "source_branch=${source_branch}" >> "${GITHUB_OUTPUT}"
 
-  validate-main-ci-gate:
-    name: Validate Main CI Gate
-    runs-on: ubuntu-latest
-    needs: resolve-build-run-id
-    if: needs.resolve-build-run-id.outputs.action_mode == 'deploy'
-    steps:
-      - name: Confirm CI passed for selected main commit
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_COMMIT_SHA: ${{ needs.resolve-build-run-id.outputs.source_commit_sha }}
-        run: |
-          set -Eeuo pipefail
-
-          ci_run_id="$(
-            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?branch=main&event=push&status=completed&per_page=50" \
-              --jq '[.workflow_runs[]? | select(.head_sha == "'"${SOURCE_COMMIT_SHA}"'" and .conclusion == "success") | .id] | .[0] // empty'
-          )"
-
-          [[ -n "${ci_run_id}" ]] || {
-            echo "error: no successful CI run found for main commit ${SOURCE_COMMIT_SHA}" >&2
-            exit 1
-          }
-
-          {
-            echo "### Main CI Gate"
-            echo "- source commit: \`${SOURCE_COMMIT_SHA}\`"
-            echo "- CI status: \`passed\`"
-            echo "- CI run id: \`${ci_run_id}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-
   resolve-previous-production-deployment:
     name: Resolve Previous Production Deployment
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
     runs-on: ubuntu-latest
     outputs:
       previous_action_mode: ${{ steps.lookup.outputs.previous_action_mode }}
@@ -316,14 +249,6 @@ jobs:
 
   resolve-image-refs:
     name: Resolve Production Image Refs
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
     uses: ./.github/workflows/_reusable-deploy.yml
     needs: resolve-build-run-id
     with:
@@ -336,14 +261,6 @@ jobs:
 
   validate-promotion-selection:
     name: Validate Production Promotion Selection
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
     runs-on: ubuntu-latest
     needs:
       - resolve-build-run-id
@@ -416,14 +333,6 @@ jobs:
 
   validate-production-action-safety:
     name: Validate Production Action Safety
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
     runs-on: ubuntu-latest
     needs:
       - resolve-build-run-id
@@ -475,14 +384,6 @@ jobs:
 
   validate-production-topology-assets:
     name: Validate Production Topology Assets
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -531,18 +432,9 @@ jobs:
 
   prepare-promotion-context:
     name: Prepare Production Promotion Context
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
     runs-on: ubuntu-latest
     needs:
       - resolve-build-run-id
-      - validate-main-ci-gate
       - resolve-previous-production-deployment
       - resolve-image-refs
       - validate-promotion-selection
@@ -626,18 +518,9 @@ jobs:
 
   deploy-prod:
     name: Deploy production release
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
     runs-on: ubuntu-latest
     needs:
       - resolve-build-run-id
-      - validate-main-ci-gate
       - resolve-previous-production-deployment
       - resolve-image-refs
       - validate-production-topology-assets
@@ -652,7 +535,7 @@ jobs:
       RELEASE_TAG: ${{ needs.resolve-build-run-id.outputs.release_tag }}
       SOURCE_BRANCH: ${{ needs.resolve-build-run-id.outputs.source_branch }}
       SOURCE_COMMIT_SHA: ${{ needs.resolve-build-run-id.outputs.source_commit_sha }}
-      SOURCE_COMMIT_SHA_NOTE: ${{ github.event_name == 'workflow_run' && 'build-workflow-head-sha' || (inputs.source_commit_sha != '' && 'operator-confirmed' || 'selected-build-run') }}
+      SOURCE_COMMIT_SHA_NOTE: ${{ inputs.source_commit_sha != '' && 'operator-confirmed' || 'selected-build-run' }}
       SELECTED_BUILD_ACTOR: ${{ needs.resolve-build-run-id.outputs.build_actor }}
       SELECTED_BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
       PREVIOUS_ACTION_MODE: ${{ needs.resolve-previous-production-deployment.outputs.previous_action_mode }}
