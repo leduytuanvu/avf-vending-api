@@ -120,7 +120,7 @@ jobs:
 
       - name: Build and push app image
         id: build_app
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deployments/prod/Dockerfile
@@ -131,7 +131,7 @@ jobs:
 
       - name: Build and push goose image
         id: build_goose
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deployments/prod/Dockerfile.goose
