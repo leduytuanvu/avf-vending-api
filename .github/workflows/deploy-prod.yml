@@ -541,12 +541,15 @@ jobs:
         shell: bash
         env:
           ACTION_MODE: ${{ needs.resolve-build-run-id.outputs.action_mode }}
+          EXPECTED_APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
           EXPECTED_BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
+          EXPECTED_GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
           EXPECTED_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha || needs.resolve-build-run-id.outputs.source_commit_sha }}
           EXPECTED_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
           RESOLVED_ARTIFACT_BUILD_RUN_ID: ${{ needs.resolve-image-refs.outputs.artifact_build_run_id }}
           RESOLVED_ARTIFACT_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha }}
           RESOLVED_ARTIFACT_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
+          SECURITY_VERDICT_MAX_AGE_HOURS: ${{ secrets.PRODUCTION_SECURITY_VERDICT_MAX_AGE_HOURS || secrets.SECURITY_VERDICT_MAX_AGE_HOURS || vars.PRODUCTION_SECURITY_VERDICT_MAX_AGE_HOURS || vars.SECURITY_VERDICT_MAX_AGE_HOURS || '168' }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
@@ -576,7 +579,10 @@ jobs:
             exit 0
           fi
 
+          [[ "${SECURITY_VERDICT_MAX_AGE_HOURS}" =~ ^[0-9]+$ ]] || fail "SECURITY_VERDICT_MAX_AGE_HOURS must be numeric"
           [[ -n "${EXPECTED_BUILD_RUN_ID}" ]] || fail "missing expected build run id for production security gate"
+          [[ -n "${EXPECTED_APP_IMAGE_REF}" ]] || fail "missing expected app image ref for production security gate"
+          [[ -n "${EXPECTED_GOOSE_IMAGE_REF}" ]] || fail "missing expected goose image ref for production security gate"
           [[ -n "${EXPECTED_SOURCE_SHA}" ]] || fail "missing expected source SHA for production security gate"
           [[ "${EXPECTED_BUILD_RUN_ID}" == "${RESOLVED_ARTIFACT_BUILD_RUN_ID}" ]] || fail "resolved artifact build run id does not match the selected build run"
           [[ "${EXPECTED_SOURCE_SHA}" == "${RESOLVED_ARTIFACT_SOURCE_SHA}" ]] || fail "resolved artifact source SHA does not match the selected build SHA"
@@ -587,6 +593,7 @@ jobs:
           {
             echo "- expected build run id: \`${EXPECTED_BUILD_RUN_ID}\`"
             echo "- expected source SHA: \`${EXPECTED_SOURCE_SHA}\`"
+            echo "- maximum verdict age: \`${SECURITY_VERDICT_MAX_AGE_HOURS}h\`"
             if [[ -n "${EXPECTED_SOURCE_WORKFLOW_NAME}" ]]; then
               echo "- expected source workflow: \`${EXPECTED_SOURCE_WORKFLOW_NAME}\`"
             fi
@@ -620,60 +627,113 @@ jobs:
             verdict_file="${extract_dir}/security-verdict.json"
             [[ -f "${verdict_file}" ]] || fail "security-verdict artifact from run ${run_id} is missing security-verdict.json"
 
+            verdict_check_script="${extract_dir}/validate-security-verdict.py"
+            printf '%s\n' \
+              'import json' \
+              'import sys' \
+              'from datetime import datetime, timezone' \
+              'from pathlib import Path' \
+              '' \
+              'verdict_path = Path(sys.argv[1])' \
+              'expected_build_run_id = sys.argv[2]' \
+              'expected_source_sha = sys.argv[3]' \
+              'expected_source_workflow_name = sys.argv[4]' \
+              'run_id = sys.argv[5]' \
+              'run_conclusion = sys.argv[6]' \
+              'expected_app_image_ref = sys.argv[7]' \
+              'expected_goose_image_ref = sys.argv[8]' \
+              'max_age_hours = int(sys.argv[9])' \
+              '' \
+              'payload = json.loads(verdict_path.read_text(encoding="utf-8"))' \
+              'required_keys = ("schema_version", "verdict", "source_build_run_id", "source_sha", "workflow_run_id", "generated_at_utc", "scanner_summary", "published_images")' \
+              'missing = [key for key in required_keys if key not in payload]' \
+              'if missing:' \
+              '    print(f"reason=security-verdict.json is missing required keys: {missing}")' \
+              '    raise SystemExit(3)' \
+              '' \
+              'if payload.get("schema_version", "") != "v1":' \
+              '    print("reason=security-verdict schema_version is unsupported: {}".format(payload.get("schema_version", "")))' \
+              '    raise SystemExit(3)' \
+              '' \
+              'if str(payload.get("workflow_run_id", "")) != run_id:' \
+              '    print("reason=security-verdict workflow_run_id does not match the artifact owner run")' \
+              '    raise SystemExit(3)' \
+              '' \
+              'if str(payload.get("source_build_run_id", "")) != expected_build_run_id:' \
+              '    raise SystemExit(2)' \
+              '' \
+              'if payload.get("source_sha", "") != expected_source_sha:' \
+              '    print("reason=matching security verdict has a different source SHA than the selected build")' \
+              '    raise SystemExit(4)' \
+              '' \
+              'source_workflow_name = payload.get("source_workflow_name", "")' \
+              'if expected_source_workflow_name and source_workflow_name and source_workflow_name != expected_source_workflow_name:' \
+              '    print("reason=matching security verdict has a different source workflow linkage than the selected build")' \
+              '    raise SystemExit(4)' \
+              '' \
+              'published_images = payload.get("published_images") or {}' \
+              'if not isinstance(published_images, dict):' \
+              '    print("reason=security-verdict published_images payload is malformed")' \
+              '    raise SystemExit(3)' \
+              '' \
+              'if published_images.get("app_image_ref", "") != expected_app_image_ref:' \
+              '    print("reason=matching security verdict app image ref does not match the selected immutable artifact")' \
+              '    raise SystemExit(4)' \
+              '' \
+              'if published_images.get("goose_image_ref", "") != expected_goose_image_ref:' \
+              '    print("reason=matching security verdict goose image ref does not match the selected immutable artifact")' \
+              '    raise SystemExit(4)' \
+              '' \
+              'expected_app_digest = expected_app_image_ref.split("@", 1)[1]' \
+              'expected_goose_digest = expected_goose_image_ref.split("@", 1)[1]' \
+              'app_digest = published_images.get("app_digest", "")' \
+              'goose_digest = published_images.get("goose_digest", "")' \
+              'if app_digest and app_digest != expected_app_digest:' \
+              '    print("reason=matching security verdict app digest does not match the selected immutable artifact")' \
+              '    raise SystemExit(4)' \
+              '' \
+              'if goose_digest and goose_digest != expected_goose_digest:' \
+              '    print("reason=matching security verdict goose digest does not match the selected immutable artifact")' \
+              '    raise SystemExit(4)' \
+              '' \
+              'generated_at_raw = payload.get("generated_at_utc", "")' \
+              'try:' \
+              '    generated_at = datetime.strptime(generated_at_raw, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)' \
+              'except ValueError:' \
+              '    print(f"reason=security-verdict generated_at_utc is malformed: {generated_at_raw}")' \
+              '    raise SystemExit(3)' \
+              '' \
+              'age_seconds = int((datetime.now(timezone.utc) - generated_at).total_seconds())' \
+              'if age_seconds < 0:' \
+              '    print("reason=matching security verdict timestamp is in the future")' \
+              '    raise SystemExit(6)' \
+              '' \
+              'if age_seconds > max_age_hours * 3600:' \
+              '    print(f"reason=matching security verdict is stale ({age_seconds}s old, max {max_age_hours}h)")' \
+              '    print(f"generated_at_utc={generated_at_raw}")' \
+              '    raise SystemExit(6)' \
+              '' \
+              'if payload.get("verdict") != "pass":' \
+              '    print("reason=matching security verdict is {} with scanner_summary={}".format(payload.get("verdict"), payload.get("scanner_summary", {})))' \
+              '    print(f"generated_at_utc={generated_at_raw}")' \
+              '    print("source_build_run_id={}".format(payload.get("source_build_run_id", "")))' \
+              '    print("source_sha={}".format(payload.get("source_sha", "")))' \
+              '    raise SystemExit(5)' \
+              '' \
+              'if run_conclusion != "success":' \
+              '    print(f"reason=matching security workflow run conclusion is {run_conclusion}")' \
+              '    print(f"generated_at_utc={generated_at_raw}")' \
+              '    raise SystemExit(5)' \
+              '' \
+              'print(f"security_workflow_run_id={run_id}")' \
+              'print(f"security_verdict_generated_at_utc={generated_at_raw}")' \
+              'print("security_source_build_run_id={}".format(payload.get("source_build_run_id", "")))' \
+              'print("security_source_sha={}".format(payload.get("source_sha", "")))' \
+              'raise SystemExit(0)' \
+              > "${verdict_check_script}"
+
             set +e
-            python3 - "${verdict_file}" "${EXPECTED_BUILD_RUN_ID}" "${EXPECTED_SOURCE_SHA}" "${EXPECTED_SOURCE_WORKFLOW_NAME}" "${run_id}" "${run_conclusion}" > "${extract_dir}/verdict-check.txt" <<'PY'
-              import json
-              import sys
-              from pathlib import Path
-
-              verdict_path = Path(sys.argv[1])
-              expected_build_run_id = sys.argv[2]
-              expected_source_sha = sys.argv[3]
-              expected_source_workflow_name = sys.argv[4]
-              run_id = sys.argv[5]
-              run_conclusion = sys.argv[6]
-
-              payload = json.loads(verdict_path.read_text(encoding="utf-8"))
-              required_keys = ("verdict", "source_build_run_id", "source_sha", "workflow_run_id", "generated_at_utc", "scanner_summary")
-              missing = [key for key in required_keys if key not in payload]
-              if missing:
-                  print(f"reason=security-verdict.json is missing required keys: {missing}")
-                  raise SystemExit(3)
-
-              if str(payload.get("workflow_run_id", "")) != run_id:
-                  print("reason=security-verdict workflow_run_id does not match the artifact owner run")
-                  raise SystemExit(3)
-
-              if str(payload.get("source_build_run_id", "")) != expected_build_run_id:
-                  raise SystemExit(2)
-
-              if payload.get("source_sha", "") != expected_source_sha:
-                  print("reason=matching security verdict has a different source SHA than the selected build")
-                  raise SystemExit(4)
-
-              source_workflow_name = payload.get("source_workflow_name", "")
-              if expected_source_workflow_name and source_workflow_name and source_workflow_name != expected_source_workflow_name:
-                  print("reason=matching security verdict has a different source workflow linkage than the selected build")
-                  raise SystemExit(4)
-
-              if payload.get("verdict") != "pass":
-                  print(f"reason=matching security verdict is {payload.get('verdict')}")
-                  print(f"generated_at_utc={payload.get('generated_at_utc', '')}")
-                  print(f"source_build_run_id={payload.get('source_build_run_id', '')}")
-                  print(f"source_sha={payload.get('source_sha', '')}")
-                  raise SystemExit(5)
-
-              if run_conclusion != "success":
-                  print(f"reason=matching security workflow run conclusion is {run_conclusion}")
-                  print(f"generated_at_utc={payload.get('generated_at_utc', '')}")
-                  raise SystemExit(5)
-
-              print(f"security_workflow_run_id={run_id}")
-              print(f"security_verdict_generated_at_utc={payload.get('generated_at_utc', '')}")
-              print(f"security_source_build_run_id={payload.get('source_build_run_id', '')}")
-              print(f"security_source_sha={payload.get('source_sha', '')}")
-              raise SystemExit(0)
-              PY
+            python3 "${verdict_check_script}" "${verdict_file}" "${EXPECTED_BUILD_RUN_ID}" "${EXPECTED_SOURCE_SHA}" "${EXPECTED_SOURCE_WORKFLOW_NAME}" "${run_id}" "${run_conclusion}" "${EXPECTED_APP_IMAGE_REF}" "${EXPECTED_GOOSE_IMAGE_REF}" "${SECURITY_VERDICT_MAX_AGE_HOURS}" > "${extract_dir}/verdict-check.txt"
             check_rc=$?
             set -e
             verdict_check="$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"), end="")' "${extract_dir}/verdict-check.txt")"
@@ -693,7 +753,7 @@ jobs:
               2)
                 continue
                 ;;
-              3 | 4 | 5)
+              3 | 4 | 5 | 6)
                 reason="$(printf '%s\n' "${verdict_check}" | python3 -c 'import sys; lines=[line.strip() for line in sys.stdin if line.strip()]; print(next((line.split("=",1)[1] for line in lines if line.startswith("reason=")), "matching security verdict is malformed or failed"))')"
                 fail "${reason}"
                 ;;
@@ -776,7 +836,7 @@ jobs:
       - name: Validate production deploy inputs
         shell: bash
         env:
-          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
         run: |
           set -Eeuo pipefail
@@ -823,18 +883,26 @@ jobs:
             [[ -n "${DATA_NODE_HOST}" ]] || fail "deploy_data_node=true requires DATA_NODE_HOST"
           fi
 
-      - name: Gate production provenance before SSH
+      - name: Gate production release before SSH
         shell: bash
         run: |
           set -Eeuo pipefail
-          case "${ACTION_MODE}:${PROVENANCE_VERDICT}" in
-            deploy:verified)
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          case "${ACTION_MODE}" in
+            deploy)
+              [[ "${SECURITY_VERDICT}" == "pass" ]] || fail "refusing production deploy; security verdict is not pass: ${SECURITY_VERDICT}"
+              [[ -n "${SECURITY_WORKFLOW_RUN_ID}" ]] || fail "refusing production deploy; matching security workflow run id is missing"
+              [[ "${PROVENANCE_VERDICT}" == "verified" ]] || fail "refusing production deploy; provenance verdict is not acceptable: ${PROVENANCE_VERDICT}"
               ;;
-            rollback:verified|rollback:accepted-manual)
+            rollback)
+              [[ "${PROVENANCE_VERDICT}" == "verified" || "${PROVENANCE_VERDICT}" == "accepted-manual" ]] || fail "refusing production rollback; provenance verdict is not acceptable: ${PROVENANCE_VERDICT}"
               ;;
             *)
-              echo "error: refusing production ${ACTION_MODE}; provenance verdict is not acceptable: ${PROVENANCE_VERDICT}" >&2
-              exit 1
+              fail "unsupported production action mode: ${ACTION_MODE}"
               ;;
           esac
 
@@ -861,6 +929,7 @@ jobs:
             if [[ -n "${SECURITY_WORKFLOW_RUN_ID}" ]]; then
               echo "- matched security workflow run: \`${SECURITY_WORKFLOW_RUN_ID}\`"
             fi
+            echo "- SSH host trust: \`pinned known_hosts entries from GitHub secrets/vars\`"
             echo "- release label: \`${RELEASE_TAG}\`"
             echo "- smoke gates: \`public node-A smoke after readiness\` then \`final cluster smoke after node-B readiness\`"
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
@@ -897,7 +966,7 @@ jobs:
       - name: Install pinned production SSH trust
         shell: bash
         env:
-          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS }}
         run: |
           set -Eeuo pipefail
           mkdir -p ~/.ssh
@@ -916,6 +985,37 @@ jobs:
             echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
             echo "SCP_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
           } >> "$GITHUB_ENV"
+
+      - name: Validate pinned SSH host identities
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          require_known_host() {
+            local host="$1"
+            [[ -n "${host}" ]] || return 0
+
+            if ssh-keygen -F "${host}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+              return 0
+            fi
+
+            if ssh-keygen -F "[${host}]:${SSH_PORT}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+              return 0
+            fi
+
+            fail "known_hosts does not contain a pinned SSH identity for ${host}:${SSH_PORT}"
+          }
+
+          require_known_host "${APP_NODE_A_HOST}"
+          require_known_host "${APP_NODE_B_HOST}"
+          if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
+            require_known_host "${DATA_NODE_HOST}"
+          fi
 
       - name: Sync app-node assets to node A
         shell: bash
@@ -959,11 +1059,12 @@ jobs:
         shell: bash
         env:
           DATA_NODE_HOST: ${{ env.DATA_NODE_HOST }}
+          RELEASE_EVIDENCE_FILE: deployment-evidence/release-events.jsonl
         run: |
           set -Eeuo pipefail
           bash deployments/prod/shared/scripts/release_data_node.sh
 
-      - name: Deploy app node A
+      - name: Roll out app node A with smoke gate
         id: deploy_app_node_a
         shell: bash
         env:
@@ -971,26 +1072,11 @@ jobs:
           GHCR_PULL_TOKEN: ${{ github.token }}
           APP_NODE_HOSTS: ${{ env.APP_NODE_A_HOST }}
           APP_NODE_ENABLE_TEMPORAL_PROFILE: ${{ env.ENABLE_TEMPORAL_PROFILE }}
+          APP_NODE_RUN_SMOKE_AFTER_READY: ${{ env.ACTION_MODE == 'deploy' && '1' || '0' }}
+          APP_NODE_SMOKE_JSON_FILE: deployment-evidence/smoke-app-node-a.json
+          APP_NODE_SMOKE_LABEL_PREFIX: app-node-a
+          RELEASE_EVIDENCE_FILE: deployment-evidence/release-events.jsonl
           RUN_MIGRATION_ON_FIRST_NODE: "1"
-        run: |
-          set -Eeuo pipefail
-          bash deployments/prod/shared/scripts/release_app_cluster.sh "${APP_IMAGE_REF}" "${GOOSE_IMAGE_REF}"
-
-      - name: Verify app node A
-        id: verify_app_node_a
-        shell: bash
-        env:
-          APP_NODE_HOSTS: ${{ env.APP_NODE_A_HOST }}
-          APP_NODE_ENABLE_TEMPORAL_PROFILE: ${{ env.ENABLE_TEMPORAL_PROFILE }}
-        run: |
-          set -Eeuo pipefail
-          bash deployments/prod/shared/scripts/healthcheck_app_node.sh
-
-      - name: Run public smoke against app node A
-        if: env.ACTION_MODE == 'deploy'
-        id: smoke_app_node_a
-        shell: bash
-        env:
           SMOKE_API_DOMAIN: ${{ env.PRODUCTION_API_DOMAIN }}
           SMOKE_BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
           SMOKE_CONNECT_TO_HOST: ${{ env.APP_NODE_A_HOST }}
@@ -999,9 +1085,9 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
-          bash deployments/prod/scripts/smoke_prod.sh --json | tee deployment-evidence/smoke-app-node-a.json
+          bash deployments/prod/shared/scripts/release_app_cluster.sh "${APP_IMAGE_REF}" "${GOOSE_IMAGE_REF}"
 
-      - name: Deploy app node B
+      - name: Roll out app node B
         id: deploy_app_node_b
         shell: bash
         env:
@@ -1009,20 +1095,12 @@ jobs:
           GHCR_PULL_TOKEN: ${{ github.token }}
           APP_NODE_HOSTS: ${{ env.APP_NODE_B_HOST }}
           APP_NODE_ENABLE_TEMPORAL_PROFILE: ${{ env.ENABLE_TEMPORAL_PROFILE }}
+          APP_NODE_RUN_SMOKE_AFTER_READY: "0"
+          RELEASE_EVIDENCE_FILE: deployment-evidence/release-events.jsonl
           RUN_MIGRATION_ON_FIRST_NODE: "0"
         run: |
           set -Eeuo pipefail
           bash deployments/prod/shared/scripts/release_app_cluster.sh "${APP_IMAGE_REF}" "${GOOSE_IMAGE_REF}"
-
-      - name: Verify app node B
-        id: verify_app_node_b
-        shell: bash
-        env:
-          APP_NODE_HOSTS: ${{ env.APP_NODE_B_HOST }}
-          APP_NODE_ENABLE_TEMPORAL_PROFILE: ${{ env.ENABLE_TEMPORAL_PROFILE }}
-        run: |
-          set -Eeuo pipefail
-          bash deployments/prod/shared/scripts/healthcheck_app_node.sh
 
       - name: Run final public smoke after app node B
         if: env.ACTION_MODE == 'deploy'
@@ -1036,7 +1114,19 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
-          bash deployments/prod/scripts/smoke_prod.sh --json | tee deployment-evidence/smoke-cluster-final.json
+          set +e
+          bash deployments/prod/scripts/smoke_prod.sh --json > deployment-evidence/smoke-cluster-final.json
+          smoke_rc=$?
+          set -e
+          cat deployment-evidence/smoke-cluster-final.json
+          smoke_status="$(python3 -c 'import json, pathlib, sys; payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); print(payload.get("overall_status", "unknown"))' deployment-evidence/smoke-cluster-final.json)"
+          smoke_detail="final cluster smoke failed"
+          if [[ "${smoke_status}" == "pass" ]]; then
+            smoke_detail="final cluster smoke passed"
+          fi
+          printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"%s","detail":"%s"}\n' \
+            "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${smoke_status}" "${smoke_detail}" >> deployment-evidence/release-events.jsonl
+          exit "${smoke_rc}"
 
       - name: Attempt automatic rollback after failed production release
         if: failure() && env.ACTION_MODE == 'deploy'
@@ -1044,9 +1134,8 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
-          APP_NODE_A_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_a.outcome }}
-          APP_NODE_A_SMOKE_OUTCOME: ${{ steps.smoke_app_node_a.outcome }}
-          APP_NODE_B_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_b.outcome }}
+          APP_NODE_A_ROLLOUT_OUTCOME: ${{ steps.deploy_app_node_a.outcome }}
+          APP_NODE_B_ROLLOUT_OUTCOME: ${{ steps.deploy_app_node_b.outcome }}
           FINAL_SMOKE_OUTCOME: ${{ steps.smoke_cluster_final.outcome }}
           DATA_NODE_DEPLOY_OUTCOME: ${{ steps.deploy_data_node.outcome }}
         run: |
@@ -1057,17 +1146,16 @@ jobs:
           if [[ ! -f deployment-evidence/release-started ]]; then
             echo "rollback_attempted=false" >> "$GITHUB_OUTPUT"
             echo "rollback_result=not-started" >> "$GITHUB_OUTPUT"
+            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because release never started"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
             exit 0
           fi
 
           app_nodes_need_rollback="false"
-          if [[ -n "${APP_NODE_A_DEPLOY_OUTCOME}" && "${APP_NODE_A_DEPLOY_OUTCOME}" != "skipped" ]]; then
+          if [[ -n "${APP_NODE_A_ROLLOUT_OUTCOME}" && "${APP_NODE_A_ROLLOUT_OUTCOME}" != "skipped" ]]; then
             app_nodes_need_rollback="true"
           fi
-          if [[ -n "${APP_NODE_B_DEPLOY_OUTCOME}" && "${APP_NODE_B_DEPLOY_OUTCOME}" != "skipped" ]]; then
-            app_nodes_need_rollback="true"
-          fi
-          if [[ -n "${APP_NODE_A_SMOKE_OUTCOME}" && "${APP_NODE_A_SMOKE_OUTCOME}" != "skipped" ]]; then
+          if [[ -n "${APP_NODE_B_ROLLOUT_OUTCOME}" && "${APP_NODE_B_ROLLOUT_OUTCOME}" != "skipped" ]]; then
             app_nodes_need_rollback="true"
           fi
           if [[ -n "${FINAL_SMOKE_OUTCOME}" && "${FINAL_SMOKE_OUTCOME}" != "skipped" ]]; then
@@ -1077,6 +1165,8 @@ jobs:
           if [[ "${app_nodes_need_rollback}" == "true" && ( -z "${PREVIOUS_APP_IMAGE_REF}" || -z "${PREVIOUS_GOOSE_IMAGE_REF}" ) ]]; then
             echo "rollback_attempted=false" >> "$GITHUB_OUTPUT"
             echo "rollback_result=no-previous-release" >> "$GITHUB_OUTPUT"
+            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"fail","detail":"automatic rollback unavailable because no previous successful production image refs were recorded"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
             echo "error: release failed after start, but no previous successful production image refs are available for rollback" >&2
             exit 1
           fi
@@ -1094,6 +1184,8 @@ jobs:
             rollback_attempted="true"
             rollback_app_node "${APP_NODE_A_HOST}"
             rollback_app_node "${APP_NODE_B_HOST}"
+            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for both app nodes"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
           fi
 
           if [[ "${DEPLOY_DATA_NODE}" == "true" && -n "${DATA_NODE_DEPLOY_OUTCOME}" && "${DATA_NODE_DEPLOY_OUTCOME}" != "skipped" ]]; then
@@ -1101,6 +1193,8 @@ jobs:
             target="${SSH_USER}@${DATA_NODE_HOST}"
             ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
               "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node' && bash 'scripts/rollback_data_node.sh'"
+            printf '{"ts":"%s","component":"data-node","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for data-node"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
           fi
 
           echo "rollback_attempted=${rollback_attempted}" >> "$GITHUB_OUTPUT"
@@ -1108,6 +1202,8 @@ jobs:
             echo "rollback_result=completed" >> "$GITHUB_OUTPUT"
           else
             echo "rollback_result=nothing-to-rollback" >> "$GITHUB_OUTPUT"
+            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback was not required for this failure mode"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
           fi
 
       - name: Write production deployment summary
@@ -1122,13 +1218,10 @@ jobs:
           PROVENANCE_STATUS: ${{ needs.prepare-promotion-context.outputs.provenance_verification_status }}
           EVENT_NAME: ${{ github.event_name }}
           WORKFLOW_REF_SHA: ${{ github.sha }}
-          DATA_NODE_OUTCOME: ${{ steps.deploy_data_node.outcome }}
-          APP_NODE_A_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_a.outcome }}
-          APP_NODE_A_VERIFY_OUTCOME: ${{ steps.verify_app_node_a.outcome }}
-          APP_NODE_A_SMOKE_OUTCOME: ${{ steps.smoke_app_node_a.outcome || 'skipped' }}
-          APP_NODE_B_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_b.outcome }}
-          APP_NODE_B_VERIFY_OUTCOME: ${{ steps.verify_app_node_b.outcome }}
-          FINAL_CLUSTER_SMOKE_OUTCOME: ${{ steps.smoke_cluster_final.outcome || 'skipped' }}
+          DATA_NODE_OUTCOME: ${{ steps.deploy_data_node.outcome || 'skipped' }}
+          APP_NODE_A_ROLLOUT_OUTCOME: ${{ steps.deploy_app_node_a.outcome || 'skipped' }}
+          APP_NODE_B_ROLLOUT_OUTCOME: ${{ steps.deploy_app_node_b.outcome || 'skipped' }}
+          FINAL_CLUSTER_SMOKE_STEP_OUTCOME: ${{ steps.smoke_cluster_final.outcome || 'skipped' }}
           PROVENANCE_VERDICT: ${{ needs.prepare-promotion-context.outputs.provenance_verdict }}
           RESOLVED_RELEASE_LABEL: ${{ needs.resolve-image-refs.outputs.release_label }}
           ROLLBACK_ATTEMPTED: ${{ steps.auto_rollback.outputs.rollback_attempted || 'false' }}
@@ -1149,6 +1242,70 @@ jobs:
             deploy_source_sha=""
             deploy_source_sha_note="not-available-for-rollback"
           fi
+
+          python3 - <<'PY' > deployment-evidence/rollout-derived.env
+          import json
+          import os
+          from pathlib import Path
+
+          events = []
+          events_path = Path("deployment-evidence/release-events.jsonl")
+          if events_path.exists():
+              for line in events_path.read_text(encoding="utf-8").splitlines():
+                  if line.strip():
+                      events.append(json.loads(line))
+
+          def latest_phase_status(component, target, phase, default):
+              for event in reversed(events):
+                  if event.get("component") == component and event.get("target") == target and event.get("phase") == phase:
+                      return event.get("status", default)
+              return default
+
+          def normalize_step_outcome(value, default="not-run"):
+              mapping = {
+                  "success": "pass",
+                  "failure": "fail",
+                  "cancelled": "cancelled",
+                  "skipped": "skipped",
+              }
+              return mapping.get(value, default)
+
+          def smoke_status(path_str, default):
+              path = Path(path_str)
+              if not path.exists():
+                  return default
+              try:
+                  payload = json.loads(path.read_text(encoding="utf-8"))
+              except Exception:
+                  return "malformed"
+              return payload.get("overall_status", default)
+
+          action_mode = os.environ.get("ACTION_MODE", "")
+          deploy_data_node = os.environ.get("DEPLOY_DATA_NODE", "false")
+          app_node_a_host = os.environ.get("APP_NODE_A_HOST", "")
+          app_node_b_host = os.environ.get("APP_NODE_B_HOST", "")
+
+          derived = {
+              "data_node_result": normalize_step_outcome(os.environ.get("DATA_NODE_OUTCOME", "skipped"), "skipped"),
+              "app_node_a_result": normalize_step_outcome(os.environ.get("APP_NODE_A_ROLLOUT_OUTCOME", "skipped"), "skipped"),
+              "app_node_a_readiness_result": latest_phase_status("app-node", app_node_a_host, "readiness", "not-run"),
+              "app_node_a_smoke_result": smoke_status("deployment-evidence/smoke-app-node-a.json", "skipped" if action_mode != "deploy" else "not-run"),
+              "app_node_b_result": normalize_step_outcome(os.environ.get("APP_NODE_B_ROLLOUT_OUTCOME", "skipped"), "skipped"),
+              "app_node_b_readiness_result": latest_phase_status("app-node", app_node_b_host, "readiness", "not-run"),
+              "final_cluster_smoke_result": smoke_status("deployment-evidence/smoke-cluster-final.json", "skipped" if action_mode != "deploy" else normalize_step_outcome(os.environ.get("FINAL_CLUSTER_SMOKE_STEP_OUTCOME", "skipped"), "not-run")),
+              "rollback_attempted": os.environ.get("ROLLBACK_ATTEMPTED", "false"),
+              "rollback_result": os.environ.get("ROLLBACK_RESULT", "not-attempted"),
+              "final_deployment_verdict": "pass" if os.environ.get("FINAL_RESULT") == "success" else "fail",
+              "release_events_path": str(events_path if events_path.exists() else Path("deployment-evidence/release-events.jsonl")),
+          }
+          if deploy_data_node != "true":
+              derived["data_node_result"] = "skipped"
+
+          for key, value in derived.items():
+              print(f"{key}={value}")
+          PY
+          # shellcheck disable=SC1091
+          source deployment-evidence/rollout-derived.env
 
           cat > deployment-evidence/production-deployment-manifest.json <<EOF
           {
@@ -1196,16 +1353,18 @@ jobs:
             "data_node_host": "${DATA_NODE_HOST}",
             "app_node_a_host": "${APP_NODE_A_HOST}",
             "app_node_b_host": "${APP_NODE_B_HOST}",
-            "data_node_outcome": "${DATA_NODE_OUTCOME}",
-            "app_node_a_deploy_outcome": "${APP_NODE_A_DEPLOY_OUTCOME}",
-            "app_node_a_verify_outcome": "${APP_NODE_A_VERIFY_OUTCOME}",
-            "app_node_a_smoke_outcome": "${APP_NODE_A_SMOKE_OUTCOME}",
-            "app_node_b_deploy_outcome": "${APP_NODE_B_DEPLOY_OUTCOME}",
-            "app_node_b_verify_outcome": "${APP_NODE_B_VERIFY_OUTCOME}",
-            "final_cluster_smoke_outcome": "${FINAL_CLUSTER_SMOKE_OUTCOME}",
+            "data_node_result": "${data_node_result}",
+            "app_node_a_result": "${app_node_a_result}",
+            "app_node_a_readiness_result": "${app_node_a_readiness_result}",
+            "app_node_a_smoke_result": "${app_node_a_smoke_result}",
+            "app_node_b_result": "${app_node_b_result}",
+            "app_node_b_readiness_result": "${app_node_b_readiness_result}",
+            "final_cluster_smoke_result": "${final_cluster_smoke_result}",
             "rollback_attempted": "${ROLLBACK_ATTEMPTED}",
             "rollback_result": "${ROLLBACK_RESULT}",
-            "final_result": "${FINAL_RESULT}"
+            "final_result": "${FINAL_RESULT}",
+            "final_deployment_verdict": "${final_deployment_verdict}",
+            "release_events_path": "${release_events_path}"
           }
           EOF
 
@@ -1220,11 +1379,18 @@ jobs:
             "provenance_verdict": "${PROVENANCE_VERDICT}",
             "security_verdict": "${SECURITY_VERDICT}",
             "security_workflow_run_id": "${SECURITY_WORKFLOW_RUN_ID}",
-            "app_node_a_smoke_outcome": "${APP_NODE_A_SMOKE_OUTCOME}",
-            "final_cluster_smoke_outcome": "${FINAL_CLUSTER_SMOKE_OUTCOME}",
+            "data_node_result": "${data_node_result}",
+            "app_node_a_result": "${app_node_a_result}",
+            "app_node_a_readiness_result": "${app_node_a_readiness_result}",
+            "app_node_a_smoke_result": "${app_node_a_smoke_result}",
+            "app_node_b_result": "${app_node_b_result}",
+            "app_node_b_readiness_result": "${app_node_b_readiness_result}",
+            "final_cluster_smoke_result": "${final_cluster_smoke_result}",
             "rollback_attempted": "${ROLLBACK_ATTEMPTED}",
             "rollback_result": "${ROLLBACK_RESULT}",
-            "final_result": "${FINAL_RESULT}"
+            "final_result": "${FINAL_RESULT}",
+            "final_deployment_verdict": "${final_deployment_verdict}",
+            "release_events_path": "${release_events_path}"
           }
           EOF
 
@@ -1268,12 +1434,13 @@ jobs:
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
             echo "- app node B: \`${APP_NODE_B_HOST}\`"
             echo "- data node: \`${DATA_NODE_HOST:-not-requested}\`"
-            echo "- deployment steps: data-node=\`${DATA_NODE_OUTCOME:-skipped}\`, app-node-a=\`${APP_NODE_A_DEPLOY_OUTCOME}\`, app-node-b=\`${APP_NODE_B_DEPLOY_OUTCOME}\`"
-            echo "- readiness checks: app-node-a=\`${APP_NODE_A_VERIFY_OUTCOME}\`, app-node-b=\`${APP_NODE_B_VERIFY_OUTCOME}\`"
-            echo "- smoke checks: app-node-a-public=\`${APP_NODE_A_SMOKE_OUTCOME}\`, final-cluster=\`${FINAL_CLUSTER_SMOKE_OUTCOME}\`"
+            echo "- rollout results: data-node=\`${data_node_result}\`, app-node-a=\`${app_node_a_result}\`, app-node-b=\`${app_node_b_result}\`"
+            echo "- readiness checks: app-node-a=\`${app_node_a_readiness_result}\`, app-node-b=\`${app_node_b_readiness_result}\`"
+            echo "- smoke checks: app-node-a-public=\`${app_node_a_smoke_result}\`, final-cluster=\`${final_cluster_smoke_result}\`"
             echo "- rollback attempted: \`${ROLLBACK_ATTEMPTED}\`"
             echo "- rollback result: \`${ROLLBACK_RESULT}\`"
-            echo "- final result: \`${FINAL_RESULT}\`"
+            echo "- final result: \`${FINAL_RESULT}\` / verdict=\`${final_deployment_verdict}\`"
+            echo "- rollout evidence: \`${release_events_path}\`"
             echo "- rollback path: \`remote rollback_app_node.sh\` (and \`rollback_data_node.sh\` when requested)"
           } >> "$GITHUB_STEP_SUMMARY"
 

@@ -41,7 +41,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           sudo apt-get update
-          sudo apt-get install -y shellcheck
+          sudo apt-get install -y shellcheck yamllint
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
           go install mvdan.cc/sh/v3/cmd/shfmt@latest
           echo "$(go env GOPATH)/bin" >> "${GITHUB_PATH}"
@@ -52,35 +52,25 @@ jobs:
           set -Eeuo pipefail
           actionlint
 
-      - name: Lint production Bash scripts with shellcheck
+      - name: Lint workflow YAML with yamllint
         shell: bash
         run: |
           set -Eeuo pipefail
-          shellcheck -x -e SC2016,SC2155 \
-            deployments/prod/scripts/validate_release_assets.sh \
-            deployments/prod/scripts/test_release_assets.sh \
-            deployments/prod/scripts/release.sh \
-            deployments/prod/scripts/backup_postgres.sh \
-            deployments/prod/scripts/restore_postgres.sh \
-            deployments/prod/scripts/healthcheck_prod.sh \
-            deployments/prod/scripts/deploy_prod.sh \
-            deployments/prod/scripts/update_prod.sh \
-            deployments/prod/scripts/rollback_prod.sh
+          yamllint -d '{extends: default, rules: {document-start: disable, line-length: disable, truthy: disable}}' .github/workflows
 
-      - name: Enforce shfmt on production Bash scripts
+      - name: Lint shared production Bash scripts with shellcheck
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          shellcheck -x -e SC2016,SC2029,SC2155 \
+            deployments/prod/shared/scripts/*.sh
+
+      - name: Enforce shfmt on shared production Bash scripts
         shell: bash
         run: |
           set -Eeuo pipefail
           shfmt -d \
-            deployments/prod/scripts/validate_release_assets.sh \
-            deployments/prod/scripts/test_release_assets.sh \
-            deployments/prod/scripts/release.sh \
-            deployments/prod/scripts/backup_postgres.sh \
-            deployments/prod/scripts/restore_postgres.sh \
-            deployments/prod/scripts/healthcheck_prod.sh \
-            deployments/prod/scripts/deploy_prod.sh \
-            deployments/prod/scripts/update_prod.sh \
-            deployments/prod/scripts/rollback_prod.sh
+            deployments/prod/shared/scripts/*.sh
 
   go-ci:
     name: Go CI Gates

@@ -6,6 +6,8 @@ SHARED_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${SHARED_ROOT}/scripts/lib_release.sh"
 
 ENV_FILE_PATH="${1:-${APP_NODE_ENV_FILE_PATH:-${SHARED_ROOT}/../../app-node/.env.app-node}}"
+REPORT_PATH="${CHECK_MANAGED_SERVICES_REPORT_PATH:-}"
+STRICT_MODE="$(normalize_bool "${CHECK_MANAGED_SERVICES_STRICT:-1}")"
 
 require_cmd bash
 require_cmd curl
@@ -13,14 +15,38 @@ require_cmd python3
 load_env_file "${ENV_FILE_PATH}"
 
 failures=0
+skips=0
+REPORT_ROWS="$(mktemp)"
+
+cleanup() {
+	rm -f "${REPORT_ROWS}"
+}
+trap cleanup EXIT
 
 pass() {
 	echo "PASS: $1"
+	printf '%s\t%s\t%s\n' "pass" "$1" "" >>"${REPORT_ROWS}"
 }
 
 fail_check() {
 	echo "FAIL: $1" >&2
 	failures=$((failures + 1))
+	printf '%s\t%s\t%s\n' "fail" "$1" "" >>"${REPORT_ROWS}"
+}
+
+skip_check() {
+	echo "SKIP: $1"
+	skips=$((skips + 1))
+	printf '%s\t%s\t%s\n' "skip" "$1" "" >>"${REPORT_ROWS}"
+}
+
+fail_or_skip() {
+	local message="$1"
+	if [[ "${STRICT_MODE}" == "1" ]]; then
+		fail_check "${message}"
+	else
+		skip_check "${message}"
+	fi
 }
 
 python_value() {
@@ -79,9 +105,13 @@ PY
 check_managed_postgres() {
 	local host_port host port
 	[[ -n "${DATABASE_URL:-}" ]] || {
-		fail_check "DATABASE_URL is required for production app-node health checks"
+		fail_or_skip "DATABASE_URL is required for managed PostgreSQL checks"
 		return 0
 	}
+	if is_placeholder_value "${DATABASE_URL}"; then
+		fail_or_skip "DATABASE_URL is placeholder-only; managed PostgreSQL live validation not attempted"
+		return 0
+	fi
 	host_port="$(python_value "url_host_port" "${DATABASE_URL}")" || {
 		fail_check "DATABASE_URL is not parseable"
 		return 0
@@ -105,17 +135,25 @@ check_managed_postgres() {
 check_managed_redis() {
 	local host_port host port redis_target
 	if [[ -n "${REDIS_URL:-}" ]]; then
+		if is_placeholder_value "${REDIS_URL}"; then
+			fail_or_skip "REDIS_URL is placeholder-only; managed Redis live validation not attempted"
+			return 0
+		fi
 		redis_target="$(python_value "url_host_port" "${REDIS_URL}")" || {
 			fail_check "REDIS_URL is not parseable"
 			return 0
 		}
 	elif [[ -n "${REDIS_ADDR:-}" ]]; then
+		if is_placeholder_value "${REDIS_ADDR}"; then
+			fail_or_skip "REDIS_ADDR is placeholder-only; managed Redis live validation not attempted"
+			return 0
+		fi
 		redis_target="$(python_value "host_port" "${REDIS_ADDR}")" || {
 			fail_check "REDIS_ADDR is not parseable"
 			return 0
 		}
 	else
-		echo "SKIP: managed Redis not configured"
+		skip_check "managed Redis not configured"
 		return 0
 	fi
 
@@ -138,19 +176,23 @@ check_managed_redis() {
 check_object_storage() {
 	local endpoint host_port host port
 	if [[ "$(normalize_bool "${API_ARTIFACTS_ENABLED:-0}")" != "1" ]]; then
-		echo "SKIP: S3-compatible object storage checks disabled because API_ARTIFACTS_ENABLED is false"
+		skip_check "S3-compatible object storage checks disabled because API_ARTIFACTS_ENABLED is false"
 		return 0
 	fi
 
 	endpoint="${OBJECT_STORAGE_ENDPOINT:-${S3_ENDPOINT:-}}"
 	[[ -n "${endpoint}" ]] || {
-		fail_check "API_ARTIFACTS_ENABLED=true requires OBJECT_STORAGE_ENDPOINT or S3_ENDPOINT"
+		fail_or_skip "API_ARTIFACTS_ENABLED=true requires OBJECT_STORAGE_ENDPOINT or S3_ENDPOINT"
 		return 0
 	}
 	[[ -n "${OBJECT_STORAGE_BUCKET:-${S3_BUCKET:-}}" ]] || {
-		fail_check "API_ARTIFACTS_ENABLED=true requires OBJECT_STORAGE_BUCKET or S3_BUCKET"
+		fail_or_skip "API_ARTIFACTS_ENABLED=true requires OBJECT_STORAGE_BUCKET or S3_BUCKET"
 		return 0
 	}
+	if is_placeholder_value "${endpoint}"; then
+		fail_or_skip "object storage endpoint is placeholder-only; live validation not attempted"
+		return 0
+	fi
 
 	host_port="$(python_value "url_host_port" "${endpoint}")" || {
 		fail_check "object storage endpoint is not parseable"
@@ -173,7 +215,37 @@ check_managed_postgres
 check_managed_redis
 check_object_storage
 
-if (( failures > 0 )); then
+if [[ -n "${REPORT_PATH}" ]]; then
+	{
+		printf '{\n'
+		printf '  "env_file_path": "%s",\n' "$(json_escape "${ENV_FILE_PATH}")"
+		printf '  "strict_mode": %s,\n' "${STRICT_MODE}"
+		printf '  "verdict": "%s",\n' "$([[ "${failures}" -gt 0 ]] && printf 'fail' || printf 'pass')"
+		printf '  "failures": %s,\n' "${failures}"
+		printf '  "skips": %s,\n' "${skips}"
+		printf '  "checks": ['
+		first="1"
+		while IFS=$'\t' read -r status message detail; do
+			[[ -n "${status}" ]] || continue
+			if [[ "${first}" == "1" ]]; then
+				first="0"
+			else
+				printf ','
+			fi
+			printf '\n    {"status":"%s","message":"%s","detail":"%s"}' \
+				"$(json_escape "${status}")" \
+				"$(json_escape "${message}")" \
+				"$(json_escape "${detail}")"
+		done <"${REPORT_ROWS}"
+		if [[ "${first}" == "0" ]]; then
+			printf '\n'
+		fi
+		printf '  ]\n'
+		printf '}\n'
+	} >"${REPORT_PATH}"
+fi
+
+if ((failures > 0)); then
 	echo "check_managed_services: FAIL (${failures} checks failed)" >&2
 	exit 1
 fi
