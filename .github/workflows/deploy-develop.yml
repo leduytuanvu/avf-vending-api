@@ -159,6 +159,7 @@ jobs:
                   'expected_goose_image_ref = sys.argv[8]' \
                   'max_age_hours = int(sys.argv[9])' \
                   '' \
+                  'private_repo_provenance_fallback = "accepted-private-repo-no-github-attestations"' \
                   'payload = json.loads(verdict_path.read_text(encoding="utf-8"))' \
                   'required_keys = ("schema_version", "event_name", "verdict", "source_build_run_id", "source_sha", "workflow_run_id", "generated_at_utc", "published_images", "release_gate_verdict", "release_gate_mode", "release_gate", "repo_level_checks", "image_level_checks", "provenance_release_checks")' \
                   'missing = [key for key in required_keys if key not in payload]' \
@@ -202,8 +203,8 @@ jobs:
                   '    print(f"reason=staging release gate image-level evidence is not pass: {image_release_verdict}")' \
                   '    raise SystemExit(5)' \
                   'provenance_release_verdict = ((payload.get("provenance_release_checks") or {}).get("required_for_release_verdict", ""))' \
-                  'if provenance_release_verdict != "pass":' \
-                  '    print(f"reason=staging release gate provenance evidence is not pass: {provenance_release_verdict}")' \
+                  'if provenance_release_verdict not in ("pass", private_repo_provenance_fallback):' \
+                  '    print(f"reason=staging release gate provenance evidence is not acceptable: {provenance_release_verdict}")' \
                   '    raise SystemExit(5)' \
                   'if published_images.get("app_image_ref", "") != expected_app_image_ref:' \
                   '    print("reason=matching security verdict app image ref does not match the selected immutable artifact")' \
@@ -368,8 +369,8 @@ jobs:
           [[ "${RELEASE_GATE_MODE}" == "full-security-release-gate" ]] || add_missing "RELEASE_GATE_MODE=full-security-release-gate"
           [[ "${RELEASE_GATE_VERDICT}" == "pass" ]] || add_missing "RELEASE_GATE_VERDICT=pass"
           [[ "${REPO_RELEASE_VERDICT}" == "pass" ]] || add_missing "REPO_RELEASE_VERDICT=pass"
-          [[ "${PROVENANCE_RELEASE_VERDICT}" == "pass" ]] || add_missing "PROVENANCE_RELEASE_VERDICT=pass"
-          [[ "${PROVENANCE_VERDICT}" == "verified" ]] || add_missing "PROVENANCE_VERDICT=verified"
+          [[ "${PROVENANCE_RELEASE_VERDICT}" == "pass" || "${PROVENANCE_RELEASE_VERDICT}" == "accepted-private-repo-no-github-attestations" ]] || add_missing "PROVENANCE_RELEASE_VERDICT in {pass, accepted-private-repo-no-github-attestations}"
+          [[ "${PROVENANCE_VERDICT}" == "verified" || "${PROVENANCE_VERDICT}" == "accepted-private-repo-no-github-attestations" ]] || add_missing "PROVENANCE_VERDICT in {verified, accepted-private-repo-no-github-attestations}"
           [[ "${SSH_PORT}" =~ ^[0-9]+$ ]] || add_missing "STAGING_SSH_PORT"
 
           staging_remote_env_file="${STAGING_REMOTE_ENV_FILE:-${STAGING_DEPLOY_ROOT}/deployments/staging/.env.staging}"
@@ -420,6 +421,9 @@ jobs:
             echo "- security verdict generated at (UTC): \`${SECURITY_VERDICT_GENERATED_AT_UTC:-missing}\`"
             echo "- security freshness policy: max-age=\`${SECURITY_VERDICT_MAX_AGE_HOURS:-missing}h\` / observed-age=\`${SECURITY_VERDICT_AGE_SECONDS:-missing}\`"
             echo "- image provenance verdict: \`${PROVENANCE_VERDICT:-missing}\`"
+            if [[ "${PROVENANCE_VERDICT:-}" == "accepted-private-repo-no-github-attestations" ]]; then
+              echo "- provenance note: \`GitHub Artifact Attestations are unavailable for this private repository, so staging relies on digest-pinned images plus the remaining security gate evidence\`"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [[ "${#missing[@]}" -gt 0 ]]; then
@@ -747,6 +751,9 @@ jobs:
             echo "- security verdict generated at (UTC): \`${SECURITY_VERDICT_GENERATED_AT_UTC:-n/a}\`"
             echo "- security freshness policy: max-age=\`${SECURITY_VERDICT_MAX_AGE_HOURS}h\` / observed-age=\`${SECURITY_VERDICT_AGE_SECONDS:-n/a}\`"
             echo "- image provenance verdict: \`${PROVENANCE_VERDICT}\`"
+            if [[ "${PROVENANCE_VERDICT}" == "accepted-private-repo-no-github-attestations" ]]; then
+              echo "- provenance note: \`GitHub Artifact Attestations are unavailable for this private repository, so this staging run used the explicit private-repo fallback\`"
+            fi
             echo "- deploy outcome: \`${DEPLOY_OUTCOME}\`"
             echo "- healthcheck outcome: \`${HEALTHCHECK_OUTCOME}\`"
             echo "- smoke outcome: \`${SMOKE_OUTCOME}\`"

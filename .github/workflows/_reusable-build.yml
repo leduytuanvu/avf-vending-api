@@ -141,6 +141,7 @@ jobs:
           tags: ${{ steps.tags.outputs.goose_tags }}
 
       - name: Publish app image artifact attestation
+        if: github.event.repository.private != true
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ steps.tags.outputs.app_image }}
@@ -148,6 +149,7 @@ jobs:
           push-to-registry: true
 
       - name: Publish goose image artifact attestation
+        if: github.event.repository.private != true
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ steps.tags.outputs.goose_image }}
@@ -204,6 +206,11 @@ jobs:
             echo "### Published image metadata"
             echo "- app: \`${app_ref}\`"
             echo "- goose: \`${goose_ref}\`"
+            if [[ "${{ github.event.repository.private && 'true' || 'false' }}" == "true" ]]; then
+              echo "- GitHub artifact attestations: \`disabled for private repository; feature unavailable\`"
+            else
+              echo "- GitHub artifact attestations: \`enabled\`"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload image metadata artifact

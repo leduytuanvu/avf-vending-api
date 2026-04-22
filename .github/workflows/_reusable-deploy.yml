@@ -59,7 +59,7 @@ on:
         description: "Source workflow name recorded in the artifact payload; `manual` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.artifact_source_workflow_name }}
       provenance_verdict:
-        description: "Image attestation verification verdict only: `verified` in workflow_run mode after attestation verification; `accepted-manual` in manual mode"
+        description: "Image attestation verification verdict only: `verified` in workflow_run mode after attestation verification; `accepted-private-repo-no-github-attestations` when GitHub Artifact Attestations are unavailable for a private repo; `accepted-manual` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.provenance_verdict }}
 
 jobs:
@@ -341,7 +341,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Verify build provenance
-        if: inputs.resolution_mode == 'workflow_run'
+        if: inputs.resolution_mode == 'workflow_run' && github.event.repository.private != true
         id: provenance
         shell: bash
         env:
@@ -382,11 +382,15 @@ jobs:
         id: finalize
         shell: bash
         env:
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private && 'true' || 'false' }}
           RESOLUTION_MODE: ${{ inputs.resolution_mode }}
           VERIFIED_VERDICT: ${{ steps.provenance.outputs.provenance_verdict }}
         run: |
           set -euo pipefail
           verdict="${VERIFIED_VERDICT:-}"
+          if [[ -z "${verdict}" && "${RESOLUTION_MODE}" == "workflow_run" && "${REPOSITORY_PRIVATE}" == "true" ]]; then
+            verdict="accepted-private-repo-no-github-attestations"
+          fi
           if [[ -z "${verdict}" && "${RESOLUTION_MODE}" == "manual" ]]; then
             verdict="accepted-manual"
           fi
