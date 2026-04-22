@@ -92,12 +92,12 @@ jobs:
           mkdir -p security-reports
           go install github.com/zricethezav/gitleaks/v8@v8.24.2
           "$(go env GOPATH)/bin/gitleaks" dir \
-            --source . \
             --config .gitleaks.toml \
             --report-format sarif \
             --report-path security-reports/gitleaks.sarif \
             --redact \
-            --no-banner
+            --no-banner \
+            .
 
       - name: Upload gitleaks report
         if: always()
