@@ -6,8 +6,10 @@ package httpserver
 // parse @Router and related annotations and emit docs/swagger/swagger.json (OpenAPI 3.0).
 // Run: make swagger
 //
-// Auth contract: `/v1/*` uses BearerAccessTokenMiddlewareWithValidator plus route-level RBAC
-// (RequireAnyRole, RequireOrganizationScope, RequireMachineURLAccess). All JSON errors—including
+// Auth contract: most `/v1/*` routes use BearerAccessTokenMiddlewareWithValidator plus route-level RBAC
+// (RequireAnyRole, RequireOrganizationScope, RequireMachineURLAccess). Provider payment webhooks under
+// `/v1/commerce/orders/.../webhooks` are registered before Bearer middleware and use HMAC headers instead.
+// All JSON errors—including
 // bearer, scope, and handler failures—use the same envelope:
 // `{"error":{"code":"...","message":"...","details":{},"requestId":"..."}}`.
 //
@@ -50,7 +52,7 @@ func DocOpMetrics() {}
 // @Description Served when HTTP_SWAGGER_UI_ENABLED=true. Same JSON the UI loads; no `Authorization` header required.
 // @Tags Documentation
 // @Produce application/json
-// @Success 200 {object} object "swagger 2.0 document root"
+// @Success 200 {object} object "OpenAPI 3.0 document root"
 // @Router /swagger/doc.json [get]
 func DocOpSwaggerDocJSON() {}
 
@@ -935,6 +937,44 @@ func DocOpV1DeviceMachineVendResults() {}
 // @Router /v1/device/machines/{machineId}/commands/poll [post]
 func DocOpV1DeviceMachineCommandsPoll() {}
 
+// --- Machine runtime (Android check-in & config ack) ---
+
+// DocOpV1MachineCheckIn godoc
+// @Summary Record Android check-in
+// @Description Append-only check-in for device identity and runtime. **occurred_at** must be RFC3339 with timezone. Requires **RequireMachineURLAccess** (machine-scoped JWT). Subject to sensitive-write rate limit when enabled.
+// @Tags Machine
+// @Security BearerAuth
+// @Param machineId path string true "Machine UUID"
+// @Accept json
+// @Produce json
+// @Param body body object true "android_id, sim_serial, package_name, version_name, version_code, android_release, sdk_int, manufacturer, model, timezone, network_state, boot_id, occurred_at, metadata"
+// @Success 201 {object} object
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Failure 429 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/machines/{machineId}/check-ins [post]
+func DocOpV1MachineCheckIn() {}
+
+// DocOpV1MachineConfigApply godoc
+// @Summary Acknowledge config applied on device
+// @Description Persists a **machine_configs** row; **applied_at** RFC3339 with timezone; **config_version** maps to config_revision. Optional **operator_session_id**. Android context in **android_id** and **app_version** stored in metadata.
+// @Tags Machine
+// @Security BearerAuth
+// @Param machineId path string true "Machine UUID"
+// @Accept json
+// @Produce json
+// @Param body body object true "config_version, applied_at, android_id, app_version, operator_session_id, config_payload"
+// @Success 201 {object} object
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Failure 429 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/machines/{machineId}/config-applies [post]
+func DocOpV1MachineConfigApply() {}
+
 // --- Operator sessions (machine-scoped) ---
 
 // DocOpV1OperatorSessionCurrent godoc
@@ -1080,7 +1120,7 @@ func DocOpV1OperatorSessionHeartbeat() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param body body object true "machine_id, product_id, slot_index, currency, subtotal_minor, tax_minor, total_minor"
+// @Param body body object true "machine_id, product_id, slot_id or (cabinet_code+slot_code) or slot_index (deprecated), currency; subtotal/tax/total must be omitted or zero (server pricing)"
 // @Success 200 {object} V1CommerceCashCheckoutResponse
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -1098,7 +1138,7 @@ func DocOpV1CommerceCashCheckout() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param body body object true "machine_id, product_id, slot_index, currency, subtotal_minor, tax_minor, total_minor"
+// @Param body body object true "machine_id, product_id, slot_id or (cabinet_code+slot_code) or slot_index (deprecated), currency; subtotal/tax/total must be omitted or zero (pricing from published assortment)"
 // @Success 201 {object} V1CommerceCreateOrderResponse
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -1167,17 +1207,18 @@ func DocOpV1CommerceReconciliationSnapshot() {}
 
 // DocOpV1CommercePaymentWebhook godoc
 // @Summary Apply provider webhook
-// @Description Idempotency header is required (same key space as other commerce writes). Treat **200** with `replay:true` as the provider having retried the same logical event; responses remain JSON-safe for your payment connector. Conflicting provider state may yield **409** with a commerce-specific `error.code`.
+// @Description **No Bearer JWT.** Requires **COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET** and HMAC headers **X-AVF-Webhook-Timestamp** (unix seconds) and **X-AVF-Webhook-Signature** (hex HMAC-SHA256 of `{timestamp}.{rawBody}`). Duplicate delivery replay is keyed on **provider + provider_reference** in persistence; clients do **not** need `Idempotency-Key` on this callback route. Treat **200** with `replay:true` as the provider having retried the same logical event.
 // @Tags Commerce
-// @Security BearerAuth
 // @Param orderId path string true "Order UUID"
 // @Param paymentId path string true "Payment UUID"
 // @Accept json
 // @Produce json
+// @Param X-AVF-Webhook-Timestamp header string true "Unix seconds"
+// @Param X-AVF-Webhook-Signature header string true "Hex digest (optional sha256= prefix)"
 // @Param body body object true "provider, provider_reference, event_type, normalized_payment_state, payload_json, ..."
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
+// @Failure 401 {object} V1StandardError
 // @Failure 403 {object} V1StandardError
 // @Failure 404 {object} V1StandardError
 // @Failure 409 {object} V1StandardError

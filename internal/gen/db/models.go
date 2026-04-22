@@ -339,6 +339,28 @@ type MachineCabinet struct {
 	UpdatedAt    time.Time
 }
 
+// Append-only Android device boot/runtime check-ins; occurred_at is client business time with timezone.
+type MachineCheckIn struct {
+	ID             int64
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	AndroidID      pgtype.Text
+	SimSerial      pgtype.Text
+	PackageName    string
+	VersionName    string
+	VersionCode    int64
+	AndroidRelease string
+	SdkInt         int32
+	Manufacturer   string
+	Model          string
+	Timezone       string
+	NetworkState   string
+	BootID         string
+	OccurredAt     time.Time
+	RecordedAt     time.Time
+	Metadata       []byte
+}
+
 // Per-send attempt for a command_ledger row; machine_id denormalized for index locality—must match parent command row (enforced in application).
 type MachineCommandAttempt struct {
 	ID                 uuid.UUID
@@ -394,6 +416,7 @@ type MachineCurrentSnapshot struct {
 	DeviceModel         pgtype.Text
 	OsVersion           pgtype.Text
 	LastIdentityAt      pgtype.Timestamptz
+	LastCheckInAt       pgtype.Timestamptz
 	UpdatedAt           time.Time
 }
 

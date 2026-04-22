@@ -1,8 +1,18 @@
 # avf-vending-api
 
-Go **1.24+** backend for the AVF vending platform: HTTP API (`cmd/api`), optional internal gRPC (health only today), background processes, and shared wiring (PostgreSQL, Redis, OpenTelemetry).
+Go **1.25+** backend for the AVF vending platform: HTTP API (`cmd/api`), optional internal gRPC query services, background processes, and shared wiring (PostgreSQL, Redis, OpenTelemetry).
 
-**What runs today** (with env and migrations): HTTP `/v1`, Postgres-backed commerce/device/fleet flows, `cmd/worker` reliability ticks with **optional** NATS JetStream outbox publish when `NATS_URL` is set, **optional** ClickHouse analytics mirror when `ANALYTICS_*` is enabled (`ops/ANALYTICS_CLICKHOUSE.md`), `cmd/mqtt-ingest` MQTT→Postgres ingest, and `cmd/reconciler` commerce reconciliation (list-only by default; **optional** close-the-loop actions when `RECONCILER_ACTIONS_ENABLED=true` with probe URL + NATS—see `internal/config/reconciler.go`). **Artifacts** use S3 when `API_ARTIFACTS_ENABLED=true`. **Not in this repo yet**: Temporal workflow implementations (dial + explicit `ErrWorkflowNotImplemented` when enabled), JetStream consumers beyond outbox publish/DLQ patterns documented in code.
+**What runs today** (with env and migrations): HTTP `/v1`, Postgres-backed commerce/device/fleet flows, `cmd/worker` reliability ticks with **optional** NATS JetStream outbox publish when `NATS_URL` is set, **optional** ClickHouse analytics mirror when `ANALYTICS_*` is enabled (`ops/ANALYTICS_CLICKHOUSE.md`), `cmd/mqtt-ingest` MQTT→Postgres ingest, `cmd/reconciler` commerce reconciliation (list-only by default; **optional** close-the-loop actions when `RECONCILER_ACTIONS_ENABLED=true` with probe URL + NATS—see `internal/config/reconciler.go`), optional **internal gRPC query services** for machine, telemetry, and commerce reads behind Bearer JWT auth, and optional **Temporal-backed workflow follow-up** via `cmd/temporal-worker`. **Artifacts** use S3 when `API_ARTIFACTS_ENABLED=true`. **Not in this repo yet**: device/runtime traffic over gRPC and broad command/workflow mutation RPCs beyond the implemented compensation/review flows.
+
+## Current architecture
+
+The repository is currently implemented as a **Go modular monolith** with multiple binaries under `cmd/*`, shared `internal/app/*` business logic, and Postgres-backed persistence under `internal/modules/postgres`.
+
+- **Implemented now:** `cmd/api` for HTTP control/admin/setup flows, `cmd/mqtt-ingest` for MQTT-first device ingest, `cmd/worker` for reliability/outbox/telemetry background work, and `cmd/reconciler` for commerce reconciliation.
+- **Partially implemented:** MQTT runtime flows also depend on NATS JetStream in production for buffering and async processing; gRPC is internal-only and currently limited to query/read services rather than a broad service mesh API; Temporal is implemented for selected long-running compensation/review flows behind feature flags; ClickHouse and object storage are wired for specific optional paths, not as universal platform dependencies.
+- **Not implemented yet:** broad internal gRPC mutation/workflow APIs and a fully closed-loop analytics/event architecture across every device/runtime flow.
+
+The as-built freeze for this phase lives in [`docs/architecture/current-architecture.md`](docs/architecture/current-architecture.md). It separates **implemented**, **partial**, and **not implemented yet** items and calls out corrected docs drift.
 
 The repo still follows a **strangler** posture for traffic cutover from any legacy system—see [docs/architecture/migration-strategy.md](docs/architecture/migration-strategy.md).
 
@@ -14,18 +24,21 @@ The repo still follows a **strangler** posture for traffic cutover from any lega
 | [`cmd/worker`](cmd/worker) | Reliability ticks (payments/commands/outbox); **NATS JetStream** outbox + **DLQ** (`AVF_INTERNAL_DLQ`) when `NATS_URL` is set; optional **ClickHouse** mirror (`ANALYTICS_*`); optional **`METRICS_ENABLED`** + `WORKER_METRICS_LISTEN` for Prometheus `/metrics` (see [`ops/METRICS.md`](ops/METRICS.md)) |
 | [`cmd/mqtt-ingest`](cmd/mqtt-ingest) | MQTT subscriber → Postgres device ingest (broker via env; see `internal/platform/mqtt`) |
 | [`cmd/reconciler`](cmd/reconciler) | Commerce reconciliation ticks; optional PSP probe + refund routing when `RECONCILER_ACTIONS_ENABLED=true` (validated at startup) |
+| [`cmd/temporal-worker`](cmd/temporal-worker) | Temporal workflow worker for payment-timeout, vend-failure, refund, and manual-review follow-up |
 | [`cmd/cli`](cmd/cli) | Operational CLI (`-validate-config`, `-version`) |
 | [`internal/config`](internal/config) | Environment-backed configuration with validation |
 | [`internal/httpserver`](internal/httpserver) | Chi HTTP server: `/health/*`, optional `/metrics` |
 | [`internal/bootstrap`](internal/bootstrap) | Process wiring (runtime clients, graceful shutdown) |
 | [`internal/modules/postgres`](internal/modules/postgres) | Postgres + sqlc-backed OLTP (orders/payments/commands; not Temporal) |
-| [`proto`](proto) | buf config + `skeleton.proto` smoke test only — **not** served as domain gRPC (see `internal/grpcserver`) |
+| [`proto`](proto) | buf config + internal gRPC protobuf contracts (`avf/v1`) |
 | [`migrations`](migrations) | goose SQL migrations |
 | [`deployments/docker`](deployments/docker) | Local dependency stack (Compose) |
+| [`deployments/prod/app-node`](deployments/prod/app-node) | New 2-VPS stateless production app-node stack |
+| [`deployments/prod/data-node`](deployments/prod/data-node) | New 2-VPS fallback broker/data-node stack |
 
 ## Prerequisites
 
-- **Go** 1.24+ on `PATH`
+- **Go** 1.25+ on `PATH`
 - **Docker** (optional, for local dependencies)
 - **sqlc** (optional, only if you regenerate [`internal/gen/db`](internal/gen/db))
 - **bash**, **git**, and **ripgrep (`rg`)** on `PATH` if you run `make check-placeholders` / `make ci-gates` (Git Bash or WSL on Windows is fine)
@@ -34,7 +47,7 @@ The repo still follows a **strangler** posture for traffic cutover from any lega
 
 This repository's GitHub Actions CI foundation lives under `.github/workflows/`:
 
-- `ci.yml` runs on pull requests and pushes to `main`, runs `make ci-gates`, and validates `deployments/docker/docker-compose.yml`
+- `ci.yml` runs on pull requests and pushes to `main`, runs the same gate set as `make ci-gates`, and validates `deployments/docker/docker-compose.yml`
 - `security.yml` runs dependency review on pull requests and `govulncheck` on the repo
 - `build-push.yml` builds and pushes the production app and goose images
 
@@ -96,8 +109,14 @@ Integration-style tests under [`internal/modules/postgres`](internal/modules/pos
 ## Documentation
 
 - [Target architecture](docs/architecture/target-architecture.md)
+- [Current architecture (as built)](docs/architecture/current-architecture.md)
 - [Strangler / migration strategy](docs/architecture/migration-strategy.md)
 - [Documentation index](docs/README.md)
+- [Internal gRPC contract](docs/api/internal-grpc.md)
+- [2-VPS production runbook](docs/runbooks/production-2-vps.md)
+- [2-VPS cutover and rollback](docs/runbooks/production-cutover-rollback.md)
+- [2-VPS backup, restore, and DR](docs/runbooks/production-backup-restore-dr.md)
+- [2-VPS day-2 incidents](docs/runbooks/production-day-2-incidents.md)
 - [Operations runbook](ops/RUNBOOK.md) — incidents, dashboards/alert ideas, SQL checks
 - [Metrics / signals](ops/METRICS.md)
 
@@ -116,3 +135,14 @@ go build ./...
 ```
 
 On the VPS after `docker compose up`, run `bash deployments/prod/scripts/healthcheck_prod.sh` (or `make prod-smoke` / `make prod-smoke-full` from `deployments/prod`). Operator runbooks: [docs/runbooks/telemetry-production-rollout.md](docs/runbooks/telemetry-production-rollout.md), [docs/runbooks/telemetry-jetstream-resilience.md](docs/runbooks/telemetry-jetstream-resilience.md).
+
+For the new 2-VPS enterprise production layout, keep the existing single-VPS path above for rollback and use the new deployment assets under `deployments/prod/app-node`, `deployments/prod/data-node`, and `deployments/prod/shared`. Validate them with:
+
+```powershell
+docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml config
+docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml --profile temporal config
+docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml --profile migration config
+docker compose --env-file deployments/prod/data-node/.env.data-node.example -f deployments/prod/data-node/docker-compose.data-node.yml config
+```
+
+For the current production snapshot, keep runtime values environment-driven only: `APP_BASE_URL=https://api.ldtv.dev`, `MQTT_BROKER_URL` pointing at `mqtt.ldtv.dev`, `DATABASE_URL` supplied by Supabase, and `OBJECT_STORAGE_BUCKET=avf-vending-prod-assets`. No real secrets belong in the repo, and Grafana is intentionally out of scope for this pass.

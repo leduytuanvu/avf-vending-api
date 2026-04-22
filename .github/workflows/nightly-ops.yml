@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -13,6 +14,89 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  promotion-artifact-readiness:
+    name: Promotion Artifact Readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Resolve latest successful build run
+        id: lookup
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          run_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build-push.yml/runs?branch=main&status=completed&per_page=20" \
+              --jq '[.workflow_runs[]? | select(.conclusion == "success") | .id] | .[0] // empty'
+          )"
+          [[ -n "${run_id}" ]] || { echo "error: no successful build-push run found on main" >&2; exit 1; }
+          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Download image metadata artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.lookup.outputs.run_id }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p nightly-reports
+          image_metadata_artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '[.artifacts[]? | select(.name == "image-metadata") | .id] | .[0] // empty')"
+          promotion_manifest_artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '[.artifacts[]? | select(.name == "promotion-manifest") | .id] | .[0] // empty')"
+          [[ -n "${image_metadata_artifact_id}" ]] || { echo "error: image-metadata artifact missing for run ${RUN_ID}" >&2; exit 1; }
+          [[ -n "${promotion_manifest_artifact_id}" ]] || { echo "error: promotion-manifest artifact missing for run ${RUN_ID}" >&2; exit 1; }
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${image_metadata_artifact_id}/zip" > nightly-reports/image-metadata.zip
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${promotion_manifest_artifact_id}/zip" > nightly-reports/promotion-manifest.zip
+          python3 -m zipfile -e nightly-reports/image-metadata.zip nightly-reports
+          python3 -m zipfile -e nightly-reports/promotion-manifest.zip nightly-reports
+
+      - name: Validate promotion artifact content
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(Path("nightly-reports/image-metadata.json").read_text(encoding="utf-8"))
+          promotion = json.loads(Path("nightly-reports/promotion-manifest.json").read_text(encoding="utf-8"))
+          for key in ("git_sha", "event_name", "ref_name", "source_inputs", "app", "goose"):
+              if key not in payload:
+                  raise SystemExit(f"missing key: {key}")
+          for image_key in ("app", "goose"):
+              ref = payload[image_key]["ref"]
+              if "@sha256:" not in ref:
+                  raise SystemExit(f"{image_key} ref is not digest-pinned: {ref}")
+          for key in ("dockerfile_sha256", "dockerfile_goose_sha256", "go_sum_sha256"):
+              if not payload["source_inputs"].get(key):
+                  raise SystemExit(f"missing source input hash: {key}")
+          for key in ("commit_sha", "app_ref", "goose_ref", "app_digest", "goose_digest", "source_inputs"):
+              if key not in promotion:
+                  raise SystemExit(f"missing promotion-manifest key: {key}")
+          if promotion["app_ref"] != payload["app"]["ref"]:
+              raise SystemExit("promotion-manifest app_ref does not match image-metadata app.ref")
+          if promotion["goose_ref"] != payload["goose"]["ref"]:
+              raise SystemExit("promotion-manifest goose_ref does not match image-metadata goose.ref")
+          PY
+          {
+            echo "### Promotion artifact readiness"
+            echo "- latest successful build run: \`${{ steps.lookup.outputs.run_id }}\`"
+            echo "- validated immutable refs in \`image-metadata.json\`"
+            echo "- validated matching immutable refs in \`promotion-manifest.json\`"
+            echo "- validated build input hashes are present for Dockerfiles and \`go.sum\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload promotion artifact readiness report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-promotion-artifact-readiness
+          path: |
+            nightly-reports/image-metadata.json
+            nightly-reports/promotion-manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
   go-maintenance-report:
     name: Go Dependency Maintenance Report
     runs-on: ubuntu-latest
@@ -48,6 +132,73 @@ jobs:
           path: |
             nightly-reports/go-mod-verify.txt
             nightly-reports/go-module-updates.json
+          if-no-files-found: error
+          retention-days: 14
+
+  runtime-asset-assurance:
+    name: Runtime Asset Assurance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify production runtime assets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p nightly-reports
+          bash deployments/prod/shared/scripts/verify_runtime_assets.sh nightly-reports/runtime-assets.sha256
+          {
+            echo "### Runtime asset assurance"
+            echo "- validated production compose files with example envs"
+            echo "- validated shared production scripts with \`bash -n\`"
+            echo "- captured SHA256 inventory for production runtime assets"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload runtime asset report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-runtime-asset-assurance
+          path: nightly-reports/runtime-assets.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  restore-readiness:
+    name: Restore Readiness Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client tools
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Run non-destructive restore-readiness check
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p nightly-reports
+          bash deployments/prod/shared/scripts/check_restore_readiness.sh deployments/prod/app-node/.env.app-node.example | tee nightly-reports/restore-readiness.txt
+          {
+            echo "### Restore readiness"
+            echo "- validated \`pg_dump\` and \`pg_restore\` tooling availability"
+            echo "- validated managed backup/restore helper script syntax"
+            echo "- validated env contract without running destructive restore operations"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload restore readiness report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-restore-readiness
+          path: nightly-reports/restore-readiness.txt
           if-no-files-found: error
           retention-days: 14
 

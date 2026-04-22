@@ -1,0 +1,189 @@
+name: ${COMPOSE_PROJECT_NAME:-avf-vending-prod-app}
+
+networks:
+  edge:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: true
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app-service: &app-service
+  image: ${APP_IMAGE_REF:?set APP_IMAGE_REF in .env.app-node}
+  restart: unless-stopped
+  env_file:
+    - ${APP_NODE_ENV_FILE:-.env.app-node}
+  networks:
+    - internal
+  logging: *default-logging
+
+services:
+  migrate:
+    image: ${GOOSE_IMAGE_REF:?set GOOSE_IMAGE_REF in .env.app-node}
+    profiles: ["migration"]
+    restart: "no"
+    env_file:
+      - ${APP_NODE_ENV_FILE:-.env.app-node}
+    networks:
+      - internal
+    volumes:
+      - ../../../migrations:/migrations:ro
+    entrypoint:
+      [
+        "/bin/sh",
+        "-c",
+        'exec /usr/local/bin/goose -dir /migrations postgres "$$DATABASE_URL" up',
+      ]
+    logging: *default-logging
+
+  api:
+    <<: *app-service
+    command: ["/app/api"]
+    environment:
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_API:?set MQTT_CLIENT_ID_API in .env.app-node}
+    networks:
+      - internal
+      - edge
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:8080/health/live | grep -qx ok && curl -fsS http://127.0.0.1:8080/health/ready | grep -qx ok",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 768M
+
+  worker:
+    <<: *app-service
+    command: ["/app/worker"]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:9091/health/live | grep -qx ok && curl -fsS http://127.0.0.1:9091/health/ready | grep -qx ok",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
+  reconciler:
+    <<: *app-service
+    command: ["/app/reconciler"]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:9092/health/live | grep -qx ok && curl -fsS http://127.0.0.1:9092/health/ready | grep -qx ok",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.35"
+          memory: 384M
+
+  mqtt-ingest:
+    <<: *app-service
+    command: ["/app/mqtt-ingest"]
+    environment:
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_INGEST:?set MQTT_CLIENT_ID_INGEST in .env.app-node}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:9093/health/live | grep -qx ok && curl -fsS http://127.0.0.1:9093/health/ready | grep -qx ok",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.35"
+          memory: 384M
+
+  temporal-worker:
+    <<: *app-service
+    profiles: ["temporal"]
+    command: ["/app/temporal-worker"]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:9094/health/live | grep -qx ok && curl -fsS http://127.0.0.1:9094/health/ready | grep -qx ok",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.40"
+          memory: 384M
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env.app-node}
+      CADDY_ACME_EMAIL: ${CADDY_ACME_EMAIL:?set CADDY_ACME_EMAIL in .env.app-node}
+      UPSTREAM_API: ${UPSTREAM_API:-api:8080}
+    volumes:
+      - ../shared/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://api:8080/health/live | grep -qx ok",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: 192M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

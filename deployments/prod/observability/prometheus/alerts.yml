@@ -1,0 +1,156 @@
+groups:
+  - name: avf-edge-and-readiness
+    rules:
+      - alert: AVFPublicAPIHTTPSDown
+        expr: probe_success{job="avf_public_api_https"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Public API HTTPS probe failed"
+          description: "The public API health endpoint is not reachable over HTTPS."
+          first_action: "Check app-node Caddy health, recent deploy activity, DNS/TLS, and load balancer routing."
+
+      - alert: AVFAPIInstanceMetricsDown
+        expr: up{job="avf_api_metrics"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API metrics scrape failed on {{ $labels.node }}"
+          description: "Prometheus cannot scrape the API ops endpoint on {{ $labels.instance }}."
+          first_action: "Check the app node is exposing 8081 privately and that cmd/api is healthy."
+
+      - alert: AVFAppReadinessFailed
+        expr: probe_success{job="avf_app_readiness"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.component }} readiness failed on {{ $labels.node }}"
+          description: "The private readiness probe for {{ $labels.component }} on {{ $labels.node }} is failing."
+          first_action: "Check the service logs on the affected node and confirm the recent release did not leave the node out of rotation."
+
+      - alert: AVFDeployUnhealthy
+        expr: sum by (node) (probe_success{job="avf_app_readiness"} == 0) >= 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "One or more app services remain unhealthy on {{ $labels.node }}"
+          description: "At least one private readiness endpoint on {{ $labels.node }} is still failing."
+          first_action: "If a deploy is active, stop before moving traffic or continuing to the next node."
+
+      - alert: AVFDatabaseConnectivityLikelyFailed
+        expr: sum by (node) (probe_success{job="avf_app_readiness", component=~"api|worker|reconciler|mqtt-ingest"} == 0) >= 3
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connectivity likely failed on {{ $labels.node }}"
+          description: "Multiple Postgres-dependent processes on {{ $labels.node }} are failing readiness at the same time."
+          first_action: "Verify Postgres reachability and credentials from the affected node before restarting services."
+
+  - name: avf-queue-and-ingest
+    rules:
+      - alert: AVFWorkerOutboxLagHigh
+        expr: max(avf_worker_outbox_oldest_pending_age_seconds{job="avf_worker_metrics"}) > 300
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Worker outbox lag is high"
+          description: "The oldest unpublished outbox item has been waiting for more than 5 minutes."
+          first_action: "Check worker logs, NATS reachability, and whether publish failures are increasing."
+
+      - alert: AVFWorkerPublishFailuresHigh
+        expr: sum(rate(avf_worker_outbox_dispatch_publish_failed_total{job="avf_worker_metrics"}[10m])) > 0.1
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Worker publish failures are sustained"
+          description: "Outbox publish failures are occurring continuously over the last 10 minutes."
+          first_action: "Check NATS or downstream broker health, credentials, and stream availability."
+
+      - alert: AVFTelemetryQueueLagHigh
+        expr: max(avf_telemetry_consumer_lag{job="avf_worker_metrics"}) > 2000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Telemetry JetStream consumer lag is high"
+          description: "At least one telemetry durable consumer backlog exceeds 2000 pending messages."
+          first_action: "Check worker health, JetStream capacity, and whether mqtt-ingest is producing faster than projection can drain."
+
+      - alert: AVFTelemetryProjectionDBFailures
+        expr: max(avf_telemetry_projection_db_fail_consecutive_max{job="avf_worker_metrics"}) >= 3
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Telemetry projection is repeatedly failing DB work"
+          description: "The telemetry projection worker is hitting repeated database failures."
+          first_action: "Check Postgres health and recent worker logs for projection or transaction errors."
+
+      - alert: AVFMQTTIngestErrorRateHigh
+        expr: sum(rate(avf_mqtt_ingest_dispatch_total{job="avf_mqtt_ingest_metrics", result="error"}[10m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MQTT ingest error rate is elevated"
+          description: "MQTT ingest is recording more than 1 error per second over the last 10 minutes."
+          first_action: "Check mqtt-ingest logs first, then verify broker health and recent payload/schema issues."
+
+      - alert: AVFMQTTIngestReadinessFlapping
+        expr: changes(probe_success{job="avf_app_readiness", component="mqtt-ingest"}[15m]) > 2
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MQTT ingest readiness is flapping"
+          description: "The mqtt-ingest readiness probe has toggled repeatedly in the last 15 minutes."
+          first_action: "Treat this as a likely broker connectivity or deploy stability issue and inspect mqtt-ingest plus broker logs."
+
+  - name: avf-data-node-and-host
+    rules:
+      - alert: AVFNATSDown
+        expr: probe_success{job="avf_data_node_http", component="nats-healthz"} == 0 or probe_success{job="avf_data_node_tcp", component="nats-tcp"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "NATS on the data node is down"
+          description: "The data-node NATS health or TCP probe is failing."
+          first_action: "Check the data-node NATS container, disk pressure, and app-node connectivity to port 4222."
+
+      - alert: AVFEMQXDown
+        expr: probe_success{job="avf_data_node_http", component="emqx-status"} == 0 or probe_success{job="avf_data_node_tcp", component="mqtt-tls"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "EMQX on the data node is down"
+          description: "The data-node EMQX status endpoint or MQTT/TLS port is failing."
+          first_action: "Check EMQX process health, certificate files, and whether 8883 is still reachable from devices and app nodes."
+
+      - alert: AVFHostMemoryPressure
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host memory pressure on {{ $labels.instance }}"
+          description: "Available memory is below 10 percent on {{ $labels.instance }}."
+          first_action: "Check container memory growth, recent deploys, and whether any service needs scaling or restart."
+
+      - alert: AVFHostDiskPressure
+        expr: (node_filesystem_avail_bytes{mountpoint="/", fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/", fstype!~"tmpfs|overlay"}) < 0.10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host disk pressure on {{ $labels.instance }}"
+          description: "Root filesystem free space is below 10 percent on {{ $labels.instance }}."
+          first_action: "Check Docker logs, Prometheus/Loki retention growth, and any unexpected data-node storage growth."

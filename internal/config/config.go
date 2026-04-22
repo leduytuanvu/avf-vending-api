@@ -1,13 +1,17 @@
 package config
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/avf/avf-vending-api/internal/version"
 )
 
 // AppEnvironment controls logging defaults and whether .env loading is expected in dev.
@@ -24,6 +28,9 @@ type CommerceHTTPConfig struct {
 	PaymentOutboxTopic         string
 	PaymentOutboxEventType     string
 	PaymentOutboxAggregateType string
+	// PaymentWebhookHMACSecret, when non-empty, enables POST .../payments/{id}/webhooks without Bearer JWT
+	// using X-AVF-Webhook-Timestamp + X-AVF-Webhook-Signature (HMAC-SHA256 over "{timestamp}.{rawBody}").
+	PaymentWebhookHMACSecret string
 }
 
 // APIWiringRequirements fail-fast checks for optional subsystem wiring.
@@ -38,16 +45,22 @@ type APIWiringRequirements struct {
 
 // Config is the complete process configuration loaded from the environment.
 type Config struct {
-	AppEnv AppEnvironment
+	AppEnv      AppEnvironment
+	ProcessName string
+	Runtime     RuntimeConfig
+	Build       BuildConfig
 
 	LogLevel  string
 	LogFormat string
 
 	HTTP HTTPConfig
 	GRPC GRPCConfig
+	Ops  OperationsConfig
 
 	Postgres PostgresConfig
 	Redis    RedisConfig
+	NATS     NATSConfig
+	MQTT     MQTTConfig
 
 	ReadinessStrict bool
 	MetricsEnabled  bool
@@ -63,6 +76,9 @@ type Config struct {
 	// MQTTIngestMetricsListen is the bind address for cmd/mqtt-ingest /metrics when MetricsEnabled.
 	// When empty, defaults to 127.0.0.1:9093.
 	MQTTIngestMetricsListen string
+	// TemporalWorkerMetricsListen is the bind address for cmd/temporal-worker ops endpoints.
+	// When empty, defaults to 127.0.0.1:9094.
+	TemporalWorkerMetricsListen string
 
 	APIWiring APIWiringRequirements
 
@@ -89,6 +105,10 @@ type Config struct {
 
 	// Analytics optional cold-path sinks (ClickHouse HTTP); never required for OLTP correctness.
 	Analytics AnalyticsConfig
+
+	// SMTP is loaded from environment for provider-driven notification wiring. This repo does not
+	// force SMTP usage at startup, but validates the shape when values are supplied.
+	SMTP SMTPConfig
 }
 
 // ArtifactsConfig gates /v1/admin/.../artifacts routes and upload limits.
@@ -155,6 +175,14 @@ type GRPCConfig struct {
 	ShutdownTimeout time.Duration
 }
 
+// OperationsConfig holds shared health/readiness/version/metrics settings for all processes.
+type OperationsConfig struct {
+	HTTPAddr              string
+	ReadinessTimeout      time.Duration
+	ShutdownTimeout       time.Duration
+	TracerShutdownTimeout time.Duration
+}
+
 // PostgresConfig holds PostgreSQL pool settings used for readiness and future persistence.
 type PostgresConfig struct {
 	URL             string
@@ -166,9 +194,12 @@ type PostgresConfig struct {
 
 // RedisConfig holds Redis client settings used for readiness and future cache usage.
 type RedisConfig struct {
-	Addr     string
-	Password string
-	DB       int
+	Addr                  string
+	Username              string
+	Password              string
+	DB                    int
+	TLSEnabled            bool
+	TLSInsecureSkipVerify bool
 }
 
 // TelemetryConfig holds OpenTelemetry exporter settings.
@@ -177,6 +208,46 @@ type TelemetryConfig struct {
 	OTLPEndpoint string
 	Insecure     bool
 	SDKDisabled  bool
+}
+
+// NATSConfig holds the internal event-bus endpoint used by the current async design.
+type NATSConfig struct {
+	URL string
+}
+
+// MQTTConfig holds broker connection settings shared by API publish and ingest workers.
+type MQTTConfig struct {
+	BrokerURL      string
+	ClientID       string
+	APIClientID    string
+	IngestClientID string
+	Username       string
+	Password       string
+	TopicPrefix    string
+}
+
+// RuntimeConfig holds deploy-time identity and public base URL metadata.
+type RuntimeConfig struct {
+	PublicBaseURL        string
+	MachinePublicBaseURL string
+	NodeName             string
+	InstanceID           string
+	RuntimeRole          string
+}
+
+// BuildConfig holds release metadata exposed on health/version surfaces and logs.
+type BuildConfig struct {
+	Version   string
+	GitSHA    string
+	BuildTime string
+}
+
+// SMTPConfig holds optional outbound SMTP connection settings.
+type SMTPConfig struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
 }
 
 // Validate checks invariants and cross-field rules after environment parsing.
@@ -207,10 +278,25 @@ func (c *Config) Validate() error {
 	if err := c.GRPC.validate(); err != nil {
 		return err
 	}
+	if err := c.Ops.validate(); err != nil {
+		return err
+	}
 	if err := c.Postgres.validate(); err != nil {
 		return err
 	}
 	if err := c.Redis.validate(); err != nil {
+		return err
+	}
+	if err := c.NATS.validate(); err != nil {
+		return err
+	}
+	if err := c.MQTT.validate(); err != nil {
+		return err
+	}
+	if err := c.Runtime.validate(); err != nil {
+		return err
+	}
+	if err := c.Build.validate(); err != nil {
 		return err
 	}
 	if err := c.Telemetry.validate(); err != nil {
@@ -229,6 +315,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.Analytics.validate(); err != nil {
+		return err
+	}
+	if err := c.SMTP.validate(); err != nil {
 		return err
 	}
 	if err := c.Temporal.validate(); err != nil {
@@ -257,6 +346,11 @@ func (c *Config) Validate() error {
 	if strings.TrimSpace(c.MQTTIngestMetricsListen) != "" {
 		if _, err := net.ResolveTCPAddr("tcp", normalizeTCPAddr(c.MQTTIngestMetricsListen)); err != nil {
 			return fmt.Errorf("config: invalid MQTT_INGEST_METRICS_LISTEN %q: %w", c.MQTTIngestMetricsListen, err)
+		}
+	}
+	if strings.TrimSpace(c.TemporalWorkerMetricsListen) != "" {
+		if _, err := net.ResolveTCPAddr("tcp", normalizeTCPAddr(c.TemporalWorkerMetricsListen)); err != nil {
+			return fmt.Errorf("config: invalid TEMPORAL_WORKER_METRICS_LISTEN %q: %w", c.TemporalWorkerMetricsListen, err)
 		}
 	}
 
@@ -301,6 +395,24 @@ func (g GRPCConfig) validate() error {
 	return nil
 }
 
+func (o OperationsConfig) validate() error {
+	if strings.TrimSpace(o.HTTPAddr) != "" {
+		if _, err := net.ResolveTCPAddr("tcp", normalizeTCPAddr(o.HTTPAddr)); err != nil {
+			return fmt.Errorf("config: invalid HTTP_OPS_ADDR %q: %w", o.HTTPAddr, err)
+		}
+	}
+	if o.ReadinessTimeout <= 0 {
+		return errors.New("config: OPS_READINESS_TIMEOUT must be > 0")
+	}
+	if o.ShutdownTimeout <= 0 {
+		return errors.New("config: OPS_SHUTDOWN_TIMEOUT must be > 0")
+	}
+	if o.TracerShutdownTimeout <= 0 {
+		return errors.New("config: TRACER_SHUTDOWN_TIMEOUT must be > 0")
+	}
+	return nil
+}
+
 func (p PostgresConfig) validate() error {
 	if strings.TrimSpace(p.URL) == "" {
 		if p.MaxConns != 0 || p.MinConns != 0 {
@@ -328,11 +440,17 @@ func (p PostgresConfig) validate() error {
 
 func (r RedisConfig) validate() error {
 	if strings.TrimSpace(r.Addr) == "" {
+		if strings.TrimSpace(r.Username) != "" {
+			return errors.New("config: REDIS_USERNAME requires REDIS_ADDR or REDIS_URL")
+		}
 		if strings.TrimSpace(r.Password) != "" {
-			return errors.New("config: REDIS_PASSWORD requires REDIS_ADDR")
+			return errors.New("config: REDIS_PASSWORD requires REDIS_ADDR or REDIS_URL")
 		}
 		if r.DB != 0 {
-			return errors.New("config: REDIS_DB requires REDIS_ADDR")
+			return errors.New("config: REDIS_DB requires REDIS_ADDR or REDIS_URL")
+		}
+		if r.TLSEnabled || r.TLSInsecureSkipVerify {
+			return errors.New("config: REDIS_TLS_* requires REDIS_ADDR or REDIS_URL")
 		}
 		return nil
 	}
@@ -341,6 +459,76 @@ func (r RedisConfig) validate() error {
 	}
 	if r.DB < 0 {
 		return errors.New("config: REDIS_DB must be >= 0")
+	}
+	return nil
+}
+
+func (n NATSConfig) validate() error {
+	if strings.TrimSpace(n.URL) == "" {
+		return nil
+	}
+	if _, err := url.Parse(n.URL); err != nil {
+		return fmt.Errorf("config: invalid NATS_URL %q: %w", n.URL, err)
+	}
+	return nil
+}
+
+func (m MQTTConfig) validate() error {
+	if strings.TrimSpace(m.BrokerURL) == "" {
+		if strings.TrimSpace(m.ClientID) != "" || strings.TrimSpace(m.APIClientID) != "" || strings.TrimSpace(m.IngestClientID) != "" ||
+			strings.TrimSpace(m.Username) != "" || strings.TrimSpace(m.Password) != "" {
+			return errors.New("config: MQTT_* credentials and client ids require MQTT_BROKER_URL")
+		}
+		return nil
+	}
+	if _, err := url.Parse(m.BrokerURL); err != nil {
+		return fmt.Errorf("config: invalid MQTT_BROKER_URL %q: %w", m.BrokerURL, err)
+	}
+	if strings.TrimSpace(m.TopicPrefix) == "" {
+		return errors.New("config: MQTT_TOPIC_PREFIX must be non-empty when MQTT_BROKER_URL is set")
+	}
+	if strings.TrimSpace(m.ClientID) == "" && strings.TrimSpace(m.APIClientID) == "" && strings.TrimSpace(m.IngestClientID) == "" {
+		return errors.New("config: MQTT_BROKER_URL requires MQTT_CLIENT_ID and/or MQTT_CLIENT_ID_API / MQTT_CLIENT_ID_INGEST")
+	}
+	return nil
+}
+
+func (r RuntimeConfig) validate() error {
+	if strings.TrimSpace(r.PublicBaseURL) != "" {
+		if _, err := url.ParseRequestURI(r.PublicBaseURL); err != nil {
+			return fmt.Errorf("config: invalid PUBLIC_BASE_URL %q: %w", r.PublicBaseURL, err)
+		}
+	}
+	if strings.TrimSpace(r.MachinePublicBaseURL) != "" {
+		if _, err := url.ParseRequestURI(r.MachinePublicBaseURL); err != nil {
+			return fmt.Errorf("config: invalid MACHINE_PUBLIC_BASE_URL %q: %w", r.MachinePublicBaseURL, err)
+		}
+	}
+	if strings.TrimSpace(r.NodeName) == "" {
+		return errors.New("config: APP_NODE_NAME resolved empty")
+	}
+	if strings.TrimSpace(r.InstanceID) == "" {
+		return errors.New("config: APP_INSTANCE_ID resolved empty")
+	}
+	return nil
+}
+
+func (b BuildConfig) validate() error {
+	if strings.TrimSpace(b.Version) == "" {
+		return errors.New("config: APP_VERSION resolved empty")
+	}
+	return nil
+}
+
+func (s SMTPConfig) validate() error {
+	if strings.TrimSpace(s.Host) == "" && s.Port == 0 && strings.TrimSpace(s.Username) == "" && strings.TrimSpace(s.Password) == "" {
+		return nil
+	}
+	if strings.TrimSpace(s.Host) == "" {
+		return errors.New("config: SMTP_HOST is required when SMTP settings are supplied")
+	}
+	if s.Port <= 0 {
+		return errors.New("config: SMTP_PORT must be > 0 when SMTP_HOST is set")
 	}
 	return nil
 }
@@ -437,16 +625,30 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	hostname, _ := os.Hostname()
 	cfg := &Config{
-		AppEnv:                  AppEnvironment(strings.TrimSpace(getenv("APP_ENV", string(AppEnvDevelopment)))),
-		LogLevel:                strings.TrimSpace(getenv("LOG_LEVEL", "info")),
-		LogFormat:               strings.TrimSpace(getenv("LOG_FORMAT", "json")),
-		ReadinessStrict:         getenvBool("READINESS_STRICT", false),
-		MetricsEnabled:          getenvBool("METRICS_ENABLED", false),
-		SwaggerUIEnabled:        loadSwaggerUIEnabled(),
-		WorkerMetricsListen:     strings.TrimSpace(getenv("WORKER_METRICS_LISTEN", "")),
-		ReconcilerMetricsListen: strings.TrimSpace(getenv("RECONCILER_METRICS_LISTEN", "")),
-		MQTTIngestMetricsListen: strings.TrimSpace(getenv("MQTT_INGEST_METRICS_LISTEN", "")),
+		AppEnv:           AppEnvironment(strings.TrimSpace(getenv("APP_ENV", string(AppEnvDevelopment)))),
+		LogLevel:         strings.TrimSpace(getenv("LOG_LEVEL", "info")),
+		LogFormat:        strings.TrimSpace(getenv("LOG_FORMAT", "json")),
+		ReadinessStrict:  getenvBool("READINESS_STRICT", false),
+		MetricsEnabled:   getenvBool("METRICS_ENABLED", false),
+		SwaggerUIEnabled: loadSwaggerUIEnabled(),
+		Runtime: RuntimeConfig{
+			PublicBaseURL:        firstNonEmptyTrimmed(os.Getenv("APP_BASE_URL"), os.Getenv("PUBLIC_BASE_URL")),
+			MachinePublicBaseURL: firstNonEmptyTrimmed(os.Getenv("MACHINE_PUBLIC_BASE_URL"), os.Getenv("APP_BASE_URL"), os.Getenv("PUBLIC_BASE_URL")),
+			NodeName:             strings.TrimSpace(getenv("APP_NODE_NAME", hostname)),
+			InstanceID:           strings.TrimSpace(getenv("APP_INSTANCE_ID", hostname)),
+			RuntimeRole:          strings.TrimSpace(getenv("APP_RUNTIME_ROLE", "")),
+		},
+		Build: BuildConfig{
+			Version:   strings.TrimSpace(getenv("APP_VERSION", version.Version)),
+			GitSHA:    strings.TrimSpace(getenv("APP_GIT_SHA", version.Commit)),
+			BuildTime: strings.TrimSpace(getenv("APP_BUILD_TIME", version.BuildTime)),
+		},
+		WorkerMetricsListen:         strings.TrimSpace(getenv("WORKER_METRICS_LISTEN", "")),
+		ReconcilerMetricsListen:     strings.TrimSpace(getenv("RECONCILER_METRICS_LISTEN", "")),
+		MQTTIngestMetricsListen:     strings.TrimSpace(getenv("MQTT_INGEST_METRICS_LISTEN", "")),
+		TemporalWorkerMetricsListen: strings.TrimSpace(getenv("TEMPORAL_WORKER_METRICS_LISTEN", "")),
 		APIWiring: APIWiringRequirements{
 			RequireAuthAdapter:             getenvBool("API_REQUIRE_AUTH_ADAPTER", false),
 			RequireOutboxPublisher:         getenvBool("API_REQUIRE_OUTBOX_PUBLISHER", false),
@@ -458,6 +660,7 @@ func Load() (*Config, error) {
 			PaymentOutboxTopic:         strings.TrimSpace(getenv("COMMERCE_PAYMENT_OUTBOX_TOPIC", "commerce.payments")),
 			PaymentOutboxEventType:     strings.TrimSpace(getenv("COMMERCE_PAYMENT_OUTBOX_EVENT_TYPE", "payment.session_started")),
 			PaymentOutboxAggregateType: strings.TrimSpace(getenv("COMMERCE_PAYMENT_OUTBOX_AGGREGATE_TYPE", "payment")),
+			PaymentWebhookHMACSecret:   firstNonEmptyTrimmed(os.Getenv("PAYMENT_WEBHOOK_SECRET"), os.Getenv("COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET")),
 		},
 		Reconciler: loadReconcilerConfig(),
 		Temporal:   loadTemporalConfig(),
@@ -474,8 +677,17 @@ func Load() (*Config, error) {
 			Addr:            strings.TrimSpace(getenv("GRPC_ADDR", ":9090")),
 			ShutdownTimeout: mustParseDuration("GRPC_SHUTDOWN_TIMEOUT", getenv("GRPC_SHUTDOWN_TIMEOUT", "15s")),
 		},
+		Ops: OperationsConfig{
+			HTTPAddr:              strings.TrimSpace(getenv("HTTP_OPS_ADDR", "")),
+			ReadinessTimeout:      mustParseDuration("OPS_READINESS_TIMEOUT", getenv("OPS_READINESS_TIMEOUT", "2s")),
+			ShutdownTimeout:       mustParseDuration("OPS_SHUTDOWN_TIMEOUT", getenv("OPS_SHUTDOWN_TIMEOUT", "5s")),
+			TracerShutdownTimeout: mustParseDuration("TRACER_SHUTDOWN_TIMEOUT", getenv("TRACER_SHUTDOWN_TIMEOUT", "10s")),
+		},
 		Postgres: loadPostgresConfig(),
-		Redis:    loadRedisConfig(),
+		NATS: NATSConfig{
+			URL: strings.TrimSpace(getenv("NATS_URL", "")),
+		},
+		MQTT: loadMQTTConfig(),
 		Telemetry: TelemetryConfig{
 			ServiceName:  strings.TrimSpace(getenv("OTEL_SERVICE_NAME", "avf-vending-api")),
 			OTLPEndpoint: strings.TrimSpace(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
@@ -488,6 +700,12 @@ func Load() (*Config, error) {
 		HTTPRateLimit:       loadHTTPRateLimitConfig(),
 		Artifacts:           loadArtifactsConfig(),
 		Analytics:           loadAnalyticsConfig(),
+		SMTP:                loadSMTPConfig(),
+	}
+
+	cfg.Redis, err = loadRedisConfig()
+	if err != nil {
+		return nil, err
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -580,20 +798,140 @@ func loadPostgresConfig() PostgresConfig {
 	}
 }
 
-func loadRedisConfig() RedisConfig {
+func loadRedisConfig() (RedisConfig, error) {
 	addr := strings.TrimSpace(getenv("REDIS_ADDR", ""))
+	username := strings.TrimSpace(os.Getenv("REDIS_USERNAME"))
 	password := strings.TrimSpace(os.Getenv("REDIS_PASSWORD"))
 	db := getenvInt("REDIS_DB", 0)
+	tlsEnabled := getenvBool("REDIS_TLS_ENABLED", false)
+	tlsInsecure := getenvBool("REDIS_TLS_INSECURE_SKIP_VERIFY", false)
+	if addr == "" {
+		redisURL := strings.TrimSpace(os.Getenv("REDIS_URL"))
+		if redisURL != "" {
+			parsed, err := parseRedisURL(redisURL)
+			if err != nil {
+				return RedisConfig{}, err
+			}
+			addr = parsed.Addr
+			if username == "" {
+				username = parsed.Username
+			}
+			if password == "" {
+				password = parsed.Password
+			}
+			if db == 0 {
+				db = parsed.DB
+			}
+			if !tlsEnabled {
+				tlsEnabled = parsed.TLSEnabled
+			}
+		}
+	}
 	if addr == "" {
 		// Still surface password/DB so validate() can reject inconsistent combinations.
-		return RedisConfig{Password: password, DB: db}
+		return RedisConfig{
+			Username:              username,
+			Password:              password,
+			DB:                    db,
+			TLSEnabled:            tlsEnabled,
+			TLSInsecureSkipVerify: tlsInsecure,
+		}, nil
 	}
 
 	return RedisConfig{
-		Addr:     addr,
-		Password: password,
-		DB:       db,
+		Addr:                  addr,
+		Username:              username,
+		Password:              password,
+		DB:                    db,
+		TLSEnabled:            tlsEnabled,
+		TLSInsecureSkipVerify: tlsInsecure,
+	}, nil
+}
+
+func loadMQTTConfig() MQTTConfig {
+	return MQTTConfig{
+		BrokerURL:      strings.TrimSpace(getenv("MQTT_BROKER_URL", "")),
+		ClientID:       strings.TrimSpace(getenv("MQTT_CLIENT_ID", "")),
+		APIClientID:    strings.TrimSpace(getenv("MQTT_CLIENT_ID_API", "")),
+		IngestClientID: strings.TrimSpace(getenv("MQTT_CLIENT_ID_INGEST", "")),
+		Username:       strings.TrimSpace(getenv("MQTT_USERNAME", "")),
+		Password:       os.Getenv("MQTT_PASSWORD"),
+		TopicPrefix:    strings.TrimSpace(getenv("MQTT_TOPIC_PREFIX", "avf/devices")),
 	}
+}
+
+func loadSMTPConfig() SMTPConfig {
+	return SMTPConfig{
+		Host:     strings.TrimSpace(os.Getenv("SMTP_HOST")),
+		Port:     getenvInt("SMTP_PORT", 0),
+		Username: strings.TrimSpace(os.Getenv("SMTP_USER")),
+		Password: os.Getenv("SMTP_PASSWORD"),
+	}
+}
+
+func parseRedisURL(raw string) (RedisConfig, error) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return RedisConfig{}, fmt.Errorf("config: invalid REDIS_URL %q: %w", raw, err)
+	}
+	if u.Host == "" {
+		return RedisConfig{}, fmt.Errorf("config: invalid REDIS_URL %q: missing host", raw)
+	}
+	cfg := RedisConfig{
+		Addr:       u.Host,
+		TLSEnabled: strings.EqualFold(u.Scheme, "rediss"),
+	}
+	if u.User != nil {
+		cfg.Username = u.User.Username()
+		if pw, ok := u.User.Password(); ok {
+			cfg.Password = pw
+		}
+	}
+	if p := strings.TrimPrefix(strings.TrimSpace(u.Path), "/"); p != "" {
+		db, err := strconv.Atoi(p)
+		if err != nil {
+			return RedisConfig{}, fmt.Errorf("config: invalid REDIS_URL %q: invalid database %q", raw, p)
+		}
+		cfg.DB = db
+	}
+	return cfg, nil
+}
+
+func (r RuntimeConfig) EffectiveRuntimeRole(processName string) string {
+	if s := strings.TrimSpace(r.RuntimeRole); s != "" {
+		return s
+	}
+	return strings.TrimSpace(processName)
+}
+
+func (m MQTTConfig) ClientIDForProcess(processName string) string {
+	if s := strings.TrimSpace(m.ClientID); s != "" {
+		return s
+	}
+	switch strings.TrimSpace(processName) {
+	case "api":
+		return firstNonEmptyTrimmed(m.APIClientID, m.IngestClientID)
+	case "mqtt-ingest":
+		return firstNonEmptyTrimmed(m.IngestClientID, m.APIClientID)
+	default:
+		return firstNonEmptyTrimmed(m.APIClientID, m.IngestClientID)
+	}
+}
+
+func (r RedisConfig) TLSConfig() *tls.Config {
+	if !r.TLSEnabled {
+		return nil
+	}
+	return &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: r.TLSInsecureSkipVerify}
+}
+
+func firstNonEmptyTrimmed(values ...string) string {
+	for _, v := range values {
+		if s := strings.TrimSpace(v); s != "" {
+			return s
+		}
+	}
+	return ""
 }
 
 func getenv(key, def string) string {

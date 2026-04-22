@@ -26,6 +26,7 @@ import (
 	"errors"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/avf/avf-vending-api/internal/bootstrap"
@@ -43,12 +44,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	cfg.ProcessName = "api"
 
 	log, err := observability.NewLogger(cfg)
 	if err != nil {
 		panic(err)
 	}
 	defer func() { _ = log.Sync() }()
+	if role := strings.TrimSpace(cfg.Runtime.RuntimeRole); role != "" && role != cfg.ProcessName {
+		log.Fatal("runtime role mismatch", zap.String("configured_role", role), zap.String("process", cfg.ProcessName))
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

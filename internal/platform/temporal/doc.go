@@ -1,9 +1,9 @@
 // Package temporal is a thin wrapper around the Temporal Go SDK client and worker constructors.
 //
-// When Temporal is enabled in application config, bootstrap.BuildRuntime dials via Dial and wires
-// internal/app/workfloworch for long-running orchestration (optional; default off). No workflow
-// implementations are registered in this repository yet—workfloworch.Boundary.Start returns
-// ErrWorkflowNotImplemented until kinds are mapped. A dedicated cmd/* Temporal worker is optional.
+// When Temporal is enabled in application config, scheduler processes dial via Dial and wire
+// internal/app/workfloworch for long-running orchestration (optional; default off). The repository
+// now includes a dedicated cmd/temporal-worker process that registers and runs workfloworch
+// workflows/activities on the configured task queue.
 //
 // Use [Dial] to obtain a [client.Client], then [NewWorker] to bind a task queue and register workflows
 // and activities. [RunInteractive] blocks until SIGINT/SIGTERM (same semantics as worker.InterruptCh).

@@ -15,7 +15,8 @@ RUN mkdir -p /out && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/worker ./cmd/worker && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/mqtt-ingest ./cmd/mqtt-ingest && \
-    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/reconciler ./cmd/reconciler
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/reconciler ./cmd/reconciler && \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/temporal-worker ./cmd/temporal-worker
 
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata curl \
@@ -26,6 +27,7 @@ COPY --from=build /out/api /app/api
 COPY --from=build /out/worker /app/worker
 COPY --from=build /out/mqtt-ingest /app/mqtt-ingest
 COPY --from=build /out/reconciler /app/reconciler
+COPY --from=build /out/temporal-worker /app/temporal-worker
 
 USER avf
 EXPOSE 8080

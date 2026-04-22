@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
@@ -53,7 +54,10 @@ func InitTracer(ctx context.Context, cfg *config.Config) (shutdown func(context.
 		resource.WithOS(),
 		resource.WithContainer(),
 		resource.WithHost(),
-		resource.WithAttributes(semconv.ServiceName(cfg.Telemetry.ServiceName)),
+		resource.WithAttributes(
+			semconv.ServiceName(cfg.Telemetry.ServiceName),
+			attribute.String("process.name", strings.TrimSpace(cfg.ProcessName)),
+		),
 	)
 	if err != nil {
 		_ = exporter.Shutdown(ctx)

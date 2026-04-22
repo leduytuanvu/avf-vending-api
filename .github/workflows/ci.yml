@@ -6,9 +6,11 @@ env:
 on:
   pull_request:
     branches:
+      - develop
       - main
   push:
     branches:
+      - develop
       - main
 
 concurrency:
@@ -69,3 +71,26 @@ jobs:
 
       - name: Validate local Docker Compose config
         run: docker compose -f deployments/docker/docker-compose.yml config
+
+      - name: Validate production app-node Compose configs
+        run: |
+          docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml config
+          docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml --profile temporal config
+          docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml --profile migration config
+
+      - name: Validate production data-node Compose config
+        run: docker compose --env-file deployments/prod/data-node/.env.data-node.example -f deployments/prod/data-node/docker-compose.data-node.yml config
+
+      - name: Validate develop deployment Docker Compose config
+        run: docker compose --env-file deployments/staging/.env.staging.example -f deployments/staging/docker-compose.staging.yml config
+
+      - name: Validate deployment smoke scripts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n deployments/prod/shared/scripts/smoke_http.sh
+          bash -n deployments/prod/shared/scripts/verify_runtime_assets.sh
+          bash -n deployments/prod/shared/scripts/check_restore_readiness.sh
+          bash -n deployments/staging/scripts/deploy_staging.sh
+          bash -n deployments/staging/scripts/healthcheck_staging.sh
+          bash -n deployments/staging/scripts/smoke_staging.sh

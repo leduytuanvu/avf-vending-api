@@ -1,6 +1,7 @@
-# Production: GHCR image-only deploy and rollback
+# Legacy production: GHCR image-only deploy and rollback
 
-This runbook matches `deployments/prod/docker-compose.prod.yml` (image-only, no `build:` on the VPS).
+This runbook matches the legacy single-host path at `deployments/prod/docker-compose.prod.yml` (image-only, no `build:` on the VPS).
+It is retained only for rollback compatibility and operator reference. For the current primary production path, use `docs/runbooks/production-vps.md` and the split `deployments/prod/app-node` / `deployments/prod/data-node` topology.
 
 ## Image tags and precedence
 
@@ -70,3 +71,4 @@ docker compose --env-file deployments/prod/.env.production -f deployments/prod/d
 ## Related
 
 - Operator-facing detail: [deployments/prod/README.md](../../deployments/prod/README.md)
+- 2-VPS rollout detail: [production-2-vps.md](production-2-vps.md)

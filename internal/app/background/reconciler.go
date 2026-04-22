@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -40,10 +41,11 @@ type ReconcilerDeps struct {
 	// Telemetry is nil unless the process sets it (cmd/reconciler + METRICS_ENABLED).
 	Telemetry ReconcilerTelemetry
 
-	Reader     domaincommerce.ReconciliationReader
-	OrderRead  OrderReader
-	Gateway    domaincommerce.PaymentProviderGateway
-	RefundSink domaincommerce.RefundReviewSink
+	Reader                domaincommerce.ReconciliationReader
+	OrderRead             OrderReader
+	Gateway               domaincommerce.PaymentProviderGateway
+	RefundSink            domaincommerce.RefundReviewSink
+	WorkflowOrchestration workfloworch.Boundary
 
 	// ActionsEnabled turns on PSP probes and refund routing (Gateway, RefundSink, PaymentApplier must be wired).
 	ActionsEnabled bool
@@ -62,11 +64,13 @@ type ReconcilerDeps struct {
 	// exceeds the tick interval the next tick is deferred until the current pass returns (Go ticker behavior).
 	CycleTimeout time.Duration
 
-	UnresolvedOrdersTick time.Duration
-	PaymentProbeTick     time.Duration
-	VendStuckTick        time.Duration
-	DuplicatePaymentTick time.Duration
-	RefundReviewTick     time.Duration
+	UnresolvedOrdersTick           time.Duration
+	PaymentProbeTick               time.Duration
+	VendStuckTick                  time.Duration
+	DuplicatePaymentTick           time.Duration
+	RefundReviewTick               time.Duration
+	ScheduleRefundOrchestration    bool
+	ScheduleManualReviewEscalation bool
 }
 
 // DefaultReconcilerTickSchedule returns conservative polling defaults.
@@ -313,7 +317,7 @@ func DuplicatePaymentRecoveryTick(ctx context.Context, deps ReconcilerDeps) erro
 	if err != nil {
 		return err
 	}
-	var enqueued, enqueueFail int
+	var enqueued, enqueueFail, scheduled int
 	for _, p := range payments {
 		if deps.Log != nil {
 			deps.Log.Info("reconcile_potential_duplicate_payment",
@@ -322,6 +326,25 @@ func DuplicatePaymentRecoveryTick(ctx context.Context, deps ReconcilerDeps) erro
 				zap.String("provider", p.Provider),
 				zap.String("state", p.State),
 			)
+		}
+		if deps.ScheduleManualReviewEscalation && !deps.DryRun && deps.OrderRead != nil && deps.WorkflowOrchestration != nil && deps.WorkflowOrchestration.Enabled() {
+			o, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
+			if oerr == nil {
+				err := deps.WorkflowOrchestration.Start(ctx, workfloworch.StartManualReviewEscalation(workfloworch.ManualReviewEscalationInput{
+					OrganizationID: o.OrganizationID,
+					OrderID:        p.OrderID,
+					PaymentID:      p.ID,
+					Reason:         "manual_review:potential_duplicate_payment",
+					RequestedAt:    time.Now().UTC(),
+				}))
+				if err == nil {
+					scheduled++
+					continue
+				}
+				if deps.Log != nil {
+					deps.Log.Warn("duplicate_payment_workflow_schedule_failed", zap.Error(err), zap.String("payment_id", p.ID.String()))
+				}
+			}
 		}
 		if deps.ActionsEnabled && deps.RefundSink != nil && deps.OrderRead != nil {
 			if deps.DryRun {
@@ -363,6 +386,7 @@ func DuplicatePaymentRecoveryTick(ctx context.Context, deps ReconcilerDeps) erro
 			zap.String("job", "duplicate_payments"),
 			zap.Int("selected", len(payments)),
 			zap.Int("enqueued", enqueued),
+			zap.Int("scheduled_workflows", scheduled),
 			zap.Int("failed", enqueueFail),
 			zap.Bool("at_batch_limit", atLimit),
 			zap.Time("stable_before", before),
@@ -399,8 +423,30 @@ func RefundReviewDecisionTick(ctx context.Context, deps ReconcilerDeps) error {
 	if err != nil {
 		return err
 	}
-	var enqueued, skippedSink, orderFail, enqueueFail int
+	var enqueued, skippedSink, orderFail, enqueueFail, scheduled int
 	for _, p := range payments {
+		if deps.ScheduleRefundOrchestration && !deps.DryRun && deps.OrderRead != nil && deps.WorkflowOrchestration != nil && deps.WorkflowOrchestration.Enabled() {
+			o, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
+			if oerr == nil {
+				err := deps.WorkflowOrchestration.Start(ctx, workfloworch.StartRefundOrchestration(workfloworch.RefundOrchestrationInput{
+					OrganizationID: o.OrganizationID,
+					OrderID:        p.OrderID,
+					PaymentID:      p.ID,
+					Reason:         "captured_payment_failed_order",
+					RequestedAt:    time.Now().UTC(),
+				}))
+				if err == nil {
+					scheduled++
+					if deps.Log != nil {
+						deps.Log.Info("refund_review_workflow_scheduled", zap.String("payment_id", p.ID.String()), zap.String("order_id", p.OrderID.String()))
+					}
+					continue
+				}
+				if deps.Log != nil {
+					deps.Log.Warn("refund_review_workflow_schedule_failed", zap.Error(err), zap.String("payment_id", p.ID.String()))
+				}
+			}
+		}
 		if !deps.ActionsEnabled || deps.RefundSink == nil || deps.OrderRead == nil {
 			skippedSink++
 			if deps.Log != nil {
@@ -454,6 +500,7 @@ func RefundReviewDecisionTick(ctx context.Context, deps ReconcilerDeps) error {
 			zap.String("job", "refund_review"),
 			zap.Int("selected", len(payments)),
 			zap.Int("enqueued", enqueued),
+			zap.Int("scheduled_workflows", scheduled),
 			zap.Int("skipped_sink", skippedSink),
 			zap.Int("failed", failed),
 			zap.Bool("at_batch_limit", atLimit),

@@ -3,6 +3,7 @@ package commerce
 import (
 	"context"
 
+	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/google/uuid"
 )
@@ -29,10 +30,13 @@ type PaymentWebhookPersistence interface {
 
 // Deps wires workflows and optional lifecycle persistence.
 type Deps struct {
-	OrderVend      domaincommerce.OrderVendWorkflow
-	PaymentOutbox  domaincommerce.PaymentOutboxWorkflow
-	Lifecycle      CommerceLifecycleStore
-	WebhookPersist PaymentWebhookPersistence
+	OrderVend                   domaincommerce.OrderVendWorkflow
+	PaymentOutbox               domaincommerce.PaymentOutboxWorkflow
+	Lifecycle                   CommerceLifecycleStore
+	WebhookPersist              PaymentWebhookPersistence
+	SaleLines                   SaleLineResolver
+	WorkflowOrchestration       workfloworch.Boundary
+	ScheduleVendFailureFollowUp bool
 }
 
 // Orchestrator is the application surface for HTTP/workers.

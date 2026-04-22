@@ -6,10 +6,17 @@ env:
 on:
   pull_request:
     branches:
+      - develop
       - main
   push:
     branches:
+      - develop
       - main
+  workflow_run:
+    workflows:
+      - Build and Push Images
+    types:
+      - completed
   schedule:
     - cron: "17 3 * * *"
   workflow_dispatch:
@@ -19,7 +26,9 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  actions: read
   contents: read
+  packages: read
 
 jobs:
   dependency-review:
@@ -56,6 +65,222 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
+
+  secret-scan:
+    name: Secret Scan
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Run gitleaks
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          go install github.com/zricethezav/gitleaks/v8@v8.24.2
+          "$(go env GOPATH)/bin/gitleaks" detect \
+            --source . \
+            --config .gitleaks.toml \
+            --report-format sarif \
+            --report-path security-reports/gitleaks.sarif \
+            --redact \
+            --no-banner
+
+      - name: Upload gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: security-reports/gitleaks.sarif
+          if-no-files-found: error
+          retention-days: 14
+
+  config-scan:
+    name: Deployment and Config Scan
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy config scan
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          docker run --rm \
+            -v "${PWD}:/workdir" \
+            -w /workdir \
+            aquasec/trivy:0.57.1 \
+            config \
+            --config trivy.yaml \
+            --ignorefile .trivyignore \
+            deployments/prod/app-node \
+            deployments/prod/data-node \
+            deployments/prod/shared \
+            deployments/staging \
+            .github/workflows/ci.yml \
+            .github/workflows/security.yml \
+            .github/workflows/build-push.yml \
+            .github/workflows/deploy-develop.yml \
+            .github/workflows/deploy-prod.yml | tee security-reports/trivy-config.txt
+
+      - name: Upload Trivy config report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-config-report
+          path: security-reports/trivy-config.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  resolve-build-run-id:
+    name: Resolve Published Build For Image Scan
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      workflow_run_id: ${{ steps.lookup.outputs.workflow_run_id }}
+    steps:
+      - name: Resolve build workflow run id
+        id: lookup
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "workflow_run_id=${{ github.event.workflow_run.id }}" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          workflow_run_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build-push.yml/runs?branch=main&status=completed&per_page=20" \
+              --jq '[.workflow_runs[]? | select(.conclusion == "success") | .id] | .[0] // empty'
+          )"
+
+          [[ -n "${workflow_run_id}" ]] || {
+            echo "error: no successful Build and Push Images run found on main" >&2
+            exit 1
+          }
+
+          echo "workflow_run_id=${workflow_run_id}" >> "${GITHUB_OUTPUT}"
+
+  resolve-image-refs:
+    name: Resolve Published Image Refs
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    needs: resolve-build-run-id
+    uses: ./.github/workflows/_reusable-deploy.yml
+    with:
+      resolution_mode: workflow_run
+      workflow_run_id: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
+    secrets:
+      gh_api_token: ${{ secrets.GITHUB_TOKEN }}
+
+  image-vulnerability-scan:
+    name: Published Image Vulnerability Scan
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: resolve-image-refs
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Show image scan policy
+        shell: bash
+        env:
+          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+        run: |
+          {
+            echo "## Security Scan Policy"
+            echo "- secret scan: fail on any detected secret in repo-scoped content scan"
+            echo "- Go vulnerability scan: fail on govulncheck findings in reachable code"
+            echo "- config scan: fail on \`HIGH\` and \`CRITICAL\` misconfigurations"
+            echo "- image scan: fail on \`HIGH\` and \`CRITICAL\` vulnerabilities with \`ignore-unfixed=true\`"
+            echo "- app image: \`${APP_IMAGE_REF}\`"
+            echo "- goose image: \`${GOOSE_IMAGE_REF}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Scan published app image
+        shell: bash
+        env:
+          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          docker run --rm \
+            -v "${HOME}/.docker:/root/.docker:ro" \
+            -v "${PWD}:/workdir" \
+            -w /workdir \
+            aquasec/trivy:0.57.1 \
+            image \
+            --config trivy.yaml \
+            --ignorefile .trivyignore \
+            --scanners vuln \
+            "${APP_IMAGE_REF}" | tee security-reports/trivy-image-app.txt
+
+      - name: Scan published goose image
+        shell: bash
+        env:
+          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          docker run --rm \
+            -v "${HOME}/.docker:/root/.docker:ro" \
+            -v "${PWD}:/workdir" \
+            -w /workdir \
+            aquasec/trivy:0.57.1 \
+            image \
+            --config trivy.yaml \
+            --ignorefile .trivyignore \
+            --scanners vuln \
+            "${GOOSE_IMAGE_REF}" | tee security-reports/trivy-image-goose.txt
+
+      - name: Upload Trivy image reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-reports
+          path: |
+            security-reports/trivy-image-app.txt
+            security-reports/trivy-image-goose.txt
+          if-no-files-found: error
+          retention-days: 14
 
   govulncheck-nightly:
     name: Go Vulnerability Report

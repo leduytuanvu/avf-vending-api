@@ -12,11 +12,16 @@ type CreateOrderInput struct {
 	OrganizationID uuid.UUID
 	MachineID      uuid.UUID
 	ProductID      uuid.UUID
-	SlotIndex      int32
-	Currency       string
-	SubtotalMinor  int64
-	TaxMinor       int64
-	TotalMinor     int64
+	SlotID         *uuid.UUID
+	CabinetCode    string
+	SlotCode       string
+	// SlotIndex is deprecated; prefer SlotID or CabinetCode+SlotCode.
+	SlotIndex *int32
+	Currency  string
+	// SubtotalMinor, TaxMinor, TotalMinor are deprecated and must be zero (pricing is server-authoritative).
+	SubtotalMinor int64
+	TaxMinor      int64
+	TotalMinor    int64
 	IdempotencyKey string
 }
 
@@ -94,5 +99,8 @@ type RefundEligibilityAssessment struct {
 	VendState    string
 }
 
-// CreateOrderResult aliases the transactional create outcome from the domain workflow.
-type CreateOrderResult = domaincommerce.CreateOrderVendResult
+// CreateOrderResult is the transactional create outcome plus resolved sale line metadata for clients.
+type CreateOrderResult struct {
+	domaincommerce.CreateOrderVendResult
+	SaleLine ResolvedSaleLine
+}

@@ -45,6 +45,9 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				OrganizationID: org,
 				MachineID:      body.MachineID,
 				ProductID:      body.ProductID,
+				SlotID:         body.SlotID,
+				CabinetCode:    body.CabinetCode,
+				SlotCode:       body.SlotCode,
 				SlotIndex:      body.SlotIndex,
 				Currency:       body.Currency,
 				SubtotalMinor:  body.SubtotalMinor,
@@ -57,12 +60,24 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
+			slotID := ""
+			if out.SaleLine.SlotConfigID != uuid.Nil {
+				slotID = out.SaleLine.SlotConfigID.String()
+			}
 			writeJSON(w, http.StatusCreated, commerceCreateOrderResponse{
-				OrderID:       out.Order.ID.String(),
-				VendSessionID: out.Vend.ID.String(),
-				Replay:        out.Replay,
-				OrderStatus:   out.Order.Status,
-				VendState:     out.Vend.State,
+				OrderID:        out.Order.ID.String(),
+				VendSessionID:  out.Vend.ID.String(),
+				Replay:         out.Replay,
+				OrderStatus:    out.Order.Status,
+				VendState:      out.Vend.State,
+				SlotID:         slotID,
+				CabinetCode:    out.SaleLine.CabinetCode,
+				SlotCode:       out.SaleLine.SlotCode,
+				SlotIndex:      out.SaleLine.SlotIndex,
+				SubtotalMinor:  out.Order.SubtotalMinor,
+				TaxMinor:       out.Order.TaxMinor,
+				TotalMinor:     out.Order.TotalMinor,
+				PriceMinor:     out.SaleLine.PriceMinor,
 			})
 		})
 
@@ -93,6 +108,9 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				OrganizationID: org,
 				MachineID:      body.MachineID,
 				ProductID:      body.ProductID,
+				SlotID:         body.SlotID,
+				CabinetCode:    body.CabinetCode,
+				SlotCode:       body.SlotCode,
 				SlotIndex:      body.SlotIndex,
 				Currency:       body.Currency,
 				SubtotalMinor:  body.SubtotalMinor,
@@ -110,7 +128,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				OrderID:              createOut.Order.ID,
 				Provider:             "cash",
 				PaymentState:         "captured",
-				AmountMinor:          body.TotalMinor,
+				AmountMinor:          createOut.Order.TotalMinor,
 				Currency:             body.Currency,
 				IdempotencyKey:       idem + ":cash:payment",
 				OutboxTopic:          topic,
@@ -128,7 +146,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
-			st, err := svc.GetCheckoutStatus(r.Context(), org, createOut.Order.ID, body.SlotIndex)
+			st, err := svc.GetCheckoutStatus(r.Context(), org, createOut.Order.ID, createOut.SaleLine.SlotIndex)
 			if err != nil {
 				writeCommerceServiceError(w, r.Context(), err)
 				return
@@ -242,58 +260,6 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				"kind":   "commerce.reconciliation_snapshot",
 				"status": checkoutStatusToJSON(st),
 			})
-		})
-
-		r.Post("/orders/{orderId}/payments/{paymentId}/webhooks", func(w http.ResponseWriter, r *http.Request) {
-			if _, err := requireWriteIdempotencyKey(r); err != nil {
-				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
-				return
-			}
-			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
-			if err != nil {
-				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
-				return
-			}
-			paymentID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "paymentId")))
-			if err != nil {
-				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_payment_id", "invalid paymentId")
-				return
-			}
-			var body commerceWebhookRequest
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
-				return
-			}
-			org := tenantOrgID(r)
-			in := appcommerce.ApplyPaymentProviderWebhookInput{
-				OrganizationID:         org,
-				OrderID:                orderID,
-				PaymentID:              paymentID,
-				Provider:               body.Provider,
-				ProviderReference:      body.ProviderReference,
-				EventType:              body.EventType,
-				NormalizedPaymentState: body.NormalizedPaymentState,
-				Payload:                body.PayloadJSON,
-				ProviderAmountMinor:    body.ProviderAmountMinor,
-				Currency:               body.Currency,
-			}
-			res, err := svc.ApplyPaymentProviderWebhook(r.Context(), in)
-			if err != nil {
-				writeCommerceServiceError(w, r.Context(), err)
-				return
-			}
-			resp := commerceWebhookResponse{
-				Replay:          res.Replay,
-				OrderID:         res.Order.ID.String(),
-				OrderStatus:     res.Order.Status,
-				PaymentID:       res.Payment.ID.String(),
-				PaymentState:    res.Payment.State,
-				ProviderEventID: res.ProviderRowID,
-			}
-			if res.Attempt.ID != uuid.Nil {
-				resp.AttemptID = res.Attempt.ID.String()
-			}
-			writeJSON(w, http.StatusOK, resp)
 		})
 
 		r.Post("/orders/{orderId}/vend/start", func(w http.ResponseWriter, r *http.Request) {
@@ -488,24 +454,31 @@ func firstNonEmpty(a, b string) string {
 // --- HTTP DTOs (request/response shapes only) ---
 
 type commerceCreateOrderRequest struct {
-	MachineID     uuid.UUID `json:"machine_id"`
-	ProductID     uuid.UUID `json:"product_id"`
-	SlotIndex     int32     `json:"slot_index"`
-	Currency      string    `json:"currency"`
-	SubtotalMinor int64     `json:"subtotal_minor"`
-	TaxMinor      int64     `json:"tax_minor"`
-	TotalMinor    int64     `json:"total_minor"`
+	MachineID  uuid.UUID  `json:"machine_id"`
+	ProductID  uuid.UUID  `json:"product_id"`
+	SlotID     *uuid.UUID `json:"slot_id,omitempty"`
+	CabinetCode string    `json:"cabinet_code,omitempty"`
+	SlotCode    string    `json:"slot_code,omitempty"`
+	// SlotIndex is deprecated; prefer slot_id or cabinet_code+slot_code.
+	SlotIndex     *int32 `json:"slot_index,omitempty"`
+	Currency      string `json:"currency"`
+	SubtotalMinor int64  `json:"subtotal_minor,omitempty"`
+	TaxMinor      int64  `json:"tax_minor,omitempty"`
+	TotalMinor    int64  `json:"total_minor,omitempty"`
 }
 
-// commerceCashCheckoutRequest mirrors create-order totals; records a captured cash payment and marks the order paid.
+// commerceCashCheckoutRequest mirrors create-order slot selection; records a captured cash payment and marks the order paid.
 type commerceCashCheckoutRequest struct {
-	MachineID     uuid.UUID `json:"machine_id"`
-	ProductID     uuid.UUID `json:"product_id"`
-	SlotIndex     int32     `json:"slot_index"`
-	Currency      string    `json:"currency"`
-	SubtotalMinor int64     `json:"subtotal_minor"`
-	TaxMinor      int64     `json:"tax_minor"`
-	TotalMinor    int64     `json:"total_minor"`
+	MachineID   uuid.UUID  `json:"machine_id"`
+	ProductID   uuid.UUID  `json:"product_id"`
+	SlotID      *uuid.UUID `json:"slot_id,omitempty"`
+	CabinetCode string     `json:"cabinet_code,omitempty"`
+	SlotCode    string     `json:"slot_code,omitempty"`
+	SlotIndex   *int32     `json:"slot_index,omitempty"`
+	Currency    string     `json:"currency"`
+	SubtotalMinor int64    `json:"subtotal_minor,omitempty"`
+	TaxMinor      int64    `json:"tax_minor,omitempty"`
+	TotalMinor    int64    `json:"total_minor,omitempty"`
 }
 
 type commerceCashCheckoutResponse struct {
@@ -523,6 +496,14 @@ type commerceCreateOrderResponse struct {
 	Replay        bool   `json:"replay"`
 	OrderStatus   string `json:"order_status"`
 	VendState     string `json:"vend_state"`
+	SlotID        string `json:"slot_id"`
+	CabinetCode   string `json:"cabinet_code"`
+	SlotCode      string `json:"slot_code"`
+	SlotIndex     int32  `json:"slot_index"`
+	SubtotalMinor int64  `json:"subtotal_minor"`
+	TaxMinor      int64  `json:"tax_minor"`
+	TotalMinor    int64  `json:"total_minor"`
+	PriceMinor    int64  `json:"price_minor"`
 }
 
 type commercePaymentSessionRequest struct {

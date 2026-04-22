@@ -1,13 +1,14 @@
-# EMQX base configuration for the lean production profile.
-# Keep plaintext MQTT available on the internal Docker network only.
-# TLS listener is defined here but remains disabled until real certificates are installed.
+# EMQX base configuration for the split production topology.
+# External/public MQTT is TLS-first on 8883.
+# Plain MQTT on 1883 exists only for private-network or local-node compatibility and must not be exposed publicly.
 
 listeners.tcp.default {
-  bind = "0.0.0.0:1883"
+  enable = true
+  bind = "127.0.0.1:1883"
 }
 
 listeners.ssl.default {
-  enable = false
+  enable = true
   bind = "0.0.0.0:8883"
   ssl_options {
     cacertfile = "/opt/emqx/etc/certs/ca.crt"

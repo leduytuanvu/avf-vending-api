@@ -1,0 +1,13 @@
+title = "AVF Vending API Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Example env and bootstrap files with placeholder values"
+paths = [
+  '''^\.env\.example$''',
+  '''^deployments/.*/\.env\..*example$''',
+  '''^deployments/staging/emqx/default_api_key\.conf\.example$''',
+  '''^deployments/.*/emqx/certs/README\.md$'''
+]

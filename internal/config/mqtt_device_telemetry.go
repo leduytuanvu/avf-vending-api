@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
@@ -88,7 +87,7 @@ func (c *Config) validateProductionTelemetryNATS() error {
 	if c.AppEnv != AppEnvProduction {
 		return nil
 	}
-	if strings.TrimSpace(os.Getenv(platformnats.EnvNATSURL)) == "" {
+	if strings.TrimSpace(c.NATS.URL) == "" {
 		return fmt.Errorf("config: APP_ENV=production requires non-empty %s (NATS/JetStream is mandatory for telemetry, outbox, and worker consumers; direct MQTT→Postgres telemetry hot path is disabled in production)", platformnats.EnvNATSURL)
 	}
 	if c.MQTTDeviceTelemetry.LegacyPostgresIngest {

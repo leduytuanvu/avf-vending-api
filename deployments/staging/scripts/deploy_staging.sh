@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+DEPLOY_SCRIPT_ROOT="${ROOT}/scripts"
+
 fail() {
 	echo "error: $*" >&2
 	exit 1
@@ -121,9 +123,10 @@ bash "${ROOT}/scripts/emqx_bootstrap.sh"
 echo "==> start application stack + Caddy"
 "${COMPOSE[@]}" up -d --remove-orphans "${LONG_LIVED_SERVICES[@]}"
 
-echo "==> optional smoke (set SKIP_SMOKE=1 to skip)"
+echo "==> optional post-deploy validation (set SKIP_SMOKE=1 to skip)"
 if [[ "${SKIP_SMOKE:-0}" != "1" ]]; then
-	bash "${ROOT}/scripts/healthcheck_staging.sh"
+	bash "${DEPLOY_SCRIPT_ROOT}/healthcheck_staging.sh"
+	bash "${DEPLOY_SCRIPT_ROOT}/smoke_staging.sh"
 fi
 
 if [[ -n "${PREVIOUS_TAG}" ]]; then

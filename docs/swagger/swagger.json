@@ -6214,7 +6214,7 @@
               }
             }
           },
-          "description": "machine_id, product_id, slot_index, currency, subtotal_minor, tax_minor, total_minor",
+          "description": "machine_id, product_id, slot_id or (cabinet_code+slot_code) or slot_index (deprecated), currency; subtotal/tax/total must be omitted or zero (server pricing)",
           "required": true
         },
         "responses": {
@@ -6353,7 +6353,7 @@
               }
             }
           },
-          "description": "machine_id, product_id, slot_index, currency, subtotal_minor, tax_minor, total_minor",
+          "description": "machine_id, product_id, slot_id or (cabinet_code+slot_code) or slot_index (deprecated), currency; subtotal/tax/total must be omitted or zero (pricing from published assortment)",
           "required": true
         },
         "responses": {
@@ -6760,7 +6760,7 @@
     },
     "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks": {
       "post": {
-        "description": "Idempotency header is required (same key space as other commerce writes). Treat **200** with `replay:true` as the provider having retried the same logical event; responses remain JSON-safe for your payment connector. Conflicting provider state may yield **409** with a commerce-specific `error.code`.",
+        "description": "**No Bearer JWT.** Requires **COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET** and HMAC headers **X-AVF-Webhook-Timestamp** (unix seconds) and **X-AVF-Webhook-Signature** (hex HMAC-SHA256 of `{timestamp}.{rawBody}`). Duplicate delivery replay is keyed on **provider + provider_reference** in persistence; clients do **not** need `Idempotency-Key` on this callback route. Treat **200** with `replay:true` as the provider having retried the same logical event.",
         "parameters": [
           {
             "description": "Order UUID",
@@ -6781,7 +6781,22 @@
             }
           },
           {
-            "$ref": "#/components/parameters/AuthorizationHeader"
+            "description": "Unix seconds",
+            "in": "header",
+            "name": "X-AVF-Webhook-Timestamp",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Hex digest (optional sha256= prefix)",
+            "in": "header",
+            "name": "X-AVF-Webhook-Signature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "$ref": "#/components/parameters/XRequestID"
@@ -6829,7 +6844,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/V1BearerAuthError"
+                  "$ref": "#/components/schemas/V1StandardError"
                 }
               }
             },
@@ -6896,11 +6911,6 @@
             "description": "error"
           }
         },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
         "summary": "Apply provider webhook",
         "tags": [
           "Commerce"
@@ -7726,6 +7736,113 @@
         ]
       }
     },
+    "/v1/machines/{machineId}/check-ins": {
+      "post": {
+        "description": "Append-only check-in for device identity and runtime. **occurred_at** must be RFC3339 with timezone. Requires **RequireMachineURLAccess** (machine-scoped JWT). Subject to sensitive-write rate limit when enabled.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "android_id, sim_serial, package_name, version_name, version_code, android_release, sdk_int, manufacturer, model, timezone, network_state, boot_id, occurred_at, metadata",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Record Android check-in"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Record Android check-in",
+        "tags": [
+          "Machine"
+        ]
+      }
+    },
     "/v1/machines/{machineId}/commands/dispatch": {
       "post": {
         "description": "Requires **Idempotency-Key** or **X-Idempotency-Key**. Org/platform admin only. When MQTT publisher is missing \u2192 **503** `capability_not_configured` (`mqtt_command_dispatch`). Nil RemoteCommands wiring \u2192 **500**. Rate limiter may return **429** `rate_limited`.",
@@ -8083,6 +8200,113 @@
         "summary": "Get command dispatch status by sequence",
         "tags": [
           "Device"
+        ]
+      }
+    },
+    "/v1/machines/{machineId}/config-applies": {
+      "post": {
+        "description": "Persists a **machine_configs** row; **applied_at** RFC3339 with timezone; **config_version** maps to config_revision. Optional **operator_session_id**. Android context in **android_id** and **app_version** stored in metadata.",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "config_version, applied_at, android_id, app_version, operator_session_id, config_payload",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Acknowledge config applied on device"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Acknowledge config applied on device",
+        "tags": [
+          "Machine"
         ]
       }
     },

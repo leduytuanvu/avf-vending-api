@@ -6,7 +6,11 @@ positions:
   filename: /var/lib/promtail/positions.yaml
 
 clients:
-  - url: http://loki:3100/loki/api/v1/push
+  - url: ${LOKI_PUSH_URL:-http://loki:3100/loki/api/v1/push}
+    external_labels:
+      node: ${PROMTAIL_NODE_NAME:-unknown-node}
+      role: ${PROMTAIL_NODE_ROLE:-unknown-role}
+      env: production
 
 scrape_configs:
   - job_name: docker-containers
@@ -28,3 +32,12 @@ scrape_configs:
         replacement: /var/lib/docker/containers/$1/$1-json.log
     pipeline_stages:
       - docker: {}
+      - json:
+          expressions:
+            level: level
+            msg: msg
+            logger: logger
+            ts: ts
+      - labels:
+          level:
+          logger:

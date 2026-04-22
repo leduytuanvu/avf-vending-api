@@ -1995,6 +1995,8 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/v1/machines/{machineId}/commands/receipts"),
     ("get", "/v1/machines/{machineId}/commands/{sequence}/status"),
     ("post", "/v1/machines/{machineId}/commands/dispatch"),
+    ("post", "/v1/machines/{machineId}/check-ins"),
+    ("post", "/v1/machines/{machineId}/config-applies"),
     ("get", "/v1/machines/{machineId}/operator-sessions/current"),
     ("get", "/v1/machines/{machineId}/operator-sessions/history"),
     ("get", "/v1/machines/{machineId}/operator-sessions/auth-events"),

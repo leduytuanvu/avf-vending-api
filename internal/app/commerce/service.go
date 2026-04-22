@@ -9,18 +9,25 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 	"unicode"
 
+	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
+	"github.com/avf/avf-vending-api/internal/observability"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 // Service coordinates order creation, payment persistence, vend progression, and completion rules.
 type Service struct {
-	orders   domaincommerce.OrderVendWorkflow
-	payments domaincommerce.PaymentOutboxWorkflow
-	life     CommerceLifecycleStore
-	webhook  PaymentWebhookPersistence
+	orders                      domaincommerce.OrderVendWorkflow
+	payments                    domaincommerce.PaymentOutboxWorkflow
+	life                        CommerceLifecycleStore
+	webhook                     PaymentWebhookPersistence
+	saleLines                   SaleLineResolver
+	workflow                    workfloworch.Boundary
+	scheduleVendFailureFollowUp bool
 }
 
 // NewService returns a commerce orchestrator. OrderVend workflow is required.
@@ -28,11 +35,21 @@ func NewService(d Deps) *Service {
 	if d.OrderVend == nil {
 		panic("commerce.NewService: nil OrderVendWorkflow")
 	}
+	if d.SaleLines == nil {
+		panic("commerce.NewService: nil SaleLineResolver")
+	}
+	wf := d.WorkflowOrchestration
+	if wf == nil {
+		wf = workfloworch.NewDisabled()
+	}
 	return &Service{
-		orders:   d.OrderVend,
-		payments: d.PaymentOutbox,
-		life:     d.Lifecycle,
-		webhook:  d.WebhookPersist,
+		orders:                      d.OrderVend,
+		payments:                    d.PaymentOutbox,
+		life:                        d.Lifecycle,
+		webhook:                     d.WebhookPersist,
+		saleLines:                   d.SaleLines,
+		workflow:                    wf,
+		scheduleVendFailureFollowUp: d.ScheduleVendFailureFollowUp,
 	}
 }
 
@@ -56,19 +73,58 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (CreateO
 	if err := validateCreateOrder(in); err != nil {
 		return CreateOrderResult{}, err
 	}
-	return s.orders.CreateOrderWithVendSession(ctx, domaincommerce.CreateOrderVendInput{
+	if replay, ok, err := s.orders.TryReplayCreateOrderWithVend(ctx, in.OrganizationID, strings.TrimSpace(in.IdempotencyKey)); err != nil {
+		return CreateOrderResult{}, err
+	} else if ok {
+		line := saleLineFromReplay(replay)
+		if disp, derr := s.saleLines.LookupSlotDisplay(ctx, in.OrganizationID, replay.Order.MachineID, replay.Vend.ProductID, replay.Vend.SlotIndex); derr == nil {
+			line = disp
+		}
+		return CreateOrderResult{CreateOrderVendResult: replay, SaleLine: line}, nil
+	}
+
+	line, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
 		OrganizationID: in.OrganizationID,
 		MachineID:      in.MachineID,
 		ProductID:      in.ProductID,
+		SlotID:         in.SlotID,
+		CabinetCode:    in.CabinetCode,
+		SlotCode:       in.SlotCode,
 		SlotIndex:      in.SlotIndex,
+	})
+	if err != nil {
+		return CreateOrderResult{}, err
+	}
+	base, err := s.orders.CreateOrderWithVendSession(ctx, domaincommerce.CreateOrderVendInput{
+		OrganizationID: in.OrganizationID,
+		MachineID:      in.MachineID,
+		ProductID:      in.ProductID,
+		SlotIndex:      line.SlotIndex,
 		Currency:       strings.ToUpper(strings.TrimSpace(in.Currency)),
-		SubtotalMinor:  in.SubtotalMinor,
-		TaxMinor:       in.TaxMinor,
-		TotalMinor:     in.TotalMinor,
+		SubtotalMinor:  line.SubtotalMinor,
+		TaxMinor:       line.TaxMinor,
+		TotalMinor:     line.TotalMinor,
 		IdempotencyKey: strings.TrimSpace(in.IdempotencyKey),
 		OrderStatus:    "created",
 		VendState:      "pending",
 	})
+	if err != nil {
+		return CreateOrderResult{}, err
+	}
+	return CreateOrderResult{CreateOrderVendResult: base, SaleLine: line}, nil
+}
+
+func saleLineFromReplay(replay domaincommerce.CreateOrderVendResult) ResolvedSaleLine {
+	o := replay.Order
+	v := replay.Vend
+	price := o.SubtotalMinor
+	return ResolvedSaleLine{
+		SlotIndex:     v.SlotIndex,
+		PriceMinor:    price,
+		SubtotalMinor: o.SubtotalMinor,
+		TaxMinor:      o.TaxMinor,
+		TotalMinor:    o.TotalMinor,
+	}
 }
 
 // StartPaymentWithOutbox records a payment and optional outbox event; provider and outbox fields are caller-supplied.
@@ -256,7 +312,32 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 	if err != nil {
 		return FinalizeOutcome{}, err
 	}
+	if pErr == nil && pay.State == "captured" && s.scheduleVendFailureFollowUp && s.workflow != nil && s.workflow.Enabled() {
+		if err := s.workflow.Start(ctx, workfloworch.StartVendFailureAfterPaymentSuccess(workfloworch.VendFailureAfterPaymentSuccessInput{
+			OrganizationID: in.OrganizationID,
+			OrderID:        in.OrderID,
+			PaymentID:      pay.ID,
+			VendID:         vendUpdated.ID,
+			SlotIndex:      in.SlotIndex,
+			FailureReason:  strings.TrimSpace(derefString(in.FailureReason)),
+			ObservedAt:     time.Now().UTC(),
+		})); err != nil {
+			observability.LoggerFromContext(ctx, zap.NewNop()).Warn("vend failure workflow enqueue failed",
+				zap.Error(err),
+				zap.String("order_id", in.OrderID.String()),
+				zap.String("payment_id", pay.ID.String()),
+				zap.String("vend_id", vendUpdated.ID.String()),
+			)
+		}
+	}
 	return FinalizeOutcome{Order: orderUpdated, Vend: vendUpdated}, nil
+}
+
+func derefString(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
 }
 
 // EvaluateRefundEligibility returns an advisory outcome from persisted payment and vend state (no provider calls).
@@ -413,14 +494,18 @@ func validateCreateOrder(in CreateOrderInput) error {
 	if len(cur) != 3 || !isAllAlpha(cur) {
 		return errors.Join(ErrInvalidArgument, errors.New("currency must be a 3-letter ISO code"))
 	}
-	if in.SubtotalMinor < 0 || in.TaxMinor < 0 || in.TotalMinor < 0 {
-		return errors.Join(ErrInvalidArgument, errors.New("amounts must be non-negative"))
+	if in.SubtotalMinor != 0 || in.TaxMinor != 0 || in.TotalMinor != 0 {
+		return errors.Join(ErrInvalidArgument, errors.New("subtotal_minor, tax_minor, and total_minor must be omitted or zero; totals are resolved from the published assortment"))
 	}
-	if in.SubtotalMinor+in.TaxMinor != in.TotalMinor {
-		return errors.Join(ErrInvalidArgument, errors.New("subtotal_minor plus tax_minor must equal total_minor"))
-	}
-	if in.SlotIndex < 0 {
-		return errors.Join(ErrInvalidArgument, errors.New("slot_index must be non-negative"))
+	hasSlotID := in.SlotID != nil && *in.SlotID != uuid.Nil
+	hasCodes := strings.TrimSpace(in.CabinetCode) != "" && strings.TrimSpace(in.SlotCode) != ""
+	hasSlotIdx := in.SlotIndex != nil && *in.SlotIndex >= 0
+	switch {
+	case hasSlotID:
+	case hasCodes:
+	case hasSlotIdx:
+	default:
+		return errors.Join(ErrInvalidArgument, errors.New("set slot_id, or cabinet_code with slot_code, or slot_index (deprecated)"))
 	}
 	return nil
 }

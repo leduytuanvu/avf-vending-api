@@ -37,13 +37,30 @@ Every increment should ship with:
 - a **data safety story** (what happens if both systems write),
 - and **operational visibility** (dashboards/alerts proving the slice is healthy).
 
+## Current production deployment posture
+
+For this repository snapshot, the primary production deployment path is the split `2-VPS` layout under `deployments/prod/`:
+
+- `app-node/` for stateless application runtime concerns
+- `data-node/` for optional self-hosted broker/data-plane services that still remain in the interim topology
+- `shared/` for shared edge config and release helpers
+
+Managed dependency posture for that production path:
+
+- PostgreSQL is expected to be managed and reached through `DATABASE_URL`
+- Redis is expected to be managed when enabled and reached through env
+- object storage is expected to be managed S3-compatible and reached through env
+- only the broker-style fallback plane remains optionally self-hosted on `data-node/`
+
+The older single-host compose path at `deployments/prod/docker-compose.prod.yml` is retained only as a legacy rollback option. It should not be treated as the primary production topology or as the recommended enterprise target deployment.
+
 ## What is explicitly not “done” just because the repo exists
 
 - **Full product surface** for every vending scenario behind HTTP (admin and device flows grow incrementally).
-- **End-to-end PSP / refund automation** from the reconciler (reads and scheduling exist; external gateways are not wired in `cmd/reconciler` today).
-- **ClickHouse analytics** as a live path (`internal/platform/clickhouse` is a **future** sink: noop when disabled, **fail-fast error** from `Open` when enabled—no driver, no writes).
-- **Temporal-driven business workflows** in process startup (SDK wrapper exists; no workflow registration in `cmd/*` yet).
-- **Domain gRPC** beyond **grpc.health.v1** on the optional internal listener.
+- **End-to-end PSP / refund automation** from the reconciler as a default-on flow (reads/logging ship by default; probe/refund adapters are only active when `RECONCILER_ACTIONS_ENABLED=true`).
+- **ClickHouse analytics** as a general live telemetry path (the current implementation is limited to the optional worker outbox mirror path).
+- **Broad Temporal-driven business workflows** beyond the currently registered compensation/review set in `cmd/temporal-worker`.
+- **Broad internal gRPC coverage** beyond the current query/read surface on the optional internal listener.
 - **Multi-region / active-active** topology, global routing, or cross-region replication—**out of scope** for what this repo implements; any future runbook language is operational aspiration, not an implied feature here.
 
 ## Current Go repository snapshot (hard reference)
@@ -52,19 +69,19 @@ The following is **descriptive of the codebase**, not a promise that every optio
 
 | Area | Status |
 | ---- | ------ |
-| **Processes** | `cmd/api` (HTTP + optional gRPC health-only listener), `cmd/worker` (reliability + optional NATS outbox publish), `cmd/reconciler` (commerce reconciliation **reads**), `cmd/mqtt-ingest` (MQTT → Postgres), `cmd/cli` (config / version). |
+| **Processes** | `cmd/api` (HTTP + optional internal gRPC query listener), `cmd/worker` (reliability + optional NATS outbox publish + telemetry consumers), `cmd/reconciler` (commerce reconciliation with optional actions mode), `cmd/mqtt-ingest` (MQTT → NATS/Postgres ingest), `cmd/temporal-worker` (Temporal compensation/review worker), `cmd/cli` (config / version). |
 | **Postgres** | goose migrations under `migrations/`; sqlc under `db/schema/`, `db/queries/`, generated `internal/gen/db/`. |
 | **Postgres OLTP patterns** | `internal/modules/postgres` implements durable **database** patterns (order + vend, payment + outbox, command + shadow ± outbox, receipts, MQTT ingest persistence) with idempotency aligned to schema — **not** Temporal workflow orchestration. |
 | **Application layer** | `internal/app/*` owns commerce, device, fleet, reliability, and HTTP app composition; handlers in `internal/httpserver` stay thin. |
 | **HTTP API** | `/health/*`, optional `/metrics`, JWT **`/v1`** admin lists, org-scoped lists, machine shadow access—see `internal/httpserver` and `internal/app/api`. |
-| **NATS** | JetStream client, streams, outbox **publisher** in `internal/platform/nats`; **worker** enables it when `NATS_URL` is set. Consumer helpers exist; **no** `cmd/*` JetStream subscriber in this repo yet. |
+| **NATS** | JetStream client, streams, outbox **publisher** in `internal/platform/nats`; **worker** enables it when `NATS_URL` is set. `cmd/worker` also runs telemetry JetStream consumers. There is still **no** in-repo consumer for worker outbox subjects. |
 | **MQTT** | Subscriber/router in `internal/platform/mqtt`; **mqtt-ingest** publishes classified envelopes to **NATS JetStream** when `NATS_URL` is set (`telemetryapp` bridge), else legacy direct `postgres.Store`. **Worker** consumes telemetry streams and writes rollups/snapshots/incidents. See `ops/TELEMETRY_PIPELINE.md`. |
-| **Object storage** | S3-compatible **library** in `internal/platform/objectstore`—implemented but **not referenced** from `internal/app` or `cmd/*` yet. |
-| **Temporal** | **SDK wrapper only** in `internal/platform/temporal`; **no** workflow worker or client dial from `cmd/*`. |
-| **ClickHouse** | **Future path**; `internal/platform/clickhouse` is noop DI when disabled, **error if enabled** (no half-connected client). Not imported from `cmd/*` or bootstrap. |
-| **gRPC** | `internal/grpcserver`: **grpc.health.v1 only** by default; `bootstrap.RunAPI` passes no `ServiceRegistrar`. `proto/avf/v1/skeleton.proto` is buf/codegen smoke only — **not** mounted as a service. |
+| **Object storage** | S3-compatible storage is **implemented for API artifacts** when `API_ARTIFACTS_ENABLED=true`; broader OTA/diagnostic usage is still follow-on work. |
+| **Temporal** | `internal/platform/temporal` now backs a real `cmd/temporal-worker`; `cmd/api`, `cmd/worker`, and `cmd/reconciler` can schedule selected workflow follow-up behind `TEMPORAL_SCHEDULE_*` flags. |
+| **ClickHouse** | Optional **worker** path for mirroring published outbox events when analytics flags are enabled; **not** yet the general telemetry analytics plane. |
+| **gRPC** | `internal/grpcserver`: `grpc.health.v1` plus internal machine/telemetry/commerce query services when `GRPC_ENABLED=true`; auth uses Bearer JWT validation on gRPC metadata. `proto/avf/v1/internal_queries.proto` is the in-repo contract source. |
 | **Tests** | Unit/config tests always-on; Postgres **integration** tests under `internal/modules/postgres` require `TEST_DATABASE_URL` and migrations (see root `README.md`). |
 
-When cutting over traffic from another system, update this snapshot and add links to runbooks, dashboards, and the exact routing flip checklist.
+For the concise current-state freeze, see [`current-architecture.md`](current-architecture.md). When cutting over traffic from another system, update both documents and add links to runbooks, dashboards, and the exact routing flip checklist.
 
 **Live ops notes** for this codebase: [`ops/RUNBOOK.md`](../../ops/RUNBOOK.md) (incidents, log queries, SQL) and [`ops/METRICS.md`](../../ops/METRICS.md).

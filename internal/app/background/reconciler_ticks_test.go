@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/google/uuid"
 )
@@ -342,5 +343,55 @@ func TestRefundReviewDecisionTick_actionsEnabledMissingSinkErrors(t *testing.T) 
 	}
 	if err := RefundReviewDecisionTick(ctx, deps); err == nil {
 		t.Fatal("expected error when actions enabled but refund sink nil")
+	}
+}
+
+func TestRefundReviewDecisionTick_schedulesWorkflowWhenEnabled(t *testing.T) {
+	t.Parallel()
+	pid := uuid.MustParse("91919191-9191-9191-9191-919191919191")
+	oid := uuid.MustParse("92929292-9292-9292-9292-929292929292")
+	org := uuid.MustParse("93939393-9393-9393-9393-939393939393")
+	reader := &stubReconReader{
+		refundReview: []domaincommerce.Payment{{ID: pid, OrderID: oid, State: "captured"}},
+	}
+	wf := &stubWorkflowBoundary{}
+	err := RefundReviewDecisionTick(context.Background(), ReconcilerDeps{
+		Reader:                      reader,
+		OrderRead:                   stubOrderReader{org: org},
+		WorkflowOrchestration:       wf,
+		ScheduleRefundOrchestration: true,
+		StableAge:                   time.Minute,
+		Limits:                      10,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wf.starts) != 1 || wf.starts[0].Kind != workfloworch.KindRefundOrchestration {
+		t.Fatalf("starts=%+v", wf.starts)
+	}
+}
+
+func TestDuplicatePaymentRecoveryTick_schedulesWorkflowWhenEnabled(t *testing.T) {
+	t.Parallel()
+	pid := uuid.MustParse("94949494-9494-9494-9494-949494949494")
+	oid := uuid.MustParse("95959595-9595-9595-9595-959595959595")
+	org := uuid.MustParse("96969696-9696-9696-9696-969696969696")
+	reader := &stubReconReader{
+		duplicates: []domaincommerce.Payment{{ID: pid, OrderID: oid, State: "captured"}},
+	}
+	wf := &stubWorkflowBoundary{}
+	err := DuplicatePaymentRecoveryTick(context.Background(), ReconcilerDeps{
+		Reader:                         reader,
+		OrderRead:                      stubOrderReader{org: org},
+		WorkflowOrchestration:          wf,
+		ScheduleManualReviewEscalation: true,
+		StableAge:                      time.Minute,
+		Limits:                         10,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wf.starts) != 1 || wf.starts[0].Kind != workfloworch.KindManualReviewEscalation {
+		t.Fatalf("starts=%+v", wf.starts)
 	}
 }

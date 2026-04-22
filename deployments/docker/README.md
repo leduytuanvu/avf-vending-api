@@ -13,9 +13,9 @@ Optional **profiles** (combine as needed):
 | *(default, none)* | `postgres`, `redis`, `nats` | Minimal backend for API + worker + reconciler on the host |
 | `broker` | `emqx`, `minio` | `cmd/mqtt-ingest` against EMQX; MinIO for S3-style artifacts when `API_ARTIFACTS_ENABLED=true` |
 | `observability` | `prometheus`, `loki`, `grafana`, `otel-collector` | Dashboards and sample scrapes (see `ops/prometheus/prometheus.yml`, `ops/grafana/provisioning/`) |
-| `experimental` | `clickhouse`, `temporal`, `temporal-ui` | ClickHouse: optional analytics mirror in `cmd/worker` when `ANALYTICS_*` is set (see [ops/ANALYTICS_CLICKHOUSE.md](../../ops/ANALYTICS_CLICKHOUSE.md)). Temporal: optional service only; no worker in this repo yet. |
+| `experimental` | `clickhouse`, `temporal`, `temporal-ui` | ClickHouse: optional analytics mirror in `cmd/worker` when `ANALYTICS_*` is set (see [ops/ANALYTICS_CLICKHOUSE.md](../../ops/ANALYTICS_CLICKHOUSE.md)). Temporal: optional local server for the in-repo scheduler paths and `cmd/temporal-worker`. |
 
-**Important:** Neither ClickHouse nor Temporal is required for core OLTP. ClickHouse stays off by default; Temporal has no client in `cmd/*` unless you add one.
+**Important:** Neither ClickHouse nor Temporal is required for core OLTP. ClickHouse stays off by default; Temporal is optional and only used when `TEMPORAL_ENABLED=true` plus the relevant `TEMPORAL_SCHEDULE_*` flags are set for schedulers or when you run `cmd/temporal-worker`.
 
 ## Usage
 

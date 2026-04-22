@@ -12,12 +12,14 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/config"
 	appmw "github.com/avf/avf-vending-api/internal/middleware"
+	"github.com/avf/avf-vending-api/internal/observability"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 // HTTPServer hosts the public HTTP API (health, optional metrics, /v1 routes — see mountV1).
@@ -25,6 +27,7 @@ type HTTPServer struct {
 	cfg *config.Config
 	log *zap.Logger
 	srv *http.Server
+	ops *http.Server
 }
 
 // NewHTTPServer constructs an HTTP server with standard middleware and routing.
@@ -58,6 +61,9 @@ func NewHTTPServer(cfg *config.Config, log *zap.Logger, probe ReadinessProbe, ht
 	r.Use(chimw.RealIP)
 	r.Use(chimw.Recoverer)
 	r.Use(appmw.RequestID)
+	r.Use(traceMiddleware())
+	r.Use(requestObservabilityMiddleware(log))
+	r.Use(requestLoggingMiddleware(log))
 	r.Use(chimw.Timeout(60 * time.Second))
 	if cfg.MetricsEnabled {
 		r.Use(requestMetricsMiddleware())
@@ -71,13 +77,19 @@ func NewHTTPServer(cfg *config.Config, log *zap.Logger, probe ReadinessProbe, ht
 
 	r.Get("/health/ready", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		if err := probe.Ready(r.Context()); err != nil {
-			log.Warn("readiness failed", zap.Error(err))
+		ctx, cancel := context.WithTimeout(r.Context(), cfg.Ops.ReadinessTimeout)
+		defer cancel()
+		if err := probe.Ready(ctx); err != nil {
+			observability.EnrichLogger(log, r.Context()).Warn("readiness failed", zap.Error(err))
 			http.Error(w, "not ready", http.StatusServiceUnavailable)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
+	})
+
+	r.Get("/version", func(w http.ResponseWriter, _ *http.Request) {
+		observability.WriteVersionJSON(w, cfg)
 	})
 
 	if cfg.MetricsEnabled {
@@ -100,23 +112,35 @@ func NewHTTPServer(cfg *config.Config, log *zap.Logger, probe ReadinessProbe, ht
 		IdleTimeout:       cfg.HTTP.IdleTimeout,
 	}
 
-	return &HTTPServer{cfg: cfg, log: log, srv: s}, nil
+	var opsServer *http.Server
+	if strings.TrimSpace(cfg.Ops.HTTPAddr) != "" {
+		opsServer = &http.Server{
+			Addr:    cfg.Ops.HTTPAddr,
+			Handler: observability.NewOperationsMux(cfg, log, cfg.MetricsEnabled, probe.Ready),
+		}
+	}
+
+	return &HTTPServer{cfg: cfg, log: log, srv: s, ops: opsServer}, nil
 }
 
 func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *config.Config, validator auth.AccessTokenValidator, writeRL func(http.Handler) http.Handler) {
 	v1Auth := auth.BearerAccessTokenMiddlewareWithValidator(validator, log)
 
 	r.Route("/v1", func(r chi.Router) {
+		mountCommercePublicWebhookPost(r, app, cfg)
+
 		r.Route("/auth", func(r chi.Router) {
 			mountAuthRoutes(r, app)
 			r.Group(func(r chi.Router) {
 				r.Use(v1Auth)
+				r.Use(authObservabilityMiddleware(log))
 				mountAuthBearerRoutes(r, app)
 			})
 		})
 
 		r.Group(func(r chi.Router) {
 			r.Use(v1Auth)
+			r.Use(authObservabilityMiddleware(log))
 
 			r.Route("/admin", func(r chi.Router) {
 				r.Use(auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin))
@@ -213,6 +237,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 				r.Use(writeRL)
 				mountDeviceCommandRoutes(r, app)
 				mountDeviceBridgeRoutes(r, app)
+				mountMachineRuntimeRoutes(r, app)
 				mountOperatorSessionRoutes(r, app)
 				mountCommerceRoutes(r, app, cfg)
 			})
@@ -245,36 +270,50 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 // ListenAndServe starts serving and blocks until ctx is cancelled, then shuts down gracefully.
 func (s *HTTPServer) ListenAndServe(ctx context.Context) error {
-	errCh := make(chan error, 1)
-	go func() {
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
 		s.log.Info("http listening", zap.String("addr", s.srv.Addr))
 		err := s.srv.ListenAndServe()
 		if errors.Is(err, http.ErrServerClosed) {
-			errCh <- nil
-			return
+			return nil
 		}
-		errCh <- err
-	}()
+		return err
+	})
 
-	select {
-	case <-ctx.Done():
+	if s.ops != nil {
+		g.Go(func() error {
+			s.log.Info("http ops listening", zap.String("addr", s.ops.Addr))
+			err := s.ops.ListenAndServe()
+			if errors.Is(err, http.ErrServerClosed) {
+				return nil
+			}
+			return err
+		})
+	}
+
+	g.Go(func() error {
+		<-gctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), s.cfg.HTTP.ShutdownTimeout)
 		defer cancel()
-
-		if err := s.srv.Shutdown(shutdownCtx); err != nil {
+		if err := s.srv.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			s.log.Error("http shutdown error", zap.Error(err))
 		}
-
-		err := <-errCh
-		if err != nil {
-			return err
-		}
-		if ctx.Err() != nil {
-			return ctx.Err()
+		if s.ops != nil {
+			opsCtx, opsCancel := context.WithTimeout(context.Background(), s.cfg.Ops.ShutdownTimeout)
+			defer opsCancel()
+			if err := s.ops.Shutdown(opsCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				s.log.Error("http ops shutdown error", zap.Error(err))
+			}
 		}
 		return nil
+	})
 
-	case err := <-errCh:
+	if err := g.Wait(); err != nil {
 		return err
 	}
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return nil
 }

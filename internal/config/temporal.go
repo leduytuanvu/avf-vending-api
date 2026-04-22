@@ -5,14 +5,18 @@ import (
 	"strings"
 )
 
-// TemporalConfig gates optional Temporal SDK wiring for long-running workflows
-// (reconciliation follow-up, delayed compensation, human-review escalations).
-// Disabled by default; when Enabled, HostPort and TaskQueue are required and the API dials at startup.
+// TemporalConfig gates optional Temporal SDK wiring for long-running workflows.
+// Disabled by default; when Enabled, HostPort and TaskQueue are required.
 type TemporalConfig struct {
-	Enabled   bool
-	HostPort  string
-	Namespace string
-	TaskQueue string
+	Enabled bool
+	// Schedule* flags gate which business paths enqueue Temporal workflows.
+	SchedulePaymentPendingTimeout  bool
+	ScheduleVendFailureFollowUp    bool
+	ScheduleRefundOrchestration    bool
+	ScheduleManualReviewEscalation bool
+	HostPort                       string
+	Namespace                      string
+	TaskQueue                      string
 }
 
 func loadTemporalConfig() TemporalConfig {
@@ -21,10 +25,14 @@ func loadTemporalConfig() TemporalConfig {
 		ns = "default"
 	}
 	return TemporalConfig{
-		Enabled:   getenvBool("TEMPORAL_ENABLED", false),
-		HostPort:  strings.TrimSpace(getenv("TEMPORAL_HOST_PORT", "")),
-		Namespace: ns,
-		TaskQueue: strings.TrimSpace(getenv("TEMPORAL_TASK_QUEUE", "")),
+		Enabled:                        getenvBool("TEMPORAL_ENABLED", false),
+		SchedulePaymentPendingTimeout:  getenvBool("TEMPORAL_SCHEDULE_PAYMENT_PENDING_TIMEOUT", false),
+		ScheduleVendFailureFollowUp:    getenvBool("TEMPORAL_SCHEDULE_VEND_FAILURE_FOLLOW_UP", false),
+		ScheduleRefundOrchestration:    getenvBool("TEMPORAL_SCHEDULE_REFUND_ORCHESTRATION", false),
+		ScheduleManualReviewEscalation: getenvBool("TEMPORAL_SCHEDULE_MANUAL_REVIEW_ESCALATION", false),
+		HostPort:                       strings.TrimSpace(getenv("TEMPORAL_HOST_PORT", "")),
+		Namespace:                      ns,
+		TaskQueue:                      strings.TrimSpace(getenv("TEMPORAL_TASK_QUEUE", "")),
 	}
 }
 

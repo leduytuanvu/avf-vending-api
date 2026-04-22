@@ -18,7 +18,11 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("%s %s\n", version.Name, version.Version)
+		if version.Commit != "" {
+			fmt.Printf("%s %s (%s)\n", version.Name, version.Version, version.Commit)
+		} else {
+			fmt.Printf("%s %s\n", version.Name, version.Version)
+		}
 		os.Exit(0)
 	}
 

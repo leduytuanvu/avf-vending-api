@@ -44,6 +44,7 @@ If NATS is not configured for the worker, `/health/ready` returns `200` (telemet
 
 ## Environment reference
 
-See `deployments/prod/.env.production.example` (`TELEMETRY_STREAM_*`, `TELEMETRY_CONSUMER_*`, `TELEMETRY_PROJECTION_*`, `TELEMETRY_READINESS_*`, `TELEMETRY_CONSUMER_LAG_POLL_INTERVAL`).
+See `deployments/prod/app-node/.env.app-node.example` for the active split-topology env contract (`TELEMETRY_STREAM_*`, `TELEMETRY_CONSUMER_*`, `TELEMETRY_PROJECTION_*`, `TELEMETRY_READINESS_*`, `TELEMETRY_CONSUMER_LAG_POLL_INTERVAL`).
+Use `deployments/prod/.env.production.example` only if you are intentionally reviewing the rollback-only legacy single-host path.
 
 Stream max ages scale from `TELEMETRY_STREAM_MAX_AGE` (baseline = longest stream) using fixed ratios (heartbeat shortest, diagnostic longest).

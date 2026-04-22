@@ -34,6 +34,7 @@ type Querier interface {
 	CommerceAdminCountPayments(ctx context.Context, arg CommerceAdminCountPaymentsParams) (int64, error)
 	CommerceAdminListOrders(ctx context.Context, arg CommerceAdminListOrdersParams) ([]Order, error)
 	CommerceAdminListPayments(ctx context.Context, arg CommerceAdminListPaymentsParams) ([]CommerceAdminListPaymentsRow, error)
+	CommerceIsProductInMachinePublishedAssortment(ctx context.Context, arg CommerceIsProductInMachinePublishedAssortmentParams) (bool, error)
 	EndMachineOperatorSession(ctx context.Context, arg EndMachineOperatorSessionParams) (MachineOperatorSession, error)
 	FleetAdminApplyMachineSlotConfigCurrent(ctx context.Context, arg FleetAdminApplyMachineSlotConfigCurrentParams) (MachineSlotConfig, error)
 	FleetAdminBindMachinePrimaryAssortment(ctx context.Context, arg FleetAdminBindMachinePrimaryAssortmentParams) (int64, error)
@@ -65,11 +66,13 @@ type Querier interface {
 	GetActiveOperatorSessionByMachineIDForUpdate(ctx context.Context, machineID uuid.UUID) (MachineOperatorSession, error)
 	GetCommandLedgerByMachineIdempotency(ctx context.Context, arg GetCommandLedgerByMachineIdempotencyParams) (CommandLedger, error)
 	GetCommandLedgerByMachineSequence(ctx context.Context, arg GetCommandLedgerByMachineSequenceParams) (CommandLedger, error)
+	GetFirstVendSessionByOrder(ctx context.Context, orderID uuid.UUID) (VendSession, error)
 	GetLatestMachineCommandAttemptByCommandID(ctx context.Context, commandID uuid.UUID) (MachineCommandAttempt, error)
 	GetLatestOpenMachineCommandAttemptForCommand(ctx context.Context, commandID uuid.UUID) (MachineCommandAttempt, error)
 	GetLatestPaymentForOrder(ctx context.Context, orderID uuid.UUID) (Payment, error)
 	GetMachineByID(ctx context.Context, id uuid.UUID) (Machine, error)
 	GetMachineByIDForUpdate(ctx context.Context, id uuid.UUID) (Machine, error)
+	GetMachineOrganizationID(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	GetMachineShadowByMachineID(ctx context.Context, machineID uuid.UUID) (MachineShadow, error)
 	GetOperatorSessionByID(ctx context.Context, id uuid.UUID) (MachineOperatorSession, error)
 	GetOperatorSessionByIDForUpdate(ctx context.Context, id uuid.UUID) (MachineOperatorSession, error)
@@ -94,6 +97,7 @@ type Querier interface {
 	InsertInventoryCountSession(ctx context.Context, arg InsertInventoryCountSessionParams) (InventoryCountSession, error)
 	InsertMachine(ctx context.Context, arg InsertMachineParams) (Machine, error)
 	InsertMachineActionAttribution(ctx context.Context, arg InsertMachineActionAttributionParams) (MachineActionAttribution, error)
+	InsertMachineCheckIn(ctx context.Context, arg InsertMachineCheckInParams) (MachineCheckIn, error)
 	InsertMachineCommandAttempt(ctx context.Context, arg InsertMachineCommandAttemptParams) (MachineCommandAttempt, error)
 	InsertMachineConfigApplication(ctx context.Context, arg InsertMachineConfigApplicationParams) (MachineConfig, error)
 	InsertMachineOperatorAuthEvent(ctx context.Context, arg InsertMachineOperatorAuthEventParams) (MachineOperatorAuthEvent, error)
@@ -167,6 +171,7 @@ type Querier interface {
 	UpdateMachineCommandAttemptAfterDeviceReceipt(ctx context.Context, arg UpdateMachineCommandAttemptAfterDeviceReceiptParams) error
 	UpdateMachineCommandAttemptPublishFailed(ctx context.Context, arg UpdateMachineCommandAttemptPublishFailedParams) error
 	UpdateMachineCommandAttemptSent(ctx context.Context, arg UpdateMachineCommandAttemptSentParams) error
+	UpdateMachineCurrentSnapshotLastCheckIn(ctx context.Context, arg UpdateMachineCurrentSnapshotLastCheckInParams) error
 	UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachineMetadataRowParams) (Machine, error)
 	UpdateOrderStatusByOrg(ctx context.Context, arg UpdateOrderStatusByOrgParams) (Order, error)
 	UpdatePaymentState(ctx context.Context, arg UpdatePaymentStateParams) (Payment, error)
