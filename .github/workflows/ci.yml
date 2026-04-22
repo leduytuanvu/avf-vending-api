@@ -62,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          shellcheck -x -e SC2016,SC2029,SC2155 \
+          shellcheck -x -P SCRIPTDIR -e SC2016,SC2029,SC2155 \
             deployments/prod/shared/scripts/*.sh
 
       - name: Enforce shfmt on shared production Bash scripts

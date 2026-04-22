@@ -30,6 +30,7 @@ data-node)
 	;;
 esac
 
+# shellcheck disable=SC2034 # Used by compose_config_or_fail() from sourced lib_release.sh.
 COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
 init_state_dir
 
