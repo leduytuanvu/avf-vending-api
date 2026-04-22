@@ -53,7 +53,7 @@ func migrateUp(t *testing.T, dsn string) {
 	if goBin == "" {
 		goBin = "go"
 	}
-	cmd := exec.CommandContext(ctx, goBin, "run", "github.com/pressly/goose/v3/cmd/goose@v3.24.1",
+	cmd := exec.CommandContext(ctx, goBin, "run", "github.com/pressly/goose/v3/cmd/goose@v3.27.0",
 		"-dir", migrationsDir(t),
 		"postgres", dsn, "up",
 	)
