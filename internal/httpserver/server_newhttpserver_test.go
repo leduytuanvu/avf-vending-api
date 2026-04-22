@@ -22,10 +22,19 @@ func testHTTPServerConfig(t *testing.T) *config.Config {
 	t.Helper()
 	return &config.Config{
 		AppEnv:           config.AppEnvDevelopment,
+		ProcessName:      "api",
 		LogLevel:         "info",
 		LogFormat:        "json",
 		SwaggerUIEnabled: true,
 		MetricsEnabled:   false,
+		Runtime: config.RuntimeConfig{
+			NodeName:    "node-a",
+			InstanceID:  "node-a-api-1",
+			RuntimeRole: "api",
+		},
+		Build: config.BuildConfig{
+			Version: "dev",
+		},
 		HTTPAuth: config.HTTPAuthConfig{
 			Mode:            "hs256",
 			JWTSecret:       []byte("test-secret-at-least-32-bytes-long-for-jwt!!"),
@@ -40,6 +49,11 @@ func testHTTPServerConfig(t *testing.T) *config.Config {
 			ReadTimeout:       30 * time.Second,
 			WriteTimeout:      30 * time.Second,
 			IdleTimeout:       60 * time.Second,
+		},
+		Ops: config.OperationsConfig{
+			ReadinessTimeout:      2 * time.Second,
+			ShutdownTimeout:       5 * time.Second,
+			TracerShutdownTimeout: 10 * time.Second,
 		},
 	}
 }
@@ -65,6 +79,13 @@ func TestNewHTTPServer_noPanic_healthAndSwagger(t *testing.T) {
 	h.ServeHTTP(rec2, req2)
 	if rec2.Code != http.StatusOK {
 		t.Fatalf("GET /swagger/index.html: status=%d", rec2.Code)
+	}
+
+	req3 := httptest.NewRequest(http.MethodGet, "/version", nil)
+	rec3 := httptest.NewRecorder()
+	h.ServeHTTP(rec3, req3)
+	if rec3.Code != http.StatusOK || !strings.Contains(rec3.Body.String(), `"version":"dev"`) {
+		t.Fatalf("GET /version: status=%d body=%q", rec3.Code, rec3.Body.String())
 	}
 }
 

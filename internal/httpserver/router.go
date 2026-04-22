@@ -19,7 +19,8 @@ package httpserver
 // Backend artifacts (Bearer JWT + org_admin or platform_admin; S3 when API_ARTIFACTS_ENABLED=true):
 // POST/GET/PUT/DELETE under /v1/admin/organizations/{orgId}/artifacts — see artifacts_http.go.
 //
-// Commerce endpoints (Bearer JWT + RequireOrganizationScope) are mounted under:
+// Commerce: provider webhooks are mounted without Bearer JWT (HMAC-only); other commerce routes use
+// Bearer JWT + RequireOrganizationScope. Paths:
 //
 //	/v1/commerce/cash-checkout
 //	/v1/commerce/orders
@@ -34,6 +35,11 @@ package httpserver
 // Machine setup bootstrap (Bearer JWT + RequireMachineURLAccess("machineId")):
 //
 //	GET /v1/setup/machines/{machineId}/bootstrap
+//
+// Machine runtime writes (Bearer JWT + RequireMachineURLAccess("machineId") + sensitive-write rate limit when enabled):
+//
+//	POST /v1/machines/{machineId}/check-ins
+//	POST /v1/machines/{machineId}/config-applies
 //
 // Admin machine setup writes (Bearer JWT + platform_admin or org_admin + sensitive-write rate limit when enabled):
 //

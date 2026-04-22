@@ -1,10 +1,9 @@
 // Package grpcserver hosts the optional internal gRPC listener.
 //
-// Production posture: HTTP remains the primary public API. gRPC is an infrastructure hook for
-// future in-cluster contracts. Today, NewServer always registers grpc.health.v1 only;
-// bootstrap.RunAPI passes no ServiceRegistrar arguments, so no application services are mounted.
-// The sample proto under proto/ is for buf/sqlc smoke checks only; nothing registers those RPCs
-// here until you pass non-nil ServiceRegistrar callbacks to NewServer.
+// Production posture: HTTP remains the primary public API. gRPC is internal-only and intended for
+// service-to-service query contracts where protobuf adds value. The listener always registers
+// grpc.health.v1 and may additionally mount business services via ServiceRegistrar callbacks.
+// Device/runtime traffic remains on HTTP + MQTT; this package is not a device transport surface.
 //
 // When GRPC.Enabled is true, operators and mesh probes can validate the listener on cfg.GRPC.Addr.
 // Additional services register only via non-nil [ServiceRegistrar] callbacks passed to [NewServer].
@@ -64,9 +63,16 @@ func NewServer(cfg *config.Config, log *zap.Logger, register ...ServiceRegistrar
 		PermitWithoutStream: true,
 	}
 
+	validator, err := newAccessTokenValidator(cfg)
+	if err != nil {
+		_ = ln.Close()
+		return nil, fmt.Errorf("grpcserver: access token validator: %w", err)
+	}
+
 	s := grpc.NewServer(
 		grpc.KeepaliveParams(kaParams),
 		grpc.KeepaliveEnforcementPolicy(kaPolicy),
+		grpc.ChainUnaryInterceptor(unaryAuthInterceptor(log, validator)),
 	)
 
 	if err := registerHealthService(s); err != nil {
@@ -100,8 +106,9 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 		return nil
 	}
 
-	s.log.Info("grpc listening (grpc.health.v1 only; no application RPC services registered)",
-		zap.String("addr", s.ln.Addr().String()))
+	s.log.Info("grpc listening",
+		zap.String("addr", s.ln.Addr().String()),
+		zap.Int("registered_services", len(s.srv.GetServiceInfo())))
 
 	errCh := make(chan error, 1)
 	go func() {

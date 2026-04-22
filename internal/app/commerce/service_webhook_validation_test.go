@@ -15,6 +15,10 @@ func (stubOrderVend) CreateOrderWithVendSession(ctx context.Context, in domainco
 	return domaincommerce.CreateOrderVendResult{}, errors.New("not implemented")
 }
 
+func (stubOrderVend) TryReplayCreateOrderWithVend(ctx context.Context, organizationID uuid.UUID, idempotencyKey string) (domaincommerce.CreateOrderVendResult, bool, error) {
+	return domaincommerce.CreateOrderVendResult{}, false, nil
+}
+
 type stubPaymentOutbox struct{}
 
 func (stubPaymentOutbox) CreatePaymentWithOutbox(ctx context.Context, in domaincommerce.PaymentOutboxInput) (domaincommerce.PaymentOutboxResult, error) {
@@ -45,12 +49,22 @@ func (stubLifecycle) InsertPaymentAttempt(ctx context.Context, in InsertPaymentA
 	return PaymentAttemptView{}, errors.New("not implemented")
 }
 
+type stubSaleLines struct{}
+
+func (stubSaleLines) ResolveSaleLine(ctx context.Context, in ResolveSaleLineInput) (ResolvedSaleLine, error) {
+	return ResolvedSaleLine{}, errors.New("not implemented")
+}
+func (stubSaleLines) LookupSlotDisplay(ctx context.Context, organizationID, machineID, productID uuid.UUID, slotIndex int32) (ResolvedSaleLine, error) {
+	return ResolvedSaleLine{}, errors.New("not implemented")
+}
+
 func TestApplyPaymentProviderWebhook_requiresWebhookPersistence(t *testing.T) {
 	s := &Service{
-		orders:   stubOrderVend{},
-		payments: stubPaymentOutbox{},
-		life:     stubLifecycle{},
-		webhook:  nil,
+		orders:    stubOrderVend{},
+		payments:  stubPaymentOutbox{},
+		life:      stubLifecycle{},
+		webhook:   nil,
+		saleLines: stubSaleLines{},
 	}
 	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
 		OrganizationID:         uuid.New(),

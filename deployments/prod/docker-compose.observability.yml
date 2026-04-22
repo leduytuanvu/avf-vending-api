@@ -1,22 +1,38 @@
+# Layer this file with `deployments/prod/app-node/docker-compose.app-node.yml` on app nodes.
+# It is an observability overlay plus shared monitoring services, not a standalone full app/data-node stack.
+# Data-node service visibility comes from Prometheus probes in `deployments/prod/observability/prometheus/prometheus.yml`.
 services:
   api:
+    image: ${APP_IMAGE_REF:-ghcr.io/example/avf-vending-api:observability-placeholder}
     environment:
       METRICS_ENABLED: "true"
+      HTTP_OPS_ADDR: 0.0.0.0:8081
+    ports:
+      - "${OBSERVABILITY_BIND_IP:-127.0.0.1}:8081:8081"
 
   worker:
+    image: ${APP_IMAGE_REF:-ghcr.io/example/avf-vending-api:observability-placeholder}
     environment:
       METRICS_ENABLED: "true"
       WORKER_METRICS_LISTEN: 0.0.0.0:9091
+    ports:
+      - "${OBSERVABILITY_BIND_IP:-127.0.0.1}:9091:9091"
 
   reconciler:
+    image: ${APP_IMAGE_REF:-ghcr.io/example/avf-vending-api:observability-placeholder}
     environment:
       METRICS_ENABLED: "true"
       RECONCILER_METRICS_LISTEN: 0.0.0.0:9092
+    ports:
+      - "${OBSERVABILITY_BIND_IP:-127.0.0.1}:9092:9092"
 
   mqtt-ingest:
+    image: ${APP_IMAGE_REF:-ghcr.io/example/avf-vending-api:observability-placeholder}
     environment:
       METRICS_ENABLED: "true"
       MQTT_INGEST_METRICS_LISTEN: 0.0.0.0:9093
+    ports:
+      - "${OBSERVABILITY_BIND_IP:-127.0.0.1}:9093:9093"
 
   prometheus:
     image: prom/prometheus:v3.0.1
@@ -26,22 +42,15 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
-      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     networks:
-      - internal
-    depends_on:
-      api:
-        condition: service_started
-      worker:
-        condition: service_started
-      reconciler:
-        condition: service_started
-      mqtt-ingest:
-        condition: service_started
+      - observability
     deploy:
       resources:
         limits:
@@ -61,10 +70,10 @@ services:
     ports:
       - "127.0.0.1:3100:3100"
     volumes:
-      - ./observability/loki/config.yml:/etc/loki/config.yml:ro
+      - ../observability/loki/config.yml:/etc/loki/config.yml:ro
       - loki_data:/loki
     networks:
-      - internal
+      - observability
     deploy:
       resources:
         limits:
@@ -80,14 +89,14 @@ services:
     image: grafana/promtail:3.0.1
     container_name: avf-prod-promtail
     restart: unless-stopped
-    command: ["-config.file=/etc/promtail/config.yml"]
+    command: ["-config.file=/etc/promtail/config.yml", "-config.expand-env=true"]
     volumes:
-      - ./observability/promtail/config.yml:/etc/promtail/config.yml:ro
+      - ../observability/promtail/config.yml:/etc/promtail/config.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - promtail_positions:/var/lib/promtail
     networks:
-      - internal
+      - observability
     depends_on:
       loki:
         condition: service_started
@@ -110,13 +119,15 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-CHANGE_ME_GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-CHANGE_ME_GRAFANA_ADMIN_PASSWORD}
       GF_USERS_DEFAULT_THEME: dark
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
-      - internal
+      - observability
     depends_on:
       prometheus:
         condition: service_started
@@ -133,8 +144,63 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: avf-prod-blackbox
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/blackbox_exporter/config.yml"
+    ports:
+      - "127.0.0.1:9115:9115"
+    volumes:
+      - ../observability/blackbox/config.yml:/etc/blackbox_exporter/config.yml:ro
+    networks:
+      - observability
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: avf-prod-node-exporter
+    restart: unless-stopped
+    command:
+      - "--path.rootfs=/host"
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+)($|/)"
+    ports:
+      - "${NODE_EXPORTER_BIND_IP:-127.0.0.1}:9100:9100"
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    networks:
+      - observability
+    deploy:
+      resources:
+        limits:
+          cpus: "0.10"
+          memory: 96M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
 volumes:
   prometheus_data:
   loki_data:
   grafana_data:
   promtail_positions:
+
+networks:
+  observability:

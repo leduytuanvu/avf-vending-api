@@ -32,6 +32,8 @@ type CreateOrderVendResult struct {
 // OrderVendWorkflow coordinates order + vend_session persistence in a single database transaction.
 type OrderVendWorkflow interface {
 	CreateOrderWithVendSession(ctx context.Context, in CreateOrderVendInput) (CreateOrderVendResult, error)
+	// TryReplayCreateOrderWithVend returns the existing order and its first vend session when the idempotency key was already used.
+	TryReplayCreateOrderWithVend(ctx context.Context, organizationID uuid.UUID, idempotencyKey string) (CreateOrderVendResult, bool, error)
 }
 
 // PaymentOutboxInput captures payment + outbox emission atomically.

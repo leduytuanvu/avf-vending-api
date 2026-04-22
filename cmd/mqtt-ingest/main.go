@@ -19,7 +19,6 @@ import (
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
 	"github.com/joho/godotenv"
 	natssrv "github.com/nats-io/nats.go"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
@@ -30,15 +29,31 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	cfg.ProcessName = "mqtt-ingest"
 
 	log, err := observability.NewLogger(cfg)
 	if err != nil {
 		panic(err)
 	}
 	defer func() { _ = log.Sync() }()
+	if role := strings.TrimSpace(cfg.Runtime.RuntimeRole); role != "" && role != cfg.ProcessName {
+		log.Fatal("runtime role mismatch", zap.String("configured_role", role), zap.String("process", cfg.ProcessName))
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	shutdownTracer, err := observability.InitTracer(ctx, cfg)
+	if err != nil {
+		log.Fatal("tracer init", zap.Error(err))
+	}
+	defer func() {
+		sctx, cancel := context.WithTimeout(context.Background(), cfg.Ops.TracerShutdownTimeout)
+		defer cancel()
+		if err := shutdownTracer(sctx); err != nil {
+			log.Warn("tracer shutdown error", zap.Error(err))
+		}
+	}()
 
 	if cfg.Postgres.URL == "" {
 		log.Fatal("mqtt-ingest requires DATABASE_URL for persistence")
@@ -54,43 +69,55 @@ func main() {
 
 	store := postgres.NewStore(pool)
 
-	mqttCfg := platformmqtt.LoadBrokerFromEnv()
+	mqttCfg := platformmqtt.BrokerConfig{
+		BrokerURL:   cfg.MQTT.BrokerURL,
+		ClientID:    cfg.MQTT.ClientIDForProcess(cfg.ProcessName),
+		Username:    cfg.MQTT.Username,
+		Password:    cfg.MQTT.Password,
+		TopicPrefix: cfg.MQTT.TopicPrefix,
+	}
 	if err := mqttCfg.Validate(); err != nil {
 		log.Fatal("mqtt config", zap.Error(err))
 	}
 
 	var ingestHooks *platformmqtt.IngestHooks
-	var metricsSrv *http.Server
+	addr := strings.TrimSpace(cfg.MQTTIngestMetricsListen)
+	if addr == "" {
+		addr = "127.0.0.1:9093"
+	}
+	var js natssrv.JetStreamContext
 	if cfg.MetricsEnabled {
 		ingestHooks = telemetryapp.NewIngestHooks()
-		addr := strings.TrimSpace(cfg.MQTTIngestMetricsListen)
-		if addr == "" {
-			addr = "127.0.0.1:9093"
-		}
-		metricsSrv = &http.Server{
-			Addr:    addr,
-			Handler: promhttp.Handler(),
-		}
-		go func() {
-			log.Info("mqtt_ingest_metrics_listen", zap.String("addr", addr), zap.String("path", "/metrics"))
-			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Error("mqtt-ingest metrics server exited", zap.Error(err))
-			}
-		}()
 	}
-	defer func() {
-		if metricsSrv == nil {
-			return
+	opsSrv := &http.Server{
+		Addr: addr,
+		Handler: observability.NewOperationsMux(cfg, log, cfg.MetricsEnabled, func(ctx context.Context) error {
+			pctx, cancel := context.WithTimeout(ctx, cfg.Ops.ReadinessTimeout)
+			defer cancel()
+			if err := pool.Ping(pctx); err != nil {
+				return err
+			}
+			if strings.TrimSpace(cfg.NATS.URL) != "" && js == nil {
+				return errors.New("jetstream not configured")
+			}
+			return nil
+		}),
+	}
+	go func() {
+		paths := []string{"/health/live", "/health/ready"}
+		if cfg.MetricsEnabled {
+			paths = append([]string{"/metrics"}, paths...)
 		}
-		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := metricsSrv.Shutdown(sctx); err != nil {
-			log.Warn("mqtt-ingest metrics shutdown", zap.Error(err))
+		log.Info("mqtt_ingest_ops_listen", zap.String("addr", addr), zap.Strings("paths", paths))
+		if err := opsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("mqtt-ingest ops server exited", zap.Error(err))
 		}
 	}()
+	defer func() {
+		observability.ShutdownHTTPServer(log, opsSrv, cfg.Ops.ShutdownTimeout, "mqtt-ingest ops shutdown")
+	}()
 
-	natsURL := strings.TrimSpace(os.Getenv(platformnats.EnvNATSURL))
-	var js natssrv.JetStreamContext
+	natsURL := strings.TrimSpace(cfg.NATS.URL)
 	if natsURL != "" {
 		nc, err := platformnats.ConnectJetStream(ctx, natsURL, "avf-mqtt-ingest-telemetry")
 		if err != nil {

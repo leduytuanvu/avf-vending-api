@@ -72,6 +72,7 @@ build:
 	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/worker ./cmd/worker
 	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/mqtt-ingest ./cmd/mqtt-ingest
 	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/reconciler ./cmd/reconciler
+	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/temporal-worker ./cmd/temporal-worker
 	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/cli ./cmd/cli
 
 run-api:

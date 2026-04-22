@@ -3,9 +3,10 @@ name: Build and Push Images
 on:
   push:
     branches:
+      - develop
       - main
     tags:
-      - "v*"
+      - "v*.*.*"
   workflow_dispatch:
 
 permissions:
@@ -35,10 +36,17 @@ jobs:
           APP_REF: ${{ needs.build-and-push.outputs.app_ref }}
           APP_TAG: ${{ needs.build-and-push.outputs.app_tag }}
           BUILD_COMMIT_SHA: ${{ github.sha }}
+          BUILD_RUN_ID: ${{ github.run_id }}
+          BUILD_WORKFLOW_NAME: ${{ github.workflow }}
+          DOCKERFILE_GOOSE_SHA256: ${{ needs.build-and-push.outputs.dockerfile_goose_sha256 }}
+          DOCKERFILE_SHA256: ${{ needs.build-and-push.outputs.dockerfile_sha256 }}
+          GO_SUM_SHA256: ${{ needs.build-and-push.outputs.go_sum_sha256 }}
           GOOSE_DIGEST: ${{ needs.build-and-push.outputs.goose_digest }}
           GOOSE_IMAGE: ${{ needs.build-and-push.outputs.goose_image }}
           GOOSE_REF: ${{ needs.build-and-push.outputs.goose_ref }}
           GOOSE_TAG: ${{ needs.build-and-push.outputs.goose_tag }}
+          SOURCE_BRANCH: ${{ github.ref_name }}
+          SOURCE_REF_TYPE: ${{ github.ref_type }}
           TRIGGER_NAME: ${{ github.event_name }}
         run: |
           mkdir -p build-evidence
@@ -46,10 +54,19 @@ jobs:
           cat > build-evidence/image-build-metadata.json <<EOF
           {
             "commit_sha": "${BUILD_COMMIT_SHA}",
+            "source_branch": "${SOURCE_BRANCH}",
+            "source_ref_type": "${SOURCE_REF_TYPE}",
             "trigger": "${TRIGGER_NAME}",
+            "workflow_name": "${BUILD_WORKFLOW_NAME}",
+            "workflow_run_id": "${BUILD_RUN_ID}",
             "actor": "${ACTOR}",
             "sbom_enabled": true,
             "provenance_enabled": true,
+            "source_inputs": {
+              "dockerfile_sha256": "${DOCKERFILE_SHA256}",
+              "dockerfile_goose_sha256": "${DOCKERFILE_GOOSE_SHA256}",
+              "go_sum_sha256": "${GO_SUM_SHA256}"
+            },
             "app": {
               "image": "${APP_IMAGE}",
               "tag": "${APP_TAG}",
@@ -65,8 +82,34 @@ jobs:
           }
           EOF
 
+          cat > build-evidence/promotion-manifest.json <<EOF
+          {
+            "workflow_name": "${BUILD_WORKFLOW_NAME}",
+            "workflow_run_id": "${BUILD_RUN_ID}",
+            "commit_sha": "${BUILD_COMMIT_SHA}",
+            "source_branch": "${SOURCE_BRANCH}",
+            "source_ref_type": "${SOURCE_REF_TYPE}",
+            "actor": "${ACTOR}",
+            "app_image": "${APP_IMAGE}",
+            "app_tag": "${APP_TAG}",
+            "app_ref": "${APP_REF}",
+            "goose_image": "${GOOSE_IMAGE}",
+            "goose_tag": "${GOOSE_TAG}",
+            "goose_ref": "${GOOSE_REF}",
+            "app_digest": "${APP_DIGEST}",
+            "goose_digest": "${GOOSE_DIGEST}",
+            "source_inputs": {
+              "dockerfile_sha256": "${DOCKERFILE_SHA256}",
+              "dockerfile_goose_sha256": "${DOCKERFILE_GOOSE_SHA256}",
+              "go_sum_sha256": "${GO_SUM_SHA256}"
+            }
+          }
+          EOF
+
           {
             echo "## Published Image Metadata"
+            echo "- build run id: \`${BUILD_RUN_ID}\`"
+            echo "- source branch: \`${SOURCE_BRANCH}\`"
             echo "- commit SHA: \`${BUILD_COMMIT_SHA}\`"
             echo "- trigger: \`${TRIGGER_NAME}\`"
             echo "- actor: \`${ACTOR}\`"
@@ -74,6 +117,9 @@ jobs:
             echo "- goose image: \`${GOOSE_REF}\`"
             echo "- app digest: \`${APP_DIGEST}\`"
             echo "- goose digest: \`${GOOSE_DIGEST}\`"
+            echo "- Dockerfile SHA256: \`${DOCKERFILE_SHA256}\`"
+            echo "- Dockerfile.goose SHA256: \`${DOCKERFILE_GOOSE_SHA256}\`"
+            echo "- go.sum SHA256: \`${GO_SUM_SHA256}\`"
             echo "- SBOM: \`enabled\`"
             echo "- provenance: \`enabled (mode=max)\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -83,5 +129,13 @@ jobs:
         with:
           name: image-build-metadata
           path: build-evidence/image-build-metadata.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload promotion manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: promotion-manifest
+          path: build-evidence/promotion-manifest.json
           if-no-files-found: error
           retention-days: 14

@@ -1,4 +1,4 @@
-# Proto workspace for buf lint/generate. Only avf/v1/skeleton.proto today — not a public API contract.
+# Proto workspace for buf lint/generate. Includes internal-only gRPC contracts under avf/v1.
 version: v2
 modules:
   - path: .

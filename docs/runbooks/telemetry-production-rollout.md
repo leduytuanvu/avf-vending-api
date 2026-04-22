@@ -1,15 +1,16 @@
 # Telemetry production rollout (100–1000 machines)
 
-This runbook complements [telemetry-jetstream-resilience.md](./telemetry-jetstream-resilience.md) with **fleet ramp checks**, **overload detection before outage**, **mitigations**, **rollback**, and **safe tuning**. It targets the lean VPS profile under `deployments/prod/`.
+This runbook complements [telemetry-jetstream-resilience.md](./telemetry-jetstream-resilience.md) with **fleet ramp checks**, **overload detection before outage**, **mitigations**, **rollback**, and **safe tuning**.
+It now assumes the split production topology under `deployments/prod/app-node` and `deployments/prod/data-node`; references to the legacy single-host stack are rollback-only.
 
 ## Before increasing fleet size (100 → 300 → 1000)
 
 1. **Config and compose**
-   - Run `bash deployments/prod/scripts/validate_prod_telemetry.sh` against the real `.env.production`.
-   - Run `docker compose --env-file deployments/prod/.env.production -f deployments/prod/docker-compose.prod.yml config` (or `make prod-compose-config` from repo root with a populated `deployments/prod/.env.production`).
+   - For the current primary production path, run `docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml config` and `docker compose --env-file deployments/prod/data-node/.env.data-node.example -f deployments/prod/data-node/docker-compose.data-node.yml config` when the fallback broker plane is enabled.
+   - Use `bash deployments/prod/scripts/validate_prod_telemetry.sh` and the legacy `deployments/prod/docker-compose.prod.yml` validation flow only if you are intentionally rehearsing or maintaining the rollback-only single-host path.
 2. **Images and data plane**
-   - Deploy **immutable** image tags (`APP_IMAGE_TAG` / `GOOSE_IMAGE_TAG`); record previous tag for rollback. Tag resolution and GHCR flow: [prod-ghcr-image-only-deploy.md](./prod-ghcr-image-only-deploy.md).
-   - Run migrations (`make prod-migrate` or documented compose `migrate` service) before or with the rollout policy you already use.
+   - On the active 2-VPS path, deploy **immutable** image refs (`APP_IMAGE_REF` / `GOOSE_IMAGE_REF`) and record the previous refs for rollback. The tag-based flow in [prod-ghcr-image-only-deploy.md](./prod-ghcr-image-only-deploy.md) applies only to the rollback-only legacy single-host path.
+   - Run migrations through the current app-node rollout policy before or with the telemetry rollout.
 3. **NATS JetStream disk**
    - Ensure the `nats_data` volume has headroom for `TELEMETRY_STREAM_MAX_BYTES` and burst retention; monitor NATS container logs and host disk.
 4. **Postgres**
@@ -17,7 +18,9 @@ This runbook complements [telemetry-jetstream-resilience.md](./telemetry-jetstre
 5. **EMQX**
    - Confirm connection and auth limits for expected concurrent devices; verify `MQTT_BROKER_URL` and TLS listener capacity if you terminate TLS on EMQX.
 6. **Observability**
-   - For fleets **≥ ~100 devices**, set `METRICS_ENABLED=true` on **worker** and **mqtt-ingest** (and scrape `/metrics` or use `deployments/prod/docker-compose.observability.yml`). Without metrics, overload is harder to see before user-visible lag.
+   - For fleets **≥ ~100 devices**, set `METRICS_ENABLED=true` on **worker** and **mqtt-ingest**.
+   - On the 2-VPS path, layer `deployments/prod/docker-compose.observability.yml` with `deployments/prod/app-node/docker-compose.app-node.yml` on the app node that hosts the monitoring stack, or scrape the same private ops ports from your existing Prometheus deployment.
+   - Without metrics, overload is harder to see before user-visible lag.
 7. **API / Caddy**
    - HTTP health is orthogonal to telemetry volume but still matters for operator tooling; confirm `READINESS_STRICT` behavior matches your expectations.
 
@@ -46,8 +49,8 @@ Also watch **Postgres**: active sessions, slow queries on telemetry paths, and d
 
 ## Rollback
 
-1. **Revert image tags** in `.env.production` to the last known-good `APP_IMAGE_TAG` / `GOOSE_IMAGE_TAG`, then `docker compose up -d` the affected services (or full stack if required).
-2. **Restore env file from backup** if telemetry-related variables changed incorrectly.
+1. **Revert image refs or tags** in the active app-node env files to the last known-good values, then rerun the shared split-topology rollback or release flow as appropriate.
+2. **Restore env files from backup** if telemetry-related variables changed incorrectly.
 3. JetStream stream/consumer shapes are re-applied from env on process start — rollback is primarily **image + env**, not manual NATS CLI surgery, unless you introduced out-of-band broker changes.
 
 ## Tuning limits without disabling protections

@@ -17,7 +17,6 @@ import (
 	"github.com/avf/avf-vending-api/internal/observability/reconcilerprom"
 	platformdb "github.com/avf/avf-vending-api/internal/platform/db"
 	"github.com/joho/godotenv"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
@@ -28,15 +27,31 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	cfg.ProcessName = "reconciler"
 
 	log, err := observability.NewLogger(cfg)
 	if err != nil {
 		panic(err)
 	}
 	defer func() { _ = log.Sync() }()
+	if role := strings.TrimSpace(cfg.Runtime.RuntimeRole); role != "" && role != cfg.ProcessName {
+		log.Fatal("runtime role mismatch", zap.String("configured_role", role), zap.String("process", cfg.ProcessName))
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	shutdownTracer, err := observability.InitTracer(ctx, cfg)
+	if err != nil {
+		log.Fatal("tracer init", zap.Error(err))
+	}
+	defer func() {
+		sctx, cancel := context.WithTimeout(context.Background(), cfg.Ops.TracerShutdownTimeout)
+		defer cancel()
+		if err := shutdownTracer(sctx); err != nil {
+			log.Warn("tracer shutdown error", zap.Error(err))
+		}
+	}()
 
 	if cfg.Postgres.URL == "" {
 		log.Fatal("reconciler requires DATABASE_URL for persistence")
@@ -54,42 +69,49 @@ func main() {
 	}
 	defer pool.Close()
 
+	workflowBoundary, workflowCleanup, err := bootstrap.BuildWorkflowOrchestration(ctx, cfg)
+	if err != nil {
+		log.Fatal("workflow orchestration bootstrap", zap.Error(err))
+	}
+	defer workflowCleanup()
+
 	deps, cleanup, err := bootstrap.BuildReconcilerDeps(ctx, cfg, pool, log)
 	if err != nil {
 		log.Fatal("reconciler bootstrap", zap.Error(err))
 	}
 	defer cleanup()
+	deps.WorkflowOrchestration = workflowBoundary
+	deps.ScheduleRefundOrchestration = cfg.Temporal.ScheduleRefundOrchestration
+	deps.ScheduleManualReviewEscalation = cfg.Temporal.ScheduleManualReviewEscalation
 
 	if cfg.MetricsEnabled {
 		deps.Telemetry = reconcilerprom.New()
 	}
 
-	var metricsSrv *http.Server
-	if cfg.MetricsEnabled {
-		addr := strings.TrimSpace(cfg.ReconcilerMetricsListen)
-		if addr == "" {
-			addr = "127.0.0.1:9092"
-		}
-		metricsSrv = &http.Server{
-			Addr:    addr,
-			Handler: promhttp.Handler(),
-		}
-		go func() {
-			log.Info("reconciler_metrics_listen", zap.String("addr", addr), zap.String("path", "/metrics"))
-			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Error("reconciler metrics server exited", zap.Error(err))
-			}
-		}()
+	addr := strings.TrimSpace(cfg.ReconcilerMetricsListen)
+	if addr == "" {
+		addr = "127.0.0.1:9092"
 	}
+	opsSrv := &http.Server{
+		Addr: addr,
+		Handler: observability.NewOperationsMux(cfg, log, cfg.MetricsEnabled, func(ctx context.Context) error {
+			pctx, cancel := context.WithTimeout(ctx, cfg.Ops.ReadinessTimeout)
+			defer cancel()
+			return pool.Ping(pctx)
+		}),
+	}
+	go func() {
+		paths := []string{"/health/live", "/health/ready"}
+		if cfg.MetricsEnabled {
+			paths = append([]string{"/metrics"}, paths...)
+		}
+		log.Info("reconciler_ops_listen", zap.String("addr", addr), zap.Strings("paths", paths))
+		if err := opsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("reconciler ops server exited", zap.Error(err))
+		}
+	}()
 	defer func() {
-		if metricsSrv == nil {
-			return
-		}
-		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := metricsSrv.Shutdown(sctx); err != nil {
-			log.Warn("reconciler metrics shutdown", zap.Error(err))
-		}
+		observability.ShutdownHTTPServer(log, opsSrv, cfg.Ops.ShutdownTimeout, "reconciler ops shutdown")
 	}()
 
 	if cfg.Reconciler.ActionsEnabled {

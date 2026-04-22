@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	"github.com/avf/avf-vending-api/internal/config"
 	platformdb "github.com/avf/avf-vending-api/internal/platform/db"
-	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
-	platformtemporal "github.com/avf/avf-vending-api/internal/platform/temporal"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
@@ -81,7 +80,7 @@ func BuildRuntime(ctx context.Context, cfg *config.Config) (*Runtime, error) {
 		return nil, err
 	}
 
-	rdb, err := platformredis.NewClient(&cfg.Redis)
+	rdb, err := newRedisClient(&cfg.Redis)
 	if err != nil {
 		if pool != nil {
 			pool.Close()
@@ -98,27 +97,10 @@ func BuildRuntime(ctx context.Context, cfg *config.Config) (*Runtime, error) {
 		}
 	}
 
-	var orch workfloworch.Boundary
-	var temporalCleanup func()
-	if cfg.Temporal.Enabled {
-		tc, dialErr := platformtemporal.Dial(platformtemporal.DialOptions{
-			HostPort:  cfg.Temporal.HostPort,
-			Namespace: cfg.Temporal.Namespace,
-		})
-		if dialErr != nil {
-			closeFn()
-			return nil, fmt.Errorf("bootstrap: temporal dial: %w", dialErr)
-		}
-		tb, terr := workfloworch.NewTemporal(tc, cfg.Temporal.TaskQueue)
-		if terr != nil {
-			tc.Close()
-			closeFn()
-			return nil, fmt.Errorf("bootstrap: temporal workflow boundary: %w", terr)
-		}
-		orch = tb
-		temporalCleanup = func() { _ = orch.Close() }
-	} else {
-		orch = workfloworch.NewDisabled()
+	orch, temporalCleanup, err := BuildWorkflowOrchestration(ctx, cfg)
+	if err != nil {
+		closeFn()
+		return nil, err
 	}
 
 	prevClose := closeFn
@@ -170,11 +152,13 @@ type subsystemHealth interface {
 	Health(context.Context) error
 }
 
-func probeHealth(ctx context.Context, name string, sub subsystemHealth) error {
+func probeHealth(ctx context.Context, timeout time.Duration, name string, sub subsystemHealth) error {
 	if sub == nil {
 		return nil
 	}
-	if err := sub.Health(ctx); err != nil {
+	pctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	if err := sub.Health(pctx); err != nil {
 		return fmt.Errorf("readiness: %s: %w", name, err)
 	}
 	return nil
@@ -185,40 +169,61 @@ func (r *Runtime) Ready(ctx context.Context) error {
 	if r == nil || r.cfg == nil {
 		return errors.New("bootstrap: nil runtime")
 	}
+	readinessTimeout := r.cfg.Ops.ReadinessTimeout
 
 	if r.cfg.ReadinessStrict && r.pool == nil && r.rdb == nil {
 		return fmt.Errorf("readiness: strict mode requires DATABASE_URL and/or REDIS_ADDR")
 	}
 
 	if r.pool != nil {
-		if err := r.pool.Ping(ctx); err != nil {
+		pctx, cancel := context.WithTimeout(ctx, readinessTimeout)
+		err := r.pool.Ping(pctx)
+		cancel()
+		if err != nil {
 			return fmt.Errorf("readiness: postgres ping: %w", err)
 		}
 	}
 
 	if r.rdb != nil {
-		if err := r.rdb.Ping(ctx).Err(); err != nil {
+		rctx, cancel := context.WithTimeout(ctx, readinessTimeout)
+		err := r.rdb.Ping(rctx).Err()
+		cancel()
+		if err != nil {
 			return fmt.Errorf("readiness: redis ping: %w", err)
 		}
 	}
 
-	if err := probeHealth(ctx, "auth", r.Deps.Auth); err != nil {
+	if err := probeHealth(ctx, readinessTimeout, "auth", r.Deps.Auth); err != nil {
 		return err
 	}
-	if err := probeHealth(ctx, "outbox", r.Deps.OutboxPublisher); err != nil {
+	if err := probeHealth(ctx, readinessTimeout, "outbox", r.Deps.OutboxPublisher); err != nil {
 		return err
 	}
-	if err := probeHealth(ctx, "mqtt", r.Deps.MQTTPublisher); err != nil {
+	if err := probeHealth(ctx, readinessTimeout, "mqtt", r.Deps.MQTTPublisher); err != nil {
 		return err
 	}
-	if err := probeHealth(ctx, "nats", r.Deps.NATS); err != nil {
+	if err := probeHealth(ctx, readinessTimeout, "nats", r.Deps.NATS); err != nil {
 		return err
 	}
-	if err := probeHealth(ctx, "payments", r.Deps.PaymentProviders); err != nil {
+	if err := probeHealth(ctx, readinessTimeout, "payments", r.Deps.PaymentProviders); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func newRedisClient(cfg *config.RedisConfig) (*goredis.Client, error) {
+	if cfg == nil || cfg.Addr == "" {
+		return nil, nil
+	}
+	opts := &goredis.Options{
+		Addr:      cfg.Addr,
+		Username:  cfg.Username,
+		Password:  cfg.Password,
+		DB:        cfg.DB,
+		TLSConfig: cfg.TLSConfig(),
+	}
+	return goredis.NewClient(opts), nil
 }
 
 // ValidateRuntimeWiring fails startup when an enabled capability flag requires a missing adapter.

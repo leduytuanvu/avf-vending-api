@@ -1,5 +1,8 @@
-# Lean production stack: single Ubuntu 24.04 VPS (target: 2 vCPU / 8 GB RAM).
-# Copy .env.production.example -> .env.production and fill secrets + image refs before `docker compose up`.
+# LEGACY single-host production stack: one Ubuntu 24.04 VPS (target: 2 vCPU / 8 GB RAM).
+# This file is retained for rollback compatibility only. It is not the primary production path and is not
+# recommended for the enterprise target deployment.
+# Copy .env.production.example -> .env.production and fill secrets + image refs before `docker compose up` only
+# when you intentionally need the legacy single-host path.
 #
 # Image-only deployment (GHCR): there is no `build:` anywhere. The VPS pulls prebuilt images only.
 # App binaries (`api`, `worker`, `reconciler`, `mqtt-ingest`) share one immutable image ref:
@@ -14,7 +17,7 @@
 # Intentionally NOT included: ClickHouse, Temporal, Prometheus, Grafana, Loki, MinIO, Redis
 # (Redis is optional for this API — leave unset unless you enable features that require it).
 #
-# Usage (from this directory):
+# Legacy usage (from this directory):
 #   docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 
 name: avf-vending-prod

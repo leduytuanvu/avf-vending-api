@@ -13,6 +13,84 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const CommerceIsProductInMachinePublishedAssortment = `-- name: CommerceIsProductInMachinePublishedAssortment :one
+SELECT
+    EXISTS (
+        SELECT
+            1
+        FROM
+            machines m
+            INNER JOIN machine_assortment_bindings b ON b.machine_id = m.id
+            AND b.organization_id = m.organization_id
+            AND b.is_primary
+            AND b.valid_to IS NULL
+            INNER JOIN assortments a ON a.id = b.assortment_id
+            AND a.organization_id = m.organization_id
+            AND a.status = 'published'
+            INNER JOIN assortment_items ai ON ai.assortment_id = a.id
+            AND ai.organization_id = m.organization_id
+            AND ai.product_id = $3
+        WHERE
+            m.id = $1
+            AND m.organization_id = $2
+    ) AS ok
+`
+
+type CommerceIsProductInMachinePublishedAssortmentParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	ProductID      uuid.UUID
+}
+
+func (q *Queries) CommerceIsProductInMachinePublishedAssortment(ctx context.Context, arg CommerceIsProductInMachinePublishedAssortmentParams) (bool, error) {
+	row := q.db.QueryRow(ctx, CommerceIsProductInMachinePublishedAssortment, arg.ID, arg.OrganizationID, arg.ProductID)
+	var ok bool
+	err := row.Scan(&ok)
+	return ok, err
+}
+
+const GetFirstVendSessionByOrder = `-- name: GetFirstVendSessionByOrder :one
+SELECT
+    id,
+    order_id,
+    machine_id,
+    slot_index,
+    product_id,
+    state,
+    failure_reason,
+    correlation_id,
+    started_at,
+    completed_at,
+    final_command_attempt_id,
+    created_at
+FROM vend_sessions
+WHERE
+    order_id = $1
+ORDER BY
+    created_at ASC
+LIMIT 1
+`
+
+func (q *Queries) GetFirstVendSessionByOrder(ctx context.Context, orderID uuid.UUID) (VendSession, error) {
+	row := q.db.QueryRow(ctx, GetFirstVendSessionByOrder, orderID)
+	var i VendSession
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.MachineID,
+		&i.SlotIndex,
+		&i.ProductID,
+		&i.State,
+		&i.FailureReason,
+		&i.CorrelationID,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.FinalCommandAttemptID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const GetLatestPaymentForOrder = `-- name: GetLatestPaymentForOrder :one
 SELECT
     id,

@@ -40,8 +40,18 @@ func NewLogger(cfg *config.Config) (*zap.Logger, error) {
 		OutputPaths:       []string{"stderr"},
 		ErrorOutputPaths:  []string{"stderr"},
 		InitialFields: map[string]any{
-			"app_env": string(cfg.AppEnv),
+			"app_env":         string(cfg.AppEnv),
+			"service_name":    cfg.Telemetry.ServiceName,
+			"node_name":       cfg.Runtime.NodeName,
+			"instance_id":     cfg.Runtime.InstanceID,
+			"runtime_role":    cfg.Runtime.EffectiveRuntimeRole(cfg.ProcessName),
+			"build_version":   cfg.Build.Version,
+			"build_git_sha":   cfg.Build.GitSHA,
+			"public_base_url": cfg.Runtime.PublicBaseURL,
 		},
+	}
+	if strings.TrimSpace(cfg.ProcessName) != "" {
+		zapCfg.InitialFields["process"] = strings.TrimSpace(cfg.ProcessName)
 	}
 
 	logger, err := zapCfg.Build(zap.AddStacktrace(zapcore.ErrorLevel))

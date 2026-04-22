@@ -12,6 +12,7 @@ Concise notes for **production support**. Code paths are in this repo unless not
 | Outbox publish / retries | `internal/app/background/worker.go` (`OutboxDispatchTick`), `internal/app/reliability` | `outbox_events` | `cmd/worker` |
 | Broker (NATS JetStream) | `internal/platform/nats`, `cmd/worker/main.go` | N/A (broker) | `cmd/worker` when `NATS_URL` set |
 | Commerce reconciliation (lists; optional PSP probe + refund enqueue when enabled) | `internal/app/background/reconciler.go`, `internal/bootstrap/reconciler.go`, `internal/modules/postgres` commerce reconcile repo | orders, payments, vend sessions | `cmd/reconciler` (+ Prometheus `avf_reconciler_*` when `METRICS_ENABLED`) |
+| Temporal workflow follow-up (payment timeout, vend failure, refund/manual review) | `internal/app/workfloworch`, `internal/platform/temporal`, `cmd/temporal-worker` | authoritative state still in Postgres; review/refund fan-out uses existing NATS refund-review sink | `cmd/temporal-worker` |
 | Device MQTT ingest | `internal/platform/mqtt`, `internal/app/telemetryapp` (NATS bridge), `internal/modules/postgres` | JetStream `AVF_TELEMETRY_*` buffers + projected tables (`machine_current_snapshot`, `telemetry_rollups`, …); legacy hot path only without `NATS_URL` | `cmd/mqtt-ingest` (+ `avf_mqtt_ingest_*` when `METRICS_ENABLED`); see `ops/TELEMETRY_PIPELINE.md` |
 
 ---
@@ -119,7 +120,7 @@ LIMIT 20;
 
 **Symptoms:** device telemetry or shadow not updating; repeated **`mqtt ingest failed`**; process exit on `mqtt connect`.
 
-**Process:** `cmd/mqtt-ingest` — broker from env (`internal/platform/mqtt` `LoadBrokerFromEnv`). Subscribes under topic prefix to `+/telemetry`, `+/shadow/reported`, `+/commands/receipt`.
+**Process:** `cmd/mqtt-ingest` — broker from env (`internal/platform/mqtt` `LoadBrokerFromEnv`). Subscribes under the configured topic prefix to the full inbound device pattern set: `+/telemetry`, `+/presence`, `+/state/heartbeat`, `+/telemetry/snapshot`, `+/telemetry/incident`, `+/events/vend`, `+/events/cash`, `+/events/inventory`, `+/shadow/reported`, `+/shadow/desired`, `+/commands/receipt`, and `+/commands/ack`.
 
 **Checks:**
 
@@ -128,11 +129,52 @@ LIMIT 20;
 3. **Topic prefix** matches devices (`TopicPrefix` trailing slash normalized in code).
 4. Ingest errors: **`mqtt ingest failed`** includes `topic`, `payload_bytes`, error — often JSON/shape or DB constraint; cross-check with postgres logs.
 
-**There is no HTTP health endpoint on mqtt-ingest** — use process supervisor, k8s probe exec, or “recent successful ingest” log heuristic.
+**Health endpoints:** `cmd/mqtt-ingest` now exposes `/health/live` and `/health/ready` on `MQTT_INGEST_METRICS_LISTEN` (default `127.0.0.1:9093`). `/metrics` is still conditional on `METRICS_ENABLED=true`.
 
 ---
 
-## 6. Dashboards and alerts (high value)
+## 6. Temporal workflow operations
+
+**Symptoms:** compensation/review follow-up not happening; repeated scheduling logs with no worker execution; workflows appear stuck after sink or database outages.
+
+**Current topology:** scheduler call sites live in `cmd/api`, `cmd/worker`, and `cmd/reconciler` behind `TEMPORAL_SCHEDULE_*` flags. Execution happens in `cmd/temporal-worker` on `TEMPORAL_TASK_QUEUE`. Activities re-read Postgres state before taking action. External review/refund fan-out uses the existing NATS refund-review sink and is intentionally configured with single-attempt activity dispatch to avoid duplicate publishes on automatic retries.
+
+**Checks:**
+
+1. Confirm `TEMPORAL_ENABLED=true`, `TEMPORAL_HOST_PORT`, `TEMPORAL_NAMESPACE`, and `TEMPORAL_TASK_QUEUE` match between schedulers and `cmd/temporal-worker`.
+2. Confirm `cmd/temporal-worker` is healthy on `TEMPORAL_WORKER_METRICS_LISTEN` and can reach both Postgres and NATS.
+3. Inspect scheduler logs:
+   - `payment_timeout_workflow_scheduled`
+   - `refund_review_workflow_scheduled`
+   - `vend failure workflow enqueue failed`
+   - `duplicate_payment_workflow_schedule_failed`
+4. Inspect Temporal UI / CLI for the deterministic workflow IDs:
+   - `payment-pending-timeout:<payment_id>`
+   - `vend-failure-after-payment:<vend_id>`
+   - `refund-orchestration:<payment_id>`
+   - `manual-review:<payment_id>`
+
+**Retry posture:**
+
+- Read/state-check activities retry automatically with bounded backoff.
+- NATS review/refund dispatch activities use **one attempt** to avoid duplicate ticket publishes on ambiguous network failures.
+- A failed dispatch activity leaves the workflow failed for operator inspection/redrive instead of blindly retrying the external publish.
+
+**Stuck workflow handling:**
+
+1. Fix the underlying dependency first (Postgres, NATS, Temporal frontend, refund-review subject).
+2. Re-run the failed workflow from Temporal UI/CLI only after confirming the current order/payment state still warrants action.
+3. If the original workflow already produced the external side effect and only the ack/result path failed, prefer marking the follow-up handled in the downstream review system rather than replaying immediately.
+
+**Redrive guidance:**
+
+- Safe to re-drive when the workflow failed **before** `EnqueueRefundReview` / manual review dispatch, or when downstream confirms no ticket was created.
+- Be careful re-driving after manual review/refund dispatch failures because NATS core publish is not broker-deduplicated.
+- Deterministic workflow IDs prevent duplicate scheduling from the app side; use a new workflow ID only for an intentional fresh compensation pass.
+
+---
+
+## 7. Dashboards and alerts (high value)
 
 Use **Grafana + Prometheus** for first-line panels when `METRICS_ENABLED` is on (`ops/grafana/provisioning/dashboards/json/`, `ops/METRICS.md`). Supplement with **JSON logs** (Loki / CloudWatch Logs Insights / etc.) for context and fields not exported as series.
 
@@ -147,13 +189,28 @@ Use **Grafana + Prometheus** for first-line panels when `METRICS_ENABLED` is on 
 
 **Noise control:** correlate `worker_job_summary` `at_batch_limit=true` with `selected` counts before paging.
 
+### Production alert -> first action
+
+| Alert | First operator action |
+| ----- | --------------------- |
+| `AVFPublicAPIHTTPSDown` | Check app-node Caddy status, recent deploy activity, and LB/DNS/TLS reachability first. |
+| `AVFAPIInstanceMetricsDown` | Confirm the node still exposes the private API ops port and that `cmd/api` is running. |
+| `AVFAppReadinessFailed` / `AVFDeployUnhealthy` | Stop or pause the rollout; inspect the failing node's service logs before moving traffic. |
+| `AVFDatabaseConnectivityLikelyFailed` | Verify Postgres reachability and credentials from the affected node before restarting app processes. |
+| `AVFWorkerOutboxLagHigh` / `AVFWorkerPublishFailuresHigh` | Check worker logs, then NATS connectivity/stream health. |
+| `AVFTelemetryQueueLagHigh` / `AVFTelemetryProjectionDBFailures` | Check worker telemetry projection logs and JetStream backlog, then Postgres health. |
+| `AVFMQTTIngestErrorRateHigh` / `AVFMQTTIngestReadinessFlapping` | Check `cmd/mqtt-ingest` logs first, then EMQX or managed MQTT broker reachability. |
+| `AVFNATSDown` | Check the data-node NATS container plus disk pressure on the data node. |
+| `AVFEMQXDown` | Check EMQX process health, MQTT TLS cert files, and 8883 reachability. |
+| `AVFHostMemoryPressure` / `AVFHostDiskPressure` | Check node-exporter host stats, container growth, and retention/storage pressure before restarting anything. |
+
 ---
 
-## 7. Quick reference — log message names
+## 8. Quick reference — log message names
 
 | Message | Meaning |
 | ------- | ------- |
-| `worker_startup` / `reconciler_startup` | Feature flags: `outbox_publisher_configured`, `payment_gateway_configured`, ticks, limits |
+| `worker_startup` / `reconciler_startup` / `temporal_worker_bootstrap` | Feature flags, queue wiring, ticks, limits |
 | `outbox_pipeline_unhealthy` | Elevated dead-letters or high pending attempts — investigate |
 | `outbox publish failed` | Broker or transport error for one row |
 | `worker_job_summary` | End of outbox dispatch, payment timeout scan, or stuck command scan tick |
@@ -163,6 +220,6 @@ Use **Grafana + Prometheus** for first-line panels when `METRICS_ENABLED` is on 
 
 ---
 
-## 8. CI regression gates (engineering)
+## 9. CI regression gates (engineering)
 
-Pull requests run **`.github/workflows/avf-vending-api-ci.yml`** at the monorepo root (path-filtered to `avf-vending-api/**`): `gofmt`, `go vet`, `go test`, **sqlc** drift check, **goose** migration `up` on a clean Postgres, and bash scripts under `scripts/` that fail on nil reconciler adapters, fake empty list handlers, `httptest` in non-test production paths, and missing startup validation hooks (`ValidateRuntimeWiring`, `ValidateReconciler`, etc.). When extending production wiring, update those scripts if the check is a false positive, or fix the regression—do not bypass with broad `rg` ignores unless justified in review.
+Pull requests run the repository workflows under **`.github/workflows/`** (notably `ci.yml`): `gofmt`, `go vet`, `go test`, **sqlc** drift check, **goose** migration `up` on a clean Postgres, and bash scripts under `scripts/` that fail on nil reconciler adapters, fake empty list handlers, `httptest` in non-test production paths, and missing startup validation hooks (`ValidateRuntimeWiring`, `ValidateReconciler`, etc.). When extending production wiring, update those scripts if the check is a false positive, or fix the regression—do not bypass with broad `rg` ignores unless justified in review.

@@ -3,8 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
 	appbackground "github.com/avf/avf-vending-api/internal/app/background"
@@ -70,7 +68,7 @@ func BuildReconcilerDeps(ctx context.Context, cfg *config.Config, pool *pgxpool.
 	}
 	deps.Gateway = gw
 
-	natsURL := strings.TrimSpace(os.Getenv(platformnats.EnvNATSURL))
+	natsURL := cfg.NATS.URL
 	nc, err := platformnats.ConnectJetStream(ctx, natsURL, "avf-reconciler-refund")
 	if err != nil {
 		return appbackground.ReconcilerDeps{}, cleanup, fmt.Errorf("bootstrap: nats for reconciler: %w", err)
@@ -95,6 +93,7 @@ func BuildReconcilerDeps(ctx context.Context, cfg *config.Config, pool *pgxpool.
 		PaymentOutbox:  store,
 		Lifecycle:      store,
 		WebhookPersist: store,
+		SaleLines:      store,
 	})
 	deps.MarkOrderPaid = commerceSvc
 	deps.PaymentApplier = store

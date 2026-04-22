@@ -12,7 +12,7 @@ import (
 type RegisterFunc func(w worker.Worker)
 
 // NewWorker constructs a worker for the given task queue. Call RegisterFunc to attach workflows/activities.
-// No cmd/* process invokes NewWorker by default; add a dedicated worker binary when workflows are implemented.
+// cmd/temporal-worker uses this helper to host the registered workfloworch task queue.
 func NewWorker(c client.Client, taskQueue string, wo worker.Options, reg RegisterFunc) (worker.Worker, error) {
 	if c == nil {
 		return nil, fmt.Errorf("temporal: nil client")

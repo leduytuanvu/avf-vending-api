@@ -11,25 +11,52 @@ on:
       - completed
   workflow_dispatch:
     inputs:
+      action_mode:
+        description: "Production action to run"
+        required: true
+        default: deploy
+        type: choice
+        options:
+          - deploy
+          - rollback
+      build_run_id:
+        description: "Required for deploy mode: GitHub Actions run id from a successful 'Build and Push Images' run on main"
+        required: false
+        type: string
       release_tag:
-        description: "Release tag for this deploy, for example v1.2.3"
+        description: "Operator label for this production action, for example v1.2.3 or rollback-2026-04-22"
         required: true
         type: string
       source_commit_sha:
-        description: "Optional source commit SHA that produced the selected image refs"
+        description: "Optional confirmation of the main commit SHA for the selected build run"
         required: false
         type: string
       app_image_ref:
-        description: "Exact app image reference to deploy, preferably ghcr.io/...@sha256:..."
-        required: true
+        description: "Optional confirmation app image ref; if provided it must exactly match the selected build artifact and be digest-pinned"
+        required: false
         type: string
       goose_image_ref:
-        description: "Exact goose image reference to deploy, preferably ghcr.io/...@sha256:..."
-        required: true
+        description: "Optional confirmation goose image ref; if provided it must exactly match the selected build artifact and be digest-pinned"
+        required: false
         type: string
+      rollback_app_image_ref:
+        description: "Required for rollback mode: exact previous app image ref, pinned by digest (ghcr.io/...@sha256:...)"
+        required: false
+        type: string
+      rollback_goose_image_ref:
+        description: "Required for rollback mode: exact previous goose image ref, pinned by digest (ghcr.io/...@sha256:...)"
+        required: false
+        type: string
+      deploy_data_node:
+        description: "Also deploy the optional data-node fallback stack"
+        required: false
+        default: false
+        type: boolean
 
+# Production actions stay serialized under one stable gate.
+# Later runs queue behind the active rollout or rollback instead of canceling it.
 concurrency:
-  group: deploy-production
+  group: production-deployment
   cancel-in-progress: false
 
 permissions:
@@ -39,6 +66,254 @@ permissions:
   packages: read
 
 jobs:
+  resolve-build-run-id:
+    name: Validate Production Artifact Source
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    outputs:
+      action_mode: ${{ steps.lookup.outputs.action_mode }}
+      build_actor: ${{ steps.lookup.outputs.build_actor }}
+      release_tag: ${{ steps.lookup.outputs.release_tag }}
+      source_commit_sha: ${{ steps.lookup.outputs.source_commit_sha }}
+      source_branch: ${{ steps.lookup.outputs.source_branch }}
+      workflow_run_id: ${{ steps.lookup.outputs.workflow_run_id }}
+    steps:
+      - name: Validate production action inputs
+        id: lookup
+        shell: bash
+        env:
+          ACTION_MODE: ${{ inputs.action_mode }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          GH_TOKEN: ${{ github.token }}
+          ROLLBACK_APP_IMAGE_REF: ${{ inputs.rollback_app_image_ref }}
+          ROLLBACK_GOOSE_IMAGE_REF: ${{ inputs.rollback_goose_image_ref }}
+        run: |
+          set -Eeuo pipefail
+
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            [[ "${GITHUB_REF_NAME}" == "main" ]] || {
+              echo "error: production workflow_dispatch must be run from the main branch" >&2
+              exit 1
+            }
+          fi
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]] || fail "production auto-deploy requires a successful Build and Push Images workflow run"
+            [[ "${{ github.event.workflow_run.event }}" == "push" ]] || fail "production auto-deploy only supports push-triggered main builds"
+            [[ "${{ github.event.workflow_run.head_branch }}" == "main" ]] || fail "production auto-deploy only supports main builds"
+            [[ -z "${BUILD_RUN_ID}" ]] || fail "build_run_id is only used for workflow_dispatch"
+            [[ -z "${ROLLBACK_APP_IMAGE_REF}" && -z "${ROLLBACK_GOOSE_IMAGE_REF}" ]] || fail "rollback inputs are not used for automatic production deploys"
+            echo "action_mode=deploy" >> "${GITHUB_OUTPUT}"
+            echo "build_actor=${{ github.event.workflow_run.actor.login }}" >> "${GITHUB_OUTPUT}"
+            echo "release_tag=main-${{ github.event.workflow_run.head_sha }}" >> "${GITHUB_OUTPUT}"
+            echo "source_commit_sha=${{ github.event.workflow_run.head_sha }}" >> "${GITHUB_OUTPUT}"
+            echo "source_branch=${{ github.event.workflow_run.head_branch }}" >> "${GITHUB_OUTPUT}"
+            echo "workflow_run_id=${{ github.event.workflow_run.id }}" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          [[ "${ACTION_MODE}" == "deploy" || "${ACTION_MODE}" == "rollback" ]] || fail "action_mode must be 'deploy' or 'rollback'"
+          echo "action_mode=${ACTION_MODE}" >> "${GITHUB_OUTPUT}"
+          echo "release_tag=${{ inputs.release_tag }}" >> "${GITHUB_OUTPUT}"
+
+          if [[ -n "${{ inputs.app_image_ref }}" && -z "${{ inputs.goose_image_ref }}" ]] || [[ -z "${{ inputs.app_image_ref }}" && -n "${{ inputs.goose_image_ref }}" ]]; then
+            fail "provide both app_image_ref and goose_image_ref, or leave both empty"
+          fi
+
+          if [[ "${ACTION_MODE}" == "rollback" ]]; then
+            [[ -n "${ROLLBACK_APP_IMAGE_REF}" ]] || fail "rollback mode requires rollback_app_image_ref"
+            [[ -n "${ROLLBACK_GOOSE_IMAGE_REF}" ]] || fail "rollback mode requires rollback_goose_image_ref"
+            [[ "${ROLLBACK_APP_IMAGE_REF}" == *@sha256:* ]] || fail "rollback_app_image_ref must be digest-pinned (...@sha256:...)"
+            [[ "${ROLLBACK_GOOSE_IMAGE_REF}" == *@sha256:* ]] || fail "rollback_goose_image_ref must be digest-pinned (...@sha256:...)"
+            [[ "${ROLLBACK_APP_IMAGE_REF}" != *":latest" ]] || fail "rollback_app_image_ref must not use latest"
+            [[ "${ROLLBACK_GOOSE_IMAGE_REF}" != *":latest" ]] || fail "rollback_goose_image_ref must not use latest"
+            [[ -z "${BUILD_RUN_ID}" ]] || fail "build_run_id must be empty in rollback mode"
+            [[ -z "${{ inputs.app_image_ref }}" && -z "${{ inputs.goose_image_ref }}" ]] || fail "app_image_ref and goose_image_ref confirmation inputs are not used in rollback mode"
+            [[ -z "${{ inputs.source_commit_sha }}" ]] || fail "source_commit_sha confirmation is not used in rollback mode"
+            echo "build_actor=" >> "${GITHUB_OUTPUT}"
+            echo "source_commit_sha=" >> "${GITHUB_OUTPUT}"
+            echo "source_branch=" >> "${GITHUB_OUTPUT}"
+            echo "workflow_run_id=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          [[ "${BUILD_RUN_ID}" =~ ^[0-9]+$ ]] || fail "build_run_id must be a numeric GitHub Actions run id in deploy mode"
+
+          build_run="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}" \
+              --jq '[.name // "", .head_branch // "", .head_sha // "", .event // "", .status // "", .conclusion // "", .actor.login // ""] | @tsv'
+          )"
+
+          [[ -n "${build_run}" ]] || {
+            echo "error: could not read workflow run ${BUILD_RUN_ID}" >&2
+            exit 1
+          }
+
+          IFS=$'\t' read -r workflow_name source_branch source_commit_sha source_event run_status run_conclusion build_actor <<< "${build_run}"
+
+          [[ "${workflow_name}" == "Build and Push Images" ]] || fail "build_run_id must reference a 'Build and Push Images' workflow run"
+          [[ "${source_branch}" == "main" ]] || fail "build_run_id must come from the main branch"
+          [[ "${source_event}" == "push" ]] || fail "build_run_id must come from a push-triggered main build"
+          [[ "${run_status}" == "completed" ]] || fail "build_run_id must reference a completed build run"
+          [[ "${run_conclusion}" == "success" ]] || fail "build_run_id must reference a successful build run"
+
+          image_metadata_artifact_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}/artifacts" \
+              --jq '[.artifacts[]? | select(.name == "image-metadata") | .id] | .[0] // empty'
+          )"
+          promotion_manifest_artifact_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}/artifacts" \
+              --jq '[.artifacts[]? | select(.name == "promotion-manifest") | .id] | .[0] // empty'
+          )"
+
+          [[ -n "${image_metadata_artifact_id}" ]] || fail "selected build run is missing the image-metadata artifact"
+          [[ -n "${promotion_manifest_artifact_id}" ]] || fail "selected build run is missing the promotion-manifest artifact"
+
+          workflow_run_id="${BUILD_RUN_ID}"
+          echo "build_actor=${build_actor}" >> "${GITHUB_OUTPUT}"
+          echo "workflow_run_id=${workflow_run_id}" >> "${GITHUB_OUTPUT}"
+          echo "source_commit_sha=${source_commit_sha}" >> "${GITHUB_OUTPUT}"
+          echo "source_branch=${source_branch}" >> "${GITHUB_OUTPUT}"
+
+  validate-main-ci-gate:
+    name: Validate Main CI Gate
+    runs-on: ubuntu-latest
+    needs: resolve-build-run-id
+    if: needs.resolve-build-run-id.outputs.action_mode == 'deploy'
+    steps:
+      - name: Confirm CI passed for selected main commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT_SHA: ${{ needs.resolve-build-run-id.outputs.source_commit_sha }}
+        run: |
+          set -Eeuo pipefail
+
+          ci_run_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?branch=main&event=push&status=completed&per_page=50" \
+              --jq '[.workflow_runs[]? | select(.head_sha == "'"${SOURCE_COMMIT_SHA}"'" and .conclusion == "success") | .id] | .[0] // empty'
+          )"
+
+          [[ -n "${ci_run_id}" ]] || {
+            echo "error: no successful CI run found for main commit ${SOURCE_COMMIT_SHA}" >&2
+            exit 1
+          }
+
+          {
+            echo "### Main CI Gate"
+            echo "- source commit: \`${SOURCE_COMMIT_SHA}\`"
+            echo "- CI status: \`passed\`"
+            echo "- CI run id: \`${ci_run_id}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  resolve-previous-production-deployment:
+    name: Resolve Previous Production Deployment
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    outputs:
+      previous_action_mode: ${{ steps.lookup.outputs.previous_action_mode }}
+      previous_actor: ${{ steps.lookup.outputs.previous_actor }}
+      previous_app_digest: ${{ steps.lookup.outputs.previous_app_digest }}
+      previous_app_image_ref: ${{ steps.lookup.outputs.previous_app_image_ref }}
+      previous_deployed_at_utc: ${{ steps.lookup.outputs.previous_deployed_at_utc }}
+      previous_goose_digest: ${{ steps.lookup.outputs.previous_goose_digest }}
+      previous_goose_image_ref: ${{ steps.lookup.outputs.previous_goose_image_ref }}
+      previous_run_id: ${{ steps.lookup.outputs.previous_run_id }}
+      previous_run_number: ${{ steps.lookup.outputs.previous_run_number }}
+      previous_run_url: ${{ steps.lookup.outputs.previous_run_url }}
+      previous_source_branch: ${{ steps.lookup.outputs.previous_source_branch }}
+      previous_source_commit_sha: ${{ steps.lookup.outputs.previous_source_commit_sha }}
+    steps:
+      - name: Load previous successful production deployment metadata
+        id: lookup
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+
+          for key in \
+            previous_action_mode \
+            previous_actor \
+            previous_app_digest \
+            previous_app_image_ref \
+            previous_deployed_at_utc \
+            previous_goose_digest \
+            previous_goose_image_ref \
+            previous_run_id \
+            previous_run_number \
+            previous_run_url \
+            previous_source_branch \
+            previous_source_commit_sha
+          do
+            echo "${key}=" >> "${GITHUB_OUTPUT}"
+          done
+
+          previous_run="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy-prod.yml/runs?event=workflow_dispatch&status=completed&per_page=20" \
+              --jq '[.workflow_runs[]? | select(.id != '"${GITHUB_RUN_ID}"' and .conclusion == "success") | [.id, (.run_number|tostring), (.html_url // "")] | @tsv] | .[0] // empty'
+          )"
+
+          [[ -n "${previous_run}" ]] || exit 0
+
+          IFS=$'\t' read -r previous_run_id previous_run_number previous_run_url <<< "${previous_run}"
+          echo "previous_run_id=${previous_run_id}" >> "${GITHUB_OUTPUT}"
+          echo "previous_run_number=${previous_run_number}" >> "${GITHUB_OUTPUT}"
+          echo "previous_run_url=${previous_run_url}" >> "${GITHUB_OUTPUT}"
+
+          artifact_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${previous_run_id}/artifacts" \
+              --jq '[.artifacts[]? | select(.name == "production-deployment-manifest") | .id] | .[0] // empty'
+          )"
+
+          [[ -n "${artifact_id}" ]] || exit 0
+
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > previous-production-deployment-manifest.zip
+          python3 -m zipfile -e previous-production-deployment-manifest.zip previous-production-deployment
+
+          python3 - <<'PY' >> "${GITHUB_OUTPUT}"
+          import json
+          from pathlib import Path
+
+          path = Path("previous-production-deployment/production-deployment-manifest.json")
+          if not path.exists():
+              raise SystemExit(0)
+
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          mapping = {
+              "previous_action_mode": payload.get("action_mode", ""),
+              "previous_actor": payload.get("actor", ""),
+              "previous_app_digest": payload.get("app_digest", ""),
+              "previous_app_image_ref": payload.get("app_image_ref", ""),
+              "previous_deployed_at_utc": payload.get("completed_at_utc", ""),
+              "previous_goose_digest": payload.get("goose_digest", ""),
+              "previous_goose_image_ref": payload.get("goose_image_ref", ""),
+              "previous_source_branch": payload.get("source_branch", ""),
+              "previous_source_commit_sha": payload.get("source_commit_sha", ""),
+          }
+          for key, value in mapping.items():
+              print(f"{key}={value}")
+          PY
+
   resolve-image-refs:
     name: Resolve Production Image Refs
     if: |
@@ -50,13 +325,209 @@ jobs:
         github.event.workflow_run.head_branch == 'main'
       )
     uses: ./.github/workflows/_reusable-deploy.yml
+    needs: resolve-build-run-id
     with:
-      resolution_mode: ${{ github.event_name == 'workflow_run' && 'workflow_run' || 'manual' }}
-      workflow_run_id: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || '' }}
-      app_image_ref: ${{ github.event_name == 'workflow_dispatch' && inputs.app_image_ref || '' }}
-      goose_image_ref: ${{ github.event_name == 'workflow_dispatch' && inputs.goose_image_ref || '' }}
+      resolution_mode: ${{ needs.resolve-build-run-id.outputs.action_mode == 'rollback' && 'manual' || 'workflow_run' }}
+      workflow_run_id: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
+      app_image_ref: ${{ needs.resolve-build-run-id.outputs.action_mode == 'rollback' && inputs.rollback_app_image_ref || '' }}
+      goose_image_ref: ${{ needs.resolve-build-run-id.outputs.action_mode == 'rollback' && inputs.rollback_goose_image_ref || '' }}
     secrets:
       gh_api_token: ${{ secrets.GITHUB_TOKEN }}
+
+  validate-promotion-selection:
+    name: Validate Production Promotion Selection
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-build-run-id
+      - resolve-image-refs
+    outputs:
+      app_digest: ${{ steps.validate.outputs.app_digest }}
+      goose_digest: ${{ steps.validate.outputs.goose_digest }}
+    steps:
+      - name: Validate selected immutable artifact
+        id: validate
+        shell: bash
+        env:
+          ACTION_MODE: ${{ needs.resolve-build-run-id.outputs.action_mode }}
+          EXPECTED_SOURCE_BRANCH: ${{ needs.resolve-build-run-id.outputs.source_branch }}
+          EXPECTED_SOURCE_COMMIT_SHA: ${{ needs.resolve-build-run-id.outputs.source_commit_sha }}
+          INPUT_APP_IMAGE_REF: ${{ inputs.app_image_ref }}
+          INPUT_GOOSE_IMAGE_REF: ${{ inputs.goose_image_ref }}
+          INPUT_SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
+          INPUT_ROLLBACK_APP_IMAGE_REF: ${{ inputs.rollback_app_image_ref }}
+          INPUT_ROLLBACK_GOOSE_IMAGE_REF: ${{ inputs.rollback_goose_image_ref }}
+          RESOLVED_APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          RESOLVED_GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+        run: |
+          set -Eeuo pipefail
+
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          [[ -n "${RESOLVED_APP_IMAGE_REF}" ]] || fail "resolved app image ref is empty"
+          [[ -n "${RESOLVED_GOOSE_IMAGE_REF}" ]] || fail "resolved goose image ref is empty"
+          [[ "${RESOLVED_APP_IMAGE_REF}" == *@sha256:* ]] || fail "resolved app image ref must be digest-pinned"
+          [[ "${RESOLVED_GOOSE_IMAGE_REF}" == *@sha256:* ]] || fail "resolved goose image ref must be digest-pinned"
+          [[ "${RESOLVED_APP_IMAGE_REF}" != *":latest" ]] || fail "resolved app image ref must not use latest"
+          [[ "${RESOLVED_GOOSE_IMAGE_REF}" != *":latest" ]] || fail "resolved goose image ref must not use latest"
+
+          app_digest="${RESOLVED_APP_IMAGE_REF##*@}"
+          goose_digest="${RESOLVED_GOOSE_IMAGE_REF##*@}"
+          [[ "${app_digest}" == sha256:* ]] || fail "resolved app digest is malformed"
+          [[ "${goose_digest}" == sha256:* ]] || fail "resolved goose digest is malformed"
+
+          if [[ "${ACTION_MODE}" == "deploy" ]]; then
+            [[ "${EXPECTED_SOURCE_BRANCH}" == "main" ]] || fail "selected build run must resolve to the main branch"
+          fi
+
+          if [[ "${ACTION_MODE}" == "deploy" && -n "${INPUT_APP_IMAGE_REF}" ]]; then
+            [[ "${INPUT_APP_IMAGE_REF}" == *@sha256:* ]] || fail "app_image_ref input must be digest-pinned"
+            [[ "${INPUT_APP_IMAGE_REF}" == "${RESOLVED_APP_IMAGE_REF}" ]] || fail "app_image_ref input does not match the selected build artifact"
+          fi
+
+          if [[ "${ACTION_MODE}" == "deploy" && -n "${INPUT_GOOSE_IMAGE_REF}" ]]; then
+            [[ "${INPUT_GOOSE_IMAGE_REF}" == *@sha256:* ]] || fail "goose_image_ref input must be digest-pinned"
+            [[ "${INPUT_GOOSE_IMAGE_REF}" == "${RESOLVED_GOOSE_IMAGE_REF}" ]] || fail "goose_image_ref input does not match the selected build artifact"
+          fi
+
+          if [[ "${ACTION_MODE}" == "deploy" && -n "${INPUT_SOURCE_COMMIT_SHA}" && "${INPUT_SOURCE_COMMIT_SHA}" != "${EXPECTED_SOURCE_COMMIT_SHA}" ]]; then
+            fail "source_commit_sha input does not match the selected build run"
+          fi
+
+          if [[ "${ACTION_MODE}" == "rollback" ]]; then
+            [[ -n "${INPUT_ROLLBACK_APP_IMAGE_REF}" ]] || fail "rollback mode requires rollback_app_image_ref"
+            [[ -n "${INPUT_ROLLBACK_GOOSE_IMAGE_REF}" ]] || fail "rollback mode requires rollback_goose_image_ref"
+            [[ "${INPUT_ROLLBACK_APP_IMAGE_REF}" == "${RESOLVED_APP_IMAGE_REF}" ]] || fail "rollback_app_image_ref does not match the resolved rollback target"
+            [[ "${INPUT_ROLLBACK_GOOSE_IMAGE_REF}" == "${RESOLVED_GOOSE_IMAGE_REF}" ]] || fail "rollback_goose_image_ref does not match the resolved rollback target"
+          fi
+
+          echo "app_digest=${app_digest}" >> "${GITHUB_OUTPUT}"
+          echo "goose_digest=${goose_digest}" >> "${GITHUB_OUTPUT}"
+
+  validate-production-action-safety:
+    name: Validate Production Action Safety
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-build-run-id
+      - resolve-previous-production-deployment
+      - validate-promotion-selection
+    steps:
+      - name: Reject obvious duplicate production action
+        shell: bash
+        env:
+          ACTION_MODE: ${{ needs.resolve-build-run-id.outputs.action_mode }}
+          PREVIOUS_APP_DIGEST: ${{ needs.resolve-previous-production-deployment.outputs.previous_app_digest }}
+          PREVIOUS_GOOSE_DIGEST: ${{ needs.resolve-previous-production-deployment.outputs.previous_goose_digest }}
+          PREVIOUS_RUN_URL: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}
+          PREVIOUS_RUN_NUMBER: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_number }}
+          TARGET_APP_DIGEST: ${{ needs.validate-promotion-selection.outputs.app_digest }}
+          TARGET_GOOSE_DIGEST: ${{ needs.validate-promotion-selection.outputs.goose_digest }}
+        run: |
+          set -Eeuo pipefail
+
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          {
+            echo "### Production Action Safety"
+            echo "- concurrency: one production run at a time; later runs queue and do not cancel an active rollout"
+            echo "- action mode: \`${ACTION_MODE}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ -z "${PREVIOUS_APP_DIGEST}" || -z "${PREVIOUS_GOOSE_DIGEST}" ]]; then
+            echo "- duplicate check: no previous successful production manifest found" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [[ "${TARGET_APP_DIGEST}" == "${PREVIOUS_APP_DIGEST}" && "${TARGET_GOOSE_DIGEST}" == "${PREVIOUS_GOOSE_DIGEST}" ]]; then
+            if [[ "${ACTION_MODE}" == "rollback" ]]; then
+              fail "rollback target already matches the latest successful production deployment; no rollback is needed"
+            fi
+
+            if [[ -n "${PREVIOUS_RUN_URL}" ]]; then
+              fail "target digests already match the latest successful production deployment (run #${PREVIOUS_RUN_NUMBER}: ${PREVIOUS_RUN_URL})"
+            fi
+
+            fail "target digests already match the latest successful production deployment"
+          fi
+
+          echo "- duplicate check: target digests differ from the latest successful production deployment" >> "$GITHUB_STEP_SUMMARY"
+
+  validate-production-topology-assets:
+    name: Validate Production Topology Assets
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate app-node compose
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml config >/dev/null
+          docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml --profile migration config >/dev/null
+          docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml --profile temporal config >/dev/null
+
+      - name: Validate data-node compose
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker compose --env-file deployments/prod/data-node/.env.data-node.example -f deployments/prod/data-node/docker-compose.data-node.yml config >/dev/null
+
+      - name: Validate deployment shell scripts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n deployments/prod/shared/scripts/bootstrap_prereqs.sh
+          bash -n deployments/prod/shared/scripts/lib_release.sh
+          bash -n deployments/prod/shared/scripts/release_app_cluster.sh
+          bash -n deployments/prod/shared/scripts/healthcheck_app_node.sh
+          bash -n deployments/prod/shared/scripts/release_data_node.sh
+          bash -n deployments/prod/shared/scripts/healthcheck_data_node.sh
+          bash -n deployments/prod/app-node/scripts/release_app_node.sh
+          bash -n deployments/prod/app-node/scripts/release_app_cluster.sh
+          bash -n deployments/prod/app-node/scripts/rollback_app_node.sh
+          bash -n deployments/prod/app-node/scripts/rollback_app_cluster.sh
+          bash -n deployments/prod/app-node/scripts/healthcheck_app_node.sh
+          bash -n deployments/prod/data-node/scripts/release_data_node.sh
+          bash -n deployments/prod/data-node/scripts/rollback_data_node.sh
+          bash -n deployments/prod/data-node/scripts/healthcheck_data_node.sh
+          bash -n deployments/prod/data-node/scripts/bootstrap_emqx_data_node.sh
+
+      - name: Reject legacy single-host production assumption
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          legacy_pattern='VPS''_HOST'
+          ! grep -n "${legacy_pattern}" .github/workflows/deploy-prod.yml
 
   prepare-promotion-context:
     name: Prepare Production Promotion Context
@@ -69,23 +540,58 @@ jobs:
         github.event.workflow_run.head_branch == 'main'
       )
     runs-on: ubuntu-latest
-    needs: resolve-image-refs
+    needs:
+      - resolve-build-run-id
+      - validate-main-ci-gate
+      - resolve-previous-production-deployment
+      - resolve-image-refs
+      - validate-promotion-selection
+      - validate-production-action-safety
     outputs:
+      action_mode: ${{ steps.context.outputs.action_mode }}
+      build_actor: ${{ steps.context.outputs.build_actor }}
+      build_run_id: ${{ steps.context.outputs.build_run_id }}
       auth_mode: ${{ steps.context.outputs.auth_mode }}
       deploy_transport: ${{ steps.context.outputs.deploy_transport }}
+      previous_action_mode: ${{ steps.context.outputs.previous_action_mode }}
+      previous_actor: ${{ steps.context.outputs.previous_actor }}
+      previous_app_digest: ${{ steps.context.outputs.previous_app_digest }}
+      previous_app_image_ref: ${{ steps.context.outputs.previous_app_image_ref }}
+      previous_deployed_at_utc: ${{ steps.context.outputs.previous_deployed_at_utc }}
+      previous_goose_digest: ${{ steps.context.outputs.previous_goose_digest }}
+      previous_goose_image_ref: ${{ steps.context.outputs.previous_goose_image_ref }}
+      previous_run_id: ${{ steps.context.outputs.previous_run_id }}
+      previous_run_number: ${{ steps.context.outputs.previous_run_number }}
+      previous_run_url: ${{ steps.context.outputs.previous_run_url }}
       provenance_verification_mode: ${{ steps.context.outputs.provenance_verification_mode }}
       provenance_verification_status: ${{ steps.context.outputs.provenance_verification_status }}
-
+      source_branch: ${{ steps.context.outputs.source_branch }}
+      source_commit_sha: ${{ steps.context.outputs.source_commit_sha }}
     steps:
       - name: Select active deploy/auth mode
         id: context
         shell: bash
         run: |
           {
+            echo "action_mode=${{ needs.resolve-build-run-id.outputs.action_mode }}"
+            echo "build_actor=${{ needs.resolve-build-run-id.outputs.build_actor }}"
+            echo "build_run_id=${{ needs.resolve-build-run-id.outputs.workflow_run_id }}"
             echo "deploy_transport=vps-ssh"
             echo "auth_mode=static-ssh-key"
+            echo "previous_action_mode=${{ needs.resolve-previous-production-deployment.outputs.previous_action_mode }}"
+            echo "previous_actor=${{ needs.resolve-previous-production-deployment.outputs.previous_actor }}"
+            echo "previous_app_digest=${{ needs.resolve-previous-production-deployment.outputs.previous_app_digest }}"
+            echo "previous_app_image_ref=${{ needs.resolve-previous-production-deployment.outputs.previous_app_image_ref }}"
+            echo "previous_deployed_at_utc=${{ needs.resolve-previous-production-deployment.outputs.previous_deployed_at_utc }}"
+            echo "previous_goose_digest=${{ needs.resolve-previous-production-deployment.outputs.previous_goose_digest }}"
+            echo "previous_goose_image_ref=${{ needs.resolve-previous-production-deployment.outputs.previous_goose_image_ref }}"
+            echo "previous_run_id=${{ needs.resolve-previous-production-deployment.outputs.previous_run_id }}"
+            echo "previous_run_number=${{ needs.resolve-previous-production-deployment.outputs.previous_run_number }}"
+            echo "previous_run_url=${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}"
             echo "provenance_verification_mode=report-only-extension-point"
             echo "provenance_verification_status=not-configured-currently-non-blocking"
+            echo "source_branch=${{ needs.resolve-build-run-id.outputs.source_branch }}"
+            echo "source_commit_sha=${{ needs.resolve-build-run-id.outputs.source_commit_sha }}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Future provenance verification hook
@@ -96,16 +602,26 @@ jobs:
           MODE: ${{ steps.context.outputs.provenance_verification_mode }}
           STATUS: ${{ steps.context.outputs.provenance_verification_status }}
         run: |
+          set -Eeuo pipefail
           [[ "${APP_IMAGE_REF}" == *@sha256:* ]] || { echo "error: app image ref must remain digest-pinned" >&2; exit 1; }
           [[ "${GOOSE_IMAGE_REF}" == *@sha256:* ]] || { echo "error: goose image ref must remain digest-pinned" >&2; exit 1; }
 
           {
             echo "## Production Promotion Context"
+            echo "- action mode: \`${{ needs.resolve-build-run-id.outputs.action_mode }}\`"
+            echo "- selected build run: \`${{ needs.resolve-build-run-id.outputs.workflow_run_id }}\`"
+            echo "- selected build actor: \`${{ needs.resolve-build-run-id.outputs.build_actor }}\`"
+            echo "- selected source branch: \`${{ needs.resolve-build-run-id.outputs.source_branch }}\`"
+            echo "- selected source commit: \`${{ needs.resolve-build-run-id.outputs.source_commit_sha }}\`"
+            echo "- app digest: \`${{ needs.validate-promotion-selection.outputs.app_digest }}\`"
+            echo "- goose digest: \`${{ needs.validate-promotion-selection.outputs.goose_digest }}\`"
+            echo "- previous app digest: \`${{ needs.resolve-previous-production-deployment.outputs.previous_app_digest || 'unknown' }}\`"
+            echo "- previous goose digest: \`${{ needs.resolve-previous-production-deployment.outputs.previous_goose_digest || 'unknown' }}\`"
             echo "- deploy transport: \`vps-ssh\`"
             echo "- auth mode: \`static-ssh-key\`"
             echo "- provenance verification mode: \`${MODE}\`"
             echo "- provenance verification status: \`${STATUS}\`"
-            echo "- future hook target: \`insert attestation / provenance verification before Sync production runtime assets\`"
+            echo "- future hook target: \`insert attestation / provenance verification before any SSH deploy step\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-prod:
@@ -120,9 +636,43 @@ jobs:
       )
     runs-on: ubuntu-latest
     needs:
+      - resolve-build-run-id
+      - validate-main-ci-gate
+      - resolve-previous-production-deployment
       - resolve-image-refs
+      - validate-production-topology-assets
+      - validate-promotion-selection
+      - validate-production-action-safety
       - prepare-promotion-context
     environment: production
+    env:
+      ACTION_MODE: ${{ needs.resolve-build-run-id.outputs.action_mode }}
+      APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+      GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+      RELEASE_TAG: ${{ needs.resolve-build-run-id.outputs.release_tag }}
+      SOURCE_BRANCH: ${{ needs.resolve-build-run-id.outputs.source_branch }}
+      SOURCE_COMMIT_SHA: ${{ needs.resolve-build-run-id.outputs.source_commit_sha }}
+      SOURCE_COMMIT_SHA_NOTE: ${{ github.event_name == 'workflow_run' && 'build-workflow-head-sha' || (inputs.source_commit_sha != '' && 'operator-confirmed' || 'selected-build-run') }}
+      SELECTED_BUILD_ACTOR: ${{ needs.resolve-build-run-id.outputs.build_actor }}
+      SELECTED_BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
+      PREVIOUS_ACTION_MODE: ${{ needs.resolve-previous-production-deployment.outputs.previous_action_mode }}
+      PREVIOUS_ACTOR: ${{ needs.resolve-previous-production-deployment.outputs.previous_actor }}
+      PREVIOUS_APP_DIGEST: ${{ needs.resolve-previous-production-deployment.outputs.previous_app_digest }}
+      PREVIOUS_APP_IMAGE_REF: ${{ needs.resolve-previous-production-deployment.outputs.previous_app_image_ref }}
+      PREVIOUS_DEPLOYED_AT_UTC: ${{ needs.resolve-previous-production-deployment.outputs.previous_deployed_at_utc }}
+      PREVIOUS_GOOSE_DIGEST: ${{ needs.resolve-previous-production-deployment.outputs.previous_goose_digest }}
+      PREVIOUS_GOOSE_IMAGE_REF: ${{ needs.resolve-previous-production-deployment.outputs.previous_goose_image_ref }}
+      PREVIOUS_RUN_ID: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_id }}
+      PREVIOUS_RUN_NUMBER: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_number }}
+      PREVIOUS_RUN_URL: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}
+      DEPLOY_DATA_NODE: ${{ inputs.deploy_data_node && 'true' || 'false' }}
+      ENABLE_TEMPORAL_PROFILE: ${{ vars.PRODUCTION_ENABLE_TEMPORAL_PROFILE || 'false' }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.DEPLOY_PATH || vars.DEPLOY_PATH || vars.PRODUCTION_DEPLOY_ROOT || vars.PROD_DEPLOY_PATH || '/opt/avf-vending-api' }}
+      APP_NODE_A_HOST: ${{ secrets.APP_A_HOST || secrets.PROD_APP_A_HOST || secrets.PRODUCTION_APP_NODE_A_HOST || vars.APP_A_HOST || vars.PROD_APP_A_HOST || vars.PRODUCTION_APP_NODE_A_HOST }}
+      APP_NODE_B_HOST: ${{ secrets.APP_B_HOST || secrets.PROD_APP_B_HOST || secrets.PRODUCTION_APP_NODE_B_HOST || vars.APP_B_HOST || vars.PROD_APP_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST }}
+      DATA_NODE_HOST: ${{ secrets.DATA_HOST || secrets.PROD_DATA_NODE_HOST || secrets.PRODUCTION_DATA_NODE_HOST || vars.DATA_HOST || vars.PROD_DATA_NODE_HOST || vars.PRODUCTION_DATA_NODE_HOST }}
+      SSH_PORT: ${{ secrets.SSH_PORT || vars.SSH_PORT || vars.PROD_SSH_PORT || vars.PRODUCTION_SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.SSH_USER || vars.SSH_USER || secrets.PROD_SSH_USER || vars.PROD_SSH_USER || secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -130,89 +680,7 @@ jobs:
       - name: Validate production deploy inputs
         shell: bash
         env:
-          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
-          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
-          EVENT_NAME: ${{ github.event_name }}
-          RELEASE_TAG: ${{ github.event_name == 'workflow_run' && needs.resolve-image-refs.outputs.app_image_tag || inputs.release_tag }}
-          SOURCE_COMMIT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.source_commit_sha }}
-          EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
-          EMQX_API_SECRET: ${{ secrets.EMQX_API_SECRET }}
-          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
-          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
-          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
-        run: |
-          set -Eeuo pipefail
-
-          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
-            [[ "${RELEASE_TAG}" =~ ^v[0-9A-Za-z._-]+$ ]] || {
-              echo "error: release_tag must look like a release tag (for example v1.2.3)" >&2
-              exit 1
-            }
-          else
-            [[ -n "${RELEASE_TAG}" ]] || {
-              echo "error: resolved production release label is empty" >&2
-              exit 1
-            }
-          fi
-
-          if [[ -n "${SOURCE_COMMIT_SHA:-}" ]] && [[ ! "${SOURCE_COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "error: source_commit_sha must be a full 40-character lowercase git SHA when provided" >&2
-            exit 1
-          fi
-
-          [[ "${APP_IMAGE_REF}" == *@sha256:* ]] || {
-            echo "error: app_image_ref must be digest-pinned (...@sha256:...)" >&2
-            exit 1
-          }
-
-          [[ "${GOOSE_IMAGE_REF}" == *@sha256:* ]] || {
-            echo "error: goose_image_ref must be digest-pinned (...@sha256:...)" >&2
-            exit 1
-          }
-
-          [[ "${APP_IMAGE_REF}" != *":latest" ]] || {
-            echo "error: app_image_ref must not use latest" >&2
-            exit 1
-          }
-
-          [[ "${GOOSE_IMAGE_REF}" != *":latest" ]] || {
-            echo "error: goose_image_ref must not use latest" >&2
-            exit 1
-          }
-
-          if [[ -z "${VPS_DEPLOY_PATH}" ]]; then
-            echo "error: VPS_DEPLOY_PATH is empty" >&2
-            exit 1
-          fi
-
-          if [[ -n "${EMQX_API_KEY:-}" ]] && [[ -n "${EMQX_API_SECRET:-}" ]]; then
-            :
-          elif [[ -n "${EMQX_API_KEY:-}" ]] || [[ -n "${EMQX_API_SECRET:-}" ]]; then
-            echo "error: set both EMQX_API_KEY and EMQX_API_SECRET, or neither" >&2
-            exit 1
-          else
-            echo "error: production deploy requires both EMQX_API_KEY and EMQX_API_SECRET secrets" >&2
-            exit 1
-          fi
-
-          if [[ -n "${GHCR_PULL_USERNAME:-}" ]] && [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
-            :
-          elif [[ -n "${GHCR_PULL_USERNAME:-}" ]] || [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
-            echo "error: set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN together for production GHCR pulls" >&2
-            exit 1
-          else
-            echo "error: production deploy requires GHCR_PULL_USERNAME and GHCR_PULL_TOKEN because ghcr.io/leduytuanvu/avf-vending-api and ghcr.io/leduytuanvu/avf-vending-api-goose are private packages" >&2
-            exit 1
-          fi
-
-      - name: Validate production SSH configuration
-        if: needs.prepare-promotion-context.outputs.deploy_transport == 'vps-ssh'
-        shell: bash
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
-          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          VPS_USER: ${{ secrets.VPS_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
         run: |
           set -Eeuo pipefail
 
@@ -221,214 +689,326 @@ jobs:
             exit 1
           }
 
-          [[ -n "${VPS_HOST:-}" ]] || fail "missing production secret VPS_HOST"
-          [[ -n "${VPS_SSH_PORT:-}" ]] || fail "missing production secret VPS_SSH_PORT"
-          [[ -n "${VPS_USER:-}" ]] || fail "missing production secret VPS_USER"
-          [[ -n "${VPS_SSH_PRIVATE_KEY:-}" ]] || fail "missing production secret VPS_SSH_PRIVATE_KEY"
+          [[ "${ACTION_MODE}" == "deploy" || "${ACTION_MODE}" == "rollback" ]] || fail "ACTION_MODE must be deploy or rollback"
+          [[ -n "${APP_IMAGE_REF}" ]] || fail "missing APP_IMAGE_REF"
+          [[ -n "${GOOSE_IMAGE_REF}" ]] || fail "missing GOOSE_IMAGE_REF"
+          if [[ "${ACTION_MODE}" == "deploy" ]]; then
+            [[ "${SOURCE_BRANCH}" == "main" ]] || fail "production deploys must come from a main build artifact"
+          fi
+          [[ "${APP_IMAGE_REF}" == *@sha256:* ]] || fail "APP_IMAGE_REF must be digest-pinned"
+          [[ "${GOOSE_IMAGE_REF}" == *@sha256:* ]] || fail "GOOSE_IMAGE_REF must be digest-pinned"
+          [[ "${APP_IMAGE_REF}" != *":latest" ]] || fail "APP_IMAGE_REF must not use latest"
+          [[ "${GOOSE_IMAGE_REF}" != *":latest" ]] || fail "GOOSE_IMAGE_REF must not use latest"
 
-          [[ "${VPS_SSH_PORT}" =~ ^[0-9]+$ ]] || fail "VPS_SSH_PORT must be numeric"
-          (( VPS_SSH_PORT >= 1 && VPS_SSH_PORT <= 65535 )) || fail "VPS_SSH_PORT must be between 1 and 65535"
+          [[ -n "${RELEASE_TAG}" ]] || fail "release tag label is empty"
+          if [[ -n "${SOURCE_COMMIT_SHA:-}" ]] && [[ ! "${SOURCE_COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+            fail "source_commit_sha must be a full 40-character lowercase git SHA when provided"
+          fi
 
-          [[ "${VPS_HOST}" != *$'\n'* && "${VPS_HOST}" != *$'\r'* && "${VPS_HOST}" != *" "* ]] || {
-            fail "VPS_HOST must be a single hostname or IP without whitespace"
-          }
+          [[ -n "${PRODUCTION_DEPLOY_ROOT}" ]] || fail "missing production deploy root (PRODUCTION_DEPLOY_ROOT or PROD_DEPLOY_PATH)"
+          [[ -n "${APP_NODE_A_HOST}" ]] || fail "missing production app node A host"
+          [[ -n "${APP_NODE_B_HOST}" ]] || fail "missing production app node B host"
+          [[ "${APP_NODE_A_HOST}" != "${APP_NODE_B_HOST}" ]] || fail "app node A and B hosts must differ"
+          [[ -n "${SSH_USER}" ]] || fail "missing production SSH user"
+          [[ -n "${SSH_PORT}" ]] || fail "missing production SSH port"
+          [[ -n "${SSH_PRIVATE_KEY}" ]] || fail "missing production SSH private key"
+          [[ "${SSH_PORT}" =~ ^[0-9]+$ ]] || fail "SSH_PORT must be numeric"
+          (( SSH_PORT >= 1 && SSH_PORT <= 65535 )) || fail "SSH_PORT must be between 1 and 65535"
 
-          [[ "${VPS_USER}" != *$'\n'* && "${VPS_USER}" != *$'\r'* && "${VPS_USER}" != *" "* ]] || {
-            fail "VPS_USER must be a single SSH username without whitespace"
-          }
+          if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
+            [[ -n "${DATA_NODE_HOST}" ]] || fail "deploy_data_node=true requires DATA_NODE_HOST"
+          fi
 
-          [[ "${VPS_SSH_PRIVATE_KEY}" == *"BEGIN "* && "${VPS_SSH_PRIVATE_KEY}" == *"PRIVATE KEY"* ]] || {
-            fail "VPS_SSH_PRIVATE_KEY must contain the full private key PEM/OpenSSH block, not a .pub key or truncated value"
-          }
-
-          python3 -c "import socket,sys; socket.getaddrinfo(sys.argv[1], None)" "${VPS_HOST}" || {
-            fail "VPS_HOST must resolve from GitHub-hosted runners; use a public DNS name or IP"
-          }
-
-          python3 -c "import socket,sys; s=socket.create_connection((sys.argv[1], int(sys.argv[2])), timeout=10); s.close()" "${VPS_HOST}" "${VPS_SSH_PORT}" || {
-            fail "cannot reach ${VPS_HOST}:${VPS_SSH_PORT} from this GitHub-hosted runner; check SSH port, firewall, security groups, and provider ACLs before SCP/SSH deploy"
-          }
-
-      - name: Confirm active production deploy path
-        if: needs.prepare-promotion-context.outputs.deploy_transport == 'vps-ssh'
+      - name: Show production rollout plan
         shell: bash
-        env:
-          AUTH_MODE: ${{ needs.prepare-promotion-context.outputs.auth_mode }}
-          DEPLOY_TRANSPORT: ${{ needs.prepare-promotion-context.outputs.deploy_transport }}
-          PROVENANCE_MODE: ${{ needs.prepare-promotion-context.outputs.provenance_verification_mode }}
-          PROVENANCE_STATUS: ${{ needs.prepare-promotion-context.outputs.provenance_verification_status }}
         run: |
           {
-            echo "### Active production deploy path"
-            echo "- deploy transport: \`${DEPLOY_TRANSPORT}\`"
-            echo "- auth mode: \`${AUTH_MODE}\`"
-            echo "- provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\`"
-            echo "- current supported mode: \`VPS over SSH\`"
-            echo "- GHCR package visibility: \`private\`"
-            echo "- GHCR auth requirement: \`GHCR_PULL_USERNAME\` + \`GHCR_PULL_TOKEN\` with package read access"
+            echo "## Production Action Plan"
+            echo "- action mode: \`${ACTION_MODE}\`"
+            echo "- concurrency policy: \`production-deployment\` queue; in-flight production runs are not canceled"
+            if [[ "${ACTION_MODE}" == "deploy" ]]; then
+              echo "- selected build run: \`${SELECTED_BUILD_RUN_ID}\`"
+              echo "- selected build actor: \`${SELECTED_BUILD_ACTOR}\`"
+              echo "- source branch: \`${SOURCE_BRANCH}\`"
+              echo "- source commit SHA: \`${SOURCE_COMMIT_SHA}\`"
+            fi
+            echo "- app image: \`${APP_IMAGE_REF}\`"
+            echo "- app digest: \`${{ needs.validate-promotion-selection.outputs.app_digest }}\`"
+            echo "- goose image: \`${GOOSE_IMAGE_REF}\`"
+            echo "- goose digest: \`${{ needs.validate-promotion-selection.outputs.goose_digest }}\`"
+            echo "- previous app digest: \`${PREVIOUS_APP_DIGEST:-unknown}\`"
+            echo "- previous goose digest: \`${PREVIOUS_GOOSE_DIGEST:-unknown}\`"
+            echo "- release label: \`${RELEASE_TAG}\`"
+            echo "- app node A: \`${APP_NODE_A_HOST}\`"
+            echo "- app node B: \`${APP_NODE_B_HOST}\`"
+            echo "- deploy data-node fallback: \`${DEPLOY_DATA_NODE}\`"
+            echo "- data node host: \`${DATA_NODE_HOST:-not-requested}\`"
+            echo "- enable temporal profile: \`${ENABLE_TEMPORAL_PROFILE}\`"
+            echo "- deploy root: \`${PRODUCTION_DEPLOY_ROOT}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Sync production runtime assets
-        if: needs.prepare-promotion-context.outputs.deploy_transport == 'vps-ssh'
+      - name: Validate SSH reachability for production hosts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          check_host() {
+            local host="$1"
+            [[ -n "${host}" ]] || return 0
+            python3 -c "import socket,sys; socket.getaddrinfo(sys.argv[1], None)" "${host}"
+            python3 -c "import socket,sys; s=socket.create_connection((sys.argv[1], int(sys.argv[2])), timeout=10); s.close()" "${host}" "${SSH_PORT}"
+          }
+
+          check_host "${APP_NODE_A_HOST}"
+          check_host "${APP_NODE_B_HOST}"
+          if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
+            check_host "${DATA_NODE_HOST}"
+          fi
+
+      - name: Start production SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+
+      - name: Add production hosts to known_hosts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ~/.ssh
+          touch ~/.ssh/known_hosts
+
+          add_host_key() {
+            local host="$1"
+            [[ -n "${host}" ]] || return 0
+            ssh-keyscan -p "${SSH_PORT}" -H "${host}" >> ~/.ssh/known_hosts
+          }
+
+          add_host_key "${APP_NODE_A_HOST}"
+          add_host_key "${APP_NODE_B_HOST}"
+          if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
+            add_host_key "${DATA_NODE_HOST}"
+          fi
+
+      - name: Sync app-node assets to node A
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VPS_HOST }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          host: ${{ env.APP_NODE_A_HOST }}
+          port: ${{ env.SSH_PORT }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
           timeout: 60s
           command_timeout: 60m
           overwrite: true
-          source: deployments/prod/docker-compose.prod.yml,deployments/prod/emqx/base.hocon,deployments/prod/scripts/*,deployments/prod/caddy/Caddyfile,deployments/prod/.env.production.example,deployments/prod/README.md
-          target: ${{ secrets.VPS_DEPLOY_PATH }}
+          source: deployments/prod/app-node,deployments/prod/shared,deployments/prod/README.md
+          target: ${{ env.PRODUCTION_DEPLOY_ROOT }}
 
-      - name: Deploy over SSH
-        if: needs.prepare-promotion-context.outputs.deploy_transport == 'vps-ssh'
-        id: deploy_production
-        continue-on-error: true
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
-          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
-          RELEASE_LABEL: ${{ github.event_name == 'workflow_run' && needs.resolve-image-refs.outputs.app_image_tag || inputs.release_tag }}
-          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
-          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
-          EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
-          EMQX_API_SECRET: ${{ secrets.EMQX_API_SECRET }}
-          VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+      - name: Sync app-node assets to node B
+        uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.VPS_HOST }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          host: ${{ env.APP_NODE_B_HOST }}
+          port: ${{ env.SSH_PORT }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
           timeout: 60s
           command_timeout: 60m
-          script_stop: true
-          envs: APP_IMAGE_REF,GOOSE_IMAGE_REF,RELEASE_LABEL,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,EMQX_API_KEY,EMQX_API_SECRET,VPS_DEPLOY_PATH
-          script: |
-            set -Eeuo pipefail
+          overwrite: true
+          source: deployments/prod/app-node,deployments/prod/shared,deployments/prod/README.md
+          target: ${{ env.PRODUCTION_DEPLOY_ROOT }}
 
-            export APP_IMAGE_REF="${APP_IMAGE_REF}"
-            export GOOSE_IMAGE_REF="${GOOSE_IMAGE_REF}"
-            export RELEASE_LABEL="${RELEASE_LABEL}"
-            export EMQX_API_KEY="${EMQX_API_KEY}"
-            export EMQX_API_SECRET="${EMQX_API_SECRET}"
+      - name: Sync data-node fallback assets
+        if: env.DEPLOY_DATA_NODE == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.DATA_NODE_HOST }}
+          port: ${{ env.SSH_PORT }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          timeout: 60s
+          command_timeout: 60m
+          overwrite: true
+          source: deployments/prod/data-node,deployments/prod/shared,deployments/prod/emqx,deployments/prod/README.md
+          target: ${{ env.PRODUCTION_DEPLOY_ROOT }}
 
-            if [[ -z "${VPS_DEPLOY_PATH}" ]]; then
-              echo "error: VPS_DEPLOY_PATH is empty" >&2
-              exit 1
-            fi
+      - name: Optionally deploy data-node fallback stack
+        if: env.DEPLOY_DATA_NODE == 'true'
+        id: deploy_data_node
+        shell: bash
+        env:
+          DATA_NODE_HOST: ${{ env.DATA_NODE_HOST }}
+        run: |
+          set -Eeuo pipefail
+          bash deployments/prod/shared/scripts/release_data_node.sh
 
-            if [[ -n "${EMQX_API_KEY:-}" ]] && [[ -n "${EMQX_API_SECRET:-}" ]]; then
-              :
-            else
-              echo "error: production deploy requires both EMQX_API_KEY and EMQX_API_SECRET" >&2
-              exit 1
-            fi
+      - name: Deploy app node A
+        id: deploy_app_node_a
+        shell: bash
+        env:
+          GHCR_PULL_USERNAME: ${{ github.repository_owner }}
+          GHCR_PULL_TOKEN: ${{ github.token }}
+          APP_NODE_HOSTS: ${{ env.APP_NODE_A_HOST }}
+          APP_NODE_ENABLE_TEMPORAL_PROFILE: ${{ env.ENABLE_TEMPORAL_PROFILE }}
+          RUN_MIGRATION_ON_FIRST_NODE: "1"
+        run: |
+          set -Eeuo pipefail
+          bash deployments/prod/shared/scripts/release_app_cluster.sh "${APP_IMAGE_REF}" "${GOOSE_IMAGE_REF}"
 
-            if [[ -n "${GHCR_PULL_USERNAME:-}" ]] && [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
-              if ! printf '%s' "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "${GHCR_PULL_USERNAME}" --password-stdin; then
-                echo "error: docker login ghcr.io failed for private production packages. Verify GHCR_PULL_USERNAME matches the GitHub account that can read the package and GHCR_PULL_TOKEN has read:packages access." >&2
-                exit 1
-              fi
-            elif [[ -n "${GHCR_PULL_USERNAME:-}" ]] || [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
-              echo "error: set both GHCR_PULL_USERNAME and GHCR_PULL_TOKEN together for production GHCR pulls" >&2
-              exit 1
-            else
-              echo "error: production deploy requires GHCR_PULL_USERNAME and GHCR_PULL_TOKEN because the production GHCR packages are private" >&2
-              exit 1
-            fi
+      - name: Verify app node A
+        id: verify_app_node_a
+        shell: bash
+        env:
+          APP_NODE_HOSTS: ${{ env.APP_NODE_A_HOST }}
+          APP_NODE_ENABLE_TEMPORAL_PROFILE: ${{ env.ENABLE_TEMPORAL_PROFILE }}
+        run: |
+          set -Eeuo pipefail
+          bash deployments/prod/shared/scripts/healthcheck_app_node.sh
 
-            set +e
-            bash "${VPS_DEPLOY_PATH}/deployments/prod/scripts/release.sh" deploy "${APP_IMAGE_REF}" "${GOOSE_IMAGE_REF}"
-            deploy_rc=$?
-            set -e
-            if [[ "${deploy_rc}" -eq 0 ]]; then
-              exit 0
-            fi
+      - name: Deploy app node B
+        id: deploy_app_node_b
+        shell: bash
+        env:
+          GHCR_PULL_USERNAME: ${{ github.repository_owner }}
+          GHCR_PULL_TOKEN: ${{ github.token }}
+          APP_NODE_HOSTS: ${{ env.APP_NODE_B_HOST }}
+          APP_NODE_ENABLE_TEMPORAL_PROFILE: ${{ env.ENABLE_TEMPORAL_PROFILE }}
+          RUN_MIGRATION_ON_FIRST_NODE: "0"
+        run: |
+          set -Eeuo pipefail
+          bash deployments/prod/shared/scripts/release_app_cluster.sh "${APP_IMAGE_REF}" "${GOOSE_IMAGE_REF}"
 
-            if [[ "${deploy_rc}" -eq 42 ]]; then
-              echo "post-deploy verification failed; attempting one automatic rollback" >&2
-              if ! bash "${VPS_DEPLOY_PATH}/deployments/prod/scripts/rollback_prod.sh"; then
-                echo "automatic rollback failed" >&2
-              fi
-            fi
-
-            exit 1
+      - name: Verify app node B
+        id: verify_app_node_b
+        shell: bash
+        env:
+          APP_NODE_HOSTS: ${{ env.APP_NODE_B_HOST }}
+          APP_NODE_ENABLE_TEMPORAL_PROFILE: ${{ env.ENABLE_TEMPORAL_PROFILE }}
+        run: |
+          set -Eeuo pipefail
+          bash deployments/prod/shared/scripts/healthcheck_app_node.sh
 
       - name: Write production deployment summary
         if: always()
         shell: bash
         env:
           ACTOR: ${{ github.actor }}
-          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
-          DEPLOY_STEP_OUTCOME: ${{ steps.deploy_production.outcome }}
-          EVENT_NAME: ${{ github.event_name }}
-          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
-          RELEASE_TAG: ${{ github.event_name == 'workflow_run' && needs.resolve-image-refs.outputs.app_image_tag || inputs.release_tag }}
-          SOURCE_COMMIT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.source_commit_sha }}
-          TRIGGER_NAME: ${{ github.event_name }}
+          FINAL_RESULT: ${{ job.status }}
           AUTH_MODE: ${{ needs.prepare-promotion-context.outputs.auth_mode }}
           DEPLOY_TRANSPORT: ${{ needs.prepare-promotion-context.outputs.deploy_transport }}
           PROVENANCE_MODE: ${{ needs.prepare-promotion-context.outputs.provenance_verification_mode }}
           PROVENANCE_STATUS: ${{ needs.prepare-promotion-context.outputs.provenance_verification_status }}
+          EVENT_NAME: ${{ github.event_name }}
           WORKFLOW_REF_SHA: ${{ github.sha }}
+          DATA_NODE_OUTCOME: ${{ steps.deploy_data_node.outcome }}
+          APP_NODE_A_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_a.outcome }}
+          APP_NODE_A_VERIFY_OUTCOME: ${{ steps.verify_app_node_a.outcome }}
+          APP_NODE_B_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_b.outcome }}
+          APP_NODE_B_VERIFY_OUTCOME: ${{ steps.verify_app_node_b.outcome }}
         run: |
+          set -Eeuo pipefail
           mkdir -p deployment-evidence
+          completed_at_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
-          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
+          if [[ -n "${SOURCE_COMMIT_SHA:-}" ]]; then
             deploy_source_sha="${SOURCE_COMMIT_SHA}"
-            deploy_source_sha_note="workflow-run-head-sha"
-          elif [[ -n "${SOURCE_COMMIT_SHA:-}" ]]; then
-            deploy_source_sha="${SOURCE_COMMIT_SHA}"
-            deploy_source_sha_note="operator-supplied"
+            deploy_source_sha_note="${SOURCE_COMMIT_SHA_NOTE}"
           else
-            deploy_source_sha="${WORKFLOW_REF_SHA}"
-            deploy_source_sha_note="workflow-ref-fallback"
-          fi
-
-          if [[ "${DEPLOY_STEP_OUTCOME}" == "success" ]]; then
-            healthcheck_result="passed"
-            rollback_status="not-triggered"
-          else
-            healthcheck_result="failed-or-not-reached"
-            rollback_status="see-deploy-step-logs"
+            deploy_source_sha=""
+            deploy_source_sha_note="not-available-for-rollback"
           fi
 
           cat > deployment-evidence/production-deployment-manifest.json <<EOF
           {
+            "action_mode": "${ACTION_MODE}",
             "environment": "production",
+            "completed_at_utc": "${completed_at_utc}",
             "source_commit_sha": "${deploy_source_sha}",
             "source_commit_sha_note": "${deploy_source_sha_note}",
+            "source_branch": "${SOURCE_BRANCH}",
             "release_tag": "${RELEASE_TAG}",
+            "selected_build_run_id": "${SELECTED_BUILD_RUN_ID}",
+            "selected_build_actor": "${SELECTED_BUILD_ACTOR}",
             "app_image_ref": "${APP_IMAGE_REF}",
+            "app_digest": "${{ needs.validate-promotion-selection.outputs.app_digest }}",
             "goose_image_ref": "${GOOSE_IMAGE_REF}",
+            "goose_digest": "${{ needs.validate-promotion-selection.outputs.goose_digest }}",
+            "previous_action_mode": "${PREVIOUS_ACTION_MODE}",
+            "previous_actor": "${PREVIOUS_ACTOR}",
+            "previous_app_image_ref": "${PREVIOUS_APP_IMAGE_REF}",
+            "previous_app_digest": "${PREVIOUS_APP_DIGEST}",
+            "previous_goose_image_ref": "${PREVIOUS_GOOSE_IMAGE_REF}",
+            "previous_goose_digest": "${PREVIOUS_GOOSE_DIGEST}",
+            "previous_source_branch": "${{ needs.resolve-previous-production-deployment.outputs.previous_source_branch }}",
+            "previous_source_commit_sha": "${{ needs.resolve-previous-production-deployment.outputs.previous_source_commit_sha }}",
+            "previous_deployed_at_utc": "${PREVIOUS_DEPLOYED_AT_UTC}",
+            "previous_run_id": "${PREVIOUS_RUN_ID}",
+            "previous_run_number": "${PREVIOUS_RUN_NUMBER}",
+            "previous_run_url": "${PREVIOUS_RUN_URL}",
             "actor": "${ACTOR}",
-            "trigger": "${TRIGGER_NAME}",
+            "trigger": "${EVENT_NAME}",
+            "run_id": "${GITHUB_RUN_ID}",
+            "run_number": "${GITHUB_RUN_NUMBER}",
+            "run_url": "${run_url}",
             "deploy_transport": "${DEPLOY_TRANSPORT}",
             "auth_mode": "${AUTH_MODE}",
             "provenance_verification_mode": "${PROVENANCE_MODE}",
             "provenance_verification_status": "${PROVENANCE_STATUS}",
-            "healthcheck_result": "${healthcheck_result}",
-            "rollback_status": "${rollback_status}"
+            "deploy_data_node": "${DEPLOY_DATA_NODE}",
+            "data_node_host": "${DATA_NODE_HOST}",
+            "app_node_a_host": "${APP_NODE_A_HOST}",
+            "app_node_b_host": "${APP_NODE_B_HOST}",
+            "data_node_outcome": "${DATA_NODE_OUTCOME}",
+            "app_node_a_deploy_outcome": "${APP_NODE_A_DEPLOY_OUTCOME}",
+            "app_node_a_verify_outcome": "${APP_NODE_A_VERIFY_OUTCOME}",
+            "app_node_b_deploy_outcome": "${APP_NODE_B_DEPLOY_OUTCOME}",
+            "app_node_b_verify_outcome": "${APP_NODE_B_VERIFY_OUTCOME}",
+            "final_result": "${FINAL_RESULT}"
           }
           EOF
 
           {
             echo "## Production Deployment"
+            echo "- action: \`${ACTION_MODE}\`"
             echo "- environment: \`production\`"
-            echo "- source commit SHA: \`${deploy_source_sha}\`"
-            echo "- source commit note: \`${deploy_source_sha_note}\`"
+            echo "- concurrency policy: \`production-deployment\` queue; rollback and deploy both serialize under the same gate"
+            echo "- actor: \`${ACTOR}\`"
+            echo "- completed at (UTC): \`${completed_at_utc}\`"
+            echo "- run: [#${GITHUB_RUN_NUMBER}](${run_url})"
+            if [[ -n "${deploy_source_sha}" ]]; then
+              echo "- source commit SHA: \`${deploy_source_sha}\`"
+              echo "- source commit note: \`${deploy_source_sha_note}\`"
+            fi
+            if [[ -n "${SOURCE_BRANCH}" ]]; then
+              echo "- source branch: \`${SOURCE_BRANCH}\`"
+            fi
+            if [[ "${ACTION_MODE}" == "deploy" ]]; then
+              echo "- selected build run: \`${SELECTED_BUILD_RUN_ID}\`"
+              echo "- selected build actor: \`${SELECTED_BUILD_ACTOR}\`"
+            fi
             echo "- release tag: \`${RELEASE_TAG}\`"
             echo "- app image: \`${APP_IMAGE_REF}\`"
+            echo "- app digest: \`${{ needs.validate-promotion-selection.outputs.app_digest }}\`"
             echo "- goose image: \`${GOOSE_IMAGE_REF}\`"
-            echo "- actor: \`${ACTOR}\`"
-            echo "- trigger: \`${TRIGGER_NAME}\`"
+            echo "- goose digest: \`${{ needs.validate-promotion-selection.outputs.goose_digest }}\`"
+            echo "- previous action: \`${PREVIOUS_ACTION_MODE:-unknown}\`"
+            echo "- previous app image: \`${PREVIOUS_APP_IMAGE_REF:-unknown}\`"
+            echo "- previous app digest: \`${PREVIOUS_APP_DIGEST:-unknown}\`"
+            echo "- previous goose image: \`${PREVIOUS_GOOSE_IMAGE_REF:-unknown}\`"
+            echo "- previous goose digest: \`${PREVIOUS_GOOSE_DIGEST:-unknown}\`"
+            if [[ -n "${PREVIOUS_RUN_URL}" ]]; then
+              echo "- previous run: [#${PREVIOUS_RUN_NUMBER}](${PREVIOUS_RUN_URL})"
+            fi
             echo "- deploy transport: \`${DEPLOY_TRANSPORT}\`"
             echo "- auth mode: \`${AUTH_MODE}\`"
             echo "- provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\`"
-            echo "- healthcheck result: \`${healthcheck_result}\`"
-            echo "- rollback status: \`${rollback_status}\`"
+            echo "- data-node requested: \`${DEPLOY_DATA_NODE}\`"
+            echo "- app node A: \`${APP_NODE_A_HOST}\`"
+            echo "- app node B: \`${APP_NODE_B_HOST}\`"
+            echo "- data node: \`${DATA_NODE_HOST:-not-requested}\`"
+            echo "- data-node outcome: \`${DATA_NODE_OUTCOME:-skipped}\`"
+            echo "- app node A outcome: deploy=\`${APP_NODE_A_DEPLOY_OUTCOME}\`, verify=\`${APP_NODE_A_VERIFY_OUTCOME}\`"
+            echo "- app node B outcome: deploy=\`${APP_NODE_B_DEPLOY_OUTCOME}\`, verify=\`${APP_NODE_B_VERIFY_OUTCOME}\`"
+            echo "- final result: \`${FINAL_RESULT}\`"
+            echo "- rollback path: \`bash deployments/prod/app-node/scripts/rollback_app_cluster.sh\` and \`bash deployments/prod/data-node/scripts/rollback_data_node.sh\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload production deployment manifest
@@ -439,8 +1019,3 @@ jobs:
           path: deployment-evidence/production-deployment-manifest.json
           if-no-files-found: error
           retention-days: 14
-
-      - name: Fail if production deployment failed
-        if: steps.deploy_production.outcome == 'failure'
-        shell: bash
-        run: exit 1

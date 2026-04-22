@@ -19,6 +19,7 @@ func writeAPIError(w http.ResponseWriter, ctx context.Context, status int, code,
 
 func writeAPIErrorDetails(w http.ResponseWriter, ctx context.Context, status int, code, message string, details map[string]any) {
 	rid := appmw.RequestIDFromContext(ctx)
+	logAPIError(ctx, status, code, message, details)
 	writeJSON(w, status, apierr.V1(rid, code, message, details))
 }
 

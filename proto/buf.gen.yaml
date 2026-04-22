@@ -1,7 +1,11 @@
-# Generates Go under ../gen/go when run (optional; gen output may be gitignored in some setups).
+# Generates tracked Go protobuf + gRPC stubs alongside proto sources.
 version: v2
 plugins:
   - remote: buf.build/protocolbuffers/go
-    out: ../gen/go
+    out: .
+    opt:
+      - paths=source_relative
+  - remote: buf.build/grpc/go
+    out: .
     opt:
       - paths=source_relative

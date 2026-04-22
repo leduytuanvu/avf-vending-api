@@ -1,133 +1,129 @@
-# Production Deploy Runbook
+# Production Deployment Layout
 
-This production profile is for the existing `avf-vending-api` backend on a single Ubuntu VPS. The VPS does not build Go binaries or Docker images. It only pulls prebuilt immutable images and runs `docker compose`.
+The primary production path for this repository is the split `2-VPS` layout under `deployments/prod/`:
 
-Current supported mode:
-- GitHub Actions -> VPS sync -> SSH -> `release.sh`
-- static SSH credentials remain the active production path today
+- `app-node/`: stateless app runtime for each production app VPS
+- `data-node/`: optional self-hosted data-plane fallback for `NATS` and `EMQX`
+- `shared/`: shared proxy config, env ownership, and release helpers
 
-## Release inputs
+This is the current recommended production topology for this snapshot. It replaces the old "one VPS runs everything" layout as the primary path.
 
-Required:
-- `.env.production`
-- `APP_IMAGE_REF`
-- `GOOSE_IMAGE_REF`
+## Start Here
 
-Operator prerequisite:
-- `EMQX_API_KEY` / `EMQX_API_SECRET` must already belong to a REST API key created in EMQX (for example via `System > API Key` in the dashboard). Production deploys use that pre-provisioned key for `/api/v5/*`; they do not create or sync EMQX API keys from files in this repo.
+- `app-node/README.md`
+- `data-node/README.md`
+- `shared/env-matrix.md`
+- `shared/network-matrix.md`
+- `../../docs/runbooks/production-vps.md`
+- `../../docs/runbooks/production-cutover-rollback.md`
+- `../../docs/runbooks/production-backup-restore-dr.md`
+- `../../docs/runbooks/production-day-2-incidents.md`
 
-Preferred image format:
-- `ghcr.io/<owner>/<repo>@sha256:<digest>`
-- `ghcr.io/<owner>/<repo>-goose@sha256:<digest>`
+## Responsibility Split
 
-Optional operator label:
-- `RELEASE_LABEL=v1.2.3`
+### App node
 
-## Deploy flow
+Run `app-node/docker-compose.app-node.yml` on each app VPS.
 
-GitHub Actions production deploy:
-1. A successful `Build and Push Images` run from `main` now auto-triggers `deploy-prod.yml` through `workflow_run`.
-2. The workflow resolves digest-pinned image refs from the build artifact, records promotion metadata, then syncs deploy assets to the VPS and runs `release.sh deploy`.
-3. The release path is: `validate -> backup -> migrate -> deploy -> verify`.
-4. If post-deploy verify fails, the workflow attempts one automatic image rollback and then marks the run failed.
-5. Manual `workflow_dispatch` remains available when an operator needs to promote explicit refs.
-6. Manual runs still require `release_tag`, `app_image_ref`, and `goose_image_ref`; set `source_commit_sha` too when promoting a digest built from a different commit than the workflow ref.
+Contains only app-side runtime concerns:
 
-Manual VPS deploy:
+- `api`
+- `worker`
+- `reconciler`
+- `mqtt-ingest`
+- `caddy`
+- `temporal-worker` only when explicitly enabled
+
+Does not host Postgres, Redis, object storage, NATS, or EMQX.
+
+Production truth for app dependencies:
+
+- PostgreSQL: managed, reached through `DATABASE_URL`
+- Redis: managed when enabled, reached through `REDIS_URL` or `REDIS_ADDR`
+- object storage: managed S3-compatible, reached through `OBJECT_STORAGE_ENDPOINT` and bucket env
+- NATS / EMQX: either managed endpoints or the optional `data-node` fallback
+
+### Data node
+
+Run `data-node/docker-compose.data-node.yml` only when you still self-host broker services in the interim topology.
+
+Contains only fallback data-plane services:
+
+- `nats`
+- `emqx`
+
+Does not host app processes, Postgres, Redis, or object storage.
+
+### Shared
+
+Shared assets live under `shared/`:
+
+- `Caddyfile`
+- `env-matrix.md`
+- `network-matrix.md`
+- `scripts/bootstrap_prereqs.sh`
+- `scripts/lib_release.sh`
+- `scripts/release_app_cluster.sh`
+- `scripts/healthcheck_app_node.sh`
+- `scripts/release_data_node.sh`
+- `scripts/healthcheck_data_node.sh`
+- `scripts/check_managed_services.sh`
+- `scripts/backup_managed_postgres.sh`
+- `scripts/restore_managed_postgres.sh`
+- `scripts/verify_runtime_assets.sh`
+- `scripts/check_restore_readiness.sh`
+- `scripts/smoke_http.sh`
+
+## Legacy Single-Host Path
+
+The old single-host production assets are retained only for rollback and operator reference:
+
+- `docker-compose.prod.yml`
+- `.env.production.example`
+- `scripts/deploy_prod.sh`
+- `scripts/update_prod.sh`
+- `scripts/rollback_prod.sh`
+- `scripts/healthcheck_prod.sh`
+- `scripts/release.sh`
+
+These files are:
+
+- legacy
+- not the primary production path
+- not recommended for the enterprise target deployment
+
+That legacy path still contains container-centric assumptions such as local Postgres health/restore flows. Do not use those scripts for the split production topology.
+
+See `legacy/README.md` for the intended status of those assets.
+
+## Validation
+
+From the repository root:
 
 ```bash
-cd /opt/avf-vending/avf-vending-api/deployments/prod
-RELEASE_LABEL=v1.2.3 bash scripts/release.sh deploy ghcr.io/<owner>/<repo>@sha256:<app-digest> ghcr.io/<owner>/<repo>-goose@sha256:<goose-digest>
+docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml config
+docker compose --env-file deployments/prod/data-node/.env.data-node.example -f deployments/prod/data-node/docker-compose.data-node.yml config
+bash -n deployments/prod/shared/scripts/check_managed_services.sh
+bash -n deployments/prod/shared/scripts/backup_managed_postgres.sh
+bash -n deployments/prod/shared/scripts/restore_managed_postgres.sh
+bash -n deployments/prod/shared/scripts/verify_runtime_assets.sh
+bash -n deployments/prod/shared/scripts/check_restore_readiness.sh
+bash -n deployments/prod/shared/scripts/smoke_http.sh
+bash -n deployments/prod/shared/scripts/release_app_cluster.sh
+bash -n deployments/prod/shared/scripts/healthcheck_app_node.sh
+bash -n deployments/prod/shared/scripts/release_data_node.sh
+bash -n deployments/prod/shared/scripts/healthcheck_data_node.sh
 ```
 
-Thin wrappers remain available:
+## Notes
 
-```bash
-bash scripts/deploy_prod.sh
-bash scripts/update_prod.sh
-```
-
-Both wrappers now resolve `APP_IMAGE_REF` / `GOOSE_IMAGE_REF` first and only fall back to legacy tag fields when needed.
-
-Important behavior:
-- deploys consume immutable image refs
-- `latest` is not a valid production source
-- migrations run before the long-lived app stack is considered healthy
-- image rollback does not roll back database schema
-
-## Rollback flow
-
-Preferred rollback:
-
-```bash
-cd /opt/avf-vending/avf-vending-api/deployments/prod
-bash scripts/release.sh rollback
-```
-
-Explicit rollback:
-
-```bash
-cd /opt/avf-vending/avf-vending-api/deployments/prod
-bash scripts/release.sh rollback ghcr.io/<owner>/<repo>@sha256:<known-good-app> ghcr.io/<owner>/<repo>-goose@sha256:<known-good-goose>
-```
-
-Rollback behavior:
-- restores the last known good image refs from `.deploy/last_known_good_*` when no refs are provided
-- re-pulls the selected images
-- brings the stack back up
-- runs `healthcheck_prod.sh` unless `SKIP_SMOKE=1`
-- does not attempt database schema downgrade
-
-## Post-deploy verification checklist
-
-Run from `deployments/prod`:
-
-```bash
-docker compose --env-file .env.production -f docker-compose.prod.yml ps
-bash scripts/healthcheck_prod.sh
-```
-
-Quick checks:
-- confirm `api`, `worker`, `mqtt-ingest`, `reconciler`, `postgres`, `nats`, `emqx`, and `caddy` are running
-- confirm `/health/live` and `/health/ready` pass
-- confirm the workflow run summary shows the expected image refs and trigger
-- confirm the workflow artifact contains the deployment manifest for audit/review
-
-## Troubleshooting
-
-Start here:
-- `bash scripts/release.sh status`
-- `bash scripts/release.sh logs`
-- `docker compose --env-file .env.production -f docker-compose.prod.yml ps`
-
-Common failure areas:
-- `.env.production` missing or still contains placeholders
-- invalid or unavailable GHCR image ref
-- Postgres not ready, causing migrate or readiness failure
-- EMQX API credentials do not match the pre-provisioned EMQX REST API key
-- EMQX container marked `unhealthy` in `docker compose ps` even though `curl http://127.0.0.1:18083/api/v5/status` works from the host — often means the **in-container** Docker healthcheck is failing (for example, missing `curl`/`wget` inside the EMQX image while the compose healthcheck still tries to use them); inspect `docker inspect -f '{{json .State.Health}}' avf-prod-emqx`
-- DNS / TLS / upstream firewall issues causing public HTTPS healthcheck failures
-
-Recovery guidance:
-- if deploy verify fails in GitHub Actions, inspect the job summary first, then the deploy step logs
-- if rollback also fails, inspect `.deploy/` state plus `release.sh logs`
-- if the problem is schema/data related, use backup/restore or a forward-fix migration; do not rely on image rollback alone
-
-## Future cloud-ready notes
-
-The current production path is intentionally still VPS/SSH based.
-
-The workflow is now structured with a dedicated production promotion context before the active deploy steps:
-- current deploy transport: `vps-ssh`
-- current auth mode: `static-ssh-key`
-- current provenance mode: report-only placeholder
-
-Intended future extension point:
-- replace or extend the promotion context in `deploy-prod.yml`
-- add real provenance / attestation verification before `Sync production runtime assets`
-- later swap static SSH or registry secrets for OIDC/cloud identity without rewriting the deploy/summary flow
-
-What is not implemented yet:
-- no cloud deploy target
-- no live OIDC credential exchange
-- no blocking provenance verification gate
+- App nodes expose only `80/443` for the public HTTP surface.
+- Data nodes expose raw MQTT/TLS on `8883` as the public production MQTT path when the fallback broker is enabled.
+- MQTT is not proxied through the HTTP reverse proxy.
+- Plain MQTT on `1883` is private-network-only or loopback-only if kept for compatibility; it is not an acceptable public production listener.
+- NATS, metrics, ops, and broker admin ports stay private.
+- App-node health checks now include managed PostgreSQL, optional managed Redis, and optional S3-compatible object storage reachability checks using environment-provided connection settings.
+- Managed Postgres backup and restore flows are client-side `pg_dump` / `pg_restore` operations against `DATABASE_URL`; they are not provider snapshot orchestration.
+- Nightly ops performs non-destructive promotion-artifact, runtime-asset, and restore-readiness checks using the shared production helper scripts.
+- The production GitHub Actions workflow now rolls app node A, verifies health, then rolls app node B. Data-node rollout remains a separate explicit step.
+- CI and Security workflows must remain green before merge.

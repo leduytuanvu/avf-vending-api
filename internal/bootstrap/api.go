@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
-	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appartifacts "github.com/avf/avf-vending-api/internal/app/artifacts"
@@ -29,7 +27,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	if cfg == nil || log == nil {
 		return fmt.Errorf("bootstrap: nil dependency")
 	}
-	if cfg.AppEnv == config.AppEnvProduction && strings.TrimSpace(os.Getenv(platformnats.EnvNATSURL)) == "" {
+	if cfg.AppEnv == config.AppEnvProduction && strings.TrimSpace(cfg.NATS.URL) == "" {
 		return fmt.Errorf("bootstrap: APP_ENV=production requires non-empty %s (NATS/JetStream is mandatory for telemetry and related async paths)", platformnats.EnvNATSURL)
 	}
 
@@ -38,7 +36,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		return fmt.Errorf("bootstrap: init tracer: %w", err)
 	}
 	defer func() {
-		sctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		sctx, cancel := context.WithTimeout(context.Background(), cfg.Ops.TracerShutdownTimeout)
 		defer cancel()
 		if err := shutdownTracer(sctx); err != nil {
 			log.Warn("tracer shutdown error", zap.Error(err))
@@ -51,7 +49,13 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	}
 	defer rt.Close()
 
-	mqttBroker := platformmqtt.LoadBrokerFromEnv()
+	mqttBroker := platformmqtt.BrokerConfig{
+		BrokerURL:   cfg.MQTT.BrokerURL,
+		ClientID:    cfg.MQTT.ClientIDForProcess(cfg.ProcessName),
+		Username:    cfg.MQTT.Username,
+		Password:    cfg.MQTT.Password,
+		TopicPrefix: cfg.MQTT.TopicPrefix,
+	}
 	log.Info("mqtt bootstrap config",
 		zap.Bool("require_mqtt_publisher", cfg.APIWiring.RequireMQTTPublisher),
 		zap.String("mqtt_broker_url", mqttBroker.BrokerURL),
@@ -93,10 +97,13 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	fleetRepo := postgres.NewFleetRepository(rt.Pool())
 	fleetSvc := appfleet.NewService(fleetRepo)
 	commerceSvc := appcommerce.NewService(appcommerce.Deps{
-		OrderVend:      store,
-		PaymentOutbox:  store,
-		Lifecycle:      store,
-		WebhookPersist: store,
+		OrderVend:                   store,
+		PaymentOutbox:               store,
+		Lifecycle:                   store,
+		WebhookPersist:              store,
+		SaleLines:                   store,
+		WorkflowOrchestration:       rt.Deps.WorkflowOrchestration,
+		ScheduleVendFailureFollowUp: cfg.Temporal.ScheduleVendFailureFollowUp,
 	})
 	var artifactSvc *appartifacts.Service
 	if cfg.Artifacts.Enabled {
@@ -125,8 +132,17 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		return fmt.Errorf("bootstrap: http server: %w", err)
 	}
 
-	// gRPC: health check only; no domain ServiceRegistrars wired (see internal/grpcserver).
-	grpcSrv, err := grpcserver.NewServer(cfg, log)
+	machineQueries := api.NewInternalMachineQueryService(store, httpApp.MachineShadow)
+	telemetryQueries := api.NewInternalTelemetryQueryService(store)
+	commerceQueries := api.NewInternalCommerceQueryService(commerceSvc)
+
+	grpcSrv, err := grpcserver.NewServer(cfg, log,
+		grpcserver.RegisterInternalQueryServices(grpcserver.InternalQueryServices{
+			Machine:   machineQueries,
+			Telemetry: telemetryQueries,
+			Commerce:  commerceQueries,
+		}),
+	)
 	if err != nil {
 		return fmt.Errorf("bootstrap: grpc server: %w", err)
 	}

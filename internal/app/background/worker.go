@@ -9,6 +9,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/background/outboxmetrics"
 	appreliability "github.com/avf/avf-vending-api/internal/app/reliability"
+	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	domainreliability "github.com/avf/avf-vending-api/internal/domain/reliability"
 	"go.uber.org/zap"
@@ -51,6 +52,9 @@ type WorkerDeps struct {
 	// OnOutboxPublishedMirror optional cold-path hook after Postgres marks a row published (non-blocking;
 	// used for ClickHouse analytics mirror). Must never block or fail the outbox dispatch tick.
 	OnOutboxPublishedMirror func(ev domaincommerce.OutboxEvent)
+
+	WorkflowOrchestration         workfloworch.Boundary
+	SchedulePaymentPendingTimeout bool
 }
 
 // DefaultWorkerTickSchedule returns conservative polling defaults for non-API processes.
@@ -274,13 +278,43 @@ func PaymentTimeoutScanTick(ctx context.Context, deps WorkerDeps) error {
 	if err != nil {
 		return err
 	}
-	var noop, actionable int
+	var noop, actionable, scheduled int
 	for _, d := range scan.Decisions {
 		if d.Action == appreliability.ActionNoop {
 			noop++
 			continue
 		}
 		actionable++
+		if d.Action == appreliability.ActionEscalatePaymentReview &&
+			deps.SchedulePaymentPendingTimeout &&
+			deps.WorkflowOrchestration != nil &&
+			deps.WorkflowOrchestration.Enabled() {
+			err := deps.WorkflowOrchestration.Start(ctx, workfloworch.StartPaymentPendingTimeoutFollowUp(workfloworch.PaymentPendingTimeoutInput{
+				PaymentID:  d.Candidate.PaymentID,
+				OrderID:    d.Candidate.OrderID,
+				ObservedAt: run.Now,
+				ReasonCode: d.ReasonCode,
+				TraceNote:  d.TraceNote,
+			}))
+			if err == nil {
+				scheduled++
+				if deps.Log != nil {
+					deps.Log.Info("payment_timeout_workflow_scheduled",
+						zap.String("payment_id", d.Candidate.PaymentID.String()),
+						zap.String("order_id", d.Candidate.OrderID.String()),
+						zap.String("reason", d.ReasonCode),
+					)
+				}
+				continue
+			}
+			if deps.Log != nil {
+				deps.Log.Warn("payment_timeout_workflow_schedule_failed",
+					zap.Error(err),
+					zap.String("payment_id", d.Candidate.PaymentID.String()),
+					zap.String("order_id", d.Candidate.OrderID.String()),
+				)
+			}
+		}
 		if deps.Log != nil {
 			deps.Log.Info("payment_timeout_scan",
 				zap.String("action", string(d.Action)),
@@ -298,6 +332,7 @@ func PaymentTimeoutScanTick(ctx context.Context, deps WorkerDeps) error {
 			zap.Int("candidates", len(scan.Decisions)),
 			zap.Int("noop", noop),
 			zap.Int("actionable", actionable),
+			zap.Int("scheduled_workflows", scheduled),
 			zap.Int32("batch_limit", deps.Limits.MaxItems),
 			zap.Bool("at_batch_limit", atLimit),
 		)

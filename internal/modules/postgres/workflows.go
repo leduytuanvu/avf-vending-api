@@ -83,6 +83,7 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 	q := db.New(tx)
 
 	var orderRow db.Order
+	var orderInserted bool
 	existingOrder, err := q.GetOrderByOrgIdempotency(ctx, db.GetOrderByOrgIdempotencyParams{
 		OrganizationID: in.OrganizationID,
 		IdempotencyKey: optionalStringToPgText(in.IdempotencyKey),
@@ -90,6 +91,7 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 	switch {
 	case err == nil:
 		orderRow = existingOrder
+		orderInserted = false
 	case isNoRows(err):
 		orderRow, err = q.InsertOrder(ctx, db.InsertOrderParams{
 			OrganizationID: in.OrganizationID,
@@ -107,8 +109,26 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 			}
 			return commerce.CreateOrderVendResult{}, err
 		}
+		orderInserted = true
 	default:
 		return commerce.CreateOrderVendResult{}, err
+	}
+
+	if !orderInserted {
+		firstVend, fvErr := q.GetFirstVendSessionByOrder(ctx, orderRow.ID)
+		if fvErr == nil {
+			if err := tx.Commit(ctx); err != nil {
+				return commerce.CreateOrderVendResult{}, err
+			}
+			return commerce.CreateOrderVendResult{
+				Order:  mapOrder(orderRow),
+				Vend:   mapVend(firstVend),
+				Replay: true,
+			}, nil
+		}
+		if !isNoRows(fvErr) {
+			return commerce.CreateOrderVendResult{}, fvErr
+		}
 	}
 
 	vendRow, vErr := q.GetVendSessionByOrderAndSlot(ctx, db.GetVendSessionByOrderAndSlotParams{
@@ -149,6 +169,37 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 		Vend:   mapVend(vRow),
 		Replay: false,
 	}, nil
+}
+
+// TryReplayCreateOrderWithVend implements commerce.OrderVendWorkflow.
+func (s *Store) TryReplayCreateOrderWithVend(ctx context.Context, organizationID uuid.UUID, idempotencyKey string) (commerce.CreateOrderVendResult, bool, error) {
+	key := strings.TrimSpace(idempotencyKey)
+	if key == "" {
+		return commerce.CreateOrderVendResult{}, false, nil
+	}
+	q := db.New(s.pool)
+	orderRow, err := q.GetOrderByOrgIdempotency(ctx, db.GetOrderByOrgIdempotencyParams{
+		OrganizationID: organizationID,
+		IdempotencyKey: optionalStringToPgText(key),
+	})
+	if err != nil {
+		if isNoRows(err) {
+			return commerce.CreateOrderVendResult{}, false, nil
+		}
+		return commerce.CreateOrderVendResult{}, false, err
+	}
+	vendRow, err := q.GetFirstVendSessionByOrder(ctx, orderRow.ID)
+	if err != nil {
+		if isNoRows(err) {
+			return commerce.CreateOrderVendResult{}, false, errors.New("postgres: idempotent order exists without vend session")
+		}
+		return commerce.CreateOrderVendResult{}, false, err
+	}
+	return commerce.CreateOrderVendResult{
+		Order:  mapOrder(orderRow),
+		Vend:   mapVend(vendRow),
+		Replay: true,
+	}, true, nil
 }
 
 // CreatePaymentWithOutbox inserts a payment and an outbox event in one transaction.

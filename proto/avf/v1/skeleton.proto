@@ -4,7 +4,7 @@ syntax = "proto3";
 
 package avf.v1;
 
-option go_package = "github.com/avf/avf-vending-api/gen/go/avf/v1;avfv1";
+option go_package = "github.com/avf/avf-vending-api/proto/avf/v1;avfv1";
 
 // SkeletonMeta is a placeholder message to validate buf + Go protobuf generation.
 message SkeletonMeta {

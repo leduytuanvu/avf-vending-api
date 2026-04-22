@@ -57,6 +57,14 @@ type V1CommerceCreateOrderResponse struct {
 	Replay        bool   `json:"replay"`
 	OrderStatus   string `json:"order_status" enums:"created,quoted,paid,vending,completed,failed,cancelled"`
 	VendState     string `json:"vend_state" enums:"pending,in_progress,success,failed"`
+	SlotID        string `json:"slot_id"`
+	CabinetCode   string `json:"cabinet_code"`
+	SlotCode      string `json:"slot_code"`
+	SlotIndex     int32  `json:"slot_index"`
+	SubtotalMinor int64  `json:"subtotal_minor"`
+	TaxMinor      int64  `json:"tax_minor"`
+	TotalMinor    int64  `json:"total_minor"`
+	PriceMinor    int64  `json:"price_minor"`
 }
 
 // V1CommerceCashCheckoutResponse matches commerceCashCheckoutResponse JSON (POST /v1/commerce/cash-checkout).

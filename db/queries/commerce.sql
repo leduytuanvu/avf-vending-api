@@ -132,6 +132,27 @@ WHERE
     order_id = $1
     AND slot_index = $2;
 
+-- name: GetFirstVendSessionByOrder :one
+SELECT
+    id,
+    order_id,
+    machine_id,
+    slot_index,
+    product_id,
+    state,
+    failure_reason,
+    correlation_id,
+    started_at,
+    completed_at,
+    final_command_attempt_id,
+    created_at
+FROM vend_sessions
+WHERE
+    order_id = $1
+ORDER BY
+    created_at ASC
+LIMIT 1;
+
 -- name: ListPaymentsPendingTimeout :many
 SELECT
     id,
@@ -505,3 +526,25 @@ RETURNING
     last_publish_attempt_at,
     next_publish_after,
     dead_lettered_at;
+
+-- name: CommerceIsProductInMachinePublishedAssortment :one
+SELECT
+    EXISTS (
+        SELECT
+            1
+        FROM
+            machines m
+            INNER JOIN machine_assortment_bindings b ON b.machine_id = m.id
+            AND b.organization_id = m.organization_id
+            AND b.is_primary
+            AND b.valid_to IS NULL
+            INNER JOIN assortments a ON a.id = b.assortment_id
+            AND a.organization_id = m.organization_id
+            AND a.status = 'published'
+            INNER JOIN assortment_items ai ON ai.assortment_id = a.id
+            AND ai.organization_id = m.organization_id
+            AND ai.product_id = $3
+        WHERE
+            m.id = $1
+            AND m.organization_id = $2
+    ) AS ok;
