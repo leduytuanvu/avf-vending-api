@@ -82,7 +82,7 @@ jobs:
         run: docker compose --env-file deployments/prod/data-node/.env.data-node.example -f deployments/prod/data-node/docker-compose.data-node.yml config
 
       - name: Validate develop deployment Docker Compose config
-        run: docker compose --env-file deployments/staging/.env.staging.example -f deployments/staging/docker-compose.staging.yml config
+        run: STAGING_ENV_FILE=.env.staging.example docker compose --env-file deployments/staging/.env.staging.example -f deployments/staging/docker-compose.staging.yml config
 
       - name: Validate deployment smoke scripts
         shell: bash

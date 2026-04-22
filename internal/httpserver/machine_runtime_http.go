@@ -23,20 +23,20 @@ func mountMachineRuntimeRoutes(r chi.Router, app *api.HTTPApplication) {
 }
 
 type machineCheckInRequest struct {
-	AndroidID       *string `json:"android_id"`
-	SimSerial       *string `json:"sim_serial"`
-	PackageName     string  `json:"package_name"`
-	VersionName     string  `json:"version_name"`
-	VersionCode     int64   `json:"version_code"`
-	AndroidRelease  string  `json:"android_release"`
-	SdkInt          int32   `json:"sdk_int"`
-	Manufacturer    string  `json:"manufacturer"`
-	Model           string  `json:"model"`
-	Timezone        string  `json:"timezone"`
-	NetworkState    string  `json:"network_state"`
-	BootID          string  `json:"boot_id"`
-	OccurredAt      string  `json:"occurred_at"`
-	Metadata        json.RawMessage `json:"metadata,omitempty"`
+	AndroidID      *string         `json:"android_id"`
+	SimSerial      *string         `json:"sim_serial"`
+	PackageName    string          `json:"package_name"`
+	VersionName    string          `json:"version_name"`
+	VersionCode    int64           `json:"version_code"`
+	AndroidRelease string          `json:"android_release"`
+	SdkInt         int32           `json:"sdk_int"`
+	Manufacturer   string          `json:"manufacturer"`
+	Model          string          `json:"model"`
+	Timezone       string          `json:"timezone"`
+	NetworkState   string          `json:"network_state"`
+	BootID         string          `json:"boot_id"`
+	OccurredAt     string          `json:"occurred_at"`
+	Metadata       json.RawMessage `json:"metadata,omitempty"`
 }
 
 func postMachineCheckIn(app *api.HTTPApplication) http.HandlerFunc {
@@ -92,8 +92,8 @@ func postMachineCheckIn(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		_ = q.UpdateMachineCurrentSnapshotLastCheckIn(r.Context(), db.UpdateMachineCurrentSnapshotLastCheckInParams{
-			MachineID:      machineID,
-			LastCheckInAt:  pgtype.Timestamptz{Time: occurredAt.UTC(), Valid: true},
+			MachineID:     machineID,
+			LastCheckInAt: pgtype.Timestamptz{Time: occurredAt.UTC(), Valid: true},
 		})
 
 		writeJSON(w, http.StatusCreated, map[string]any{
@@ -112,11 +112,11 @@ func optionalStringPtrToPgText(s *string) pgtype.Text {
 }
 
 type machineConfigApplyRequest struct {
-	ConfigVersion     int32      `json:"config_version"`
-	AppliedAt         string     `json:"applied_at"`
-	AndroidID         string     `json:"android_id"`
-	AppVersion        string     `json:"app_version"`
-	OperatorSessionID *uuid.UUID `json:"operator_session_id,omitempty"`
+	ConfigVersion     int32           `json:"config_version"`
+	AppliedAt         string          `json:"applied_at"`
+	AndroidID         string          `json:"android_id"`
+	AppVersion        string          `json:"app_version"`
+	OperatorSessionID *uuid.UUID      `json:"operator_session_id,omitempty"`
 	ConfigPayload     json.RawMessage `json:"config_payload,omitempty"`
 }
 
@@ -191,10 +191,10 @@ func postMachineConfigApply(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusCreated, map[string]any{
-			"id":               row.ID.String(),
-			"machine_id":       row.MachineID.String(),
-			"config_revision":  row.ConfigRevision,
-			"applied_at":       formatAPITimeRFC3339Nano(row.AppliedAt),
+			"id":              row.ID.String(),
+			"machine_id":      row.MachineID.String(),
+			"config_revision": row.ConfigRevision,
+			"applied_at":      formatAPITimeRFC3339Nano(row.AppliedAt),
 		})
 	}
 }

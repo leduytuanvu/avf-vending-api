@@ -65,19 +65,19 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				slotID = out.SaleLine.SlotConfigID.String()
 			}
 			writeJSON(w, http.StatusCreated, commerceCreateOrderResponse{
-				OrderID:        out.Order.ID.String(),
-				VendSessionID:  out.Vend.ID.String(),
-				Replay:         out.Replay,
-				OrderStatus:    out.Order.Status,
-				VendState:      out.Vend.State,
-				SlotID:         slotID,
-				CabinetCode:    out.SaleLine.CabinetCode,
-				SlotCode:       out.SaleLine.SlotCode,
-				SlotIndex:      out.SaleLine.SlotIndex,
-				SubtotalMinor:  out.Order.SubtotalMinor,
-				TaxMinor:       out.Order.TaxMinor,
-				TotalMinor:     out.Order.TotalMinor,
-				PriceMinor:     out.SaleLine.PriceMinor,
+				OrderID:       out.Order.ID.String(),
+				VendSessionID: out.Vend.ID.String(),
+				Replay:        out.Replay,
+				OrderStatus:   out.Order.Status,
+				VendState:     out.Vend.State,
+				SlotID:        slotID,
+				CabinetCode:   out.SaleLine.CabinetCode,
+				SlotCode:      out.SaleLine.SlotCode,
+				SlotIndex:     out.SaleLine.SlotIndex,
+				SubtotalMinor: out.Order.SubtotalMinor,
+				TaxMinor:      out.Order.TaxMinor,
+				TotalMinor:    out.Order.TotalMinor,
+				PriceMinor:    out.SaleLine.PriceMinor,
 			})
 		})
 
@@ -454,11 +454,11 @@ func firstNonEmpty(a, b string) string {
 // --- HTTP DTOs (request/response shapes only) ---
 
 type commerceCreateOrderRequest struct {
-	MachineID  uuid.UUID  `json:"machine_id"`
-	ProductID  uuid.UUID  `json:"product_id"`
-	SlotID     *uuid.UUID `json:"slot_id,omitempty"`
-	CabinetCode string    `json:"cabinet_code,omitempty"`
-	SlotCode    string    `json:"slot_code,omitempty"`
+	MachineID   uuid.UUID  `json:"machine_id"`
+	ProductID   uuid.UUID  `json:"product_id"`
+	SlotID      *uuid.UUID `json:"slot_id,omitempty"`
+	CabinetCode string     `json:"cabinet_code,omitempty"`
+	SlotCode    string     `json:"slot_code,omitempty"`
 	// SlotIndex is deprecated; prefer slot_id or cabinet_code+slot_code.
 	SlotIndex     *int32 `json:"slot_index,omitempty"`
 	Currency      string `json:"currency"`
@@ -469,16 +469,16 @@ type commerceCreateOrderRequest struct {
 
 // commerceCashCheckoutRequest mirrors create-order slot selection; records a captured cash payment and marks the order paid.
 type commerceCashCheckoutRequest struct {
-	MachineID   uuid.UUID  `json:"machine_id"`
-	ProductID   uuid.UUID  `json:"product_id"`
-	SlotID      *uuid.UUID `json:"slot_id,omitempty"`
-	CabinetCode string     `json:"cabinet_code,omitempty"`
-	SlotCode    string     `json:"slot_code,omitempty"`
-	SlotIndex   *int32     `json:"slot_index,omitempty"`
-	Currency    string     `json:"currency"`
-	SubtotalMinor int64    `json:"subtotal_minor,omitempty"`
-	TaxMinor      int64    `json:"tax_minor,omitempty"`
-	TotalMinor    int64    `json:"total_minor,omitempty"`
+	MachineID     uuid.UUID  `json:"machine_id"`
+	ProductID     uuid.UUID  `json:"product_id"`
+	SlotID        *uuid.UUID `json:"slot_id,omitempty"`
+	CabinetCode   string     `json:"cabinet_code,omitempty"`
+	SlotCode      string     `json:"slot_code,omitempty"`
+	SlotIndex     *int32     `json:"slot_index,omitempty"`
+	Currency      string     `json:"currency"`
+	SubtotalMinor int64      `json:"subtotal_minor,omitempty"`
+	TaxMinor      int64      `json:"tax_minor,omitempty"`
+	TotalMinor    int64      `json:"total_minor,omitempty"`
 }
 
 type commerceCashCheckoutResponse struct {
