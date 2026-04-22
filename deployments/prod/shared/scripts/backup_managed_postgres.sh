@@ -12,6 +12,7 @@ REPORT_PATH="${BACKUP_MANAGED_POSTGRES_REPORT_PATH:-}"
 
 require_cmd bash
 require_cmd pg_dump
+require_cmd python3
 load_env_file "${ENV_FILE_PATH}"
 
 [[ -n "${DATABASE_URL:-}" ]] || fail "DATABASE_URL is required"
@@ -30,9 +31,15 @@ if is_placeholder_value "${DATABASE_URL}"; then
 else
 	database_url_kind="configured"
 fi
+backup_source_identifier="${BACKUP_SOURCE_IDENTIFIER:-}"
+if [[ -z "${backup_source_identifier}" && "${database_url_kind}" == "configured" ]]; then
+	backup_source_identifier="$(postgres_identifier_from_url "${DATABASE_URL}")"
+fi
+backup_started_at_utc="$(utc_timestamp)"
 
 case "${BACKUP_MODE}" in
 execute)
+	[[ "${database_url_kind}" == "configured" ]] || fail "execute mode requires a non-placeholder DATABASE_URL"
 	pg_dump \
 		--format=custom \
 		--compress=9 \
@@ -50,12 +57,17 @@ execute)
 	if [[ -n "${REPORT_PATH}" ]]; then
 		backup_size_bytes="$(wc -c <"${OUTPUT_PATH}" | tr -d ' ')"
 		printf '{\n' >"${REPORT_PATH}"
+		printf '  "control_scope": "backup-artifact-generation",\n' >>"${REPORT_PATH}"
 		printf '  "mode": "execute",\n' >>"${REPORT_PATH}"
 		printf '  "env_file_path": "%s",\n' "$(json_escape "${ENV_FILE_PATH}")" >>"${REPORT_PATH}"
 		printf '  "output_path": "%s",\n' "$(json_escape "${OUTPUT_PATH}")" >>"${REPORT_PATH}"
 		printf '  "sha256_path": "%s",\n' "$(json_escape "${sha256_path}")" >>"${REPORT_PATH}"
 		printf '  "database_url_kind": "%s",\n' "${database_url_kind}" >>"${REPORT_PATH}"
+		printf '  "backup_source_identifier": "%s",\n' "$(json_escape "${backup_source_identifier}")" >>"${REPORT_PATH}"
+		printf '  "backup_started_at_utc": "%s",\n' "$(json_escape "${backup_started_at_utc}")" >>"${REPORT_PATH}"
+		printf '  "backup_completed_at_utc": "%s",\n' "$(json_escape "$(utc_timestamp)")" >>"${REPORT_PATH}"
 		printf '  "backup_size_bytes": %s,\n' "${backup_size_bytes:-0}" >>"${REPORT_PATH}"
+		printf '  "summary": "client-side pg_dump completed against the configured backup source",\n' >>"${REPORT_PATH}"
 		printf '  "verdict": "pass"\n' >>"${REPORT_PATH}"
 		printf '}\n' >>"${REPORT_PATH}"
 	fi
@@ -64,9 +76,11 @@ execute)
 	;;
 validate)
 	note "backup readiness validation only"
+	validation_verdict="pass"
 	if is_placeholder_value "${DATABASE_URL}"; then
 		note "placeholder DATABASE_URL detected; validating backup tooling and contract only"
 		connectivity_checked="false"
+		validation_verdict="not-configured"
 	else
 		connectivity_checked="false"
 		if [[ "${CHECK_DATABASE_CONNECTIVITY:-0}" == "1" ]]; then
@@ -79,13 +93,22 @@ validate)
 
 	if [[ -n "${REPORT_PATH}" ]]; then
 		printf '{\n' >"${REPORT_PATH}"
+		printf '  "control_scope": "backup-readiness-only",\n' >>"${REPORT_PATH}"
 		printf '  "mode": "validate",\n' >>"${REPORT_PATH}"
 		printf '  "env_file_path": "%s",\n' "$(json_escape "${ENV_FILE_PATH}")" >>"${REPORT_PATH}"
 		printf '  "output_path": "%s",\n' "$(json_escape "${OUTPUT_PATH}")" >>"${REPORT_PATH}"
 		printf '  "database_url_kind": "%s",\n' "${database_url_kind}" >>"${REPORT_PATH}"
+		printf '  "backup_source_identifier": "%s",\n' "$(json_escape "${backup_source_identifier}")" >>"${REPORT_PATH}"
 		printf '  "connectivity_checked": %s,\n' "${connectivity_checked}" >>"${REPORT_PATH}"
 		printf '  "validated": ["pg_dump availability","DATABASE_URL contract"],\n' >>"${REPORT_PATH}"
-		printf '  "verdict": "pass"\n' >>"${REPORT_PATH}"
+		printf '  "summary": "%s",\n' "$(json_escape "$(
+			if [[ "${validation_verdict}" == "not-configured" ]]; then
+				printf 'backup readiness remained readiness-only because DATABASE_URL is placeholder or missing live credentials'
+			else
+				printf 'backup readiness validated tooling and DATABASE_URL contract only'
+			fi
+		)")" >>"${REPORT_PATH}"
+		printf '  "verdict": "%s"\n' "${validation_verdict}" >>"${REPORT_PATH}"
 		printf '}\n' >>"${REPORT_PATH}"
 	fi
 

@@ -175,8 +175,8 @@ jobs:
               production)
                 [[ "${branch}" == "main" ]] || fail "artifact source branch must be main for production, got: ${branch}"
                 ;;
-              develop)
-                [[ "${branch}" == "develop" ]] || fail "artifact source branch must be develop for develop, got: ${branch}"
+              develop | staging)
+                [[ "${branch}" == "develop" ]] || fail "artifact source branch must be develop for ${TARGET_ENVIRONMENT}, got: ${branch}"
                 ;;
               *)
                 fail "unsupported target_environment policy: ${TARGET_ENVIRONMENT}"

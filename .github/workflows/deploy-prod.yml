@@ -1311,6 +1311,7 @@ jobs:
           {
             "action_mode": "${ACTION_MODE}",
             "environment": "production",
+            "scope_note": "this production workflow attests only this production rollout and its release/security gates; it does not attest staging deployment or restore-drill controls",
             "completed_at_utc": "${completed_at_utc}",
             "source_commit_sha": "${deploy_source_sha}",
             "source_commit_sha_note": "${deploy_source_sha_note}",
@@ -1370,6 +1371,7 @@ jobs:
 
           cat > deployment-evidence/production-deploy-evidence.json <<EOF
           {
+            "scope_note": "this production workflow attests only this production rollout and its release/security gates; it does not attest staging deployment or restore-drill controls",
             "release_label": "${RELEASE_TAG}",
             "resolved_release_label": "${RESOLVED_RELEASE_LABEL}",
             "app_image_ref": "${APP_IMAGE_REF}",
@@ -1430,6 +1432,7 @@ jobs:
             echo "- auth mode: \`${AUTH_MODE}\`"
             echo "- provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\` / verdict=\`${PROVENANCE_VERDICT}\`"
             echo "- security gate: verdict=\`${SECURITY_VERDICT}\`, workflow_run=\`${SECURITY_WORKFLOW_RUN_ID:-n/a}\`, generated_at=\`${SECURITY_VERDICT_GENERATED_AT_UTC:-n/a}\`"
+            echo "- scope note: \`production rollout evidence only; staging deployment and restore-drill controls are reported by their own workflows/artifacts\`"
             echo "- data-node requested: \`${DEPLOY_DATA_NODE}\`"
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
             echo "- app node B: \`${APP_NODE_B_HOST}\`"

@@ -64,11 +64,14 @@ done
 if [[ -n "${REPORT_PATH}" ]]; then
 	{
 		printf '{\n'
+		printf '  "control_scope": "runtime-asset-readiness-only",\n'
+		printf '  "control_status": "readiness-only",\n'
 		printf '  "sha256_inventory_path": "%s",\n' "$(printf '%s' "${OUTPUT_PATH}" | sed 's/\\/\\\\/g; s/"/\\"/g')"
 		printf '  "asset_file_count": %s,\n' "${#asset_files[@]}"
 		printf '  "shared_script_count": %s,\n' "$(printf '%s\n' "${SHARED_ROOT}/scripts/"*.sh | wc -l | tr -d ' ')"
 		printf '  "compose_validation_status": "%s",\n' "${compose_validation_status}"
 		printf '  "validated": ["required runtime asset presence","shared script bash syntax","runtime asset sha256 inventory"],\n'
+		printf '  "summary": "runtime asset contract checks passed; this report does not attest live staging or restore-drill execution",\n'
 		printf '  "verdict": "pass"\n'
 		printf '}\n'
 	} >"${REPORT_PATH}"

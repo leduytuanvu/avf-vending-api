@@ -9,6 +9,10 @@ note() {
 	echo "==> $*"
 }
 
+utc_timestamp() {
+	date -u +"%Y-%m-%dT%H:%M:%SZ"
+}
+
 warn() {
 	echo "warn: $*" >&2
 }
@@ -69,6 +73,30 @@ is_placeholder_value() {
 		;;
 	esac
 	return 1
+}
+
+postgres_identifier_from_url() {
+	local value="${1-}"
+	python3 - "$value" <<'PY'
+import sys
+from urllib.parse import urlsplit
+
+value = sys.argv[1]
+parsed = urlsplit(value)
+host = parsed.hostname or ""
+dbname = (parsed.path or "").lstrip("/")
+port = parsed.port
+
+parts = []
+if host:
+    parts.append(host)
+    if port:
+        parts[-1] = f"{parts[-1]}:{port}"
+if dbname:
+    parts.append(dbname)
+
+print("/".join(parts))
+PY
 }
 
 require_cmd() {

@@ -30,10 +30,12 @@ database_url_kind="configured"
 connectivity_checked="false"
 dump_validated="false"
 restore_helper_validated="syntax-only"
+readiness_verdict="pass"
 
 if is_placeholder_value "${DATABASE_URL}"; then
 	note "placeholder DATABASE_URL detected; skipping live connectivity checks"
 	database_url_kind="placeholder"
+	readiness_verdict="not-configured"
 else
 	note "DATABASE_URL is non-placeholder; this script still performs no destructive database action by default"
 	if [[ "${CHECK_DATABASE_CONNECTIVITY:-0}" == "1" ]]; then
@@ -57,6 +59,9 @@ fi
 
 if [[ -n "${REPORT_PATH}" ]]; then
 	printf '{\n' >"${REPORT_PATH}"
+	printf '  "control_scope": "restore-readiness-only",\n' >>"${REPORT_PATH}"
+	printf '  "control_status": "readiness-only",\n' >>"${REPORT_PATH}"
+	printf '  "restore_drill_executed": false,\n' >>"${REPORT_PATH}"
 	printf '  "env_file_path": "%s",\n' "$(json_escape "${ENV_FILE_PATH}")" >>"${REPORT_PATH}"
 	printf '  "database_url_kind": "%s",\n' "${database_url_kind}" >>"${REPORT_PATH}"
 	printf '  "connectivity_checked": %s,\n' "${connectivity_checked}" >>"${REPORT_PATH}"
@@ -64,8 +69,19 @@ if [[ -n "${REPORT_PATH}" ]]; then
 	printf '  "dump_validated": %s,\n' "${dump_validated}" >>"${REPORT_PATH}"
 	printf '  "restore_helper_validation": "%s",\n' "${restore_helper_validated}" >>"${REPORT_PATH}"
 	printf '  "validated": ["pg_dump availability","pg_restore availability","backup/restore helper syntax"],\n' >>"${REPORT_PATH}"
-	printf '  "verdict": "pass"\n' >>"${REPORT_PATH}"
+	printf '  "summary": "%s",\n' "$(json_escape "$(
+		if [[ "${readiness_verdict}" == "not-configured" ]]; then
+			printf 'restore readiness remained readiness-only because DATABASE_URL is placeholder or missing live credentials'
+		else
+			printf 'restore readiness validated local tooling and helper contracts only'
+		fi
+	)")" >>"${REPORT_PATH}"
+	printf '  "verdict": "%s"\n' "${readiness_verdict}" >>"${REPORT_PATH}"
 	printf '}\n' >>"${REPORT_PATH}"
 fi
 
-echo "check_restore_readiness: PASS"
+if [[ "${readiness_verdict}" == "not-configured" ]]; then
+	echo "check_restore_readiness: NOT-CONFIGURED"
+else
+	echo "check_restore_readiness: READINESS-PASS"
+fi
