@@ -705,7 +705,7 @@ jobs:
               '    raise SystemExit(3)' \
               '' \
               'if payload.get("event_name") != "workflow_run":' \
-              '    print(f"reason=production release gate requires workflow_run security evidence, found event_name={payload.get(\"event_name\", \"\")}")' \
+              '    print("reason=production release gate requires workflow_run security evidence, found event_name={}".format(payload.get("event_name", "")))' \
               '    raise SystemExit(4)' \
               '' \
               'if str(payload.get("workflow_run_id", "")) != run_id:' \
@@ -730,7 +730,7 @@ jobs:
               '    raise SystemExit(3)' \
               '' \
               'if payload.get("release_gate_mode", "") != "full-security-release-gate":' \
-              '    print(f"reason=production release gate requires full-security-release-gate mode, found {payload.get(\"release_gate_mode\", \"\")}")' \
+              '    print("reason=production release gate requires full-security-release-gate mode, found {}".format(payload.get("release_gate_mode", "")))' \
               '    raise SystemExit(4)' \
               '' \
               'if payload.get("release_gate_verdict", "") != "pass":' \
