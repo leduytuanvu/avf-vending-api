@@ -1,18 +1,39 @@
 #!/usr/bin/env bash
-# Thin wrapper: delegates to release.sh rollback using the last known good image refs
-# (image-only; no DB schema undo).
+# Legacy single-host rollback wrapper: delegates to release.sh rollback
+# using the last known good image refs (image-only; no DB schema undo).
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RELEASE_SH="${ROOT}/scripts/release.sh"
 
-[[ -f "${ROOT}/.env.production" ]] || {
-	echo "rollback_prod: error: missing ${ROOT}/.env.production" >&2
+fail() {
+	echo "rollback_prod: error: $*" >&2
 	exit 1
 }
+
+legacy_banner() {
+	cat >&2 <<'EOF'
+================================================================
+LEGACY SINGLE-HOST PRODUCTION PATH
+NOT THE PRIMARY 2-VPS RELEASE PATH
+LEGACY SINGLE-HOST ROLLBACK PATH ONLY
+This wrapper exists only for legacy/rollback/reference use.
+Set ALLOW_LEGACY_SINGLE_HOST=1 to proceed intentionally.
+================================================================
+EOF
+}
+
+require_legacy_ack() {
+	legacy_banner
+	[[ "${ALLOW_LEGACY_SINGLE_HOST:-0}" == "1" ]] || fail "refusing to run legacy single-host rollback path without ALLOW_LEGACY_SINGLE_HOST=1"
+}
+
+require_legacy_ack
+[[ -f "${ROOT}/.env.production" ]] || {
+	fail "missing ${ROOT}/.env.production"
+}
 [[ -f "${RELEASE_SH}" ]] || {
-	echo "rollback_prod: error: missing ${RELEASE_SH}" >&2
-	exit 1
+	fail "missing ${RELEASE_SH}"
 }
 
 exec bash "${RELEASE_SH}" rollback "$@"

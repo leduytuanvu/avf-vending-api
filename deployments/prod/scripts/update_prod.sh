@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Thin wrapper: re-applies image refs from .env.production via release.sh (pull + migrate + stack).
+# Legacy single-host wrapper: re-applies image refs from .env.production via release.sh.
 # Does not git pull, compile Go, or docker build application images on the server.
 set -Eeuo pipefail
 
@@ -10,6 +10,22 @@ ENV_FILE="${ROOT}/.env.production"
 fail() {
 	echo "update_prod: error: $*" >&2
 	exit 1
+}
+
+legacy_banner() {
+	cat >&2 <<'EOF'
+================================================================
+LEGACY SINGLE-HOST PRODUCTION PATH
+NOT THE PRIMARY 2-VPS RELEASE PATH
+This wrapper exists only for legacy/rollback/reference use.
+Set ALLOW_LEGACY_SINGLE_HOST=1 to proceed intentionally.
+================================================================
+EOF
+}
+
+require_legacy_ack() {
+	legacy_banner
+	[[ "${ALLOW_LEGACY_SINGLE_HOST:-0}" == "1" ]] || fail "refusing to run legacy single-host update path without ALLOW_LEGACY_SINGLE_HOST=1"
 }
 
 read_env_value() {
@@ -33,6 +49,7 @@ if [[ "${GIT_PULL:-}" == "1" ]]; then
 	echo "update_prod: note: GIT_PULL=1 is ignored; production updates are image-only (see release.sh)." >&2
 fi
 
+require_legacy_ack
 [[ -f "${ENV_FILE}" ]] || fail "missing ${ENV_FILE}"
 [[ -f "${RELEASE_SH}" ]] || fail "missing ${RELEASE_SH}"
 

@@ -94,3 +94,129 @@ jobs:
           bash -n deployments/staging/scripts/deploy_staging.sh
           bash -n deployments/staging/scripts/healthcheck_staging.sh
           bash -n deployments/staging/scripts/smoke_staging.sh
+
+  legacy-prod-asset-contract:
+    name: Legacy Production Asset Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate legacy wrapper guards
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ci-reports
+
+          check_guard() {
+            local script_path="$1"
+            local script_name
+            local output_file
+            script_name="$(basename "${script_path}")"
+            output_file="ci-reports/${script_name}.guard.txt"
+
+            if ALLOW_LEGACY_SINGLE_HOST=0 bash "${script_path}" >"${output_file}" 2>&1; then
+              echo "error: ${script_name} unexpectedly succeeded without ALLOW_LEGACY_SINGLE_HOST=1" >&2
+              exit 1
+            fi
+
+            grep -q "LEGACY SINGLE-HOST PRODUCTION PATH" "${output_file}" || {
+              echo "error: ${script_name} did not print the legacy-path banner" >&2
+              exit 1
+            }
+            grep -q "NOT THE PRIMARY 2-VPS RELEASE PATH" "${output_file}" || {
+              echo "error: ${script_name} did not print the 2-VPS warning" >&2
+              exit 1
+            }
+            grep -q "ALLOW_LEGACY_SINGLE_HOST=1" "${output_file}" || {
+              echo "error: ${script_name} did not require explicit legacy opt-in" >&2
+              exit 1
+            }
+          }
+
+          check_guard deployments/prod/scripts/deploy_prod.sh
+          check_guard deployments/prod/scripts/update_prod.sh
+          check_guard deployments/prod/scripts/rollback_prod.sh
+
+      - name: Run deterministic legacy release asset validation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ALLOW_LEGACY_SINGLE_HOST=1 bash deployments/prod/scripts/validate_release_assets.sh deployments/prod/.env.production.example | tee ci-reports/legacy-release-assets-validation.txt
+
+      - name: Assert machine-readable legacy release contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          checks = {
+              "release.sh": {
+                  "path": Path("deployments/prod/scripts/release.sh"),
+                  "required_markers": [
+                      "last_release_summary.json",
+                      "last_backup_manifest_path",
+                      "last_backup_timestamp",
+                      "last_verify_result",
+                      "AUTO_ROLLBACK_ON_VERIFY_FAIL",
+                  ],
+              },
+              "backup_postgres.sh": {
+                  "path": Path("deployments/prod/scripts/backup_postgres.sh"),
+                  "required_markers": [
+                      ".manifest.json",
+                      "BACKUP_MANIFEST_POINTER_FILE",
+                      "BACKUP_TIMESTAMP_POINTER_FILE",
+                      "sha256_value",
+                  ],
+              },
+              "healthcheck_prod.sh": {
+                  "path": Path("deployments/prod/scripts/healthcheck_prod.sh"),
+                  "required_markers": [
+                      "HEALTHCHECK_JSON",
+                      "overall_status",
+                      "failed_checks",
+                      "key_container_states",
+                      "public_https_result",
+                      "metrics_result",
+                      "EXIT_CODE_RUNTIME_FAILURE",
+                      "EXIT_CODE_READINESS_FAILURE",
+                      "EXIT_CODE_PUBLIC_EDGE_FAILURE",
+                  ],
+              },
+          }
+
+          report = {}
+          for label, spec in checks.items():
+              content = spec["path"].read_text(encoding="utf-8")
+              missing = [marker for marker in spec["required_markers"] if marker not in content]
+              if missing:
+                  raise SystemExit(f"{label} missing contract markers: {missing}")
+              report[label] = {
+                  "path": str(spec["path"]),
+                  "validated_markers": spec["required_markers"],
+              }
+
+          output_path = Path("ci-reports/legacy-machine-readable-contract.json")
+          output_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+          PY
+
+          {
+            echo "### Legacy Production Asset Contract"
+            echo "- validated legacy wrapper opt-in guards and warning banners"
+            echo "- ran \`validate_release_assets.sh\` against \`deployments/prod/.env.production.example\` with explicit legacy opt-in"
+            echo "- asserted machine-readable legacy release markers for summary, backup manifest, and JSON healthcheck outputs"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload legacy production asset contract report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-legacy-production-asset-contract
+          path: ci-reports
+          if-no-files-found: error
+          retention-days: 14

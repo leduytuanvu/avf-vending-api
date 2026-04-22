@@ -18,8 +18,25 @@ EMQX_REST_BASIC_USER=""
 EMQX_REST_BASIC_CRED=""
 CURRENT_PHASE="startup"
 VERIFY_FAILURE_EXIT_CODE=42
+SUMMARY_ACTION="idle"
+SUMMARY_STATUS="idle"
+SUMMARY_APP_IMAGE_REF=""
+SUMMARY_GOOSE_IMAGE_REF=""
+SUMMARY_RELEASE_LABEL=""
+SUMMARY_STARTED_AT_UTC=""
+SUMMARY_COMPLETED_AT_UTC=""
+LAST_BACKUP_MANIFEST_PATH=""
+LAST_BACKUP_TIMESTAMP=""
+LAST_VERIFY_RESULT="not-run"
+ROLLBACK_ATTEMPTED="0"
+ROLLBACK_RESULT="not-attempted"
+SUMMARY_FILE="${STATE}/last_release_summary.json"
+LAST_BACKUP_MANIFEST_PATH_FILE="${STATE}/last_backup_manifest_path"
+LAST_BACKUP_TIMESTAMP_FILE="${STATE}/last_backup_timestamp"
+LAST_VERIFY_RESULT_FILE="${STATE}/last_verify_result"
 
 trap 'rc=$?; if [[ "${rc}" -ne 0 ]]; then echo "release.sh: step failed: ${CURRENT_PHASE}" >&2; fi' ERR
+trap 'write_release_summary_on_exit "$?"' EXIT
 
 fail() {
 	echo "release.sh: error during ${CURRENT_PHASE}: $*" >&2
@@ -28,6 +45,84 @@ fail() {
 
 note() {
 	echo "==> $*"
+}
+
+init_state_dir() {
+	mkdir -p "${STATE}"
+}
+
+write_state_file() {
+	local path="$1"
+	local value="$2"
+	local tmp
+	init_state_dir
+	tmp="${path}.tmp.$$"
+	printf '%s\n' "${value}" >"${tmp}"
+	mv -f "${tmp}" "${path}"
+}
+
+read_state_file() {
+	local path="$1"
+	if [[ -f "${path}" ]]; then
+		tr -d '\r\n' <"${path}"
+	fi
+}
+
+json_escape() {
+	local value="${1-}"
+	value="${value//\\/\\\\}"
+	value="${value//\"/\\\"}"
+	value="${value//$'\n'/\\n}"
+	value="${value//$'\r'/\\r}"
+	value="${value//$'\t'/\\t}"
+	printf '%s' "${value}"
+}
+
+refresh_release_summary() {
+	local tmp
+	init_state_dir
+	tmp="${SUMMARY_FILE}.tmp.$$"
+	cat >"${tmp}" <<EOF
+{
+  "action": "$(json_escape "${SUMMARY_ACTION}")",
+  "status": "$(json_escape "${SUMMARY_STATUS}")",
+  "phase": "$(json_escape "${CURRENT_PHASE}")",
+  "release_label": "$(json_escape "${SUMMARY_RELEASE_LABEL}")",
+  "app_image_ref": "$(json_escape "${SUMMARY_APP_IMAGE_REF}")",
+  "goose_image_ref": "$(json_escape "${SUMMARY_GOOSE_IMAGE_REF}")",
+  "backup_manifest_path": "$(json_escape "${LAST_BACKUP_MANIFEST_PATH}")",
+  "backup_timestamp": "$(json_escape "${LAST_BACKUP_TIMESTAMP}")",
+  "verify_result": "$(json_escape "${LAST_VERIFY_RESULT}")",
+  "rollback_attempted": ${ROLLBACK_ATTEMPTED},
+  "rollback_result": "$(json_escape "${ROLLBACK_RESULT}")",
+  "auto_rollback_on_verify_fail": ${AUTO_ROLLBACK_ON_VERIFY_FAIL:-0},
+  "started_at_utc": "$(json_escape "${SUMMARY_STARTED_AT_UTC}")",
+  "completed_at_utc": "$(json_escape "${SUMMARY_COMPLETED_AT_UTC}")"
+}
+EOF
+	mv -f "${tmp}" "${SUMMARY_FILE}"
+}
+
+set_verify_result() {
+	LAST_VERIFY_RESULT="$1"
+	write_state_file "${LAST_VERIFY_RESULT_FILE}" "${LAST_VERIFY_RESULT}"
+	refresh_release_summary
+}
+
+write_release_summary_on_exit() {
+	local rc="$1"
+	if [[ -z "${SUMMARY_STARTED_AT_UTC}" ]]; then
+		return 0
+	fi
+	SUMMARY_COMPLETED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+	if [[ "${rc}" -eq 0 ]]; then
+		if [[ "${SUMMARY_STATUS}" == "in_progress" ]]; then
+			SUMMARY_STATUS="succeeded"
+		fi
+	elif [[ "${SUMMARY_STATUS}" == "in_progress" ]]; then
+		SUMMARY_STATUS="failed"
+	fi
+	refresh_release_summary
 }
 
 usage() {
@@ -55,6 +150,7 @@ Environment (deploy / rollback):
 
   Optional after deploy:
     SKIP_SMOKE=1 — skip scripts/healthcheck_prod.sh
+    AUTO_ROLLBACK_ON_VERIFY_FAIL=1 — on verify failure, run a controlled rollback to persisted last-known-good refs
 
   Optional rollout wait (deploy / rollback; polls container state / Docker health):
     ROLLUP_HEALTH_WAIT_SECS (default 180; clamped 30–3600 so 0 cannot instant-fail),
@@ -316,7 +412,7 @@ preflight_emqx_api_auth() {
 
 persist_rollout_image_state() {
 	local new_app="$1" new_goose="$2" old_app="${3:-}" old_goose="${4:-}" log_label="$5"
-	mkdir -p "${STATE}"
+	init_state_dir
 	if [[ -n "${old_app}" ]]; then
 		printf '%s\n' "${old_app}" >"${STATE}/previous_app_image_ref"
 	fi
@@ -486,6 +582,21 @@ cmd_deploy() {
 	export APP_IMAGE_REF="${new_app}"
 	export GOOSE_IMAGE_REF="${new_goose}"
 	release_label="${RELEASE_LABEL:-}"
+	SUMMARY_ACTION="deploy"
+	SUMMARY_STATUS="in_progress"
+	SUMMARY_APP_IMAGE_REF="${new_app}"
+	SUMMARY_GOOSE_IMAGE_REF="${new_goose}"
+	SUMMARY_RELEASE_LABEL="${release_label}"
+	SUMMARY_STARTED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+	LAST_BACKUP_MANIFEST_PATH=""
+	LAST_BACKUP_TIMESTAMP=""
+	LAST_VERIFY_RESULT="pending"
+	ROLLBACK_ATTEMPTED="0"
+	ROLLBACK_RESULT="not-attempted"
+	write_state_file "${LAST_BACKUP_MANIFEST_PATH_FILE}" ""
+	write_state_file "${LAST_BACKUP_TIMESTAMP_FILE}" ""
+	refresh_release_summary
+	set_verify_result "pending"
 
 	note "write image refs and registry metadata to ${ENV_FILE}"
 	# Prefer exported CI/VPS env over existing file values when set.
@@ -522,9 +633,12 @@ cmd_deploy() {
 		fail "failed to start postgres for backup"
 	fi
 	note "backup database before migrations"
-	if ! bash "${ROOT}/scripts/backup_postgres.sh"; then
+	if ! BACKUP_MANIFEST_POINTER_FILE="${LAST_BACKUP_MANIFEST_PATH_FILE}" BACKUP_TIMESTAMP_POINTER_FILE="${LAST_BACKUP_TIMESTAMP_FILE}" bash "${ROOT}/scripts/backup_postgres.sh"; then
 		fail "backup_postgres.sh failed"
 	fi
+	LAST_BACKUP_MANIFEST_PATH="$(read_state_file "${LAST_BACKUP_MANIFEST_PATH_FILE}")"
+	LAST_BACKUP_TIMESTAMP="$(read_state_file "${LAST_BACKUP_TIMESTAMP_FILE}")"
+	refresh_release_summary
 
 	CURRENT_PHASE="migrate"
 	note "start data plane (postgres, nats) before migrations"
@@ -564,12 +678,33 @@ cmd_deploy() {
 	note "post-deploy health checks"
 	if [[ "${SKIP_SMOKE:-0}" != "1" ]]; then
 		if ! bash "${ROOT}/scripts/healthcheck_prod.sh"; then
+			set_verify_result "failed"
+			SUMMARY_STATUS="verify_failed"
+			if [[ "${AUTO_ROLLBACK_ON_VERIFY_FAIL:-0}" == "1" ]]; then
+				ROLLBACK_ATTEMPTED="1"
+				ROLLBACK_RESULT="running"
+				refresh_release_summary
+				note "AUTO_ROLLBACK_ON_VERIFY_FAIL=1; attempting controlled rollback to persisted last-known-good state"
+				if AUTO_ROLLBACK_ON_VERIFY_FAIL=0 bash "${BASH_SOURCE[0]}" rollback; then
+					ROLLBACK_RESULT="succeeded"
+					SUMMARY_STATUS="verify_failed_rollback_succeeded"
+				else
+					ROLLBACK_RESULT="failed"
+					SUMMARY_STATUS="verify_failed_rollback_failed"
+				fi
+				refresh_release_summary
+			fi
 			return "${VERIFY_FAILURE_EXIT_CODE}"
 		fi
+		set_verify_result "passed"
+	else
+		set_verify_result "skipped"
 	fi
 
 	CURRENT_PHASE="persist"
 	persist_rollout_image_state "${new_app}" "${new_goose}" "${old_app}" "${old_goose}" "deploy"
+	SUMMARY_STATUS="succeeded"
+	refresh_release_summary
 	note "deploy complete (APP_IMAGE_REF=${new_app} GOOSE_IMAGE_REF=${new_goose})"
 }
 
@@ -616,6 +751,20 @@ cmd_rollback() {
 	require_env_resolved IMAGE_REGISTRY >/dev/null
 	require_env_resolved APP_IMAGE_REPOSITORY >/dev/null
 	require_env_resolved GOOSE_IMAGE_REPOSITORY >/dev/null
+	SUMMARY_ACTION="rollback"
+	SUMMARY_STATUS="in_progress"
+	SUMMARY_APP_IMAGE_REF="${rb_app}"
+	SUMMARY_GOOSE_IMAGE_REF="${rb_goose}"
+	SUMMARY_RELEASE_LABEL="${RELEASE_LABEL:-}"
+	SUMMARY_STARTED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+	LAST_BACKUP_MANIFEST_PATH=""
+	LAST_BACKUP_TIMESTAMP=""
+	ROLLBACK_ATTEMPTED="0"
+	ROLLBACK_RESULT="not-applicable"
+	write_state_file "${LAST_BACKUP_MANIFEST_PATH_FILE}" ""
+	write_state_file "${LAST_BACKUP_TIMESTAMP_FILE}" ""
+	refresh_release_summary
+	set_verify_result "pending"
 	export APP_IMAGE_REF="${rb_app}"
 	export GOOSE_IMAGE_REF="${rb_goose}"
 
@@ -643,12 +792,19 @@ cmd_rollback() {
 	if [[ "${SKIP_SMOKE:-0}" != "1" ]]; then
 		note "post-rollback health checks"
 		if ! bash "${ROOT}/scripts/healthcheck_prod.sh"; then
+			set_verify_result "failed"
+			SUMMARY_STATUS="verify_failed"
 			fail "healthcheck_prod.sh failed"
 		fi
+		set_verify_result "passed"
+	else
+		set_verify_result "skipped"
 	fi
 
 	CURRENT_PHASE="rollback-persist"
 	persist_rollout_image_state "${rb_app}" "${rb_goose}" "${old_app}" "${old_goose}" "rollback"
+	SUMMARY_STATUS="succeeded"
+	refresh_release_summary
 	note "rollback complete (APP_IMAGE_REF=${rb_app} GOOSE_IMAGE_REF=${rb_goose})"
 }
 

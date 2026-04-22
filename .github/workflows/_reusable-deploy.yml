@@ -7,6 +7,11 @@ on:
         description: "`manual` or `workflow_run`"
         required: true
         type: string
+      target_environment:
+        description: "Optional target environment policy name"
+        required: false
+        default: ""
+        type: string
       workflow_run_id:
         description: "Workflow run id to read the image-metadata artifact from"
         required: false
@@ -38,6 +43,15 @@ on:
       goose_image_tag:
         description: "Resolved goose tag label when available"
         value: ${{ jobs.resolve-image-refs.outputs.goose_image_tag }}
+      release_label:
+        description: "Resolved release label when available"
+        value: ${{ jobs.resolve-image-refs.outputs.release_label }}
+      artifact_source_branch:
+        description: "Source branch recorded in the artifact payload"
+        value: ${{ jobs.resolve-image-refs.outputs.artifact_source_branch }}
+      provenance_verdict:
+        description: "Deterministic provenance verdict for the resolved images"
+        value: ${{ jobs.resolve-image-refs.outputs.provenance_verdict }}
 
 jobs:
   resolve-image-refs:
@@ -48,9 +62,12 @@ jobs:
       app_image_tag: ${{ steps.resolve.outputs.app_image_tag }}
       goose_image_ref: ${{ steps.resolve.outputs.goose_image_ref }}
       goose_image_tag: ${{ steps.resolve.outputs.goose_image_tag }}
+      release_label: ${{ steps.resolve.outputs.release_label }}
+      artifact_source_branch: ${{ steps.resolve.outputs.artifact_source_branch }}
+      provenance_verdict: ${{ steps.finalize.outputs.provenance_verdict }}
 
     steps:
-      - name: Download build image metadata
+      - name: Download build metadata artifacts
         if: inputs.resolution_mode == 'workflow_run'
         env:
           GH_TOKEN: ${{ secrets.gh_api_token }}
@@ -62,38 +79,64 @@ jobs:
           [[ -n "${GH_TOKEN:-}" ]] || { echo "error: gh_api_token is required for workflow_run resolution" >&2; exit 1; }
           [[ -n "${RUN_ID}" ]] || { echo "error: workflow_run_id is required for workflow_run resolution" >&2; exit 1; }
 
-          artifact_id=""
-          for attempt in 1 2 3 4 5; do
-            if artifact_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '[.artifacts[]? | select(.name == "image-metadata") | .id] | .[0] // empty')"; then
-              if [[ -n "${artifact_id}" ]]; then
-                break
+          download_artifact() {
+            local artifact_name="$1"
+            local output_dir="$2"
+            local artifact_id=""
+
+            for attempt in 1 2 3 4 5; do
+              if artifact_id="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" | python3 - "${artifact_name}" <<'PY'
+                import json
+                import sys
+
+                artifact_name = sys.argv[1]
+                payload = json.load(sys.stdin)
+                for artifact in payload.get("artifacts", []):
+                    if artifact.get("name") == artifact_name:
+                        print(artifact.get("id", ""))
+                        break
+                PY
+              )"; then
+                if [[ -n "${artifact_id}" ]]; then
+                  break
+                fi
+              else
+                artifact_id=""
               fi
-            else
-              artifact_id=""
-            fi
 
-            if [[ "${attempt}" -lt 5 ]]; then
-              echo "image-metadata artifact not visible yet for workflow run ${RUN_ID}; retrying (${attempt}/5)" >&2
-              sleep 5
-            fi
-          done
+              if [[ "${attempt}" -lt 5 ]]; then
+                echo "${artifact_name} artifact not visible yet for workflow run ${RUN_ID}; retrying (${attempt}/5)" >&2
+                sleep 5
+              fi
+            done
 
-          [[ -n "${artifact_id}" ]] || { echo "error: image-metadata artifact not found for workflow run ${RUN_ID}" >&2; exit 1; }
+            [[ -n "${artifact_id}" ]] || { echo "error: ${artifact_name} artifact not found for workflow run ${RUN_ID}" >&2; exit 1; }
 
-          for attempt in 1 2 3 4 5; do
-            rm -f image-metadata.zip
-            if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > image-metadata.zip; then
-              python3 -m zipfile -e image-metadata.zip .
-              break
-            fi
+            rm -rf "${output_dir}"
+            mkdir -p "${output_dir}"
+            for attempt in 1 2 3 4 5; do
+              rm -f "${artifact_name}.zip"
+              if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > "${artifact_name}.zip"; then
+                python3 -m zipfile -e "${artifact_name}.zip" "${output_dir}"
+                return 0
+              fi
 
-            if [[ "${attempt}" -lt 5 ]]; then
-              echo "image-metadata artifact ${artifact_id} is not downloadable yet; retrying (${attempt}/5)" >&2
-              sleep 5
-            fi
-          done
+              if [[ "${attempt}" -lt 5 ]]; then
+                echo "${artifact_name} artifact ${artifact_id} is not downloadable yet; retrying (${attempt}/5)" >&2
+                sleep 5
+              fi
+            done
 
-          [[ -f image-metadata.json ]] || { echo "error: missing image-metadata.json artifact payload for workflow run ${RUN_ID}" >&2; exit 1; }
+            echo "error: failed to download ${artifact_name} artifact ${artifact_id}" >&2
+            exit 1
+          }
+
+          download_artifact "image-metadata" "image-metadata-artifact"
+          download_artifact "promotion-manifest" "promotion-manifest-artifact"
+
+          [[ -f image-metadata-artifact/image-metadata.json ]] || { echo "error: missing image-metadata.json artifact payload for workflow run ${RUN_ID}" >&2; exit 1; }
+          [[ -f promotion-manifest-artifact/promotion-manifest.json ]] || { echo "error: missing promotion-manifest.json artifact payload for workflow run ${RUN_ID}" >&2; exit 1; }
 
       - name: Resolve image refs
         id: resolve
@@ -102,17 +145,40 @@ jobs:
           INPUT_APP_IMAGE_REF: ${{ inputs.app_image_ref }}
           INPUT_GOOSE_IMAGE_REF: ${{ inputs.goose_image_ref }}
           RESOLUTION_MODE: ${{ inputs.resolution_mode }}
+          TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
         run: |
           set -euo pipefail
+
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
 
           require_digest_ref() {
             local label="$1"
             local ref="$2"
-            [[ -n "${ref}" ]] || { echo "error: missing ${label}" >&2; exit 1; }
+            [[ -n "${ref}" ]] || fail "missing ${label}"
             if [[ "${ref}" != *@sha256:* ]]; then
-              echo "error: ${label} must be a digest-pinned reference (...@sha256:...)" >&2
-              exit 1
+              fail "${label} must be a digest-pinned reference (...@sha256:...)"
             fi
+          }
+
+          validate_source_branch_for_target() {
+            local branch="$1"
+            case "${TARGET_ENVIRONMENT}" in
+              "")
+                return 0
+                ;;
+              production)
+                [[ "${branch}" == "main" ]] || fail "artifact source branch must be main for production, got: ${branch}"
+                ;;
+              develop)
+                [[ "${branch}" == "develop" ]] || fail "artifact source branch must be develop for develop, got: ${branch}"
+                ;;
+              *)
+                fail "unsupported target_environment policy: ${TARGET_ENVIRONMENT}"
+                ;;
+            esac
           }
 
           case "${RESOLUTION_MODE}" in
@@ -121,18 +187,72 @@ jobs:
               goose_image_ref="${INPUT_GOOSE_IMAGE_REF}"
               app_image_tag=""
               goose_image_tag=""
+              artifact_source_branch="manual"
+              release_label="manual-digest"
               ;;
             workflow_run)
-              [[ -f image-metadata.json ]] || { echo "error: missing image-metadata.json artifact payload" >&2; exit 1; }
-              mapfile -t image_metadata < <(python3 -c 'import json; data=json.load(open("image-metadata.json", "r", encoding="utf-8")); print(data["app"]["ref"]); print(data["app"]["tag"]); print(data["goose"]["ref"]); print(data["goose"]["tag"])')
+              [[ -f image-metadata-artifact/image-metadata.json ]] || fail "missing image-metadata.json artifact payload"
+              [[ -f promotion-manifest-artifact/promotion-manifest.json ]] || fail "missing promotion-manifest.json artifact payload"
+              mapfile -t image_metadata < <(python3 - <<'PY'
+              import json
+              from pathlib import Path
+
+              image_metadata = json.loads(Path("image-metadata-artifact/image-metadata.json").read_text(encoding="utf-8"))
+              promotion_manifest = json.loads(Path("promotion-manifest-artifact/promotion-manifest.json").read_text(encoding="utf-8"))
+
+              for label, payload in (("image-metadata", image_metadata), ("promotion-manifest", promotion_manifest)):
+                  source_branch = payload.get("source_branch") or payload.get("ref_name") or ""
+                  if not source_branch:
+                      raise SystemExit(f"missing source branch in {label}")
+
+              app_ref = image_metadata["app"].get("ref", "")
+              goose_ref = image_metadata["goose"].get("ref", "")
+              app_digest = image_metadata["app"].get("digest", "")
+              goose_digest = image_metadata["goose"].get("digest", "")
+              app_tag = image_metadata["app"].get("tag", "")
+              goose_tag = image_metadata["goose"].get("tag", "")
+              source_branch = promotion_manifest.get("source_branch") or image_metadata.get("ref_name") or ""
+
+              if not app_ref or "@sha256:" not in app_ref:
+                  raise SystemExit("image-metadata app.ref must be digest-pinned")
+              if not goose_ref or "@sha256:" not in goose_ref:
+                  raise SystemExit("image-metadata goose.ref must be digest-pinned")
+              if not app_digest or not app_digest.startswith("sha256:"):
+                  raise SystemExit("image-metadata app.digest is missing or malformed")
+              if not goose_digest or not goose_digest.startswith("sha256:"):
+                  raise SystemExit("image-metadata goose.digest is missing or malformed")
+              if app_ref.split("@", 1)[1] != app_digest:
+                  raise SystemExit("image-metadata app ref/digest mismatch")
+              if goose_ref.split("@", 1)[1] != goose_digest:
+                  raise SystemExit("image-metadata goose ref/digest mismatch")
+              if promotion_manifest.get("app_ref", "") != app_ref:
+                  raise SystemExit("promotion-manifest app_ref does not match image-metadata app.ref")
+              if promotion_manifest.get("goose_ref", "") != goose_ref:
+                  raise SystemExit("promotion-manifest goose_ref does not match image-metadata goose.ref")
+              if promotion_manifest.get("app_digest", "") != app_digest:
+                  raise SystemExit("promotion-manifest app_digest does not match image-metadata app.digest")
+              if promotion_manifest.get("goose_digest", "") != goose_digest:
+                  raise SystemExit("promotion-manifest goose_digest does not match image-metadata goose.digest")
+
+              release_label = app_tag or goose_tag or source_branch
+              print(app_ref)
+              print(app_tag)
+              print(goose_ref)
+              print(goose_tag)
+              print(source_branch)
+              print(release_label)
+              PY
+              )
               app_image_ref="${image_metadata[0]}"
               app_image_tag="${image_metadata[1]}"
               goose_image_ref="${image_metadata[2]}"
               goose_image_tag="${image_metadata[3]}"
+              artifact_source_branch="${image_metadata[4]}"
+              release_label="${image_metadata[5]}"
+              validate_source_branch_for_target "${artifact_source_branch}"
               ;;
             *)
-              echo "error: unsupported resolution_mode: ${RESOLUTION_MODE}" >&2
-              exit 1
+              fail "unsupported resolution_mode: ${RESOLUTION_MODE}"
               ;;
           esac
 
@@ -144,4 +264,66 @@ jobs:
             echo "app_image_tag=${app_image_tag}"
             echo "goose_image_ref=${goose_image_ref}"
             echo "goose_image_tag=${goose_image_tag}"
+            echo "release_label=${release_label}"
+            echo "artifact_source_branch=${artifact_source_branch}"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Verify build provenance
+        if: inputs.resolution_mode == 'workflow_run'
+        id: provenance
+        shell: bash
+        env:
+          APP_IMAGE_REF: ${{ steps.resolve.outputs.app_image_ref }}
+          ARTIFACT_SOURCE_BRANCH: ${{ steps.resolve.outputs.artifact_source_branch }}
+          GH_TOKEN: ${{ secrets.gh_api_token }}
+          GOOSE_IMAGE_REF: ${{ steps.resolve.outputs.goose_image_ref }}
+        run: |
+          set -euo pipefail
+
+          [[ -n "${GH_TOKEN:-}" ]] || { echo "error: gh_api_token is required for provenance verification" >&2; exit 1; }
+          [[ -n "${ARTIFACT_SOURCE_BRANCH}" && "${ARTIFACT_SOURCE_BRANCH}" != "manual" ]] || { echo "error: invalid artifact source branch for provenance verification" >&2; exit 1; }
+
+          printf '%s' "${GH_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin >/dev/null
+
+          signer_workflow="github.com/${GITHUB_REPOSITORY}/.github/workflows/_reusable-build.yml@refs/heads/${ARTIFACT_SOURCE_BRANCH}"
+          source_ref="refs/heads/${ARTIFACT_SOURCE_BRANCH}"
+
+          verify_ref() {
+            local label="$1"
+            local ref="$2"
+            local output_file="${label}-attestation.json"
+            gh attestation verify "oci://${ref}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --signer-workflow "${signer_workflow}" \
+              --source-ref "${source_ref}" \
+              --deny-self-hosted-runners \
+              --format json > "${output_file}"
+            python3 - "${output_file}" <<'PY'
+            import json
+            import sys
+
+            payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
+            if not isinstance(payload, list) or not payload:
+                raise SystemExit("no verified attestations returned")
+            PY
+          }
+
+          verify_ref "app" "${APP_IMAGE_REF}"
+          verify_ref "goose" "${GOOSE_IMAGE_REF}"
+
+          echo "provenance_verdict=verified" >> "$GITHUB_OUTPUT"
+
+      - name: Finalize deploy resolution outputs
+        id: finalize
+        shell: bash
+        env:
+          RESOLUTION_MODE: ${{ inputs.resolution_mode }}
+          VERIFIED_VERDICT: ${{ steps.provenance.outputs.provenance_verdict }}
+        run: |
+          set -euo pipefail
+          verdict="${VERIFIED_VERDICT:-}"
+          if [[ -z "${verdict}" && "${RESOLUTION_MODE}" == "manual" ]]; then
+            verdict="accepted-manual"
+          fi
+          [[ -n "${verdict}" ]] || { echo "error: empty provenance verdict" >&2; exit 1; }
+          echo "provenance_verdict=${verdict}" >> "$GITHUB_OUTPUT"

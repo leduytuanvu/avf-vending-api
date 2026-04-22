@@ -29,6 +29,7 @@ permissions:
   actions: read
   contents: read
   packages: read
+  security-events: write
 
 jobs:
   dependency-review:
@@ -107,6 +108,13 @@ jobs:
           path: security-reports/gitleaks.sarif
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload gitleaks SARIF to code scanning
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: security-reports/gitleaks.sarif
+          category: gitleaks
 
   config-scan:
     name: Deployment and Config Scan
@@ -355,5 +363,142 @@ jobs:
         with:
           name: dependency-update-snapshot
           path: security-reports/go-module-updates.json
+          if-no-files-found: error
+          retention-days: 14
+
+  security-release-signal:
+    name: Security Release Signal
+    if: always()
+    runs-on: ubuntu-latest
+    needs:
+      - dependency-review
+      - govulncheck-pr
+      - secret-scan
+      - config-scan
+      - resolve-build-run-id
+      - resolve-image-refs
+      - image-vulnerability-scan
+      - govulncheck-nightly
+      - dependency-snapshot
+    outputs:
+      release_gate_verdict: ${{ steps.signal.outputs.release_gate_verdict }}
+      repo_security_verdict: ${{ steps.signal.outputs.repo_security_verdict }}
+      published_image_verdict: ${{ steps.signal.outputs.published_image_verdict }}
+    steps:
+      - name: Write structured security release signal
+        id: signal
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DEPENDENCY_REVIEW_RESULT: ${{ needs.dependency-review.result }}
+          GOVULNCHECK_PR_RESULT: ${{ needs.govulncheck-pr.result }}
+          SECRET_SCAN_RESULT: ${{ needs.secret-scan.result }}
+          CONFIG_SCAN_RESULT: ${{ needs.config-scan.result }}
+          RESOLVE_BUILD_RUN_RESULT: ${{ needs.resolve-build-run-id.result }}
+          RESOLVE_IMAGE_REFS_RESULT: ${{ needs.resolve-image-refs.result }}
+          IMAGE_SCAN_RESULT: ${{ needs.image-vulnerability-scan.result }}
+          GOVULNCHECK_NIGHTLY_RESULT: ${{ needs.govulncheck-nightly.result }}
+          DEPENDENCY_SNAPSHOT_RESULT: ${{ needs.dependency-snapshot.result }}
+          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+          PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          event_name = os.environ["EVENT_NAME"]
+          results = {
+              "dependency_review": os.environ["DEPENDENCY_REVIEW_RESULT"] or "not_applicable",
+              "govulncheck_pr": os.environ["GOVULNCHECK_PR_RESULT"] or "not_applicable",
+              "secret_scan": os.environ["SECRET_SCAN_RESULT"] or "not_applicable",
+              "config_scan": os.environ["CONFIG_SCAN_RESULT"] or "not_applicable",
+              "resolve_build_run": os.environ["RESOLVE_BUILD_RUN_RESULT"] or "not_applicable",
+              "resolve_image_refs": os.environ["RESOLVE_IMAGE_REFS_RESULT"] or "not_applicable",
+              "image_vulnerability_scan": os.environ["IMAGE_SCAN_RESULT"] or "not_applicable",
+              "govulncheck_nightly": os.environ["GOVULNCHECK_NIGHTLY_RESULT"] or "not_applicable",
+              "dependency_snapshot": os.environ["DEPENDENCY_SNAPSHOT_RESULT"] or "not_applicable",
+          }
+
+          def verdict_for(job_names):
+              relevant = [results[name] for name in job_names if results[name] != "skipped"]
+              if not relevant:
+                  return "not_applicable"
+              if all(result == "success" for result in relevant):
+                  return "pass"
+              return "fail"
+
+          repo_security_verdict = verdict_for([
+              "dependency_review",
+              "govulncheck_pr",
+              "secret_scan",
+              "config_scan",
+          ])
+          published_image_verdict = verdict_for([
+              "resolve_build_run",
+              "resolve_image_refs",
+              "image_vulnerability_scan",
+          ])
+          nightly_security_verdict = verdict_for([
+              "govulncheck_nightly",
+              "dependency_snapshot",
+          ])
+
+          applicable = [v for v in [repo_security_verdict, published_image_verdict, nightly_security_verdict] if v != "not_applicable"]
+          release_gate_verdict = "pass" if applicable and all(v == "pass" for v in applicable) else ("not_applicable" if not applicable else "fail")
+
+          payload = {
+              "event_name": event_name,
+              "release_gate_verdict": release_gate_verdict,
+              "repo_security_verdict": repo_security_verdict,
+              "published_image_verdict": published_image_verdict,
+              "nightly_security_verdict": nightly_security_verdict,
+              "published_images": {
+                  "app_image_ref": os.environ.get("APP_IMAGE_REF", ""),
+                  "goose_image_ref": os.environ.get("GOOSE_IMAGE_REF", ""),
+                  "provenance_verdict": os.environ.get("PROVENANCE_VERDICT", ""),
+              },
+              "job_results": results,
+          }
+          Path("security-reports/security-release-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          print(f"release_gate_verdict={release_gate_verdict}")
+          print(f"repo_security_verdict={repo_security_verdict}")
+          print(f"published_image_verdict={published_image_verdict}")
+          PY
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          payload = json.loads(Path("security-reports/security-release-verdict.json").read_text(encoding="utf-8"))
+          for key in ("release_gate_verdict", "repo_security_verdict", "published_image_verdict"):
+              print(f"{key}={payload[key]}")
+          PY
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          payload = json.loads(Path("security-reports/security-release-verdict.json").read_text(encoding="utf-8"))
+          print("## Security Release Signal")
+          print(f"- event: `{payload['event_name']}`")
+          print(f"- release gate verdict: `{payload['release_gate_verdict']}`")
+          print(f"- repo security verdict: `{payload['repo_security_verdict']}`")
+          print(f"- published image verdict: `{payload['published_image_verdict']}`")
+          if payload["published_images"]["app_image_ref"]:
+              print(f"- app image: `{payload['published_images']['app_image_ref']}`")
+          if payload["published_images"]["goose_image_ref"]:
+              print(f"- goose image: `{payload['published_images']['goose_image_ref']}`")
+          if payload["published_images"]["provenance_verdict"]:
+              print(f"- published image provenance verdict: `{payload['published_images']['provenance_verdict']}`")
+          PY
+
+      - name: Upload security release verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-release-verdict
+          path: security-reports/security-release-verdict.json
           if-no-files-found: error
           retention-days: 14

@@ -253,6 +253,7 @@ jobs:
     needs: resolve-build-run-id
     with:
       resolution_mode: ${{ needs.resolve-build-run-id.outputs.action_mode == 'rollback' && 'manual' || 'workflow_run' }}
+      target_environment: production
       workflow_run_id: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
       app_image_ref: ${{ needs.resolve-build-run-id.outputs.action_mode == 'rollback' && inputs.rollback_app_image_ref || '' }}
       goose_image_ref: ${{ needs.resolve-build-run-id.outputs.action_mode == 'rollback' && inputs.rollback_goose_image_ref || '' }}
@@ -455,6 +456,7 @@ jobs:
       previous_run_id: ${{ steps.context.outputs.previous_run_id }}
       previous_run_number: ${{ steps.context.outputs.previous_run_number }}
       previous_run_url: ${{ steps.context.outputs.previous_run_url }}
+      provenance_verdict: ${{ steps.context.outputs.provenance_verdict }}
       provenance_verification_mode: ${{ steps.context.outputs.provenance_verification_mode }}
       provenance_verification_status: ${{ steps.context.outputs.provenance_verification_status }}
       source_branch: ${{ steps.context.outputs.source_branch }}
@@ -480,17 +482,19 @@ jobs:
             echo "previous_run_id=${{ needs.resolve-previous-production-deployment.outputs.previous_run_id }}"
             echo "previous_run_number=${{ needs.resolve-previous-production-deployment.outputs.previous_run_number }}"
             echo "previous_run_url=${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}"
-            echo "provenance_verification_mode=report-only-extension-point"
-            echo "provenance_verification_status=not-configured-currently-non-blocking"
+            echo "provenance_verdict=${{ needs.resolve-image-refs.outputs.provenance_verdict }}"
+            echo "provenance_verification_mode=gh-attestation-verify"
+            echo "provenance_verification_status=${{ needs.resolve-image-refs.outputs.provenance_verdict }}"
             echo "source_branch=${{ needs.resolve-build-run-id.outputs.source_branch }}"
             echo "source_commit_sha=${{ needs.resolve-build-run-id.outputs.source_commit_sha }}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Future provenance verification hook
+      - name: Record provenance verification result
         shell: bash
         env:
           APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
           GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+          VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
           MODE: ${{ steps.context.outputs.provenance_verification_mode }}
           STATUS: ${{ steps.context.outputs.provenance_verification_status }}
         run: |
@@ -511,9 +515,9 @@ jobs:
             echo "- previous goose digest: \`${{ needs.resolve-previous-production-deployment.outputs.previous_goose_digest || 'unknown' }}\`"
             echo "- deploy transport: \`vps-ssh\`"
             echo "- auth mode: \`static-ssh-key\`"
+            echo "- provenance verdict: \`${VERDICT}\`"
             echo "- provenance verification mode: \`${MODE}\`"
             echo "- provenance verification status: \`${STATUS}\`"
-            echo "- future hook target: \`insert attestation / provenance verification before any SSH deploy step\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-prod:
@@ -554,6 +558,8 @@ jobs:
       APP_NODE_A_HOST: ${{ secrets.APP_A_HOST || secrets.PROD_APP_A_HOST || secrets.PRODUCTION_APP_NODE_A_HOST || vars.APP_A_HOST || vars.PROD_APP_A_HOST || vars.PRODUCTION_APP_NODE_A_HOST }}
       APP_NODE_B_HOST: ${{ secrets.APP_B_HOST || secrets.PROD_APP_B_HOST || secrets.PRODUCTION_APP_NODE_B_HOST || vars.APP_B_HOST || vars.PROD_APP_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST }}
       DATA_NODE_HOST: ${{ secrets.DATA_HOST || secrets.PROD_DATA_NODE_HOST || secrets.PRODUCTION_DATA_NODE_HOST || vars.DATA_HOST || vars.PROD_DATA_NODE_HOST || vars.PRODUCTION_DATA_NODE_HOST }}
+      PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
+      RESOLVED_RELEASE_LABEL: ${{ needs.resolve-image-refs.outputs.release_label }}
       SSH_PORT: ${{ secrets.SSH_PORT || vars.SSH_PORT || vars.PROD_SSH_PORT || vars.PRODUCTION_SSH_PORT || '22' }}
       SSH_USER: ${{ secrets.SSH_USER || vars.SSH_USER || secrets.PROD_SSH_USER || vars.PROD_SSH_USER || secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER }}
     steps:
@@ -563,6 +569,7 @@ jobs:
       - name: Validate production deploy inputs
         shell: bash
         env:
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
         run: |
           set -Eeuo pipefail
@@ -594,6 +601,7 @@ jobs:
           [[ "${APP_NODE_A_HOST}" != "${APP_NODE_B_HOST}" ]] || fail "app node A and B hosts must differ"
           [[ -n "${SSH_USER}" ]] || fail "missing production SSH user"
           [[ -n "${SSH_PORT}" ]] || fail "missing production SSH port"
+          [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]] || fail "missing pinned production SSH known_hosts content"
           [[ -n "${SSH_PRIVATE_KEY}" ]] || fail "missing production SSH private key"
           [[ "${SSH_PORT}" =~ ^[0-9]+$ ]] || fail "SSH_PORT must be numeric"
           (( SSH_PORT >= 1 && SSH_PORT <= 65535 )) || fail "SSH_PORT must be between 1 and 65535"
@@ -601,6 +609,21 @@ jobs:
           if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
             [[ -n "${DATA_NODE_HOST}" ]] || fail "deploy_data_node=true requires DATA_NODE_HOST"
           fi
+
+      - name: Gate production provenance before SSH
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          case "${ACTION_MODE}:${PROVENANCE_VERDICT}" in
+            deploy:verified)
+              ;;
+            rollback:verified|rollback:accepted-manual)
+              ;;
+            *)
+              echo "error: refusing production ${ACTION_MODE}; provenance verdict is not acceptable: ${PROVENANCE_VERDICT}" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Show production rollout plan
         shell: bash
@@ -653,64 +676,64 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
 
-      - name: Add production hosts to known_hosts
+      - name: Install pinned production SSH trust
         shell: bash
+        env:
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
         run: |
           set -Eeuo pipefail
           mkdir -p ~/.ssh
-          touch ~/.ssh/known_hosts
-
-          add_host_key() {
-            local host="$1"
-            [[ -n "${host}" ]] || return 0
-            ssh-keyscan -p "${SSH_PORT}" -H "${host}" >> ~/.ssh/known_hosts
-          }
-
-          add_host_key "${APP_NODE_A_HOST}"
-          add_host_key "${APP_NODE_B_HOST}"
-          if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
-            add_host_key "${DATA_NODE_HOST}"
-          fi
+          chmod 700 ~/.ssh
+          printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host *
+            BatchMode yes
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile ~/.ssh/known_hosts
+            GlobalKnownHostsFile ~/.ssh/known_hosts
+          EOF
+          chmod 600 ~/.ssh/config ~/.ssh/known_hosts
+          {
+            echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
+            echo "SCP_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
+          } >> "$GITHUB_ENV"
 
       - name: Sync app-node assets to node A
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ env.APP_NODE_A_HOST }}
-          port: ${{ env.SSH_PORT }}
-          username: ${{ env.SSH_USER }}
-          key: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
-          timeout: 60s
-          command_timeout: 60m
-          overwrite: true
-          source: deployments/prod/app-node,deployments/prod/shared,deployments/prod/README.md
-          target: ${{ env.PRODUCTION_DEPLOY_ROOT }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_A_HOST}"
+          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+          tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md | \
+            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
 
       - name: Sync app-node assets to node B
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ env.APP_NODE_B_HOST }}
-          port: ${{ env.SSH_PORT }}
-          username: ${{ env.SSH_USER }}
-          key: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
-          timeout: 60s
-          command_timeout: 60m
-          overwrite: true
-          source: deployments/prod/app-node,deployments/prod/shared,deployments/prod/README.md
-          target: ${{ env.PRODUCTION_DEPLOY_ROOT }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_B_HOST}"
+          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+          tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md | \
+            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
 
       - name: Sync data-node fallback assets
         if: env.DEPLOY_DATA_NODE == 'true'
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ env.DATA_NODE_HOST }}
-          port: ${{ env.SSH_PORT }}
-          username: ${{ env.SSH_USER }}
-          key: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
-          timeout: 60s
-          command_timeout: 60m
-          overwrite: true
-          source: deployments/prod/data-node,deployments/prod/shared,deployments/prod/emqx,deployments/prod/README.md
-          target: ${{ env.PRODUCTION_DEPLOY_ROOT }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${DATA_NODE_HOST}"
+          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+          tar -cf - deployments/prod/data-node deployments/prod/shared deployments/prod/emqx deployments/prod/README.md | \
+            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
+
+      - name: Mark production release start
+        if: env.ACTION_MODE == 'deploy'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p deployment-evidence
+          printf 'started\n' > deployment-evidence/release-started
 
       - name: Optionally deploy data-node fallback stack
         if: env.DEPLOY_DATA_NODE == 'true'
@@ -768,6 +791,66 @@ jobs:
           set -Eeuo pipefail
           bash deployments/prod/shared/scripts/healthcheck_app_node.sh
 
+      - name: Attempt automatic rollback after failed production release
+        if: failure() && env.ACTION_MODE == 'deploy'
+        id: auto_rollback
+        continue-on-error: true
+        shell: bash
+        env:
+          APP_NODE_A_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_a.outcome }}
+          DATA_NODE_DEPLOY_OUTCOME: ${{ steps.deploy_data_node.outcome }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p deployment-evidence
+          rollback_attempted="false"
+
+          if [[ ! -f deployment-evidence/release-started ]]; then
+            echo "rollback_attempted=false" >> "$GITHUB_OUTPUT"
+            echo "rollback_result=not-started" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          app_nodes_need_rollback="false"
+          if [[ -n "${APP_NODE_A_DEPLOY_OUTCOME}" && "${APP_NODE_A_DEPLOY_OUTCOME}" != "skipped" ]]; then
+            app_nodes_need_rollback="true"
+          fi
+
+          if [[ "${app_nodes_need_rollback}" == "true" && ( -z "${PREVIOUS_APP_IMAGE_REF}" || -z "${PREVIOUS_GOOSE_IMAGE_REF}" ) ]]; then
+            echo "rollback_attempted=false" >> "$GITHUB_OUTPUT"
+            echo "rollback_result=no-previous-release" >> "$GITHUB_OUTPUT"
+            echo "error: release failed after start, but no previous successful production image refs are available for rollback" >&2
+            exit 1
+          fi
+
+          rollback_app_node() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' bash 'scripts/rollback_app_node.sh' '${PREVIOUS_APP_IMAGE_REF}' '${PREVIOUS_GOOSE_IMAGE_REF}'"
+            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' bash 'scripts/healthcheck_app_node.sh'"
+          }
+
+          if [[ "${app_nodes_need_rollback}" == "true" ]]; then
+            rollback_attempted="true"
+            rollback_app_node "${APP_NODE_A_HOST}"
+            rollback_app_node "${APP_NODE_B_HOST}"
+          fi
+
+          if [[ "${DEPLOY_DATA_NODE}" == "true" && -n "${DATA_NODE_DEPLOY_OUTCOME}" && "${DATA_NODE_DEPLOY_OUTCOME}" != "skipped" ]]; then
+            rollback_attempted="true"
+            target="${SSH_USER}@${DATA_NODE_HOST}"
+            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node' && bash 'scripts/rollback_data_node.sh'"
+          fi
+
+          echo "rollback_attempted=${rollback_attempted}" >> "$GITHUB_OUTPUT"
+          if [[ "${rollback_attempted}" == "true" ]]; then
+            echo "rollback_result=completed" >> "$GITHUB_OUTPUT"
+          else
+            echo "rollback_result=nothing-to-rollback" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Write production deployment summary
         if: always()
         shell: bash
@@ -785,6 +868,10 @@ jobs:
           APP_NODE_A_VERIFY_OUTCOME: ${{ steps.verify_app_node_a.outcome }}
           APP_NODE_B_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_b.outcome }}
           APP_NODE_B_VERIFY_OUTCOME: ${{ steps.verify_app_node_b.outcome }}
+          PROVENANCE_VERDICT: ${{ needs.prepare-promotion-context.outputs.provenance_verdict }}
+          RESOLVED_RELEASE_LABEL: ${{ needs.resolve-image-refs.outputs.release_label }}
+          ROLLBACK_ATTEMPTED: ${{ steps.auto_rollback.outputs.rollback_attempted || 'false' }}
+          ROLLBACK_RESULT: ${{ steps.auto_rollback.outputs.rollback_result || 'not-attempted' }}
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
@@ -808,6 +895,8 @@ jobs:
             "source_commit_sha_note": "${deploy_source_sha_note}",
             "source_branch": "${SOURCE_BRANCH}",
             "release_tag": "${RELEASE_TAG}",
+            "release_label": "${RELEASE_TAG}",
+            "resolved_release_label": "${RESOLVED_RELEASE_LABEL}",
             "selected_build_run_id": "${SELECTED_BUILD_RUN_ID}",
             "selected_build_actor": "${SELECTED_BUILD_ACTOR}",
             "app_image_ref": "${APP_IMAGE_REF}",
@@ -835,6 +924,7 @@ jobs:
             "auth_mode": "${AUTH_MODE}",
             "provenance_verification_mode": "${PROVENANCE_MODE}",
             "provenance_verification_status": "${PROVENANCE_STATUS}",
+            "provenance_verdict": "${PROVENANCE_VERDICT}",
             "deploy_data_node": "${DEPLOY_DATA_NODE}",
             "data_node_host": "${DATA_NODE_HOST}",
             "app_node_a_host": "${APP_NODE_A_HOST}",
@@ -844,6 +934,23 @@ jobs:
             "app_node_a_verify_outcome": "${APP_NODE_A_VERIFY_OUTCOME}",
             "app_node_b_deploy_outcome": "${APP_NODE_B_DEPLOY_OUTCOME}",
             "app_node_b_verify_outcome": "${APP_NODE_B_VERIFY_OUTCOME}",
+            "rollback_attempted": "${ROLLBACK_ATTEMPTED}",
+            "rollback_result": "${ROLLBACK_RESULT}",
+            "final_result": "${FINAL_RESULT}"
+          }
+          EOF
+
+          cat > deployment-evidence/production-deploy-evidence.json <<EOF
+          {
+            "release_label": "${RELEASE_TAG}",
+            "resolved_release_label": "${RESOLVED_RELEASE_LABEL}",
+            "app_image_ref": "${APP_IMAGE_REF}",
+            "app_digest": "${{ needs.validate-promotion-selection.outputs.app_digest }}",
+            "goose_image_ref": "${GOOSE_IMAGE_REF}",
+            "goose_digest": "${{ needs.validate-promotion-selection.outputs.goose_digest }}",
+            "provenance_verdict": "${PROVENANCE_VERDICT}",
+            "rollback_attempted": "${ROLLBACK_ATTEMPTED}",
+            "rollback_result": "${ROLLBACK_RESULT}",
             "final_result": "${FINAL_RESULT}"
           }
           EOF
@@ -882,7 +989,7 @@ jobs:
             fi
             echo "- deploy transport: \`${DEPLOY_TRANSPORT}\`"
             echo "- auth mode: \`${AUTH_MODE}\`"
-            echo "- provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\`"
+            echo "- provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\` / verdict=\`${PROVENANCE_VERDICT}\`"
             echo "- data-node requested: \`${DEPLOY_DATA_NODE}\`"
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
             echo "- app node B: \`${APP_NODE_B_HOST}\`"
@@ -890,8 +997,10 @@ jobs:
             echo "- data-node outcome: \`${DATA_NODE_OUTCOME:-skipped}\`"
             echo "- app node A outcome: deploy=\`${APP_NODE_A_DEPLOY_OUTCOME}\`, verify=\`${APP_NODE_A_VERIFY_OUTCOME}\`"
             echo "- app node B outcome: deploy=\`${APP_NODE_B_DEPLOY_OUTCOME}\`, verify=\`${APP_NODE_B_VERIFY_OUTCOME}\`"
+            echo "- rollback attempted: \`${ROLLBACK_ATTEMPTED}\`"
+            echo "- rollback result: \`${ROLLBACK_RESULT}\`"
             echo "- final result: \`${FINAL_RESULT}\`"
-            echo "- rollback path: \`bash deployments/prod/app-node/scripts/rollback_app_cluster.sh\` and \`bash deployments/prod/data-node/scripts/rollback_data_node.sh\`"
+            echo "- rollback path: \`remote rollback_app_node.sh\` (and \`rollback_data_node.sh\` when requested)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload production deployment manifest
@@ -900,5 +1009,14 @@ jobs:
         with:
           name: production-deployment-manifest
           path: deployment-evidence/production-deployment-manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload production deploy evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-deploy-evidence
+          path: deployment-evidence
           if-no-files-found: error
           retention-days: 14

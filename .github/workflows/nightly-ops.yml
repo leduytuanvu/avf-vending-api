@@ -166,7 +166,7 @@ jobs:
           retention-days: 14
 
   restore-readiness:
-    name: Restore Readiness Check
+    name: Restore Readiness and Disposable Drill
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -187,18 +187,113 @@ jobs:
           set -Eeuo pipefail
           mkdir -p nightly-reports
           bash deployments/prod/shared/scripts/check_restore_readiness.sh deployments/prod/app-node/.env.app-node.example | tee nightly-reports/restore-readiness.txt
+
+      - name: Run disposable PostgreSQL restore drill and write report
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export PGPASSWORD=nightly-restore-password
+          container_name="nightly-restore-drill"
+          trap 'docker rm -f "${container_name}" >/dev/null 2>&1 || true' EXIT
+
+          docker rm -f "${container_name}" >/dev/null 2>&1 || true
+          docker run -d \
+            --name "${container_name}" \
+            -e POSTGRES_PASSWORD="${PGPASSWORD}" \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_DB=restore_source \
+            -p 127.0.0.1:55432:5432 \
+            postgres:16-alpine >/dev/null
+
+          for attempt in $(seq 1 30); do
+            if pg_isready -h 127.0.0.1 -p 55432 -U postgres -d restore_source >/dev/null 2>&1; then
+              break
+            fi
+            if [[ "${attempt}" == "30" ]]; then
+              echo "error: disposable PostgreSQL restore drill did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          psql -h 127.0.0.1 -p 55432 -U postgres -d restore_source <<'SQL'
+          create table restore_probe (
+            id integer primary key,
+            machine_code text not null,
+            reading integer not null
+          );
+          insert into restore_probe (id, machine_code, reading) values
+            (1, 'vm-a', 17),
+            (2, 'vm-b', 23),
+            (3, 'vm-c', 42);
+          SQL
+
+          createdb -h 127.0.0.1 -p 55432 -U postgres restore_target
+          pg_dump -h 127.0.0.1 -p 55432 -U postgres -Fc -d restore_source -f nightly-reports/disposable-restore-drill.dump
+          pg_restore -h 127.0.0.1 -p 55432 -U postgres --clean --if-exists -d restore_target nightly-reports/disposable-restore-drill.dump
+
+          source_row_count="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_source -Atc 'select count(*) from restore_probe')"
+          target_row_count="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_target -Atc 'select count(*) from restore_probe')"
+          target_checksum="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_target -Atc "select md5(string_agg(machine_code || ':' || reading::text, ',' order by id)) from restore_probe")"
+          dump_size_bytes="$(wc -c < nightly-reports/disposable-restore-drill.dump | tr -d ' ')"
+          dump_sha256="$(sha256sum nightly-reports/disposable-restore-drill.dump | awk '{print $1}')"
+
+          SOURCE_ROW_COUNT="${source_row_count}" \
+          TARGET_ROW_COUNT="${target_row_count}" \
+          TARGET_CHECKSUM="${target_checksum}" \
+          DUMP_SIZE_BYTES="${dump_size_bytes}" \
+          DUMP_SHA256="${dump_sha256}" \
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          source_row_count = os.environ["SOURCE_ROW_COUNT"]
+          target_row_count = os.environ["TARGET_ROW_COUNT"]
+          if source_row_count != target_row_count:
+              raise SystemExit(f"row-count mismatch after disposable restore drill: source={source_row_count} target={target_row_count}")
+
+          report = {
+              "drill_type": "disposable-postgres-restore",
+              "postgres_image": "postgres:16-alpine",
+              "source_database": "restore_source",
+              "target_database": "restore_target",
+              "source_row_count": int(source_row_count),
+              "target_row_count": int(target_row_count),
+              "target_checksum": os.environ["TARGET_CHECKSUM"],
+              "dump_path": "nightly-reports/disposable-restore-drill.dump",
+              "dump_size_bytes": int(os.environ["DUMP_SIZE_BYTES"]),
+              "dump_sha256": os.environ["DUMP_SHA256"],
+              "verdict": "pass",
+          }
+          Path("nightly-reports/disposable-restore-drill.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+          PY
+
           {
             echo "### Restore readiness"
             echo "- validated \`pg_dump\` and \`pg_restore\` tooling availability"
             echo "- validated managed backup/restore helper script syntax"
-            echo "- validated env contract without running destructive restore operations"
+            echo "- validated env contract without touching real production infrastructure"
+            echo "- completed a disposable PostgreSQL dump and restore drill on an ephemeral container"
+            echo "- verified restored row count: \`${source_row_count}\` -> \`${target_row_count}\`"
+            echo "- disposable dump SHA256: \`${dump_sha256}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload restore readiness report
         uses: actions/upload-artifact@v4
         with:
-          name: nightly-restore-readiness
+          name: nightly-restore-drill-report
           path: nightly-reports/restore-readiness.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload disposable restore drill evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-disposable-restore-drill
+          path: |
+            nightly-reports/disposable-restore-drill.json
+            nightly-reports/disposable-restore-drill.dump
           if-no-files-found: error
           retention-days: 14
 
