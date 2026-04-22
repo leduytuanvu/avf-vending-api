@@ -33,7 +33,7 @@ read_env_value() {
 	local line
 	line="$(grep -E "^${key}=" "${ENV_FILE}" 2>/dev/null | tail -n1 || true)"
 	if [[ -z "${line}" ]]; then
-	return 1
+		return 1
 	fi
 	line="${line#"${key}="}"
 	line="${line%$'\r'}"

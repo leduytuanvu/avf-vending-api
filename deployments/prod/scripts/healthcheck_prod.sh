@@ -7,26 +7,46 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 JSON_MODE=0
+INCLUDE_SMOKE=0
 if [[ "${HEALTHCHECK_JSON:-0}" == "1" ]]; then
 	JSON_MODE=1
 fi
-if [[ "${1:-}" == "--json" ]]; then
-	JSON_MODE=1
-	shift
+if [[ "${HEALTHCHECK_INCLUDE_SMOKE:-0}" == "1" ]]; then
+	INCLUDE_SMOKE=1
 fi
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	--json)
+		JSON_MODE=1
+		shift
+		;;
+	--with-smoke)
+		INCLUDE_SMOKE=1
+		shift
+		;;
+	*)
+		break
+		;;
+	esac
+done
 
 EXIT_CODE_RUNTIME_FAILURE=20
 EXIT_CODE_READINESS_FAILURE=21
 EXIT_CODE_PUBLIC_EDGE_FAILURE=22
+EXIT_CODE_SMOKE_FAILURE=23
 FAILED_CHECKS_FILE="$(mktemp)"
 PUBLIC_HTTPS_RESULT="not-run"
 METRICS_RESULT="not-run"
+SMOKE_RESULT="not-run"
 RUNTIME_FAILURES=0
 READINESS_FAILURES=0
 PUBLIC_EDGE_FAILURES=0
+SMOKE_FAILURES=0
+SMOKE_JSON_FILE="$(mktemp)"
 
 cleanup() {
 	rm -f "${FAILED_CHECKS_FILE}"
+	rm -f "${SMOKE_JSON_FILE}"
 }
 trap cleanup EXIT
 
@@ -135,16 +155,20 @@ record_failure() {
 	printf '%s\t%s\t%s\n' "${category}" "${label}" "${detail}" >>"${FAILED_CHECKS_FILE}"
 	failures=$((failures + 1))
 	case "${category}" in
-		runtime)
-			RUNTIME_FAILURES=$((RUNTIME_FAILURES + 1))
-			;;
-		public_edge)
-			PUBLIC_EDGE_FAILURES=$((PUBLIC_EDGE_FAILURES + 1))
-			PUBLIC_HTTPS_RESULT="failed"
-			;;
-		*)
-			READINESS_FAILURES=$((READINESS_FAILURES + 1))
-			;;
+	runtime)
+		RUNTIME_FAILURES=$((RUNTIME_FAILURES + 1))
+		;;
+	public_edge)
+		PUBLIC_EDGE_FAILURES=$((PUBLIC_EDGE_FAILURES + 1))
+		PUBLIC_HTTPS_RESULT="failed"
+		;;
+	smoke)
+		SMOKE_FAILURES=$((SMOKE_FAILURES + 1))
+		SMOKE_RESULT="failed"
+		;;
+	*)
+		READINESS_FAILURES=$((READINESS_FAILURES + 1))
+		;;
 	esac
 }
 
@@ -163,7 +187,7 @@ emit_json_summary() {
 	local overall_status="pass"
 	local first="1"
 	local i c svc state has_h health
-	if (( failures > 0 )); then
+	if ((failures > 0)); then
 		overall_status="fail"
 	fi
 
@@ -214,8 +238,53 @@ emit_json_summary() {
 	fi
 	printf '  },\n'
 	printf '  "public_https_result": "%s",\n' "$(json_escape "${PUBLIC_HTTPS_RESULT}")"
-	printf '  "metrics_result": "%s"\n' "$(json_escape "${METRICS_RESULT}")"
+	printf '  "metrics_result": "%s",\n' "$(json_escape "${METRICS_RESULT}")"
+	printf '  "smoke_result": "%s"\n' "$(json_escape "${SMOKE_RESULT}")"
 	printf '}\n'
+}
+
+run_composed_smoke_checks() {
+	local smoke_rc overall_status
+
+	note "blackbox smoke"
+	set +e
+	SMOKE_JSON=1 bash "${ROOT}/scripts/smoke_prod.sh" --json >"${SMOKE_JSON_FILE}"
+	smoke_rc=$?
+	set -e
+
+	overall_status="$(python3 -c 'import json,sys; payload=json.load(open(sys.argv[1], "r", encoding="utf-8")); print(payload.get("overall_status", "unknown"))' "${SMOKE_JSON_FILE}" 2>/dev/null || echo unknown)"
+	if [[ "${overall_status}" == "pass" ]]; then
+		SMOKE_RESULT="passed"
+	else
+		SMOKE_RESULT="failed"
+	fi
+
+	if ((smoke_rc == 0)); then
+		pass "blackbox smoke"
+		return 0
+	fi
+
+	while IFS=$'\t' read -r label detail; do
+		[[ -n "${label}" ]] || continue
+		record_failure "smoke" "${label}" "${detail}"
+	done < <(
+		python3 - "${SMOKE_JSON_FILE}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for entry in payload.get("failed_checks", []):
+    label = entry.get("name", "smoke")
+    detail = entry.get("detail", label)
+    print(f"{label}\t{detail}")
+PY
+	)
+
+	if ((smoke_rc == 30)); then
+		record_failure "smoke" "blackbox smoke configuration" "smoke_prod.sh could not run with the current environment"
+	fi
+	return 1
 }
 
 check_compose_health() {
@@ -477,7 +546,7 @@ if [[ "${SKIP_PUBLIC_HTTPS:-0}" == "1" ]]; then
 else
 	public_edge_failures_before="${PUBLIC_EDGE_FAILURES}"
 	retry_check_cmd "public API live smoke over HTTPS" "check DNS, firewall, Caddy logs, and TLS issuance for ${API_DOMAIN}" public_edge bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
-	if (( PUBLIC_EDGE_FAILURES > public_edge_failures_before )); then
+	if ((PUBLIC_EDGE_FAILURES > public_edge_failures_before)); then
 		PUBLIC_HTTPS_RESULT="failed"
 	else
 		PUBLIC_HTTPS_RESULT="passed"
@@ -496,7 +565,7 @@ if [[ "${METRICS_FLAG}" == "true" ]]; then
 	else
 		check_cmd "worker /health/ready on metrics port" "if 503, see TELEMETRY_READINESS_* and docs/runbooks/telemetry-jetstream-resilience.md" readiness "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/health/ready" | grep -qx ok'
 	fi
-	if (( READINESS_FAILURES > readiness_failures_before )); then
+	if ((READINESS_FAILURES > readiness_failures_before)); then
 		METRICS_RESULT="failed"
 	fi
 else
@@ -512,14 +581,20 @@ else
 	public_edge_failures_before="${PUBLIC_EDGE_FAILURES}"
 	retry_check_cmd "public /health/live over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" public_edge bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
 	retry_check_cmd "public /health/ready over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" public_edge bash -lc "curl -fsS 'https://${API_DOMAIN}/health/ready' | grep -qx ok"
-	if (( PUBLIC_EDGE_FAILURES > public_edge_failures_before )); then
+	if ((PUBLIC_EDGE_FAILURES > public_edge_failures_before)); then
 		PUBLIC_HTTPS_RESULT="failed"
 	else
 		PUBLIC_HTTPS_RESULT="passed"
 	fi
 fi
 
-if (( failures > 0 )); then
+if [[ "${INCLUDE_SMOKE}" == "1" ]]; then
+	run_composed_smoke_checks || true
+else
+	SMOKE_RESULT="skipped"
+fi
+
+if ((failures > 0)); then
 	note "healthcheck failed — docker compose ps (refresh)"
 	if [[ "${JSON_MODE}" == "1" ]]; then
 		"${COMPOSE[@]}" ps >&2 || true
@@ -540,11 +615,14 @@ if (( failures > 0 )); then
 	if [[ "${JSON_MODE}" == "1" ]]; then
 		emit_json_summary
 	fi
-	if (( RUNTIME_FAILURES > 0 )); then
+	if ((RUNTIME_FAILURES > 0)); then
 		exit "${EXIT_CODE_RUNTIME_FAILURE}"
 	fi
-	if (( READINESS_FAILURES > 0 )); then
+	if ((READINESS_FAILURES > 0)); then
 		exit "${EXIT_CODE_READINESS_FAILURE}"
+	fi
+	if ((SMOKE_FAILURES > 0)); then
+		exit "${EXIT_CODE_SMOKE_FAILURE}"
 	fi
 	exit "${EXIT_CODE_PUBLIC_EDGE_FAILURE}"
 fi

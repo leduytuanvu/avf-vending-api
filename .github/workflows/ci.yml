@@ -21,6 +21,67 @@ permissions:
   contents: read
 
 jobs:
+  workflow-script-quality:
+    name: Workflow and Script Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+          cache: true
+
+      - name: Install workflow and shell lint tools
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          go install github.com/rhysd/actionlint/cmd/actionlint@latest
+          go install mvdan.cc/sh/v3/cmd/shfmt@latest
+          echo "$(go env GOPATH)/bin" >> "${GITHUB_PATH}"
+
+      - name: Lint GitHub Actions workflows with actionlint
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          actionlint
+
+      - name: Lint production Bash scripts with shellcheck
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          shellcheck -x -e SC2016,SC2155 \
+            deployments/prod/scripts/validate_release_assets.sh \
+            deployments/prod/scripts/test_release_assets.sh \
+            deployments/prod/scripts/release.sh \
+            deployments/prod/scripts/backup_postgres.sh \
+            deployments/prod/scripts/restore_postgres.sh \
+            deployments/prod/scripts/healthcheck_prod.sh \
+            deployments/prod/scripts/deploy_prod.sh \
+            deployments/prod/scripts/update_prod.sh \
+            deployments/prod/scripts/rollback_prod.sh
+
+      - name: Enforce shfmt on production Bash scripts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          shfmt -d \
+            deployments/prod/scripts/validate_release_assets.sh \
+            deployments/prod/scripts/test_release_assets.sh \
+            deployments/prod/scripts/release.sh \
+            deployments/prod/scripts/backup_postgres.sh \
+            deployments/prod/scripts/restore_postgres.sh \
+            deployments/prod/scripts/healthcheck_prod.sh \
+            deployments/prod/scripts/deploy_prod.sh \
+            deployments/prod/scripts/update_prod.sh \
+            deployments/prod/scripts/rollback_prod.sh
+
   go-ci:
     name: Go CI Gates
     runs-on: ubuntu-latest
@@ -183,9 +244,11 @@ jobs:
                       "key_container_states",
                       "public_https_result",
                       "metrics_result",
+                      "smoke_result",
                       "EXIT_CODE_RUNTIME_FAILURE",
                       "EXIT_CODE_READINESS_FAILURE",
                       "EXIT_CODE_PUBLIC_EDGE_FAILURE",
+                      "EXIT_CODE_SMOKE_FAILURE",
                   ],
               },
           }

@@ -46,9 +46,18 @@ on:
       release_label:
         description: "Resolved release label when available"
         value: ${{ jobs.resolve-image-refs.outputs.release_label }}
+      artifact_build_run_id:
+        description: "Build workflow run id recorded in the artifact payload"
+        value: ${{ jobs.resolve-image-refs.outputs.artifact_build_run_id }}
+      artifact_source_sha:
+        description: "Source commit SHA recorded in the artifact payload"
+        value: ${{ jobs.resolve-image-refs.outputs.artifact_source_sha }}
       artifact_source_branch:
         description: "Source branch recorded in the artifact payload"
         value: ${{ jobs.resolve-image-refs.outputs.artifact_source_branch }}
+      artifact_source_workflow_name:
+        description: "Source workflow name recorded in the artifact payload"
+        value: ${{ jobs.resolve-image-refs.outputs.artifact_source_workflow_name }}
       provenance_verdict:
         description: "Deterministic provenance verdict for the resolved images"
         value: ${{ jobs.resolve-image-refs.outputs.provenance_verdict }}
@@ -63,7 +72,10 @@ jobs:
       goose_image_ref: ${{ steps.resolve.outputs.goose_image_ref }}
       goose_image_tag: ${{ steps.resolve.outputs.goose_image_tag }}
       release_label: ${{ steps.resolve.outputs.release_label }}
+      artifact_build_run_id: ${{ steps.resolve.outputs.artifact_build_run_id }}
+      artifact_source_sha: ${{ steps.resolve.outputs.artifact_source_sha }}
       artifact_source_branch: ${{ steps.resolve.outputs.artifact_source_branch }}
+      artifact_source_workflow_name: ${{ steps.resolve.outputs.artifact_source_workflow_name }}
       provenance_verdict: ${{ steps.finalize.outputs.provenance_verdict }}
 
     steps:
@@ -86,17 +98,7 @@ jobs:
 
             for attempt in 1 2 3 4 5; do
               if artifact_id="$(
-                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" | python3 - "${artifact_name}" <<'PY'
-                import json
-                import sys
-
-                artifact_name = sys.argv[1]
-                payload = json.load(sys.stdin)
-                for artifact in payload.get("artifacts", []):
-                    if artifact.get("name") == artifact_name:
-                        print(artifact.get("id", ""))
-                        break
-                PY
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" | python3 -c 'import json, sys; artifact_name = sys.argv[1]; payload = json.load(sys.stdin); print(next((str(artifact.get("id", "")) for artifact in payload.get("artifacts", []) if artifact.get("name") == artifact_name), ""))' "${artifact_name}"
               )"; then
                 if [[ -n "${artifact_id}" ]]; then
                   break
@@ -144,6 +146,7 @@ jobs:
         env:
           INPUT_APP_IMAGE_REF: ${{ inputs.app_image_ref }}
           INPUT_GOOSE_IMAGE_REF: ${{ inputs.goose_image_ref }}
+          INPUT_WORKFLOW_RUN_ID: ${{ inputs.workflow_run_id }}
           RESOLUTION_MODE: ${{ inputs.resolution_mode }}
           TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
         run: |
@@ -187,13 +190,16 @@ jobs:
               goose_image_ref="${INPUT_GOOSE_IMAGE_REF}"
               app_image_tag=""
               goose_image_tag=""
+              artifact_build_run_id=""
+              artifact_source_sha=""
               artifact_source_branch="manual"
+              artifact_source_workflow_name="manual"
               release_label="manual-digest"
               ;;
             workflow_run)
               [[ -f image-metadata-artifact/image-metadata.json ]] || fail "missing image-metadata.json artifact payload"
               [[ -f promotion-manifest-artifact/promotion-manifest.json ]] || fail "missing promotion-manifest.json artifact payload"
-              mapfile -t image_metadata < <(python3 - <<'PY'
+              python3 - <<'PY' > resolved-image-metadata.txt
               import json
               from pathlib import Path
 
@@ -211,7 +217,10 @@ jobs:
               goose_digest = image_metadata["goose"].get("digest", "")
               app_tag = image_metadata["app"].get("tag", "")
               goose_tag = image_metadata["goose"].get("tag", "")
+              commit_sha = promotion_manifest.get("commit_sha") or image_metadata.get("git_sha") or ""
               source_branch = promotion_manifest.get("source_branch") or image_metadata.get("ref_name") or ""
+              workflow_name = promotion_manifest.get("workflow_name", "")
+              workflow_run_id = str(promotion_manifest.get("workflow_run_id", ""))
 
               if not app_ref or "@sha256:" not in app_ref:
                   raise SystemExit("image-metadata app.ref must be digest-pinned")
@@ -233,22 +242,34 @@ jobs:
                   raise SystemExit("promotion-manifest app_digest does not match image-metadata app.digest")
               if promotion_manifest.get("goose_digest", "") != goose_digest:
                   raise SystemExit("promotion-manifest goose_digest does not match image-metadata goose.digest")
+              if image_metadata.get("git_sha", "") and commit_sha and image_metadata.get("git_sha", "") != commit_sha:
+                  raise SystemExit("promotion-manifest commit_sha does not match image-metadata git_sha")
 
               release_label = app_tag or goose_tag or source_branch
               print(app_ref)
               print(app_tag)
               print(goose_ref)
               print(goose_tag)
+              print(workflow_run_id)
+              print(commit_sha)
               print(source_branch)
+              print(workflow_name)
               print(release_label)
               PY
-              )
+              mapfile -t image_metadata < resolved-image-metadata.txt
               app_image_ref="${image_metadata[0]}"
               app_image_tag="${image_metadata[1]}"
               goose_image_ref="${image_metadata[2]}"
               goose_image_tag="${image_metadata[3]}"
-              artifact_source_branch="${image_metadata[4]}"
-              release_label="${image_metadata[5]}"
+              artifact_build_run_id="${image_metadata[4]}"
+              artifact_source_sha="${image_metadata[5]}"
+              artifact_source_branch="${image_metadata[6]}"
+              artifact_source_workflow_name="${image_metadata[7]}"
+              release_label="${image_metadata[8]}"
+              [[ "${artifact_build_run_id}" =~ ^[0-9]+$ ]] || fail "artifact workflow_run_id is missing or malformed"
+              [[ "${artifact_source_sha}" =~ ^[0-9a-f]{40}$ ]] || fail "artifact source SHA is missing or malformed"
+              [[ -n "${artifact_source_workflow_name}" ]] || fail "artifact workflow_name is missing"
+              [[ "${artifact_build_run_id}" == "${INPUT_WORKFLOW_RUN_ID}" ]] || fail "artifact workflow_run_id does not match requested workflow_run_id"
               validate_source_branch_for_target "${artifact_source_branch}"
               ;;
             *)
@@ -265,7 +286,10 @@ jobs:
             echo "goose_image_ref=${goose_image_ref}"
             echo "goose_image_tag=${goose_image_tag}"
             echo "release_label=${release_label}"
+            echo "artifact_build_run_id=${artifact_build_run_id}"
+            echo "artifact_source_sha=${artifact_source_sha}"
             echo "artifact_source_branch=${artifact_source_branch}"
+            echo "artifact_source_workflow_name=${artifact_source_workflow_name}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Verify build provenance

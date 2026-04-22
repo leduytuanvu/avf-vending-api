@@ -110,7 +110,7 @@ jobs:
           retention-days: 14
 
       - name: Upload gitleaks SARIF to code scanning
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+        if: always() && vars.ENABLE_CODE_SCANNING == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: security-reports/gitleaks.sarif
@@ -381,6 +381,11 @@ jobs:
       - govulncheck-nightly
       - dependency-snapshot
     outputs:
+      security_verdict: ${{ steps.signal.outputs.security_verdict }}
+      source_build_run_id: ${{ steps.signal.outputs.source_build_run_id }}
+      source_sha: ${{ steps.signal.outputs.source_sha }}
+      source_workflow_name: ${{ steps.signal.outputs.source_workflow_name }}
+      security_workflow_run_id: ${{ steps.signal.outputs.security_workflow_run_id }}
       release_gate_verdict: ${{ steps.signal.outputs.release_gate_verdict }}
       repo_security_verdict: ${{ steps.signal.outputs.repo_security_verdict }}
       published_image_verdict: ${{ steps.signal.outputs.published_image_verdict }}
@@ -400,16 +405,26 @@ jobs:
           GOVULNCHECK_NIGHTLY_RESULT: ${{ needs.govulncheck-nightly.result }}
           DEPENDENCY_SNAPSHOT_RESULT: ${{ needs.dependency-snapshot.result }}
           APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
           GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
           PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
+          RESOLVED_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha }}
+          RESOLVED_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
+          TRIGGER_WORKFLOW_RUN_NAME: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name || '' }}
+          TRIGGER_WORKFLOW_RUN_SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          WORKFLOW_RUN_ID: ${{ github.run_id }}
+          WORKFLOW_SHA: ${{ github.sha }}
         run: |
           set -Eeuo pipefail
           mkdir -p security-reports
-          python3 - <<'PY'
+          generated_at_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          GENERATED_AT_UTC="${generated_at_utc}" python3 - <<'PY'
           import json
           import os
           from pathlib import Path
 
+          generated_at_utc = os.environ["GENERATED_AT_UTC"]
           event_name = os.environ["EVENT_NAME"]
           results = {
               "dependency_review": os.environ["DEPENDENCY_REVIEW_RESULT"] or "not_applicable",
@@ -424,7 +439,7 @@ jobs:
           }
 
           def verdict_for(job_names):
-              relevant = [results[name] for name in job_names if results[name] != "skipped"]
+              relevant = [results[name] for name in job_names if results[name] not in ("", "skipped")]
               if not relevant:
                   return "not_applicable"
               if all(result == "success" for result in relevant):
@@ -449,13 +464,42 @@ jobs:
 
           applicable = [v for v in [repo_security_verdict, published_image_verdict, nightly_security_verdict] if v != "not_applicable"]
           release_gate_verdict = "pass" if applicable and all(v == "pass" for v in applicable) else ("not_applicable" if not applicable else "fail")
+          security_verdict = "pass" if release_gate_verdict == "pass" else "fail"
+
+          def normalize(result_name):
+              if result_name == "success":
+                  return "pass"
+              if result_name in ("", "skipped"):
+                  return "not_applicable"
+              return "fail"
+
+          source_build_run_id = os.environ.get("BUILD_RUN_ID", "")
+          source_sha = os.environ.get("RESOLVED_SOURCE_SHA") or os.environ.get("TRIGGER_WORKFLOW_RUN_SOURCE_SHA") or os.environ.get("WORKFLOW_SHA", "")
+          source_workflow_name = os.environ.get("RESOLVED_SOURCE_WORKFLOW_NAME") or os.environ.get("TRIGGER_WORKFLOW_RUN_NAME", "")
+          if not source_workflow_name and source_build_run_id:
+              source_workflow_name = "Build and Push Images"
 
           payload = {
+              "verdict": security_verdict,
               "event_name": event_name,
+              "workflow_name": os.environ["WORKFLOW_NAME"],
+              "workflow_run_id": os.environ["WORKFLOW_RUN_ID"],
+              "generated_at_utc": generated_at_utc,
+              "source_build_run_id": source_build_run_id,
+              "source_sha": source_sha,
+              "source_workflow_name": source_workflow_name,
               "release_gate_verdict": release_gate_verdict,
               "repo_security_verdict": repo_security_verdict,
               "published_image_verdict": published_image_verdict,
               "nightly_security_verdict": nightly_security_verdict,
+              "scanner_summary": {
+                  "dependency_review": normalize(results["dependency_review"]),
+                  "govulncheck_repo": normalize(results["govulncheck_pr"]),
+                  "secret_scan": normalize(results["secret_scan"]),
+                  "trivy_config": normalize(results["config_scan"]),
+                  "trivy_images": normalize(results["image_vulnerability_scan"]),
+                  "govulncheck_nightly": normalize(results["govulncheck_nightly"]),
+              },
               "published_images": {
                   "app_image_ref": os.environ.get("APP_IMAGE_REF", ""),
                   "goose_image_ref": os.environ.get("GOOSE_IMAGE_REF", ""),
@@ -463,29 +507,43 @@ jobs:
               },
               "job_results": results,
           }
+          Path("security-reports/security-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           Path("security-reports/security-release-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          print(f"release_gate_verdict={release_gate_verdict}")
-          print(f"repo_security_verdict={repo_security_verdict}")
-          print(f"published_image_verdict={published_image_verdict}")
           PY
+
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           from pathlib import Path
 
-          payload = json.loads(Path("security-reports/security-release-verdict.json").read_text(encoding="utf-8"))
-          for key in ("release_gate_verdict", "repo_security_verdict", "published_image_verdict"):
-              print(f"{key}={payload[key]}")
+          payload = json.loads(Path("security-reports/security-verdict.json").read_text(encoding="utf-8"))
+          outputs = {
+              "security_verdict": payload["verdict"],
+              "source_build_run_id": payload["source_build_run_id"],
+              "source_sha": payload["source_sha"],
+              "source_workflow_name": payload["source_workflow_name"],
+              "security_workflow_run_id": payload["workflow_run_id"],
+              "release_gate_verdict": payload["release_gate_verdict"],
+              "repo_security_verdict": payload["repo_security_verdict"],
+              "published_image_verdict": payload["published_image_verdict"],
+          }
+          for key, value in outputs.items():
+              print(f"{key}={value}")
           PY
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
           from pathlib import Path
 
-          payload = json.loads(Path("security-reports/security-release-verdict.json").read_text(encoding="utf-8"))
+          payload = json.loads(Path("security-reports/security-verdict.json").read_text(encoding="utf-8"))
           print("## Security Release Signal")
           print(f"- event: `{payload['event_name']}`")
+          print(f"- verdict: `{payload['verdict']}`")
           print(f"- release gate verdict: `{payload['release_gate_verdict']}`")
           print(f"- repo security verdict: `{payload['repo_security_verdict']}`")
           print(f"- published image verdict: `{payload['published_image_verdict']}`")
+          if payload["source_build_run_id"]:
+              print(f"- source build run id: `{payload['source_build_run_id']}`")
+          if payload["source_sha"]:
+              print(f"- source SHA: `{payload['source_sha']}`")
           if payload["published_images"]["app_image_ref"]:
               print(f"- app image: `{payload['published_images']['app_image_ref']}`")
           if payload["published_images"]["goose_image_ref"]:
@@ -493,6 +551,15 @@ jobs:
           if payload["published_images"]["provenance_verdict"]:
               print(f"- published image provenance verdict: `{payload['published_images']['provenance_verdict']}`")
           PY
+
+      - name: Upload security verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-verdict
+          path: security-reports/security-verdict.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload security release verdict
         if: always()
@@ -502,3 +569,15 @@ jobs:
           path: security-reports/security-release-verdict.json
           if-no-files-found: error
           retention-days: 14
+
+      - name: Enforce blocking security verdict
+        if: always()
+        shell: bash
+        env:
+          SECURITY_VERDICT: ${{ steps.signal.outputs.security_verdict }}
+        run: |
+          set -Eeuo pipefail
+          [[ "${SECURITY_VERDICT}" == "pass" ]] || {
+            echo "error: blocking security verdict is ${SECURITY_VERDICT}" >&2
+            exit 1
+          }
