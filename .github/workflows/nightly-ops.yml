@@ -136,7 +136,7 @@ jobs:
           retention-days: 14
 
   runtime-asset-assurance:
-    name: Runtime Asset Assurance
+    name: Runtime Asset Contract Assurance
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -149,6 +149,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p nightly-reports
+          VERIFY_RUNTIME_ASSETS_REPORT_PATH="nightly-reports/runtime-assets-report.json" \
           bash deployments/prod/shared/scripts/verify_runtime_assets.sh nightly-reports/runtime-assets.sha256
           {
             echo "### Runtime asset assurance"
@@ -161,12 +162,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nightly-runtime-asset-assurance
-          path: nightly-reports/runtime-assets.sha256
+          path: |
+            nightly-reports/runtime-assets.sha256
+            nightly-reports/runtime-assets-report.json
           if-no-files-found: error
           retention-days: 14
 
   restore-readiness:
-    name: Restore Readiness and Disposable Drill
+    name: Managed Service and Restore Preparedness
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -179,16 +182,35 @@ jobs:
         run: |
           set -Eeuo pipefail
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-client redis-tools
+
+      - name: Run managed service prerequisite contract report
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p nightly-reports
+          CHECK_MANAGED_SERVICES_REPORT_PATH="nightly-reports/managed-services-readiness.json" \
+          CHECK_MANAGED_SERVICES_STRICT=0 \
+          bash deployments/prod/shared/scripts/check_managed_services.sh deployments/prod/app-node/.env.app-node.example | tee nightly-reports/managed-services-readiness.txt
+
+      - name: Run managed PostgreSQL backup readiness report
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p nightly-reports
+          BACKUP_MANAGED_POSTGRES_REPORT_PATH="nightly-reports/backup-readiness.json" \
+          APP_NODE_ENV_FILE_PATH="deployments/prod/app-node/.env.app-node.example" \
+          bash deployments/prod/shared/scripts/backup_managed_postgres.sh nightly-reports/managed-postgres-readiness.dump validate | tee nightly-reports/backup-readiness.txt
 
       - name: Run non-destructive restore-readiness check
         shell: bash
         run: |
           set -Eeuo pipefail
           mkdir -p nightly-reports
+          CHECK_RESTORE_READINESS_REPORT_PATH="nightly-reports/restore-readiness.json" \
           bash deployments/prod/shared/scripts/check_restore_readiness.sh deployments/prod/app-node/.env.app-node.example | tee nightly-reports/restore-readiness.txt
 
-      - name: Run disposable PostgreSQL restore drill and write report
+      - name: Run disposable PostgreSQL restore simulation and write evidence
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -352,12 +374,48 @@ jobs:
           }, indent=2) + "\n", encoding="utf-8")
           PY
 
+      - name: Aggregate nightly restore preparedness evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          managed = json.loads(Path("nightly-reports/managed-services-readiness.json").read_text(encoding="utf-8"))
+          backup = json.loads(Path("nightly-reports/backup-readiness.json").read_text(encoding="utf-8"))
+          restore = json.loads(Path("nightly-reports/restore-readiness.json").read_text(encoding="utf-8"))
+          drill = json.loads(Path("nightly-reports/disposable-restore-drill.json").read_text(encoding="utf-8"))
+
+          report = {
+              "verdict": "pass",
+              "validated": {
+                  "managed_services_contract": managed,
+                  "backup_readiness": backup,
+                  "restore_readiness": restore,
+                  "disposable_restore_simulation": drill,
+              },
+              "validated_summary": [
+                  "managed service endpoint contracts evaluated against the example app-node env",
+                  "managed PostgreSQL backup helper validated in non-destructive mode",
+                  "restore readiness helper validated in non-destructive mode",
+                  "disposable PostgreSQL restore simulation completed against disposable containers only",
+              ],
+              "not_validated": [
+                  "real production restore",
+                  "application boot against restored production-like data",
+                  "real managed service credentials unless supplied outside the example env contract",
+              ],
+          }
+          Path("nightly-reports/nightly-restore-preparedness.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+          PY
+
           {
-            echo "### Restore readiness"
-            echo "- validated \`pg_dump\`, \`gzip\`, and \`psql\` tooling availability"
-            echo "- validated managed restore helper script syntax and execution"
-            echo "- validated env contract without touching real production infrastructure"
-            echo "- completed a disposable PostgreSQL gzip-SQL restore drill using \`restore_postgres.sh\` against a disposable target"
+            echo "### Managed service and restore preparedness"
+            echo "- evaluated managed service endpoint contracts from \`.env.app-node.example\`"
+            echo "- validated managed PostgreSQL backup helper in non-destructive mode"
+            echo "- validated restore helper contract without touching real production infrastructure"
+            echo "- completed a disposable PostgreSQL gzip-SQL restore simulation using \`restore_postgres.sh\` against a disposable target only"
             echo "- validated: fresh post-restore DB connection, row count parity, checksum parity, metadata lookup parity, index presence"
             echo "- not validated: application boot against restored data, full API behavior, or real production infrastructure"
             echo "- verified restored row count: \`${source_row_count}\` -> \`${target_row_count}\`"
@@ -369,7 +427,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nightly-restore-drill-report
-          path: nightly-reports/restore-readiness.txt
+          path: |
+            nightly-reports/managed-services-readiness.txt
+            nightly-reports/managed-services-readiness.json
+            nightly-reports/backup-readiness.txt
+            nightly-reports/backup-readiness.json
+            nightly-reports/restore-readiness.txt
+            nightly-reports/restore-readiness.json
+            nightly-reports/nightly-restore-preparedness.json
           if-no-files-found: error
           retention-days: 14
 
@@ -382,6 +447,7 @@ jobs:
             nightly-reports/disposable-restore-drill.sql.gz
             nightly-reports/restore-helper-report.json
             nightly-reports/restore-smoke-evidence.json
+            nightly-reports/nightly-restore-preparedness.json
           if-no-files-found: error
           retention-days: 14
 

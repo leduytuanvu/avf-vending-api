@@ -1,4 +1,4 @@
-name: Develop Release Asset Preparation
+name: Develop Promotion Validation
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   resolve-build-run-id:
-    name: Resolve Develop Release Build
+    name: Resolve Develop Promotion Candidate
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
@@ -39,7 +39,7 @@ jobs:
           echo "workflow_run_id=${{ github.event.workflow_run.id }}" >> "${GITHUB_OUTPUT}"
 
   resolve-image-refs:
-    name: Resolve Develop Release Asset Image Refs
+    name: Resolve Develop Promotion Image Refs
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
@@ -57,7 +57,7 @@ jobs:
       gh_api_token: ${{ secrets.GITHUB_TOKEN }}
 
   publish-develop-artifact-summary:
-    name: Prepare and Validate Develop Release Assets
+    name: Validate Develop Promotion Package
     runs-on: ubuntu-latest
     needs: resolve-image-refs
     if: |
@@ -90,11 +90,14 @@ jobs:
           DEVELOP_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           {
-            echo "## Develop Release Asset Context"
+            echo "## Develop Promotion Validation"
             echo "- trigger: \`workflow_run\`"
             echo "- develop branch ref: \`${DEVELOP_BRANCH}\`"
-            echo "- server deploy performed: \`false\`"
-            echo "- outcome: \`prepare/package/validate only; no SSH deploy because no real develop server exists\`"
+            echo "- workflow intent: \`promotion-prep validation only\`"
+            echo "- real environment deploy performed: \`false\`"
+            echo "- remote SSH/deploy performed: \`false\`"
+            echo "- compose validation only: \`true\`"
+            echo "- outcome: \`validated package inputs only; no real develop server exists in this repo\`"
             echo "- app image: \`${{ needs.resolve-image-refs.outputs.app_image_ref }}\`"
             echo "- goose image: \`${{ needs.resolve-image-refs.outputs.goose_image_ref }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -120,20 +123,25 @@ jobs:
             "actor": "${ACTOR}",
             "trigger": "${TRIGGER_NAME}",
             "artifact_kind": "develop-release-assets",
+            "workflow_intent": "promotion-validation",
             "server_deploy_performed": false,
+            "remote_ssh_performed": false,
+            "validation_scope": "compose-config-and-script-syntax-only",
             "result": "prepare-package-validate-only"
           }
           EOF
 
           {
-            echo "## Develop Release Asset Preparation"
+            echo "## Develop Promotion Validation"
             echo "- environment: \`develop\`"
             echo "- commit SHA: \`${BUILD_COMMIT_SHA}\`"
             echo "- app image: \`${APP_IMAGE_REF}\`"
             echo "- goose image: \`${GOOSE_IMAGE_REF}\`"
             echo "- actor: \`${ACTOR}\`"
             echo "- trigger: \`${TRIGGER_NAME}\`"
+            echo "- workflow intent: \`promotion-validation\`"
             echo "- server deploy performed: \`false\`"
+            echo "- remote SSH performed: \`false\`"
             echo "- result: \`prepare/package/validate only\`"
           } >> "$GITHUB_STEP_SUMMARY"
 

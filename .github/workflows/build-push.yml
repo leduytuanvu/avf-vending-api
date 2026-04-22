@@ -65,6 +65,7 @@ jobs:
 
           cat > build-evidence/build-metadata-manifest.json <<EOF
           {
+            "schema_version": "v1",
             "commit_sha": "${BUILD_COMMIT_SHA}",
             "source_branch": "${SOURCE_BRANCH}",
             "source_ref_type": "${SOURCE_REF_TYPE}",
@@ -99,6 +100,7 @@ jobs:
 
           cat > build-evidence/promotion-manifest.json <<EOF
           {
+            "schema_version": "v1",
             "workflow_name": "${BUILD_WORKFLOW_NAME}",
             "workflow_run_id": "${BUILD_RUN_ID}",
             "commit_sha": "${BUILD_COMMIT_SHA}",
@@ -115,6 +117,8 @@ jobs:
             "goose_ref": "${GOOSE_REF}",
             "app_digest": "${APP_DIGEST}",
             "goose_digest": "${GOOSE_DIGEST}",
+            "provenance_enabled": true,
+            "sbom_enabled": true,
             "source_inputs": {
               "dockerfile_sha256": "${DOCKERFILE_SHA256}",
               "dockerfile_goose_sha256": "${DOCKERFILE_GOOSE_SHA256}",

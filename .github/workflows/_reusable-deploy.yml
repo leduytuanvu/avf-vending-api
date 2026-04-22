@@ -199,63 +199,80 @@ jobs:
             workflow_run)
               [[ -f image-metadata-artifact/image-metadata.json ]] || fail "missing image-metadata.json artifact payload"
               [[ -f promotion-manifest-artifact/promotion-manifest.json ]] || fail "missing promotion-manifest.json artifact payload"
-              python3 - <<'PY' > resolved-image-metadata.txt
-              import json
-              from pathlib import Path
-
-              image_metadata = json.loads(Path("image-metadata-artifact/image-metadata.json").read_text(encoding="utf-8"))
-              promotion_manifest = json.loads(Path("promotion-manifest-artifact/promotion-manifest.json").read_text(encoding="utf-8"))
-
-              for label, payload in (("image-metadata", image_metadata), ("promotion-manifest", promotion_manifest)):
-                  source_branch = payload.get("source_branch") or payload.get("ref_name") or ""
-                  if not source_branch:
-                      raise SystemExit(f"missing source branch in {label}")
-
-              app_ref = image_metadata["app"].get("ref", "")
-              goose_ref = image_metadata["goose"].get("ref", "")
-              app_digest = image_metadata["app"].get("digest", "")
-              goose_digest = image_metadata["goose"].get("digest", "")
-              app_tag = image_metadata["app"].get("tag", "")
-              goose_tag = image_metadata["goose"].get("tag", "")
-              commit_sha = promotion_manifest.get("commit_sha") or image_metadata.get("git_sha") or ""
-              source_branch = promotion_manifest.get("source_branch") or image_metadata.get("ref_name") or ""
-              workflow_name = promotion_manifest.get("workflow_name", "")
-              workflow_run_id = str(promotion_manifest.get("workflow_run_id", ""))
-
-              if not app_ref or "@sha256:" not in app_ref:
-                  raise SystemExit("image-metadata app.ref must be digest-pinned")
-              if not goose_ref or "@sha256:" not in goose_ref:
-                  raise SystemExit("image-metadata goose.ref must be digest-pinned")
-              if not app_digest or not app_digest.startswith("sha256:"):
-                  raise SystemExit("image-metadata app.digest is missing or malformed")
-              if not goose_digest or not goose_digest.startswith("sha256:"):
-                  raise SystemExit("image-metadata goose.digest is missing or malformed")
-              if app_ref.split("@", 1)[1] != app_digest:
-                  raise SystemExit("image-metadata app ref/digest mismatch")
-              if goose_ref.split("@", 1)[1] != goose_digest:
-                  raise SystemExit("image-metadata goose ref/digest mismatch")
-              if promotion_manifest.get("app_ref", "") != app_ref:
-                  raise SystemExit("promotion-manifest app_ref does not match image-metadata app.ref")
-              if promotion_manifest.get("goose_ref", "") != goose_ref:
-                  raise SystemExit("promotion-manifest goose_ref does not match image-metadata goose.ref")
-              if promotion_manifest.get("app_digest", "") != app_digest:
-                  raise SystemExit("promotion-manifest app_digest does not match image-metadata app.digest")
-              if promotion_manifest.get("goose_digest", "") != goose_digest:
-                  raise SystemExit("promotion-manifest goose_digest does not match image-metadata goose.digest")
-              if image_metadata.get("git_sha", "") and commit_sha and image_metadata.get("git_sha", "") != commit_sha:
-                  raise SystemExit("promotion-manifest commit_sha does not match image-metadata git_sha")
-
-              release_label = app_tag or goose_tag or source_branch
-              print(app_ref)
-              print(app_tag)
-              print(goose_ref)
-              print(goose_tag)
-              print(workflow_run_id)
-              print(commit_sha)
-              print(source_branch)
-              print(workflow_name)
-              print(release_label)
-              PY
+              resolver_script="$(mktemp)"
+              printf '%s\n' \
+                'import json' \
+                'from pathlib import Path' \
+                '' \
+                'image_metadata = json.loads(Path("image-metadata-artifact/image-metadata.json").read_text(encoding="utf-8"))' \
+                'promotion_manifest = json.loads(Path("promotion-manifest-artifact/promotion-manifest.json").read_text(encoding="utf-8"))' \
+                '' \
+                'for label, payload in (("image-metadata", image_metadata), ("promotion-manifest", promotion_manifest)):' \
+                '    source_branch = payload.get("source_branch") or payload.get("ref_name") or ""' \
+                '    if not source_branch:' \
+                '        raise SystemExit(f"missing source branch in {label}")' \
+                '' \
+                'app_ref = image_metadata["app"].get("ref", "")' \
+                'goose_ref = image_metadata["goose"].get("ref", "")' \
+                'app_digest = image_metadata["app"].get("digest", "")' \
+                'goose_digest = image_metadata["goose"].get("digest", "")' \
+                'app_tag = image_metadata["app"].get("tag", "")' \
+                'goose_tag = image_metadata["goose"].get("tag", "")' \
+                'commit_sha = promotion_manifest.get("commit_sha") or image_metadata.get("git_sha") or ""' \
+                'source_branch = promotion_manifest.get("source_branch") or image_metadata.get("ref_name") or ""' \
+                'workflow_name = promotion_manifest.get("workflow_name", "")' \
+                'workflow_run_id = str(promotion_manifest.get("workflow_run_id", ""))' \
+                'image_metadata_workflow_name = image_metadata.get("workflow_name", "")' \
+                'image_metadata_workflow_run_id = str(image_metadata.get("workflow_run_id", ""))' \
+                '' \
+                'if image_metadata.get("schema_version", "") != "v1":' \
+                '    raise SystemExit("image-metadata schema_version must be v1")' \
+                'if promotion_manifest.get("schema_version", "") != "v1":' \
+                '    raise SystemExit("promotion-manifest schema_version must be v1")' \
+                'if image_metadata.get("provenance_enabled") is not True:' \
+                '    raise SystemExit("image-metadata provenance_enabled must be true")' \
+                'if promotion_manifest.get("provenance_enabled") is not True:' \
+                '    raise SystemExit("promotion-manifest provenance_enabled must be true")' \
+                'if not app_ref or "@sha256:" not in app_ref:' \
+                '    raise SystemExit("image-metadata app.ref must be digest-pinned")' \
+                'if not goose_ref or "@sha256:" not in goose_ref:' \
+                '    raise SystemExit("image-metadata goose.ref must be digest-pinned")' \
+                'if not app_digest or not app_digest.startswith("sha256:"):' \
+                '    raise SystemExit("image-metadata app.digest is missing or malformed")' \
+                'if not goose_digest or not goose_digest.startswith("sha256:"):' \
+                '    raise SystemExit("image-metadata goose.digest is missing or malformed")' \
+                'if app_ref.split("@", 1)[1] != app_digest:' \
+                '    raise SystemExit("image-metadata app ref/digest mismatch")' \
+                'if goose_ref.split("@", 1)[1] != goose_digest:' \
+                '    raise SystemExit("image-metadata goose ref/digest mismatch")' \
+                'if promotion_manifest.get("app_ref", "") != app_ref:' \
+                '    raise SystemExit("promotion-manifest app_ref does not match image-metadata app.ref")' \
+                'if promotion_manifest.get("goose_ref", "") != goose_ref:' \
+                '    raise SystemExit("promotion-manifest goose_ref does not match image-metadata goose.ref")' \
+                'if promotion_manifest.get("app_digest", "") != app_digest:' \
+                '    raise SystemExit("promotion-manifest app_digest does not match image-metadata app.digest")' \
+                'if promotion_manifest.get("goose_digest", "") != goose_digest:' \
+                '    raise SystemExit("promotion-manifest goose_digest does not match image-metadata goose.digest")' \
+                'if image_metadata.get("git_sha", "") and commit_sha and image_metadata.get("git_sha", "") != commit_sha:' \
+                '    raise SystemExit("promotion-manifest commit_sha does not match image-metadata git_sha")' \
+                'if image_metadata_workflow_run_id and image_metadata_workflow_run_id != workflow_run_id:' \
+                '    raise SystemExit("image-metadata workflow_run_id does not match promotion-manifest workflow_run_id")' \
+                'if image_metadata_workflow_name and workflow_name and image_metadata_workflow_name != workflow_name:' \
+                '    raise SystemExit("image-metadata workflow_name does not match promotion-manifest workflow_name")' \
+                '' \
+                'release_label = app_tag or goose_tag or source_branch' \
+                'print(app_ref)' \
+                'print(app_tag)' \
+                'print(goose_ref)' \
+                'print(goose_tag)' \
+                'print(workflow_run_id)' \
+                'print(commit_sha)' \
+                'print(source_branch)' \
+                'print(workflow_name)' \
+                'print(release_label)' \
+                > "${resolver_script}"
+              python3 "${resolver_script}" > resolved-image-metadata.txt
+              rm -f "${resolver_script}"
               mapfile -t image_metadata < resolved-image-metadata.txt
               app_image_ref="${image_metadata[0]}"
               app_image_tag="${image_metadata[1]}"
@@ -322,14 +339,7 @@ jobs:
               --source-ref "${source_ref}" \
               --deny-self-hosted-runners \
               --format json > "${output_file}"
-            python3 - "${output_file}" <<'PY'
-            import json
-            import sys
-
-            payload = json.load(open(sys.argv[1], "r", encoding="utf-8"))
-            if not isinstance(payload, list) or not payload:
-                raise SystemExit("no verified attestations returned")
-            PY
+            python3 -c 'import json, sys; payload = json.load(open(sys.argv[1], "r", encoding="utf-8")); isinstance(payload, list) and payload or (_ for _ in ()).throw(SystemExit("no verified attestations returned"))' "${output_file}"
           }
 
           verify_ref "app" "${APP_IMAGE_REF}"

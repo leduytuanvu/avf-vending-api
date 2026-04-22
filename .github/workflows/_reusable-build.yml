@@ -156,9 +156,16 @@ jobs:
 
           cat > image-metadata.json <<EOF
           {
+            "schema_version": "v1",
             "git_sha": "${GITHUB_SHA}",
             "event_name": "${GITHUB_EVENT_NAME}",
+            "workflow_name": "${GITHUB_WORKFLOW}",
+            "workflow_run_id": "${GITHUB_RUN_ID}",
+            "actor": "${GITHUB_ACTOR}",
             "ref_name": "${GITHUB_REF_NAME}",
+            "ref_type": "${GITHUB_REF_TYPE}",
+            "provenance_enabled": true,
+            "sbom_enabled": true,
             "source_inputs": {
               "dockerfile_sha256": "${{ steps.source_inputs.outputs.dockerfile_sha256 }}",
               "dockerfile_goose_sha256": "${{ steps.source_inputs.outputs.dockerfile_goose_sha256 }}",

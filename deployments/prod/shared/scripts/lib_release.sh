@@ -13,6 +13,41 @@ warn() {
 	echo "warn: $*" >&2
 }
 
+json_escape() {
+	local value="${1-}"
+	value="${value//\\/\\\\}"
+	value="${value//\"/\\\"}"
+	value="${value//$'\n'/\\n}"
+	value="${value//$'\r'/\\r}"
+	value="${value//$'\t'/\\t}"
+	printf '%s' "${value}"
+}
+
+append_release_evidence() {
+	local component="$1"
+	local target="$2"
+	local phase="$3"
+	local status="$4"
+	local detail="${5-}"
+	local metadata="${6-}"
+	local evidence_file="${RELEASE_EVIDENCE_FILE:-}"
+
+	[[ -n "${evidence_file}" ]] || return 0
+
+	mkdir -p "$(dirname "${evidence_file}")"
+	printf '{"ts":"%s","component":"%s","target":"%s","phase":"%s","status":"%s","detail":"%s"' \
+		"$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+		"$(json_escape "${component}")" \
+		"$(json_escape "${target}")" \
+		"$(json_escape "${phase}")" \
+		"$(json_escape "${status}")" \
+		"$(json_escape "${detail}")" >>"${evidence_file}"
+	if [[ -n "${metadata}" ]]; then
+		printf ',"metadata":%s' "${metadata}" >>"${evidence_file}"
+	fi
+	printf '}\n' >>"${evidence_file}"
+}
+
 normalize_bool() {
 	local value="${1:-}"
 	case "${value}" in
@@ -23,6 +58,17 @@ normalize_bool() {
 		printf '0'
 		;;
 	esac
+}
+
+is_placeholder_value() {
+	local value="${1-}"
+	[[ -z "${value}" ]] && return 0
+	case "${value}" in
+	*"CHANGE_ME"* | *"REPLACE_ME"* | *"example.com"* | *"example.invalid"* | *"placeholder"*)
+		return 0
+		;;
+	esac
+	return 1
 }
 
 require_cmd() {
@@ -167,7 +213,7 @@ wait_for_container_ready() {
 	while true; do
 		state="$(container_state "${name}")"
 		health="$(container_health "${name}")"
-		if [[ "${state}" == "running" && ( "${health}" == "healthy" || "${health}" == "none" ) ]]; then
+		if [[ "${state}" == "running" && ("${health}" == "healthy" || "${health}" == "none") ]]; then
 			return 0
 		fi
 		now_ts="$(date +%s)"
