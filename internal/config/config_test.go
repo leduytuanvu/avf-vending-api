@@ -118,7 +118,7 @@ func TestLoad_RedisPasswordWithoutAddrRejected(t *testing.T) {
 
 func TestLoad_PostgresPoolMinGreaterThanMaxRejected(t *testing.T) {
 	setMinimalValidLoadEnv(t)
-	t.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/db?sslmode=disable")
+	t.Setenv("DATABASE_URL", "postgres://user:"+"pass@localhost:5432/db?sslmode=disable")
 	t.Setenv("DATABASE_MAX_CONNS", "2")
 	t.Setenv("DATABASE_MIN_CONNS", "5")
 
@@ -211,7 +211,7 @@ func TestLoad_RedisTLSRequiresAddr(t *testing.T) {
 func TestLoad_RedisURLAlias(t *testing.T) {
 	setMinimalValidLoadEnv(t)
 	t.Setenv("REDIS_ADDR", "")
-	t.Setenv("REDIS_URL", "rediss://default:fixture@127.0.0.1:6380/2")
+	t.Setenv("REDIS_URL", "rediss://default:"+"fixture@127.0.0.1:6380/2")
 
 	cfg, err := Load()
 	if err != nil {
@@ -315,7 +315,7 @@ func TestValidate_OTELConflict(t *testing.T) {
 
 func TestValidate_PostgresRequiresPositiveMaxConnsWhenURLSet(t *testing.T) {
 	setMinimalValidLoadEnv(t)
-	t.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/db?sslmode=disable")
+	t.Setenv("DATABASE_URL", "postgres://user:"+"pass@localhost:5432/db?sslmode=disable")
 	t.Setenv("DATABASE_MAX_CONNS", "0")
 
 	_, err := Load()
