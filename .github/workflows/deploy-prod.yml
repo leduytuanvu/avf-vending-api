@@ -408,6 +408,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          bash -n deployments/prod/scripts/smoke_prod.sh
           bash -n deployments/prod/shared/scripts/bootstrap_prereqs.sh
           bash -n deployments/prod/shared/scripts/lib_release.sh
           bash -n deployments/prod/shared/scripts/release_app_cluster.sh
@@ -520,6 +521,204 @@ jobs:
             echo "- provenance verification status: \`${STATUS}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  validate-production-security-verdict:
+    name: Validate Production Security Verdict
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-build-run-id
+      - resolve-image-refs
+      - validate-promotion-selection
+      - validate-production-action-safety
+    outputs:
+      security_verdict: ${{ steps.gate.outputs.security_verdict }}
+      security_workflow_run_id: ${{ steps.gate.outputs.security_workflow_run_id }}
+      security_verdict_generated_at_utc: ${{ steps.gate.outputs.security_verdict_generated_at_utc }}
+      security_source_build_run_id: ${{ steps.gate.outputs.security_source_build_run_id }}
+      security_source_sha: ${{ steps.gate.outputs.security_source_sha }}
+    steps:
+      - name: Resolve matching security verdict
+        id: gate
+        shell: bash
+        env:
+          ACTION_MODE: ${{ needs.resolve-build-run-id.outputs.action_mode }}
+          EXPECTED_BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
+          EXPECTED_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha || needs.resolve-build-run-id.outputs.source_commit_sha }}
+          EXPECTED_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
+          RESOLVED_ARTIFACT_BUILD_RUN_ID: ${{ needs.resolve-image-refs.outputs.artifact_build_run_id }}
+          RESOLVED_ARTIFACT_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha }}
+          RESOLVED_ARTIFACT_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-gate
+
+          {
+            echo "## Production Security Gate"
+            echo "- action mode: \`${ACTION_MODE}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          fail() {
+            echo "error: $*" >&2
+            echo "- result: \`fail\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- reason: $*" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
+
+          if [[ "${ACTION_MODE}" == "rollback" ]]; then
+            {
+              echo "security_verdict=not-required"
+              echo "security_workflow_run_id="
+              echo "security_verdict_generated_at_utc="
+              echo "security_source_build_run_id="
+              echo "security_source_sha="
+            } >> "$GITHUB_OUTPUT"
+            echo "- result: \`not-required for rollback\`" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          [[ -n "${EXPECTED_BUILD_RUN_ID}" ]] || fail "missing expected build run id for production security gate"
+          [[ -n "${EXPECTED_SOURCE_SHA}" ]] || fail "missing expected source SHA for production security gate"
+          [[ "${EXPECTED_BUILD_RUN_ID}" == "${RESOLVED_ARTIFACT_BUILD_RUN_ID}" ]] || fail "resolved artifact build run id does not match the selected build run"
+          [[ "${EXPECTED_SOURCE_SHA}" == "${RESOLVED_ARTIFACT_SOURCE_SHA}" ]] || fail "resolved artifact source SHA does not match the selected build SHA"
+          if [[ -n "${EXPECTED_SOURCE_WORKFLOW_NAME}" ]]; then
+            [[ "${EXPECTED_SOURCE_WORKFLOW_NAME}" == "${RESOLVED_ARTIFACT_SOURCE_WORKFLOW_NAME}" ]] || fail "resolved artifact source workflow name does not match the selected build metadata"
+          fi
+
+          {
+            echo "- expected build run id: \`${EXPECTED_BUILD_RUN_ID}\`"
+            echo "- expected source SHA: \`${EXPECTED_SOURCE_SHA}\`"
+            if [[ -n "${EXPECTED_SOURCE_WORKFLOW_NAME}" ]]; then
+              echo "- expected source workflow: \`${EXPECTED_SOURCE_WORKFLOW_NAME}\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          candidate_runs="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs?event=workflow_run&status=completed&per_page=100" \
+              --jq '.workflow_runs[]? | [.id, (.conclusion // "")] | @tsv'
+          )"
+          [[ -n "${candidate_runs}" ]] || fail "no completed security workflow_run runs found"
+
+          matched_run_id=""
+          matched_generated_at=""
+          matched_source_build_run_id=""
+          matched_source_sha=""
+
+          while IFS=$'\t' read -r run_id run_conclusion; do
+            [[ -n "${run_id}" ]] || continue
+
+            artifact_id="$(
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts" \
+                --jq '[.artifacts[]? | select(.name == "security-verdict") | .id] | .[0] // empty'
+            )"
+            [[ -n "${artifact_id}" ]] || continue
+
+            extract_dir="security-gate/run-${run_id}"
+            rm -rf "${extract_dir}"
+            mkdir -p "${extract_dir}"
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > "${extract_dir}/security-verdict.zip"
+            python3 -m zipfile -e "${extract_dir}/security-verdict.zip" "${extract_dir}"
+            verdict_file="${extract_dir}/security-verdict.json"
+            [[ -f "${verdict_file}" ]] || fail "security-verdict artifact from run ${run_id} is missing security-verdict.json"
+
+            set +e
+            python3 - "${verdict_file}" "${EXPECTED_BUILD_RUN_ID}" "${EXPECTED_SOURCE_SHA}" "${EXPECTED_SOURCE_WORKFLOW_NAME}" "${run_id}" "${run_conclusion}" > "${extract_dir}/verdict-check.txt" <<'PY'
+              import json
+              import sys
+              from pathlib import Path
+
+              verdict_path = Path(sys.argv[1])
+              expected_build_run_id = sys.argv[2]
+              expected_source_sha = sys.argv[3]
+              expected_source_workflow_name = sys.argv[4]
+              run_id = sys.argv[5]
+              run_conclusion = sys.argv[6]
+
+              payload = json.loads(verdict_path.read_text(encoding="utf-8"))
+              required_keys = ("verdict", "source_build_run_id", "source_sha", "workflow_run_id", "generated_at_utc", "scanner_summary")
+              missing = [key for key in required_keys if key not in payload]
+              if missing:
+                  print(f"reason=security-verdict.json is missing required keys: {missing}")
+                  raise SystemExit(3)
+
+              if str(payload.get("workflow_run_id", "")) != run_id:
+                  print("reason=security-verdict workflow_run_id does not match the artifact owner run")
+                  raise SystemExit(3)
+
+              if str(payload.get("source_build_run_id", "")) != expected_build_run_id:
+                  raise SystemExit(2)
+
+              if payload.get("source_sha", "") != expected_source_sha:
+                  print("reason=matching security verdict has a different source SHA than the selected build")
+                  raise SystemExit(4)
+
+              source_workflow_name = payload.get("source_workflow_name", "")
+              if expected_source_workflow_name and source_workflow_name and source_workflow_name != expected_source_workflow_name:
+                  print("reason=matching security verdict has a different source workflow linkage than the selected build")
+                  raise SystemExit(4)
+
+              if payload.get("verdict") != "pass":
+                  print(f"reason=matching security verdict is {payload.get('verdict')}")
+                  print(f"generated_at_utc={payload.get('generated_at_utc', '')}")
+                  print(f"source_build_run_id={payload.get('source_build_run_id', '')}")
+                  print(f"source_sha={payload.get('source_sha', '')}")
+                  raise SystemExit(5)
+
+              if run_conclusion != "success":
+                  print(f"reason=matching security workflow run conclusion is {run_conclusion}")
+                  print(f"generated_at_utc={payload.get('generated_at_utc', '')}")
+                  raise SystemExit(5)
+
+              print(f"security_workflow_run_id={run_id}")
+              print(f"security_verdict_generated_at_utc={payload.get('generated_at_utc', '')}")
+              print(f"security_source_build_run_id={payload.get('source_build_run_id', '')}")
+              print(f"security_source_sha={payload.get('source_sha', '')}")
+              raise SystemExit(0)
+              PY
+            check_rc=$?
+            set -e
+            verdict_check="$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"), end="")' "${extract_dir}/verdict-check.txt")"
+
+            case "${check_rc}" in
+              0)
+                while IFS='=' read -r key value; do
+                  case "${key}" in
+                    security_workflow_run_id) matched_run_id="${value}" ;;
+                    security_verdict_generated_at_utc) matched_generated_at="${value}" ;;
+                    security_source_build_run_id) matched_source_build_run_id="${value}" ;;
+                    security_source_sha) matched_source_sha="${value}" ;;
+                  esac
+                done <<< "${verdict_check}"
+                break
+                ;;
+              2)
+                continue
+                ;;
+              3 | 4 | 5)
+                reason="$(printf '%s\n' "${verdict_check}" | python3 -c 'import sys; lines=[line.strip() for line in sys.stdin if line.strip()]; print(next((line.split("=",1)[1] for line in lines if line.startswith("reason=")), "matching security verdict is malformed or failed"))')"
+                fail "${reason}"
+                ;;
+              *)
+                fail "unexpected error while validating security-verdict artifact from run ${run_id}"
+                ;;
+            esac
+          done <<< "${candidate_runs}"
+
+          [[ -n "${matched_run_id}" ]] || fail "no matching security-verdict artifact found for build run ${EXPECTED_BUILD_RUN_ID} and SHA ${EXPECTED_SOURCE_SHA}"
+
+          {
+            echo "security_verdict=pass"
+            echo "security_workflow_run_id=${matched_run_id}"
+            echo "security_verdict_generated_at_utc=${matched_generated_at}"
+            echo "security_source_build_run_id=${matched_source_build_run_id}"
+            echo "security_source_sha=${matched_source_sha}"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "- result: \`pass\`"
+            echo "- matched security workflow run: \`${matched_run_id}\`"
+            echo "- verdict generated at (UTC): \`${matched_generated_at}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   deploy-prod:
     name: Deploy production release
     runs-on: ubuntu-latest
@@ -530,6 +729,7 @@ jobs:
       - validate-production-topology-assets
       - validate-promotion-selection
       - validate-production-action-safety
+      - validate-production-security-verdict
       - prepare-promotion-context
     environment: production
     env:
@@ -560,6 +760,13 @@ jobs:
       DATA_NODE_HOST: ${{ secrets.DATA_HOST || secrets.PROD_DATA_NODE_HOST || secrets.PRODUCTION_DATA_NODE_HOST || vars.DATA_HOST || vars.PROD_DATA_NODE_HOST || vars.PRODUCTION_DATA_NODE_HOST }}
       PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
       RESOLVED_RELEASE_LABEL: ${{ needs.resolve-image-refs.outputs.release_label }}
+      SECURITY_VERDICT: ${{ needs.validate-production-security-verdict.outputs.security_verdict }}
+      SECURITY_WORKFLOW_RUN_ID: ${{ needs.validate-production-security-verdict.outputs.security_workflow_run_id }}
+      SECURITY_VERDICT_GENERATED_AT_UTC: ${{ needs.validate-production-security-verdict.outputs.security_verdict_generated_at_utc }}
+      PRODUCTION_API_DOMAIN: ${{ secrets.API_DOMAIN || vars.API_DOMAIN || secrets.PROD_API_DOMAIN || vars.PROD_API_DOMAIN || secrets.PRODUCTION_API_DOMAIN || vars.PRODUCTION_API_DOMAIN || '' }}
+      PRODUCTION_PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL || vars.PUBLIC_BASE_URL || secrets.PROD_PUBLIC_BASE_URL || vars.PROD_PUBLIC_BASE_URL || secrets.PRODUCTION_PUBLIC_BASE_URL || vars.PRODUCTION_PUBLIC_BASE_URL || '' }}
+      PRODUCTION_SMOKE_DB_READ_PATH: ${{ secrets.SMOKE_DB_READ_PATH || vars.SMOKE_DB_READ_PATH || secrets.PROD_SMOKE_DB_READ_PATH || vars.PROD_SMOKE_DB_READ_PATH || secrets.PRODUCTION_SMOKE_DB_READ_PATH || vars.PRODUCTION_SMOKE_DB_READ_PATH || '' }}
+      PRODUCTION_SMOKE_DB_READ_MATCH_REGEX: ${{ secrets.SMOKE_DB_READ_MATCH_REGEX || vars.SMOKE_DB_READ_MATCH_REGEX || secrets.PROD_SMOKE_DB_READ_MATCH_REGEX || vars.PROD_SMOKE_DB_READ_MATCH_REGEX || secrets.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX || vars.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX || '' }}
       SSH_PORT: ${{ secrets.SSH_PORT || vars.SSH_PORT || vars.PROD_SSH_PORT || vars.PRODUCTION_SSH_PORT || '22' }}
       SSH_USER: ${{ secrets.SSH_USER || vars.SSH_USER || secrets.PROD_SSH_USER || vars.PROD_SSH_USER || secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER }}
     steps:
@@ -594,6 +801,9 @@ jobs:
           if [[ -n "${SOURCE_COMMIT_SHA:-}" ]] && [[ ! "${SOURCE_COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
             fail "source_commit_sha must be a full 40-character lowercase git SHA when provided"
           fi
+          if [[ -z "${PRODUCTION_PUBLIC_BASE_URL}" && -n "${PRODUCTION_API_DOMAIN}" ]]; then
+            PRODUCTION_PUBLIC_BASE_URL="https://${PRODUCTION_API_DOMAIN}"
+          fi
 
           [[ -n "${PRODUCTION_DEPLOY_ROOT}" ]] || fail "missing production deploy root (PRODUCTION_DEPLOY_ROOT or PROD_DEPLOY_PATH)"
           [[ -n "${APP_NODE_A_HOST}" ]] || fail "missing production app node A host"
@@ -605,6 +815,9 @@ jobs:
           [[ -n "${SSH_PRIVATE_KEY}" ]] || fail "missing production SSH private key"
           [[ "${SSH_PORT}" =~ ^[0-9]+$ ]] || fail "SSH_PORT must be numeric"
           (( SSH_PORT >= 1 && SSH_PORT <= 65535 )) || fail "SSH_PORT must be between 1 and 65535"
+          if [[ "${ACTION_MODE}" == "deploy" ]]; then
+            [[ -n "${PRODUCTION_PUBLIC_BASE_URL}" ]] || fail "deploy mode requires PUBLIC_BASE_URL or API_DOMAIN for blackbox smoke"
+          fi
 
           if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
             [[ -n "${DATA_NODE_HOST}" ]] || fail "deploy_data_node=true requires DATA_NODE_HOST"
@@ -644,7 +857,12 @@ jobs:
             echo "- goose digest: \`${{ needs.validate-promotion-selection.outputs.goose_digest }}\`"
             echo "- previous app digest: \`${PREVIOUS_APP_DIGEST:-unknown}\`"
             echo "- previous goose digest: \`${PREVIOUS_GOOSE_DIGEST:-unknown}\`"
+            echo "- security verdict: \`${SECURITY_VERDICT}\`"
+            if [[ -n "${SECURITY_WORKFLOW_RUN_ID}" ]]; then
+              echo "- matched security workflow run: \`${SECURITY_WORKFLOW_RUN_ID}\`"
+            fi
             echo "- release label: \`${RELEASE_TAG}\`"
+            echo "- smoke gates: \`public node-A smoke after readiness\` then \`final cluster smoke after node-B readiness\`"
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
             echo "- app node B: \`${APP_NODE_B_HOST}\`"
             echo "- deploy data-node fallback: \`${DEPLOY_DATA_NODE}\`"
@@ -768,6 +986,21 @@ jobs:
           set -Eeuo pipefail
           bash deployments/prod/shared/scripts/healthcheck_app_node.sh
 
+      - name: Run public smoke against app node A
+        if: env.ACTION_MODE == 'deploy'
+        id: smoke_app_node_a
+        shell: bash
+        env:
+          SMOKE_API_DOMAIN: ${{ env.PRODUCTION_API_DOMAIN }}
+          SMOKE_BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
+          SMOKE_CONNECT_TO_HOST: ${{ env.APP_NODE_A_HOST }}
+          SMOKE_DB_READ_PATH: ${{ env.PRODUCTION_SMOKE_DB_READ_PATH }}
+          SMOKE_DB_READ_MATCH_REGEX: ${{ env.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p deployment-evidence
+          bash deployments/prod/scripts/smoke_prod.sh --json | tee deployment-evidence/smoke-app-node-a.json
+
       - name: Deploy app node B
         id: deploy_app_node_b
         shell: bash
@@ -791,6 +1024,20 @@ jobs:
           set -Eeuo pipefail
           bash deployments/prod/shared/scripts/healthcheck_app_node.sh
 
+      - name: Run final public smoke after app node B
+        if: env.ACTION_MODE == 'deploy'
+        id: smoke_cluster_final
+        shell: bash
+        env:
+          SMOKE_API_DOMAIN: ${{ env.PRODUCTION_API_DOMAIN }}
+          SMOKE_BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
+          SMOKE_DB_READ_PATH: ${{ env.PRODUCTION_SMOKE_DB_READ_PATH }}
+          SMOKE_DB_READ_MATCH_REGEX: ${{ env.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p deployment-evidence
+          bash deployments/prod/scripts/smoke_prod.sh --json | tee deployment-evidence/smoke-cluster-final.json
+
       - name: Attempt automatic rollback after failed production release
         if: failure() && env.ACTION_MODE == 'deploy'
         id: auto_rollback
@@ -798,6 +1045,9 @@ jobs:
         shell: bash
         env:
           APP_NODE_A_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_a.outcome }}
+          APP_NODE_A_SMOKE_OUTCOME: ${{ steps.smoke_app_node_a.outcome }}
+          APP_NODE_B_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_b.outcome }}
+          FINAL_SMOKE_OUTCOME: ${{ steps.smoke_cluster_final.outcome }}
           DATA_NODE_DEPLOY_OUTCOME: ${{ steps.deploy_data_node.outcome }}
         run: |
           set -Eeuo pipefail
@@ -812,6 +1062,15 @@ jobs:
 
           app_nodes_need_rollback="false"
           if [[ -n "${APP_NODE_A_DEPLOY_OUTCOME}" && "${APP_NODE_A_DEPLOY_OUTCOME}" != "skipped" ]]; then
+            app_nodes_need_rollback="true"
+          fi
+          if [[ -n "${APP_NODE_B_DEPLOY_OUTCOME}" && "${APP_NODE_B_DEPLOY_OUTCOME}" != "skipped" ]]; then
+            app_nodes_need_rollback="true"
+          fi
+          if [[ -n "${APP_NODE_A_SMOKE_OUTCOME}" && "${APP_NODE_A_SMOKE_OUTCOME}" != "skipped" ]]; then
+            app_nodes_need_rollback="true"
+          fi
+          if [[ -n "${FINAL_SMOKE_OUTCOME}" && "${FINAL_SMOKE_OUTCOME}" != "skipped" ]]; then
             app_nodes_need_rollback="true"
           fi
 
@@ -866,12 +1125,17 @@ jobs:
           DATA_NODE_OUTCOME: ${{ steps.deploy_data_node.outcome }}
           APP_NODE_A_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_a.outcome }}
           APP_NODE_A_VERIFY_OUTCOME: ${{ steps.verify_app_node_a.outcome }}
+          APP_NODE_A_SMOKE_OUTCOME: ${{ steps.smoke_app_node_a.outcome || 'skipped' }}
           APP_NODE_B_DEPLOY_OUTCOME: ${{ steps.deploy_app_node_b.outcome }}
           APP_NODE_B_VERIFY_OUTCOME: ${{ steps.verify_app_node_b.outcome }}
+          FINAL_CLUSTER_SMOKE_OUTCOME: ${{ steps.smoke_cluster_final.outcome || 'skipped' }}
           PROVENANCE_VERDICT: ${{ needs.prepare-promotion-context.outputs.provenance_verdict }}
           RESOLVED_RELEASE_LABEL: ${{ needs.resolve-image-refs.outputs.release_label }}
           ROLLBACK_ATTEMPTED: ${{ steps.auto_rollback.outputs.rollback_attempted || 'false' }}
           ROLLBACK_RESULT: ${{ steps.auto_rollback.outputs.rollback_result || 'not-attempted' }}
+          SECURITY_VERDICT: ${{ needs.validate-production-security-verdict.outputs.security_verdict }}
+          SECURITY_WORKFLOW_RUN_ID: ${{ needs.validate-production-security-verdict.outputs.security_workflow_run_id }}
+          SECURITY_VERDICT_GENERATED_AT_UTC: ${{ needs.validate-production-security-verdict.outputs.security_verdict_generated_at_utc }}
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
@@ -925,6 +1189,9 @@ jobs:
             "provenance_verification_mode": "${PROVENANCE_MODE}",
             "provenance_verification_status": "${PROVENANCE_STATUS}",
             "provenance_verdict": "${PROVENANCE_VERDICT}",
+            "security_verdict": "${SECURITY_VERDICT}",
+            "security_workflow_run_id": "${SECURITY_WORKFLOW_RUN_ID}",
+            "security_verdict_generated_at_utc": "${SECURITY_VERDICT_GENERATED_AT_UTC}",
             "deploy_data_node": "${DEPLOY_DATA_NODE}",
             "data_node_host": "${DATA_NODE_HOST}",
             "app_node_a_host": "${APP_NODE_A_HOST}",
@@ -932,8 +1199,10 @@ jobs:
             "data_node_outcome": "${DATA_NODE_OUTCOME}",
             "app_node_a_deploy_outcome": "${APP_NODE_A_DEPLOY_OUTCOME}",
             "app_node_a_verify_outcome": "${APP_NODE_A_VERIFY_OUTCOME}",
+            "app_node_a_smoke_outcome": "${APP_NODE_A_SMOKE_OUTCOME}",
             "app_node_b_deploy_outcome": "${APP_NODE_B_DEPLOY_OUTCOME}",
             "app_node_b_verify_outcome": "${APP_NODE_B_VERIFY_OUTCOME}",
+            "final_cluster_smoke_outcome": "${FINAL_CLUSTER_SMOKE_OUTCOME}",
             "rollback_attempted": "${ROLLBACK_ATTEMPTED}",
             "rollback_result": "${ROLLBACK_RESULT}",
             "final_result": "${FINAL_RESULT}"
@@ -949,6 +1218,10 @@ jobs:
             "goose_image_ref": "${GOOSE_IMAGE_REF}",
             "goose_digest": "${{ needs.validate-promotion-selection.outputs.goose_digest }}",
             "provenance_verdict": "${PROVENANCE_VERDICT}",
+            "security_verdict": "${SECURITY_VERDICT}",
+            "security_workflow_run_id": "${SECURITY_WORKFLOW_RUN_ID}",
+            "app_node_a_smoke_outcome": "${APP_NODE_A_SMOKE_OUTCOME}",
+            "final_cluster_smoke_outcome": "${FINAL_CLUSTER_SMOKE_OUTCOME}",
             "rollback_attempted": "${ROLLBACK_ATTEMPTED}",
             "rollback_result": "${ROLLBACK_RESULT}",
             "final_result": "${FINAL_RESULT}"
@@ -990,13 +1263,14 @@ jobs:
             echo "- deploy transport: \`${DEPLOY_TRANSPORT}\`"
             echo "- auth mode: \`${AUTH_MODE}\`"
             echo "- provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\` / verdict=\`${PROVENANCE_VERDICT}\`"
+            echo "- security gate: verdict=\`${SECURITY_VERDICT}\`, workflow_run=\`${SECURITY_WORKFLOW_RUN_ID:-n/a}\`, generated_at=\`${SECURITY_VERDICT_GENERATED_AT_UTC:-n/a}\`"
             echo "- data-node requested: \`${DEPLOY_DATA_NODE}\`"
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
             echo "- app node B: \`${APP_NODE_B_HOST}\`"
             echo "- data node: \`${DATA_NODE_HOST:-not-requested}\`"
-            echo "- data-node outcome: \`${DATA_NODE_OUTCOME:-skipped}\`"
-            echo "- app node A outcome: deploy=\`${APP_NODE_A_DEPLOY_OUTCOME}\`, verify=\`${APP_NODE_A_VERIFY_OUTCOME}\`"
-            echo "- app node B outcome: deploy=\`${APP_NODE_B_DEPLOY_OUTCOME}\`, verify=\`${APP_NODE_B_VERIFY_OUTCOME}\`"
+            echo "- deployment steps: data-node=\`${DATA_NODE_OUTCOME:-skipped}\`, app-node-a=\`${APP_NODE_A_DEPLOY_OUTCOME}\`, app-node-b=\`${APP_NODE_B_DEPLOY_OUTCOME}\`"
+            echo "- readiness checks: app-node-a=\`${APP_NODE_A_VERIFY_OUTCOME}\`, app-node-b=\`${APP_NODE_B_VERIFY_OUTCOME}\`"
+            echo "- smoke checks: app-node-a-public=\`${APP_NODE_A_SMOKE_OUTCOME}\`, final-cluster=\`${FINAL_CLUSTER_SMOKE_OUTCOME}\`"
             echo "- rollback attempted: \`${ROLLBACK_ATTEMPTED}\`"
             echo "- rollback result: \`${ROLLBACK_RESULT}\`"
             echo "- final result: \`${FINAL_RESULT}\`"

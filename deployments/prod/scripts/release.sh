@@ -848,24 +848,24 @@ main() {
 	shift
 
 	case "${sub}" in
-		deploy)
-			cmd_deploy "${1:-}" "${2:-}"
-			;;
-		rollback)
-			cmd_rollback "${1:-}" "${2:-}"
-			;;
-		status)
-			cmd_status
-			;;
-		logs)
-			cmd_logs "${1:-}" "${2:-}"
-			;;
-		-h | --help | help)
-			usage
-			;;
-		*)
-			fail "unknown subcommand: ${sub}"
-			;;
+	deploy)
+		cmd_deploy "${1:-}" "${2:-}"
+		;;
+	rollback)
+		cmd_rollback "${1:-}" "${2:-}"
+		;;
+	status)
+		cmd_status
+		;;
+	logs)
+		cmd_logs "${1:-}" "${2:-}"
+		;;
+	-h | --help | help)
+		usage
+		;;
+	*)
+		fail "unknown subcommand: ${sub}"
+		;;
 	esac
 }
 

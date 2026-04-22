@@ -192,13 +192,18 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          mkdir -p nightly-reports
           export PGPASSWORD=nightly-restore-password
-          container_name="nightly-restore-drill"
-          trap 'docker rm -f "${container_name}" >/dev/null 2>&1 || true' EXIT
+          source_container_name="nightly-restore-source"
+          target_compose_dir="nightly-reports/restore-helper-target"
+          target_env_file="${target_compose_dir}/.env.restore"
+          target_compose_file="${target_compose_dir}/docker-compose.restore.yml"
+          trap 'docker rm -f "${source_container_name}" >/dev/null 2>&1 || true; docker compose --env-file "${target_env_file}" -f "${target_compose_file}" down -v >/dev/null 2>&1 || true' EXIT
 
-          docker rm -f "${container_name}" >/dev/null 2>&1 || true
+          docker rm -f "${source_container_name}" >/dev/null 2>&1 || true
+          mkdir -p "${target_compose_dir}"
           docker run -d \
-            --name "${container_name}" \
+            --name "${source_container_name}" \
             -e POSTGRES_PASSWORD="${PGPASSWORD}" \
             -e POSTGRES_USER=postgres \
             -e POSTGRES_DB=restore_source \
@@ -222,25 +227,67 @@ jobs:
             machine_code text not null,
             reading integer not null
           );
+          create table restore_metadata (
+            key text primary key,
+            value text not null
+          );
           insert into restore_probe (id, machine_code, reading) values
             (1, 'vm-a', 17),
             (2, 'vm-b', 23),
             (3, 'vm-c', 42);
+          insert into restore_metadata (key, value) values
+            ('schema_version', 'nightly-restore-v1'),
+            ('restored_by', 'nightly-ops');
+          create index restore_probe_machine_code_idx on restore_probe (machine_code);
           SQL
 
-          createdb -h 127.0.0.1 -p 55432 -U postgres restore_target
-          pg_dump -h 127.0.0.1 -p 55432 -U postgres -Fc -d restore_source -f nightly-reports/disposable-restore-drill.dump
-          pg_restore -h 127.0.0.1 -p 55432 -U postgres --clean --if-exists -d restore_target nightly-reports/disposable-restore-drill.dump
+          pg_dump -h 127.0.0.1 -p 55432 -U postgres --if-exists --clean -d restore_source | gzip -c > nightly-reports/disposable-restore-drill.sql.gz
+          gzip -t nightly-reports/disposable-restore-drill.sql.gz
+
+          cat > "${target_env_file}" <<'EOF'
+          POSTGRES_PASSWORD=nightly-restore-password
+          POSTGRES_USER=postgres
+          POSTGRES_DB=restore_target
+          DATABASE_URL=postgres://postgres:nightly-restore-password@127.0.0.1:55433/restore_target?sslmode=disable
+          COMPOSE_PROJECT_NAME=nightly-restore-helper
+          EOF
+
+          cat > "${target_compose_file}" <<'EOF'
+          services:
+            postgres:
+              image: postgres:16-alpine
+              environment:
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                POSTGRES_USER: ${POSTGRES_USER}
+                POSTGRES_DB: ${POSTGRES_DB}
+              ports:
+                - "127.0.0.1:55433:5432"
+          EOF
+
+          docker compose --env-file "${target_env_file}" -f "${target_compose_file}" up -d postgres
+          RESTORE_ENV_FILE="${target_env_file}" \
+          RESTORE_COMPOSE_FILE="${target_compose_file}" \
+          RESTORE_LONG_LIVED_SERVICES="postgres" \
+          RESTORE_REPORT_PATH="nightly-reports/restore-helper-report.json" \
+          bash deployments/prod/scripts/restore_postgres.sh --yes nightly-reports/disposable-restore-drill.sql.gz
 
           source_row_count="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_source -Atc 'select count(*) from restore_probe')"
-          target_row_count="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_target -Atc 'select count(*) from restore_probe')"
-          target_checksum="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_target -Atc "select md5(string_agg(machine_code || ':' || reading::text, ',' order by id)) from restore_probe")"
-          dump_size_bytes="$(wc -c < nightly-reports/disposable-restore-drill.dump | tr -d ' ')"
-          dump_sha256="$(sha256sum nightly-reports/disposable-restore-drill.dump | awk '{print $1}')"
+          source_checksum="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_source -Atc "select md5(string_agg(machine_code || ':' || reading::text, ',' order by id)) from restore_probe")"
+          source_metadata_value="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_source -Atc "select value from restore_metadata where key = 'schema_version'")"
+          target_row_count="$(psql -h 127.0.0.1 -p 55433 -U postgres -d restore_target -Atc 'select count(*) from restore_probe')"
+          target_checksum="$(psql -h 127.0.0.1 -p 55433 -U postgres -d restore_target -Atc "select md5(string_agg(machine_code || ':' || reading::text, ',' order by id)) from restore_probe")"
+          target_metadata_value="$(psql -h 127.0.0.1 -p 55433 -U postgres -d restore_target -Atc "select value from restore_metadata where key = 'schema_version'")"
+          target_index_count="$(psql -h 127.0.0.1 -p 55433 -U postgres -d restore_target -Atc "select count(*) from pg_indexes where tablename = 'restore_probe' and indexname = 'restore_probe_machine_code_idx'")"
+          dump_size_bytes="$(wc -c < nightly-reports/disposable-restore-drill.sql.gz | tr -d ' ')"
+          dump_sha256="$(sha256sum nightly-reports/disposable-restore-drill.sql.gz | awk '{print $1}')"
 
           SOURCE_ROW_COUNT="${source_row_count}" \
+          SOURCE_CHECKSUM="${source_checksum}" \
+          SOURCE_METADATA_VALUE="${source_metadata_value}" \
           TARGET_ROW_COUNT="${target_row_count}" \
           TARGET_CHECKSUM="${target_checksum}" \
+          TARGET_METADATA_VALUE="${target_metadata_value}" \
+          TARGET_INDEX_COUNT="${target_index_count}" \
           DUMP_SIZE_BYTES="${dump_size_bytes}" \
           DUMP_SHA256="${dump_sha256}" \
           python3 - <<'PY'
@@ -252,30 +299,69 @@ jobs:
           target_row_count = os.environ["TARGET_ROW_COUNT"]
           if source_row_count != target_row_count:
               raise SystemExit(f"row-count mismatch after disposable restore drill: source={source_row_count} target={target_row_count}")
+          if os.environ["SOURCE_CHECKSUM"] != os.environ["TARGET_CHECKSUM"]:
+              raise SystemExit("checksum mismatch after restore_postgres.sh disposable drill")
+          if os.environ["SOURCE_METADATA_VALUE"] != os.environ["TARGET_METADATA_VALUE"]:
+              raise SystemExit("metadata lookup mismatch after restore_postgres.sh disposable drill")
+          if os.environ["TARGET_INDEX_COUNT"] != "1":
+              raise SystemExit("expected restore_probe_machine_code_idx to exist after restore")
+
+          helper_report = json.loads(Path("nightly-reports/restore-helper-report.json").read_text(encoding="utf-8"))
 
           report = {
-              "drill_type": "disposable-postgres-restore",
+              "drill_type": "disposable-postgres-restore-helper",
               "postgres_image": "postgres:16-alpine",
+              "dump_format": "gzip-sql",
               "source_database": "restore_source",
               "target_database": "restore_target",
               "source_row_count": int(source_row_count),
               "target_row_count": int(target_row_count),
+              "source_checksum": os.environ["SOURCE_CHECKSUM"],
               "target_checksum": os.environ["TARGET_CHECKSUM"],
-              "dump_path": "nightly-reports/disposable-restore-drill.dump",
+              "source_metadata_value": os.environ["SOURCE_METADATA_VALUE"],
+              "target_metadata_value": os.environ["TARGET_METADATA_VALUE"],
+              "target_index_count": int(os.environ["TARGET_INDEX_COUNT"]),
+              "restore_helper_report": helper_report,
+              "validated": [
+                  "gzip SQL dump creation from disposable source database",
+                  "restore_postgres.sh preflight checks",
+                  "restore_postgres.sh destructive restore against disposable target only",
+                  "fresh post-restore database connection to restored target",
+                  "row-count parity for restore_probe",
+                  "checksum parity for restore_probe",
+                  "metadata lookup parity for restore_metadata",
+                  "index presence for restore_probe_machine_code_idx",
+              ],
+              "not_validated": [
+                  "application container boot against restored data",
+                  "end-to-end API behavior against restored data",
+                  "real production infrastructure",
+              ],
+              "dump_path": "nightly-reports/disposable-restore-drill.sql.gz",
               "dump_size_bytes": int(os.environ["DUMP_SIZE_BYTES"]),
               "dump_sha256": os.environ["DUMP_SHA256"],
               "verdict": "pass",
           }
           Path("nightly-reports/disposable-restore-drill.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+          Path("nightly-reports/restore-smoke-evidence.json").write_text(json.dumps({
+              "verdict": "pass",
+              "validated": report["validated"],
+              "not_validated": report["not_validated"],
+              "restore_helper_report_path": "nightly-reports/restore-helper-report.json",
+              "disposable_restore_report_path": "nightly-reports/disposable-restore-drill.json",
+          }, indent=2) + "\n", encoding="utf-8")
           PY
 
           {
             echo "### Restore readiness"
-            echo "- validated \`pg_dump\` and \`pg_restore\` tooling availability"
-            echo "- validated managed backup/restore helper script syntax"
+            echo "- validated \`pg_dump\`, \`gzip\`, and \`psql\` tooling availability"
+            echo "- validated managed restore helper script syntax and execution"
             echo "- validated env contract without touching real production infrastructure"
-            echo "- completed a disposable PostgreSQL dump and restore drill on an ephemeral container"
+            echo "- completed a disposable PostgreSQL gzip-SQL restore drill using \`restore_postgres.sh\` against a disposable target"
+            echo "- validated: fresh post-restore DB connection, row count parity, checksum parity, metadata lookup parity, index presence"
+            echo "- not validated: application boot against restored data, full API behavior, or real production infrastructure"
             echo "- verified restored row count: \`${source_row_count}\` -> \`${target_row_count}\`"
+            echo "- verified restored checksum: \`${source_checksum}\`"
             echo "- disposable dump SHA256: \`${dump_sha256}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -293,7 +379,9 @@ jobs:
           name: nightly-disposable-restore-drill
           path: |
             nightly-reports/disposable-restore-drill.json
-            nightly-reports/disposable-restore-drill.dump
+            nightly-reports/disposable-restore-drill.sql.gz
+            nightly-reports/restore-helper-report.json
+            nightly-reports/restore-smoke-evidence.json
           if-no-files-found: error
           retention-days: 14
 

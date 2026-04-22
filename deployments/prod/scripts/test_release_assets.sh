@@ -15,7 +15,7 @@ trap cleanup EXIT
 cp "${ROOT}/.env.production.example" "${TMP_ENV}"
 
 echo "==> validate_release_assets"
-bash "${ROOT}/scripts/validate_release_assets.sh" "${TMP_ENV}"
+ALLOW_LEGACY_SINGLE_HOST=1 bash "${ROOT}/scripts/validate_release_assets.sh" "${TMP_ENV}"
 
 echo "==> docker compose config"
 docker compose --env-file "${TMP_ENV}" -f "${ROOT}/docker-compose.prod.yml" config >/dev/null

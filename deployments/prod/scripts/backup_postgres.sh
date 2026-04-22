@@ -113,14 +113,14 @@ check_free_space() {
 	[[ "${BACKUP_MIN_FREE_KB}" =~ ^[0-9]+$ ]] || return 0
 	avail_kb="$(df -Pk "${BACK_ROOT_ABS}" | awk 'NR==2 {print $4}')"
 	[[ "${avail_kb}" =~ ^[0-9]+$ ]] || return 0
-	if (( avail_kb < BACKUP_MIN_FREE_KB )); then
+	if ((avail_kb < BACKUP_MIN_FREE_KB)); then
 		fail "insufficient free space in ${BACK_ROOT_ABS}: ${avail_kb} KB available, require at least ${BACKUP_MIN_FREE_KB} KB"
 	fi
 }
 
 wait_for_postgres_ready() {
 	local waited=0
-	while (( waited <= BACKUP_READY_WAIT_SECS )); do
+	while ((waited <= BACKUP_READY_WAIT_SECS)); do
 		if "${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$1" >/dev/null' sh "${DB_NAME}"; then
 			return 0
 		fi
