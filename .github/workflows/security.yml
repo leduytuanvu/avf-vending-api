@@ -665,23 +665,29 @@ jobs:
               },
           }
 
+          private_repo_provenance_fallback = "accepted-private-repo-no-github-attestations"
           if event_name == "workflow_run":
               release_gate_mode = "full-security-release-gate"
               repo_required_for_release_verdict = repo_release_verdict or "unavailable"
               image_required_for_release_verdict = published_image_verdict
               if provenance_input == "verified":
                   provenance_release_verdict = "pass"
+                  release_gate_trust_model = "fully-verified-workflow-run-evidence"
+              elif provenance_input == private_repo_provenance_fallback:
+                  provenance_release_verdict = private_repo_provenance_fallback
+                  release_gate_trust_model = "private-repo-no-github-artifact-attestations"
               elif provenance_input:
                   provenance_release_verdict = "fail"
+                  release_gate_trust_model = "provenance-verification-failed"
               else:
                   provenance_release_verdict = "unavailable"
+                  release_gate_trust_model = "provenance-evidence-unavailable"
 
-              required_release_components = [
-                  repo_required_for_release_verdict,
-                  image_required_for_release_verdict,
-                  provenance_release_verdict,
-              ]
-              release_gate_verdict = "pass" if all(value == "pass" for value in required_release_components) else "fail"
+              release_gate_verdict = "pass" if (
+                  repo_required_for_release_verdict == "pass"
+                  and image_required_for_release_verdict == "pass"
+                  and provenance_release_verdict in ("pass", private_repo_provenance_fallback)
+              ) else "fail"
               security_verdict = release_gate_verdict
           else:
               release_gate_mode = "not-applicable"
@@ -689,6 +695,7 @@ jobs:
               image_required_for_release_verdict = "not_applicable"
               provenance_release_verdict = "not_applicable"
               release_gate_verdict = "not_applicable"
+              release_gate_trust_model = "not_applicable"
               applicable = [v for v in [repo_security_verdict, published_image_verdict, nightly_security_verdict] if v != "not_applicable"]
               security_verdict = "pass" if (not applicable or all(v == "pass" for v in applicable)) else "fail"
 
@@ -770,17 +777,17 @@ jobs:
               "provenance_release_checks": {
                   "required_for_release_verdict": provenance_release_verdict,
                   "published_image_provenance_verdict": provenance_input,
-                  "evidence_source": "resolve-image-refs workflow output" if provenance_input else "not_applicable",
+                  "evidence_source": (
+                      "resolve-image-refs workflow output (private repo fallback: GitHub Artifact Attestations unavailable)"
+                      if provenance_input == private_repo_provenance_fallback
+                      else ("resolve-image-refs workflow output" if provenance_input else "not_applicable")
+                  ),
               },
               "release_gate": {
                   "mode": release_gate_mode,
                   "verdict": release_gate_verdict,
                   "generated_at_utc": generated_at_utc,
-                  "trust_model": (
-                      "fully-verified-workflow-run-evidence"
-                      if event_name == "workflow_run"
-                      else "not_applicable"
-                  ),
+                  "trust_model": release_gate_trust_model,
                   "required_evidence": {
                       "repo_level_checks": repo_required_for_release_verdict,
                       "image_level_checks": image_required_for_release_verdict,
@@ -788,8 +795,12 @@ jobs:
                   },
                   "summary": (
                       "workflow_run release gating requires repo-level push security evidence plus published-image and provenance checks"
-                      if event_name == "workflow_run"
-                      else "release gating is not evaluated for this event type"
+                      if provenance_input != private_repo_provenance_fallback and event_name == "workflow_run"
+                      else (
+                          "workflow_run release gating accepted digest-pinned published images without GitHub Artifact Attestations because this private repository cannot use that GitHub feature"
+                          if provenance_input == private_repo_provenance_fallback and event_name == "workflow_run"
+                          else "release gating is not evaluated for this event type"
+                      )
                   ),
               },
               "scanner_summary": {
@@ -806,7 +817,11 @@ jobs:
                   "goose_image_ref": goose_image_ref,
                   "goose_digest": digest_from_ref(goose_image_ref),
                   "provenance_verdict": provenance_input,
-                  "provenance_verdict_source": "resolve-image-refs workflow output",
+                  "provenance_verdict_source": (
+                      "resolve-image-refs workflow output (private repo fallback: GitHub Artifact Attestations unavailable)"
+                      if provenance_input == private_repo_provenance_fallback
+                      else "resolve-image-refs workflow output"
+                  ),
               },
               "job_results": results,
           }
@@ -866,6 +881,8 @@ jobs:
               print(f"- goose image: `{payload['published_images']['goose_image_ref']}`")
           if payload["published_images"]["provenance_verdict"]:
               print(f"- published image provenance verdict: `{payload['published_images']['provenance_verdict']}` (from `{payload['published_images']['provenance_verdict_source']}`)")
+          if payload["published_images"]["provenance_verdict"] == "accepted-private-repo-no-github-attestations":
+              print("- provenance note: `GitHub Artifact Attestations are unavailable for this private repository, so release gating falls back to digest-pinned images plus the remaining security checks`")
           print("- required release checks: `govulncheck_repo, secret_scan, trivy_config, published image scan, published image provenance`")
           print("- advisory release checks: `dependency_review`")
           print("- excluded controls: `deployment execution, runtime readiness, backup execution, restore drill execution`")

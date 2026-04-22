@@ -491,6 +491,10 @@ jobs:
             provenance_trust_class="manual-trust-exception"
             provenance_verification_mode="manual-digest-trust-exception"
             provenance_verification_status="accepted-manual-trust-exception"
+          elif [[ "${provenance_verdict}" == "accepted-private-repo-no-github-attestations" ]]; then
+            provenance_trust_class="private-repo-no-github-attestations"
+            provenance_verification_mode="github-attestation-unavailable-private-repo"
+            provenance_verification_status="accepted-private-repo-no-github-attestations"
           fi
 
           {
@@ -550,6 +554,8 @@ jobs:
             echo "- provenance verification status: \`${STATUS}\`"
             if [[ "${TRUST_CLASS}" == "manual-trust-exception" ]]; then
               echo "- trust note: \`manual digest trust exception; attestation was not re-verified in this path\`"
+            elif [[ "${TRUST_CLASS}" == "private-repo-no-github-attestations" ]]; then
+              echo "- trust note: \`GitHub Artifact Attestations are unavailable for this private repository, so production uses the explicit private-repo fallback with digest-pinned images and the remaining security checks\`"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -745,9 +751,10 @@ jobs:
               '    print(f"reason=production release gate image-level evidence is not pass: {image_release_verdict}")' \
               '    raise SystemExit(5)' \
               '' \
+              'private_repo_provenance_fallback = "accepted-private-repo-no-github-attestations"' \
               'provenance_release_verdict = ((payload.get("provenance_release_checks") or {}).get("required_for_release_verdict", ""))' \
-              'if provenance_release_verdict != "pass":' \
-              '    print(f"reason=production release gate provenance evidence is not pass: {provenance_release_verdict}")' \
+              'if provenance_release_verdict not in ("pass", private_repo_provenance_fallback):' \
+              '    print(f"reason=production release gate provenance evidence is not acceptable: {provenance_release_verdict}")' \
               '    raise SystemExit(5)' \
               '' \
               'if published_images.get("app_image_ref", "") != expected_app_image_ref:' \
@@ -991,9 +998,15 @@ jobs:
               [[ "${RELEASE_GATE_MODE}" == "full-security-release-gate" ]] || fail "refusing production deploy; security release gate mode is not full-security-release-gate: ${RELEASE_GATE_MODE}"
               [[ "${RELEASE_GATE_VERDICT}" == "pass" ]] || fail "refusing production deploy; release gate verdict is not pass: ${RELEASE_GATE_VERDICT}"
               [[ "${REPO_RELEASE_VERDICT}" == "pass" ]] || fail "refusing production deploy; repo-level release evidence is not pass: ${REPO_RELEASE_VERDICT}"
-              [[ "${PROVENANCE_RELEASE_VERDICT}" == "pass" ]] || fail "refusing production deploy; provenance release evidence is not pass: ${PROVENANCE_RELEASE_VERDICT}"
+              [[ "${PROVENANCE_RELEASE_VERDICT}" == "pass" || "${PROVENANCE_RELEASE_VERDICT}" == "accepted-private-repo-no-github-attestations" ]] || fail "refusing production deploy; provenance release evidence is not acceptable: ${PROVENANCE_RELEASE_VERDICT}"
               [[ -n "${SECURITY_WORKFLOW_RUN_ID}" ]] || fail "refusing production deploy; matching security workflow run id is missing"
-              [[ "${PROVENANCE_VERDICT}" == "verified" ]] || fail "refusing production deploy; provenance verdict is not acceptable: ${PROVENANCE_VERDICT}"
+              [[ "${PROVENANCE_VERDICT}" == "verified" || "${PROVENANCE_VERDICT}" == "accepted-private-repo-no-github-attestations" ]] || fail "refusing production deploy; provenance verdict is not acceptable: ${PROVENANCE_VERDICT}"
+              if [[ "${PROVENANCE_VERDICT}" == "accepted-private-repo-no-github-attestations" ]]; then
+                {
+                  echo "- deploy trust boundary: \`private-repo-no-github-attestations\`"
+                  echo "- deploy note: \`GitHub Artifact Attestations are unavailable for this private repository; production is proceeding on the explicit private-repo fallback with digest-pinned images and the remaining security gate evidence\`"
+                } >> "$GITHUB_STEP_SUMMARY"
+              fi
               ;;
             rollback)
               [[ "${PROVENANCE_VERDICT}" == "verified" || "${PROVENANCE_VERDICT}" == "accepted-manual" ]] || fail "refusing production rollback; provenance verdict is not acceptable: ${PROVENANCE_VERDICT}"
@@ -1045,6 +1058,9 @@ jobs:
             echo "- provenance release verdict: \`${PROVENANCE_RELEASE_VERDICT}\`"
             echo "- image provenance verdict: \`${PROVENANCE_VERDICT}\`"
             echo "- provenance trust class: \`${PROVENANCE_TRUST_CLASS}\`"
+            if [[ "${PROVENANCE_VERDICT}" == "accepted-private-repo-no-github-attestations" ]]; then
+              echo "- provenance note: \`GitHub Artifact Attestations are unavailable for this private repository, so this plan uses the explicit private-repo fallback\`"
+            fi
             echo "- SSH host trust: \`pinned known_hosts entries from GitHub secrets/vars\`"
             echo "- release label: \`${RELEASE_TAG}\`"
             echo "- smoke gates: \`public node-A smoke after readiness\` then \`final cluster smoke after node-B readiness\`"
@@ -1369,6 +1385,8 @@ jobs:
           trust_decision="fully-verified"
           if [[ "${PROVENANCE_TRUST_CLASS}" == "manual-trust-exception" ]]; then
             trust_decision="accepted-manual-trust-exception"
+          elif [[ "${PROVENANCE_TRUST_CLASS}" == "private-repo-no-github-attestations" ]]; then
+            trust_decision="accepted-private-repo-no-github-attestations"
           fi
 
           if [[ -n "${SOURCE_COMMIT_SHA:-}" ]]; then
