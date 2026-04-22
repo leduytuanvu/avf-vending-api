@@ -6,8 +6,50 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+JSON_MODE=0
+if [[ "${HEALTHCHECK_JSON:-0}" == "1" ]]; then
+	JSON_MODE=1
+fi
+if [[ "${1:-}" == "--json" ]]; then
+	JSON_MODE=1
+	shift
+fi
+
+EXIT_CODE_RUNTIME_FAILURE=20
+EXIT_CODE_READINESS_FAILURE=21
+EXIT_CODE_PUBLIC_EDGE_FAILURE=22
+FAILED_CHECKS_FILE="$(mktemp)"
+PUBLIC_HTTPS_RESULT="not-run"
+METRICS_RESULT="not-run"
+RUNTIME_FAILURES=0
+READINESS_FAILURES=0
+PUBLIC_EDGE_FAILURES=0
+
+cleanup() {
+	rm -f "${FAILED_CHECKS_FILE}"
+}
+trap cleanup EXIT
+
+emit_info() {
+	if [[ "${JSON_MODE}" == "1" ]]; then
+		echo "$*" >&2
+	else
+		echo "$*"
+	fi
+}
+
+json_escape() {
+	local value="${1-}"
+	value="${value//\\/\\\\}"
+	value="${value//\"/\\\"}"
+	value="${value//$'\n'/\\n}"
+	value="${value//$'\r'/\\r}"
+	value="${value//$'\t'/\\t}"
+	printf '%s' "${value}"
+}
+
 note() {
-	echo "==> $*"
+	emit_info "==> $*"
 }
 
 fail_fast() {
@@ -83,12 +125,97 @@ STACK_GATE_SVCS=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 STACK_GATE_CTRS=(avf-prod-postgres avf-prod-nats avf-prod-emqx avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-caddy)
 
 pass() {
-	echo "PASS: $1"
+	emit_info "PASS: $1"
+}
+
+record_failure() {
+	local category="$1"
+	local label="$2"
+	local detail="${3:-$2}"
+	printf '%s\t%s\t%s\n' "${category}" "${label}" "${detail}" >>"${FAILED_CHECKS_FILE}"
+	failures=$((failures + 1))
+	case "${category}" in
+		runtime)
+			RUNTIME_FAILURES=$((RUNTIME_FAILURES + 1))
+			;;
+		public_edge)
+			PUBLIC_EDGE_FAILURES=$((PUBLIC_EDGE_FAILURES + 1))
+			PUBLIC_HTTPS_RESULT="failed"
+			;;
+		*)
+			READINESS_FAILURES=$((READINESS_FAILURES + 1))
+			;;
+	esac
 }
 
 fail() {
-	echo "FAIL: $1" >&2
-	failures=$((failures + 1))
+	fail_with_category readiness "$1"
+}
+
+fail_with_category() {
+	local category="$1"
+	local message="$2"
+	echo "FAIL: ${message}" >&2
+	record_failure "${category}" "${message}" "${message}"
+}
+
+emit_json_summary() {
+	local overall_status="pass"
+	local first="1"
+	local i c svc state has_h health
+	if (( failures > 0 )); then
+		overall_status="fail"
+	fi
+
+	printf '{\n'
+	printf '  "overall_status": "%s",\n' "$(json_escape "${overall_status}")"
+	printf '  "failed_checks": ['
+	while IFS=$'\t' read -r category label detail; do
+		[[ -n "${category}" ]] || continue
+		if [[ "${first}" == "1" ]]; then
+			first="0"
+		else
+			printf ','
+		fi
+		printf '\n    {"category":"%s","check":"%s","detail":"%s"}' \
+			"$(json_escape "${category}")" \
+			"$(json_escape "${label}")" \
+			"$(json_escape "${detail}")"
+	done <"${FAILED_CHECKS_FILE}"
+	if [[ "${first}" == "0" ]]; then
+		printf '\n'
+	fi
+	printf '  ],\n'
+	printf '  "key_container_states": {'
+	first="1"
+	for i in "${!STACK_GATE_CTRS[@]}"; do
+		c="${STACK_GATE_CTRS[$i]}"
+		svc="${STACK_GATE_SVCS[$i]}"
+		state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
+		has_h="$(docker inspect -f '{{if .State.Health}}yes{{else}}no{{end}}' "${c}" 2>/dev/null || echo no)"
+		if [[ "${has_h}" == "yes" ]]; then
+			health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' "${c}" 2>/dev/null || echo unknown)"
+		else
+			health="n/a"
+		fi
+		if [[ "${first}" == "1" ]]; then
+			first="0"
+		else
+			printf ','
+		fi
+		printf '\n    "%s":{"container":"%s","state":"%s","health":"%s"}' \
+			"$(json_escape "${svc}")" \
+			"$(json_escape "${c}")" \
+			"$(json_escape "${state}")" \
+			"$(json_escape "${health}")"
+	done
+	if [[ "${first}" == "0" ]]; then
+		printf '\n'
+	fi
+	printf '  },\n'
+	printf '  "public_https_result": "%s",\n' "$(json_escape "${PUBLIC_HTTPS_RESULT}")"
+	printf '  "metrics_result": "%s"\n' "$(json_escape "${METRICS_RESULT}")"
+	printf '}\n'
 }
 
 check_compose_health() {
@@ -101,7 +228,7 @@ check_compose_health() {
 	fi
 	status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "${name}" 2>/dev/null || true)"
 	if [[ "${status}" != "healthy" ]]; then
-		fail "${name} docker health=${status} (expected healthy)"
+		fail_with_category runtime "${name} docker health=${status} (expected healthy)"
 		show_container_diagnostics "${name}"
 		return
 	fi
@@ -266,13 +393,13 @@ container_warrants_deep_diag() {
 check_cmd() {
 	local label="$1"
 	local diagnostics="${2:-}"
-	shift
-	shift
+	local category="${3:-readiness}"
+	shift 3
 	local output
 	if output="$("$@" 2>&1)"; then
 		pass "${label}"
 	else
-		fail "${label}"
+		fail_with_category "${category}" "${label}"
 		if [[ -n "${output}" ]]; then
 			echo "${output}" | sed 's/^/  output: /' >&2
 		fi
@@ -285,7 +412,8 @@ check_cmd() {
 retry_check_cmd() {
 	local label="$1"
 	local diagnostics="$2"
-	shift 2
+	local category="${3:-readiness}"
+	shift 3
 	local attempt output
 	for attempt in $(seq 1 "${SMOKE_RETRY_COUNT}"); do
 		if output="$("$@" 2>&1)"; then
@@ -296,7 +424,7 @@ retry_check_cmd() {
 			sleep "${SMOKE_RETRY_SLEEP_SECS}"
 		fi
 	done
-	fail "${label}"
+	fail_with_category "${category}" "${label}"
 	if [[ -n "${output:-}" ]]; then
 		echo "${output}" | sed 's/^/  output: /' >&2
 	fi
@@ -306,13 +434,17 @@ retry_check_cmd() {
 }
 
 note "compose ps"
-"${COMPOSE[@]}" ps
+if [[ "${JSON_MODE}" == "1" ]]; then
+	"${COMPOSE[@]}" ps >&2
+else
+	"${COMPOSE[@]}" ps
+fi
 
 need_running=(avf-prod-caddy avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-postgres avf-prod-nats avf-prod-emqx)
 for c in "${need_running[@]}"; do
 	state="$(docker inspect -f '{{.State.Status}}' "${c}" 2>/dev/null || echo missing)"
 	if [[ "${state}" != "running" ]]; then
-		fail "container ${c} not running (state=${state})"
+		fail_with_category runtime "container ${c} not running (state=${state})"
 		show_container_diagnostics "${c}"
 		continue
 	fi
@@ -326,51 +458,74 @@ if wait_stack_docker_health; then
 		check_compose_health "${c}"
 	done
 else
-	fail "stack docker health gate timed out (see diagnostics above)"
+	fail_with_category runtime "stack docker health gate timed out (see diagnostics above)"
 fi
 
 note "internal service checks"
-check_cmd "postgres pg_isready" "check postgres container logs and DATABASE_URL / POSTGRES_* values" "${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$1" >/dev/null' sh "${DB_NAME}"
-check_cmd "nats health endpoint" "check avf-prod-nats logs and JetStream startup" "${COMPOSE[@]}" exec -T nats sh -c 'wget -qO- http://127.0.0.1:8222/healthz >/dev/null'
+check_cmd "postgres pg_isready" "check postgres container logs and DATABASE_URL / POSTGRES_* values" readiness "${COMPOSE[@]}" exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$1" >/dev/null' sh "${DB_NAME}"
+check_cmd "nats health endpoint" "check avf-prod-nats logs and JetStream startup" readiness "${COMPOSE[@]}" exec -T nats sh -c 'wget -qO- http://127.0.0.1:8222/healthz >/dev/null'
 # `emqx_ctl` talks Erlang distribution and can fail with "not responding to pings" while
 # `/api/v5/status` is already OK (same signal as docker-compose EMQX healthcheck + release.sh).
-retry_check_cmd "emqx management HTTP /api/v5/status" "check avf-prod-emqx logs; confirm listener on 18083 and /api/v5/status" "${COMPOSE[@]}" exec -T emqx bash -lc 'exec 3<>/dev/tcp/127.0.0.1/18083; printf %b "GET /api/v5/status HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; grep -Fq "emqx is running" <&3'
-retry_check_cmd "api live endpoint inside container" "check avf-prod-api logs and upstream dependency readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/live | grep -qx ok'
-retry_check_cmd "api readiness inside container" "check avf-prod-api logs plus postgres/nats/emqx readiness" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/ready | grep -qx ok'
+retry_check_cmd "emqx management HTTP /api/v5/status" "check avf-prod-emqx logs; confirm listener on 18083 and /api/v5/status" readiness "${COMPOSE[@]}" exec -T emqx bash -lc 'exec 3<>/dev/tcp/127.0.0.1/18083; printf %b "GET /api/v5/status HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; grep -Fq "emqx is running" <&3'
+retry_check_cmd "api live endpoint inside container" "check avf-prod-api logs and upstream dependency readiness" readiness "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/live | grep -qx ok'
+retry_check_cmd "api readiness inside container" "check avf-prod-api logs plus postgres/nats/emqx readiness" readiness "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/ready | grep -qx ok'
 
 note "minimum production smoke"
 if [[ "${SKIP_PUBLIC_HTTPS:-0}" == "1" ]]; then
 	pass "public API live smoke over HTTPS skipped (SKIP_PUBLIC_HTTPS=1)"
+	PUBLIC_HTTPS_RESULT="skipped"
 else
-	retry_check_cmd "public API live smoke over HTTPS" "check DNS, firewall, Caddy logs, and TLS issuance for ${API_DOMAIN}" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
+	public_edge_failures_before="${PUBLIC_EDGE_FAILURES}"
+	retry_check_cmd "public API live smoke over HTTPS" "check DNS, firewall, Caddy logs, and TLS issuance for ${API_DOMAIN}" public_edge bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
+	if (( PUBLIC_EDGE_FAILURES > public_edge_failures_before )); then
+		PUBLIC_HTTPS_RESULT="failed"
+	else
+		PUBLIC_HTTPS_RESULT="passed"
+	fi
 fi
 
 note "telemetry metrics + worker readiness (when METRICS_ENABLED=true in .env.production)"
 METRICS_FLAG="$(read_env_default METRICS_ENABLED false | tr '[:upper:]' '[:lower:]')"
 if [[ "${METRICS_FLAG}" == "true" ]]; then
-	check_cmd "worker /metrics exposes avf_telemetry_* series" "confirm METRICS_ENABLED=true and WORKER_METRICS_LISTEN; see ops/METRICS.md" "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/metrics" | grep -Eq "avf_telemetry_(consumer|projection|duplicate)"'
-	check_cmd "mqtt-ingest /metrics exposes avf_mqtt_ingest_dispatch_total" "confirm METRICS_ENABLED=true and MQTT_INGEST_METRICS_LISTEN" "${COMPOSE[@]}" exec -T mqtt-ingest sh -c 'addr="${MQTT_INGEST_METRICS_LISTEN:-127.0.0.1:9093}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/metrics" | grep -q "avf_mqtt_ingest_dispatch_total"'
+	readiness_failures_before="${READINESS_FAILURES}"
+	METRICS_RESULT="passed"
+	check_cmd "worker /metrics exposes avf_telemetry_* series" "confirm METRICS_ENABLED=true and WORKER_METRICS_LISTEN; see ops/METRICS.md" readiness "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/metrics" | grep -Eq "avf_telemetry_(consumer|projection|duplicate)"'
+	check_cmd "mqtt-ingest /metrics exposes avf_mqtt_ingest_dispatch_total" "confirm METRICS_ENABLED=true and MQTT_INGEST_METRICS_LISTEN" readiness "${COMPOSE[@]}" exec -T mqtt-ingest sh -c 'addr="${MQTT_INGEST_METRICS_LISTEN:-127.0.0.1:9093}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/metrics" | grep -q "avf_mqtt_ingest_dispatch_total"'
 	if [[ "${SKIP_WORKER_READY_STRICT:-0}" == "1" ]]; then
-		echo "SKIP_WORKER_READY_STRICT=1 set; skipping worker /health/ready on metrics port (503 may indicate JetStream backlog)"
+		emit_info "SKIP_WORKER_READY_STRICT=1 set; skipping worker /health/ready on metrics port (503 may indicate JetStream backlog)"
 	else
-		check_cmd "worker /health/ready on metrics port" "if 503, see TELEMETRY_READINESS_* and docs/runbooks/telemetry-jetstream-resilience.md" "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/health/ready" | grep -qx ok'
+		check_cmd "worker /health/ready on metrics port" "if 503, see TELEMETRY_READINESS_* and docs/runbooks/telemetry-jetstream-resilience.md" readiness "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/health/ready" | grep -qx ok'
+	fi
+	if (( READINESS_FAILURES > readiness_failures_before )); then
+		METRICS_RESULT="failed"
 	fi
 else
 	pass "METRICS_ENABLED not true; skipping worker/mqtt-ingest telemetry metrics scrape (set true for fleet observability)"
+	METRICS_RESULT="skipped"
 fi
 
 note "reverse proxy / API health (public HTTPS)"
 if [[ "${SKIP_PUBLIC_HTTPS:-0}" == "1" ]]; then
-	echo "SKIP_PUBLIC_HTTPS=1 set; skipping public HTTPS checks (use when DNS/TLS is still propagating)"
+	emit_info "SKIP_PUBLIC_HTTPS=1 set; skipping public HTTPS checks (use when DNS/TLS is still propagating)"
 else
-	echo "note: if the internal checks above pass but the public HTTPS checks fail, focus on DNS, external routing/firewall, or ACME/TLS issuance before debugging the API process itself"
-	retry_check_cmd "public /health/live over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
-	retry_check_cmd "public /health/ready over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" bash -lc "curl -fsS 'https://${API_DOMAIN}/health/ready' | grep -qx ok"
+	emit_info "note: if the internal checks above pass but the public HTTPS checks fail, focus on DNS, external routing/firewall, or ACME/TLS issuance before debugging the API process itself"
+	public_edge_failures_before="${PUBLIC_EDGE_FAILURES}"
+	retry_check_cmd "public /health/live over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" public_edge bash -lc "curl -fsS 'https://${API_DOMAIN}/health/live' | grep -qx ok"
+	retry_check_cmd "public /health/ready over HTTPS" "internal checks passing + public failure usually means DNS, upstream firewall on 80/443, or ACME/TLS issuance — inspect Caddy logs: docker logs avf-prod-caddy" public_edge bash -lc "curl -fsS 'https://${API_DOMAIN}/health/ready' | grep -qx ok"
+	if (( PUBLIC_EDGE_FAILURES > public_edge_failures_before )); then
+		PUBLIC_HTTPS_RESULT="failed"
+	else
+		PUBLIC_HTTPS_RESULT="passed"
+	fi
 fi
 
 if (( failures > 0 )); then
 	note "healthcheck failed — docker compose ps (refresh)"
-	"${COMPOSE[@]}" ps 2>&1 || true
+	if [[ "${JSON_MODE}" == "1" ]]; then
+		"${COMPOSE[@]}" ps >&2 || true
+	else
+		"${COMPOSE[@]}" ps 2>&1 || true
+	fi
 
 	# Same eight as release.sh / STACK_GATE rollout gate.
 	rollout_critical=(avf-prod-postgres avf-prod-nats avf-prod-emqx avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-caddy)
@@ -382,7 +537,20 @@ if (( failures > 0 )); then
 	done
 	echo "hint: for logical check failures (e.g. public HTTPS) with healthy containers, see FAIL lines above." >&2
 	echo "healthcheck_prod: FAIL (${failures} checks failed)" >&2
-	exit 1
+	if [[ "${JSON_MODE}" == "1" ]]; then
+		emit_json_summary
+	fi
+	if (( RUNTIME_FAILURES > 0 )); then
+		exit "${EXIT_CODE_RUNTIME_FAILURE}"
+	fi
+	if (( READINESS_FAILURES > 0 )); then
+		exit "${EXIT_CODE_READINESS_FAILURE}"
+	fi
+	exit "${EXIT_CODE_PUBLIC_EDGE_FAILURE}"
 fi
 
-echo "healthcheck_prod: PASS"
+if [[ "${JSON_MODE}" == "1" ]]; then
+	emit_json_summary
+else
+	echo "healthcheck_prod: PASS"
+fi

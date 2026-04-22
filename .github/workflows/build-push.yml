@@ -22,7 +22,7 @@ jobs:
     secrets: inherit
 
   publish-build-metadata:
-    name: Published Image Metadata
+    name: Publish Build Metadata and Promotion Signals
     runs-on: ubuntu-latest
     needs: build-and-push
 
@@ -50,12 +50,26 @@ jobs:
           TRIGGER_NAME: ${{ github.event_name }}
         run: |
           mkdir -p build-evidence
+          release_channel="branch-other"
+          downstream_intent="ad-hoc"
+          if [[ "${SOURCE_REF_TYPE}" == "tag" ]]; then
+            release_channel="tag"
+            downstream_intent="tagged-release"
+          elif [[ "${SOURCE_BRANCH}" == "main" ]]; then
+            release_channel="main"
+            downstream_intent="production-candidate"
+          elif [[ "${SOURCE_BRANCH}" == "develop" ]]; then
+            release_channel="develop"
+            downstream_intent="develop-prepare-validate-only"
+          fi
 
-          cat > build-evidence/image-build-metadata.json <<EOF
+          cat > build-evidence/build-metadata-manifest.json <<EOF
           {
             "commit_sha": "${BUILD_COMMIT_SHA}",
             "source_branch": "${SOURCE_BRANCH}",
             "source_ref_type": "${SOURCE_REF_TYPE}",
+            "release_channel": "${release_channel}",
+            "downstream_intent": "${downstream_intent}",
             "trigger": "${TRIGGER_NAME}",
             "workflow_name": "${BUILD_WORKFLOW_NAME}",
             "workflow_run_id": "${BUILD_RUN_ID}",
@@ -81,6 +95,7 @@ jobs:
             }
           }
           EOF
+          cp build-evidence/build-metadata-manifest.json build-evidence/image-build-metadata.json
 
           cat > build-evidence/promotion-manifest.json <<EOF
           {
@@ -89,6 +104,8 @@ jobs:
             "commit_sha": "${BUILD_COMMIT_SHA}",
             "source_branch": "${SOURCE_BRANCH}",
             "source_ref_type": "${SOURCE_REF_TYPE}",
+            "release_channel": "${release_channel}",
+            "downstream_intent": "${downstream_intent}",
             "actor": "${ACTOR}",
             "app_image": "${APP_IMAGE}",
             "app_tag": "${APP_TAG}",
@@ -107,9 +124,12 @@ jobs:
           EOF
 
           {
-            echo "## Published Image Metadata"
+            echo "## Build Metadata and Promotion Signals"
             echo "- build run id: \`${BUILD_RUN_ID}\`"
             echo "- source branch: \`${SOURCE_BRANCH}\`"
+            echo "- source ref type: \`${SOURCE_REF_TYPE}\`"
+            echo "- release channel: \`${release_channel}\`"
+            echo "- downstream intent: \`${downstream_intent}\`"
             echo "- commit SHA: \`${BUILD_COMMIT_SHA}\`"
             echo "- trigger: \`${TRIGGER_NAME}\`"
             echo "- actor: \`${ACTOR}\`"
@@ -122,9 +142,18 @@ jobs:
             echo "- go.sum SHA256: \`${GO_SUM_SHA256}\`"
             echo "- SBOM: \`enabled\`"
             echo "- provenance: \`enabled (mode=max)\`"
+            echo "- downstream artifacts: \`build-metadata-manifest\` and \`promotion-manifest\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build metadata manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-metadata-manifest
+          path: build-evidence/build-metadata-manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload compatibility image build metadata manifest
         uses: actions/upload-artifact@v4
         with:
           name: image-build-metadata

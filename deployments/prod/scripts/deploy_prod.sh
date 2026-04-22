@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Thin wrapper: historic entrypoint for operators. Delegates to release.sh
+# Legacy single-host wrapper: delegates to release.sh
 # (image-only; no source build on VPS).
 set -Eeuo pipefail
 
@@ -10,6 +10,22 @@ ENV_FILE="${ROOT}/.env.production"
 fail() {
 	echo "deploy_prod: error: $*" >&2
 	exit 1
+}
+
+legacy_banner() {
+	cat >&2 <<'EOF'
+================================================================
+LEGACY SINGLE-HOST PRODUCTION PATH
+NOT THE PRIMARY 2-VPS RELEASE PATH
+This wrapper exists only for legacy/rollback/reference use.
+Set ALLOW_LEGACY_SINGLE_HOST=1 to proceed intentionally.
+================================================================
+EOF
+}
+
+require_legacy_ack() {
+	legacy_banner
+	[[ "${ALLOW_LEGACY_SINGLE_HOST:-0}" == "1" ]] || fail "refusing to run legacy single-host deploy path without ALLOW_LEGACY_SINGLE_HOST=1"
 }
 
 read_env_value() {
@@ -28,6 +44,7 @@ read_env_value() {
 	printf '%s' "${line}"
 }
 
+require_legacy_ack
 [[ -f "${ENV_FILE}" ]] || fail "missing ${ENV_FILE} (copy from .env.production.example)"
 [[ -f "${RELEASE_SH}" ]] || fail "missing ${RELEASE_SH}"
 

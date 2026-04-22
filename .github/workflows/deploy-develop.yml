@@ -1,4 +1,4 @@
-name: Develop Build Artifact
+name: Develop Release Asset Preparation
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -16,12 +16,12 @@ permissions:
   packages: read
 
 concurrency:
-  group: develop-build-artifact
+  group: develop-release-assets
   cancel-in-progress: true
 
 jobs:
   resolve-build-run-id:
-    name: Resolve Develop Build Run
+    name: Resolve Develop Release Build
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
@@ -39,7 +39,7 @@ jobs:
           echo "workflow_run_id=${{ github.event.workflow_run.id }}" >> "${GITHUB_OUTPUT}"
 
   resolve-image-refs:
-    name: Resolve Develop Image Refs
+    name: Resolve Develop Release Asset Image Refs
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
@@ -49,6 +49,7 @@ jobs:
     needs: resolve-build-run-id
     with:
       resolution_mode: workflow_run
+      target_environment: develop
       workflow_run_id: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
       app_image_ref: ""
       goose_image_ref: ""
@@ -56,7 +57,7 @@ jobs:
       gh_api_token: ${{ secrets.GITHUB_TOKEN }}
 
   publish-develop-artifact-summary:
-    name: Publish Develop Artifact Summary
+    name: Prepare and Validate Develop Release Assets
     runs-on: ubuntu-latest
     needs: resolve-image-refs
     if: |
@@ -71,34 +72,34 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Validate develop deployment assets
+      - name: Validate develop release asset package
         shell: bash
         run: |
           set -Eeuo pipefail
           # The repo still keeps the non-production deployment assets under deployments/staging/.
-          # For develop we only validate/package against those assets; we do not SSH deploy anywhere.
+          # For develop we only prepare/validate package assets against those files; no server deploy happens here.
           STAGING_ENV_FILE=.env.staging.example docker compose --env-file deployments/staging/.env.staging.example -f deployments/staging/docker-compose.staging.yml config >/dev/null
           bash -n deployments/prod/shared/scripts/smoke_http.sh
           bash -n deployments/staging/scripts/deploy_staging.sh
           bash -n deployments/staging/scripts/healthcheck_staging.sh
           bash -n deployments/staging/scripts/smoke_staging.sh
 
-      - name: Show develop promotion context
+      - name: Show develop release asset context
         shell: bash
         env:
           DEVELOP_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           {
-            echo "## Develop Promotion Context"
+            echo "## Develop Release Asset Context"
             echo "- trigger: \`workflow_run\`"
             echo "- develop branch ref: \`${DEVELOP_BRANCH}\`"
-            echo "- deployment target: \`none\`"
-            echo "- outcome: \`build/package only; no SSH deploy because no real develop server exists\`"
+            echo "- server deploy performed: \`false\`"
+            echo "- outcome: \`prepare/package/validate only; no SSH deploy because no real develop server exists\`"
             echo "- app image: \`${{ needs.resolve-image-refs.outputs.app_image_ref }}\`"
             echo "- goose image: \`${{ needs.resolve-image-refs.outputs.goose_image_ref }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Write develop build summary
+      - name: Write develop release asset manifest
         if: always()
         shell: bash
         env:
@@ -110,7 +111,7 @@ jobs:
         run: |
           mkdir -p deployment-evidence
 
-          cat > deployment-evidence/develop-deployment-manifest.json <<EOF
+          cat > deployment-evidence/develop-release-assets-manifest.json <<EOF
           {
             "environment": "develop",
             "commit_sha": "${BUILD_COMMIT_SHA}",
@@ -118,28 +119,29 @@ jobs:
             "goose_image_ref": "${GOOSE_IMAGE_REF}",
             "actor": "${ACTOR}",
             "trigger": "${TRIGGER_NAME}",
-            "deployment_target": "none",
-            "result": "build-package-only"
+            "artifact_kind": "develop-release-assets",
+            "server_deploy_performed": false,
+            "result": "prepare-package-validate-only"
           }
           EOF
 
           {
-            echo "## Develop Build Artifact"
+            echo "## Develop Release Asset Preparation"
             echo "- environment: \`develop\`"
             echo "- commit SHA: \`${BUILD_COMMIT_SHA}\`"
             echo "- app image: \`${APP_IMAGE_REF}\`"
             echo "- goose image: \`${GOOSE_IMAGE_REF}\`"
             echo "- actor: \`${ACTOR}\`"
             echo "- trigger: \`${TRIGGER_NAME}\`"
-            echo "- deployment target: \`none\`"
-            echo "- result: \`build/package only\`"
+            echo "- server deploy performed: \`false\`"
+            echo "- result: \`prepare/package/validate only\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload develop build manifest
+      - name: Upload develop release asset manifest
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: develop-build-manifest
-          path: deployment-evidence/develop-deployment-manifest.json
+          name: develop-release-assets-manifest
+          path: deployment-evidence/develop-release-assets-manifest.json
           if-no-files-found: error
           retention-days: 14
