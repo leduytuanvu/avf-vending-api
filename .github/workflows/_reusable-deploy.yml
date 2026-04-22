@@ -4,26 +4,26 @@ on:
   workflow_call:
     inputs:
       resolution_mode:
-        description: "`manual` or `workflow_run`"
+        description: "`manual` resolves explicit digest-pinned refs; `workflow_run` resolves refs and source metadata from build artifacts"
         required: true
         type: string
       target_environment:
-        description: "Optional target environment policy name"
+        description: "Optional source-branch policy name (`production`, `develop`, or `staging`); leave empty to skip environment branch policy"
         required: false
         default: ""
         type: string
       workflow_run_id:
-        description: "Workflow run id to read the image-metadata artifact from"
+        description: "Required in `workflow_run` mode: build workflow run id used to read image-metadata and promotion-manifest artifacts"
         required: false
         default: ""
         type: string
       app_image_ref:
-        description: "Manual app image ref"
+        description: "Required in `manual` mode: exact digest-pinned app image ref"
         required: false
         default: ""
         type: string
       goose_image_ref:
-        description: "Manual goose image ref"
+        description: "Required in `manual` mode: exact digest-pinned goose image ref"
         required: false
         default: ""
         type: string
@@ -44,22 +44,22 @@ on:
         description: "Resolved goose tag label when available"
         value: ${{ jobs.resolve-image-refs.outputs.goose_image_tag }}
       release_label:
-        description: "Resolved release label when available"
+        description: "Resolved release label from artifact tags when available; `manual-digest` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.release_label }}
       artifact_build_run_id:
-        description: "Build workflow run id recorded in the artifact payload"
+        description: "Build workflow run id recorded in the artifact payload; empty in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.artifact_build_run_id }}
       artifact_source_sha:
-        description: "Source commit SHA recorded in the artifact payload"
+        description: "Source commit SHA recorded in the artifact payload; empty in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.artifact_source_sha }}
       artifact_source_branch:
-        description: "Source branch recorded in the artifact payload"
+        description: "Source branch recorded in the artifact payload; `manual` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.artifact_source_branch }}
       artifact_source_workflow_name:
-        description: "Source workflow name recorded in the artifact payload"
+        description: "Source workflow name recorded in the artifact payload; `manual` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.artifact_source_workflow_name }}
       provenance_verdict:
-        description: "Deterministic provenance verdict for the resolved images"
+        description: "Image attestation verification verdict only: `verified` in workflow_run mode after attestation verification; `accepted-manual` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.provenance_verdict }}
 
 jobs:
@@ -79,6 +79,37 @@ jobs:
       provenance_verdict: ${{ steps.finalize.outputs.provenance_verdict }}
 
     steps:
+      - name: Validate reusable deploy resolution contract
+        shell: bash
+        env:
+          INPUT_APP_IMAGE_REF: ${{ inputs.app_image_ref }}
+          INPUT_GOOSE_IMAGE_REF: ${{ inputs.goose_image_ref }}
+          INPUT_WORKFLOW_RUN_ID: ${{ inputs.workflow_run_id }}
+          RESOLUTION_MODE: ${{ inputs.resolution_mode }}
+        run: |
+          set -euo pipefail
+
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          case "${RESOLUTION_MODE}" in
+            manual)
+              [[ -n "${INPUT_APP_IMAGE_REF}" ]] || fail "manual resolution_mode requires app_image_ref"
+              [[ -n "${INPUT_GOOSE_IMAGE_REF}" ]] || fail "manual resolution_mode requires goose_image_ref"
+              [[ -z "${INPUT_WORKFLOW_RUN_ID}" ]] || fail "manual resolution_mode does not accept workflow_run_id"
+              ;;
+            workflow_run)
+              [[ "${INPUT_WORKFLOW_RUN_ID}" =~ ^[0-9]+$ ]] || fail "workflow_run resolution_mode requires a numeric workflow_run_id"
+              [[ -z "${INPUT_APP_IMAGE_REF}" ]] || fail "workflow_run resolution_mode does not accept app_image_ref"
+              [[ -z "${INPUT_GOOSE_IMAGE_REF}" ]] || fail "workflow_run resolution_mode does not accept goose_image_ref"
+              ;;
+            *)
+              fail "unsupported resolution_mode: ${RESOLUTION_MODE}"
+              ;;
+          esac
+
       - name: Download build metadata artifacts
         if: inputs.resolution_mode == 'workflow_run'
         env:
@@ -175,8 +206,8 @@ jobs:
               production)
                 [[ "${branch}" == "main" ]] || fail "artifact source branch must be main for production, got: ${branch}"
                 ;;
-              develop)
-                [[ "${branch}" == "develop" ]] || fail "artifact source branch must be develop for develop, got: ${branch}"
+              develop | staging)
+                [[ "${branch}" == "develop" ]] || fail "artifact source branch must be develop for ${TARGET_ENVIRONMENT}, got: ${branch}"
                 ;;
               *)
                 fail "unsupported target_environment policy: ${TARGET_ENVIRONMENT}"

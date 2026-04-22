@@ -1,4 +1,4 @@
-name: Develop Promotion Validation
+name: Staging Deployment Contract
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -16,12 +16,12 @@ permissions:
   packages: read
 
 concurrency:
-  group: develop-release-assets
+  group: staging-deployment
   cancel-in-progress: true
 
 jobs:
   resolve-build-run-id:
-    name: Resolve Develop Promotion Candidate
+    name: Resolve Staging Deployment Candidate
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
@@ -29,6 +29,7 @@ jobs:
       github.event.workflow_run.head_branch == 'develop'
     runs-on: ubuntu-latest
     outputs:
+      source_commit_sha: ${{ steps.lookup.outputs.source_commit_sha }}
       workflow_run_id: ${{ steps.lookup.outputs.workflow_run_id }}
     steps:
       - name: Use triggering develop build run
@@ -37,119 +38,721 @@ jobs:
         run: |
           set -Eeuo pipefail
           echo "workflow_run_id=${{ github.event.workflow_run.id }}" >> "${GITHUB_OUTPUT}"
+          echo "source_commit_sha=${{ github.event.workflow_run.head_sha }}" >> "${GITHUB_OUTPUT}"
 
   resolve-image-refs:
-    name: Resolve Develop Promotion Image Refs
+    name: Resolve Staging Immutable Image Refs
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'develop'
-    uses: ./.github/workflows/_reusable-deploy.yml
     needs: resolve-build-run-id
+    uses: ./.github/workflows/_reusable-deploy.yml
     with:
       resolution_mode: workflow_run
-      target_environment: develop
+      target_environment: staging
       workflow_run_id: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
       app_image_ref: ""
       goose_image_ref: ""
     secrets:
       gh_api_token: ${{ secrets.GITHUB_TOKEN }}
 
-  publish-develop-artifact-summary:
-    name: Validate Develop Promotion Package
-    runs-on: ubuntu-latest
-    needs: resolve-image-refs
+  validate-staging-security-verdict:
+    name: Validate Staging Security Verdict
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'develop'
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-build-run-id
+      - resolve-image-refs
+    outputs:
+      security_verdict_age_seconds: ${{ steps.gate.outputs.security_verdict_age_seconds }}
+      security_verdict_max_age_hours: ${{ steps.gate.outputs.security_verdict_max_age_hours }}
+      release_gate_mode: ${{ steps.gate.outputs.release_gate_mode }}
+      release_gate_verdict: ${{ steps.gate.outputs.release_gate_verdict }}
+      repo_release_verdict: ${{ steps.gate.outputs.repo_release_verdict }}
+      provenance_release_verdict: ${{ steps.gate.outputs.provenance_release_verdict }}
+      security_workflow_run_id: ${{ steps.gate.outputs.security_workflow_run_id }}
+      security_verdict_generated_at_utc: ${{ steps.gate.outputs.security_verdict_generated_at_utc }}
+    steps:
+      - name: Resolve matching staging security verdict
+        id: gate
+        shell: bash
+        env:
+          EXPECTED_APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          EXPECTED_BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
+          EXPECTED_GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+          EXPECTED_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha }}
+          EXPECTED_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
+          GH_TOKEN: ${{ github.token }}
+          SECURITY_VERDICT_MAX_AGE_HOURS: ${{ secrets.STAGING_SECURITY_VERDICT_MAX_AGE_HOURS || vars.STAGING_SECURITY_VERDICT_MAX_AGE_HOURS || secrets.SECURITY_VERDICT_MAX_AGE_HOURS || vars.SECURITY_VERDICT_MAX_AGE_HOURS || '72' }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-gate
 
+          {
+            echo "## Staging Security Gate"
+            echo "- source of truth: \`security-verdict\` artifact from \`security.yml\`"
+            echo "- scope: \`full workflow_run release gate: matched push repo checks plus published-image and provenance evidence; runtime staging checks are separate\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          fail() {
+            echo "error: $*" >&2
+            echo "- result: \`fail\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- reason: $*" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
+
+          [[ "${SECURITY_VERDICT_MAX_AGE_HOURS}" =~ ^[0-9]+$ ]] || fail "SECURITY_VERDICT_MAX_AGE_HOURS must be numeric"
+          [[ -n "${EXPECTED_BUILD_RUN_ID}" ]] || fail "missing expected build run id for staging security gate"
+          [[ -n "${EXPECTED_APP_IMAGE_REF}" ]] || fail "missing expected app image ref for staging security gate"
+          [[ -n "${EXPECTED_GOOSE_IMAGE_REF}" ]] || fail "missing expected goose image ref for staging security gate"
+          [[ -n "${EXPECTED_SOURCE_SHA}" ]] || fail "missing expected source SHA for staging security gate"
+
+          matched_run_id=""
+          matched_generated_at=""
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            candidate_runs="$(
+              gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs?event=workflow_run&status=completed&per_page=100" \
+                --jq '.workflow_runs[]? | [.id, (.conclusion // "")] | @tsv'
+            )"
+
+            if [[ -n "${candidate_runs}" ]]; then
+              while IFS=$'\t' read -r run_id run_conclusion; do
+                [[ -n "${run_id}" ]] || continue
+
+                artifact_id="$(
+                  gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts" \
+                    --jq '[.artifacts[]? | select(.name == "security-verdict") | .id] | .[0] // empty'
+                )"
+                [[ -n "${artifact_id}" ]] || continue
+
+                extract_dir="security-gate/run-${run_id}"
+                rm -rf "${extract_dir}"
+                mkdir -p "${extract_dir}"
+                if ! gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > "${extract_dir}/security-verdict.zip"; then
+                  continue
+                fi
+                python3 -m zipfile -e "${extract_dir}/security-verdict.zip" "${extract_dir}"
+                verdict_file="${extract_dir}/security-verdict.json"
+                [[ -f "${verdict_file}" ]] || fail "security-verdict artifact from run ${run_id} is missing security-verdict.json"
+
+                verdict_check_script="${extract_dir}/validate-staging-security-verdict.py"
+                printf '%s\n' \
+                  'import json' \
+                  'import sys' \
+                  'from datetime import datetime, timezone' \
+                  'from pathlib import Path' \
+                  '' \
+                  'verdict_path = Path(sys.argv[1])' \
+                  'expected_build_run_id = sys.argv[2]' \
+                  'expected_source_sha = sys.argv[3]' \
+                  'expected_source_workflow_name = sys.argv[4]' \
+                  'run_id = sys.argv[5]' \
+                  'run_conclusion = sys.argv[6]' \
+                  'expected_app_image_ref = sys.argv[7]' \
+                  'expected_goose_image_ref = sys.argv[8]' \
+                  'max_age_hours = int(sys.argv[9])' \
+                  '' \
+                  'payload = json.loads(verdict_path.read_text(encoding="utf-8"))' \
+                  'required_keys = ("schema_version", "event_name", "verdict", "source_build_run_id", "source_sha", "workflow_run_id", "generated_at_utc", "published_images", "release_gate_verdict", "release_gate_mode", "release_gate", "repo_level_checks", "image_level_checks", "provenance_release_checks")' \
+                  'missing = [key for key in required_keys if key not in payload]' \
+                  'if missing:' \
+                  '    print(f"reason=security-verdict.json is missing required keys: {missing}")' \
+                  '    raise SystemExit(3)' \
+                  'if payload.get("schema_version") != "v1":' \
+                  '    print("reason=security-verdict schema_version is unsupported")' \
+                  '    raise SystemExit(3)' \
+                  'if payload.get("event_name") != "workflow_run":' \
+                  '    print(f"reason=staging release gate requires workflow_run security evidence, found event_name={payload.get(\"event_name\", \"\")}")' \
+                  '    raise SystemExit(4)' \
+                  'if str(payload.get("workflow_run_id", "")) != run_id:' \
+                  '    print("reason=security-verdict workflow_run_id does not match the artifact owner run")' \
+                  '    raise SystemExit(3)' \
+                  'if str(payload.get("source_build_run_id", "")) != expected_build_run_id:' \
+                  '    raise SystemExit(2)' \
+                  'if payload.get("source_sha", "") != expected_source_sha:' \
+                  '    print("reason=matching security verdict has a different source SHA than the selected build")' \
+                  '    raise SystemExit(4)' \
+                  'source_workflow_name = payload.get("source_workflow_name", "")' \
+                  'if expected_source_workflow_name and source_workflow_name and source_workflow_name != expected_source_workflow_name:' \
+                  '    print("reason=matching security verdict has a different source workflow linkage than the selected build")' \
+                  '    raise SystemExit(4)' \
+                  'published_images = payload.get("published_images") or {}' \
+                  'if not isinstance(published_images, dict):' \
+                  '    print("reason=security-verdict published_images payload is malformed")' \
+                  '    raise SystemExit(3)' \
+                  'if payload.get("release_gate_mode", "") != "full-security-release-gate":' \
+                  '    print(f"reason=staging release gate requires full-security-release-gate mode, found {payload.get(\"release_gate_mode\", \"\")}")' \
+                  '    raise SystemExit(4)' \
+                  'if payload.get("release_gate_verdict", "") != "pass":' \
+                  '    print("reason=staging release gate is {} with required_evidence={}".format(payload.get("release_gate_verdict"), (payload.get("release_gate") or {}).get("required_evidence", {})))' \
+                  '    raise SystemExit(5)' \
+                  'repo_release_verdict = (((payload.get("repo_level_checks") or {}).get("release_evidence") or {}).get("required_for_release_verdict", ""))' \
+                  'if repo_release_verdict != "pass":' \
+                  '    print(f"reason=staging release gate is missing passing repo-level release evidence: {repo_release_verdict}")' \
+                  '    raise SystemExit(5)' \
+                  'image_release_verdict = ((payload.get("image_level_checks") or {}).get("required_for_release_verdict", ""))' \
+                  'if image_release_verdict != "pass":' \
+                  '    print(f"reason=staging release gate image-level evidence is not pass: {image_release_verdict}")' \
+                  '    raise SystemExit(5)' \
+                  'provenance_release_verdict = ((payload.get("provenance_release_checks") or {}).get("required_for_release_verdict", ""))' \
+                  'if provenance_release_verdict != "pass":' \
+                  '    print(f"reason=staging release gate provenance evidence is not pass: {provenance_release_verdict}")' \
+                  '    raise SystemExit(5)' \
+                  'if published_images.get("app_image_ref", "") != expected_app_image_ref:' \
+                  '    print("reason=matching security verdict app image ref does not match the selected immutable artifact")' \
+                  '    raise SystemExit(4)' \
+                  'if published_images.get("goose_image_ref", "") != expected_goose_image_ref:' \
+                  '    print("reason=matching security verdict goose image ref does not match the selected immutable artifact")' \
+                  '    raise SystemExit(4)' \
+                  'generated_at_raw = payload.get("generated_at_utc", "")' \
+                  'try:' \
+                  '    generated_at = datetime.strptime(generated_at_raw, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)' \
+                  'except ValueError:' \
+                  '    print(f"reason=security-verdict generated_at_utc is malformed: {generated_at_raw}")' \
+                  '    raise SystemExit(3)' \
+                  'age_seconds = int((datetime.now(timezone.utc) - generated_at).total_seconds())' \
+                  'if age_seconds < 0 or age_seconds > max_age_hours * 3600:' \
+                  '    print(f"reason=matching security verdict is stale for staging release hygiene ({age_seconds}s old, max {max_age_hours}h); rerun security.yml for this build or set STAGING_SECURITY_VERDICT_MAX_AGE_HOURS / SECURITY_VERDICT_MAX_AGE_HOURS to an explicitly approved override")' \
+                  '    raise SystemExit(6)' \
+                  'if run_conclusion != "success":' \
+                  '    print(f"reason=matching security workflow run conclusion is {run_conclusion}")' \
+                  '    raise SystemExit(5)' \
+                  'print("release_gate_mode={}".format(payload.get("release_gate_mode", "")))' \
+                  'print("release_gate_verdict={}".format(payload.get("release_gate_verdict", "")))' \
+                  'print(f"repo_release_verdict={repo_release_verdict}")' \
+                  'print(f"provenance_release_verdict={provenance_release_verdict}")' \
+                  'print(f"security_verdict_age_seconds={age_seconds}")' \
+                  'print(f"security_workflow_run_id={run_id}")' \
+                  'print(f"security_verdict_generated_at_utc={generated_at_raw}")' \
+                  'raise SystemExit(0)' \
+                  > "${verdict_check_script}"
+
+                set +e
+                python3 "${verdict_check_script}" "${verdict_file}" "${EXPECTED_BUILD_RUN_ID}" "${EXPECTED_SOURCE_SHA}" "${EXPECTED_SOURCE_WORKFLOW_NAME}" "${run_id}" "${run_conclusion}" "${EXPECTED_APP_IMAGE_REF}" "${EXPECTED_GOOSE_IMAGE_REF}" "${SECURITY_VERDICT_MAX_AGE_HOURS}" > "${extract_dir}/verdict-check.txt"
+                check_rc=$?
+                set -e
+                verdict_check="$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"), end="")' "${extract_dir}/verdict-check.txt")"
+
+                case "${check_rc}" in
+                  0)
+                    while IFS='=' read -r key value; do
+                      case "${key}" in
+                        security_verdict_age_seconds) security_verdict_age_seconds="${value}" ;;
+                        release_gate_mode) release_gate_mode="${value}" ;;
+                        release_gate_verdict) release_gate_verdict="${value}" ;;
+                        repo_release_verdict) repo_release_verdict="${value}" ;;
+                        provenance_release_verdict) provenance_release_verdict="${value}" ;;
+                        security_workflow_run_id) matched_run_id="${value}" ;;
+                        security_verdict_generated_at_utc) matched_generated_at="${value}" ;;
+                      esac
+                    done <<< "${verdict_check}"
+                    break
+                    ;;
+                  2)
+                    continue
+                    ;;
+                  3 | 4 | 5 | 6)
+                    reason="$(printf '%s\n' "${verdict_check}" | python3 -c 'import sys; lines=[line.strip() for line in sys.stdin if line.strip()]; print(next((line.split("=",1)[1] for line in lines if line.startswith("reason=")), "matching security verdict is malformed or failed"))')"
+                    fail "${reason}"
+                    ;;
+                  *)
+                    fail "unexpected error while validating security-verdict artifact from run ${run_id}"
+                    ;;
+                esac
+              done <<< "${candidate_runs}"
+            fi
+
+            [[ -n "${matched_run_id}" ]] && break
+            if [[ "${attempt}" -lt 12 ]]; then
+              echo "- waiting for matching security-verdict artifact (\`${attempt}/12\`)" >> "$GITHUB_STEP_SUMMARY"
+              sleep 15
+            fi
+          done
+
+          [[ -n "${matched_run_id}" ]] || fail "no matching security-verdict artifact found for build run ${EXPECTED_BUILD_RUN_ID} and SHA ${EXPECTED_SOURCE_SHA}"
+
+          {
+            echo "security_verdict_age_seconds=${security_verdict_age_seconds}"
+            echo "security_verdict_max_age_hours=${SECURITY_VERDICT_MAX_AGE_HOURS}"
+            echo "release_gate_mode=${release_gate_mode}"
+            echo "release_gate_verdict=${release_gate_verdict}"
+            echo "repo_release_verdict=${repo_release_verdict}"
+            echo "provenance_release_verdict=${provenance_release_verdict}"
+            echo "security_workflow_run_id=${matched_run_id}"
+            echo "security_verdict_generated_at_utc=${matched_generated_at}"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "- result: \`pass\`"
+            echo "- matched security workflow run: \`${matched_run_id}\`"
+            echo "- freshness window: \`${SECURITY_VERDICT_MAX_AGE_HOURS}h\`"
+            echo "- verdict age at evaluation: \`${security_verdict_age_seconds}s\`"
+            echo "- release gate mode: \`${release_gate_mode}\`"
+            echo "- release gate verdict: \`${release_gate_verdict}\`"
+            echo "- repo release verdict: \`${repo_release_verdict}\`"
+            echo "- provenance release verdict: \`${provenance_release_verdict}\`"
+            echo "- verdict generated at (UTC): \`${matched_generated_at}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  validate-staging-prerequisites:
+    name: Validate Staging Deployment Contract
+    if: |
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'develop'
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-build-run-id
+      - resolve-image-refs
+      - validate-staging-security-verdict
+    outputs:
+      release_gate_mode: ${{ steps.contract.outputs.release_gate_mode }}
+      release_gate_verdict: ${{ steps.contract.outputs.release_gate_verdict }}
+      repo_release_verdict: ${{ steps.contract.outputs.repo_release_verdict }}
+      ssh_port: ${{ steps.contract.outputs.ssh_port }}
+      security_verdict_age_seconds: ${{ steps.contract.outputs.security_verdict_age_seconds }}
+      security_verdict_generated_at_utc: ${{ steps.contract.outputs.security_verdict_generated_at_utc }}
+      security_verdict_max_age_hours: ${{ steps.contract.outputs.security_verdict_max_age_hours }}
+      security_workflow_run_id: ${{ steps.contract.outputs.security_workflow_run_id }}
+      ssh_user: ${{ steps.contract.outputs.ssh_user }}
+      staging_deploy_root: ${{ steps.contract.outputs.staging_deploy_root }}
+      staging_host: ${{ steps.contract.outputs.staging_host }}
+      staging_remote_env_file: ${{ steps.contract.outputs.staging_remote_env_file }}
+    steps:
+      - name: Check local staging deployment contract
+        id: contract
+        shell: bash
+        env:
+          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+          PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
+          RELEASE_GATE_MODE: ${{ needs.validate-staging-security-verdict.outputs.release_gate_mode }}
+          RELEASE_GATE_VERDICT: ${{ needs.validate-staging-security-verdict.outputs.release_gate_verdict }}
+          REPO_RELEASE_VERDICT: ${{ needs.validate-staging-security-verdict.outputs.repo_release_verdict }}
+          PROVENANCE_RELEASE_VERDICT: ${{ needs.validate-staging-security-verdict.outputs.provenance_release_verdict }}
+          SECURITY_VERDICT_AGE_SECONDS: ${{ needs.validate-staging-security-verdict.outputs.security_verdict_age_seconds }}
+          SECURITY_VERDICT_GENERATED_AT_UTC: ${{ needs.validate-staging-security-verdict.outputs.security_verdict_generated_at_utc }}
+          SECURITY_VERDICT_MAX_AGE_HOURS: ${{ needs.validate-staging-security-verdict.outputs.security_verdict_max_age_hours }}
+          SECURITY_WORKFLOW_RUN_ID: ${{ needs.validate-staging-security-verdict.outputs.security_workflow_run_id }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.STAGING_SSH_KNOWN_HOSTS || secrets.PREPROD_SSH_KNOWN_HOSTS || vars.STAGING_SSH_KNOWN_HOSTS || vars.PREPROD_SSH_KNOWN_HOSTS }}
+          SSH_PORT: ${{ secrets.STAGING_SSH_PORT || secrets.PREPROD_SSH_PORT || vars.STAGING_SSH_PORT || vars.PREPROD_SSH_PORT || '22' }}
+          SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_KEY || secrets.STAGING_SSH_PRIVATE_KEY || secrets.PREPROD_SSH_KEY || secrets.PREPROD_SSH_PRIVATE_KEY }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER || secrets.PREPROD_SSH_USER || vars.STAGING_SSH_USER || vars.PREPROD_SSH_USER }}
+          STAGING_DEPLOY_ROOT: ${{ secrets.STAGING_DEPLOY_ROOT || secrets.PREPROD_DEPLOY_ROOT || vars.STAGING_DEPLOY_ROOT || vars.PREPROD_DEPLOY_ROOT }}
+          STAGING_HOST: ${{ secrets.STAGING_HOST || secrets.PREPROD_HOST || vars.STAGING_HOST || vars.PREPROD_HOST }}
+          STAGING_REMOTE_ENV_FILE: ${{ secrets.STAGING_REMOTE_ENV_FILE || secrets.PREPROD_REMOTE_ENV_FILE || vars.STAGING_REMOTE_ENV_FILE || vars.PREPROD_REMOTE_ENV_FILE }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p deployment-evidence
+
+          missing=()
+          add_missing() {
+            missing+=("$1")
+          }
+
+          [[ -n "${STAGING_HOST}" ]] || add_missing "STAGING_HOST"
+          [[ -n "${STAGING_DEPLOY_ROOT}" ]] || add_missing "STAGING_DEPLOY_ROOT"
+          [[ -n "${SSH_USER}" ]] || add_missing "STAGING_SSH_USER"
+          [[ -n "${SSH_PRIVATE_KEY}" ]] || add_missing "STAGING_SSH_KEY"
+          [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]] || add_missing "STAGING_SSH_KNOWN_HOSTS"
+          [[ -n "${APP_IMAGE_REF}" && "${APP_IMAGE_REF}" == *@sha256:* ]] || add_missing "APP_IMAGE_REF"
+          [[ -n "${GOOSE_IMAGE_REF}" && "${GOOSE_IMAGE_REF}" == *@sha256:* ]] || add_missing "GOOSE_IMAGE_REF"
+          [[ "${RELEASE_GATE_MODE}" == "full-security-release-gate" ]] || add_missing "RELEASE_GATE_MODE=full-security-release-gate"
+          [[ "${RELEASE_GATE_VERDICT}" == "pass" ]] || add_missing "RELEASE_GATE_VERDICT=pass"
+          [[ "${REPO_RELEASE_VERDICT}" == "pass" ]] || add_missing "REPO_RELEASE_VERDICT=pass"
+          [[ "${PROVENANCE_RELEASE_VERDICT}" == "pass" ]] || add_missing "PROVENANCE_RELEASE_VERDICT=pass"
+          [[ "${PROVENANCE_VERDICT}" == "verified" ]] || add_missing "PROVENANCE_VERDICT=verified"
+          [[ "${SSH_PORT}" =~ ^[0-9]+$ ]] || add_missing "STAGING_SSH_PORT"
+
+          staging_remote_env_file="${STAGING_REMOTE_ENV_FILE:-${STAGING_DEPLOY_ROOT}/deployments/staging/.env.staging}"
+          export STAGING_REMOTE_ENV_FILE_RESOLVED="${staging_remote_env_file}"
+          printf '%s\n' "${missing[@]}" > deployment-evidence/staging-missing-prerequisites.txt
+
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          missing = [line.strip() for line in Path("deployment-evidence/staging-missing-prerequisites.txt").read_text(encoding="utf-8").splitlines() if line.strip()]
+          payload = {
+              "environment": "staging",
+              "workflow_intent": "real-staging-deploy",
+              "deployment_executed": False,
+              "control_status": "blocked" if missing else "ready-for-remote-validation",
+              "verdict": "blocked" if missing else "ready",
+              "result": "blocked-missing-prerequisites" if missing else "local-prerequisites-passed",
+              "summary_of_what_happened": "staging deployment was blocked before remote execution because required local prerequisites are missing" if missing else "local staging deployment prerequisites passed; remote staging validation has not run yet",
+              "staging_host": os.environ.get("STAGING_HOST", ""),
+              "staging_deploy_root": os.environ.get("STAGING_DEPLOY_ROOT", ""),
+              "staging_remote_env_file": os.environ.get("STAGING_REMOTE_ENV_FILE_RESOLVED", ""),
+              "app_image_ref": os.environ.get("APP_IMAGE_REF", ""),
+              "goose_image_ref": os.environ.get("GOOSE_IMAGE_REF", ""),
+              "release_gate_mode": os.environ.get("RELEASE_GATE_MODE", ""),
+              "release_gate_verdict": os.environ.get("RELEASE_GATE_VERDICT", ""),
+              "repo_release_verdict": os.environ.get("REPO_RELEASE_VERDICT", ""),
+              "security_verdict_age_seconds": os.environ.get("SECURITY_VERDICT_AGE_SECONDS", ""),
+              "security_workflow_run_id": os.environ.get("SECURITY_WORKFLOW_RUN_ID", ""),
+              "security_verdict_generated_at_utc": os.environ.get("SECURITY_VERDICT_GENERATED_AT_UTC", ""),
+              "security_verdict_max_age_hours": os.environ.get("SECURITY_VERDICT_MAX_AGE_HOURS", ""),
+              "provenance_release_verdict": os.environ.get("PROVENANCE_RELEASE_VERDICT", ""),
+              "provenance_verdict": os.environ.get("PROVENANCE_VERDICT", ""),
+              "missing_prerequisites": missing,
+          }
+          Path("deployment-evidence/staging-prerequisites.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
+
+          {
+            echo "## Staging Deployment Contract"
+            echo "- environment: \`staging\`"
+            echo "- intended staging host: \`${STAGING_HOST:-missing}\`"
+            echo "- intended deploy root: \`${STAGING_DEPLOY_ROOT:-missing}\`"
+            echo "- app image: \`${APP_IMAGE_REF:-missing}\`"
+            echo "- goose image: \`${GOOSE_IMAGE_REF:-missing}\`"
+            echo "- security release gate artifact: verdict=\`${RELEASE_GATE_VERDICT:-missing}\`, mode=\`${RELEASE_GATE_MODE:-missing}\`, repo=\`${REPO_RELEASE_VERDICT:-missing}\`, workflow_run=\`${SECURITY_WORKFLOW_RUN_ID:-missing}\`"
+            echo "- security verdict generated at (UTC): \`${SECURITY_VERDICT_GENERATED_AT_UTC:-missing}\`"
+            echo "- security freshness policy: max-age=\`${SECURITY_VERDICT_MAX_AGE_HOURS:-missing}h\` / observed-age=\`${SECURITY_VERDICT_AGE_SECONDS:-missing}\`"
+            echo "- image provenance verdict: \`${PROVENANCE_VERDICT:-missing}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "${#missing[@]}" -gt 0 ]]; then
+            {
+              echo "- result: \`blocked\`"
+              echo "- deployment executed: \`false\`"
+              echo "- outcome: \`staging deployment blocked before remote execution\`"
+              echo "- missing prerequisites:"
+              for item in "${missing[@]}"; do
+                echo "  - \`${item}\`"
+              done
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          {
+            echo "staging_host=${STAGING_HOST}"
+            echo "staging_deploy_root=${STAGING_DEPLOY_ROOT}"
+            echo "staging_remote_env_file=${staging_remote_env_file}"
+            echo "release_gate_mode=${RELEASE_GATE_MODE}"
+            echo "release_gate_verdict=${RELEASE_GATE_VERDICT}"
+            echo "repo_release_verdict=${REPO_RELEASE_VERDICT}"
+            echo "security_verdict_age_seconds=${SECURITY_VERDICT_AGE_SECONDS}"
+            echo "security_verdict_generated_at_utc=${SECURITY_VERDICT_GENERATED_AT_UTC}"
+            echo "security_verdict_max_age_hours=${SECURITY_VERDICT_MAX_AGE_HOURS}"
+            echo "security_workflow_run_id=${SECURITY_WORKFLOW_RUN_ID}"
+            echo "ssh_port=${SSH_PORT}"
+            echo "ssh_user=${SSH_USER}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Start staging SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY || secrets.STAGING_SSH_PRIVATE_KEY || secrets.PREPROD_SSH_KEY || secrets.PREPROD_SSH_PRIVATE_KEY }}
+
+      - name: Install pinned staging SSH trust
+        shell: bash
+        env:
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.STAGING_SSH_KNOWN_HOSTS || secrets.PREPROD_SSH_KNOWN_HOSTS || vars.STAGING_SSH_KNOWN_HOSTS || vars.PREPROD_SSH_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host *
+            BatchMode yes
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile ~/.ssh/known_hosts
+            GlobalKnownHostsFile ~/.ssh/known_hosts
+          EOF
+          chmod 600 ~/.ssh/config ~/.ssh/known_hosts
+          {
+            echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
+          } >> "$GITHUB_ENV"
+
+      - name: Validate pinned staging host identity and remote contract
+        shell: bash
+        env:
+          SSH_PORT: ${{ steps.contract.outputs.ssh_port }}
+          SSH_USER: ${{ steps.contract.outputs.ssh_user }}
+          STAGING_DEPLOY_ROOT: ${{ steps.contract.outputs.staging_deploy_root }}
+          STAGING_HOST: ${{ steps.contract.outputs.staging_host }}
+          STAGING_REMOTE_ENV_FILE: ${{ steps.contract.outputs.staging_remote_env_file }}
+        run: |
+          set -Eeuo pipefail
+
+          issues=()
+          add_issue() {
+            issues+=("$1")
+          }
+
+          if ! ssh-keygen -F "${STAGING_HOST}" -f "${HOME}/.ssh/known_hosts" >/dev/null && ! ssh-keygen -F "[${STAGING_HOST}]:${SSH_PORT}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+            add_issue "known_hosts does not contain a pinned identity for ${STAGING_HOST}:${SSH_PORT}"
+          fi
+
+          python3 -c "import socket,sys; socket.getaddrinfo(sys.argv[1], None)" "${STAGING_HOST}" || add_issue "staging host DNS resolution failed"
+          python3 -c "import socket,sys; s=socket.create_connection((sys.argv[1], int(sys.argv[2])), timeout=10); s.close()" "${STAGING_HOST}" "${SSH_PORT}" || add_issue "staging host TCP reachability failed"
+
+          target="${SSH_USER}@${STAGING_HOST}"
+          if ! ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "test -f '${STAGING_REMOTE_ENV_FILE}'"; then
+            add_issue "remote staging env file is missing at ${STAGING_REMOTE_ENV_FILE}"
+          fi
+          if ! ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "docker info >/dev/null 2>&1"; then
+            add_issue "docker daemon is not reachable on the staging host"
+          fi
+          if ! ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "docker compose version >/dev/null 2>&1"; then
+            add_issue "docker compose is not available on the staging host"
+          fi
+          if ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "grep -Eq '^[A-Z0-9_]+=.*(CHANGE_ME|REPLACE_ME|example\\.com|example\\.invalid|placeholder)' '${STAGING_REMOTE_ENV_FILE}'"; then
+            add_issue "remote staging env file still contains placeholder values"
+          fi
+
+          printf '%s\n' "${issues[@]}" > deployment-evidence/staging-remote-prerequisites.txt
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("deployment-evidence/staging-prerequisites.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          issues = [line.strip() for line in Path("deployment-evidence/staging-remote-prerequisites.txt").read_text(encoding="utf-8").splitlines() if line.strip()]
+          payload["remote_validation_issues"] = issues
+          payload["control_status"] = "blocked" if issues else "ready-for-deployment"
+          payload["verdict"] = "blocked" if issues else "ready"
+          payload["result"] = "blocked-remote-prerequisites" if issues else "ready-for-real-staging-deploy"
+          payload["summary_of_what_happened"] = (
+              "staging deployment was blocked before remote execution because remote environment validation failed"
+              if issues
+              else "staging deployment prerequisites passed; the workflow may proceed to a real remote deployment"
+          )
+          path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          PY
+
+          if [[ "${#issues[@]}" -gt 0 ]]; then
+            {
+              echo "- result: \`blocked\`"
+              echo "- deployment executed: \`false\`"
+              echo "- outcome: \`staging deployment blocked before remote execution\`"
+              echo "- remote prerequisite issues:"
+              for item in "${issues[@]}"; do
+                echo "  - ${item}"
+              done
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          {
+            echo "- result: \`ready-for-real-staging-deploy\`"
+            echo "- deployment executed: \`false\`"
+            echo "- outcome: \`staging deployment contract passed; remote deploy not started in this job yet\`"
+            echo "- remote env file: \`${STAGING_REMOTE_ENV_FILE}\`"
+            echo "- remote docker/compose contract: \`validated\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload staging deployment contract report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-deployment-contract-report
+          path: deployment-evidence/staging-prerequisites.json
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy-staging:
+    name: Execute Staging Deployment
+    if: |
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'develop'
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-build-run-id
+      - resolve-image-refs
+      - validate-staging-prerequisites
+    environment: staging
+    env:
+      APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+      GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+      PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
+      RELEASE_GATE_MODE: ${{ needs.validate-staging-prerequisites.outputs.release_gate_mode }}
+      RELEASE_GATE_VERDICT: ${{ needs.validate-staging-prerequisites.outputs.release_gate_verdict }}
+      REPO_RELEASE_VERDICT: ${{ needs.validate-staging-prerequisites.outputs.repo_release_verdict }}
+      SECURITY_VERDICT_AGE_SECONDS: ${{ needs.validate-staging-prerequisites.outputs.security_verdict_age_seconds }}
+      SECURITY_VERDICT_GENERATED_AT_UTC: ${{ needs.validate-staging-prerequisites.outputs.security_verdict_generated_at_utc }}
+      SECURITY_VERDICT_MAX_AGE_HOURS: ${{ needs.validate-staging-prerequisites.outputs.security_verdict_max_age_hours }}
+      SECURITY_WORKFLOW_RUN_ID: ${{ needs.validate-staging-prerequisites.outputs.security_workflow_run_id }}
+      SOURCE_COMMIT_SHA: ${{ needs.resolve-build-run-id.outputs.source_commit_sha }}
+      STAGING_DEPLOY_ROOT: ${{ needs.validate-staging-prerequisites.outputs.staging_deploy_root }}
+      STAGING_HOST: ${{ needs.validate-staging-prerequisites.outputs.staging_host }}
+      STAGING_REMOTE_ENV_FILE: ${{ needs.validate-staging-prerequisites.outputs.staging_remote_env_file }}
+      SSH_PORT: ${{ needs.validate-staging-prerequisites.outputs.ssh_port }}
+      SSH_USER: ${{ needs.validate-staging-prerequisites.outputs.ssh_user }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Validate develop release asset package
+      - name: Start staging SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY || secrets.STAGING_SSH_PRIVATE_KEY || secrets.PREPROD_SSH_KEY || secrets.PREPROD_SSH_PRIVATE_KEY }}
+
+      - name: Install pinned staging SSH trust
+        shell: bash
+        env:
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.STAGING_SSH_KNOWN_HOSTS || secrets.PREPROD_SSH_KNOWN_HOSTS || vars.STAGING_SSH_KNOWN_HOSTS || vars.PREPROD_SSH_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host *
+            BatchMode yes
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            UserKnownHostsFile ~/.ssh/known_hosts
+            GlobalKnownHostsFile ~/.ssh/known_hosts
+          EOF
+          chmod 600 ~/.ssh/config ~/.ssh/known_hosts
+          {
+            echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
+          } >> "$GITHUB_ENV"
+
+      - name: Sync staging deployment assets
         shell: bash
         run: |
           set -Eeuo pipefail
-          # The repo still keeps the non-production deployment assets under deployments/staging/.
-          # For develop we only prepare/validate package assets against those files; no server deploy happens here.
-          STAGING_ENV_FILE=.env.staging.example docker compose --env-file deployments/staging/.env.staging.example -f deployments/staging/docker-compose.staging.yml config >/dev/null
-          bash -n deployments/prod/shared/scripts/smoke_http.sh
-          bash -n deployments/staging/scripts/deploy_staging.sh
-          bash -n deployments/staging/scripts/healthcheck_staging.sh
-          bash -n deployments/staging/scripts/smoke_staging.sh
+          mkdir -p deployment-evidence
+          target="${SSH_USER}@${STAGING_HOST}"
+          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "mkdir -p '${STAGING_DEPLOY_ROOT}/deployments/prod' '${STAGING_DEPLOY_ROOT}/deployments/staging' '${STAGING_DEPLOY_ROOT}/migrations'"
+          tar -cf - deployments/staging deployments/prod/shared migrations | \
+            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "tar -xf - -C '${STAGING_DEPLOY_ROOT}'"
 
-      - name: Show develop release asset context
+      - name: Deploy staging stack on configured host
+        id: deploy
         shell: bash
-        env:
-          DEVELOP_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          {
-            echo "## Develop Promotion Validation"
-            echo "- trigger: \`workflow_run\`"
-            echo "- develop branch ref: \`${DEVELOP_BRANCH}\`"
-            echo "- workflow intent: \`promotion-prep validation only\`"
-            echo "- real environment deploy performed: \`false\`"
-            echo "- remote SSH/deploy performed: \`false\`"
-            echo "- compose validation only: \`true\`"
-            echo "- outcome: \`validated package inputs only; no real develop server exists in this repo\`"
-            echo "- app image: \`${{ needs.resolve-image-refs.outputs.app_image_ref }}\`"
-            echo "- goose image: \`${{ needs.resolve-image-refs.outputs.goose_image_ref }}\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+          set -Eeuo pipefail
+          target="${SSH_USER}@${STAGING_HOST}"
+          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+            "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && APP_IMAGE_REF='${APP_IMAGE_REF}' GOOSE_IMAGE_REF='${GOOSE_IMAGE_REF}' SKIP_SMOKE='1' bash 'scripts/deploy_staging.sh'"
 
-      - name: Write develop release asset manifest
+      - name: Verify staging health
+        id: healthcheck
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${STAGING_HOST}"
+          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+            "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && bash 'scripts/healthcheck_staging.sh'"
+
+      - name: Run staging smoke checks
+        id: smoke
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${STAGING_HOST}"
+          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+            "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && bash 'scripts/smoke_staging.sh'"
+
+      - name: Write staging deployment verdict
         if: always()
         shell: bash
         env:
           ACTOR: ${{ github.actor }}
-          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
-          BUILD_COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
-          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
-          TRIGGER_NAME: workflow_run
+          DEPLOY_ATTEMPTED: ${{ steps.deploy.outcome != 'skipped' }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome || 'skipped' }}
+          FINAL_RESULT: ${{ job.status }}
+          HEALTHCHECK_OUTCOME: ${{ steps.healthcheck.outcome || 'skipped' }}
+          SMOKE_OUTCOME: ${{ steps.smoke.outcome || 'skipped' }}
         run: |
+          set -Eeuo pipefail
           mkdir -p deployment-evidence
+          completed_at_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
-          cat > deployment-evidence/develop-release-assets-manifest.json <<EOF
+          if [[ "${DEPLOY_ATTEMPTED}" == "true" && "${FINAL_RESULT}" == "success" ]]; then
+            staging_verdict="pass"
+            staging_summary="staging deployment executed and passed health/smoke verification"
+          elif [[ "${DEPLOY_ATTEMPTED}" == "true" ]]; then
+            staging_verdict="fail"
+            staging_summary="staging deployment started but did not complete successfully"
+          else
+            staging_verdict="blocked"
+            staging_summary="staging deployment never reached the remote deploy step in this job"
+          fi
+
+          cat > deployment-evidence/staging-deployment-verdict.json <<EOF
           {
-            "environment": "develop",
-            "commit_sha": "${BUILD_COMMIT_SHA}",
+            "environment": "staging",
+            "workflow_intent": "real-staging-deploy",
+            "actual_deploy_attempted": ${DEPLOY_ATTEMPTED},
+            "actual_deploy_completed": $([[ "${DEPLOY_OUTCOME}" == "success" ]] && printf 'true' || printf 'false'),
+            "verdict": "${staging_verdict}",
+            "control_status": "$([[ "${FINAL_RESULT}" == "success" ]] && printf 'met' || printf 'unmet')",
+            "summary_of_what_happened": "${staging_summary}",
+            "result": "${FINAL_RESULT}",
+            "completed_at_utc": "${completed_at_utc}",
+            "source_commit_sha": "${SOURCE_COMMIT_SHA}",
+            "source_branch": "develop",
+            "trigger": "workflow_run",
+            "actor": "${ACTOR}",
+            "build_run_id": "${{ needs.resolve-build-run-id.outputs.workflow_run_id }}",
             "app_image_ref": "${APP_IMAGE_REF}",
             "goose_image_ref": "${GOOSE_IMAGE_REF}",
-            "actor": "${ACTOR}",
-            "trigger": "${TRIGGER_NAME}",
-            "artifact_kind": "develop-release-assets",
-            "workflow_intent": "promotion-validation",
-            "server_deploy_performed": false,
-            "remote_ssh_performed": false,
-            "validation_scope": "compose-config-and-script-syntax-only",
-            "result": "prepare-package-validate-only"
+            "release_gate_mode": "${RELEASE_GATE_MODE}",
+            "release_gate_verdict": "${RELEASE_GATE_VERDICT}",
+            "repo_release_verdict": "${REPO_RELEASE_VERDICT}",
+            "security_verdict_age_seconds": "${SECURITY_VERDICT_AGE_SECONDS}",
+            "security_workflow_run_id": "${SECURITY_WORKFLOW_RUN_ID}",
+            "security_verdict_generated_at_utc": "${SECURITY_VERDICT_GENERATED_AT_UTC}",
+            "security_verdict_max_age_hours": "${SECURITY_VERDICT_MAX_AGE_HOURS}",
+            "provenance_verdict": "${PROVENANCE_VERDICT}",
+            "staging_host": "${STAGING_HOST}",
+            "staging_deploy_root": "${STAGING_DEPLOY_ROOT}",
+            "staging_remote_env_file": "${STAGING_REMOTE_ENV_FILE}",
+            "deploy_outcome": "${DEPLOY_OUTCOME}",
+            "healthcheck_outcome": "${HEALTHCHECK_OUTCOME}",
+            "smoke_outcome": "${SMOKE_OUTCOME}",
+            "run_url": "${run_url}"
           }
           EOF
 
           {
-            echo "## Develop Promotion Validation"
-            echo "- environment: \`develop\`"
-            echo "- commit SHA: \`${BUILD_COMMIT_SHA}\`"
+            echo "## Staging Deployment Result"
+            echo "- environment: \`staging\`"
+            echo "- actual deploy attempted: \`${DEPLOY_ATTEMPTED}\`"
+            echo "- verdict: \`${staging_verdict}\`"
+            echo "- build run id: \`${{ needs.resolve-build-run-id.outputs.workflow_run_id }}\`"
+            echo "- source commit SHA: \`${SOURCE_COMMIT_SHA}\`"
+            echo "- staging host: \`${STAGING_HOST}\`"
+            echo "- staging deploy root: \`${STAGING_DEPLOY_ROOT}\`"
             echo "- app image: \`${APP_IMAGE_REF}\`"
             echo "- goose image: \`${GOOSE_IMAGE_REF}\`"
-            echo "- actor: \`${ACTOR}\`"
-            echo "- trigger: \`${TRIGGER_NAME}\`"
-            echo "- workflow intent: \`promotion-validation\`"
-            echo "- server deploy performed: \`false\`"
-            echo "- remote SSH performed: \`false\`"
-            echo "- result: \`prepare/package/validate only\`"
+            echo "- security release gate artifact: verdict=\`${RELEASE_GATE_VERDICT}\`, mode=\`${RELEASE_GATE_MODE}\`, repo=\`${REPO_RELEASE_VERDICT}\`, workflow_run=\`${SECURITY_WORKFLOW_RUN_ID:-n/a}\`"
+            echo "- security verdict generated at (UTC): \`${SECURITY_VERDICT_GENERATED_AT_UTC:-n/a}\`"
+            echo "- security freshness policy: max-age=\`${SECURITY_VERDICT_MAX_AGE_HOURS}h\` / observed-age=\`${SECURITY_VERDICT_AGE_SECONDS:-n/a}\`"
+            echo "- image provenance verdict: \`${PROVENANCE_VERDICT}\`"
+            echo "- deploy outcome: \`${DEPLOY_OUTCOME}\`"
+            echo "- healthcheck outcome: \`${HEALTHCHECK_OUTCOME}\`"
+            echo "- smoke outcome: \`${SMOKE_OUTCOME}\`"
+            echo "- final result: \`${FINAL_RESULT}\`"
+            echo "- outcome: \`${staging_summary}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload develop release asset manifest
+      - name: Upload staging deployment verdict
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: develop-release-assets-manifest
-          path: deployment-evidence/develop-release-assets-manifest.json
+          name: staging-deployment-verdict
+          path: deployment-evidence/staging-deployment-verdict.json
           if-no-files-found: error
           retention-days: 14

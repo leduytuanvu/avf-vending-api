@@ -216,13 +216,31 @@ check_managed_redis
 check_object_storage
 
 if [[ -n "${REPORT_PATH}" ]]; then
+	report_verdict="pass"
+	if [[ "${failures}" -gt 0 ]]; then
+		report_verdict="fail"
+	elif [[ "${skips}" -gt 0 ]]; then
+		report_verdict="not-configured"
+	fi
 	{
 		printf '{\n'
+		printf '  "control_scope": "managed-service-readiness-only",\n'
+		printf '  "control_status": "readiness-only",\n'
+		printf '  "restore_drill_executed": false,\n'
 		printf '  "env_file_path": "%s",\n' "$(json_escape "${ENV_FILE_PATH}")"
 		printf '  "strict_mode": %s,\n' "${STRICT_MODE}"
-		printf '  "verdict": "%s",\n' "$([[ "${failures}" -gt 0 ]] && printf 'fail' || printf 'pass')"
+		printf '  "verdict": "%s",\n' "${report_verdict}"
 		printf '  "failures": %s,\n' "${failures}"
 		printf '  "skips": %s,\n' "${skips}"
+		printf '  "summary": "%s",\n' "$(json_escape "$(
+			if [[ "${report_verdict}" == "pass" ]]; then
+				printf 'managed service readiness checks passed; this report does not prove restore execution'
+			elif [[ "${report_verdict}" == "not-configured" ]]; then
+				printf 'managed service readiness checks were only partially configured; this report does not prove restore execution'
+			else
+				printf 'managed service readiness checks failed; this report does not prove restore execution'
+			fi
+		)")"
 		printf '  "checks": ['
 		first="1"
 		while IFS=$'\t' read -r status message detail; do

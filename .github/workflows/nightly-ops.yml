@@ -169,7 +169,7 @@ jobs:
           retention-days: 14
 
   restore-readiness:
-    name: Managed Service and Restore Preparedness
+    name: Restore Readiness Reports and Drill Verdict
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -184,7 +184,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client redis-tools
 
-      - name: Run managed service prerequisite contract report
+      - name: Run managed service readiness-only report
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -193,16 +193,16 @@ jobs:
           CHECK_MANAGED_SERVICES_STRICT=0 \
           bash deployments/prod/shared/scripts/check_managed_services.sh deployments/prod/app-node/.env.app-node.example | tee nightly-reports/managed-services-readiness.txt
 
-      - name: Run managed PostgreSQL backup readiness report
+      - name: Run managed PostgreSQL backup readiness-only report
         shell: bash
         run: |
           set -Eeuo pipefail
           mkdir -p nightly-reports
           BACKUP_MANAGED_POSTGRES_REPORT_PATH="nightly-reports/backup-readiness.json" \
           APP_NODE_ENV_FILE_PATH="deployments/prod/app-node/.env.app-node.example" \
-          bash deployments/prod/shared/scripts/backup_managed_postgres.sh nightly-reports/managed-postgres-readiness.dump validate | tee nightly-reports/backup-readiness.txt
+          bash deployments/prod/shared/scripts/backup_managed_postgres.sh validate | tee nightly-reports/backup-readiness.txt
 
-      - name: Run non-destructive restore-readiness check
+      - name: Run non-destructive restore readiness-only check
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -210,223 +210,309 @@ jobs:
           CHECK_RESTORE_READINESS_REPORT_PATH="nightly-reports/restore-readiness.json" \
           bash deployments/prod/shared/scripts/check_restore_readiness.sh deployments/prod/app-node/.env.app-node.example | tee nightly-reports/restore-readiness.txt
 
-      - name: Run disposable PostgreSQL restore simulation and write evidence
+      - name: Resolve actual restore drill contract
+        id: drill-contract
         shell: bash
+        env:
+          RESTORE_DRILL_SOURCE_DATABASE_URL: ${{ secrets.RESTORE_DRILL_SOURCE_DATABASE_URL || vars.RESTORE_DRILL_SOURCE_DATABASE_URL }}
+          RESTORE_DRILL_SOURCE_IDENTIFIER: ${{ secrets.RESTORE_DRILL_SOURCE_IDENTIFIER || vars.RESTORE_DRILL_SOURCE_IDENTIFIER }}
+          RESTORE_DRILL_TARGET_DATABASE_URL: ${{ secrets.RESTORE_DRILL_TARGET_DATABASE_URL || vars.RESTORE_DRILL_TARGET_DATABASE_URL }}
+          RESTORE_DRILL_TARGET_DISPOSABLE: ${{ secrets.RESTORE_DRILL_TARGET_DISPOSABLE || vars.RESTORE_DRILL_TARGET_DISPOSABLE }}
+          RESTORE_DRILL_TARGET_IDENTIFIER: ${{ secrets.RESTORE_DRILL_TARGET_IDENTIFIER || vars.RESTORE_DRILL_TARGET_IDENTIFIER }}
         run: |
           set -Eeuo pipefail
           mkdir -p nightly-reports
-          export PGPASSWORD=nightly-restore-password
-          source_container_name="nightly-restore-source"
-          target_compose_dir="nightly-reports/restore-helper-target"
-          target_env_file="${target_compose_dir}/.env.restore"
-          target_compose_file="${target_compose_dir}/docker-compose.restore.yml"
-          trap 'docker rm -f "${source_container_name}" >/dev/null 2>&1 || true; docker compose --env-file "${target_env_file}" -f "${target_compose_file}" down -v >/dev/null 2>&1 || true' EXIT
+          source deployments/prod/shared/scripts/lib_release.sh
 
-          docker rm -f "${source_container_name}" >/dev/null 2>&1 || true
-          mkdir -p "${target_compose_dir}"
-          docker run -d \
-            --name "${source_container_name}" \
-            -e POSTGRES_PASSWORD="${PGPASSWORD}" \
-            -e POSTGRES_USER=postgres \
-            -e POSTGRES_DB=restore_source \
-            -p 127.0.0.1:55432:5432 \
-            postgres:16-alpine >/dev/null
+          missing=()
+          add_missing() {
+            missing+=("$1")
+          }
 
-          for attempt in $(seq 1 30); do
-            if pg_isready -h 127.0.0.1 -p 55432 -U postgres -d restore_source >/dev/null 2>&1; then
-              break
-            fi
-            if [[ "${attempt}" == "30" ]]; then
-              echo "error: disposable PostgreSQL restore drill did not become ready" >&2
-              exit 1
-            fi
-            sleep 2
-          done
+          source_identifier="${RESTORE_DRILL_SOURCE_IDENTIFIER:-}"
+          target_identifier="${RESTORE_DRILL_TARGET_IDENTIFIER:-}"
 
-          psql -h 127.0.0.1 -p 55432 -U postgres -d restore_source <<'SQL'
-          create table restore_probe (
-            id integer primary key,
-            machine_code text not null,
-            reading integer not null
-          );
-          create table restore_metadata (
-            key text primary key,
-            value text not null
-          );
-          insert into restore_probe (id, machine_code, reading) values
-            (1, 'vm-a', 17),
-            (2, 'vm-b', 23),
-            (3, 'vm-c', 42);
-          insert into restore_metadata (key, value) values
-            ('schema_version', 'nightly-restore-v1'),
-            ('restored_by', 'nightly-ops');
-          create index restore_probe_machine_code_idx on restore_probe (machine_code);
-          SQL
+          if [[ -z "${RESTORE_DRILL_SOURCE_DATABASE_URL}" ]]; then
+            add_missing "RESTORE_DRILL_SOURCE_DATABASE_URL"
+          elif is_placeholder_value "${RESTORE_DRILL_SOURCE_DATABASE_URL}"; then
+            add_missing "RESTORE_DRILL_SOURCE_DATABASE_URL must not be placeholder"
+          fi
 
-          pg_dump -h 127.0.0.1 -p 55432 -U postgres --if-exists --clean -d restore_source | gzip -c > nightly-reports/disposable-restore-drill.sql.gz
-          gzip -t nightly-reports/disposable-restore-drill.sql.gz
+          if [[ -z "${RESTORE_DRILL_TARGET_DATABASE_URL}" ]]; then
+            add_missing "RESTORE_DRILL_TARGET_DATABASE_URL"
+          elif is_placeholder_value "${RESTORE_DRILL_TARGET_DATABASE_URL}"; then
+            add_missing "RESTORE_DRILL_TARGET_DATABASE_URL must not be placeholder"
+          fi
 
-          cat > "${target_env_file}" <<'EOF'
-          POSTGRES_PASSWORD=nightly-restore-password
-          POSTGRES_USER=postgres
-          POSTGRES_DB=restore_target
-          DATABASE_URL=postgres://postgres:nightly-restore-password@127.0.0.1:55433/restore_target?sslmode=disable
-          COMPOSE_PROJECT_NAME=nightly-restore-helper
-          EOF
+          if [[ "$(normalize_bool "${RESTORE_DRILL_TARGET_DISPOSABLE:-0}")" != "1" ]]; then
+            add_missing "RESTORE_DRILL_TARGET_DISPOSABLE=1"
+          fi
 
-          cat > "${target_compose_file}" <<'EOF'
-          services:
-            postgres:
-              image: postgres:16-alpine
-              environment:
-                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-                POSTGRES_USER: ${POSTGRES_USER}
-                POSTGRES_DB: ${POSTGRES_DB}
-              ports:
-                - "127.0.0.1:55433:5432"
-          EOF
+          if [[ -z "${source_identifier}" && -n "${RESTORE_DRILL_SOURCE_DATABASE_URL}" ]] && ! is_placeholder_value "${RESTORE_DRILL_SOURCE_DATABASE_URL}"; then
+            source_identifier="$(postgres_identifier_from_url "${RESTORE_DRILL_SOURCE_DATABASE_URL}")"
+          fi
+          if [[ -z "${target_identifier}" && -n "${RESTORE_DRILL_TARGET_DATABASE_URL}" ]] && ! is_placeholder_value "${RESTORE_DRILL_TARGET_DATABASE_URL}"; then
+            target_identifier="$(postgres_identifier_from_url "${RESTORE_DRILL_TARGET_DATABASE_URL}")"
+          fi
 
-          docker compose --env-file "${target_env_file}" -f "${target_compose_file}" up -d postgres
-          RESTORE_ENV_FILE="${target_env_file}" \
-          RESTORE_COMPOSE_FILE="${target_compose_file}" \
-          RESTORE_LONG_LIVED_SERVICES="postgres" \
-          RESTORE_REPORT_PATH="nightly-reports/restore-helper-report.json" \
-          bash deployments/prod/scripts/restore_postgres.sh --yes nightly-reports/disposable-restore-drill.sql.gz
+          [[ -n "${source_identifier}" ]] || add_missing "RESTORE_DRILL_SOURCE_IDENTIFIER"
+          [[ -n "${target_identifier}" ]] || add_missing "RESTORE_DRILL_TARGET_IDENTIFIER"
 
-          source_row_count="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_source -Atc 'select count(*) from restore_probe')"
-          source_checksum="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_source -Atc "select md5(string_agg(machine_code || ':' || reading::text, ',' order by id)) from restore_probe")"
-          source_metadata_value="$(psql -h 127.0.0.1 -p 55432 -U postgres -d restore_source -Atc "select value from restore_metadata where key = 'schema_version'")"
-          target_row_count="$(psql -h 127.0.0.1 -p 55433 -U postgres -d restore_target -Atc 'select count(*) from restore_probe')"
-          target_checksum="$(psql -h 127.0.0.1 -p 55433 -U postgres -d restore_target -Atc "select md5(string_agg(machine_code || ':' || reading::text, ',' order by id)) from restore_probe")"
-          target_metadata_value="$(psql -h 127.0.0.1 -p 55433 -U postgres -d restore_target -Atc "select value from restore_metadata where key = 'schema_version'")"
-          target_index_count="$(psql -h 127.0.0.1 -p 55433 -U postgres -d restore_target -Atc "select count(*) from pg_indexes where tablename = 'restore_probe' and indexname = 'restore_probe_machine_code_idx'")"
-          dump_size_bytes="$(wc -c < nightly-reports/disposable-restore-drill.sql.gz | tr -d ' ')"
-          dump_sha256="$(sha256sum nightly-reports/disposable-restore-drill.sql.gz | awk '{print $1}')"
+          configured="false"
+          if [[ "${#missing[@]}" -eq 0 ]]; then
+            configured="true"
+            source_env_file="nightly-reports/restore-drill-source.env"
+            target_env_file="nightly-reports/restore-drill-target.env"
+            printf 'DATABASE_URL=%s\n' "${RESTORE_DRILL_SOURCE_DATABASE_URL}" > "${source_env_file}"
+            printf 'DATABASE_URL=%s\n' "${RESTORE_DRILL_TARGET_DATABASE_URL}" > "${target_env_file}"
+            {
+              echo "source_env_file=${source_env_file}"
+              echo "target_env_file=${target_env_file}"
+            } >> "${GITHUB_OUTPUT}"
+          fi
 
-          SOURCE_ROW_COUNT="${source_row_count}" \
-          SOURCE_CHECKSUM="${source_checksum}" \
-          SOURCE_METADATA_VALUE="${source_metadata_value}" \
-          TARGET_ROW_COUNT="${target_row_count}" \
-          TARGET_CHECKSUM="${target_checksum}" \
-          TARGET_METADATA_VALUE="${target_metadata_value}" \
-          TARGET_INDEX_COUNT="${target_index_count}" \
-          DUMP_SIZE_BYTES="${dump_size_bytes}" \
-          DUMP_SHA256="${dump_sha256}" \
+          {
+            echo "restore_drill_configured=${configured}"
+            echo "source_identifier=${source_identifier}"
+            echo "target_identifier=${target_identifier}"
+          } >> "${GITHUB_OUTPUT}"
+
+          printf '%s\n' "${missing[@]}" > nightly-reports/restore-drill-missing.txt
+          export RESTORE_DRILL_CONFIGURED="${configured}"
+          export RESTORE_DRILL_SOURCE_ID="${source_identifier}"
+          export RESTORE_DRILL_TARGET_ID="${target_identifier}"
+          export RESTORE_DRILL_TARGET_DISPOSABLE_NORMALIZED="$(normalize_bool "${RESTORE_DRILL_TARGET_DISPOSABLE:-0}")"
+          export RESTORE_DRILL_TIMESTAMP="$(utc_timestamp)"
           python3 - <<'PY'
           import json
           import os
           from pathlib import Path
 
-          source_row_count = os.environ["SOURCE_ROW_COUNT"]
-          target_row_count = os.environ["TARGET_ROW_COUNT"]
-          if source_row_count != target_row_count:
-              raise SystemExit(f"row-count mismatch after disposable restore drill: source={source_row_count} target={target_row_count}")
-          if os.environ["SOURCE_CHECKSUM"] != os.environ["TARGET_CHECKSUM"]:
-              raise SystemExit("checksum mismatch after restore_postgres.sh disposable drill")
-          if os.environ["SOURCE_METADATA_VALUE"] != os.environ["TARGET_METADATA_VALUE"]:
-              raise SystemExit("metadata lookup mismatch after restore_postgres.sh disposable drill")
-          if os.environ["TARGET_INDEX_COUNT"] != "1":
-              raise SystemExit("expected restore_probe_machine_code_idx to exist after restore")
+          missing = [line.strip() for line in Path("nightly-reports/restore-drill-missing.txt").read_text(encoding="utf-8").splitlines() if line.strip()]
+          configured = os.environ["RESTORE_DRILL_CONFIGURED"] == "true"
+          source_identifier = os.environ.get("RESTORE_DRILL_SOURCE_ID", "")
+          target_identifier = os.environ.get("RESTORE_DRILL_TARGET_ID", "")
+          timestamp = os.environ["RESTORE_DRILL_TIMESTAMP"]
 
-          helper_report = json.loads(Path("nightly-reports/restore-helper-report.json").read_text(encoding="utf-8"))
-
-          report = {
-              "drill_type": "disposable-postgres-restore-helper",
-              "postgres_image": "postgres:16-alpine",
-              "dump_format": "gzip-sql",
-              "source_database": "restore_source",
-              "target_database": "restore_target",
-              "source_row_count": int(source_row_count),
-              "target_row_count": int(target_row_count),
-              "source_checksum": os.environ["SOURCE_CHECKSUM"],
-              "target_checksum": os.environ["TARGET_CHECKSUM"],
-              "source_metadata_value": os.environ["SOURCE_METADATA_VALUE"],
-              "target_metadata_value": os.environ["TARGET_METADATA_VALUE"],
-              "target_index_count": int(os.environ["TARGET_INDEX_COUNT"]),
-              "restore_helper_report": helper_report,
-              "validated": [
-                  "gzip SQL dump creation from disposable source database",
-                  "restore_postgres.sh preflight checks",
-                  "restore_postgres.sh destructive restore against disposable target only",
-                  "fresh post-restore database connection to restored target",
-                  "row-count parity for restore_probe",
-                  "checksum parity for restore_probe",
-                  "metadata lookup parity for restore_metadata",
-                  "index presence for restore_probe_machine_code_idx",
-              ],
-              "not_validated": [
-                  "application container boot against restored data",
-                  "end-to-end API behavior against restored data",
-                  "real production infrastructure",
-              ],
-              "dump_path": "nightly-reports/disposable-restore-drill.sql.gz",
-              "dump_size_bytes": int(os.environ["DUMP_SIZE_BYTES"]),
-              "dump_sha256": os.environ["DUMP_SHA256"],
-              "verdict": "pass",
+          contract = {
+              "control_scope": "restore-drill",
+              "configured": configured,
+              "backup_source_identifier": source_identifier,
+              "restore_target_identifier": target_identifier,
+              "target_disposable_confirmed": os.environ.get("RESTORE_DRILL_TARGET_DISPOSABLE_NORMALIZED", "0") == "1",
+              "timestamp": timestamp,
+              "missing_prerequisites": missing,
           }
-          Path("nightly-reports/disposable-restore-drill.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-          Path("nightly-reports/restore-smoke-evidence.json").write_text(json.dumps({
-              "verdict": "pass",
-              "validated": report["validated"],
-              "not_validated": report["not_validated"],
-              "restore_helper_report_path": "nightly-reports/restore-helper-report.json",
-              "disposable_restore_report_path": "nightly-reports/disposable-restore-drill.json",
-          }, indent=2) + "\n", encoding="utf-8")
+          Path("nightly-reports/restore-drill-contract.json").write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
+
+          if not configured:
+              verdict = {
+                  "control_scope": "restore-drill",
+                  "verdict": "not-configured",
+                  "restore_drill_executed": False,
+                  "backup_source_identifier": source_identifier,
+                  "restore_target_identifier": target_identifier,
+                  "timestamp": timestamp,
+                  "verification_steps_executed": [],
+                  "summary_of_what_was_proven": "restore drill did not run because the disposable restore target contract is not fully configured",
+                  "control_status": "unmet",
+                  "missing_prerequisites": missing,
+              }
+              Path("nightly-reports/restore-drill-verdict.json").write_text(json.dumps(verdict, indent=2) + "\n", encoding="utf-8")
           PY
 
-      - name: Aggregate nightly restore preparedness evidence
+      - name: Create actual restore drill backup artifact
+        id: backup-drill-source
+        if: steps.drill-contract.outputs.restore_drill_configured == 'true'
         shell: bash
+        env:
+          APP_NODE_ENV_FILE_PATH: ${{ steps.drill-contract.outputs.source_env_file }}
+          BACKUP_MANAGED_POSTGRES_REPORT_PATH: nightly-reports/restore-drill-backup.json
+          BACKUP_SOURCE_IDENTIFIER: ${{ steps.drill-contract.outputs.source_identifier }}
+        run: |
+          set -Eeuo pipefail
+          bash deployments/prod/shared/scripts/backup_managed_postgres.sh nightly-reports/restore-drill-source.dump execute
+
+      - name: Execute actual restore drill against disposable target
+        id: execute-drill-restore
+        if: steps.drill-contract.outputs.restore_drill_configured == 'true'
+        shell: bash
+        env:
+          APP_NODE_ENV_FILE_PATH: ${{ steps.drill-contract.outputs.target_env_file }}
+          RESTORE_BACKUP_SOURCE_IDENTIFIER: ${{ steps.drill-contract.outputs.source_identifier }}
+          RESTORE_DRILL_CONFIRMATION: disposable-restore-drill
+          RESTORE_MANAGED_POSTGRES_REPORT_PATH: nightly-reports/restore-drill-restore.json
+          RESTORE_TARGET_DISPOSABLE: 1
+          RESTORE_TARGET_IDENTIFIER: ${{ steps.drill-contract.outputs.target_identifier }}
+        run: |
+          set -Eeuo pipefail
+          bash deployments/prod/shared/scripts/restore_managed_postgres.sh nightly-reports/restore-drill-source.dump drill
+
+      - name: Aggregate restore readiness and drill verdict
+        if: always()
+        shell: bash
+        env:
+          BACKUP_STEP_OUTCOME: ${{ steps.backup-drill-source.outcome || 'skipped' }}
+          DRILL_CONFIGURED: ${{ steps.drill-contract.outputs.restore_drill_configured || 'false' }}
+          DRILL_RESTORE_OUTCOME: ${{ steps.execute-drill-restore.outcome || 'skipped' }}
+          SOURCE_IDENTIFIER: ${{ steps.drill-contract.outputs.source_identifier }}
+          TARGET_IDENTIFIER: ${{ steps.drill-contract.outputs.target_identifier }}
         run: |
           set -Eeuo pipefail
           python3 - <<'PY'
           import json
+          import os
           from pathlib import Path
+          from datetime import datetime, timezone
 
-          managed = json.loads(Path("nightly-reports/managed-services-readiness.json").read_text(encoding="utf-8"))
-          backup = json.loads(Path("nightly-reports/backup-readiness.json").read_text(encoding="utf-8"))
-          restore = json.loads(Path("nightly-reports/restore-readiness.json").read_text(encoding="utf-8"))
-          drill = json.loads(Path("nightly-reports/disposable-restore-drill.json").read_text(encoding="utf-8"))
+          def read_json(path):
+              file_path = Path(path)
+              if not file_path.exists():
+                  return None
+              return json.loads(file_path.read_text(encoding="utf-8"))
+
+          managed = read_json("nightly-reports/managed-services-readiness.json")
+          backup_readiness = read_json("nightly-reports/backup-readiness.json")
+          restore_readiness = read_json("nightly-reports/restore-readiness.json")
+          contract = read_json("nightly-reports/restore-drill-contract.json")
+          drill_backup = read_json("nightly-reports/restore-drill-backup.json")
+          drill_restore = read_json("nightly-reports/restore-drill-restore.json")
+          existing_verdict = read_json("nightly-reports/restore-drill-verdict.json")
+
+          timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          configured = os.environ.get("DRILL_CONFIGURED", "false") == "true"
+          backup_step_outcome = os.environ.get("BACKUP_STEP_OUTCOME", "skipped")
+          restore_step_outcome = os.environ.get("DRILL_RESTORE_OUTCOME", "skipped")
+          source_identifier = os.environ.get("SOURCE_IDENTIFIER", "")
+          target_identifier = os.environ.get("TARGET_IDENTIFIER", "")
+          backup_execution_verdict = "not-configured" if not configured else ("pass" if backup_step_outcome == "success" and drill_backup else ("fail" if backup_step_outcome in ("failure", "cancelled") else "not-run"))
+
+          if existing_verdict is not None:
+              verdict = existing_verdict
+          elif configured and drill_backup and drill_restore and backup_step_outcome == "success" and restore_step_outcome == "success":
+              verdict = {
+                  "control_scope": "restore-drill",
+                  "verdict": "pass",
+                  "restore_drill_executed": True,
+                  "backup_source_identifier": drill_backup.get("backup_source_identifier", source_identifier),
+                  "backup_source_artifact": {
+                      "path": drill_backup.get("output_path", ""),
+                      "sha256_path": drill_backup.get("sha256_path", ""),
+                      "size_bytes": drill_backup.get("backup_size_bytes", 0),
+                  },
+                  "restore_target_identifier": drill_restore.get("restore_target_identifier", target_identifier),
+                  "timestamp": timestamp,
+                  "verification_steps_executed": drill_restore.get("verification_steps_executed", []),
+                  "summary_of_what_was_proven": "a real pg_dump backup was generated from the configured source and restored into the configured disposable target, then verified with read-only post-restore checks",
+                  "control_status": "met",
+              }
+          else:
+              verdict = {
+                  "control_scope": "restore-drill",
+                  "verdict": "fail",
+                  "restore_drill_executed": configured,
+                  "backup_source_identifier": source_identifier,
+                  "restore_target_identifier": target_identifier,
+                  "timestamp": timestamp,
+                  "verification_steps_executed": (drill_restore or {}).get("verification_steps_executed", []),
+                  "summary_of_what_was_proven": "restore drill was configured but did not complete successfully",
+                  "control_status": "unmet",
+                  "step_outcomes": {
+                      "backup_generation": backup_step_outcome,
+                      "restore_execution": restore_step_outcome,
+                  },
+              }
+
+          Path("nightly-reports/restore-drill-verdict.json").write_text(json.dumps(verdict, indent=2) + "\n", encoding="utf-8")
 
           report = {
-              "verdict": "pass",
-              "validated": {
-                  "managed_services_contract": managed,
-                  "backup_readiness": backup,
-                  "restore_readiness": restore,
-                  "disposable_restore_simulation": drill,
+              "control_scope": "nightly-restore-control",
+              "verdict": verdict["verdict"],
+              "summary": {
+                  "managed_service_readiness_verdict": (managed or {}).get("verdict", "missing"),
+                  "backup_readiness_verdict": (backup_readiness or {}).get("verdict", "missing"),
+                  "backup_execution_verdict": backup_execution_verdict,
+                  "restore_readiness_verdict": (restore_readiness or {}).get("verdict", "missing"),
+                  "restore_drill_verdict": verdict["verdict"],
+                  "restore_drill_executed": verdict["verdict"] in ("pass", "fail"),
               },
-              "validated_summary": [
-                  "managed service endpoint contracts evaluated against the example app-node env",
-                  "managed PostgreSQL backup helper validated in non-destructive mode",
-                  "restore readiness helper validated in non-destructive mode",
-                  "disposable PostgreSQL restore simulation completed against disposable containers only",
-              ],
-              "not_validated": [
-                  "real production restore",
-                  "application boot against restored production-like data",
-                  "real managed service credentials unless supplied outside the example env contract",
-              ],
+              "runtime_readiness_checks": {
+                  "report_path": "nightly-reports/managed-services-readiness.json",
+                  "report": managed,
+              },
+              "backup_readiness_checks": {
+                  "report_path": "nightly-reports/backup-readiness.json",
+                  "report": backup_readiness,
+              },
+              "restore_readiness_checks": {
+                  "report_path": "nightly-reports/restore-readiness.json",
+                  "report": restore_readiness,
+              },
+              "restore_drill_contract": {
+                  "report_path": "nightly-reports/restore-drill-contract.json",
+                  "report": contract,
+              },
+              "restore_drill_execution": {
+                  "backup_report_path": "nightly-reports/restore-drill-backup.json" if drill_backup else "",
+                  "backup_report": drill_backup,
+                  "restore_report_path": "nightly-reports/restore-drill-restore.json" if drill_restore else "",
+                  "restore_report": drill_restore,
+                  "verdict_report_path": "nightly-reports/restore-drill-verdict.json",
+                  "verdict_report": verdict,
+              },
           }
           Path("nightly-reports/nightly-restore-preparedness.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
           PY
 
+          verdict="$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/restore-drill-verdict.json').read_text(encoding='utf-8'))['verdict'])")"
+          summary="$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/restore-drill-verdict.json').read_text(encoding='utf-8'))['summary_of_what_was_proven'])")"
+          source_id="$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/restore-drill-verdict.json').read_text(encoding='utf-8')).get('backup_source_identifier',''))")"
+          target_id="$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/restore-drill-verdict.json').read_text(encoding='utf-8')).get('restore_target_identifier',''))")"
+
+          if [[ "${verdict}" == "pass" ]]; then
+            drill_status_line="actual restore drill executed and passed"
+          elif [[ "${verdict}" == "not-configured" ]]; then
+            drill_status_line="actual restore drill not configured; control remains unmet"
+          else
+            drill_status_line="actual restore drill executed or attempted but failed; control remains unmet"
+          fi
+
+          if [[ "${DRILL_CONFIGURED}" != "true" ]]; then
+            backup_execution_line="actual backup execution not run because the restore drill is not configured"
+          elif [[ "${BACKUP_STEP_OUTCOME}" == "success" ]]; then
+            backup_execution_line="actual backup execution completed and produced a restore-drill backup artifact"
+          elif [[ "${BACKUP_STEP_OUTCOME}" == "failure" || "${BACKUP_STEP_OUTCOME}" == "cancelled" ]]; then
+            backup_execution_line="actual backup execution was attempted but did not complete successfully"
+          else
+            backup_execution_line="actual backup execution did not run"
+          fi
+
           {
-            echo "### Managed service and restore preparedness"
-            echo "- evaluated managed service endpoint contracts from \`.env.app-node.example\`"
-            echo "- validated managed PostgreSQL backup helper in non-destructive mode"
-            echo "- validated restore helper contract without touching real production infrastructure"
-            echo "- completed a disposable PostgreSQL gzip-SQL restore simulation using \`restore_postgres.sh\` against a disposable target only"
-            echo "- validated: fresh post-restore DB connection, row count parity, checksum parity, metadata lookup parity, index presence"
-            echo "- not validated: application boot against restored data, full API behavior, or real production infrastructure"
-            echo "- verified restored row count: \`${source_row_count}\` -> \`${target_row_count}\`"
-            echo "- verified restored checksum: \`${source_checksum}\`"
-            echo "- disposable dump SHA256: \`${dump_sha256}\`"
+            echo "### Managed service readiness"
+            echo "- report only: runtime dependency contract and reachability checks"
+            echo "- verdict: \`$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/managed-services-readiness.json').read_text(encoding='utf-8'))['verdict'])")\`"
+            echo "### Backup readiness"
+            echo "- report only: backup tooling and source contract checks; no backup artifact is created in this section"
+            echo "- verdict: \`$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/backup-readiness.json').read_text(encoding='utf-8'))['verdict'])")\`"
+            echo "### Backup execution"
+            echo "- conclusion: \`${backup_execution_line}\`"
+            echo "- step outcome: \`${BACKUP_STEP_OUTCOME}\`"
+            echo "### Restore readiness"
+            echo "- report only: restore tooling and dump contract checks; no restore is executed in this section"
+            echo "- verdict: \`$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/restore-readiness.json').read_text(encoding='utf-8'))['verdict'])")\`"
+            echo "### Restore drill execution"
+            echo "- verdict: \`${verdict}\`"
+            echo "- backup source identifier: \`${source_id:-unset}\`"
+            echo "- restore target identifier: \`${target_id:-unset}\`"
+            echo "- conclusion: \`${drill_status_line}\`"
+            echo "- summary: ${summary}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload restore readiness report
+      - name: Upload restore readiness-only reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nightly-restore-drill-report
+          name: nightly-restore-readiness-reports
           path: |
             nightly-reports/managed-services-readiness.txt
             nightly-reports/managed-services-readiness.json
@@ -434,22 +520,49 @@ jobs:
             nightly-reports/backup-readiness.json
             nightly-reports/restore-readiness.txt
             nightly-reports/restore-readiness.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload restore drill verdict and control summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-restore-drill-verdict
+          path: |
+            nightly-reports/restore-drill-contract.json
+            nightly-reports/restore-drill-verdict.json
             nightly-reports/nightly-restore-preparedness.json
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload disposable restore drill evidence
+      - name: Upload actual restore drill execution evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nightly-disposable-restore-drill
+          name: nightly-actual-restore-drill-execution
           path: |
-            nightly-reports/disposable-restore-drill.json
-            nightly-reports/disposable-restore-drill.sql.gz
-            nightly-reports/restore-helper-report.json
-            nightly-reports/restore-smoke-evidence.json
+            nightly-reports/restore-drill-backup.json
+            nightly-reports/restore-drill-restore.json
+            nightly-reports/restore-drill-source.dump
+            nightly-reports/restore-drill-source.dump.sha256
+            nightly-reports/restore-drill-verdict.json
             nightly-reports/nightly-restore-preparedness.json
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 14
+
+      - name: Enforce actual restore drill control verdict
+        if: always()
+        run: |
+          set -Eeuo pipefail
+          verdict="$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/restore-drill-verdict.json').read_text(encoding='utf-8'))['verdict'])")"
+          if [[ "${verdict}" != "pass" ]]; then
+            if [[ "${verdict}" == "not-configured" ]]; then
+              echo "error: actual restore drill control is unmet because a disposable restore target is not fully configured" >&2
+            else
+              echo "error: actual restore drill control is unmet because the configured drill did not pass" >&2
+            fi
+            exit 1
+          fi
 
   ci-cd-inventory:
     name: CI/CD Inventory Report
