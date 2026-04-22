@@ -117,8 +117,8 @@ require_dir() {
 load_env_file() {
 	local path="$1"
 	require_file "${path}"
-	# shellcheck disable=SC1090
 	set -a
+	# shellcheck disable=SC1090
 	source "${path}"
 	set +a
 }
@@ -265,6 +265,7 @@ run_remote_script() {
 	local temporal_flag="${7-0}"
 	local extra_env="${8-}"
 	local remote_cmd
+	local -a ssh_opts=()
 	remote_cmd="cd '${remote_dir}' && RUN_MIGRATION='${migrate_flag}' APP_NODE_ENABLE_TEMPORAL_PROFILE='${temporal_flag}' ${extra_env} bash '${script_rel}'"
 	if [[ -n "${app_ref}" ]]; then
 		remote_cmd+=" '${app_ref}'"
@@ -272,7 +273,10 @@ run_remote_script() {
 	if [[ -n "${goose_ref}" ]]; then
 		remote_cmd+=" '${goose_ref}'"
 	fi
-	ssh ${SSH_OPTS:-} "${host}" "${remote_cmd}"
+	if [[ -n "${SSH_OPTS:-}" ]]; then
+		read -r -a ssh_opts <<<"${SSH_OPTS}"
+	fi
+	ssh "${ssh_opts[@]}" "${host}" "${remote_cmd}"
 }
 
 ssh_target() {

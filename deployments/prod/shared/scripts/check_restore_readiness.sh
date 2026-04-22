@@ -58,26 +58,28 @@ if [[ -n "${DUMP_PATH}" ]]; then
 fi
 
 if [[ -n "${REPORT_PATH}" ]]; then
-	printf '{\n' >"${REPORT_PATH}"
-	printf '  "control_scope": "restore-readiness-only",\n' >>"${REPORT_PATH}"
-	printf '  "control_status": "readiness-only",\n' >>"${REPORT_PATH}"
-	printf '  "restore_drill_executed": false,\n' >>"${REPORT_PATH}"
-	printf '  "env_file_path": "%s",\n' "$(json_escape "${ENV_FILE_PATH}")" >>"${REPORT_PATH}"
-	printf '  "database_url_kind": "%s",\n' "${database_url_kind}" >>"${REPORT_PATH}"
-	printf '  "connectivity_checked": %s,\n' "${connectivity_checked}" >>"${REPORT_PATH}"
-	printf '  "dump_supplied": %s,\n' "$([[ -n "${DUMP_PATH}" ]] && printf 'true' || printf 'false')" >>"${REPORT_PATH}"
-	printf '  "dump_validated": %s,\n' "${dump_validated}" >>"${REPORT_PATH}"
-	printf '  "restore_helper_validation": "%s",\n' "${restore_helper_validated}" >>"${REPORT_PATH}"
-	printf '  "validated": ["pg_dump availability","pg_restore availability","backup/restore helper syntax"],\n' >>"${REPORT_PATH}"
-	printf '  "summary": "%s",\n' "$(json_escape "$(
-		if [[ "${readiness_verdict}" == "not-configured" ]]; then
-			printf 'restore readiness remained readiness-only because DATABASE_URL is placeholder or missing live credentials'
-		else
-			printf 'restore readiness validated local tooling and helper contracts only'
-		fi
-	)")" >>"${REPORT_PATH}"
-	printf '  "verdict": "%s"\n' "${readiness_verdict}" >>"${REPORT_PATH}"
-	printf '}\n' >>"${REPORT_PATH}"
+	{
+		printf '{\n'
+		printf '  "control_scope": "restore-readiness-only",\n'
+		printf '  "control_status": "readiness-only",\n'
+		printf '  "restore_drill_executed": false,\n'
+		printf '  "env_file_path": "%s",\n' "$(json_escape "${ENV_FILE_PATH}")"
+		printf '  "database_url_kind": "%s",\n' "${database_url_kind}"
+		printf '  "connectivity_checked": %s,\n' "${connectivity_checked}"
+		printf '  "dump_supplied": %s,\n' "$([[ -n "${DUMP_PATH}" ]] && printf 'true' || printf 'false')"
+		printf '  "dump_validated": %s,\n' "${dump_validated}"
+		printf '  "restore_helper_validation": "%s",\n' "${restore_helper_validated}"
+		printf '  "validated": ["pg_dump availability","pg_restore availability","backup/restore helper syntax"],\n'
+		printf '  "summary": "%s",\n' "$(json_escape "$(
+			if [[ "${readiness_verdict}" == "not-configured" ]]; then
+				printf 'restore readiness remained readiness-only because DATABASE_URL is placeholder or missing live credentials'
+			else
+				printf 'restore readiness validated local tooling and helper contracts only'
+			fi
+		)")"
+		printf '  "verdict": "%s"\n' "${readiness_verdict}"
+		printf '}\n'
+	} >"${REPORT_PATH}"
 fi
 
 if [[ "${readiness_verdict}" == "not-configured" ]]; then
