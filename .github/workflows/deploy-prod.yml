@@ -103,10 +103,6 @@ jobs:
             echo "release_tag=${{ inputs.release_tag }}"
           } >> "${GITHUB_OUTPUT}"
 
-          if [[ -n "${{ inputs.app_image_ref }}" && -z "${{ inputs.goose_image_ref }}" ]] || [[ -z "${{ inputs.app_image_ref }}" && -n "${{ inputs.goose_image_ref }}" ]]; then
-            fail "provide both app_image_ref and goose_image_ref, or leave both empty"
-          fi
-
           if [[ "${ACTION_MODE}" == "rollback" ]]; then
             [[ -n "${ROLLBACK_APP_IMAGE_REF}" ]] || fail "rollback mode requires rollback_app_image_ref"
             [[ -n "${ROLLBACK_GOOSE_IMAGE_REF}" ]] || fail "rollback mode requires rollback_goose_image_ref"
