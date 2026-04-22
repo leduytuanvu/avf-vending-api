@@ -11,3 +11,11 @@ paths = [
   '''^deployments/staging/emqx/default_api_key\.conf\.example$''',
   '''^deployments/.*/emqx/certs/README\.md$'''
 ]
+
+[[allowlists]]
+description = "Intentional local development stack credentials"
+paths = [
+  '''^deployments/docker/docker-compose\.yml$''',
+  '''^deployments/docker/postgres-init/01-init\.sql$''',
+  '''^deployments/docker/README\.md$'''
+]

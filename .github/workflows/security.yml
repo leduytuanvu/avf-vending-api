@@ -91,7 +91,7 @@ jobs:
           set -Eeuo pipefail
           mkdir -p security-reports
           go install github.com/zricethezav/gitleaks/v8@v8.24.2
-          "$(go env GOPATH)/bin/gitleaks" detect \
+          "$(go env GOPATH)/bin/gitleaks" dir \
             --source . \
             --config .gitleaks.toml \
             --report-format sarif \
@@ -123,13 +123,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p security-reports
-          docker run --rm \
-            -v "${PWD}:/workdir" \
-            -w /workdir \
-            aquasec/trivy:0.57.1 \
-            config \
-            --config trivy.yaml \
-            --ignorefile .trivyignore \
+          : > security-reports/trivy-config.txt
+          for target in \
             deployments/prod/app-node \
             deployments/prod/data-node \
             deployments/prod/shared \
@@ -138,7 +133,18 @@ jobs:
             .github/workflows/security.yml \
             .github/workflows/build-push.yml \
             .github/workflows/deploy-develop.yml \
-            .github/workflows/deploy-prod.yml | tee security-reports/trivy-config.txt
+            .github/workflows/deploy-prod.yml
+          do
+            echo "### Trivy config scan target: ${target}" | tee -a security-reports/trivy-config.txt
+            docker run --rm \
+              -v "${PWD}:/workdir" \
+              -w /workdir \
+              aquasec/trivy:0.57.1 \
+              config \
+              --config trivy.yaml \
+              --ignorefile .trivyignore \
+              "${target}" | tee -a security-reports/trivy-config.txt
+          done
 
       - name: Upload Trivy config report
         if: always()
