@@ -12,6 +12,7 @@ on:
 
 permissions:
   actions: read
+  attestations: read
   contents: read
   packages: read
 
@@ -500,16 +501,17 @@ jobs:
           python3 -c "import socket,sys; s=socket.create_connection((sys.argv[1], int(sys.argv[2])), timeout=10); s.close()" "${STAGING_HOST}" "${SSH_PORT}" || add_issue "staging host TCP reachability failed"
 
           target="${SSH_USER}@${STAGING_HOST}"
-          if ! ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "test -f '${STAGING_REMOTE_ENV_FILE}'"; then
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          if ! ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "test -f '${STAGING_REMOTE_ENV_FILE}'"; then
             add_issue "remote staging env file is missing at ${STAGING_REMOTE_ENV_FILE}"
           fi
-          if ! ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "docker info >/dev/null 2>&1"; then
+          if ! ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "docker info >/dev/null 2>&1"; then
             add_issue "docker daemon is not reachable on the staging host"
           fi
-          if ! ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "docker compose version >/dev/null 2>&1"; then
+          if ! ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "docker compose version >/dev/null 2>&1"; then
             add_issue "docker compose is not available on the staging host"
           fi
-          if ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "grep -Eq '^[A-Z0-9_]+=.*(CHANGE_ME|REPLACE_ME|example\\.com|example\\.invalid|placeholder)' '${STAGING_REMOTE_ENV_FILE}'"; then
+          if ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "grep -Eq '^[A-Z0-9_]+=.*(CHANGE_ME|REPLACE_ME|example\\.com|example\\.invalid|placeholder)' '${STAGING_REMOTE_ENV_FILE}'"; then
             add_issue "remote staging env file still contains placeholder values"
           fi
 
@@ -632,9 +634,10 @@ jobs:
           set -Eeuo pipefail
           mkdir -p deployment-evidence
           target="${SSH_USER}@${STAGING_HOST}"
-          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "mkdir -p '${STAGING_DEPLOY_ROOT}/deployments/prod' '${STAGING_DEPLOY_ROOT}/deployments/staging' '${STAGING_DEPLOY_ROOT}/migrations'"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${STAGING_DEPLOY_ROOT}/deployments/prod' '${STAGING_DEPLOY_ROOT}/deployments/staging' '${STAGING_DEPLOY_ROOT}/migrations'"
           tar -cf - deployments/staging deployments/prod/shared migrations | \
-            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "tar -xf - -C '${STAGING_DEPLOY_ROOT}'"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${STAGING_DEPLOY_ROOT}'"
 
       - name: Deploy staging stack on configured host
         id: deploy
@@ -642,7 +645,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${STAGING_HOST}"
-          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
             "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && APP_IMAGE_REF='${APP_IMAGE_REF}' GOOSE_IMAGE_REF='${GOOSE_IMAGE_REF}' SKIP_SMOKE='1' bash 'scripts/deploy_staging.sh'"
 
       - name: Verify staging health
@@ -651,7 +655,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${STAGING_HOST}"
-          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
             "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && bash 'scripts/healthcheck_staging.sh'"
 
       - name: Run staging smoke checks
@@ -660,7 +665,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${STAGING_HOST}"
-          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
             "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && bash 'scripts/smoke_staging.sh'"
 
       - name: Write staging deployment verdict

@@ -27,6 +27,7 @@ concurrency:
 
 permissions:
   actions: read
+  attestations: read
   contents: read
   packages: read
   security-events: write

@@ -56,6 +56,7 @@ concurrency:
 
 permissions:
   actions: read
+  attestations: read
   contents: read
   id-token: write
   packages: read
@@ -97,8 +98,10 @@ jobs:
           fi
 
           [[ "${ACTION_MODE}" == "deploy" || "${ACTION_MODE}" == "rollback" ]] || fail "action_mode must be 'deploy' or 'rollback'"
-          echo "action_mode=${ACTION_MODE}" >> "${GITHUB_OUTPUT}"
-          echo "release_tag=${{ inputs.release_tag }}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "action_mode=${ACTION_MODE}"
+            echo "release_tag=${{ inputs.release_tag }}"
+          } >> "${GITHUB_OUTPUT}"
 
           if [[ -n "${{ inputs.app_image_ref }}" && -z "${{ inputs.goose_image_ref }}" ]] || [[ -z "${{ inputs.app_image_ref }}" && -n "${{ inputs.goose_image_ref }}" ]]; then
             fail "provide both app_image_ref and goose_image_ref, or leave both empty"
@@ -114,10 +117,12 @@ jobs:
             [[ -z "${BUILD_RUN_ID}" ]] || fail "build_run_id must be empty in rollback mode"
             [[ -z "${{ inputs.app_image_ref }}" && -z "${{ inputs.goose_image_ref }}" ]] || fail "app_image_ref and goose_image_ref confirmation inputs are not used in rollback mode"
             [[ -z "${{ inputs.source_commit_sha }}" ]] || fail "source_commit_sha confirmation is not used in rollback mode"
-            echo "build_actor=" >> "${GITHUB_OUTPUT}"
-            echo "source_commit_sha=" >> "${GITHUB_OUTPUT}"
-            echo "source_branch=" >> "${GITHUB_OUTPUT}"
-            echo "workflow_run_id=" >> "${GITHUB_OUTPUT}"
+            {
+              echo "build_actor="
+              echo "source_commit_sha="
+              echo "source_branch="
+              echo "workflow_run_id="
+            } >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
@@ -154,10 +159,12 @@ jobs:
           [[ -n "${promotion_manifest_artifact_id}" ]] || fail "selected build run is missing the promotion-manifest artifact"
 
           workflow_run_id="${BUILD_RUN_ID}"
-          echo "build_actor=${build_actor}" >> "${GITHUB_OUTPUT}"
-          echo "workflow_run_id=${workflow_run_id}" >> "${GITHUB_OUTPUT}"
-          echo "source_commit_sha=${source_commit_sha}" >> "${GITHUB_OUTPUT}"
-          echo "source_branch=${source_branch}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "build_actor=${build_actor}"
+            echo "workflow_run_id=${workflow_run_id}"
+            echo "source_commit_sha=${source_commit_sha}"
+            echo "source_branch=${source_branch}"
+          } >> "${GITHUB_OUTPUT}"
 
   resolve-previous-production-deployment:
     name: Resolve Previous Production Deployment
@@ -184,22 +191,24 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          for key in \
-            previous_action_mode \
-            previous_actor \
-            previous_app_digest \
-            previous_app_image_ref \
-            previous_deployed_at_utc \
-            previous_goose_digest \
-            previous_goose_image_ref \
-            previous_run_id \
-            previous_run_number \
-            previous_run_url \
-            previous_source_branch \
-            previous_source_commit_sha
-          do
-            echo "${key}=" >> "${GITHUB_OUTPUT}"
-          done
+          {
+            for key in \
+              previous_action_mode \
+              previous_actor \
+              previous_app_digest \
+              previous_app_image_ref \
+              previous_deployed_at_utc \
+              previous_goose_digest \
+              previous_goose_image_ref \
+              previous_run_id \
+              previous_run_number \
+              previous_run_url \
+              previous_source_branch \
+              previous_source_commit_sha
+            do
+              echo "${key}="
+            done
+          } >> "${GITHUB_OUTPUT}"
 
           previous_run="$(
             gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy-prod.yml/runs?event=workflow_dispatch&status=completed&per_page=20" \
@@ -209,9 +218,11 @@ jobs:
           [[ -n "${previous_run}" ]] || exit 0
 
           IFS=$'\t' read -r previous_run_id previous_run_number previous_run_url <<< "${previous_run}"
-          echo "previous_run_id=${previous_run_id}" >> "${GITHUB_OUTPUT}"
-          echo "previous_run_number=${previous_run_number}" >> "${GITHUB_OUTPUT}"
-          echo "previous_run_url=${previous_run_url}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "previous_run_id=${previous_run_id}"
+            echo "previous_run_number=${previous_run_number}"
+            echo "previous_run_url=${previous_run_url}"
+          } >> "${GITHUB_OUTPUT}"
 
           artifact_id="$(
             gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${previous_run_id}/artifacts" \
@@ -1127,18 +1138,20 @@ jobs:
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${APP_NODE_A_HOST}"
-          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
           tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md | \
-            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
 
       - name: Sync app-node assets to node B
         shell: bash
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${APP_NODE_B_HOST}"
-          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
           tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md | \
-            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
 
       - name: Sync data-node fallback assets
         if: env.DEPLOY_DATA_NODE == 'true'
@@ -1146,9 +1159,10 @@ jobs:
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${DATA_NODE_HOST}"
-          ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
           tar -cf - deployments/prod/data-node deployments/prod/shared deployments/prod/emqx deployments/prod/README.md | \
-            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
 
       - name: Mark production release start
         if: env.ACTION_MODE == 'deploy'
@@ -1249,8 +1263,10 @@ jobs:
           rollback_attempted="false"
 
           if [[ ! -f deployment-evidence/release-started ]]; then
-            echo "rollback_attempted=false" >> "$GITHUB_OUTPUT"
-            echo "rollback_result=not-started" >> "$GITHUB_OUTPUT"
+            {
+              echo "rollback_attempted=false"
+              echo "rollback_result=not-started"
+            } >> "$GITHUB_OUTPUT"
             printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because release never started"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
             exit 0
@@ -1268,8 +1284,10 @@ jobs:
           fi
 
           if [[ "${app_nodes_need_rollback}" == "true" && ( -z "${PREVIOUS_APP_IMAGE_REF}" || -z "${PREVIOUS_GOOSE_IMAGE_REF}" ) ]]; then
-            echo "rollback_attempted=false" >> "$GITHUB_OUTPUT"
-            echo "rollback_result=no-previous-release" >> "$GITHUB_OUTPUT"
+            {
+              echo "rollback_attempted=false"
+              echo "rollback_result=no-previous-release"
+            } >> "$GITHUB_OUTPUT"
             printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"fail","detail":"automatic rollback unavailable because no previous successful production image refs were recorded"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
             echo "error: release failed after start, but no previous successful production image refs are available for rollback" >&2
@@ -1279,11 +1297,13 @@ jobs:
           rollback_app_node() {
             local host="$1"
             local target="${SSH_USER}@${host}"
-            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
               "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' bash 'scripts/rollback_app_node.sh' '${PREVIOUS_APP_IMAGE_REF}' '${PREVIOUS_GOOSE_IMAGE_REF}'"
-            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
               "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' bash 'scripts/healthcheck_app_node.sh'"
           }
+
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
 
           if [[ "${app_nodes_need_rollback}" == "true" ]]; then
             rollback_attempted="true"
@@ -1296,7 +1316,7 @@ jobs:
           if [[ "${DEPLOY_DATA_NODE}" == "true" && -n "${DATA_NODE_DEPLOY_OUTCOME}" && "${DATA_NODE_DEPLOY_OUTCOME}" != "skipped" ]]; then
             rollback_attempted="true"
             target="${SSH_USER}@${DATA_NODE_HOST}"
-            ssh ${SSH_OPTS} -p "${SSH_PORT}" "${target}" \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
               "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node' && bash 'scripts/rollback_data_node.sh'"
             printf '{"ts":"%s","component":"data-node","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for data-node"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
