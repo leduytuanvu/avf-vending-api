@@ -13,7 +13,7 @@ type AnalyticsConfig struct {
 	// ClickHouseEnabled turns on HTTP client wiring and Ping at worker startup when the worker process loads config.
 	ClickHouseEnabled bool
 	// ClickHouseHTTPURL is a ClickHouse HTTP endpoint including database path, e.g.
-	// http://avf:avf@localhost:8123/avf (database name is the first path segment).
+	// http://localhost:8123/avf (optionally include userinfo when your deployment requires auth).
 	ClickHouseHTTPURL string
 	// MirrorOutboxPublished schedules one JSONEachRow insert per successfully marked outbox publish (async, bounded).
 	MirrorOutboxPublished bool

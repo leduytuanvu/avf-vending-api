@@ -90,11 +90,11 @@ go run ./cmd/cli -validate-config
 With `DATABASE_URL` set (PowerShell example):
 
 ```powershell
-$env:DATABASE_URL = "postgres://postgres:postgres@localhost:5432/avf_vending?sslmode=disable"
+$env:DATABASE_URL = "postgres://localhost:5432/avf_vending?sslmode=disable"
 make migrate-up
 ```
 
-On Unix shells, `make migrate-up` passes `${DATABASE_URL}` to goose; ensure the variable is exported first.
+Use your local database credentials in `DATABASE_URL` as needed. On Unix shells, `make migrate-up` passes `${DATABASE_URL}` to goose; ensure the variable is exported first.
 
 ## Build and test
 

@@ -1,11 +1,22 @@
 # One-shot migrations: goose CLI on Alpine (matches prod migrate service).
 ARG GO_VERSION=1.25.9
+ARG GOOSE_VERSION=v3.27.0
+ARG PGX_VERSION=v5.9.0
+ARG GRPC_VERSION=v1.79.3
 
 FROM golang:${GO_VERSION}-alpine AS build
+ARG GOOSE_VERSION
+ARG PGX_VERSION
+ARG GRPC_VERSION
+WORKDIR /src
 RUN apk add --no-cache git \
-    && go install github.com/pressly/goose/v3/cmd/goose@v3.27.0
+    && git clone --branch "${GOOSE_VERSION}" --depth 1 https://github.com/pressly/goose.git . \
+    && go mod edit -require=github.com/jackc/pgx/v5@"${PGX_VERSION}" \
+    && go mod edit -require=google.golang.org/grpc@"${GRPC_VERSION}" \
+    && go mod tidy \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/goose ./cmd/goose
 
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates
-COPY --from=build /go/bin/goose /usr/local/bin/goose
+COPY --from=build /out/goose /usr/local/bin/goose
 ENTRYPOINT ["/usr/local/bin/goose"]

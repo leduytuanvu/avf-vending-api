@@ -18,7 +18,7 @@ type Client interface {
 type Config struct {
 	Enabled bool
 	// HTTPEndpoint is a ClickHouse HTTP URL including the database path segment, e.g.
-	// http://avf:avf@localhost:8123/avf
+	// http://localhost:8123/avf (optionally include userinfo when auth is enabled).
 	HTTPEndpoint string
 }
 
