@@ -20,14 +20,14 @@ type ResolveSaleLineInput struct {
 
 // ResolvedSaleLine is authoritative slot identity and pricing from the published assortment + current slot config.
 type ResolvedSaleLine struct {
-	SlotConfigID uuid.UUID
-	CabinetCode  string
-	SlotCode     string
-	SlotIndex    int32
-	PriceMinor   int64
+	SlotConfigID  uuid.UUID
+	CabinetCode   string
+	SlotCode      string
+	SlotIndex     int32
+	PriceMinor    int64
 	SubtotalMinor int64
-	TaxMinor     int64
-	TotalMinor   int64
+	TaxMinor      int64
+	TotalMinor    int64
 }
 
 // SaleLineResolver loads slot config rows and enforces published-assortment membership for the product.

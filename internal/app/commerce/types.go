@@ -19,9 +19,9 @@ type CreateOrderInput struct {
 	SlotIndex *int32
 	Currency  string
 	// SubtotalMinor, TaxMinor, TotalMinor are deprecated and must be zero (pricing is server-authoritative).
-	SubtotalMinor int64
-	TaxMinor      int64
-	TotalMinor    int64
+	SubtotalMinor  int64
+	TaxMinor       int64
+	TotalMinor     int64
 	IdempotencyKey string
 }
 

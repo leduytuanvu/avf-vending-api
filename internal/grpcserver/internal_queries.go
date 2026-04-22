@@ -314,17 +314,17 @@ func mapConfiguredSlotSummary(v setupapp.CabinetSlotConfigView) *avfv1.MachineCo
 		slotIndex = wrapperspb.Int32(*v.SlotIndex)
 	}
 	return &avfv1.MachineConfiguredSlotSummary{
-		ConfigId:           v.ConfigID.String(),
-		CabinetCode:        v.CabinetCode,
-		SlotCode:           v.SlotCode,
-		SlotIndex:          slotIndex,
-		ProductId:          productID,
-		ProductSku:         v.ProductSKU,
-		ProductName:        v.ProductName,
-		MaxQuantity:        v.MaxQuantity,
-		PriceMinor:         v.PriceMinor,
-		EffectiveFrom:      timestamppb.New(v.EffectiveFrom.UTC()),
-		IsCurrent:          v.IsCurrent,
+		ConfigId:            v.ConfigID.String(),
+		CabinetCode:         v.CabinetCode,
+		SlotCode:            v.SlotCode,
+		SlotIndex:           slotIndex,
+		ProductId:           productID,
+		ProductSku:          v.ProductSKU,
+		ProductName:         v.ProductName,
+		MaxQuantity:         v.MaxQuantity,
+		PriceMinor:          v.PriceMinor,
+		EffectiveFrom:       timestamppb.New(v.EffectiveFrom.UTC()),
+		IsCurrent:           v.IsCurrent,
 		MachineSlotLayoutId: v.MachineSlotLayout.String(),
 	}
 }
@@ -395,14 +395,14 @@ func mapCommerceVend(v domaincommerce.VendSession) *avfv1.CommerceVendSummary {
 		finalCommandAttemptID = wrapperspb.String(v.FinalCommandAttemptID.String())
 	}
 	return &avfv1.CommerceVendSummary{
-		Id:                   v.ID.String(),
-		OrderId:              v.OrderID.String(),
-		MachineId:            v.MachineID.String(),
-		SlotIndex:            v.SlotIndex,
-		ProductId:            v.ProductID.String(),
-		State:                v.State,
+		Id:                    v.ID.String(),
+		OrderId:               v.OrderID.String(),
+		MachineId:             v.MachineID.String(),
+		SlotIndex:             v.SlotIndex,
+		ProductId:             v.ProductID.String(),
+		State:                 v.State,
 		FinalCommandAttemptId: finalCommandAttemptID,
-		CreatedAt:            timestamppb.New(v.CreatedAt.UTC()),
+		CreatedAt:             timestamppb.New(v.CreatedAt.UTC()),
 	}
 }
 

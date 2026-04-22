@@ -77,7 +77,7 @@ jobs:
           set -Eeuo pipefail
           # The repo still keeps the non-production deployment assets under deployments/staging/.
           # For develop we only validate/package against those assets; we do not SSH deploy anywhere.
-          docker compose --env-file deployments/staging/.env.staging.example -f deployments/staging/docker-compose.staging.yml config >/dev/null
+          STAGING_ENV_FILE=.env.staging.example docker compose --env-file deployments/staging/.env.staging.example -f deployments/staging/docker-compose.staging.yml config >/dev/null
           bash -n deployments/prod/shared/scripts/smoke_http.sh
           bash -n deployments/staging/scripts/deploy_staging.sh
           bash -n deployments/staging/scripts/healthcheck_staging.sh
