@@ -200,7 +200,7 @@ jobs:
           mkdir -p nightly-reports
           BACKUP_MANAGED_POSTGRES_REPORT_PATH="nightly-reports/backup-readiness.json" \
           APP_NODE_ENV_FILE_PATH="deployments/prod/app-node/.env.app-node.example" \
-          bash deployments/prod/shared/scripts/backup_managed_postgres.sh nightly-reports/managed-postgres-readiness.dump validate | tee nightly-reports/backup-readiness.txt
+          bash deployments/prod/shared/scripts/backup_managed_postgres.sh validate | tee nightly-reports/backup-readiness.txt
 
       - name: Run non-destructive restore readiness-only check
         shell: bash
@@ -385,6 +385,7 @@ jobs:
           restore_step_outcome = os.environ.get("DRILL_RESTORE_OUTCOME", "skipped")
           source_identifier = os.environ.get("SOURCE_IDENTIFIER", "")
           target_identifier = os.environ.get("TARGET_IDENTIFIER", "")
+          backup_execution_verdict = "not-configured" if not configured else ("pass" if backup_step_outcome == "success" and drill_backup else ("fail" if backup_step_outcome in ("failure", "cancelled") else "not-run"))
 
           if existing_verdict is not None:
               verdict = existing_verdict
@@ -430,6 +431,7 @@ jobs:
               "summary": {
                   "managed_service_readiness_verdict": (managed or {}).get("verdict", "missing"),
                   "backup_readiness_verdict": (backup_readiness or {}).get("verdict", "missing"),
+                  "backup_execution_verdict": backup_execution_verdict,
                   "restore_readiness_verdict": (restore_readiness or {}).get("verdict", "missing"),
                   "restore_drill_verdict": verdict["verdict"],
                   "restore_drill_executed": verdict["verdict"] in ("pass", "fail"),
@@ -451,9 +453,9 @@ jobs:
                   "report": contract,
               },
               "restore_drill_execution": {
-                  "backup_report_path": "nightly-reports/restore-drill-backup.json",
+                  "backup_report_path": "nightly-reports/restore-drill-backup.json" if drill_backup else "",
                   "backup_report": drill_backup,
-                  "restore_report_path": "nightly-reports/restore-drill-restore.json",
+                  "restore_report_path": "nightly-reports/restore-drill-restore.json" if drill_restore else "",
                   "restore_report": drill_restore,
                   "verdict_report_path": "nightly-reports/restore-drill-verdict.json",
                   "verdict_report": verdict,
@@ -475,15 +477,28 @@ jobs:
             drill_status_line="actual restore drill executed or attempted but failed; control remains unmet"
           fi
 
+          if [[ "${DRILL_CONFIGURED}" != "true" ]]; then
+            backup_execution_line="actual backup execution not run because the restore drill is not configured"
+          elif [[ "${BACKUP_STEP_OUTCOME}" == "success" ]]; then
+            backup_execution_line="actual backup execution completed and produced a restore-drill backup artifact"
+          elif [[ "${BACKUP_STEP_OUTCOME}" == "failure" || "${BACKUP_STEP_OUTCOME}" == "cancelled" ]]; then
+            backup_execution_line="actual backup execution was attempted but did not complete successfully"
+          else
+            backup_execution_line="actual backup execution did not run"
+          fi
+
           {
             echo "### Managed service readiness"
             echo "- report only: runtime dependency contract and reachability checks"
             echo "- verdict: \`$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/managed-services-readiness.json').read_text(encoding='utf-8'))['verdict'])")\`"
             echo "### Backup readiness"
-            echo "- report only: backup tooling and source contract checks"
+            echo "- report only: backup tooling and source contract checks; no backup artifact is created in this section"
             echo "- verdict: \`$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/backup-readiness.json').read_text(encoding='utf-8'))['verdict'])")\`"
+            echo "### Backup execution"
+            echo "- conclusion: \`${backup_execution_line}\`"
+            echo "- step outcome: \`${BACKUP_STEP_OUTCOME}\`"
             echo "### Restore readiness"
-            echo "- report only: restore tooling and dump contract checks"
+            echo "- report only: restore tooling and dump contract checks; no restore is executed in this section"
             echo "- verdict: \`$(python3 -c "import json; from pathlib import Path; print(json.loads(Path('nightly-reports/restore-readiness.json').read_text(encoding='utf-8'))['verdict'])")\`"
             echo "### Restore drill execution"
             echo "- verdict: \`${verdict}\`"

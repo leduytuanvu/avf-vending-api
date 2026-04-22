@@ -58,6 +58,248 @@ jobs:
     secrets:
       gh_api_token: ${{ secrets.GITHUB_TOKEN }}
 
+  validate-staging-security-verdict:
+    name: Validate Staging Security Verdict
+    if: |
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'develop'
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-build-run-id
+      - resolve-image-refs
+    outputs:
+      security_verdict_age_seconds: ${{ steps.gate.outputs.security_verdict_age_seconds }}
+      security_verdict_max_age_hours: ${{ steps.gate.outputs.security_verdict_max_age_hours }}
+      release_gate_mode: ${{ steps.gate.outputs.release_gate_mode }}
+      release_gate_verdict: ${{ steps.gate.outputs.release_gate_verdict }}
+      repo_release_verdict: ${{ steps.gate.outputs.repo_release_verdict }}
+      provenance_release_verdict: ${{ steps.gate.outputs.provenance_release_verdict }}
+      security_workflow_run_id: ${{ steps.gate.outputs.security_workflow_run_id }}
+      security_verdict_generated_at_utc: ${{ steps.gate.outputs.security_verdict_generated_at_utc }}
+    steps:
+      - name: Resolve matching staging security verdict
+        id: gate
+        shell: bash
+        env:
+          EXPECTED_APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          EXPECTED_BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
+          EXPECTED_GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+          EXPECTED_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha }}
+          EXPECTED_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
+          GH_TOKEN: ${{ github.token }}
+          SECURITY_VERDICT_MAX_AGE_HOURS: ${{ secrets.STAGING_SECURITY_VERDICT_MAX_AGE_HOURS || vars.STAGING_SECURITY_VERDICT_MAX_AGE_HOURS || secrets.SECURITY_VERDICT_MAX_AGE_HOURS || vars.SECURITY_VERDICT_MAX_AGE_HOURS || '72' }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-gate
+
+          {
+            echo "## Staging Security Gate"
+            echo "- source of truth: \`security-verdict\` artifact from \`security.yml\`"
+            echo "- scope: \`full workflow_run release gate: matched push repo checks plus published-image and provenance evidence; runtime staging checks are separate\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          fail() {
+            echo "error: $*" >&2
+            echo "- result: \`fail\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- reason: $*" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
+
+          [[ "${SECURITY_VERDICT_MAX_AGE_HOURS}" =~ ^[0-9]+$ ]] || fail "SECURITY_VERDICT_MAX_AGE_HOURS must be numeric"
+          [[ -n "${EXPECTED_BUILD_RUN_ID}" ]] || fail "missing expected build run id for staging security gate"
+          [[ -n "${EXPECTED_APP_IMAGE_REF}" ]] || fail "missing expected app image ref for staging security gate"
+          [[ -n "${EXPECTED_GOOSE_IMAGE_REF}" ]] || fail "missing expected goose image ref for staging security gate"
+          [[ -n "${EXPECTED_SOURCE_SHA}" ]] || fail "missing expected source SHA for staging security gate"
+
+          matched_run_id=""
+          matched_generated_at=""
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            candidate_runs="$(
+              gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs?event=workflow_run&status=completed&per_page=100" \
+                --jq '.workflow_runs[]? | [.id, (.conclusion // "")] | @tsv'
+            )"
+
+            if [[ -n "${candidate_runs}" ]]; then
+              while IFS=$'\t' read -r run_id run_conclusion; do
+                [[ -n "${run_id}" ]] || continue
+
+                artifact_id="$(
+                  gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts" \
+                    --jq '[.artifacts[]? | select(.name == "security-verdict") | .id] | .[0] // empty'
+                )"
+                [[ -n "${artifact_id}" ]] || continue
+
+                extract_dir="security-gate/run-${run_id}"
+                rm -rf "${extract_dir}"
+                mkdir -p "${extract_dir}"
+                if ! gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > "${extract_dir}/security-verdict.zip"; then
+                  continue
+                fi
+                python3 -m zipfile -e "${extract_dir}/security-verdict.zip" "${extract_dir}"
+                verdict_file="${extract_dir}/security-verdict.json"
+                [[ -f "${verdict_file}" ]] || fail "security-verdict artifact from run ${run_id} is missing security-verdict.json"
+
+                verdict_check_script="${extract_dir}/validate-staging-security-verdict.py"
+                printf '%s\n' \
+                  'import json' \
+                  'import sys' \
+                  'from datetime import datetime, timezone' \
+                  'from pathlib import Path' \
+                  '' \
+                  'verdict_path = Path(sys.argv[1])' \
+                  'expected_build_run_id = sys.argv[2]' \
+                  'expected_source_sha = sys.argv[3]' \
+                  'expected_source_workflow_name = sys.argv[4]' \
+                  'run_id = sys.argv[5]' \
+                  'run_conclusion = sys.argv[6]' \
+                  'expected_app_image_ref = sys.argv[7]' \
+                  'expected_goose_image_ref = sys.argv[8]' \
+                  'max_age_hours = int(sys.argv[9])' \
+                  '' \
+                  'payload = json.loads(verdict_path.read_text(encoding="utf-8"))' \
+                  'required_keys = ("schema_version", "event_name", "verdict", "source_build_run_id", "source_sha", "workflow_run_id", "generated_at_utc", "published_images", "release_gate_verdict", "release_gate_mode", "release_gate", "repo_level_checks", "image_level_checks", "provenance_release_checks")' \
+                  'missing = [key for key in required_keys if key not in payload]' \
+                  'if missing:' \
+                  '    print(f"reason=security-verdict.json is missing required keys: {missing}")' \
+                  '    raise SystemExit(3)' \
+                  'if payload.get("schema_version") != "v1":' \
+                  '    print("reason=security-verdict schema_version is unsupported")' \
+                  '    raise SystemExit(3)' \
+                  'if payload.get("event_name") != "workflow_run":' \
+                  '    print(f"reason=staging release gate requires workflow_run security evidence, found event_name={payload.get(\"event_name\", \"\")}")' \
+                  '    raise SystemExit(4)' \
+                  'if str(payload.get("workflow_run_id", "")) != run_id:' \
+                  '    print("reason=security-verdict workflow_run_id does not match the artifact owner run")' \
+                  '    raise SystemExit(3)' \
+                  'if str(payload.get("source_build_run_id", "")) != expected_build_run_id:' \
+                  '    raise SystemExit(2)' \
+                  'if payload.get("source_sha", "") != expected_source_sha:' \
+                  '    print("reason=matching security verdict has a different source SHA than the selected build")' \
+                  '    raise SystemExit(4)' \
+                  'source_workflow_name = payload.get("source_workflow_name", "")' \
+                  'if expected_source_workflow_name and source_workflow_name and source_workflow_name != expected_source_workflow_name:' \
+                  '    print("reason=matching security verdict has a different source workflow linkage than the selected build")' \
+                  '    raise SystemExit(4)' \
+                  'published_images = payload.get("published_images") or {}' \
+                  'if not isinstance(published_images, dict):' \
+                  '    print("reason=security-verdict published_images payload is malformed")' \
+                  '    raise SystemExit(3)' \
+                  'if payload.get("release_gate_mode", "") != "full-security-release-gate":' \
+                  '    print(f"reason=staging release gate requires full-security-release-gate mode, found {payload.get(\"release_gate_mode\", \"\")}")' \
+                  '    raise SystemExit(4)' \
+                  'if payload.get("release_gate_verdict", "") != "pass":' \
+                  '    print("reason=staging release gate is {} with required_evidence={}".format(payload.get("release_gate_verdict"), (payload.get("release_gate") or {}).get("required_evidence", {})))' \
+                  '    raise SystemExit(5)' \
+                  'repo_release_verdict = (((payload.get("repo_level_checks") or {}).get("release_evidence") or {}).get("required_for_release_verdict", ""))' \
+                  'if repo_release_verdict != "pass":' \
+                  '    print(f"reason=staging release gate is missing passing repo-level release evidence: {repo_release_verdict}")' \
+                  '    raise SystemExit(5)' \
+                  'image_release_verdict = ((payload.get("image_level_checks") or {}).get("required_for_release_verdict", ""))' \
+                  'if image_release_verdict != "pass":' \
+                  '    print(f"reason=staging release gate image-level evidence is not pass: {image_release_verdict}")' \
+                  '    raise SystemExit(5)' \
+                  'provenance_release_verdict = ((payload.get("provenance_release_checks") or {}).get("required_for_release_verdict", ""))' \
+                  'if provenance_release_verdict != "pass":' \
+                  '    print(f"reason=staging release gate provenance evidence is not pass: {provenance_release_verdict}")' \
+                  '    raise SystemExit(5)' \
+                  'if published_images.get("app_image_ref", "") != expected_app_image_ref:' \
+                  '    print("reason=matching security verdict app image ref does not match the selected immutable artifact")' \
+                  '    raise SystemExit(4)' \
+                  'if published_images.get("goose_image_ref", "") != expected_goose_image_ref:' \
+                  '    print("reason=matching security verdict goose image ref does not match the selected immutable artifact")' \
+                  '    raise SystemExit(4)' \
+                  'generated_at_raw = payload.get("generated_at_utc", "")' \
+                  'try:' \
+                  '    generated_at = datetime.strptime(generated_at_raw, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)' \
+                  'except ValueError:' \
+                  '    print(f"reason=security-verdict generated_at_utc is malformed: {generated_at_raw}")' \
+                  '    raise SystemExit(3)' \
+                  'age_seconds = int((datetime.now(timezone.utc) - generated_at).total_seconds())' \
+                  'if age_seconds < 0 or age_seconds > max_age_hours * 3600:' \
+                  '    print(f"reason=matching security verdict is stale for staging release hygiene ({age_seconds}s old, max {max_age_hours}h); rerun security.yml for this build or set STAGING_SECURITY_VERDICT_MAX_AGE_HOURS / SECURITY_VERDICT_MAX_AGE_HOURS to an explicitly approved override")' \
+                  '    raise SystemExit(6)' \
+                  'if run_conclusion != "success":' \
+                  '    print(f"reason=matching security workflow run conclusion is {run_conclusion}")' \
+                  '    raise SystemExit(5)' \
+                  'print("release_gate_mode={}".format(payload.get("release_gate_mode", "")))' \
+                  'print("release_gate_verdict={}".format(payload.get("release_gate_verdict", "")))' \
+                  'print(f"repo_release_verdict={repo_release_verdict}")' \
+                  'print(f"provenance_release_verdict={provenance_release_verdict}")' \
+                  'print(f"security_verdict_age_seconds={age_seconds}")' \
+                  'print(f"security_workflow_run_id={run_id}")' \
+                  'print(f"security_verdict_generated_at_utc={generated_at_raw}")' \
+                  'raise SystemExit(0)' \
+                  > "${verdict_check_script}"
+
+                set +e
+                python3 "${verdict_check_script}" "${verdict_file}" "${EXPECTED_BUILD_RUN_ID}" "${EXPECTED_SOURCE_SHA}" "${EXPECTED_SOURCE_WORKFLOW_NAME}" "${run_id}" "${run_conclusion}" "${EXPECTED_APP_IMAGE_REF}" "${EXPECTED_GOOSE_IMAGE_REF}" "${SECURITY_VERDICT_MAX_AGE_HOURS}" > "${extract_dir}/verdict-check.txt"
+                check_rc=$?
+                set -e
+                verdict_check="$(python3 -c 'import pathlib,sys; print(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"), end="")' "${extract_dir}/verdict-check.txt")"
+
+                case "${check_rc}" in
+                  0)
+                    while IFS='=' read -r key value; do
+                      case "${key}" in
+                        security_verdict_age_seconds) security_verdict_age_seconds="${value}" ;;
+                        release_gate_mode) release_gate_mode="${value}" ;;
+                        release_gate_verdict) release_gate_verdict="${value}" ;;
+                        repo_release_verdict) repo_release_verdict="${value}" ;;
+                        provenance_release_verdict) provenance_release_verdict="${value}" ;;
+                        security_workflow_run_id) matched_run_id="${value}" ;;
+                        security_verdict_generated_at_utc) matched_generated_at="${value}" ;;
+                      esac
+                    done <<< "${verdict_check}"
+                    break
+                    ;;
+                  2)
+                    continue
+                    ;;
+                  3 | 4 | 5 | 6)
+                    reason="$(printf '%s\n' "${verdict_check}" | python3 -c 'import sys; lines=[line.strip() for line in sys.stdin if line.strip()]; print(next((line.split("=",1)[1] for line in lines if line.startswith("reason=")), "matching security verdict is malformed or failed"))')"
+                    fail "${reason}"
+                    ;;
+                  *)
+                    fail "unexpected error while validating security-verdict artifact from run ${run_id}"
+                    ;;
+                esac
+              done <<< "${candidate_runs}"
+            fi
+
+            [[ -n "${matched_run_id}" ]] && break
+            if [[ "${attempt}" -lt 12 ]]; then
+              echo "- waiting for matching security-verdict artifact (\`${attempt}/12\`)" >> "$GITHUB_STEP_SUMMARY"
+              sleep 15
+            fi
+          done
+
+          [[ -n "${matched_run_id}" ]] || fail "no matching security-verdict artifact found for build run ${EXPECTED_BUILD_RUN_ID} and SHA ${EXPECTED_SOURCE_SHA}"
+
+          {
+            echo "security_verdict_age_seconds=${security_verdict_age_seconds}"
+            echo "security_verdict_max_age_hours=${SECURITY_VERDICT_MAX_AGE_HOURS}"
+            echo "release_gate_mode=${release_gate_mode}"
+            echo "release_gate_verdict=${release_gate_verdict}"
+            echo "repo_release_verdict=${repo_release_verdict}"
+            echo "provenance_release_verdict=${provenance_release_verdict}"
+            echo "security_workflow_run_id=${matched_run_id}"
+            echo "security_verdict_generated_at_utc=${matched_generated_at}"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "- result: \`pass\`"
+            echo "- matched security workflow run: \`${matched_run_id}\`"
+            echo "- freshness window: \`${SECURITY_VERDICT_MAX_AGE_HOURS}h\`"
+            echo "- verdict age at evaluation: \`${security_verdict_age_seconds}s\`"
+            echo "- release gate mode: \`${release_gate_mode}\`"
+            echo "- release gate verdict: \`${release_gate_verdict}\`"
+            echo "- repo release verdict: \`${repo_release_verdict}\`"
+            echo "- provenance release verdict: \`${provenance_release_verdict}\`"
+            echo "- verdict generated at (UTC): \`${matched_generated_at}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   validate-staging-prerequisites:
     name: Validate Staging Deployment Contract
     if: |
@@ -69,8 +311,16 @@ jobs:
     needs:
       - resolve-build-run-id
       - resolve-image-refs
+      - validate-staging-security-verdict
     outputs:
+      release_gate_mode: ${{ steps.contract.outputs.release_gate_mode }}
+      release_gate_verdict: ${{ steps.contract.outputs.release_gate_verdict }}
+      repo_release_verdict: ${{ steps.contract.outputs.repo_release_verdict }}
       ssh_port: ${{ steps.contract.outputs.ssh_port }}
+      security_verdict_age_seconds: ${{ steps.contract.outputs.security_verdict_age_seconds }}
+      security_verdict_generated_at_utc: ${{ steps.contract.outputs.security_verdict_generated_at_utc }}
+      security_verdict_max_age_hours: ${{ steps.contract.outputs.security_verdict_max_age_hours }}
+      security_workflow_run_id: ${{ steps.contract.outputs.security_workflow_run_id }}
       ssh_user: ${{ steps.contract.outputs.ssh_user }}
       staging_deploy_root: ${{ steps.contract.outputs.staging_deploy_root }}
       staging_host: ${{ steps.contract.outputs.staging_host }}
@@ -83,6 +333,14 @@ jobs:
           APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
           GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
           PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
+          RELEASE_GATE_MODE: ${{ needs.validate-staging-security-verdict.outputs.release_gate_mode }}
+          RELEASE_GATE_VERDICT: ${{ needs.validate-staging-security-verdict.outputs.release_gate_verdict }}
+          REPO_RELEASE_VERDICT: ${{ needs.validate-staging-security-verdict.outputs.repo_release_verdict }}
+          PROVENANCE_RELEASE_VERDICT: ${{ needs.validate-staging-security-verdict.outputs.provenance_release_verdict }}
+          SECURITY_VERDICT_AGE_SECONDS: ${{ needs.validate-staging-security-verdict.outputs.security_verdict_age_seconds }}
+          SECURITY_VERDICT_GENERATED_AT_UTC: ${{ needs.validate-staging-security-verdict.outputs.security_verdict_generated_at_utc }}
+          SECURITY_VERDICT_MAX_AGE_HOURS: ${{ needs.validate-staging-security-verdict.outputs.security_verdict_max_age_hours }}
+          SECURITY_WORKFLOW_RUN_ID: ${{ needs.validate-staging-security-verdict.outputs.security_workflow_run_id }}
           SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.STAGING_SSH_KNOWN_HOSTS || secrets.PREPROD_SSH_KNOWN_HOSTS || vars.STAGING_SSH_KNOWN_HOSTS || vars.PREPROD_SSH_KNOWN_HOSTS }}
           SSH_PORT: ${{ secrets.STAGING_SSH_PORT || secrets.PREPROD_SSH_PORT || vars.STAGING_SSH_PORT || vars.PREPROD_SSH_PORT || '22' }}
           SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_KEY || secrets.STAGING_SSH_PRIVATE_KEY || secrets.PREPROD_SSH_KEY || secrets.PREPROD_SSH_PRIVATE_KEY }}
@@ -106,6 +364,10 @@ jobs:
           [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]] || add_missing "STAGING_SSH_KNOWN_HOSTS"
           [[ -n "${APP_IMAGE_REF}" && "${APP_IMAGE_REF}" == *@sha256:* ]] || add_missing "APP_IMAGE_REF"
           [[ -n "${GOOSE_IMAGE_REF}" && "${GOOSE_IMAGE_REF}" == *@sha256:* ]] || add_missing "GOOSE_IMAGE_REF"
+          [[ "${RELEASE_GATE_MODE}" == "full-security-release-gate" ]] || add_missing "RELEASE_GATE_MODE=full-security-release-gate"
+          [[ "${RELEASE_GATE_VERDICT}" == "pass" ]] || add_missing "RELEASE_GATE_VERDICT=pass"
+          [[ "${REPO_RELEASE_VERDICT}" == "pass" ]] || add_missing "REPO_RELEASE_VERDICT=pass"
+          [[ "${PROVENANCE_RELEASE_VERDICT}" == "pass" ]] || add_missing "PROVENANCE_RELEASE_VERDICT=pass"
           [[ "${PROVENANCE_VERDICT}" == "verified" ]] || add_missing "PROVENANCE_VERDICT=verified"
           [[ "${SSH_PORT}" =~ ^[0-9]+$ ]] || add_missing "STAGING_SSH_PORT"
 
@@ -132,6 +394,14 @@ jobs:
               "staging_remote_env_file": os.environ.get("STAGING_REMOTE_ENV_FILE_RESOLVED", ""),
               "app_image_ref": os.environ.get("APP_IMAGE_REF", ""),
               "goose_image_ref": os.environ.get("GOOSE_IMAGE_REF", ""),
+              "release_gate_mode": os.environ.get("RELEASE_GATE_MODE", ""),
+              "release_gate_verdict": os.environ.get("RELEASE_GATE_VERDICT", ""),
+              "repo_release_verdict": os.environ.get("REPO_RELEASE_VERDICT", ""),
+              "security_verdict_age_seconds": os.environ.get("SECURITY_VERDICT_AGE_SECONDS", ""),
+              "security_workflow_run_id": os.environ.get("SECURITY_WORKFLOW_RUN_ID", ""),
+              "security_verdict_generated_at_utc": os.environ.get("SECURITY_VERDICT_GENERATED_AT_UTC", ""),
+              "security_verdict_max_age_hours": os.environ.get("SECURITY_VERDICT_MAX_AGE_HOURS", ""),
+              "provenance_release_verdict": os.environ.get("PROVENANCE_RELEASE_VERDICT", ""),
               "provenance_verdict": os.environ.get("PROVENANCE_VERDICT", ""),
               "missing_prerequisites": missing,
           }
@@ -145,7 +415,10 @@ jobs:
             echo "- intended deploy root: \`${STAGING_DEPLOY_ROOT:-missing}\`"
             echo "- app image: \`${APP_IMAGE_REF:-missing}\`"
             echo "- goose image: \`${GOOSE_IMAGE_REF:-missing}\`"
-            echo "- provenance verdict: \`${PROVENANCE_VERDICT:-missing}\`"
+            echo "- security release gate artifact: verdict=\`${RELEASE_GATE_VERDICT:-missing}\`, mode=\`${RELEASE_GATE_MODE:-missing}\`, repo=\`${REPO_RELEASE_VERDICT:-missing}\`, workflow_run=\`${SECURITY_WORKFLOW_RUN_ID:-missing}\`"
+            echo "- security verdict generated at (UTC): \`${SECURITY_VERDICT_GENERATED_AT_UTC:-missing}\`"
+            echo "- security freshness policy: max-age=\`${SECURITY_VERDICT_MAX_AGE_HOURS:-missing}h\` / observed-age=\`${SECURITY_VERDICT_AGE_SECONDS:-missing}\`"
+            echo "- image provenance verdict: \`${PROVENANCE_VERDICT:-missing}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [[ "${#missing[@]}" -gt 0 ]]; then
@@ -165,6 +438,13 @@ jobs:
             echo "staging_host=${STAGING_HOST}"
             echo "staging_deploy_root=${STAGING_DEPLOY_ROOT}"
             echo "staging_remote_env_file=${staging_remote_env_file}"
+            echo "release_gate_mode=${RELEASE_GATE_MODE}"
+            echo "release_gate_verdict=${RELEASE_GATE_VERDICT}"
+            echo "repo_release_verdict=${REPO_RELEASE_VERDICT}"
+            echo "security_verdict_age_seconds=${SECURITY_VERDICT_AGE_SECONDS}"
+            echo "security_verdict_generated_at_utc=${SECURITY_VERDICT_GENERATED_AT_UTC}"
+            echo "security_verdict_max_age_hours=${SECURITY_VERDICT_MAX_AGE_HOURS}"
+            echo "security_workflow_run_id=${SECURITY_WORKFLOW_RUN_ID}"
             echo "ssh_port=${SSH_PORT}"
             echo "ssh_user=${SSH_USER}"
           } >> "${GITHUB_OUTPUT}"
@@ -300,6 +580,13 @@ jobs:
       APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
       GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
       PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
+      RELEASE_GATE_MODE: ${{ needs.validate-staging-prerequisites.outputs.release_gate_mode }}
+      RELEASE_GATE_VERDICT: ${{ needs.validate-staging-prerequisites.outputs.release_gate_verdict }}
+      REPO_RELEASE_VERDICT: ${{ needs.validate-staging-prerequisites.outputs.repo_release_verdict }}
+      SECURITY_VERDICT_AGE_SECONDS: ${{ needs.validate-staging-prerequisites.outputs.security_verdict_age_seconds }}
+      SECURITY_VERDICT_GENERATED_AT_UTC: ${{ needs.validate-staging-prerequisites.outputs.security_verdict_generated_at_utc }}
+      SECURITY_VERDICT_MAX_AGE_HOURS: ${{ needs.validate-staging-prerequisites.outputs.security_verdict_max_age_hours }}
+      SECURITY_WORKFLOW_RUN_ID: ${{ needs.validate-staging-prerequisites.outputs.security_workflow_run_id }}
       SOURCE_COMMIT_SHA: ${{ needs.resolve-build-run-id.outputs.source_commit_sha }}
       STAGING_DEPLOY_ROOT: ${{ needs.validate-staging-prerequisites.outputs.staging_deploy_root }}
       STAGING_HOST: ${{ needs.validate-staging-prerequisites.outputs.staging_host }}
@@ -421,6 +708,13 @@ jobs:
             "build_run_id": "${{ needs.resolve-build-run-id.outputs.workflow_run_id }}",
             "app_image_ref": "${APP_IMAGE_REF}",
             "goose_image_ref": "${GOOSE_IMAGE_REF}",
+            "release_gate_mode": "${RELEASE_GATE_MODE}",
+            "release_gate_verdict": "${RELEASE_GATE_VERDICT}",
+            "repo_release_verdict": "${REPO_RELEASE_VERDICT}",
+            "security_verdict_age_seconds": "${SECURITY_VERDICT_AGE_SECONDS}",
+            "security_workflow_run_id": "${SECURITY_WORKFLOW_RUN_ID}",
+            "security_verdict_generated_at_utc": "${SECURITY_VERDICT_GENERATED_AT_UTC}",
+            "security_verdict_max_age_hours": "${SECURITY_VERDICT_MAX_AGE_HOURS}",
             "provenance_verdict": "${PROVENANCE_VERDICT}",
             "staging_host": "${STAGING_HOST}",
             "staging_deploy_root": "${STAGING_DEPLOY_ROOT}",
@@ -443,7 +737,10 @@ jobs:
             echo "- staging deploy root: \`${STAGING_DEPLOY_ROOT}\`"
             echo "- app image: \`${APP_IMAGE_REF}\`"
             echo "- goose image: \`${GOOSE_IMAGE_REF}\`"
-            echo "- provenance verdict: \`${PROVENANCE_VERDICT}\`"
+            echo "- security release gate artifact: verdict=\`${RELEASE_GATE_VERDICT}\`, mode=\`${RELEASE_GATE_MODE}\`, repo=\`${REPO_RELEASE_VERDICT}\`, workflow_run=\`${SECURITY_WORKFLOW_RUN_ID:-n/a}\`"
+            echo "- security verdict generated at (UTC): \`${SECURITY_VERDICT_GENERATED_AT_UTC:-n/a}\`"
+            echo "- security freshness policy: max-age=\`${SECURITY_VERDICT_MAX_AGE_HOURS}h\` / observed-age=\`${SECURITY_VERDICT_AGE_SECONDS:-n/a}\`"
+            echo "- image provenance verdict: \`${PROVENANCE_VERDICT}\`"
             echo "- deploy outcome: \`${DEPLOY_OUTCOME}\`"
             echo "- healthcheck outcome: \`${HEALTHCHECK_OUTCOME}\`"
             echo "- smoke outcome: \`${SMOKE_OUTCOME}\`"

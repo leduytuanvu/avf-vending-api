@@ -457,6 +457,7 @@ jobs:
       previous_run_id: ${{ steps.context.outputs.previous_run_id }}
       previous_run_number: ${{ steps.context.outputs.previous_run_number }}
       previous_run_url: ${{ steps.context.outputs.previous_run_url }}
+      provenance_trust_class: ${{ steps.context.outputs.provenance_trust_class }}
       provenance_verdict: ${{ steps.context.outputs.provenance_verdict }}
       provenance_verification_mode: ${{ steps.context.outputs.provenance_verification_mode }}
       provenance_verification_status: ${{ steps.context.outputs.provenance_verification_status }}
@@ -466,7 +467,21 @@ jobs:
       - name: Select active deploy/auth mode
         id: context
         shell: bash
+        env:
+          RESOLVED_PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
         run: |
+          set -Eeuo pipefail
+          provenance_verdict="${RESOLVED_PROVENANCE_VERDICT}"
+          provenance_trust_class="verified-attestation"
+          provenance_verification_mode="gh-attestation-verify"
+          provenance_verification_status="${provenance_verdict}"
+
+          if [[ "${provenance_verdict}" == "accepted-manual" ]]; then
+            provenance_trust_class="manual-trust-exception"
+            provenance_verification_mode="manual-digest-trust-exception"
+            provenance_verification_status="accepted-manual-trust-exception"
+          fi
+
           {
             echo "action_mode=${{ needs.resolve-build-run-id.outputs.action_mode }}"
             echo "build_actor=${{ needs.resolve-build-run-id.outputs.build_actor }}"
@@ -483,9 +498,10 @@ jobs:
             echo "previous_run_id=${{ needs.resolve-previous-production-deployment.outputs.previous_run_id }}"
             echo "previous_run_number=${{ needs.resolve-previous-production-deployment.outputs.previous_run_number }}"
             echo "previous_run_url=${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}"
-            echo "provenance_verdict=${{ needs.resolve-image-refs.outputs.provenance_verdict }}"
-            echo "provenance_verification_mode=gh-attestation-verify"
-            echo "provenance_verification_status=${{ needs.resolve-image-refs.outputs.provenance_verdict }}"
+            echo "provenance_trust_class=${provenance_trust_class}"
+            echo "provenance_verdict=${provenance_verdict}"
+            echo "provenance_verification_mode=${provenance_verification_mode}"
+            echo "provenance_verification_status=${provenance_verification_status}"
             echo "source_branch=${{ needs.resolve-build-run-id.outputs.source_branch }}"
             echo "source_commit_sha=${{ needs.resolve-build-run-id.outputs.source_commit_sha }}"
           } >> "$GITHUB_OUTPUT"
@@ -498,6 +514,7 @@ jobs:
           VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
           MODE: ${{ steps.context.outputs.provenance_verification_mode }}
           STATUS: ${{ steps.context.outputs.provenance_verification_status }}
+          TRUST_CLASS: ${{ steps.context.outputs.provenance_trust_class }}
         run: |
           set -Eeuo pipefail
           [[ "${APP_IMAGE_REF}" == *@sha256:* ]] || { echo "error: app image ref must remain digest-pinned" >&2; exit 1; }
@@ -516,9 +533,13 @@ jobs:
             echo "- previous goose digest: \`${{ needs.resolve-previous-production-deployment.outputs.previous_goose_digest || 'unknown' }}\`"
             echo "- deploy transport: \`vps-ssh\`"
             echo "- auth mode: \`static-ssh-key\`"
-            echo "- provenance verdict: \`${VERDICT}\`"
+            echo "- image provenance verdict: \`${VERDICT}\`"
+            echo "- provenance trust class: \`${TRUST_CLASS}\`"
             echo "- provenance verification mode: \`${MODE}\`"
             echo "- provenance verification status: \`${STATUS}\`"
+            if [[ "${TRUST_CLASS}" == "manual-trust-exception" ]]; then
+              echo "- trust note: \`manual digest trust exception; attestation was not re-verified in this path\`"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   validate-production-security-verdict:
@@ -530,7 +551,12 @@ jobs:
       - validate-promotion-selection
       - validate-production-action-safety
     outputs:
-      security_verdict: ${{ steps.gate.outputs.security_verdict }}
+      security_verdict_age_seconds: ${{ steps.gate.outputs.security_verdict_age_seconds }}
+      security_verdict_max_age_hours: ${{ steps.gate.outputs.security_verdict_max_age_hours }}
+      release_gate_mode: ${{ steps.gate.outputs.release_gate_mode }}
+      release_gate_verdict: ${{ steps.gate.outputs.release_gate_verdict }}
+      repo_release_verdict: ${{ steps.gate.outputs.repo_release_verdict }}
+      provenance_release_verdict: ${{ steps.gate.outputs.provenance_release_verdict }}
       security_workflow_run_id: ${{ steps.gate.outputs.security_workflow_run_id }}
       security_verdict_generated_at_utc: ${{ steps.gate.outputs.security_verdict_generated_at_utc }}
       security_source_build_run_id: ${{ steps.gate.outputs.security_source_build_run_id }}
@@ -544,12 +570,12 @@ jobs:
           EXPECTED_APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
           EXPECTED_BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
           EXPECTED_GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
-          EXPECTED_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha || needs.resolve-build-run-id.outputs.source_commit_sha }}
+          EXPECTED_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha }}
           EXPECTED_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
           RESOLVED_ARTIFACT_BUILD_RUN_ID: ${{ needs.resolve-image-refs.outputs.artifact_build_run_id }}
           RESOLVED_ARTIFACT_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha }}
           RESOLVED_ARTIFACT_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
-          SECURITY_VERDICT_MAX_AGE_HOURS: ${{ secrets.PRODUCTION_SECURITY_VERDICT_MAX_AGE_HOURS || secrets.SECURITY_VERDICT_MAX_AGE_HOURS || vars.PRODUCTION_SECURITY_VERDICT_MAX_AGE_HOURS || vars.SECURITY_VERDICT_MAX_AGE_HOURS || '168' }}
+          SECURITY_VERDICT_MAX_AGE_HOURS: ${{ secrets.PRODUCTION_SECURITY_VERDICT_MAX_AGE_HOURS || vars.PRODUCTION_SECURITY_VERDICT_MAX_AGE_HOURS || secrets.SECURITY_VERDICT_MAX_AGE_HOURS || vars.SECURITY_VERDICT_MAX_AGE_HOURS || '24' }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
@@ -558,6 +584,8 @@ jobs:
           {
             echo "## Production Security Gate"
             echo "- action mode: \`${ACTION_MODE}\`"
+            echo "- source of truth: \`security-verdict\` artifact from \`security.yml\`"
+            echo "- scope: \`full workflow_run release gate: matched push repo checks plus published-image and provenance evidence; rollout execution is validated separately in this workflow\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
           fail() {
@@ -569,13 +597,21 @@ jobs:
 
           if [[ "${ACTION_MODE}" == "rollback" ]]; then
             {
-              echo "security_verdict=not-required"
+              echo "security_verdict_age_seconds="
+              echo "security_verdict_max_age_hours=not-required"
+              echo "release_gate_mode=not-required-for-rollback"
+              echo "release_gate_verdict=not-required"
+              echo "repo_release_verdict=not-required"
+              echo "provenance_release_verdict=not-required"
               echo "security_workflow_run_id="
               echo "security_verdict_generated_at_utc="
               echo "security_source_build_run_id="
               echo "security_source_sha="
             } >> "$GITHUB_OUTPUT"
-            echo "- result: \`not-required for rollback\`" >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo "- result: \`not-required for rollback\`"
+              echo "- freshness policy: \`security release verdict freshness is not evaluated in rollback mode\`"
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -645,7 +681,7 @@ jobs:
               'max_age_hours = int(sys.argv[9])' \
               '' \
               'payload = json.loads(verdict_path.read_text(encoding="utf-8"))' \
-              'required_keys = ("schema_version", "verdict", "source_build_run_id", "source_sha", "workflow_run_id", "generated_at_utc", "scanner_summary", "published_images")' \
+              'required_keys = ("schema_version", "event_name", "verdict", "source_build_run_id", "source_sha", "workflow_run_id", "generated_at_utc", "scanner_summary", "published_images", "release_gate_verdict", "release_gate_mode", "release_gate", "repo_level_checks", "image_level_checks", "provenance_release_checks")' \
               'missing = [key for key in required_keys if key not in payload]' \
               'if missing:' \
               '    print(f"reason=security-verdict.json is missing required keys: {missing}")' \
@@ -654,6 +690,10 @@ jobs:
               'if payload.get("schema_version", "") != "v1":' \
               '    print("reason=security-verdict schema_version is unsupported: {}".format(payload.get("schema_version", "")))' \
               '    raise SystemExit(3)' \
+              '' \
+              'if payload.get("event_name") != "workflow_run":' \
+              '    print(f"reason=production release gate requires workflow_run security evidence, found event_name={payload.get(\"event_name\", \"\")}")' \
+              '    raise SystemExit(4)' \
               '' \
               'if str(payload.get("workflow_run_id", "")) != run_id:' \
               '    print("reason=security-verdict workflow_run_id does not match the artifact owner run")' \
@@ -675,6 +715,29 @@ jobs:
               'if not isinstance(published_images, dict):' \
               '    print("reason=security-verdict published_images payload is malformed")' \
               '    raise SystemExit(3)' \
+              '' \
+              'if payload.get("release_gate_mode", "") != "full-security-release-gate":' \
+              '    print(f"reason=production release gate requires full-security-release-gate mode, found {payload.get(\"release_gate_mode\", \"\")}")' \
+              '    raise SystemExit(4)' \
+              '' \
+              'if payload.get("release_gate_verdict", "") != "pass":' \
+              '    print("reason=production release gate is {} with required_evidence={}".format(payload.get("release_gate_verdict"), (payload.get("release_gate") or {}).get("required_evidence", {})))' \
+              '    raise SystemExit(5)' \
+              '' \
+              'repo_release_verdict = (((payload.get("repo_level_checks") or {}).get("release_evidence") or {}).get("required_for_release_verdict", ""))' \
+              'if repo_release_verdict != "pass":' \
+              '    print(f"reason=production release gate is missing passing repo-level release evidence: {repo_release_verdict}")' \
+              '    raise SystemExit(5)' \
+              '' \
+              'image_release_verdict = ((payload.get("image_level_checks") or {}).get("required_for_release_verdict", ""))' \
+              'if image_release_verdict != "pass":' \
+              '    print(f"reason=production release gate image-level evidence is not pass: {image_release_verdict}")' \
+              '    raise SystemExit(5)' \
+              '' \
+              'provenance_release_verdict = ((payload.get("provenance_release_checks") or {}).get("required_for_release_verdict", ""))' \
+              'if provenance_release_verdict != "pass":' \
+              '    print(f"reason=production release gate provenance evidence is not pass: {provenance_release_verdict}")' \
+              '    raise SystemExit(5)' \
               '' \
               'if published_images.get("app_image_ref", "") != expected_app_image_ref:' \
               '    print("reason=matching security verdict app image ref does not match the selected immutable artifact")' \
@@ -709,22 +772,20 @@ jobs:
               '    raise SystemExit(6)' \
               '' \
               'if age_seconds > max_age_hours * 3600:' \
-              '    print(f"reason=matching security verdict is stale ({age_seconds}s old, max {max_age_hours}h)")' \
+              '    print(f"reason=matching security verdict is stale for production release hygiene ({age_seconds}s old, max {max_age_hours}h); rerun security.yml for this build or set PRODUCTION_SECURITY_VERDICT_MAX_AGE_HOURS / SECURITY_VERDICT_MAX_AGE_HOURS to an explicitly approved override")' \
               '    print(f"generated_at_utc={generated_at_raw}")' \
               '    raise SystemExit(6)' \
-              '' \
-              'if payload.get("verdict") != "pass":' \
-              '    print("reason=matching security verdict is {} with scanner_summary={}".format(payload.get("verdict"), payload.get("scanner_summary", {})))' \
-              '    print(f"generated_at_utc={generated_at_raw}")' \
-              '    print("source_build_run_id={}".format(payload.get("source_build_run_id", "")))' \
-              '    print("source_sha={}".format(payload.get("source_sha", "")))' \
-              '    raise SystemExit(5)' \
               '' \
               'if run_conclusion != "success":' \
               '    print(f"reason=matching security workflow run conclusion is {run_conclusion}")' \
               '    print(f"generated_at_utc={generated_at_raw}")' \
               '    raise SystemExit(5)' \
               '' \
+              'print("release_gate_mode={}".format(payload.get("release_gate_mode", "")))' \
+              'print("release_gate_verdict={}".format(payload.get("release_gate_verdict", "")))' \
+              'print(f"repo_release_verdict={repo_release_verdict}")' \
+              'print(f"provenance_release_verdict={provenance_release_verdict}")' \
+              'print(f"security_verdict_age_seconds={age_seconds}")' \
               'print(f"security_workflow_run_id={run_id}")' \
               'print(f"security_verdict_generated_at_utc={generated_at_raw}")' \
               'print("security_source_build_run_id={}".format(payload.get("source_build_run_id", "")))' \
@@ -742,6 +803,11 @@ jobs:
               0)
                 while IFS='=' read -r key value; do
                   case "${key}" in
+                    security_verdict_age_seconds) security_verdict_age_seconds="${value}" ;;
+                    release_gate_mode) release_gate_mode="${value}" ;;
+                    release_gate_verdict) release_gate_verdict="${value}" ;;
+                    repo_release_verdict) repo_release_verdict="${value}" ;;
+                    provenance_release_verdict) provenance_release_verdict="${value}" ;;
                     security_workflow_run_id) matched_run_id="${value}" ;;
                     security_verdict_generated_at_utc) matched_generated_at="${value}" ;;
                     security_source_build_run_id) matched_source_build_run_id="${value}" ;;
@@ -766,7 +832,12 @@ jobs:
           [[ -n "${matched_run_id}" ]] || fail "no matching security-verdict artifact found for build run ${EXPECTED_BUILD_RUN_ID} and SHA ${EXPECTED_SOURCE_SHA}"
 
           {
-            echo "security_verdict=pass"
+            echo "security_verdict_age_seconds=${security_verdict_age_seconds}"
+            echo "security_verdict_max_age_hours=${SECURITY_VERDICT_MAX_AGE_HOURS}"
+            echo "release_gate_mode=${release_gate_mode}"
+            echo "release_gate_verdict=${release_gate_verdict}"
+            echo "repo_release_verdict=${repo_release_verdict}"
+            echo "provenance_release_verdict=${provenance_release_verdict}"
             echo "security_workflow_run_id=${matched_run_id}"
             echo "security_verdict_generated_at_utc=${matched_generated_at}"
             echo "security_source_build_run_id=${matched_source_build_run_id}"
@@ -776,6 +847,12 @@ jobs:
           {
             echo "- result: \`pass\`"
             echo "- matched security workflow run: \`${matched_run_id}\`"
+            echo "- freshness window: \`${SECURITY_VERDICT_MAX_AGE_HOURS}h\`"
+            echo "- verdict age at evaluation: \`${security_verdict_age_seconds}s\`"
+            echo "- release gate mode: \`${release_gate_mode}\`"
+            echo "- release gate verdict: \`${release_gate_verdict}\`"
+            echo "- repo release verdict: \`${repo_release_verdict}\`"
+            echo "- provenance release verdict: \`${provenance_release_verdict}\`"
             echo "- verdict generated at (UTC): \`${matched_generated_at}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -820,9 +897,15 @@ jobs:
       DATA_NODE_HOST: ${{ secrets.DATA_HOST || secrets.PROD_DATA_NODE_HOST || secrets.PRODUCTION_DATA_NODE_HOST || vars.DATA_HOST || vars.PROD_DATA_NODE_HOST || vars.PRODUCTION_DATA_NODE_HOST }}
       PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
       RESOLVED_RELEASE_LABEL: ${{ needs.resolve-image-refs.outputs.release_label }}
-      SECURITY_VERDICT: ${{ needs.validate-production-security-verdict.outputs.security_verdict }}
+      RELEASE_GATE_MODE: ${{ needs.validate-production-security-verdict.outputs.release_gate_mode }}
+      RELEASE_GATE_VERDICT: ${{ needs.validate-production-security-verdict.outputs.release_gate_verdict }}
+      REPO_RELEASE_VERDICT: ${{ needs.validate-production-security-verdict.outputs.repo_release_verdict }}
+      PROVENANCE_RELEASE_VERDICT: ${{ needs.validate-production-security-verdict.outputs.provenance_release_verdict }}
+      PROVENANCE_TRUST_CLASS: ${{ needs.prepare-promotion-context.outputs.provenance_trust_class }}
+      SECURITY_VERDICT_AGE_SECONDS: ${{ needs.validate-production-security-verdict.outputs.security_verdict_age_seconds }}
       SECURITY_WORKFLOW_RUN_ID: ${{ needs.validate-production-security-verdict.outputs.security_workflow_run_id }}
       SECURITY_VERDICT_GENERATED_AT_UTC: ${{ needs.validate-production-security-verdict.outputs.security_verdict_generated_at_utc }}
+      SECURITY_VERDICT_MAX_AGE_HOURS: ${{ needs.validate-production-security-verdict.outputs.security_verdict_max_age_hours }}
       PRODUCTION_API_DOMAIN: ${{ secrets.API_DOMAIN || vars.API_DOMAIN || secrets.PROD_API_DOMAIN || vars.PROD_API_DOMAIN || secrets.PRODUCTION_API_DOMAIN || vars.PRODUCTION_API_DOMAIN || '' }}
       PRODUCTION_PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL || vars.PUBLIC_BASE_URL || secrets.PROD_PUBLIC_BASE_URL || vars.PROD_PUBLIC_BASE_URL || secrets.PRODUCTION_PUBLIC_BASE_URL || vars.PRODUCTION_PUBLIC_BASE_URL || '' }}
       PRODUCTION_SMOKE_DB_READ_PATH: ${{ secrets.SMOKE_DB_READ_PATH || vars.SMOKE_DB_READ_PATH || secrets.PROD_SMOKE_DB_READ_PATH || vars.PROD_SMOKE_DB_READ_PATH || secrets.PRODUCTION_SMOKE_DB_READ_PATH || vars.PRODUCTION_SMOKE_DB_READ_PATH || '' }}
@@ -894,12 +977,24 @@ jobs:
 
           case "${ACTION_MODE}" in
             deploy)
-              [[ "${SECURITY_VERDICT}" == "pass" ]] || fail "refusing production deploy; security verdict is not pass: ${SECURITY_VERDICT}"
+              [[ "${RELEASE_GATE_MODE}" == "full-security-release-gate" ]] || fail "refusing production deploy; security release gate mode is not full-security-release-gate: ${RELEASE_GATE_MODE}"
+              [[ "${RELEASE_GATE_VERDICT}" == "pass" ]] || fail "refusing production deploy; release gate verdict is not pass: ${RELEASE_GATE_VERDICT}"
+              [[ "${REPO_RELEASE_VERDICT}" == "pass" ]] || fail "refusing production deploy; repo-level release evidence is not pass: ${REPO_RELEASE_VERDICT}"
+              [[ "${PROVENANCE_RELEASE_VERDICT}" == "pass" ]] || fail "refusing production deploy; provenance release evidence is not pass: ${PROVENANCE_RELEASE_VERDICT}"
               [[ -n "${SECURITY_WORKFLOW_RUN_ID}" ]] || fail "refusing production deploy; matching security workflow run id is missing"
               [[ "${PROVENANCE_VERDICT}" == "verified" ]] || fail "refusing production deploy; provenance verdict is not acceptable: ${PROVENANCE_VERDICT}"
               ;;
             rollback)
               [[ "${PROVENANCE_VERDICT}" == "verified" || "${PROVENANCE_VERDICT}" == "accepted-manual" ]] || fail "refusing production rollback; provenance verdict is not acceptable: ${PROVENANCE_VERDICT}"
+              if [[ "${PROVENANCE_VERDICT}" == "accepted-manual" ]]; then
+                {
+                  echo "- rollback trust boundary: \`manual-trust-exception\`"
+                  echo "- rollback note: \`accepted-manual provenance is allowed only for rollback mode with operator-supplied digest-pinned rollback refs\`"
+                  echo "- rollback action required: \`confirm the rollback digests and previous successful production record before approving this run\`"
+                } >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "- rollback trust boundary: \`verified-attestation\`" >> "$GITHUB_STEP_SUMMARY"
+              fi
               ;;
             *)
               fail "unsupported production action mode: ${ACTION_MODE}"
@@ -909,6 +1004,10 @@ jobs:
       - name: Show production rollout plan
         shell: bash
         run: |
+          freshness_window_display="${SECURITY_VERDICT_MAX_AGE_HOURS}"
+          if [[ "${SECURITY_VERDICT_MAX_AGE_HOURS}" =~ ^[0-9]+$ ]]; then
+            freshness_window_display="${SECURITY_VERDICT_MAX_AGE_HOURS}h"
+          fi
           {
             echo "## Production Action Plan"
             echo "- action mode: \`${ACTION_MODE}\`"
@@ -925,10 +1024,16 @@ jobs:
             echo "- goose digest: \`${{ needs.validate-promotion-selection.outputs.goose_digest }}\`"
             echo "- previous app digest: \`${PREVIOUS_APP_DIGEST:-unknown}\`"
             echo "- previous goose digest: \`${PREVIOUS_GOOSE_DIGEST:-unknown}\`"
-            echo "- security verdict: \`${SECURITY_VERDICT}\`"
+            echo "- security release gate artifact: verdict=\`${RELEASE_GATE_VERDICT}\`, mode=\`${RELEASE_GATE_MODE}\`, repo=\`${REPO_RELEASE_VERDICT}\`"
             if [[ -n "${SECURITY_WORKFLOW_RUN_ID}" ]]; then
               echo "- matched security workflow run: \`${SECURITY_WORKFLOW_RUN_ID}\`"
             fi
+            echo "- security verdict freshness window: \`${freshness_window_display}\`"
+            echo "- security verdict generated at (UTC): \`${SECURITY_VERDICT_GENERATED_AT_UTC:-n/a}\`"
+            echo "- security verdict age at gate: \`${SECURITY_VERDICT_AGE_SECONDS:-n/a}\`"
+            echo "- provenance release verdict: \`${PROVENANCE_RELEASE_VERDICT}\`"
+            echo "- image provenance verdict: \`${PROVENANCE_VERDICT}\`"
+            echo "- provenance trust class: \`${PROVENANCE_TRUST_CLASS}\`"
             echo "- SSH host trust: \`pinned known_hosts entries from GitHub secrets/vars\`"
             echo "- release label: \`${RELEASE_TAG}\`"
             echo "- smoke gates: \`public node-A smoke after readiness\` then \`final cluster smoke after node-B readiness\`"
@@ -1216,6 +1321,7 @@ jobs:
           DEPLOY_TRANSPORT: ${{ needs.prepare-promotion-context.outputs.deploy_transport }}
           PROVENANCE_MODE: ${{ needs.prepare-promotion-context.outputs.provenance_verification_mode }}
           PROVENANCE_STATUS: ${{ needs.prepare-promotion-context.outputs.provenance_verification_status }}
+          PROVENANCE_TRUST_CLASS: ${{ needs.prepare-promotion-context.outputs.provenance_trust_class }}
           EVENT_NAME: ${{ github.event_name }}
           WORKFLOW_REF_SHA: ${{ github.sha }}
           DATA_NODE_OUTCOME: ${{ steps.deploy_data_node.outcome || 'skipped' }}
@@ -1226,14 +1332,24 @@ jobs:
           RESOLVED_RELEASE_LABEL: ${{ needs.resolve-image-refs.outputs.release_label }}
           ROLLBACK_ATTEMPTED: ${{ steps.auto_rollback.outputs.rollback_attempted || 'false' }}
           ROLLBACK_RESULT: ${{ steps.auto_rollback.outputs.rollback_result || 'not-attempted' }}
-          SECURITY_VERDICT: ${{ needs.validate-production-security-verdict.outputs.security_verdict }}
+          SECURITY_VERDICT_AGE_SECONDS: ${{ needs.validate-production-security-verdict.outputs.security_verdict_age_seconds }}
           SECURITY_WORKFLOW_RUN_ID: ${{ needs.validate-production-security-verdict.outputs.security_workflow_run_id }}
           SECURITY_VERDICT_GENERATED_AT_UTC: ${{ needs.validate-production-security-verdict.outputs.security_verdict_generated_at_utc }}
+          SECURITY_VERDICT_MAX_AGE_HOURS: ${{ needs.validate-production-security-verdict.outputs.security_verdict_max_age_hours }}
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
           completed_at_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          freshness_window_display="${SECURITY_VERDICT_MAX_AGE_HOURS}"
+          if [[ "${SECURITY_VERDICT_MAX_AGE_HOURS}" =~ ^[0-9]+$ ]]; then
+            freshness_window_display="${SECURITY_VERDICT_MAX_AGE_HOURS}h"
+          fi
+
+          trust_decision="fully-verified"
+          if [[ "${PROVENANCE_TRUST_CLASS}" == "manual-trust-exception" ]]; then
+            trust_decision="accepted-manual-trust-exception"
+          fi
 
           if [[ -n "${SOURCE_COMMIT_SHA:-}" ]]; then
             deploy_source_sha="${SOURCE_COMMIT_SHA}"
@@ -1344,10 +1460,13 @@ jobs:
             "run_url": "${run_url}",
             "deploy_transport": "${DEPLOY_TRANSPORT}",
             "auth_mode": "${AUTH_MODE}",
+            "trust_decision": "${trust_decision}",
             "provenance_verification_mode": "${PROVENANCE_MODE}",
             "provenance_verification_status": "${PROVENANCE_STATUS}",
+            "provenance_trust_class": "${PROVENANCE_TRUST_CLASS}",
             "provenance_verdict": "${PROVENANCE_VERDICT}",
-            "security_verdict": "${SECURITY_VERDICT}",
+            "security_verdict_age_seconds": "${SECURITY_VERDICT_AGE_SECONDS}",
+            "security_verdict_max_age_hours": "${SECURITY_VERDICT_MAX_AGE_HOURS}",
             "security_workflow_run_id": "${SECURITY_WORKFLOW_RUN_ID}",
             "security_verdict_generated_at_utc": "${SECURITY_VERDICT_GENERATED_AT_UTC}",
             "deploy_data_node": "${DEPLOY_DATA_NODE}",
@@ -1378,8 +1497,11 @@ jobs:
             "app_digest": "${{ needs.validate-promotion-selection.outputs.app_digest }}",
             "goose_image_ref": "${GOOSE_IMAGE_REF}",
             "goose_digest": "${{ needs.validate-promotion-selection.outputs.goose_digest }}",
+            "trust_decision": "${trust_decision}",
+            "provenance_trust_class": "${PROVENANCE_TRUST_CLASS}",
             "provenance_verdict": "${PROVENANCE_VERDICT}",
-            "security_verdict": "${SECURITY_VERDICT}",
+            "security_verdict_age_seconds": "${SECURITY_VERDICT_AGE_SECONDS}",
+            "security_verdict_max_age_hours": "${SECURITY_VERDICT_MAX_AGE_HOURS}",
             "security_workflow_run_id": "${SECURITY_WORKFLOW_RUN_ID}",
             "data_node_result": "${data_node_result}",
             "app_node_a_result": "${app_node_a_result}",
@@ -1430,8 +1552,11 @@ jobs:
             fi
             echo "- deploy transport: \`${DEPLOY_TRANSPORT}\`"
             echo "- auth mode: \`${AUTH_MODE}\`"
-            echo "- provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\` / verdict=\`${PROVENANCE_VERDICT}\`"
-            echo "- security gate: verdict=\`${SECURITY_VERDICT}\`, workflow_run=\`${SECURITY_WORKFLOW_RUN_ID:-n/a}\`, generated_at=\`${SECURITY_VERDICT_GENERATED_AT_UTC:-n/a}\`"
+            echo "- trust decision: \`${trust_decision}\`"
+            echo "- image provenance verification: \`${PROVENANCE_MODE}\` / \`${PROVENANCE_STATUS}\` / verdict=\`${PROVENANCE_VERDICT}\`"
+            echo "- provenance trust class: \`${PROVENANCE_TRUST_CLASS}\`"
+            echo "- security release gate artifact: verdict=\`${RELEASE_GATE_VERDICT}\`, mode=\`${RELEASE_GATE_MODE}\`, repo=\`${REPO_RELEASE_VERDICT}\`, provenance=\`${PROVENANCE_RELEASE_VERDICT}\`, workflow_run=\`${SECURITY_WORKFLOW_RUN_ID:-n/a}\`, generated_at=\`${SECURITY_VERDICT_GENERATED_AT_UTC:-n/a}\`"
+            echo "- security freshness policy: max-age=\`${freshness_window_display}\` / observed-age=\`${SECURITY_VERDICT_AGE_SECONDS:-n/a}\`"
             echo "- scope note: \`production rollout evidence only; staging deployment and restore-drill controls are reported by their own workflows/artifacts\`"
             echo "- data-node requested: \`${DEPLOY_DATA_NODE}\`"
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
