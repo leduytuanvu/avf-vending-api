@@ -14,8 +14,8 @@ ARTIFACT_SERVICES=(migrate api worker mqtt-ingest reconciler)
 # Monitored after `compose up`: running required; Docker health=healthy only when a healthcheck exists.
 ROLLUP_GATE_SVCS=(postgres nats emqx api worker mqtt-ingest reconciler caddy)
 ROLLUP_GATE_CTRS=(avf-prod-postgres avf-prod-nats avf-prod-emqx avf-prod-api avf-prod-worker avf-prod-mqtt-ingest avf-prod-reconciler avf-prod-caddy)
-EMQX_API_KEY_RESOLVED=""
-EMQX_API_SECRET_RESOLVED=""
+EMQX_REST_BASIC_USER=""
+EMQX_REST_BASIC_CRED=""
 CURRENT_PHASE="startup"
 VERIFY_FAILURE_EXIT_CODE=42
 
@@ -220,16 +220,16 @@ resolve_emqx_api_credentials() {
 		if [[ -z "${EMQX_API_KEY:-}" ]] || [[ -z "${EMQX_API_SECRET:-}" ]]; then
 			fail "EMQX_API_KEY and EMQX_API_SECRET must both be set together in environment or ${ENV_FILE}"
 		fi
-		EMQX_API_KEY_RESOLVED="${EMQX_API_KEY}"
-		EMQX_API_SECRET_RESOLVED="${EMQX_API_SECRET}"
+		EMQX_REST_BASIC_USER="${EMQX_API_KEY}"
+		EMQX_REST_BASIC_CRED="${EMQX_API_SECRET}"
 	else
 		file_key="$(try_read_env_file EMQX_API_KEY)"
 		file_secret="$(try_read_env_file EMQX_API_SECRET)"
 		if [[ -z "${file_key}" ]] || [[ -z "${file_secret}" ]]; then
 			fail "missing required EMQX_API_KEY / EMQX_API_SECRET (set in environment or ${ENV_FILE})"
 		fi
-		EMQX_API_KEY_RESOLVED="${file_key}"
-		EMQX_API_SECRET_RESOLVED="${file_secret}"
+		EMQX_REST_BASIC_USER="${file_key}"
+		EMQX_REST_BASIC_CRED="${file_secret}"
 	fi
 }
 
@@ -284,7 +284,7 @@ preflight_emqx_api_auth() {
 	while true; do
 		code="$(
 			curl -sS -o "${tmp}" -w "%{http_code}" \
-				-u "${EMQX_API_KEY_RESOLVED}:${EMQX_API_SECRET_RESOLVED}" \
+				-u "${EMQX_REST_BASIC_USER}:${EMQX_REST_BASIC_CRED}" \
 				"${emqx_auth_probe}" || true
 		)"
 		if [[ "${code}" == "200" ]]; then
@@ -481,8 +481,8 @@ cmd_deploy() {
 	require_env_resolved GOOSE_IMAGE_REPOSITORY >/dev/null
 	require_env_resolved DATABASE_URL >/dev/null
 	resolve_emqx_api_credentials
-	export EMQX_API_KEY="${EMQX_API_KEY_RESOLVED}"
-	export EMQX_API_SECRET="${EMQX_API_SECRET_RESOLVED}"
+	export EMQX_API_KEY="${EMQX_REST_BASIC_USER}"
+	export EMQX_API_SECRET="${EMQX_REST_BASIC_CRED}"
 	export APP_IMAGE_REF="${new_app}"
 	export GOOSE_IMAGE_REF="${new_goose}"
 	release_label="${RELEASE_LABEL:-}"

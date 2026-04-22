@@ -1834,7 +1834,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                                     "desiredConfigVersion": 7,
                                 },
                                 "correlation_id": "11111111-2222-3333-4444-555555555555",
-                                "idempotency_key": "planogram-publish-001",
+                                "idempotency_key": "example",
                             }
                         ],
                         "meta": {"returned": 1},
