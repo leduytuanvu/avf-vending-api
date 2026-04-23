@@ -24,6 +24,7 @@ x-app-service: &app-service
     - ${APP_NODE_ENV_FILE:-.env.app-node}
   networks:
     - internal
+    - edge
   logging: *default-logging
 
 services:
@@ -35,6 +36,7 @@ services:
       - ${APP_NODE_ENV_FILE:-.env.app-node}
     networks:
       - internal
+      - edge
     volumes:
       - ../../../migrations:/migrations:ro
     entrypoint:
