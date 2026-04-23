@@ -17,6 +17,13 @@ RUN_SMOKE_AFTER_READY="$(normalize_bool "${APP_NODE_RUN_SMOKE_AFTER_READY:-0}")"
 SMOKE_SCRIPT="${APP_NODE_SMOKE_SCRIPT:-${PROD_ROOT}/scripts/smoke_prod.sh}"
 SMOKE_JSON_FILE_BASE="${APP_NODE_SMOKE_JSON_FILE:-}"
 SMOKE_LABEL_PREFIX="${APP_NODE_SMOKE_LABEL_PREFIX:-app-node}"
+REMOTE_LOG_DIR="${RELEASE_LOG_DIR:-}"
+if [[ -z "${REMOTE_LOG_DIR}" && -n "${RELEASE_EVIDENCE_FILE:-}" ]]; then
+	REMOTE_LOG_DIR="$(dirname "${RELEASE_EVIDENCE_FILE}")"
+fi
+if [[ -n "${REMOTE_LOG_DIR}" ]]; then
+	mkdir -p "${REMOTE_LOG_DIR}"
+fi
 
 EXIT_CODE_DEPLOY_FAILURE=41
 EXIT_CODE_READINESS_FAILURE=42
@@ -53,6 +60,19 @@ resolve_smoke_file() {
 	python3 -c 'import pathlib,sys; path = pathlib.Path(sys.argv[1]); stem = f"{path.stem}-{sys.argv[2]}-{sys.argv[3]}"; print(str(path.with_name(stem + path.suffix)))' "${SMOKE_JSON_FILE_BASE}" "${index}" "${host}"
 }
 
+run_remote_with_log() {
+	local log_file="${1:-}"
+	shift
+	if [[ -n "${log_file}" ]]; then
+		set +e
+		"$@" 2>&1 | tee "${log_file}"
+		local cmd_rc=${PIPESTATUS[0]}
+		set -e
+		return "${cmd_rc}"
+	fi
+	"$@"
+}
+
 run_local_smoke_gate() {
 	local host="$1"
 	local index="$2"
@@ -85,20 +105,27 @@ note "rolling app-node release across ${#APP_NODE_HOSTS[@]} host(s)"
 for idx in "${!APP_NODE_HOSTS[@]}"; do
 	host="${APP_NODE_HOSTS[$idx]}"
 	target="$(ssh_target "${host}")"
+	log_host="${host//:/-}"
+	deploy_log_file=""
+	readiness_log_file=""
+	if [[ -n "${REMOTE_LOG_DIR}" ]]; then
+		deploy_log_file="${REMOTE_LOG_DIR}/app-node-${idx}-${log_host}-deploy.log"
+		readiness_log_file="${REMOTE_LOG_DIR}/app-node-${idx}-${log_host}-readiness.log"
+	fi
 	migrate_flag="0"
 	if [[ "${idx}" == "0" && "${RUN_MIGRATION_ON_FIRST_NODE}" == "1" ]]; then
 		migrate_flag="1"
 	fi
 	note "release ${host} (migration=${migrate_flag})"
 	append_release_evidence "app-node" "${host}" "deploy" "running" "starting app-node deploy" "{\"migration\":\"${migrate_flag}\"}"
-	if ! run_remote_script "${target}" "${REMOTE_DIR}" "scripts/release_app_node.sh" "${1-}" "${2-}" "${migrate_flag}" "${TEMPORAL_ENABLED}"; then
+	if ! run_remote_with_log "${deploy_log_file}" run_remote_script "${target}" "${REMOTE_DIR}" "scripts/release_app_node.sh" "${1-}" "${2-}" "${migrate_flag}" "${TEMPORAL_ENABLED}"; then
 		append_release_evidence "app-node" "${host}" "deploy" "fail" "app-node deploy failed" "{\"migration\":\"${migrate_flag}\"}"
 		exit "${EXIT_CODE_DEPLOY_FAILURE}"
 	fi
 	append_release_evidence "app-node" "${host}" "deploy" "pass" "app-node deploy completed" "{\"migration\":\"${migrate_flag}\"}"
 	note "verify ${host}"
 	append_release_evidence "app-node" "${host}" "readiness" "running" "starting app-node readiness verification"
-	if ! run_remote_script "${target}" "${REMOTE_DIR}" "scripts/healthcheck_app_node.sh" "" "" "0" "${TEMPORAL_ENABLED}"; then
+	if ! run_remote_with_log "${readiness_log_file}" run_remote_script "${target}" "${REMOTE_DIR}" "scripts/healthcheck_app_node.sh" "" "" "0" "${TEMPORAL_ENABLED}"; then
 		append_release_evidence "app-node" "${host}" "readiness" "fail" "app-node readiness verification failed"
 		exit "${EXIT_CODE_READINESS_FAILURE}"
 	fi
