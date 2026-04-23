@@ -1328,6 +1328,8 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
+          GHCR_PULL_USERNAME: ${{ github.repository_owner }}
+          GHCR_PULL_TOKEN: ${{ github.token }}
           APP_NODE_A_ROLLOUT_OUTCOME: ${{ steps.deploy_app_node_a.outcome }}
           APP_NODE_B_ROLLOUT_OUTCOME: ${{ steps.deploy_app_node_b.outcome }}
           FINAL_SMOKE_OUTCOME: ${{ steps.smoke_cluster_final.outcome }}
@@ -1373,7 +1375,7 @@ jobs:
             local host="$1"
             local target="${SSH_USER}@${host}"
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' bash 'scripts/rollback_app_node.sh' '${PREVIOUS_APP_IMAGE_REF}' '${PREVIOUS_GOOSE_IMAGE_REF}'"
+              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' bash 'scripts/rollback_app_node.sh' '${PREVIOUS_APP_IMAGE_REF}' '${PREVIOUS_GOOSE_IMAGE_REF}'"
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
               "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' bash 'scripts/healthcheck_app_node.sh'"
           }
