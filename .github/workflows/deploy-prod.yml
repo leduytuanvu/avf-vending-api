@@ -401,6 +401,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          test -d migrations
           docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml config >/dev/null
           docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml --profile migration config >/dev/null
           docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml --profile temporal config >/dev/null
@@ -1215,7 +1216,7 @@ jobs:
           target="${SSH_USER}@${APP_NODE_A_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
-          tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md | \
+          tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations | \
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
 
       - name: Sync app-node assets to node B
@@ -1225,7 +1226,7 @@ jobs:
           target="${SSH_USER}@${APP_NODE_B_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
-          tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md | \
+          tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations | \
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
 
       - name: Sync data-node fallback assets
