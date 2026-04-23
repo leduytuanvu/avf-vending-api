@@ -10,7 +10,7 @@ NODE_KIND="${1:-}"
 
 case "${NODE_KIND}" in
 app-node)
-	NODE_ROOT="$(cd "${SHARED_ROOT}/../../app-node" && pwd)"
+	NODE_ROOT="$(cd "${SHARED_ROOT}/../app-node" && pwd)"
 	ENV_FILE="${NODE_ROOT}/.env.app-node"
 	COMPOSE_FILE="${NODE_ROOT}/docker-compose.app-node.yml"
 	REQUIRED_DIRS=("${SHARED_ROOT}")
@@ -18,7 +18,7 @@ app-node)
 	REQUIRED_CMDS=(bash curl docker grep sed awk python3)
 	;;
 data-node)
-	NODE_ROOT="$(cd "${SHARED_ROOT}/../../data-node" && pwd)"
+	NODE_ROOT="$(cd "${SHARED_ROOT}/../data-node" && pwd)"
 	ENV_FILE="${NODE_ROOT}/.env.data-node"
 	COMPOSE_FILE="${NODE_ROOT}/docker-compose.data-node.yml"
 	REQUIRED_DIRS=("${SHARED_ROOT}/../emqx" "${SHARED_ROOT}/../emqx/certs")
