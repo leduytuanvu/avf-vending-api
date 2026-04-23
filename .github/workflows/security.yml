@@ -4,21 +4,6 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
-  pull_request:
-    branches:
-      - develop
-      - main
-  push:
-    branches:
-      - develop
-      - main
-  workflow_run:
-    workflows:
-      - Build and Push Images
-    types:
-      - completed
-  schedule:
-    - cron: "17 3 * * *"
   workflow_dispatch:
 
 concurrency:
