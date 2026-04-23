@@ -905,10 +905,10 @@ jobs:
       PREVIOUS_RUN_URL: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}
       DEPLOY_DATA_NODE: ${{ inputs.deploy_data_node && 'true' || 'false' }}
       ENABLE_TEMPORAL_PROFILE: ${{ vars.PRODUCTION_ENABLE_TEMPORAL_PROFILE || 'false' }}
-      PRODUCTION_DEPLOY_ROOT: ${{ secrets.DEPLOY_PATH || vars.DEPLOY_PATH || vars.PRODUCTION_DEPLOY_ROOT || vars.PROD_DEPLOY_PATH || '/opt/avf-vending-api' }}
-      APP_NODE_A_HOST: ${{ secrets.APP_A_HOST || secrets.PROD_APP_A_HOST || secrets.PRODUCTION_APP_NODE_A_HOST || vars.APP_A_HOST || vars.PROD_APP_A_HOST || vars.PRODUCTION_APP_NODE_A_HOST }}
-      APP_NODE_B_HOST: ${{ secrets.APP_B_HOST || secrets.PROD_APP_B_HOST || secrets.PRODUCTION_APP_NODE_B_HOST || vars.APP_B_HOST || vars.PROD_APP_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST }}
-      DATA_NODE_HOST: ${{ secrets.DATA_HOST || secrets.PROD_DATA_NODE_HOST || secrets.PRODUCTION_DATA_NODE_HOST || vars.DATA_HOST || vars.PROD_DATA_NODE_HOST || vars.PRODUCTION_DATA_NODE_HOST }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || vars.PRODUCTION_DEPLOY_ROOT || vars.PROD_DEPLOY_PATH || vars.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      APP_NODE_A_HOST: ${{ secrets.PRODUCTION_APP_NODE_A_HOST || secrets.PROD_APP_A_HOST || secrets.APP_A_HOST || vars.PRODUCTION_APP_NODE_A_HOST || vars.PROD_APP_A_HOST || vars.APP_A_HOST }}
+      APP_NODE_B_HOST: ${{ secrets.PRODUCTION_APP_NODE_B_HOST || secrets.PROD_APP_B_HOST || secrets.APP_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST || vars.PROD_APP_B_HOST || vars.APP_B_HOST }}
+      DATA_NODE_HOST: ${{ secrets.PRODUCTION_DATA_NODE_HOST || secrets.PROD_DATA_NODE_HOST || secrets.DATA_HOST || vars.PRODUCTION_DATA_NODE_HOST || vars.PROD_DATA_NODE_HOST || vars.DATA_HOST }}
       PROVENANCE_VERDICT: ${{ needs.resolve-image-refs.outputs.provenance_verdict }}
       RESOLVED_RELEASE_LABEL: ${{ needs.resolve-image-refs.outputs.release_label }}
       RELEASE_GATE_MODE: ${{ needs.validate-production-security-verdict.outputs.release_gate_mode }}
@@ -920,12 +920,12 @@ jobs:
       SECURITY_WORKFLOW_RUN_ID: ${{ needs.validate-production-security-verdict.outputs.security_workflow_run_id }}
       SECURITY_VERDICT_GENERATED_AT_UTC: ${{ needs.validate-production-security-verdict.outputs.security_verdict_generated_at_utc }}
       SECURITY_VERDICT_MAX_AGE_HOURS: ${{ needs.validate-production-security-verdict.outputs.security_verdict_max_age_hours }}
-      PRODUCTION_API_DOMAIN: ${{ secrets.API_DOMAIN || vars.API_DOMAIN || secrets.PROD_API_DOMAIN || vars.PROD_API_DOMAIN || secrets.PRODUCTION_API_DOMAIN || vars.PRODUCTION_API_DOMAIN || '' }}
-      PRODUCTION_PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL || vars.PUBLIC_BASE_URL || secrets.PROD_PUBLIC_BASE_URL || vars.PROD_PUBLIC_BASE_URL || secrets.PRODUCTION_PUBLIC_BASE_URL || vars.PRODUCTION_PUBLIC_BASE_URL || '' }}
-      PRODUCTION_SMOKE_DB_READ_PATH: ${{ secrets.SMOKE_DB_READ_PATH || vars.SMOKE_DB_READ_PATH || secrets.PROD_SMOKE_DB_READ_PATH || vars.PROD_SMOKE_DB_READ_PATH || secrets.PRODUCTION_SMOKE_DB_READ_PATH || vars.PRODUCTION_SMOKE_DB_READ_PATH || '' }}
-      PRODUCTION_SMOKE_DB_READ_MATCH_REGEX: ${{ secrets.SMOKE_DB_READ_MATCH_REGEX || vars.SMOKE_DB_READ_MATCH_REGEX || secrets.PROD_SMOKE_DB_READ_MATCH_REGEX || vars.PROD_SMOKE_DB_READ_MATCH_REGEX || secrets.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX || vars.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX || '' }}
-      SSH_PORT: ${{ secrets.SSH_PORT || vars.SSH_PORT || vars.PROD_SSH_PORT || vars.PRODUCTION_SSH_PORT || '22' }}
-      SSH_USER: ${{ secrets.SSH_USER || vars.SSH_USER || secrets.PROD_SSH_USER || vars.PROD_SSH_USER || secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER }}
+      PRODUCTION_API_DOMAIN: ${{ secrets.PRODUCTION_API_DOMAIN || vars.PRODUCTION_API_DOMAIN || secrets.PROD_API_DOMAIN || vars.PROD_API_DOMAIN || secrets.API_DOMAIN || vars.API_DOMAIN || '' }}
+      PRODUCTION_PUBLIC_BASE_URL: ${{ secrets.PRODUCTION_PUBLIC_BASE_URL || vars.PRODUCTION_PUBLIC_BASE_URL || secrets.PROD_PUBLIC_BASE_URL || vars.PROD_PUBLIC_BASE_URL || secrets.PUBLIC_BASE_URL || vars.PUBLIC_BASE_URL || '' }}
+      PRODUCTION_SMOKE_DB_READ_PATH: ${{ secrets.PRODUCTION_SMOKE_DB_READ_PATH || vars.PRODUCTION_SMOKE_DB_READ_PATH || secrets.PROD_SMOKE_DB_READ_PATH || vars.PROD_SMOKE_DB_READ_PATH || secrets.SMOKE_DB_READ_PATH || vars.SMOKE_DB_READ_PATH || '' }}
+      PRODUCTION_SMOKE_DB_READ_MATCH_REGEX: ${{ secrets.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX || vars.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX || secrets.PROD_SMOKE_DB_READ_MATCH_REGEX || vars.PROD_SMOKE_DB_READ_MATCH_REGEX || secrets.SMOKE_DB_READ_MATCH_REGEX || vars.SMOKE_DB_READ_MATCH_REGEX || '' }}
+      SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || secrets.PROD_SSH_PORT || vars.PROD_SSH_PORT || secrets.SSH_PORT || vars.SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || secrets.PROD_SSH_USER || vars.PROD_SSH_USER || secrets.SSH_USER || vars.SSH_USER }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -933,8 +933,8 @@ jobs:
       - name: Validate production deploy inputs
         shell: bash
         env:
-          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || secrets.SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.SSH_KEY }}
         run: |
           set -Eeuo pipefail
 
@@ -1089,12 +1089,12 @@ jobs:
       - name: Start production SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.SSH_KEY || secrets.PROD_SSH_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.SSH_KEY }}
 
       - name: Install pinned production SSH trust
         shell: bash
         env:
-          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || secrets.SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS }}
         run: |
           set -Eeuo pipefail
           mkdir -p ~/.ssh
