@@ -266,7 +266,14 @@ run_remote_script() {
 	local extra_env="${8-}"
 	local remote_cmd
 	local -a ssh_opts=()
-	remote_cmd="cd '${remote_dir}' && RUN_MIGRATION='${migrate_flag}' APP_NODE_ENABLE_TEMPORAL_PROFILE='${temporal_flag}' ${extra_env} bash '${script_rel}'"
+	remote_cmd="cd '${remote_dir}' && "
+	if [[ -n "${GHCR_PULL_USERNAME:-}" ]]; then
+		remote_cmd+="GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' "
+	fi
+	if [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
+		remote_cmd+="GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' "
+	fi
+	remote_cmd+="RUN_MIGRATION='${migrate_flag}' APP_NODE_ENABLE_TEMPORAL_PROFILE='${temporal_flag}' ${extra_env} bash '${script_rel}'"
 	if [[ -n "${app_ref}" ]]; then
 		remote_cmd+=" '${app_ref}'"
 	fi
