@@ -1086,32 +1086,33 @@ jobs:
             check_host "${DATA_NODE_HOST}"
           fi
 
-      - name: Start production SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.SSH_KEY }}
-
-      - name: Install pinned production SSH trust
+      - name: Install production SSH credentials and trust
         shell: bash
         env:
           SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || secrets.SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.SSH_KEY }}
         run: |
           set -Eeuo pipefail
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
+          identity_file="${HOME}/.ssh/production_deploy_key"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${identity_file}"
+          chmod 600 "${identity_file}"
           printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
           cat > ~/.ssh/config <<EOF
           Host *
             BatchMode yes
             IdentitiesOnly yes
+            IdentityFile ${identity_file}
             StrictHostKeyChecking yes
             UserKnownHostsFile ~/.ssh/known_hosts
             GlobalKnownHostsFile ~/.ssh/known_hosts
           EOF
           chmod 600 ~/.ssh/config ~/.ssh/known_hosts
           {
-            echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
-            echo "SCP_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
+            echo "SSH_IDENTITY_FILE=${identity_file}"
+            echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
+            echo "SCP_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
           } >> "$GITHUB_ENV"
 
       - name: Validate pinned SSH host identities
@@ -1150,7 +1151,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
-          ssh_add_output="$(ssh-add -l 2>&1 || true)"
+          key_fingerprint="$(ssh-keygen -lf "${SSH_IDENTITY_FILE}" 2>&1 || true)"
           {
             echo "## Production SSH Context"
             echo "- ssh user: \`${SSH_USER}\`"
@@ -1160,8 +1161,9 @@ jobs:
             if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
               echo "- data node: \`${DATA_NODE_HOST}\`"
             fi
-            echo "- ssh-agent identities:"
-            printf '%s\n' "${ssh_add_output}"
+            echo "- ssh identity file: \`${SSH_IDENTITY_FILE}\`"
+            echo "- ssh identity fingerprint:"
+            printf '%s\n' "${key_fingerprint}"
           } | tee deployment-evidence/ssh-debug-context.txt >> "$GITHUB_STEP_SUMMARY"
 
       - name: Probe production SSH authentication
@@ -1190,8 +1192,9 @@ jobs:
             if [[ "${probe_rc}" -ne 0 ]]; then
               echo "### SSH probe failure: ${label}" >> "$GITHUB_STEP_SUMMARY"
               echo "- target: \`${target}\`" >> "$GITHUB_STEP_SUMMARY"
-              echo "- ssh-agent identities:" >> "$GITHUB_STEP_SUMMARY"
-              ssh-add -l 2>&1 >> "$GITHUB_STEP_SUMMARY" || true
+              echo "- ssh identity file: \`${SSH_IDENTITY_FILE}\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "- ssh identity fingerprint:" >> "$GITHUB_STEP_SUMMARY"
+              ssh-keygen -lf "${SSH_IDENTITY_FILE}" 2>&1 >> "$GITHUB_STEP_SUMMARY" || true
               echo "- probe output:" >> "$GITHUB_STEP_SUMMARY"
               sed 's/^/    /' "${output_file}" >> "$GITHUB_STEP_SUMMARY"
               fail "SSH authentication probe failed for ${target}; verify PRODUCTION_SSH_USER, PRODUCTION_SSH_PRIVATE_KEY, and authorized_keys on the target node"
