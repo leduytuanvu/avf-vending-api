@@ -5,7 +5,7 @@ SHARED_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=./lib_release.sh
 source "${SHARED_ROOT}/scripts/lib_release.sh"
 
-ENV_FILE_PATH="${APP_NODE_ENV_FILE_PATH:-${SHARED_ROOT}/../../app-node/.env.app-node}"
+ENV_FILE_PATH="${APP_NODE_ENV_FILE_PATH:-${SHARED_ROOT}/../app-node/.env.app-node}"
 REPORT_PATH="${BACKUP_MANAGED_POSTGRES_REPORT_PATH:-}"
 OUTPUT_PATH=""
 BACKUP_MODE="execute"
