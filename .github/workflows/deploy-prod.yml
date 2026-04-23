@@ -1145,6 +1145,66 @@ jobs:
             require_known_host "${DATA_NODE_HOST}"
           fi
 
+      - name: Record resolved production SSH context
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p deployment-evidence
+          ssh_add_output="$(ssh-add -l 2>&1 || true)"
+          {
+            echo "## Production SSH Context"
+            echo "- ssh user: \`${SSH_USER}\`"
+            echo "- ssh port: \`${SSH_PORT}\`"
+            echo "- app node A: \`${APP_NODE_A_HOST}\`"
+            echo "- app node B: \`${APP_NODE_B_HOST}\`"
+            if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
+              echo "- data node: \`${DATA_NODE_HOST}\`"
+            fi
+            echo "- ssh-agent identities:"
+            printf '%s\n' "${ssh_add_output}"
+          } | tee deployment-evidence/ssh-debug-context.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Probe production SSH authentication
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          probe_host() {
+            local label="$1"
+            local host="$2"
+            [[ -n "${host}" ]] || return 0
+            local target="${SSH_USER}@${host}"
+            local output_file="deployment-evidence/ssh-probe-${label}.txt"
+            read -r -a ssh_opts <<< "${SSH_OPTS}"
+
+            set +e
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "printf 'connected\n'" >"${output_file}" 2>&1
+            probe_rc=$?
+            set -e
+
+            if [[ "${probe_rc}" -ne 0 ]]; then
+              echo "### SSH probe failure: ${label}" >> "$GITHUB_STEP_SUMMARY"
+              echo "- target: \`${target}\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "- ssh-agent identities:" >> "$GITHUB_STEP_SUMMARY"
+              ssh-add -l 2>&1 >> "$GITHUB_STEP_SUMMARY" || true
+              echo "- probe output:" >> "$GITHUB_STEP_SUMMARY"
+              sed 's/^/    /' "${output_file}" >> "$GITHUB_STEP_SUMMARY"
+              fail "SSH authentication probe failed for ${target}; verify PRODUCTION_SSH_USER, PRODUCTION_SSH_PRIVATE_KEY, and authorized_keys on the target node"
+            fi
+          }
+
+          mkdir -p deployment-evidence
+          probe_host "app-node-a" "${APP_NODE_A_HOST}"
+          probe_host "app-node-b" "${APP_NODE_B_HOST}"
+          if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
+            probe_host "data-node" "${DATA_NODE_HOST}"
+          fi
+
       - name: Sync app-node assets to node A
         shell: bash
         run: |
