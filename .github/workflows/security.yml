@@ -117,6 +117,24 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p security-reports
+          trivy_image="aquasec/trivy:0.57.1"
+
+          pull_trivy_image() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if docker pull "${trivy_image}"; then
+                return 0
+              fi
+              if [[ "${attempt}" -lt 5 ]]; then
+                echo "Trivy image pull failed; retrying (${attempt}/5)" >&2
+                sleep 10
+              fi
+            done
+            echo "error: failed to pull ${trivy_image} after retries" >&2
+            exit 1
+          }
+
+          pull_trivy_image
           : > security-reports/trivy-config.txt
           for target in \
             deployments/prod/app-node \
@@ -133,7 +151,7 @@ jobs:
             docker run --rm \
               -v "${PWD}:/workdir" \
               -w /workdir \
-              aquasec/trivy:0.57.1 \
+              "${trivy_image}" \
               config \
               --config trivy.yaml \
               --ignorefile .trivyignore \
@@ -242,11 +260,29 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p security-reports
+          trivy_image="aquasec/trivy:0.57.1"
+
+          pull_trivy_image() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if docker pull "${trivy_image}"; then
+                return 0
+              fi
+              if [[ "${attempt}" -lt 5 ]]; then
+                echo "Trivy image pull failed; retrying (${attempt}/5)" >&2
+                sleep 10
+              fi
+            done
+            echo "error: failed to pull ${trivy_image} after retries" >&2
+            exit 1
+          }
+
+          pull_trivy_image
           docker run --rm \
             -v "${HOME}/.docker:/root/.docker:ro" \
             -v "${PWD}:/workdir" \
             -w /workdir \
-            aquasec/trivy:0.57.1 \
+            "${trivy_image}" \
             image \
             --config trivy.yaml \
             --ignorefile .trivyignore \
@@ -260,11 +296,29 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p security-reports
+          trivy_image="aquasec/trivy:0.57.1"
+
+          pull_trivy_image() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if docker pull "${trivy_image}"; then
+                return 0
+              fi
+              if [[ "${attempt}" -lt 5 ]]; then
+                echo "Trivy image pull failed; retrying (${attempt}/5)" >&2
+                sleep 10
+              fi
+            done
+            echo "error: failed to pull ${trivy_image} after retries" >&2
+            exit 1
+          }
+
+          pull_trivy_image
           docker run --rm \
             -v "${HOME}/.docker:/root/.docker:ro" \
             -v "${PWD}:/workdir" \
             -w /workdir \
-            aquasec/trivy:0.57.1 \
+            "${trivy_image}" \
             image \
             --config trivy.yaml \
             --ignorefile .trivyignore \
