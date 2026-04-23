@@ -32,7 +32,7 @@ jobs:
 
   govulncheck-pr:
     name: Go Vulnerability Scan
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -651,16 +651,24 @@ jobs:
           }
 
           private_repo_provenance_fallback = "accepted-private-repo-no-github-attestations"
-          if event_name == "workflow_run":
+          if event_name in ("workflow_run", "workflow_dispatch"):
               release_gate_mode = "full-security-release-gate"
-              repo_required_for_release_verdict = repo_release_verdict or "unavailable"
+              if event_name == "workflow_dispatch":
+                  repo_required_for_release_verdict = repo_security_verdict
+                  release_gate_trust_model = "manual-security-release-evidence"
+              else:
+                  repo_required_for_release_verdict = repo_release_verdict or "unavailable"
               image_required_for_release_verdict = published_image_verdict
               if provenance_input == "verified":
                   provenance_release_verdict = "pass"
-                  release_gate_trust_model = "fully-verified-workflow-run-evidence"
+                  if event_name != "workflow_dispatch":
+                      release_gate_trust_model = "fully-verified-workflow-run-evidence"
               elif provenance_input == private_repo_provenance_fallback:
                   provenance_release_verdict = private_repo_provenance_fallback
-                  release_gate_trust_model = "private-repo-no-github-artifact-attestations"
+                  if event_name == "workflow_dispatch":
+                      release_gate_trust_model = "manual-security-private-repo-no-github-artifact-attestations"
+                  else:
+                      release_gate_trust_model = "private-repo-no-github-artifact-attestations"
               elif provenance_input:
                   provenance_release_verdict = "fail"
                   release_gate_trust_model = "provenance-verification-failed"
@@ -708,6 +716,7 @@ jobs:
                       "published image vulnerability scan status included in this run when applicable",
                       "published image provenance verdict imported from immutable image resolution when applicable",
                       "matched push security evidence for repo-level release checks when event_name=workflow_run",
+                      "current workflow repo-level security evidence when event_name=workflow_dispatch",
                   ],
                   "not_verified_by_this_artifact": [
                       "staging deployment execution",
@@ -784,7 +793,15 @@ jobs:
                       else (
                           "workflow_run release gating accepted digest-pinned published images without GitHub Artifact Attestations because this private repository cannot use that GitHub feature"
                           if provenance_input == private_repo_provenance_fallback and event_name == "workflow_run"
-                          else "release gating is not evaluated for this event type"
+                          else (
+                              "workflow_dispatch release gating uses the current manual security run plus resolved published-image evidence for the selected build"
+                              if provenance_input != private_repo_provenance_fallback and event_name == "workflow_dispatch"
+                              else (
+                                  "workflow_dispatch release gating accepted digest-pinned published images without GitHub Artifact Attestations because this private repository cannot use that GitHub feature"
+                                  if provenance_input == private_repo_provenance_fallback and event_name == "workflow_dispatch"
+                                  else "release gating is not evaluated for this event type"
+                              )
+                          )
                       )
                   ),
               },

@@ -138,7 +138,7 @@ jobs:
 
           [[ "${workflow_name}" == "Build and Push Images" ]] || fail "build_run_id must reference a 'Build and Push Images' workflow run"
           [[ "${source_branch}" == "main" ]] || fail "build_run_id must come from the main branch"
-          [[ "${source_event}" == "push" ]] || fail "build_run_id must come from a push-triggered main build"
+          [[ "${source_event}" == "push" || "${source_event}" == "workflow_dispatch" ]] || fail "build_run_id must come from a main build triggered by push or workflow_dispatch"
           [[ "${run_status}" == "completed" ]] || fail "build_run_id must reference a completed build run"
           [[ "${run_conclusion}" == "success" ]] || fail "build_run_id must reference a successful build run"
 
@@ -649,10 +649,10 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           candidate_runs="$(
-            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs?event=workflow_run&status=completed&per_page=100" \
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs?status=completed&per_page=100" \
               --jq '.workflow_runs[]? | [.id, (.conclusion // "")] | @tsv'
           )"
-          [[ -n "${candidate_runs}" ]] || fail "no completed security workflow_run runs found"
+          [[ -n "${candidate_runs}" ]] || fail "no completed security workflow runs found"
 
           matched_run_id=""
           matched_generated_at=""
@@ -704,8 +704,8 @@ jobs:
               '    print("reason=security-verdict schema_version is unsupported: {}".format(payload.get("schema_version", "")))' \
               '    raise SystemExit(3)' \
               '' \
-              'if payload.get("event_name") != "workflow_run":' \
-              '    print("reason=production release gate requires workflow_run security evidence, found event_name={}".format(payload.get("event_name", "")))' \
+              'if payload.get("event_name") not in ("workflow_run", "workflow_dispatch"):' \
+              '    print("reason=production release gate requires workflow_run or workflow_dispatch security evidence, found event_name={}".format(payload.get("event_name", "")))' \
               '    raise SystemExit(4)' \
               '' \
               'if str(payload.get("workflow_run_id", "")) != run_id:' \
