@@ -17,6 +17,7 @@ require_file "${COMPOSE_FILE}"
 WAIT_SECS="${APP_NODE_HEALTH_WAIT_SECS:-180}"
 POLL_SECS="${APP_NODE_HEALTH_POLL_SECS:-5}"
 TEMPORAL_ENABLED="${APP_NODE_ENABLE_TEMPORAL_PROFILE:-0}"
+CHECK_CADDY="${APP_NODE_CHECK_CADDY:-1}"
 failures=0
 
 pass() {
@@ -54,7 +55,9 @@ wait_for_service "$("${COMPOSE[@]}" ps -q api)"
 wait_for_service "$("${COMPOSE[@]}" ps -q worker)"
 wait_for_service "$("${COMPOSE[@]}" ps -q reconciler)"
 wait_for_service "$("${COMPOSE[@]}" ps -q mqtt-ingest)"
-wait_for_service "$("${COMPOSE[@]}" ps -q caddy)"
+if [[ "${CHECK_CADDY}" == "1" ]]; then
+	wait_for_service "$("${COMPOSE[@]}" ps -q caddy)"
+fi
 
 if [[ "${TEMPORAL_ENABLED}" == "1" ]]; then
 	wait_for_service "$("${COMPOSE[@]}" --profile temporal ps -q temporal-worker)"
@@ -76,7 +79,9 @@ check "api /version returns 200" "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS ht
 check "worker /health/ready returns 200" "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/health/ready" | grep -qx ok'
 check "reconciler /health/ready returns 200" "${COMPOSE[@]}" exec -T reconciler sh -c 'addr="${RECONCILER_METRICS_LISTEN:-127.0.0.1:9092}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/health/ready" | grep -qx ok'
 check "mqtt-ingest /health/ready returns 200" "${COMPOSE[@]}" exec -T mqtt-ingest sh -c 'addr="${MQTT_INGEST_METRICS_LISTEN:-127.0.0.1:9093}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/health/ready" | grep -qx ok'
-check "caddy upstream healthcheck returns 200" "${COMPOSE[@]}" exec -T caddy sh -c 'wget -qO- http://api:8080/health/live | grep -qx ok'
+if [[ "${CHECK_CADDY}" == "1" ]]; then
+	check "caddy upstream healthcheck returns 200" "${COMPOSE[@]}" exec -T caddy sh -c 'wget -qO- http://api:8080/health/live | grep -qx ok'
+fi
 
 if [[ "${TEMPORAL_ENABLED}" == "1" ]]; then
 	check "temporal-worker /health/ready returns 200" "${COMPOSE[@]}" --profile temporal exec -T temporal-worker sh -c 'addr="${TEMPORAL_WORKER_METRICS_LISTEN:-127.0.0.1:9094}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/health/ready" | grep -qx ok'
