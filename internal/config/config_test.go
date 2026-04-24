@@ -273,6 +273,55 @@ func TestLoad_ProductionAppEnvStillValidatedStrictly(t *testing.T) {
 	}
 }
 
+func setMinimalProductionLoadEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("LOG_LEVEL", "info")
+	t.Setenv("LOG_FORMAT", "json")
+	t.Setenv("HTTP_ADDR", ":8080")
+	t.Setenv("OTEL_SERVICE_NAME", "avf-api-prod")
+	t.Setenv("HTTP_AUTH_JWT_SECRET", strings.Repeat("x", 32))
+	t.Setenv("NATS_URL", "nats://127.0.0.1:4222")
+	t.Setenv("APP_NODE_NAME", "prod-node-a")
+	t.Setenv("APP_INSTANCE_ID", "prod-node-a-api-1")
+}
+
+func TestLoad_SwaggerUIEnabled_production(t *testing.T) {
+	t.Run("HTTP_SWAGGER_UI_ENABLED_true", func(t *testing.T) {
+		setMinimalProductionLoadEnv(t)
+		t.Setenv("HTTP_SWAGGER_UI_ENABLED", "true")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !cfg.SwaggerUIEnabled {
+			t.Fatal("expected SwaggerUIEnabled true")
+		}
+	})
+	t.Run("HTTP_SWAGGER_UI_ENABLED_false", func(t *testing.T) {
+		setMinimalProductionLoadEnv(t)
+		t.Setenv("HTTP_SWAGGER_UI_ENABLED", "false")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.SwaggerUIEnabled {
+			t.Fatal("expected SwaggerUIEnabled false")
+		}
+	})
+	t.Run("HTTP_SWAGGER_UI_ENABLED_unset", func(t *testing.T) {
+		setMinimalProductionLoadEnv(t)
+		_ = os.Unsetenv("HTTP_SWAGGER_UI_ENABLED")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.SwaggerUIEnabled {
+			t.Fatal("expected SwaggerUIEnabled false when unset in production")
+		}
+	})
+}
+
 func TestLoad_RuntimeMetadataAndURLs(t *testing.T) {
 	setMinimalValidLoadEnv(t)
 	t.Setenv("PUBLIC_BASE_URL", "https://api.example.com")

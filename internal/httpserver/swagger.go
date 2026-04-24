@@ -8,7 +8,7 @@ import (
 )
 
 // MountSwaggerUI serves Swagger UI and /swagger/doc.json (OpenAPI 3.0) without Bearer auth.
-// Wire only when config.Config.SwaggerUIEnabled is true (default off in production).
+// Wire only when config.Config.SwaggerUIEnabled is true (production defaults off when HTTP_SWAGGER_UI_ENABLED is unset).
 func MountSwaggerUI(r chi.Router, log *zap.Logger) {
 	if log != nil {
 		log.Info("swagger_ui_mount", zap.String("path_prefix", "/swagger"))

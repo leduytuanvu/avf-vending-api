@@ -8,7 +8,7 @@
 - [MQTT device contract + HTTP command/vend fallbacks](api/mqtt-contract.md) — topics, QoS, retain, envelope, `vend-results` / `commands/poll`.
 - [Internal gRPC queries](api/internal-grpc.md) — internal-only machine, telemetry, and commerce protobuf services.
 
-OpenAPI 3.0 (generated from `internal/httpserver/swagger_operations.go`): **`docs/swagger/swagger.json`** — regenerate with `python tools/build_openapi.py` (see repo `Makefile` **`swagger`** / **`swagger-check`**).
+OpenAPI 3.0 (generated from `internal/httpserver/swagger_operations.go`): **`docs/swagger/swagger.json`** — regenerate with `python tools/build_openapi.py` (see repo `Makefile` **`swagger`** / **`swagger-check`**). When Swagger is enabled in production, the same spec is served at **`https://api.ldtv.dev/swagger/doc.json`** with UI at **`https://api.ldtv.dev/swagger/index.html`** (public documentation only; **`/v1/*`** calls still require **`Authorization: Bearer <JWT>`** unless a route is explicitly public).
 
 ## Architecture
 

@@ -90,6 +90,44 @@ func TestNewHTTPServer_noPanic_healthAndSwagger(t *testing.T) {
 	}
 }
 
+func TestNewHTTPServer_production_swaggerDisabled_noSwaggerRoutes(t *testing.T) {
+	t.Parallel()
+	cfg := testHTTPServerConfig(t)
+	cfg.AppEnv = config.AppEnvProduction
+	cfg.SwaggerUIEnabled = false
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := hs.srv.Handler
+	req := httptest.NewRequest(http.MethodGet, "/swagger/index.html", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("GET /swagger/index.html: status=%d want 404", rec.Code)
+	}
+}
+
+func TestNewHTTPServer_production_swaggerEnabled_servesSwagger(t *testing.T) {
+	t.Parallel()
+	cfg := testHTTPServerConfig(t)
+	cfg.AppEnv = config.AppEnvProduction
+	cfg.SwaggerUIEnabled = true
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := hs.srv.Handler
+	for _, path := range []string{"/swagger/index.html", "/swagger/doc.json"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s: status=%d", path, rec.Code)
+		}
+	}
+}
+
 func TestMountV1_v1AuthRoutesNotDuplicated_chiWalk(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()

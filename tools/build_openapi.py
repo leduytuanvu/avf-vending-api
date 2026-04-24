@@ -2067,8 +2067,8 @@ def main() -> int:
         "openapi": "3.0.3",
         "info": info,
         "servers": [
-            {"url": "http://localhost:8080", "description": "Development"},
             {"url": "https://api.ldtv.dev", "description": "Production"},
+            {"url": "http://localhost:8080", "description": "Development"},
         ],
         "paths": paths,
         "components": comp,
@@ -2097,6 +2097,18 @@ def main() -> int:
     OUT_JSON.write_text(json.dumps(spec, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
 
     data = json.loads(OUT_JSON.read_text(encoding="utf-8"))
+    servers = data.get("servers") or []
+    if (
+        len(servers) < 2
+        or servers[0].get("url") != "https://api.ldtv.dev"
+        or servers[1].get("url") != "http://localhost:8080"
+    ):
+        print(
+            "openapi servers: expected servers[0].url=https://api.ldtv.dev and "
+            "servers[1].url=http://localhost:8080 (Production first, Development second)",
+            file=sys.stderr,
+        )
+        return 1
     title = data["info"]["title"].replace("\\", "\\\\").replace('"', '\\"')
     ver = data["info"]["version"]
     docs_go = f'''// Package swagger contains the OpenAPI 3.0 document for the HTTP API (generated).
