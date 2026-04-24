@@ -464,6 +464,7 @@ SELECT
     payment_id,
     provider,
     provider_ref,
+    webhook_event_id,
     provider_amount_minor,
     currency,
     event_type,
@@ -474,11 +475,29 @@ WHERE
     provider = $1
     AND provider_ref = $2;
 
+-- name: GetPaymentProviderEventByWebhookEventID :one
+SELECT
+    id,
+    payment_id,
+    provider,
+    provider_ref,
+    webhook_event_id,
+    provider_amount_minor,
+    currency,
+    event_type,
+    payload,
+    received_at
+FROM payment_provider_events
+WHERE
+    provider = $1
+    AND webhook_event_id = $2;
+
 -- name: InsertPaymentProviderEvent :one
 INSERT INTO payment_provider_events (
     payment_id,
     provider,
     provider_ref,
+    webhook_event_id,
     provider_amount_minor,
     currency,
     event_type,
@@ -490,13 +509,15 @@ INSERT INTO payment_provider_events (
     $4,
     $5,
     $6,
-    $7
+    $7,
+    $8
 )
 RETURNING
     id,
     payment_id,
     provider,
     provider_ref,
+    webhook_event_id,
     provider_amount_minor,
     currency,
     event_type,
@@ -548,3 +569,99 @@ SELECT
             m.id = $1
             AND m.organization_id = $2
     ) AS ok;
+
+-- name: InsertRefundRow :one
+INSERT INTO refunds (
+    payment_id,
+    order_id,
+    amount_minor,
+    currency,
+    state,
+    reason,
+    idempotency_key,
+    metadata
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8
+)
+RETURNING
+    id,
+    payment_id,
+    order_id,
+    amount_minor,
+    currency,
+    state,
+    reason,
+    idempotency_key,
+    metadata,
+    created_at;
+
+-- name: ListRefundsForOrder :many
+SELECT
+    id,
+    payment_id,
+    order_id,
+    amount_minor,
+    currency,
+    state,
+    reason,
+    idempotency_key,
+    metadata,
+    created_at
+FROM
+    refunds
+WHERE
+    order_id = $1
+ORDER BY
+    created_at ASC;
+
+-- name: GetRefundByIDForOrder :one
+SELECT
+    id,
+    payment_id,
+    order_id,
+    amount_minor,
+    currency,
+    state,
+    reason,
+    idempotency_key,
+    metadata,
+    created_at
+FROM
+    refunds
+WHERE
+    id = $1
+    AND order_id = $2;
+
+-- name: GetRefundByOrderIdempotency :one
+SELECT
+    id,
+    payment_id,
+    order_id,
+    amount_minor,
+    currency,
+    state,
+    reason,
+    idempotency_key,
+    metadata,
+    created_at
+FROM
+    refunds
+WHERE
+    order_id = $1
+    AND idempotency_key = $2;
+
+-- name: SumNonFailedRefundAmountForPayment :one
+SELECT
+    COALESCE(SUM(amount_minor), 0)::bigint AS refunded_minor
+FROM
+    refunds
+WHERE
+    payment_id = $1
+    AND state <> 'failed';

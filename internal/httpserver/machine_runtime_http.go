@@ -8,7 +8,6 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/gen/db"
-	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,8 +17,8 @@ func mountMachineRuntimeRoutes(r chi.Router, app *api.HTTPApplication) {
 	if app == nil || app.TelemetryStore == nil {
 		return
 	}
-	r.With(auth.RequireMachineURLAccess("machineId")).Post("/machines/{machineId}/check-ins", postMachineCheckIn(app))
-	r.With(auth.RequireMachineURLAccess("machineId")).Post("/machines/{machineId}/config-applies", postMachineConfigApply(app))
+	r.With(RequireMachineTenantAccess(app, "machineId")).Post("/machines/{machineId}/check-ins", postMachineCheckIn(app))
+	r.With(RequireMachineTenantAccess(app, "machineId")).Post("/machines/{machineId}/config-applies", postMachineConfigApply(app))
 }
 
 type machineCheckInRequest struct {

@@ -9,7 +9,6 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
-	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -20,9 +19,9 @@ func mountMachineTelemetryRoutes(r chi.Router, app *api.HTTPApplication) {
 		return
 	}
 	st := app.TelemetryStore
-	r.With(auth.RequireMachineURLAccess("machineId")).Get("/machines/{machineId}/telemetry/snapshot", telemetrySnapshotHandler(st))
-	r.With(auth.RequireMachineURLAccess("machineId")).Get("/machines/{machineId}/telemetry/incidents", telemetryIncidentsHandler(st))
-	r.With(auth.RequireMachineURLAccess("machineId")).Get("/machines/{machineId}/telemetry/rollups", telemetryRollupsHandler(st))
+	r.With(RequireMachineTenantAccess(app, "machineId")).Get("/machines/{machineId}/telemetry/snapshot", telemetrySnapshotHandler(st))
+	r.With(RequireMachineTenantAccess(app, "machineId")).Get("/machines/{machineId}/telemetry/incidents", telemetryIncidentsHandler(st))
+	r.With(RequireMachineTenantAccess(app, "machineId")).Get("/machines/{machineId}/telemetry/rollups", telemetryRollupsHandler(st))
 }
 
 func telemetrySnapshotHandler(st *postgres.Store) http.HandlerFunc {

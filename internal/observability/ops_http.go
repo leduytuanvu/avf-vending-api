@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/config"
@@ -48,7 +49,13 @@ func NewOperationsMux(cfg *config.Config, log *zap.Logger, metricsEnabled bool, 
 		_, _ = w.Write([]byte("ok"))
 	})
 	if metricsEnabled {
-		mux.Handle("/metrics", promhttp.Handler())
+		h := promhttp.Handler()
+		if cfg != nil {
+			if tok := strings.TrimSpace(cfg.MetricsScrapeToken); tok != "" {
+				h = ScrapeBearerGate(tok, h)
+			}
+		}
+		mux.Handle("/metrics", h)
 	}
 	return mux
 }

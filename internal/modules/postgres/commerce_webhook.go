@@ -30,6 +30,50 @@ func paymentTransitionAllowed(from, to string) bool {
 	}
 }
 
+func assertWebhookReplayFieldsMatch(existing db.PaymentProviderEvent, in appcommerce.ApplyPaymentProviderWebhookInput) error {
+	inRef := strings.TrimSpace(in.ProviderReference)
+	if existing.ProviderRef.Valid {
+		got := strings.TrimSpace(existing.ProviderRef.String)
+		if got != "" && inRef != "" && got != inRef {
+			return appcommerce.ErrWebhookIdempotencyConflict
+		}
+	}
+	inEv := strings.TrimSpace(in.WebhookEventID)
+	if existing.WebhookEventID.Valid {
+		got := strings.TrimSpace(existing.WebhookEventID.String)
+		if got != "" && inEv != "" && got != inEv {
+			return appcommerce.ErrWebhookIdempotencyConflict
+		}
+	}
+	return nil
+}
+
+func (s *Store) webhookReplayResultFromEvent(ctx context.Context, q *db.Queries, existing db.PaymentProviderEvent, in appcommerce.ApplyPaymentProviderWebhookInput) (appcommerce.ApplyPaymentProviderWebhookResult, error) {
+	if !existing.PaymentID.Valid || uuid.UUID(existing.PaymentID.Bytes) != in.PaymentID {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, errors.Join(appcommerce.ErrOrgMismatch, errors.New("provider event already bound to a different payment"))
+	}
+	if err := assertWebhookReplayFieldsMatch(existing, in); err != nil {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+	}
+	pay, err := q.GetPaymentByID(ctx, in.PaymentID)
+	if err != nil {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+	}
+	if p := strings.TrimSpace(pay.Provider); p != "" && !strings.EqualFold(p, strings.TrimSpace(in.Provider)) {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, appcommerce.ErrWebhookProviderMismatch
+	}
+	ord, err := q.GetOrderByID(ctx, in.OrderID)
+	if err != nil {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+	}
+	return appcommerce.ApplyPaymentProviderWebhookResult{
+		Replay:        true,
+		Order:         mapOrder(ord),
+		Payment:       mapPayment(pay),
+		ProviderRowID: existing.ID,
+	}, nil
+}
+
 func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.ApplyPaymentProviderWebhookInput) (appcommerce.ApplyPaymentProviderWebhookResult, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -44,34 +88,45 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		ProviderRef: pgtype.Text{String: in.ProviderReference, Valid: true},
 	})
 	if err == nil {
-		if !existingEv.PaymentID.Valid || uuid.UUID(existingEv.PaymentID.Bytes) != in.PaymentID {
-			return appcommerce.ApplyPaymentProviderWebhookResult{}, errors.Join(appcommerce.ErrOrgMismatch, errors.New("provider reference already bound to a different payment"))
-		}
-		pay, pErr := q.GetPaymentByID(ctx, in.PaymentID)
-		if pErr != nil {
-			return appcommerce.ApplyPaymentProviderWebhookResult{}, pErr
-		}
-		ord, oErr := q.GetOrderByID(ctx, in.OrderID)
-		if oErr != nil {
-			return appcommerce.ApplyPaymentProviderWebhookResult{}, oErr
+		res, rerr := s.webhookReplayResultFromEvent(ctx, q, existingEv, in)
+		if rerr != nil {
+			return appcommerce.ApplyPaymentProviderWebhookResult{}, rerr
 		}
 		if err := tx.Commit(ctx); err != nil {
 			return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 		}
-		return appcommerce.ApplyPaymentProviderWebhookResult{
-			Replay:        true,
-			Order:         mapOrder(ord),
-			Payment:       mapPayment(pay),
-			ProviderRowID: existingEv.ID,
-		}, nil
+		return res, nil
 	}
 	if !isNoRows(err) {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 	}
 
+	if strings.TrimSpace(in.WebhookEventID) != "" {
+		existingByEv, err2 := q.GetPaymentProviderEventByWebhookEventID(ctx, db.GetPaymentProviderEventByWebhookEventIDParams{
+			Provider:       in.Provider,
+			WebhookEventID: pgtype.Text{String: strings.TrimSpace(in.WebhookEventID), Valid: true},
+		})
+		if err2 == nil {
+			res, rerr := s.webhookReplayResultFromEvent(ctx, q, existingByEv, in)
+			if rerr != nil {
+				return appcommerce.ApplyPaymentProviderWebhookResult{}, rerr
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+			}
+			return res, nil
+		}
+		if !isNoRows(err2) {
+			return appcommerce.ApplyPaymentProviderWebhookResult{}, err2
+		}
+	}
+
 	pay, err := q.GetPaymentByID(ctx, in.PaymentID)
 	if err != nil {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+	}
+	if p := strings.TrimSpace(pay.Provider); p != "" && !strings.EqualFold(p, strings.TrimSpace(in.Provider)) {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, appcommerce.ErrWebhookProviderMismatch
 	}
 	if pay.OrderID != in.OrderID {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, appcommerce.ErrOrgMismatch
@@ -104,10 +159,15 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 	if in.Currency != nil {
 		cur = pgtype.Text{String: *in.Currency, Valid: true}
 	}
+	var webhookEv pgtype.Text
+	if w := strings.TrimSpace(in.WebhookEventID); w != "" {
+		webhookEv = pgtype.Text{String: w, Valid: true}
+	}
 	ev, err := q.InsertPaymentProviderEvent(ctx, db.InsertPaymentProviderEventParams{
 		PaymentID:           pgtype.UUID{Bytes: in.PaymentID, Valid: true},
 		Provider:            in.Provider,
 		ProviderRef:         pgtype.Text{String: in.ProviderReference, Valid: true},
+		WebhookEventID:      webhookEv,
 		ProviderAmountMinor: amt,
 		Currency:            cur,
 		EventType:           in.EventType,
@@ -116,7 +176,7 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 	if err != nil {
 		if isUniqueViolation(err) {
 			_ = tx.Rollback(ctx)
-			return s.webhookReplayByProviderRef(ctx, in)
+			return s.webhookReplayAfterUniqueViolation(ctx, in)
 		}
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 	}
@@ -155,6 +215,23 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 	}, nil
 }
 
+func (s *Store) webhookReplayAfterUniqueViolation(ctx context.Context, in appcommerce.ApplyPaymentProviderWebhookInput) (appcommerce.ApplyPaymentProviderWebhookResult, error) {
+	if res, err := s.webhookReplayByProviderRef(ctx, in); err == nil {
+		return res, nil
+	} else if !isNoRows(err) {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+	}
+	if strings.TrimSpace(in.WebhookEventID) == "" {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, errors.New("postgres: payment_provider_events unique violation without replay match")
+	}
+	if res, err := s.webhookReplayByWebhookEventID(ctx, in); err == nil {
+		return res, nil
+	} else if !isNoRows(err) {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+	}
+	return appcommerce.ApplyPaymentProviderWebhookResult{}, errors.New("postgres: payment_provider_events unique violation without replay match")
+}
+
 func (s *Store) webhookReplayByProviderRef(ctx context.Context, in appcommerce.ApplyPaymentProviderWebhookInput) (appcommerce.ApplyPaymentProviderWebhookResult, error) {
 	q := db.New(s.pool)
 	existingEv, err := q.GetPaymentProviderEventByProviderRef(ctx, db.GetPaymentProviderEventByProviderRefParams{
@@ -164,21 +241,17 @@ func (s *Store) webhookReplayByProviderRef(ctx context.Context, in appcommerce.A
 	if err != nil {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 	}
-	if !existingEv.PaymentID.Valid || uuid.UUID(existingEv.PaymentID.Bytes) != in.PaymentID {
-		return appcommerce.ApplyPaymentProviderWebhookResult{}, errors.Join(appcommerce.ErrOrgMismatch, errors.New("provider reference already bound to a different payment"))
-	}
-	pay, err := q.GetPaymentByID(ctx, in.PaymentID)
+	return s.webhookReplayResultFromEvent(ctx, q, existingEv, in)
+}
+
+func (s *Store) webhookReplayByWebhookEventID(ctx context.Context, in appcommerce.ApplyPaymentProviderWebhookInput) (appcommerce.ApplyPaymentProviderWebhookResult, error) {
+	q := db.New(s.pool)
+	existingEv, err := q.GetPaymentProviderEventByWebhookEventID(ctx, db.GetPaymentProviderEventByWebhookEventIDParams{
+		Provider:       in.Provider,
+		WebhookEventID: pgtype.Text{String: strings.TrimSpace(in.WebhookEventID), Valid: true},
+	})
 	if err != nil {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 	}
-	ord, err := q.GetOrderByID(ctx, in.OrderID)
-	if err != nil {
-		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
-	}
-	return appcommerce.ApplyPaymentProviderWebhookResult{
-		Replay:        true,
-		Order:         mapOrder(ord),
-		Payment:       mapPayment(pay),
-		ProviderRowID: existingEv.ID,
-	}, nil
+	return s.webhookReplayResultFromEvent(ctx, q, existingEv, in)
 }

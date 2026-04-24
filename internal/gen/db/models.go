@@ -62,17 +62,32 @@ type Brand struct {
 	OrganizationID uuid.UUID
 	Slug           string
 	Name           string
+	Active         bool
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
 
-// Physical cash removed from machine; reconcile against expected vault from cash_events.
+// Field cash collection sessions: open then close with counted vs expected (commerce cash, no hardware payout).
 type CashCollection struct {
-	ID                   uuid.UUID
-	OrganizationID       uuid.UUID
-	MachineID            uuid.UUID
-	CollectedAt          time.Time
-	AmountMinor          int64
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	CollectedAt    time.Time
+	// When the operator started the collection session (usually equals collected_at).
+	OpenedAt time.Time
+	// When the session was closed with a physical count; null while open.
+	ClosedAt        pgtype.Timestamptz
+	LifecycleStatus string
+	// Physical count (counted cash) when closed; 0 while open.
+	AmountMinor int64
+	// Backend-expected net cash in vault at close from commerce since previous closed collection.
+	ExpectedAmountMinor int64
+	// counted minus expected at close.
+	VarianceAmountMinor int64
+	// True when abs(variance) exceeds configured review threshold.
+	RequiresReview bool
+	// SHA-256 of canonical close payload for idempotent close and conflict detection.
+	CloseRequestHash     []byte
 	Currency             string
 	Metadata             []byte
 	ReconciliationStatus string
@@ -117,6 +132,7 @@ type Category struct {
 	Slug           string
 	Name           string
 	ParentID       pgtype.UUID
+	Active         bool
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -149,6 +165,16 @@ type CommandLedger struct {
 	SourceEventID pgtype.Text
 	// This repo uses command_ledger as machine command rows (no separate machine_commands table).
 	OperatorSessionID pgtype.UUID
+}
+
+type CriticalTelemetryEventStatus struct {
+	MachineID      uuid.UUID
+	IdempotencyKey string
+	Status         string
+	EventType      pgtype.Text
+	AcceptedAt     pgtype.Timestamptz
+	ProcessedAt    pgtype.Timestamptz
+	UpdatedAt      time.Time
 }
 
 // Device-reported outcome for a command sequence; optional command_attempt_id links to the send being acknowledged.
@@ -310,6 +336,21 @@ type MachineActionAttribution struct {
 	Metadata          []byte
 	// Optional request/correlation id aligned with device and auth event tracing.
 	CorrelationID pgtype.UUID
+}
+
+type MachineActivationCode struct {
+	ID                     uuid.UUID
+	MachineID              uuid.UUID
+	OrganizationID         uuid.UUID
+	CodeHash               []byte
+	MaxUses                int32
+	Uses                   int32
+	ExpiresAt              time.Time
+	Notes                  pgtype.Text
+	Status                 string
+	ClaimedFingerprintHash []byte
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 }
 
 // Links machines to assortments; at most one active primary binding per machine (valid_to IS NULL, is_primary).
@@ -696,6 +737,7 @@ type PaymentProviderEvent struct {
 	PaymentID           pgtype.UUID
 	Provider            string
 	ProviderRef         pgtype.Text
+	WebhookEventID      pgtype.Text
 	ProviderAmountMinor pgtype.Int8
 	Currency            pgtype.Text
 	EventType           string
@@ -765,6 +807,7 @@ type Product struct {
 	ID              uuid.UUID
 	OrganizationID  uuid.UUID
 	Sku             string
+	Barcode         pgtype.Text
 	Name            string
 	Description     string
 	Attrs           []byte
@@ -781,14 +824,25 @@ type Product struct {
 }
 
 type ProductImage struct {
-	ID         uuid.UUID
-	ProductID  uuid.UUID
-	StorageKey string
-	CdnUrl     pgtype.Text
-	AltText    string
-	SortOrder  int32
-	IsPrimary  bool
-	CreatedAt  time.Time
+	ID          uuid.UUID
+	ProductID   uuid.UUID
+	StorageKey  string
+	CdnUrl      pgtype.Text
+	ThumbCdnUrl pgtype.Text
+	ContentHash pgtype.Text
+	Width       pgtype.Int4
+	Height      pgtype.Int4
+	MimeType    pgtype.Text
+	AltText     string
+	SortOrder   int32
+	IsPrimary   bool
+	CreatedAt   time.Time
+}
+
+type ProductTag struct {
+	OrganizationID uuid.UUID
+	ProductID      uuid.UUID
+	TagID          uuid.UUID
 }
 
 type Promotion struct {
@@ -871,8 +925,11 @@ type Refund struct {
 	PaymentID            uuid.UUID
 	OrderID              uuid.UUID
 	AmountMinor          int64
+	Currency             string
 	State                string
 	Reason               pgtype.Text
+	IdempotencyKey       pgtype.Text
+	Metadata             []byte
 	CreatedAt            time.Time
 	ReconciliationStatus string
 	SettlementStatus     string
@@ -915,6 +972,16 @@ type Slot struct {
 	ProductID   pgtype.UUID
 	MaxQuantity int32
 	CreatedAt   time.Time
+}
+
+type Tag struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	Slug           string
+	Name           string
+	Active         bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type Technician struct {

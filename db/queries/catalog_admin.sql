@@ -10,6 +10,7 @@ SELECT
     p.id,
     p.organization_id,
     p.sku,
+    p.barcode,
     p.name,
     p.description,
     p.active,
@@ -29,6 +30,7 @@ SELECT
     p.id,
     p.organization_id,
     p.sku,
+    p.barcode,
     p.name,
     p.description,
     p.attrs,
@@ -116,3 +118,54 @@ FROM slots s
 LEFT JOIN products pr ON pr.id = s.product_id
 WHERE s.planogram_id = $1
 ORDER BY s.slot_index ASC;
+
+-- name: CatalogAdminListBrands :many
+SELECT *
+FROM brands b
+WHERE b.organization_id = $1
+ORDER BY b.name ASC, b.id
+LIMIT $2 OFFSET $3;
+
+-- name: CatalogAdminCountBrands :one
+SELECT count(*)::bigint
+FROM brands b
+WHERE b.organization_id = $1;
+
+-- name: CatalogAdminGetBrand :one
+SELECT *
+FROM brands b
+WHERE b.organization_id = $1 AND b.id = $2;
+
+-- name: CatalogAdminListCategories :many
+SELECT *
+FROM categories c
+WHERE c.organization_id = $1
+ORDER BY c.name ASC, c.id
+LIMIT $2 OFFSET $3;
+
+-- name: CatalogAdminCountCategories :one
+SELECT count(*)::bigint
+FROM categories c
+WHERE c.organization_id = $1;
+
+-- name: CatalogAdminGetCategory :one
+SELECT *
+FROM categories c
+WHERE c.organization_id = $1 AND c.id = $2;
+
+-- name: CatalogAdminListTags :many
+SELECT *
+FROM tags t
+WHERE t.organization_id = $1
+ORDER BY t.name ASC, t.id
+LIMIT $2 OFFSET $3;
+
+-- name: CatalogAdminCountTags :one
+SELECT count(*)::bigint
+FROM tags t
+WHERE t.organization_id = $1;
+
+-- name: CatalogAdminGetTag :one
+SELECT *
+FROM tags t
+WHERE t.organization_id = $1 AND t.id = $2;

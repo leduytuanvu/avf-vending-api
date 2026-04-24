@@ -59,8 +59,15 @@ ci: ci-gates test-short
 # Mirrors GitHub Actions: same gates plus full go test (set TEST_DATABASE_URL for postgres tests).
 ci-full: ci-gates test
 
-# Enterprise release readiness: full `go test ./...`, bash -n on deployment/scripts, optional YAML parse,
-# docker compose config against *example* env files (no production connectivity), and example-file secret heuristics.
+# Enterprise release readiness (pilot gate; scale tiers still need storm evidence — see production-release-readiness.md):
+#   1) go test ./...
+#   2) make swagger + make swagger-check
+#   3) bash -n on scripts/**/*.sh and deployments/**/*.sh
+#   4) docker compose config against *example* env (offline)
+#   5) tools/openapi_verify_release.py (production+local servers, required P0 paths, Bearer on /v1, write examples, 2xx+error examples, no planned paths, no secret-like examples)
+#   6) scripts/check_stale_p0_docs.sh (no contradictory “not applied / unmounted P0” wording in docs/)
+#   7) deployment example + docs/testdata secret heuristics
+#   8) optional YAML parse (deployments/**/*.yml|yaml)
 verify-enterprise-release:
 	bash scripts/verify_enterprise_release.sh
 

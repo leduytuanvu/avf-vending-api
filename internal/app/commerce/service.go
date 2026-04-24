@@ -15,7 +15,9 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/observability"
+	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
 
@@ -401,6 +403,24 @@ func (s *Service) EvaluateRefundEligibility(ctx context.Context, orderID uuid.UU
 	return out, nil
 }
 
+// EnsureCommerceCallerOrderAccess verifies tenant scope and machine token binding for order mutations.
+func (s *Service) EnsureCommerceCallerOrderAccess(ctx context.Context, organizationID, orderID uuid.UUID, p plauth.Principal) error {
+	if err := s.EnsureOrderOrganization(ctx, organizationID, orderID); err != nil {
+		return err
+	}
+	if !p.HasRole(plauth.RoleMachine) {
+		return nil
+	}
+	o, err := s.life.GetOrderByID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if !p.AllowsMachine(o.MachineID) {
+		return ErrOrgMismatch
+	}
+	return nil
+}
+
 // EnsureOrderOrganization verifies the order belongs to the caller organization.
 func (s *Service) EnsureOrderOrganization(ctx context.Context, organizationID, orderID uuid.UUID) error {
 	if s.life == nil {
@@ -414,6 +434,134 @@ func (s *Service) EnsureOrderOrganization(ctx context.Context, organizationID, o
 		return ErrOrgMismatch
 	}
 	return nil
+}
+
+// CancelOrder cancels an unpaid order (created/quoted without captured payment).
+func (s *Service) CancelOrder(ctx context.Context, organizationID, orderID uuid.UUID, reason string) (domaincommerce.Order, error) {
+	if s.life == nil {
+		return domaincommerce.Order{}, ErrNotConfigured
+	}
+	if organizationID == uuid.Nil || orderID == uuid.Nil {
+		return domaincommerce.Order{}, errors.Join(ErrInvalidArgument, errors.New("organization_id and order_id must be set"))
+	}
+	o, err := s.life.GetOrderByID(ctx, orderID)
+	if err != nil {
+		return domaincommerce.Order{}, err
+	}
+	if o.OrganizationID != organizationID {
+		return domaincommerce.Order{}, ErrOrgMismatch
+	}
+	if o.Status != "created" && o.Status != "quoted" {
+		return domaincommerce.Order{}, ErrCancelNotAllowed
+	}
+	pay, pErr := s.life.GetLatestPaymentForOrder(ctx, orderID)
+	if pErr == nil && pay.State == "captured" {
+		return domaincommerce.Order{}, ErrCancelNotAllowed
+	}
+	if pErr != nil && !errors.Is(pErr, ErrNotFound) {
+		return domaincommerce.Order{}, pErr
+	}
+	_ = reason
+	return s.life.UpdateOrderStatus(ctx, orderID, organizationID, "cancelled")
+}
+
+// CreateRefund records a refund request against the latest captured payment.
+func (s *Service) CreateRefund(ctx context.Context, in CreateRefundInput) (RefundRowView, error) {
+	if s.life == nil {
+		return RefundRowView{}, ErrNotConfigured
+	}
+	if in.OrganizationID == uuid.Nil || in.OrderID == uuid.Nil {
+		return RefundRowView{}, errors.Join(ErrInvalidArgument, errors.New("organization_id and order_id must be set"))
+	}
+	if in.AmountMinor <= 0 {
+		return RefundRowView{}, errors.Join(ErrInvalidArgument, errors.New("amount_minor must be positive"))
+	}
+	if strings.TrimSpace(in.IdempotencyKey) == "" {
+		return RefundRowView{}, errors.Join(ErrInvalidArgument, errors.New("idempotency_key is required"))
+	}
+	cur := strings.ToUpper(strings.TrimSpace(in.Currency))
+	if len(cur) != 3 {
+		return RefundRowView{}, errors.Join(ErrInvalidArgument, errors.New("currency must be a 3-letter ISO code"))
+	}
+	o, err := s.life.GetOrderByID(ctx, in.OrderID)
+	if err != nil {
+		return RefundRowView{}, err
+	}
+	if o.OrganizationID != in.OrganizationID {
+		return RefundRowView{}, ErrOrgMismatch
+	}
+	pay, err := s.life.GetLatestPaymentForOrder(ctx, in.OrderID)
+	if err != nil {
+		return RefundRowView{}, err
+	}
+	if pay.State != "captured" {
+		return RefundRowView{}, ErrRefundNotAllowed
+	}
+	if strings.ToUpper(strings.TrimSpace(pay.Currency)) != cur {
+		return RefundRowView{}, errors.Join(ErrInvalidArgument, errors.New("currency does not match payment"))
+	}
+	already, err := s.life.GetRefundByOrderIdempotency(ctx, in.OrderID, in.IdempotencyKey)
+	if err == nil {
+		return already, nil
+	}
+	if !errors.Is(err, ErrNotFound) {
+		return RefundRowView{}, err
+	}
+	refunded, err := s.life.SumNonFailedRefundAmountForPayment(ctx, pay.ID)
+	if err != nil {
+		return RefundRowView{}, err
+	}
+	if refunded+in.AmountMinor > pay.AmountMinor {
+		return RefundRowView{}, ErrRefundNotAllowed
+	}
+	meta := in.Metadata
+	if len(meta) == 0 {
+		meta = []byte("{}")
+	}
+	row, err := s.life.InsertRefundRow(ctx, InsertRefundRowInput{
+		PaymentID:      pay.ID,
+		OrderID:        in.OrderID,
+		AmountMinor:    in.AmountMinor,
+		Currency:       cur,
+		State:          "requested",
+		Reason:         strings.TrimSpace(in.Reason),
+		IdempotencyKey: strings.TrimSpace(in.IdempotencyKey),
+		Metadata:       meta,
+	})
+	if err != nil {
+		if isPGUniqueViolation(err) {
+			return s.life.GetRefundByOrderIdempotency(ctx, in.OrderID, in.IdempotencyKey)
+		}
+		return RefundRowView{}, err
+	}
+	return row, nil
+}
+
+// ListRefundsForOrder returns refund rows for an order in the tenant.
+func (s *Service) ListRefundsForOrder(ctx context.Context, organizationID, orderID uuid.UUID) ([]RefundRowView, error) {
+	if s.life == nil {
+		return nil, ErrNotConfigured
+	}
+	if err := s.EnsureOrderOrganization(ctx, organizationID, orderID); err != nil {
+		return nil, err
+	}
+	return s.life.ListRefundsForOrder(ctx, orderID)
+}
+
+// GetRefundForOrder returns one refund row when it belongs to the order and tenant.
+func (s *Service) GetRefundForOrder(ctx context.Context, organizationID, orderID, refundID uuid.UUID) (RefundRowView, error) {
+	if s.life == nil {
+		return RefundRowView{}, ErrNotConfigured
+	}
+	if err := s.EnsureOrderOrganization(ctx, organizationID, orderID); err != nil {
+		return RefundRowView{}, err
+	}
+	return s.life.GetRefundByIDForOrder(ctx, orderID, refundID)
+}
+
+func isPGUniqueViolation(err error) bool {
+	var pe *pgconn.PgError
+	return errors.As(err, &pe) && pe.Code == "23505"
 }
 
 // GetCheckoutStatus returns authoritative order, vend, and latest payment state for an organization-scoped read.
@@ -446,8 +594,12 @@ func (s *Service) GetCheckoutStatus(ctx context.Context, organizationID, orderID
 }
 
 // ApplyPaymentProviderWebhook persists an auditable provider notification and advances payment state when legal.
-// Duplicate deliveries for the same (provider, provider_reference) are idempotent replays.
+// Duplicate deliveries for the same (provider, provider_reference) or (provider, webhook_event_id) are idempotent replays.
 func (s *Service) ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPaymentProviderWebhookInput) (ApplyPaymentProviderWebhookResult, error) {
+	wid := strings.TrimSpace(in.WebhookEventID)
+	if len(wid) > 256 {
+		return ApplyPaymentProviderWebhookResult{}, errors.Join(ErrInvalidArgument, errors.New("webhook_event_id too long"))
+	}
 	if s.webhook == nil {
 		return ApplyPaymentProviderWebhookResult{}, ErrNotConfigured
 	}
@@ -474,6 +626,7 @@ func (s *Service) ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPayme
 		PaymentID:              in.PaymentID,
 		Provider:               strings.TrimSpace(in.Provider),
 		ProviderReference:      strings.TrimSpace(in.ProviderReference),
+		WebhookEventID:         wid,
 		EventType:              strings.TrimSpace(in.EventType),
 		NormalizedPaymentState: target,
 		Payload:                payload,

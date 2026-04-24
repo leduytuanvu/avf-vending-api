@@ -6,13 +6,15 @@ import (
 )
 
 // ApplyPaymentProviderWebhookInput records a provider-scoped webhook or callback (no outbound PSP calls).
-// Idempotency is enforced on (provider, provider_reference) via payment_provider_events.
+// Idempotency is enforced on (provider, provider_reference) and on (provider, webhook_event_id) when webhook_event_id is set.
 type ApplyPaymentProviderWebhookInput struct {
-	OrganizationID         uuid.UUID
-	OrderID                uuid.UUID
-	PaymentID              uuid.UUID
-	Provider               string
-	ProviderReference      string
+	OrganizationID    uuid.UUID
+	OrderID           uuid.UUID
+	PaymentID         uuid.UUID
+	Provider          string
+	ProviderReference string
+	// WebhookEventID is an optional PSP delivery identifier; unique per provider when set.
+	WebhookEventID         string
 	EventType              string
 	NormalizedPaymentState string
 	Payload                []byte

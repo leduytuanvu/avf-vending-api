@@ -14,6 +14,8 @@ const (
 	RoleOrgMember     = "org_member"
 	RoleTechnician    = "technician"
 	RoleService       = "service"
+	// RoleMachine is issued to kiosk/device principals after activation; token must include machine_ids.
+	RoleMachine = "machine"
 )
 
 // ActorType is stored in audit_logs.actor_type.
@@ -91,10 +93,13 @@ func (p Principal) AllowsMachine(machineID uuid.UUID) bool {
 	return false
 }
 
-// CanAccessMachineRead gates per-machine reads at the HTTP edge.
-// platform_admin may read any machine; org_admin with org scope may read fleet for that tenant
-// (repositories must still verify machine.organization_id matches the principal org).
-// Explicit machine_ids in the token always win for technicians and service accounts.
+// IsMachinePrincipal reports kiosk/runtime JWTs that must be blocked from admin/reporting routes.
+func (p Principal) IsMachinePrincipal() bool {
+	return p.HasRole(RoleMachine)
+}
+
+// CanAccessMachineRead is a coarse JWT claim check only; it does not prove tenant ownership.
+// Prefer httpserver.RequireMachineTenantAccess for /v1 routes keyed by machineId (DB-backed org match).
 func (p Principal) CanAccessMachineRead(machineID uuid.UUID) bool {
 	if machineID == uuid.Nil {
 		return false
@@ -102,13 +107,7 @@ func (p Principal) CanAccessMachineRead(machineID uuid.UUID) bool {
 	if p.HasRole(RolePlatformAdmin) {
 		return true
 	}
-	if p.AllowsMachine(machineID) {
-		return true
-	}
-	if p.HasOrganization() && p.HasRole(RoleOrgAdmin) {
-		return true
-	}
-	return false
+	return p.AllowsMachine(machineID)
 }
 
 // CanAccessAdminRoutes is true for platform or org administrators.

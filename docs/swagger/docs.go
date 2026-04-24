@@ -14,6 +14,11 @@ import (
 //go:embed swagger.json
 var swaggerJSON []byte
 
+// OpenAPIJSON returns the embedded OpenAPI 3.0 document (for tests and offline tooling).
+func OpenAPIJSON() []byte {
+	return swaggerJSON
+}
+
 func init() {
 	swag.Register("swagger", &swag.Spec{
 		Version:          "1.0",

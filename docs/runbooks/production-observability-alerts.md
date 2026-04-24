@@ -24,6 +24,8 @@ Prometheus `labels.severity` uses `critical` / `warning`. Treat **`critical` as 
 
 Operators can verify that **live** `/metrics` endpoints expose the expected **`avf_*`** series and that **`/health/ready`** responds **before** scaling the fleet or treating production as enterprise-ready.
 
+When **`METRICS_SCRAPE_TOKEN`** is configured, Prometheus (or curl tests) must send **`Authorization: Bearer <token>`** for **`/metrics`** on the API ops port; **`/health/*`** stays unauthenticated on that mux.
+
 ```bash
 # From a host that reaches private ops ports (example hosts/ports — use yours).
 export API_METRICS_URL="http://127.0.0.1:8081/metrics"
