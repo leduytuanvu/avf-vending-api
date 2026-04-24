@@ -47,6 +47,11 @@ on:
         required: false
         default: false
         type: boolean
+      allow_app_node_on_data_node:
+        description: "Allow app-node B to run on the same host as the data-node fallback stack"
+        required: false
+        default: false
+        type: boolean
 
 # Production actions stay serialized under one stable gate.
 # Later runs queue behind the active rollout or rollback instead of canceling it.
@@ -905,6 +910,7 @@ jobs:
       PREVIOUS_RUN_NUMBER: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_number }}
       PREVIOUS_RUN_URL: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}
       DEPLOY_DATA_NODE: ${{ inputs.deploy_data_node && 'true' || 'false' }}
+      ALLOW_APP_NODE_ON_DATA_NODE: ${{ inputs.allow_app_node_on_data_node && 'true' || 'false' }}
       ENABLE_TEMPORAL_PROFILE: ${{ vars.PRODUCTION_ENABLE_TEMPORAL_PROFILE || 'false' }}
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || vars.PRODUCTION_DEPLOY_ROOT || vars.PROD_DEPLOY_PATH || vars.DEPLOY_PATH || '/opt/avf-vending-api' }}
       APP_NODE_A_HOST: ${{ secrets.PRODUCTION_APP_NODE_A_HOST || secrets.PROD_APP_A_HOST || secrets.APP_A_HOST || vars.PRODUCTION_APP_NODE_A_HOST || vars.PROD_APP_A_HOST || vars.APP_A_HOST }}
@@ -932,6 +938,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate production deploy inputs
+        id: validate_deploy_inputs
         shell: bash
         env:
           SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || secrets.SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS }}
@@ -965,8 +972,10 @@ jobs:
 
           [[ -n "${PRODUCTION_DEPLOY_ROOT}" ]] || fail "missing production deploy root (PRODUCTION_DEPLOY_ROOT or PROD_DEPLOY_PATH)"
           [[ -n "${APP_NODE_A_HOST}" ]] || fail "missing production app node A host"
-          [[ -n "${APP_NODE_B_HOST}" ]] || fail "missing production app node B host"
-          [[ "${APP_NODE_A_HOST}" != "${APP_NODE_B_HOST}" ]] || fail "app node A and B hosts must differ"
+          [[ "${ALLOW_APP_NODE_ON_DATA_NODE}" == "true" || "${ALLOW_APP_NODE_ON_DATA_NODE}" == "false" ]] || fail "ALLOW_APP_NODE_ON_DATA_NODE must be true or false"
+          if [[ -n "${APP_NODE_B_HOST}" ]] && [[ "${APP_NODE_A_HOST}" == "${APP_NODE_B_HOST}" ]]; then
+            fail "app node A and B hosts must differ"
+          fi
           [[ -n "${SSH_USER}" ]] || fail "missing production SSH user"
           [[ -n "${SSH_PORT}" ]] || fail "missing production SSH port"
           [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]] || fail "missing pinned production SSH known_hosts content"
@@ -979,6 +988,34 @@ jobs:
 
           if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
             [[ -n "${DATA_NODE_HOST}" ]] || fail "deploy_data_node=true requires DATA_NODE_HOST"
+          fi
+
+          deploy_app_node_b="true"
+          app_node_b_warning=""
+          if [[ -z "${APP_NODE_B_HOST}" ]]; then
+            deploy_app_node_b="false"
+            app_node_b_warning="Skipping app-node-b because APP_NODE_B_HOST is not configured."
+          elif [[ -n "${DATA_NODE_HOST}" ]] && [[ "${APP_NODE_B_HOST}" == "${DATA_NODE_HOST}" ]]; then
+            if [[ "${ALLOW_APP_NODE_ON_DATA_NODE}" == "true" ]]; then
+              app_node_b_warning="Running app-node-b on the data-node host may exhaust managed Postgres pool connections."
+            else
+              deploy_app_node_b="false"
+              app_node_b_warning="Skipping app-node-b because it shares the data-node host and ALLOW_APP_NODE_ON_DATA_NODE is not true."
+            fi
+          fi
+
+          {
+            echo "DEPLOY_APP_NODE_B=${deploy_app_node_b}"
+            echo "APP_NODE_B_WARNING=${app_node_b_warning}"
+          } >> "$GITHUB_ENV"
+          {
+            echo "deploy_app_node_b=${deploy_app_node_b}"
+            echo "app_node_b_warning=${app_node_b_warning}"
+          } >> "$GITHUB_OUTPUT"
+
+          if [[ -n "${app_node_b_warning}" ]]; then
+            echo "${app_node_b_warning}"
+            echo "- topology note: \`${app_node_b_warning}\`" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Gate production release before SSH
@@ -1024,6 +1061,9 @@ jobs:
 
       - name: Show production rollout plan
         shell: bash
+        env:
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
+          APP_NODE_B_WARNING: ${{ steps.validate_deploy_inputs.outputs.app_node_b_warning }}
         run: |
           freshness_window_display="${SECURITY_VERDICT_MAX_AGE_HOURS}"
           if [[ "${SECURITY_VERDICT_MAX_AGE_HOURS}" =~ ^[0-9]+$ ]]; then
@@ -1060,17 +1100,30 @@ jobs:
             fi
             echo "- SSH host trust: \`pinned known_hosts entries from GitHub secrets/vars\`"
             echo "- release label: \`${RELEASE_TAG}\`"
-            echo "- smoke gates: \`public node-A smoke after readiness\` then \`final cluster smoke after node-B readiness\`"
+            if [[ "${DEPLOY_APP_NODE_B}" == "true" ]]; then
+              echo "- smoke gates: \`public node-A smoke after readiness\` then \`final cluster smoke after node-B readiness\`"
+            else
+              echo "- smoke gates: \`public node-A smoke after readiness\` then \`final cluster smoke after the selected rollout scope\`"
+            fi
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
-            echo "- app node B: \`${APP_NODE_B_HOST}\`"
+            if [[ "${DEPLOY_APP_NODE_B}" == "true" ]]; then
+              echo "- app node B: \`${APP_NODE_B_HOST}\`"
+            else
+              echo "- app node B: \`skipped\`"
+            fi
             echo "- deploy data-node fallback: \`${DEPLOY_DATA_NODE}\`"
             echo "- data node host: \`${DATA_NODE_HOST:-not-requested}\`"
             echo "- enable temporal profile: \`${ENABLE_TEMPORAL_PROFILE}\`"
             echo "- deploy root: \`${PRODUCTION_DEPLOY_ROOT}\`"
+            if [[ -n "${APP_NODE_B_WARNING}" ]]; then
+              echo "- topology note: \`${APP_NODE_B_WARNING}\`"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate SSH reachability for production hosts
         shell: bash
+        env:
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
         run: |
           set -Eeuo pipefail
 
@@ -1082,7 +1135,9 @@ jobs:
           }
 
           check_host "${APP_NODE_A_HOST}"
-          check_host "${APP_NODE_B_HOST}"
+          if [[ "${DEPLOY_APP_NODE_B}" == "true" ]]; then
+            check_host "${APP_NODE_B_HOST}"
+          fi
           if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
             check_host "${DATA_NODE_HOST}"
           fi
@@ -1118,6 +1173,8 @@ jobs:
 
       - name: Validate pinned SSH host identities
         shell: bash
+        env:
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
         run: |
           set -Eeuo pipefail
 
@@ -1142,13 +1199,17 @@ jobs:
           }
 
           require_known_host "${APP_NODE_A_HOST}"
-          require_known_host "${APP_NODE_B_HOST}"
+          if [[ "${DEPLOY_APP_NODE_B}" == "true" ]]; then
+            require_known_host "${APP_NODE_B_HOST}"
+          fi
           if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
             require_known_host "${DATA_NODE_HOST}"
           fi
 
       - name: Record resolved production SSH context
         shell: bash
+        env:
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
@@ -1158,7 +1219,11 @@ jobs:
             echo "- ssh user: \`${SSH_USER}\`"
             echo "- ssh port: \`${SSH_PORT}\`"
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
-            echo "- app node B: \`${APP_NODE_B_HOST}\`"
+            if [[ "${DEPLOY_APP_NODE_B}" == "true" ]]; then
+              echo "- app node B: \`${APP_NODE_B_HOST}\`"
+            else
+              echo "- app node B: \`skipped\`"
+            fi
             if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
               echo "- data node: \`${DATA_NODE_HOST}\`"
             fi
@@ -1169,6 +1234,8 @@ jobs:
 
       - name: Probe production SSH authentication
         shell: bash
+        env:
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
         run: |
           set -Eeuo pipefail
 
@@ -1204,7 +1271,9 @@ jobs:
 
           mkdir -p deployment-evidence
           probe_host "app-node-a" "${APP_NODE_A_HOST}"
-          probe_host "app-node-b" "${APP_NODE_B_HOST}"
+          if [[ "${DEPLOY_APP_NODE_B}" == "true" ]]; then
+            probe_host "app-node-b" "${APP_NODE_B_HOST}"
+          fi
           if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
             probe_host "data-node" "${DATA_NODE_HOST}"
           fi
@@ -1220,6 +1289,7 @@ jobs:
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
 
       - name: Sync app-node assets to node B
+        if: steps.validate_deploy_inputs.outputs.deploy_app_node_b == 'true'
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -1284,6 +1354,7 @@ jobs:
 
       - name: Roll out app node B
         id: deploy_app_node_b
+        if: steps.validate_deploy_inputs.outputs.deploy_app_node_b == 'true'
         shell: bash
         env:
           GHCR_PULL_USERNAME: ${{ github.repository_owner }}
@@ -1329,6 +1400,7 @@ jobs:
         continue-on-error: true
         shell: bash
         env:
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
           GHCR_PULL_USERNAME: ${{ github.repository_owner }}
           GHCR_PULL_TOKEN: ${{ github.token }}
           APP_NODE_A_ROLLOUT_OUTCOME: ${{ steps.deploy_app_node_a.outcome }}
@@ -1385,10 +1457,17 @@ jobs:
 
           if [[ "${app_nodes_need_rollback}" == "true" ]]; then
             rollback_attempted="true"
-            rollback_app_node "${APP_NODE_A_HOST}"
-            rollback_app_node "${APP_NODE_B_HOST}"
-            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for both app nodes"}\n' \
-              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            rollbacked_hosts=0
+            if [[ -n "${APP_NODE_A_ROLLOUT_OUTCOME}" && "${APP_NODE_A_ROLLOUT_OUTCOME}" != "skipped" ]]; then
+              rollback_app_node "${APP_NODE_A_HOST}"
+              rollbacked_hosts=$((rollbacked_hosts + 1))
+            fi
+            if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_ROLLOUT_OUTCOME}" && "${APP_NODE_B_ROLLOUT_OUTCOME}" != "skipped" ]]; then
+              rollback_app_node "${APP_NODE_B_HOST}"
+              rollbacked_hosts=$((rollbacked_hosts + 1))
+            fi
+            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for %s app node(s)"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${rollbacked_hosts}" >> deployment-evidence/release-events.jsonl
           fi
 
           if [[ "${DEPLOY_DATA_NODE}" == "true" && -n "${DATA_NODE_DEPLOY_OUTCOME}" && "${DATA_NODE_DEPLOY_OUTCOME}" != "skipped" ]]; then
@@ -1414,6 +1493,8 @@ jobs:
         shell: bash
         env:
           ACTOR: ${{ github.actor }}
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
+          APP_NODE_B_WARNING: ${{ steps.validate_deploy_inputs.outputs.app_node_b_warning }}
           FINAL_RESULT: ${{ job.status }}
           AUTH_MODE: ${{ needs.prepare-promotion-context.outputs.auth_mode }}
           DEPLOY_TRANSPORT: ${{ needs.prepare-promotion-context.outputs.deploy_transport }}
@@ -1660,11 +1741,18 @@ jobs:
             echo "- scope note: \`production rollout evidence only; staging deployment and restore-drill controls are reported by their own workflows/artifacts\`"
             echo "- data-node requested: \`${DEPLOY_DATA_NODE}\`"
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
-            echo "- app node B: \`${APP_NODE_B_HOST}\`"
+            if [[ "${DEPLOY_APP_NODE_B}" == "true" ]]; then
+              echo "- app node B: \`${APP_NODE_B_HOST}\`"
+            else
+              echo "- app node B: \`skipped\`"
+            fi
             echo "- data node: \`${DATA_NODE_HOST:-not-requested}\`"
             echo "- rollout results: data-node=\`${data_node_result}\`, app-node-a=\`${app_node_a_result}\`, app-node-b=\`${app_node_b_result}\`"
             echo "- readiness checks: app-node-a=\`${app_node_a_readiness_result}\`, app-node-b=\`${app_node_b_readiness_result}\`"
             echo "- smoke checks: app-node-a-public=\`${app_node_a_smoke_result}\`, final-cluster=\`${final_cluster_smoke_result}\`"
+            if [[ -n "${APP_NODE_B_WARNING}" ]]; then
+              echo "- topology note: \`${APP_NODE_B_WARNING}\`"
+            fi
             echo "- rollback attempted: \`${ROLLBACK_ATTEMPTED}\`"
             echo "- rollback result: \`${ROLLBACK_RESULT}\`"
             echo "- final result: \`${FINAL_RESULT}\` / verdict=\`${final_deployment_verdict}\`"
