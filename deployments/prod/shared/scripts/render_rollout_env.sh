@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Bootstrap a local app-node env file from the in-repo example (never overwrites).
+# The example includes HTTP_SWAGGER_UI_ENABLED=true (public API docs only; no secrets). Override in the copied file if needed.
 # Usage: render_rollout_env.sh <destination.env> [path/to/.env.app-node.example]
 set -euo pipefail
 

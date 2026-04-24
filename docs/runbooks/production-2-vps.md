@@ -39,6 +39,15 @@ Responsibilities:
 - connect to managed or remote stateful services by env only
 - do not terminate MQTT/TCP
 
+### API documentation (Swagger UI)
+
+Production env templates set `HTTP_SWAGGER_UI_ENABLED=true`. Public URLs on the API host:
+
+- Swagger UI: `https://api.ldtv.dev/swagger/index.html`
+- Raw OpenAPI JSON: `https://api.ldtv.dev/swagger/doc.json`
+
+These endpoints are **documentation only**. **`/v1/*`** routes still require a valid **`Authorization: Bearer <JWT>`** (and remain subject to the same auth middleware as always).
+
 ### Data node
 
 Run `deployments/prod/data-node/docker-compose.data-node.yml` only when you still need a self-hosted fallback plane.
