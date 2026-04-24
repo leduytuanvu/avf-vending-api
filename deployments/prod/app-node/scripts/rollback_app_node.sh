@@ -61,14 +61,14 @@ note "restart rollback app workloads"
 "${COMPOSE[@]}" up -d --remove-orphans --force-recreate "${SERVICES[@]}"
 
 PHASE="verify-app"
-APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" bash "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
+APP_NODE_CHECK_CADDY="0" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" bash "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
 
 PHASE="resume"
 note "resume app-node traffic by starting caddy"
 "${COMPOSE[@]}" up -d --remove-orphans caddy
 
 PHASE="verify-caddy"
-APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" bash "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
+APP_NODE_CHECK_CADDY="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" bash "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
 
 PHASE="persist"
 snapshot_revision current
