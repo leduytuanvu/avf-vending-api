@@ -14,7 +14,7 @@
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "refId": "A", "expr": "up{job=\"avf_mqtt_ingest\"}", "legendFormat": "up" }],
+      "targets": [{ "refId": "A", "expr": "up{job=\"avf_mqtt_ingest_metrics\"}", "legendFormat": "up" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
     },
     {
@@ -26,7 +26,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(avf_mqtt_ingest_dispatch_total{job=\"avf_mqtt_ingest\"}[5m])) by (kind, result)",
+          "expr": "sum(rate(avf_mqtt_ingest_dispatch_total{job=\"avf_mqtt_ingest_metrics\"}[5m])) by (kind, result)",
           "legendFormat": "{{kind}} {{result}}"
         }
       ]
@@ -40,7 +40,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(avf_mqtt_ingest_dispatch_total{job=\"avf_mqtt_ingest\",result=\"error\"}[5m])) by (kind)",
+          "expr": "sum(rate(avf_mqtt_ingest_dispatch_total{job=\"avf_mqtt_ingest_metrics\",result=\"error\"}[5m])) by (kind)",
           "legendFormat": "error {{kind}}"
         }
       ]

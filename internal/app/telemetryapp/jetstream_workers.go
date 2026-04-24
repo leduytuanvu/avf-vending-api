@@ -371,17 +371,75 @@ func (w *JetStreamWorkers) handleMetrics(ctx context.Context, env tel.Envelope) 
 		if idem == "" {
 			return fmt.Errorf("telemetryapp: %s requires idempotency_key", se)
 		}
-		return w.store.AppendDeviceTelemetryEdgeEvent(ctx, env.MachineID, se, data, idem)
+		dup, err := w.store.AppendDeviceTelemetryEdgeEvent(ctx, env.MachineID, se, data, idem)
+		if err != nil {
+			return err
+		}
+		if dup {
+			if w.log != nil {
+				w.log.Debug("telemetry_duplicate_projection_ack",
+					zap.String("machine_id", env.MachineID.String()),
+					zap.String("event_type", se),
+					zap.String("idempotency_key", idem),
+				)
+			}
+			recordTelemetryDuplicate("edge_event")
+			return nil
+		}
+		return nil
 	case "events.inventory":
 		data := unwrapTelemetryData(env.Payload)
 		if len(data) == 0 {
 			return fmt.Errorf("telemetryapp: events.inventory requires payload")
 		}
-		return w.store.AppendInventoryEventFromDeviceTelemetry(ctx, env, data)
+		idem := strings.TrimSpace(env.Idempotency)
+		dup, err := w.store.AppendInventoryEventFromDeviceTelemetry(ctx, env, data)
+		if err != nil {
+			return err
+		}
+		if dup {
+			if w.log != nil {
+				w.log.Debug("telemetry_duplicate_projection_ack",
+					zap.String("machine_id", env.MachineID.String()),
+					zap.String("event_type", se),
+					zap.String("idempotency_key", idem),
+				)
+			}
+			recordTelemetryDuplicate("inventory_event")
+			return nil
+		}
+		return nil
 	default:
+		return w.handleGenericMetrics(ctx, env)
 	}
+}
+
+func (w *JetStreamWorkers) handleGenericMetrics(ctx context.Context, env tel.Envelope) error {
 	data := unwrapTelemetryData(env.Payload)
+	se := strings.TrimSpace(env.SourceEvent)
 	samples := postgres.ParseMetricsPayload(data)
+	crit := tel.CriticalityForEventType(se)
+	if crit == tel.CriticalityCriticalNoDrop && len(samples) > 0 {
+		idem := strings.TrimSpace(env.Idempotency)
+		if idem == "" {
+			return fmt.Errorf("telemetryapp: critical metrics %q with samples require idempotency_key", se)
+		}
+		dup, err := w.store.AppendDeviceTelemetryEdgeEvent(ctx, env.MachineID, se, data, idem)
+		if err != nil {
+			return err
+		}
+		if dup {
+			if w.log != nil {
+				w.log.Debug("telemetry_duplicate_projection_ack",
+					zap.String("machine_id", env.MachineID.String()),
+					zap.String("event_type", se),
+					zap.String("idempotency_key", idem),
+				)
+			}
+			recordTelemetryDuplicate("critical_metrics_rollup")
+			return nil
+		}
+	}
 	if len(samples) == 0 {
 		return nil
 	}
@@ -426,7 +484,7 @@ func (w *JetStreamWorkers) handleCommandReceipt(ctx context.Context, env tel.Env
 	if len(raw) == 0 {
 		raw = []byte("{}")
 	}
-	_, err := w.store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
+	res, err := w.store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
 		MachineID:     env.MachineID,
 		Sequence:      inner.Sequence,
 		Status:        strings.ToLower(strings.TrimSpace(inner.Status)),
@@ -434,7 +492,20 @@ func (w *JetStreamWorkers) handleCommandReceipt(ctx context.Context, env tel.Env
 		Payload:       raw,
 		DedupeKey:     inner.DedupeKey,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	if res.ReceiptReplay {
+		if w.log != nil {
+			w.log.Debug("telemetry_duplicate_projection_ack",
+				zap.String("machine_id", env.MachineID.String()),
+				zap.String("event_type", "commands.receipt"),
+				zap.String("idempotency_key", inner.DedupeKey),
+			)
+		}
+		recordTelemetryDuplicate("command_receipt")
+	}
+	return nil
 }
 
 func (w *JetStreamWorkers) handleDiagnostic(ctx context.Context, env tel.Envelope) error {

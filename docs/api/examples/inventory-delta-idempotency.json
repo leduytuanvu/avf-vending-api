@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "machine_id": "55555555-5555-5555-5555-555555555555",
+  "event_id": "inv-delta-2026-04-24-01",
+  "occurred_at": "2026-04-24T12:04:00Z",
+  "dedupe_key": "inventory:55555555-5555-5555-5555-555555555555:slot-2:v1",
+  "event_type": "inventory.delta",
+  "payload": {
+    "slot_index": 2,
+    "delta": -1,
+    "reason": "vend_dispense"
+  }
+}

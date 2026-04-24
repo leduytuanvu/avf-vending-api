@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "machine_id": "55555555-5555-5555-5555-555555555555",
+  "event_id": "bad-ts-1",
+  "occurred_at": "not-an-rfc3339-timestamp",
+  "dedupe_key": "dedupe-bad-ts",
+  "event_type": "vend.success",
+  "payload": {
+    "outcome": "success"
+  }
+}

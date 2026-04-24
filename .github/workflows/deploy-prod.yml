@@ -52,6 +52,41 @@ on:
         required: false
         default: false
         type: boolean
+      fleet_scale_target:
+        description: "Fleet scale target — storm load-test evidence required for scale-* (see telemetry-production-rollout.md)"
+        required: false
+        default: pilot
+        type: choice
+        options:
+          - pilot
+          - scale-100
+          - scale-500
+          - scale-1000
+      telemetry_storm_evidence_repo_path:
+        description: "Optional: repo-relative path to telemetry-storm-result.json (use this or artifact run id for scale deploys)"
+        required: false
+        default: ""
+        type: string
+      telemetry_storm_evidence_artifact_run_id:
+        description: "Optional: Actions run id containing artifact named telemetry-storm-result (zip must include telemetry-storm-result.json)"
+        required: false
+        default: ""
+        type: string
+      allow_scale_gate_bypass:
+        description: "Bypass fleet-scale storm evidence gate (requires scale_gate_bypass_reason)"
+        required: false
+        default: false
+        type: boolean
+      scale_gate_bypass_reason:
+        description: "Mandatory non-empty justification when allow_scale_gate_bypass is true (single-line)"
+        required: false
+        default: ""
+        type: string
+      storm_evidence_max_age_days:
+        description: "Reject storm evidence when completed_at_utc is older than this many days (maps to STORM_EVIDENCE_MAX_AGE_DAYS)"
+        required: false
+        default: "7"
+        type: string
 
 # Production actions stay serialized under one stable gate.
 # Later runs queue behind the active rollout or rollback instead of canceling it.
@@ -183,7 +218,11 @@ jobs:
       previous_run_url: ${{ steps.lookup.outputs.previous_run_url }}
       previous_source_branch: ${{ steps.lookup.outputs.previous_source_branch }}
       previous_source_commit_sha: ${{ steps.lookup.outputs.previous_source_commit_sha }}
+      rollback_available: ${{ steps.lookup.outputs.rollback_available }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Load previous successful production deployment metadata
         id: lookup
         shell: bash
@@ -192,72 +231,110 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          {
-            for key in \
-              previous_action_mode \
-              previous_actor \
-              previous_app_digest \
-              previous_app_image_ref \
-              previous_deployed_at_utc \
-              previous_goose_digest \
-              previous_goose_image_ref \
-              previous_run_id \
-              previous_run_number \
-              previous_run_url \
-              previous_source_branch \
-              previous_source_commit_sha
-            do
-              echo "${key}="
-            done
-          } >> "${GITHUB_OUTPUT}"
+          out="${RUNNER_TEMP}/resolve-previous-outputs.txt"
+          emit() { printf '%s=%s\n' "$1" "$2" >> "${out}"; }
 
-          previous_run="$(
-            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy-prod.yml/runs?event=workflow_dispatch&status=completed&per_page=20" \
-              --jq '[.workflow_runs[]? | select(.id != '"${GITHUB_RUN_ID}"' and .conclusion == "success") | [.id, (.run_number|tostring), (.html_url // "")] | @tsv] | .[0] // empty'
-          )"
-
-          [[ -n "${previous_run}" ]] || exit 0
-
-          IFS=$'\t' read -r previous_run_id previous_run_number previous_run_url <<< "${previous_run}"
-          {
-            echo "previous_run_id=${previous_run_id}"
-            echo "previous_run_number=${previous_run_number}"
-            echo "previous_run_url=${previous_run_url}"
-          } >> "${GITHUB_OUTPUT}"
-
-          artifact_id="$(
-            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${previous_run_id}/artifacts" \
-              --jq '[.artifacts[]? | select(.name == "production-deployment-manifest") | .id] | .[0] // empty'
-          )"
-
-          [[ -n "${artifact_id}" ]] || exit 0
-
-          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > previous-production-deployment-manifest.zip
-          python3 -m zipfile -e previous-production-deployment-manifest.zip previous-production-deployment
-
-          python3 - <<'PY' >> "${GITHUB_OUTPUT}"
-          import json
-          from pathlib import Path
-
-          path = Path("previous-production-deployment/production-deployment-manifest.json")
-          if not path.exists():
-              raise SystemExit(0)
-
-          payload = json.loads(path.read_text(encoding="utf-8"))
-          mapping = {
-              "previous_action_mode": payload.get("action_mode", ""),
-              "previous_actor": payload.get("actor", ""),
-              "previous_app_digest": payload.get("app_digest", ""),
-              "previous_app_image_ref": payload.get("app_image_ref", ""),
-              "previous_deployed_at_utc": payload.get("completed_at_utc", ""),
-              "previous_goose_digest": payload.get("goose_digest", ""),
-              "previous_goose_image_ref": payload.get("goose_image_ref", ""),
-              "previous_source_branch": payload.get("source_branch", ""),
-              "previous_source_commit_sha": payload.get("source_commit_sha", ""),
+          write_empty_state() {
+            : > "${out}"
+            emit rollback_available false
+            emit previous_action_mode ""
+            emit previous_actor ""
+            emit previous_app_digest ""
+            emit previous_app_image_ref ""
+            emit previous_deployed_at_utc ""
+            emit previous_goose_digest ""
+            emit previous_goose_image_ref ""
+            emit previous_run_id ""
+            emit previous_run_number ""
+            emit previous_run_url ""
+            emit previous_source_branch ""
+            emit previous_source_commit_sha ""
           }
-          for key, value in mapping.items():
-              print(f"{key}={value}")
-          PY
+
+          finalize() {
+            cp "${out}" "${GITHUB_OUTPUT}"
+          }
+
+          mapfile -t candidate_runs < <(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy-prod.yml/runs?event=workflow_dispatch&status=completed&per_page=30" \
+              --jq '.workflow_runs[]? | select(.id != '"${GITHUB_RUN_ID}"' and .conclusion == "success" and ((.name // "") == "Deploy Production" or (.name // "") == "")) | (.id|tostring) + "\t" + (.run_number|tostring) + "\t" + (.html_url // "")' \
+              || true
+          )
+
+          if [[ "${#candidate_runs[@]}" -eq 0 ]]; then
+            write_empty_state
+            {
+              echo "### Previous production last-known-good"
+              echo "- rollback_available: \`false\`"
+              echo "- reason: \`no prior successful **Deploy Production** workflow_dispatch runs found\`"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            finalize
+            exit 0
+          fi
+
+          manifest_tmp="${RUNNER_TEMP}/prev-manifest-unpack"
+          rm -rf "${manifest_tmp}"
+          mkdir -p "${manifest_tmp}"
+
+          found_manifest="false"
+          for row in "${candidate_runs[@]}"; do
+            IFS=$'\t' read -r previous_run_id previous_run_number previous_run_url <<< "${row}"
+            [[ -n "${previous_run_id}" ]] || continue
+
+            artifact_id="$(
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${previous_run_id}/artifacts" \
+                --jq '[.artifacts[]? | select(.name == "production-deployment-manifest") | .id] | .[0] // empty'
+            )"
+
+            [[ -n "${artifact_id}" ]] || continue
+
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > "${manifest_tmp}/manifest.zip"
+            rm -rf "${manifest_tmp}/extracted"
+            mkdir -p "${manifest_tmp}/extracted"
+            python3 -m zipfile -e "${manifest_tmp}/manifest.zip" "${manifest_tmp}/extracted"
+            manifest_json="$(find "${manifest_tmp}/extracted" -name 'production-deployment-manifest.json' -print | head -1 || true)"
+            [[ -n "${manifest_json}" ]] || continue
+
+            : > "${out}"
+            emit previous_run_id "${previous_run_id}"
+            emit previous_run_number "${previous_run_number}"
+            emit previous_run_url "${previous_run_url}"
+            python3 deployments/prod/shared/scripts/emit_previous_production_manifest_outputs.py "${manifest_json}" >> "${out}"
+
+            found_manifest="true"
+            rb="$(
+              grep '^rollback_available=' "${out}" | tail -n1 | cut -d= -f2- || true
+            )"
+            prev_app="$(
+              grep '^previous_app_image_ref=' "${out}" | tail -n1 | cut -d= -f2- || true
+            )"
+            prev_goose="$(
+              grep '^previous_goose_image_ref=' "${out}" | tail -n1 | cut -d= -f2- || true
+            )"
+            {
+              echo "### Previous production last-known-good"
+              echo "- rollback_available: \`${rb:-false}\`"
+              echo "- resolved from workflow run: [#${previous_run_number}](${previous_run_url})"
+              echo "- manual **rollback** workflow_dispatch — copy exactly (digest-pinned):"
+              echo '```'
+              echo "rollback_app_image_ref: ${prev_app}"
+              echo "rollback_goose_image_ref: ${prev_goose}"
+              echo '```'
+            } >> "${GITHUB_STEP_SUMMARY}"
+            break
+          done
+
+          if [[ "${found_manifest}" != "true" ]]; then
+            write_empty_state
+            {
+              echo "### Previous production last-known-good"
+              echo "- rollback_available: \`false\`"
+              echo "- reason: \`no **production-deployment-manifest** artifact found on recent successful runs (expired retention, or run predates manifest uploads)\`"
+              echo "- hint: \`restore digest-pinned APP_IMAGE_REF and GOOSE_IMAGE_REF from your external release registry or an archived manifest; automatic rollback after a failed deploy requires this artifact\`"
+            } >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+          finalize
 
   resolve-image-refs:
     name: Resolve Production Image Refs
@@ -352,10 +429,14 @@ jobs:
       - resolve-previous-production-deployment
       - validate-promotion-selection
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Reject obvious duplicate production action
         shell: bash
         env:
           ACTION_MODE: ${{ needs.resolve-build-run-id.outputs.action_mode }}
+          ROLLBACK_AVAILABLE: ${{ needs.resolve-previous-production-deployment.outputs.rollback_available }}
           PREVIOUS_APP_DIGEST: ${{ needs.resolve-previous-production-deployment.outputs.previous_app_digest }}
           PREVIOUS_GOOSE_DIGEST: ${{ needs.resolve-previous-production-deployment.outputs.previous_goose_digest }}
           PREVIOUS_RUN_URL: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}
@@ -374,7 +455,17 @@ jobs:
             echo "### Production Action Safety"
             echo "- concurrency: one production run at a time; later runs queue and do not cancel an active rollout"
             echo "- action mode: \`${ACTION_MODE}\`"
+            echo "- automatic rollback after a failed deploy: refs available = \`${ROLLBACK_AVAILABLE:-false}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "${ACTION_MODE}" == "deploy" && "${ROLLBACK_AVAILABLE:-false}" != "true" ]]; then
+            {
+              echo "- rollback readiness: \`warn — no digest-pinned last-known-good image pair was resolved from a prior successful production run\`"
+              echo "- impact: \`if this deploy mutates live nodes and then fails, automatic rollback cannot repin containers to the prior release\`"
+              echo "- mitigation: \`archive production-deployment-manifest artifacts externally, or complete one clean production deploy to publish a new manifest\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning:: rollback_available=false — failed deploys cannot auto-revert without a prior production-deployment-manifest; see job summary"
+          fi
 
           if [[ -z "${PREVIOUS_APP_DIGEST}" || -z "${PREVIOUS_GOOSE_DIGEST}" ]]; then
             echo "- duplicate check: no previous successful production manifest found" >> "$GITHUB_STEP_SUMMARY"
@@ -428,6 +519,8 @@ jobs:
           bash -n deployments/prod/shared/scripts/healthcheck_app_node.sh
           bash -n deployments/prod/shared/scripts/release_data_node.sh
           bash -n deployments/prod/shared/scripts/healthcheck_data_node.sh
+          bash -n deployments/prod/shared/scripts/validate_production_scale_storm_gate.sh
+          bash -n deployments/prod/shared/scripts/validate_digest_pinned_image_refs.sh
           bash -n deployments/prod/app-node/scripts/release_app_node.sh
           bash -n deployments/prod/app-node/scripts/release_app_cluster.sh
           bash -n deployments/prod/app-node/scripts/rollback_app_node.sh
@@ -437,6 +530,8 @@ jobs:
           bash -n deployments/prod/data-node/scripts/rollback_data_node.sh
           bash -n deployments/prod/data-node/scripts/healthcheck_data_node.sh
           bash -n deployments/prod/data-node/scripts/bootstrap_emqx_data_node.sh
+          python3 -m py_compile deployments/prod/shared/scripts/validate_production_scale_storm_evidence.py
+          python3 -m py_compile deployments/prod/shared/scripts/render_storm_evidence_manifest_fragment.py
 
       - name: Reject legacy single-host production assumption
         shell: bash
@@ -876,6 +971,126 @@ jobs:
             echo "- verdict generated at (UTC): \`${matched_generated_at}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  validate-production-scale-storm-gate:
+    name: Validate fleet scale storm evidence
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-build-run-id
+    outputs:
+      fleet_scale_target: ${{ steps.gate.outputs.fleet_scale_target }}
+      storm_gate_required: ${{ steps.gate.outputs.storm_gate_required }}
+      storm_gate_result: ${{ steps.gate.outputs.storm_gate_result }}
+      storm_gate_evidence_path: ${{ steps.gate.outputs.storm_gate_evidence_path }}
+      storm_gate_bypassed: ${{ steps.gate.outputs.storm_gate_bypassed }}
+      storm_gate_bypass_reason: ${{ steps.gate.outputs.storm_gate_bypass_reason }}
+      storm_evidence_scenario: ${{ steps.gate.outputs.storm_evidence_scenario }}
+      storm_evidence_completed_at_utc: ${{ steps.gate.outputs.storm_evidence_completed_at_utc }}
+      storm_evidence_machine_count: ${{ steps.gate.outputs.storm_evidence_machine_count }}
+      storm_evidence_events_per_machine: ${{ steps.gate.outputs.storm_evidence_events_per_machine }}
+      storm_evidence_final_result: ${{ steps.gate.outputs.storm_evidence_final_result }}
+      storm_evidence_critical_lost: ${{ steps.gate.outputs.storm_evidence_critical_lost }}
+      storm_evidence_duplicate_critical_effects: ${{ steps.gate.outputs.storm_evidence_duplicate_critical_effects }}
+      storm_evidence_db_pool_result: ${{ steps.gate.outputs.storm_evidence_db_pool_result }}
+      storm_evidence_health_result: ${{ steps.gate.outputs.storm_evidence_health_result }}
+      storm_evidence_restart_result: ${{ steps.gate.outputs.storm_evidence_restart_result }}
+      storm_evidence_max_age_days_applied: ${{ steps.gate.outputs.storm_evidence_max_age_days_applied }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate fleet scale / storm evidence
+        id: gate
+        shell: bash
+        env:
+          ACTION_MODE: ${{ needs.resolve-build-run-id.outputs.action_mode }}
+          FLEET_SCALE_TARGET: ${{ inputs.fleet_scale_target }}
+          ALLOW_SCALE_GATE_BYPASS: ${{ inputs.allow_scale_gate_bypass }}
+          SCALE_GATE_BYPASS_REASON: ${{ inputs.scale_gate_bypass_reason }}
+          BYPASS_REASON: ${{ inputs.scale_gate_bypass_reason }}
+          TELEMETRY_STORM_EVIDENCE_REPO_PATH: ${{ inputs.telemetry_storm_evidence_repo_path }}
+          TELEMETRY_STORM_EVIDENCE_ARTIFACT_RUN_ID: ${{ inputs.telemetry_storm_evidence_artifact_run_id }}
+          STORM_EVIDENCE_MAX_AGE_DAYS: ${{ inputs.storm_evidence_max_age_days }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+
+          {
+            echo "## Fleet scale storm gate"
+            echo "- action mode: \`${ACTION_MODE}\`"
+            echo "- fleet_scale_target: \`${FLEET_SCALE_TARGET}\`"
+            echo "- storm evidence max age (days): \`${STORM_EVIDENCE_MAX_AGE_DAYS}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          _bypass_lc="$(printf '%s' "${ALLOW_SCALE_GATE_BYPASS:-false}" | tr '[:upper:]' '[:lower:]')"
+          if [[ "${_bypass_lc}" == "true" ]]; then
+            if [[ "${SCALE_GATE_BYPASS_REASON}" == *$'\n'* ]]; then
+              echo "error: scale_gate_bypass_reason must be a single line" >&2
+              exit 1
+            fi
+            if [[ "${#SCALE_GATE_BYPASS_REASON}" -gt 2000 ]]; then
+              echo "error: scale_gate_bypass_reason exceeds 2000 characters" >&2
+              exit 1
+            fi
+          fi
+
+          export TELEMETRY_STORM_EVIDENCE_FILE=""
+          repo_path="${TELEMETRY_STORM_EVIDENCE_REPO_PATH:-}"
+          art_id="${TELEMETRY_STORM_EVIDENCE_ARTIFACT_RUN_ID:-}"
+
+          if [[ -n "${repo_path}" && -n "${art_id}" ]]; then
+            echo "error: set only one of telemetry_storm_evidence_repo_path or telemetry_storm_evidence_artifact_run_id" >&2
+            exit 1
+          fi
+
+          if [[ -n "${art_id}" ]]; then
+            [[ "${art_id}" =~ ^[0-9]+$ ]] || { echo "error: telemetry_storm_evidence_artifact_run_id must be numeric" >&2; exit 1; }
+            mkdir -p storm-gate-download
+            aid="$(
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${art_id}/artifacts" \
+                --jq '[.artifacts[]? | select(.name == "telemetry-storm-result") | .id] | .[0] // empty'
+            )"
+            [[ -n "${aid}" ]] || { echo "error: no artifact named telemetry-storm-result on workflow run ${art_id}" >&2; exit 1; }
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${aid}/zip" > storm-gate-download/storm.zip
+            python3 -m zipfile -e storm-gate-download/storm.zip storm-gate-download/out
+            found="$(find storm-gate-download/out -type f -name 'telemetry-storm-result.json' -print 2>/dev/null | head -1 || true)"
+            if [[ -z "${found}" ]]; then
+              found="$(find storm-gate-download/out -type f -name '*.json' -print 2>/dev/null | head -1 || true)"
+            fi
+            [[ -n "${found}" ]] || { echo "error: telemetry-storm-result artifact zip did not contain a JSON file" >&2; exit 1; }
+            export TELEMETRY_STORM_EVIDENCE_FILE="${found}"
+          fi
+
+          if [[ -n "${repo_path}" ]]; then
+            export TELEMETRY_STORM_EVIDENCE_FILE="${GITHUB_WORKSPACE}/${repo_path}"
+          fi
+
+          bash deployments/prod/shared/scripts/validate_production_scale_storm_gate.sh
+          rc=$?
+          fleet_lc="$(printf '%s' "${FLEET_SCALE_TARGET:-pilot}" | tr '[:upper:]' '[:lower:]')"
+          if [[ "${_bypass_lc}" == "true" && -n "${SCALE_GATE_BYPASS_REASON}" && "${fleet_lc}" != "pilot" ]]; then
+            echo "::warning:: Fleet scale storm gate BYPASSED — ${SCALE_GATE_BYPASS_REASON}"
+            {
+              echo ""
+              echo "### ⚠️ OPERATOR BYPASS — fleet scale storm gate"
+              echo ""
+              echo "**ALLOW_SCALE_GATE_BYPASS=true** — telemetry storm evidence was **not** validated for this deploy."
+              echo ""
+              echo "**fleet_scale_target:** \`${FLEET_SCALE_TARGET}\`"
+              echo ""
+              echo "**BYPASS_REASON / scale_gate_bypass_reason:** ${SCALE_GATE_BYPASS_REASON}"
+              echo ""
+              echo "The production deployment manifest records **storm_gate_bypassed=true** and the reason. "
+              echo "Security, provenance, and health gates are unchanged."
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [[ "${rc}" -ne 0 ]]; then
+            echo "- storm gate: \`fail\`" >> "$GITHUB_STEP_SUMMARY"
+            exit "${rc}"
+          fi
+          echo "- storm gate: completed (see job outputs)" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
   deploy-prod:
     name: Deploy production release
     runs-on: ubuntu-latest
@@ -887,6 +1102,7 @@ jobs:
       - validate-promotion-selection
       - validate-production-action-safety
       - validate-production-security-verdict
+      - validate-production-scale-storm-gate
       - prepare-promotion-context
     environment: production
     env:
@@ -909,6 +1125,7 @@ jobs:
       PREVIOUS_RUN_ID: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_id }}
       PREVIOUS_RUN_NUMBER: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_number }}
       PREVIOUS_RUN_URL: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}
+      ROLLBACK_AVAILABLE_BEFORE_DEPLOY: ${{ needs.resolve-previous-production-deployment.outputs.rollback_available }}
       DEPLOY_DATA_NODE: ${{ inputs.deploy_data_node && 'true' || 'false' }}
       ALLOW_APP_NODE_ON_DATA_NODE: ${{ inputs.allow_app_node_on_data_node && 'true' || 'false' }}
       ENABLE_TEMPORAL_PROFILE: ${{ vars.PRODUCTION_ENABLE_TEMPORAL_PROFILE || 'false' }}
@@ -961,6 +1178,7 @@ jobs:
           [[ "${GOOSE_IMAGE_REF}" == *@sha256:* ]] || fail "GOOSE_IMAGE_REF must be digest-pinned"
           [[ "${APP_IMAGE_REF}" != *":latest" ]] || fail "APP_IMAGE_REF must not use latest"
           [[ "${GOOSE_IMAGE_REF}" != *":latest" ]] || fail "GOOSE_IMAGE_REF must not use latest"
+          bash deployments/prod/shared/scripts/validate_digest_pinned_image_refs.sh "${APP_IMAGE_REF}" "${GOOSE_IMAGE_REF}"
 
           [[ -n "${RELEASE_TAG}" ]] || fail "release tag label is empty"
           if [[ -n "${SOURCE_COMMIT_SHA:-}" ]] && [[ ! "${SOURCE_COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
@@ -1085,6 +1303,7 @@ jobs:
             echo "- goose digest: \`${{ needs.validate-promotion-selection.outputs.goose_digest }}\`"
             echo "- previous app digest: \`${PREVIOUS_APP_DIGEST:-unknown}\`"
             echo "- previous goose digest: \`${PREVIOUS_GOOSE_DIGEST:-unknown}\`"
+            echo "- rollback_available_before_deploy: \`${ROLLBACK_AVAILABLE_BEFORE_DEPLOY:-false}\` (digest-pinned refs from last successful production-deployment-manifest)"
             echo "- security release gate artifact: verdict=\`${RELEASE_GATE_VERDICT}\`, mode=\`${RELEASE_GATE_MODE}\`, repo=\`${REPO_RELEASE_VERDICT}\`"
             if [[ -n "${SECURITY_WORKFLOW_RUN_ID}" ]]; then
               echo "- matched security workflow run: \`${SECURITY_WORKFLOW_RUN_ID}\`"
@@ -1411,12 +1630,19 @@ jobs:
           set -Eeuo pipefail
           mkdir -p deployment-evidence
           rollback_attempted="false"
+          rollback_result_out="not-attempted"
+          rollback_rc=0
+
+          write_rollback_outputs() {
+            {
+              echo "rollback_attempted=${rollback_attempted}"
+              echo "rollback_result=${rollback_result_out}"
+            } >> "$GITHUB_OUTPUT"
+          }
 
           if [[ ! -f deployment-evidence/release-started ]]; then
-            {
-              echo "rollback_attempted=false"
-              echo "rollback_result=not-started"
-            } >> "$GITHUB_OUTPUT"
+            rollback_result_out="not-started"
+            write_rollback_outputs
             printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because release never started"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
             exit 0
@@ -1434,13 +1660,12 @@ jobs:
           fi
 
           if [[ "${app_nodes_need_rollback}" == "true" && ( -z "${PREVIOUS_APP_IMAGE_REF}" || -z "${PREVIOUS_GOOSE_IMAGE_REF}" ) ]]; then
-            {
-              echo "rollback_attempted=false"
-              echo "rollback_result=no-previous-release"
-            } >> "$GITHUB_OUTPUT"
+            rollback_result_out="no-previous-release"
+            write_rollback_outputs
             printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"fail","detail":"automatic rollback unavailable because no previous successful production image refs were recorded"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
-            echo "error: release failed after start, but no previous successful production image refs are available for rollback" >&2
+            echo "error: release failed after live rollout started, but no digest-pinned last-known-good app/goose refs are available for automatic rollback." >&2
+            echo "error: recover using a archived production-deployment-manifest, or run workflow_dispatch rollback mode with explicit refs (no migration down is performed)." >&2
             exit 1
           fi
 
@@ -1448,7 +1673,7 @@ jobs:
             local host="$1"
             local target="${SSH_USER}@${host}"
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' bash 'scripts/rollback_app_node.sh' '${PREVIOUS_APP_IMAGE_REF}' '${PREVIOUS_GOOSE_IMAGE_REF}'"
+              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' RUN_MIGRATION='0' bash 'scripts/rollback_app_node.sh' '${PREVIOUS_APP_IMAGE_REF}' '${PREVIOUS_GOOSE_IMAGE_REF}'"
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
               "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' bash 'scripts/healthcheck_app_node.sh'"
           }
@@ -1459,34 +1684,63 @@ jobs:
             rollback_attempted="true"
             rollbacked_hosts=0
             if [[ -n "${APP_NODE_A_ROLLOUT_OUTCOME}" && "${APP_NODE_A_ROLLOUT_OUTCOME}" != "skipped" ]]; then
-              rollback_app_node "${APP_NODE_A_HOST}"
+              if ! rollback_app_node "${APP_NODE_A_HOST}"; then
+                rollback_rc=1
+              fi
               rollbacked_hosts=$((rollbacked_hosts + 1))
             fi
             if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_ROLLOUT_OUTCOME}" && "${APP_NODE_B_ROLLOUT_OUTCOME}" != "skipped" ]]; then
-              rollback_app_node "${APP_NODE_B_HOST}"
+              if ! rollback_app_node "${APP_NODE_B_HOST}"; then
+                rollback_rc=1
+              fi
               rollbacked_hosts=$((rollbacked_hosts + 1))
             fi
-            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for %s app node(s)"}\n' \
-              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${rollbacked_hosts}" >> deployment-evidence/release-events.jsonl
+            if [[ "${rollback_rc}" -eq 0 ]]; then
+              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for %s app node(s); prior digest-pinned images redeployed without migration down"}\n' \
+                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${rollbacked_hosts}" >> deployment-evidence/release-events.jsonl
+            else
+              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"fail","detail":"automatic rollback failed during app-node redeploy for %s host(s)"}\n' \
+                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${rollbacked_hosts}" >> deployment-evidence/release-events.jsonl
+            fi
           fi
 
           if [[ "${DEPLOY_DATA_NODE}" == "true" && -n "${DATA_NODE_DEPLOY_OUTCOME}" && "${DATA_NODE_DEPLOY_OUTCOME}" != "skipped" ]]; then
             rollback_attempted="true"
             target="${SSH_USER}@${DATA_NODE_HOST}"
-            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node' && bash 'scripts/rollback_data_node.sh'"
-            printf '{"ts":"%s","component":"data-node","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for data-node"}\n' \
-              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            if ! ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node' && bash 'scripts/rollback_data_node.sh'"; then
+              rollback_rc=1
+              printf '{"ts":"%s","component":"data-node","target":"rollback","phase":"rollback","status":"fail","detail":"automatic data-node rollback command failed"}\n' \
+                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            else
+              printf '{"ts":"%s","component":"data-node","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for data-node"}\n' \
+                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            fi
           fi
 
-          echo "rollback_attempted=${rollback_attempted}" >> "$GITHUB_OUTPUT"
           if [[ "${rollback_attempted}" == "true" ]]; then
-            echo "rollback_result=completed" >> "$GITHUB_OUTPUT"
+            if [[ "${rollback_rc}" -eq 0 ]]; then
+              rollback_result_out="completed"
+            else
+              rollback_result_out="failed"
+            fi
           else
-            echo "rollback_result=nothing-to-rollback" >> "$GITHUB_OUTPUT"
+            rollback_result_out="nothing-to-rollback"
             printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback was not required for this failure mode"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
           fi
+
+          write_rollback_outputs
+
+          if [[ "${rollback_attempted}" == "true" && "${rollback_rc}" -ne 0 ]]; then
+            echo "error: automatic rollback did not complete successfully (rollback_result=failed); verify cluster state and runbooks — do not assume production was restored." >&2
+            exit 1
+          fi
+
+          if [[ "${rollback_attempted}" == "true" && "${rollback_rc}" -eq 0 ]]; then
+            exit 0
+          fi
+          exit 0
 
       - name: Write production deployment summary
         if: always()
@@ -1515,15 +1769,49 @@ jobs:
           SECURITY_WORKFLOW_RUN_ID: ${{ needs.validate-production-security-verdict.outputs.security_workflow_run_id }}
           SECURITY_VERDICT_GENERATED_AT_UTC: ${{ needs.validate-production-security-verdict.outputs.security_verdict_generated_at_utc }}
           SECURITY_VERDICT_MAX_AGE_HOURS: ${{ needs.validate-production-security-verdict.outputs.security_verdict_max_age_hours }}
+          FLEET_SCALE_TARGET: ${{ needs.validate-production-scale-storm-gate.outputs.fleet_scale_target }}
+          STORM_GATE_REQUIRED: ${{ needs.validate-production-scale-storm-gate.outputs.storm_gate_required }}
+          STORM_GATE_RESULT: ${{ needs.validate-production-scale-storm-gate.outputs.storm_gate_result }}
+          STORM_GATE_EVIDENCE_PATH: ${{ needs.validate-production-scale-storm-gate.outputs.storm_gate_evidence_path }}
+          STORM_GATE_BYPASSED: ${{ needs.validate-production-scale-storm-gate.outputs.storm_gate_bypassed }}
+          STORM_GATE_BYPASS_REASON: ${{ needs.validate-production-scale-storm-gate.outputs.storm_gate_bypass_reason }}
+          STORM_EVIDENCE_SCENARIO: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_scenario }}
+          STORM_EVIDENCE_COMPLETED_AT_UTC: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_completed_at_utc }}
+          STORM_EVIDENCE_MACHINE_COUNT: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_machine_count }}
+          STORM_EVIDENCE_EVENTS_PER_MACHINE: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_events_per_machine }}
+          STORM_EVIDENCE_FINAL_RESULT: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_final_result }}
+          STORM_EVIDENCE_CRITICAL_LOST: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_critical_lost }}
+          STORM_EVIDENCE_DUPLICATE_CRITICAL_EFFECTS: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_duplicate_critical_effects }}
+          STORM_EVIDENCE_DB_POOL_RESULT: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_db_pool_result }}
+          STORM_EVIDENCE_HEALTH_RESULT: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_health_result }}
+          STORM_EVIDENCE_RESTART_RESULT: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_restart_result }}
+          STORM_EVIDENCE_MAX_AGE_DAYS_APPLIED: ${{ needs.validate-production-scale-storm-gate.outputs.storm_evidence_max_age_days_applied }}
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
           completed_at_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          rollback_available_before_deploy_json="false"
+          [[ "${ROLLBACK_AVAILABLE_BEFORE_DEPLOY:-}" == "true" ]] && rollback_available_before_deploy_json="true"
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           freshness_window_display="${SECURITY_VERDICT_MAX_AGE_HOURS}"
           if [[ "${SECURITY_VERDICT_MAX_AGE_HOURS}" =~ ^[0-9]+$ ]]; then
             freshness_window_display="${SECURITY_VERDICT_MAX_AGE_HOURS}h"
           fi
+
+          storm_gate_bypass_reason_json="$(
+            python3 -c 'import json,os; print(json.dumps(os.environ.get("STORM_GATE_BYPASS_REASON") or None))'
+          )"
+          storm_gate_evidence_path_json="$(
+            python3 -c 'import json,os; print(json.dumps(os.environ.get("STORM_GATE_EVIDENCE_PATH") or None))'
+          )"
+          storm_gate_required_json="false"
+          [[ "${STORM_GATE_REQUIRED}" == "true" ]] && storm_gate_required_json="true"
+          storm_gate_bypassed_json="false"
+          [[ "${STORM_GATE_BYPASSED}" == "true" ]] && storm_gate_bypassed_json="true"
+
+          storm_evidence_fragment="$(
+            python3 deployments/prod/shared/scripts/render_storm_evidence_manifest_fragment.py
+          )"
 
           trust_decision="fully-verified"
           if [[ "${PROVENANCE_TRUST_CLASS}" == "manual-trust-exception" ]]; then
@@ -1606,10 +1894,16 @@ jobs:
 
           cat > deployment-evidence/production-deployment-manifest.json <<EOF
           {
+            "schema_version": 1,
             "action_mode": "${ACTION_MODE}",
             "environment": "production",
             "scope_note": "this production workflow attests only this production rollout and its release/security gates; it does not attest staging deployment or restore-drill controls",
             "completed_at_utc": "${completed_at_utc}",
+            "deployed_at_utc": "${completed_at_utc}",
+            "rollback_available_before_deploy": ${rollback_available_before_deploy_json},
+            "migration_rollback_policy": "never_automatic",
+            "auto_rollback_scope": "app_and_goose_images_only",
+            "auto_rollback_note": "Automatic rollback redeploys prior digest-pinned app and goose images via rollback_app_node.sh without RUN_MIGRATION; it does not reverse database migrations (no goose down).",
             "source_commit_sha": "${deploy_source_sha}",
             "source_commit_sha_note": "${deploy_source_sha_note}",
             "source_branch": "${SOURCE_BRANCH}",
@@ -1665,7 +1959,14 @@ jobs:
             "rollback_result": "${ROLLBACK_RESULT}",
             "final_result": "${FINAL_RESULT}",
             "final_deployment_verdict": "${final_deployment_verdict}",
-            "release_events_path": "${release_events_path}"
+            "release_events_path": "${release_events_path}",
+            "fleet_scale_target": "${FLEET_SCALE_TARGET}",
+            "storm_gate_required": ${storm_gate_required_json},
+            "storm_gate_result": "${STORM_GATE_RESULT}",
+            "storm_gate_evidence_path": ${storm_gate_evidence_path_json},
+            "storm_gate_bypassed": ${storm_gate_bypassed_json},
+            "storm_gate_bypass_reason": ${storm_gate_bypass_reason_json},
+            "storm_evidence": ${storm_evidence_fragment}
           }
           EOF
 
@@ -1695,7 +1996,14 @@ jobs:
             "rollback_result": "${ROLLBACK_RESULT}",
             "final_result": "${FINAL_RESULT}",
             "final_deployment_verdict": "${final_deployment_verdict}",
-            "release_events_path": "${release_events_path}"
+            "release_events_path": "${release_events_path}",
+            "fleet_scale_target": "${FLEET_SCALE_TARGET}",
+            "storm_gate_required": ${storm_gate_required_json},
+            "storm_gate_result": "${STORM_GATE_RESULT}",
+            "storm_gate_evidence_path": ${storm_gate_evidence_path_json},
+            "storm_gate_bypassed": ${storm_gate_bypassed_json},
+            "storm_gate_bypass_reason": ${storm_gate_bypass_reason_json},
+            "storm_evidence": ${storm_evidence_fragment}
           }
           EOF
 
@@ -1731,6 +2039,7 @@ jobs:
             if [[ -n "${PREVIOUS_RUN_URL}" ]]; then
               echo "- previous run: [#${PREVIOUS_RUN_NUMBER}](${PREVIOUS_RUN_URL})"
             fi
+            echo "- rollback_available_before_deploy: \`${ROLLBACK_AVAILABLE_BEFORE_DEPLOY:-false}\`"
             echo "- deploy transport: \`${DEPLOY_TRANSPORT}\`"
             echo "- auth mode: \`${AUTH_MODE}\`"
             echo "- trust decision: \`${trust_decision}\`"
@@ -1739,6 +2048,7 @@ jobs:
             echo "- security release gate artifact: verdict=\`${RELEASE_GATE_VERDICT}\`, mode=\`${RELEASE_GATE_MODE}\`, repo=\`${REPO_RELEASE_VERDICT}\`, provenance=\`${PROVENANCE_RELEASE_VERDICT}\`, workflow_run=\`${SECURITY_WORKFLOW_RUN_ID:-n/a}\`, generated_at=\`${SECURITY_VERDICT_GENERATED_AT_UTC:-n/a}\`"
             echo "- security freshness policy: max-age=\`${freshness_window_display}\` / observed-age=\`${SECURITY_VERDICT_AGE_SECONDS:-n/a}\`"
             echo "- scope note: \`production rollout evidence only; staging deployment and restore-drill controls are reported by their own workflows/artifacts\`"
+            echo "- fleet scale target: \`${FLEET_SCALE_TARGET}\` / storm gate: required=\`${STORM_GATE_REQUIRED}\` result=\`${STORM_GATE_RESULT}\` bypassed=\`${STORM_GATE_BYPASSED}\` evidence=\`${STORM_GATE_EVIDENCE_PATH:-n/a}\`"
             echo "- data-node requested: \`${DEPLOY_DATA_NODE}\`"
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
             if [[ "${DEPLOY_APP_NODE_B}" == "true" ]]; then
@@ -1767,7 +2077,7 @@ jobs:
           name: production-deployment-manifest
           path: deployment-evidence/production-deployment-manifest.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
 
       - name: Upload production deploy evidence
         if: always()

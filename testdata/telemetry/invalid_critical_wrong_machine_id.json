@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "machine_id": "66666666-6666-6666-6666-666666666666",
+  "event_id": "wrong-body-machine",
+  "occurred_at": "2026-04-24T12:11:00Z",
+  "dedupe_key": "should-not-reach-bridge",
+  "event_type": "vend.success",
+  "payload": {
+    "outcome": "success"
+  }
+}

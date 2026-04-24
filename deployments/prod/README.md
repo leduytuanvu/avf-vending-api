@@ -113,6 +113,21 @@ bash -n deployments/prod/shared/scripts/release_app_cluster.sh
 bash -n deployments/prod/shared/scripts/healthcheck_app_node.sh
 bash -n deployments/prod/shared/scripts/release_data_node.sh
 bash -n deployments/prod/shared/scripts/healthcheck_data_node.sh
+bash -n deployments/prod/scripts/telemetry_storm_load_test.sh
+bash -n deployments/prod/scripts/telemetry_load_smoke.sh
+```
+
+## Telemetry storm load test
+
+Automated MQTT publish load for offline-replay / fleet storm validation (staging by default; production requires explicit confirmation):
+
+- `deployments/prod/scripts/telemetry_storm_load_test.sh`
+- Wrapper (same script): `deployments/prod/scripts/telemetry_load_smoke.sh`
+
+Dry-run (no broker credentials):
+
+```bash
+DRY_RUN=true SCENARIO_PRESET=100x100 bash deployments/prod/scripts/telemetry_storm_load_test.sh
 ```
 
 ## Notes

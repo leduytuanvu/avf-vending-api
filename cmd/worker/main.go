@@ -106,6 +106,7 @@ func main() {
 			log.Fatal("nats streams", zap.Error(err))
 		}
 		jsLim := cfg.TelemetryJetStream.NATSBrokerLimits()
+		platformnats.LogTelemetryJetStreamRetention(log, "worker", string(cfg.AppEnv), jsLim)
 		if err := platformnats.EnsureTelemetryStreams(nc.JS, jsLim); err != nil {
 			log.Fatal("nats telemetry streams", zap.Error(err))
 		}

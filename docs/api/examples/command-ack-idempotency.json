@@ -1,0 +1,9 @@
+{
+  "sequence": 42,
+  "status": "acked",
+  "dedupe_key": "cmd-ack:55555555-5555-5555-5555-555555555555:42:01JR8CMD",
+  "correlation_id": "44444444-4444-4444-4444-444444444444",
+  "payload": {
+    "detail": "applied"
+  }
+}

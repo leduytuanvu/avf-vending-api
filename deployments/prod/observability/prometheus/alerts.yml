@@ -105,7 +105,7 @@ groups:
 
       - alert: AVFMQTTIngestReadinessFlapping
         expr: changes(probe_success{job="avf_app_readiness", component="mqtt-ingest"}[15m]) > 2
-        for: 0m
+        for: 1m
         labels:
           severity: warning
         annotations:
@@ -154,3 +154,174 @@ groups:
           summary: "Host disk pressure on {{ $labels.instance }}"
           description: "Root filesystem free space is below 10 percent on {{ $labels.instance }}."
           first_action: "Check Docker logs, Prometheus/Loki retention growth, and any unexpected data-node storage growth."
+
+  # Telemetry SLO / replay storm (metric names from internal/app/telemetryapp/*_prom.go).
+  # Tune thresholds per fleet; see docs/runbooks/production-observability-alerts.md
+  - name: avf-telemetry-pressure-and-correctness
+    rules:
+      - alert: AVFTelemetryIngestQueueDepthHigh
+        expr: avg(avf_telemetry_ingest_queue_depth{job="avf_mqtt_ingest_metrics"}) > 200
+        for: 10m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "MQTT ingest bounded queue is persistently deep"
+          description: "Average telemetry_ingest_queue_depth exceeds 200 for 10m (default TELEMETRY_GLOBAL_MAX_INFLIGHT often 256)."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetryingestqueuedepthhigh"
+
+      - alert: AVFTelemetryDroppableDropsElevated
+        expr: sum(rate(avf_telemetry_ingest_dropped_total{job="avf_mqtt_ingest_metrics",reason="droppable_queue_full"}[10m])) > 5
+        for: 15m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Droppable telemetry is being dropped under queue pressure"
+          description: "Sustained droppable_queue_full drops — typical during replay storms or undersized TELEMETRY_GLOBAL_MAX_INFLIGHT."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetrydroppabledropselevated"
+
+      - alert: AVFTelemetryCriticalIngressRejected
+        expr: sum(rate(avf_telemetry_ingest_rejected_total{job="avf_mqtt_ingest_metrics",reason=~"critical_queue_full|critical_queue_full_timeout|critical_missing_idempotency_identity"}[5m])) > 0.02
+        for: 5m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "Critical-path telemetry is being rejected at mqtt-ingest"
+          description: "Rejects for critical queue pressure or missing idempotency identity — data loss risk for audit-critical events."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetrycriticalingressrejected"
+
+      - alert: AVFTelemetryCriticalMissingIdentity
+        expr: increase(avf_telemetry_ingest_critical_missing_identity_total{job="avf_mqtt_ingest_metrics"}[15m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "Critical telemetry reached JetStream bridge without dedupe identity"
+          description: "avf_telemetry_ingest_critical_missing_identity_total increased — device payloads missing event_id / dedupe_key / boot_id+seq."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetrycriticalmissingidentity"
+
+      - alert: AVFTelemetryRateLimitedSpike
+        expr: sum(rate(avf_telemetry_ingest_rate_limited_total{job="avf_mqtt_ingest_metrics"}[10m])) > 10
+        for: 15m
+        labels:
+          severity: warning
+          priority: P2
+        annotations:
+          summary: "Per-machine telemetry rate limits are firing frequently"
+          description: "Token-bucket denials suggest replay storm or TELEMETRY_PER_MACHINE_* too tight for legitimate bursts."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetryratelimitedspike"
+
+      - alert: AVFTelemetryJetStreamPublishFailures
+        expr: sum(rate(avf_telemetry_ingest_publish_failures_total{job="avf_mqtt_ingest_metrics"}[10m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "JetStream publish failures from mqtt-ingest bridge"
+          description: "NATS/JetStream publish path failing — backlog and device retries likely."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetryjetstreampublishfailures"
+
+      - alert: AVFTelemetryHandlerRejectRate
+        expr: sum(rate(avf_telemetry_ingest_rejected_total{job="avf_mqtt_ingest_metrics",reason="handler_error"}[10m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Elevated handler_error rejects during critical inline ingest"
+          description: "Critical sync path failures (e.g. bridge/validation) — inspect mqtt-ingest logs."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetryhandlerrejectrate"
+
+      - alert: AVFTelemetryConsumerLagCritical
+        expr: max(avf_telemetry_consumer_lag{job="avf_worker_metrics"}) > 10000
+        for: 15m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "Telemetry JetStream lag is critically high"
+          description: "At least one durable consumer NumPending exceeds 10000 for 15m — replay storm or worker saturation."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetryconsumerlagcritical"
+
+      - alert: AVFTelemetryProjectionHandlerErrors
+        expr: sum(rate(avf_telemetry_projection_failures_total{job="avf_worker_metrics",reason="handler_err"}[10m])) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Telemetry projection handler errors are sustained"
+          description: "handler_err counter rate high — Postgres/handler failures causing Naks/redelivery."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetryprojectionhandlererrors"
+
+      - alert: AVFTelemetryDuplicateReplayPressure
+        expr: sum(rate(avf_telemetry_duplicate_total{job="avf_worker_metrics",reason=~"stream_seq|idempotency_replay"}[15m])) > 25
+        for: 20m
+        labels:
+          severity: warning
+          priority: P2
+        annotations:
+          summary: "High duplicate/replay suppression at projection (JetStream redelivery pressure proxy)"
+          description: "stream_seq or idempotency_replay duplicates rising — often broker redelivery or consumer restarts; not 1:1 broker redelivery count."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetryduplicatereplaypressure"
+
+      - alert: AVFTelemetryIdempotencyConflict
+        expr: increase(avf_telemetry_idempotency_conflict_total{job="avf_worker_metrics"}[10m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "Idempotency key reused with different payload (duplicate critical business-effect risk)"
+          description: "avf_telemetry_idempotency_conflict_total increased — same idempotency_key, different payload hash."
+          runbook: "docs/runbooks/production-observability-alerts.md#avftelemetryidempotencyconflict"
+
+  - name: avf-reconciler-commerce
+    rules:
+      - alert: AVFReconcilerPaymentProbeFailures
+        expr: increase(avf_reconciler_job_failures_total{job="avf_reconciler_metrics",reconciler_job="payment_provider_probe"}[30m]) >= 3
+        for: 1m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Payment provider probe job reporting row failures"
+          description: "Failures in payment_provider_probe reconciliation ticks — PSP or DB read issues."
+          runbook: "docs/runbooks/production-observability-alerts.md#avfreconcilerpaymentprobefailures"
+
+      - alert: AVFReconcilerRefundReviewFailures
+        expr: increase(avf_reconciler_job_failures_total{job="avf_reconciler_metrics",reconciler_job="refund_review"}[30m]) >= 1
+        for: 1m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Refund review reconciler reporting failures"
+          description: "refund_review job_failures_total increased — inspect reconciler logs and refund pipeline."
+          runbook: "docs/runbooks/production-observability-alerts.md#avfreconcilerrefundreviewfailures"
+
+      - alert: AVFReconcilerDuplicatePaymentEnqueueFailures
+        expr: increase(avf_reconciler_job_failures_total{job="avf_reconciler_metrics",reconciler_job="duplicate_payments"}[30m]) >= 3
+        for: 1m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Duplicate payment recovery enqueue failures"
+          description: "duplicate_payments job failures — NATS/workflow enqueue or read path errors."
+          runbook: "docs/runbooks/production-observability-alerts.md#avfreconcilerduplicatepaymentenqueuefailures"
+
+      - alert: AVFReconcilerVendStuckCycleErrors
+        expr: increase(avf_reconciler_cycle_completions_total{job="avf_reconciler_metrics",reconciler_job="vend_stuck",result="error"}[1h]) >= 3
+        for: 1m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Vend stuck reconciler cycles completing with error"
+          description: "vend_stuck tick errors (DB/list failures) — not the same as stuck row count."
+          runbook: "docs/runbooks/production-observability-alerts.md#avfreconcilervendstuckcycleerrors"

@@ -2,8 +2,13 @@ package nats
 
 import "time"
 
+// TelemetryStreamLegacyDefaultMaxBytes is the historical per-stream MaxBytes (256 MiB) when TELEMETRY_STREAM_MAX_BYTES is unset.
+const TelemetryStreamLegacyDefaultMaxBytes int64 = 256 << 20
+
 // TelemetryBrokerLimits configures JetStream telemetry stream retention and pull consumer fetch tuning.
-// Zero values in EnsureTelemetryStreams / EnsureTelemetryDurableConsumers are replaced with defaults.
+// Zero values in EnsureTelemetryStreams / EnsureTelemetryDurableConsumers are replaced with
+// DefaultTelemetryBrokerLimits() (including legacy 256 MiB per-stream bytes). Production processes should set
+// explicit TELEMETRY_* env vars so limits are not accidental; mqtt-ingest and worker log effective values at startup.
 type TelemetryBrokerLimits struct {
 	StreamMaxBytes        int64
 	StreamMaxAgeBaseline  time.Duration
@@ -17,7 +22,7 @@ type TelemetryBrokerLimits struct {
 // DefaultTelemetryBrokerLimits matches the historical hardcoded telemetry profile (conservative VPS).
 func DefaultTelemetryBrokerLimits() TelemetryBrokerLimits {
 	return TelemetryBrokerLimits{
-		StreamMaxBytes:        256 << 20,
+		StreamMaxBytes:        TelemetryStreamLegacyDefaultMaxBytes,
 		StreamMaxAgeBaseline:  168 * time.Hour, // 7d — longest stream (diagnostic)
 		ConsumerMaxAckPending: 1024,
 		ConsumerAckWait:       30 * time.Second,

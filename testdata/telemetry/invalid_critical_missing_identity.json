@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "machine_id": "55555555-5555-5555-5555-555555555555",
+  "occurred_at": "2026-04-24T12:10:00Z",
+  "event_type": "vend.success",
+  "payload": {
+    "slot_index": 1,
+    "outcome": "success"
+  }
+}

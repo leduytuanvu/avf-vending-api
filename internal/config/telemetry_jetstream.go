@@ -45,7 +45,7 @@ type TelemetryJetStreamConfig struct {
 func loadTelemetryJetStreamConfig() TelemetryJetStreamConfig {
 	baseline := mustParseDuration(envTelemetryStreamMaxAge, getenv(envTelemetryStreamMaxAge, "168h"))
 	return TelemetryJetStreamConfig{
-		StreamMaxBytes:                   int64(getenvInt(envTelemetryStreamMaxBytes, 256<<20)),
+		StreamMaxBytes:                   getenvInt64(envTelemetryStreamMaxBytes, platformnats.TelemetryStreamLegacyDefaultMaxBytes),
 		StreamMaxAgeBaseline:             baseline,
 		ConsumerMaxAckPending:            getenvInt(envTelemetryConsumerMaxAckPending, 1024),
 		ConsumerAckWait:                  mustParseDuration(envTelemetryConsumerAckWait, getenv(envTelemetryConsumerAckWait, "30s")),

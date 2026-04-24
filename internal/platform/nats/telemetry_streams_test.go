@@ -38,3 +38,21 @@ func TestStreamMaxAgeScaling(t *testing.T) {
 		t.Fatalf("diagnostic age want %v got %v", base, g)
 	}
 }
+
+func TestTelemetryStreamRetentionPlan_usesConfiguredMaxBytes(t *testing.T) {
+	t.Parallel()
+	wantBytes := int64(4 << 30)
+	lim := TelemetryBrokerLimits{StreamMaxBytes: wantBytes, StreamMaxAgeBaseline: 168 * time.Hour}
+	plan := TelemetryStreamRetentionPlan(lim)
+	if len(plan) != 6 {
+		t.Fatalf("plan len: %d", len(plan))
+	}
+	for _, p := range plan {
+		if p.MaxBytes != wantBytes {
+			t.Fatalf("stream %s max bytes: got %d want %d", p.Name, p.MaxBytes, wantBytes)
+		}
+		if p.MaxAge < 5*time.Minute {
+			t.Fatalf("stream %s max age too small: %v", p.Name, p.MaxAge)
+		}
+	}
+}

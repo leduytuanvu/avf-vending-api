@@ -526,19 +526,20 @@ var allowedDeviceInventoryEventTypes = map[string]struct{}{
 	"transfer_in": {}, "transfer_out": {}, "count": {}, "reconcile": {}, "correction": {}, "other": {},
 }
 
-// AppendDeviceTelemetryEdgeEvent records a low-frequency device edge signal (vend/cash) with idempotent dedupe_key.
-func (s *Store) AppendDeviceTelemetryEdgeEvent(ctx context.Context, machineID uuid.UUID, eventType string, payload []byte, dedupe string) error {
+// AppendDeviceTelemetryEdgeEvent records a low-frequency device edge signal (vend/cash, critical metrics anchor, etc.)
+// with idempotent dedupe_key. Duplicate dedupe_key returns duplicate=true and does not insert a second row.
+func (s *Store) AppendDeviceTelemetryEdgeEvent(ctx context.Context, machineID uuid.UUID, eventType string, payload []byte, dedupe string) (duplicate bool, err error) {
 	if s == nil || s.pool == nil {
-		return errors.New("postgres: nil store")
+		return false, errors.New("postgres: nil store")
 	}
 	if strings.TrimSpace(dedupe) == "" {
-		return errors.New("postgres: dedupe_key is required")
+		return false, errors.New("postgres: dedupe_key is required")
 	}
 	if len(payload) == 0 {
 		payload = []byte("{}")
 	}
 	q := db.New(s.pool)
-	_, err := q.InsertDeviceTelemetryEvent(ctx, db.InsertDeviceTelemetryEventParams{
+	_, err = q.InsertDeviceTelemetryEvent(ctx, db.InsertDeviceTelemetryEventParams{
 		MachineID: machineID,
 		EventType: eventType,
 		Payload:   payload,
@@ -546,11 +547,11 @@ func (s *Store) AppendDeviceTelemetryEdgeEvent(ctx context.Context, machineID uu
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
-			return nil
+			return true, nil
 		}
-		return err
+		return false, err
 	}
-	return nil
+	return false, nil
 }
 
 type deviceInventoryWire struct {
@@ -562,36 +563,37 @@ type deviceInventoryWire struct {
 }
 
 // AppendInventoryEventFromDeviceTelemetry inserts one inventory_events row; idempotent via metadata.idempotency_key.
-func (s *Store) AppendInventoryEventFromDeviceTelemetry(ctx context.Context, env tel.Envelope, data []byte) error {
+// When the idempotency key was already used for this machine, duplicate is true and no row is inserted.
+func (s *Store) AppendInventoryEventFromDeviceTelemetry(ctx context.Context, env tel.Envelope, data []byte) (duplicate bool, err error) {
 	if s == nil || s.pool == nil {
-		return errors.New("postgres: nil store")
+		return false, errors.New("postgres: nil store")
 	}
 	if env.TenantID == nil {
-		return errors.New("postgres: tenant_id is required for inventory projection")
+		return false, errors.New("postgres: tenant_id is required for inventory projection")
 	}
 	idem := strings.TrimSpace(env.Idempotency)
 	if idem == "" {
-		return errors.New("postgres: idempotency_key is required for device inventory ingest")
+		return false, errors.New("postgres: idempotency_key is required for device inventory ingest")
 	}
 	var wire deviceInventoryWire
 	if err := json.Unmarshal(data, &wire); err != nil {
-		return err
+		return false, err
 	}
 	if _, ok := allowedDeviceInventoryEventTypes[wire.EventType]; !ok {
-		return fmt.Errorf("postgres: invalid inventory event_type %q", wire.EventType)
+		return false, fmt.Errorf("postgres: invalid inventory event_type %q", wire.EventType)
 	}
 	if strings.TrimSpace(wire.SlotCode) == "" {
-		return errors.New("postgres: slot_code is required for device inventory ingest")
+		return false, errors.New("postgres: slot_code is required for device inventory ingest")
 	}
 	n, err := db.New(s.pool).InventoryAdminCountInventoryEventsByIdempotencyKey(ctx, db.InventoryAdminCountInventoryEventsByIdempotencyKeyParams{
 		MachineID: env.MachineID,
 		Column2:   idem,
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
 	if n > 0 {
-		return nil
+		return true, nil
 	}
 	meta := map[string]any{
 		"idempotency_key": idem,
@@ -605,7 +607,7 @@ func (s *Store) AppendInventoryEventFromDeviceTelemetry(ctx context.Context, env
 	}
 	metaJSON, err := json.Marshal(meta)
 	if err != nil {
-		return err
+		return false, err
 	}
 	occ := env.ReceivedAt.UTC()
 	if env.EmittedAt != nil {
@@ -634,10 +636,10 @@ func (s *Store) AppendInventoryEventFromDeviceTelemetry(ctx context.Context, env
 	}
 	batch, err := json.Marshal([]map[string]any{elem})
 	if err != nil {
-		return err
+		return false, err
 	}
 	_, err = db.New(s.pool).InventoryAdminInsertInventoryEventsBatch(ctx, batch)
-	return err
+	return false, err
 }
 
 func pickSlotSnapshotForVend(slots []db.InventoryAdminListMachineSlotsRow, slotIndex int32, productID uuid.UUID) (*db.InventoryAdminListMachineSlotsRow, error) {

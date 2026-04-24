@@ -264,6 +264,7 @@ run_composed_smoke_checks() {
 		return 0
 	fi
 
+	local failures_before_smoke="${failures}"
 	while IFS=$'\t' read -r label detail; do
 		[[ -n "${label}" ]] || continue
 		record_failure "smoke" "${label}" "${detail}"
@@ -273,7 +274,12 @@ import json
 import sys
 from pathlib import Path
 
-payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+path = Path(sys.argv[1])
+try:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+except Exception as ex:
+    print(f"smoke_json_parse\t{ex}")
+    sys.exit(0)
 for entry in payload.get("failed_checks", []):
     label = entry.get("name", "smoke")
     detail = entry.get("detail", label)
@@ -281,8 +287,12 @@ for entry in payload.get("failed_checks", []):
 PY
 	)
 
-	if ((smoke_rc == 30)); then
-		record_failure "smoke" "blackbox smoke configuration" "smoke_prod.sh could not run with the current environment"
+	if ((failures_before_smoke == failures)); then
+		if ((smoke_rc == 30)); then
+			record_failure "smoke" "blackbox smoke configuration" "smoke_prod.sh could not run with the current environment"
+		else
+			record_failure "smoke" "blackbox smoke" "smoke_prod.sh failed (exit ${smoke_rc}, overall_status=${overall_status})"
+		fi
 	fi
 	return 1
 }
@@ -589,6 +599,7 @@ else
 fi
 
 if [[ "${INCLUDE_SMOKE}" == "1" ]]; then
+	# run_composed_smoke_checks returns 1 on smoke failure but records failures first; || true avoids set -e exiting before the failures summary below.
 	run_composed_smoke_checks || true
 else
 	SMOKE_RESULT="skipped"

@@ -131,6 +131,128 @@ func TestLoad_PostgresPoolMinGreaterThanMaxRejected(t *testing.T) {
 	}
 }
 
+func TestLoad_PostgresPoolDefaults(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("DATABASE_URL", "postgres://user:"+"pass@localhost:5432/db?sslmode=disable")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Postgres.MaxConns != 3 {
+		t.Fatalf("max conns: got %d want 3", cfg.Postgres.MaxConns)
+	}
+	if cfg.Postgres.MinConns != 0 {
+		t.Fatalf("min conns: got %d want 0", cfg.Postgres.MinConns)
+	}
+	if cfg.Postgres.MaxConnIdleTime != 5*time.Minute {
+		t.Fatalf("idle time: got %s want 5m", cfg.Postgres.MaxConnIdleTime)
+	}
+	if cfg.Postgres.MaxConnLifetime != 30*time.Minute {
+		t.Fatalf("lifetime: got %s want 30m", cfg.Postgres.MaxConnLifetime)
+	}
+}
+
+func TestLoad_PostgresPoolPerProcessOverride(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("DATABASE_URL", "postgres://user:"+"pass@localhost:5432/db?sslmode=disable")
+	t.Setenv("DATABASE_MAX_CONNS", "5")
+	t.Setenv("WORKER_DATABASE_MAX_CONNS", "2")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.Postgres.MaxConnsForProcess("worker"); got != 2 {
+		t.Fatalf("worker max conns: got %d want 2", got)
+	}
+	if got := cfg.Postgres.MaxConnsForProcess("api"); got != 5 {
+		t.Fatalf("api max conns: got %d want 5", got)
+	}
+}
+
+func TestPostgresPoolSummaryForProcess(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("DATABASE_URL", "postgres://user:"+"pass@localhost:5432/db?sslmode=disable")
+	t.Setenv("DATABASE_MAX_CONNS", "3")
+	t.Setenv("API_DATABASE_MAX_CONNS", "4")
+	t.Setenv("MQTT_INGEST_DATABASE_MAX_CONNS", "2")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	api := cfg.Postgres.PoolSummaryForProcess("api")
+	if api.MaxConns != 4 || api.ProcessName != "api" {
+		t.Fatalf("api summary: %+v", api)
+	}
+	mqtt := cfg.Postgres.PoolSummaryForProcess("mqtt-ingest")
+	if mqtt.MaxConns != 2 {
+		t.Fatalf("mqtt-ingest summary: %+v", mqtt)
+	}
+	worker := cfg.Postgres.PoolSummaryForProcess("worker")
+	if worker.MaxConns != 3 {
+		t.Fatalf("worker summary: %+v", worker)
+	}
+}
+
+func TestLoad_PostgresInvalidMaxConnIdleDuration(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("DATABASE_URL", "postgres://user:"+"pass@localhost:5432/db?sslmode=disable")
+	t.Setenv("DATABASE_MAX_CONN_IDLE_TIME", "not-a-duration")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "DATABASE_MAX_CONN_IDLE_TIME") {
+		t.Fatalf("unexpected: %v", err)
+	}
+}
+
+func TestLoad_PostgresPoolInvalidOverrideRejected(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("DATABASE_URL", "postgres://user:"+"pass@localhost:5432/db?sslmode=disable")
+	t.Setenv("WORKER_DATABASE_MAX_CONNS", "nope")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "WORKER_DATABASE_MAX_CONNS") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoad_PostgresPoolSettingsRequireDatabaseURL(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("DATABASE_URL", "")
+	t.Setenv("WORKER_DATABASE_MAX_CONNS", "1")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "DATABASE_*") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoad_PostgresPoolOverrideBelowMinRejected(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("DATABASE_URL", "postgres://user:"+"pass@localhost:5432/db?sslmode=disable")
+	t.Setenv("DATABASE_MIN_CONNS", "2")
+	t.Setenv("API_DATABASE_MAX_CONNS", "1")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "API_DATABASE_MAX_CONNS") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestLoad_ProductionAppEnvStillValidatedStrictly(t *testing.T) {
 	t.Setenv("APP_ENV", "production")
 	t.Setenv("LOG_LEVEL", "info")
@@ -321,6 +443,20 @@ func TestValidate_PostgresRequiresPositiveMaxConnsWhenURLSet(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestLoad_PostgresNegativeMinConnsRejected(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("DATABASE_URL", "postgres://user:"+"pass@localhost:5432/db?sslmode=disable")
+	t.Setenv("DATABASE_MIN_CONNS", "-1")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "must be >= 0") {
+		t.Fatalf("unexpected: %v", err)
 	}
 }
 
@@ -579,6 +715,8 @@ func TestMain(m *testing.M) {
 		"HTTP_OPS_ADDR", "OPS_READINESS_TIMEOUT", "OPS_SHUTDOWN_TIMEOUT", "TRACER_SHUTDOWN_TIMEOUT",
 		"GRPC_ENABLED", "GRPC_ADDR", "GRPC_SHUTDOWN_TIMEOUT",
 		"DATABASE_URL", "DATABASE_MAX_CONNS", "DATABASE_MIN_CONNS", "DATABASE_MAX_CONN_IDLE_TIME", "DATABASE_MAX_CONN_LIFETIME",
+		"COLOCATE_APP_WITH_DATA_NODE", "ALLOW_APP_NODE_ON_DATA_NODE", "ENABLE_APP_NODE_B",
+		"API_DATABASE_MAX_CONNS", "WORKER_DATABASE_MAX_CONNS", "MQTT_INGEST_DATABASE_MAX_CONNS", "RECONCILER_DATABASE_MAX_CONNS", "TEMPORAL_WORKER_DATABASE_MAX_CONNS",
 		"REDIS_ADDR", "REDIS_URL", "REDIS_USERNAME", "REDIS_PASSWORD", "REDIS_DB", "REDIS_TLS_ENABLED", "REDIS_TLS_INSECURE_SKIP_VERIFY",
 		"READINESS_STRICT", "METRICS_ENABLED", "WORKER_METRICS_LISTEN", "RECONCILER_METRICS_LISTEN", "MQTT_INGEST_METRICS_LISTEN",
 		"MQTT_BROKER_URL", "MQTT_CLIENT_ID", "MQTT_CLIENT_ID_API", "MQTT_CLIENT_ID_INGEST", "MQTT_USERNAME", "MQTT_PASSWORD", "MQTT_TOPIC_PREFIX",
