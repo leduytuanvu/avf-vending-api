@@ -1,3 +1,6 @@
+-- +goose Up
+-- +goose StatementBegin
+
 -- Cash collection lifecycle: open session, close with counted vs expected (commerce-derived).
 
 ALTER TABLE cash_collections
@@ -79,3 +82,33 @@ COMMENT ON COLUMN cash_collections.variance_amount_minor IS 'counted minus expec
 COMMENT ON COLUMN cash_collections.requires_review IS 'True when abs(variance) exceeds configured review threshold.';
 
 COMMENT ON COLUMN cash_collections.close_request_hash IS 'SHA-256 of canonical close payload for idempotent close and conflict detection.';
+
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
+DROP INDEX IF EXISTS ux_cash_collections_machine_one_open;
+
+ALTER TABLE cash_collections
+    ALTER COLUMN amount_minor DROP DEFAULT;
+
+ALTER TABLE cash_collections DROP COLUMN IF EXISTS close_request_hash;
+
+ALTER TABLE cash_collections DROP COLUMN IF EXISTS requires_review;
+
+ALTER TABLE cash_collections DROP COLUMN IF EXISTS variance_amount_minor;
+
+ALTER TABLE cash_collections DROP COLUMN IF EXISTS expected_amount_minor;
+
+ALTER TABLE cash_collections DROP CONSTRAINT IF EXISTS cash_collections_lifecycle_status_check;
+
+ALTER TABLE cash_collections DROP COLUMN IF EXISTS lifecycle_status;
+
+ALTER TABLE cash_collections DROP COLUMN IF EXISTS closed_at;
+
+ALTER TABLE cash_collections DROP COLUMN IF EXISTS opened_at;
+
+COMMENT ON TABLE cash_collections IS 'Physical cash removed from machine; reconcile against expected vault from cash_events.';
+
+-- +goose StatementEnd
