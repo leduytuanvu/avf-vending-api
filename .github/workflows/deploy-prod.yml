@@ -1349,8 +1349,17 @@ jobs:
           check_host() {
             local host="$1"
             [[ -n "${host}" ]] || return 0
-            python3 -c "import socket,sys; socket.getaddrinfo(sys.argv[1], None)" "${host}"
-            python3 -c "import socket,sys; s=socket.create_connection((sys.argv[1], int(sys.argv[2])), timeout=10); s.close()" "${host}" "${SSH_PORT}"
+            echo "==> SSH TCP preflight: ${host}:${SSH_PORT} (from GitHub Actions runner)"
+            if ! python3 -c "import socket,sys; socket.getaddrinfo(sys.argv[1], None)" "${host}"; then
+              echo "deploy-prod: error: DNS resolution failed for host '${host}'" >&2
+              exit 1
+            fi
+            # Allow slow paths; failure here is almost always firewall/security group or wrong host/port.
+            if ! python3 -c "import socket,sys; s=socket.create_connection((sys.argv[1], int(sys.argv[2])), timeout=30); s.close()" "${host}" "${SSH_PORT}"; then
+              echo "deploy-prod: error: TCP connect to ${host}:${SSH_PORT} timed out or was refused." >&2
+              echo "deploy-prod: hint: Ensure this runner can reach SSH on the VPS (public IP, listen address, ufw/iptables, cloud security group). GitHub-hosted runner IPs change; allow SSH broadly or use a self-hosted runner in your network." >&2
+              exit 1
+            fi
           }
 
           check_host "${APP_NODE_A_HOST}"
