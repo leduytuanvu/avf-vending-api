@@ -7,22 +7,19 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/gen/db"
-	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
-func mountDeviceTelemetryReconcileRoutes(r chi.Router, app *api.HTTPApplication) {
+// registerDeviceTelemetryReconcileRoutes registers reconcile handlers under an existing
+// /v1/device/machines/{machineId} chi.Route (same middleware as vend-results / commands/poll).
+func registerDeviceTelemetryReconcileRoutes(r chi.Router, app *api.HTTPApplication) {
 	if app == nil || app.TelemetryStore == nil {
 		return
 	}
-	r.Route("/device/machines/{machineId}", func(r chi.Router) {
-		r.Use(RequireMachineTenantAccess(app, "machineId"))
-		r.Use(auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin, auth.RoleMachine))
-		r.Post("/events/reconcile", postTelemetryReconcileBatch(app))
-		r.Get("/events/{idempotencyKey}/status", getTelemetryReconcileStatus(app))
-	})
+	r.Post("/events/reconcile", postTelemetryReconcileBatch(app))
+	r.Get("/events/{idempotencyKey}/status", getTelemetryReconcileStatus(app))
 }
 
 type reconcileBatchBody struct {
