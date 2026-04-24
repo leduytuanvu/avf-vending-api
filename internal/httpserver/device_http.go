@@ -34,6 +34,7 @@ func mountDeviceBridgeRoutes(r chi.Router, app *api.HTTPApplication) {
 		r.Use(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin, auth.RoleMachine))
 		r.Post("/vend-results", postDeviceVendResults(app))
 		r.Post("/commands/poll", postDeviceCommandsPoll(app))
+		registerDeviceTelemetryReconcileRoutes(r, app)
 	})
 }
 

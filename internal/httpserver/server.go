@@ -253,7 +253,6 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 				r.Use(writeRL)
 				mountDeviceCommandRoutes(r, app)
 				mountDeviceBridgeRoutes(r, app)
-				mountDeviceTelemetryReconcileRoutes(r, app)
 				mountMachineRuntimeRoutes(r, app)
 				mountOperatorSessionRoutes(r, app)
 				mountCommerceRoutes(r, app, cfg)
