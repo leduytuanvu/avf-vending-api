@@ -2,7 +2,6 @@ package nats
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	natssrv "github.com/nats-io/nats.go"
@@ -71,71 +70,8 @@ func EnsureTelemetryStreams(js natssrv.JetStreamContext, lim TelemetryBrokerLimi
 		return fmt.Errorf("nats: nil jetstream context")
 	}
 	lim = normalizeTelemetryBrokerLimits(lim)
-	b := lim.StreamMaxAgeBaseline
-	base := []streamSpec{
-		{
-			Name:       StreamTelemetryHeartbeat,
-			Subjects:   []string{SubjectTelemetryPrefix + "heartbeat.>"},
-			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     streamMaxAge(b, 2),
-			MaxBytes:   lim.StreamMaxBytes,
-			Discard:    natssrv.DiscardOld,
-			Storage:    natssrv.FileStorage,
-			Duplicates: 30 * time.Second,
-		},
-		{
-			Name:       StreamTelemetryState,
-			Subjects:   []string{SubjectTelemetryPrefix + "state.>"},
-			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     streamMaxAge(b, 6),
-			MaxBytes:   lim.StreamMaxBytes,
-			Discard:    natssrv.DiscardOld,
-			Storage:    natssrv.FileStorage,
-			Duplicates: 30 * time.Second,
-		},
-		{
-			Name:       StreamTelemetryMetrics,
-			Subjects:   []string{SubjectTelemetryPrefix + "metrics.>"},
-			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     streamMaxAge(b, 6),
-			MaxBytes:   lim.StreamMaxBytes,
-			Discard:    natssrv.DiscardOld,
-			Storage:    natssrv.FileStorage,
-			Duplicates: 30 * time.Second,
-		},
-		{
-			Name:       StreamTelemetryIncidents,
-			Subjects:   []string{SubjectTelemetryPrefix + "incident.>"},
-			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     streamMaxAge(b, 24),
-			MaxBytes:   lim.StreamMaxBytes,
-			Discard:    natssrv.DiscardOld,
-			Storage:    natssrv.FileStorage,
-			Duplicates: 2 * time.Minute,
-		},
-		{
-			Name:       StreamTelemetryCommandReceipts,
-			Subjects:   []string{SubjectTelemetryPrefix + "command_receipt.>"},
-			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     streamMaxAge(b, 72),
-			MaxBytes:   lim.StreamMaxBytes,
-			Discard:    natssrv.DiscardOld,
-			Storage:    natssrv.FileStorage,
-			Duplicates: 2 * time.Minute,
-		},
-		{
-			Name:       StreamTelemetryDiagnosticBundleReady,
-			Subjects:   []string{SubjectTelemetryPrefix + "diagnostic_bundle_ready.>"},
-			Retention:  natssrv.LimitsPolicy,
-			MaxAge:     streamMaxAge(b, 168),
-			MaxBytes:   lim.StreamMaxBytes,
-			Discard:    natssrv.DiscardOld,
-			Storage:    natssrv.FileStorage,
-			Duplicates: 5 * time.Minute,
-		},
-	}
-	for _, s := range base {
-		if err := ensureStream(js, s); err != nil {
+	for _, p := range TelemetryStreamRetentionPlan(lim) {
+		if err := ensureStream(js, planToStreamSpec(p)); err != nil {
 			return err
 		}
 	}

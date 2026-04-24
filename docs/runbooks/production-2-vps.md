@@ -72,6 +72,41 @@ Use managed services where possible:
 4. Copy `data-node/.env.data-node.example` to `.env.data-node` only if you are running the fallback broker plane.
 5. Point app nodes at managed endpoints first; use the data node only for the broker endpoints you still self-host.
 6. If you already use Temporal-backed workflows, enable the `temporal` profile on app nodes and set the `TEMPORAL_*` env.
+7. Keep app-node B disabled unless you have verified managed Postgres / Supabase pool capacity for the combined `api`, `worker`, `reconciler`, `mqtt-ingest`, and optional `temporal-worker` pools across both app nodes.
+
+## GitHub production deploy: fleet scale storm gate
+
+The production workflow (`.github/workflows/deploy-prod.yml`, **Deploy Production** in the Actions UI) defaults to `fleet_scale_target=pilot` and does **not** require telemetry storm evidence. For **scale-100**, **scale-500**, or **scale-1000**, the workflow requires recent `telemetry-storm-result.json` evidence (repo path or an Actions artifact named `telemetry-storm-result`) validated by `deployments/prod/shared/scripts/validate_production_scale_storm_evidence.py`, unless `allow_scale_gate_bypass` is set with a non-empty `scale_gate_bypass_reason`. Rollback mode skips this gate. See [telemetry-production-rollout.md](./telemetry-production-rollout.md) for storm runs and evidence shape.
+
+## Last-known-good (LKG) and rollback readiness
+
+Every **Deploy Production** run uploads a **`production-deployment-manifest`** artifact (JSON). After a **successful** deploy, that manifest records the digest-pinned **`app_image_ref`** and **`goose_image_ref`** that are now live, plus **`source_commit_sha`**, **`release_tag`**, **`deployed_at_utc`**, **`run_id`**, and **`run_url`**.
+
+Before the next deploy, the workflow **Resolve Previous Production Deployment** job scans recent successful runs for that artifact, validates digest pinning, and sets **`rollback_available`**. The job summary includes copy-paste values for **manual** `workflow_dispatch` rollback. If no manifest is found (for example expired artifact), automatic rollback after a mid-rollout failure is **blocked** until you restore refs from an external archive or complete a clean deploy.
+
+- **Automatic rollback** (deploy mode only): repins **app + goose** images on affected app nodes via `rollback_app_node.sh` with **`RUN_MIGRATION=0`** — **no migration down**.
+- Full operator steps: [production-rollback.md](./production-rollback.md).
+
+## Enterprise release evidence pack
+
+To bundle **last-known-good**, digest-pinned refs, static verify, monitoring readiness, and storm results for a promotion review, use **`deployments/prod/scripts/build_release_evidence_pack.sh`** with the deployment manifest artifact and other JSON inputs. See [production-release-readiness.md — Enterprise release evidence pack](./production-release-readiness.md#enterprise-release-evidence-pack).
+
+## PostgreSQL pool sizing (managed pooler / Supabase)
+
+**Estimated client connections from this stack**
+
+`total_connections ≈` (sum over each process binary of **effective max pool size** for that binary) × (**number of app nodes** that run a full copy of that stack).
+
+- **effective max** for a process is the matching `*_DATABASE_MAX_CONNS` when set (`API_DATABASE_MAX_CONNS`, `WORKER_DATABASE_MAX_CONNS`, …); otherwise `DATABASE_MAX_CONNS`.
+- Each **app node** runs one replica of `api`, `worker`, `reconciler`, `mqtt-ingest`, and optionally `temporal-worker` when the Temporal profile is enabled — count each process once per node.
+- **Target:** keep `total_connections` **below roughly 60–70%** of your provider’s session-mode pool limit (for example Supabase `MaxClientsInSessionMode`) **before** enabling a second app node or colocating the app stack on the data-node host.
+
+On startup every Go binary logs effective pool settings at **info** (`postgres_pool_effective` via `log/slog`) with `process`, `max_conns`, `min_conns`, and idle/lifetime — **never** the database URL or password.
+
+Operational checks:
+
+- Seed env from `deployments/prod/app-node/.env.app-node.example` (safe defaults) or run `deployments/prod/shared/scripts/render_rollout_env.sh`.
+- Run `deployments/prod/shared/scripts/validate_production_deploy_inputs.sh` with your real `.env.app-node` before rollout; it warns on `ENABLE_APP_NODE_B` and enforces explicit acknowledgement when `COLOCATE_APP_WITH_DATA_NODE=true`.
 
 ## Edge and exposure model
 
@@ -161,6 +196,8 @@ The production deploy job now runs in this order:
 8. deploy app node B
 9. run app node B health checks
 10. upload a production deployment manifest artifact
+
+For the current 2-VPS snapshot, prefer a single active app node until you have evidence that managed Postgres pool capacity is sufficient for both app nodes.
 
 ## Required GitHub environment configuration
 

@@ -44,6 +44,13 @@ var (
 		Help:      "Per-machine token bucket denials at mqtt-ingest ingress.",
 	})
 
+	telemetryIngestCriticalMissingIdentity = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "avf",
+		Subsystem: "telemetry_ingest",
+		Name:      "critical_missing_identity_total",
+		Help:      "Critical telemetry rejected at the JetStream bridge: no dedupe_key, event_id, or boot_id+seq_no.",
+	})
+
 	telemetryIngestQueueDepth = promauto.NewGauge(prometheus.GaugeOpts{
 		Namespace: "avf",
 		Subsystem: "telemetry_ingest",
@@ -96,6 +103,11 @@ func RecordTelemetryRejected(reason string) {
 		r = "unknown"
 	}
 	telemetryIngestRejected.WithLabelValues(r).Inc()
+}
+
+// RecordTelemetryCriticalMissingIdentity increments telemetry_ingest_critical_missing_identity_total.
+func RecordTelemetryCriticalMissingIdentity() {
+	telemetryIngestCriticalMissingIdentity.Inc()
 }
 
 // RecordTelemetryDropped increments telemetry_ingest_dropped_total{reason}.

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "machine_id": "55555555-5555-5555-5555-555555555555",
+  "boot_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "seq_no": 1042,
+  "occurred_at": "2026-04-24T12:01:00Z",
+  "event_type": "vend.failure",
+  "payload": {
+    "slot_index": 5,
+    "order_id": "33333333-3333-3333-3333-333333333333",
+    "outcome": "failed",
+    "failure_reason": "motor_timeout"
+  }
+}

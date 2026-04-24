@@ -50,6 +50,10 @@ MQTT exposure is separate from HTTP edge handling:
 
 Keep `EMQX_API_KEY`, `EMQX_API_SECRET`, `MQTT_USERNAME`, and `MQTT_PASSWORD` in `.env.data-node` even though the compose file itself only needs the dashboard defaults and node cookie. Those values exist so the current operator/bootstrap flow can keep provisioning or rotating the MQTT application user without changing the app-node env contract.
 
+## JetStream disk (`nats_data`)
+
+Telemetry streams use **per-stream** `TELEMETRY_STREAM_MAX_BYTES` on app nodes (see `deployments/prod/app-node/.env.app-node.example`). With six telemetry streams, worst-case on-disk growth is on the order of **6×** that value before `DiscardOld` trims, plus replication/metadata overhead — size the `nats_data` volume and host filesystem with **substantial headroom**, especially for 500–1000 machine fleets. See [telemetry-jetstream-resilience.md](../../../docs/runbooks/telemetry-jetstream-resilience.md) for capacity tables and `nats stream info` commands.
+
 ## Validation
 
 From this directory:

@@ -185,11 +185,36 @@ type OperationsConfig struct {
 
 // PostgresConfig holds PostgreSQL pool settings used for readiness and future persistence.
 type PostgresConfig struct {
-	URL             string
+	URL                    string
+	MaxConns               int32
+	MinConns               int32
+	MaxConnIdleTime        time.Duration
+	MaxConnLifetime        time.Duration
+	APIMaxConns            *int32
+	WorkerMaxConns         *int32
+	MQTTIngestMaxConns     *int32
+	ReconcilerMaxConns     *int32
+	TemporalWorkerMaxConns *int32
+}
+
+// PostgresPoolSummary is the effective pool shape for one process binary (for logging; never includes DATABASE_URL).
+type PostgresPoolSummary struct {
+	ProcessName     string
 	MaxConns        int32
 	MinConns        int32
 	MaxConnIdleTime time.Duration
 	MaxConnLifetime time.Duration
+}
+
+// PoolSummaryForProcess returns the effective limits applied by pgxpool for this process name.
+func (p PostgresConfig) PoolSummaryForProcess(processName string) PostgresPoolSummary {
+	return PostgresPoolSummary{
+		ProcessName:     strings.TrimSpace(processName),
+		MaxConns:        p.MaxConnsForProcess(processName),
+		MinConns:        p.MinConns,
+		MaxConnIdleTime: p.MaxConnIdleTime,
+		MaxConnLifetime: p.MaxConnLifetime,
+	}
 }
 
 // RedisConfig holds Redis client settings used for readiness and future cache usage.
@@ -415,7 +440,7 @@ func (o OperationsConfig) validate() error {
 
 func (p PostgresConfig) validate() error {
 	if strings.TrimSpace(p.URL) == "" {
-		if p.MaxConns != 0 || p.MinConns != 0 {
+		if p.MaxConns != 0 || p.MinConns != 0 || p.MaxConnIdleTime != 0 || p.MaxConnLifetime != 0 || len(p.overrideMaxConns()) > 0 {
 			return errors.New("config: DATABASE_* pool settings require DATABASE_URL")
 		}
 		return nil
@@ -434,6 +459,14 @@ func (p PostgresConfig) validate() error {
 	}
 	if p.MaxConnLifetime <= 0 {
 		return errors.New("config: DATABASE_MAX_CONN_LIFETIME must be > 0 when DATABASE_URL is set")
+	}
+	for envName, maxConns := range p.overrideMaxConns() {
+		if maxConns <= 0 {
+			return fmt.Errorf("config: %s must be > 0 when DATABASE_URL is set", envName)
+		}
+		if p.MinConns > maxConns {
+			return fmt.Errorf("config: DATABASE_MIN_CONNS must be <= %s", envName)
+		}
 	}
 	return nil
 }
@@ -626,6 +659,11 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 	hostname, _ := os.Hostname()
+	postgresCfg, err := loadPostgresConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		AppEnv:           AppEnvironment(strings.TrimSpace(getenv("APP_ENV", string(AppEnvDevelopment)))),
 		LogLevel:         strings.TrimSpace(getenv("LOG_LEVEL", "info")),
@@ -683,7 +721,7 @@ func Load() (*Config, error) {
 			ShutdownTimeout:       mustParseDuration("OPS_SHUTDOWN_TIMEOUT", getenv("OPS_SHUTDOWN_TIMEOUT", "5s")),
 			TracerShutdownTimeout: mustParseDuration("TRACER_SHUTDOWN_TIMEOUT", getenv("TRACER_SHUTDOWN_TIMEOUT", "10s")),
 		},
-		Postgres: loadPostgresConfig(),
+		Postgres: postgresCfg,
 		NATS: NATSConfig{
 			URL: strings.TrimSpace(getenv("NATS_URL", "")),
 		},
@@ -783,19 +821,79 @@ func getenvFloat64(key string, def float64) float64 {
 	return v
 }
 
-func loadPostgresConfig() PostgresConfig {
+func loadPostgresConfig() (PostgresConfig, error) {
 	url := strings.TrimSpace(os.Getenv("DATABASE_URL"))
-	if url == "" {
-		return PostgresConfig{}
+	defaultMaxConns := int32(0)
+	if url != "" {
+		// Conservative default for managed poolers (e.g. Supabase session mode); override per deployment.
+		defaultMaxConns = 3
+	}
+	maxConns, err := getenvInt32Strict("DATABASE_MAX_CONNS", defaultMaxConns)
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	minConns, err := getenvInt32Strict("DATABASE_MIN_CONNS", 0)
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	apiMaxConns, err := getenvOptionalInt32Strict("API_DATABASE_MAX_CONNS")
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	workerMaxConns, err := getenvOptionalInt32Strict("WORKER_DATABASE_MAX_CONNS")
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	mqttIngestMaxConns, err := getenvOptionalInt32Strict("MQTT_INGEST_DATABASE_MAX_CONNS")
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	reconcilerMaxConns, err := getenvOptionalInt32Strict("RECONCILER_DATABASE_MAX_CONNS")
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	temporalWorkerMaxConns, err := getenvOptionalInt32Strict("TEMPORAL_WORKER_DATABASE_MAX_CONNS")
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+
+	maxConnIdleTime := time.Duration(0)
+	if raw := getenv("DATABASE_MAX_CONN_IDLE_TIME", ""); strings.TrimSpace(raw) != "" {
+		maxConnIdleTime, err = parseDurationEnv("DATABASE_MAX_CONN_IDLE_TIME", raw)
+		if err != nil {
+			return PostgresConfig{}, err
+		}
+	} else if url != "" {
+		maxConnIdleTime, err = parseDurationEnv("DATABASE_MAX_CONN_IDLE_TIME", "5m")
+		if err != nil {
+			return PostgresConfig{}, err
+		}
+	}
+	maxConnLifetime := time.Duration(0)
+	if raw := getenv("DATABASE_MAX_CONN_LIFETIME", ""); strings.TrimSpace(raw) != "" {
+		maxConnLifetime, err = parseDurationEnv("DATABASE_MAX_CONN_LIFETIME", raw)
+		if err != nil {
+			return PostgresConfig{}, err
+		}
+	} else if url != "" {
+		maxConnLifetime, err = parseDurationEnv("DATABASE_MAX_CONN_LIFETIME", "30m")
+		if err != nil {
+			return PostgresConfig{}, err
+		}
 	}
 
 	return PostgresConfig{
-		URL:             url,
-		MaxConns:        int32(getenvInt("DATABASE_MAX_CONNS", 10)),
-		MinConns:        int32(getenvInt("DATABASE_MIN_CONNS", 0)),
-		MaxConnIdleTime: mustParseDuration("DATABASE_MAX_CONN_IDLE_TIME", getenv("DATABASE_MAX_CONN_IDLE_TIME", "30m")),
-		MaxConnLifetime: mustParseDuration("DATABASE_MAX_CONN_LIFETIME", getenv("DATABASE_MAX_CONN_LIFETIME", "55m")),
-	}
+		URL:                    url,
+		MaxConns:               maxConns,
+		MinConns:               minConns,
+		MaxConnIdleTime:        maxConnIdleTime,
+		MaxConnLifetime:        maxConnLifetime,
+		APIMaxConns:            apiMaxConns,
+		WorkerMaxConns:         workerMaxConns,
+		MQTTIngestMaxConns:     mqttIngestMaxConns,
+		ReconcilerMaxConns:     reconcilerMaxConns,
+		TemporalWorkerMaxConns: temporalWorkerMaxConns,
+	}, nil
 }
 
 func loadRedisConfig() (RedisConfig, error) {
@@ -965,6 +1063,77 @@ func getenvInt(key string, def int) int {
 	return v
 }
 
+func getenvInt32Strict(key string, def int32) (int32, error) {
+	raw, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return def, nil
+	}
+	v, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("config: invalid %s %q: %w", key, raw, err)
+	}
+	return int32(v), nil
+}
+
+func getenvOptionalInt32Strict(key string) (*int32, error) {
+	raw, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+	v, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("config: invalid %s %q: %w", key, raw, err)
+	}
+	value := int32(v)
+	return &value, nil
+}
+
+func (p PostgresConfig) MaxConnsForProcess(processName string) int32 {
+	switch strings.TrimSpace(processName) {
+	case "api":
+		if p.APIMaxConns != nil {
+			return *p.APIMaxConns
+		}
+	case "worker":
+		if p.WorkerMaxConns != nil {
+			return *p.WorkerMaxConns
+		}
+	case "mqtt-ingest":
+		if p.MQTTIngestMaxConns != nil {
+			return *p.MQTTIngestMaxConns
+		}
+	case "reconciler":
+		if p.ReconcilerMaxConns != nil {
+			return *p.ReconcilerMaxConns
+		}
+	case "temporal-worker":
+		if p.TemporalWorkerMaxConns != nil {
+			return *p.TemporalWorkerMaxConns
+		}
+	}
+	return p.MaxConns
+}
+
+func (p PostgresConfig) overrideMaxConns() map[string]int32 {
+	overrides := make(map[string]int32)
+	if p.APIMaxConns != nil {
+		overrides["API_DATABASE_MAX_CONNS"] = *p.APIMaxConns
+	}
+	if p.WorkerMaxConns != nil {
+		overrides["WORKER_DATABASE_MAX_CONNS"] = *p.WorkerMaxConns
+	}
+	if p.MQTTIngestMaxConns != nil {
+		overrides["MQTT_INGEST_DATABASE_MAX_CONNS"] = *p.MQTTIngestMaxConns
+	}
+	if p.ReconcilerMaxConns != nil {
+		overrides["RECONCILER_DATABASE_MAX_CONNS"] = *p.ReconcilerMaxConns
+	}
+	if p.TemporalWorkerMaxConns != nil {
+		overrides["TEMPORAL_WORKER_DATABASE_MAX_CONNS"] = *p.TemporalWorkerMaxConns
+	}
+	return overrides
+}
+
 func getenvInt64(key string, def int64) int64 {
 	raw, ok := os.LookupEnv(key)
 	if !ok || strings.TrimSpace(raw) == "" {
@@ -983,6 +1152,14 @@ func mustParseDuration(field, raw string) time.Duration {
 		panic(fmt.Sprintf("config: invalid duration for %s: %q", field, raw))
 	}
 	return d
+}
+
+func parseDurationEnv(field, raw string) (time.Duration, error) {
+	d, err := time.ParseDuration(strings.TrimSpace(raw))
+	if err != nil {
+		return 0, fmt.Errorf("config: invalid duration for %s: %q: %w", field, raw, err)
+	}
+	return d, nil
 }
 
 func normalizeTCPAddr(addr string) string {

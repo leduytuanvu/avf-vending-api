@@ -1,0 +1,24 @@
+# The production rollout workflow is implemented in deploy-prod.yml (Actions title: "Deploy Production").
+# This file exists so references to "deploy-production.yml" in checklists resolve; it is not a second deploy path.
+#
+# Last-known-good (LKG) image refs, production-deployment-manifest artifacts, digest-pinned rollback,
+# and automatic rollback after a failed deploy are defined only in deploy-prod.yml — keep that file canonical.
+name: deploy-production filename pointer
+
+on:
+  workflow_dispatch:
+    inputs:
+      note:
+        description: "Informational only — use the 'Deploy Production' workflow (deploy-prod.yml)"
+        required: false
+        default: "see deploy-prod.yml"
+        type: string
+
+jobs:
+  pointer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Canonical workflow
+        run: |
+          echo "::notice::Production deploy runs from .github/workflows/deploy-prod.yml (workflow name 'Deploy Production')."
+          echo "This pointer workflow performs no deploy and is safe to ignore."
