@@ -64,8 +64,9 @@ type Config struct {
 
 	ReadinessStrict bool
 	MetricsEnabled  bool
-	// SwaggerUIEnabled exposes /swagger/* (Swagger UI + doc.json) when true. Default is off in
-	// production unless HTTP_SWAGGER_UI_ENABLED is set explicitly.
+	// SwaggerUIEnabled exposes /swagger/* (Swagger UI + doc.json) when true. If HTTP_SWAGGER_UI_ENABLED
+	// is set, only true/1 enables. If unset, non-production defaults on and production defaults off;
+	// production deploy examples set HTTP_SWAGGER_UI_ENABLED=true.
 	SwaggerUIEnabled bool
 	// WorkerMetricsListen is the bind address for cmd/worker /metrics (Prometheus).
 	// When empty and MetricsEnabled is true, cmd/worker defaults to 127.0.0.1:9091.
@@ -643,6 +644,8 @@ func (a ArtifactsConfig) validate() error {
 	return nil
 }
 
+// loadSwaggerUIEnabled returns whether to mount Swagger. Explicit HTTP_SWAGGER_UI_ENABLED wins (true/1 only);
+// when the variable is unset, production stays off and other APP_ENV values default on.
 func loadSwaggerUIEnabled() bool {
 	if _, ok := os.LookupEnv("HTTP_SWAGGER_UI_ENABLED"); ok {
 		return strings.EqualFold(strings.TrimSpace(os.Getenv("HTTP_SWAGGER_UI_ENABLED")), "true") ||
