@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "machine_id": "55555555-5555-5555-5555-555555555555",
+  "event_id": "pay-2026-04-24-001",
+  "occurred_at": "2026-04-24T12:02:00Z",
+  "dedupe_key": "payment:55555555-5555-5555-5555-555555555555:txn-abc-123",
+  "event_type": "payment.captured",
+  "payload": {
+    "provider": "example_psp",
+    "amount_cents": 250,
+    "currency": "MYR",
+    "authorization_id": "auth_xyz"
+  }
+}

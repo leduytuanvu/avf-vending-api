@@ -1,4 +1,4 @@
-.PHONY: tidy fmt fmt-check vet test build proto sqlc sqlc-check swagger swagger-check ci ci-gates check-placeholders check-wiring check-migrations run-api run-worker migrate-up migrate-down docker-up docker-down prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full
+.PHONY: tidy fmt fmt-check vet test build proto sqlc sqlc-check swagger swagger-check ci ci-gates check-placeholders check-wiring check-migrations verify-enterprise-release build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full
 
 BIN_DIR := bin
 GO ?= go
@@ -58,6 +58,15 @@ ci: ci-gates test-short
 
 # Mirrors GitHub Actions: same gates plus full go test (set TEST_DATABASE_URL for postgres tests).
 ci-full: ci-gates test
+
+# Enterprise release readiness: full `go test ./...`, bash -n on deployment/scripts, optional YAML parse,
+# docker compose config against *example* env files (no production connectivity), and example-file secret heuristics.
+verify-enterprise-release:
+	bash scripts/verify_enterprise_release.sh
+
+# Assemble release evidence pack (requires env vars — see docs/runbooks/production-release-readiness.md).
+build-release-evidence-pack:
+	bash deployments/prod/scripts/build_release_evidence_pack.sh
 
 proto:
 	cd proto && $(BUF) generate

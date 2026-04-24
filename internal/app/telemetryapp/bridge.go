@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/config"
@@ -32,6 +33,7 @@ func (b *NATSBridge) IngestTelemetry(ctx context.Context, in platformmqtt.Teleme
 	}
 	maxN := tel.MaxIngestPayloadBytes()
 	if len(in.Payload) > maxN {
+		RecordTelemetryRejected("invalid_payload")
 		return fmt.Errorf("telemetryapp: payload exceeds TELEMETRY_MAX_INGEST_BYTES (%d)", maxN)
 	}
 	cls := tel.ClassifyEventType(in.EventType)
@@ -63,16 +65,43 @@ func (b *NATSBridge) IngestTelemetry(ctx context.Context, in platformmqtt.Teleme
 		t := in.OccurredAt.UTC()
 		env.EmittedAt = &t
 	}
-	if idem := platformmqtt.TelemetryIdempotencyKey(in.MachineID, in); idem != "" {
-		env.Idempotency = idem
+	crit := tel.CriticalityForEventType(in.EventType)
+	var dedupe string
+	if crit == tel.CriticalityCriticalNoDrop {
+		stable, err := tel.StableCriticalIdempotencyKey(in.MachineID, in.EventType, tel.CriticalIngestIdentity{
+			DedupeKey: in.DedupeKey,
+			EventID:   in.EventID,
+			BootID:    in.BootID,
+			SeqNo:     in.SeqNo,
+		})
+		if err != nil {
+			RecordTelemetryRejected("critical_missing_idempotency_identity")
+			RecordTelemetryCriticalMissingIdentity()
+			if b.Log != nil {
+				b.Log.Warn("telemetry_critical_missing_idempotency_identity",
+					zap.String("machine_id", in.MachineID.String()),
+					zap.String("event_type", in.EventType),
+					zap.Bool("has_dedupe_key", in.DedupeKey != nil && strings.TrimSpace(*in.DedupeKey) != ""),
+					zap.Bool("has_event_id", strings.TrimSpace(in.EventID) != ""),
+					zap.Bool("has_boot_seq", in.BootID != nil && in.SeqNo != nil),
+				)
+			}
+			return fmt.Errorf("telemetryapp: %w", err)
+		}
+		env.Idempotency = stable
+		dedupe = stable
+	} else {
+		if idem := platformmqtt.TelemetryIdempotencyKey(in.MachineID, in); idem != "" {
+			env.Idempotency = idem
+		}
+		dedupe = env.Idempotency
+		if dedupe == "" {
+			dedupe = fmt.Sprintf("%s:%s:%d", in.MachineID.String(), in.EventType, now.UnixNano())
+		}
 	}
 	body, err := env.Marshal()
 	if err != nil {
 		return err
-	}
-	dedupe := env.Idempotency
-	if dedupe == "" {
-		dedupe = fmt.Sprintf("%s:%s:%d", in.MachineID.String(), in.EventType, now.UnixNano())
 	}
 	if err := platformnats.PublishTelemetry(b.JS, cls, in.MachineID, body, dedupe); err != nil {
 		RecordTelemetryPublishFailure()
@@ -100,6 +129,7 @@ func (b *NATSBridge) IngestShadowReported(ctx context.Context, in platformmqtt.S
 		return errors.New("telemetryapp: nil NATSBridge")
 	}
 	if len(in.ReportedJSON) > tel.MaxIngestPayloadBytes() {
+		RecordTelemetryRejected("invalid_payload")
 		return fmt.Errorf("telemetryapp: shadow payload too large")
 	}
 	loc, err := b.Store.GetMachineOrgSite(ctx, in.MachineID)
@@ -137,6 +167,7 @@ func (b *NATSBridge) IngestShadowDesired(ctx context.Context, in platformmqtt.Sh
 		return errors.New("telemetryapp: nil NATSBridge")
 	}
 	if len(in.DesiredJSON) > tel.MaxIngestPayloadBytes() {
+		RecordTelemetryRejected("invalid_payload")
 		return fmt.Errorf("telemetryapp: shadow desired payload too large")
 	}
 	loc, err := b.Store.GetMachineOrgSite(ctx, in.MachineID)
@@ -174,6 +205,7 @@ func (b *NATSBridge) IngestCommandReceipt(ctx context.Context, in platformmqtt.C
 		return errors.New("telemetryapp: nil NATSBridge")
 	}
 	if len(in.Payload) > tel.MaxIngestPayloadBytes() {
+		RecordTelemetryRejected("invalid_payload")
 		return fmt.Errorf("telemetryapp: command receipt payload too large")
 	}
 	loc, err := b.Store.GetMachineOrgSite(ctx, in.MachineID)

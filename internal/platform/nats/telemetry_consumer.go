@@ -15,6 +15,8 @@ type telemetryConsumerSpec struct {
 }
 
 // EnsureTelemetryDurableConsumers registers or updates pull consumers for all telemetry streams.
+// Consumer AckWait, MaxAckPending, and MaxDeliver come from lim (TELEMETRY_CONSUMER_ACK_WAIT,
+// TELEMETRY_CONSUMER_MAX_ACK_PENDING, TELEMETRY_CONSUMER_MAX_DELIVER); fetch batch size / max wait are used by the worker pull loop.
 func EnsureTelemetryDurableConsumers(js natssrv.JetStreamContext, lim TelemetryBrokerLimits) error {
 	if js == nil {
 		return fmt.Errorf("nats: nil jetstream context")

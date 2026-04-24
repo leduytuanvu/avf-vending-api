@@ -1,0 +1,208 @@
+# Manual-only: run staging telemetry storm suite and upload evidence JSON (never production).
+name: Staging telemetry storm suite
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario_mode:
+        description: "Scenarios to run (sequential; partial modes stop after the listed scenario(s))"
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - 100x100
+          - 500x200
+          - 1000x500
+      event_rate_per_machine:
+        description: "EVENT_RATE_PER_MACHINE (passed to telemetry_storm_load_test.sh)"
+        type: string
+        required: true
+        default: "2"
+      critical_event_ratio:
+        description: "CRITICAL_EVENT_RATIO (0..1)"
+        type: string
+        required: true
+        default: "0.1"
+      machine_ids_repo_path:
+        description: "Repo-relative path to newline-separated machine UUIDs (required). No .. segments."
+        type: string
+        required: true
+      metrics_mqtt_ingest_port:
+        description: "Port on STAGING_METRICS_BASE_URL for mqtt-ingest /metrics"
+        type: string
+        required: true
+        default: "9093"
+      metrics_worker_port:
+        description: "Port on STAGING_METRICS_BASE_URL for worker /metrics"
+        type: string
+        required: true
+        default: "9091"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: telemetry-storm-staging-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  storm-suite:
+    name: Staging storm suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    environment: staging
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate inputs
+        shell: bash
+        env:
+          MID_PATH: ${{ inputs.machine_ids_repo_path }}
+        run: |
+          set -euo pipefail
+          if [[ "${MID_PATH}" == *".."* ]]; then
+            echo "error: machine_ids_repo_path must not contain .." >&2
+            exit 1
+          fi
+          if [[ "${MID_PATH}" == /* ]]; then
+            echo "error: machine_ids_repo_path must be relative to the repository root" >&2
+            exit 1
+          fi
+          full="${GITHUB_WORKSPACE}/${MID_PATH}"
+          if [[ ! -f "${full}" ]]; then
+            echo "error: machine IDs file not found at ${MID_PATH} (resolved: ${full})" >&2
+            exit 1
+          fi
+
+      - name: Install mosquitto clients
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y mosquitto-clients
+
+      - name: Run staging telemetry storm suite
+        id: storm
+        shell: bash
+        env:
+          STORM_SCENARIO_MODE: ${{ inputs.scenario_mode }}
+          EVENT_RATE_PER_MACHINE: ${{ inputs.event_rate_per_machine }}
+          CRITICAL_EVENT_RATIO: ${{ inputs.critical_event_ratio }}
+          MACHINE_IDS_FILE: ${{ github.workspace }}/${{ inputs.machine_ids_repo_path }}
+          STORM_SUITE_ARTIFACT_DIR: ${{ github.workspace }}/telemetry-storm-artifacts-${{ github.run_id }}-${{ github.run_attempt }}
+          LOAD_TEST_ENV: staging
+          EXECUTE_LOAD_TEST: "true"
+          DRY_RUN: "false"
+          # Hosted runner has no docker compose for staging; scrape metrics via *_METRICS_URL only.
+          SKIP_DOCKER_GATES: "true"
+          MQTT_BROKER_URL: ${{ secrets.STAGING_MQTT_BROKER_URL }}
+          MQTT_USERNAME: ${{ secrets.STAGING_MQTT_USERNAME }}
+          MQTT_PASSWORD: ${{ secrets.STAGING_MQTT_PASSWORD }}
+          API_READY_URL: ${{ secrets.STAGING_API_READY_URL }}
+          METRICS_BASE_URL: ${{ secrets.STAGING_METRICS_BASE_URL }}
+          METRICS_MQTT_INGEST_PORT: ${{ inputs.metrics_mqtt_ingest_port }}
+          METRICS_WORKER_PORT: ${{ inputs.metrics_worker_port }}
+          WORKER_READY_URL: ${{ secrets.STAGING_WORKER_READY_URL }}
+          MQTT_TOPIC_PREFIX: ${{ vars.STAGING_MQTT_TOPIC_PREFIX }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${STORM_SUITE_ARTIFACT_DIR}"
+          export MQTT_TOPIC_PREFIX="${MQTT_TOPIC_PREFIX:-avf/v1}"
+          : "${MQTT_BROKER_URL:?set repository/environment secret STAGING_MQTT_BROKER_URL}"
+          : "${MQTT_USERNAME:?set repository/environment secret STAGING_MQTT_USERNAME}"
+          : "${MQTT_PASSWORD:?set repository/environment secret STAGING_MQTT_PASSWORD}"
+          : "${API_READY_URL:?set repository/environment secret STAGING_API_READY_URL}"
+          : "${METRICS_BASE_URL:?set repository/environment secret STAGING_METRICS_BASE_URL}"
+          bash deployments/prod/scripts/run_staging_telemetry_storm_suite.sh 2>&1 | tee "${STORM_SUITE_ARTIFACT_DIR}/storm-suite.log"
+
+      - name: Write job summary
+        if: always()
+        shell: bash
+        env:
+          ART: ${{ github.workspace }}/telemetry-storm-artifacts-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          SUM="${GITHUB_STEP_SUMMARY}"
+          suite="${ART}/telemetry-storm-suite-result.json"
+          {
+            echo "## Staging telemetry storm suite"
+            echo ""
+            echo "| Field | Value |"
+            echo "| --- | --- |"
+            echo "| scenario_mode | ${{ inputs.scenario_mode }} |"
+            echo "| run | ${{ github.run_id }} / attempt ${{ github.run_attempt }} |"
+          } >> "${SUM}"
+          if [[ -f "${suite}" ]]; then
+            export ART
+            python3 - >> "${SUM}" <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path(os.environ["ART"]) / "telemetry-storm-suite-result.json"
+          doc = json.loads(p.read_text(encoding="utf-8"))
+          print("")
+          print("### Per-scenario results")
+          print("")
+          print("| scenario | final_result | critical_lost | duplicate_critical_effects | db_pool_result | health_result | restart_result |")
+          print("| --- | --- | --- | --- | --- | --- | --- |")
+          for row in doc.get("scenarios") or []:
+              print(
+                  "| {scenario} | {fr} | {cl} | {dce} | {db} | {hr} | {rr} |".format(
+                      scenario=row.get("scenario"),
+                      fr=row.get("final_result"),
+                      cl=row.get("critical_lost"),
+                      dce=row.get("duplicate_critical_effects"),
+                      db=row.get("db_pool_result"),
+                      hr=row.get("health_result"),
+                      rr=row.get("restart_result"),
+                  )
+              )
+          print("")
+          print("**final_suite_pass:** `%s`" % doc.get("final_suite_pass"))
+          if doc.get("failed_at_scenario"):
+              print("**failed_at_scenario:** `%s`" % doc.get("failed_at_scenario"))
+          PY
+          else
+            {
+              echo ""
+              echo "_Suite summary JSON missing (run may have failed before write)._"
+            } >> "${SUM}"
+          fi
+
+      - name: Upload storm suite artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-storm-${{ inputs.scenario_mode }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            telemetry-storm-artifacts-${{ github.run_id }}-${{ github.run_attempt }}/telemetry-storm-result*.json
+            telemetry-storm-artifacts-${{ github.run_id }}-${{ github.run_attempt }}/telemetry-storm-suite-result.json
+            telemetry-storm-artifacts-${{ github.run_id }}-${{ github.run_attempt }}/storm-suite.log
+          if-no-files-found: warn
+
+      - name: Upload scale-gate evidence (telemetry-storm-result)
+        if: success()
+        shell: bash
+        env:
+          MODE: ${{ inputs.scenario_mode }}
+          ART: ${{ github.workspace }}/telemetry-storm-artifacts-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          case "${MODE}" in
+            all) SRC="${ART}/telemetry-storm-result-1000x500.json" ;;
+            *) SRC="${ART}/telemetry-storm-result-${MODE}.json" ;;
+          esac
+          [[ -f "${SRC}" ]] || { echo "error: missing evidence file ${SRC}" >&2; exit 1; }
+          mkdir -p "${GITHUB_WORKSPACE}/storm-gate-bundle"
+          cp "${SRC}" "${GITHUB_WORKSPACE}/storm-gate-bundle/telemetry-storm-result.json"
+
+      - name: Upload artifact for production scale gate
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-storm-result
+          path: storm-gate-bundle/telemetry-storm-result.json
+          if-no-files-found: error

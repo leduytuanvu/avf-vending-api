@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "machine_id": "55555555-5555-5555-5555-555555555555",
+  "event_id": "cash-2026-04-24-0007",
+  "occurred_at": "2026-04-24T12:03:00Z",
+  "dedupe_key": "cash:55555555-5555-5555-5555-555555555555:hopper-a:seq-7",
+  "event_type": "cash.inserted",
+  "payload": {
+    "hopper": "A",
+    "amount_cents": 100,
+    "currency": "MYR"
+  }
+}

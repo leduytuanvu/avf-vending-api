@@ -125,7 +125,9 @@ func main() {
 		}
 		defer func() { _ = nc.Conn.Drain() }()
 		js = nc.JS
-		if err := platformnats.EnsureTelemetryStreams(js, cfg.TelemetryJetStream.NATSBrokerLimits()); err != nil {
+		jsLim := cfg.TelemetryJetStream.NATSBrokerLimits()
+		platformnats.LogTelemetryJetStreamRetention(log, "mqtt-ingest", string(cfg.AppEnv), jsLim)
+		if err := platformnats.EnsureTelemetryStreams(js, jsLim); err != nil {
 			log.Fatal("nats telemetry streams", zap.Error(err))
 		}
 	} else if cfg.AppEnv == config.AppEnvProduction {

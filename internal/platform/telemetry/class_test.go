@@ -31,6 +31,40 @@ func TestClassifyEventType(t *testing.T) {
 	}
 }
 
+func TestCriticalityForEventType(t *testing.T) {
+	cases := []struct {
+		in   string
+		want Criticality
+	}{
+		{"heartbeat", CriticalityDroppableMetrics},
+		{"metrics.cpu", CriticalityDroppableMetrics},
+		{"debug.trace", CriticalityDroppableMetrics},
+		{"telemetry.snapshot.board", CriticalityCompactableLatest},
+		{"shadow.reported", CriticalityCompactableLatest},
+		{"events.vend", CriticalityCriticalNoDrop},
+		{"vend.success", CriticalityCriticalNoDrop},
+		{"vend.failure", CriticalityCriticalNoDrop},
+		{"payment.authorized", CriticalityCriticalNoDrop},
+		{"payments.capture", CriticalityCriticalNoDrop},
+		{"webhook.payment.completed", CriticalityCriticalNoDrop},
+		{"webhook.cashless.event", CriticalityCriticalNoDrop},
+		{"webhook.generic", CriticalityDroppableMetrics},
+		{"cash.inserted", CriticalityCriticalNoDrop},
+		{"events.inventory", CriticalityCriticalNoDrop},
+		{"config.ack", CriticalityCriticalNoDrop},
+		{"telemetry.incident.jam", CriticalityCriticalNoDrop},
+		{"telemetry.incident.door", CriticalityCriticalNoDrop},
+		{"incident.door_open", CriticalityCriticalNoDrop},
+		{"telemetry.incident.supply_low", CriticalityCompactableLatest},
+		{"incident.info", CriticalityCompactableLatest},
+	}
+	for _, tc := range cases {
+		if got := CriticalityForEventType(tc.in); got != tc.want {
+			t.Fatalf("%q: want %s got %s", tc.in, tc.want, got)
+		}
+	}
+}
+
 func TestMaxIngestPayloadBytesDefault(t *testing.T) {
 	t.Setenv("TELEMETRY_MAX_INGEST_BYTES", "")
 	if n := MaxIngestPayloadBytes(); n != DefaultMaxIngestBytes {
