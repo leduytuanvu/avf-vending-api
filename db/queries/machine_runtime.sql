@@ -6,6 +6,14 @@ FROM
 WHERE
     id = $1;
 
+-- name: GetMachineShadowVersion :one
+SELECT
+    version
+FROM
+    machine_shadow
+WHERE
+    machine_id = $1;
+
 -- name: InsertMachineCheckIn :one
 INSERT INTO machine_check_ins (
     organization_id,

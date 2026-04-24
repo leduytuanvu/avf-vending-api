@@ -117,7 +117,7 @@ func mountOperatorSessionRoutes(r chi.Router, app *api.HTTPApplication) {
 	}
 	svc := app.MachineOperator
 	r.Route("/machines/{machineId}/operator-sessions", func(r chi.Router) {
-		r.Use(auth.RequireMachineURLAccess("machineId"))
+		r.Use(RequireMachineTenantAccess(app, "machineId"))
 		r.Get("/current", operatorCurrentHandler(svc))
 		r.Get("/history", operatorHistoryHandler(svc))
 		r.Get("/auth-events", operatorAuthEventsHandler(svc))
@@ -645,6 +645,9 @@ func resolveOrgScopeForInsight(p auth.Principal, r *http.Request) (uuid.UUID, er
 }
 
 func authorizeMachineOperatorAccess(p auth.Principal, machine fleet.Machine) error {
+	if p.IsMachinePrincipal() {
+		return auth.ErrForbidden
+	}
 	if p.HasRole(auth.RolePlatformAdmin) {
 		return nil
 	}
@@ -827,7 +830,7 @@ func mountSetupBootstrapRoutes(r chi.Router, app *api.HTTPApplication) {
 	if app == nil {
 		return
 	}
-	r.With(auth.RequireMachineURLAccess("machineId")).Get("/setup/machines/{machineId}/bootstrap", getMachineSetupBootstrap(app))
+	r.With(RequireMachineTenantAccess(app, "machineId")).Get("/setup/machines/{machineId}/bootstrap", getMachineSetupBootstrap(app))
 }
 
 func getMachineSetupBootstrap(app *api.HTTPApplication) http.HandlerFunc {

@@ -68,6 +68,8 @@ Hardening defaults in `../shared/Caddyfile` are intentional:
 
 There is no separate public admin HTTPS vhost in this repo today. Keep `HTTP_OPS_ADDR` bound to loopback and keep any broker/admin dashboards private.
 
+When `METRICS_ENABLED=true`, Prometheus should scrape **`http://127.0.0.1:8081/metrics`** (or the private address matching `HTTP_OPS_ADDR`) from the monitoring network, not the public `:8080` listener. Production defaults omit `/metrics` on the main port unless you explicitly set `METRICS_EXPOSE_ON_PUBLIC_HTTP` and `METRICS_SCRAPE_TOKEN`; see `docs/runbooks/production-metrics-scraping.md`.
+
 ## Validation
 
 From this directory:

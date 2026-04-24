@@ -7,6 +7,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // CreateCashCollectionWithAttribution inserts cash_collections and, when operator_session_id is set,
@@ -39,17 +40,24 @@ func (s *Store) CreateCashCollectionWithAttribution(ctx context.Context, in Crea
 		return db.CashCollection{}, err
 	}
 	if m.OrganizationID != in.OrganizationID {
-		return db.CashCollection{}, errOrganizationMachineMismatch
+		return db.CashCollection{}, ErrMachineOrganizationMismatch
 	}
 
 	row, err := q.InsertCashCollection(ctx, db.InsertCashCollectionParams{
-		OrganizationID:    in.OrganizationID,
-		MachineID:         in.MachineID,
-		CollectedAt:       in.CollectedAt,
-		AmountMinor:       in.AmountMinor,
-		Currency:          in.Currency,
-		Metadata:          meta,
-		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
+		OrganizationID:      in.OrganizationID,
+		MachineID:           in.MachineID,
+		CollectedAt:         in.CollectedAt,
+		OpenedAt:            in.CollectedAt,
+		ClosedAt:            pgtype.Timestamptz{Time: in.CollectedAt, Valid: true},
+		LifecycleStatus:     "closed",
+		AmountMinor:         in.AmountMinor,
+		ExpectedAmountMinor: in.AmountMinor,
+		VarianceAmountMinor: 0,
+		RequiresReview:      false,
+		CloseRequestHash:    nil,
+		Currency:            in.Currency,
+		Metadata:            meta,
+		OperatorSessionID:   optionalUUIDToPg(in.OperatorSessionID),
 	})
 	if err != nil {
 		return db.CashCollection{}, err
@@ -102,7 +110,7 @@ func (s *Store) CreateRefillSessionWithAttribution(ctx context.Context, in Creat
 		return db.RefillSession{}, err
 	}
 	if m.OrganizationID != in.OrganizationID {
-		return db.RefillSession{}, errOrganizationMachineMismatch
+		return db.RefillSession{}, ErrMachineOrganizationMismatch
 	}
 
 	row, err := q.InsertRefillSession(ctx, db.InsertRefillSessionParams{
@@ -169,7 +177,7 @@ func (s *Store) RecordMachineConfigApplicationWithAttribution(ctx context.Contex
 		return db.MachineConfig{}, err
 	}
 	if m.OrganizationID != in.OrganizationID {
-		return db.MachineConfig{}, errOrganizationMachineMismatch
+		return db.MachineConfig{}, ErrMachineOrganizationMismatch
 	}
 
 	row, err := q.InsertMachineConfigApplication(ctx, db.InsertMachineConfigApplicationParams{
@@ -233,7 +241,7 @@ func (s *Store) CreateIncidentWithAttribution(ctx context.Context, in CreateInci
 		return db.Incident{}, err
 	}
 	if m.OrganizationID != in.OrganizationID {
-		return db.Incident{}, errOrganizationMachineMismatch
+		return db.Incident{}, ErrMachineOrganizationMismatch
 	}
 
 	now := in.OpenedAt

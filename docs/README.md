@@ -2,13 +2,21 @@
 
 ## HTTP API (integration)
 
+- [API client classification](api/api-client-classification.md) — which clients (kiosk, technician, admin, webhook, device fallback, DevOps) should call which route groups; idempotency and offline-retry notes.
+- [Kiosk app flow](api/kiosk-app-flow.md) — end-to-end sequence: provisioning, setup, commerce, vend, offline/replay, cash (with roadmap gaps noted).
+- [Kiosk app implementation checklist](api/kiosk-app-implementation-checklist.md) — Android-focused contract: Room/cache, startup order, sale/refund, offline outbox, settlement, security boundaries.
+- [API surface audit](api/api-surface-audit.md) — endpoint inventory, auth/idempotency/offline, fallback vs keep, pilot vs 1000-machine readiness, risks.
 - [Machine setup: bootstrap, topology, planogram](api/setup-machine.md) — technician/admin flows and links to commerce.
 - [Machine runtime HTTP writes](api/machine-runtime.md) — check-ins and config-apply acknowledgements on the control-plane HTTP surface.
 - [Stock adjustments](api/inventory-adjustments.md) — `POST …/stock-adjustments`, idempotency, reasons.
 - [MQTT device contract + HTTP command/vend fallbacks](api/mqtt-contract.md) — topics, QoS, retain, envelope, `vend-results` / `commands/poll`.
 - [Internal gRPC queries](api/internal-grpc.md) — internal-only machine, telemetry, and commerce protobuf services.
+- [Machine activation implementation handoff](api/machine-activation-implementation-handoff.md) — **shipped**; design + migration notes (`activation_http.go`).
+- [Runtime sale catalog handoff](api/runtime-sale-catalog-implementation-handoff.md) — **shipped**; `GET /v1/machines/{machineId}/sale-catalog` (`sale_catalog_http.go`).
+- [Telemetry reconcile / application ACK handoff](api/telemetry-reconcile-implementation-handoff.md) — **shipped**; device reconcile + status (`telemetry_reconcile_http.go`).
+- [Commerce refund / cancel / vend-failure handoff](api/commerce-refund-cancel-implementation-handoff.md) — **shipped**; cancel/refund HTTP (`commerce_http.go`).
 
-OpenAPI 3.0 (generated from `internal/httpserver/swagger_operations.go`): **`docs/swagger/swagger.json`** — regenerate with `python tools/build_openapi.py` (see repo `Makefile` **`swagger`** / **`swagger-check`**). When Swagger is enabled in production, the same spec is served at **`https://api.ldtv.dev/swagger/doc.json`** with UI at **`https://api.ldtv.dev/swagger/index.html`** (public documentation only; **`/v1/*`** calls still require **`Authorization: Bearer <JWT>`** unless a route is explicitly public).
+OpenAPI 3.0 (generated from `internal/httpserver/swagger_operations.go`): **`docs/swagger/swagger.json`** — regenerate with `python tools/build_openapi.py` (see repo `Makefile` **`swagger`** / **`swagger-check`**). When Swagger is enabled in production, the same spec is served at **`https://api.ldtv.dev/swagger/doc.json`** with UI at **`https://api.ldtv.dev/swagger/index.html`** (public documentation only; **`/v1/*`** calls still require **`Authorization: Bearer <JWT>`** unless a route is explicitly public). Maintainer notes: [swagger-openapi-appendix.md](api/swagger-openapi-appendix.md), [openapi-enterprise-upgrade-handoff.md](runbooks/openapi-enterprise-upgrade-handoff.md) (optional Swagger UX backlog; P0 paths are enforced by `tools/openapi_verify_release.py`).
 
 ## Architecture
 
@@ -20,6 +28,8 @@ Runtime-oriented package docs (see each `doc.go`): `internal/platform/mqtt`, `na
 
 ## Operations
 
+- [API surface security](runbooks/api-surface-security.md) — RBAC, tenant binding for machine URLs, metrics/Swagger exposure, device HTTP fallback vs MQTT.
+- [Enterprise API / backend / CI-CD audit report](runbooks/enterprise-api-backend-audit-report.md) — strict readiness verdicts (pilot vs 1000 machines), gaps, risks, release commands.
 - [Incident runbook](../ops/RUNBOOK.md) — operator sessions, outbox, NATS, reconciler, MQTT ingest; log fields and SQL.
 - [Metrics / signals](../ops/METRICS.md) — what Prometheus scrapes today vs log-based alerting.
 - [2-VPS production topology](runbooks/production-2-vps.md) — deployment shape, edge model, ports, CI/CD flow.

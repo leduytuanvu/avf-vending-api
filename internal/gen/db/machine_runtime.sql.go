@@ -29,6 +29,22 @@ func (q *Queries) GetMachineOrganizationID(ctx context.Context, id uuid.UUID) (u
 	return organization_id, err
 }
 
+const GetMachineShadowVersion = `-- name: GetMachineShadowVersion :one
+SELECT
+    version
+FROM
+    machine_shadow
+WHERE
+    machine_id = $1
+`
+
+func (q *Queries) GetMachineShadowVersion(ctx context.Context, machineID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, GetMachineShadowVersion, machineID)
+	var version int64
+	err := row.Scan(&version)
+	return version, err
+}
+
 const InsertMachineCheckIn = `-- name: InsertMachineCheckIn :one
 INSERT INTO machine_check_ins (
     organization_id,

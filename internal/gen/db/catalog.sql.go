@@ -12,7 +12,7 @@ import (
 )
 
 const GetProductByID = `-- name: GetProductByID :one
-SELECT id, organization_id, sku, name, description, attrs, active, category_id, brand_id, primary_image_id, country_of_origin, age_restricted, allergen_codes, nutritional_note, created_at, updated_at
+SELECT id, organization_id, sku, barcode, name, description, attrs, active, category_id, brand_id, primary_image_id, country_of_origin, age_restricted, allergen_codes, nutritional_note, created_at, updated_at
 FROM products
 WHERE id = $1
 `
@@ -24,6 +24,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 		&i.ID,
 		&i.OrganizationID,
 		&i.Sku,
+		&i.Barcode,
 		&i.Name,
 		&i.Description,
 		&i.Attrs,
@@ -42,7 +43,7 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (Product, er
 }
 
 const ListProductsByOrganization = `-- name: ListProductsByOrganization :many
-SELECT id, organization_id, sku, name, description, attrs, active, category_id, brand_id, primary_image_id, country_of_origin, age_restricted, allergen_codes, nutritional_note, created_at, updated_at
+SELECT id, organization_id, sku, barcode, name, description, attrs, active, category_id, brand_id, primary_image_id, country_of_origin, age_restricted, allergen_codes, nutritional_note, created_at, updated_at
 FROM products
 WHERE organization_id = $1
 ORDER BY sku
@@ -61,6 +62,7 @@ func (q *Queries) ListProductsByOrganization(ctx context.Context, organizationID
 			&i.ID,
 			&i.OrganizationID,
 			&i.Sku,
+			&i.Barcode,
 			&i.Name,
 			&i.Description,
 			&i.Attrs,

@@ -41,6 +41,11 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusForbidden, "organization_required", "organization scope required")
 				return
 			}
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if ok && p.HasRole(auth.RoleMachine) && !p.AllowsMachine(body.MachineID) {
+				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "machine scope does not match order machine_id")
+				return
+			}
 			in := appcommerce.CreateOrderInput{
 				OrganizationID: org,
 				MachineID:      body.MachineID,
@@ -95,6 +100,11 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			org := tenantOrgID(r)
 			if org == uuid.Nil {
 				writeAPIError(w, r.Context(), http.StatusForbidden, "organization_required", "organization scope required")
+				return
+			}
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if ok && p.HasRole(auth.RoleMachine) && !p.AllowsMachine(body.MachineID) {
+				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "machine scope does not match order machine_id")
 				return
 			}
 			topic := cfg.Commerce.PaymentOutboxTopic
@@ -179,7 +189,12 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			org := tenantOrgID(r)
-			if err := svc.EnsureOrderOrganization(r.Context(), org, orderID); err != nil {
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+				return
+			}
+			if err := svc.EnsureCommerceCallerOrderAccess(r.Context(), org, orderID, p); err != nil {
 				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
@@ -235,6 +250,15 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			}
 			slot := int32(parseSlotQuery(r, 0))
 			org := tenantOrgID(r)
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+				return
+			}
+			if err := svc.EnsureCommerceCallerOrderAccess(r.Context(), org, orderID, p); err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
 			st, err := svc.GetCheckoutStatus(r.Context(), org, orderID, slot)
 			if err != nil {
 				writeCommerceServiceError(w, r.Context(), err)
@@ -251,6 +275,15 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			}
 			slot := int32(parseSlotQuery(r, 0))
 			org := tenantOrgID(r)
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+				return
+			}
+			if err := svc.EnsureCommerceCallerOrderAccess(r.Context(), org, orderID, p); err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
 			st, err := svc.GetCheckoutStatus(r.Context(), org, orderID, slot)
 			if err != nil {
 				writeCommerceServiceError(w, r.Context(), err)
@@ -280,6 +313,15 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			org := tenantOrgID(r)
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+				return
+			}
+			if err := svc.EnsureCommerceCallerOrderAccess(r.Context(), org, orderID, p); err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
 			v, err := svc.AdvanceVend(r.Context(), appcommerce.AdvanceVendInput{
 				OrganizationID: org,
 				OrderID:        orderID,
@@ -309,6 +351,15 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			org := tenantOrgID(r)
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+				return
+			}
+			if err := svc.EnsureCommerceCallerOrderAccess(r.Context(), org, orderID, p); err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
 			out, err := svc.FinalizeOrderAfterVend(r.Context(), appcommerce.FinalizeAfterVendInput{
 				OrganizationID:    org,
 				OrderID:           orderID,
@@ -324,6 +375,175 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				OrderID:     out.Order.ID.String(),
 				OrderStatus: out.Order.Status,
 				VendState:   out.Vend.State,
+			})
+		})
+
+		r.Post("/orders/{orderId}/cancel", func(w http.ResponseWriter, r *http.Request) {
+			idem, err := requireWriteIdempotencyKey(r)
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
+				return
+			}
+			_ = idem
+			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				return
+			}
+			var body commerceCancelRequest
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
+				return
+			}
+			org := tenantOrgID(r)
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+				return
+			}
+			if err := svc.EnsureCommerceCallerOrderAccess(r.Context(), org, orderID, p); err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			o, err := svc.CancelOrder(r.Context(), org, orderID, body.Reason)
+			if err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			writeJSON(w, http.StatusOK, commerceCancelResponse{
+				OrderID:      o.ID.String(),
+				OrderStatus:  o.Status,
+				PaymentState: "none",
+				RefundState:  "not_required",
+				Replay:       false,
+			})
+		})
+
+		r.Post("/orders/{orderId}/refunds", func(w http.ResponseWriter, r *http.Request) {
+			idem, err := requireWriteIdempotencyKey(r)
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
+				return
+			}
+			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				return
+			}
+			var body commerceRefundRequest
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
+				return
+			}
+			org := tenantOrgID(r)
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+				return
+			}
+			if err := svc.EnsureCommerceCallerOrderAccess(r.Context(), org, orderID, p); err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			meta := map[string]any{}
+			if body.Metadata != nil {
+				meta = body.Metadata
+			}
+			metaJSON, _ := json.Marshal(meta)
+			ref, err := svc.CreateRefund(r.Context(), appcommerce.CreateRefundInput{
+				OrganizationID: org,
+				OrderID:        orderID,
+				AmountMinor:    body.AmountMinor,
+				Currency:       body.Currency,
+				Reason:         body.Reason,
+				IdempotencyKey: idem,
+				Metadata:       metaJSON,
+			})
+			if err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			writeJSON(w, http.StatusOK, commerceRefundResponse{
+				RefundID:    ref.ID.String(),
+				OrderID:     orderID.String(),
+				PaymentID:   ref.PaymentID.String(),
+				RefundState: refundClientState(ref.State),
+				AmountMinor: ref.AmountMinor,
+				Currency:    ref.Currency,
+				Replay:      false,
+			})
+		})
+
+		r.Get("/orders/{orderId}/refunds", func(w http.ResponseWriter, r *http.Request) {
+			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				return
+			}
+			org := tenantOrgID(r)
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+				return
+			}
+			if err := svc.EnsureCommerceCallerOrderAccess(r.Context(), org, orderID, p); err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			rows, err := svc.ListRefundsForOrder(r.Context(), org, orderID)
+			if err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			items := make([]map[string]any, 0, len(rows))
+			for _, row := range rows {
+				items = append(items, map[string]any{
+					"refund_id":    row.ID.String(),
+					"order_id":     row.OrderID.String(),
+					"payment_id":   row.PaymentID.String(),
+					"refund_state": refundClientState(row.State),
+					"amount_minor": row.AmountMinor,
+					"currency":     row.Currency,
+					"created_at":   row.CreatedAt,
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"items": items})
+		})
+
+		r.Get("/orders/{orderId}/refunds/{refundId}", func(w http.ResponseWriter, r *http.Request) {
+			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
+				return
+			}
+			refundID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "refundId")))
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_refund_id", "invalid refundId")
+				return
+			}
+			org := tenantOrgID(r)
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+				return
+			}
+			if err := svc.EnsureCommerceCallerOrderAccess(r.Context(), org, orderID, p); err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			row, err := svc.GetRefundForOrder(r.Context(), org, orderID, refundID)
+			if err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"refund_id":    row.ID.String(),
+				"order_id":     row.OrderID.String(),
+				"payment_id":   row.PaymentID.String(),
+				"refund_state": refundClientState(row.State),
+				"amount_minor": row.AmountMinor,
+				"currency":     row.Currency,
+				"created_at":   row.CreatedAt,
 			})
 		})
 
@@ -343,6 +563,15 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			org := tenantOrgID(r)
+			p, ok := auth.PrincipalFromContext(r.Context())
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+				return
+			}
+			if err := svc.EnsureCommerceCallerOrderAccess(r.Context(), org, orderID, p); err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
 			out, err := svc.FinalizeOrderAfterVend(r.Context(), appcommerce.FinalizeAfterVendInput{
 				OrganizationID:    org,
 				OrderID:           orderID,
@@ -354,11 +583,18 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
-			writeJSON(w, http.StatusOK, commerceVendFinalizeResponse{
-				OrderID:     out.Order.ID.String(),
-				OrderStatus: out.Order.Status,
-				VendState:   out.Vend.State,
-			})
+			st, _ := svc.GetCheckoutStatus(r.Context(), org, orderID, body.SlotIndex)
+			resp := map[string]any{
+				"order_id":     out.Order.ID.String(),
+				"order_status": out.Order.Status,
+				"vend_state":   out.Vend.State,
+			}
+			if st.PaymentPresent && strings.EqualFold(st.Payment.Provider, "cash") && st.Payment.State == "captured" {
+				resp["local_cash_refund_required"] = true
+			} else if st.PaymentPresent && st.Payment.State == "captured" {
+				resp["refund_required"] = true
+			}
+			writeJSON(w, http.StatusOK, resp)
 		})
 	})
 }
@@ -433,8 +669,16 @@ func writeCommerceServiceError(w http.ResponseWriter, ctx context.Context, err e
 		writeAPIError(w, ctx, http.StatusForbidden, "forbidden", "organization scope does not match this resource")
 	case errors.Is(err, appcommerce.ErrIllegalTransition):
 		writeAPIError(w, ctx, http.StatusConflict, "illegal_transition", err.Error())
+	case errors.Is(err, appcommerce.ErrWebhookIdempotencyConflict):
+		writeAPIError(w, ctx, http.StatusConflict, "webhook_idempotency_conflict", "webhook replay does not match stored provider_reference or webhook_event_id")
+	case errors.Is(err, appcommerce.ErrWebhookProviderMismatch):
+		writeAPIError(w, ctx, http.StatusForbidden, "webhook_provider_mismatch", "webhook provider does not match payment provider")
 	case errors.Is(err, appcommerce.ErrPaymentNotSettled):
 		writeAPIError(w, ctx, http.StatusConflict, "payment_not_settled", err.Error())
+	case errors.Is(err, appcommerce.ErrCancelNotAllowed):
+		writeAPIError(w, ctx, http.StatusConflict, "cancel_not_allowed", err.Error())
+	case errors.Is(err, appcommerce.ErrRefundNotAllowed):
+		writeAPIError(w, ctx, http.StatusConflict, "refund_not_allowed", err.Error())
 	default:
 		if errors.Is(err, appcommerce.ErrInvalidArgument) {
 			writeAPIError(w, ctx, http.StatusBadRequest, "invalid_argument", err.Error())
@@ -524,6 +768,7 @@ type commercePaymentSessionResponse struct {
 type commerceWebhookRequest struct {
 	Provider               string          `json:"provider"`
 	ProviderReference      string          `json:"provider_reference"`
+	WebhookEventID         string          `json:"webhook_event_id,omitempty"`
 	EventType              string          `json:"event_type"`
 	NormalizedPaymentState string          `json:"normalized_payment_state"`
 	PayloadJSON            json.RawMessage `json:"payload_json"`
@@ -539,6 +784,43 @@ type commerceWebhookResponse struct {
 	PaymentState    string `json:"payment_state"`
 	AttemptID       string `json:"attempt_id"`
 	ProviderEventID int64  `json:"provider_event_id"`
+}
+
+type commerceCancelRequest struct {
+	Reason    string `json:"reason"`
+	SlotIndex *int32 `json:"slot_index,omitempty"`
+}
+
+type commerceCancelResponse struct {
+	OrderID      string `json:"order_id"`
+	OrderStatus  string `json:"order_status"`
+	PaymentState string `json:"payment_state"`
+	RefundState  string `json:"refund_state"`
+	Replay       bool   `json:"replay"`
+}
+
+type commerceRefundRequest struct {
+	Reason       string         `json:"reason"`
+	AmountMinor  int64          `json:"amount_minor"`
+	Currency     string         `json:"currency"`
+	Metadata     map[string]any `json:"metadata"`
+}
+
+type commerceRefundResponse struct {
+	RefundID    string `json:"refund_id"`
+	OrderID     string `json:"order_id"`
+	PaymentID   string `json:"payment_id"`
+	RefundState string `json:"refund_state"`
+	AmountMinor int64  `json:"amount_minor"`
+	Currency    string `json:"currency"`
+	Replay      bool   `json:"replay"`
+}
+
+func refundClientState(dbState string) string {
+	if dbState == "requested" {
+		return "pending"
+	}
+	return dbState
 }
 
 type commerceVendStartRequest struct {

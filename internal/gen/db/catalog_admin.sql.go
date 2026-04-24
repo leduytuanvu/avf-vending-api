@@ -13,6 +13,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const CatalogAdminCountBrands = `-- name: CatalogAdminCountBrands :one
+SELECT count(*)::bigint
+FROM brands b
+WHERE b.organization_id = $1
+`
+
+func (q *Queries) CatalogAdminCountBrands(ctx context.Context, organizationID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminCountBrands, organizationID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const CatalogAdminCountCategories = `-- name: CatalogAdminCountCategories :one
+SELECT count(*)::bigint
+FROM categories c
+WHERE c.organization_id = $1
+`
+
+func (q *Queries) CatalogAdminCountCategories(ctx context.Context, organizationID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminCountCategories, organizationID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const CatalogAdminCountPlanograms = `-- name: CatalogAdminCountPlanograms :one
 SELECT count(*)::bigint AS cnt
 FROM planograms pg
@@ -60,6 +86,72 @@ func (q *Queries) CatalogAdminCountProducts(ctx context.Context, arg CatalogAdmi
 	return cnt, err
 }
 
+const CatalogAdminCountTags = `-- name: CatalogAdminCountTags :one
+SELECT count(*)::bigint
+FROM tags t
+WHERE t.organization_id = $1
+`
+
+func (q *Queries) CatalogAdminCountTags(ctx context.Context, organizationID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminCountTags, organizationID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const CatalogAdminGetBrand = `-- name: CatalogAdminGetBrand :one
+SELECT id, organization_id, slug, name, active, created_at, updated_at
+FROM brands b
+WHERE b.organization_id = $1 AND b.id = $2
+`
+
+type CatalogAdminGetBrandParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CatalogAdminGetBrand(ctx context.Context, arg CatalogAdminGetBrandParams) (Brand, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminGetBrand, arg.OrganizationID, arg.ID)
+	var i Brand
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Slug,
+		&i.Name,
+		&i.Active,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const CatalogAdminGetCategory = `-- name: CatalogAdminGetCategory :one
+SELECT id, organization_id, slug, name, parent_id, active, created_at, updated_at
+FROM categories c
+WHERE c.organization_id = $1 AND c.id = $2
+`
+
+type CatalogAdminGetCategoryParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CatalogAdminGetCategory(ctx context.Context, arg CatalogAdminGetCategoryParams) (Category, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminGetCategory, arg.OrganizationID, arg.ID)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Slug,
+		&i.Name,
+		&i.ParentID,
+		&i.Active,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const CatalogAdminGetPlanogram = `-- name: CatalogAdminGetPlanogram :one
 SELECT
     pg.id,
@@ -99,6 +191,7 @@ SELECT
     p.id,
     p.organization_id,
     p.sku,
+    p.barcode,
     p.name,
     p.description,
     p.attrs,
@@ -129,6 +222,7 @@ func (q *Queries) CatalogAdminGetProduct(ctx context.Context, arg CatalogAdminGe
 		&i.ID,
 		&i.OrganizationID,
 		&i.Sku,
+		&i.Barcode,
 		&i.Name,
 		&i.Description,
 		&i.Attrs,
@@ -144,6 +238,117 @@ func (q *Queries) CatalogAdminGetProduct(ctx context.Context, arg CatalogAdminGe
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const CatalogAdminGetTag = `-- name: CatalogAdminGetTag :one
+SELECT id, organization_id, slug, name, active, created_at, updated_at
+FROM tags t
+WHERE t.organization_id = $1 AND t.id = $2
+`
+
+type CatalogAdminGetTagParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CatalogAdminGetTag(ctx context.Context, arg CatalogAdminGetTagParams) (Tag, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminGetTag, arg.OrganizationID, arg.ID)
+	var i Tag
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Slug,
+		&i.Name,
+		&i.Active,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const CatalogAdminListBrands = `-- name: CatalogAdminListBrands :many
+SELECT id, organization_id, slug, name, active, created_at, updated_at
+FROM brands b
+WHERE b.organization_id = $1
+ORDER BY b.name ASC, b.id
+LIMIT $2 OFFSET $3
+`
+
+type CatalogAdminListBrandsParams struct {
+	OrganizationID uuid.UUID
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) CatalogAdminListBrands(ctx context.Context, arg CatalogAdminListBrandsParams) ([]Brand, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminListBrands, arg.OrganizationID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Brand{}
+	for rows.Next() {
+		var i Brand
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.Slug,
+			&i.Name,
+			&i.Active,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const CatalogAdminListCategories = `-- name: CatalogAdminListCategories :many
+SELECT id, organization_id, slug, name, parent_id, active, created_at, updated_at
+FROM categories c
+WHERE c.organization_id = $1
+ORDER BY c.name ASC, c.id
+LIMIT $2 OFFSET $3
+`
+
+type CatalogAdminListCategoriesParams struct {
+	OrganizationID uuid.UUID
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) CatalogAdminListCategories(ctx context.Context, arg CatalogAdminListCategoriesParams) ([]Category, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminListCategories, arg.OrganizationID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Category{}
+	for rows.Next() {
+		var i Category
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.Slug,
+			&i.Name,
+			&i.ParentID,
+			&i.Active,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const CatalogAdminListPlanograms = `-- name: CatalogAdminListPlanograms :many
@@ -259,6 +464,7 @@ SELECT
     p.id,
     p.organization_id,
     p.sku,
+    p.barcode,
     p.name,
     p.description,
     p.active,
@@ -286,6 +492,7 @@ type CatalogAdminListProductsRow struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
 	Sku            string
+	Barcode        pgtype.Text
 	Name           string
 	Description    string
 	Active         bool
@@ -314,6 +521,7 @@ func (q *Queries) CatalogAdminListProducts(ctx context.Context, arg CatalogAdmin
 			&i.ID,
 			&i.OrganizationID,
 			&i.Sku,
+			&i.Barcode,
 			&i.Name,
 			&i.Description,
 			&i.Active,
@@ -377,6 +585,48 @@ func (q *Queries) CatalogAdminListSlotsByPlanogram(ctx context.Context, planogra
 			&i.CreatedAt,
 			&i.ProductSku,
 			&i.ProductName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const CatalogAdminListTags = `-- name: CatalogAdminListTags :many
+SELECT id, organization_id, slug, name, active, created_at, updated_at
+FROM tags t
+WHERE t.organization_id = $1
+ORDER BY t.name ASC, t.id
+LIMIT $2 OFFSET $3
+`
+
+type CatalogAdminListTagsParams struct {
+	OrganizationID uuid.UUID
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) CatalogAdminListTags(ctx context.Context, arg CatalogAdminListTagsParams) ([]Tag, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminListTags, arg.OrganizationID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Tag{}
+	for rows.Next() {
+		var i Tag
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.Slug,
+			&i.Name,
+			&i.Active,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

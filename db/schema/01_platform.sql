@@ -208,6 +208,7 @@ CREATE TABLE categories (
     slug text NOT NULL,
     name text NOT NULL,
     parent_id uuid REFERENCES categories (id) ON DELETE SET NULL,
+    active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -223,6 +224,7 @@ CREATE TABLE brands (
     organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     slug text NOT NULL,
     name text NOT NULL,
+    active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -236,6 +238,7 @@ CREATE TABLE products (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     sku text NOT NULL,
+    barcode text,
     name text NOT NULL,
     description text NOT NULL DEFAULT '',
     attrs jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -258,13 +261,44 @@ CREATE TABLE products (
 
 CREATE UNIQUE INDEX ux_products_org_id ON products (organization_id, id);
 
+CREATE UNIQUE INDEX ux_products_org_barcode_lower ON products (organization_id, lower(trim(barcode)))
+    WHERE barcode IS NOT NULL AND length(trim(barcode)) > 0;
+
 CREATE INDEX ix_products_organization_id ON products (organization_id);
+
+CREATE TABLE tags (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    slug text NOT NULL,
+    name text NOT NULL,
+    active boolean NOT NULL DEFAULT true,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX ux_tags_org_slug_lower ON tags (organization_id, lower(slug));
+
+CREATE INDEX ix_tags_organization_id ON tags (organization_id);
+
+CREATE TABLE product_tags (
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    product_id uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    tag_id uuid NOT NULL REFERENCES tags (id) ON DELETE CASCADE,
+    PRIMARY KEY (product_id, tag_id)
+);
+
+CREATE INDEX ix_product_tags_org ON product_tags (organization_id);
 
 CREATE TABLE product_images (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
     storage_key text NOT NULL,
     cdn_url text,
+    thumb_cdn_url text,
+    content_hash text,
+    width int,
+    height int,
+    mime_type text,
     alt_text text NOT NULL DEFAULT '',
     sort_order int NOT NULL DEFAULT 0,
     is_primary boolean NOT NULL DEFAULT false,
@@ -551,7 +585,14 @@ CREATE TABLE cash_collections (
     organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     collected_at timestamptz NOT NULL,
-    amount_minor bigint NOT NULL CHECK (amount_minor >= 0),
+    opened_at timestamptz NOT NULL,
+    closed_at timestamptz,
+    lifecycle_status text NOT NULL DEFAULT 'closed' CHECK (lifecycle_status IN ('open', 'closed', 'cancelled')),
+    amount_minor bigint NOT NULL DEFAULT 0 CHECK (amount_minor >= 0),
+    expected_amount_minor bigint NOT NULL DEFAULT 0,
+    variance_amount_minor bigint NOT NULL DEFAULT 0,
+    requires_review boolean NOT NULL DEFAULT false,
+    close_request_hash bytea,
     currency char(3) NOT NULL,
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     reconciliation_status text NOT NULL DEFAULT 'pending' CHECK (
@@ -569,8 +610,17 @@ CREATE INDEX ix_cash_collections_unreconciled ON cash_collections (machine_id, c
     WHERE reconciliation_status <> 'matched';
 CREATE INDEX ix_cash_collections_operator_session ON cash_collections (operator_session_id)
     WHERE operator_session_id IS NOT NULL;
+CREATE UNIQUE INDEX ux_cash_collections_machine_one_open ON cash_collections (machine_id)
+    WHERE lifecycle_status = 'open';
 
-COMMENT ON TABLE cash_collections IS 'Physical cash removed from machine; reconcile against expected vault from cash_events.';
+COMMENT ON TABLE cash_collections IS 'Field cash collection sessions: open then close with counted vs expected (commerce cash, no hardware payout).';
+COMMENT ON COLUMN cash_collections.opened_at IS 'When the operator started the collection session (usually equals collected_at).';
+COMMENT ON COLUMN cash_collections.closed_at IS 'When the session was closed with a physical count; null while open.';
+COMMENT ON COLUMN cash_collections.amount_minor IS 'Physical count (counted cash) when closed; 0 while open.';
+COMMENT ON COLUMN cash_collections.expected_amount_minor IS 'Backend-expected net cash in vault at close from commerce since previous closed collection.';
+COMMENT ON COLUMN cash_collections.variance_amount_minor IS 'counted minus expected at close.';
+COMMENT ON COLUMN cash_collections.requires_review IS 'True when abs(variance) exceeds configured review threshold.';
+COMMENT ON COLUMN cash_collections.close_request_hash IS 'SHA-256 of canonical close payload for idempotent close and conflict detection.';
 COMMENT ON COLUMN cash_collections.operator_session_id IS 'Operator session active during physical collection when recorded.';
 
 CREATE TABLE cash_events (
@@ -644,8 +694,11 @@ CREATE TABLE refunds (
     payment_id uuid NOT NULL REFERENCES payments (id) ON DELETE RESTRICT,
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE RESTRICT,
     amount_minor bigint NOT NULL CHECK (amount_minor >= 0),
+    currency char(3) NOT NULL,
     state text NOT NULL CHECK (state IN ('requested', 'processing', 'completed', 'failed')),
     reason text,
+    idempotency_key text,
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
     reconciliation_status text NOT NULL DEFAULT 'pending' CHECK (
         reconciliation_status IN ('pending', 'matched', 'mismatch', 'not_required')
@@ -658,6 +711,11 @@ CREATE TABLE refunds (
 
 CREATE INDEX ix_refunds_payment_id ON refunds (payment_id);
 CREATE INDEX ix_refunds_order_id ON refunds (order_id);
+
+CREATE UNIQUE INDEX ux_refunds_order_idempotency ON refunds (order_id, idempotency_key)
+WHERE
+    idempotency_key IS NOT NULL
+    AND btrim(idempotency_key) <> '';
 CREATE INDEX ix_refunds_reconciliation_queue ON refunds (payment_id, created_at DESC)
     WHERE reconciliation_status <> 'matched';
 CREATE INDEX ix_refunds_settlement_batch ON refunds (settlement_batch_id)
@@ -668,6 +726,7 @@ CREATE TABLE payment_provider_events (
     payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
     provider text NOT NULL,
     provider_ref text,
+    webhook_event_id text,
     provider_amount_minor bigint,
     currency char(3),
     event_type text NOT NULL,
@@ -677,6 +736,9 @@ CREATE TABLE payment_provider_events (
 
 CREATE UNIQUE INDEX ux_payment_provider_events_provider_ref ON payment_provider_events (provider, provider_ref)
     WHERE provider_ref IS NOT NULL AND btrim(provider_ref) <> '';
+
+CREATE UNIQUE INDEX ux_payment_provider_events_provider_webhook_event ON payment_provider_events (provider, webhook_event_id)
+    WHERE webhook_event_id IS NOT NULL AND btrim(webhook_event_id) <> '';
 
 CREATE INDEX ix_payment_provider_events_payment ON payment_provider_events (payment_id, received_at DESC)
     WHERE payment_id IS NOT NULL;
@@ -1002,6 +1064,47 @@ CREATE TABLE ota_targets (
     updated_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ux_ota_targets_campaign_machine UNIQUE (campaign_id, machine_id)
 );
+
+-- Kiosk activation + device reconcile status (migrations/00023_p0_activation_reconcile_refunds.sql).
+CREATE TABLE machine_activation_codes (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    code_hash bytea NOT NULL,
+    max_uses int NOT NULL DEFAULT 1 CHECK (max_uses > 0),
+    uses int NOT NULL DEFAULT 0 CHECK (uses >= 0),
+    expires_at timestamptz NOT NULL,
+    notes text,
+    status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'revoked', 'expired')),
+    claimed_fingerprint_hash bytea,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now ()
+);
+
+CREATE UNIQUE INDEX ux_machine_activation_codes_hash ON machine_activation_codes (code_hash);
+
+CREATE INDEX ix_machine_activation_codes_machine ON machine_activation_codes (machine_id, created_at DESC);
+
+CREATE TABLE critical_telemetry_event_status (
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    idempotency_key text NOT NULL,
+    status text NOT NULL CHECK (
+        status IN (
+            'accepted',
+            'processing',
+            'processed',
+            'failed_retryable',
+            'failed_terminal'
+        )
+    ),
+    event_type text,
+    accepted_at timestamptz,
+    processed_at timestamptz,
+    updated_at timestamptz NOT NULL DEFAULT now (),
+    PRIMARY KEY (machine_id, idempotency_key)
+);
+
+CREATE INDEX ix_critical_telemetry_machine_status ON critical_telemetry_event_status (machine_id, status);
 
 -- MQTT / edge ingest (migrations/00004_device_mqtt_ingest.sql, 00006_command_protocol_traceability.sql).
 CREATE TABLE device_telemetry_events (

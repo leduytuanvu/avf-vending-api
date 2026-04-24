@@ -99,6 +99,43 @@ type RefundEligibilityAssessment struct {
 	VendState    string
 }
 
+// InsertRefundRowInput persists a refund aggregate row.
+type InsertRefundRowInput struct {
+	PaymentID      uuid.UUID
+	OrderID        uuid.UUID
+	AmountMinor    int64
+	Currency       string
+	State          string
+	Reason         string
+	IdempotencyKey string
+	Metadata       []byte
+}
+
+// CreateRefundInput requests a new refund against the latest captured payment.
+type CreateRefundInput struct {
+	OrganizationID uuid.UUID
+	OrderID        uuid.UUID
+	AmountMinor    int64
+	Currency       string
+	Reason         string
+	IdempotencyKey string
+	Metadata       []byte
+}
+
+// RefundRowView is a minimal refunds table projection.
+type RefundRowView struct {
+	ID             uuid.UUID
+	PaymentID      uuid.UUID
+	OrderID        uuid.UUID
+	AmountMinor    int64
+	Currency       string
+	State          string
+	Reason         *string
+	IdempotencyKey *string
+	Metadata       []byte
+	CreatedAt      time.Time
+}
+
 // CreateOrderResult is the transactional create outcome plus resolved sale line metadata for clients.
 type CreateOrderResult struct {
 	domaincommerce.CreateOrderVendResult

@@ -97,6 +97,22 @@ func JWTSecretFromEnv() []byte {
 	return []byte(strings.TrimSpace(os.Getenv(EnvJWTSecret)))
 }
 
+// RequireDenyMachinePrincipal blocks kiosk machine JWTs from administrative or reporting surfaces.
+func RequireDenyMachinePrincipal(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p, ok := PrincipalFromContext(r.Context())
+		if !ok {
+			writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
+			return
+		}
+		if p.IsMachinePrincipal() {
+			writeAuthError(w, r, http.StatusForbidden, "forbidden", ErrForbidden.Error())
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // RequireAnyRole returns middleware that enforces at least one role on the principal.
 func RequireAnyRole(roles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

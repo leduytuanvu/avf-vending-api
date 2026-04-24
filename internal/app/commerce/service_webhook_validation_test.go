@@ -48,6 +48,21 @@ func (stubLifecycle) GetPaymentByID(ctx context.Context, paymentID uuid.UUID) (d
 func (stubLifecycle) InsertPaymentAttempt(ctx context.Context, in InsertPaymentAttemptParams) (PaymentAttemptView, error) {
 	return PaymentAttemptView{}, errors.New("not implemented")
 }
+func (stubLifecycle) InsertRefundRow(context.Context, InsertRefundRowInput) (RefundRowView, error) {
+	return RefundRowView{}, errors.New("not implemented")
+}
+func (stubLifecycle) ListRefundsForOrder(context.Context, uuid.UUID) ([]RefundRowView, error) {
+	return nil, errors.New("not implemented")
+}
+func (stubLifecycle) GetRefundByIDForOrder(context.Context, uuid.UUID, uuid.UUID) (RefundRowView, error) {
+	return RefundRowView{}, ErrNotFound
+}
+func (stubLifecycle) GetRefundByOrderIdempotency(context.Context, uuid.UUID, string) (RefundRowView, error) {
+	return RefundRowView{}, ErrNotFound
+}
+func (stubLifecycle) SumNonFailedRefundAmountForPayment(context.Context, uuid.UUID) (int64, error) {
+	return 0, nil
+}
 
 type stubSaleLines struct{}
 
@@ -78,5 +93,33 @@ func TestApplyPaymentProviderWebhook_requiresWebhookPersistence(t *testing.T) {
 	})
 	if !errors.Is(err, ErrNotConfigured) {
 		t.Fatalf("got %v want ErrNotConfigured", err)
+	}
+}
+
+func TestApplyPaymentProviderWebhook_webhookEventIDTooLong(t *testing.T) {
+	s := &Service{
+		orders:    stubOrderVend{},
+		payments:  stubPaymentOutbox{},
+		life:      stubLifecycle{},
+		webhook:   nil,
+		saleLines: stubSaleLines{},
+	}
+	long := make([]byte, 300)
+	for i := range long {
+		long[i] = 'a'
+	}
+	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
+		OrganizationID:         uuid.New(),
+		OrderID:                uuid.New(),
+		PaymentID:              uuid.New(),
+		Provider:               "stripe",
+		ProviderReference:      "evt_1",
+		WebhookEventID:         string(long),
+		EventType:              "charge.succeeded",
+		NormalizedPaymentState: "captured",
+		Payload:                []byte(`{}`),
+	})
+	if !errors.Is(err, ErrInvalidArgument) {
+		t.Fatalf("got %v want ErrInvalidArgument", err)
 	}
 }

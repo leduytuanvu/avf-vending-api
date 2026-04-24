@@ -166,6 +166,10 @@ def validate_payload(
     if not _strict_pass_label(fr):
         errs.append(f"final_result must be pass (got {fr!r})")
 
+    for ck in ("critical_expected", "critical_accepted"):
+        if ck not in payload:
+            errs.append(f"{ck} is required in scale storm evidence JSON")
+
     if not _num_zero(payload.get("critical_lost")):
         errs.append(f"critical_lost must be 0 (got {payload.get('critical_lost')!r})")
 

@@ -31,6 +31,19 @@ type CommerceHTTPConfig struct {
 	// PaymentWebhookHMACSecret, when non-empty, enables POST .../payments/{id}/webhooks without Bearer JWT
 	// using X-AVF-Webhook-Timestamp + X-AVF-Webhook-Signature (HMAC-SHA256 over "{timestamp}.{rawBody}").
 	PaymentWebhookHMACSecret string
+	// PaymentWebhookVerification selects webhook signature verification. Only "avf_hmac" is implemented.
+	PaymentWebhookVerification string
+	// PaymentWebhookTimestampSkew bounds how far X-AVF-Webhook-Timestamp may differ from server time.
+	PaymentWebhookTimestampSkew time.Duration
+	// PaymentWebhookAllowUnsigned, when true with an empty secret, skips HMAC verification in non-production only.
+	PaymentWebhookAllowUnsigned bool
+	// PaymentWebhookUnsafeAllowUnsignedProduction allows empty secret / no HMAC in production (documented unsafe).
+	PaymentWebhookUnsafeAllowUnsignedProduction bool
+}
+
+// CashSettlementConfig thresholds for field cash collection close review (minor units of collection currency).
+type CashSettlementConfig struct {
+	VarianceReviewThresholdMinor int64
 }
 
 // APIWiringRequirements fail-fast checks for optional subsystem wiring.
@@ -64,6 +77,14 @@ type Config struct {
 
 	ReadinessStrict bool
 	MetricsEnabled  bool
+	// MetricsExposeOnPublicHTTP registers GET /metrics on the main HTTP listener (HTTP_ADDR, e.g. :8080).
+	// When false in production (the default when METRICS_EXPOSE_ON_PUBLIC_HTTP is unset), Prometheus must
+	// scrape HTTP_OPS_ADDR/metrics on the private ops listener. When true in production, METRICS_SCRAPE_TOKEN
+	// is required and protects the public /metrics route.
+	MetricsExposeOnPublicHTTP bool
+	// MetricsScrapeToken protects GET /metrics on the public listener when set (Authorization: Bearer <token>).
+	// Required (min 16 chars) when APP_ENV=production and METRICS_EXPOSE_ON_PUBLIC_HTTP=true.
+	MetricsScrapeToken string
 	// SwaggerUIEnabled exposes /swagger/* (Swagger UI + doc.json) when true. If HTTP_SWAGGER_UI_ENABLED
 	// is set, only true/1 enables. If unset, non-production defaults on and production defaults off;
 	// production deploy examples set HTTP_SWAGGER_UI_ENABLED=true.
@@ -84,6 +105,9 @@ type Config struct {
 	APIWiring APIWiringRequirements
 
 	Commerce CommerceHTTPConfig
+
+	// CashSettlement configures admin cashbox / collection close review thresholds.
+	CashSettlement CashSettlementConfig
 
 	Reconciler ReconcilerConfig
 
@@ -358,6 +382,12 @@ func (c *Config) Validate() error {
 	if err := c.validateProductionTelemetryNATS(); err != nil {
 		return err
 	}
+	if err := c.validateMetricsHTTPExposure(); err != nil {
+		return err
+	}
+	if err := c.Commerce.validate(c.AppEnv); err != nil {
+		return err
+	}
 
 	if strings.TrimSpace(c.WorkerMetricsListen) != "" {
 		if _, err := net.ResolveTCPAddr("tcp", normalizeTCPAddr(c.WorkerMetricsListen)); err != nil {
@@ -624,6 +654,49 @@ func (h HTTPRateLimitConfig) validate() error {
 	return nil
 }
 
+func (c *Config) validateMetricsHTTPExposure() error {
+	if !c.MetricsEnabled {
+		return nil
+	}
+	if c.AppEnv == AppEnvProduction && c.MetricsExposeOnPublicHTTP {
+		tok := strings.TrimSpace(c.MetricsScrapeToken)
+		if len(tok) < 16 {
+			return errors.New("config: METRICS_SCRAPE_TOKEN must be set (min 16 chars) when APP_ENV=production and METRICS_EXPOSE_ON_PUBLIC_HTTP=true")
+		}
+	}
+	return nil
+}
+
+func (c CommerceHTTPConfig) validate(appEnv AppEnvironment) error {
+	mode := strings.ToLower(strings.TrimSpace(c.PaymentWebhookVerification))
+	if mode == "" {
+		mode = "avf_hmac"
+	}
+	if mode != "avf_hmac" {
+		return fmt.Errorf("config: COMMERCE_PAYMENT_WEBHOOK_VERIFICATION %q is unsupported (only avf_hmac)", strings.TrimSpace(c.PaymentWebhookVerification))
+	}
+	sec := int(c.PaymentWebhookTimestampSkew / time.Second)
+	if sec < 30 || sec > 86400 {
+		return fmt.Errorf("config: COMMERCE_PAYMENT_WEBHOOK_TIMESTAMP_SKEW_SECONDS must be between 30 and 86400 (effective %ds)", sec)
+	}
+	if c.PaymentWebhookAllowUnsigned && appEnv == AppEnvProduction {
+		return errors.New("config: COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED cannot be set when APP_ENV=production; use COMMERCE_PAYMENT_WEBHOOK_UNSAFE_ALLOW_UNSIGNED_PRODUCTION")
+	}
+	return nil
+}
+
+func metricsExposeOnPublicHTTPFromEnv(appEnv AppEnvironment) (bool, error) {
+	raw, ok := os.LookupEnv("METRICS_EXPOSE_ON_PUBLIC_HTTP")
+	if !ok || strings.TrimSpace(raw) == "" {
+		return appEnv != AppEnvProduction, nil
+	}
+	v, err := strconv.ParseBool(strings.TrimSpace(raw))
+	if err != nil {
+		return false, fmt.Errorf("config: invalid METRICS_EXPOSE_ON_PUBLIC_HTTP: %w", err)
+	}
+	return v, nil
+}
+
 func (a ArtifactsConfig) validate() error {
 	if !a.Enabled {
 		return nil
@@ -667,13 +740,21 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	appEnv := AppEnvironment(strings.TrimSpace(getenv("APP_ENV", string(AppEnvDevelopment))))
+	metricsExposePublic, err := metricsExposeOnPublicHTTPFromEnv(appEnv)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
-		AppEnv:           AppEnvironment(strings.TrimSpace(getenv("APP_ENV", string(AppEnvDevelopment)))),
-		LogLevel:         strings.TrimSpace(getenv("LOG_LEVEL", "info")),
-		LogFormat:        strings.TrimSpace(getenv("LOG_FORMAT", "json")),
-		ReadinessStrict:  getenvBool("READINESS_STRICT", false),
-		MetricsEnabled:   getenvBool("METRICS_ENABLED", false),
-		SwaggerUIEnabled: loadSwaggerUIEnabled(),
+		AppEnv:                    appEnv,
+		LogLevel:                  strings.TrimSpace(getenv("LOG_LEVEL", "info")),
+		LogFormat:                 strings.TrimSpace(getenv("LOG_FORMAT", "json")),
+		ReadinessStrict:           getenvBool("READINESS_STRICT", false),
+		MetricsEnabled:            getenvBool("METRICS_ENABLED", false),
+		MetricsExposeOnPublicHTTP: metricsExposePublic,
+		MetricsScrapeToken:        strings.TrimSpace(os.Getenv("METRICS_SCRAPE_TOKEN")),
+		SwaggerUIEnabled:          loadSwaggerUIEnabled(),
 		Runtime: RuntimeConfig{
 			PublicBaseURL:        firstNonEmptyTrimmed(os.Getenv("APP_BASE_URL"), os.Getenv("PUBLIC_BASE_URL")),
 			MachinePublicBaseURL: firstNonEmptyTrimmed(os.Getenv("MACHINE_PUBLIC_BASE_URL"), os.Getenv("APP_BASE_URL"), os.Getenv("PUBLIC_BASE_URL")),
@@ -698,10 +779,17 @@ func Load() (*Config, error) {
 			RequirePaymentProviderRegistry: getenvBool("API_REQUIRE_PAYMENT_PROVIDER_REGISTRY", false),
 		},
 		Commerce: CommerceHTTPConfig{
-			PaymentOutboxTopic:         strings.TrimSpace(getenv("COMMERCE_PAYMENT_OUTBOX_TOPIC", "commerce.payments")),
-			PaymentOutboxEventType:     strings.TrimSpace(getenv("COMMERCE_PAYMENT_OUTBOX_EVENT_TYPE", "payment.session_started")),
-			PaymentOutboxAggregateType: strings.TrimSpace(getenv("COMMERCE_PAYMENT_OUTBOX_AGGREGATE_TYPE", "payment")),
-			PaymentWebhookHMACSecret:   firstNonEmptyTrimmed(os.Getenv("PAYMENT_WEBHOOK_SECRET"), os.Getenv("COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET")),
+			PaymentOutboxTopic:                          strings.TrimSpace(getenv("COMMERCE_PAYMENT_OUTBOX_TOPIC", "commerce.payments")),
+			PaymentOutboxEventType:                      strings.TrimSpace(getenv("COMMERCE_PAYMENT_OUTBOX_EVENT_TYPE", "payment.session_started")),
+			PaymentOutboxAggregateType:                  strings.TrimSpace(getenv("COMMERCE_PAYMENT_OUTBOX_AGGREGATE_TYPE", "payment")),
+			PaymentWebhookHMACSecret:                    firstNonEmptyTrimmed(os.Getenv("PAYMENT_WEBHOOK_SECRET"), os.Getenv("COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET")),
+			PaymentWebhookVerification:                  strings.TrimSpace(getenv("COMMERCE_PAYMENT_WEBHOOK_VERIFICATION", "avf_hmac")),
+			PaymentWebhookTimestampSkew:                 time.Duration(max(1, getenvInt("COMMERCE_PAYMENT_WEBHOOK_TIMESTAMP_SKEW_SECONDS", 300))) * time.Second,
+			PaymentWebhookAllowUnsigned:                 getenvBool("COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED", false),
+			PaymentWebhookUnsafeAllowUnsignedProduction: getenvBool("COMMERCE_PAYMENT_WEBHOOK_UNSAFE_ALLOW_UNSIGNED_PRODUCTION", false),
+		},
+		CashSettlement: CashSettlementConfig{
+			VarianceReviewThresholdMinor: getenvInt64("CASH_SETTLEMENT_VARIANCE_REVIEW_THRESHOLD_MINOR", 500),
 		},
 		Reconciler: loadReconcilerConfig(),
 		Temporal:   loadTemporalConfig(),

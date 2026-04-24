@@ -46,7 +46,7 @@ func TestMountV1_machineSetupRoutesRegistered(t *testing.T) {
 	wantContains := []string{
 		"GET /v1/setup/machines/{machineId}/bootstrap",
 		"GET /v1/admin/machines/{machineId}",
-		// Device HTTP bridge (always registered when app is non-nil; handlers guard nil deps).
+		// Device HTTP bridge (registered under /v1 when HTTPApplication is non-nil; handlers guard nil deps).
 		"POST /v1/device/machines/{machineId}/vend-results",
 		"POST /v1/device/machines/{machineId}/commands/poll",
 	}

@@ -2,11 +2,13 @@ package postgres
 
 import (
 	"context"
+	"strings"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -121,4 +123,145 @@ func mapPaymentAttemptView(row db.PaymentAttempt) appcommerce.PaymentAttemptView
 		State:     row.State,
 		CreatedAt: row.CreatedAt,
 	}
+}
+
+func (s *Store) InsertRefundRow(ctx context.Context, in appcommerce.InsertRefundRowInput) (appcommerce.RefundRowView, error) {
+	meta := in.Metadata
+	if len(meta) == 0 {
+		meta = []byte("{}")
+	}
+	var reason pgtype.Text
+	if strings.TrimSpace(in.Reason) != "" {
+		reason = pgtype.Text{String: strings.TrimSpace(in.Reason), Valid: true}
+	}
+	var idem pgtype.Text
+	if strings.TrimSpace(in.IdempotencyKey) != "" {
+		idem = pgtype.Text{String: strings.TrimSpace(in.IdempotencyKey), Valid: true}
+	}
+	row, err := db.New(s.pool).InsertRefundRow(ctx, db.InsertRefundRowParams{
+		PaymentID:      in.PaymentID,
+		OrderID:        in.OrderID,
+		AmountMinor:    in.AmountMinor,
+		Currency:       strings.ToUpper(strings.TrimSpace(in.Currency)),
+		State:          in.State,
+		Reason:         reason,
+		IdempotencyKey: idem,
+		Metadata:       meta,
+	})
+	if err != nil {
+		return appcommerce.RefundRowView{}, err
+	}
+	return mapRefundRowView(row), nil
+}
+
+func (s *Store) ListRefundsForOrder(ctx context.Context, orderID uuid.UUID) ([]appcommerce.RefundRowView, error) {
+	rows, err := db.New(s.pool).ListRefundsForOrder(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]appcommerce.RefundRowView, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, mapRefundListRow(r))
+	}
+	return out, nil
+}
+
+func (s *Store) GetRefundByIDForOrder(ctx context.Context, orderID, refundID uuid.UUID) (appcommerce.RefundRowView, error) {
+	row, err := db.New(s.pool).GetRefundByIDForOrder(ctx, db.GetRefundByIDForOrderParams{
+		ID:      refundID,
+		OrderID: orderID,
+	})
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return appcommerce.RefundRowView{}, appcommerce.ErrNotFound
+		}
+		return appcommerce.RefundRowView{}, err
+	}
+	return mapRefundGetRow(row), nil
+}
+
+func (s *Store) GetRefundByOrderIdempotency(ctx context.Context, orderID uuid.UUID, idempotencyKey string) (appcommerce.RefundRowView, error) {
+	row, err := db.New(s.pool).GetRefundByOrderIdempotency(ctx, db.GetRefundByOrderIdempotencyParams{
+		OrderID:        orderID,
+		IdempotencyKey: pgtype.Text{String: strings.TrimSpace(idempotencyKey), Valid: strings.TrimSpace(idempotencyKey) != ""},
+	})
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return appcommerce.RefundRowView{}, appcommerce.ErrNotFound
+		}
+		return appcommerce.RefundRowView{}, err
+	}
+	return mapRefundIdemRow(row), nil
+}
+
+func (s *Store) SumNonFailedRefundAmountForPayment(ctx context.Context, paymentID uuid.UUID) (int64, error) {
+	return db.New(s.pool).SumNonFailedRefundAmountForPayment(ctx, paymentID)
+}
+
+func mapRefundRowView(row db.InsertRefundRowRow) appcommerce.RefundRowView {
+	return appcommerce.RefundRowView{
+		ID:             row.ID,
+		PaymentID:      row.PaymentID,
+		OrderID:        row.OrderID,
+		AmountMinor:    row.AmountMinor,
+		Currency:       row.Currency,
+		State:          row.State,
+		Reason:         textPtr(row.Reason),
+		IdempotencyKey: textPtr(row.IdempotencyKey),
+		Metadata:       row.Metadata,
+		CreatedAt:      row.CreatedAt,
+	}
+}
+
+func mapRefundListRow(row db.ListRefundsForOrderRow) appcommerce.RefundRowView {
+	return appcommerce.RefundRowView{
+		ID:             row.ID,
+		PaymentID:      row.PaymentID,
+		OrderID:        row.OrderID,
+		AmountMinor:    row.AmountMinor,
+		Currency:       row.Currency,
+		State:          row.State,
+		Reason:         textPtr(row.Reason),
+		IdempotencyKey: textPtr(row.IdempotencyKey),
+		Metadata:       row.Metadata,
+		CreatedAt:      row.CreatedAt,
+	}
+}
+
+func mapRefundGetRow(row db.GetRefundByIDForOrderRow) appcommerce.RefundRowView {
+	return appcommerce.RefundRowView{
+		ID:             row.ID,
+		PaymentID:      row.PaymentID,
+		OrderID:        row.OrderID,
+		AmountMinor:    row.AmountMinor,
+		Currency:       row.Currency,
+		State:          row.State,
+		Reason:         textPtr(row.Reason),
+		IdempotencyKey: textPtr(row.IdempotencyKey),
+		Metadata:       row.Metadata,
+		CreatedAt:      row.CreatedAt,
+	}
+}
+
+func mapRefundIdemRow(row db.GetRefundByOrderIdempotencyRow) appcommerce.RefundRowView {
+	return appcommerce.RefundRowView{
+		ID:             row.ID,
+		PaymentID:      row.PaymentID,
+		OrderID:        row.OrderID,
+		AmountMinor:    row.AmountMinor,
+		Currency:       row.Currency,
+		State:          row.State,
+		Reason:         textPtr(row.Reason),
+		IdempotencyKey: textPtr(row.IdempotencyKey),
+		Metadata:       row.Metadata,
+		CreatedAt:      row.CreatedAt,
+	}
+}
+
+func textPtr(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	s := t.String
+	return &s
 }
