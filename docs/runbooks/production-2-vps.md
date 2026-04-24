@@ -150,7 +150,7 @@ MQTT:
 ### App node internal-only
 
 - `8080/tcp`: API upstream behind Caddy
-- `8081/tcp`: API ops listener
+- `8081/tcp`: API ops listener (`HTTP_OPS_ADDR`); Prometheus scrapes **`/metrics` here** by default in production, not on `:8080` — see `production-metrics-scraping.md`
 - `9091/tcp`: worker metrics/health
 - `9092/tcp`: reconciler metrics/health
 - `9093/tcp`: mqtt-ingest metrics/health

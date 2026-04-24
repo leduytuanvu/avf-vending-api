@@ -539,6 +539,12 @@ func (s *Store) AppendDeviceTelemetryEdgeEvent(ctx context.Context, machineID uu
 		payload = []byte("{}")
 	}
 	q := db.New(s.pool)
+	now := time.Now().UTC()
+	et := pgtype.Text{}
+	if strings.TrimSpace(eventType) != "" {
+		et = pgtype.Text{String: strings.TrimSpace(eventType), Valid: true}
+	}
+	ts := pgtype.Timestamptz{Time: now, Valid: true}
 	_, err = q.InsertDeviceTelemetryEvent(ctx, db.InsertDeviceTelemetryEventParams{
 		MachineID: machineID,
 		EventType: eventType,
@@ -547,8 +553,26 @@ func (s *Store) AppendDeviceTelemetryEdgeEvent(ctx context.Context, machineID uu
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
+			_ = q.UpsertCriticalTelemetryEventStatus(ctx, db.UpsertCriticalTelemetryEventStatusParams{
+				MachineID:      machineID,
+				IdempotencyKey: dedupe,
+				Status:         "processed",
+				EventType:      et,
+				AcceptedAt:     ts,
+				ProcessedAt:    ts,
+			})
 			return true, nil
 		}
+		return false, err
+	}
+	if err := q.UpsertCriticalTelemetryEventStatus(ctx, db.UpsertCriticalTelemetryEventStatusParams{
+		MachineID:      machineID,
+		IdempotencyKey: dedupe,
+		Status:         "processed",
+		EventType:      et,
+		AcceptedAt:     ts,
+		ProcessedAt:    ts,
+	}); err != nil {
 		return false, err
 	}
 	return false, nil
@@ -675,7 +699,7 @@ func (s *Store) ApplyCommerceVendSuccessInventory(ctx context.Context, orgID, ma
 		return false, err
 	}
 	if m.OrganizationID != orgID {
-		return false, errOrganizationMachineMismatch
+		return false, ErrMachineOrganizationMismatch
 	}
 	vend, err := q.GetVendSessionByOrderAndSlot(ctx, db.GetVendSessionByOrderAndSlotParams{
 		OrderID:   orderID,

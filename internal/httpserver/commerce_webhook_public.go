@@ -21,7 +21,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// mountCommercePublicWebhookPost registers PSP callbacks on /v1 without Bearer JWT (HMAC-only).
+// mountCommercePublicWebhookPost registers PSP callbacks on /v1 without Bearer JWT (HMAC-only when configured).
 func mountCommercePublicWebhookPost(r chi.Router, app *api.HTTPApplication, cfg *config.Config) {
 	if app == nil || app.Commerce == nil || cfg == nil || app.TelemetryStore == nil {
 		return
@@ -29,7 +29,7 @@ func mountCommercePublicWebhookPost(r chi.Router, app *api.HTTPApplication, cfg 
 	r.Post("/commerce/orders/{orderId}/payments/{paymentId}/webhooks", commercePublicPaymentWebhookHandler(app, cfg))
 }
 
-func verifyCommerceWebhookHMAC(secret, tsHeader, sigHeader string, body []byte) error {
+func verifyCommerceWebhookHMAC(secret, tsHeader, sigHeader string, body []byte, skew time.Duration) error {
 	sigHeader = strings.TrimSpace(sigHeader)
 	tsHeader = strings.TrimSpace(tsHeader)
 	if sigHeader == "" || tsHeader == "" {
@@ -39,9 +39,12 @@ func verifyCommerceWebhookHMAC(secret, tsHeader, sigHeader string, body []byte) 
 	if err != nil {
 		return errors.New("invalid X-AVF-Webhook-Timestamp")
 	}
+	skewSec := int64(skew / time.Second)
+	if skewSec < 1 {
+		skewSec = 300
+	}
 	now := time.Now().Unix()
-	const skew = 600
-	if ts > now+skew || ts < now-skew {
+	if ts > now+skewSec || ts < now-skewSec {
 		return errors.New("webhook timestamp outside allowed skew")
 	}
 	tsStr := strconv.FormatInt(ts, 10)
@@ -65,17 +68,36 @@ func commercePublicPaymentWebhookHandler(app *api.HTTPApplication, cfg *config.C
 	return func(w http.ResponseWriter, r *http.Request) {
 		secret := strings.TrimSpace(cfg.Commerce.PaymentWebhookHMACSecret)
 		if secret == "" {
-			writeCapabilityNotConfigured(w, r.Context(), "v1.commerce.payment_webhook.hmac", "set COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET for provider webhooks")
-			return
+			switch cfg.AppEnv {
+			case config.AppEnvProduction:
+				if !cfg.Commerce.PaymentWebhookUnsafeAllowUnsignedProduction {
+					writeAPIError(w, r.Context(), http.StatusForbidden, "webhook_hmac_required",
+						"payment webhooks require COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET in production; unsigned delivery is rejected unless COMMERCE_PAYMENT_WEBHOOK_UNSAFE_ALLOW_UNSIGNED_PRODUCTION=true (documented unsafe)")
+					return
+				}
+			default:
+				if !cfg.Commerce.PaymentWebhookAllowUnsigned {
+					writeCapabilityNotConfigured(w, r.Context(), "v1.commerce.payment_webhook.hmac",
+						"set COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET or COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED=true (non-production only)")
+					return
+				}
+			}
 		}
+
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_body", "could not read body")
 			return
 		}
-		if err := verifyCommerceWebhookHMAC(secret, r.Header.Get("X-AVF-Webhook-Timestamp"), r.Header.Get("X-AVF-Webhook-Signature"), body); err != nil {
-			writeAPIError(w, r.Context(), http.StatusUnauthorized, "webhook_auth_failed", err.Error())
-			return
+		if secret != "" {
+			if err := verifyCommerceWebhookHMAC(secret, r.Header.Get("X-AVF-Webhook-Timestamp"), r.Header.Get("X-AVF-Webhook-Signature"), body, cfg.Commerce.PaymentWebhookTimestampSkew); err != nil {
+				if strings.Contains(strings.ToLower(err.Error()), "timestamp") {
+					writeAPIError(w, r.Context(), http.StatusBadRequest, "webhook_timestamp_skew", err.Error())
+					return
+				}
+				writeAPIError(w, r.Context(), http.StatusUnauthorized, "webhook_auth_failed", err.Error())
+				return
+			}
 		}
 
 		orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
@@ -116,6 +138,7 @@ func commercePublicPaymentWebhookHandler(app *api.HTTPApplication, cfg *config.C
 			PaymentID:              paymentID,
 			Provider:               wh.Provider,
 			ProviderReference:      wh.ProviderReference,
+			WebhookEventID:         wh.WebhookEventID,
 			EventType:              wh.EventType,
 			NormalizedPaymentState: wh.NormalizedPaymentState,
 			Payload:                wh.PayloadJSON,

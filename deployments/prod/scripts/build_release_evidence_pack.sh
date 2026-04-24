@@ -12,12 +12,19 @@
 #
 # Conditionally required when manifest fleet_scale_target is not "pilot":
 #   MONITORING_RESULT_PATH      monitoring-readiness-result.json (final_result must be pass)
-#   STORM_RESULT_PATH           telemetry-storm-result.json (final_result pass) or suite with final_suite_pass true
+#   STORM_RESULT_PATH           telemetry-storm-result.json (strict validation below)
 #
 # Optional:
+#   FLEET_SCALE_TARGET           alias for EXPECTED_FLEET_SCALE_TARGET; if set, must equal manifest fleet_scale_target
 #   EXPECTED_FLEET_SCALE_TARGET  if set, must equal manifest fleet_scale_target
+#   STORM_EVIDENCE_MAX_AGE_DAYS  max age for storm completed_at_utc (default 30 for evidence pack assembly)
 #   ALLOW_OUTPUT_DIR_OVERWRITE   if "1", rm -rf OUTPUT_DIR first
 #   ROLLBACK_UNAVAILABLE_EXPLANATION  required when manifest rollback_available_before_deploy is false
+#
+# Scale tiers (not pilot): storm JSON must pass deployments/prod/shared/scripts/validate_production_scale_storm_evidence.py
+# field rules (machine_count/events_per_machine thresholds, critical_lost=0, duplicate_critical_effects=0,
+# db_pool_result/health_result/restart_result=pass, execute_load_test=true, dry_run=false).
+#
 #
 # Outputs in OUTPUT_DIR (on PASS, includes evidence copies; on FAIL, pack + summary only):
 #   release-evidence-pack.json
@@ -29,6 +36,14 @@
 #   known-risks.md (PASS only)
 #
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+cd "${REPO_ROOT}"
+export REPO_ROOT
+
+EXPECTED_FLEET_SCALE_TARGET="${EXPECTED_FLEET_SCALE_TARGET:-${FLEET_SCALE_TARGET:-}}"
+export EXPECTED_FLEET_SCALE_TARGET
 
 fail() {
 	echo "build_release_evidence_pack: error: $*" >&2
@@ -65,9 +80,11 @@ export _TAG="${RELEASE_TAG}"
 export _SHA="${SOURCE_COMMIT_SHA}"
 export _EXP_SCALE="${EXPECTED_FLEET_SCALE_TARGET:-}"
 export _RB_EXPLAIN="${ROLLBACK_UNAVAILABLE_EXPLANATION:-}"
+export _STORM_MAX_AGE="${STORM_EVIDENCE_MAX_AGE_DAYS:-30}"
 
 python3 - <<'PY'
 import hashlib
+import importlib.util
 import json
 import os
 import shutil
@@ -75,6 +92,16 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+def load_storm_validator():
+    root = Path(os.environ["REPO_ROOT"])
+    path = root / "deployments/prod/shared/scripts/validate_production_scale_storm_evidence.py"
+    spec = importlib.util.spec_from_file_location("storm_gate", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load storm validator from {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 out = Path(os.environ["_OUT"])
 verify_path = Path(os.environ["_VERIFY"])
@@ -86,8 +113,18 @@ tag = os.environ["_TAG"].strip()
 sha = os.environ["_SHA"].strip()
 exp_scale = (os.environ.get("_EXP_SCALE") or "").strip()
 rb_explain = (os.environ.get("_RB_EXPLAIN") or "").strip()
+storm_max_age_raw = (os.environ.get("_STORM_MAX_AGE") or "30").strip()
 
 reasons: list[str] = []
+ALLOWED_FLEETS = {"pilot", "scale-100", "scale-500", "scale-1000"}
+
+storm_max_age_days: Optional[int] = None
+try:
+    storm_max_age_days = int(storm_max_age_raw)
+    if storm_max_age_days < 1:
+        raise ValueError
+except ValueError:
+    reasons.append("STORM_EVIDENCE_MAX_AGE_DAYS must be a positive integer")
 
 
 def load_json(path: Path):
@@ -147,8 +184,15 @@ storm_doc = None
 
 if manifest is not None:
     fleet = str(manifest.get("fleet_scale_target") or "pilot").strip().lower()
+    if fleet not in ALLOWED_FLEETS:
+        reasons.append(
+            f"fleet_scale_target must be one of {sorted(ALLOWED_FLEETS)} (got {fleet!r})"
+        )
     if exp_scale and exp_scale.lower() != fleet:
-        reasons.append(f"fleet_scale_target mismatch: manifest={fleet!r} EXPECTED_FLEET_SCALE_TARGET={exp_scale!r}")
+        reasons.append(
+            f"fleet_scale_target mismatch: manifest={fleet!r} "
+            f"EXPECTED_FLEET_SCALE_TARGET/FLEET_SCALE_TARGET={exp_scale!r}"
+        )
 
     msha = str(manifest.get("source_commit_sha") or "").strip()
     mtag = str(manifest.get("release_tag") or "").strip()
@@ -198,6 +242,28 @@ if manifest is not None:
             else:
                 storm_doc = load_json(sp)
                 storm_pass(storm_doc, "telemetry storm")
+                if (
+                    storm_doc is not None
+                    and fleet in ("scale-100", "scale-500", "scale-1000")
+                    and storm_max_age_days is not None
+                ):
+                    try:
+                        vmod = load_storm_validator()
+                        me = vmod._min_machines_events(fleet)
+                        if not me:
+                            reasons.append(f"storm strict validation: unknown fleet {fleet!r}")
+                        else:
+                            min_m, min_e = me
+                            errs = vmod.validate_payload(
+                                storm_doc,
+                                min_m=min_m,
+                                min_e=min_e,
+                                max_age_days=storm_max_age_days,
+                            )
+                            for e in errs:
+                                reasons.append(f"storm evidence: {e}")
+                    except Exception as ex:
+                        reasons.append(f"storm strict validation failed: {ex}")
     else:
         if mon_path:
             mp = Path(mon_path)
@@ -239,11 +305,33 @@ def mon_gate_label() -> Optional[str]:
 
 checksums: dict[str, str] = {}
 
+readiness = {
+    "pilot_ready": verdict == "pass" and fleet == "pilot",
+    "scale_100_ready": verdict == "pass" and fleet == "scale-100",
+    "scale_500_ready": verdict == "pass" and fleet == "scale-500",
+    "scale_1000_ready": verdict == "pass" and fleet == "scale-1000",
+}
+readiness_statement = "fail"
+if verdict == "pass":
+    if fleet == "pilot":
+        readiness_statement = "PILOT_READY (storm evidence not required; optional attachments must still be internally consistent)"
+    elif fleet == "scale-100":
+        readiness_statement = "SCALE_100_READY (100x100 storm thresholds and strict pass fields satisfied)"
+    elif fleet == "scale-500":
+        readiness_statement = "SCALE_500_READY (500x200 storm thresholds and strict pass fields satisfied)"
+    elif fleet == "scale-1000":
+        readiness_statement = "SCALE_1000_READY (1000x500 storm thresholds and strict pass fields satisfied)"
+    else:
+        readiness_statement = f"PASS_WITH_UNKNOWN_FLEET_{fleet}"
+
 pack = {
     "schema_version": 1,
     "assembled_at_utc": now,
     "final_verdict": verdict,
     "failure_reasons": reasons,
+    "release_readiness": readiness,
+    "release_readiness_statement": readiness_statement,
+    "storm_evidence_max_age_days_applied": storm_max_age_days,
     "release_tag": tag,
     "source_commit_sha": sha,
     "fleet_scale_target": fleet,
@@ -292,6 +380,7 @@ lines = [
     "",
     f"- **Assembled (UTC):** `{now}`",
     f"- **Final verdict:** **`{verdict}`**",
+    f"- **Release readiness statement:** `{readiness_statement}`",
     f"- **Release tag:** `{tag}`",
     f"- **Source commit SHA:** `{sha}`",
     f"- **Fleet scale target:** `{fleet}`",

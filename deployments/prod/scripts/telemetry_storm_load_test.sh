@@ -686,9 +686,14 @@ def fkey(k, default=None):
 
 dup_sum = fkey("DUPLICATE_PROJ_DELTA")
 idem_c = fkey("IDEMPOTENCY_CONFLICT_DELTA")
+crit_acc_delta = fkey("CRITICAL_ACCEPTED_DELTA")
 # duplicate_detected: same idempotency_key reused with different payload (must stay 0).
 duplicate_detected = (idem_c or 0) > 0
 duplicate_critical_effects = 1.0 if duplicate_detected else 0.0
+try:
+    critical_accepted_int = int(round(float(crit_acc_delta))) if crit_acc_delta is not None else None
+except (TypeError, ValueError):
+    critical_accepted_int = None
 
 strict_reason = (os.environ.get("STRICT_FAIL_REASON") or "") + ";" + (os.environ.get("GATE_FAIL_REASON") or "")
 if "container_restart" in strict_reason or "oom_killed" in strict_reason:
@@ -720,7 +725,7 @@ p = {
   "mosquitto_publish_failures": int(os.environ.get("MOSQUITTO_PUBLISH_FAILS", "0")),
   "accounting_status": os.environ.get("ACCOUNTING_STATUS", "unknown"),
   "critical_accepted_delta": fkey("CRITICAL_ACCEPTED_DELTA"),
-  "critical_accepted": fkey("CRITICAL_ACCEPTED_DELTA"),
+  "critical_accepted": critical_accepted_int if critical_accepted_int is not None else fkey("CRITICAL_ACCEPTED_DELTA"),
   "critical_lost": fkey("CRITICAL_LOST"),
   "duplicate_detected": duplicate_detected,
   "duplicate_critical_effects": duplicate_critical_effects,

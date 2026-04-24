@@ -156,6 +156,7 @@ type V1AdminProductListItem struct {
 	ID             string  `json:"id"`
 	OrganizationID string  `json:"organizationId"`
 	Sku            string  `json:"sku"`
+	Barcode        *string `json:"barcode,omitempty"`
 	Name           string  `json:"name"`
 	Description    string  `json:"description"`
 	Active         bool    `json:"active"`
@@ -176,6 +177,7 @@ type V1AdminProduct struct {
 	ID              string          `json:"id"`
 	OrganizationID  string          `json:"organizationId"`
 	Sku             string          `json:"sku"`
+	Barcode         *string         `json:"barcode,omitempty"`
 	Name            string          `json:"name"`
 	Description     string          `json:"description"`
 	Attrs           json.RawMessage `json:"attrs,omitempty"`
@@ -189,6 +191,107 @@ type V1AdminProduct struct {
 	NutritionalNote *string         `json:"nutritionalNote,omitempty"`
 	CreatedAt       string          `json:"createdAt"`
 	UpdatedAt       string          `json:"updatedAt"`
+}
+
+// V1AdminProductMutationRequest is the body for POST/PUT/PATCH /v1/admin/products.
+type V1AdminProductMutationRequest struct {
+	Sku             string          `json:"sku"`
+	Name            string          `json:"name"`
+	Description     string          `json:"description,omitempty"`
+	Attrs           json.RawMessage `json:"attrs,omitempty"`
+	Active          bool            `json:"active"`
+	CategoryID      *string         `json:"categoryId,omitempty"`
+	BrandID         *string         `json:"brandId,omitempty"`
+	Barcode         *string         `json:"barcode,omitempty"`
+	CountryOfOrigin *string         `json:"countryOfOrigin,omitempty"`
+	AgeRestricted   bool            `json:"ageRestricted"`
+	AllergenCodes   []string        `json:"allergenCodes,omitempty"`
+	NutritionalNote *string         `json:"nutritionalNote,omitempty"`
+}
+
+// V1AdminBrand is a brand row.
+type V1AdminBrand struct {
+	ID             string `json:"id"`
+	OrganizationID string `json:"organizationId"`
+	Slug           string `json:"slug"`
+	Name           string `json:"name"`
+	Active         bool   `json:"active"`
+	CreatedAt      string `json:"createdAt"`
+	UpdatedAt      string `json:"updatedAt"`
+}
+
+// V1AdminBrandListEnvelope is GET /v1/admin/brands.
+type V1AdminBrandListEnvelope struct {
+	Items []V1AdminBrand    `json:"items"`
+	Meta  V1AdminPageMeta `json:"meta"`
+}
+
+// V1AdminBrandMutationRequest is POST/PUT/PATCH /v1/admin/brands.
+type V1AdminBrandMutationRequest struct {
+	Slug   string `json:"slug"`
+	Name   string `json:"name"`
+	Active bool   `json:"active"`
+}
+
+// V1AdminCategory is a category row.
+type V1AdminCategory struct {
+	ID             string  `json:"id"`
+	OrganizationID string  `json:"organizationId"`
+	Slug           string  `json:"slug"`
+	Name           string  `json:"name"`
+	ParentID       *string `json:"parentId,omitempty"`
+	Active         bool    `json:"active"`
+	CreatedAt      string  `json:"createdAt"`
+	UpdatedAt      string  `json:"updatedAt"`
+}
+
+// V1AdminCategoryListEnvelope is GET /v1/admin/categories.
+type V1AdminCategoryListEnvelope struct {
+	Items []V1AdminCategory `json:"items"`
+	Meta  V1AdminPageMeta   `json:"meta"`
+}
+
+// V1AdminCategoryMutationRequest is POST/PUT/PATCH /v1/admin/categories.
+type V1AdminCategoryMutationRequest struct {
+	Slug     string  `json:"slug"`
+	Name     string  `json:"name"`
+	ParentID *string `json:"parentId,omitempty"`
+	Active   bool    `json:"active"`
+}
+
+// V1AdminTag is a tag row.
+type V1AdminTag struct {
+	ID             string `json:"id"`
+	OrganizationID string `json:"organizationId"`
+	Slug           string `json:"slug"`
+	Name           string `json:"name"`
+	Active         bool   `json:"active"`
+	CreatedAt      string `json:"createdAt"`
+	UpdatedAt      string `json:"updatedAt"`
+}
+
+// V1AdminTagListEnvelope is GET /v1/admin/tags.
+type V1AdminTagListEnvelope struct {
+	Items []V1AdminTag    `json:"items"`
+	Meta  V1AdminPageMeta `json:"meta"`
+}
+
+// V1AdminTagMutationRequest is POST/PUT/PATCH /v1/admin/tags.
+type V1AdminTagMutationRequest struct {
+	Slug   string `json:"slug"`
+	Name   string `json:"name"`
+	Active bool   `json:"active"`
+}
+
+// V1AdminProductImageBindRequest binds CDN image URLs to a product (primary image).
+type V1AdminProductImageBindRequest struct {
+	ArtifactID  string `json:"artifactId"`
+	ThumbURL    string `json:"thumbUrl"`
+	DisplayURL  string `json:"displayUrl"`
+	ContentHash string `json:"contentHash,omitempty"`
+	Width       int32  `json:"width,omitempty"`
+	Height      int32  `json:"height,omitempty"`
+	MimeType    string `json:"mimeType,omitempty"`
 }
 
 // V1AdminPriceBook is a row in GET /v1/admin/price-books.
@@ -715,4 +818,54 @@ type V1AdminOTAListItem struct {
 type V1AdminOTAListResponse struct {
 	Items []V1AdminOTAListItem `json:"items"`
 	Meta  V1CollectionListMeta `json:"meta"`
+}
+
+// V1CashDenominationExpectation is an optional breakdown hint (not hardware-sourced today).
+type V1CashDenominationExpectation struct {
+	DenominationMinor int64  `json:"denominationMinor"`
+	ExpectedCount     int64  `json:"expectedCount"`
+	Source            string `json:"source"` // e.g. bill_recycler, vault_model
+}
+
+// V1AdminMachineCashboxResponse is GET /v1/admin/machines/{machineId}/cashbox.
+type V1AdminMachineCashboxResponse struct {
+	MachineID                    string                          `json:"machineId"`
+	Currency                     string                          `json:"currency"`
+	ExpectedCashboxMinor         int64                           `json:"expectedCashboxMinor"` // legacy alias; same as ExpectedCloudCashMinor
+	ExpectedCloudCashMinor       int64                           `json:"expectedCloudCashMinor"`
+	ExpectedRecyclerMinor        int64                           `json:"expectedRecyclerMinor"`
+	LastCollectionAt             *string                         `json:"lastCollectionAt,omitempty"`
+	Denominations                []V1CashDenominationExpectation `json:"denominations"`
+	OpenCollectionID             *string                         `json:"openCollectionId,omitempty"`
+	VarianceReviewThresholdMinor int64                           `json:"varianceReviewThresholdMinor"`
+	Disclosure                   string                          `json:"disclosure"`
+}
+
+// V1AdminCashCollection is one cash collection session row (open or closed).
+type V1AdminCashCollection struct {
+	ID                   string  `json:"id"`
+	MachineID            string  `json:"machine_id"`
+	OrganizationID       string  `json:"organization_id"`
+	CollectedAt          string  `json:"collected_at"`
+	OpenedAt             string  `json:"opened_at"`
+	ClosedAt             *string `json:"closed_at,omitempty"`
+	LifecycleStatus      string  `json:"lifecycle_status"`
+	CountedAmountMinor   int64   `json:"counted_amount_minor"`
+	ExpectedAmountMinor  int64   `json:"expected_amount_minor"`
+	VarianceAmountMinor  int64   `json:"variance_amount_minor"`
+	CountedPhysicalCashMinor int64   `json:"countedPhysicalCashMinor"`
+	ExpectedCloudCashMinor   int64   `json:"expectedCloudCashMinor"`
+	VarianceMinor            int64   `json:"varianceMinor"`
+	ReviewState              string  `json:"reviewState"`
+	RequiresReview       bool    `json:"requires_review"`
+	CloseRequestHashHex  *string `json:"close_request_hash_hex,omitempty"`
+	Currency             string  `json:"currency"`
+	ReconciliationStatus string  `json:"reconciliation_status"`
+	Disclosure           string  `json:"disclosure"`
+}
+
+// V1AdminCashCollectionListResponse is GET /v1/admin/machines/{machineId}/cash-collections.
+type V1AdminCashCollectionListResponse struct {
+	Items []V1AdminCashCollection `json:"items"`
+	Meta  V1CollectionListMeta    `json:"meta"`
 }

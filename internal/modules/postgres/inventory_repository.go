@@ -87,7 +87,7 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		return inventoryapp.AdjustmentBatchResult{}, err
 	}
 	if m.OrganizationID != in.OrganizationID {
-		return inventoryapp.AdjustmentBatchResult{}, errOrganizationMachineMismatch
+		return inventoryapp.AdjustmentBatchResult{}, ErrMachineOrganizationMismatch
 	}
 
 	key := strings.TrimSpace(in.IdempotencyKey)

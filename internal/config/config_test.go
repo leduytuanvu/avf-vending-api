@@ -25,6 +25,9 @@ func TestLoad_Defaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !cfg.MetricsExposeOnPublicHTTP {
+		t.Fatal("development should default METRICS_EXPOSE_ON_PUBLIC_HTTP to true when unset")
+	}
 	if cfg.HTTP.Addr != ":0" {
 		t.Fatalf("unexpected addr: %q", cfg.HTTP.Addr)
 	}
@@ -284,6 +287,46 @@ func setMinimalProductionLoadEnv(t *testing.T) {
 	t.Setenv("NATS_URL", "nats://127.0.0.1:4222")
 	t.Setenv("APP_NODE_NAME", "prod-node-a")
 	t.Setenv("APP_INSTANCE_ID", "prod-node-a-api-1")
+}
+
+func TestLoad_MetricsExposeOnPublicInvalidRejected(t *testing.T) {
+	setMinimalProductionLoadEnv(t)
+	t.Setenv("METRICS_EXPOSE_ON_PUBLIC_HTTP", "maybe")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "METRICS_EXPOSE_ON_PUBLIC_HTTP") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoad_ProductionMetricsPublicRequiresScrapeToken(t *testing.T) {
+	setMinimalProductionLoadEnv(t)
+	t.Setenv("METRICS_ENABLED", "true")
+	t.Setenv("METRICS_EXPOSE_ON_PUBLIC_HTTP", "true")
+	_ = os.Unsetenv("METRICS_SCRAPE_TOKEN")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "METRICS_SCRAPE_TOKEN") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoad_ProductionMetricsPrivateDefaultNoTokenRequired(t *testing.T) {
+	setMinimalProductionLoadEnv(t)
+	t.Setenv("METRICS_ENABLED", "true")
+	_ = os.Unsetenv("METRICS_EXPOSE_ON_PUBLIC_HTTP")
+	_ = os.Unsetenv("METRICS_SCRAPE_TOKEN")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.MetricsExposeOnPublicHTTP {
+		t.Fatal("expected METRICS_EXPOSE_ON_PUBLIC_HTTP false by default in production")
+	}
 }
 
 func TestLoad_SwaggerUIEnabled_production(t *testing.T) {
@@ -719,6 +762,47 @@ func TestLoad_PaymentWebhookSecretAlias(t *testing.T) {
 	}
 }
 
+func TestLoad_PaymentWebhookAllowUnsignedRejectedInProduction(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("HTTP_AUTH_JWT_SECRET", "prod-secret")
+	t.Setenv("COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED", "true")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoad_PaymentWebhookVerificationUnsupported(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("COMMERCE_PAYMENT_WEBHOOK_VERIFICATION", "stripe")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "COMMERCE_PAYMENT_WEBHOOK_VERIFICATION") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoad_PaymentWebhookTimestampSkewOutOfRange(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("COMMERCE_PAYMENT_WEBHOOK_TIMESTAMP_SKEW_SECONDS", "10")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "TIMESTAMP_SKEW") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestLoad_SMTPConfig(t *testing.T) {
 	setMinimalValidLoadEnv(t)
 	t.Setenv("SMTP_HOST", "smtp.example.com")
@@ -770,6 +854,8 @@ func TestMain(m *testing.M) {
 		"READINESS_STRICT", "METRICS_ENABLED", "WORKER_METRICS_LISTEN", "RECONCILER_METRICS_LISTEN", "MQTT_INGEST_METRICS_LISTEN",
 		"MQTT_BROKER_URL", "MQTT_CLIENT_ID", "MQTT_CLIENT_ID_API", "MQTT_CLIENT_ID_INGEST", "MQTT_USERNAME", "MQTT_PASSWORD", "MQTT_TOPIC_PREFIX",
 		"PAYMENT_WEBHOOK_SECRET", "COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET",
+		"COMMERCE_PAYMENT_WEBHOOK_VERIFICATION", "COMMERCE_PAYMENT_WEBHOOK_TIMESTAMP_SKEW_SECONDS",
+		"COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED", "COMMERCE_PAYMENT_WEBHOOK_UNSAFE_ALLOW_UNSIGNED_PRODUCTION",
 		"SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD",
 		"OTEL_SERVICE_NAME", "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_INSECURE", "OTEL_SDK_DISABLED",
 		"HTTP_AUTH_MODE", "HTTP_AUTH_JWT_SECRET", "HTTP_AUTH_JWT_SECRET_PREVIOUS",

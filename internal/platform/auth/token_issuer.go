@@ -62,14 +62,17 @@ func (s *SessionIssuer) RefreshTokenTTL() time.Duration {
 }
 
 type sessionAccessClaims struct {
-	Sub      string   `json:"sub"`
-	Roles    []string `json:"roles"`
-	OrgID    string   `json:"org_id"`
-	Iss      string   `json:"iss,omitempty"`
-	Aud      string   `json:"aud,omitempty"`
-	Iat      int64    `json:"iat"`
-	Exp      int64    `json:"exp"`
-	TokenUse string   `json:"token_use,omitempty"`
+	Sub        string   `json:"sub"`
+	Roles      []string `json:"roles"`
+	OrgID      string   `json:"org_id,omitempty"`
+	SiteID     string   `json:"site_id,omitempty"`
+	MachineIDs []string `json:"machine_ids,omitempty"`
+	ActorType  string   `json:"actor_type,omitempty"`
+	Iss        string   `json:"iss,omitempty"`
+	Aud        string   `json:"aud,omitempty"`
+	Iat        int64    `json:"iat"`
+	Exp        int64    `json:"exp"`
+	TokenUse   string   `json:"token_use,omitempty"`
 }
 
 // IssueAccessJWT returns a signed HS256 JWT string for the given account subject and tenant claims.
@@ -91,6 +94,38 @@ func (s *SessionIssuer) IssueAccessJWT(accountID uuid.UUID, organizationID uuid.
 		Iat:      now.Unix(),
 		Exp:      expiresAt.Unix(),
 		TokenUse: "access",
+	}
+	raw, err := SignHS256JWT(s.secret, claims)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	return raw, expiresAt, nil
+}
+
+// IssueMachineAccessJWT issues a runtime JWT scoped to exactly one machine (kiosk / device bridge).
+func (s *SessionIssuer) IssueMachineAccessJWT(machineID, organizationID, siteID uuid.UUID) (token string, expiresAt time.Time, err error) {
+	if s == nil {
+		return "", time.Time{}, fmt.Errorf("auth: nil SessionIssuer")
+	}
+	if machineID == uuid.Nil || organizationID == uuid.Nil {
+		return "", time.Time{}, fmt.Errorf("auth: machine and organization ids are required")
+	}
+	now := time.Now().UTC()
+	expiresAt = now.Add(s.accessTokenTTL)
+	claims := sessionAccessClaims{
+		Sub:        machineID.String(),
+		Roles:      []string{RoleMachine},
+		OrgID:      organizationID.String(),
+		ActorType:  ActorTypeService,
+		MachineIDs: []string{machineID.String()},
+		Iss:        s.issuer,
+		Aud:        s.audience,
+		Iat:        now.Unix(),
+		Exp:        expiresAt.Unix(),
+		TokenUse:   "access",
+	}
+	if siteID != uuid.Nil {
+		claims.SiteID = siteID.String()
 	}
 	raw, err := SignHS256JWT(s.secret, claims)
 	if err != nil {

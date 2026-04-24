@@ -2,6 +2,7 @@ package commerce
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
@@ -43,6 +44,26 @@ func (s *stubLifecycleForWorkflow) GetPaymentByID(context.Context, uuid.UUID) (d
 
 func (s *stubLifecycleForWorkflow) InsertPaymentAttempt(context.Context, InsertPaymentAttemptParams) (PaymentAttemptView, error) {
 	return PaymentAttemptView{}, nil
+}
+
+func (s *stubLifecycleForWorkflow) InsertRefundRow(context.Context, InsertRefundRowInput) (RefundRowView, error) {
+	return RefundRowView{}, errors.New("not implemented")
+}
+
+func (s *stubLifecycleForWorkflow) ListRefundsForOrder(context.Context, uuid.UUID) ([]RefundRowView, error) {
+	return nil, nil
+}
+
+func (s *stubLifecycleForWorkflow) GetRefundByIDForOrder(context.Context, uuid.UUID, uuid.UUID) (RefundRowView, error) {
+	return RefundRowView{}, ErrNotFound
+}
+
+func (s *stubLifecycleForWorkflow) GetRefundByOrderIdempotency(context.Context, uuid.UUID, string) (RefundRowView, error) {
+	return RefundRowView{}, ErrNotFound
+}
+
+func (s *stubLifecycleForWorkflow) SumNonFailedRefundAmountForPayment(context.Context, uuid.UUID) (int64, error) {
+	return 0, nil
 }
 
 type stubOrderVendWorkflow struct{}

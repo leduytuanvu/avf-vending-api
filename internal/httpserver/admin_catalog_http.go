@@ -15,13 +15,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication) {
+func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
 	if app == nil || app.CatalogAdmin == nil {
 		return
+	}
+	if writeRL == nil {
+		writeRL = func(h http.Handler) http.Handler { return h }
 	}
 	svc := app.CatalogAdmin
 	r.Get("/products", listAdminProducts(svc))
 	r.Get("/products/{productId}", getAdminProduct(svc))
+	r.With(writeRL).Post("/products", postAdminProductCreate(svc))
+	r.With(writeRL).Put("/products/{productId}", putAdminProductUpdate(svc))
+	r.With(writeRL).Patch("/products/{productId}", putAdminProductUpdate(svc))
+	r.With(writeRL).Delete("/products/{productId}", deleteAdminProduct(svc))
+	r.With(writeRL).Put("/products/{productId}/image", putAdminProductImage(svc))
+	r.With(writeRL).Delete("/products/{productId}/image", deleteAdminProductImage(svc))
+
+	r.Get("/brands", listAdminBrands(svc))
+	r.Get("/categories", listAdminCategories(svc))
+	r.Get("/tags", listAdminTags(svc))
+	r.With(writeRL).Post("/brands", postAdminBrandCreate(svc))
+	r.With(writeRL).Put("/brands/{brandId}", putAdminBrandUpdate(svc))
+	r.With(writeRL).Patch("/brands/{brandId}", putAdminBrandUpdate(svc))
+	r.With(writeRL).Delete("/brands/{brandId}", deleteAdminBrand(svc))
+	r.With(writeRL).Post("/categories", postAdminCategoryCreate(svc))
+	r.With(writeRL).Put("/categories/{categoryId}", putAdminCategoryUpdate(svc))
+	r.With(writeRL).Patch("/categories/{categoryId}", putAdminCategoryUpdate(svc))
+	r.With(writeRL).Delete("/categories/{categoryId}", deleteAdminCategory(svc))
+	r.With(writeRL).Post("/tags", postAdminTagCreate(svc))
+	r.With(writeRL).Put("/tags/{tagId}", putAdminTagUpdate(svc))
+	r.With(writeRL).Patch("/tags/{tagId}", putAdminTagUpdate(svc))
+	r.With(writeRL).Delete("/tags/{tagId}", deleteAdminTag(svc))
+
 	r.Get("/price-books", listAdminPriceBooks(svc))
 	r.Get("/planograms", listAdminPlanograms(svc))
 	r.Get("/planograms/{planogramId}", getAdminPlanogram(svc))
@@ -59,6 +85,7 @@ func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
 				ID:             row.ID.String(),
 				OrganizationID: row.OrganizationID.String(),
 				Sku:            row.Sku,
+				Barcode:        textFromPgText(row.Barcode),
 				Name:           row.Name,
 				Description:    row.Description,
 				Active:         row.Active,
@@ -217,6 +244,158 @@ func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 	}
 }
 
+func listAdminBrands(svc *appcatalogadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := adminCatalogOrganizationID(r)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
+			return
+		}
+		limit, offset, err := parseAdminLimitOffset(r)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", err.Error())
+			return
+		}
+		rows, total, err := svc.ListBrands(r.Context(), appcatalogadmin.ListBrandsParams{
+			OrganizationID: orgID,
+			Limit:          limit,
+			Offset:         offset,
+		})
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		items := make([]V1AdminBrand, 0, len(rows))
+		for _, b := range rows {
+			items = append(items, mapAdminBrand(b))
+		}
+		writeJSON(w, http.StatusOK, V1AdminBrandListEnvelope{
+			Items: items,
+			Meta: V1AdminPageMeta{
+				Limit:      limit,
+				Offset:     offset,
+				Returned:   len(items),
+				TotalCount: total,
+			},
+		})
+	}
+}
+
+func listAdminCategories(svc *appcatalogadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := adminCatalogOrganizationID(r)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
+			return
+		}
+		limit, offset, err := parseAdminLimitOffset(r)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", err.Error())
+			return
+		}
+		rows, total, err := svc.ListCategories(r.Context(), appcatalogadmin.ListCategoriesParams{
+			OrganizationID: orgID,
+			Limit:          limit,
+			Offset:         offset,
+		})
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		items := make([]V1AdminCategory, 0, len(rows))
+		for _, c := range rows {
+			items = append(items, mapAdminCategory(c))
+		}
+		writeJSON(w, http.StatusOK, V1AdminCategoryListEnvelope{
+			Items: items,
+			Meta: V1AdminPageMeta{
+				Limit:      limit,
+				Offset:     offset,
+				Returned:   len(items),
+				TotalCount: total,
+			},
+		})
+	}
+}
+
+func listAdminTags(svc *appcatalogadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := adminCatalogOrganizationID(r)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
+			return
+		}
+		limit, offset, err := parseAdminLimitOffset(r)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", err.Error())
+			return
+		}
+		rows, total, err := svc.ListTags(r.Context(), appcatalogadmin.ListTagsParams{
+			OrganizationID: orgID,
+			Limit:          limit,
+			Offset:         offset,
+		})
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		items := make([]V1AdminTag, 0, len(rows))
+		for _, t := range rows {
+			items = append(items, mapAdminTag(t))
+		}
+		writeJSON(w, http.StatusOK, V1AdminTagListEnvelope{
+			Items: items,
+			Meta: V1AdminPageMeta{
+				Limit:      limit,
+				Offset:     offset,
+				Returned:   len(items),
+				TotalCount: total,
+			},
+		})
+	}
+}
+
+func mapAdminBrand(b db.Brand) V1AdminBrand {
+	return V1AdminBrand{
+		ID:             b.ID.String(),
+		OrganizationID: b.OrganizationID.String(),
+		Slug:           b.Slug,
+		Name:           b.Name,
+		Active:         b.Active,
+		CreatedAt:      formatAPITimeRFC3339Nano(b.CreatedAt),
+		UpdatedAt:      formatAPITimeRFC3339Nano(b.UpdatedAt),
+	}
+}
+
+func mapAdminCategory(c db.Category) V1AdminCategory {
+	out := V1AdminCategory{
+		ID:             c.ID.String(),
+		OrganizationID: c.OrganizationID.String(),
+		Slug:           c.Slug,
+		Name:           c.Name,
+		Active:         c.Active,
+		CreatedAt:      formatAPITimeRFC3339Nano(c.CreatedAt),
+		UpdatedAt:      formatAPITimeRFC3339Nano(c.UpdatedAt),
+	}
+	if c.ParentID.Valid {
+		s := uuid.UUID(c.ParentID.Bytes).String()
+		out.ParentID = &s
+	}
+	return out
+}
+
+func mapAdminTag(t db.Tag) V1AdminTag {
+	return V1AdminTag{
+		ID:             t.ID.String(),
+		OrganizationID: t.OrganizationID.String(),
+		Slug:           t.Slug,
+		Name:           t.Name,
+		Active:         t.Active,
+		CreatedAt:      formatAPITimeRFC3339Nano(t.CreatedAt),
+		UpdatedAt:      formatAPITimeRFC3339Nano(t.UpdatedAt),
+	}
+}
+
 func uuidPtrFromPgUUID(u pgtype.UUID) *string {
 	if !u.Valid {
 		return nil
@@ -238,6 +417,7 @@ func mapAdminProduct(p db.Product) V1AdminProduct {
 		ID:              p.ID.String(),
 		OrganizationID:  p.OrganizationID.String(),
 		Sku:             p.Sku,
+		Barcode:         textFromPgText(p.Barcode),
 		Name:            p.Name,
 		Description:     p.Description,
 		Active:          p.Active,

@@ -13,23 +13,391 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const InsertCashCollection = `-- name: InsertCashCollection :one
-INSERT INTO cash_collections (
-    organization_id,
-    machine_id,
-    collected_at,
-    amount_minor,
-    currency,
-    metadata,
-    operator_session_id
+const CashSettlementLastClosedAt = `-- name: CashSettlementLastClosedAt :one
+SELECT
+    coalesce(max(closed_at), 'epoch'::timestamptz)::timestamptz AS last_closed_at
+FROM cash_collections
+WHERE
+    machine_id = $1
+    AND organization_id = $2
+    AND lifecycle_status = 'closed'
+`
+
+type CashSettlementLastClosedAtParams struct {
+	MachineID      uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) CashSettlementLastClosedAt(ctx context.Context, arg CashSettlementLastClosedAtParams) (time.Time, error) {
+	row := q.db.QueryRow(ctx, CashSettlementLastClosedAt, arg.MachineID, arg.OrganizationID)
+	var last_closed_at time.Time
+	err := row.Scan(&last_closed_at)
+	return last_closed_at, err
+}
+
+const CashSettlementNetExpectedMinor = `-- name: CashSettlementNetExpectedMinor :one
+WITH lc AS (
+    SELECT
+        max(closed_at) AS t
+    FROM cash_collections
+    WHERE
+        machine_id = $1
+        AND organization_id = $2
+        AND lifecycle_status = 'closed'
+        AND closed_at IS NOT NULL
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+SELECT
+    (
+        COALESCE(
+            (
+                SELECT
+                    sum(p.amount_minor)
+                FROM payments p
+                INNER JOIN orders o ON o.id = p.order_id
+                WHERE
+                    o.machine_id = $1
+                    AND o.organization_id = $2
+                    AND p.provider = 'cash'
+                    AND p.state = 'captured'
+                    AND p.currency = $3
+                    AND p.updated_at > COALESCE((SELECT t FROM lc), '-infinity'::timestamptz)
+            ),
+            0::bigint
+        ) - COALESCE(
+            (
+                SELECT
+                    sum(r.amount_minor)
+                FROM refunds r
+                INNER JOIN orders o ON o.id = r.order_id
+                WHERE
+                    o.machine_id = $1
+                    AND o.organization_id = $2
+                    AND o.currency = $3
+                    AND r.state = 'completed'
+                    AND r.created_at > COALESCE((SELECT t FROM lc), '-infinity'::timestamptz)
+            ),
+            0::bigint
+        )
+    )::bigint AS net_minor
+`
+
+type CashSettlementNetExpectedMinorParams struct {
+	MachineID      uuid.UUID
+	OrganizationID uuid.UUID
+	Currency       string
+}
+
+func (q *Queries) CashSettlementNetExpectedMinor(ctx context.Context, arg CashSettlementNetExpectedMinorParams) (int64, error) {
+	row := q.db.QueryRow(ctx, CashSettlementNetExpectedMinor, arg.MachineID, arg.OrganizationID, arg.Currency)
+	var net_minor int64
+	err := row.Scan(&net_minor)
+	return net_minor, err
+}
+
+const CloseCashCollection = `-- name: CloseCashCollection :one
+UPDATE cash_collections
+SET
+    lifecycle_status = 'closed',
+    closed_at = now(),
+    amount_minor = $4,
+    expected_amount_minor = $5,
+    variance_amount_minor = $6,
+    requires_review = $7,
+    close_request_hash = $8,
+    reconciliation_status = $9,
+    metadata = $10
+WHERE
+    id = $1
+    AND organization_id = $2
+    AND machine_id = $3
+    AND lifecycle_status = 'open'
 RETURNING
     id,
     organization_id,
     machine_id,
     collected_at,
+    opened_at,
+    closed_at,
+    lifecycle_status,
     amount_minor,
+    expected_amount_minor,
+    variance_amount_minor,
+    requires_review,
+    close_request_hash,
+    currency,
+    metadata,
+    reconciliation_status,
+    reconciled_by,
+    reconciled_at,
+    created_at,
+    operator_session_id
+`
+
+type CloseCashCollectionParams struct {
+	ID                   uuid.UUID
+	OrganizationID       uuid.UUID
+	MachineID            uuid.UUID
+	AmountMinor          int64
+	ExpectedAmountMinor  int64
+	VarianceAmountMinor  int64
+	RequiresReview       bool
+	CloseRequestHash     []byte
+	ReconciliationStatus string
+	Metadata             []byte
+}
+
+func (q *Queries) CloseCashCollection(ctx context.Context, arg CloseCashCollectionParams) (CashCollection, error) {
+	row := q.db.QueryRow(ctx, CloseCashCollection,
+		arg.ID,
+		arg.OrganizationID,
+		arg.MachineID,
+		arg.AmountMinor,
+		arg.ExpectedAmountMinor,
+		arg.VarianceAmountMinor,
+		arg.RequiresReview,
+		arg.CloseRequestHash,
+		arg.ReconciliationStatus,
+		arg.Metadata,
+	)
+	var i CashCollection
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.MachineID,
+		&i.CollectedAt,
+		&i.OpenedAt,
+		&i.ClosedAt,
+		&i.LifecycleStatus,
+		&i.AmountMinor,
+		&i.ExpectedAmountMinor,
+		&i.VarianceAmountMinor,
+		&i.RequiresReview,
+		&i.CloseRequestHash,
+		&i.Currency,
+		&i.Metadata,
+		&i.ReconciliationStatus,
+		&i.ReconciledBy,
+		&i.ReconciledAt,
+		&i.CreatedAt,
+		&i.OperatorSessionID,
+	)
+	return i, err
+}
+
+const FindCashCollectionOpenByStartIdempotencyKey = `-- name: FindCashCollectionOpenByStartIdempotencyKey :one
+SELECT
+    id,
+    organization_id,
+    machine_id,
+    collected_at,
+    opened_at,
+    closed_at,
+    lifecycle_status,
+    amount_minor,
+    expected_amount_minor,
+    variance_amount_minor,
+    requires_review,
+    close_request_hash,
+    currency,
+    metadata,
+    reconciliation_status,
+    reconciled_by,
+    reconciled_at,
+    created_at,
+    operator_session_id
+FROM cash_collections
+WHERE
+    metadata ->> 'start_idempotency_key' = $1::text
+    AND machine_id = $2
+    AND organization_id = $3
+    AND lifecycle_status = 'open'
+`
+
+type FindCashCollectionOpenByStartIdempotencyKeyParams struct {
+	Column1        string
+	MachineID      uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) FindCashCollectionOpenByStartIdempotencyKey(ctx context.Context, arg FindCashCollectionOpenByStartIdempotencyKeyParams) (CashCollection, error) {
+	row := q.db.QueryRow(ctx, FindCashCollectionOpenByStartIdempotencyKey, arg.Column1, arg.MachineID, arg.OrganizationID)
+	var i CashCollection
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.MachineID,
+		&i.CollectedAt,
+		&i.OpenedAt,
+		&i.ClosedAt,
+		&i.LifecycleStatus,
+		&i.AmountMinor,
+		&i.ExpectedAmountMinor,
+		&i.VarianceAmountMinor,
+		&i.RequiresReview,
+		&i.CloseRequestHash,
+		&i.Currency,
+		&i.Metadata,
+		&i.ReconciliationStatus,
+		&i.ReconciledBy,
+		&i.ReconciledAt,
+		&i.CreatedAt,
+		&i.OperatorSessionID,
+	)
+	return i, err
+}
+
+const GetCashCollectionByIDForOrgMachine = `-- name: GetCashCollectionByIDForOrgMachine :one
+SELECT
+    id,
+    organization_id,
+    machine_id,
+    collected_at,
+    opened_at,
+    closed_at,
+    lifecycle_status,
+    amount_minor,
+    expected_amount_minor,
+    variance_amount_minor,
+    requires_review,
+    close_request_hash,
+    currency,
+    metadata,
+    reconciliation_status,
+    reconciled_by,
+    reconciled_at,
+    created_at,
+    operator_session_id
+FROM cash_collections
+WHERE
+    id = $1
+    AND organization_id = $2
+    AND machine_id = $3
+`
+
+type GetCashCollectionByIDForOrgMachineParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+}
+
+func (q *Queries) GetCashCollectionByIDForOrgMachine(ctx context.Context, arg GetCashCollectionByIDForOrgMachineParams) (CashCollection, error) {
+	row := q.db.QueryRow(ctx, GetCashCollectionByIDForOrgMachine, arg.ID, arg.OrganizationID, arg.MachineID)
+	var i CashCollection
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.MachineID,
+		&i.CollectedAt,
+		&i.OpenedAt,
+		&i.ClosedAt,
+		&i.LifecycleStatus,
+		&i.AmountMinor,
+		&i.ExpectedAmountMinor,
+		&i.VarianceAmountMinor,
+		&i.RequiresReview,
+		&i.CloseRequestHash,
+		&i.Currency,
+		&i.Metadata,
+		&i.ReconciliationStatus,
+		&i.ReconciledBy,
+		&i.ReconciledAt,
+		&i.CreatedAt,
+		&i.OperatorSessionID,
+	)
+	return i, err
+}
+
+const GetOpenCashCollectionByMachine = `-- name: GetOpenCashCollectionByMachine :one
+SELECT
+    id,
+    organization_id,
+    machine_id,
+    collected_at,
+    opened_at,
+    closed_at,
+    lifecycle_status,
+    amount_minor,
+    expected_amount_minor,
+    variance_amount_minor,
+    requires_review,
+    close_request_hash,
+    currency,
+    metadata,
+    reconciliation_status,
+    reconciled_by,
+    reconciled_at,
+    created_at,
+    operator_session_id
+FROM cash_collections
+WHERE
+    machine_id = $1
+    AND organization_id = $2
+    AND lifecycle_status = 'open'
+`
+
+type GetOpenCashCollectionByMachineParams struct {
+	MachineID      uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) GetOpenCashCollectionByMachine(ctx context.Context, arg GetOpenCashCollectionByMachineParams) (CashCollection, error) {
+	row := q.db.QueryRow(ctx, GetOpenCashCollectionByMachine, arg.MachineID, arg.OrganizationID)
+	var i CashCollection
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.MachineID,
+		&i.CollectedAt,
+		&i.OpenedAt,
+		&i.ClosedAt,
+		&i.LifecycleStatus,
+		&i.AmountMinor,
+		&i.ExpectedAmountMinor,
+		&i.VarianceAmountMinor,
+		&i.RequiresReview,
+		&i.CloseRequestHash,
+		&i.Currency,
+		&i.Metadata,
+		&i.ReconciliationStatus,
+		&i.ReconciledBy,
+		&i.ReconciledAt,
+		&i.CreatedAt,
+		&i.OperatorSessionID,
+	)
+	return i, err
+}
+
+const InsertCashCollection = `-- name: InsertCashCollection :one
+INSERT INTO cash_collections (
+    organization_id,
+    machine_id,
+    collected_at,
+    opened_at,
+    closed_at,
+    lifecycle_status,
+    amount_minor,
+    expected_amount_minor,
+    variance_amount_minor,
+    requires_review,
+    close_request_hash,
+    currency,
+    metadata,
+    operator_session_id
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING
+    id,
+    organization_id,
+    machine_id,
+    collected_at,
+    opened_at,
+    closed_at,
+    lifecycle_status,
+    amount_minor,
+    expected_amount_minor,
+    variance_amount_minor,
+    requires_review,
+    close_request_hash,
     currency,
     metadata,
     reconciliation_status,
@@ -40,13 +408,20 @@ RETURNING
 `
 
 type InsertCashCollectionParams struct {
-	OrganizationID    uuid.UUID
-	MachineID         uuid.UUID
-	CollectedAt       time.Time
-	AmountMinor       int64
-	Currency          string
-	Metadata          []byte
-	OperatorSessionID pgtype.UUID
+	OrganizationID      uuid.UUID
+	MachineID           uuid.UUID
+	CollectedAt         time.Time
+	OpenedAt            time.Time
+	ClosedAt            pgtype.Timestamptz
+	LifecycleStatus     string
+	AmountMinor         int64
+	ExpectedAmountMinor int64
+	VarianceAmountMinor int64
+	RequiresReview      bool
+	CloseRequestHash    []byte
+	Currency            string
+	Metadata            []byte
+	OperatorSessionID   pgtype.UUID
 }
 
 func (q *Queries) InsertCashCollection(ctx context.Context, arg InsertCashCollectionParams) (CashCollection, error) {
@@ -54,7 +429,14 @@ func (q *Queries) InsertCashCollection(ctx context.Context, arg InsertCashCollec
 		arg.OrganizationID,
 		arg.MachineID,
 		arg.CollectedAt,
+		arg.OpenedAt,
+		arg.ClosedAt,
+		arg.LifecycleStatus,
 		arg.AmountMinor,
+		arg.ExpectedAmountMinor,
+		arg.VarianceAmountMinor,
+		arg.RequiresReview,
+		arg.CloseRequestHash,
 		arg.Currency,
 		arg.Metadata,
 		arg.OperatorSessionID,
@@ -65,7 +447,14 @@ func (q *Queries) InsertCashCollection(ctx context.Context, arg InsertCashCollec
 		&i.OrganizationID,
 		&i.MachineID,
 		&i.CollectedAt,
+		&i.OpenedAt,
+		&i.ClosedAt,
+		&i.LifecycleStatus,
 		&i.AmountMinor,
+		&i.ExpectedAmountMinor,
+		&i.VarianceAmountMinor,
+		&i.RequiresReview,
+		&i.CloseRequestHash,
 		&i.Currency,
 		&i.Metadata,
 		&i.ReconciliationStatus,
@@ -75,4 +464,146 @@ func (q *Queries) InsertCashCollection(ctx context.Context, arg InsertCashCollec
 		&i.OperatorSessionID,
 	)
 	return i, err
+}
+
+const InsertCashReconciliation = `-- name: InsertCashReconciliation :one
+INSERT INTO cash_reconciliations (
+    machine_id,
+    cash_collection_id,
+    expected_amount_minor,
+    counted_amount_minor,
+    variance_amount_minor,
+    reconciled_at,
+    status,
+    metadata
+)
+VALUES ($1, $2, $3, $4, $5, now(), $6, $7)
+RETURNING
+    id,
+    machine_id,
+    cash_session_id,
+    cash_collection_id,
+    expected_amount_minor,
+    counted_amount_minor,
+    variance_amount_minor,
+    reconciled_at,
+    status,
+    metadata
+`
+
+type InsertCashReconciliationParams struct {
+	MachineID           uuid.UUID
+	CashCollectionID    pgtype.UUID
+	ExpectedAmountMinor int64
+	CountedAmountMinor  int64
+	VarianceAmountMinor int64
+	Status              string
+	Metadata            []byte
+}
+
+func (q *Queries) InsertCashReconciliation(ctx context.Context, arg InsertCashReconciliationParams) (CashReconciliation, error) {
+	row := q.db.QueryRow(ctx, InsertCashReconciliation,
+		arg.MachineID,
+		arg.CashCollectionID,
+		arg.ExpectedAmountMinor,
+		arg.CountedAmountMinor,
+		arg.VarianceAmountMinor,
+		arg.Status,
+		arg.Metadata,
+	)
+	var i CashReconciliation
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.CashSessionID,
+		&i.CashCollectionID,
+		&i.ExpectedAmountMinor,
+		&i.CountedAmountMinor,
+		&i.VarianceAmountMinor,
+		&i.ReconciledAt,
+		&i.Status,
+		&i.Metadata,
+	)
+	return i, err
+}
+
+const ListCashCollectionsForMachine = `-- name: ListCashCollectionsForMachine :many
+SELECT
+    id,
+    organization_id,
+    machine_id,
+    collected_at,
+    opened_at,
+    closed_at,
+    lifecycle_status,
+    amount_minor,
+    expected_amount_minor,
+    variance_amount_minor,
+    requires_review,
+    close_request_hash,
+    currency,
+    metadata,
+    reconciliation_status,
+    reconciled_by,
+    reconciled_at,
+    created_at,
+    operator_session_id
+FROM cash_collections
+WHERE
+    machine_id = $1
+    AND organization_id = $2
+ORDER BY collected_at DESC
+LIMIT $3 OFFSET $4
+`
+
+type ListCashCollectionsForMachineParams struct {
+	MachineID      uuid.UUID
+	OrganizationID uuid.UUID
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) ListCashCollectionsForMachine(ctx context.Context, arg ListCashCollectionsForMachineParams) ([]CashCollection, error) {
+	rows, err := q.db.Query(ctx, ListCashCollectionsForMachine,
+		arg.MachineID,
+		arg.OrganizationID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CashCollection{}
+	for rows.Next() {
+		var i CashCollection
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.MachineID,
+			&i.CollectedAt,
+			&i.OpenedAt,
+			&i.ClosedAt,
+			&i.LifecycleStatus,
+			&i.AmountMinor,
+			&i.ExpectedAmountMinor,
+			&i.VarianceAmountMinor,
+			&i.RequiresReview,
+			&i.CloseRequestHash,
+			&i.Currency,
+			&i.Metadata,
+			&i.ReconciliationStatus,
+			&i.ReconciledBy,
+			&i.ReconciledAt,
+			&i.CreatedAt,
+			&i.OperatorSessionID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

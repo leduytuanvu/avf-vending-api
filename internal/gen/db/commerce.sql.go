@@ -303,6 +303,7 @@ SELECT
     payment_id,
     provider,
     provider_ref,
+    webhook_event_id,
     provider_amount_minor,
     currency,
     event_type,
@@ -327,11 +328,163 @@ func (q *Queries) GetPaymentProviderEventByProviderRef(ctx context.Context, arg 
 		&i.PaymentID,
 		&i.Provider,
 		&i.ProviderRef,
+		&i.WebhookEventID,
 		&i.ProviderAmountMinor,
 		&i.Currency,
 		&i.EventType,
 		&i.Payload,
 		&i.ReceivedAt,
+	)
+	return i, err
+}
+
+const GetPaymentProviderEventByWebhookEventID = `-- name: GetPaymentProviderEventByWebhookEventID :one
+SELECT
+    id,
+    payment_id,
+    provider,
+    provider_ref,
+    webhook_event_id,
+    provider_amount_minor,
+    currency,
+    event_type,
+    payload,
+    received_at
+FROM payment_provider_events
+WHERE
+    provider = $1
+    AND webhook_event_id = $2
+`
+
+type GetPaymentProviderEventByWebhookEventIDParams struct {
+	Provider       string
+	WebhookEventID pgtype.Text
+}
+
+func (q *Queries) GetPaymentProviderEventByWebhookEventID(ctx context.Context, arg GetPaymentProviderEventByWebhookEventIDParams) (PaymentProviderEvent, error) {
+	row := q.db.QueryRow(ctx, GetPaymentProviderEventByWebhookEventID, arg.Provider, arg.WebhookEventID)
+	var i PaymentProviderEvent
+	err := row.Scan(
+		&i.ID,
+		&i.PaymentID,
+		&i.Provider,
+		&i.ProviderRef,
+		&i.WebhookEventID,
+		&i.ProviderAmountMinor,
+		&i.Currency,
+		&i.EventType,
+		&i.Payload,
+		&i.ReceivedAt,
+	)
+	return i, err
+}
+
+const GetRefundByIDForOrder = `-- name: GetRefundByIDForOrder :one
+SELECT
+    id,
+    payment_id,
+    order_id,
+    amount_minor,
+    currency,
+    state,
+    reason,
+    idempotency_key,
+    metadata,
+    created_at
+FROM
+    refunds
+WHERE
+    id = $1
+    AND order_id = $2
+`
+
+type GetRefundByIDForOrderParams struct {
+	ID      uuid.UUID
+	OrderID uuid.UUID
+}
+
+type GetRefundByIDForOrderRow struct {
+	ID             uuid.UUID
+	PaymentID      uuid.UUID
+	OrderID        uuid.UUID
+	AmountMinor    int64
+	Currency       string
+	State          string
+	Reason         pgtype.Text
+	IdempotencyKey pgtype.Text
+	Metadata       []byte
+	CreatedAt      time.Time
+}
+
+func (q *Queries) GetRefundByIDForOrder(ctx context.Context, arg GetRefundByIDForOrderParams) (GetRefundByIDForOrderRow, error) {
+	row := q.db.QueryRow(ctx, GetRefundByIDForOrder, arg.ID, arg.OrderID)
+	var i GetRefundByIDForOrderRow
+	err := row.Scan(
+		&i.ID,
+		&i.PaymentID,
+		&i.OrderID,
+		&i.AmountMinor,
+		&i.Currency,
+		&i.State,
+		&i.Reason,
+		&i.IdempotencyKey,
+		&i.Metadata,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const GetRefundByOrderIdempotency = `-- name: GetRefundByOrderIdempotency :one
+SELECT
+    id,
+    payment_id,
+    order_id,
+    amount_minor,
+    currency,
+    state,
+    reason,
+    idempotency_key,
+    metadata,
+    created_at
+FROM
+    refunds
+WHERE
+    order_id = $1
+    AND idempotency_key = $2
+`
+
+type GetRefundByOrderIdempotencyParams struct {
+	OrderID        uuid.UUID
+	IdempotencyKey pgtype.Text
+}
+
+type GetRefundByOrderIdempotencyRow struct {
+	ID             uuid.UUID
+	PaymentID      uuid.UUID
+	OrderID        uuid.UUID
+	AmountMinor    int64
+	Currency       string
+	State          string
+	Reason         pgtype.Text
+	IdempotencyKey pgtype.Text
+	Metadata       []byte
+	CreatedAt      time.Time
+}
+
+func (q *Queries) GetRefundByOrderIdempotency(ctx context.Context, arg GetRefundByOrderIdempotencyParams) (GetRefundByOrderIdempotencyRow, error) {
+	row := q.db.QueryRow(ctx, GetRefundByOrderIdempotency, arg.OrderID, arg.IdempotencyKey)
+	var i GetRefundByOrderIdempotencyRow
+	err := row.Scan(
+		&i.ID,
+		&i.PaymentID,
+		&i.OrderID,
+		&i.AmountMinor,
+		&i.Currency,
+		&i.State,
+		&i.Reason,
+		&i.IdempotencyKey,
+		&i.Metadata,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -548,6 +701,7 @@ INSERT INTO payment_provider_events (
     payment_id,
     provider,
     provider_ref,
+    webhook_event_id,
     provider_amount_minor,
     currency,
     event_type,
@@ -559,13 +713,15 @@ INSERT INTO payment_provider_events (
     $4,
     $5,
     $6,
-    $7
+    $7,
+    $8
 )
 RETURNING
     id,
     payment_id,
     provider,
     provider_ref,
+    webhook_event_id,
     provider_amount_minor,
     currency,
     event_type,
@@ -577,6 +733,7 @@ type InsertPaymentProviderEventParams struct {
 	PaymentID           pgtype.UUID
 	Provider            string
 	ProviderRef         pgtype.Text
+	WebhookEventID      pgtype.Text
 	ProviderAmountMinor pgtype.Int8
 	Currency            pgtype.Text
 	EventType           string
@@ -588,6 +745,7 @@ func (q *Queries) InsertPaymentProviderEvent(ctx context.Context, arg InsertPaym
 		arg.PaymentID,
 		arg.Provider,
 		arg.ProviderRef,
+		arg.WebhookEventID,
 		arg.ProviderAmountMinor,
 		arg.Currency,
 		arg.EventType,
@@ -599,11 +757,96 @@ func (q *Queries) InsertPaymentProviderEvent(ctx context.Context, arg InsertPaym
 		&i.PaymentID,
 		&i.Provider,
 		&i.ProviderRef,
+		&i.WebhookEventID,
 		&i.ProviderAmountMinor,
 		&i.Currency,
 		&i.EventType,
 		&i.Payload,
 		&i.ReceivedAt,
+	)
+	return i, err
+}
+
+const InsertRefundRow = `-- name: InsertRefundRow :one
+INSERT INTO refunds (
+    payment_id,
+    order_id,
+    amount_minor,
+    currency,
+    state,
+    reason,
+    idempotency_key,
+    metadata
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8
+)
+RETURNING
+    id,
+    payment_id,
+    order_id,
+    amount_minor,
+    currency,
+    state,
+    reason,
+    idempotency_key,
+    metadata,
+    created_at
+`
+
+type InsertRefundRowParams struct {
+	PaymentID      uuid.UUID
+	OrderID        uuid.UUID
+	AmountMinor    int64
+	Currency       string
+	State          string
+	Reason         pgtype.Text
+	IdempotencyKey pgtype.Text
+	Metadata       []byte
+}
+
+type InsertRefundRowRow struct {
+	ID             uuid.UUID
+	PaymentID      uuid.UUID
+	OrderID        uuid.UUID
+	AmountMinor    int64
+	Currency       string
+	State          string
+	Reason         pgtype.Text
+	IdempotencyKey pgtype.Text
+	Metadata       []byte
+	CreatedAt      time.Time
+}
+
+func (q *Queries) InsertRefundRow(ctx context.Context, arg InsertRefundRowParams) (InsertRefundRowRow, error) {
+	row := q.db.QueryRow(ctx, InsertRefundRow,
+		arg.PaymentID,
+		arg.OrderID,
+		arg.AmountMinor,
+		arg.Currency,
+		arg.State,
+		arg.Reason,
+		arg.IdempotencyKey,
+		arg.Metadata,
+	)
+	var i InsertRefundRowRow
+	err := row.Scan(
+		&i.ID,
+		&i.PaymentID,
+		&i.OrderID,
+		&i.AmountMinor,
+		&i.Currency,
+		&i.State,
+		&i.Reason,
+		&i.IdempotencyKey,
+		&i.Metadata,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -921,6 +1164,70 @@ func (q *Queries) ListPotentialDuplicatePayments(ctx context.Context, arg ListPo
 	return items, nil
 }
 
+const ListRefundsForOrder = `-- name: ListRefundsForOrder :many
+SELECT
+    id,
+    payment_id,
+    order_id,
+    amount_minor,
+    currency,
+    state,
+    reason,
+    idempotency_key,
+    metadata,
+    created_at
+FROM
+    refunds
+WHERE
+    order_id = $1
+ORDER BY
+    created_at ASC
+`
+
+type ListRefundsForOrderRow struct {
+	ID             uuid.UUID
+	PaymentID      uuid.UUID
+	OrderID        uuid.UUID
+	AmountMinor    int64
+	Currency       string
+	State          string
+	Reason         pgtype.Text
+	IdempotencyKey pgtype.Text
+	Metadata       []byte
+	CreatedAt      time.Time
+}
+
+func (q *Queries) ListRefundsForOrder(ctx context.Context, orderID uuid.UUID) ([]ListRefundsForOrderRow, error) {
+	rows, err := q.db.Query(ctx, ListRefundsForOrder, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRefundsForOrderRow{}
+	for rows.Next() {
+		var i ListRefundsForOrderRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PaymentID,
+			&i.OrderID,
+			&i.AmountMinor,
+			&i.Currency,
+			&i.State,
+			&i.Reason,
+			&i.IdempotencyKey,
+			&i.Metadata,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListStaleCommandLedgerEntries = `-- name: ListStaleCommandLedgerEntries :many
 SELECT
     id,
@@ -1118,6 +1425,23 @@ func (q *Queries) MarkOutboxEventPublished(ctx context.Context, id int64) (Outbo
 		&i.DeadLetteredAt,
 	)
 	return i, err
+}
+
+const SumNonFailedRefundAmountForPayment = `-- name: SumNonFailedRefundAmountForPayment :one
+SELECT
+    COALESCE(SUM(amount_minor), 0)::bigint AS refunded_minor
+FROM
+    refunds
+WHERE
+    payment_id = $1
+    AND state <> 'failed'
+`
+
+func (q *Queries) SumNonFailedRefundAmountForPayment(ctx context.Context, paymentID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, SumNonFailedRefundAmountForPayment, paymentID)
+	var refunded_minor int64
+	err := row.Scan(&refunded_minor)
+	return refunded_minor, err
 }
 
 const UpdateOrderStatusByOrg = `-- name: UpdateOrderStatusByOrg :one

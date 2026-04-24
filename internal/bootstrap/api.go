@@ -125,7 +125,12 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		MQTTCommandPublish: rt.Deps.MQTTPublisher,
 		Artifacts:          artifactSvc,
 		HTTPAuth:           cfg.HTTPAuth,
+		CashSettlementVarianceReviewThresholdMinor: cfg.CashSettlement.VarianceReviewThresholdMinor,
 	})
+
+	if err := httpserver.ValidateP0HTTPApplication(cfg, httpApp); err != nil {
+		return fmt.Errorf("bootstrap: P0 HTTP wiring: %w", err)
+	}
 
 	httpSrv, err := httpserver.NewHTTPServer(cfg, log, rt, httpApp)
 	if err != nil {

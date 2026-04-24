@@ -5,6 +5,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
+	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/google/uuid"
 )
 
@@ -21,6 +22,12 @@ type CommerceLifecycleStore interface {
 	GetPaymentByID(ctx context.Context, paymentID uuid.UUID) (domaincommerce.Payment, error)
 
 	InsertPaymentAttempt(ctx context.Context, in InsertPaymentAttemptParams) (PaymentAttemptView, error)
+
+	InsertRefundRow(ctx context.Context, in InsertRefundRowInput) (RefundRowView, error)
+	ListRefundsForOrder(ctx context.Context, orderID uuid.UUID) ([]RefundRowView, error)
+	GetRefundByIDForOrder(ctx context.Context, orderID, refundID uuid.UUID) (RefundRowView, error)
+	GetRefundByOrderIdempotency(ctx context.Context, orderID uuid.UUID, idempotencyKey string) (RefundRowView, error)
+	SumNonFailedRefundAmountForPayment(ctx context.Context, paymentID uuid.UUID) (int64, error)
 }
 
 // PaymentWebhookPersistence applies idempotent provider notifications in a single database transaction.
@@ -51,4 +58,10 @@ type Orchestrator interface {
 
 	GetCheckoutStatus(ctx context.Context, organizationID, orderID uuid.UUID, slotIndex int32) (CheckoutStatusView, error)
 	ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPaymentProviderWebhookInput) (ApplyPaymentProviderWebhookResult, error)
+
+	EnsureCommerceCallerOrderAccess(ctx context.Context, organizationID, orderID uuid.UUID, p plauth.Principal) error
+	CancelOrder(ctx context.Context, organizationID, orderID uuid.UUID, reason string) (domaincommerce.Order, error)
+	CreateRefund(ctx context.Context, in CreateRefundInput) (RefundRowView, error)
+	ListRefundsForOrder(ctx context.Context, organizationID, orderID uuid.UUID) ([]RefundRowView, error)
+	GetRefundForOrder(ctx context.Context, organizationID, orderID, refundID uuid.UUID) (RefundRowView, error)
 }

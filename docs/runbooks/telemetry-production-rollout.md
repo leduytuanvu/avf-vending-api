@@ -3,10 +3,14 @@
 This runbook complements [telemetry-jetstream-resilience.md](./telemetry-jetstream-resilience.md) with **fleet ramp checks**, **overload detection before outage**, **mitigations**, **rollback**, and **safe tuning**.
 It now assumes the split production topology under `deployments/prod/app-node` and `deployments/prod/data-node`; references to the legacy single-host stack are rollback-only.
 
+## Repo static gate (before any fleet-size conversation)
+
+Run **`make verify-enterprise-release`** on the release commit ([production-release-readiness.md](./production-release-readiness.md)): it runs **`go test ./...`**, **Swagger regen + drift check**, **shell syntax** under `scripts/` and `deployments/`, **Compose config** against example env files, **OpenAPI release checks** (production server first, no planned-only Swagger paths, JSON write examples), and **docs/testdata secret heuristics**. **Pilot** deploys do **not** require storm evidence; **scale-100 / scale-500 / scale-1000** do — see **Required storm evidence** in the readiness runbook and **Fleet-scale storm gate** below.
+
 ## Before increasing fleet size (100 → 300 → 1000)
 
 1. **Config and compose**
-   - Before any production promotion, run the full static gate: `make verify-enterprise-release` (see [production-release-readiness.md](./production-release-readiness.md)). It includes those Compose checks plus `go test ./...`, `bash -n` on all deployment/scripts, and example-env secret heuristics.
+   - Before any production promotion, run the full static gate: `make verify-enterprise-release` (see [production-release-readiness.md](./production-release-readiness.md)).
    - For the current primary production path, you can also run `docker compose --env-file deployments/prod/app-node/.env.app-node.example -f deployments/prod/app-node/docker-compose.app-node.yml config` and `docker compose --env-file deployments/prod/data-node/.env.data-node.example -f deployments/prod/data-node/docker-compose.data-node.yml config` when the fallback broker plane is enabled (the verify target runs these for you).
    - Use `bash deployments/prod/scripts/validate_prod_telemetry.sh` and the legacy `deployments/prod/docker-compose.prod.yml` validation flow only if you are intentionally rehearsing or maintaining the rollback-only single-host path.
 2. **Images and data plane**

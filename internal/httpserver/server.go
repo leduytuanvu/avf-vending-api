@@ -42,6 +42,12 @@ func NewHTTPServer(cfg *config.Config, log *zap.Logger, probe ReadinessProbe, ht
 		return nil, fmt.Errorf("httpserver: nil http application")
 	}
 
+	if cfg.MetricsEnabled && cfg.AppEnv == config.AppEnvProduction && !cfg.MetricsExposeOnPublicHTTP {
+		if strings.TrimSpace(cfg.Ops.HTTPAddr) == "" {
+			return nil, fmt.Errorf("httpserver: APP_ENV=production with METRICS_ENABLED=true requires HTTP_OPS_ADDR for private /metrics scraping, or set METRICS_EXPOSE_ON_PUBLIC_HTTP=true with METRICS_SCRAPE_TOKEN")
+		}
+	}
+
 	validator, err := auth.NewAccessTokenValidator(cfg.HTTPAuth)
 	if err != nil {
 		return nil, fmt.Errorf("httpserver: auth validator: %w", err)
@@ -92,8 +98,12 @@ func NewHTTPServer(cfg *config.Config, log *zap.Logger, probe ReadinessProbe, ht
 		observability.WriteVersionJSON(w, cfg)
 	})
 
-	if cfg.MetricsEnabled {
-		r.Method(http.MethodGet, "/metrics", promhttp.Handler())
+	if cfg.MetricsEnabled && (cfg.AppEnv != config.AppEnvProduction || cfg.MetricsExposeOnPublicHTTP) {
+		h := promhttp.Handler()
+		if tok := strings.TrimSpace(cfg.MetricsScrapeToken); tok != "" {
+			h = metricsBearerGate(tok, h)
+		}
+		r.Method(http.MethodGet, "/metrics", h)
 	}
 
 	if cfg.SwaggerUIEnabled {
@@ -128,6 +138,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 
 	r.Route("/v1", func(r chi.Router) {
 		mountCommercePublicWebhookPost(r, app, cfg)
+		mountPublicActivationClaim(r, app, cfg)
 
 		r.Route("/auth", func(r chi.Router) {
 			mountAuthRoutes(r, app)
@@ -143,9 +154,11 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 			r.Use(authObservabilityMiddleware(log))
 
 			r.Route("/admin", func(r chi.Router) {
+				r.Use(auth.RequireDenyMachinePrincipal)
 				r.Use(auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin))
-				mountAdminCatalogRoutes(r, app)
+				mountAdminCatalogRoutes(r, app, writeRL)
 				mountAdminInventoryRoutes(r, app, writeRL)
+				mountAdminCashSettlementRoutes(r, app, writeRL)
 				r.Get("/machines", func(w http.ResponseWriter, r *http.Request) {
 					scope, err := parseAdminFleetListScope(r)
 					if err != nil {
@@ -193,9 +206,11 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 					writeV1Collection(w, r.Context(), out, err)
 				})
 				mountArtifactAdminRoutes(r, app, writeRL)
+				mountAdminActivationRoutes(r, app, writeRL)
 			})
 
 			r.Route("/reports", func(r chi.Router) {
+				r.Use(auth.RequireDenyMachinePrincipal)
 				r.Use(auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin))
 				mountReportingRoutes(r, app)
 			})
@@ -229,7 +244,8 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 			})
 
 			mountSetupBootstrapRoutes(r, app)
-			r.With(auth.RequireMachineURLAccess("machineId")).Get("/machines/{machineId}/shadow", machineShadowGet(app.MachineShadow))
+			mountSaleCatalogRoute(r, app)
+			r.With(RequireMachineTenantAccess(app, "machineId")).Get("/machines/{machineId}/shadow", machineShadowGet(app.MachineShadow))
 			mountMachineTelemetryRoutes(r, app)
 
 			// Sensitive writes: commerce, operator sessions, remote command dispatch (token bucket per IP when enabled).
@@ -237,6 +253,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 				r.Use(writeRL)
 				mountDeviceCommandRoutes(r, app)
 				mountDeviceBridgeRoutes(r, app)
+				mountDeviceTelemetryReconcileRoutes(r, app)
 				mountMachineRuntimeRoutes(r, app)
 				mountOperatorSessionRoutes(r, app)
 				mountCommerceRoutes(r, app, cfg)

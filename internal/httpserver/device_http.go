@@ -18,11 +18,11 @@ import (
 
 func mountDeviceCommandRoutes(r chi.Router, app *api.HTTPApplication) {
 	// Register static paths before /commands/{sequence}/… so "receipts" is not parsed as a sequence.
-	r.With(auth.RequireMachineURLAccess("machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin)).
+	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin)).
 		Get("/machines/{machineId}/commands/receipts", listMachineCommandReceipts(app))
-	r.With(auth.RequireMachineURLAccess("machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin)).
+	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin)).
 		Get("/machines/{machineId}/commands/{sequence}/status", getMachineCommandDispatchStatus(app))
-	r.With(auth.RequireMachineURLAccess("machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin)).
+	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin)).
 		Post("/machines/{machineId}/commands/dispatch", postMachineCommandDispatch(app))
 }
 
@@ -31,7 +31,7 @@ func mountDeviceBridgeRoutes(r chi.Router, app *api.HTTPApplication) {
 		return
 	}
 	r.Route("/device/machines/{machineId}", func(r chi.Router) {
-		r.Use(auth.RequireMachineURLAccess("machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin))
+		r.Use(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin, auth.RoleMachine))
 		r.Post("/vend-results", postDeviceVendResults(app))
 		r.Post("/commands/poll", postDeviceCommandsPoll(app))
 	})
@@ -284,12 +284,19 @@ func postDeviceVendResults(app *api.HTTPApplication) http.HandlerFunc {
 			writeCommerceServiceError(w, ctx, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{
+		st2, _ := app.Commerce.GetCheckoutStatus(ctx, order.OrganizationID, body.OrderID, body.SlotIndex)
+		resp := map[string]any{
 			"order_id":     fout.Order.ID.String(),
 			"order_status": fout.Order.Status,
 			"vend_state":   fout.Vend.State,
 			"replay":       false,
-		})
+		}
+		if st2.PaymentPresent && strings.EqualFold(st2.Payment.Provider, "cash") && st2.Payment.State == "captured" {
+			resp["local_cash_refund_required"] = true
+		} else if st2.PaymentPresent && st2.Payment.State == "captured" {
+			resp["refund_required"] = true
+		}
+		writeJSON(w, http.StatusOK, resp)
 	}
 }
 

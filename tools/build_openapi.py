@@ -1157,6 +1157,101 @@ def reporting_component_schemas() -> dict[str, Any]:
     }
 
 
+def cash_settlement_component_schemas() -> dict[str, Any]:
+    """OpenAPI schemas for admin cashbox + cash collection settlement."""
+    cash_coll = {
+        "type": "object",
+        "properties": {
+            "id": {"type": "string", "format": "uuid"},
+            "machine_id": {"type": "string", "format": "uuid"},
+            "organization_id": {"type": "string", "format": "uuid"},
+            "collected_at": {"type": "string", "format": "date-time"},
+            "opened_at": {"type": "string", "format": "date-time"},
+            "closed_at": {"type": "string", "format": "date-time"},
+            "lifecycle_status": {"type": "string", "enum": ["open", "closed", "cancelled"]},
+            "counted_amount_minor": {"type": "integer", "format": "int64"},
+            "expected_amount_minor": {"type": "integer", "format": "int64"},
+            "variance_amount_minor": {"type": "integer", "format": "int64"},
+            "countedPhysicalCashMinor": {"type": "integer", "format": "int64"},
+            "expectedCloudCashMinor": {"type": "integer", "format": "int64"},
+            "varianceMinor": {"type": "integer", "format": "int64"},
+            "reviewState": {"type": "string"},
+            "requires_review": {"type": "boolean"},
+            "close_request_hash_hex": {"type": "string"},
+            "currency": {"type": "string"},
+            "reconciliation_status": {"type": "string"},
+            "disclosure": {"type": "string"},
+        },
+        "required": [
+            "id",
+            "machine_id",
+            "organization_id",
+            "collected_at",
+            "opened_at",
+            "lifecycle_status",
+            "counted_amount_minor",
+            "expected_amount_minor",
+            "variance_amount_minor",
+            "countedPhysicalCashMinor",
+            "expectedCloudCashMinor",
+            "varianceMinor",
+            "reviewState",
+            "requires_review",
+            "currency",
+            "reconciliation_status",
+            "disclosure",
+        ],
+    }
+    return {
+        "V1CashDenominationExpectation": {
+            "type": "object",
+            "properties": {
+                "denominationMinor": {"type": "integer", "format": "int64"},
+                "expectedCount": {"type": "integer", "format": "int64"},
+                "source": {"type": "string"},
+            },
+            "required": ["denominationMinor", "expectedCount", "source"],
+        },
+        "V1AdminMachineCashboxResponse": {
+            "type": "object",
+            "properties": {
+                "machineId": {"type": "string", "format": "uuid"},
+                "currency": {"type": "string"},
+                "expectedCashboxMinor": {"type": "integer", "format": "int64"},
+                "expectedCloudCashMinor": {"type": "integer", "format": "int64"},
+                "expectedRecyclerMinor": {"type": "integer", "format": "int64"},
+                "lastCollectionAt": {"type": "string", "format": "date-time"},
+                "denominations": {
+                    "type": "array",
+                    "items": {"$ref": "#/components/schemas/V1CashDenominationExpectation"},
+                },
+                "openCollectionId": {"type": "string", "format": "uuid"},
+                "varianceReviewThresholdMinor": {"type": "integer", "format": "int64"},
+                "disclosure": {"type": "string"},
+            },
+            "required": [
+                "machineId",
+                "currency",
+                "expectedCashboxMinor",
+                "expectedCloudCashMinor",
+                "expectedRecyclerMinor",
+                "denominations",
+                "varianceReviewThresholdMinor",
+                "disclosure",
+            ],
+        },
+        "V1AdminCashCollection": cash_coll,
+        "V1AdminCashCollectionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {"type": "array", "items": {"$ref": "#/components/schemas/V1AdminCashCollection"}},
+                "meta": {"$ref": "#/components/schemas/V1CollectionListMeta"},
+            },
+            "required": ["items", "meta"],
+        },
+    }
+
+
 def v1_api_error_schema() -> dict[str, Any]:
     return {
         "type": "object",
@@ -1176,6 +1271,39 @@ def v1_api_error_schema() -> dict[str, Any]:
     }
 
 
+def enterprise_error_named_schemas() -> dict[str, Any]:
+    """Documented variants of the single JSON error envelope (apierr.V1 / writeAPIError)."""
+    rid = "01ARZ3NDEKTSV4RRFFQ69G5AV"
+
+    def wrap(desc: str, code: str, message: str, details: dict[str, Any] | None = None) -> dict[str, Any]:
+        return {
+            "allOf": [{"$ref": "#/components/schemas/V1APIErrorEnvelope"}],
+            "description": desc,
+            "example": v1_error_example(code, message, details, request_id=rid),
+        }
+
+    return {
+        "ErrorResponse": wrap("Generic handler error using the standard envelope.", "invalid_request", "request could not be processed", {}),
+        "ValidationErrorResponse": wrap(
+            "Validation or malformed input (HTTP 400 family).",
+            "invalid_query",
+            "organization_id is required for platform_admin",
+            {"param": "organization_id"},
+        ),
+        "ConflictErrorResponse": wrap(
+            "State conflict (HTTP 409) — illegal transitions, idempotency mismatch, quantity_before_mismatch, etc.",
+            "illegal_transition",
+            "cannot start vend from current order status",
+            {"from": "created", "to": "vending"},
+        ),
+        "UnauthorizedErrorResponse": wrap("Missing or invalid Bearer token (HTTP 401).", "unauthenticated", "missing bearer token", {}),
+        "ForbiddenErrorResponse": wrap("Authenticated but not permitted (HTTP 403).", "forbidden", "insufficient role for this route", {}),
+        "NotFoundErrorResponse": wrap("Unknown resource (HTTP 404).", "not_found", "order not found", {"resource": "order"}),
+        "RateLimitErrorResponse": wrap("HTTP 429 when rate limits apply.", "rate_limited", "too many requests", {"retry_after_seconds": 2}),
+        "InternalErrorResponse": wrap("Unexpected server failure (HTTP 500).", "internal", "unexpected error", {}),
+    }
+
+
 def components() -> dict[str, Any]:
     err = v1_api_error_schema()
     schemas: dict[str, Any] = {
@@ -1184,6 +1312,23 @@ def components() -> dict[str, Any]:
         "V1NotImplementedError": err,
         "V1CapabilityNotConfiguredError": err,
         "V1BearerAuthError": err,
+        "V1VersionPayload": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Binary / module name"},
+                "version": {"type": "string", "description": "Semantic version from build metadata"},
+                "git_sha": {"type": "string"},
+                "build_time": {"type": "string"},
+                "app_env": {"type": "string", "description": "Application environment (e.g. development, staging, production)"},
+                "process": {"type": "string", "description": "Process name (api, worker, …)"},
+                "runtime_role": {"type": "string"},
+                "node_name": {"type": "string"},
+                "instance_id": {"type": "string"},
+                "public_base_url": {"type": "string", "description": "Configured public HTTP base URL when set"},
+                "machine_public_base_url": {"type": "string", "description": "Machine-facing base URL when set"},
+            },
+            "required": ["name", "version", "app_env"],
+        },
         "V1ListViewEnvelope": {
             "type": "object",
             "properties": {
@@ -1256,8 +1401,10 @@ def components() -> dict[str, Any]:
             "enum": ["pin", "password", "badge", "oidc", "device_cert", "unknown"],
         },
     }
+    schemas.update(enterprise_error_named_schemas())
     schemas.update(operational_collection_component_schemas())
     schemas.update(machine_setup_component_schemas())
+    schemas.update(cash_settlement_component_schemas())
     schemas.update(reporting_component_schemas())
     return {
         "schemas": schemas,
@@ -1335,15 +1482,35 @@ IDEMPOTENCY_OPS: set[tuple[str, str]] = {
     ("post", "/v1/commerce/orders"),
     ("post", "/v1/commerce/cash-checkout"),
     ("post", "/v1/commerce/orders/{orderId}/payment-session"),
-    ("post", "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks"),
     ("post", "/v1/commerce/orders/{orderId}/vend/start"),
     ("post", "/v1/commerce/orders/{orderId}/vend/success"),
     ("post", "/v1/commerce/orders/{orderId}/vend/failure"),
+    ("post", "/v1/commerce/orders/{orderId}/cancel"),
+    ("post", "/v1/commerce/orders/{orderId}/refunds"),
     ("post", "/v1/device/machines/{machineId}/vend-results"),
     ("post", "/v1/machines/{machineId}/commands/dispatch"),
     ("post", "/v1/admin/machines/{machineId}/planograms/publish"),
     ("post", "/v1/admin/machines/{machineId}/sync"),
     ("post", "/v1/admin/machines/{machineId}/stock-adjustments"),
+    ("post", "/v1/admin/machines/{machineId}/cash-collections"),
+    ("post", "/v1/admin/products"),
+    ("put", "/v1/admin/products/{productId}"),
+    ("patch", "/v1/admin/products/{productId}"),
+    ("delete", "/v1/admin/products/{productId}"),
+    ("put", "/v1/admin/products/{productId}/image"),
+    ("delete", "/v1/admin/products/{productId}/image"),
+    ("post", "/v1/admin/brands"),
+    ("put", "/v1/admin/brands/{brandId}"),
+    ("patch", "/v1/admin/brands/{brandId}"),
+    ("delete", "/v1/admin/brands/{brandId}"),
+    ("post", "/v1/admin/categories"),
+    ("put", "/v1/admin/categories/{categoryId}"),
+    ("patch", "/v1/admin/categories/{categoryId}"),
+    ("delete", "/v1/admin/categories/{categoryId}"),
+    ("post", "/v1/admin/tags"),
+    ("put", "/v1/admin/tags/{tagId}"),
+    ("patch", "/v1/admin/tags/{tagId}"),
+    ("delete", "/v1/admin/tags/{tagId}"),
 }
 
 
@@ -1672,6 +1839,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             "replay": False,
         },
     }
+    sync_resp = {"command": planogram_publish_resp["command"]}
     stock_adj_req = {
         "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
         "reason": "restock",
@@ -1690,6 +1858,308 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     stock_adj_resp = {"replay": False, "eventIds": [1001, 1002]}
 
+    cash_coll_start_req = {
+        "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+        "startedAt": "2026-04-24T00:00:00Z",
+        "currency": "USD",
+        "notes": "Field collection — tray A",
+    }
+    cash_coll_close_req = {
+        "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+        "countedCashboxMinor": 995000,
+        "countedRecyclerMinor": 200000,
+        "currency": "VND",
+        "denominations": [{"denominationMinor": 10000, "count": 50}],
+        "closedAt": "2026-04-24T00:10:00Z",
+        "evidence": {"photoArtifactId": "22222222-3333-4444-5555-666666666666"},
+        "notes": "Monthly collection",
+    }
+    cash_coll_open_ex = {
+        "id": _U,
+        "machine_id": _U3,
+        "organization_id": _U2,
+        "collected_at": "2026-04-19T14:00:00.000000000Z",
+        "opened_at": "2026-04-19T14:00:00.000000000Z",
+        "closed_at": None,
+        "lifecycle_status": "open",
+        "counted_amount_minor": 0,
+        "expected_amount_minor": 0,
+        "variance_amount_minor": 0,
+        "countedPhysicalCashMinor": 0,
+        "expectedCloudCashMinor": 0,
+        "varianceMinor": 0,
+        "reviewState": "open",
+        "requires_review": False,
+        "close_request_hash_hex": None,
+        "currency": "USD",
+        "reconciliation_status": "pending",
+        "disclosure": "Accounting-only: cloud ledger vs operator physical count; does not sense or command hardware.",
+    }
+    cash_coll_closed_ex = {
+        **cash_coll_open_ex,
+        "closed_at": "2026-04-19T14:30:00.000000000Z",
+        "lifecycle_status": "closed",
+        "counted_amount_minor": 1250,
+        "expected_amount_minor": 1200,
+        "variance_amount_minor": 50,
+        "countedPhysicalCashMinor": 1250,
+        "expectedCloudCashMinor": 1200,
+        "varianceMinor": 50,
+        "reviewState": "variance_recorded",
+        "requires_review": False,
+        "close_request_hash_hex": "a" * 64,
+        "reconciliation_status": "mismatch",
+    }
+    cash_coll_closed_exact_ex = {
+        **cash_coll_open_ex,
+        "closed_at": "2026-04-19T15:00:00.000000000Z",
+        "lifecycle_status": "closed",
+        "counted_amount_minor": 1200,
+        "expected_amount_minor": 1200,
+        "variance_amount_minor": 0,
+        "countedPhysicalCashMinor": 1200,
+        "expectedCloudCashMinor": 1200,
+        "varianceMinor": 0,
+        "reviewState": "matched",
+        "requires_review": False,
+        "close_request_hash_hex": "b" * 64,
+        "reconciliation_status": "matched",
+    }
+    cash_coll_review_ex = {
+        **cash_coll_open_ex,
+        "closed_at": "2026-04-19T15:30:00.000000000Z",
+        "lifecycle_status": "closed",
+        "counted_amount_minor": 2000,
+        "expected_amount_minor": 1200,
+        "variance_amount_minor": 800,
+        "countedPhysicalCashMinor": 2000,
+        "expectedCloudCashMinor": 1200,
+        "varianceMinor": 800,
+        "reviewState": "pending_review",
+        "requires_review": True,
+        "close_request_hash_hex": "c" * 64,
+        "reconciliation_status": "pending",
+    }
+    cashbox_ex = {
+        "machineId": _U3,
+        "currency": "VND",
+        "expectedCashboxMinor": 1000000,
+        "expectedCloudCashMinor": 1000000,
+        "expectedRecyclerMinor": 0,
+        "lastCollectionAt": "2026-04-24T00:00:00Z",
+        "denominations": [],
+        "openCollectionId": None,
+        "varianceReviewThresholdMinor": 500,
+        "disclosure": "Accounting-only: cloud ledger expectation only; does not sense or command physical cash hardware.",
+    }
+
+    tok = {
+        "accessToken": "stub-access-token",
+        "accessExpiresAt": "2026-04-19T13:00:00Z",
+        "refreshToken": "stub-refresh-token",
+        "refreshExpiresAt": "2026-05-19T12:00:00Z",
+        "tokenType": "Bearer",
+    }
+    login_ok = {
+        "accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "organizationId": _U2,
+        "email": "operator@example.com",
+        "roles": ["org_admin"],
+        "tokens": tok,
+    }
+    version_ex = {
+        "name": "avf-vending-api",
+        "version": "0.0.0-dev",
+        "git_sha": "abc123",
+        "build_time": "2026-04-19T12:00:00Z",
+        "app_env": "development",
+        "process": "api",
+    }
+    admin_page_meta = {"limit": 50, "offset": 0, "returned": 1, "totalCount": 1}
+    product_row = {
+        "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+        "organizationId": _U2,
+        "sku": "COLA-12",
+        "barcode": "8850123456789",
+        "name": "Cola 12oz",
+        "description": "Example product",
+        "active": True,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-04-19T10:00:00Z",
+    }
+    product_detail = {
+        **product_row,
+        "attrs": {},
+        "ageRestricted": False,
+        "allergenCodes": [],
+    }
+    product_mut_req = {
+        "sku": "COLA-12",
+        "name": "Cola 12oz",
+        "description": "Example product",
+        "active": True,
+        "barcode": "8850123456789",
+        "ageRestricted": False,
+        "allergenCodes": [],
+    }
+    brand_row = {
+        "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "organizationId": _U2,
+        "slug": "coca-cola",
+        "name": "Coca-Cola",
+        "active": True,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-04-19T10:00:00Z",
+    }
+    brand_mut_req = {"slug": "coca-cola", "name": "Coca-Cola", "active": True}
+    cat_row = {
+        "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+        "organizationId": _U2,
+        "slug": "beverages",
+        "name": "Beverages",
+        "active": True,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-04-19T10:00:00Z",
+    }
+    cat_mut_req = {"slug": "beverages", "name": "Beverages", "active": True}
+    tag_row = {
+        "id": "cccccccc-dddd-eeee-ffff-000000000000",
+        "organizationId": _U2,
+        "slug": "chilled",
+        "name": "Chilled",
+        "active": True,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-04-19T10:00:00Z",
+    }
+    tag_mut_req = {"slug": "chilled", "name": "Chilled", "active": True}
+    img_bind_req = {
+        "artifactId": "11111111-2222-3333-4444-555555555555",
+        "thumbUrl": "https://cdn.example.com/products/coca330-thumb.webp",
+        "displayUrl": "https://cdn.example.com/products/coca330-display.webp",
+        "contentHash": "sha256:"
+        + "a" * 64,
+        "width": 800,
+        "height": 800,
+        "mimeType": "image/webp",
+    }
+    art_upload_ok = {"status": "uploaded", "artifact_id": "11111111-2222-3333-4444-555555555555"}
+    inv_by_product_ex = {
+        "items": [
+            {
+                "machineId": _U3,
+                "machineName": "Lobby-01",
+                "machineStatus": "active",
+                "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                "productName": "Cola 12oz",
+                "productSku": "COLA-12",
+                "totalQuantity": 24,
+                "slotCount": 2,
+                "maxCapacityAnySlot": 12,
+                "lowStock": False,
+                "cabinetCode": "CAB-A",
+                "cabinetIndex": 0,
+            }
+        ],
+    }
+    price_book_row = {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "organizationId": _U2,
+        "name": "Default USD",
+        "currency": "USD",
+        "effectiveFrom": "2026-01-01T00:00:00Z",
+        "isDefault": True,
+        "scopeType": "organization",
+        "priority": 0,
+        "createdAt": "2026-01-01T00:00:00Z",
+    }
+    planogram_row = {
+        "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+        "organizationId": _U2,
+        "name": "Lobby spring",
+        "revision": 3,
+        "status": "published",
+        "createdAt": "2026-04-01T00:00:00Z",
+    }
+    planogram_detail = {
+        "planogram": planogram_row,
+        "slots": [
+            {
+                "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                "slotIndex": 1,
+                "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                "maxQuantity": 10,
+                "productSku": "COLA-12",
+                "productName": "Cola 12oz",
+                "createdAt": "2026-04-01T00:00:00Z",
+            }
+        ],
+    }
+    sales_summary_ex = {
+        "organizationId": _U2,
+        "from": "2026-04-01T00:00:00Z",
+        "to": "2026-04-20T00:00:00Z",
+        "groupBy": "day",
+        "summary": {
+            "grossTotalMinor": 10000,
+            "subtotalMinor": 9000,
+            "taxMinor": 1000,
+            "orderCount": 50,
+            "avgOrderValueMinor": 200,
+        },
+        "breakdown": [],
+    }
+    pay_summary_ex = {
+        "organizationId": _U2,
+        "from": "2026-04-01T00:00:00Z",
+        "to": "2026-04-20T00:00:00Z",
+        "groupBy": "day",
+        "summary": {
+            "authorizedCount": 10,
+            "capturedCount": 48,
+            "failedCount": 2,
+            "refundedCount": 0,
+            "capturedAmountMinor": 10000,
+            "authorizedAmountMinor": 10200,
+            "failedAmountMinor": 400,
+            "refundedAmountMinor": 0,
+        },
+        "breakdown": [],
+    }
+    fleet_health_ex = {
+        "organizationId": _U2,
+        "from": "2026-04-01T00:00:00Z",
+        "to": "2026-04-20T00:00:00Z",
+        "machineSummary": {
+            "total": 25,
+            "online": 22,
+            "offline": 2,
+            "fault": 1,
+            "warn": 0,
+            "retired": 0,
+        },
+        "machinesByStatus": [{"status": "online", "count": 22}],
+        "incidentsByStatus": [],
+        "machineIncidentsBySeverity": [],
+    }
+    inv_exceptions_ex = {
+        "organizationId": _U2,
+        "from": "2026-04-01T00:00:00.000000000Z",
+        "to": "2026-04-20T00:00:00.000000000Z",
+        "exceptionKind": "low_stock",
+        "meta": {"limit": 50, "offset": 0, "returned": 0, "total": 0},
+        "items": [],
+    }
+    recon_ex = {"kind": "commerce.reconciliation_snapshot", "status": checkout}
+    op_list_ex = {"items": [], "meta": {"limit": 50, "returned": 0}}
+    check_in_resp = {"id": "12001", "machine_id": _U3, "occurred_at": "2026-04-19T12:00:00.000000000Z"}
+    config_apply_resp = {
+        "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "machine_id": _U3,
+        "config_revision": 7,
+        "applied_at": "2026-04-19T12:05:00.000000000Z",
+    }
+
     def ex(
         req_body: Any | None = None,
         resp: dict[str, tuple[Any | None, Any | None]] | None = None,
@@ -1702,7 +2172,237 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             out["responseExamples"] = resp
         return out
 
+    sale_item_ex = {
+        "slotIndex": 3,
+        "slotCode": "A3",
+        "cabinetCode": "A",
+        "productId": "22222222-3333-4444-5555-666666666666",
+        "sku": "COCA330",
+        "name": "Coca Cola 330ml",
+        "shortName": "Coca 330",
+        "priceMinor": 15000,
+        "availableQuantity": 8,
+        "maxQuantity": 12,
+        "isAvailable": True,
+        "unavailableReason": None,
+        "image": {
+            "thumbUrl": "https://cdn.example.com/products/coca330-thumb.webp",
+            "displayUrl": "https://cdn.example.com/products/coca330-display.webp",
+            "contentHash": "sha256:" + "b" * 64,
+            "updatedAt": "2026-04-24T00:00:00Z",
+        },
+        "sortOrder": 10,
+    }
+    sale_catalog_ex = {
+        "machineId": _U3,
+        "organizationId": _U2,
+        "siteId": "11111111-2222-3333-4444-555555555555",
+        "configVersion": 7,
+        "currency": "VND",
+        "generatedAt": "2026-04-24T00:00:00Z",
+        "items": [sale_item_ex],
+    }
+    fingerprint_ex = {
+        "androidId": "android-123",
+        "serialNumber": "SN-001",
+        "manufacturer": "SUNMI",
+        "model": "K2",
+        "packageName": "com.avf.vending",
+        "versionName": "1.0.0",
+        "versionCode": 100,
+    }
+
     return {
+        ("get", "/health/live"): ex(resp={"200": ("ok", None)}),
+        ("get", "/health/ready"): ex(resp={"200": ("ok", None), "503": ("not ready", None)}),
+        ("get", "/metrics"): ex(
+            resp={
+                "200": ("# HELP go_goroutines Number of goroutines.\ngo_goroutines 42\n", None),
+            },
+        ),
+        ("get", "/version"): ex(resp={"200": (version_ex, None)}),
+        ("get", "/swagger/doc.json"): ex(
+            resp={"200": ({"openapi": "3.0.3", "info": {"title": "AVF Vending HTTP API", "version": "1.0"}}, None)},
+        ),
+        ("post", "/v1/auth/login"): ex(
+            req_body={"organizationId": _U2, "email": "operator@example.com", "password": "example-password"},
+            resp={
+                "200": (login_ok, None),
+                "401": (v1_error_example("unauthenticated", "invalid credentials", {}), None),
+            },
+        ),
+        ("post", "/v1/auth/refresh"): ex(
+            req_body={"refreshToken": "stub-refresh-token"},
+            resp={"200": ({"tokens": tok}, None)},
+        ),
+        ("get", "/v1/auth/me"): ex(
+            resp={
+                "200": (
+                    {
+                        "accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                        "organizationId": _U2,
+                        "email": "operator@example.com",
+                        "roles": ["org_admin"],
+                    },
+                    None,
+                ),
+            },
+        ),
+        ("post", "/v1/auth/logout"): ex(req_body={"revokeAll": False}),
+        ("get", "/v1/admin/machines/{machineId}/slots"): ex(
+            resp={
+                "200": (
+                    {
+                        "machineId": _U3,
+                        "organizationId": _U2,
+                        "cabinets": [],
+                        "slots": [
+                            {
+                                "cabinetCode": "A",
+                                "slotCode": "A3",
+                                "slotIndex": 3,
+                                "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                                "currentQuantity": 8,
+                                "maxQuantity": 12,
+                            }
+                        ],
+                    },
+                    None,
+                ),
+            },
+        ),
+        ("get", "/v1/admin/products"): ex(resp={"200": ({"items": [product_row], "meta": admin_page_meta}, None)}),
+        ("get", "/v1/admin/products/{productId}"): ex(resp={"200": (product_detail, None)}),
+        ("post", "/v1/admin/products"): ex(req_body=product_mut_req, resp={"200": (product_detail, None)}),
+        ("put", "/v1/admin/products/{productId}"): ex(req_body=product_mut_req, resp={"200": (product_detail, None)}),
+        ("patch", "/v1/admin/products/{productId}"): ex(req_body=product_mut_req, resp={"200": (product_detail, None)}),
+        ("delete", "/v1/admin/products/{productId}"): ex(resp={"200": ({**product_detail, "active": False}, None)}),
+        ("put", "/v1/admin/products/{productId}/image"): ex(req_body=img_bind_req, resp={"200": (product_detail, None)}),
+        ("delete", "/v1/admin/products/{productId}/image"): ex(resp={"200": (product_detail, None)}),
+        ("get", "/v1/admin/brands"): ex(resp={"200": ({"items": [brand_row], "meta": admin_page_meta}, None)}),
+        ("post", "/v1/admin/brands"): ex(req_body=brand_mut_req, resp={"200": (brand_row, None)}),
+        ("put", "/v1/admin/brands/{brandId}"): ex(req_body=brand_mut_req, resp={"200": (brand_row, None)}),
+        ("patch", "/v1/admin/brands/{brandId}"): ex(req_body=brand_mut_req, resp={"200": (brand_row, None)}),
+        ("delete", "/v1/admin/brands/{brandId}"): ex(resp={"200": ({**brand_row, "active": False}, None)}),
+        ("get", "/v1/admin/categories"): ex(resp={"200": ({"items": [cat_row], "meta": admin_page_meta}, None)}),
+        ("post", "/v1/admin/categories"): ex(req_body=cat_mut_req, resp={"200": (cat_row, None)}),
+        ("put", "/v1/admin/categories/{categoryId}"): ex(req_body=cat_mut_req, resp={"200": (cat_row, None)}),
+        ("patch", "/v1/admin/categories/{categoryId}"): ex(req_body=cat_mut_req, resp={"200": (cat_row, None)}),
+        ("delete", "/v1/admin/categories/{categoryId}"): ex(resp={"200": ({**cat_row, "active": False}, None)}),
+        ("get", "/v1/admin/tags"): ex(resp={"200": ({"items": [tag_row], "meta": admin_page_meta}, None)}),
+        ("post", "/v1/admin/tags"): ex(req_body=tag_mut_req, resp={"200": (tag_row, None)}),
+        ("put", "/v1/admin/tags/{tagId}"): ex(req_body=tag_mut_req, resp={"200": (tag_row, None)}),
+        ("patch", "/v1/admin/tags/{tagId}"): ex(req_body=tag_mut_req, resp={"200": (tag_row, None)}),
+        ("delete", "/v1/admin/tags/{tagId}"): ex(resp={"200": ({**tag_row, "active": False}, None)}),
+        ("get", "/v1/admin/price-books"): ex(resp={"200": ({"items": [price_book_row], "meta": admin_page_meta}, None)}),
+        ("get", "/v1/admin/planograms"): ex(resp={"200": ({"items": [planogram_row], "meta": admin_page_meta}, None)}),
+        ("get", "/v1/admin/planograms/{planogramId}"): ex(resp={"200": (planogram_detail, None)}),
+        ("get", "/v1/reports/sales-summary"): ex(resp={"200": (sales_summary_ex, None)}),
+        ("get", "/v1/reports/payments-summary"): ex(resp={"200": (pay_summary_ex, None)}),
+        ("get", "/v1/reports/fleet-health"): ex(resp={"200": (fleet_health_ex, None)}),
+        ("get", "/v1/reports/inventory-exceptions"): ex(resp={"200": (inv_exceptions_ex, None)}),
+        ("get", "/v1/admin/machines/{machineId}"): ex(resp={"200": (mach_item, None)}),
+        ("get", "/v1/commerce/orders/{orderId}/reconciliation"): ex(resp={"200": (recon_ex, None)}),
+        ("post", "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks"): ex(
+            req_body={
+                "provider": "stripe",
+                "provider_reference": "pi_example_123",
+                "event_type": "payment_intent.succeeded",
+                "normalized_payment_state": "captured",
+                "payload_json": {"id": "pi_example_123", "status": "succeeded"},
+            },
+            resp={
+                "200": ({"replay": False, "order_id": _U, "payment_state": "captured"}, None),
+                "400": (
+                    v1_error_example(
+                        "webhook_timestamp_skew",
+                        "webhook timestamp outside allowed skew",
+                        {},
+                    ),
+                    None,
+                ),
+                "401": (v1_error_example("webhook_auth_failed", "invalid webhook signature", {}), None),
+                "403": (
+                    v1_error_example(
+                        "webhook_provider_mismatch",
+                        "webhook provider does not match payment provider",
+                        {},
+                    ),
+                    None,
+                ),
+            },
+        ),
+        ("post", "/v1/admin/machines/{machineId}/sync"): ex(
+            req_body={"operator_session_id": "dddddddd-eeee-ffff-0000-111111111111", "reason": "post_restock_verify"},
+            resp={"200": (sync_resp, None)},
+        ),
+        ("post", "/v1/machines/{machineId}/check-ins"): ex(
+            req_body={
+                "package_name": "com.example.kiosk",
+                "version_name": "1.0.0",
+                "version_code": 100,
+                "android_release": "14",
+                "sdk_int": 34,
+                "manufacturer": "Example",
+                "model": "Kiosk-1",
+                "timezone": "America/Los_Angeles",
+                "network_state": "wifi",
+                "boot_id": "boot-session-1",
+                "occurred_at": "2026-04-19T12:00:00Z",
+                "metadata": {},
+            },
+            resp={"201": (check_in_resp, None)},
+        ),
+        ("post", "/v1/machines/{machineId}/config-applies"): ex(
+            req_body={
+                "config_version": 7,
+                "applied_at": "2026-04-19T12:05:00Z",
+                "android_id": "device-android-1",
+                "app_version": "1.0.0",
+                "config_payload": {"applied_revision": 7},
+            },
+            resp={"201": (config_apply_resp, None)},
+        ),
+        ("get", "/v1/machines/{machineId}/operator-sessions/current"): ex(
+            resp={"200": ({"active_session": None, "technician_display_name": ""}, None)},
+        ),
+        ("get", "/v1/machines/{machineId}/operator-sessions/history"): ex(resp={"200": (op_list_ex, None)}),
+        ("get", "/v1/machines/{machineId}/operator-sessions/auth-events"): ex(resp={"200": (op_list_ex, None)}),
+        ("get", "/v1/machines/{machineId}/operator-sessions/action-attributions"): ex(resp={"200": (op_list_ex, None)}),
+        ("get", "/v1/machines/{machineId}/operator-sessions/timeline"): ex(resp={"200": (op_list_ex, None)}),
+        ("get", "/v1/machines/{machineId}/commands/receipts"): ex(resp={"200": (op_list_ex, None)}),
+        ("get", "/v1/operator-insights/technicians/{technicianId}/action-attributions"): ex(resp={"200": (op_list_ex, None)}),
+        ("get", "/v1/operator-insights/users/action-attributions"): ex(resp={"200": (op_list_ex, None)}),
+        ("post", "/v1/machines/{machineId}/operator-sessions/logout"): ex(
+            req_body={
+                "session_id": "dddddddd-eeee-ffff-0000-111111111111",
+                "ended_reason": "user_logout",
+                "auth_method": "oidc",
+            },
+            resp={"200": (op_login, None)},
+        ),
+        ("get", "/v1/admin/organizations/{orgId}/artifacts"): ex(
+            resp={"200": ({"items": [], "meta": {"limit": 50, "offset": 0, "returned": 0, "totalCount": 0}}, None)},
+        ),
+        ("get", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}"): ex(
+            resp={"200": ({"artifact_id": "ffffffff-0000-1111-2222-333333333333", "status": "uploaded"}, None)},
+        ),
+        ("get", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}/download"): ex(
+            resp={
+                "200": (
+                    {
+                        "method": "GET",
+                        "url": "https://storage.example/presigned-read",
+                        "headers": {},
+                        "expires_at": "2026-04-19T13:00:00Z",
+                    },
+                    None,
+                ),
+            },
+        ),
+        ("delete", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}"): ex(
+            resp={"200": ({"status": "deleted", "artifact_id": "ffffffff-0000-1111-2222-333333333333"}, None)},
+        ),
         ("post", "/v1/commerce/cash-checkout"): ex(
             req_body={
                 "machine_id": _U3,
@@ -1788,6 +2488,81 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             },
         ),
         ("get", "/v1/commerce/orders/{orderId}"): ex(resp={"200": (checkout, None)}),
+        ("post", "/v1/commerce/orders/{orderId}/cancel"): ex(
+            req_body={"reason": "user_cancelled", "slot_index": 3},
+            resp={
+                "200": (
+                    {
+                        "order_id": _U,
+                        "order_status": "cancelled",
+                        "payment_state": "none",
+                        "refund_state": "not_required",
+                        "replay": False,
+                    },
+                    None,
+                ),
+                "409": (v1_error_example("cancel_not_allowed", "order cannot be cancelled in current state", {}), None),
+            },
+        ),
+        ("post", "/v1/commerce/orders/{orderId}/refunds"): ex(
+            req_body={
+                "reason": "vend_failed",
+                "amount_minor": 15000,
+                "currency": "VND",
+                "metadata": {"slot_index": 3, "vend_failure_reason": "motor_timeout"},
+            },
+            resp={
+                "200": (
+                    {
+                        "refund_id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                        "order_id": _U,
+                        "payment_id": "11111111-2222-3333-4444-555555555555",
+                        "refund_state": "pending",
+                        "amount_minor": 15000,
+                        "currency": "VND",
+                        "replay": False,
+                    },
+                    None,
+                ),
+                "400": (v1_error_example("refund_not_allowed", "refund exceeds captured amount or order unpaid", {}), None),
+            },
+        ),
+        ("get", "/v1/commerce/orders/{orderId}/refunds"): ex(
+            resp={
+                "200": (
+                    {
+                        "items": [
+                            {
+                                "refund_id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                                "order_id": _U,
+                                "payment_id": "11111111-2222-3333-4444-555555555555",
+                                "refund_state": "pending",
+                                "amount_minor": 15000,
+                                "currency": "VND",
+                                "created_at": "2026-04-24T00:00:00Z",
+                            }
+                        ]
+                    },
+                    None,
+                ),
+            },
+        ),
+        ("get", "/v1/commerce/orders/{orderId}/refunds/{refundId}"): ex(
+            resp={
+                "200": (
+                    {
+                        "refund_id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                        "order_id": _U,
+                        "payment_id": "11111111-2222-3333-4444-555555555555",
+                        "refund_state": "pending",
+                        "amount_minor": 15000,
+                        "currency": "VND",
+                        "created_at": "2026-04-24T00:00:00Z",
+                    },
+                    None,
+                ),
+            },
+        ),
         ("post", "/v1/commerce/orders/{orderId}/vend/start"): ex(
             req_body={"slot_index": 3},
             resp={"200": ({"vend_state": "in_progress", "slot_index": 3}, None)},
@@ -1798,7 +2573,19 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ),
         ("post", "/v1/commerce/orders/{orderId}/vend/failure"): ex(
             req_body={"slot_index": 3, "failure_reason": "motor_timeout"},
-            resp={"200": ({"order_id": _U, "order_status": "failed", "vend_state": "failed"}, None)},
+            resp={
+                "200": (
+                    {
+                        "order_id": _U,
+                        "order_status": "failed",
+                        "vend_state": "failed",
+                        "refund_required": True,
+                        "local_cash_refund_required": False,
+                    },
+                    None,
+                ),
+                "409": (v1_error_example("payment_not_settled", "payment must be captured before vend completion", {}), None),
+            },
         ),
         ("post", "/v1/device/machines/{machineId}/vend-results"): ex(
             req_body={
@@ -1867,6 +2654,110 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ("get", "/v1/machines/{machineId}/telemetry/incidents"): ex(resp={"200": (telemetry_incidents_ex, None)}),
         ("get", "/v1/machines/{machineId}/telemetry/rollups"): ex(resp={"200": (telemetry_rollups_ex, None)}),
         ("get", "/v1/setup/machines/{machineId}/bootstrap"): ex(resp={"200": (bootstrap_resp, None)}),
+        ("post", "/v1/setup/activation-codes/claim"): ex(
+            req_body={"activationCode": "AVF-123456-ABCDEF", "deviceFingerprint": fingerprint_ex},
+            resp={
+                "200": (
+                    {
+                        "machineId": _U3,
+                        "organizationId": _U2,
+                        "siteId": "11111111-2222-3333-4444-555555555555",
+                        "machineName": "Lobby A",
+                        "machineToken": "<jwt>",
+                        "tokenExpiresAt": "2026-04-24T00:00:00Z",
+                        "mqtt": {"brokerUrl": "ssl://mqtt.example.com:8883", "topicPrefix": "avf/devices"},
+                        "bootstrapUrl": "/v1/setup/machines/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/bootstrap",
+                    },
+                    None,
+                ),
+                "400": (v1_error_example("activation_invalid", "activation code is not valid", {}), None),
+            },
+        ),
+        ("post", "/v1/admin/machines/{machineId}/activation-codes"): ex(
+            req_body={"expiresInMinutes": 1440, "maxUses": 1, "notes": "Field install at site A"},
+            resp={
+                "201": (
+                    {
+                        "activationCode": "AVF-123456-ABCDEF",
+                        "activationCodeId": "11111111-2222-3333-4444-555555555555",
+                        "machineId": _U3,
+                        "expiresAt": "2026-04-24T00:00:00Z",
+                        "maxUses": 1,
+                        "remainingUses": 1,
+                        "status": "active",
+                    },
+                    None,
+                ),
+                "403": (v1_error_example("forbidden", "caller lacks permission for this resource", {}), None),
+            },
+        ),
+        ("get", "/v1/admin/machines/{machineId}/activation-codes"): ex(
+            resp={
+                "200": (
+                    {
+                        "items": [
+                            {
+                                "activationCodeId": "11111111-2222-3333-4444-555555555555",
+                                "machineId": _U3,
+                                "expiresAt": "2026-04-24T00:00:00Z",
+                                "maxUses": 1,
+                                "uses": 0,
+                                "remainingUses": 1,
+                                "status": "active",
+                                "notes": "Field install",
+                                "createdAt": "2026-04-23T00:00:00Z",
+                            }
+                        ]
+                    },
+                    None,
+                ),
+            },
+        ),
+        ("delete", "/v1/admin/machines/{machineId}/activation-codes/{activationCodeId}"): ex(
+            resp={"204": ("", None)},
+        ),
+        ("get", "/v1/admin/machines/{machineId}/inventory"): ex(resp={"200": (inv_by_product_ex, None)}),
+        ("put", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}/content"): ex(
+            resp={"200": (art_upload_ok, None)},
+        ),
+        ("get", "/v1/machines/{machineId}/sale-catalog"): ex(resp={"200": (sale_catalog_ex, None)}),
+        ("post", "/v1/device/machines/{machineId}/events/reconcile"): ex(
+            req_body={"idempotencyKeys": ["machine-001:boot-20260424:seq-100:events.vend"]},
+            resp={
+                "200": (
+                    {
+                        "machineId": _U3,
+                        "items": [
+                            {
+                                "idempotencyKey": "machine-001:boot-20260424:seq-100:events.vend",
+                                "status": "processed",
+                                "eventType": "events.vend",
+                                "acceptedAt": "2026-04-24T00:00:00Z",
+                                "processedAt": "2026-04-24T00:00:10Z",
+                                "retryable": False,
+                            }
+                        ],
+                    },
+                    None,
+                ),
+                "400": (v1_error_example("invalid_batch_size", "idempotencyKeys must contain 1 to 500 entries", {}), None),
+            },
+        ),
+        ("get", "/v1/device/machines/{machineId}/events/{idempotencyKey}/status"): ex(
+            resp={
+                "200": (
+                    {
+                        "idempotencyKey": "machine-001:boot-20260424:seq-100:events.vend",
+                        "status": "not_found",
+                        "eventType": None,
+                        "acceptedAt": None,
+                        "processedAt": None,
+                        "retryable": True,
+                    },
+                    None,
+                ),
+            },
+        ),
         ("put", "/v1/admin/machines/{machineId}/topology"): ex(req_body=topology_req),
         ("put", "/v1/admin/machines/{machineId}/planograms/draft"): ex(req_body=planogram_draft_req),
         ("post", "/v1/admin/machines/{machineId}/planograms/publish"): ex(
@@ -1905,9 +2796,42 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             req_body=stock_adj_req,
             resp={"200": (stock_adj_resp, None)},
         ),
+        ("get", "/v1/admin/machines/{machineId}/cashbox"): ex(resp={"200": (cashbox_ex, None)}),
+        ("post", "/v1/admin/machines/{machineId}/cash-collections"): ex(
+            req_body=cash_coll_start_req,
+            resp={"200": (cash_coll_open_ex, None)},
+        ),
+        ("get", "/v1/admin/machines/{machineId}/cash-collections"): ex(
+            resp={
+                "200": (
+                    {"items": [cash_coll_closed_exact_ex, cash_coll_review_ex], "meta": cmeta},
+                    None,
+                )
+            },
+        ),
+        ("get", "/v1/admin/machines/{machineId}/cash-collections/{collectionId}"): ex(
+            resp={"200": (cash_coll_closed_ex, None)},
+        ),
+        ("post", "/v1/admin/machines/{machineId}/cash-collections/{collectionId}/close"): ex(
+            req_body=cash_coll_close_req,
+            resp={
+                "200": (cash_coll_closed_ex, None),
+                "409": (
+                    v1_error_example(
+                        "close_payload_conflict",
+                        "close payload does not match stored close",
+                        {},
+                    ),
+                    None,
+                ),
+            },
+        ),
         ("post", "/v1/machines/{machineId}/operator-sessions/login"): ex(
             req_body={"auth_method": "oidc", "client_metadata": {"kiosk": "A12"}},
             resp={"200": (op_login, None)},
+        ),
+        ("post", "/v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat"): ex(
+            resp={"200": ({"session": op_login}, None)},
         ),
         ("post", "/v1/admin/organizations/{orgId}/artifacts"): ex(
             req_body={"content_type": "application/zip", "original_filename": "bundle.zip"},
@@ -1940,14 +2864,48 @@ def attach_examples(method: str, path: str, op: dict[str, Any]) -> None:
             continue
         for mime, block in resp["content"].items():
             if mime == "application/json" and ex_obj is not None:
+                if isinstance(ex_obj, str):
+                    block["example"] = ex_obj
+                else:
+                    block["example"] = ex_obj
+            elif mime == "text/plain" and isinstance(ex_obj, str):
                 block["example"] = ex_obj
-                break
+
+
+def enrich_error_response_examples(paths: dict[str, dict[str, Any]]) -> None:
+    """Attach representative JSON error examples to 4xx/5xx responses when still missing."""
+    defaults: dict[str, tuple[str, str, dict[str, Any]]] = {
+        "400": ("invalid_request", "request could not be validated", {}),
+        "401": ("unauthenticated", "missing or invalid bearer token", {}),
+        "403": ("forbidden", "caller lacks permission for this resource", {}),
+        "404": ("not_found", "resource was not found", {}),
+        "409": ("illegal_transition", "request conflicts with current state", {}),
+        "429": ("rate_limited", "too many requests", {"retry_after_seconds": 60}),
+        "500": ("internal", "unexpected server error", {}),
+        "503": ("capability_not_configured", "optional capability is not configured for this process", {"capability": "example_capability"}),
+    }
+    for _path, by_method in paths.items():
+        for _method, op in by_method.items():
+            for code, resp in (op.get("responses") or {}).items():
+                cs = str(code)
+                if not cs.isdigit() or int(cs) < 400:
+                    continue
+                content = resp.get("content") or {}
+                for mime, block in content.items():
+                    if mime != "application/json":
+                        continue
+                    if block.get("example") is not None:
+                        continue
+                    d = defaults.get(cs)
+                    if d:
+                        block["example"] = v1_error_example(d[0], d[1], d[2])
 
 
 # Every HTTP method/path the Chi router can register for the public API (see internal/httpserver/server.go).
 REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/health/live"),
     ("get", "/health/ready"),
+    ("get", "/version"),
     ("get", "/metrics"),
     ("get", "/swagger/doc.json"),
     ("get", "/swagger/index.html"),
@@ -1957,6 +2915,27 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("post", "/v1/auth/logout"),
     ("get", "/v1/admin/products"),
     ("get", "/v1/admin/products/{productId}"),
+    ("post", "/v1/admin/products"),
+    ("put", "/v1/admin/products/{productId}"),
+    ("patch", "/v1/admin/products/{productId}"),
+    ("delete", "/v1/admin/products/{productId}"),
+    ("put", "/v1/admin/products/{productId}/image"),
+    ("delete", "/v1/admin/products/{productId}/image"),
+    ("get", "/v1/admin/brands"),
+    ("post", "/v1/admin/brands"),
+    ("put", "/v1/admin/brands/{brandId}"),
+    ("patch", "/v1/admin/brands/{brandId}"),
+    ("delete", "/v1/admin/brands/{brandId}"),
+    ("get", "/v1/admin/categories"),
+    ("post", "/v1/admin/categories"),
+    ("put", "/v1/admin/categories/{categoryId}"),
+    ("patch", "/v1/admin/categories/{categoryId}"),
+    ("delete", "/v1/admin/categories/{categoryId}"),
+    ("get", "/v1/admin/tags"),
+    ("post", "/v1/admin/tags"),
+    ("put", "/v1/admin/tags/{tagId}"),
+    ("patch", "/v1/admin/tags/{tagId}"),
+    ("delete", "/v1/admin/tags/{tagId}"),
     ("get", "/v1/admin/price-books"),
     ("get", "/v1/admin/planograms"),
     ("get", "/v1/admin/planograms/{planogramId}"),
@@ -1964,6 +2943,11 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("post", "/v1/admin/machines/{machineId}/stock-adjustments"),
     ("get", "/v1/admin/machines/{machineId}/inventory"),
     ("get", "/v1/admin/machines/{machineId}/inventory-events"),
+    ("get", "/v1/admin/machines/{machineId}/cashbox"),
+    ("post", "/v1/admin/machines/{machineId}/cash-collections"),
+    ("get", "/v1/admin/machines/{machineId}/cash-collections"),
+    ("get", "/v1/admin/machines/{machineId}/cash-collections/{collectionId}"),
+    ("post", "/v1/admin/machines/{machineId}/cash-collections/{collectionId}/close"),
     ("get", "/v1/setup/machines/{machineId}/bootstrap"),
     ("put", "/v1/admin/machines/{machineId}/topology"),
     ("put", "/v1/admin/machines/{machineId}/planograms/draft"),
@@ -1974,6 +2958,7 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/v1/reports/fleet-health"),
     ("get", "/v1/reports/inventory-exceptions"),
     ("get", "/v1/admin/machines"),
+    ("get", "/v1/admin/machines/{machineId}"),
     ("get", "/v1/admin/technicians"),
     ("get", "/v1/admin/assignments"),
     ("get", "/v1/admin/commands"),
@@ -2011,9 +2996,20 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/v1/commerce/orders/{orderId}"),
     ("get", "/v1/commerce/orders/{orderId}/reconciliation"),
     ("post", "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks"),
+    ("post", "/v1/commerce/orders/{orderId}/cancel"),
+    ("post", "/v1/commerce/orders/{orderId}/refunds"),
+    ("get", "/v1/commerce/orders/{orderId}/refunds"),
+    ("get", "/v1/commerce/orders/{orderId}/refunds/{refundId}"),
     ("post", "/v1/commerce/orders/{orderId}/vend/start"),
     ("post", "/v1/commerce/orders/{orderId}/vend/success"),
     ("post", "/v1/commerce/orders/{orderId}/vend/failure"),
+    ("post", "/v1/setup/activation-codes/claim"),
+    ("post", "/v1/admin/machines/{machineId}/activation-codes"),
+    ("get", "/v1/admin/machines/{machineId}/activation-codes"),
+    ("delete", "/v1/admin/machines/{machineId}/activation-codes/{activationCodeId}"),
+    ("get", "/v1/machines/{machineId}/sale-catalog"),
+    ("post", "/v1/device/machines/{machineId}/events/reconcile"),
+    ("get", "/v1/device/machines/{machineId}/events/{idempotencyKey}/status"),
     ("post", "/v1/device/machines/{machineId}/vend-results"),
     ("post", "/v1/device/machines/{machineId}/commands/poll"),
 ]
@@ -2055,6 +3051,8 @@ def main() -> int:
         attach_examples(method, path, op)
         paths.setdefault(path, {})[method] = op
 
+    enrich_error_response_examples(paths)
+
     miss = verify_paths(paths)
     if miss:
         print("swagger route coverage: missing operations:", file=sys.stderr)
@@ -2067,29 +3065,74 @@ def main() -> int:
         "openapi": "3.0.3",
         "info": info,
         "servers": [
-            {"url": "https://api.ldtv.dev", "description": "Production"},
-            {"url": "http://localhost:8080", "description": "Development"},
+            {
+                "url": "https://api.ldtv.dev",
+                "description": "Production (default — Swagger UI Try it out uses this server first)",
+            },
+            {"url": "http://localhost:8080", "description": "Local development"},
         ],
         "paths": paths,
         "components": comp,
         "tags": [
             {"name": "Health", "description": "Process liveness/readiness; no JWT. Readiness may return plain text 503 when dependencies fail."},
-            {"name": "Reliability", "description": "Prometheus metrics when `METRICS_ENABLED=true`."},
+            {
+                "name": "System",
+                "description": "Build/version JSON, Prometheus metrics when `METRICS_ENABLED=true`, and embedded OpenAPI/Swagger UI when `HTTP_SWAGGER_UI_ENABLED=true`.",
+            },
             {
                 "name": "Auth",
                 "description": "Session-based API authentication (login/refresh without Bearer; me/logout on the Bearer-protected `/v1/auth` group).",
             },
-            {"name": "Admin", "description": "Fleet and org administration (`platform_admin` or `org_admin`). Operational list routes are Postgres-backed with pagination and typed `items` + `meta` envelopes."},
+            {
+                "name": "Activation",
+                "description": "Public activation-code claim (`POST /v1/setup/activation-codes/claim`) and org-admin provisioning under `/v1/admin/machines/.../activation-codes`.",
+            },
+            {
+                "name": "Catalog Admin",
+                "description": "Read-only org catalog: products, price books, planograms (`platform_admin` or `org_admin`).",
+            },
+            {
+                "name": "Inventory",
+                "description": "Machine slot state, aggregate inventory, ledger events, and idempotent stock adjustments (operator session + Idempotency-Key).",
+            },
+            {
+                "name": "Cash settlement",
+                "description": "Field cash collection sessions: expected vault from commerce cash payments, open/close with variance and audit (accounting-only; no bill recycler hardware control).",
+            },
+            {
+                "name": "Machine Setup",
+                "description": "Technician bootstrap payload, cabinet topology, planogram draft/publish, and setup sync commands.",
+            },
+            {
+                "name": "Runtime Catalog",
+                "description": "Kiosk `GET /v1/machines/{machineId}/sale-catalog` — published planogram, price, stock, optional product images.",
+            },
+            {
+                "name": "Machine Admin",
+                "description": "Fleet directory: machines, technicians, assignments, command ledger, OTA campaigns.",
+            },
             {"name": "Artifacts", "description": "Presigned S3 artifact lifecycle when `API_ARTIFACTS_ENABLED=true` and object storage is configured."},
-            {"name": "Operator", "description": "Technician/user operator sessions, attribution, and cross-machine insights."},
-            {"name": "Commerce", "description": "Tenant-scoped checkout (order, payment session + outbox, provider webhooks, vend state machine) plus read-only operational lists for orders and payments."},
+            {
+                "name": "Operator Sessions",
+                "description": "Machine-scoped operator login/logout/heartbeat/history and cross-machine insight reads.",
+            },
+            {
+                "name": "Commerce",
+                "description": "Checkout (cash + online), payment-session outbox, provider webhooks (HMAC, no Bearer), vend lifecycle, and tenant orders/payments lists.",
+            },
             {
                 "name": "Reporting",
-                "description": "Read-only analytics for finance and operations (`platform_admin` or `org_admin`). All routes require explicit RFC3339 **from**/**to** bounds (max 366 days) and organization scoping consistent with admin lists.",
+                "description": "Read-only analytics (`platform_admin` or `org_admin`). Routes require RFC3339 **from**/**to** (max 366 days where applicable).",
             },
-            {"name": "Fleet", "description": "Machine shadow projection and telemetry rollups (read models, not raw MQTT firehose)."},
-            {"name": "Device", "description": "Remote command ledger + MQTT dispatch; **503** when MQTT publisher is not configured."},
-            {"name": "Documentation", "description": "Embedded Swagger UI + OpenAPI JSON when `HTTP_SWAGGER_UI_ENABLED=true`."},
+            {"name": "Telemetry", "description": "Projected machine telemetry snapshot, incidents, and rollups (not raw MQTT)."},
+            {
+                "name": "Telemetry Reconcile",
+                "description": "Device-facing critical telemetry idempotency batch/status (`/v1/device/machines/{machineId}/events/...`).",
+            },
+            {
+                "name": "Device Runtime",
+                "description": "Shadow document, remote commands (dispatch, poll, receipts), Android check-ins, config acknowledgements, and HTTP vend-result bridge.",
+            },
         ],
     }
 
@@ -2126,6 +3169,11 @@ import (
 
 //go:embed swagger.json
 var swaggerJSON []byte
+
+// OpenAPIJSON returns the embedded OpenAPI 3.0 document (for tests and offline tooling).
+func OpenAPIJSON() []byte {{
+	return swaggerJSON
+}}
 
 func init() {{
 	swag.Register("swagger", &swag.Spec{{
