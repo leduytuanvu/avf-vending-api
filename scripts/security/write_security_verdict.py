@@ -185,6 +185,120 @@ def write_skipped() -> None:
     _write(payload)
 
 
+def write_ineligible_branch_skipped() -> None:
+    """Canonical branch (from promotion-manifest) is not develop or main; neutral skipped verdict."""
+    gen = _s("GENERATED_AT_UTC") or _utc_now()
+    ev = _s("EVENT_NAME", "")
+    wrid = _s("WORKFLOW_RUN_ID", "")
+    wn = _s("WORKFLOW_NAME", "Security Release")
+    br = (_s("CANONICAL_SOURCE_BRANCH") or _s("RESOLVED_SOURCE_BRANCH") or "").strip()
+    tbr = (_s("TRIGGERING_BUILD_HEAD_BRANCH") or "").strip()
+    ssha = (_s("RESOLVED_SOURCE_SHA") or _s("CANONICAL_SOURCE_SHA") or "").strip()
+    bid = _s("BUILD_RUN_ID", _s("TRIGGERING_BUILD_ID", ""))
+    reasons = [
+        "Release candidate branch is not develop or main (from promotion-manifest / image-metadata): %r. "
+        "Build workflow_run head branch (diagnostic) was %r; identity uses resolved artifact metadata, not the triggering run head."
+        % (br, tbr)
+    ]
+    jr = {
+        "resolve_build_run": "success",
+        "resolve_image_refs": "success",
+        "image_vulnerability_scan": "skipped",
+    }
+    payload = {
+        "schema_version": "v1",
+        "verdict": "skipped",
+        "security_verdict": "skipped",
+        "canonical_security_artifact": "security-verdict",
+        "nightly_security_verdict": "not_applicable",
+        "event_name": ev,
+        "workflow_name": wn,
+        "workflow_run_id": wrid,
+        "security_workflow_run_id": wrid,
+        "generated_at_utc": gen,
+        "source_build_run_id": bid or "",
+        "source_sha": ssha,
+        "source_branch": br,
+        "source_event": (_s("ARTIFACT_SOURCE_EVENT") or "").strip(),
+        "trigger_workflow_event": _s("TRIGGERING_BUILD_EVENT", ""),
+        "source_workflow_name": "Build and Push Images",
+        "release_gate_verdict": "skipped",
+        "release_gate_mode": "skipped-ineligible-candidate-branch",
+        "repo_security_verdict": "skipped",
+        "repo_release_verdict": "skipped",
+        "published_image_verdict": "skipped",
+        "provenance_release_verdict": "skipped",
+        "published_images": {
+            "app_image_ref": "",
+            "app_digest": "",
+            "goose_image_ref": "",
+            "goose_digest": "",
+            "provenance_verdict": "",
+            "provenance_verdict_source": "not_applicable",
+        },
+        "failure_reasons": list(reasons),
+        "warnings": [],
+        "decision_reasons": list(reasons),
+        "job_results": jr,
+        "release_gate": {
+            "mode": "skipped-ineligible-candidate-branch",
+            "verdict": "skipped",
+            "generated_at_utc": gen,
+            "trust_model": "not-applicable",
+            "summary": "Canonical source branch is not an eligible develop/main release line.",
+        },
+    }
+    _write(payload)
+
+
+def write_unsupported_artifact_source_event_skipped() -> None:
+    """ARTIFACT source_event (semantic) is not an allowed value for this gate."""
+    gen = _s("GENERATED_AT_UTC") or _utc_now()
+    ev = _s("EVENT_NAME", "")
+    wrid = _s("WORKFLOW_RUN_ID", "")
+    wn = _s("WORKFLOW_NAME", "Security Release")
+    a_ev = (_s("ARTIFACT_SOURCE_EVENT") or "").strip()
+    reasons = [
+        "promotion-manifest source_event is %r (expected one of: push, workflow_dispatch, workflow_run, or manual for dispatch builds)."
+        % (a_ev,)
+    ]
+    _write(
+        {
+            "schema_version": "v1",
+            "verdict": "skipped",
+            "security_verdict": "skipped",
+            "canonical_security_artifact": "security-verdict",
+            "nightly_security_verdict": "not_applicable",
+            "event_name": ev,
+            "workflow_name": wn,
+            "workflow_run_id": wrid,
+            "security_workflow_run_id": wrid,
+            "generated_at_utc": gen,
+            "source_build_run_id": _s("BUILD_RUN_ID", ""),
+            "source_sha": (_s("RESOLVED_SOURCE_SHA") or "").strip(),
+            "source_branch": (_s("RESOLVED_SOURCE_BRANCH") or "").strip(),
+            "source_event": a_ev,
+            "release_gate_verdict": "skipped",
+            "release_gate_mode": "skipped-unsupported-artifact-source-event",
+            "repo_security_verdict": "skipped",
+            "repo_release_verdict": "skipped",
+            "published_image_verdict": "skipped",
+            "provenance_release_verdict": "skipped",
+            "failure_reasons": list(reasons),
+            "warnings": [],
+            "decision_reasons": list(reasons),
+            "job_results": {},
+            "release_gate": {
+                "mode": "skipped-unsupported-artifact-source-event",
+                "verdict": "skipped",
+                "generated_at_utc": gen,
+                "trust_model": "not-applicable",
+                "summary": "Unsupported artifact source_event for security release gating.",
+            },
+        }
+    )
+
+
 def write_unsupported_trigger_skipped() -> None:
     """Skipped: triggering Build event is not an allowed build trigger type for release gating."""
     gen = _s("GENERATED_AT_UTC") or _utc_now()
@@ -471,18 +585,17 @@ def write_full() -> None:
     elif artifact_sha:
         source_sha = artifact_sha
     else:
-        source_sha = tr_sha or wf_sha
+        # Do not use triggering workflow_run head_sha; dispatch-only / checkout fallback.
+        source_sha = wf_sha
 
     resolved_source_branch = (_s("RESOLVED_SOURCE_BRANCH") or "").strip()
-    build_head_branch = (_s("BUILD_HEAD_BRANCH") or "").strip()
+    build_head_branch = (_s("BUILD_HEAD_BRANCH") or "").strip()  # diagnostic only (source_coordinates)
     manual_target_branch = (_s("MANUAL_TARGET_BRANCH") or "").strip()
     gref = (_s("GITHUB_REF_NAME") or "").strip()
     if can_br:
         source_branch = can_br
     elif resolved_source_branch:
         source_branch = resolved_source_branch
-    elif build_head_branch:
-        source_branch = build_head_branch
     elif manual_target_branch:
         source_branch = manual_target_branch
     else:
@@ -515,9 +628,9 @@ def write_full() -> None:
     if wnote:
         warnings.append(wnote)
 
-    if not artifact_sha and tr_sha and event_name == "workflow_run":
+    if not artifact_sha and not can_sha and event_name == "workflow_run":
         warnings.append(
-            "source_sha fallback: resolved artifact source_sha was empty; displayed source coordinates may use the triggering Build workflow_run head where applicable (prefer fixing build artifacts to publish source_sha)."
+            "source_sha fallback: RESOLVED source_sha from build artifacts was empty; verdict uses this Security run checkout (WORKFLOW_SHA) only. Prefer build artifacts (promotion-manifest) to publish source_sha."
         )
 
     _add_coordinate_mismatch(event_name, failure_reasons)
@@ -871,30 +984,76 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         "mode",
-        choices=("skipped", "no-candidate", "unsupported-trigger", "full", "emergency"),
+        choices=(
+            "skipped",
+            "no-candidate",
+            "unsupported-trigger",
+            "ineligible-branch",
+            "unsupported-artifact-source-event",
+            "full",
+            "emergency",
+        ),
         help="Verdict document to write",
     )
     ap.add_argument("--emergency-reason", default="", help="Only for mode=emergency")
     args = ap.parse_args()
-    if args.mode == "skipped":
-        write_skipped()
-    elif args.mode == "no-candidate":
-        write_no_candidate()
-    elif args.mode == "unsupported-trigger":
-        write_unsupported_trigger_skipped()
-    elif args.mode == "full":
-        write_full()
-    else:
-        write_emergency(args.emergency_reason)
+    exit_code = 0
+    try:
+        if args.mode == "skipped":
+            write_skipped()
+        elif args.mode == "no-candidate":
+            write_no_candidate()
+        elif args.mode == "unsupported-trigger":
+            write_unsupported_trigger_skipped()
+        elif args.mode == "ineligible-branch":
+            write_ineligible_branch_skipped()
+        elif args.mode == "unsupported-artifact-source-event":
+            write_unsupported_artifact_source_event_skipped()
+        elif args.mode == "full":
+            write_full()
+        else:
+            write_emergency(args.emergency_reason)
+    except Exception as e:  # noqa: BLE001 — last-resort so CI always gets a machine-readable file
+        try:
+            write_emergency("Unexpected exception in write_security_verdict mode=%r: %s" % (args.mode, e))
+        except Exception as e2:  # noqa: BLE001
+            REPORTS.mkdir(parents=True, exist_ok=True)
+            p = {
+                "schema_version": "v1",
+                "verdict": "fail",
+                "security_verdict": "fail",
+                "failure_reasons": [
+                    "Internal: write_emergency after exception failed: %r; original: %r" % (e2, e)
+                ],
+                "generated_at_utc": _utc_now(),
+            }
+            VERDICT_PATH.write_text(json.dumps(p, indent=2) + "\n", encoding="utf-8")
+        exit_code = 1
     if not VERDICT_PATH.is_file():
-        write_emergency("Internal: verdict writer completed without creating the output file")
-        sys.exit(2)
+        try:
+            write_emergency("Internal: verdict writer completed without creating the output file")
+        except Exception:  # noqa: BLE001
+            REPORTS.mkdir(parents=True, exist_ok=True)
+            VERDICT_PATH.write_text(
+                '{"schema_version":"v1","verdict":"fail","security_verdict":"fail"}\n',
+                encoding="utf-8",
+            )
+        exit_code = max(exit_code, 2)
     # Validate JSON
     try:
         json.loads(VERDICT_PATH.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        write_emergency("Internal: written verdict was not valid JSON: %s" % e)
-        sys.exit(3)
+        try:
+            write_emergency("Internal: written verdict was not valid JSON: %s" % e)
+        except Exception:  # noqa: BLE001
+            REPORTS.mkdir(parents=True, exist_ok=True)
+            VERDICT_PATH.write_text(
+                '{"schema_version":"v1","verdict":"fail","security_verdict":"fail"}\n',
+                encoding="utf-8",
+            )
+        exit_code = max(exit_code, 3)
+    if exit_code:
+        sys.exit(exit_code)
 
 
 if __name__ == "__main__":
