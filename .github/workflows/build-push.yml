@@ -32,36 +32,96 @@ permissions:
   id-token: write
   packages: write
 
+# Contract anchors (see scripts/ci/verify_workflow_contracts.sh; enforced in job upstream-ci-release-gate):
+# - github.event.workflow_run.name == 'CI'
+# - github.event.workflow_run.conclusion == 'success'
+# - github.event.workflow_run.event == 'push'
+# - (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')
+
 jobs:
-  # Fails the workflow (so downstream Security Release does not see success) when this run was
-  # started from workflow_run but the upstream CI was not a push (e.g. pull_request on head main/develop).
-  fail-if-not-push-ci:
-    if: |
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.event != 'push'
+  # Must always run a concrete pass/fail first. If upstream "CI" is push@develop/main but *failed*, the build job
+  # is skipped; without this gate, *all* jobs can be skipped and the workflow still goes green in ~1s.
+  upstream-ci-release-gate:
+    name: Upstream CI release gate
     runs-on: ubuntu-latest
     steps:
-      - name: Build and Push Images is only for push CI on develop or main
+      - name: Enforce real release-candidate (push CI) or allow manual dispatch
+        shell: bash
         run: |
+          set -Eeuo pipefail
           {
-            echo "## Not a release-candidate build"
-            echo "This workflow is wired to run after **CI** on **push** to \`develop\` or \`main\` only."
-            echo "The triggering CI event was: \`${{ github.event.workflow_run.event }}\` — not building or uploading image artifacts."
+            echo "## Upstream / trigger gate"
+            echo "- this workflow event: \`${{ github.event_name }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "error: refuse to report success for non-push CI (would confuse downstream release gates)" >&2
-          exit 1
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            {
+              echo "- **not** a release candidate from a CI \`push\` chain — **manual** \`workflow_dispatch\` (operational build to develop or main only)."
+              echo "- **Not a release candidate** in the *automatic merge/push* sense: source_event for manifests is \`workflow_dispatch\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ "${{ github.event_name }}" != "workflow_run" ]]; then
+            echo "error: unexpected event for Build and Push Images: ${{ github.event_name }}" >&2
+            exit 1
+          fi
+          wn="${{ github.event.workflow_run.name }}"
+          ev="${{ github.event.workflow_run.event }}"
+          conc="${{ github.event.workflow_run.conclusion }}"
+          hb="${{ github.event.workflow_run.head_branch }}"
+          {
+            echo "- upstream \`name\` (must be \`CI\`): \`${wn}\`"
+            echo "- upstream \`event\` (must be \`push\` for auto release candidates): \`${ev}\`"
+            echo "- upstream \`conclusion\` (must be \`success\` to build images): \`${conc}\`"
+            echo "- upstream \`head_branch\` (must be \`develop\` or \`main\`): \`${hb}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "${wn}" != "CI" ]]; then
+            {
+              echo "## Not a release candidate"
+              echo "- Upstream workflow is not named \`CI\` (got \`${wn}\`); this workflow does not build or push."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "error: only workflow_run from **CI** can trigger image build; got: ${wn}" >&2
+            exit 1
+          fi
+          if [[ "${ev}" != "push" ]]; then
+            {
+              echo "## Not a release candidate"
+              echo "- \`pull_request\` and other non-**push** CI runs must **not** produce GHCR images or release artifacts (no promotion-manifest / image-metadata / immutable-image-contract for this path)."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "error: only **push** CI (merge to develop/main) is a release candidate; event was: ${ev}" >&2
+            exit 1
+          fi
+          if [[ "${conc}" != "success" ]]; then
+            {
+              echo "## Not a release candidate"
+              echo "- Upstream \`CI\` did not succeed (conclusion: \`${conc}\`); not building, pushing, or uploading release manifest artifacts. Fix CI on \`${hb}\` and push again."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "error: upstream CI did not complete successfully; refuse green empty run (conclusion=${conc})" >&2
+            exit 1
+          fi
+          if [[ "${hb}" != "develop" && "${hb}" != "main" ]]; then
+            {
+              echo "## Not a release candidate"
+              echo "- head branch is not \`develop\` or \`main\` (got \`${hb}\`); this workflow is skipped for other branches by policy."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "error: only develop/main push builds are release candidates" >&2
+            exit 1
+          fi
+          {
+            echo "- **result:** valid **push** \`CI\` @ \`${hb}\` (success) — this run may build and push digest-pinned images and upload release artifacts."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
 
   build-and-push:
     name: Build and Publish Images
-    # Defensive: match workflow_run filter above; never build from pull_request CI (event != push).
+    needs: upstream-ci-release-gate
     if: |
-      (github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.name == 'CI' &&
-        github.event.workflow_run.event == 'push' &&
-        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')) ||
-      (github.event_name == 'workflow_dispatch' &&
-        (github.event.inputs.build_target_branch == 'develop' || github.event.inputs.build_target_branch == 'main'))
+      always() &&
+      needs.upstream-ci-release-gate.result == 'success' &&
+      (
+        (github.event_name == 'workflow_dispatch' &&
+          (github.event.inputs.build_target_branch == 'develop' || github.event.inputs.build_target_branch == 'main')) ||
+        github.event_name == 'workflow_run'
+      )
     uses: ./.github/workflows/_reusable-build.yml
     with:
       # workflow_run: exact CI head commit + branch. workflow_dispatch: explicit develop/main only (never default-branch accidents).
@@ -71,16 +131,11 @@ jobs:
 
   publish-build-metadata:
     name: Publish Build Metadata and Promotion Signals
-    if: |
-      (github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.name == 'CI' &&
-        github.event.workflow_run.event == 'push' &&
-        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')) ||
-      (github.event_name == 'workflow_dispatch' &&
-        (github.event.inputs.build_target_branch == 'develop' || github.event.inputs.build_target_branch == 'main'))
+    needs:
+      - upstream-ci-release-gate
+      - build-and-push
+    if: always() && needs.build-and-push.result == 'success'
     runs-on: ubuntu-latest
-    needs: build-and-push
 
     steps:
       - name: Write build metadata summary
@@ -223,10 +278,10 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p build-evidence
-          [[ "${APP_REF}" == *@sha256:* ]] && [[ "${GOOSE_REF}" == *@sha256:* ]] || {
+          if ! { [[ "${APP_REF}" == *@sha256:* ]] && [[ "${GOOSE_REF}" == *@sha256:* ]]; }; then
             echo "error: app and goose image refs from build must be digest-pinned (must contain @sha256:...)" >&2
             exit 1
-          }
+          fi
           release_channel="branch-other"
           downstream_intent="ad-hoc"
           if [[ "${SOURCE_REF_TYPE}" == "tag" ]]; then
@@ -299,3 +354,33 @@ jobs:
           path: build-evidence/immutable-image-contract.json
           if-no-files-found: error
           retention-days: 14
+
+  # One place that always runs (with the gate) so the workflow run page shows whether images were built or not.
+  build-and-push-outcome:
+    name: Outcome (release candidate summary)
+    if: always()
+    needs:
+      - upstream-ci-release-gate
+      - build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write workflow-level outcome
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          g="${{ needs.upstream-ci-release-gate.result }}"
+          b="${{ needs.build-and-push.result }}"
+          {
+            echo "## Build and Push Images — outcome"
+            if [[ "$b" == "success" ]]; then
+              echo "- **Result:** this run **built and pushed** real images to GHCR and (when publish ran) produced digest-pinned **promotion-manifest**, **image-metadata** / **image-build-metadata**, and **immutable-image-contract** artifacts."
+            elif [[ "$g" != "success" ]]; then
+              echo "- **Result:** **Not a release candidate.** The upstream \`CI\` gate did not allow a build (wrong workflow name, not a \`push\` to develop/main, failed CI, or ineligible head branch) — **no** GHCR push and **no** release manifest uploads from this run."
+            elif [[ "$b" == "skipped" ]]; then
+              echo "- **Result:** gate passed for this trigger, but the **Build and Publish** job was skipped (e.g. ineligible \`workflow_dispatch\` input). **Not a release candidate** in the sense of a full build — no new images in this run."
+            else
+              echo "- **Result:** the build job did not complete successfully (result: \`$b\`). Fix the build, then re-run. No new release-candidate metadata should be produced from a failed build."
+            fi
+            echo "- gate job: \`upstream-ci-release-gate\` → \`$g\`"
+            echo "- \`Build and Publish Images\` (reusable) → \`$b\`"
+          } >> "$GITHUB_STEP_SUMMARY"

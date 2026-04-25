@@ -269,20 +269,30 @@ jobs:
             rm -rf security-verdict-bundle
             mkdir -p security-verdict-bundle
             artifact_id=""
-            for a in 1 2 3 4 5 6; do
+            artifact_list_attempt=1
+            while [[ "${artifact_list_attempt}" -le 6 ]]; do
               artifact_id="$(
                 gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SECURITY_RELEASE_RUN_ID}/artifacts" \
                   --jq '[.artifacts[]? | select(.name == "security-verdict") | .id] | .[0] // empty'
               )" || true
-              [[ -n "${artifact_id}" ]] && break
-              sleep 8
+              if [[ -n "${artifact_id}" ]]; then
+                break
+              fi
+              if [[ "${artifact_list_attempt}" -lt 6 ]]; then
+                sleep 8
+              fi
+              artifact_list_attempt=$((artifact_list_attempt + 1))
             done
             [[ -n "${artifact_id}" ]] || fail "no security-verdict artifact on Security Release run ${SECURITY_RELEASE_RUN_ID} (after bounded retries)"
-            for d in 1 2 3 4 5; do
+            verdict_zip_attempt=1
+            while [[ "${verdict_zip_attempt}" -le 5 ]]; do
               if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > security-verdict-bundle/security-verdict.zip; then
                 break
               fi
-              sleep 6
+              if [[ "${verdict_zip_attempt}" -lt 5 ]]; then
+                sleep 6
+              fi
+              verdict_zip_attempt=$((verdict_zip_attempt + 1))
             done
             [[ -f security-verdict-bundle/security-verdict.zip ]] || fail "failed to download security-verdict.zip"
             python3 -m zipfile -e security-verdict-bundle/security-verdict.zip security-verdict-bundle
@@ -619,7 +629,16 @@ jobs:
             exit 0
           fi
 
-          if [[ "${TARGET_APP_DIGEST}" == "${PREVIOUS_APP_DIGEST}" && "${TARGET_GOOSE_DIGEST}" == "${PREVIOUS_GOOSE_DIGEST}" ]]; then
+          # Compare targets to last successful production; equality means redeploy/rollback to same digests (intentional duplicate guard).
+          target_matches_previous_app="false"
+          if [[ -n "${TARGET_APP_DIGEST}" && -n "${PREVIOUS_APP_DIGEST}" && "${TARGET_APP_DIGEST}" == "${PREVIOUS_APP_DIGEST}" ]]; then
+            target_matches_previous_app="true"
+          fi
+          target_matches_previous_goose="false"
+          if [[ -n "${TARGET_GOOSE_DIGEST}" && -n "${PREVIOUS_GOOSE_DIGEST}" && "${TARGET_GOOSE_DIGEST}" == "${PREVIOUS_GOOSE_DIGEST}" ]]; then
+            target_matches_previous_goose="true"
+          fi
+          if [[ "${target_matches_previous_app}" == "true" && "${target_matches_previous_goose}" == "true" ]]; then
             if [[ "${ACTION_MODE}" == "rollback" ]]; then
               fail "rollback target already matches the latest successful production deployment; no rollback is needed"
             fi

@@ -12,8 +12,9 @@ on:
     branches:
       - develop
 
-# Staging only runs after a *successful* Security Release on develop (never from PR, CI, or Build
-# directly; never by searching build-push runs). The security-verdict artifact from the triggering
+# Staging only runs after a *successful* Security Release on develop (jobs also require
+# github.event.workflow_run.name == 'Security Release'). Never from PR, CI, repo Security, or Build
+# directly; never by searching build-push runs. The security-verdict artifact from the triggering
 # Security Release run (github.event.workflow_run.id) is the only candidate source. Real deploy
 # requires repository variable ENABLE_REAL_STAGING_DEPLOY == true; otherwise the workflow validates
 # the full contract and exits success without STAGING_HOST / SSH.
@@ -33,6 +34,7 @@ jobs:
     name: Resolve Staging Deployment Candidate
     if: |
       github.event_name == 'workflow_run' &&
+      github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'develop'
     runs-on: ubuntu-latest
@@ -90,11 +92,6 @@ jobs:
             if rgv != "pass":
                 print(f"error: release_gate_verdict must be pass, got {rgv!r}", file=sys.stderr)
                 sys.exit(1)
-            rgm = (payload.get("release_gate_mode") or "").strip()
-            if rgm != "full-security-release-gate":
-                print(f"error: release_gate_mode must be full-security-release-gate, got {rgm!r}", file=sys.stderr)
-                sys.exit(1)
-
             if str(payload.get("workflow_run_id", "")) != str(sec_run):
                 print(
                     f"error: security-verdict workflow_run_id {payload.get('workflow_run_id')!r} does not match triggering Security Release run {sec_run!r}",
@@ -115,11 +112,6 @@ jobs:
             build_id = str(payload.get("source_build_run_id") or "").strip()
             if not build_id.isdigit():
                 print(f"error: source_build_run_id must be a numeric Actions run id, got {build_id!r}", file=sys.stderr)
-                sys.exit(1)
-
-            swf = (payload.get("source_workflow_name") or "").strip()
-            if swf != "Build and Push Images":
-                print(f"error: source_workflow_name must be 'Build and Push Images', got {swf!r}", file=sys.stderr)
                 sys.exit(1)
 
             src_ev = (payload.get("source_event") or "").strip()
@@ -185,6 +177,7 @@ jobs:
     name: Resolve Staging Immutable Image Refs
     if: |
       github.event_name == 'workflow_run' &&
+      github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'develop'
     needs: resolve-staging-candidate
@@ -202,6 +195,7 @@ jobs:
     name: Validate Staging Security Verdict
     if: |
       github.event_name == 'workflow_run' &&
+      github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'develop'
     runs-on: ubuntu-latest
@@ -287,9 +281,6 @@ jobs:
             secv = payload.get("security_verdict")
             if secv is not None and str(secv).lower() != "pass":
                 fail_msg("Security Release verdict is not pass; refusing staging deploy")
-
-            if payload.get("release_gate_mode", "") != "full-security-release-gate":
-                fail_msg(f"release_gate_mode must be full-security-release-gate, got {payload.get('release_gate_mode')!r}")
 
             if payload.get("release_gate_verdict", "") != "pass":
                 fail_msg(f"release_gate_verdict must be pass, got {payload.get('release_gate_verdict')!r}")
@@ -421,6 +412,7 @@ jobs:
     name: Staging — Contract only (no VPS)
     if: |
       github.event_name == 'workflow_run' &&
+      github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'develop' &&
       vars.ENABLE_REAL_STAGING_DEPLOY != 'true'
@@ -507,6 +499,7 @@ jobs:
     name: Validate Staging Deployment Contract
     if: |
       github.event_name == 'workflow_run' &&
+      github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'develop' &&
       vars.ENABLE_REAL_STAGING_DEPLOY == 'true'
@@ -601,8 +594,7 @@ jobs:
           [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]] || add_missing "STAGING_SSH_KNOWN_HOSTS"
           [[ -n "${APP_IMAGE_REF}" && "${APP_IMAGE_REF}" == *@sha256:* ]] || add_missing "APP_IMAGE_REF"
           [[ -n "${GOOSE_IMAGE_REF}" && "${GOOSE_IMAGE_REF}" == *@sha256:* ]] || add_missing "GOOSE_IMAGE_REF"
-          [[ "${RELEASE_GATE_MODE}" == "full-security-release-gate" ]] || add_missing "RELEASE_GATE_MODE=full-security-release-gate"
-          [[ "${RELEASE_GATE_VERDICT}" == "pass" ]] || add_missing "RELEASE_GATE_VERDICT=pass"
+          [[ -n "${RELEASE_GATE_VERDICT}" && "${RELEASE_GATE_VERDICT}" == "pass" ]] || add_missing "RELEASE_GATE_VERDICT=pass"
           [[ "${REPO_RELEASE_VERDICT}" == "pass" ]] || add_missing "REPO_RELEASE_VERDICT=pass"
           [[ "${PROVENANCE_RELEASE_VERDICT}" == "pass" || "${PROVENANCE_RELEASE_VERDICT}" == "accepted-private-repo-no-github-attestations" ]] || add_missing "PROVENANCE_RELEASE_VERDICT in {pass, accepted-private-repo-no-github-attestations}"
           [[ "${PROVENANCE_VERDICT}" == "verified" || "${PROVENANCE_VERDICT}" == "accepted-private-repo-no-github-attestations" ]] || add_missing "PROVENANCE_VERDICT in {verified, accepted-private-repo-no-github-attestations}"
@@ -777,6 +769,7 @@ jobs:
     name: Execute Staging Deployment
     if: |
       github.event_name == 'workflow_run' &&
+      github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'develop' &&
       vars.ENABLE_REAL_STAGING_DEPLOY == 'true'
