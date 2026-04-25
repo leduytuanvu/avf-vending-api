@@ -1,4 +1,4 @@
-.PHONY: tidy fmt fmt-check vet test build proto sqlc sqlc-check swagger swagger-check ci ci-gates check-placeholders check-wiring check-migrations verify-enterprise-release build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full
+.PHONY: tidy fmt fmt-check vet test build proto sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates check-placeholders check-wiring check-migrations verify-enterprise-release build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full
 
 BIN_DIR := bin
 GO ?= go
@@ -41,6 +41,14 @@ swagger:
 swagger-check: swagger
 	git diff --exit-code -- docs/swagger/
 
+# Regenerate Postman v2.1 collection + environment files (native artifacts; not a replacement for /swagger/doc.json).
+postman-generate: swagger
+	"$(PY)" tools/build_postman_collection.py
+
+# Validate committed Postman JSON, production/staging safety flags, and no secret-like content (offline).
+postman-check:
+	"$(PY)" tools/check_postman_artifacts.py
+
 check-placeholders:
 	bash scripts/check_production_placeholders.sh
 
@@ -51,7 +59,7 @@ check-migrations:
 	bash scripts/check_migrations.sh
 
 # Repo-local gates (no Postgres or unit tests). Use before push; GitHub Actions runs `make ci-gates` and compose validation separately.
-ci-gates: fmt-check vet check-placeholders check-wiring check-migrations sqlc-check swagger-check
+ci-gates: fmt-check vet check-placeholders check-wiring check-migrations sqlc-check swagger-check postman-check
 
 # Fast local check (skips postgres integration tests via -short).
 ci: ci-gates test-short
@@ -109,6 +117,62 @@ docker-up:
 docker-down:
 	docker compose -f deployments/docker/docker-compose.yml down
 
+# --- Local dev (Docker compose) ---
+DC_LOCAL := docker compose -f deployments/docker/docker-compose.yml
+
+dev-up:
+	$(DC_LOCAL) up -d
+
+dev-down:
+	$(DC_LOCAL) down
+
+# Destructive: removes the compose Postgres volume (name varies by project; see docs/runbooks/local-dev.md).
+dev-reset-db:
+	$(DC_LOCAL) down
+	-@docker volume rm "avf-vending-local_postgres_data" 2>/dev/null
+	-@docker volume rm "docker_postgres_data" 2>/dev/null
+	$(DC_LOCAL) up -d postgres
+	@echo "dev-reset-db: postgres volume reset; re-run make dev-migrate when psql is ready"
+
+dev-migrate:
+	bash -c 'set -euo pipefail; \
+	  export APP_ENV=development; \
+	  export DATABASE_URL=postgres://postgres:postgres@localhost:5432/avf_vending?sslmode=disable; \
+	  bash scripts/verify_database_environment.sh; \
+	  exec $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.27.0 -dir migrations postgres "$$DATABASE_URL" up'
+
+dev-test:
+	$(GO) test ./... -count=1
+
+# --- Staging / production (guarded; use GitHub or server-side secrets) ---
+
+staging-validate-env:
+	@bash -c 'set -euo pipefail; test "$$APP_ENV" = "staging" || { echo "staging-validate-env: set APP_ENV=staging" >&2; exit 1; }; \
+	  export DATABASE_URL="$${STAGING_DATABASE_URL:-$$DATABASE_URL}"; \
+	  test -n "$$DATABASE_URL" || { echo "staging-validate-env: set STAGING_DATABASE_URL or DATABASE_URL" >&2; exit 1; }; \
+	  export PAYMENT_ENV="$${PAYMENT_ENV:-sandbox}"; \
+	  exec bash scripts/verify_database_environment.sh'
+
+staging-migrate:
+	@bash -c 'set -euo pipefail; test "$$APP_ENV" = "staging" || { echo "staging-migrate: set APP_ENV=staging" >&2; exit 1; }; \
+	  export DATABASE_URL="$${STAGING_DATABASE_URL:-$$DATABASE_URL}"; \
+	  test -n "$$DATABASE_URL" || { echo "staging-migrate: set STAGING_DATABASE_URL or DATABASE_URL" >&2; exit 1; }; \
+	  export PAYMENT_ENV="$${PAYMENT_ENV:-sandbox}"; \
+	  bash scripts/verify_database_environment.sh; \
+	  exec $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.27.0 -dir migrations postgres "$$DATABASE_URL" up'
+
+staging-smoke:
+	@bash scripts/smoke_staging.sh
+
+production-validate-env:
+	@bash -c 'set -euo pipefail; test "$$APP_ENV" = "production" || { echo "production-validate-env: set APP_ENV=production" >&2; exit 1; }; \
+	  export DATABASE_URL="$${PRODUCTION_DATABASE_URL:-$$DATABASE_URL}"; \
+	  test -n "$$DATABASE_URL" || { echo "production-validate-env: set PRODUCTION_DATABASE_URL or DATABASE_URL" >&2; exit 1; }; \
+	  exec bash scripts/verify_database_environment.sh'
+
+production-preflight: production-validate-env
+	$(MAKE) verify-enterprise-release
+
 # --- Lean production profile (Ubuntu VPS): deployments/prod ---
 PROD_DIR := deployments/prod
 PROD_COMPOSE := docker compose --env-file .env.production -f docker-compose.prod.yml
@@ -132,8 +196,23 @@ prod-logs:
 prod-status:
 	cd $(PROD_DIR) && $(PROD_COMPOSE) ps
 
+# Runs goose in the legacy prod compose profile. For full rollout + backup + guard ordering, use deployments/prod/scripts/release.sh.
 prod-migrate:
-	cd $(PROD_DIR) && $(PROD_COMPOSE) run --rm migrate
+	cd $(PROD_DIR) && bash -c 'set -euo pipefail; \
+	  REPO_ROOT="$$(cd ../.. && pwd)"; \
+	  [ -f .env.production ] || { echo "prod-missing: $(PROD_DIR)/.env.production" >&2; exit 1; }; \
+	  set -a; . ./.env.production; set +a; \
+	  export APP_ENV="$${APP_ENV:-production}"; \
+	  if [ "$${GITHUB_ACTIONS:-}" != "true" ] && [ "$${CONFIRM_PRODUCTION_MIGRATION:-}" != "true" ]; then \
+	    echo "prod-migrate: set CONFIRM_PRODUCTION_MIGRATION=true, or use bash deployments/prod/scripts/release.sh" >&2; \
+	    exit 1; \
+	  fi; \
+	  export PAYMENT_ENV="$${PAYMENT_ENV:-live}"; \
+	  export PUBLIC_BASE_URL="$${PUBLIC_BASE_URL:-https://api.ldtv.dev}"; \
+	  export READINESS_STRICT="$${READINESS_STRICT:-true}"; \
+	  export MQTT_TOPIC_PREFIX="$${MQTT_TOPIC_PREFIX:-avf/devices}"; \
+	  bash "$$REPO_ROOT/scripts/verify_database_environment.sh" && \
+	  docker compose --env-file .env.production -f docker-compose.prod.yml run --rm migrate'
 
 prod-backup:
 	bash $(PROD_DIR)/scripts/backup_postgres.sh

@@ -31,7 +31,7 @@ func NewLogger(cfg *config.Config) (*zap.Logger, error) {
 
 	zapCfg := zap.Config{
 		Level:             zap.NewAtomicLevelAt(level),
-		Development:       cfg.AppEnv == config.AppEnvDevelopment,
+		Development:       cfg.AppEnv == config.AppEnvDevelopment || cfg.AppEnv == config.AppEnvTest,
 		DisableCaller:     false,
 		DisableStacktrace: false,
 		Sampling:          nil,

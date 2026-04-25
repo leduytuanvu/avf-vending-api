@@ -108,6 +108,8 @@ func NewHTTPServer(cfg *config.Config, log *zap.Logger, probe ReadinessProbe, ht
 
 	if cfg.SwaggerUIEnabled {
 		MountSwaggerUI(r, log)
+	} else if cfg.OpenAPIJSONEnabled {
+		MountOpenAPIJSON(r, log)
 	}
 
 	writeRL := SensitiveWriteRateLimitIfEnabled(cfg.HTTPRateLimit, log)

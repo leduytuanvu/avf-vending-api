@@ -1,0 +1,5 @@
+./doc.go
+./insight.go
+./service.go
+./service_insight.go
+./types.go
