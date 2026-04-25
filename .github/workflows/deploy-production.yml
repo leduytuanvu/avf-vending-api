@@ -3,7 +3,7 @@
 #
 # Last-known-good (LKG) image refs, production-deployment-manifest artifacts, digest-pinned rollback,
 # and automatic rollback after a failed deploy are defined only in deploy-prod.yml — keep that file canonical.
-name: deploy-production filename pointer
+name: Legacy — deploy-production.yml pointer (workflow_dispatch only)
 
 on:
   workflow_dispatch:
