@@ -5,6 +5,10 @@
 #
 # Does not connect to production or require real secrets.
 #
+# Intended CI/CD chain (see tools/verify_github_workflow_cicd_contract.py): CI -> Build and Push Images
+# -> Security Release (release gate; security-verdict.json) -> staging (develop) / production (manual dispatch).
+# Repo-level security.yml is push/PR (not workflow_run from Build).
+#
 # Phase order matches docs/runbooks/production-release-readiness.md (includes P0 OpenAPI + doc contradiction gates).
 #
 # Environment (optional):
