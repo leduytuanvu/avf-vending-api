@@ -9,10 +9,27 @@ on:
       - "Build and Push Images"
     types:
       - completed
+    branches:
+      - develop
+      - main
   workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Branch whose latest successful Build and Push Images run to verify (develop or main only)"
+        type: choice
+        required: true
+        default: develop
+        options:
+          - develop
+          - main
+      build_workflow_run_id:
+        description: "Optional exact Build and Push Images workflow run id; leave empty to use the latest success on the target branch"
+        type: string
+        required: false
+        default: ""
 
 concurrency:
-  group: security-release-${{ github.event_name == 'workflow_run' && format('b-{0}', github.event.workflow_run.head_branch) || github.run_id }}
+  group: security-release-${{ github.event_name == 'workflow_run' && format('b-{0}', github.event.workflow_run.head_branch) || format('d-{0}', github.event.inputs.target_branch) || github.run_id }}
   cancel-in-progress: true
 
 permissions:
@@ -61,24 +78,45 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_BUILD_RUN: ${{ github.event.inputs.build_workflow_run_id || '' }}
+          TARGET_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target_branch || '' }}
         run: |
           set -Eeuo pipefail
 
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
+            # Triggering run is the Build and Push Images workflow; use its id for artifacts.
             echo "workflow_run_id=${{ github.event.workflow_run.id }}" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
-          workflow_run_id="$(
-            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build-push.yml/runs?branch=main&status=completed&per_page=20" \
-              --jq '[.workflow_runs[]? | select(.conclusion == "success") | .id] | .[0] // empty'
-          )"
+          if [[ -n "${INPUT_BUILD_RUN// }" ]]; then
+            if [[ ! "${INPUT_BUILD_RUN// }" =~ ^[0-9]+$ ]]; then
+              echo "error: build_workflow_run_id must be a numeric GitHub Actions run id" >&2
+              exit 1
+            fi
+            echo "workflow_run_id=${INPUT_BUILD_RUN// }" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
 
-          [[ -n "${workflow_run_id}" ]] || {
-            echo "error: no successful Build and Push Images run found on main" >&2
+          branch="${TARGET_BRANCH:-develop}"
+          [[ "${branch}" == "develop" || "${branch}" == "main" ]] || {
+            echo "error: target_branch must be develop or main" >&2
             exit 1
           }
 
+          workflow_run_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build-push.yml/runs" \
+              -f "branch=${branch}" \
+              -f "status=completed" \
+              -f "per_page=20" \
+              --jq '[.workflow_runs[]? | select(.conclusion == "success" and (.name // "") == "Build and Push Images") | .id] | .[0] // empty'
+          )"
+
+          if [[ -z "${workflow_run_id}" ]]; then
+            echo "error: no successful Build and Push Images run found for branch ${branch} (workflow name must be Build and Push Images)" >&2
+            exit 1
+          fi
           echo "workflow_run_id=${workflow_run_id}" >> "${GITHUB_OUTPUT}"
 
   resolve-image-refs:
@@ -110,6 +148,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: resolve-image-refs
+    outputs:
+      trivy_app_result: ${{ steps.trivy_outcomes.outputs.trivy_app_result }}
+      trivy_goose_result: ${{ steps.trivy_outcomes.outputs.trivy_goose_result }}
 
     steps:
       - name: Check out repository
@@ -139,6 +180,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Scan published app image
+        id: trivy_app
         shell: bash
         env:
           APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
@@ -159,22 +201,34 @@ jobs:
               fi
             done
             echo "error: failed to pull ${trivy_image} after retries" >&2
-            exit 1
+            return 1
           }
 
-          pull_trivy_image
-          docker run --rm \
-            -v "${HOME}/.docker:/root/.docker:ro" \
-            -v "${PWD}:/workdir" \
-            -w /workdir \
-            "${trivy_image}" \
-            image \
-            --config trivy.yaml \
-            --ignorefile .trivyignore \
-            --scanners vuln \
-            "${APP_IMAGE_REF}" | tee security-reports/trivy-image-app.txt
+          if ! pull_trivy_image; then
+            echo 127 > security-reports/trivy-app.exitcode
+          else
+            set +e
+            set -o pipefail
+            docker run --rm \
+              -v "${HOME}/.docker:/root/.docker:ro" \
+              -v "${PWD}:/workdir" \
+              -w /workdir \
+              "${trivy_image}" \
+              image \
+              --config trivy.yaml \
+              --ignorefile .trivyignore \
+              --scanners vuln \
+              "${APP_IMAGE_REF}" 2>&1 | tee security-reports/trivy-image-app.txt
+            rc_app="${PIPESTATUS[0]}"
+            set +o pipefail
+            set -e
+            echo "${rc_app}" > security-reports/trivy-app.exitcode
+          fi
+          exit 0
 
       - name: Scan published goose image
+        if: always()
+        id: trivy_goose
         shell: bash
         env:
           GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
@@ -195,20 +249,61 @@ jobs:
               fi
             done
             echo "error: failed to pull ${trivy_image} after retries" >&2
-            exit 1
+            return 1
           }
 
-          pull_trivy_image
-          docker run --rm \
-            -v "${HOME}/.docker:/root/.docker:ro" \
-            -v "${PWD}:/workdir" \
-            -w /workdir \
-            "${trivy_image}" \
-            image \
-            --config trivy.yaml \
-            --ignorefile .trivyignore \
-            --scanners vuln \
-            "${GOOSE_IMAGE_REF}" | tee security-reports/trivy-image-goose.txt
+          if ! pull_trivy_image; then
+            echo 127 > security-reports/trivy-goose.exitcode
+          else
+            set +e
+            set -o pipefail
+            docker run --rm \
+              -v "${HOME}/.docker:/root/.docker:ro" \
+              -v "${PWD}:/workdir" \
+              -w /workdir \
+              "${trivy_image}" \
+              image \
+              --config trivy.yaml \
+              --ignorefile .trivyignore \
+              --scanners vuln \
+              "${GOOSE_IMAGE_REF}" 2>&1 | tee security-reports/trivy-image-goose.txt
+            rc_goose="${PIPESTATUS[0]}"
+            set +o pipefail
+            set -e
+            echo "${rc_goose}" > security-reports/trivy-goose.exitcode
+          fi
+          exit 0
+
+      - name: Record Trivy per-image results and fail if policy violated
+        if: always()
+        id: trivy_outcomes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rc_a="1"
+          rc_g="1"
+          [[ -f security-reports/trivy-app.exitcode ]] && rc_a="$(tr -d '[:space:]' < security-reports/trivy-app.exitcode || echo 1)"
+          [[ -f security-reports/trivy-goose.exitcode ]] && rc_g="$(tr -d '[:space:]' < security-reports/trivy-goose.exitcode || echo 1)"
+          if [[ "${rc_a}" -eq 0 ]]; then
+            trivy_app_result="success"
+          else
+            trivy_app_result="failure"
+          fi
+          if [[ "${rc_g}" -eq 0 ]]; then
+            trivy_goose_result="success"
+          else
+            trivy_goose_result="failure"
+          fi
+          {
+            echo "trivy_app_result=${trivy_app_result}"
+            echo "trivy_goose_result=${trivy_goose_result}"
+            echo "trivy_app_exit_code=${rc_a}"
+            echo "trivy_goose_exit_code=${rc_g}"
+          } >> "${GITHUB_OUTPUT}"
+          if [[ "${trivy_app_result}" != "success" || "${trivy_goose_result}" != "success" ]]; then
+            echo "error: Trivy image scan policy: app scan=${trivy_app_result} (exit ${rc_a}), goose scan=${trivy_goose_result} (exit ${rc_g}) (rc 0 = pass)" >&2
+            exit 1
+          fi
 
       - name: Upload Trivy image reports
         if: always()
@@ -218,7 +313,9 @@ jobs:
           path: |
             security-reports/trivy-image-app.txt
             security-reports/trivy-image-goose.txt
-          if-no-files-found: error
+            security-reports/trivy-app.exitcode
+            security-reports/trivy-goose.exitcode
+          if-no-files-found: warn
           retention-days: 14
 
   security-release-signal:
@@ -268,10 +365,438 @@ jobs:
           TRIGGER_WORKFLOW_RUN_SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
           BUILD_HEAD_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || '' }}
           TRIGGER_WORKFLOW_EVENT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event || '' }}
+          MANUAL_TARGET_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target_branch || '' }}
           WORKFLOW_NAME: ${{ github.workflow }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
           WORKFLOW_SHA: ${{ github.sha }}
           GH_TOKEN: ${{ github.token }}
+          TRIVY_APP_RESULT: ${{ needs.image-vulnerability-scan.outputs.trivy_app_result }}
+          TRIVY_GOOSE_RESULT: ${{ needs.image-vulnerability-scan.outputs.trivy_goose_result }}
+          WF_WRITE_SECURITY_VERDICT_JSON: |
+            import json
+            import os
+            from pathlib import Path
+            generated_at_utc = os.environ["GENERATED_AT_UTC"]
+            event_name = os.environ["EVENT_NAME"]
+            def trivy_norm(env_key):
+                r = (os.environ.get(env_key) or "").strip()
+                if r in ("success", "failure"):
+                    return r
+                if r == "" or r == "skipped":
+                    return "skipped"
+                return "not_applicable"
+            trivy_app_j = trivy_norm("TRIVY_APP_RESULT")
+            trivy_goose_j = trivy_norm("TRIVY_GOOSE_RESULT")
+            results = {
+                "dependency_review": os.environ["DEPENDENCY_REVIEW_RESULT"] or "not_applicable",
+                "govulncheck_pr": os.environ["GOVULNCHECK_PR_RESULT"] or "not_applicable",
+                "secret_scan": os.environ["SECRET_SCAN_RESULT"] or "not_applicable",
+                "config_scan": os.environ["CONFIG_SCAN_RESULT"] or "not_applicable",
+                "resolve_build_run": os.environ["RESOLVE_BUILD_RUN_RESULT"] or "not_applicable",
+                "resolve_image_refs": os.environ["RESOLVE_IMAGE_REFS_RESULT"] or "not_applicable",
+                "image_vulnerability_scan": os.environ["IMAGE_SCAN_RESULT"] or "not_applicable",
+                "trivy_image_app": trivy_app_j,
+                "trivy_image_goose": trivy_goose_j,
+                "govulncheck_nightly": os.environ["GOVULNCHECK_NIGHTLY_RESULT"] or "not_applicable",
+                "dependency_snapshot": os.environ["DEPENDENCY_SNAPSHOT_RESULT"] or "not_applicable",
+            }
+            def verdict_for(job_names):
+                relevant = [results[name] for name in job_names if results[name] not in ("", "skipped", "not_applicable")]
+                if not relevant:
+                    return "not_applicable"
+                if all(result == "success" for result in relevant):
+                    return "pass"
+                return "fail"
+            repo_security_verdict = verdict_for([
+                "dependency_review",
+                "govulncheck_pr",
+                "secret_scan",
+                "config_scan",
+            ])
+            published_image_verdict = verdict_for([
+                "resolve_build_run",
+                "resolve_image_refs",
+                "image_vulnerability_scan",
+                "trivy_image_app",
+                "trivy_image_goose",
+            ])
+            nightly_security_verdict = verdict_for([
+                "govulncheck_nightly",
+                "dependency_snapshot",
+            ])
+            def normalize(result_name):
+                if result_name == "success":
+                    return "pass"
+                if result_name in ("", "skipped"):
+                    return "not_applicable"
+                return "fail"
+            def digest_from_ref(ref):
+                if ref and "@sha256:" in ref:
+                    return ref.split("@", 1)[1]
+                return ""
+            source_build_run_id = os.environ.get("BUILD_RUN_ID", "")
+            source_sha = os.environ.get("RESOLVED_SOURCE_SHA") or os.environ.get("TRIGGER_WORKFLOW_RUN_SOURCE_SHA") or os.environ.get("WORKFLOW_SHA", "")
+            source_workflow_name = os.environ.get("RESOLVED_SOURCE_WORKFLOW_NAME") or os.environ.get("TRIGGER_WORKFLOW_RUN_NAME", "")
+            app_image_ref = os.environ.get("APP_IMAGE_REF", "")
+            goose_image_ref = os.environ.get("GOOSE_IMAGE_REF", "")
+            provenance_input = os.environ.get("PROVENANCE_VERDICT", "")
+            if not source_workflow_name and source_build_run_id:
+                source_workflow_name = "Build and Push Images"
+            resolved_source_branch = (os.environ.get("RESOLVED_SOURCE_BRANCH") or "").strip()
+            build_head_branch = (os.environ.get("BUILD_HEAD_BRANCH") or "").strip()
+            source_branch = resolved_source_branch or build_head_branch
+            artifact_source_event = (os.environ.get("ARTIFACT_SOURCE_EVENT") or "").strip()
+            trigger_workflow_event = (os.environ.get("TRIGGER_WORKFLOW_EVENT") or "").strip()
+            if artifact_source_event and artifact_source_event != "manual":
+                source_event = artifact_source_event
+            elif event_name == "workflow_dispatch":
+                source_event = "workflow_dispatch"
+            else:
+                source_event = trigger_workflow_event or ""
+            repo_release_verdict = os.environ.get("REPO_RELEASE_VERDICT", "")
+            repo_release_checks = {
+                "dependency_review": {
+                    "status": os.environ.get("REPO_RELEASE_DEPENDENCY_REVIEW", "not_applicable"),
+                    "release_requirement": "advisory",
+                },
+                "govulncheck_repo": {
+                    "status": os.environ.get("REPO_RELEASE_GOVULNCHECK_REPO", "not_applicable"),
+                    "release_requirement": "required",
+                },
+                "secret_scan": {
+                    "status": os.environ.get("REPO_RELEASE_SECRET_SCAN", "not_applicable"),
+                    "release_requirement": "required",
+                },
+                "trivy_config": {
+                    "status": os.environ.get("REPO_RELEASE_TRIVY_CONFIG", "not_applicable"),
+                    "release_requirement": "required",
+                },
+            }
+            private_repo_provenance_fallback = "accepted-private-repo-no-github-attestations"
+            if event_name in ("workflow_run", "workflow_dispatch"):
+                release_gate_mode = "full-security-release-gate"
+                if event_name == "workflow_dispatch":
+                    # Manual: no in-workflow repo scan jobs; gate on image+provenance only for this workflow.
+                    repo_required_for_release_verdict = "pass"
+                    release_gate_trust_model = "manual-workflow-dispatch-image-and-provenance-only"
+                else:
+                    repo_required_for_release_verdict = repo_release_verdict or "unavailable"
+                image_required_for_release_verdict = published_image_verdict
+                if provenance_input == "verified":
+                    provenance_release_verdict = "pass"
+                    if event_name != "workflow_dispatch":
+                        release_gate_trust_model = "fully-verified-workflow-run-evidence"
+                elif provenance_input == private_repo_provenance_fallback:
+                    provenance_release_verdict = private_repo_provenance_fallback
+                    if event_name == "workflow_dispatch":
+                        release_gate_trust_model = "manual-security-private-repo-no-github-artifact-attestations"
+                    else:
+                        release_gate_trust_model = "private-repo-no-github-artifact-attestations"
+                elif provenance_input:
+                    provenance_release_verdict = "fail"
+                    release_gate_trust_model = "provenance-verification-failed"
+                else:
+                    provenance_release_verdict = "unavailable"
+                    release_gate_trust_model = "provenance-evidence-unavailable"
+                release_gate_verdict = "pass" if (
+                    repo_required_for_release_verdict == "pass"
+                    and image_required_for_release_verdict == "pass"
+                    and provenance_release_verdict in ("pass", private_repo_provenance_fallback)
+                ) else "fail"
+                security_verdict = release_gate_verdict
+            else:
+                release_gate_mode = "not-applicable"
+                repo_required_for_release_verdict = "not_applicable"
+                image_required_for_release_verdict = "not_applicable"
+                provenance_release_verdict = "not_applicable"
+                release_gate_verdict = "not_applicable"
+                release_gate_trust_model = "not_applicable"
+                applicable = [v for v in [repo_security_verdict, published_image_verdict, nightly_security_verdict] if v != "not_applicable"]
+                security_verdict = "pass" if (not applicable or all(v == "pass" for v in applicable)) else "fail"
+            failure_reasons = []
+            repo_evidence = os.environ.get("REPO_RELEASE_EVIDENCE_SOURCE", "")
+            def add_failure_reason(message):
+                if message and message not in failure_reasons:
+                    failure_reasons.append(message)
+            if resolved_source_branch and build_head_branch and resolved_source_branch != build_head_branch:
+                add_failure_reason(
+                    "Artifact metadata mismatch: promotion-manifest source_branch "
+                    f"{resolved_source_branch!r} differs from Build and Push Images workflow head_branch {build_head_branch!r}."
+                )
+            if source_sha and len(source_sha) != 40:
+                add_failure_reason(f"Source SHA is not a 40-character hex commit (got {source_sha!r}).")
+            if event_name == "workflow_run":
+                if repo_required_for_release_verdict != "pass":
+                    if repo_evidence == "security-workflow-run-not-successful":
+                        add_failure_reason(
+                            "Repo-level Security: a matching **Security** workflow run was found for this SHA/branch but it did not complete successfully "
+                            f"(see run id in repo_level_checks.release_evidence; conclusion={os.environ.get('REPO_RELEASE_MATCHED_RUN_CONCLUSION', '')!r})."
+                        )
+                    elif repo_evidence in ("security-workflow-not-found-or-not-successful", "security-workflow-not-found"):
+                        add_failure_reason(
+                            "Repo-level Security: no successful **Security** (repo) run matched after retries for this source_sha and source_branch "
+                            "(automatic releases require a **push** Security run when promotion source_event is `push`)."
+                        )
+                    else:
+                        add_failure_reason(
+                            "Repo-level Security: release evidence is not sufficient (repo_release_verdict / repo gate not pass). "
+                            + os.environ.get("REPO_RELEASE_SUMMARY", "")
+                        )
+            if event_name in ("workflow_run", "workflow_dispatch"):
+                if image_required_for_release_verdict != "pass":
+                    rb = results.get("resolve_build_run", "")
+                    ri = results.get("resolve_image_refs", "")
+                    im = results.get("image_vulnerability_scan", "")
+                    if rb not in ("success", "skipped"):
+                        add_failure_reason(
+                            "Image reference resolution / build linkage: **resolve-build-run-id** did not succeed — check the Build and Push Images chain for this commit."
+                        )
+                    if ri not in ("success", "skipped"):
+                        add_failure_reason(
+                            "Image reference resolution failed: **_reusable-deploy** did not succeed (missing or inconsistent image-metadata / promotion-manifest, digest mismatch, or workflow_run_id mismatch)."
+                        )
+                    if im not in ("success", "skipped"):
+                        add_failure_reason(
+                            "Image vulnerability scan: the image scan job did not complete successfully (see `job_results.image_vulnerability_scan` and trivy-image-reports artifact)."
+                        )
+                    if results.get("trivy_image_app") == "failure":
+                        add_failure_reason(
+                            "Published image scan (**Trivy**): **app** image did not pass policy (see `trivy-image-reports` / `trivy-image-app.txt`)."
+                        )
+                    if results.get("trivy_image_goose") == "failure":
+                        add_failure_reason(
+                            "Published image scan (**Trivy**): **goose** image did not pass policy (see `trivy-image-reports` / `trivy-image-goose.txt`)."
+                        )
+                if provenance_release_verdict not in ("pass", private_repo_provenance_fallback):
+                    if provenance_release_verdict == "fail":
+                        add_failure_reason("Provenance: GitHub artifact attestation verification **failed** for a published image (not the private-repo fallback).")
+                    elif provenance_release_verdict == "unavailable" or not provenance_input:
+                        add_failure_reason(
+                            "Provenance: verification result is **unavailable** or empty (expected `verified` or the private-repository attestation fallback)."
+                        )
+                    else:
+                        add_failure_reason(f"Provenance: release gate rejected provenance state ({provenance_release_verdict!r}).")
+            if security_verdict != "pass" and not failure_reasons:
+                add_failure_reason("Release gate failed; inspect `job_results` and component verdict fields for the failing upstream job.")
+            decision_reasons = list(failure_reasons)
+            _consistency = (os.environ.get("ARTIFACT_CONSISTENCY_NOTE") or "").strip()
+            payload = {
+                "schema_version": "v1",
+                "verdict": security_verdict,
+                "security_verdict": security_verdict,
+                "canonical_security_artifact": "security-verdict",
+                "event_name": event_name,
+                "workflow_name": os.environ["WORKFLOW_NAME"],
+                "workflow_run_id": os.environ["WORKFLOW_RUN_ID"],
+                "generated_at_utc": generated_at_utc,
+                "source_build_run_id": source_build_run_id,
+                "source_sha": source_sha,
+                "source_branch": source_branch,
+                "source_event": source_event,
+                "trigger_workflow_event": trigger_workflow_event,
+                "source_workflow_name": source_workflow_name,
+                "release_gate_verdict": release_gate_verdict,
+                "release_gate_mode": release_gate_mode,
+                "repo_security_verdict": repo_security_verdict,
+                "repo_release_verdict": repo_required_for_release_verdict,
+                "published_image_verdict": published_image_verdict,
+                "provenance_release_verdict": provenance_release_verdict,
+                "nightly_security_verdict": nightly_security_verdict,
+                "verification_scope": {
+                    "verified_by_this_artifact": [
+                        "workflow-scoped security verdict for the current event",
+                        "published image vulnerability scan status included in this run when applicable",
+                        "published image provenance verdict imported from immutable image resolution when applicable",
+                        "matched push security evidence for repo-level release checks when event_name=workflow_run",
+                        "current workflow repo-level security evidence when event_name=workflow_dispatch",
+                    ],
+                    "not_verified_by_this_artifact": [
+                        "staging deployment execution",
+                        "production deployment execution",
+                        "runtime environment readiness",
+                        "backup execution",
+                        "restore drill execution",
+                    ],
+                },
+                "release_policy": {
+                    "repo_level_required_for_release": [
+                        "govulncheck_repo",
+                        "secret_scan",
+                        "trivy_config",
+                    ],
+                    "repo_level_advisory_for_release": [
+                        "dependency_review",
+                    ],
+                    "not_release_gating": [
+                        "govulncheck_nightly",
+                        "dependency_snapshot",
+                    ],
+                    "image_level_required_for_release": [
+                        "resolve_build_run",
+                        "resolve_image_refs",
+                        "trivy_images",
+                    ],
+                    "provenance_required_for_release": [
+                        "published_image_provenance",
+                    ],
+                },
+                "repo_level_checks": {
+                    "current_event_verdict": repo_security_verdict,
+                    "release_evidence": {
+                        "evidence_source": os.environ.get("REPO_RELEASE_EVIDENCE_SOURCE", ""),
+                        "source_event_name": os.environ.get("REPO_RELEASE_SOURCE_EVENT", ""),
+                        "matched_workflow_run_id": os.environ.get("REPO_RELEASE_MATCHED_RUN_ID", ""),
+                        "matched_workflow_conclusion": os.environ.get("REPO_RELEASE_MATCHED_RUN_CONCLUSION", ""),
+                        "required_for_release_verdict": repo_required_for_release_verdict,
+                        "summary": os.environ.get("REPO_RELEASE_SUMMARY", ""),
+                    },
+                    "checks": repo_release_checks,
+                },
+                "image_level_checks": {
+                    "required_for_release_verdict": image_required_for_release_verdict,
+                    "checks": {
+                        "resolve_build_run": normalize(results["resolve_build_run"]),
+                        "resolve_image_refs": normalize(results["resolve_image_refs"]),
+                        "trivy_images": normalize(results["image_vulnerability_scan"]),
+                        "trivy_image_app": normalize(results.get("trivy_image_app", "skipped")),
+                        "trivy_image_goose": normalize(results.get("trivy_image_goose", "skipped")),
+                    },
+                },
+                "provenance_release_checks": {
+                    "required_for_release_verdict": provenance_release_verdict,
+                    "published_image_provenance_verdict": provenance_input,
+                    "evidence_source": (
+                        "resolve-image-refs workflow output (private repo fallback: GitHub Artifact Attestations unavailable)"
+                        if provenance_input == private_repo_provenance_fallback
+                        else ("resolve-image-refs workflow output" if provenance_input else "not_applicable")
+                    ),
+                },
+                "release_gate": {
+                    "mode": release_gate_mode,
+                    "verdict": release_gate_verdict,
+                    "generated_at_utc": generated_at_utc,
+                    "trust_model": release_gate_trust_model,
+                    "required_evidence": {
+                        "repo_level_checks": repo_required_for_release_verdict,
+                        "image_level_checks": image_required_for_release_verdict,
+                        "provenance_release_checks": provenance_release_verdict,
+                    },
+                    "summary": (
+                        "workflow_run release gating requires repo-level push security evidence plus published-image and provenance checks"
+                        if provenance_input != private_repo_provenance_fallback and event_name == "workflow_run"
+                        else (
+                            "workflow_run release gating accepted digest-pinned published images without GitHub Artifact Attestations because this private repository cannot use that GitHub feature"
+                            if provenance_input == private_repo_provenance_fallback and event_name == "workflow_run"
+                            else (
+                                "workflow_dispatch release gating uses the current manual security run plus resolved published-image evidence for the selected build"
+                                if provenance_input != private_repo_provenance_fallback and event_name == "workflow_dispatch"
+                                else (
+                                    "workflow_dispatch release gating accepted digest-pinned published images without GitHub Artifact Attestations because this private repository cannot use that GitHub feature"
+                                    if provenance_input == private_repo_provenance_fallback and event_name == "workflow_dispatch"
+                                    else "release gating is not evaluated for this event type"
+                                )
+                            )
+                        )
+                    ),
+                },
+                "scanner_summary": {
+                    "dependency_review": normalize(results["dependency_review"]),
+                    "govulncheck_repo": normalize(results["govulncheck_pr"]),
+                    "secret_scan": normalize(results["secret_scan"]),
+                    "trivy_config": normalize(results["config_scan"]),
+                    "trivy_images": normalize(results["image_vulnerability_scan"]),
+                    "trivy_image_app": normalize(results.get("trivy_image_app", "skipped")),
+                    "trivy_image_goose": normalize(results.get("trivy_image_goose", "skipped")),
+                    "govulncheck_nightly": normalize(results["govulncheck_nightly"]),
+                },
+                "published_images": {
+                    "app_image_ref": app_image_ref,
+                    "app_digest": digest_from_ref(app_image_ref),
+                    "goose_image_ref": goose_image_ref,
+                    "goose_digest": digest_from_ref(goose_image_ref),
+                    "provenance_verdict": provenance_input,
+                    "provenance_verdict_source": (
+                        "resolve-image-refs workflow output (private repo fallback: GitHub Artifact Attestations unavailable)"
+                        if provenance_input == private_repo_provenance_fallback
+                        else "resolve-image-refs workflow output"
+                    ),
+                },
+                "job_results": results,
+                "failure_reasons": failure_reasons,
+                "decision_reasons": decision_reasons,
+            }
+            if _consistency:
+                payload["artifact_consistency"] = {
+                    "note": _consistency,
+                    "source": "build-run-immutable-image-contract-compare",
+                }
+            Path("security-reports/security-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          WF_EMIT_VERDICT_GITHUB_OUTPUT: |
+            import json
+            from pathlib import Path
+
+            payload = json.loads(Path("security-reports/security-verdict.json").read_text(encoding="utf-8"))
+            outputs = {
+                "security_verdict": payload["verdict"],
+                "source_build_run_id": payload["source_build_run_id"],
+                "source_sha": payload["source_sha"],
+                "source_branch": payload.get("source_branch", ""),
+                "source_event": payload.get("source_event", ""),
+                "source_workflow_name": payload["source_workflow_name"],
+                "security_workflow_run_id": payload["workflow_run_id"],
+                "release_gate_verdict": payload["release_gate_verdict"],
+                "release_gate_mode": payload["release_gate_mode"],
+                "repo_security_verdict": payload["repo_security_verdict"],
+                "repo_release_verdict": payload["repo_release_verdict"],
+                "published_image_verdict": payload["published_image_verdict"],
+                "provenance_release_verdict": payload["provenance_release_verdict"],
+            }
+            for key, value in outputs.items():
+                print(f"{key}={value}")
+          WF_EMIT_VERDICT_STEP_SUMMARY: |
+            import json
+            from pathlib import Path
+
+            payload = json.loads(Path("security-reports/security-verdict.json").read_text(encoding="utf-8"))
+            print("## Security Release Signal")
+            print("- source of truth: `security-verdict` is the canonical release/security artifact")
+            print("- scope: `security-verdict distinguishes current-event security results from workflow_run release-gate approval`")
+            print(f"- event: `{payload['event_name']}`")
+            print(f"- verdict: `{payload['verdict']}`")
+            print(f"- release gate: mode=`{payload['release_gate_mode']}` verdict=`{payload['release_gate_verdict']}`")
+            print(f"- release gate generated at (UTC): `{payload['release_gate']['generated_at_utc']}`")
+            print(f"- release gate trust model: `{payload['release_gate']['trust_model']}`")
+            print(f"- repo security verdict: `{payload['repo_security_verdict']}`")
+            print(f"- repo release verdict: `{payload['repo_release_verdict']}`")
+            print(f"- published image verdict: `{payload['published_image_verdict']}`")
+            print(f"- provenance release verdict: `{payload['provenance_release_verdict']}`")
+            if payload["source_build_run_id"]:
+                print(f"- source build run id: `{payload['source_build_run_id']}`")
+            if payload["source_sha"]:
+                print(f"- source SHA: `{payload['source_sha']}`")
+            print(f"- source_event (from promotion-manifest / artifact): `{payload.get('source_event', '')}`")
+            print(f"- trigger_workflow_event (Build and Push Images GitHub event): `{payload.get('trigger_workflow_event', '')}`")
+            if (payload.get("verdict") or "").lower() != "pass":
+                print("")
+                print("### Why `SECURITY_VERDICT` is not pass")
+                for reason in payload.get("failure_reasons") or []:
+                    print(f"- {reason}")
+            repo_release = payload["repo_level_checks"]["release_evidence"]
+            if repo_release["evidence_source"]:
+                print(f"- repo release evidence source: `{repo_release['evidence_source']}`")
+            if repo_release["matched_workflow_run_id"]:
+                print(f"- matched push security workflow run: `{repo_release['matched_workflow_run_id']}`")
+            if payload["published_images"]["app_image_ref"]:
+                print(f"- app image: `{payload['published_images']['app_image_ref']}`")
+            if payload["published_images"]["goose_image_ref"]:
+                print(f"- goose image: `{payload['published_images']['goose_image_ref']}`")
+            if payload["published_images"]["provenance_verdict"]:
+                print(f"- published image provenance verdict: `{payload['published_images']['provenance_verdict']}` (from `{payload['published_images']['provenance_verdict_source']}`)")
+            if payload["published_images"]["provenance_verdict"] == "accepted-private-repo-no-github-attestations":
+                print("- provenance note: `GitHub Artifact Attestations are unavailable for this private repository, so release gating falls back to digest-pinned images plus the remaining security checks`")
+            print("- required release checks: `govulncheck_repo, secret_scan, trivy_config, published image scan, published image provenance`")
+            print("- advisory release checks: `dependency_review`")
+            print("- excluded controls: `deployment execution, runtime readiness, backup execution, restore drill execution`")
         run: |
           set -Eeuo pipefail
           mkdir -p security-reports
@@ -281,10 +806,51 @@ jobs:
             exit 1
           }
 
-          release_source_sha="${RESOLVED_SOURCE_SHA:-${TRIGGER_WORKFLOW_RUN_SOURCE_SHA:-${WORKFLOW_SHA:-}}}"
-          # Prefer artifact branch (promotion-manifest) over triggering workflow branch for repo Security matching.
-          want_branch="${RESOLVED_SOURCE_BRANCH:-${BUILD_HEAD_BRANCH:-}}"
+          # Primary source coordinates: _reusable-deploy already prefers promotion-manifest / image-metadata. Fall back to the triggering Build run head only with a visible warning.
+          release_source_sha="${RESOLVED_SOURCE_SHA:-}"
+          source_fallback_note=""
+          if [[ -z "${release_source_sha// }" ]]; then
+            release_source_sha="${TRIGGER_WORKFLOW_RUN_SOURCE_SHA:-${WORKFLOW_SHA:-}}"
+            if [[ -n "${release_source_sha// }" ]]; then
+              source_fallback_note="source_sha was taken from the triggering **Build and Push Images** run head (promotion / image artifact missing or not resolved; verify resolve-image-refs job)."
+              echo "::warning::${source_fallback_note}"
+            fi
+          fi
+          # Prefer promotion-manifest branch, then Build head branch, then manual dispatch target.
+          want_branch="${RESOLVED_SOURCE_BRANCH:-${BUILD_HEAD_BRANCH:-${MANUAL_TARGET_BRANCH:-}}}"
+          if [[ -z "${want_branch// }" && "${EVENT_NAME}" == "workflow_run" ]]; then
+            want_branch="${BUILD_HEAD_BRANCH:-}"
+          fi
           artifact_src_event="${ARTIFACT_SOURCE_EVENT:-}"
+          contract_note=""
+
+          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
+            build_run_id="${{ github.event.workflow_run.id }}"
+            if [[ -n "${RESOLVED_SOURCE_SHA:-}" && -n "${build_run_id}" ]]; then
+              if gh run download "${build_run_id}" -n immutable-image-contract -D /tmp/immutable-ic 2>/dev/null; then
+                csha=""
+                csha="$(jq -r '.source_commit_sha // empty' /tmp/immutable-ic/immutable-image-contract.json 2>/dev/null || true)"
+                if [[ -n "${csha}" && "${csha}" != "${RESOLVED_SOURCE_SHA}" ]]; then
+                  contract_note="immutable-image-contract source_commit_sha (${csha}) differs from resolved promotion-manifest / image-metadata SHA (${RESOLVED_SOURCE_SHA}); continuing with **artifact chain** (promotion-manifest) as primary."
+                  echo "::warning::${contract_note}"
+                fi
+              else
+                contract_note="immutable-image-contract artifact not found on build run ${build_run_id} (or download failed); relying on **promotion-manifest** from image-metadata + promotion bundle."
+                echo "::warning::${contract_note}"
+              fi
+            fi
+            rm -rf /tmp/immutable-ic
+          fi
+          if [[ -n "${source_fallback_note}" && -n "${contract_note}" ]]; then
+            export ARTIFACT_CONSISTENCY_NOTE="${source_fallback_note} ${contract_note}"
+          elif [[ -n "${source_fallback_note}" ]]; then
+            export ARTIFACT_CONSISTENCY_NOTE="${source_fallback_note}"
+          elif [[ -n "${contract_note}" ]]; then
+            export ARTIFACT_CONSISTENCY_NOTE="${contract_note}"
+          else
+            export ARTIFACT_CONSISTENCY_NOTE=""
+          fi
+
           repo_release_evidence_source="api-security-workflow"
           repo_release_source_event="push"
           repo_release_matched_run_id=""
@@ -294,76 +860,66 @@ jobs:
           repo_release_govulncheck_repo="not_applicable"
           repo_release_secret_scan="not_applicable"
           repo_release_trivy_config="not_applicable"
-          repo_release_summary="repo evidence: successful Security (repo) workflow for same commit+branch (API)"
+          repo_release_summary="(pending) API lookup for **Security** repo workflow run"
 
           if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            [[ -n "${release_source_sha}" ]] || fail "workflow_run security release signal requires a resolved source SHA"
-            [[ -n "${want_branch}" ]] || fail "missing source branch (artifact_source_branch / workflow_run.head_branch)"
+            [[ -n "${release_source_sha// }" ]] || fail "workflow_run security release: could not determine source SHA (Build head / artifact)"
+            [[ -n "${want_branch// }" ]] || fail "workflow_run security release: could not determine branch (promotion / Build head / manual)"
             repo_release_verdict="unavailable"
-            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              # Automatic releases (promotion source_event push): repo Security must be a push run. Manual image builds may correlate with push or workflow_dispatch Security runs.
-              if [[ "${artifact_src_event}" == "workflow_dispatch" ]]; then
-                candidate_id="$(
-                  gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs" \
-                    -f "head_sha=${release_source_sha}" -f "per_page=30" \
-                    --jq --arg b "${want_branch}" '
-                      [.workflow_runs[]?
-                        | select(
-                            (.name // "") == "Security"
-                            and .conclusion == "success"
-                            and (.head_branch // "") == $b
-                            and ((.event // "") == "push" or (.event // "") == "workflow_dispatch")
-                          )
-                      ]
-                      | sort_by(.created_at)
-                      | reverse
-                      | .[0].id // empty'
-                )"
-              else
-                candidate_id="$(
-                  gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs" \
-                    -f "head_sha=${release_source_sha}" -f "per_page=30" \
-                    --jq --arg b "${want_branch}" '
-                      [.workflow_runs[]?
-                        | select(
-                            (.name // "") == "Security"
-                            and .conclusion == "success"
-                            and (.head_branch // "") == $b
-                            and (.event // "") == "push"
-                          )
-                      ]
-                      | sort_by(.created_at)
-                      | reverse
-                      | .[0].id // empty'
-                )"
-              fi
-              if [[ -n "${candidate_id}" ]]; then
-                run_concl="$(
-                  gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${candidate_id}" --jq '.conclusion // empty'
-                )"
-                if [[ "${run_concl}" == "success" ]]; then
-                  repo_release_matched_run_id="${candidate_id}"
-                  repo_release_matched_run_conclusion="${run_concl}"
+            max_attempts=20
+            for attempt in $(seq 1 "${max_attempts}"); do
+              # Repo **Security** must be a **push** run for the same commit and branch; poll because Security can finish just before/after Build.
+              # shellcheck disable=SC2016,SC1003
+              latest_json="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs" \
+                  -f "head_sha=${release_source_sha}" \
+                  -f "branch=${want_branch}" \
+                  -f "event=push" \
+                  -f "per_page=30" 2>/dev/null || true
+              )"
+              IFS=$'\t' read -r most_recent_id most_recent_concl < <(echo "${latest_json}" | jq -r --arg b "${want_branch}" '
+                [.workflow_runs[]?
+                  | select(
+                      (.name // "") == "Security"
+                      and ((.head_branch // "") == $b)
+                    )
+                 ]
+                 | sort_by(.created_at)
+                 | reverse
+                 | (if length > 0 then .[0] | [((.id|tostring), (.conclusion // ""))] | @tsv else empty end)' 2>/dev/null)
+              most_recent_id="${most_recent_id//[[:space:]]/}"
+              most_recent_concl="${most_recent_concl//[[:space:]]/}"
+              if [[ -n "${most_recent_id}" && "${most_recent_id}" =~ ^[0-9]+$ ]]; then
+                if [[ "${most_recent_concl}" == "success" ]]; then
+                  repo_release_matched_run_id="${most_recent_id}"
+                  repo_release_matched_run_conclusion="success"
                   repo_release_verdict="pass"
-                  repo_release_summary="Security (repo) run ${candidate_id} succeeded for head_sha=${release_source_sha} branch=${want_branch} (artifact source_event=${artifact_src_event:-unknown})"
+                  repo_release_evidence_source="security-workflow-run-success"
+                  repo_release_summary="Security (repo) push run ${most_recent_id} completed successfully for head_sha=${release_source_sha} branch=${want_branch} (matches Build candidate)."
                   break
                 fi
-                repo_release_evidence_source="security-workflow-run-not-successful"
-                repo_release_matched_run_id="${candidate_id}"
-                repo_release_matched_run_conclusion="${run_concl}"
-                repo_release_verdict="fail"
-                repo_release_summary="Security (repo) run ${candidate_id} matched head_sha=${release_source_sha} branch=${want_branch} but conclusion is ${run_concl:-unknown} (required: success)"
-                break
+                if [[ -n "${most_recent_concl}" && "${most_recent_concl}" != "success" && "${most_recent_concl}" != "null" ]]; then
+                  repo_release_evidence_source="security-workflow-run-not-successful"
+                  repo_release_matched_run_id="${most_recent_id}"
+                  repo_release_matched_run_conclusion="${most_recent_concl}"
+                  repo_release_verdict="fail"
+                  repo_release_summary="Security (repo) push run ${most_recent_id} for head_sha=${release_source_sha} branch=${want_branch} has conclusion=${most_recent_concl} (required: success)."
+                  break
+                fi
               fi
-              if [[ "${attempt}" -lt 12 ]]; then
-                echo "- waiting for successful **Security** (repo) run matching head_sha=${release_source_sha} branch=${want_branch} (attempt ${attempt}/12) ..." >> "$GITHUB_STEP_SUMMARY" || true
-                sleep 15
+              if [[ "${attempt}" -lt "${max_attempts}" ]]; then
+                {
+                  echo "- **Poll ${attempt}/${max_attempts}**: waiting for a completed **Security** (repo) **push** run for \`head_sha=${release_source_sha}\` on branch \`${want_branch}\` …"
+                } >> "${GITHUB_STEP_SUMMARY}" 2>/dev/null || true
+                sleep 20
               fi
             done
-            if [[ "${repo_release_verdict}" != "pass" ]]; then
+            if [[ "${repo_release_verdict}" != "pass" && "${repo_release_verdict}" != "fail" ]]; then
               repo_release_evidence_source="security-workflow-not-found-or-not-successful"
               repo_release_verdict="unavailable"
-              repo_release_summary="no successful Security (repo) run matched for head_sha=${release_source_sha} branch=${want_branch} after 12 attempts (required: workflow name Security; event push for automatic releases / push or workflow_dispatch when artifact source_event is workflow_dispatch)"
+              repo_release_matched_run_id=""
+              repo_release_matched_run_conclusion=""
+              repo_release_summary="No successful **Security** (repo) **push** run found for head_sha=${release_source_sha} branch=${want_branch} after ${max_attempts} attempts (~$(( max_attempts * 20 ))s). A push to develop/main that starts **Security** must exist for the same commit."
             fi
           fi
 
@@ -378,425 +934,11 @@ jobs:
           export REPO_RELEASE_SECRET_SCAN="${repo_release_secret_scan}"
           export REPO_RELEASE_TRIVY_CONFIG="${repo_release_trivy_config}"
           export REPO_RELEASE_SUMMARY="${repo_release_summary}"
-          GENERATED_AT_UTC="${generated_at_utc}" python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
+          export GENERATED_AT_UTC="${generated_at_utc}"
+          printenv WF_WRITE_SECURITY_VERDICT_JSON | python3 -
 
-          generated_at_utc = os.environ["GENERATED_AT_UTC"]
-          event_name = os.environ["EVENT_NAME"]
-          results = {
-              "dependency_review": os.environ["DEPENDENCY_REVIEW_RESULT"] or "not_applicable",
-              "govulncheck_pr": os.environ["GOVULNCHECK_PR_RESULT"] or "not_applicable",
-              "secret_scan": os.environ["SECRET_SCAN_RESULT"] or "not_applicable",
-              "config_scan": os.environ["CONFIG_SCAN_RESULT"] or "not_applicable",
-              "resolve_build_run": os.environ["RESOLVE_BUILD_RUN_RESULT"] or "not_applicable",
-              "resolve_image_refs": os.environ["RESOLVE_IMAGE_REFS_RESULT"] or "not_applicable",
-              "image_vulnerability_scan": os.environ["IMAGE_SCAN_RESULT"] or "not_applicable",
-              "govulncheck_nightly": os.environ["GOVULNCHECK_NIGHTLY_RESULT"] or "not_applicable",
-              "dependency_snapshot": os.environ["DEPENDENCY_SNAPSHOT_RESULT"] or "not_applicable",
-          }
-
-          def verdict_for(job_names):
-              relevant = [results[name] for name in job_names if results[name] not in ("", "skipped")]
-              if not relevant:
-                  return "not_applicable"
-              if all(result == "success" for result in relevant):
-                  return "pass"
-              return "fail"
-
-          repo_security_verdict = verdict_for([
-              "dependency_review",
-              "govulncheck_pr",
-              "secret_scan",
-              "config_scan",
-          ])
-          published_image_verdict = verdict_for([
-              "resolve_build_run",
-              "resolve_image_refs",
-              "image_vulnerability_scan",
-          ])
-          nightly_security_verdict = verdict_for([
-              "govulncheck_nightly",
-              "dependency_snapshot",
-          ])
-
-          def normalize(result_name):
-              if result_name == "success":
-                  return "pass"
-              if result_name in ("", "skipped"):
-                  return "not_applicable"
-              return "fail"
-
-          def digest_from_ref(ref):
-              if ref and "@sha256:" in ref:
-                  return ref.split("@", 1)[1]
-              return ""
-
-          source_build_run_id = os.environ.get("BUILD_RUN_ID", "")
-          source_sha = os.environ.get("RESOLVED_SOURCE_SHA") or os.environ.get("TRIGGER_WORKFLOW_RUN_SOURCE_SHA") or os.environ.get("WORKFLOW_SHA", "")
-          source_workflow_name = os.environ.get("RESOLVED_SOURCE_WORKFLOW_NAME") or os.environ.get("TRIGGER_WORKFLOW_RUN_NAME", "")
-          app_image_ref = os.environ.get("APP_IMAGE_REF", "")
-          goose_image_ref = os.environ.get("GOOSE_IMAGE_REF", "")
-          provenance_input = os.environ.get("PROVENANCE_VERDICT", "")
-          if not source_workflow_name and source_build_run_id:
-              source_workflow_name = "Build and Push Images"
-
-          resolved_source_branch = (os.environ.get("RESOLVED_SOURCE_BRANCH") or "").strip()
-          build_head_branch = (os.environ.get("BUILD_HEAD_BRANCH") or "").strip()
-          source_branch = resolved_source_branch or build_head_branch
-
-          artifact_source_event = (os.environ.get("ARTIFACT_SOURCE_EVENT") or "").strip()
-          trigger_workflow_event = (os.environ.get("TRIGGER_WORKFLOW_EVENT") or "").strip()
-          if artifact_source_event and artifact_source_event != "manual":
-              source_event = artifact_source_event
-          elif event_name == "workflow_dispatch":
-              source_event = "workflow_dispatch"
-          else:
-              source_event = trigger_workflow_event or ""
-
-          repo_release_verdict = os.environ.get("REPO_RELEASE_VERDICT", "")
-          repo_release_checks = {
-              "dependency_review": {
-                  "status": os.environ.get("REPO_RELEASE_DEPENDENCY_REVIEW", "not_applicable"),
-                  "release_requirement": "advisory",
-              },
-              "govulncheck_repo": {
-                  "status": os.environ.get("REPO_RELEASE_GOVULNCHECK_REPO", "not_applicable"),
-                  "release_requirement": "required",
-              },
-              "secret_scan": {
-                  "status": os.environ.get("REPO_RELEASE_SECRET_SCAN", "not_applicable"),
-                  "release_requirement": "required",
-              },
-              "trivy_config": {
-                  "status": os.environ.get("REPO_RELEASE_TRIVY_CONFIG", "not_applicable"),
-                  "release_requirement": "required",
-              },
-          }
-
-          private_repo_provenance_fallback = "accepted-private-repo-no-github-attestations"
-          if event_name in ("workflow_run", "workflow_dispatch"):
-              release_gate_mode = "full-security-release-gate"
-              if event_name == "workflow_dispatch":
-                  # Manual: no in-workflow repo scan jobs; gate on image+provenance only for this workflow.
-                  repo_required_for_release_verdict = "pass"
-                  release_gate_trust_model = "manual-workflow-dispatch-image-and-provenance-only"
-              else:
-                  repo_required_for_release_verdict = repo_release_verdict or "unavailable"
-              image_required_for_release_verdict = published_image_verdict
-              if provenance_input == "verified":
-                  provenance_release_verdict = "pass"
-                  if event_name != "workflow_dispatch":
-                      release_gate_trust_model = "fully-verified-workflow-run-evidence"
-              elif provenance_input == private_repo_provenance_fallback:
-                  provenance_release_verdict = private_repo_provenance_fallback
-                  if event_name == "workflow_dispatch":
-                      release_gate_trust_model = "manual-security-private-repo-no-github-artifact-attestations"
-                  else:
-                      release_gate_trust_model = "private-repo-no-github-artifact-attestations"
-              elif provenance_input:
-                  provenance_release_verdict = "fail"
-                  release_gate_trust_model = "provenance-verification-failed"
-              else:
-                  provenance_release_verdict = "unavailable"
-                  release_gate_trust_model = "provenance-evidence-unavailable"
-
-              release_gate_verdict = "pass" if (
-                  repo_required_for_release_verdict == "pass"
-                  and image_required_for_release_verdict == "pass"
-                  and provenance_release_verdict in ("pass", private_repo_provenance_fallback)
-              ) else "fail"
-              security_verdict = release_gate_verdict
-          else:
-              release_gate_mode = "not-applicable"
-              repo_required_for_release_verdict = "not_applicable"
-              image_required_for_release_verdict = "not_applicable"
-              provenance_release_verdict = "not_applicable"
-              release_gate_verdict = "not_applicable"
-              release_gate_trust_model = "not_applicable"
-              applicable = [v for v in [repo_security_verdict, published_image_verdict, nightly_security_verdict] if v != "not_applicable"]
-              security_verdict = "pass" if (not applicable or all(v == "pass" for v in applicable)) else "fail"
-
-          failure_reasons = []
-          repo_evidence = os.environ.get("REPO_RELEASE_EVIDENCE_SOURCE", "")
-
-          def add_failure_reason(message):
-              if message and message not in failure_reasons:
-                  failure_reasons.append(message)
-
-          if resolved_source_branch and build_head_branch and resolved_source_branch != build_head_branch:
-              add_failure_reason(
-                  "Artifact metadata mismatch: promotion-manifest source_branch "
-                  f"{resolved_source_branch!r} differs from Build and Push Images workflow head_branch {build_head_branch!r}."
-              )
-
-          if source_sha and len(source_sha) != 40:
-              add_failure_reason(f"Source SHA is not a 40-character hex commit (got {source_sha!r}).")
-
-          if event_name == "workflow_run":
-              if repo_required_for_release_verdict != "pass":
-                  if repo_evidence == "security-workflow-run-not-successful":
-                      add_failure_reason(
-                          "Repo-level Security: a matching **Security** workflow run was found for this SHA/branch but it did not complete successfully "
-                          f"(see run id in repo_level_checks.release_evidence; conclusion={os.environ.get('REPO_RELEASE_MATCHED_RUN_CONCLUSION', '')!r})."
-                      )
-                  elif repo_evidence in ("security-workflow-not-found-or-not-successful", "security-workflow-not-found"):
-                      add_failure_reason(
-                          "Repo-level Security: no successful **Security** (repo) run matched after retries for this source_sha and source_branch "
-                          "(automatic releases require a **push** Security run when promotion source_event is `push`)."
-                      )
-                  else:
-                      add_failure_reason(
-                          "Repo-level Security: release evidence is not sufficient (repo_release_verdict / repo gate not pass). "
-                          + os.environ.get("REPO_RELEASE_SUMMARY", "")
-                      )
-
-          if event_name in ("workflow_run", "workflow_dispatch"):
-              if image_required_for_release_verdict != "pass":
-                  rb = results.get("resolve_build_run", "")
-                  ri = results.get("resolve_image_refs", "")
-                  im = results.get("image_vulnerability_scan", "")
-                  if rb not in ("success", "skipped"):
-                      add_failure_reason(
-                          "Image reference resolution / build linkage: **resolve-build-run-id** did not succeed — check the Build and Push Images chain for this commit."
-                      )
-                  if ri not in ("success", "skipped"):
-                      add_failure_reason(
-                          "Image reference resolution failed: **_reusable-deploy** did not succeed (missing or inconsistent image-metadata / promotion-manifest, digest mismatch, or workflow_run_id mismatch)."
-                      )
-                  if im not in ("success", "skipped"):
-                      add_failure_reason(
-                          "Image vulnerability scan failed: **Trivy** reported blocking issues or the scan job did not complete successfully (see trivy-image-reports artifact)."
-                      )
-
-              if provenance_release_verdict not in ("pass", private_repo_provenance_fallback):
-                  if provenance_release_verdict == "fail":
-                      add_failure_reason("Provenance: GitHub artifact attestation verification **failed** for a published image (not the private-repo fallback).")
-                  elif provenance_release_verdict == "unavailable" or not provenance_input:
-                      add_failure_reason(
-                          "Provenance: verification result is **unavailable** or empty (expected `verified` or the private-repository attestation fallback)."
-                      )
-                  else:
-                      add_failure_reason(f"Provenance: release gate rejected provenance state ({provenance_release_verdict!r}).")
-
-          if security_verdict != "pass" and not failure_reasons:
-              add_failure_reason("Release gate failed; inspect `job_results` and component verdict fields for the failing upstream job.")
-
-          decision_reasons = list(failure_reasons)
-
-          payload = {
-              "schema_version": "v1",
-              "verdict": security_verdict,
-              "security_verdict": security_verdict,
-              "canonical_security_artifact": "security-verdict",
-              "event_name": event_name,
-              "workflow_name": os.environ["WORKFLOW_NAME"],
-              "workflow_run_id": os.environ["WORKFLOW_RUN_ID"],
-              "generated_at_utc": generated_at_utc,
-              "source_build_run_id": source_build_run_id,
-              "source_sha": source_sha,
-              "source_branch": source_branch,
-              "source_event": source_event,
-              "trigger_workflow_event": trigger_workflow_event,
-              "source_workflow_name": source_workflow_name,
-              "release_gate_verdict": release_gate_verdict,
-              "release_gate_mode": release_gate_mode,
-              "repo_security_verdict": repo_security_verdict,
-              "repo_release_verdict": repo_required_for_release_verdict,
-              "published_image_verdict": published_image_verdict,
-              "provenance_release_verdict": provenance_release_verdict,
-              "nightly_security_verdict": nightly_security_verdict,
-              "verification_scope": {
-                  "verified_by_this_artifact": [
-                      "workflow-scoped security verdict for the current event",
-                      "published image vulnerability scan status included in this run when applicable",
-                      "published image provenance verdict imported from immutable image resolution when applicable",
-                      "matched push security evidence for repo-level release checks when event_name=workflow_run",
-                      "current workflow repo-level security evidence when event_name=workflow_dispatch",
-                  ],
-                  "not_verified_by_this_artifact": [
-                      "staging deployment execution",
-                      "production deployment execution",
-                      "runtime environment readiness",
-                      "backup execution",
-                      "restore drill execution",
-                  ],
-              },
-              "release_policy": {
-                  "repo_level_required_for_release": [
-                      "govulncheck_repo",
-                      "secret_scan",
-                      "trivy_config",
-                  ],
-                  "repo_level_advisory_for_release": [
-                      "dependency_review",
-                  ],
-                  "not_release_gating": [
-                      "govulncheck_nightly",
-                      "dependency_snapshot",
-                  ],
-                  "image_level_required_for_release": [
-                      "resolve_build_run",
-                      "resolve_image_refs",
-                      "trivy_images",
-                  ],
-                  "provenance_required_for_release": [
-                      "published_image_provenance",
-                  ],
-              },
-              "repo_level_checks": {
-                  "current_event_verdict": repo_security_verdict,
-                  "release_evidence": {
-                      "evidence_source": os.environ.get("REPO_RELEASE_EVIDENCE_SOURCE", ""),
-                      "source_event_name": os.environ.get("REPO_RELEASE_SOURCE_EVENT", ""),
-                      "matched_workflow_run_id": os.environ.get("REPO_RELEASE_MATCHED_RUN_ID", ""),
-                      "matched_workflow_conclusion": os.environ.get("REPO_RELEASE_MATCHED_RUN_CONCLUSION", ""),
-                      "required_for_release_verdict": repo_required_for_release_verdict,
-                      "summary": os.environ.get("REPO_RELEASE_SUMMARY", ""),
-                  },
-                  "checks": repo_release_checks,
-              },
-              "image_level_checks": {
-                  "required_for_release_verdict": image_required_for_release_verdict,
-                  "checks": {
-                      "resolve_build_run": normalize(results["resolve_build_run"]),
-                      "resolve_image_refs": normalize(results["resolve_image_refs"]),
-                      "trivy_images": normalize(results["image_vulnerability_scan"]),
-                  },
-              },
-              "provenance_release_checks": {
-                  "required_for_release_verdict": provenance_release_verdict,
-                  "published_image_provenance_verdict": provenance_input,
-                  "evidence_source": (
-                      "resolve-image-refs workflow output (private repo fallback: GitHub Artifact Attestations unavailable)"
-                      if provenance_input == private_repo_provenance_fallback
-                      else ("resolve-image-refs workflow output" if provenance_input else "not_applicable")
-                  ),
-              },
-              "release_gate": {
-                  "mode": release_gate_mode,
-                  "verdict": release_gate_verdict,
-                  "generated_at_utc": generated_at_utc,
-                  "trust_model": release_gate_trust_model,
-                  "required_evidence": {
-                      "repo_level_checks": repo_required_for_release_verdict,
-                      "image_level_checks": image_required_for_release_verdict,
-                      "provenance_release_checks": provenance_release_verdict,
-                  },
-                  "summary": (
-                      "workflow_run release gating requires repo-level push security evidence plus published-image and provenance checks"
-                      if provenance_input != private_repo_provenance_fallback and event_name == "workflow_run"
-                      else (
-                          "workflow_run release gating accepted digest-pinned published images without GitHub Artifact Attestations because this private repository cannot use that GitHub feature"
-                          if provenance_input == private_repo_provenance_fallback and event_name == "workflow_run"
-                          else (
-                              "workflow_dispatch release gating uses the current manual security run plus resolved published-image evidence for the selected build"
-                              if provenance_input != private_repo_provenance_fallback and event_name == "workflow_dispatch"
-                              else (
-                                  "workflow_dispatch release gating accepted digest-pinned published images without GitHub Artifact Attestations because this private repository cannot use that GitHub feature"
-                                  if provenance_input == private_repo_provenance_fallback and event_name == "workflow_dispatch"
-                                  else "release gating is not evaluated for this event type"
-                              )
-                          )
-                      )
-                  ),
-              },
-              "scanner_summary": {
-                  "dependency_review": normalize(results["dependency_review"]),
-                  "govulncheck_repo": normalize(results["govulncheck_pr"]),
-                  "secret_scan": normalize(results["secret_scan"]),
-                  "trivy_config": normalize(results["config_scan"]),
-                  "trivy_images": normalize(results["image_vulnerability_scan"]),
-                  "govulncheck_nightly": normalize(results["govulncheck_nightly"]),
-              },
-              "published_images": {
-                  "app_image_ref": app_image_ref,
-                  "app_digest": digest_from_ref(app_image_ref),
-                  "goose_image_ref": goose_image_ref,
-                  "goose_digest": digest_from_ref(goose_image_ref),
-                  "provenance_verdict": provenance_input,
-                  "provenance_verdict_source": (
-                      "resolve-image-refs workflow output (private repo fallback: GitHub Artifact Attestations unavailable)"
-                      if provenance_input == private_repo_provenance_fallback
-                      else "resolve-image-refs workflow output"
-                  ),
-              },
-              "job_results": results,
-              "failure_reasons": failure_reasons,
-              "decision_reasons": decision_reasons,
-          }
-          Path("security-reports/security-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
-
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          from pathlib import Path
-
-          payload = json.loads(Path("security-reports/security-verdict.json").read_text(encoding="utf-8"))
-          outputs = {
-              "security_verdict": payload["verdict"],
-              "source_build_run_id": payload["source_build_run_id"],
-              "source_sha": payload["source_sha"],
-              "source_branch": payload.get("source_branch", ""),
-              "source_event": payload.get("source_event", ""),
-              "source_workflow_name": payload["source_workflow_name"],
-              "security_workflow_run_id": payload["workflow_run_id"],
-              "release_gate_verdict": payload["release_gate_verdict"],
-              "release_gate_mode": payload["release_gate_mode"],
-              "repo_security_verdict": payload["repo_security_verdict"],
-              "repo_release_verdict": payload["repo_release_verdict"],
-              "published_image_verdict": payload["published_image_verdict"],
-              "provenance_release_verdict": payload["provenance_release_verdict"],
-          }
-          for key, value in outputs.items():
-              print(f"{key}={value}")
-          PY
-          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json
-          from pathlib import Path
-
-          payload = json.loads(Path("security-reports/security-verdict.json").read_text(encoding="utf-8"))
-          print("## Security Release Signal")
-          print("- source of truth: `security-verdict` is the canonical release/security artifact")
-          print("- scope: `security-verdict distinguishes current-event security results from workflow_run release-gate approval`")
-          print(f"- event: `{payload['event_name']}`")
-          print(f"- verdict: `{payload['verdict']}`")
-          print(f"- release gate: mode=`{payload['release_gate_mode']}` verdict=`{payload['release_gate_verdict']}`")
-          print(f"- release gate generated at (UTC): `{payload['release_gate']['generated_at_utc']}`")
-          print(f"- release gate trust model: `{payload['release_gate']['trust_model']}`")
-          print(f"- repo security verdict: `{payload['repo_security_verdict']}`")
-          print(f"- repo release verdict: `{payload['repo_release_verdict']}`")
-          print(f"- published image verdict: `{payload['published_image_verdict']}`")
-          print(f"- provenance release verdict: `{payload['provenance_release_verdict']}`")
-          if payload["source_build_run_id"]:
-              print(f"- source build run id: `{payload['source_build_run_id']}`")
-          if payload["source_sha"]:
-              print(f"- source SHA: `{payload['source_sha']}`")
-          print(f"- source_event (from promotion-manifest / artifact): `{payload.get('source_event', '')}`")
-          print(f"- trigger_workflow_event (Build and Push Images GitHub event): `{payload.get('trigger_workflow_event', '')}`")
-          if (payload.get("verdict") or "").lower() != "pass":
-              print("")
-              print("### Why `SECURITY_VERDICT` is not pass")
-              for reason in payload.get("failure_reasons") or []:
-                  print(f"- {reason}")
-          repo_release = payload["repo_level_checks"]["release_evidence"]
-          if repo_release["evidence_source"]:
-              print(f"- repo release evidence source: `{repo_release['evidence_source']}`")
-          if repo_release["matched_workflow_run_id"]:
-              print(f"- matched push security workflow run: `{repo_release['matched_workflow_run_id']}`")
-          if payload["published_images"]["app_image_ref"]:
-              print(f"- app image: `{payload['published_images']['app_image_ref']}`")
-          if payload["published_images"]["goose_image_ref"]:
-              print(f"- goose image: `{payload['published_images']['goose_image_ref']}`")
-          if payload["published_images"]["provenance_verdict"]:
-              print(f"- published image provenance verdict: `{payload['published_images']['provenance_verdict']}` (from `{payload['published_images']['provenance_verdict_source']}`)")
-          if payload["published_images"]["provenance_verdict"] == "accepted-private-repo-no-github-attestations":
-              print("- provenance note: `GitHub Artifact Attestations are unavailable for this private repository, so release gating falls back to digest-pinned images plus the remaining security checks`")
-          print("- required release checks: `govulncheck_repo, secret_scan, trivy_config, published image scan, published image provenance`")
-          print("- advisory release checks: `dependency_review`")
-          print("- excluded controls: `deployment execution, runtime readiness, backup execution, restore drill execution`")
-          PY
+          printenv WF_EMIT_VERDICT_GITHUB_OUTPUT | python3 - >> "$GITHUB_OUTPUT"
+          printenv WF_EMIT_VERDICT_STEP_SUMMARY | python3 - >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload security verdict
         if: always()
@@ -821,6 +963,65 @@ jobs:
           OUT_REPO_REL: ${{ steps.signal.outputs.repo_release_verdict }}
           OUT_PUB: ${{ steps.signal.outputs.published_image_verdict }}
           OUT_PROV: ${{ steps.signal.outputs.provenance_release_verdict }}
+          WF_OBSERVABILITY_STEP_SUMMARY: |
+            import json
+            from pathlib import Path
+
+            p = Path("security-reports/security-verdict.json")
+            payload = json.loads(p.read_text(encoding="utf-8"))
+            print("### Verdict payload (canonical)")
+            print("- **verdict (blocking)**: `", payload.get("verdict", ""), "`", sep="")
+            print(f"- **release_gate_verdict**: `{payload.get('release_gate_verdict', '')}`")
+            print(f"- **release_gate_mode**: `{payload.get('release_gate_mode', '')}`")
+            print(f"- **repo_security_verdict**: `{payload.get('repo_security_verdict', '')}`")
+            print(f"- **repo_release_verdict**: `{payload.get('repo_release_verdict', '')}`")
+            print(f"- **published_image_verdict**: `{payload.get('published_image_verdict', '')}`")
+            print(f"- **provenance_release_verdict**: `{payload.get('provenance_release_verdict', '')}`")
+            print(f"- **nightly_security_verdict**: `{payload.get('nightly_security_verdict', '')}`")
+            print(f"- **source_sha**: `{payload.get('source_sha', '')}`")
+            print(f"- **source_build_run_id**: `{payload.get('source_build_run_id', '')}`")
+            print(f"- **source_workflow_name**: `{payload.get('source_workflow_name', '')}`")
+            print(f"- **security workflow_run_id (artifact)**: `{payload.get('workflow_run_id', '')}`")
+            jr = payload.get("job_results") or {}
+            print("")
+            print("#### job_results (upstream job conclusions)")
+            for k, v in sorted(jr.items()):
+                print(f"- `{k}`: `{v}`")
+            v = (payload.get("verdict") or "").lower()
+            if v != "pass":
+                print("")
+                print("#### Why `SECURITY_VERDICT` is not pass (structured)")
+                fr = payload.get("failure_reasons") or []
+                if fr:
+                    for reason in fr:
+                        print(f"- **{reason}**")
+                else:
+                    print("- (no structured failure_reasons; see hints below)")
+                print("")
+                print("#### Additional hints")
+                rg = payload.get("release_gate_verdict", "")
+                rs = payload.get("repo_security_verdict", "")
+                rrel = payload.get("repo_release_verdict", "")
+                pub = payload.get("published_image_verdict", "")
+                prov = payload.get("provenance_release_verdict", "")
+                ev = payload.get("event_name", "")
+                hints = []
+                if ev == "workflow_run" and (not rrel or rrel not in ("pass",)):
+                    hints.append("`repo_release_verdict` is not `pass` (for example `unavailable`); check that a **push** `Security` run for this SHA published a `security-verdict` artifact, or that freshness/overrides are policy-correct.")
+                if rs != "pass" and rs != "not_applicable":
+                    hints.append("`repo_security_verdict` is not `pass` — a repo-level check (dependency review, govulncheck-pr, secret scan, trivy config) failed or was not successful.")
+                if pub != "pass" and pub != "not_applicable":
+                    hints.append("`published_image_verdict` is not `pass` — build resolution, image refs, and/or the image vulnerability scan did not all succeed.")
+                if prov not in ("pass", "accepted-private-repo-no-github-attestations") and prov != "not_applicable":
+                    hints.append("`provenance_release_verdict` is not acceptable for the gate (expect `pass` or the private-repo provenance fallback when applicable).")
+                if prov == "unavailable" or (not prov and ev == "workflow_run"):
+                    hints.append("Provenance was **unavailable** or missing — `resolve-image-refs` may not have produced a verdict.")
+                if rg and rg != "pass":
+                    hints.append(f"`release_gate_verdict` is `{rg}` — at least one required component for the full release gate did not pass (see table above and `job_results`).")
+                if not hints:
+                    hints.append("Compare `job_results` to see which `needs.*` job did not report `success`.")
+                for h in hints:
+                    print(f"- {h}")
         run: |
           set -Eeuo pipefail
           f="security-reports/security-verdict.json"
@@ -851,66 +1052,7 @@ jobs:
             echo "::warning::security-verdict.json is missing; see earlier steps."
             exit 0
           fi
-          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json
-          from pathlib import Path
-
-          p = Path("security-reports/security-verdict.json")
-          payload = json.loads(p.read_text(encoding="utf-8"))
-          print("### Verdict payload (canonical)")
-          print("- **verdict (blocking)**: `", payload.get("verdict", ""), "`", sep="")
-          print(f"- **release_gate_verdict**: `{payload.get('release_gate_verdict', '')}`")
-          print(f"- **release_gate_mode**: `{payload.get('release_gate_mode', '')}`")
-          print(f"- **repo_security_verdict**: `{payload.get('repo_security_verdict', '')}`")
-          print(f"- **repo_release_verdict**: `{payload.get('repo_release_verdict', '')}`")
-          print(f"- **published_image_verdict**: `{payload.get('published_image_verdict', '')}`")
-          print(f"- **provenance_release_verdict**: `{payload.get('provenance_release_verdict', '')}`")
-          print(f"- **nightly_security_verdict**: `{payload.get('nightly_security_verdict', '')}`")
-          print(f"- **source_sha**: `{payload.get('source_sha', '')}`")
-          print(f"- **source_build_run_id**: `{payload.get('source_build_run_id', '')}`")
-          print(f"- **source_workflow_name**: `{payload.get('source_workflow_name', '')}`")
-          print(f"- **security workflow_run_id (artifact)**: `{payload.get('workflow_run_id', '')}`")
-          jr = payload.get("job_results") or {}
-          print("")
-          print("#### job_results (upstream job conclusions)")
-          for k, v in sorted(jr.items()):
-              print(f"- `{k}`: `{v}`")
-          v = (payload.get("verdict") or "").lower()
-          if v != "pass":
-              print("")
-              print("#### Why `SECURITY_VERDICT` is not pass (structured)")
-              fr = payload.get("failure_reasons") or []
-              if fr:
-                  for reason in fr:
-                      print(f"- **{reason}**")
-              else:
-                  print("- (no structured failure_reasons; see hints below)")
-              print("")
-              print("#### Additional hints")
-              rg = payload.get("release_gate_verdict", "")
-              rs = payload.get("repo_security_verdict", "")
-              rrel = payload.get("repo_release_verdict", "")
-              pub = payload.get("published_image_verdict", "")
-              prov = payload.get("provenance_release_verdict", "")
-              ev = payload.get("event_name", "")
-              hints = []
-              if ev == "workflow_run" and (not rrel or rrel not in ("pass",)):
-                  hints.append("`repo_release_verdict` is not `pass` (for example `unavailable`); check that a **push** `Security` run for this SHA published a `security-verdict` artifact, or that freshness/overrides are policy-correct.")
-              if rs != "pass" and rs != "not_applicable":
-                  hints.append("`repo_security_verdict` is not `pass` — a repo-level check (dependency review, govulncheck-pr, secret scan, trivy config) failed or was not successful.")
-              if pub != "pass" and pub != "not_applicable":
-                  hints.append("`published_image_verdict` is not `pass` — build resolution, image refs, and/or the image vulnerability scan did not all succeed.")
-              if prov not in ("pass", "accepted-private-repo-no-github-attestations") and prov != "not_applicable":
-                  hints.append("`provenance_release_verdict` is not acceptable for the gate (expect `pass` or the private-repo provenance fallback when applicable).")
-              if prov == "unavailable" or (not prov and ev == "workflow_run"):
-                  hints.append("Provenance was **unavailable** or missing — `resolve-image-refs` may not have produced a verdict.")
-              if rg and rg != "pass":
-                  hints.append(f"`release_gate_verdict` is `{rg}` — at least one required component for the full release gate did not pass (see table above and `job_results`).")
-              if not hints:
-                  hints.append("Compare `job_results` to see which `needs.*` job did not report `success`.")
-              for h in hints:
-                  print(f"- {h}")
-          PY
+          printenv WF_OBSERVABILITY_STEP_SUMMARY | python3 - >> "$GITHUB_STEP_SUMMARY"
           {
             echo ""
             echo "---"
@@ -925,8 +1067,27 @@ jobs:
           SECURITY_VERDICT: ${{ steps.signal.outputs.security_verdict }}
         run: |
           set -Eeuo pipefail
+          if [[ -f security-reports/security-verdict.json ]]; then
+            echo "### failure_reasons (blocking)" >> "${GITHUB_STEP_SUMMARY}"
+            {
+              mapfile -t _fr < <(python3 -c 'import json,sys; p=json.load(open("security-reports/security-verdict.json","r",encoding="utf-8")); [print(x) for x in (p.get("failure_reasons") or [])]')
+              if [[ ${#_fr[@]} -gt 0 ]]; then
+                for line in "${_fr[@]}"; do
+                  echo "- ${line}"
+                done
+              else
+                echo "- (no structured failure_reasons; see security-verdict.json and job_results)"
+              fi
+            } >> "${GITHUB_STEP_SUMMARY}" 2>/dev/null || {
+              echo "- (failed to list failure_reasons; open security-reports/security-verdict.json)" >> "${GITHUB_STEP_SUMMARY}" || true
+            }
+            echo "" >&2
+            echo "--- failure_reasons (stderr) ---" >&2
+            python3 -c "import json,sys; p=json.load(open('security-reports/security-verdict.json','r',encoding='utf-8')); fr=p.get('failure_reasons') or []; [print('failure_reason:',r,file=sys.stderr) for r in fr]" || true
+            echo "----------------" >&2
+          fi
           [[ "${SECURITY_VERDICT}" == "pass" ]] || {
             echo "error: blocking security verdict is ${SECURITY_VERDICT}" >&2
-            echo "error: see the job summary section **Security release signal — decision observability** for job_results, component verdicts, and failure hints." >&2
+            echo "error: see job summary: **Security release signal — decision observability** and **failure_reasons (blocking)** above." >&2
             exit 1
           }
