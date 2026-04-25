@@ -263,10 +263,11 @@ jobs:
           RESOLVED_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha }}
           RESOLVED_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
           RESOLVED_SOURCE_BRANCH: ${{ needs.resolve-image-refs.outputs.artifact_source_branch }}
+          ARTIFACT_SOURCE_EVENT: ${{ needs.resolve-image-refs.outputs.artifact_source_event }}
           TRIGGER_WORKFLOW_RUN_NAME: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name || '' }}
           TRIGGER_WORKFLOW_RUN_SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
           BUILD_HEAD_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || '' }}
-          BUILD_EVENT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event || '' }}
+          TRIGGER_WORKFLOW_EVENT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event || '' }}
           WORKFLOW_NAME: ${{ github.workflow }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
           WORKFLOW_SHA: ${{ github.sha }}
@@ -281,7 +282,9 @@ jobs:
           }
 
           release_source_sha="${RESOLVED_SOURCE_SHA:-${TRIGGER_WORKFLOW_RUN_SOURCE_SHA:-${WORKFLOW_SHA:-}}}"
-          want_branch="${BUILD_HEAD_BRANCH:-${RESOLVED_SOURCE_BRANCH:-}}"
+          # Prefer artifact branch (promotion-manifest) over triggering workflow branch for repo Security matching.
+          want_branch="${RESOLVED_SOURCE_BRANCH:-${BUILD_HEAD_BRANCH:-}}"
+          artifact_src_event="${ARTIFACT_SOURCE_EVENT:-}"
           repo_release_evidence_source="api-security-workflow"
           repo_release_source_event="push"
           repo_release_matched_run_id=""
@@ -295,25 +298,45 @@ jobs:
 
           if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
             [[ -n "${release_source_sha}" ]] || fail "workflow_run security release signal requires a resolved source SHA"
-            [[ -n "${want_branch}" ]] || fail "missing build branch (BUILD_HEAD_BRANCH / artifact_source_branch)"
+            [[ -n "${want_branch}" ]] || fail "missing source branch (artifact_source_branch / workflow_run.head_branch)"
             repo_release_verdict="unavailable"
             for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-              candidate_id="$(
-                gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs" \
-                  -f "head_sha=${release_source_sha}" -f "per_page=30" \
-                  --jq --arg b "${want_branch}" '
-                    [.workflow_runs[]?
-                      | select(
-                          (.name // "") == "Security"
-                          and .conclusion == "success"
-                          and (.head_branch // "") == $b
-                          and (.event // "") == "push"
-                        )
-                    ]
-                    | sort_by(.created_at)
-                    | reverse
-                    | .[0].id // empty'
-              )"
+              # Automatic releases (promotion source_event push): repo Security must be a push run. Manual image builds may correlate with push or workflow_dispatch Security runs.
+              if [[ "${artifact_src_event}" == "workflow_dispatch" ]]; then
+                candidate_id="$(
+                  gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs" \
+                    -f "head_sha=${release_source_sha}" -f "per_page=30" \
+                    --jq --arg b "${want_branch}" '
+                      [.workflow_runs[]?
+                        | select(
+                            (.name // "") == "Security"
+                            and .conclusion == "success"
+                            and (.head_branch // "") == $b
+                            and ((.event // "") == "push" or (.event // "") == "workflow_dispatch")
+                          )
+                      ]
+                      | sort_by(.created_at)
+                      | reverse
+                      | .[0].id // empty'
+                )"
+              else
+                candidate_id="$(
+                  gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs" \
+                    -f "head_sha=${release_source_sha}" -f "per_page=30" \
+                    --jq --arg b "${want_branch}" '
+                      [.workflow_runs[]?
+                        | select(
+                            (.name // "") == "Security"
+                            and .conclusion == "success"
+                            and (.head_branch // "") == $b
+                            and (.event // "") == "push"
+                          )
+                      ]
+                      | sort_by(.created_at)
+                      | reverse
+                      | .[0].id // empty'
+                )"
+              fi
               if [[ -n "${candidate_id}" ]]; then
                 run_concl="$(
                   gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${candidate_id}" --jq '.conclusion // empty'
@@ -322,19 +345,25 @@ jobs:
                   repo_release_matched_run_id="${candidate_id}"
                   repo_release_matched_run_conclusion="${run_concl}"
                   repo_release_verdict="pass"
-                  repo_release_summary="Security (repo) run ${candidate_id} succeeded for head_sha=${release_source_sha} branch=${want_branch}"
+                  repo_release_summary="Security (repo) run ${candidate_id} succeeded for head_sha=${release_source_sha} branch=${want_branch} (artifact source_event=${artifact_src_event:-unknown})"
                   break
                 fi
+                repo_release_evidence_source="security-workflow-run-not-successful"
+                repo_release_matched_run_id="${candidate_id}"
+                repo_release_matched_run_conclusion="${run_concl}"
+                repo_release_verdict="fail"
+                repo_release_summary="Security (repo) run ${candidate_id} matched head_sha=${release_source_sha} branch=${want_branch} but conclusion is ${run_concl:-unknown} (required: success)"
+                break
               fi
               if [[ "${attempt}" -lt 12 ]]; then
-                echo "- waiting for successful Security (repo) run (attempt ${attempt}/12) ..." >> "$GITHUB_STEP_SUMMARY" || true
+                echo "- waiting for successful **Security** (repo) run matching head_sha=${release_source_sha} branch=${want_branch} (attempt ${attempt}/12) ..." >> "$GITHUB_STEP_SUMMARY" || true
                 sleep 15
               fi
             done
             if [[ "${repo_release_verdict}" != "pass" ]]; then
-              repo_release_evidence_source="security-workflow-not-found"
+              repo_release_evidence_source="security-workflow-not-found-or-not-successful"
               repo_release_verdict="unavailable"
-              repo_release_summary="no successful Security (repo) push run found for head_sha=${release_source_sha} branch=${want_branch} (required before release gate)"
+              repo_release_summary="no successful Security (repo) run matched for head_sha=${release_source_sha} branch=${want_branch} after 12 attempts (required: workflow name Security; event push for automatic releases / push or workflow_dispatch when artifact source_event is workflow_dispatch)"
             fi
           fi
 
@@ -413,8 +442,18 @@ jobs:
           if not source_workflow_name and source_build_run_id:
               source_workflow_name = "Build and Push Images"
 
-          source_branch = (os.environ.get("RESOLVED_SOURCE_BRANCH") or os.environ.get("BUILD_HEAD_BRANCH", ""))
-          source_event = (os.environ.get("BUILD_EVENT") or ("workflow_dispatch" if event_name == "workflow_dispatch" else ""))
+          resolved_source_branch = (os.environ.get("RESOLVED_SOURCE_BRANCH") or "").strip()
+          build_head_branch = (os.environ.get("BUILD_HEAD_BRANCH") or "").strip()
+          source_branch = resolved_source_branch or build_head_branch
+
+          artifact_source_event = (os.environ.get("ARTIFACT_SOURCE_EVENT") or "").strip()
+          trigger_workflow_event = (os.environ.get("TRIGGER_WORKFLOW_EVENT") or "").strip()
+          if artifact_source_event and artifact_source_event != "manual":
+              source_event = artifact_source_event
+          elif event_name == "workflow_dispatch":
+              source_event = "workflow_dispatch"
+          else:
+              source_event = trigger_workflow_event or ""
 
           repo_release_verdict = os.environ.get("REPO_RELEASE_VERDICT", "")
           repo_release_checks = {
@@ -479,6 +518,73 @@ jobs:
               applicable = [v for v in [repo_security_verdict, published_image_verdict, nightly_security_verdict] if v != "not_applicable"]
               security_verdict = "pass" if (not applicable or all(v == "pass" for v in applicable)) else "fail"
 
+          failure_reasons = []
+          repo_evidence = os.environ.get("REPO_RELEASE_EVIDENCE_SOURCE", "")
+
+          def add_failure_reason(message):
+              if message and message not in failure_reasons:
+                  failure_reasons.append(message)
+
+          if resolved_source_branch and build_head_branch and resolved_source_branch != build_head_branch:
+              add_failure_reason(
+                  "Artifact metadata mismatch: promotion-manifest source_branch "
+                  f"{resolved_source_branch!r} differs from Build and Push Images workflow head_branch {build_head_branch!r}."
+              )
+
+          if source_sha and len(source_sha) != 40:
+              add_failure_reason(f"Source SHA is not a 40-character hex commit (got {source_sha!r}).")
+
+          if event_name == "workflow_run":
+              if repo_required_for_release_verdict != "pass":
+                  if repo_evidence == "security-workflow-run-not-successful":
+                      add_failure_reason(
+                          "Repo-level Security: a matching **Security** workflow run was found for this SHA/branch but it did not complete successfully "
+                          f"(see run id in repo_level_checks.release_evidence; conclusion={os.environ.get('REPO_RELEASE_MATCHED_RUN_CONCLUSION', '')!r})."
+                      )
+                  elif repo_evidence in ("security-workflow-not-found-or-not-successful", "security-workflow-not-found"):
+                      add_failure_reason(
+                          "Repo-level Security: no successful **Security** (repo) run matched after retries for this source_sha and source_branch "
+                          "(automatic releases require a **push** Security run when promotion source_event is `push`)."
+                      )
+                  else:
+                      add_failure_reason(
+                          "Repo-level Security: release evidence is not sufficient (repo_release_verdict / repo gate not pass). "
+                          + os.environ.get("REPO_RELEASE_SUMMARY", "")
+                      )
+
+          if event_name in ("workflow_run", "workflow_dispatch"):
+              if image_required_for_release_verdict != "pass":
+                  rb = results.get("resolve_build_run", "")
+                  ri = results.get("resolve_image_refs", "")
+                  im = results.get("image_vulnerability_scan", "")
+                  if rb not in ("success", "skipped"):
+                      add_failure_reason(
+                          "Image reference resolution / build linkage: **resolve-build-run-id** did not succeed — check the Build and Push Images chain for this commit."
+                      )
+                  if ri not in ("success", "skipped"):
+                      add_failure_reason(
+                          "Image reference resolution failed: **_reusable-deploy** did not succeed (missing or inconsistent image-metadata / promotion-manifest, digest mismatch, or workflow_run_id mismatch)."
+                      )
+                  if im not in ("success", "skipped"):
+                      add_failure_reason(
+                          "Image vulnerability scan failed: **Trivy** reported blocking issues or the scan job did not complete successfully (see trivy-image-reports artifact)."
+                      )
+
+              if provenance_release_verdict not in ("pass", private_repo_provenance_fallback):
+                  if provenance_release_verdict == "fail":
+                      add_failure_reason("Provenance: GitHub artifact attestation verification **failed** for a published image (not the private-repo fallback).")
+                  elif provenance_release_verdict == "unavailable" or not provenance_input:
+                      add_failure_reason(
+                          "Provenance: verification result is **unavailable** or empty (expected `verified` or the private-repository attestation fallback)."
+                      )
+                  else:
+                      add_failure_reason(f"Provenance: release gate rejected provenance state ({provenance_release_verdict!r}).")
+
+          if security_verdict != "pass" and not failure_reasons:
+              add_failure_reason("Release gate failed; inspect `job_results` and component verdict fields for the failing upstream job.")
+
+          decision_reasons = list(failure_reasons)
+
           payload = {
               "schema_version": "v1",
               "verdict": security_verdict,
@@ -492,6 +598,7 @@ jobs:
               "source_sha": source_sha,
               "source_branch": source_branch,
               "source_event": source_event,
+              "trigger_workflow_event": trigger_workflow_event,
               "source_workflow_name": source_workflow_name,
               "release_gate_verdict": release_gate_verdict,
               "release_gate_mode": release_gate_mode,
@@ -616,6 +723,8 @@ jobs:
                   ),
               },
               "job_results": results,
+              "failure_reasons": failure_reasons,
+              "decision_reasons": decision_reasons,
           }
           Path("security-reports/security-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
@@ -664,6 +773,13 @@ jobs:
               print(f"- source build run id: `{payload['source_build_run_id']}`")
           if payload["source_sha"]:
               print(f"- source SHA: `{payload['source_sha']}`")
+          print(f"- source_event (from promotion-manifest / artifact): `{payload.get('source_event', '')}`")
+          print(f"- trigger_workflow_event (Build and Push Images GitHub event): `{payload.get('trigger_workflow_event', '')}`")
+          if (payload.get("verdict") or "").lower() != "pass":
+              print("")
+              print("### Why `SECURITY_VERDICT` is not pass")
+              for reason in payload.get("failure_reasons") or []:
+                  print(f"- {reason}")
           repo_release = payload["repo_level_checks"]["release_evidence"]
           if repo_release["evidence_source"]:
               print(f"- repo release evidence source: `{repo_release['evidence_source']}`")
@@ -688,7 +804,7 @@ jobs:
         with:
           name: security-verdict
           path: security-reports/security-verdict.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Security release signal — decision observability
@@ -762,7 +878,15 @@ jobs:
           v = (payload.get("verdict") or "").lower()
           if v != "pass":
               print("")
-              print("#### Why `SECURITY_VERDICT` is not pass")
+              print("#### Why `SECURITY_VERDICT` is not pass (structured)")
+              fr = payload.get("failure_reasons") or []
+              if fr:
+                  for reason in fr:
+                      print(f"- **{reason}**")
+              else:
+                  print("- (no structured failure_reasons; see hints below)")
+              print("")
+              print("#### Additional hints")
               rg = payload.get("release_gate_verdict", "")
               rs = payload.get("repo_security_verdict", "")
               rrel = payload.get("repo_release_verdict", "")
