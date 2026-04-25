@@ -3,12 +3,15 @@ name: Deploy Production
 # Enterprise policy: production actions are workflow_dispatch only. There is no automatic deploy from
 # main or from Security Release. Operators supply build_run_id + security_release_run_id (successful
 # Security Release whose security-verdict authorizes the deploy).
+#
+# Automatic production deployment is disabled until the release chain is verified.
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
   workflow_dispatch:
+    # Manual only — no workflow_run / push / schedule. Merge to develop must not start this workflow.
     inputs:
       action_mode:
         description: "Production action to run"
