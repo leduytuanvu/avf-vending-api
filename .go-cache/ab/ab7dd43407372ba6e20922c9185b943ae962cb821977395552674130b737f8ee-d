@@ -1,6 +1,0 @@
-./context.go
-./logger.go
-./ops_http.go
-./scrape_bearer_gate.go
-./tracer.go
-./version.go

@@ -72,6 +72,23 @@ def main() -> int:
     d = _assert_file_and_schema()
     assert d.get("verdict") in ("skipped", "fail", "pass"), d
 
+<<<<<<< HEAD
+=======
+    # 3b) unsupported-trigger (chain-only Build: GHA event workflow_run)
+    _clear_verdict()
+    _run(
+        "unsupported-trigger",
+        env={
+            "EVENT_NAME": "workflow_run",
+            "WORKFLOW_RUN_ID": "1",
+            "WORKFLOW_NAME": "Security Release",
+            "TRIGGERING_BUILD_EVENT": "workflow_run",
+        },
+    )
+    d = _assert_file_and_schema()
+    assert d.get("verdict") == "skipped" and d.get("release_gate_mode", "").find("unsupported") != -1, d
+
+>>>>>>> origin/main
     # 4) full: repo release evidence unavailable (structured failure_reasons, not traceback)
     _clear_verdict()
     sha = "0" * 40

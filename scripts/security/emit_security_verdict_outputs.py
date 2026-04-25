@@ -13,7 +13,11 @@ def main() -> None:
     if not path.is_file():
         print("error: security verdict JSON not found: %s" % path, file=sys.stderr)
         sys.exit(1)
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        print("error: could not read verdict JSON: %s" % e, file=sys.stderr)
+        sys.exit(1)
     outputs = {
         "security_verdict": payload.get("verdict", ""),
         "source_build_run_id": payload.get("source_build_run_id", ""),

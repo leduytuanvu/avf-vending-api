@@ -24,6 +24,21 @@ deployments/prod/**/*.dump
 deployments/prod/**/*.tmp
 deployments/prod/**/*.bak
 
+# Go local build/test cache
+.go-cache/
+.gocache/
+.go-build/
+coverage.out
+.coverage
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 # Editor / OS
 .idea/
 .vscode/

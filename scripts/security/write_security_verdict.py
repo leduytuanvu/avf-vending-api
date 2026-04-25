@@ -14,6 +14,19 @@ REPORTS = Path("security-reports")
 VERDICT_PATH = REPORTS / "security-verdict.json"
 PRIVATE_REPO_PROVENANCE_FALLBACK = "accepted-private-repo-no-github-attestations"
 
+# Every mode here must be invocable from security-release (signal step) and listed by verify_workflow_contracts.sh;
+# keep argparse `choices` in main() in sync. "full" covers pass and fail (JSON verdict from write_full()).
+CONTRACT_VERDICT_MODES: tuple[str, ...] = (
+    "skipped",
+    "no-candidate",
+    "unsupported-trigger",
+    "ineligible-branch",
+    "unsupported-artifact-source-event",
+    "metadata-mismatch",
+    "full",
+    "emergency",
+)
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -259,7 +272,12 @@ def write_unsupported_artifact_source_event_skipped() -> None:
     wn = _s("WORKFLOW_NAME", "Security Release")
     a_ev = (_s("ARTIFACT_SOURCE_EVENT") or "").strip()
     reasons = [
+<<<<<<< HEAD
         "promotion-manifest source_event is %r (expected one of: push, workflow_dispatch, workflow_run, or manual for dispatch builds)."
+=======
+        "promotion-manifest source_event is %r (release promotion allows only: push, workflow_dispatch, or manual mapped to dispatch; "
+        "semantic source_event must not be workflow_run / chain-only)."
+>>>>>>> origin/main
         % (a_ev,)
     ]
     _write(
@@ -299,6 +317,82 @@ def write_unsupported_artifact_source_event_skipped() -> None:
     )
 
 
+<<<<<<< HEAD
+=======
+def write_metadata_mismatch_skipped() -> None:
+    """Triggering Build API metadata disagrees with promotion-manifest / same-run contract (no full gate, not emergency)."""
+    gen = _s("GENERATED_AT_UTC") or _utc_now()
+    ev = _s("EVENT_NAME", "")
+    wrid = _s("WORKFLOW_RUN_ID", "")
+    wn = _s("WORKFLOW_NAME", "Security Release")
+    primary = (_s("METADATA_CONFLICT_REASON") or "").strip() or (
+        "Triggering **Build and Push Images** run metadata does not match promotion-manifest / expected same-run contract."
+    )
+    reasons: list[str] = [primary]
+    extra = (_s("METADATA_CONFLICT_EXTRA") or "").strip()
+    if extra:
+        reasons.append(extra)
+    mv: dict = {
+        "triggering_build_run_id": _s("TRIGGERING_BUILD_ID", ""),
+        "triggering_build_event": _s("TRIGGERING_BUILD_EVENT", ""),
+        "triggering_build_head_branch": _s("TRIGGERING_BUILD_HEAD_BRANCH", ""),
+        "triggering_build_head_sha": _s("TRIGGERING_BUILD_HEAD_SHA", ""),
+        "triggering_workflow_name": _s("TRIGGERING_BUILD_WF_NAME", ""),
+        "triggering_workflow_conclusion": _s("TRIGGERING_BUILD_CONCLUSION", ""),
+        "artifact_source_event": _s("ARTIFACT_SOURCE_EVENT", ""),
+        "resolved_source_branch": _s("RESOLVED_SOURCE_BRANCH", ""),
+        "resolved_source_sha": _s("RESOLVED_SOURCE_SHA", ""),
+        "build_run_id_from_artifacts": _s("BUILD_RUN_ID", ""),
+        "decision": "skipped",
+    }
+    jr = {
+        "resolve_build_run": "success",
+        "resolve_image_refs": "success",
+        "image_vulnerability_scan": "success",
+    }
+    te = _s("TRIGGERING_BUILD_EVENT", "")
+    _write(
+        {
+            "schema_version": "v1",
+            "verdict": "skipped",
+            "security_verdict": "skipped",
+            "canonical_security_artifact": "security-verdict",
+            "nightly_security_verdict": "not_applicable",
+            "event_name": ev,
+            "workflow_name": wn,
+            "workflow_run_id": wrid,
+            "security_workflow_run_id": wrid,
+            "generated_at_utc": gen,
+            "source_build_run_id": _s("BUILD_RUN_ID", ""),
+            "source_sha": (_s("RESOLVED_SOURCE_SHA") or "").strip(),
+            "source_branch": (_s("RESOLVED_SOURCE_BRANCH") or "").strip(),
+            "source_event": (_s("ARTIFACT_SOURCE_EVENT") or "").strip(),
+            "trigger_workflow_event": te,
+            "source_workflow_name": "Build and Push Images",
+            "metadata_validation": mv,
+            "release_gate_verdict": "skipped",
+            "release_gate_mode": "skipped-artifact-trigger-mismatch",
+            "repo_security_verdict": "skipped",
+            "repo_release_verdict": "skipped",
+            "published_image_verdict": "skipped",
+            "provenance_release_verdict": "skipped",
+            "failure_reasons": list(reasons),
+            "skipped_reasons": list(reasons),
+            "warnings": [],
+            "decision_reasons": list(reasons),
+            "job_results": jr,
+            "release_gate": {
+                "mode": "skipped-artifact-trigger-mismatch",
+                "verdict": "skipped",
+                "generated_at_utc": gen,
+                "trust_model": "not-applicable",
+                "summary": "Defensive check: default-branch / workflow_run trigger context does not match promotion-manifest for this Build run id.",
+            },
+        }
+    )
+
+
+>>>>>>> origin/main
 def write_unsupported_trigger_skipped() -> None:
     """Skipped: triggering Build event is not an allowed build trigger type for release gating."""
     gen = _s("GENERATED_AT_UTC") or _utc_now()
@@ -309,11 +403,17 @@ def write_unsupported_trigger_skipped() -> None:
     bid = _s("TRIGGERING_BUILD_ID", "")
     b_sha = _s("TRIGGERING_BUILD_HEAD_SHA", "")
     hb = _s("TRIGGERING_BUILD_HEAD_BRANCH", "")
-    reason = (
-        "Non-release candidate: triggering Build and Push Images workflow event is %r (expected one of: "
-        "workflow_run, push, workflow_dispatch for this repository's build chain). Full Security Release gate was not evaluated."
-        % te
-    )
+    if (te or "").strip() == "workflow_run":
+        reason = (
+            "Non-release candidate: the triggering **Build and Push Images** run was started by a `workflow_run` (upstream CI chain), not by a direct "
+            "`push` to `develop`/`main` or an allowed `workflow_dispatch`. Indirect/chain-only builds are not valid release candidates."
+        )
+    else:
+        reason = (
+            "Non-release candidate: triggering **Build and Push Images** GHA `event` is %r (release promotion only allows `push` or `workflow_dispatch` "
+            "on `develop`/`main`). Full Security Release gate was not evaluated."
+            % (te or "",)
+        )
     reasons = [reason]
     jr = {
         "skip_job": "success",
@@ -390,6 +490,9 @@ def write_no_candidate() -> None:
     wrid = _s("WORKFLOW_RUN_ID", "")
     wn = _s("WORKFLOW_NAME", "Security Release")
     reasons: list[str] = []
+    acn = (_s("ARTIFACT_CONSISTENCY_NOTE") or "").strip()
+    if acn:
+        reasons.append(acn)
     if ev == "workflow_run":
         tconc = (_s("TRIGGERING_BUILD_CONCLUSION") or "").strip()
         tname = (_s("TRIGGERING_BUILD_WF_NAME") or "").strip()
@@ -975,6 +1078,20 @@ def write_full() -> None:
             "trigger_workflow_head_sha": tr_sha,
             "trigger_workflow_head_branch": build_head_branch,
             "trigger_workflow_event": (_s("TRIGGERING_BUILD_EVENT") or "").strip(),
+<<<<<<< HEAD
+=======
+        }
+        payload["metadata_validation"] = {
+            "triggering_build_run_id": _s("TRIGGERING_BUILD_ID", ""),
+            "triggering_build_event": (_s("TRIGGERING_BUILD_EVENT") or "").strip(),
+            "triggering_build_head_branch": build_head_branch,
+            "triggering_build_head_sha": tr_sha,
+            "artifact_source_event": (_s("ARTIFACT_SOURCE_EVENT") or "").strip(),
+            "resolved_source_branch": resolved_source_branch,
+            "resolved_source_sha": artifact_sha,
+            "build_run_id_from_artifacts": source_build_run_id,
+            "decision": security_verdict,
+>>>>>>> origin/main
         }
 
     _write(payload)
@@ -984,6 +1101,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         "mode",
+<<<<<<< HEAD
         choices=(
             "skipped",
             "no-candidate",
@@ -993,6 +1111,9 @@ def main() -> None:
             "full",
             "emergency",
         ),
+=======
+        choices=CONTRACT_VERDICT_MODES,
+>>>>>>> origin/main
         help="Verdict document to write",
     )
     ap.add_argument("--emergency-reason", default="", help="Only for mode=emergency")
@@ -1009,6 +1130,11 @@ def main() -> None:
             write_ineligible_branch_skipped()
         elif args.mode == "unsupported-artifact-source-event":
             write_unsupported_artifact_source_event_skipped()
+<<<<<<< HEAD
+=======
+        elif args.mode == "metadata-mismatch":
+            write_metadata_mismatch_skipped()
+>>>>>>> origin/main
         elif args.mode == "full":
             write_full()
         else:

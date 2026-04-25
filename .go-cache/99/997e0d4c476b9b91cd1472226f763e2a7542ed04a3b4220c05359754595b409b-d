@@ -1,8 +1,0 @@
-./activities.go
-./boundary.go
-./disabled.go
-./doc.go
-./errors.go
-./register.go
-./temporal.go
-./workflows.go
