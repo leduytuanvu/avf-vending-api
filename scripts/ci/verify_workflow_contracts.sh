@@ -71,6 +71,11 @@ grep -q '^name: Security Release$' "${WF}/security-release.yml" || fail "securit
 grep -q '^name: Staging Deployment Contract$' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must be named \"Staging Deployment Contract\""
 grep -q '^name: Deploy Production$' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must be named \"Deploy Production\""
 
+# --- security.yml: repo Security (push/PR/schedule); do not chain from Build (that is security-release.yml) ---
+if grep -qE '^[[:space:]]{2}workflow_run[[:space:]]*:' "${WF}/security.yml"; then
+  fail "security.yml must not declare on.workflow_run (release security gate is security-release.yml after Build and Push Images)"
+fi
+
 # --- No duplicate canonical display names (beyond Security vs Security Release, checked above) ---
 # Note: duplicate top-level `name:` values are checked later in this script.
 
