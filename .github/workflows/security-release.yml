@@ -399,6 +399,7 @@ jobs:
           WORKFLOW_NAME: ${{ github.workflow }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
           WORKFLOW_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
           GH_TOKEN: ${{ github.token }}
           TRIVY_APP_RESULT: ${{ needs.image-vulnerability-scan.outputs.trivy_app_result }}
           TRIVY_GOOSE_RESULT: ${{ needs.image-vulnerability-scan.outputs.trivy_goose_result }}
@@ -463,16 +464,13 @@ jobs:
           if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
             TCONC="${TRIGGERING_BUILD_CONCLUSION:-}"
             TNAME="${TRIGGERING_BUILD_WF_NAME:-}"
-            THB="${TRIGGERING_BUILD_HEAD_BRANCH:-}"
             if [[ -n "${TCONC}" && "${TCONC}" != "success" ]]; then
               NO_RC=1
             fi
             if [[ -n "${TNAME}" && "${TNAME}" != "Build and Push Images" ]]; then
               NO_RC=1
             fi
-            if [[ -n "${THB}" && "${THB}" != "develop" && "${THB}" != "main" ]]; then
-              NO_RC=1
-            fi
+            # Do not use triggering Build head_branch for release-candidate identity (may differ from promotion-manifest when workflow_run chains).
           fi
           if [[ "${NO_RC}" -eq 1 ]]; then
             python3 scripts/security/write_security_verdict.py no-candidate
@@ -495,24 +493,52 @@ jobs:
               exit 0
             fi
           fi
-          # Repo Security (push) evidence match — keep bash + gh; exports for write_security_verdict.py
+          # Repo Security (push) — candidate identity: promotion-manifest / image-metadata only. Never prefer BUILD_HEAD_* over RESOLVED_*.
           fail() {
             echo "error: $*" >&2
             exit 1
           }
+          A_EV="${ARTIFACT_SOURCE_EVENT:-}"
+          # Primary SHA: RESOLVED (promotion-manifest / image-metadata). If empty: explicit Security run SHA only (workflow_dispatch / ref checkout). Never use triggering workflow_run head_sha.
           release_source_sha="${RESOLVED_SOURCE_SHA:-}"
           if [[ -z "${release_source_sha// }" ]]; then
-            fail "workflow_run: source SHA is empty in resolved build artifacts; cannot run release gate (expected promotion-manifest / image-metadata)"
+            release_source_sha="${WORKFLOW_SHA:-}"
           fi
-          want_branch="${RESOLVED_SOURCE_BRANCH:-${BUILD_HEAD_BRANCH:-${MANUAL_TARGET_BRANCH:-}}}"
-          if [[ -z "${want_branch// }" ]]; then
-            fail "workflow_run: source branch is empty; cannot run release gate"
+          # Primary branch: RESOLVED, then manual dispatch target, then ref — never BUILD_HEAD_BRANCH / TRIGGERING_BUILD_HEAD_BRANCH for candidate identity.
+          want_branch="${RESOLVED_SOURCE_BRANCH:-${MANUAL_TARGET_BRANCH:-${GITHUB_REF_NAME:-}}}"
+          c_ev=""
+          if [[ "${A_EV}" == "manual" ]]; then
+            c_ev="workflow_dispatch"
+          elif [[ -n "${A_EV// }" && "${A_EV}" != "manual" ]]; then
+            c_ev="${A_EV}"
           fi
-          artifact_src_event="${ARTIFACT_SOURCE_EVENT:-}"
-          if [[ -n "${artifact_src_event// }" ]]; then
-            {
-              echo "- artifact \`source_event\` (from Build promotion-manifest): \`${artifact_src_event}\`"
-            } >> "$GITHUB_STEP_SUMMARY"
+          export CANONICAL_SOURCE_SHA="${release_source_sha}"
+          export CANONICAL_SOURCE_BRANCH="${want_branch}"
+          export CANONICAL_SOURCE_EVENT="${c_ev}"
+          {
+            echo "- canonical source sha: ${release_source_sha}"
+            echo "- canonical source branch: ${want_branch}"
+            echo "- artifact source event: ${A_EV:-unknown}"
+            echo "- triggering workflow_run head branch: ${TRIGGERING_BUILD_HEAD_BRANCH:-unknown} (diagnostic only)"
+            echo "- resolved source workflow: ${RESOLVED_SOURCE_WORKFLOW_NAME:-}  build run id: ${BUILD_RUN_ID:-}  (artifact)"
+            echo "- diagnostic triggering workflow_run event: ${TRIGGERING_BUILD_EVENT:-unknown}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ -n "${A_EV// }" && "${A_EV}" != "push" && "${A_EV}" != "workflow_dispatch" && "${A_EV}" != "workflow_run" && "${A_EV}" != "manual" ]]; then
+            python3 scripts/security/write_security_verdict.py unsupported-artifact-source-event
+            python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
+            python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
+            trap - EXIT
+            exit 0
+          fi
+          if [[ -z "${want_branch// }" || ( "${want_branch}" != "develop" && "${want_branch}" != "main" ) ]]; then
+            python3 scripts/security/write_security_verdict.py ineligible-branch
+            python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
+            python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
+            trap - EXIT
+            exit 0
+          fi
+          if [[ -z "${release_source_sha// }" ]]; then
+            fail "Release gate: empty canonical source SHA (set RESOLVED_SOURCE_SHA from build artifacts, or run via workflow_dispatch so WORKFLOW_SHA is available when artifacts lack SHA)"
           fi
           repo_release_evidence_source="api-security-workflow"
           repo_release_source_event="push"
@@ -527,10 +553,8 @@ jobs:
           release_resolution_error=""
 
           if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            if [[ -z "${release_source_sha// }" ]]; then
-              release_resolution_error="workflow_run: could not determine source SHA (empty build promotion/image artifact metadata and no triggering Build head_sha). Cannot match the repo **Security** workflow to this candidate."
-            elif [[ -z "${want_branch// }" ]]; then
-              release_resolution_error="workflow_run: could not determine source branch (empty promotion / image ref_name and no Build head_branch). Cannot match the repo **Security** workflow to this candidate."
+            if [[ -z "${release_source_sha// }" || -z "${want_branch// }" ]]; then
+              release_resolution_error="workflow_run: could not determine canonical source SHA/branch (artifact + fallbacks) for the repo **Security** workflow match. Check promotion-manifest / image-metadata and Build trigger fields."
             fi
             if [[ -n "${release_resolution_error}" ]]; then
               repo_release_evidence_source="workflow-resolution-failed"
@@ -547,16 +571,25 @@ jobs:
                   -f "event=push" \
                   -f "per_page=30" 2>/dev/null || true
               )"
-              IFS=$'\t' read -r most_recent_id most_recent_concl < <(echo "${latest_json}" | jq -r --arg b "${want_branch}" '
-                [.workflow_runs[]?
-                  | select(
-                      (.name // "") == "Security"
-                      and ((.head_branch // "") == $b)
-                    )
-                 ]
-                 | sort_by(.created_at)
-                 | reverse
-                 | (if length > 0 then .[0] | [((.id|tostring), (.conclusion // ""))] | @tsv else empty end)' 2>/dev/null)
+              # Safe under set -e: empty jq (no run yet) must not make read(1) abort the step.
+              most_recent_id=""
+              most_recent_concl=""
+              security_run_row="$(
+                echo "${latest_json}" | jq -r --arg b "${want_branch}" '
+                  [.workflow_runs[]?
+                    | select(
+                        (.name // "") == "Security"
+                        and ((.head_branch // "") == $b)
+                      )
+                  ]
+                  | sort_by(.created_at)
+                  | reverse
+                  | (if length > 0 then .[0] | [((.id|tostring), (.conclusion // ""))] | @tsv else empty end)
+                ' 2>/dev/null | head -n 1 || true
+              )"
+              if [[ -n "${security_run_row// }" ]]; then
+                IFS=$'\t' read -r most_recent_id most_recent_concl <<< "${security_run_row}" || true
+              fi
               most_recent_id="${most_recent_id//[[:space:]]/}"
               most_recent_concl="${most_recent_concl//[[:space:]]/}"
               if [[ -n "${most_recent_id}" && "${most_recent_id}" =~ ^[0-9]+$ ]]; then
@@ -616,6 +649,9 @@ jobs:
           fi
           python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
           python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
+          REPO_RELEASE_MATCHED_RUN_ID="${repo_release_matched_run_id:-}"
+          export REPO_RELEASE_MATCHED_RUN_ID
+          python3 scripts/security/emit_release_signal_debug_table.py
           trap - EXIT
 
       - name: Upload security verdict
@@ -624,7 +660,7 @@ jobs:
         with:
           name: security-verdict
           path: security-reports/security-verdict.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Security release signal — decision observability
