@@ -397,6 +397,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TRIVY_APP_RESULT: ${{ needs.image-vulnerability-scan.outputs.trivy_app_result }}
           TRIVY_GOOSE_RESULT: ${{ needs.image-vulnerability-scan.outputs.trivy_goose_result }}
+          # Triggering Build run (only when this Security run was started by workflow_run; used for no-releasable-candidate detection)
+          TRIGGERING_BUILD_CONCLUSION: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion || '' }}
+          TRIGGERING_BUILD_HEAD_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || '' }}
+          TRIGGERING_BUILD_WF_NAME: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name || '' }}
+          TRIGGERING_BUILD_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || '' }}
+          TRIGGERING_BUILD_EVENT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event || '' }}
           WF_WRITE_SKIPPED_VERDICT: |
             import json
             import os
@@ -494,6 +500,117 @@ jobs:
             }
             Path("security-reports").mkdir(parents=True, exist_ok=True)
             Path("security-reports/security-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          WF_WRITE_NO_CANDIDATE_VERDICT: |
+            import json
+            import os
+            from pathlib import Path
+            # Chain incomplete or upstream Build did not yield digest-pinned image refs: neutral skipped outcome (not a fail verdict).
+            gen = os.environ.get("GENERATED_AT_UTC", "")
+            ev = os.environ.get("EVENT_NAME", "")
+            wrid = os.environ.get("WORKFLOW_RUN_ID", "")
+            wn = os.environ.get("WORKFLOW_NAME", "Security Release")
+            reasons = []
+            if ev == "workflow_run":
+                tconc = (os.environ.get("TRIGGERING_BUILD_CONCLUSION") or "").strip()
+                tname = (os.environ.get("TRIGGERING_BUILD_WF_NAME") or "").strip()
+                thb = (os.environ.get("TRIGGERING_BUILD_HEAD_BRANCH") or "").strip()
+                if tconc and tconc != "success":
+                    reasons.append(
+                        f"Triggering Build and Push Images workflow_run conclusion was {tconc!r} (required: success to produce a releasable candidate)."
+                    )
+                if tname and tname != "Build and Push Images":
+                    reasons.append(
+                        f"Triggering workflow name was {tname!r} (expected Build and Push Images)."
+                    )
+                if thb and thb not in ("develop", "main"):
+                    reasons.append(
+                        f"Triggering head_branch was {thb!r} (expected develop or main for release gating)."
+                    )
+            rbr = (os.environ.get("RESOLVE_BUILD_RUN_RESULT") or "").strip()
+            rir = (os.environ.get("RESOLVE_IMAGE_REFS_RESULT") or "").strip()
+            ris = (os.environ.get("IMAGE_SCAN_RESULT") or "").strip()
+            if rbr != "success":
+                reasons.append(
+                    f"resolve-build-run-id did not succeed (result={rbr!r}); required build artifacts (image-metadata, promotion-manifest, immutable-image-contract) were not available for the release chain."
+                )
+            if rir != "success":
+                reasons.append(
+                    f"resolve-image-refs did not succeed (result={rir!r}); digest-pinned app and goose image refs were not established from build artifacts."
+                )
+            if not reasons:
+                reasons.append(
+                    "Triggering Build and Push Images run did not produce a releasable candidate"
+                )
+            # Semantic source fields stay empty: no digests / promotion manifest to release (chain broke upstream).
+            tw_ev = (os.environ.get("TRIGGERING_BUILD_EVENT") or "workflow_run").strip() or "workflow_run"
+            jr = {
+                "resolve_build_run": rbr,
+                "resolve_image_refs": rir,
+                "image_vulnerability_scan": ris,
+            }
+            release_summary = "No releasable candidate. Security release gate skipped."
+            payload = {
+                "schema_version": "v1",
+                "verdict": "skipped",
+                "security_verdict": "skipped",
+                "canonical_security_artifact": "security-verdict",
+                "nightly_security_verdict": "not_applicable",
+                "event_name": ev,
+                "workflow_name": wn,
+                "workflow_run_id": wrid,
+                "generated_at_utc": gen,
+                "source_build_run_id": "",
+                "source_sha": "",
+                "source_branch": "",
+                "source_event": "",
+                "trigger_workflow_event": tw_ev,
+                "source_workflow_name": "Build and Push Images",
+                "release_gate_verdict": "not_applicable",
+                "release_gate_mode": "skipped_no_release_candidate",
+                "repo_security_verdict": "skipped",
+                "repo_release_verdict": "skipped",
+                "published_image_verdict": "skipped",
+                "provenance_release_verdict": "skipped",
+                "published_images": {
+                    "app_image_ref": "",
+                    "app_digest": "",
+                    "goose_image_ref": "",
+                    "goose_digest": "",
+                    "provenance_verdict": "",
+                    "provenance_verdict_source": "not_applicable",
+                },
+                "failure_reasons": reasons,
+                "decision_reasons": list(reasons),
+                "job_results": jr,
+                "repo_level_checks": {
+                    "current_event_verdict": "skipped",
+                    "release_evidence": {
+                        "evidence_source": "skipped",
+                        "source_event_name": "",
+                        "matched_workflow_run_id": "",
+                        "matched_workflow_conclusion": "",
+                        "required_for_release_verdict": "skipped",
+                        "summary": release_summary,
+                    },
+                    "checks": {},
+                },
+                "release_gate": {
+                    "mode": "skipped_no_release_candidate",
+                    "verdict": "not_applicable",
+                    "generated_at_utc": gen,
+                    "trust_model": "not-applicable",
+                    "summary": release_summary,
+                    "required_evidence": {
+                        "repo_level_checks": "skipped",
+                        "image_level_checks": "skipped",
+                        "provenance_release_checks": "skipped",
+                    },
+                },
+            }
+            Path("security-reports").mkdir(parents=True, exist_ok=True)
+            Path("security-reports/security-verdict.json").write_text(
+                json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+            )
           WF_WRITE_SECURITY_VERDICT_JSON: |
             import json
             import os
@@ -974,6 +1091,42 @@ jobs:
             printenv WF_EMIT_VERDICT_STEP_SUMMARY | python3 - >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
+
+          # No releasable candidate: successful Build (workflow_run) but upstream chain could not run full gate, or
+          # develop/main run without artifacts / resolvable image refs. Emit skipped + exit 0; do not run main writer.
+          RBR_RES="${RESOLVE_BUILD_RUN_RESULT:-}"
+          RIR_RES="${RESOLVE_IMAGE_REFS_RESULT:-}"
+          NO_RC=0
+          if [[ "${RBR_RES}" != "success" ]]; then
+            NO_RC=1
+          fi
+          if [[ "${RIR_RES}" != "success" ]]; then
+            NO_RC=1
+          fi
+          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
+            TCONC="${TRIGGERING_BUILD_CONCLUSION:-}"
+            TNAME="${TRIGGERING_BUILD_WF_NAME:-}"
+            THB="${TRIGGERING_BUILD_HEAD_BRANCH:-}"
+            if [[ -n "${TCONC}" && "${TCONC}" != "success" ]]; then
+              NO_RC=1
+            fi
+            if [[ -n "${TNAME}" && "${TNAME}" != "Build and Push Images" ]]; then
+              NO_RC=1
+            fi
+            if [[ -n "${THB}" && "${THB}" != "develop" && "${THB}" != "main" ]]; then
+              NO_RC=1
+            fi
+          fi
+          if [[ "${NO_RC}" -eq 1 ]]; then
+            printenv WF_WRITE_NO_CANDIDATE_VERDICT | python3 -
+            printenv WF_EMIT_VERDICT_GITHUB_OUTPUT | python3 - >> "$GITHUB_OUTPUT"
+            printenv WF_EMIT_VERDICT_STEP_SUMMARY | python3 - >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo ""
+              echo "## No releasable candidate. Security release gate skipped."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           fail() {
             echo "error: $*" >&2
             exit 1
@@ -1131,7 +1284,7 @@ jobs:
           set -e
           if [[ "${_vw}" -ne 0 ]]; then
             echo "::error::WF_WRITE_SECURITY_VERDICT_JSON failed; writing emergency fail verdict" >&2
-            python3 - <<'PY'
+            cat > /tmp/wf_emergency_security_verdict.py <<'PY'
             import json
             import os
             from datetime import datetime, timezone
@@ -1185,7 +1338,8 @@ jobs:
             Path("security-reports/security-verdict.json").write_text(
                 json.dumps(p, indent=2) + "\n", encoding="utf-8"
             )
-            PY
+          PY
+            python3 /tmp/wf_emergency_security_verdict.py
           fi
 
           printenv WF_EMIT_VERDICT_GITHUB_OUTPUT | python3 - >> "$GITHUB_OUTPUT"

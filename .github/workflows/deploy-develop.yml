@@ -12,12 +12,11 @@ on:
     branches:
       - develop
 
-# Staging only runs after a *successful* Security Release on develop (jobs also require
-# github.event.workflow_run.name == 'Security Release'). Never from PR, CI, repo Security, or Build
-# directly; never by searching build-push runs. The security-verdict artifact from the triggering
-# Security Release run (github.event.workflow_run.id) is the only candidate source. Real deploy
-# requires repository variable ENABLE_REAL_STAGING_DEPLOY == true; otherwise the workflow validates
-# the full contract and exits success without STAGING_HOST / SSH.
+# Staging only runs after a *successful* Security Release on develop (github.event.workflow_run.name
+# == 'Security Release'). Never from CI, repo Security, or Build directly. security-verdict from the
+# triggering run (github.event.workflow_run.id) is the only candidate source. verdict=skipped
+# (no releasable Security Release candidate) finishes cleanly — no build resolution, no deploy.
+# Real deploy: vars.ENABLE_REAL_STAGING_DEPLOY == true. Otherwise: validate only when verdict=pass.
 
 permissions:
   actions: read
@@ -39,6 +38,7 @@ jobs:
       github.event.workflow_run.head_branch == 'develop'
     runs-on: ubuntu-latest
     outputs:
+      staging_verdict: ${{ steps.lookup.outputs.staging_verdict }}
       source_commit_sha: ${{ steps.lookup.outputs.source_commit_sha }}
       workflow_run_id: ${{ steps.lookup.outputs.workflow_run_id }}
       source_branch: ${{ steps.lookup.outputs.source_branch }}
@@ -79,24 +79,41 @@ jobs:
                 print("Security Release run did not complete with conclusion success; refusing staging", file=sys.stderr)
                 sys.exit(1)
 
-            verdict = (payload.get("verdict") or "").lower()
-            secv = payload.get("security_verdict")
-            if secv is not None and str(secv).lower() != "pass":
-                print("security-verdict security_verdict is not pass; refusing staging", file=sys.stderr)
-                sys.exit(1)
-            if verdict != "pass":
-                print("security-verdict verdict is not pass; refusing staging", file=sys.stderr)
-                sys.exit(1)
-
-            rgv = (payload.get("release_gate_verdict") or "").strip()
-            if rgv != "pass":
-                print(f"error: release_gate_verdict must be pass, got {rgv!r}", file=sys.stderr)
-                sys.exit(1)
             if str(payload.get("workflow_run_id", "")) != str(sec_run):
                 print(
                     f"error: security-verdict workflow_run_id {payload.get('workflow_run_id')!r} does not match triggering Security Release run {sec_run!r}",
                     file=sys.stderr,
                 )
+                sys.exit(1)
+
+            verdict = (payload.get("verdict") or "").lower()
+            if verdict == "skipped":
+                out("staging_verdict", "skipped")
+                out("source_commit_sha", "")
+                out("workflow_run_id", "")
+                out("source_branch", "")
+                out("source_event", "")
+                out("security_workflow_run_id", sec_run)
+                summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+                if summary_path:
+                    with open(summary_path, "a", encoding="utf-8") as fh:
+                        fh.write("\n## Staging (neutral)\n\nNo releasable staging candidate. Staging deployment skipped.\n")
+                sys.exit(0)
+
+            if verdict != "pass":
+                for r in payload.get("failure_reasons") or []:
+                    print(f"failure_reason: {r}", file=sys.stderr)
+                print(f"error: security-verdict verdict is {verdict!r} (staging allows only pass or skipped)", file=sys.stderr)
+                sys.exit(1)
+
+            secv = payload.get("security_verdict")
+            if secv is not None and str(secv).lower() != "pass":
+                print("security-verdict security_verdict is not pass; refusing staging", file=sys.stderr)
+                sys.exit(1)
+
+            rgv = (payload.get("release_gate_verdict") or "").strip()
+            if rgv != "pass":
+                print(f"error: release_gate_verdict must be pass, got {rgv!r}", file=sys.stderr)
                 sys.exit(1)
 
             branch = (payload.get("source_branch") or "").strip()
@@ -131,6 +148,7 @@ jobs:
             out("source_branch", "develop")
             out("source_event", src_ev)
             out("security_workflow_run_id", sec_run)
+            out("staging_verdict", "pass")
         run: |
           set -Eeuo pipefail
 
@@ -179,7 +197,8 @@ jobs:
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'develop'
+      github.event.workflow_run.head_branch == 'develop' &&
+      needs.resolve-staging-candidate.outputs.staging_verdict == 'pass'
     needs: resolve-staging-candidate
     uses: ./.github/workflows/_reusable-deploy.yml
     with:
@@ -197,7 +216,8 @@ jobs:
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'develop'
+      github.event.workflow_run.head_branch == 'develop' &&
+      needs.resolve-staging-candidate.outputs.staging_verdict == 'pass'
     runs-on: ubuntu-latest
     needs:
       - resolve-staging-candidate
@@ -415,6 +435,7 @@ jobs:
       github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'develop' &&
+      needs.resolve-staging-candidate.outputs.staging_verdict == 'pass' &&
       vars.ENABLE_REAL_STAGING_DEPLOY != 'true'
     runs-on: ubuntu-latest
     needs:
@@ -502,6 +523,7 @@ jobs:
       github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'develop' &&
+      needs.resolve-staging-candidate.outputs.staging_verdict == 'pass' &&
       vars.ENABLE_REAL_STAGING_DEPLOY == 'true'
     runs-on: ubuntu-latest
     needs:
@@ -772,6 +794,7 @@ jobs:
       github.event.workflow_run.name == 'Security Release' &&
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'develop' &&
+      needs.resolve-staging-candidate.outputs.staging_verdict == 'pass' &&
       vars.ENABLE_REAL_STAGING_DEPLOY == 'true'
     runs-on: ubuntu-latest
     needs:

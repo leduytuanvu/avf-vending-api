@@ -56,8 +56,8 @@ jobs:
       - name: Verify CI/CD workflow contracts
         shell: bash
         # Static checks only (scripts/ci/verify_workflow_contracts.sh): canonical workflow names, no develop→prod
-        # auto-deploy, Staging listens to Security Release only, build-push push gate, non-empty Security Release
-        # verdict contract, security-verdict artifacts, no build-push API race in deploy-develop; fails PRs before merge.
+        # auto-deploy, no on.workflow_run on deploy-prod, Staging on Security Release only, build-push release_candidate
+        # + push gate, Security Release verdict/JSON/skipped + emergency path, deploy-develop skipped verdict; fails PRs.
         run: |
           set -Eeuo pipefail
           chmod +x scripts/ci/verify_workflow_contracts.sh
