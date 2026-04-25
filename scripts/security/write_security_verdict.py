@@ -464,22 +464,29 @@ def write_full() -> None:
     artifact_sha = (_s("RESOLVED_SOURCE_SHA") or "").strip()
     tr_sha = (_s("TRIGGER_WORKFLOW_RUN_SOURCE_SHA") or "").strip()
     wf_sha = (_s("WORKFLOW_SHA") or "").strip()
-    if artifact_sha:
+    can_sha = (_s("CANONICAL_SOURCE_SHA") or "").strip()
+    can_br = (_s("CANONICAL_SOURCE_BRANCH") or "").strip()
+    if can_sha:
+        source_sha = can_sha
+    elif artifact_sha:
         source_sha = artifact_sha
     else:
         source_sha = tr_sha or wf_sha
-        if tr_sha and not artifact_sha:
-            pass  # caller may set warnings via env ARTIFACT_CONSISTENCY_NOTE
 
     resolved_source_branch = (_s("RESOLVED_SOURCE_BRANCH") or "").strip()
     build_head_branch = (_s("BUILD_HEAD_BRANCH") or "").strip()
     manual_target_branch = (_s("MANUAL_TARGET_BRANCH") or "").strip()
-    if resolved_source_branch:
+    gref = (_s("GITHUB_REF_NAME") or "").strip()
+    if can_br:
+        source_branch = can_br
+    elif resolved_source_branch:
         source_branch = resolved_source_branch
     elif build_head_branch:
         source_branch = build_head_branch
-    else:
+    elif manual_target_branch:
         source_branch = manual_target_branch
+    else:
+        source_branch = gref
 
     source_workflow_name = _s("RESOLVED_SOURCE_WORKFLOW_NAME") or _s("TRIGGER_WORKFLOW_RUN_NAME", "")
     source_build_run_id = _s("BUILD_RUN_ID", "")
@@ -487,9 +494,14 @@ def write_full() -> None:
         source_workflow_name = "Build and Push Images"
 
     artifact_source_event = (_s("ARTIFACT_SOURCE_EVENT") or "").strip()
+    can_ev = (_s("CANONICAL_SOURCE_EVENT") or "").strip()
     trigger_workflow_event = (_s("TRIGGER_WORKFLOW_EVENT") or "").strip()
-    if artifact_source_event and artifact_source_event not in ("manual",):
+    if artifact_source_event == "manual":
+        source_event = "workflow_dispatch"
+    elif artifact_source_event and artifact_source_event not in ("manual",):
         source_event = artifact_source_event
+    elif can_ev in ("push", "workflow_dispatch"):
+        source_event = can_ev
     else:
         source_event = ""
 
@@ -841,11 +853,15 @@ def write_full() -> None:
     # Observed coordinates for debugging (never silent mixing)
     if event_name == "workflow_run":
         payload["source_coordinates"] = {
-            "canonical_source_sha": artifact_sha or source_sha,
-            "canonical_source_branch": resolved_source_branch or source_branch,
+            "canonical_source_sha": can_sha or artifact_sha or source_sha,
+            "canonical_source_branch": can_br or resolved_source_branch or source_branch,
+            "canonical_source_event": (can_ev or source_event) or "",
+            "artifact_source_sha": artifact_sha,
             "artifact_source_branch": resolved_source_branch,
+            "artifact_source_event": (_s("ARTIFACT_SOURCE_EVENT") or "").strip(),
             "trigger_workflow_head_sha": tr_sha,
             "trigger_workflow_head_branch": build_head_branch,
+            "trigger_workflow_event": (_s("TRIGGERING_BUILD_EVENT") or "").strip(),
         }
 
     _write(payload)

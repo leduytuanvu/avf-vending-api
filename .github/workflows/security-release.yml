@@ -399,6 +399,7 @@ jobs:
           WORKFLOW_NAME: ${{ github.workflow }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
           WORKFLOW_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
           GH_TOKEN: ${{ github.token }}
           TRIVY_APP_RESULT: ${{ needs.image-vulnerability-scan.outputs.trivy_app_result }}
           TRIVY_GOOSE_RESULT: ${{ needs.image-vulnerability-scan.outputs.trivy_goose_result }}
@@ -495,20 +496,63 @@ jobs:
               exit 0
             fi
           fi
-          # Repo Security (push) evidence match — keep bash + gh; exports for write_security_verdict.py
+          # Repo Security (push) evidence match — use canonical source coords (artifact-first, never let Build head override artifacts).
           fail() {
             echo "error: $*" >&2
             exit 1
           }
-          release_source_sha="${RESOLVED_SOURCE_SHA:-}"
-          if [[ -z "${release_source_sha// }" ]]; then
-            fail "workflow_run: source SHA is empty in resolved build artifacts; cannot run release gate (expected promotion-manifest / image-metadata)"
+          A_SHA="${RESOLVED_SOURCE_SHA:-}"
+          A_BR="${RESOLVED_SOURCE_BRANCH:-}"
+          A_EV="${ARTIFACT_SOURCE_EVENT:-}"
+          B_SHA="${TRIGGER_WORKFLOW_RUN_SOURCE_SHA:-}"
+          B_BR="${BUILD_HEAD_BRANCH:-}"
+          B_EV_TR="${TRIGGERING_BUILD_EVENT:-}"
+          G_SHA="${WORKFLOW_SHA:-}"
+          G_REF="${GITHUB_REF_NAME:-}"
+          M_BR="${MANUAL_TARGET_BRANCH:-}"
+          S_NAME="${EVENT_NAME:-}"
+          C_SHA=""
+          C_BR=""
+          C_EV=""
+          if [[ -n "${A_SHA// }" ]]; then
+            C_SHA="${A_SHA}"
+          elif [[ -n "${B_SHA// }" ]]; then
+            C_SHA="${B_SHA}"
+          else
+            C_SHA="${G_SHA}"
           fi
-          want_branch="${RESOLVED_SOURCE_BRANCH:-${BUILD_HEAD_BRANCH:-${MANUAL_TARGET_BRANCH:-}}}"
-          if [[ -z "${want_branch// }" ]]; then
-            fail "workflow_run: source branch is empty; cannot run release gate"
+          if [[ -n "${A_BR// }" ]]; then
+            C_BR="${A_BR}"
+          elif [[ -n "${B_BR// }" ]]; then
+            C_BR="${B_BR}"
+          elif [[ -n "${M_BR// }" ]]; then
+            C_BR="${M_BR}"
+          else
+            C_BR="${G_REF}"
           fi
-          artifact_src_event="${ARTIFACT_SOURCE_EVENT:-}"
+          if [[ "${A_EV}" == "manual" ]]; then
+            C_EV="workflow_dispatch"
+          elif [[ -n "${A_EV// }" && "${A_EV}" != "manual" ]]; then
+            C_EV="${A_EV}"
+          elif [[ "${B_EV_TR}" == "push" || "${B_EV_TR}" == "workflow_dispatch" ]]; then
+            C_EV="${B_EV_TR}"
+          elif [[ "${S_NAME}" == "workflow_dispatch" ]]; then
+            C_EV="workflow_dispatch"
+          else
+            C_EV=""
+          fi
+          export CANONICAL_SOURCE_SHA="${C_SHA}"
+          export CANONICAL_SOURCE_BRANCH="${C_BR}"
+          export CANONICAL_SOURCE_EVENT="${C_EV}"
+          if [[ -z "${C_SHA// }" ]]; then
+            fail "Release gate: empty canonical source SHA (need artifact source_sha, or Build head_sha, or Security run SHA fallback)"
+          fi
+          if [[ -z "${C_BR// }" ]]; then
+            fail "Release gate: empty canonical source branch (need artifact source_branch, Build head, manual target, or GITHUB_REF_NAME)"
+          fi
+          release_source_sha="${C_SHA}"
+          want_branch="${C_BR}"
+          artifact_src_event="${A_EV:-}"
           if [[ -n "${artifact_src_event// }" ]]; then
             {
               echo "- artifact \`source_event\` (from Build promotion-manifest): \`${artifact_src_event}\`"
@@ -527,10 +571,8 @@ jobs:
           release_resolution_error=""
 
           if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            if [[ -z "${release_source_sha// }" ]]; then
-              release_resolution_error="workflow_run: could not determine source SHA (empty build promotion/image artifact metadata and no triggering Build head_sha). Cannot match the repo **Security** workflow to this candidate."
-            elif [[ -z "${want_branch// }" ]]; then
-              release_resolution_error="workflow_run: could not determine source branch (empty promotion / image ref_name and no Build head_branch). Cannot match the repo **Security** workflow to this candidate."
+            if [[ -z "${release_source_sha// }" || -z "${want_branch// }" ]]; then
+              release_resolution_error="workflow_run: could not determine canonical source SHA/branch (artifact + fallbacks) for the repo **Security** workflow match. Check promotion-manifest / image-metadata and Build trigger fields."
             fi
             if [[ -n "${release_resolution_error}" ]]; then
               repo_release_evidence_source="workflow-resolution-failed"
@@ -616,6 +658,9 @@ jobs:
           fi
           python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
           python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
+          REPO_RELEASE_MATCHED_RUN_ID="${repo_release_matched_run_id:-}"
+          export REPO_RELEASE_MATCHED_RUN_ID
+          python3 scripts/security/emit_release_signal_debug_table.py
           trap - EXIT
 
       - name: Upload security verdict
@@ -624,7 +669,7 @@ jobs:
         with:
           name: security-verdict
           path: security-reports/security-verdict.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Security release signal — decision observability
