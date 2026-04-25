@@ -84,7 +84,7 @@ jobs:
           REDIS_URL: ${{ secrets.PRODUCTION_REDIS_URL }}
           NATS_URL: ${{ secrets.PRODUCTION_NATS_URL }}
           MQTT_BROKER_URL: ${{ secrets.PRODUCTION_MQTT_BROKER_URL }}
-          HTTP_AUTH_JWT_SECRET: "0123456789abcdef0123456789abcdef"
+          HTTP_AUTH_JWT_SECRET: ${{ secrets.PRODUCTION_HTTP_AUTH_JWT_SECRET }}
           MQTT_CLIENT_ID: prod-gate
           MQTT_TOPIC_PREFIX: avf/devices
           MQTT_CLIENT_ID_API: prod-gate-api
