@@ -1,0 +1,6 @@
+./doc.go
+./errors.go
+./ports.go
+./types.go
+./validation.go
+./validation_test.go

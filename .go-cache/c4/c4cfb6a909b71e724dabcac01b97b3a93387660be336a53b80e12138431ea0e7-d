@@ -1,0 +1,8 @@
+./enhanced_stack_trace.go-helpers.pb.go
+./enhanced_stack_trace.pb.go
+./task_complete_metadata.go-helpers.pb.go
+./task_complete_metadata.pb.go
+./user_metadata.go-helpers.pb.go
+./user_metadata.pb.go
+./workflow_metadata.go-helpers.pb.go
+./workflow_metadata.pb.go

@@ -52,6 +52,22 @@ note "pull app-node images"
 if [[ "${RUN_MIGRATION}" == "1" ]]; then
 	PHASE="migrate"
 	note "run one-shot migration profile"
+	REPO_ROOT="$(cd "${NODE_ROOT}/../../.." && pwd)"
+	set -a
+	# shellcheck source=/dev/null
+	source "${ENV_FILE}"
+	set +a
+	export APP_ENV="${APP_ENV:-production}"
+	if [[ "${GITHUB_ACTIONS:-}" != "true" ]]; then
+		if [[ "${CONFIRM_PRODUCTION_MIGRATION:-}" != "true" ]]; then
+			echo "error: set CONFIRM_PRODUCTION_MIGRATION=true to run app-node migration from a shell" >&2
+			exit 1
+		fi
+	fi
+	if ! bash "${REPO_ROOT}/scripts/verify_database_environment.sh"; then
+		echo "error: verify_database_environment.sh failed" >&2
+		exit 1
+	fi
 	"${COMPOSE[@]}" --profile migration run --rm migrate
 fi
 

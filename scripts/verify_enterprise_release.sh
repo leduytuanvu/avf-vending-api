@@ -62,6 +62,15 @@ phase_swagger_check() {
   echo "OK: swagger-check (committed docs/swagger matches generator)"
 }
 
+phase_postman_check() {
+  section "Phase 3b: Postman artifacts (same as make postman-check; offline, no network)"
+  if ! command -v "${PY}" >/dev/null 2>&1; then
+    die "${PY} not on PATH (required for postman checks)"
+  fi
+  "${PY}" tools/check_postman_artifacts.py
+  echo "OK: postman-check"
+}
+
 phase_shell_syntax() {
   section "Phase 4: Bash syntax (bash -n) — scripts/**/*.sh and deployments/**/*.sh"
   local n files=()
@@ -294,6 +303,7 @@ main() {
   phase_go_test
   phase_swagger
   phase_swagger_check
+  phase_postman_check
   phase_shell_syntax
   phase_docker_compose
   phase_openapi_release

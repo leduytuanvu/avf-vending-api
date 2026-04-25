@@ -2,6 +2,12 @@
 
 This runbook defines **what must pass** before calling a release **pilot-safe** vs **fleet-scale ready**, and how **storm evidence** blocks scale-up without proof.
 
+## Databases and environment separation (non-negotiable)
+
+- **Production** must use a **dedicated** production database (`PRODUCTION_DATABASE_URL` / your vault); it must **never** be the same connection string or host as **staging** (`STAGING_DATABASE_URL`). Run `bash scripts/verify_database_environment.sh` with `APP_ENV=production` before one-off or scripted migrations; `deployments/prod/scripts/release.sh` and app-node `release_app_node.sh` do this before Goose when migrations run.
+- **Promotion:** Prefer deploying a **digest that already passed** staging and your security/verify gates, not a fresh image of the same commit without staging validation, when your org’s workflow enforces that contract.
+- Full narrative: [environment-strategy.md](./environment-strategy.md) and [docs/deployment/environments.md](../deployment/environments.md).
+
 ## Command: static enterprise verification
 
 From the repository root:
@@ -215,6 +221,7 @@ Prerequisites: `emit_verify_enterprise_result_json.sh`, monitoring + storm JSONs
 
 ## Related
 
+- [environment-strategy.md](./environment-strategy.md) — local, staging, production separation and DSN policy.
 - [telemetry-production-rollout.md](./telemetry-production-rollout.md) — storm suite, fleet gate, tuning.
 - [kiosk-app-flow.md](../api/kiosk-app-flow.md) — end-to-end client journey.
 - [api-surface-audit.md](../api/api-surface-audit.md) — endpoint matrix.

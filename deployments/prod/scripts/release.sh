@@ -4,6 +4,7 @@ set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
+REPO_ROOT="$(cd "${ROOT}/../.." && pwd)"
 
 ENV_FILE="${ROOT}/.env.production"
 COMPOSE_FILE="${ROOT}/docker-compose.prod.yml"
@@ -45,6 +46,23 @@ fail() {
 
 note() {
 	echo "==> $*"
+}
+
+run_database_environment_guard() {
+	set -a
+	# shellcheck source=/dev/null
+	source "${ENV_FILE}"
+	set +a
+	export APP_ENV="${APP_ENV:-production}"
+	if [[ "${GITHUB_ACTIONS:-}" != "true" ]]; then
+		if [[ "${CONFIRM_PRODUCTION_MIGRATION:-}" != "true" ]]; then
+			fail "production migrations from a shell require CONFIRM_PRODUCTION_MIGRATION=true (or run from GitHub Actions where GITHUB_ACTIONS=true)"
+		fi
+	fi
+	note "verify database environment (guard; redacted identity only)"
+	if ! bash "${REPO_ROOT}/scripts/verify_database_environment.sh"; then
+		fail "verify_database_environment.sh failed"
+	fi
 }
 
 init_state_dir() {
@@ -647,6 +665,8 @@ cmd_deploy() {
 	if ! "${COMPOSE[@]}" up -d postgres nats; then
 		fail "failed to start postgres/nats"
 	fi
+
+	run_database_environment_guard
 
 	note "docker compose up migrate (foreground; one-shot migration)"
 	# Ensures migrations run before application containers are switched.

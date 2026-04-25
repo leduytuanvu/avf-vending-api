@@ -27,7 +27,8 @@ func testHTTPServerConfig(t *testing.T) *config.Config {
 		ProcessName:      "api",
 		LogLevel:         "info",
 		LogFormat:        "json",
-		SwaggerUIEnabled: true,
+		SwaggerUIEnabled:   true,
+		OpenAPIJSONEnabled: true,
 		MetricsEnabled:   false,
 		Runtime: config.RuntimeConfig{
 			NodeName:    "node-a",
@@ -96,6 +97,7 @@ func TestNewHTTPServer_production_swaggerDisabled_noSwaggerRoutes(t *testing.T) 
 	cfg := testHTTPServerConfig(t)
 	cfg.AppEnv = config.AppEnvProduction
 	cfg.SwaggerUIEnabled = false
+	cfg.OpenAPIJSONEnabled = true
 	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
 	if err != nil {
 		t.Fatal(err)
@@ -106,6 +108,33 @@ func TestNewHTTPServer_production_swaggerDisabled_noSwaggerRoutes(t *testing.T) 
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("GET /swagger/index.html: status=%d want 404", rec.Code)
+	}
+	reqDoc := httptest.NewRequest(http.MethodGet, "/swagger/doc.json", nil)
+	recDoc := httptest.NewRecorder()
+	h.ServeHTTP(recDoc, reqDoc)
+	if recDoc.Code != http.StatusOK {
+		t.Fatalf("GET /swagger/doc.json: status=%d want 200 (OpenAPI JSON without UI)", recDoc.Code)
+	}
+}
+
+func TestNewHTTPServer_production_openAPIDisabled_noDocJSON(t *testing.T) {
+	t.Parallel()
+	cfg := testHTTPServerConfig(t)
+	cfg.AppEnv = config.AppEnvProduction
+	cfg.SwaggerUIEnabled = false
+	cfg.OpenAPIJSONEnabled = false
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := hs.srv.Handler
+	for _, p := range []string{"/swagger/doc.json", "/swagger/index.html"} {
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("GET %s: status=%d want 404 (OpenAPI JSON disabled)", p, rec.Code)
+		}
 	}
 }
 
@@ -200,6 +229,7 @@ func TestNewHTTPServer_production_swaggerEnabled_servesSwagger(t *testing.T) {
 	cfg := testHTTPServerConfig(t)
 	cfg.AppEnv = config.AppEnvProduction
 	cfg.SwaggerUIEnabled = true
+	cfg.OpenAPIJSONEnabled = true
 	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
 	if err != nil {
 		t.Fatal(err)

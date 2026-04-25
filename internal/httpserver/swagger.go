@@ -4,14 +4,29 @@ import (
 	"net/http"
 	"strings"
 
-	_ "github.com/avf/avf-vending-api/docs/swagger" // register OpenAPI document with swag (side effect in init)
+	"github.com/avf/avf-vending-api/docs/swagger" // register OpenAPI with swag (init) + OpenAPIJSON()
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
 )
 
-// MountSwaggerUI serves Swagger UI and /swagger/doc.json (OpenAPI 3.0) without Bearer auth.
-// Wire only when config.Config.SwaggerUIEnabled is true (production defaults off when HTTP_SWAGGER_UI_ENABLED is unset).
+// MountOpenAPIJSON serves only GET /swagger/doc.json (OpenAPI 3.0 JSON) without Bearer auth.
+// Use when HTTP_OPENAPI_JSON_ENABLED=true and HTTP_SWAGGER_UI_ENABLED=false (e.g. production + Postman import).
+func MountOpenAPIJSON(r chi.Router, log *zap.Logger) {
+	if log != nil {
+		log.Info("openapi_json_mount", zap.String("path", "/swagger/doc.json"))
+	}
+	r.Get("/swagger/doc.json", func(w http.ResponseWriter, _ *http.Request) {
+		b := swagger.OpenAPIJSON()
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(b)
+	})
+}
+
+// MountSwaggerUI serves Swagger UI (HTML) and /swagger/doc.json (OpenAPI 3.0) without Bearer auth.
+// Wire when config.Config.SwaggerUIEnabled is true.
 //
 // Chi mounts /swagger/* to the swag handler; bare GET /swagger would otherwise 404. Redirect to the UI entrypoint.
 func MountSwaggerUI(r chi.Router, log *zap.Logger) {

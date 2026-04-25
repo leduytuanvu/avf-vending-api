@@ -257,15 +257,7 @@ func TestLoad_PostgresPoolOverrideBelowMinRejected(t *testing.T) {
 }
 
 func TestLoad_ProductionAppEnvStillValidatedStrictly(t *testing.T) {
-	t.Setenv("APP_ENV", "production")
-	t.Setenv("LOG_LEVEL", "info")
-	t.Setenv("LOG_FORMAT", "json")
-	t.Setenv("HTTP_ADDR", ":8080")
-	t.Setenv("OTEL_SERVICE_NAME", "avf-api-prod")
-	t.Setenv("HTTP_AUTH_JWT_SECRET", strings.Repeat("x", 32))
-	t.Setenv("NATS_URL", "nats://127.0.0.1:4222")
-	t.Setenv("APP_NODE_NAME", "prod-node-a")
-	t.Setenv("APP_INSTANCE_ID", "prod-node-a-api-1")
+	setMinimalProductionLoadEnv(t)
 
 	cfg, err := Load()
 	if err != nil {
@@ -284,9 +276,16 @@ func setMinimalProductionLoadEnv(t *testing.T) {
 	t.Setenv("HTTP_ADDR", ":8080")
 	t.Setenv("OTEL_SERVICE_NAME", "avf-api-prod")
 	t.Setenv("HTTP_AUTH_JWT_SECRET", strings.Repeat("x", 32))
-	t.Setenv("NATS_URL", "nats://127.0.0.1:4222")
+	t.Setenv("NATS_URL", "nats://nats.prod.internal:4222")
 	t.Setenv("APP_NODE_NAME", "prod-node-a")
 	t.Setenv("APP_INSTANCE_ID", "prod-node-a-api-1")
+	t.Setenv("DATABASE_URL", "postgres://user:pass@db.prod.internal:5432/prod?sslmode=require")
+	t.Setenv("PAYMENT_ENV", "live")
+	t.Setenv("READINESS_STRICT", "true")
+	t.Setenv("PUBLIC_BASE_URL", "https://api.ldtv.dev")
+	t.Setenv("MQTT_BROKER_URL", "tcp://emqx.prod.internal:1883")
+	t.Setenv("MQTT_CLIENT_ID", "avf-prod-test")
+	t.Setenv("MQTT_TOPIC_PREFIX", "avf/devices")
 }
 
 func TestLoad_MetricsExposeOnPublicInvalidRejected(t *testing.T) {
@@ -329,10 +328,45 @@ func TestLoad_ProductionMetricsPrivateDefaultNoTokenRequired(t *testing.T) {
 	}
 }
 
+func TestLoad_OpenAPIJSONDefaultEnabled(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T)
+	}{
+		{"development", setMinimalValidLoadEnv},
+		{"staging", minimalStaging},
+		{"production", setMinimalProductionLoadEnv},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup(t)
+			_ = os.Unsetenv("HTTP_OPENAPI_JSON_ENABLED")
+			cfg, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !cfg.OpenAPIJSONEnabled {
+				t.Fatalf("OpenAPIJSONEnabled: expected true by default in %s", tc.name)
+			}
+		})
+	}
+}
+
+func TestLoad_SwaggerUIWithoutOpenAPIRejected(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	t.Setenv("HTTP_SWAGGER_UI_ENABLED", "true")
+	t.Setenv("HTTP_OPENAPI_JSON_ENABLED", "false")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error when Swagger UI enabled but OpenAPI JSON disabled")
+	}
+}
+
 func TestLoad_SwaggerUIEnabled_production(t *testing.T) {
 	t.Run("HTTP_SWAGGER_UI_ENABLED_true", func(t *testing.T) {
 		setMinimalProductionLoadEnv(t)
 		t.Setenv("HTTP_SWAGGER_UI_ENABLED", "true")
+		t.Setenv("PRODUCTION_SWAGGER_UI_ALLOWED", "true")
 		cfg, err := Load()
 		if err != nil {
 			t.Fatal(err)
@@ -736,8 +770,7 @@ func TestLoad_ArtifactsEnabled_invalidMaxUpload(t *testing.T) {
 }
 
 func TestLoad_Production_requiresHS256Secret(t *testing.T) {
-	setMinimalValidLoadEnv(t)
-	t.Setenv("APP_ENV", "production")
+	setMinimalProductionLoadEnv(t)
 	t.Setenv("HTTP_AUTH_JWT_SECRET", "")
 
 	_, err := Load()
@@ -763,9 +796,7 @@ func TestLoad_PaymentWebhookSecretAlias(t *testing.T) {
 }
 
 func TestLoad_PaymentWebhookAllowUnsignedRejectedInProduction(t *testing.T) {
-	setMinimalValidLoadEnv(t)
-	t.Setenv("APP_ENV", "production")
-	t.Setenv("HTTP_AUTH_JWT_SECRET", "prod-secret")
+	setMinimalProductionLoadEnv(t)
 	t.Setenv("COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED", "true")
 
 	_, err := Load()
@@ -844,7 +875,7 @@ func TestMain(m *testing.M) {
 		"APP_VERSION", "APP_GIT_SHA", "APP_BUILD_TIME",
 		"APP_BASE_URL", "PUBLIC_BASE_URL", "MACHINE_PUBLIC_BASE_URL",
 		"HTTP_ADDR", "HTTP_SHUTDOWN_TIMEOUT", "HTTP_READ_HEADER_TIMEOUT", "HTTP_READ_TIMEOUT", "HTTP_WRITE_TIMEOUT", "HTTP_IDLE_TIMEOUT",
-		"HTTP_SWAGGER_UI_ENABLED",
+		"HTTP_SWAGGER_UI_ENABLED", "HTTP_OPENAPI_JSON_ENABLED",
 		"HTTP_OPS_ADDR", "OPS_READINESS_TIMEOUT", "OPS_SHUTDOWN_TIMEOUT", "TRACER_SHUTDOWN_TIMEOUT",
 		"GRPC_ENABLED", "GRPC_ADDR", "GRPC_SHUTDOWN_TIMEOUT",
 		"DATABASE_URL", "DATABASE_MAX_CONNS", "DATABASE_MIN_CONNS", "DATABASE_MAX_CONN_IDLE_TIME", "DATABASE_MAX_CONN_LIFETIME",
@@ -868,6 +899,10 @@ func TestMain(m *testing.M) {
 		"ANALYTICS_CLICKHOUSE_ENABLED", "ANALYTICS_CLICKHOUSE_HTTP_URL", "ANALYTICS_MIRROR_OUTBOX_PUBLISHED",
 		"ANALYTICS_CLICKHOUSE_TABLE", "ANALYTICS_MIRROR_MAX_CONCURRENT", "ANALYTICS_INSERT_TIMEOUT", "ANALYTICS_INSERT_MAX_ATTEMPTS",
 		"NATS_URL",
+		"PAYMENT_ENV",
+		"PRODUCTION_DATABASE_URL", "STAGING_DATABASE_URL", "PRODUCTION_DATABASE_HOST", "STAGING_DATABASE_HOST",
+		"STAGING_ALLOW_LOCAL_DATABASE", "DEVELOPMENT_ALLOW_LIVE_PAYMENT",
+		"PRODUCTION_SWAGGER_UI_ALLOWED", "PRODUCTION_ALLOW_NONSTANDARD_MQTT_TOPIC_PREFIX",
 		"TELEMETRY_MAX_PAYLOAD_BYTES", "TELEMETRY_MAX_POINTS_PER_MESSAGE", "TELEMETRY_MAX_TAGS_PER_MESSAGE",
 		"TELEMETRY_PER_MACHINE_MSGS_PER_SEC", "TELEMETRY_PER_MACHINE_BURST", "TELEMETRY_GLOBAL_MAX_INFLIGHT",
 		"TELEMETRY_WORKER_CONCURRENCY", "TELEMETRY_DROP_ON_BACKPRESSURE", "TELEMETRY_LEGACY_POSTGRES_INGEST", "TELEMETRY_SUBMIT_WAIT_MS",

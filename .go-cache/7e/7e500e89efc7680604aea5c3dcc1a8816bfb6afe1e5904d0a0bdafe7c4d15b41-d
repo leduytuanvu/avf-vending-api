@@ -1,0 +1,4 @@
+./errors.go
+./service.go
+./slot_inventory_view.go
+./slot_inventory_view_test.go

@@ -19,6 +19,7 @@ type AppEnvironment string
 
 const (
 	AppEnvDevelopment AppEnvironment = "development"
+	AppEnvTest        AppEnvironment = "test"
 	AppEnvStaging     AppEnvironment = "staging"
 	AppEnvProduction  AppEnvironment = "production"
 )
@@ -58,7 +59,9 @@ type APIWiringRequirements struct {
 
 // Config is the complete process configuration loaded from the environment.
 type Config struct {
-	AppEnv      AppEnvironment
+	AppEnv AppEnvironment
+	// PaymentEnv is "sandbox" or "live" from PAYMENT_ENV; empty means unset (rules depend on APP_ENV).
+	PaymentEnv string
 	ProcessName string
 	Runtime     RuntimeConfig
 	Build       BuildConfig
@@ -85,10 +88,12 @@ type Config struct {
 	// MetricsScrapeToken protects GET /metrics on the public listener when set (Authorization: Bearer <token>).
 	// Required (min 16 chars) when APP_ENV=production and METRICS_EXPOSE_ON_PUBLIC_HTTP=true.
 	MetricsScrapeToken string
-	// SwaggerUIEnabled exposes /swagger/* (Swagger UI + doc.json) when true. If HTTP_SWAGGER_UI_ENABLED
-	// is set, only true/1 enables. If unset, non-production defaults on and production defaults off;
-	// production deploy examples set HTTP_SWAGGER_UI_ENABLED=true.
-	SwaggerUIEnabled bool
+	// SwaggerUIEnabled mounts Swagger UI (HTML) under /swagger/ when true. If HTTP_SWAGGER_UI_ENABLED is set,
+	// only true/1 enables. If unset, non-production defaults on and production defaults off.
+	// OpenAPIJSONEnabled controls GET /swagger/doc.json; when false, doc.json is not served (404).
+	// SwaggerUIEnabled true requires OpenAPIJSONEnabled true (the UI loads doc.json).
+	SwaggerUIEnabled     bool
+	OpenAPIJSONEnabled   bool
 	// WorkerMetricsListen is the bind address for cmd/worker /metrics (Prometheus).
 	// When empty and MetricsEnabled is true, cmd/worker defaults to 127.0.0.1:9091.
 	WorkerMetricsListen string
@@ -307,9 +312,9 @@ func (c *Config) Validate() error {
 	}
 
 	switch c.AppEnv {
-	case AppEnvDevelopment, AppEnvStaging, AppEnvProduction:
+	case AppEnvDevelopment, AppEnvTest, AppEnvStaging, AppEnvProduction:
 	default:
-		return fmt.Errorf("config: invalid APP_ENV %q", c.AppEnv)
+		return fmt.Errorf("config: invalid APP_ENV %q (expected development, test, staging, or production)", c.AppEnv)
 	}
 
 	if strings.TrimSpace(c.LogLevel) == "" {
@@ -386,6 +391,12 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.Commerce.validate(c.AppEnv); err != nil {
+		return err
+	}
+	if err := c.validateEnvironmentDeployment(); err != nil {
+		return err
+	}
+	if err := c.validateSwaggerAndOpenAPI(); err != nil {
 		return err
 	}
 
@@ -728,6 +739,28 @@ func loadSwaggerUIEnabled() bool {
 	return app != string(AppEnvProduction)
 }
 
+// loadOpenAPIJSONEnabled controls GET /swagger/doc.json (OpenAPI 3.0 JSON). Explicit HTTP_OPENAPI_JSON_ENABLED
+// wins (true/1 only). When unset, defaults to true for all APP_ENV values so production can expose OpenAPI
+// while keeping Swagger UI off.
+func loadOpenAPIJSONEnabled() bool {
+	if _, ok := os.LookupEnv("HTTP_OPENAPI_JSON_ENABLED"); ok {
+		return strings.EqualFold(strings.TrimSpace(os.Getenv("HTTP_OPENAPI_JSON_ENABLED")), "true") ||
+			strings.TrimSpace(os.Getenv("HTTP_OPENAPI_JSON_ENABLED")) == "1"
+	}
+	return true
+}
+
+func (c *Config) validateSwaggerAndOpenAPI() error {
+	if c.SwaggerUIEnabled && !c.OpenAPIJSONEnabled {
+		return errors.New("config: HTTP_SWAGGER_UI_ENABLED=true requires HTTP_OPENAPI_JSON_ENABLED=true (Swagger UI loads /swagger/doc.json)")
+	}
+	return nil
+}
+
+func loadPaymentEnv() string {
+	return strings.ToLower(strings.TrimSpace(os.Getenv("PAYMENT_ENV")))
+}
+
 // Load reads configuration from the environment and validates it.
 func Load() (*Config, error) {
 	httpAuth, err := loadHTTPAuthConfig()
@@ -735,12 +768,11 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 	hostname, _ := os.Hostname()
-	postgresCfg, err := loadPostgresConfig()
+	appEnv := AppEnvironment(strings.TrimSpace(getenv("APP_ENV", string(AppEnvDevelopment))))
+	postgresCfg, err := loadPostgresConfig(appEnv)
 	if err != nil {
 		return nil, err
 	}
-
-	appEnv := AppEnvironment(strings.TrimSpace(getenv("APP_ENV", string(AppEnvDevelopment))))
 	metricsExposePublic, err := metricsExposeOnPublicHTTPFromEnv(appEnv)
 	if err != nil {
 		return nil, err
@@ -748,13 +780,15 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		AppEnv:                    appEnv,
+		PaymentEnv:                loadPaymentEnv(),
 		LogLevel:                  strings.TrimSpace(getenv("LOG_LEVEL", "info")),
 		LogFormat:                 strings.TrimSpace(getenv("LOG_FORMAT", "json")),
 		ReadinessStrict:           getenvBool("READINESS_STRICT", false),
 		MetricsEnabled:            getenvBool("METRICS_ENABLED", false),
 		MetricsExposeOnPublicHTTP: metricsExposePublic,
-		MetricsScrapeToken:        strings.TrimSpace(os.Getenv("METRICS_SCRAPE_TOKEN")),
-		SwaggerUIEnabled:          loadSwaggerUIEnabled(),
+		MetricsScrapeToken:     strings.TrimSpace(os.Getenv("METRICS_SCRAPE_TOKEN")),
+		SwaggerUIEnabled:       loadSwaggerUIEnabled(),
+		OpenAPIJSONEnabled:     loadOpenAPIJSONEnabled(),
 		Runtime: RuntimeConfig{
 			PublicBaseURL:        firstNonEmptyTrimmed(os.Getenv("APP_BASE_URL"), os.Getenv("PUBLIC_BASE_URL")),
 			MachinePublicBaseURL: firstNonEmptyTrimmed(os.Getenv("MACHINE_PUBLIC_BASE_URL"), os.Getenv("APP_BASE_URL"), os.Getenv("PUBLIC_BASE_URL")),
@@ -912,12 +946,19 @@ func getenvFloat64(key string, def float64) float64 {
 	return v
 }
 
-func loadPostgresConfig() (PostgresConfig, error) {
+func loadPostgresConfig(appEnv AppEnvironment) (PostgresConfig, error) {
 	url := strings.TrimSpace(os.Getenv("DATABASE_URL"))
 	defaultMaxConns := int32(0)
 	if url != "" {
-		// Conservative default for managed poolers (e.g. Supabase session mode); override per deployment.
-		defaultMaxConns = 3
+		// Conservative defaults; override per deployment with DATABASE_MAX_CONNS.
+		switch appEnv {
+		case AppEnvStaging:
+			defaultMaxConns = 5
+		case AppEnvProduction:
+			defaultMaxConns = 10
+		default:
+			defaultMaxConns = 3
+		}
 	}
 	maxConns, err := getenvInt32Strict("DATABASE_MAX_CONNS", defaultMaxConns)
 	if err != nil {

@@ -3077,7 +3077,7 @@ def main() -> int:
             {"name": "Health", "description": "Process liveness/readiness; no JWT. Readiness may return plain text 503 when dependencies fail."},
             {
                 "name": "System",
-                "description": "Build/version JSON, Prometheus metrics when `METRICS_ENABLED=true`, and embedded OpenAPI/Swagger UI when `HTTP_SWAGGER_UI_ENABLED=true`.",
+                "description": "Build/version JSON, Prometheus metrics when `METRICS_ENABLED=true`, OpenAPI at `/swagger/doc.json` when `HTTP_OPENAPI_JSON_ENABLED=true`, and Swagger UI when `HTTP_SWAGGER_UI_ENABLED=true` (independent; production often enables JSON only).",
             },
             {
                 "name": "Auth",

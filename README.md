@@ -75,11 +75,13 @@ docker compose -f deployments/docker/docker-compose.yml up -d
 
 PostgreSQL is created with database **`avf_vending`** (see [`deployments/docker/postgres-init/01-init.sql`](deployments/docker/postgres-init/01-init.sql)). Use a matching `DATABASE_URL` in `.env` (see [`.env.example`](.env.example)).
 
-More detail: [`deployments/docker/README.md`](deployments/docker/README.md).
+More detail: [`deployments/docker/README.md`](deployments/docker/README.md). Quick lifecycle targets: `make dev-up`, `make dev-down`, `make dev-migrate`, `make dev-test`, `make dev-reset-db` (see [docs/runbooks/local-dev.md](docs/runbooks/local-dev.md)).
+
+**Environments:** [docs/runbooks/environment-strategy.md](docs/runbooks/environment-strategy.md) (local, staging, production). Per-environment **example** files (placeholders / safe local defaults only): [`.env.local.example`](.env.local.example), [`.env.staging.example`](.env.staging.example), [`.env.production.example`](.env.production.example).
 
 ## Configuration
 
-Copy [`.env.example`](.env.example) to `.env` for local development. Validate:
+Copy [`.env.example`](.env.example) to `.env` for local development (or start from [`.env.local.example`](.env.local.example)). Validate:
 
 ```powershell
 go run ./cmd/cli -validate-config

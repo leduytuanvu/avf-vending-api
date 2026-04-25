@@ -1,0 +1,11 @@
+./cash_settlement_integration_test.go
+./commerce_cash_checkout_integration_test.go
+./commerce_vend_inventory_integration_test.go
+./commerce_webhook_provider_mismatch_integration_test.go
+./commerce_webhook_replay_integration_test.go
+./integration_test.go
+./inventory_repository_integration_test.go
+./machine_setup_repositories_test.go
+./operator_repository_integration_test.go
+./operator_rules_integration_test.go
+./telemetry_idempotency_integration_test.go

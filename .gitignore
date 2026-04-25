@@ -1,4 +1,10 @@
 /.env
+/.env.local
+/.env.staging
+/.env.production
+# Node env files (examples *.example are tracked)
+deployments/prod/**/.env.app-node
+deployments/prod/**/.env.data-node
 /repomix-output.xml
 /bin/
 /dist/
