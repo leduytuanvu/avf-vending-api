@@ -10,6 +10,24 @@ import (
 	"go.uber.org/zap"
 )
 
+func TestMountSwaggerUI_barePathRedirectsToIndex(t *testing.T) {
+	t.Parallel()
+	r := chi.NewRouter()
+	MountSwaggerUI(r, zap.NewNop())
+	for _, path := range []string{"/swagger", "/swagger/"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+		if rec.Code != http.StatusTemporaryRedirect {
+			t.Fatalf("%s: want %d got %d", path, http.StatusTemporaryRedirect, rec.Code)
+		}
+		loc := rec.Header().Get("Location")
+		if loc != "/swagger/index.html" {
+			t.Fatalf("%s: Location=%q want /swagger/index.html", path, loc)
+		}
+	}
+}
+
 func TestMountSwaggerUI_servesOpenAPIJSON(t *testing.T) {
 	t.Parallel()
 	r := chi.NewRouter()
