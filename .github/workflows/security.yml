@@ -4,6 +4,21 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
+  workflow_run:
+    workflows:
+      - "Build and Push Images"
+    types:
+      - completed
+  schedule:
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -32,13 +47,16 @@ jobs:
 
   govulncheck-pr:
     name: Go Vulnerability Scan
-    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 1
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -170,7 +188,11 @@ jobs:
   resolve-build-run-id:
     name: Resolve Published Build For Image Scan
     if: |
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.name == 'Build and Push Images' &&
+        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') &&
+        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')) ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -205,7 +227,11 @@ jobs:
   resolve-image-refs:
     name: Resolve Published Image Refs
     if: |
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.name == 'Build and Push Images' &&
+        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') &&
+        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')) ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch'
     needs: resolve-build-run-id
@@ -219,7 +245,11 @@ jobs:
   image-vulnerability-scan:
     name: Published Image Vulnerability Scan
     if: |
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.name == 'Build and Push Images' &&
+        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') &&
+        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')) ||
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
