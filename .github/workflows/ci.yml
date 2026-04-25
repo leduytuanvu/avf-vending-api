@@ -55,7 +55,9 @@ jobs:
 
       - name: Verify CI/CD workflow contracts
         shell: bash
-        # Enforces Staging/Security/Build/Deploy Production naming and trigger graph; fails PRs on regressions.
+        # Static checks only (scripts/ci/verify_workflow_contracts.sh): canonical workflow names, no develop→prod
+        # auto-deploy, Staging listens to Security Release only, build-push push gate, non-empty Security Release
+        # verdict contract, security-verdict artifacts, no build-push API race in deploy-develop; fails PRs before merge.
         run: |
           set -Eeuo pipefail
           chmod +x scripts/ci/verify_workflow_contracts.sh

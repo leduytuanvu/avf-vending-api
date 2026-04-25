@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # CI guard: enforce enterprise CI/CD release graph contracts for GitHub Actions.
+# Deterministic: reads only local .github/workflows/*.yml (no GitHub API, no network).
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -61,6 +62,27 @@ grep -q '^name: Security Release$' "${WF}/security-release.yml" || fail "securit
 grep -q '^name: Staging Deployment Contract$' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must be named \"Staging Deployment Contract\""
 grep -q '^name: Deploy Production$' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must be named \"Deploy Production\""
 
+# --- No duplicate canonical display names (beyond Security vs Security Release, checked above) ---
+# Note: duplicate top-level `name:` values are checked later in this script.
+
+# --- deploy-prod.yml must not declare on.workflow_run (no automatic production from develop or upstream chains) ---
+# Two-space indent matches keys directly under top-level `on:` in GitHub's workflow schema.
+if grep -qE '^[[:space:]]{2}workflow_run[[:space:]]*:' "${WF}/deploy-prod.yml"; then
+  fail "deploy-prod.yml must not declare on.workflow_run (Deploy Production is workflow_dispatch-only; no auto-deploy from develop)"
+fi
+
+# --- build-push: required release artifacts (downstream Security Release / staging consume these) ---
+grep -qF "name: immutable-image-contract" "${WF}/build-push.yml" || fail "build-push.yml must upload the immutable-image-contract artifact (digest-pinned contract; missing artifact breaks Security Release / staging)"
+grep -qF "name: promotion-manifest" "${WF}/build-push.yml" || fail "build-push.yml must upload the promotion-manifest artifact"
+grep -qF "name: image-build-metadata" "${WF}/build-push.yml" || fail "build-push.yml must upload image-build-metadata (compatibility bundle)"
+grep -qF "uses: ./.github/workflows/_reusable-build.yml" "${WF}/build-push.yml" || fail "build-push.yml must call _reusable-build.yml (publishes image-metadata artifact used by Security Release)"
+grep -qF "name: image-metadata" "${WF}/_reusable-build.yml" || fail "_reusable-build.yml must upload the image-metadata artifact (Security Release / _reusable-deploy expect this name)"
+
+# --- security-release: verdict must not be stoppable as empty (enforce + skipped path + emergency fail writer) ---
+grep -qF "blocking security verdict is empty" "${WF}/security-release.yml" || fail "security-release.yml must fail closed when the resolved verdict is empty (expected pass, fail, or skipped in SECURITY_VERDICT / security-verdict.json)"
+grep -q "WF_WRITE_SKIPPED_VERDICT" "${WF}/security-release.yml" || fail "security-release.yml must include a non-empty skipped-verdict path when Build is ineligible (prevents empty verdict on skip)"
+grep -q "WF_WRITE_SECURITY_VERDICT_JSON" "${WF}/security-release.yml" || fail "security-release.yml must include the main security-verdict JSON writer (artifact contract)"
+
 # Prefer an interpreter that actually runs (skip broken Windows "python3" app-install stubs when possible).
 python_exec=""
 for c in python3 python; do
@@ -90,7 +112,7 @@ grep -q "head_branch == 'main'" "${WF}/build-push.yml" || fail "build-push.yml m
 grep -q "github.event.inputs.build_target_branch == 'develop'" "${WF}/build-push.yml" || fail "build-push.yml workflow_dispatch must allow develop target branch"
 grep -q "github.event.inputs.build_target_branch == 'main'" "${WF}/build-push.yml" || fail "build-push.yml workflow_dispatch must allow main target branch"
 grep -qF "github.event.workflow_run.event == 'push'" "${WF}/build-push.yml" || fail "build-push.yml must require github.event.workflow_run.event == 'push' for workflow_run so non-push CI cannot complete Build and confuse downstream gates"
-grep -qE 'fail-if-not-push|refuse to report success for non-push' "${WF}/build-push.yml" || fail "build-push.yml must fail closed when workflow_run upstream CI is not push (e.g. fail-if-not-push-ci job) so downstream does not run on skipped/partial builds"
+grep -qE 'upstream-ci-release-gate|refuse green empty run' "${WF}/build-push.yml" || fail "build-push.yml must fail closed (job upstream-ci-release-gate) when workflow_run is not a valid develop/main push with successful CI, so an all-skipped run cannot go green with no images"
 
 # --- security-release: after Build and Push completed ---
 sr_on_block="$(on_until_concurrency "${WF}/security-release.yml")"
@@ -103,6 +125,7 @@ sr_wr_block="$(
 printf '%s\n' "${sr_wr_block}" | grep -qE '^[[:space:]]*branches:' || fail "security-release.yml workflow_run must declare branches: [develop, main] (no direct PR chain)"
 printf '%s\n' "${sr_wr_block}" | grep -q 'develop' && printf '%s\n' "${sr_wr_block}" | grep -q 'main' || fail "security-release.yml workflow_run.branches must list develop and main"
 grep -q 'github.event.workflow_run.id' "${WF}/security-release.yml" || fail "security-release.yml must use github.event.workflow_run.id for Build artifact run id"
+grep -qF "immutable-image-contract" "${WF}/security-release.yml" || fail "security-release.yml must require immutable-image-contract alongside other build artifacts (artifact-driven release)"
 grep -q 'TRIGGER_WORKFLOW_EVENT' "${WF}/security-release.yml" || fail "security-release.yml must set TRIGGER_WORKFLOW_EVENT (Build run GHA event; distinct from semantic source_event)"
 grep -q 'failure_reasons' "${WF}/security-release.yml" || fail "security-release.yml must emit failure_reasons in security-verdict"
 grep -q 'name: security-verdict' "${WF}/security-release.yml" || fail "security-release.yml must upload a security-verdict artifact (name: security-verdict)"
@@ -152,6 +175,7 @@ for line in m.group("items").splitlines():
         sys.exit(1)
 PY
 grep -q "github.event.workflow_run.conclusion == 'success'" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must require workflow_run.conclusion == success (avoid racing failed upstream)"
+grep -qF "github.event.workflow_run.name == 'Security Release'" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must gate jobs on the triggering workflow display name (Security Release), not Build or repo Security"
 grep -q 'ENABLE_REAL_STAGING_DEPLOY' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must reference ENABLE_REAL_STAGING_DEPLOY for real vs no-op staging"
 grep -q 'source_build_run_id' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must reference source_build_run_id (from security-verdict / candidate)"
 grep -q 'security-verdict' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must consume the security-verdict artifact"

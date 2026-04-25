@@ -171,9 +171,11 @@ jobs:
 
           download_artifact "image-metadata" "image-metadata-artifact"
           download_artifact "promotion-manifest" "promotion-manifest-artifact"
+          download_artifact "immutable-image-contract" "immutable-image-contract-artifact"
 
           [[ -f image-metadata-artifact/image-metadata.json ]] || { echo "error: missing image-metadata.json artifact payload for workflow run ${RUN_ID}" >&2; exit 1; }
           [[ -f promotion-manifest-artifact/promotion-manifest.json ]] || { echo "error: missing promotion-manifest.json artifact payload for workflow run ${RUN_ID}" >&2; exit 1; }
+          [[ -f immutable-image-contract-artifact/immutable-image-contract.json ]] || { echo "error: missing immutable-image-contract.json artifact payload for workflow run ${RUN_ID}" >&2; exit 1; }
 
       - name: Resolve image refs
         id: resolve
@@ -335,6 +337,35 @@ jobs:
               [[ -n "${artifact_source_workflow_name}" ]] || fail "artifact workflow_name is missing"
               [[ "${artifact_source_event}" == "push" || "${artifact_source_event}" == "workflow_dispatch" ]] || fail "artifact source_event must be push or workflow_dispatch (from promotion-manifest), got: ${artifact_source_event}"
               [[ "${artifact_build_run_id}" == "${INPUT_WORKFLOW_RUN_ID}" ]] || fail "artifact workflow_run_id does not match requested workflow_run_id"
+              {
+                _ic="immutable-image-contract-artifact/immutable-image-contract.json"
+                _a="$(jq -r '.app_image_ref // ""' "${_ic}")"
+                _g="$(jq -r '.goose_image_ref // ""' "${_ic}")"
+                _s="$(jq -r '.source_commit_sha // ""' "${_ic}")"
+                _r="$(jq -r '.build_workflow_run_id // ""' "${_ic}")"
+                _e="$(jq -r '.source_event // ""' "${_ic}" | tr -d '[:space:]')"
+                se_cmp="$(printf '%s' "${artifact_source_event}" | tr -d '[:space:]')"
+                if [[ "${_a}" != "${app_image_ref}" ]]; then
+                  echo "error: immutable-image-contract app_image_ref mismatch vs resolved app ref" >&2
+                  exit 1
+                fi
+                if [[ "${_g}" != "${goose_image_ref}" ]]; then
+                  echo "error: immutable-image-contract goose_image_ref mismatch vs resolved goose ref" >&2
+                  exit 1
+                fi
+                if [[ "${_s}" != "${artifact_source_sha}" ]]; then
+                  echo "error: immutable-image-contract source_commit_sha mismatch vs promotion / image metadata" >&2
+                  exit 1
+                fi
+                if [[ "${_r}" != "${INPUT_WORKFLOW_RUN_ID}" ]]; then
+                  echo "error: immutable-image-contract build_workflow_run_id does not match requested workflow_run_id" >&2
+                  exit 1
+                fi
+                if [[ "${_e}" != "${se_cmp}" ]]; then
+                  echo "error: immutable-image-contract source_event does not match promotion-manifest (must not rely on the Build's literal workflow_run GHA type as semantic source_event)" >&2
+                  exit 1
+                fi
+              }
               validate_source_branch_for_target "${artifact_source_branch}"
               ;;
             *)

@@ -55,11 +55,10 @@ jobs:
       - name: Record skip
         run: |
           {
-            echo "## Security Release (skipped)"
-            echo "- The triggering **Build and Push Images** run did not produce a releasable candidate for this job."
-            echo "- conclusion: \`${{ github.event.workflow_run.conclusion }}\` (required: \`success\`)"
-            echo "- or branch \`${{ github.event.workflow_run.head_branch }}\` is not \`develop\` / \`main\`"
-            echo "- no \`security-verdict\` artifact is produced for this run."
+            echo "## Security Release (non-release candidate — will emit skipped verdict)"
+            echo "- The triggering **Build and Push Images** run is **not** a develop/main **success** release candidate, so the full image scan + release gate does not run here."
+            echo "- conclusion: \`${{ github.event.workflow_run.conclusion }}\` (required: \`success\` for gating) or name/branch ineligible (see \`on.workflow_run\` in this file)."
+            echo "- Downstream \`Security Release — outcome\` step uploads a \`security-verdict\` with \`verdict: skipped\` and **never** an empty \`verdict\` field."
           } >> "$GITHUB_STEP_SUMMARY"
 
   resolve-build-run-id:
@@ -129,18 +128,18 @@ jobs:
         run: |
           set -Eeuo pipefail
           [[ -n "${RUN_ID}" ]]
-          need=(image-metadata promotion-manifest)
+          need=(image-metadata promotion-manifest immutable-image-contract)
           for a in "${need[@]}"; do
             if ! gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
               --jq ".artifacts[]? | select(.name==\"${a}\") | .id" | grep -q .; then
-              echo "error: Build and Push Images run ${RUN_ID} is missing required artifact \"${a}\" (real release candidate chain requires image-metadata + promotion-manifest)" >&2
+              echo "error: Build and Push Images run ${RUN_ID} is missing required artifact \"${a}\" (release candidate chain requires image-metadata, promotion-manifest, and immutable-image-contract from github.event.workflow_run.id)" >&2
               exit 1
             fi
           done
           {
             echo "## Build artifact preflight"
-            echo "- run id: \`${RUN_ID}\`"
-            echo "- found: \`image-metadata\`, \`promotion-manifest\`"
+            echo "- run id: \`${RUN_ID}\` (github.event.workflow_run.id for automatic runs)"
+            echo "- found: \`image-metadata\`, \`promotion-manifest\`, \`immutable-image-contract\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
   resolve-image-refs:
@@ -345,6 +344,7 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     needs:
+      - skip-when-build-incomplete
       - resolve-build-run-id
       - resolve-image-refs
       - image-vulnerability-scan
@@ -365,6 +365,8 @@ jobs:
         id: signal
         shell: bash
         env:
+          # skip-when-build-incomplete: "success" when the upstream Build was ineligible; other jobs are skipped and we emit verdict=skipped
+          SKIP_JOB_RESULT: ${{ needs.skip-when-build-incomplete.result }}
           EVENT_NAME: ${{ github.event_name }}
           DEPENDENCY_REVIEW_RESULT: skipped
           GOVULNCHECK_PR_RESULT: skipped
@@ -386,7 +388,8 @@ jobs:
           TRIGGER_WORKFLOW_RUN_NAME: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name || '' }}
           TRIGGER_WORKFLOW_RUN_SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
           BUILD_HEAD_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || '' }}
-          TRIGGER_WORKFLOW_EVENT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event || '' }}
+          # Build workflow’s literal GitHub event when this run was started by workflow_run; otherwise this Security run’s event (e.g. workflow_dispatch). Do not use as semantic source_event (use build artifacts for that).
+          TRIGGER_WORKFLOW_EVENT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event || (github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || github.event_name) }}
           MANUAL_TARGET_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target_branch || '' }}
           WORKFLOW_NAME: ${{ github.workflow }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
@@ -394,6 +397,103 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TRIVY_APP_RESULT: ${{ needs.image-vulnerability-scan.outputs.trivy_app_result }}
           TRIVY_GOOSE_RESULT: ${{ needs.image-vulnerability-scan.outputs.trivy_goose_result }}
+          WF_WRITE_SKIPPED_VERDICT: |
+            import json
+            import os
+            from pathlib import Path
+            gen = os.environ.get("GENERATED_AT_UTC", "")
+            ev = os.environ.get("EVENT_NAME", "")
+            wrid = os.environ.get("WORKFLOW_RUN_ID", "")
+            wn = os.environ.get("WORKFLOW_NAME", "Security Release")
+            conc = os.environ.get("SKIP_BUILD_CONC", "")
+            hb = os.environ.get("SKIP_BUILD_HB", "")
+            bid = os.environ.get("SKIP_BUILD_ID", "")
+            b_ev = os.environ.get("SKIP_BUILD_EVENT", "")
+            b_sha = os.environ.get("SKIP_BUILD_HEAD_SHA", "")
+            b_wn = os.environ.get("SKIP_WF_NAME", "Build and Push Images")
+            reasons = []
+            if hb and hb not in ("develop", "main"):
+                reasons.append(
+                    "Non-release candidate: triggering Build head_branch is not develop or main; full Security Release gate was not evaluated."
+                )
+            elif conc and conc != "success":
+                reasons.append(
+                    f"Non-release candidate: triggering Build and Push Images workflow_run conclusion was {conc!r} (required success for gating); no image scan or artifact-driven gate was run."
+                )
+            elif b_wn and b_wn != "Build and Push Images":
+                reasons.append(
+                    f"Non-release candidate: upstream workflow name was {b_wn!r} (expected Build and Push Images)."
+                )
+            else:
+                reasons.append(
+                    "Security Release skipped: upstream Build run was ineligible for develop/main release gating (see workflow filters)."
+                )
+            jr = {
+                "skip_job": "success",
+                "resolve_build_run": "skipped",
+                "resolve_image_refs": "skipped",
+                "image_vulnerability_scan": "skipped",
+            }
+            payload = {
+                "schema_version": "v1",
+                "verdict": "skipped",
+                "security_verdict": "skipped",
+                "canonical_security_artifact": "security-verdict",
+                "nightly_security_verdict": "not_applicable",
+                "event_name": ev,
+                "workflow_name": wn,
+                "workflow_run_id": wrid,
+                "generated_at_utc": gen,
+                "source_build_run_id": bid or "",
+                "source_sha": b_sha or "",
+                "source_branch": hb or "",
+                "source_event": "",
+                "trigger_workflow_event": b_ev or "",
+                "source_workflow_name": b_wn,
+                "release_gate_verdict": "skipped",
+                "release_gate_mode": "skipped-non-candidate",
+                "repo_security_verdict": "skipped",
+                "repo_release_verdict": "skipped",
+                "published_image_verdict": "skipped",
+                "provenance_release_verdict": "skipped",
+                "published_images": {
+                    "app_image_ref": "",
+                    "app_digest": "",
+                    "goose_image_ref": "",
+                    "goose_digest": "",
+                    "provenance_verdict": "",
+                    "provenance_verdict_source": "not_applicable",
+                },
+                "failure_reasons": reasons,
+                "decision_reasons": list(reasons),
+                "job_results": jr,
+                "repo_level_checks": {
+                    "current_event_verdict": "skipped",
+                    "release_evidence": {
+                        "evidence_source": "skipped",
+                        "source_event_name": "",
+                        "matched_workflow_run_id": "",
+                        "matched_workflow_conclusion": "",
+                        "required_for_release_verdict": "skipped",
+                        "summary": "Security Release was skipped before matching repo **Security** (Build was not a develop/main success candidate).",
+                    },
+                    "checks": {},
+                },
+                "release_gate": {
+                    "mode": "skipped-non-candidate",
+                    "verdict": "skipped",
+                    "generated_at_utc": gen,
+                    "trust_model": "not-applicable",
+                    "required_evidence": {
+                        "repo_level_checks": "skipped",
+                        "image_level_checks": "skipped",
+                        "provenance_release_checks": "skipped",
+                    },
+                    "summary": "Upstream **Build and Push Images** was not a release candidate for this run; the full image scan and repo **Security** gate were not executed.",
+                },
+            }
+            Path("security-reports").mkdir(parents=True, exist_ok=True)
+            Path("security-reports/security-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           WF_WRITE_SECURITY_VERDICT_JSON: |
             import json
             import os
@@ -582,7 +682,7 @@ jobs:
                         )
                     if ri not in ("success", "skipped"):
                         add_failure_reason(
-                            "Image reference resolution failed: **_reusable-deploy** did not succeed (missing or inconsistent image-metadata / promotion-manifest, digest mismatch, or workflow_run_id mismatch)."
+                            "Image reference resolution failed: **_reusable-deploy** did not succeed (missing or inconsistent **image-metadata** / **promotion-manifest** / **immutable-image-contract**, digest-pinned ref mismatch, or workflow_run_id mismatch with artifacts)."
                         )
                     if im not in ("success", "skipped"):
                         add_failure_reason(
@@ -607,6 +707,19 @@ jobs:
                         add_failure_reason(f"Provenance: release gate rejected provenance state ({provenance_release_verdict!r}).")
             if security_verdict != "pass" and not failure_reasons:
                 add_failure_reason("Release gate failed; inspect `job_results` and component verdict fields for the failing upstream job.")
+            rr = (os.environ.get("RELEASE_RESOLUTION_ERROR") or "").strip()
+            if rr:
+                add_failure_reason(rr)
+                security_verdict = "fail"
+                release_gate_verdict = "fail"
+            if (not (app_image_ref or "").strip() or not (goose_image_ref or "").strip()) and event_name in (
+                "workflow_run",
+                "workflow_dispatch",
+            ):
+                if results.get("resolve_image_refs") in ("failure", "cancelled"):
+                    add_failure_reason(
+                        "Build artifacts missing or not resolved: required **image-metadata**, **promotion-manifest**, and **immutable-image-contract** (digest-pinned app/goose refs) from the Build and Push Images run id; see resolve-image-refs and _reusable-deploy."
+                    )
             decision_reasons = list(failure_reasons)
             _consistency = (os.environ.get("ARTIFACT_CONSISTENCY_NOTE") or "").strip()
             payload = {
@@ -759,6 +872,21 @@ jobs:
                     "note": _consistency,
                     "source": "build-run-immutable-image-contract-compare",
                 }
+            if (security_verdict or "") not in ("pass", "fail", "skipped"):
+                add_failure_reason(
+                    f"Internal normalization: security_verdict was {security_verdict!r} (expected pass, fail, or skipped; coercing to fail)"
+                )
+                security_verdict = "fail"
+                if (release_gate_verdict or "") == "pass":
+                    release_gate_verdict = "fail"
+                if "verdict" in payload:
+                    payload["verdict"] = "fail"
+                    payload["security_verdict"] = "fail"
+                    payload["release_gate_verdict"] = release_gate_verdict
+                    if isinstance(payload.get("release_gate"), dict):
+                        payload["release_gate"]["verdict"] = release_gate_verdict
+                    payload["failure_reasons"] = failure_reasons
+                    payload["decision_reasons"] = list(failure_reasons)
             Path("security-reports/security-verdict.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           WF_EMIT_VERDICT_GITHUB_OUTPUT: |
             import json
@@ -804,8 +932,9 @@ jobs:
             if payload["source_sha"]:
                 print(f"- source SHA: `{payload['source_sha']}`")
             print(f"- source_event (from promotion-manifest / artifact): `{payload.get('source_event', '')}`")
-            print(f"- trigger_workflow_event (Build and Push Images GitHub event): `{payload.get('trigger_workflow_event', '')}`")
-            if (payload.get("verdict") or "").lower() != "pass":
+            print(f"- trigger_workflow_event (Build run / this Security run GHA event, not semantic `source_event`): `{payload.get('trigger_workflow_event', '')}`")
+            _vd = (payload.get("verdict") or "").lower()
+            if _vd not in ("pass", "skipped"):
                 print("")
                 print("### Why `SECURITY_VERDICT` is not pass")
                 for reason in payload.get("failure_reasons") or []:
@@ -830,6 +959,21 @@ jobs:
           set -Eeuo pipefail
           mkdir -p security-reports
           generated_at_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          export GENERATED_AT_UTC="${generated_at_utc}"
+          # skip-when-build-incomplete: emit full skipped verdict; never an empty string outcome
+          SKIP_R="${SKIP_JOB_RESULT:-}"
+          if [[ "${SKIP_R}" == "success" ]]; then
+            export SKIP_BUILD_CONC="${{ github.event.workflow_run.conclusion }}"
+            export SKIP_BUILD_HB="${{ github.event.workflow_run.head_branch }}"
+            export SKIP_BUILD_ID="${{ github.event.workflow_run.id }}"
+            export SKIP_BUILD_EVENT="${{ github.event.workflow_run.event }}"
+            export SKIP_BUILD_HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
+            export SKIP_WF_NAME="${{ github.event.workflow_run.name }}"
+            printenv WF_WRITE_SKIPPED_VERDICT | python3 -
+            printenv WF_EMIT_VERDICT_GITHUB_OUTPUT | python3 - >> "$GITHUB_OUTPUT"
+            printenv WF_EMIT_VERDICT_STEP_SUMMARY | python3 - >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           fail() {
             echo "error: $*" >&2
             exit 1
@@ -850,7 +994,13 @@ jobs:
           if [[ -z "${want_branch// }" && "${EVENT_NAME}" == "workflow_run" ]]; then
             want_branch="${BUILD_HEAD_BRANCH:-}"
           fi
+          # Semantic source_event from promotion manifest (not Security Release trigger). Fed to summary for audit trail.
           artifact_src_event="${ARTIFACT_SOURCE_EVENT:-}"
+          if [[ -n "${artifact_src_event// }" ]]; then
+            {
+              echo "- artifact \`source_event\` (from Build promotion-manifest): \`${artifact_src_event}\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
           contract_note=""
 
           if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
@@ -890,10 +1040,19 @@ jobs:
           repo_release_secret_scan="not_applicable"
           repo_release_trivy_config="not_applicable"
           repo_release_summary="(pending) API lookup for **Security** repo workflow run"
+          release_resolution_error=""
 
           if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            [[ -n "${release_source_sha// }" ]] || fail "workflow_run security release: could not determine source SHA (Build head / artifact)"
-            [[ -n "${want_branch// }" ]] || fail "workflow_run security release: could not determine branch (promotion / Build head / manual)"
+            if [[ -z "${release_source_sha// }" ]]; then
+              release_resolution_error="workflow_run: could not determine source SHA (empty build promotion/image artifact metadata and no triggering Build head_sha). Cannot match the repo **Security** workflow to this candidate."
+            elif [[ -z "${want_branch// }" ]]; then
+              release_resolution_error="workflow_run: could not determine source branch (empty promotion / image ref_name and no Build head_branch). Cannot match the repo **Security** workflow to this candidate."
+            fi
+            if [[ -n "${release_resolution_error}" ]]; then
+              repo_release_evidence_source="workflow-resolution-failed"
+              repo_release_verdict="unavailable"
+              repo_release_summary="${release_resolution_error}"
+            else
             repo_release_verdict="unavailable"
             max_attempts=20
             for attempt in $(seq 1 "${max_attempts}"); do
@@ -951,8 +1110,10 @@ jobs:
               repo_release_matched_run_conclusion=""
               repo_release_summary="No successful **Security** (repo) **push** run found for head_sha=${release_source_sha} branch=${want_branch} after ${max_attempts} attempts (~$(( max_attempts * 20 ))s). A push to develop/main that starts **Security** must exist for the same commit."
             fi
+            fi
           fi
 
+          export RELEASE_RESOLUTION_ERROR="${release_resolution_error:-}"
           export RELEASE_SOURCE_SHA="${release_source_sha}"
           export REPO_RELEASE_EVIDENCE_SOURCE="${repo_release_evidence_source}"
           export REPO_RELEASE_SOURCE_EVENT="${repo_release_source_event}"
@@ -964,8 +1125,68 @@ jobs:
           export REPO_RELEASE_SECRET_SCAN="${repo_release_secret_scan}"
           export REPO_RELEASE_TRIVY_CONFIG="${repo_release_trivy_config}"
           export REPO_RELEASE_SUMMARY="${repo_release_summary}"
-          export GENERATED_AT_UTC="${generated_at_utc}"
+          set +e
           printenv WF_WRITE_SECURITY_VERDICT_JSON | python3 -
+          _vw=$?
+          set -e
+          if [[ "${_vw}" -ne 0 ]]; then
+            echo "::error::WF_WRITE_SECURITY_VERDICT_JSON failed; writing emergency fail verdict" >&2
+            python3 - <<'PY'
+            import json
+            import os
+            from datetime import datetime, timezone
+            from pathlib import Path
+            p = {
+                "schema_version": "v1",
+                "verdict": "fail",
+                "security_verdict": "fail",
+                "release_gate_verdict": "fail",
+                "repo_security_verdict": "fail",
+                "repo_release_verdict": "unavailable",
+                "published_image_verdict": "fail",
+                "provenance_release_verdict": "unavailable",
+                "source_build_run_id": "",
+                "source_sha": "",
+                "source_branch": "",
+                "source_event": "",
+                "trigger_workflow_event": (os.environ.get("GITHUB_EVENT_NAME") or ""),
+                "source_workflow_name": "Build and Push Images",
+                "event_name": os.environ.get("GITHUB_EVENT_NAME") or "unknown",
+                "workflow_name": "Security Release",
+                "workflow_run_id": (os.environ.get("GITHUB_RUN_ID") or ""),
+                "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "failure_reasons": [
+                    "Internal: the primary security-verdict JSON writer (WF_WRITE_SECURITY_VERDICT_JSON) failed; this emergency fail verdict was written so the workflow never returns an empty verdict."
+                ],
+                "decision_reasons": [],
+                "job_results": {},
+                "release_gate": {
+                    "mode": "emergency-fail",
+                    "verdict": "fail",
+                    "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "trust_model": "not-applicable",
+                    "summary": "emergency writer",
+                },
+                "repo_level_checks": {
+                    "current_event_verdict": "fail",
+                    "release_evidence": {
+                        "evidence_source": "emergency",
+                        "source_event_name": "",
+                        "matched_workflow_run_id": "",
+                        "matched_workflow_conclusion": "",
+                        "required_for_release_verdict": "unavailable",
+                        "summary": "emergency",
+                    },
+                },
+                "published_images": {"app_image_ref": "", "goose_image_ref": ""},
+            }
+            p["decision_reasons"] = list(p["failure_reasons"])
+            Path("security-reports").mkdir(parents=True, exist_ok=True)
+            Path("security-reports/security-verdict.json").write_text(
+                json.dumps(p, indent=2) + "\n", encoding="utf-8"
+            )
+            PY
+          fi
 
           printenv WF_EMIT_VERDICT_GITHUB_OUTPUT | python3 - >> "$GITHUB_OUTPUT"
           printenv WF_EMIT_VERDICT_STEP_SUMMARY | python3 - >> "$GITHUB_STEP_SUMMARY"
@@ -1018,7 +1239,7 @@ jobs:
             for k, v in sorted(jr.items()):
                 print(f"- `{k}`: `{v}`")
             v = (payload.get("verdict") or "").lower()
-            if v != "pass":
+            if v not in ("pass", "skipped"):
                 print("")
                 print("#### Why `SECURITY_VERDICT` is not pass (structured)")
                 fr = payload.get("failure_reasons") or []
@@ -1116,8 +1337,25 @@ jobs:
             python3 -c "import json,sys; p=json.load(open('security-reports/security-verdict.json','r',encoding='utf-8')); fr=p.get('failure_reasons') or []; [print('failure_reason:',r,file=sys.stderr) for r in fr]" || true
             echo "----------------" >&2
           fi
-          [[ "${SECURITY_VERDICT}" == "pass" ]] || {
-            echo "error: blocking security verdict is ${SECURITY_VERDICT}" >&2
+          V="${SECURITY_VERDICT:-}"
+          if [[ -f security-reports/security-verdict.json ]]; then
+            V2="$(python3 -c "import json;print(json.load(open('security-reports/security-verdict.json',encoding='utf-8')).get('verdict','') or '')" 2>/dev/null || true)"
+            if [[ -n "${V2// }" ]]; then
+              V="${V2}"
+            fi
+          fi
+          if [[ -z "${V// }" ]]; then
+            echo "error: blocking security verdict is empty; expected pass, fail, or skipped" >&2
+            exit 1
+          fi
+          if [[ "${V}" == "pass" || "${V}" == "skipped" ]]; then
+            [[ "${V}" == "pass" ]] || { echo "Security Release outcome: **skipped** (not a develop/main success release candidate); workflow succeeds without blocking." >> "${GITHUB_STEP_SUMMARY}"; }
+            exit 0
+          fi
+          if [[ "${V}" == "fail" ]]; then
+            echo "error: blocking security verdict is ${V} (verdict=fail required investigation)" >&2
             echo "error: see job summary: **Security release signal — decision observability** and **failure_reasons (blocking)** above." >&2
             exit 1
-          }
+          fi
+          echo "error: unexpected security verdict: ${V}" >&2
+          exit 1
