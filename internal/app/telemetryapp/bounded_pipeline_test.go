@@ -26,12 +26,20 @@ type stubIngest struct {
 	eventTypes     []string
 }
 
+// blockForTelemetry gates only bounded-queue telemetry; critical_no_drop runs inline and must not wait on block.
+func (s *stubIngest) blockForTelemetry(eventType string) bool {
+	if s.block == nil {
+		return false
+	}
+	return tel.CriticalityForEventType(eventType) != tel.CriticalityCriticalNoDrop
+}
+
 func (s *stubIngest) IngestTelemetry(ctx context.Context, in platformmqtt.TelemetryIngest) error {
 	s.telemetryCalls.Add(1)
 	s.mu.Lock()
 	s.eventTypes = append(s.eventTypes, in.EventType)
 	s.mu.Unlock()
-	if s.block != nil {
+	if s.blockForTelemetry(in.EventType) {
 		<-s.block
 	}
 	return nil
@@ -55,9 +63,6 @@ func (s *stubIngest) IngestShadowDesired(ctx context.Context, in platformmqtt.Sh
 
 func (s *stubIngest) IngestCommandReceipt(ctx context.Context, in platformmqtt.CommandReceiptIngest) error {
 	s.receiptCalls.Add(1)
-	if s.block != nil {
-		<-s.block
-	}
 	return nil
 }
 
@@ -92,6 +97,8 @@ func (s *stubIngestErr) IngestCommandReceipt(ctx context.Context, in platformmqt
 func TestBoundedDeviceIngest_queueFullDrop(t *testing.T) {
 	t.Parallel()
 	block := make(chan struct{})
+	var unblockOnce sync.Once
+	unblock := func() { unblockOnce.Do(func() { close(block) }) }
 	stub := &stubIngest{block: block}
 	// Buffer must allow at least two queued jobs while the single worker is blocked on the first
 	// (otherwise the second submit races with the worker dequeue and can be dropped as "queue_full").
@@ -104,7 +111,10 @@ func TestBoundedDeviceIngest_queueFullDrop(t *testing.T) {
 		SubmitWaitMs:         5000,
 	}
 	p := NewBoundedDeviceIngest(zap.NewNop(), stub, tel)
-	defer p.Close()
+	defer func() {
+		unblock()
+		p.Close()
+	}()
 
 	mid := uuid.New()
 	ctx := context.Background()
@@ -125,7 +135,7 @@ func TestBoundedDeviceIngest_queueFullDrop(t *testing.T) {
 		t.Fatalf("fourth (drop): %v", err)
 	}
 
-	close(block)
+	unblock()
 	deadline := time.Now().Add(2 * time.Second)
 	for stub.telemetryCalls.Load() < 3 && time.Now().Before(deadline) {
 		time.Sleep(2 * time.Millisecond)
@@ -164,6 +174,8 @@ func TestBoundedDeviceIngest_perMachineRateLimit(t *testing.T) {
 func TestBoundedDeviceIngest_criticalTelemetryBypassesQueueUnderDroppablePressure(t *testing.T) {
 	t.Parallel()
 	block := make(chan struct{})
+	var unblockOnce sync.Once
+	unblock := func() { unblockOnce.Do(func() { close(block) }) }
 	stub := &stubIngest{block: block}
 	telCfg := config.MQTTDeviceTelemetryConfig{
 		GlobalMaxInflight:    1,
@@ -174,7 +186,10 @@ func TestBoundedDeviceIngest_criticalTelemetryBypassesQueueUnderDroppablePressur
 		SubmitWaitMs:         1000,
 	}
 	p := NewBoundedDeviceIngest(zap.NewNop(), stub, telCfg)
-	defer p.Close()
+	defer func() {
+		unblock()
+		p.Close()
+	}()
 
 	mid := uuid.New()
 	ctx := context.Background()
@@ -206,7 +221,7 @@ func TestBoundedDeviceIngest_criticalTelemetryBypassesQueueUnderDroppablePressur
 		}
 	}
 
-	close(block)
+	unblock()
 	deadline := time.Now().Add(3 * time.Second)
 	for stub.telemetryCalls.Load() < 2+int32(len(criticalTypes)) && time.Now().Before(deadline) {
 		time.Sleep(2 * time.Millisecond)
@@ -220,6 +235,8 @@ func TestBoundedDeviceIngest_criticalTelemetryBypassesQueueUnderDroppablePressur
 func TestBoundedDeviceIngest_criticalCommandReceiptBypassesQueue(t *testing.T) {
 	t.Parallel()
 	block := make(chan struct{})
+	var unblockOnce sync.Once
+	unblock := func() { unblockOnce.Do(func() { close(block) }) }
 	stub := &stubIngest{block: block}
 	telCfg := config.MQTTDeviceTelemetryConfig{
 		GlobalMaxInflight:    1,
@@ -230,7 +247,10 @@ func TestBoundedDeviceIngest_criticalCommandReceiptBypassesQueue(t *testing.T) {
 		SubmitWaitMs:         1000,
 	}
 	p := NewBoundedDeviceIngest(zap.NewNop(), stub, telCfg)
-	defer p.Close()
+	defer func() {
+		unblock()
+		p.Close()
+	}()
 
 	mid := uuid.New()
 	ctx := context.Background()
@@ -252,8 +272,6 @@ func TestBoundedDeviceIngest_criticalCommandReceiptBypassesQueue(t *testing.T) {
 	if stub.receiptCalls.Load() != 1 {
 		t.Fatalf("expected 1 receipt ingest, got %d", stub.receiptCalls.Load())
 	}
-
-	close(block)
 }
 
 func TestBoundedDeviceIngest_criticalReturnsInnerErrorWithoutSuccess(t *testing.T) {
@@ -285,6 +303,8 @@ func TestBoundedDeviceIngest_criticalReturnsInnerErrorWithoutSuccess(t *testing.
 func TestBoundedDeviceIngest_compactableShadowLatestCoalesces(t *testing.T) {
 	t.Parallel()
 	block := make(chan struct{})
+	var unblockOnce sync.Once
+	unblock := func() { unblockOnce.Do(func() { close(block) }) }
 	stub := &stubIngest{block: block}
 	telCfg := config.MQTTDeviceTelemetryConfig{
 		GlobalMaxInflight:    1,
@@ -295,7 +315,10 @@ func TestBoundedDeviceIngest_compactableShadowLatestCoalesces(t *testing.T) {
 		SubmitWaitMs:         1000,
 	}
 	p := NewBoundedDeviceIngest(zap.NewNop(), stub, telCfg)
-	defer p.Close()
+	defer func() {
+		unblock()
+		p.Close()
+	}()
 
 	mid := uuid.New()
 	ctx := context.Background()
@@ -311,7 +334,7 @@ func TestBoundedDeviceIngest_compactableShadowLatestCoalesces(t *testing.T) {
 		t.Fatalf("third compacted: %v", err)
 	}
 
-	close(block)
+	unblock()
 	deadline := time.Now().Add(2 * time.Second)
 	for stub.shadowCalls.Load() < 2 && time.Now().Before(deadline) {
 		time.Sleep(2 * time.Millisecond)

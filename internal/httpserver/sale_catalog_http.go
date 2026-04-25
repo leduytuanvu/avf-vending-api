@@ -186,19 +186,19 @@ func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
 			}
 			shortName := shortNameFromAttrs(pmeta.Name, pmeta.Attrs)
 			entry := map[string]any{
-				"slotIndex":           slotIdx,
-				"slotCode":            sl.SlotCode,
-				"cabinetCode":         sl.CabinetCode,
-				"productId":           pid.String(),
-				"sku":                 pmeta.Sku,
-				"name":                pmeta.Name,
-				"shortName":           shortName,
-				"priceMinor":          price,
-				"availableQuantity":   qty,
-				"maxQuantity":         maxQ,
-				"isAvailable":         available,
-				"unavailableReason":   nil,
-				"sortOrder":           sortByProduct[pid],
+				"slotIndex":         slotIdx,
+				"slotCode":          sl.SlotCode,
+				"cabinetCode":       sl.CabinetCode,
+				"productId":         pid.String(),
+				"sku":               pmeta.Sku,
+				"name":              pmeta.Name,
+				"shortName":         shortName,
+				"priceMinor":        price,
+				"availableQuantity": qty,
+				"maxQuantity":       maxQ,
+				"isAvailable":       available,
+				"unavailableReason": nil,
+				"sortOrder":         sortByProduct[pid],
 			}
 			if unavail != nil {
 				entry["unavailableReason"] = *unavail
@@ -215,10 +215,10 @@ func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
 						disp = thumb
 					}
 					entry["image"] = map[string]any{
-						"thumbUrl":     thumb,
-						"displayUrl":   disp,
-						"contentHash":  productImageContentHash(im),
-						"updatedAt":    im.CreatedAt.UTC().Format(time.RFC3339),
+						"thumbUrl":    thumb,
+						"displayUrl":  disp,
+						"contentHash": productImageContentHash(im),
+						"updatedAt":   im.CreatedAt.UTC().Format(time.RFC3339),
 					}
 				} else {
 					entry["image"] = nil

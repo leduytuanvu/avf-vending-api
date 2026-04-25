@@ -222,7 +222,7 @@ type V1AdminBrand struct {
 
 // V1AdminBrandListEnvelope is GET /v1/admin/brands.
 type V1AdminBrandListEnvelope struct {
-	Items []V1AdminBrand    `json:"items"`
+	Items []V1AdminBrand  `json:"items"`
 	Meta  V1AdminPageMeta `json:"meta"`
 }
 
@@ -843,25 +843,25 @@ type V1AdminMachineCashboxResponse struct {
 
 // V1AdminCashCollection is one cash collection session row (open or closed).
 type V1AdminCashCollection struct {
-	ID                   string  `json:"id"`
-	MachineID            string  `json:"machine_id"`
-	OrganizationID       string  `json:"organization_id"`
-	CollectedAt          string  `json:"collected_at"`
-	OpenedAt             string  `json:"opened_at"`
-	ClosedAt             *string `json:"closed_at,omitempty"`
-	LifecycleStatus      string  `json:"lifecycle_status"`
-	CountedAmountMinor   int64   `json:"counted_amount_minor"`
-	ExpectedAmountMinor  int64   `json:"expected_amount_minor"`
-	VarianceAmountMinor  int64   `json:"variance_amount_minor"`
+	ID                       string  `json:"id"`
+	MachineID                string  `json:"machine_id"`
+	OrganizationID           string  `json:"organization_id"`
+	CollectedAt              string  `json:"collected_at"`
+	OpenedAt                 string  `json:"opened_at"`
+	ClosedAt                 *string `json:"closed_at,omitempty"`
+	LifecycleStatus          string  `json:"lifecycle_status"`
+	CountedAmountMinor       int64   `json:"counted_amount_minor"`
+	ExpectedAmountMinor      int64   `json:"expected_amount_minor"`
+	VarianceAmountMinor      int64   `json:"variance_amount_minor"`
 	CountedPhysicalCashMinor int64   `json:"countedPhysicalCashMinor"`
 	ExpectedCloudCashMinor   int64   `json:"expectedCloudCashMinor"`
 	VarianceMinor            int64   `json:"varianceMinor"`
 	ReviewState              string  `json:"reviewState"`
-	RequiresReview       bool    `json:"requires_review"`
-	CloseRequestHashHex  *string `json:"close_request_hash_hex,omitempty"`
-	Currency             string  `json:"currency"`
-	ReconciliationStatus string  `json:"reconciliation_status"`
-	Disclosure           string  `json:"disclosure"`
+	RequiresReview           bool    `json:"requires_review"`
+	CloseRequestHashHex      *string `json:"close_request_hash_hex,omitempty"`
+	Currency                 string  `json:"currency"`
+	ReconciliationStatus     string  `json:"reconciliation_status"`
+	Disclosure               string  `json:"disclosure"`
 }
 
 // V1AdminCashCollectionListResponse is GET /v1/admin/machines/{machineId}/cash-collections.

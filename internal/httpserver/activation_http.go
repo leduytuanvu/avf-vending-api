@@ -64,13 +64,13 @@ func postAdminCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusCreated, map[string]any{
-			"activationCode":     out.PlaintextCode,
-			"activationCodeId":   out.ID.String(),
-			"machineId":          out.MachineID.String(),
-			"expiresAt":          out.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"),
-			"maxUses":            out.MaxUses,
-			"remainingUses":      out.RemainingUses,
-			"status":             out.Status,
+			"activationCode":   out.PlaintextCode,
+			"activationCodeId": out.ID.String(),
+			"machineId":        out.MachineID.String(),
+			"expiresAt":        out.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"),
+			"maxUses":          out.MaxUses,
+			"remainingUses":    out.RemainingUses,
+			"status":           out.Status,
 		})
 	}
 }
@@ -148,7 +148,7 @@ func deleteAdminActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 }
 
 type publicClaimBody struct {
-	ActivationCode    string                     `json:"activationCode"`
+	ActivationCode    string                       `json:"activationCode"`
 	DeviceFingerprint activation.DeviceFingerprint `json:"deviceFingerprint"`
 }
 

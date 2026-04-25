@@ -71,6 +71,18 @@ phase_postman_check() {
   echo "OK: postman-check"
 }
 
+phase_github_workflow_cicd_contract() {
+  section "Phase 3c: GitHub Actions CI/CD chain contract (offline YAML; PyYAML)"
+  if ! command -v "${PY}" >/dev/null 2>&1; then
+    die "${PY} not on PATH (required for workflow contract check)"
+  fi
+  if ! "${PY}" -c "import yaml" 2>/dev/null; then
+    die "PyYAML is required: pip install pyyaml or apt install python3-yaml"
+  fi
+  "${PY}" tools/verify_github_workflow_cicd_contract.py
+  echo "OK: workflow CICD contract"
+}
+
 phase_shell_syntax() {
   section "Phase 4: Bash syntax (bash -n) — scripts/**/*.sh and deployments/**/*.sh"
   local n files=()
@@ -304,6 +316,7 @@ main() {
   phase_swagger
   phase_swagger_check
   phase_postman_check
+  phase_github_workflow_cicd_contract
   phase_shell_syntax
   phase_docker_compose
   phase_openapi_release

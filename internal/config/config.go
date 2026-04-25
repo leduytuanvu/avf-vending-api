@@ -61,7 +61,7 @@ type APIWiringRequirements struct {
 type Config struct {
 	AppEnv AppEnvironment
 	// PaymentEnv is "sandbox" or "live" from PAYMENT_ENV; empty means unset (rules depend on APP_ENV).
-	PaymentEnv string
+	PaymentEnv  string
 	ProcessName string
 	Runtime     RuntimeConfig
 	Build       BuildConfig
@@ -92,8 +92,8 @@ type Config struct {
 	// only true/1 enables. If unset, non-production defaults on and production defaults off.
 	// OpenAPIJSONEnabled controls GET /swagger/doc.json; when false, doc.json is not served (404).
 	// SwaggerUIEnabled true requires OpenAPIJSONEnabled true (the UI loads doc.json).
-	SwaggerUIEnabled     bool
-	OpenAPIJSONEnabled   bool
+	SwaggerUIEnabled   bool
+	OpenAPIJSONEnabled bool
 	// WorkerMetricsListen is the bind address for cmd/worker /metrics (Prometheus).
 	// When empty and MetricsEnabled is true, cmd/worker defaults to 127.0.0.1:9091.
 	WorkerMetricsListen string
@@ -786,9 +786,9 @@ func Load() (*Config, error) {
 		ReadinessStrict:           getenvBool("READINESS_STRICT", false),
 		MetricsEnabled:            getenvBool("METRICS_ENABLED", false),
 		MetricsExposeOnPublicHTTP: metricsExposePublic,
-		MetricsScrapeToken:     strings.TrimSpace(os.Getenv("METRICS_SCRAPE_TOKEN")),
-		SwaggerUIEnabled:       loadSwaggerUIEnabled(),
-		OpenAPIJSONEnabled:     loadOpenAPIJSONEnabled(),
+		MetricsScrapeToken:        strings.TrimSpace(os.Getenv("METRICS_SCRAPE_TOKEN")),
+		SwaggerUIEnabled:          loadSwaggerUIEnabled(),
+		OpenAPIJSONEnabled:        loadOpenAPIJSONEnabled(),
 		Runtime: RuntimeConfig{
 			PublicBaseURL:        firstNonEmptyTrimmed(os.Getenv("APP_BASE_URL"), os.Getenv("PUBLIC_BASE_URL")),
 			MachinePublicBaseURL: firstNonEmptyTrimmed(os.Getenv("MACHINE_PUBLIC_BASE_URL"), os.Getenv("APP_BASE_URL"), os.Getenv("PUBLIC_BASE_URL")),

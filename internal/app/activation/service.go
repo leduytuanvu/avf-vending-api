@@ -22,9 +22,9 @@ import (
 
 var (
 	// ErrInvalid is returned for all public claim failures (constant time messaging at HTTP layer).
-	ErrInvalid       = errors.New("activation: invalid or unusable code")
-	ErrNotFound      = errors.New("activation: not found")
-	ErrUnauthorized  = errors.New("activation: unauthorized")
+	ErrInvalid      = errors.New("activation: invalid or unusable code")
+	ErrNotFound     = errors.New("activation: not found")
+	ErrUnauthorized = errors.New("activation: unauthorized")
 )
 
 // Service manages kiosk activation codes.
@@ -183,19 +183,19 @@ func (s *Service) RevokeCode(ctx context.Context, machineID, organizationID, cod
 
 // DeviceFingerprint is submitted on claim.
 type DeviceFingerprint struct {
-	AndroidID     string `json:"androidId"`
-	SerialNumber  string `json:"serialNumber"`
-	Manufacturer  string `json:"manufacturer"`
-	Model         string `json:"model"`
-	PackageName   string `json:"packageName"`
-	VersionName   string `json:"versionName"`
-	VersionCode   int    `json:"versionCode"`
+	AndroidID    string `json:"androidId"`
+	SerialNumber string `json:"serialNumber"`
+	Manufacturer string `json:"manufacturer"`
+	Model        string `json:"model"`
+	PackageName  string `json:"packageName"`
+	VersionName  string `json:"versionName"`
+	VersionCode  int    `json:"versionCode"`
 }
 
 // ClaimInput is the public claim body.
 type ClaimInput struct {
-	ActivationCode     string
-	DeviceFingerprint  DeviceFingerprint
+	ActivationCode    string
+	DeviceFingerprint DeviceFingerprint
 }
 
 // ClaimResult is returned on successful claim (and idempotent replay).
