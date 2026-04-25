@@ -246,7 +246,9 @@ jobs:
                 "workflow_name": bwm,
                 "source_workflow_name": s("SEMANTIC_SOURCE_WORKFLOW_NAME"),
                 "workflow_run_id": s("BUILD_RUN_ID"),
+                "build_run_id": s("BUILD_RUN_ID"),
                 "commit_sha": src_sha,
+                "source_sha": src_sha,
                 "source_branch": s("SOURCE_BRANCH"),
                 "source_ref_type": s("SOURCE_REF_TYPE"),
                 "source_event": s("SOURCE_EVENT"),
@@ -261,6 +263,8 @@ jobs:
                 "goose_ref": goose_ref,
                 "app_digest": s("APP_DIGEST"),
                 "goose_digest": s("GOOSE_DIGEST"),
+                "app_image_digest": s("APP_DIGEST"),
+                "goose_image_digest": s("GOOSE_DIGEST"),
                 "provenance_enabled": True,
                 "sbom_enabled": True,
                 "source_inputs": {
@@ -273,7 +277,9 @@ jobs:
                 "schema_version": "v1",
                 "artifact_kind": "image-build",
                 "build_workflow_run_id": s("BUILD_RUN_ID"),
+                "build_run_id": s("BUILD_RUN_ID"),
                 "source_commit_sha": src_sha,
+                "source_sha": src_sha,
                 "source_branch": s("SOURCE_BRANCH"),
                 "source_event": s("SOURCE_EVENT"),
                 "source_workflow_name": s("SEMANTIC_SOURCE_WORKFLOW_NAME"),
@@ -281,6 +287,8 @@ jobs:
                 "app_digest": s("APP_DIGEST"),
                 "goose_image_ref": goose_ref,
                 "goose_digest": s("GOOSE_DIGEST"),
+                "app_image_digest": s("APP_DIGEST"),
+                "goose_image_digest": s("GOOSE_DIGEST"),
                 "generated_at_utc": gen_at,
             }
             Path("build-evidence").mkdir(parents=True, exist_ok=True)
