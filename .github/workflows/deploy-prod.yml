@@ -109,9 +109,58 @@ permissions:
   packages: read
 
 jobs:
+  # Auto deploy (workflow_run) must not proceed unless the triggering Security run succeeded.
+  # workflow_dispatch is unaffected: the gate job always runs, but the "block" step is skipped
+  # and the "manual" pass step allows the run to continue when github.event_name != 'workflow_run'.
+  gate-production-triggers:
+    name: Gate — production workflow trigger
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block auto production when Security did not succeed
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success'
+        shell: bash
+        env:
+          WR_CONC: ${{ github.event.workflow_run.conclusion }}
+          WR_ID: ${{ github.event.workflow_run.id }}
+          WR_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo "## Deploy Production blocked (trigger gate)"
+            echo "This run was started because **Security** completed on \`main\`, but **auto production deploy** only continues when that Security run has conclusion **success**."
+            echo "- triggering Security run id: \`${WR_ID}\`"
+            echo "- conclusion: \`${WR_CONC}\` (required: \`success\`)"
+            if [[ -n "${WR_URL}" ]]; then
+              echo "- run: [Security #${WR_ID}](${WR_URL})"
+            fi
+            echo "- no image resolution, promotion validation, or node rollout is performed in this workflow run."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::Deploy Production (auto) blocked: Security workflow run ${WR_ID} concluded with '${WR_CONC}' (expected 'success')." >&2
+          exit 1
+
+      - name: Pass gate for manual production actions
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          {
+            echo "## Production trigger gate"
+            echo "- mode: \`workflow_dispatch\` — manual path (Security workflow_run conclusion is not used as the auto-deploy gate)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Pass gate for successful Security (auto production)
+        if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+        run: |
+          {
+            echo "## Production trigger gate"
+            echo "- mode: \`workflow_run\` after **Security** on \`main\`"
+            echo "- Security conclusion: \`success\` — proceeding to artifact and security-verdict validation"
+            echo "- triggering Security run id: \`${{ github.event.workflow_run.id }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   resolve-build-run-id:
     name: Validate Production Artifact Source
     runs-on: ubuntu-latest
+    needs:
+      - gate-production-triggers
     outputs:
       action_mode: ${{ steps.lookup.outputs.action_mode }}
       build_actor: ${{ steps.lookup.outputs.build_actor }}
@@ -256,6 +305,8 @@ jobs:
   resolve-previous-production-deployment:
     name: Resolve Previous Production Deployment
     runs-on: ubuntu-latest
+    needs:
+      - resolve-build-run-id
     outputs:
       previous_action_mode: ${{ steps.lookup.outputs.previous_action_mode }}
       previous_actor: ${{ steps.lookup.outputs.previous_actor }}
@@ -540,6 +591,8 @@ jobs:
   validate-production-topology-assets:
     name: Validate Production Topology Assets
     runs-on: ubuntu-latest
+    needs:
+      - resolve-build-run-id
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

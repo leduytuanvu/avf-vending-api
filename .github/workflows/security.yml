@@ -983,6 +983,109 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Security release signal — decision observability
+        if: always()
+        shell: bash
+        env:
+          OUT_VERDICT: ${{ steps.signal.outputs.security_verdict }}
+          OUT_SOURCE_SHA: ${{ steps.signal.outputs.source_sha }}
+          OUT_SOURCE_BUILD: ${{ steps.signal.outputs.source_build_run_id }}
+          OUT_SEC_RUN: ${{ steps.signal.outputs.security_workflow_run_id }}
+          OUT_RG_VERDICT: ${{ steps.signal.outputs.release_gate_verdict }}
+          OUT_RG_MODE: ${{ steps.signal.outputs.release_gate_mode }}
+          OUT_REPO_SEC: ${{ steps.signal.outputs.repo_security_verdict }}
+          OUT_REPO_REL: ${{ steps.signal.outputs.repo_release_verdict }}
+          OUT_PUB: ${{ steps.signal.outputs.published_image_verdict }}
+          OUT_PROV: ${{ steps.signal.outputs.provenance_release_verdict }}
+        run: |
+          set -Eeuo pipefail
+          f="security-reports/security-verdict.json"
+          {
+            echo "## Security release signal — decision details"
+            echo ""
+            echo "Outputs from the signal step (also in \`security-verdict.json\` when present):"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| \`security_verdict\` (blocking) | \`${OUT_VERDICT:-<missing>}\` |"
+            echo "| \`release_gate_verdict\` | \`${OUT_RG_VERDICT:-<missing>}\` |"
+            echo "| \`release_gate_mode\` | \`${OUT_RG_MODE:-<missing>}\` |"
+            echo "| \`repo_security_verdict\` | \`${OUT_REPO_SEC:-<missing>}\` |"
+            echo "| \`repo_release_verdict\` | \`${OUT_REPO_REL:-<missing>}\` |"
+            echo "| \`published_image_verdict\` | \`${OUT_PUB:-<missing>}\` |"
+            echo "| \`provenance_release_verdict\` | \`${OUT_PROV:-<missing>}\` |"
+            echo "| \`source_sha\` | \`${OUT_SOURCE_SHA:-<missing>}\` |"
+            echo "| \`source_build_run_id\` | \`${OUT_SOURCE_BUILD:-<missing>}\` |"
+            echo "| \`security_workflow_run_id\` (this run) | \`${OUT_SEC_RUN:-<missing>}\` |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ ! -f "$f" ]]; then
+            {
+              echo "### Payload file missing"
+              echo "Expected \`security-reports/security-verdict.json\` for full \`job_results\` and drill-down; the write step may have failed before producing the file."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::security-verdict.json is missing; see earlier steps."
+            exit 0
+          fi
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          p = Path("security-reports/security-verdict.json")
+          payload = json.loads(p.read_text(encoding="utf-8"))
+          print("### Verdict payload (canonical)")
+          print("- **verdict (blocking)**: `", payload.get("verdict", ""), "`", sep="")
+          print(f"- **release_gate_verdict**: `{payload.get('release_gate_verdict', '')}`")
+          print(f"- **release_gate_mode**: `{payload.get('release_gate_mode', '')}`")
+          print(f"- **repo_security_verdict**: `{payload.get('repo_security_verdict', '')}`")
+          print(f"- **repo_release_verdict**: `{payload.get('repo_release_verdict', '')}`")
+          print(f"- **published_image_verdict**: `{payload.get('published_image_verdict', '')}`")
+          print(f"- **provenance_release_verdict**: `{payload.get('provenance_release_verdict', '')}`")
+          print(f"- **nightly_security_verdict**: `{payload.get('nightly_security_verdict', '')}`")
+          print(f"- **source_sha**: `{payload.get('source_sha', '')}`")
+          print(f"- **source_build_run_id**: `{payload.get('source_build_run_id', '')}`")
+          print(f"- **source_workflow_name**: `{payload.get('source_workflow_name', '')}`")
+          print(f"- **security workflow_run_id (artifact)**: `{payload.get('workflow_run_id', '')}`")
+          jr = payload.get("job_results") or {}
+          print("")
+          print("#### job_results (upstream job conclusions)")
+          for k, v in sorted(jr.items()):
+              print(f"- `{k}`: `{v}`")
+          v = (payload.get("verdict") or "").lower()
+          if v != "pass":
+              print("")
+              print("#### Why `SECURITY_VERDICT` is not pass")
+              rg = payload.get("release_gate_verdict", "")
+              rs = payload.get("repo_security_verdict", "")
+              rrel = payload.get("repo_release_verdict", "")
+              pub = payload.get("published_image_verdict", "")
+              prov = payload.get("provenance_release_verdict", "")
+              ev = payload.get("event_name", "")
+              hints = []
+              if ev == "workflow_run" and (not rrel or rrel not in ("pass",)):
+                  hints.append("`repo_release_verdict` is not `pass` (for example `unavailable`); check that a **push** `Security` run for this SHA published a `security-verdict` artifact, or that freshness/overrides are policy-correct.")
+              if rs != "pass" and rs != "not_applicable":
+                  hints.append("`repo_security_verdict` is not `pass` — a repo-level check (dependency review, govulncheck-pr, secret scan, trivy config) failed or was not successful.")
+              if pub != "pass" and pub != "not_applicable":
+                  hints.append("`published_image_verdict` is not `pass` — build resolution, image refs, and/or the image vulnerability scan did not all succeed.")
+              if prov not in ("pass", "accepted-private-repo-no-github-attestations") and prov != "not_applicable":
+                  hints.append("`provenance_release_verdict` is not acceptable for the gate (expect `pass` or the private-repo provenance fallback when applicable).")
+              if prov == "unavailable" or (not prov and ev == "workflow_run"):
+                  hints.append("Provenance was **unavailable** or missing — `resolve-image-refs` may not have produced a verdict.")
+              if rg and rg != "pass":
+                  hints.append(f"`release_gate_verdict` is `{rg}` — at least one required component for the full release gate did not pass (see table above and `job_results`).")
+              if not hints:
+                  hints.append("Compare `job_results` to see which `needs.*` job did not report `success`.")
+              for h in hints:
+                  print(f"- {h}")
+          PY
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "Full JSON: \`security-reports/security-verdict.json\` (also uploaded as artifact \`security-verdict\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Enforce blocking security verdict
         if: always()
         shell: bash
@@ -992,5 +1095,6 @@ jobs:
           set -Eeuo pipefail
           [[ "${SECURITY_VERDICT}" == "pass" ]] || {
             echo "error: blocking security verdict is ${SECURITY_VERDICT}" >&2
+            echo "error: see the job summary section **Security release signal — decision observability** for job_results, component verdicts, and failure hints." >&2
             exit 1
           }
