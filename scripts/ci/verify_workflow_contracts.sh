@@ -4,7 +4,7 @@
 #
 # Fails PR CI before merge on common regressions, including:
 #   - deploy-prod: on.workflow_run / develop / pull_request (production is workflow_dispatch on main)
-#   - security-release: non-empty verdict + security-verdict.json + skipped / no-candidate paths
+#   - security-release: non-empty verdict + security-verdict.json + write_security_verdict.py + emit_* paths
 #   - build-push: release_candidate + push gate (no fake release artifacts on skip)
 #   - deploy-develop: Security Release only (not Security), skipped verdict neutral exit, source_build_run_id
 #   - canonical display names, duplicate "Security", heredoc safety (see also Python heredoc check below)
@@ -85,15 +85,19 @@ grep -qF "name: image-build-metadata" "${WF}/build-push.yml" || fail "build-push
 grep -qF "uses: ./.github/workflows/_reusable-build.yml" "${WF}/build-push.yml" || fail "build-push.yml must call _reusable-build.yml (publishes image-metadata artifact used by Security Release)"
 grep -qF "name: image-metadata" "${WF}/_reusable-build.yml" || fail "_reusable-build.yml must upload the image-metadata artifact (Security Release / _reusable-deploy expect this name)"
 
-# --- security-release: verdict must not be stoppable as empty (enforce + skipped path + emergency fail writer) ---
+# --- security-release: verdict must not be stoppable as empty; JSON comes from scripts/security/write_security_verdict.py ---
 grep -qF "blocking security verdict is empty" "${WF}/security-release.yml" || fail "security-release.yml must fail closed when the resolved verdict is empty (expected pass, fail, or skipped in SECURITY_VERDICT / security-verdict.json)"
 grep -qF "SECURITY_VERDICT" "${WF}/security-release.yml" || fail "security-release.yml must use SECURITY_VERDICT in the Enforce step (blocking empty string)"
 grep -qF "security-reports/security-verdict.json" "${WF}/security-release.yml" || fail "security-release.yml must write security-reports/security-verdict.json (uploaded as security-verdict artifact)"
-grep -qF '"verdict": "skipped"' "${WF}/security-release.yml" || fail "security-release.yml must emit JSON payloads with verdict skipped (ineligible / no-candidate / skip paths)"
-grep -qE "WF_WRITE_SKIPPED_VERDICT|WF_WRITE_NO_CANDIDATE" "${WF}/security-release.yml" || fail "security-release.yml must include skipped-verdict writers when Build is ineligible or the artifact chain is incomplete (prevents empty verdict on skip)"
+# Verdict JSON is built by scripts/security/write_security_verdict.py; the workflow must invoke every mode (skip / no-candidate / gate / emergency).
+grep -qF "scripts/security/write_security_verdict.py skipped" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py skipped (ineligible upstream Build or skip path; emits skipped in JSON)"
+grep -qF "scripts/security/write_security_verdict.py no-candidate" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py no-candidate (incomplete build chain / no releasable candidate; emits skipped in JSON)"
+grep -qF "scripts/security/write_security_verdict.py unsupported-trigger" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py unsupported-trigger (unsupported triggering Build GHA event; emits skipped in JSON)"
+grep -qF "scripts/security/write_security_verdict.py full" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py full (normal release-gate security-verdict.json)"
+grep -qF "scripts/security/write_security_verdict.py emergency" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py emergency (exit trap and failed full write; never ship an empty verdict)"
 grep -qF "No releasable candidate. Security release gate skipped." "${WF}/security-release.yml" || fail "security-release.yml must document the neutral no-release-candidate skipped outcome (Build chain did not produce a releasable candidate)"
-grep -q "WF_WRITE_SECURITY_VERDICT_JSON" "${WF}/security-release.yml" || fail "security-release.yml must include the main security-verdict JSON writer (artifact contract)"
-grep -qF "wf_emergency_security_verdict" "${WF}/security-release.yml" || fail "security-release.yml must keep the emergency fail verdict path when WF_WRITE_SECURITY_VERDICT_JSON fails (never ship an empty verdict artifact)"
+grep -qF "scripts/security/emit_security_verdict_outputs.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_outputs.py after each verdict write (GITHUB_OUTPUT contract)"
+grep -qF "scripts/security/emit_security_verdict_summary.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_summary.py (job summary contract)"
 
 # Prefer an interpreter that actually runs (skip broken Windows "python3" app-install stubs when possible).
 python_exec=""
