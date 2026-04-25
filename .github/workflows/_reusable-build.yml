@@ -48,6 +48,9 @@ on:
       go_sum_sha256:
         description: "SHA256 of go.sum"
         value: ${{ jobs.build-and-push.outputs.go_sum_sha256 }}
+      source_commit_sha:
+        description: "Git commit that was built (40-char), from checkout in this workflow"
+        value: ${{ jobs.build-and-push.outputs.source_commit_sha }}
 
 jobs:
   build-and-push:
@@ -65,6 +68,7 @@ jobs:
       dockerfile_sha256: ${{ steps.source_inputs.outputs.dockerfile_sha256 }}
       dockerfile_goose_sha256: ${{ steps.source_inputs.outputs.dockerfile_goose_sha256 }}
       go_sum_sha256: ${{ steps.source_inputs.outputs.go_sum_sha256 }}
+      source_commit_sha: ${{ steps.source_commit.outputs.source_commit_sha }}
 
     steps:
       - name: Check out repository
@@ -72,6 +76,17 @@ jobs:
         with:
           ref: ${{ inputs.checkout_ref != '' && inputs.checkout_ref || github.sha }}
           fetch-depth: 0
+
+      - name: Record source commit (authoritative for digest metadata and downstream)
+        id: source_commit
+        shell: bash
+        run: |
+          sha="$(git rev-parse HEAD)"
+          echo "source_commit_sha=${sha}" >> "$GITHUB_OUTPUT"
+          if [[ ! "${sha}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "error: expected 40 hex commit sha, got: ${sha}" >&2
+            exit 1
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -125,12 +140,12 @@ jobs:
             echo "goose_image=${goose_image}"
             echo "sha_tag=${sha_tag}"
             echo "primary_tag=${primary_tag}"
-            echo "app_tags<<EOF"
+            echo "app_tags<<GHA__APP_TAGS__"
             printf '%s\n' "${app_tags[@]}"
-            echo "EOF"
-            echo "goose_tags<<EOF"
+            echo "GHA__APP_TAGS__"
+            echo "goose_tags<<GHA__GOOSE_TAGS__"
             printf '%s\n' "${goose_tags[@]}"
-            echo "EOF"
+            echo "GHA__GOOSE_TAGS__"
           } >> "$GITHUB_OUTPUT"
 
       - name: Capture source input hashes
@@ -186,6 +201,52 @@ jobs:
         shell: bash
         env:
           INPUT_HEAD_BRANCH: ${{ inputs.head_branch }}
+          SRC_DOCKERFILE_SHA256: ${{ steps.source_inputs.outputs.dockerfile_sha256 }}
+          SRC_DOCKERFILE_GOOSE_SHA256: ${{ steps.source_inputs.outputs.dockerfile_goose_sha256 }}
+          SRC_GO_SUM_SHA256: ${{ steps.source_inputs.outputs.go_sum_sha256 }}
+          TAG_APP_IMAGE: ${{ steps.tags.outputs.app_image }}
+          TAG_GOOSE_IMAGE: ${{ steps.tags.outputs.goose_image }}
+          TAG_PRIMARY: ${{ steps.tags.outputs.primary_tag }}
+          DIGEST_APP: ${{ steps.build_app.outputs.digest }}
+          DIGEST_GOOSE: ${{ steps.build_goose.outputs.digest }}
+          WF_WRITE_IMAGE_METADATA_JSON: |
+            import json
+            import os
+            from pathlib import Path
+
+            def s(k, d=""):
+                return os.environ.get(k, d)
+
+            meta = {
+                "schema_version": "v1",
+                "git_sha": s("GIT_SHA_META"),
+                "event_name": s("GITHUB_EVENT_NAME"),
+                "workflow_name": s("GITHUB_WORKFLOW"),
+                "workflow_run_id": s("GITHUB_RUN_ID"),
+                "actor": s("GITHUB_ACTOR"),
+                "ref_name": s("META_REF_NAME"),
+                "ref_type": s("META_REF_TYPE"),
+                "provenance_enabled": True,
+                "sbom_enabled": True,
+                "source_inputs": {
+                    "dockerfile_sha256": s("SRC_DOCKERFILE_SHA256"),
+                    "dockerfile_goose_sha256": s("SRC_DOCKERFILE_GOOSE_SHA256"),
+                    "go_sum_sha256": s("SRC_GO_SUM_SHA256"),
+                },
+                "app": {
+                    "image": s("TAG_APP_IMAGE"),
+                    "tag": s("TAG_PRIMARY"),
+                    "digest": s("DIGEST_APP"),
+                    "ref": s("APP_REF_COMPOSED"),
+                },
+                "goose": {
+                    "image": s("TAG_GOOSE_IMAGE"),
+                    "tag": s("TAG_PRIMARY"),
+                    "digest": s("DIGEST_GOOSE"),
+                    "ref": s("GOOSE_REF_COMPOSED"),
+                },
+            }
+            Path("image-metadata.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
         run: |
           app_ref="${{ steps.tags.outputs.app_image }}@${{ steps.build_app.outputs.digest }}"
           goose_ref="${{ steps.tags.outputs.goose_image }}@${{ steps.build_goose.outputs.digest }}"
@@ -205,37 +266,12 @@ jobs:
             meta_ref_name="${GITHUB_REF_NAME}"
             meta_ref_type="${GITHUB_REF_TYPE}"
           fi
-          cat > image-metadata.json <<EOF
-          {
-            "schema_version": "v1",
-            "git_sha": "${git_sha_meta}",
-            "event_name": "${GITHUB_EVENT_NAME}",
-            "workflow_name": "${GITHUB_WORKFLOW}",
-            "workflow_run_id": "${GITHUB_RUN_ID}",
-            "actor": "${GITHUB_ACTOR}",
-            "ref_name": "${meta_ref_name}",
-            "ref_type": "${meta_ref_type}",
-            "provenance_enabled": true,
-            "sbom_enabled": true,
-            "source_inputs": {
-              "dockerfile_sha256": "${{ steps.source_inputs.outputs.dockerfile_sha256 }}",
-              "dockerfile_goose_sha256": "${{ steps.source_inputs.outputs.dockerfile_goose_sha256 }}",
-              "go_sum_sha256": "${{ steps.source_inputs.outputs.go_sum_sha256 }}"
-            },
-            "app": {
-              "image": "${{ steps.tags.outputs.app_image }}",
-              "tag": "${{ steps.tags.outputs.primary_tag }}",
-              "digest": "${{ steps.build_app.outputs.digest }}",
-              "ref": "${app_ref}"
-            },
-            "goose": {
-              "image": "${{ steps.tags.outputs.goose_image }}",
-              "tag": "${{ steps.tags.outputs.primary_tag }}",
-              "digest": "${{ steps.build_goose.outputs.digest }}",
-              "ref": "${goose_ref}"
-            }
-          }
-          EOF
+          export GIT_SHA_META="${git_sha_meta}"
+          export META_REF_NAME="${meta_ref_name}"
+          export META_REF_TYPE="${meta_ref_type}"
+          export APP_REF_COMPOSED="${app_ref}"
+          export GOOSE_REF_COMPOSED="${goose_ref}"
+          printenv WF_WRITE_IMAGE_METADATA_JSON | python3 -
 
           {
             echo "### Published image metadata"

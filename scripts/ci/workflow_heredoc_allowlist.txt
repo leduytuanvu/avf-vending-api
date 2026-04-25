@@ -1,0 +1,3 @@
+# Optional: one Python `re` pattern per line (tested with re.search against the full workflow line).
+# If a `<<` token is not otherwise considered safe, the line may match a pattern here to allow it.
+# Lines starting with # are ignored.

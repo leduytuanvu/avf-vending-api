@@ -7,9 +7,18 @@ on:
     types:
       - completed
   workflow_dispatch:
+    inputs:
+      build_target_branch:
+        description: "Target branch to check out and build (only develop or main)"
+        type: choice
+        required: true
+        default: develop
+        options:
+          - develop
+          - main
 
 concurrency:
-  group: build-push-${{ github.event_name == 'workflow_run' && format('wr-{0}', github.event.workflow_run.head_branch) || github.ref }}
+  group: build-push-${{ github.event_name == 'workflow_run' && format('wr-{0}', github.event.workflow_run.head_branch) || format('wd-{0}', github.event.inputs.build_target_branch) || github.run_id }}
   cancel-in-progress: true
 
 permissions:
@@ -22,20 +31,30 @@ jobs:
   build-and-push:
     name: Build and Publish Images
     if: |
-      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.name == 'CI' &&
         github.event.workflow_run.event == 'push' &&
-        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main'))
+        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')) ||
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.build_target_branch == 'develop' || github.event.inputs.build_target_branch == 'main'))
     uses: ./.github/workflows/_reusable-build.yml
     with:
-      checkout_ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
-      head_branch: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || '' }}
+      # workflow_run: exact CI head commit + branch. workflow_dispatch: explicit develop/main only (never default-branch accidents).
+      checkout_ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || format('refs/heads/{0}', github.event.inputs.build_target_branch) }}
+      head_branch: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.event.inputs.build_target_branch }}
     secrets: inherit
 
   publish-build-metadata:
     name: Publish Build Metadata and Promotion Signals
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main'))
+    if: |
+      (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.name == 'CI' &&
+        github.event.workflow_run.event == 'push' &&
+        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')) ||
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.build_target_branch == 'develop' || github.event.inputs.build_target_branch == 'main'))
     runs-on: ubuntu-latest
     needs: build-and-push
 
@@ -48,7 +67,7 @@ jobs:
           APP_IMAGE: ${{ needs.build-and-push.outputs.app_image }}
           APP_REF: ${{ needs.build-and-push.outputs.app_ref }}
           APP_TAG: ${{ needs.build-and-push.outputs.app_tag }}
-          BUILD_COMMIT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          BUILD_COMMIT_SHA: ${{ needs.build-and-push.outputs.source_commit_sha }}
           BUILD_RUN_ID: ${{ github.run_id }}
           BUILD_WORKFLOW_NAME: ${{ github.workflow }}
           DOCKERFILE_GOOSE_SHA256: ${{ needs.build-and-push.outputs.dockerfile_goose_sha256 }}
@@ -58,13 +77,128 @@ jobs:
           GOOSE_IMAGE: ${{ needs.build-and-push.outputs.goose_image }}
           GOOSE_REF: ${{ needs.build-and-push.outputs.goose_ref }}
           GOOSE_TAG: ${{ needs.build-and-push.outputs.goose_tag }}
-          SOURCE_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
-          # workflow_run: use triggering CI branch (ref_name in that context is the default branch, not the commit branch).
-          SOURCE_REF_TYPE: ${{ github.event_name == 'workflow_run' && 'branch' || github.ref_type }}
+          SOURCE_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_target_branch || github.ref_name) }}
+          # workflow_run: CI head branch. workflow_dispatch: chosen branch (develop/main). Never rely on default github.ref for dispatch.
+          SOURCE_REF_TYPE: ${{ (github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch') && 'branch' || github.ref_type }}
           SOURCE_EVENT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event || (github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || github.event_name) }}
           TRIGGER_NAME: ${{ github.event_name }}
+          WF_WRITE_BUILD_MANIFESTS: |
+            import json
+            import os
+            import re
+            import sys
+            from datetime import datetime, timezone
+            from pathlib import Path
+
+            def s(k, d=""):
+                return os.environ.get(k, d)
+
+            def require_digest_pinned(name, ref):
+                if not ref or "@sha256:" not in ref or not re.search(r"@sha256:[0-9a-f]{64}$", ref):
+                    print(f"error: {name} must be digest-pinned (ghcr.io/.../img@sha256:...): {ref!r}", file=sys.stderr)
+                    raise SystemExit(2)
+
+            app_ref, goose_ref = s("APP_REF"), s("GOOSE_REF")
+            require_digest_pinned("app_image_ref", app_ref)
+            require_digest_pinned("goose_image_ref", goose_ref)
+
+            gen_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            src_sha = s("BUILD_COMMIT_SHA")
+            if not re.fullmatch(r"[0-9a-f]{40}", src_sha):
+                print("error: BUILD_COMMIT_SHA must be a 40 hex character git sha", file=sys.stderr)
+                raise SystemExit(2)
+            bwm = s("BUILD_WORKFLOW_NAME")
+            rc, di = s("RELEASE_CHANNEL"), s("DOWNSTREAM_INTENT")
+            bmd = {
+                "schema_version": "v1",
+                "commit_sha": src_sha,
+                "source_branch": s("SOURCE_BRANCH"),
+                "source_ref_type": s("SOURCE_REF_TYPE"),
+                "source_event": s("SOURCE_EVENT"),
+                "source_workflow_name": bwm,
+                "release_channel": rc,
+                "downstream_intent": di,
+                "trigger": s("TRIGGER_NAME"),
+                "workflow_name": bwm,
+                "workflow_run_id": s("BUILD_RUN_ID"),
+                "actor": s("ACTOR"),
+                "sbom_enabled": True,
+                "provenance_enabled": True,
+                "source_inputs": {
+                    "dockerfile_sha256": s("DOCKERFILE_SHA256"),
+                    "dockerfile_goose_sha256": s("DOCKERFILE_GOOSE_SHA256"),
+                    "go_sum_sha256": s("GO_SUM_SHA256"),
+                },
+                "app": {
+                    "image": s("APP_IMAGE"),
+                    "tag": s("APP_TAG"),
+                    "digest": s("APP_DIGEST"),
+                    "ref": app_ref,
+                },
+                "goose": {
+                    "image": s("GOOSE_IMAGE"),
+                    "tag": s("GOOSE_TAG"),
+                    "digest": s("GOOSE_DIGEST"),
+                    "ref": goose_ref,
+                },
+            }
+            prom = {
+                "schema_version": "v1",
+                "workflow_name": bwm,
+                "source_workflow_name": bwm,
+                "workflow_run_id": s("BUILD_RUN_ID"),
+                "commit_sha": src_sha,
+                "source_branch": s("SOURCE_BRANCH"),
+                "source_ref_type": s("SOURCE_REF_TYPE"),
+                "source_event": s("SOURCE_EVENT"),
+                "release_channel": rc,
+                "downstream_intent": di,
+                "actor": s("ACTOR"),
+                "app_image": s("APP_IMAGE"),
+                "app_tag": s("APP_TAG"),
+                "app_ref": app_ref,
+                "goose_image": s("GOOSE_IMAGE"),
+                "goose_tag": s("GOOSE_TAG"),
+                "goose_ref": goose_ref,
+                "app_digest": s("APP_DIGEST"),
+                "goose_digest": s("GOOSE_DIGEST"),
+                "provenance_enabled": True,
+                "sbom_enabled": True,
+                "source_inputs": {
+                    "dockerfile_sha256": s("DOCKERFILE_SHA256"),
+                    "dockerfile_goose_sha256": s("DOCKERFILE_GOOSE_SHA256"),
+                    "go_sum_sha256": s("GO_SUM_SHA256"),
+                },
+            }
+            contract = {
+                "schema_version": "v1",
+                "artifact_kind": "image-build",
+                "build_workflow_run_id": s("BUILD_RUN_ID"),
+                "source_commit_sha": src_sha,
+                "source_branch": s("SOURCE_BRANCH"),
+                "source_event": s("SOURCE_EVENT"),
+                "source_workflow_name": bwm,
+                "app_image_ref": app_ref,
+                "app_digest": s("APP_DIGEST"),
+                "goose_image_ref": goose_ref,
+                "goose_digest": s("GOOSE_DIGEST"),
+                "generated_at_utc": gen_at,
+            }
+            Path("build-evidence").mkdir(parents=True, exist_ok=True)
+            Path("build-evidence/build-metadata-manifest.json").write_text(json.dumps(bmd, indent=2) + "\n", encoding="utf-8")
+            Path("build-evidence/image-build-metadata.json").write_text(
+                Path("build-evidence/build-metadata-manifest.json").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            Path("build-evidence/promotion-manifest.json").write_text(json.dumps(prom, indent=2) + "\n", encoding="utf-8")
+            Path("build-evidence/immutable-image-contract.json").write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
         run: |
+          set -Eeuo pipefail
           mkdir -p build-evidence
+          [[ "${APP_REF}" == *@sha256:* ]] && [[ "${GOOSE_REF}" == *@sha256:* ]] || {
+            echo "error: app and goose image refs from build must be digest-pinned (must contain @sha256:...)" >&2
+            exit 1
+          }
           release_channel="branch-other"
           downstream_intent="ad-hoc"
           if [[ "${SOURCE_REF_TYPE}" == "tag" ]]; then
@@ -77,72 +211,9 @@ jobs:
             release_channel="develop"
             downstream_intent="develop-prepare-validate-only"
           fi
-
-          cat > build-evidence/build-metadata-manifest.json <<EOF
-          {
-            "schema_version": "v1",
-            "commit_sha": "${BUILD_COMMIT_SHA}",
-            "source_branch": "${SOURCE_BRANCH}",
-            "source_ref_type": "${SOURCE_REF_TYPE}",
-            "source_event": "${SOURCE_EVENT}",
-            "release_channel": "${release_channel}",
-            "downstream_intent": "${downstream_intent}",
-            "trigger": "${TRIGGER_NAME}",
-            "workflow_name": "${BUILD_WORKFLOW_NAME}",
-            "workflow_run_id": "${BUILD_RUN_ID}",
-            "actor": "${ACTOR}",
-            "sbom_enabled": true,
-            "provenance_enabled": true,
-            "source_inputs": {
-              "dockerfile_sha256": "${DOCKERFILE_SHA256}",
-              "dockerfile_goose_sha256": "${DOCKERFILE_GOOSE_SHA256}",
-              "go_sum_sha256": "${GO_SUM_SHA256}"
-            },
-            "app": {
-              "image": "${APP_IMAGE}",
-              "tag": "${APP_TAG}",
-              "digest": "${APP_DIGEST}",
-              "ref": "${APP_REF}"
-            },
-            "goose": {
-              "image": "${GOOSE_IMAGE}",
-              "tag": "${GOOSE_TAG}",
-              "digest": "${GOOSE_DIGEST}",
-              "ref": "${GOOSE_REF}"
-            }
-          }
-          EOF
-          cp build-evidence/build-metadata-manifest.json build-evidence/image-build-metadata.json
-
-          cat > build-evidence/promotion-manifest.json <<EOF
-          {
-            "schema_version": "v1",
-            "workflow_name": "${BUILD_WORKFLOW_NAME}",
-            "workflow_run_id": "${BUILD_RUN_ID}",
-            "commit_sha": "${BUILD_COMMIT_SHA}",
-            "source_branch": "${SOURCE_BRANCH}",
-            "source_ref_type": "${SOURCE_REF_TYPE}",
-            "source_event": "${SOURCE_EVENT}",
-            "release_channel": "${release_channel}",
-            "downstream_intent": "${downstream_intent}",
-            "actor": "${ACTOR}",
-            "app_image": "${APP_IMAGE}",
-            "app_tag": "${APP_TAG}",
-            "app_ref": "${APP_REF}",
-            "goose_image": "${GOOSE_IMAGE}",
-            "goose_tag": "${GOOSE_TAG}",
-            "goose_ref": "${GOOSE_REF}",
-            "app_digest": "${APP_DIGEST}",
-            "goose_digest": "${GOOSE_DIGEST}",
-            "provenance_enabled": true,
-            "sbom_enabled": true,
-            "source_inputs": {
-              "dockerfile_sha256": "${DOCKERFILE_SHA256}",
-              "dockerfile_goose_sha256": "${DOCKERFILE_GOOSE_SHA256}",
-              "go_sum_sha256": "${GO_SUM_SHA256}"
-            }
-          }
-          EOF
+          export RELEASE_CHANNEL="${release_channel}"
+          export DOWNSTREAM_INTENT="${downstream_intent}"
+          printenv WF_WRITE_BUILD_MANIFESTS | python3 -
 
           {
             echo "## Build Metadata and Promotion Signals"
@@ -164,7 +235,7 @@ jobs:
             echo "- go.sum SHA256: \`${GO_SUM_SHA256}\`"
             echo "- SBOM: \`enabled\`"
             echo "- provenance: \`enabled (mode=max)\`"
-            echo "- downstream artifacts: \`build-metadata-manifest\` and \`promotion-manifest\`"
+            echo "- downstream artifacts: \`build-metadata-manifest\`, \`promotion-manifest\`, \`immutable-image-contract\` (digest-pinned image refs)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build metadata manifest
@@ -188,5 +259,13 @@ jobs:
         with:
           name: promotion-manifest
           path: build-evidence/promotion-manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload immutable image contract
+        uses: actions/upload-artifact@v4
+        with:
+          name: immutable-image-contract
+          path: build-evidence/immutable-image-contract.json
           if-no-files-found: error
           retention-days: 14
