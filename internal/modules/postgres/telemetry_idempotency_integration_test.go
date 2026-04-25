@@ -44,11 +44,11 @@ func TestAppendInventoryEventFromDeviceTelemetry_duplicateSafe(t *testing.T) {
 	org := testfixtures.DevOrganizationID
 	idem := "inv-idem-" + uuid.NewString()
 	payload, err := json.Marshal(map[string]any{
-		"event_type":      "adjustment",
-		"slot_code":       "legacy-0",
-		"quantity_delta":  0,
-		"quantity_after":  10,
-		"product_id":      testfixtures.DevProductCola.String(),
+		"event_type":     "adjustment",
+		"slot_code":      "legacy-0",
+		"quantity_delta": 0,
+		"quantity_after": 10,
+		"product_id":     testfixtures.DevProductCola.String(),
 	})
 	require.NoError(t, err)
 

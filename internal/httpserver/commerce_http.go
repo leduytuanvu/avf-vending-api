@@ -800,10 +800,10 @@ type commerceCancelResponse struct {
 }
 
 type commerceRefundRequest struct {
-	Reason       string         `json:"reason"`
-	AmountMinor  int64          `json:"amount_minor"`
-	Currency     string         `json:"currency"`
-	Metadata     map[string]any `json:"metadata"`
+	Reason      string         `json:"reason"`
+	AmountMinor int64          `json:"amount_minor"`
+	Currency    string         `json:"currency"`
+	Metadata    map[string]any `json:"metadata"`
 }
 
 type commerceRefundResponse struct {

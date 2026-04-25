@@ -192,8 +192,8 @@ func (s *Service) ListBrands(ctx context.Context, p ListBrandsParams) ([]db.Bran
 	}
 	rows, err := s.q.CatalogAdminListBrands(ctx, db.CatalogAdminListBrandsParams{
 		OrganizationID: p.OrganizationID,
-		Limit:            p.Limit,
-		Offset:           p.Offset,
+		Limit:          p.Limit,
+		Offset:         p.Offset,
 	})
 	if err != nil {
 		return nil, 0, err
