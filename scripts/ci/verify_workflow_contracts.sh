@@ -98,6 +98,8 @@ grep -qF "scripts/security/write_security_verdict.py emergency" "${WF}/security-
 grep -qF "No releasable candidate. Security release gate skipped." "${WF}/security-release.yml" || fail "security-release.yml must document the neutral no-release-candidate skipped outcome (Build chain did not produce a releasable candidate)"
 grep -qF "scripts/security/emit_security_verdict_outputs.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_outputs.py after each verdict write (GITHUB_OUTPUT contract)"
 grep -qF "scripts/security/emit_security_verdict_summary.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_summary.py (job summary contract)"
+grep -qF "export CANONICAL_SOURCE_SHA" "${WF}/security-release.yml" || fail "security-release.yml must export CANONICAL_SOURCE_SHA (artifact-first source coordinates for Security / verdict)"
+grep -qF "scripts/security/emit_release_signal_debug_table.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_release_signal_debug_table.py (source coordinate debug summary)"
 
 # Prefer an interpreter that actually runs (skip broken Windows "python3" app-install stubs when possible).
 python_exec=""
