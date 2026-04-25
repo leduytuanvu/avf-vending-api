@@ -4,6 +4,13 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
+  workflow_run:
+    workflows:
+      - Security
+    types:
+      - completed
+    branches:
+      - develop
   workflow_dispatch:
 
 permissions:
@@ -22,6 +29,7 @@ jobs:
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.name == 'Security' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'develop'
     runs-on: ubuntu-latest
@@ -29,13 +37,45 @@ jobs:
       source_commit_sha: ${{ steps.lookup.outputs.source_commit_sha }}
       workflow_run_id: ${{ steps.lookup.outputs.workflow_run_id }}
     steps:
-      - name: Use triggering develop build run
+      - name: Resolve Build and Push Images run for the same commit
         id: lookup
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
-          echo "workflow_run_id=${{ github.event.workflow_run.id }}" >> "${GITHUB_OUTPUT}"
-          echo "source_commit_sha=${{ github.event.workflow_run.head_sha }}" >> "${GITHUB_OUTPUT}"
+          head_sha="${{ github.event.workflow_run.head_sha }}"
+          if [[ -z "${head_sha}" ]]; then
+            echo "error: missing workflow_run.head_sha" >&2
+            exit 1
+          fi
+          # Resolve digest-pinned artifacts from the successful Build and Push Images run for this commit (not the Security run id).
+          build_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build-push.yml/runs" \
+              -f per_page=30 -f head_sha="${head_sha}" \
+              --jq '[
+                .workflow_runs[]?
+                | select(
+                    .conclusion == "success"
+                    and (.name // "") == "Build and Push Images"
+                    and ((.event // "") == "push" or (.event // "") == "workflow_dispatch")
+                    and (.head_branch // "") == "develop"
+                  )
+                ]
+                | sort_by(.created_at)
+                | reverse
+                | .[0].id
+                // empty
+              ' 2>/dev/null || true
+          )"
+          if [[ -z "${build_id}" ]]; then
+            echo "error: no successful Build and Push Images run for head_sha=${head_sha} (develop)" >&2
+            exit 1
+          fi
+          {
+            echo "workflow_run_id=${build_id}"
+            echo "source_commit_sha=${head_sha}"
+          } >> "${GITHUB_OUTPUT}"
 
   resolve-image-refs:
     name: Resolve Staging Immutable Image Refs
