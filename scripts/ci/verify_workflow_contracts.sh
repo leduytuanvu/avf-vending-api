@@ -5,6 +5,7 @@
 # Fails PR CI before merge on common regressions, including:
 #   - deploy-prod: on.workflow_run / develop / pull_request (production is workflow_dispatch on main)
 #   - security-release: non-empty verdict + security-verdict.json + write_security_verdict.py + emit_* paths
+#   - security-release: no unprotected read/mapfile + < <( under set -e; write_security_verdict required modes; want_branch RESOLVED before BUILD_HEAD; smoke test
 #   - build-push: release_candidate + push gate (no fake release artifacts on skip)
 #   - deploy-develop: Security Release only (not Security), skipped verdict neutral exit, source_build_run_id
 #   - canonical display names, duplicate "Security", heredoc safety (see also Python heredoc check below)
@@ -89,17 +90,29 @@ grep -qF "name: image-metadata" "${WF}/_reusable-build.yml" || fail "_reusable-b
 grep -qF "blocking security verdict is empty" "${WF}/security-release.yml" || fail "security-release.yml must fail closed when the resolved verdict is empty (expected pass, fail, or skipped in SECURITY_VERDICT / security-verdict.json)"
 grep -qF "SECURITY_VERDICT" "${WF}/security-release.yml" || fail "security-release.yml must use SECURITY_VERDICT in the Enforce step (blocking empty string)"
 grep -qF "security-reports/security-verdict.json" "${WF}/security-release.yml" || fail "security-release.yml must write security-reports/security-verdict.json (uploaded as security-verdict artifact)"
-# Verdict JSON is built by scripts/security/write_security_verdict.py; the workflow must invoke every mode (skip / no-candidate / gate / emergency).
-grep -qF "scripts/security/write_security_verdict.py skipped" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py skipped (ineligible upstream Build or skip path; emits skipped in JSON)"
-grep -qF "scripts/security/write_security_verdict.py no-candidate" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py no-candidate (incomplete build chain / no releasable candidate; emits skipped in JSON)"
-grep -qF "scripts/security/write_security_verdict.py unsupported-trigger" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py unsupported-trigger (unsupported triggering Build GHA event; emits skipped in JSON)"
-grep -qF "scripts/security/write_security_verdict.py full" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py full (normal release-gate security-verdict.json)"
-grep -qF "scripts/security/write_security_verdict.py emergency" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py emergency (exit trap and failed full write; never ship an empty verdict)"
+# Verdict JSON is built by scripts/security/write_security_verdict.py; the workflow must invoke every required mode (regression: empty verdict paths).
+for _v_mode in skipped no-candidate unsupported-trigger full emergency; do
+  grep -qF "scripts/security/write_security_verdict.py ${_v_mode}" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py ${_v_mode} (verdict path must be reachable)"
+done
 grep -qF "No releasable candidate. Security release gate skipped." "${WF}/security-release.yml" || fail "security-release.yml must document the neutral no-release-candidate skipped outcome (Build chain did not produce a releasable candidate)"
 grep -qF "scripts/security/emit_security_verdict_outputs.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_outputs.py after each verdict write (GITHUB_OUTPUT contract)"
 grep -qF "scripts/security/emit_security_verdict_summary.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_summary.py (job summary contract)"
 grep -qF "export CANONICAL_SOURCE_SHA" "${WF}/security-release.yml" || fail "security-release.yml must export CANONICAL_SOURCE_SHA (artifact-first source coordinates for Security / verdict)"
 grep -qF "scripts/security/emit_release_signal_debug_table.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_release_signal_debug_table.py (source coordinate debug summary)"
+# Polling: must not use read < <(pipeline) on jq output (empty under set -e); require safe security_run_row + read <<< with || true
+grep -qF "security_run_row" "${WF}/security-release.yml" || fail "security-release.yml must use security_run_row for repo Security (push) run polling (safe under set -e)"
+# Release candidate identity: artifact-first (never prefer triggering workflow_run head over promotion-manifest)
+grep -qF 'release_source_sha="${RESOLVED_SOURCE_SHA' "${WF}/security-release.yml" || fail "security-release.yml must set release_source_sha from RESOLVED_SOURCE_SHA first (artifact source_sha)"
+grep -qF 'want_branch="${RESOLVED_SOURCE_BRANCH' "${WF}/security-release.yml" || fail "security-release.yml must set want_branch from RESOLVED_SOURCE_BRANCH before MANUAL_TARGET_BRANCH / GITHUB_REF_NAME (never BUILD_HEAD_BRANCH as candidate branch)"
+if grep -E 'want_branch=.*(BUILD_HEAD_BRANCH|TRIGGERING_BUILD_HEAD_BRANCH)' "${WF}/security-release.yml" 2>/dev/null; then
+  fail "security-release.yml: candidate want_branch must not be derived from BUILD_HEAD_BRANCH or TRIGGERING_BUILD_HEAD_BRANCH (use RESOLVED_SOURCE_BRANCH from promotion-manifest)"
+fi
+grep -qF "scripts/security/write_security_verdict.py ineligible-branch" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py ineligible-branch (canonical branch not develop/main; neutral skip)"
+grep -qF "scripts/security/write_security_verdict.py unsupported-artifact-source-event" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py unsupported-artifact-source-event when ARTIFACT_SOURCE_EVENT is not an allowed semantic event"
+# Primary SHA: never workflow_run head_sha; WORKFLOW_SHA-only fallback is allowed when RESOLVED is empty
+if grep -n "TRIGGER_WORKFLOW_RUN_SOURCE_SHA" "${WF}/security-release.yml" | grep -E 'release_source_sha=|source_sha=|CANONICAL_SOURCE' 2>/dev/null; then
+  fail "security-release.yml: must not assign candidate SHA from TRIGGER_WORKFLOW_RUN_SOURCE_SHA (misleading in workflow_run chains; use RESOLVED_SOURCE_SHA or WORKFLOW_SHA for dispatch)"
+fi
 
 # Prefer an interpreter that actually runs (skip broken Windows "python3" app-install stubs when possible).
 python_exec=""
@@ -114,6 +127,76 @@ done
 if [[ -z "${python_exec}" ]]; then
   fail "a working python3 (or python) is required for workflow heredoc checks"
 fi
+
+# --- security-release: no unsafe `read ... < <(process subst)` under set -e; require `|| true` in the same read/procsub statement ---
+# --- security-release: want_branch (etc.) must not list BUILD_HEAD_BRANCH before RESOLVED_SOURCE_BRANCH in the same line ---
+"${python_exec}" - <<'PY' || fail "security-release.yml: static bash safety / candidate branch checks failed"
+import re
+import sys
+from pathlib import Path
+
+lines = Path(".github/workflows/security-release.yml").read_text(encoding="utf-8", errors="replace").splitlines()
+
+def code_only(line: str) -> str:
+    return line.split("#", 1)[0]
+
+# 1) read/mapfile + process substitution < <(  must be in a script block with || true (set -e safe).
+for i, line in enumerate(lines):
+    c0 = code_only(line)
+    if re.match(r"^\s*#", line):
+        continue
+    if re.match(r"^\s*actions:\s*read", c0) or re.match(r"^\s*-\s*read\s*:", c0):
+        continue
+    if not re.search(r"\b(read|mapfile)\b", c0):
+        continue
+    j_end = min(i + 35, len(lines))
+    block = [code_only(x) for x in lines[i:j_end]]
+    joined = "\n".join(block)
+    if "< <(" not in joined:
+        continue
+    if re.search(r"\|\|\s*true\b", joined):
+        continue
+    print(
+        "verify_workflow_contracts: error: security-release.yml line %d: read/mapfile with < <( and no || true "
+        "in the following 35 lines (set -e can exit when empty or pipe fails)." % (i + 1,),
+        file=sys.stderr,
+    )
+    print(joined[:1200], file=sys.stderr)
+    sys.exit(1)
+
+# 2) Candidate branch: RESOLVED_SOURCE_BRANCH must be listed before any BUILD*HEAD*BRANCH on the same line
+res_token = "RESOLVED_SOURCE_BRANCH"
+bad_tokens = ("BUILD_HEAD_BRANCH", "TRIGGERING_BUILD_HEAD_BRANCH")
+for n, line in enumerate(lines, 1):
+    if res_token not in line or not any(b in line for b in bad_tokens):
+        continue
+    if re.match(r"^\s*#", line):
+        continue
+    if not any(
+        k in line
+        for k in (
+            "want_branch",
+            "CANONICAL_SOURCE_BRANCH",
+            "C_BR",
+            "source_branch",
+            "release_source",
+        )
+    ):
+        continue
+    ri = line.find(res_token)
+    for bad in bad_tokens:
+        bi = line.find(bad)
+        if bi != -1 and ri != -1 and bi < ri:
+            print(
+                "verify_workflow_contracts: error: line %d: candidate resolution lists %s before %s" % (n, bad, res_token),
+                file=sys.stderr,
+            )
+            print(line.rstrip()[:200], file=sys.stderr)
+            sys.exit(1)
+PY
+
+# write_security_verdict.py smoke: always emits security-reports/security-verdict.json
+"${python_exec}" "${ROOT}/scripts/security/tests/test_write_security_verdict_smoke.py" || fail "scripts/security/tests/test_write_security_verdict_smoke.py failed"
 
 # --- build-push: CI workflow_run completed + dispatch; only develop/main push paths in job if ---
 on_until_concurrency "${WF}/build-push.yml" | grep -qE '^[[:space:]]*workflow_run:' || fail "build-push.yml must use workflow_run trigger"
