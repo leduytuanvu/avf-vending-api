@@ -58,8 +58,10 @@ jobs:
           GOOSE_IMAGE: ${{ needs.build-and-push.outputs.goose_image }}
           GOOSE_REF: ${{ needs.build-and-push.outputs.goose_ref }}
           GOOSE_TAG: ${{ needs.build-and-push.outputs.goose_tag }}
-          SOURCE_BRANCH: ${{ github.ref_name }}
-          SOURCE_REF_TYPE: ${{ github.ref_type }}
+          SOURCE_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
+          # workflow_run: use triggering CI branch (ref_name in that context is the default branch, not the commit branch).
+          SOURCE_REF_TYPE: ${{ github.event_name == 'workflow_run' && 'branch' || github.ref_type }}
+          SOURCE_EVENT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event || (github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || github.event_name) }}
           TRIGGER_NAME: ${{ github.event_name }}
         run: |
           mkdir -p build-evidence
@@ -82,6 +84,7 @@ jobs:
             "commit_sha": "${BUILD_COMMIT_SHA}",
             "source_branch": "${SOURCE_BRANCH}",
             "source_ref_type": "${SOURCE_REF_TYPE}",
+            "source_event": "${SOURCE_EVENT}",
             "release_channel": "${release_channel}",
             "downstream_intent": "${downstream_intent}",
             "trigger": "${TRIGGER_NAME}",
@@ -119,6 +122,7 @@ jobs:
             "commit_sha": "${BUILD_COMMIT_SHA}",
             "source_branch": "${SOURCE_BRANCH}",
             "source_ref_type": "${SOURCE_REF_TYPE}",
+            "source_event": "${SOURCE_EVENT}",
             "release_channel": "${release_channel}",
             "downstream_intent": "${downstream_intent}",
             "actor": "${ACTOR}",
@@ -145,6 +149,7 @@ jobs:
             echo "- build run id: \`${BUILD_RUN_ID}\`"
             echo "- source branch: \`${SOURCE_BRANCH}\`"
             echo "- source ref type: \`${SOURCE_REF_TYPE}\`"
+            echo "- source event (from CI/Build): \`${SOURCE_EVENT}\`"
             echo "- release channel: \`${release_channel}\`"
             echo "- downstream intent: \`${downstream_intent}\`"
             echo "- commit SHA: \`${BUILD_COMMIT_SHA}\`"
