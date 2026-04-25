@@ -4,6 +4,14 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -99,7 +107,7 @@ jobs:
         run: make vet
 
       - name: Validate generated specs and repository invariants
-        run: make check-placeholders check-wiring check-migrations sqlc-check swagger-check
+        run: make check-placeholders check-wiring check-migrations sqlc-check swagger-check postman-check
 
       - name: Run short Go test suite
         run: make test-short

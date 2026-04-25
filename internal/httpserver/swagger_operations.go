@@ -60,7 +60,7 @@ func DocOpVersion() {}
 
 // DocOpSwaggerDocJSON godoc
 // @Summary OpenAPI 3.0 document (embedded)
-// @Description Served when HTTP_SWAGGER_UI_ENABLED=true. Same JSON the UI loads; no `Authorization` header required.
+// @Description Served when `HTTP_OPENAPI_JSON_ENABLED=true` (default on). Unrelated to Swagger UI. No `Authorization` header required.
 // @Tags System
 // @Produce application/json
 // @Success 200 {object} object "OpenAPI 3.0 document root"
@@ -69,7 +69,7 @@ func DocOpSwaggerDocJSON() {}
 
 // DocOpSwaggerIndex godoc
 // @Summary Swagger UI (HTML)
-// @Description Browser UI entrypoint when Swagger is enabled; loads `/swagger/doc.json`.
+// @Description Browser UI when `HTTP_SWAGGER_UI_ENABLED=true`; loads `/swagger/doc.json` (OpenAPI) when the JSON feature is on.
 // @Tags System
 // @Produce text/html
 // @Success 200 {string} string "Swagger UI HTML"

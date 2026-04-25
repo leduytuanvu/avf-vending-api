@@ -106,6 +106,15 @@ echo "==> pull prebuilt images (app + goose)"
 echo "==> start data plane (postgres, nats, emqx)"
 "${COMPOSE[@]}" up -d postgres nats emqx
 
+echo "==> verify database environment (guard; redacted identity only)"
+REPO_ROOT="$(cd "${ROOT}/../.." && pwd)"
+set -a
+# shellcheck source=/dev/null
+source .env.staging
+set +a
+export APP_ENV="${APP_ENV:-staging}"
+bash "${REPO_ROOT}/scripts/verify_database_environment.sh"
+
 echo "==> run database migrations (goose; aborts stack rollout on failure)"
 if ! "${COMPOSE[@]}" run --rm migrate; then
 	fail "migrations failed — fix DB state before retrying"

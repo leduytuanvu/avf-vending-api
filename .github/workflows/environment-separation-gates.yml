@@ -1,0 +1,112 @@
+name: Environment separation gates
+
+# Manual contract checks: staging and production GitHub Environments, separate secrets, no cross-DB.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: environment-separation-gates
+  cancel-in-progress: true
+
+jobs:
+  staging-contract:
+    name: Staging (secrets + config)
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+          cache: true
+
+      - name: Staging non-sharing and shell guard
+        shell: bash
+        env:
+          APP_ENV: staging
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          REDIS_URL: ${{ secrets.STAGING_REDIS_URL }}
+          NATS_URL: ${{ secrets.STAGING_NATS_URL }}
+          MQTT_BROKER_URL: ${{ secrets.STAGING_MQTT_BROKER_URL }}
+          MQTT_CLIENT_ID: staging-gate
+          MQTT_TOPIC_PREFIX: avf-staging/devices
+          MQTT_CLIENT_ID_API: staging-gate-api
+          MQTT_CLIENT_ID_INGEST: staging-gate-ingest
+          PAYMENT_ENV: sandbox
+          PUBLIC_BASE_URL: https://staging-api.ldtv.dev
+          LOG_LEVEL: info
+          LOG_FORMAT: json
+          HTTP_ADDR: :8080
+          OTEL_SERVICE_NAME: avf-staging-gate
+          READINESS_STRICT: "true"
+          APP_NODE_NAME: gate
+          APP_INSTANCE_ID: gate-1
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${DATABASE_URL}" ]] || { echo "STAGING_DATABASE_URL (mapped to DATABASE_URL) is required" >&2; exit 1; }
+          if [[ -n "${PRODUCTION_DATABASE_URL:-}" ]] && [[ "${DATABASE_URL}" == "${PRODUCTION_DATABASE_URL}" ]]; then
+            echo "staging DATABASE_URL must not equal PRODUCTION_DATABASE_URL" >&2
+            exit 1
+          fi
+          [[ "${MQTT_TOPIC_PREFIX}" != "avf/devices" ]]
+          [[ "${PAYMENT_ENV}" == "sandbox" ]]
+          bash scripts/verify_database_environment.sh
+          go run ./cmd/cli -validate-config
+          go test ./... -count=1
+          make swagger
+          make swagger-check
+          make verify-enterprise-release
+
+  production-contract:
+    name: Production (preflight)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+          cache: true
+
+      - name: Production preflight
+        shell: bash
+        env:
+          APP_ENV: production
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          REDIS_URL: ${{ secrets.PRODUCTION_REDIS_URL }}
+          NATS_URL: ${{ secrets.PRODUCTION_NATS_URL }}
+          MQTT_BROKER_URL: ${{ secrets.PRODUCTION_MQTT_BROKER_URL }}
+          HTTP_AUTH_JWT_SECRET: "0123456789abcdef0123456789abcdef"
+          MQTT_CLIENT_ID: prod-gate
+          MQTT_TOPIC_PREFIX: avf/devices
+          MQTT_CLIENT_ID_API: prod-gate-api
+          MQTT_CLIENT_ID_INGEST: prod-gate-ingest
+          PAYMENT_ENV: live
+          PUBLIC_BASE_URL: https://api.ldtv.dev
+          LOG_LEVEL: info
+          LOG_FORMAT: json
+          HTTP_ADDR: :8080
+          OTEL_SERVICE_NAME: avf-prod-gate
+          READINESS_STRICT: "true"
+          APP_NODE_NAME: gate
+          APP_INSTANCE_ID: gate-1
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${DATABASE_URL}" ]] || { echo "PRODUCTION_DATABASE_URL (mapped to DATABASE_URL) is required" >&2; exit 1; }
+          if [[ -n "${STAGING_DATABASE_URL:-}" ]] && [[ "${DATABASE_URL}" == "${STAGING_DATABASE_URL}" ]]; then
+            echo "production DATABASE_URL must not equal STAGING_DATABASE_URL" >&2
+            exit 1
+          fi
+          [[ "${MQTT_TOPIC_PREFIX}" == "avf/devices" ]]
+          [[ "${PAYMENT_ENV}" == "live" ]]
+          bash scripts/verify_database_environment.sh
+          go run ./cmd/cli -validate-config
+          make verify-enterprise-release
