@@ -2,6 +2,18 @@ name: Reusable Build and Push
 
 on:
   workflow_call:
+    inputs:
+      # When the caller is workflow_run( CI ), GITHUB_REF/SHA in the child workflow are not the app commit — pass head_sha/branch from the triggering run.
+      checkout_ref:
+        description: "Commit SHA (full 40) to check out; empty uses default (triggering ref)"
+        type: string
+        required: false
+        default: ""
+      head_branch:
+        description: "Branch name for develop/main tag logic when checkout_ref is set (e.g. from workflow_run.head_branch)"
+        type: string
+        required: false
+        default: ""
     outputs:
       app_image:
         description: "Base app image name"
@@ -57,6 +69,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref != '' && inputs.checkout_ref || github.sha }}
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -71,26 +86,36 @@ jobs:
       - name: Derive image tags
         id: tags
         shell: bash
+        env:
+          INPUT_HEAD_BRANCH: ${{ inputs.head_branch }}
         run: |
           repo="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
           app_image="ghcr.io/${repo}"
           goose_image="ghcr.io/${repo}-goose"
-          sha_tag="sha-${GITHUB_SHA}"
+          git_sha="$(git rev-parse HEAD)"
+          if [[ -n "${INPUT_HEAD_BRANCH}" ]]; then
+            ref_name="${INPUT_HEAD_BRANCH}"
+            ref_type="branch"
+          else
+            ref_name="${GITHUB_REF_NAME}"
+            ref_type="${GITHUB_REF_TYPE}"
+          fi
+          sha_tag="sha-${git_sha}"
           primary_tag="${sha_tag}"
 
           app_tags=("${app_image}:${sha_tag}")
           goose_tags=("${goose_image}:${sha_tag}")
 
-          if [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "develop" ]]; then
-            primary_tag="develop-${GITHUB_SHA}"
+          if [[ "${ref_type}" == "branch" && "${ref_name}" == "develop" ]]; then
+            primary_tag="develop-${git_sha}"
             app_tags+=("${app_image}:${primary_tag}" "${app_image}:develop-latest")
             goose_tags+=("${goose_image}:${primary_tag}" "${goose_image}:develop-latest")
-          elif [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "main" ]]; then
-            primary_tag="main-${GITHUB_SHA}"
+          elif [[ "${ref_type}" == "branch" && "${ref_name}" == "main" ]]; then
+            primary_tag="main-${git_sha}"
             app_tags+=("${app_image}:${primary_tag}" "${app_image}:main")
             goose_tags+=("${goose_image}:${primary_tag}" "${goose_image}:main")
-          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            primary_tag="${GITHUB_REF_NAME}"
+          elif [[ "${ref_type}" == "tag" ]]; then
+            primary_tag="${ref_name}"
             app_tags+=("${app_image}:${primary_tag}")
             goose_tags+=("${goose_image}:${primary_tag}")
           fi
@@ -159,6 +184,8 @@ jobs:
       - name: Publish image metadata
         id: metadata
         shell: bash
+        env:
+          INPUT_HEAD_BRANCH: ${{ inputs.head_branch }}
         run: |
           app_ref="${{ steps.tags.outputs.app_image }}@${{ steps.build_app.outputs.digest }}"
           goose_ref="${{ steps.tags.outputs.goose_image }}@${{ steps.build_goose.outputs.digest }}"
@@ -170,16 +197,24 @@ jobs:
             echo "goose_ref=${goose_ref}"
           } >> "$GITHUB_OUTPUT"
 
+          git_sha_meta="$(git rev-parse HEAD)"
+          if [[ -n "${INPUT_HEAD_BRANCH}" ]]; then
+            meta_ref_name="${INPUT_HEAD_BRANCH}"
+            meta_ref_type="branch"
+          else
+            meta_ref_name="${GITHUB_REF_NAME}"
+            meta_ref_type="${GITHUB_REF_TYPE}"
+          fi
           cat > image-metadata.json <<EOF
           {
             "schema_version": "v1",
-            "git_sha": "${GITHUB_SHA}",
+            "git_sha": "${git_sha_meta}",
             "event_name": "${GITHUB_EVENT_NAME}",
             "workflow_name": "${GITHUB_WORKFLOW}",
             "workflow_run_id": "${GITHUB_RUN_ID}",
             "actor": "${GITHUB_ACTOR}",
-            "ref_name": "${GITHUB_REF_NAME}",
-            "ref_type": "${GITHUB_REF_TYPE}",
+            "ref_name": "${meta_ref_name}",
+            "ref_type": "${meta_ref_type}",
             "provenance_enabled": true,
             "sbom_enabled": true,
             "source_inputs": {
