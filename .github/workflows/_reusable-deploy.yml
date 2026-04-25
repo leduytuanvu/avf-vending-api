@@ -58,6 +58,9 @@ on:
       artifact_source_workflow_name:
         description: "Source workflow name recorded in the artifact payload; `manual` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.artifact_source_workflow_name }}
+      artifact_source_event:
+        description: "Semantic source event from promotion-manifest (`push`, `workflow_dispatch`); `manual` in manual mode"
+        value: ${{ jobs.resolve-image-refs.outputs.artifact_source_event }}
       provenance_verdict:
         description: "Image attestation verification verdict only: `verified` in workflow_run mode after attestation verification; `accepted-private-repo-no-github-attestations` when GitHub Artifact Attestations are unavailable for a private repo; `accepted-manual` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.provenance_verdict }}
@@ -76,6 +79,7 @@ jobs:
       artifact_source_sha: ${{ steps.resolve.outputs.artifact_source_sha }}
       artifact_source_branch: ${{ steps.resolve.outputs.artifact_source_branch }}
       artifact_source_workflow_name: ${{ steps.resolve.outputs.artifact_source_workflow_name }}
+      artifact_source_event: ${{ steps.resolve.outputs.artifact_source_event }}
       provenance_verdict: ${{ steps.finalize.outputs.provenance_verdict }}
 
     steps:
@@ -87,7 +91,7 @@ jobs:
           INPUT_WORKFLOW_RUN_ID: ${{ inputs.workflow_run_id }}
           RESOLUTION_MODE: ${{ inputs.resolution_mode }}
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
 
           fail() {
             echo "error: $*" >&2
@@ -117,7 +121,7 @@ jobs:
           RUN_ID: ${{ inputs.workflow_run_id }}
         shell: bash
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
 
           [[ -n "${GH_TOKEN:-}" ]] || { echo "error: gh_api_token is required for workflow_run resolution" >&2; exit 1; }
           [[ -n "${RUN_ID}" ]] || { echo "error: workflow_run_id is required for workflow_run resolution" >&2; exit 1; }
@@ -181,7 +185,7 @@ jobs:
           RESOLUTION_MODE: ${{ inputs.resolution_mode }}
           TARGET_ENVIRONMENT: ${{ inputs.target_environment }}
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
 
           fail() {
             echo "error: $*" >&2
@@ -225,6 +229,7 @@ jobs:
               artifact_source_sha=""
               artifact_source_branch="manual"
               artifact_source_workflow_name="manual"
+              artifact_source_event="manual"
               release_label="manual-digest"
               ;;
             workflow_run)
@@ -239,8 +244,8 @@ jobs:
                 'promotion_manifest = json.loads(Path("promotion-manifest-artifact/promotion-manifest.json").read_text(encoding="utf-8"))' \
                 '' \
                 'for label, payload in (("image-metadata", image_metadata), ("promotion-manifest", promotion_manifest)):' \
-                '    source_branch = payload.get("source_branch") or payload.get("ref_name") or ""' \
-                '    if not source_branch:' \
+                '    branch_probe = payload.get("source_branch") or payload.get("ref_name") or ""' \
+                '    if not branch_probe:' \
                 '        raise SystemExit(f"missing source branch in {label}")' \
                 '' \
                 'app_ref = image_metadata["app"].get("ref", "")' \
@@ -251,6 +256,15 @@ jobs:
                 'goose_tag = image_metadata["goose"].get("tag", "")' \
                 'commit_sha = promotion_manifest.get("commit_sha") or image_metadata.get("git_sha") or ""' \
                 'source_branch = promotion_manifest.get("source_branch") or image_metadata.get("ref_name") or ""' \
+                'promo_branch = (promotion_manifest.get("source_branch") or "").strip()' \
+                'meta_ref_name = (image_metadata.get("ref_name") or "").strip()' \
+                'if promo_branch and meta_ref_name and promo_branch != meta_ref_name:' \
+                '    raise SystemExit("promotion-manifest source_branch does not match image-metadata ref_name")' \
+                'source_event = (promotion_manifest.get("source_event") or "").strip()' \
+                'if not source_event:' \
+                '    raise SystemExit("promotion-manifest source_event is required (semantic trigger: push vs workflow_dispatch)")' \
+                'if source_event not in ("push", "workflow_dispatch"):' \
+                '    raise SystemExit(f"promotion-manifest source_event must be push or workflow_dispatch, got: {source_event}")' \
                 'workflow_name = promotion_manifest.get("workflow_name", "")' \
                 'workflow_run_id = str(promotion_manifest.get("workflow_run_id", ""))' \
                 'image_metadata_workflow_name = image_metadata.get("workflow_name", "")' \
@@ -300,6 +314,7 @@ jobs:
                 'print(commit_sha)' \
                 'print(source_branch)' \
                 'print(workflow_name)' \
+                'print(source_event)' \
                 'print(release_label)' \
                 > "${resolver_script}"
               python3 "${resolver_script}" > resolved-image-metadata.txt
@@ -313,10 +328,12 @@ jobs:
               artifact_source_sha="${image_metadata[5]}"
               artifact_source_branch="${image_metadata[6]}"
               artifact_source_workflow_name="${image_metadata[7]}"
-              release_label="${image_metadata[8]}"
+              artifact_source_event="${image_metadata[8]}"
+              release_label="${image_metadata[9]}"
               [[ "${artifact_build_run_id}" =~ ^[0-9]+$ ]] || fail "artifact workflow_run_id is missing or malformed"
               [[ "${artifact_source_sha}" =~ ^[0-9a-f]{40}$ ]] || fail "artifact source SHA is missing or malformed"
               [[ -n "${artifact_source_workflow_name}" ]] || fail "artifact workflow_name is missing"
+              [[ "${artifact_source_event}" == "push" || "${artifact_source_event}" == "workflow_dispatch" ]] || fail "artifact source_event must be push or workflow_dispatch (from promotion-manifest), got: ${artifact_source_event}"
               [[ "${artifact_build_run_id}" == "${INPUT_WORKFLOW_RUN_ID}" ]] || fail "artifact workflow_run_id does not match requested workflow_run_id"
               validate_source_branch_for_target "${artifact_source_branch}"
               ;;
@@ -338,6 +355,7 @@ jobs:
             echo "artifact_source_sha=${artifact_source_sha}"
             echo "artifact_source_branch=${artifact_source_branch}"
             echo "artifact_source_workflow_name=${artifact_source_workflow_name}"
+            echo "artifact_source_event=${artifact_source_event}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Verify build provenance
@@ -386,7 +404,7 @@ jobs:
           RESOLUTION_MODE: ${{ inputs.resolution_mode }}
           VERIFIED_VERDICT: ${{ steps.provenance.outputs.provenance_verdict }}
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
           verdict="${VERIFIED_VERDICT:-}"
           if [[ -z "${verdict}" && "${RESOLUTION_MODE}" == "workflow_run" && "${REPOSITORY_PRIVATE}" == "true" ]]; then
             verdict="accepted-private-repo-no-github-attestations"

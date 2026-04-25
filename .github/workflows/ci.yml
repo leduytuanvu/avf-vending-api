@@ -53,6 +53,13 @@ jobs:
           set -Eeuo pipefail
           actionlint
 
+      - name: Verify CI/CD workflow contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          chmod +x scripts/ci/verify_workflow_contracts.sh
+          bash scripts/ci/verify_workflow_contracts.sh
+
       - name: Lint workflow YAML with yamllint
         shell: bash
         run: |
