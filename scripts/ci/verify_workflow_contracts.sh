@@ -29,7 +29,37 @@ deploy_prod_on_block() {
   awk '/^on:/{p=1;next} p && /^[a-zA-Z#]/ {exit} p' "${WF}/deploy-prod.yml"
 }
 
+# `on:` block through first top-level `jobs:` (workflows with no `concurrency` before `jobs`, e.g. deploy-production pointer).
+on_until_jobs() {
+  awk '/^on:/{p=1;next} /^jobs:/{exit} p' "$1"
+}
+
 echo "Checking workflow contracts under ${WF}"
+
+# --- Unique top-level workflow display names: Security vs Security Release ---
+# Exactly one workflow must be named "Security" (security.yml) and one "Security Release" (security-release.yml).
+sec_exact="$(grep -h '^name: Security$' "${WF}"/*.yml 2>/dev/null | wc -l | tr -d ' ')"
+sec_rel_exact="$(grep -h '^name: Security Release$' "${WF}"/*.yml 2>/dev/null | wc -l | tr -d ' ')"
+if [[ "${sec_exact}" -gt 1 ]]; then
+  fail "more than one workflow is named \"Security\" (expected exactly one: security.yml)"
+fi
+if [[ "${sec_exact}" -ne 1 ]]; then
+  fail "expected exactly one workflow named \"Security\" in security.yml; found ${sec_exact}"
+fi
+if [[ "${sec_rel_exact}" -ne 1 ]]; then
+  fail "expected exactly one workflow named \"Security Release\" in security-release.yml; found ${sec_rel_exact}"
+fi
+if grep -q '^name: Security$' "${WF}/security-release.yml" 2>/dev/null; then
+  fail "security-release.yml must be named \"Security Release\", not \"Security\""
+fi
+
+# --- Canonical workflow display names (required release-chain names) ---
+grep -q '^name: CI$' "${WF}/ci.yml" || fail "ci.yml must be named \"CI\" (canonical CI workflow)"
+grep -q '^name: Security$' "${WF}/security.yml" || fail "security.yml must be named \"Security\" (repo-level; distinct from Security Release)"
+grep -q '^name: Build and Push Images$' "${WF}/build-push.yml" || fail "build-push.yml must be named \"Build and Push Images\""
+grep -q '^name: Security Release$' "${WF}/security-release.yml" || fail "security-release.yml must be named \"Security Release\" (not \"Security\")"
+grep -q '^name: Staging Deployment Contract$' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must be named \"Staging Deployment Contract\""
+grep -q '^name: Deploy Production$' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must be named \"Deploy Production\""
 
 # Prefer an interpreter that actually runs (skip broken Windows "python3" app-install stubs when possible).
 python_exec=""
@@ -50,16 +80,31 @@ on_until_concurrency "${WF}/build-push.yml" | grep -qE '^[[:space:]]*workflow_ru
 on_until_concurrency "${WF}/build-push.yml" | grep -qE '^[[:space:]]*workflow_dispatch:' || fail "build-push.yml must use workflow_dispatch trigger"
 on_until_concurrency "${WF}/build-push.yml" | grep -qE '[[:space:]]*-[[:space:]]*CI' || fail "build-push.yml workflow_run must list CI as upstream"
 on_until_concurrency "${WF}/build-push.yml" | grep -q 'completed' || fail "build-push.yml workflow_run must use types completed (or types: completed)"
+build_push_wr_block="$(
+  awk '/^  workflow_run:/{p=1;next} /^  workflow_dispatch:/{if(p) exit} p' "${WF}/build-push.yml"
+)"
+printf '%s\n' "${build_push_wr_block}" | grep -qE '^[[:space:]]*branches:' || fail "build-push.yml workflow_run must declare branches: [develop, main] so pull_request CI (head != develop/main) does not start this workflow"
+printf '%s\n' "${build_push_wr_block}" | grep -q 'develop' && printf '%s\n' "${build_push_wr_block}" | grep -q 'main' || fail "build-push.yml workflow_run.branches must list develop and main"
 grep -q "head_branch == 'develop'" "${WF}/build-push.yml" || fail "build-push.yml must restrict workflow_run builds to develop (with main)"
 grep -q "head_branch == 'main'" "${WF}/build-push.yml" || fail "build-push.yml must restrict workflow_run builds to main (with develop)"
 grep -q "github.event.inputs.build_target_branch == 'develop'" "${WF}/build-push.yml" || fail "build-push.yml workflow_dispatch must allow develop target branch"
 grep -q "github.event.inputs.build_target_branch == 'main'" "${WF}/build-push.yml" || fail "build-push.yml workflow_dispatch must allow main target branch"
+grep -qF "github.event.workflow_run.event == 'push'" "${WF}/build-push.yml" || fail "build-push.yml must require github.event.workflow_run.event == 'push' for workflow_run so non-push CI cannot complete Build and confuse downstream gates"
+grep -qE 'fail-if-not-push|refuse to report success for non-push' "${WF}/build-push.yml" || fail "build-push.yml must fail closed when workflow_run upstream CI is not push (e.g. fail-if-not-push-ci job) so downstream does not run on skipped/partial builds"
 
 # --- security-release: after Build and Push completed ---
 sr_on_block="$(on_until_concurrency "${WF}/security-release.yml")"
 printf '%s\n' "${sr_on_block}" | grep -q 'Build and Push Images' || fail "security-release.yml must trigger on Build and Push Images"
 printf '%s\n' "${sr_on_block}" | grep -q 'completed' || fail "security-release.yml workflow_run must use completed"
 printf '%s\n' "${sr_on_block}" | grep -qE 'workflow_run:|workflow_dispatch' || fail "security-release.yml must declare workflow_run and may declare workflow_dispatch"
+sr_wr_block="$(
+  awk '/^  workflow_run:/{p=1;next} /^  workflow_dispatch:/{if(p) exit} p' "${WF}/security-release.yml"
+)"
+printf '%s\n' "${sr_wr_block}" | grep -qE '^[[:space:]]*branches:' || fail "security-release.yml workflow_run must declare branches: [develop, main] (no direct PR chain)"
+printf '%s\n' "${sr_wr_block}" | grep -q 'develop' && printf '%s\n' "${sr_wr_block}" | grep -q 'main' || fail "security-release.yml workflow_run.branches must list develop and main"
+grep -q 'github.event.workflow_run.id' "${WF}/security-release.yml" || fail "security-release.yml must use github.event.workflow_run.id for Build artifact run id"
+grep -q 'TRIGGER_WORKFLOW_EVENT' "${WF}/security-release.yml" || fail "security-release.yml must set TRIGGER_WORKFLOW_EVENT (Build run GHA event; distinct from semantic source_event)"
+grep -q 'failure_reasons' "${WF}/security-release.yml" || fail "security-release.yml must emit failure_reasons in security-verdict"
 grep -q 'name: security-verdict' "${WF}/security-release.yml" || fail "security-release.yml must upload a security-verdict artifact (name: security-verdict)"
 grep -qE 'uses: actions/upload-artifact@|actions/upload-artifact' "${WF}/security-release.yml" || fail "security-release.yml must use actions/upload-artifact to publish the verdict"
 for key in source_build_run_id source_sha source_branch release_gate_verdict; do
@@ -74,14 +119,44 @@ dd_on_block="$(on_until_column0_hash "${WF}/deploy-develop.yml")"
 printf '%s\n' "${dd_on_block}" | grep -qE '^[[:space:]]*workflow_run:' || fail "deploy-develop.yml must use workflow_run trigger"
 printf '%s\n' "${dd_on_block}" | grep -q 'Security Release' || fail "deploy-develop.yml must trigger on Security Release"
 printf '%s\n' "${dd_on_block}" | grep -q 'completed' || fail "deploy-develop.yml must require workflow_run completed (types)"
+if printf '%s\n' "${dd_on_block}" | grep -qE '^[[:space:]]*workflow_dispatch:'; then
+  fail "deploy-develop.yml must not declare on.workflow_dispatch (trigger is Security Release completed only)"
+fi
+rogue_wrk="$(printf '%s\n' "${dd_on_block}" | grep -E '^[[:space:]]*-[[:space:]]*"' | grep -v 'Security Release' || true)"
+[[ -z "${rogue_wrk}" ]] || fail "deploy-develop.yml workflow_run.workflows must list only Security Release (not CI, Build, etc.); got: ${rogue_wrk}"
 # --- deploy-develop must not be triggered by repo-level "Security" (only Security Release) ---
 if grep -E '^[[:space:]]*-[[:space:]]+Security[[:space:]]*$' "${WF}/deploy-develop.yml" >/dev/null 2>&1; then
-  fail "deploy-develop.yml must not list a workflow_run trigger named only 'Security' (use Security Release)."
+  fail "deploy-develop.yml must listen to Security Release, not Security"
 fi
+"${python_exec}" - <<'PY' || fail "deploy-develop.yml must listen to Security Release, not Security (check workflow_run.workflows list)"
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(".github/workflows/deploy-develop.yml")
+text = path.read_text(encoding="utf-8")
+# List items under on.workflow_run.workflows up to types:
+m = re.search(
+    r"(?ms)^[ \t]+workflows:\s*\n(?P<items>(?:^[ \t]+-[^\n]+\n)+)\s*^[ \t]+types:",
+    text,
+)
+if not m:
+    print("verify_workflow_contracts: could not parse deploy-develop workflow_run.workflows", file=sys.stderr)
+    sys.exit(1)
+for line in m.group("items").splitlines():
+    item = re.sub(r"^[ \t]+-\s*", "", line).strip().strip('"').strip("'")
+    if not item:
+        continue
+    if item != "Security Release":
+        print(f"verify_workflow_contracts: disallowed workflow listener {item!r}", file=sys.stderr)
+        sys.exit(1)
+PY
 grep -q "github.event.workflow_run.conclusion == 'success'" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must require workflow_run.conclusion == success (avoid racing failed upstream)"
 grep -q 'ENABLE_REAL_STAGING_DEPLOY' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must reference ENABLE_REAL_STAGING_DEPLOY for real vs no-op staging"
 grep -q 'source_build_run_id' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must reference source_build_run_id (from security-verdict / candidate)"
 grep -q 'security-verdict' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must consume the security-verdict artifact"
+grep -q 'staging deployment skipped because real staging is disabled' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml no-op path must state staging deployment skipped because real staging is disabled"
+grep -q 'github.event.workflow_run.id' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must use github.event.workflow_run.id (Security Release run) to download security-verdict"
 # Do not use GitHub workflow runs list API to pick Build by yml (must use source_build_run_id from verdict).
 if grep -qE 'actions/workflows/[^"[:space:]]+\.(yml|yaml)/runs' "${WF}/deploy-develop.yml"; then
   fail "deploy-develop.yml must not list workflow runs by workflow yaml path; resolve build via security-verdict source_build_run_id"
@@ -93,17 +168,48 @@ fi
 # Contract documentation line (reordered resolver regression)
 grep -q 'loads Build artifacts' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml should document that Build artifacts load by run id from security-verdict (see candidate resolver summary)"
 
-# --- deploy-prod: no automatic triggers; no pull_request; manual / main-only ---
-dp_on_for_triggers="$(on_until_concurrency "${WF}/deploy-prod.yml")"
-if printf '%s\n' "${dp_on_for_triggers}" | grep -qE '^[[:space:]]*pull_request[[:space:]]*:'; then
-  fail "deploy-prod.yml must not declare on.pull_request (enterprise policy)"
-fi
-if printf '%s\n' "${dp_on_for_triggers}" | grep -qE '^[[:space:]]*push[[:space:]]*:'; then
-  fail "deploy-prod.yml must not declare on.push (production is manual or tightly gated, not on push)"
-fi
-if printf '%s\n' "${dp_on_for_triggers}" | grep -qE '^[[:space:]]*schedule[[:space:]]*:'; then
-  fail "deploy-prod.yml must not declare on.schedule (no scheduled production)"
-fi
+# security-verdict must appear in workflow text before any build resolution via workflow yaml /runs API (regression: head_sha search before verdict)
+"${python_exec}" - <<'PY' || fail "deploy-develop.yml must resolve security-verdict (source_build_run_id) before any build-push.yml/runs or actions/workflows/…/runs query"
+import pathlib
+import re
+import sys
+
+p = pathlib.Path(".github/workflows/deploy-develop.yml")
+lines = p.read_text(encoding="utf-8").splitlines()
+verdict_line = None
+bad_line = None
+for i, line in enumerate(lines, 1):
+    if "security-verdict" in line and not line.lstrip().startswith("#"):
+        verdict_line = verdict_line or i
+    if re.search(r"build-push\.yml/runs|actions/workflows/[^\"'\s]+\.(?:yml|yaml)/runs", line):
+        bad_line = bad_line or i
+if bad_line and (verdict_line is None or bad_line < verdict_line):
+    print(
+        "verify_workflow_contracts: use security-verdict and source_build_run_id before querying build by workflow yml or head_sha",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+PY
+
+# --- deploy-prod & deploy-production pointer: no automatic hooks (PR, push, develop branch, workflow_run) ---
+for prod_base in deploy-prod deploy-production; do
+  prod_path="${WF}/${prod_base}.yml"
+  [[ -f "${prod_path}" ]] || continue
+  if [[ "${prod_base}" == "deploy-prod" ]]; then
+    po="$(on_until_concurrency "${prod_path}")"
+  else
+    po="$(on_until_jobs "${prod_path}")"
+  fi
+  printf '%s\n' "${po}" | grep -qE '^[[:space:]]*pull_request[[:space:]]*:' && fail "production workflow ${prod_base}.yml must not declare on.pull_request (Deploy Production must not run from PR; use workflow_dispatch on main only)"
+  printf '%s\n' "${po}" | grep -qE '^[[:space:]]*push[[:space:]]*:' && fail "production workflow ${prod_base}.yml must not declare on.push (develop merge must not start Deploy Production)"
+  printf '%s\n' "${po}" | grep -qE '^[[:space:]]*schedule[[:space:]]*:' && fail "production workflow ${prod_base}.yml must not declare on.schedule"
+  if printf '%s\n' "${po}" | grep -qE '^[[:space:]]*workflow_run[[:space:]]*:'; then
+    fail "deploy-prod.yml must be workflow_dispatch-only while production auto is disabled (on.workflow_run is not allowed)"
+  fi
+  if printf '%s\n' "${po}" | grep -qE '^[[:space:]]*-[[:space:]]*develop[[:space:]]*$'; then
+    fail "production workflow ${prod_base}.yml must not use branch develop in on: triggers (no automatic deploy from develop into production)"
+  fi
+done
 
 if grep -E '^[[:space:]]*-[[:space:]]+Security[[:space:]]*$' "${WF}/deploy-prod.yml" >/dev/null 2>&1; then
   fail "deploy-prod.yml must not list a workflow_run trigger named only 'Security' (use Security Release)."
@@ -111,7 +217,7 @@ fi
 grep -q 'Security Release' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must reference Security Release for production evidence"
 dp_on_legacy="$(deploy_prod_on_block)"
 if echo "${dp_on_legacy}" | grep -qE '^[[:space:]]*workflow_run:'; then
-  fail "deploy-prod.yml must not declare on.workflow_run (enterprise policy: production is workflow_dispatch only)"
+  fail "deploy-prod.yml must be workflow_dispatch-only while production auto is disabled (on.workflow_run in legacy on block)"
 fi
 grep -q 'workflow_dispatch:' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must be triggered with workflow_dispatch"
 grep -qE 'source_branch must be main|artifact_source_branch must be main for production' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must validate security-verdict source_branch is main"

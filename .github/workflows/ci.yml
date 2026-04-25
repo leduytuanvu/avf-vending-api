@@ -55,6 +55,7 @@ jobs:
 
       - name: Verify CI/CD workflow contracts
         shell: bash
+        # Enforces Staging/Security/Build/Deploy Production naming and trigger graph; fails PRs on regressions.
         run: |
           set -Eeuo pipefail
           chmod +x scripts/ci/verify_workflow_contracts.sh

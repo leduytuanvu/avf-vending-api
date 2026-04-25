@@ -1,3 +1,5 @@
+# Repo-level checks (govulncheck, dependency review, etc.). Display name must stay "Security" — do not
+# rename to "Security Release"; that name is reserved for security-release.yml (release gate after Build).
 name: Security
 
 env:

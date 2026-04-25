@@ -1,3 +1,5 @@
+# Release gate after "Build and Push Images" (image scan, security-verdict). Display name must stay
+# "Security Release" — distinct from repo-level "Security" (security.yml). Downstream staging listens here.
 name: Security Release
 
 env:
@@ -67,7 +69,6 @@ jobs:
       (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.name == 'Build and Push Images' &&
-        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch' || github.event.workflow_run.event == 'workflow_run') &&
         (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     outputs:
@@ -119,6 +120,29 @@ jobs:
           fi
           echo "workflow_run_id=${workflow_run_id}" >> "${GITHUB_OUTPUT}"
 
+      - name: Required Build run artifacts (fail closed for release chain)
+        id: require_build_artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.lookup.outputs.workflow_run_id }}
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${RUN_ID}" ]]
+          need=(image-metadata promotion-manifest)
+          for a in "${need[@]}"; do
+            if ! gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
+              --jq ".artifacts[]? | select(.name==\"${a}\") | .id" | grep -q .; then
+              echo "error: Build and Push Images run ${RUN_ID} is missing required artifact \"${a}\" (real release candidate chain requires image-metadata + promotion-manifest)" >&2
+              exit 1
+            fi
+          done
+          {
+            echo "## Build artifact preflight"
+            echo "- run id: \`${RUN_ID}\`"
+            echo "- found: \`image-metadata\`, \`promotion-manifest\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
   resolve-image-refs:
     name: Resolve Published Image Refs
     if: |
@@ -126,7 +150,6 @@ jobs:
       (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.name == 'Build and Push Images' &&
-        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch' || github.event.workflow_run.event == 'workflow_run') &&
         (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main'))
     needs: resolve-build-run-id
     uses: ./.github/workflows/_reusable-deploy.yml
@@ -143,7 +166,6 @@ jobs:
       (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.name == 'Build and Push Images' &&
-        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch' || github.event.workflow_run.event == 'workflow_run') &&
         (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -447,12 +469,12 @@ jobs:
             source_branch = resolved_source_branch or build_head_branch
             artifact_source_event = (os.environ.get("ARTIFACT_SOURCE_EVENT") or "").strip()
             trigger_workflow_event = (os.environ.get("TRIGGER_WORKFLOW_EVENT") or "").strip()
-            if artifact_source_event and artifact_source_event != "manual":
+            # Semantic source_event: only from build promotion-manifest / image-metadata (not Security Release trigger,
+            # and not the Build workflow's GitHub event, which is often `workflow_run` when CI chains Build).
+            if artifact_source_event and artifact_source_event not in ("manual",):
                 source_event = artifact_source_event
-            elif event_name == "workflow_dispatch":
-                source_event = "workflow_dispatch"
             else:
-                source_event = trigger_workflow_event or ""
+                source_event = ""
             repo_release_verdict = os.environ.get("REPO_RELEASE_VERDICT", "")
             repo_release_checks = {
                 "dependency_review": {
@@ -513,6 +535,9 @@ jobs:
                 release_gate_trust_model = "not_applicable"
                 applicable = [v for v in [repo_security_verdict, published_image_verdict, nightly_security_verdict] if v != "not_applicable"]
                 security_verdict = "pass" if (not applicable or all(v == "pass" for v in applicable)) else "fail"
+            if event_name in ("workflow_run", "workflow_dispatch") and not source_event:
+                release_gate_verdict = "fail"
+                security_verdict = "fail"
             failure_reasons = []
             repo_evidence = os.environ.get("REPO_RELEASE_EVIDENCE_SOURCE", "")
             def add_failure_reason(message):
@@ -525,6 +550,10 @@ jobs:
                 )
             if source_sha and len(source_sha) != 40:
                 add_failure_reason(f"Source SHA is not a 40-character hex commit (got {source_sha!r}).")
+            if event_name in ("workflow_run", "workflow_dispatch") and not source_event:
+                add_failure_reason(
+                    "Semantic source_event is missing: required from build **promotion-manifest** (do not use `github.event.workflow_run.event` as source_event; see `trigger_workflow_event` for the Build run's GHA event type)."
+                )
             if event_name == "workflow_run":
                 if repo_required_for_release_verdict != "pass":
                     if repo_evidence == "security-workflow-run-not-successful":
@@ -877,6 +906,7 @@ jobs:
                   -f "event=push" \
                   -f "per_page=30" 2>/dev/null || true
               )"
+              # Filter API results to the repo "Security" workflow (security.yml), NOT this "Security Release" workflow.
               IFS=$'\t' read -r most_recent_id most_recent_concl < <(echo "${latest_json}" | jq -r --arg b "${want_branch}" '
                 [.workflow_runs[]?
                   | select(
