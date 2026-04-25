@@ -6,6 +6,11 @@ on:
       - CI
     types:
       - completed
+    # Only when CI ran on a branch named develop or main (e.g. push after merge). Pull_request CI
+    # runs on the PR head (feature/*), so this workflow is not scheduled (no all-skipped 1s runs).
+    branches:
+      - develop
+      - main
   workflow_dispatch:
     inputs:
       build_target_branch:
@@ -28,8 +33,27 @@ permissions:
   packages: write
 
 jobs:
+  # Fails the workflow (so downstream Security Release does not see success) when this run was
+  # started from workflow_run but the upstream CI was not a push (e.g. pull_request on head main/develop).
+  fail-if-not-push-ci:
+    if: |
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build and Push Images is only for push CI on develop or main
+        run: |
+          {
+            echo "## Not a release-candidate build"
+            echo "This workflow is wired to run after **CI** on **push** to \`develop\` or \`main\` only."
+            echo "The triggering CI event was: \`${{ github.event.workflow_run.event }}\` — not building or uploading image artifacts."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "error: refuse to report success for non-push CI (would confuse downstream release gates)" >&2
+          exit 1
+
   build-and-push:
     name: Build and Publish Images
+    # Defensive: match workflow_run filter above; never build from pull_request CI (event != push).
     if: |
       (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
@@ -80,6 +104,7 @@ jobs:
           SOURCE_BRANCH: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_target_branch || github.ref_name) }}
           # workflow_run: CI head branch. workflow_dispatch: chosen branch (develop/main). Never rely on default github.ref for dispatch.
           SOURCE_REF_TYPE: ${{ (github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch') && 'branch' || github.ref_type }}
+          # Semantic event for the code that was built: the triggering CI’s event (push), not the literal "workflow_run" of this file.
           SOURCE_EVENT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event || (github.event_name == 'workflow_dispatch' && 'workflow_dispatch' || github.event_name) }}
           TRIGGER_NAME: ${{ github.event_name }}
           WF_WRITE_BUILD_MANIFESTS: |
@@ -108,6 +133,9 @@ jobs:
                 print("error: BUILD_COMMIT_SHA must be a 40 hex character git sha", file=sys.stderr)
                 raise SystemExit(2)
             bwm = s("BUILD_WORKFLOW_NAME")
+            if bwm != "Build and Push Images":
+                print(f"error: expected this workflow name Build and Push Images, got {bwm!r}", file=sys.stderr)
+                raise SystemExit(2)
             rc, di = s("RELEASE_CHANNEL"), s("DOWNSTREAM_INTENT")
             bmd = {
                 "schema_version": "v1",
@@ -177,7 +205,7 @@ jobs:
                 "source_commit_sha": src_sha,
                 "source_branch": s("SOURCE_BRANCH"),
                 "source_event": s("SOURCE_EVENT"),
-                "source_workflow_name": bwm,
+                "source_workflow_name": "Build and Push Images",
                 "app_image_ref": app_ref,
                 "app_digest": s("APP_DIGEST"),
                 "goose_image_ref": goose_ref,
@@ -217,17 +245,19 @@ jobs:
 
           {
             echo "## Build Metadata and Promotion Signals"
-            echo "- build run id: \`${BUILD_RUN_ID}\`"
+            echo "- **images built and pushed (this run):** \`yes\`"
+            echo "- build workflow: \`Build and Push Images\` (this workflow; \`source_workflow_name\` in manifests)"
+            echo "- build run id: \`${BUILD_RUN_ID}\` (\`build_workflow_run_id\` in immutable-image-contract)"
             echo "- source branch: \`${SOURCE_BRANCH}\`"
             echo "- source ref type: \`${SOURCE_REF_TYPE}\`"
-            echo "- source event (from CI/Build): \`${SOURCE_EVENT}\`"
+            echo "- **semantic source event** (from triggering CI, not the literal \`workflow_run\` wrapper): \`${SOURCE_EVENT}\`"
             echo "- release channel: \`${release_channel}\`"
             echo "- downstream intent: \`${downstream_intent}\`"
-            echo "- commit SHA: \`${BUILD_COMMIT_SHA}\`"
-            echo "- trigger: \`${TRIGGER_NAME}\`"
+            echo "- **source commit (checkout) SHA:** \`${BUILD_COMMIT_SHA}\`"
+            echo "- trigger: \`${TRIGGER_NAME}\` (this file’s \`on\` — use \`SOURCE_EVENT\` for provenance of code)"
             echo "- actor: \`${ACTOR}\`"
-            echo "- app image: \`${APP_REF}\`"
-            echo "- goose image: \`${GOOSE_REF}\`"
+            echo "- app image ref: \`${APP_REF}\`"
+            echo "- goose image ref: \`${GOOSE_REF}\`"
             echo "- app digest: \`${APP_DIGEST}\`"
             echo "- goose digest: \`${GOOSE_DIGEST}\`"
             echo "- Dockerfile SHA256: \`${DOCKERFILE_SHA256}\`"
@@ -235,7 +265,7 @@ jobs:
             echo "- go.sum SHA256: \`${GO_SUM_SHA256}\`"
             echo "- SBOM: \`enabled\`"
             echo "- provenance: \`enabled (mode=max)\`"
-            echo "- downstream artifacts: \`build-metadata-manifest\`, \`promotion-manifest\`, \`immutable-image-contract\` (digest-pinned image refs)"
+            echo "- downstream artifacts: \`build-metadata-manifest\`, \`image-build-metadata\`, \`promotion-manifest\`, \`immutable-image-contract\` (digest-pinned image refs required)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build metadata manifest
