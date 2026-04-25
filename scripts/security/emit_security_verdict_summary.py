@@ -14,7 +14,11 @@ def _load() -> dict:
     if not path.is_file():
         print("error: security verdict JSON not found: %s" % path, file=sys.stderr)
         sys.exit(1)
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        print("error: could not parse verdict JSON: %s" % e, file=sys.stderr)
+        sys.exit(1)
 
 
 def emit_main(payload: dict) -> None:
@@ -24,6 +28,33 @@ def emit_main(payload: dict) -> None:
     print("- event: `%s`" % payload.get("event_name", ""))
     print("- verdict: `%s`" % payload.get("verdict", ""))
     print("- release gate: mode=`%s` verdict=`%s`" % (payload.get("release_gate_mode", ""), payload.get("release_gate_verdict", "")))
+    mval = payload.get("metadata_validation")
+    if isinstance(mval, dict) and mval:
+        print("")
+        print("### Build vs artifact metadata (observability)")
+        print("")
+        print("| Field | Value |")
+        print("| --- | --- |")
+        _order = (
+            "triggering_build_run_id",
+            "build_run_id_from_artifacts",
+            "triggering_build_event",
+            "triggering_build_head_branch",
+            "triggering_workflow_name",
+            "triggering_workflow_conclusion",
+            "artifact_source_event",
+            "resolved_source_branch",
+            "resolved_source_sha",
+            "decision",
+        )
+        _seen: set[str] = set()
+        for key in _order:
+            if key in mval and mval[key] is not None and str(mval[key]) != "":
+                print("| `%s` | `%s` |" % (key, mval.get(key, "")))
+                _seen.add(key)
+        for k in sorted(mval.keys()):
+            if k not in _seen:
+                print("| `%s` | `%s` |" % (k, mval.get(k, "")))
     rg = payload.get("release_gate") or {}
     print("- release gate generated at (UTC): `%s`" % rg.get("generated_at_utc", payload.get("generated_at_utc", "")))
     print("- release gate trust model: `%s`" % rg.get("trust_model", ""))
