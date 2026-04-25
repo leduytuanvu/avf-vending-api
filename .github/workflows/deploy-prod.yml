@@ -4,6 +4,13 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
+  workflow_run:
+    workflows:
+      - Security
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       action_mode:
@@ -117,11 +124,16 @@ jobs:
         id: lookup
         shell: bash
         env:
-          ACTION_MODE: ${{ inputs.action_mode }}
-          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          INPUT_ACTION_MODE: ${{ inputs.action_mode }}
+          INPUT_BUILD_RUN_ID: ${{ inputs.build_run_id }}
           GH_TOKEN: ${{ github.token }}
           ROLLBACK_APP_IMAGE_REF: ${{ inputs.rollback_app_image_ref }}
           ROLLBACK_GOOSE_IMAGE_REF: ${{ inputs.rollback_goose_image_ref }}
+          WR_NAME: ${{ github.event.workflow_run.name || 'disabled' }}
+          WR_CONC: ${{ github.event.workflow_run.conclusion || 'disabled' }}
+          WR_BRA: ${{ github.event.workflow_run.head_branch || 'disabled' }}
+          WR_EVT: ${{ github.event.workflow_run.event || 'disabled' }}
+          WR_SHA: ${{ github.event.workflow_run.head_sha || '' }}
         run: |
           set -Eeuo pipefail
 
@@ -130,36 +142,73 @@ jobs:
             exit 1
           }
 
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            [[ "${GITHUB_REF_NAME}" == "main" ]] || {
-              echo "error: production workflow_dispatch must be run from the main branch" >&2
-              exit 1
-            }
-          fi
+          # Auto deploy after a successful Security run on main (push only). Rollback is manual (workflow_dispatch) only.
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            [[ "${WR_NAME}" == "Security" ]] || fail "workflow_run must be from Security (got: ${WR_NAME})"
+            [[ "${WR_CONC}" == "success" ]] || fail "Security run must be successful (got: ${WR_CONC})"
+            [[ "${WR_BRA}" == "main" ]] || fail "auto production deploy is only for main (got: ${WR_BRA})"
+            [[ "${WR_EVT}" == "push" ]] || fail "auto production deploy is only for push (got: ${WR_EVT}, not pull_request)"
+            head_sha="${WR_SHA}"
+            [[ -n "${head_sha}" ]] || fail "missing head_sha from Security workflow run"
+            BUILD_RESOLVED="$(
+              gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build-push.yml/runs?per_page=30&head_sha=${head_sha}" \
+                --jq '[
+                  .workflow_runs[]?
+                  | select(
+                      .conclusion == "success"
+                      and (.name // "") == "Build and Push Images"
+                      and ((.event // "") == "push" or (.event // "") == "workflow_dispatch")
+                      and (.head_branch // "") == "main"
+                    )
+                  ]
+                  | sort_by(.created_at)
+                  | reverse
+                  | .[0].id
+                  // empty
+                ' 2>/dev/null || true
+            )"
+            [[ -n "${BUILD_RESOLVED}" ]] || fail "no successful Build and Push Images run for head_sha=${head_sha} (main)"
+            BUILD_RUN_ID="${BUILD_RESOLVED}"
+            day="$(date -u +%Y%m%d)"
+            short_sha="$(printf '%s' "${head_sha}" | cut -c1-7)"
+            RELEASE_TAG_COMPUTED="auto-main-${day}-${short_sha}"
+          else
+            if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+              [[ "${GITHUB_REF_NAME}" == "main" ]] || {
+                echo "error: production workflow_dispatch must be run from the main branch" >&2
+                exit 1
+              }
+            fi
+            ACTION_MODE_IN="${INPUT_ACTION_MODE}"
+            RELEASE_TAG_IN="${{ inputs.release_tag }}"
+            ACTION_MODE="${ACTION_MODE_IN}"
+            BUILD_RUN_ID="${INPUT_BUILD_RUN_ID:-}"
+            RELEASE_TAG_COMPUTED="${RELEASE_TAG_IN}"
 
-          [[ "${ACTION_MODE}" == "deploy" || "${ACTION_MODE}" == "rollback" ]] || fail "action_mode must be 'deploy' or 'rollback'"
-          {
-            echo "action_mode=${ACTION_MODE}"
-            echo "release_tag=${{ inputs.release_tag }}"
-          } >> "${GITHUB_OUTPUT}"
+            [[ "${ACTION_MODE}" == "deploy" || "${ACTION_MODE}" == "rollback" ]] || fail "action_mode must be 'deploy' or 'rollback'"
 
-          if [[ "${ACTION_MODE}" == "rollback" ]]; then
-            [[ -n "${ROLLBACK_APP_IMAGE_REF}" ]] || fail "rollback mode requires rollback_app_image_ref"
-            [[ -n "${ROLLBACK_GOOSE_IMAGE_REF}" ]] || fail "rollback mode requires rollback_goose_image_ref"
-            [[ "${ROLLBACK_APP_IMAGE_REF}" == *@sha256:* ]] || fail "rollback_app_image_ref must be digest-pinned (...@sha256:...)"
-            [[ "${ROLLBACK_GOOSE_IMAGE_REF}" == *@sha256:* ]] || fail "rollback_goose_image_ref must be digest-pinned (...@sha256:...)"
-            [[ "${ROLLBACK_APP_IMAGE_REF}" != *":latest" ]] || fail "rollback_app_image_ref must not use latest"
-            [[ "${ROLLBACK_GOOSE_IMAGE_REF}" != *":latest" ]] || fail "rollback_goose_image_ref must not use latest"
-            [[ -z "${BUILD_RUN_ID}" ]] || fail "build_run_id must be empty in rollback mode"
-            [[ -z "${{ inputs.app_image_ref }}" && -z "${{ inputs.goose_image_ref }}" ]] || fail "app_image_ref and goose_image_ref confirmation inputs are not used in rollback mode"
-            [[ -z "${{ inputs.source_commit_sha }}" ]] || fail "source_commit_sha confirmation is not used in rollback mode"
-            {
-              echo "build_actor="
-              echo "source_commit_sha="
-              echo "source_branch="
-              echo "workflow_run_id="
-            } >> "${GITHUB_OUTPUT}"
-            exit 0
+            if [[ "${ACTION_MODE}" == "rollback" ]]; then
+              {
+                echo "action_mode=rollback"
+                echo "release_tag=${RELEASE_TAG_COMPUTED}"
+              } >> "${GITHUB_OUTPUT}"
+              [[ -n "${ROLLBACK_APP_IMAGE_REF}" ]] || fail "rollback mode requires rollback_app_image_ref"
+              [[ -n "${ROLLBACK_GOOSE_IMAGE_REF}" ]] || fail "rollback mode requires rollback_goose_image_ref"
+              [[ "${ROLLBACK_APP_IMAGE_REF}" == *@sha256:* ]] || fail "rollback_app_image_ref must be digest-pinned (...@sha256:...)"
+              [[ "${ROLLBACK_GOOSE_IMAGE_REF}" == *@sha256:* ]] || fail "rollback_goose_image_ref must be digest-pinned (...@sha256:...)"
+              [[ "${ROLLBACK_APP_IMAGE_REF}" != *":latest" ]] || fail "rollback_app_image_ref must not use latest"
+              [[ "${ROLLBACK_GOOSE_IMAGE_REF}" != *":latest" ]] || fail "rollback_goose_image_ref must not use latest"
+              [[ -z "${BUILD_RUN_ID}" ]] || fail "build_run_id must be empty in rollback mode"
+              [[ -z "${{ inputs.app_image_ref }}" && -z "${{ inputs.goose_image_ref }}" ]] || fail "app_image_ref and goose_image_ref confirmation inputs are not used in rollback mode"
+              [[ -z "${{ inputs.source_commit_sha }}" ]] || fail "source_commit_sha confirmation is not used in rollback mode"
+              {
+                echo "build_actor="
+                echo "source_commit_sha="
+                echo "source_branch="
+                echo "workflow_run_id="
+              } >> "${GITHUB_OUTPUT}"
+              exit 0
+            fi
           fi
 
           [[ "${BUILD_RUN_ID}" =~ ^[0-9]+$ ]] || fail "build_run_id must be a numeric GitHub Actions run id in deploy mode"
@@ -196,6 +245,8 @@ jobs:
 
           workflow_run_id="${BUILD_RUN_ID}"
           {
+            echo "action_mode=deploy"
+            echo "release_tag=${RELEASE_TAG_COMPUTED}"
             echo "build_actor=${build_actor}"
             echo "workflow_run_id=${workflow_run_id}"
             echo "source_commit_sha=${source_commit_sha}"
@@ -1003,13 +1054,13 @@ jobs:
         shell: bash
         env:
           ACTION_MODE: ${{ needs.resolve-build-run-id.outputs.action_mode }}
-          FLEET_SCALE_TARGET: ${{ inputs.fleet_scale_target }}
-          ALLOW_SCALE_GATE_BYPASS: ${{ inputs.allow_scale_gate_bypass }}
-          SCALE_GATE_BYPASS_REASON: ${{ inputs.scale_gate_bypass_reason }}
-          BYPASS_REASON: ${{ inputs.scale_gate_bypass_reason }}
-          TELEMETRY_STORM_EVIDENCE_REPO_PATH: ${{ inputs.telemetry_storm_evidence_repo_path }}
-          TELEMETRY_STORM_EVIDENCE_ARTIFACT_RUN_ID: ${{ inputs.telemetry_storm_evidence_artifact_run_id }}
-          STORM_EVIDENCE_MAX_AGE_DAYS: ${{ inputs.storm_evidence_max_age_days }}
+          FLEET_SCALE_TARGET: ${{ github.event_name == 'workflow_run' && 'pilot' || inputs.fleet_scale_target }}
+          ALLOW_SCALE_GATE_BYPASS: ${{ github.event_name == 'workflow_run' && 'false' || inputs.allow_scale_gate_bypass }}
+          SCALE_GATE_BYPASS_REASON: ${{ github.event_name == 'workflow_run' && '' || inputs.scale_gate_bypass_reason }}
+          BYPASS_REASON: ${{ github.event_name == 'workflow_run' && '' || inputs.scale_gate_bypass_reason }}
+          TELEMETRY_STORM_EVIDENCE_REPO_PATH: ${{ github.event_name == 'workflow_run' && '' || inputs.telemetry_storm_evidence_repo_path }}
+          TELEMETRY_STORM_EVIDENCE_ARTIFACT_RUN_ID: ${{ github.event_name == 'workflow_run' && '' || inputs.telemetry_storm_evidence_artifact_run_id }}
+          STORM_EVIDENCE_MAX_AGE_DAYS: ${{ github.event_name == 'workflow_run' && '7' || inputs.storm_evidence_max_age_days }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
@@ -1112,7 +1163,7 @@ jobs:
       RELEASE_TAG: ${{ needs.resolve-build-run-id.outputs.release_tag }}
       SOURCE_BRANCH: ${{ needs.resolve-build-run-id.outputs.source_branch }}
       SOURCE_COMMIT_SHA: ${{ needs.resolve-build-run-id.outputs.source_commit_sha }}
-      SOURCE_COMMIT_SHA_NOTE: ${{ inputs.source_commit_sha != '' && 'operator-confirmed' || 'selected-build-run' }}
+      SOURCE_COMMIT_SHA_NOTE: ${{ github.event_name == 'workflow_run' && 'auto-post-security-main' || (inputs.source_commit_sha != '' && 'operator-confirmed' || 'selected-build-run') }}
       SELECTED_BUILD_ACTOR: ${{ needs.resolve-build-run-id.outputs.build_actor }}
       SELECTED_BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
       PREVIOUS_ACTION_MODE: ${{ needs.resolve-previous-production-deployment.outputs.previous_action_mode }}
@@ -1126,8 +1177,8 @@ jobs:
       PREVIOUS_RUN_NUMBER: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_number }}
       PREVIOUS_RUN_URL: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}
       ROLLBACK_AVAILABLE_BEFORE_DEPLOY: ${{ needs.resolve-previous-production-deployment.outputs.rollback_available }}
-      DEPLOY_DATA_NODE: ${{ inputs.deploy_data_node && 'true' || 'false' }}
-      ALLOW_APP_NODE_ON_DATA_NODE: ${{ inputs.allow_app_node_on_data_node && 'true' || 'false' }}
+      DEPLOY_DATA_NODE: ${{ github.event_name == 'workflow_run' && 'false' || (inputs.deploy_data_node && 'true' || 'false') }}
+      ALLOW_APP_NODE_ON_DATA_NODE: ${{ github.event_name == 'workflow_run' && 'false' || (inputs.allow_app_node_on_data_node && 'true' || 'false') }}
       ENABLE_TEMPORAL_PROFILE: ${{ vars.PRODUCTION_ENABLE_TEMPORAL_PROFILE || 'false' }}
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || vars.PRODUCTION_DEPLOY_ROOT || vars.PROD_DEPLOY_PATH || vars.DEPLOY_PATH || '/opt/avf-vending-api' }}
       APP_NODE_A_HOST: ${{ secrets.PRODUCTION_APP_NODE_A_HOST || secrets.PROD_APP_A_HOST || secrets.APP_A_HOST || vars.PRODUCTION_APP_NODE_A_HOST || vars.PROD_APP_A_HOST || vars.APP_A_HOST }}
@@ -1441,7 +1492,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
-          key_fingerprint="$(ssh-keygen -lf "${SSH_IDENTITY_FILE}" 2>&1 || true)"
+          key_fingerprint="$({ ssh-keygen -lf "${SSH_IDENTITY_FILE}" || true; } 2>&1)"
           {
             echo "## Production SSH Context"
             echo "- ssh user: \`${SSH_USER}\`"
@@ -1486,13 +1537,15 @@ jobs:
             set -e
 
             if [[ "${probe_rc}" -ne 0 ]]; then
-              echo "### SSH probe failure: ${label}" >> "$GITHUB_STEP_SUMMARY"
-              echo "- target: \`${target}\`" >> "$GITHUB_STEP_SUMMARY"
-              echo "- ssh identity file: \`${SSH_IDENTITY_FILE}\`" >> "$GITHUB_STEP_SUMMARY"
-              echo "- ssh identity fingerprint:" >> "$GITHUB_STEP_SUMMARY"
-              ssh-keygen -lf "${SSH_IDENTITY_FILE}" 2>&1 >> "$GITHUB_STEP_SUMMARY" || true
-              echo "- probe output:" >> "$GITHUB_STEP_SUMMARY"
-              sed 's/^/    /' "${output_file}" >> "$GITHUB_STEP_SUMMARY"
+              {
+                echo "### SSH probe failure: ${label}"
+                echo "- target: \`${target}\`"
+                echo "- ssh identity file: \`${SSH_IDENTITY_FILE}\`"
+                echo "- ssh identity fingerprint:"
+                ssh-keygen -lf "${SSH_IDENTITY_FILE}" || true
+                echo "- probe output:"
+                sed 's/^/    /' "${output_file}"
+              } >> "$GITHUB_STEP_SUMMARY" 2>&1
               fail "SSH authentication probe failed for ${target}; verify PRODUCTION_SSH_USER, PRODUCTION_SSH_PRIVATE_KEY, and authorized_keys on the target node"
             fi
           }

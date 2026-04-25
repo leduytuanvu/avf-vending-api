@@ -641,17 +641,17 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 	displayPg := pgtype.Text{String: display, Valid: true}
 
 	img, err := qtx.CatalogWriteInsertProductImage(ctx, db.CatalogWriteInsertProductImageParams{
-		ProductID:    in.ProductID,
-		StorageKey:   "artifact:" + in.ArtifactID.String(),
-		CdnUrl:       displayPg,
-		ThumbCdnUrl:  thumbPg,
-		ContentHash:  chText,
-		Width:        w,
-		Height:       h,
-		MimeType:     mime,
-		AltText:      "",
-		SortOrder:    0,
-		IsPrimary:    true,
+		ProductID:   in.ProductID,
+		StorageKey:  "artifact:" + in.ArtifactID.String(),
+		CdnUrl:      displayPg,
+		ThumbCdnUrl: thumbPg,
+		ContentHash: chText,
+		Width:       w,
+		Height:      h,
+		MimeType:    mime,
+		AltText:     "",
+		SortOrder:   0,
+		IsPrimary:   true,
 	})
 	if err != nil {
 		return db.Product{}, err

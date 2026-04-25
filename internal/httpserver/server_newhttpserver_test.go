@@ -23,13 +23,13 @@ func (stubReadinessProbe) Ready(context.Context) error { return nil }
 func testHTTPServerConfig(t *testing.T) *config.Config {
 	t.Helper()
 	return &config.Config{
-		AppEnv:           config.AppEnvDevelopment,
-		ProcessName:      "api",
-		LogLevel:         "info",
-		LogFormat:        "json",
+		AppEnv:             config.AppEnvDevelopment,
+		ProcessName:        "api",
+		LogLevel:           "info",
+		LogFormat:          "json",
 		SwaggerUIEnabled:   true,
 		OpenAPIJSONEnabled: true,
-		MetricsEnabled:   false,
+		MetricsEnabled:     false,
 		Runtime: config.RuntimeConfig{
 			NodeName:    "node-a",
 			InstanceID:  "node-a-api-1",

@@ -51,8 +51,7 @@ jobs:
           fi
           # Resolve digest-pinned artifacts from the successful Build and Push Images run for this commit (not the Security run id).
           build_id="$(
-            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build-push.yml/runs" \
-              -f per_page=30 -f head_sha="${head_sha}" \
+            gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build-push.yml/runs?per_page=30&head_sha=${head_sha}" \
               --jq '[
                 .workflow_runs[]?
                 | select(
@@ -82,6 +81,7 @@ jobs:
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.name == 'Security' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'develop'
     needs: resolve-build-run-id
@@ -100,6 +100,7 @@ jobs:
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.name == 'Security' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'develop'
     runs-on: ubuntu-latest
@@ -343,6 +344,7 @@ jobs:
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.name == 'Security' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'develop'
     runs-on: ubuntu-latest
@@ -610,6 +612,7 @@ jobs:
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.name == 'Security' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'develop'
     runs-on: ubuntu-latest

@@ -57,7 +57,7 @@ type CloseMachineCashCollectionInput struct {
 	// Denominations is persisted in metadata and included in the extended close hash when non-empty.
 	Denominations []CloseDenominationCount
 	// Client-declared close instant for idempotency hashing only (server records closed_at = now()).
-	ClosedAtRFC3339 string
+	ClosedAtRFC3339         string
 	CorrelationID           *uuid.UUID
 	VarianceReviewThreshold int64
 	// UsesExtendedCloseHash selects P1 hash when any extended field is used (non-zero recycler, denoms, photo id, closedAt).
@@ -100,15 +100,15 @@ func extendedCloseHash(in CloseMachineCashCollectionInput) []byte {
 		d = append(d, denom{DenominationMinor: x.DenominationMinor, Count: x.Count})
 	}
 	type canon struct {
-		CountedAmountMinor          int64    `json:"counted_amount_minor"`
-		CountedCashboxMinor         int64    `json:"counted_cashbox_minor"`
-		CountedRecyclerMinor        int64    `json:"counted_recycler_minor"`
-		Currency                    string   `json:"currency"`
-		EvidenceArtifactURL         string   `json:"evidence_artifact_url"`
-		EvidencePhotoArtifactID     string   `json:"evidence_photo_artifact_id"`
-		Notes                       string   `json:"notes"`
-		Denominations               []denom  `json:"denominations,omitempty"`
-		ClosedAt                    string   `json:"closed_at,omitempty"`
+		CountedAmountMinor      int64   `json:"counted_amount_minor"`
+		CountedCashboxMinor     int64   `json:"counted_cashbox_minor"`
+		CountedRecyclerMinor    int64   `json:"counted_recycler_minor"`
+		Currency                string  `json:"currency"`
+		EvidenceArtifactURL     string  `json:"evidence_artifact_url"`
+		EvidencePhotoArtifactID string  `json:"evidence_photo_artifact_id"`
+		Notes                   string  `json:"notes"`
+		Denominations           []denom `json:"denominations,omitempty"`
+		ClosedAt                string  `json:"closed_at,omitempty"`
 	}
 	raw, err := json.Marshal(canon{
 		CountedAmountMinor:      in.CountedAmountMinor,
