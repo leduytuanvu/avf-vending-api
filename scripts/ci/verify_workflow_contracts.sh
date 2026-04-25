@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # CI guard: enforce enterprise CI/CD release graph contracts for GitHub Actions.
 # Deterministic: reads only local .github/workflows/*.yml (no GitHub API, no network).
+#
+# Fails PR CI before merge on common regressions, including:
+#   - deploy-prod: on.workflow_run / develop / pull_request (production is workflow_dispatch on main)
+#   - security-release: non-empty verdict + security-verdict.json + skipped / no-candidate paths
+#   - build-push: release_candidate + push gate (no fake release artifacts on skip)
+#   - deploy-develop: Security Release only (not Security), skipped verdict neutral exit, source_build_run_id
+#   - canonical display names, duplicate "Security", heredoc safety (see also Python heredoc check below)
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -80,8 +87,13 @@ grep -qF "name: image-metadata" "${WF}/_reusable-build.yml" || fail "_reusable-b
 
 # --- security-release: verdict must not be stoppable as empty (enforce + skipped path + emergency fail writer) ---
 grep -qF "blocking security verdict is empty" "${WF}/security-release.yml" || fail "security-release.yml must fail closed when the resolved verdict is empty (expected pass, fail, or skipped in SECURITY_VERDICT / security-verdict.json)"
-grep -q "WF_WRITE_SKIPPED_VERDICT" "${WF}/security-release.yml" || fail "security-release.yml must include a non-empty skipped-verdict path when Build is ineligible (prevents empty verdict on skip)"
+grep -qF "SECURITY_VERDICT" "${WF}/security-release.yml" || fail "security-release.yml must use SECURITY_VERDICT in the Enforce step (blocking empty string)"
+grep -qF "security-reports/security-verdict.json" "${WF}/security-release.yml" || fail "security-release.yml must write security-reports/security-verdict.json (uploaded as security-verdict artifact)"
+grep -qF '"verdict": "skipped"' "${WF}/security-release.yml" || fail "security-release.yml must emit JSON payloads with verdict skipped (ineligible / no-candidate / skip paths)"
+grep -qE "WF_WRITE_SKIPPED_VERDICT|WF_WRITE_NO_CANDIDATE" "${WF}/security-release.yml" || fail "security-release.yml must include skipped-verdict writers when Build is ineligible or the artifact chain is incomplete (prevents empty verdict on skip)"
+grep -qF "No releasable candidate. Security release gate skipped." "${WF}/security-release.yml" || fail "security-release.yml must document the neutral no-release-candidate skipped outcome (Build chain did not produce a releasable candidate)"
 grep -q "WF_WRITE_SECURITY_VERDICT_JSON" "${WF}/security-release.yml" || fail "security-release.yml must include the main security-verdict JSON writer (artifact contract)"
+grep -qF "wf_emergency_security_verdict" "${WF}/security-release.yml" || fail "security-release.yml must keep the emergency fail verdict path when WF_WRITE_SECURITY_VERDICT_JSON fails (never ship an empty verdict artifact)"
 
 # Prefer an interpreter that actually runs (skip broken Windows "python3" app-install stubs when possible).
 python_exec=""
@@ -112,7 +124,10 @@ grep -q "head_branch == 'main'" "${WF}/build-push.yml" || fail "build-push.yml m
 grep -q "github.event.inputs.build_target_branch == 'develop'" "${WF}/build-push.yml" || fail "build-push.yml workflow_dispatch must allow develop target branch"
 grep -q "github.event.inputs.build_target_branch == 'main'" "${WF}/build-push.yml" || fail "build-push.yml workflow_dispatch must allow main target branch"
 grep -qF "github.event.workflow_run.event == 'push'" "${WF}/build-push.yml" || fail "build-push.yml must require github.event.workflow_run.event == 'push' for workflow_run so non-push CI cannot complete Build and confuse downstream gates"
-grep -qE 'upstream-ci-release-gate|refuse green empty run' "${WF}/build-push.yml" || fail "build-push.yml must fail closed (job upstream-ci-release-gate) when workflow_run is not a valid develop/main push with successful CI, so an all-skipped run cannot go green with no images"
+grep -qF "release_candidate" "${WF}/build-push.yml" || fail "build-push.yml must expose upstream-ci-release-gate.outputs.release_candidate so non-candidate runs skip build without a failed workflow"
+grep -qF "Not a release candidate. No image was built or published." "${WF}/build-push.yml" || fail "build-push.yml must document the neutral not-a-release-candidate path (no GHCR images, no release manifest uploads)"
+grep -qF "outputs.release_candidate" "${WF}/build-push.yml" || fail "build-push.yml must wire release_candidate into build-and-push when: (release artifacts only for real candidates)"
+grep -qE 'upstream-ci-release-gate' "${WF}/build-push.yml" || fail "build-push.yml must use job upstream-ci-release-gate for CI chain policy"
 
 # --- security-release: after Build and Push completed ---
 sr_on_block="$(on_until_concurrency "${WF}/security-release.yml")"
@@ -181,6 +196,7 @@ grep -q 'source_build_run_id' "${WF}/deploy-develop.yml" || fail "deploy-develop
 grep -q 'security-verdict' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must consume the security-verdict artifact"
 grep -q 'staging deployment skipped because real staging is disabled' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml no-op path must state staging deployment skipped because real staging is disabled"
 grep -q 'github.event.workflow_run.id' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must use github.event.workflow_run.id (Security Release run) to download security-verdict"
+grep -qF 'verdict == "skipped"' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must treat verdict=skipped in security-verdict (neutral skip, no failed deploy)"
 # Do not use GitHub workflow runs list API to pick Build by yml (must use source_build_run_id from verdict).
 if grep -qE 'actions/workflows/[^"[:space:]]+\.(yml|yaml)/runs' "${WF}/deploy-develop.yml"; then
   fail "deploy-develop.yml must not list workflow runs by workflow yaml path; resolve build via security-verdict source_build_run_id"
@@ -266,6 +282,8 @@ grep -q "branches:" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml shoul
 grep -A6 'workflow_run:' "${WF}/deploy-develop.yml" | grep -q 'develop' || fail "deploy-develop.yml workflow_run should filter develop"
 grep -qE 'source_branch must be develop|staging candidate source_branch must be develop' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must validate security-verdict source_branch is develop"
 grep -q 'automatic staging requires source_event push' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must require security-verdict source_event push for automatic staging"
+grep -qF "No releasable staging candidate. Staging deployment skipped." "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must neutral-skip (no deploy) when Security Release verdict is skipped / non-candidate"
+grep -qF "outputs.staging_verdict" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must expose staging_verdict to gate image resolution and deploy on verdict=pass only"
 grep -q 'verify_workflow_contracts.sh' .github/workflows/ci.yml || fail "ci.yml must run scripts/ci/verify_workflow_contracts.sh"
 
 # --- build-push: must chain only from CI by name, push, develop/main (downstream security-verdict expects Build and Push run id) ---
