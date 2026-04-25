@@ -140,6 +140,9 @@ jobs:
           INPUT_SECURITY_RELEASE_RUN_ID: ${{ inputs.security_release_run_id }}
           INPUT_APP_IMAGE_REF: ${{ inputs.app_image_ref }}
           INPUT_GOOSE_IMAGE_REF: ${{ inputs.goose_image_ref }}
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          INPUT_SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
+          INPUT_DEPLOY_PRODUCTION_CONFIRMATION: ${{ inputs.deploy_production_confirmation }}
           GH_TOKEN: ${{ github.token }}
           ROLLBACK_APP_IMAGE_REF: ${{ inputs.rollback_app_image_ref }}
           ROLLBACK_GOOSE_IMAGE_REF: ${{ inputs.rollback_goose_image_ref }}
@@ -209,7 +212,7 @@ jobs:
           }
 
           ACTION_MODE_IN="${INPUT_ACTION_MODE}"
-          RELEASE_TAG_IN="${{ inputs.release_tag }}"
+          RELEASE_TAG_IN="${INPUT_RELEASE_TAG}"
           ACTION_MODE="${ACTION_MODE_IN}"
           BUILD_RUN_ID="${INPUT_BUILD_RUN_ID:-}"
           RELEASE_TAG_COMPUTED="${RELEASE_TAG_IN}"
@@ -228,10 +231,10 @@ jobs:
             [[ "${ROLLBACK_APP_IMAGE_REF}" != *":latest" ]] || fail "rollback_app_image_ref must not use latest"
             [[ "${ROLLBACK_GOOSE_IMAGE_REF}" != *":latest" ]] || fail "rollback_goose_image_ref must not use latest"
             [[ -z "${BUILD_RUN_ID}" ]] || fail "build_run_id must be empty in rollback mode"
-            [[ -z "${{ inputs.app_image_ref }}" && -z "${{ inputs.goose_image_ref }}" ]] || fail "app_image_ref and goose_image_ref confirmation inputs are not used in rollback mode"
-            [[ -z "${{ inputs.source_commit_sha }}" ]] || fail "source_commit_sha confirmation is not used in rollback mode"
-            [[ -z "${{ inputs.security_release_run_id }}" ]] || fail "security_release_run_id is not used in rollback mode; use digest-pinned rollback refs only"
-            [[ -z "${{ inputs.deploy_production_confirmation }}" ]] || fail "deploy_production_confirmation is not used in rollback mode"
+            [[ -z "${INPUT_APP_IMAGE_REF}" && -z "${INPUT_GOOSE_IMAGE_REF}" ]] || fail "app_image_ref and goose_image_ref confirmation inputs are not used in rollback mode"
+            [[ -z "${INPUT_SOURCE_COMMIT_SHA}" ]] || fail "source_commit_sha confirmation is not used in rollback mode"
+            [[ -z "${INPUT_SECURITY_RELEASE_RUN_ID}" ]] || fail "security_release_run_id is not used in rollback mode; use digest-pinned rollback refs only"
+            [[ -z "${INPUT_DEPLOY_PRODUCTION_CONFIRMATION}" ]] || fail "deploy_production_confirmation is not used in rollback mode"
             {
               echo "build_actor="
               echo "source_commit_sha="
@@ -245,13 +248,13 @@ jobs:
           if [[ "${ACTION_MODE}" == "deploy" ]]; then
             [[ -n "${INPUT_SECURITY_RELEASE_RUN_ID}" ]] || fail "deploy mode requires security_release_run_id (successful Security Release run that produced the authorizing security-verdict)"
             [[ "${INPUT_SECURITY_RELEASE_RUN_ID}" =~ ^[0-9]+$ ]] || fail "security_release_run_id must be a numeric GitHub Actions run id"
-            [[ "${{ inputs.deploy_production_confirmation }}" == "DEPLOY_PRODUCTION" ]] || fail "manual deploy requires deploy_production_confirmation input to be exactly DEPLOY_PRODUCTION"
-            [[ -n "${{ inputs.app_image_ref }}" ]] || fail "manual deploy requires app_image_ref (digest-pinned ...@sha256:...)"
-            [[ -n "${{ inputs.goose_image_ref }}" ]] || fail "manual deploy requires goose_image_ref (digest-pinned ...@sha256:...)"
-            [[ "${{ inputs.app_image_ref }}" == *@sha256:* ]] || fail "manual deploy app_image_ref must be digest-pinned (...@sha256:...)"
-            [[ "${{ inputs.goose_image_ref }}" == *@sha256:* ]] || fail "manual deploy goose_image_ref must be digest-pinned (...@sha256:...)"
-            [[ "${{ inputs.app_image_ref }}" != *":latest"* ]] || fail "manual deploy app_image_ref must not use the latest tag"
-            [[ "${{ inputs.goose_image_ref }}" != *":latest"* ]] || fail "manual deploy goose_image_ref must not use the latest tag"
+            [[ "${INPUT_DEPLOY_PRODUCTION_CONFIRMATION}" == "DEPLOY_PRODUCTION" ]] || fail "manual deploy requires deploy_production_confirmation input to be exactly DEPLOY_PRODUCTION"
+            [[ -n "${INPUT_APP_IMAGE_REF}" ]] || fail "manual deploy requires app_image_ref (digest-pinned ...@sha256:...)"
+            [[ -n "${INPUT_GOOSE_IMAGE_REF}" ]] || fail "manual deploy requires goose_image_ref (digest-pinned ...@sha256:...)"
+            [[ "${INPUT_APP_IMAGE_REF}" == *@sha256:* ]] || fail "manual deploy app_image_ref must be digest-pinned (...@sha256:...)"
+            [[ "${INPUT_GOOSE_IMAGE_REF}" == *@sha256:* ]] || fail "manual deploy goose_image_ref must be digest-pinned (...@sha256:...)"
+            [[ "${INPUT_APP_IMAGE_REF}" != *":latest"* ]] || fail "manual deploy app_image_ref must not use the latest tag"
+            [[ "${INPUT_GOOSE_IMAGE_REF}" != *":latest"* ]] || fail "manual deploy goose_image_ref must not use the latest tag"
           fi
 
           if [[ "${ACTION_MODE}" == "deploy" ]]; then
