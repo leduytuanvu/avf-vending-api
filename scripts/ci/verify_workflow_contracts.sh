@@ -10,6 +10,7 @@
 #   - build-push: release_candidate + push gate (no fake release artifacts on skip)
 #   - deploy-develop: Security Release only (not Security), skipped verdict neutral exit, source_build_run_id
 #   - canonical display names, duplicate "Security", heredoc safety (see also Python heredoc check below)
+#   - verify_enterprise_release.sh: legacy docker-compose.prod uses PROD_ENV_FILE=.env.production.example in CI
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -21,6 +22,11 @@ fail() {
   echo "verify_workflow_contracts.sh: error: $*" >&2
   exit 1
 }
+
+# --- verify_enterprise_release.sh: legacy single-host docker-compose.prod CI check uses example env for both --env-file and PROD_ENV_FILE ---
+# (YAML env_file: ${PROD_ENV_FILE:-.env.production} would otherwise make compose look for a real .env.production.)
+grep -qE 'PROD_ENV_FILE=\.env\.production\.example.*docker-compose\.prod\.yml' "${ROOT}/scripts/verify_enterprise_release.sh" || \
+  fail "verify_enterprise_release.sh must set PROD_ENV_FILE=.env.production.example when validating docker-compose.prod.yml (CI must not require deployments/prod/.env.production)"
 
 # From `on:` up to the next `concurrency:` (top level). Works for workflows where `concurrency` follows
 # the on block (possibly with # comments, e.g. deploy-prod).

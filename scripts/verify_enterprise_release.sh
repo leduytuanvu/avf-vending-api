@@ -131,7 +131,8 @@ phase_docker_compose() {
 
   if [[ -f deployments/prod/.env.production.example ]] && [[ -f deployments/prod/docker-compose.prod.yml ]]; then
     echo "  legacy single-host prod (rollback path example)"
-    (cd deployments/prod && "${dc[@]}" --env-file .env.production.example -f docker-compose.prod.yml config >/dev/null)
+    # PROD_ENV_FILE must match --env-file: compose resolves env_file paths in YAML (${PROD_ENV_FILE:-.env.production}) and would otherwise require a real .env.production in CI.
+    (cd deployments/prod && PROD_ENV_FILE=.env.production.example "${dc[@]}" --env-file .env.production.example -f docker-compose.prod.yml config >/dev/null)
   fi
 
   echo "OK: compose config"
