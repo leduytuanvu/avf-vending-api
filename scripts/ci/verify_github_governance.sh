@@ -11,6 +11,8 @@
 # Local: missing token → warning + manual checklist to stdout, exit 0.
 # CI: ENFORCE_GITHUB_GOVERNANCE=true and missing token → exit 2 + manual checklist to stderr.
 #
+# Optional: GITHUB_GOVERNANCE_WARN_ONLY=true — if the API omits environment fields, treat as warnings (not for CI gating).
+#
 # Usage:
 #   bash scripts/ci/verify_github_governance.sh
 set -Eeuo pipefail

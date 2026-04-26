@@ -8,7 +8,7 @@ This runbook describes how **Deploy Production** (`.github/workflows/deploy-prod
 
 ## Preconditions
 
-- All automatic production deploys are triggered only after **Security Release** succeeds on **`main`** with **`verdict=pass`** (and related gates). Nothing here bypasses that chain.
+- Production **never** deploys from merge to **`main`**. **Deploy Production** is **`workflow_dispatch` only**; operators start it in GitHub Actions after the **Build → Security Release** chain has produced a **`verdict=pass`** candidate on **`main`**. The selected Build and Security Release run ids and digest-pinned image refs are supplied as **inputs** (nothing here bypasses that chain).
 - Canonical workflow file: **`deploy-prod.yml`** (display name **Deploy Production**). The pointer **`deploy-production.yml`** does not deploy.
 
 ## GitHub Environment `production`
@@ -23,7 +23,7 @@ Production jobs use `environment: production`. Operators must configure:
 
 During **Deploy Production**, job **Resolve Previous Production Deployment** scans recent **successful** workflow runs for **`deploy-prod.yml`**:
 
-- **Triggers included:** **`workflow_dispatch`** (manual deploy/rollback) and **`workflow_run`** (automatic deploy after **Security Release**). Both are searched; LKG is **not** limited to manual runs.
+- **Trigger included:** **`workflow_dispatch`** on **`main`** (this repository does not auto-start production from **Security Release**). LKG is selected from **successful** **deploy** manifests with digest-pinned app/goose.
 - **Exclusions:** the **current** run id; runs without a **`production-deployment-manifest`** artifact; manifests that fail validation (below).
 
 For each candidate (newest successful runs first), it downloads **`production-deployment-manifest`** and validates:

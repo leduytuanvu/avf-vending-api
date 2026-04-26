@@ -1,18 +1,16 @@
-name: Deploy Production
+﻿name: Deploy Production
 # This file (deploy-prod.yml) is the **only** workflow that can deploy to production. For legacy filename
 # resolution only, `deploy-production.yml` exists as a no-op pointer — it does **not** deploy. See
 # docs/runbooks/github-governance.md#active-github-actions-workflows-in-this-repository
 
-# Production deploy gates:
-# - **Automatic**: `workflow_run` after **Security Release** completes on **main** — downloads
-#   `security-verdict` from the triggering run (workflow file `.github/workflows/security-release.yml` only);
-#   deploys only when verdict=pass, release_gate_verdict=pass, source_branch=main, digest-pinned images,
-#   and acceptable provenance (pass or private-repo fallback). Non-pass verdicts fail closed (**no** deploy).
-#   Staging (develop) may publish **staging-smoke-evidence** after **Deploy** — that is **not** a production gate;
-#   there is no automatic staging-to-prod promotion; production still requires this workflow’s Security Release + main + digest rules.
-# - **Manual / rollback**: `workflow_dispatch` on **main** — operators supply confirmations, build id,
-#   Security Release run id (deploy), or digest-pinned rollback refs (rollback). Never triggered by repo
-#   **Security** or **Build** alone.
+# Production deploy gates (manual only):
+# - **Deploy / rollback** run only from **`workflow_dispatch` on `main`**. This workflow is **not** triggered by
+#   `workflow_run`, **push**, **merge**, or **Security Release** completion — operators start production work from
+#   **Actions → Deploy Production → Run workflow** (after **CI → Build and Push Images → Security Release** in the
+#   release chain, using `security-release.yml` and digest-pinned images). Non-pass / missing evidence fails
+#   closed (**no** deploy).
+#   Staging (develop) may publish **staging-smoke-evidence** — that is **not** a production gate; there is no
+#   automatic staging-to-prod promotion.
 #
 # ## GitHub Environment `production` (configure in repo UI — not optional for safe prod)
 #
@@ -31,8 +29,8 @@ name: Deploy Production
 # requires two app nodes; default remains `single-host`. See docs/runbooks/canary-rollout.md.
 #
 # **Rollback / LKG:** `docs/runbooks/rollback-production.md` — last-known-good scans **Deploy Production**
-# (`deploy-prod.yml`) runs from **workflow_dispatch** and **workflow_run** (after Security Release); manifests
-# from **deploy** on **main** with digest-pinned images only.
+# (`deploy-prod.yml`) **workflow_dispatch** runs on **main**; manifests from **deploy** on **main** with digest-pinned
+# images only. (The word `workflow_run` in API/artifact fields means an Actions *run id*, not an automatic trigger.)
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -139,6 +137,31 @@ on:
         options:
           - single-host
           - canary
+      run_migration:
+        description: "Deploy only: run goose Up on the first app node in the wave (set false for image-only rollouts; backup evidence required when true — see runbook)"
+        required: false
+        default: true
+        type: boolean
+      backup_provider:
+        description: "When run_migration is true: how the DB was backed up (e.g. hcloud-snapshot, rds-snapshot, backup_managed_postgres, s3-dump, gh-actions-artifact)"
+        required: false
+        default: ""
+        type: string
+      backup_evidence_id:
+        description: "When run_migration is true: primary backup reference (snapshot id, S3 key, dump path, GitHub artifact name+id, or change ticket)"
+        required: false
+        default: ""
+        type: string
+      backup_completed_at_utc:
+        description: "When run_migration is true: when backup completed (ISO-8601 UTC, e.g. 2026-04-26T12:00:00Z)"
+        required: false
+        default: ""
+        type: string
+      backup_approval_ref:
+        description: "Optional: approver, approval link, PagerDuty incident, or second-line reference for the backup/migration"
+        required: false
+        default: ""
+        type: string
 
 # Production actions stay serialized under one stable gate (no parallel prod deploys).
 # Later runs queue behind the active rollout or rollback instead of canceling it.
@@ -155,37 +178,8 @@ permissions:
   deployments: write
 
 jobs:
-  fail-when-security-release-prod-not-successful:
-    name: Block production — Security Release did not succeed
-    if: |
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.name == 'Security Release' &&
-      github.event.workflow_run.head_branch == 'main' &&
-      github.event.workflow_run.conclusion != 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fail closed (no production path)
-        env:
-          UP_CONC: ${{ github.event.workflow_run.conclusion }}
-          UP_RUN: ${{ github.event.workflow_run.id }}
-        run: |
-          set -Eeuo pipefail
-          {
-            echo "## Production deploy workflow — blocked"
-            echo "- **production deploy decision**: \`blocked\`"
-            echo "- **reason**: triggering **Security Release** \`workflow_run.conclusion\` is \`${UP_CONC}\` (required: \`success\` for automatic production evaluation)."
-            echo "- **Security Release run id**: \`${UP_RUN}\`"
-            echo "- No \`security-verdict\` consumption or deploy is attempted."
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit 1
-
   resolve-build-run-id:
-    if: |
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_run' &&
-        github.event.workflow_run.name == 'Security Release' &&
-        github.event.workflow_run.head_branch == 'main' &&
-        github.event.workflow_run.conclusion == 'success')
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     name: Validate Production Artifact Source
     runs-on: ubuntu-latest
     outputs:
@@ -211,8 +205,7 @@ jobs:
             echo "…  →  Security Release (success)  →  *this run*  →  production [verdict+environment approval …]"
             echo "\`\`\`"
             echo ""
-            echo "- **Automatic** path: \`workflow_run\` after **Security Release** on \`main\` only (not repo **Security**)."
-            echo "- **Manual** path: \`workflow_dispatch\` with build + Security Release run ids; images must match \`security-verdict\`."
+            echo "- **Only** \`workflow_dispatch\` on \`main\` (no automatic production trigger) — supply build + Security Release run ids; images must match \`security-verdict\`."
             echo "- Release candidate identity comes from the **security-verdict** / Build artifacts, not from inventing a Build by \`head_sha\` alone."
           } >> "${GITHUB_STEP_SUMMARY}"
 
@@ -232,147 +225,6 @@ jobs:
           ROLLBACK_APP_IMAGE_REF: ${{ inputs.rollback_app_image_ref }}
           ROLLBACK_GOOSE_IMAGE_REF: ${{ inputs.rollback_goose_image_ref }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
-          TRIGGERING_SECURITY_RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
-          TRIGGERING_WORKFLOW_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
-          WF_PROD_AUTOMATIC_RESOLVE: |
-            import json
-            import os
-            import re
-            import sys
-            from pathlib import Path
-
-            path = Path("security-verdict-bundle/security-verdict.json")
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            sec_run = os.environ["TRIGGERING_SECURITY_RELEASE_RUN_ID"]
-
-            def out(k, v):
-                p = os.environ["GITHUB_OUTPUT"]
-                with open(p, "a", encoding="utf-8") as fh:
-                    fh.write(f"{k}={v}\n")
-
-            def need_digest_pinned(name, ref):
-                sref = (ref or "").strip()
-                if not sref or "@sha256:" not in sref or not re.search(r"sha256:[0-9a-f]{64}", sref):
-                    print(
-                        f"error: {name} must be digest-pinned (registry/.../img@sha256:...), got {ref!r}",
-                        file=sys.stderr,
-                    )
-                    sys.exit(1)
-
-            if str(payload.get("workflow_run_id", "")) != str(sec_run):
-                print(
-                    f"error: security-verdict workflow_run_id {payload.get('workflow_run_id')!r} does not match "
-                    f"triggering Security Release run {sec_run!r}",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
-            verdict = (payload.get("verdict") or "").lower()
-            if verdict in ("", "unavailable"):
-                print(
-                    f"error: security-verdict verdict is missing or unavailable (got {payload.get('verdict')!r})",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
-            if verdict in ("skipped", "no-candidate", "fail"):
-                for r in payload.get("failure_reasons") or []:
-                    print(f"failure_reason: {r}", file=sys.stderr)
-                print(
-                    f"error: security-verdict verdict is {verdict!r} (automatic production requires verdict=pass from Security Release only)",
-                    file=sys.stderr,
-                )
-                summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-                if summary_path:
-                    with open(summary_path, "a", encoding="utf-8") as fh:
-                        fh.write("\n## Production deploy — blocked (non-pass Security Release verdict)\n\n")
-                        fh.write(
-                            f"**Security Release** run `{sec_run}` produced `verdict={verdict}` — **production does not deploy**. "
-                            "Only `verdict=pass` from `.github/workflows/security-release.yml` authorizes production.\n\n"
-                        )
-                        fh.write("| Field | Value |\n|---|---|\n")
-                        fh.write(f"| Security Release run id | `{sec_run}` |\n")
-                        fh.write(f"| verdict | `{verdict}` |\n")
-                sys.exit(1)
-
-            if verdict != "pass":
-                for r in payload.get("failure_reasons") or []:
-                    print(f"failure_reason: {r}", file=sys.stderr)
-                print(
-                    f"error: security-verdict verdict is {verdict!r} (automatic production allows only pass)",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
-            secv = payload.get("security_verdict")
-            if secv is not None and str(secv).lower() != "pass":
-                print("error: security_verdict must be pass when present", file=sys.stderr)
-                sys.exit(1)
-
-            rgv = (payload.get("release_gate_verdict") or "").strip()
-            if rgv != "pass":
-                print(f"error: release_gate_verdict must be pass, got {rgv!r}", file=sys.stderr)
-                sys.exit(1)
-
-            rgm = (payload.get("release_gate_mode") or "").strip()
-            if rgm != "full-security-release-gate":
-                print(f"error: release_gate_mode must be full-security-release-gate, got {rgm!r}", file=sys.stderr)
-                sys.exit(1)
-
-            private_fb = "accepted-private-repo-no-github-attestations"
-            prov = ((payload.get("provenance_release_checks") or {}).get("required_for_release_verdict", ""))
-            if prov not in ("pass", private_fb):
-                print(
-                    f"error: provenance release verdict must be pass or {private_fb!r}, got {prov!r}",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
-            branch = (payload.get("source_branch") or "").strip()
-            if branch != "main":
-                print(f"error: automatic production candidate source_branch must be main, got {branch!r}", file=sys.stderr)
-                sys.exit(1)
-
-            sha = (payload.get("source_sha") or "").strip()
-            if not sha or not re.fullmatch(r"[0-9a-f]{40}", sha):
-                print(f"error: source_sha must be a non-empty 40-character hex SHA, got {sha!r}", file=sys.stderr)
-                sys.exit(1)
-
-            build_id = str(payload.get("source_build_run_id") or "").strip()
-            if not build_id.isdigit():
-                print(f"error: source_build_run_id must be a numeric Actions run id, got {build_id!r}", file=sys.stderr)
-                sys.exit(1)
-
-            pub = payload.get("published_images") or {}
-            need_digest_pinned("published_images.app_image_ref", pub.get("app_image_ref", ""))
-            need_digest_pinned("published_images.goose_image_ref", pub.get("goose_image_ref", ""))
-
-            app_ref = pub.get("app_image_ref", "").strip()
-            goose_ref = pub.get("goose_image_ref", "").strip()
-            release_tag = f"auto-main-{sha[:7]}"
-
-            out("action_mode", "deploy")
-            out("workflow_run_id", build_id)
-            out("source_commit_sha", sha)
-            out("source_branch", "main")
-            out("source_event", (payload.get("source_event") or "").strip())
-            out("release_tag", release_tag)
-            out("auto_app_image_ref", app_ref)
-            out("auto_goose_image_ref", goose_ref)
-            out("trigger_kind", "automatic")
-            summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-            if summary_path:
-                with open(summary_path, "a", encoding="utf-8") as fh:
-                    fh.write("\n## Automatic production candidate resolved\n\n")
-                    fh.write("| Field | Value |\n|---|---|\n")
-                    fh.write("| **production deploy decision** | **proceed_to_build_validation** (verdict=pass) |\n")
-                    fh.write(f"| Security Release run id | `{sec_run}` |\n")
-                    fh.write("| source_branch | `main` |\n")
-                    fh.write(f"| source_sha | `{sha}` |\n")
-                    fh.write(f"| source_build_run_id (Build and Push Images) | `{build_id}` |\n")
-                    fh.write(f"| app_image_ref (digest-pinned) | `{app_ref}` |\n")
-                    fh.write(f"| goose_image_ref (digest-pinned) | `{goose_ref}` |\n")
-            sys.exit(0)
           WF_VALIDATE_DEPLOY_SECURITY_VERDICT: |
             import json
             import os
@@ -443,118 +295,13 @@ jobs:
             exit 1
           }
 
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            [[ "${GITHUB_REF_NAME}" == "main" ]] || {
-              echo "error: production workflow_dispatch must be run from the main branch" >&2
-              exit 1
-            }
-          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            [[ "${TRIGGERING_WORKFLOW_HEAD_BRANCH}" == "main" ]] || fail "automatic production evaluation requires triggering Security Release head_branch=main (got ${TRIGGERING_WORKFLOW_HEAD_BRANCH})"
-            [[ -n "${TRIGGERING_SECURITY_RELEASE_RUN_ID}" ]] || fail "missing github.event.workflow_run.id for Security Release trigger"
-          else
-            fail "unexpected GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME} (expected workflow_dispatch or workflow_run)"
+          if [[ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ]]; then
+            fail "unexpected GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME} (expected workflow_dispatch only)"
           fi
-
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            EXPECTED_SR_PATH=".github/workflows/security-release.yml"
-            sr_meta="$(
-              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGERING_SECURITY_RELEASE_RUN_ID}" \
-                --jq '{name: .name, path: .path, conclusion: .conclusion, html_url: .html_url}' 2>/dev/null || true
-            )"
-            [[ -n "${sr_meta}" ]] || fail "could not load metadata for Security Release run ${TRIGGERING_SECURITY_RELEASE_RUN_ID}"
-            sr_name="$(printf '%s' "${sr_meta}" | jq -r '.name // ""')"
-            sr_path="$(printf '%s' "${sr_meta}" | jq -r '.path // ""')"
-            sr_conc="$(printf '%s' "${sr_meta}" | jq -r '.conclusion // ""')"
-            sr_url="$(printf '%s' "${sr_meta}" | jq -r '.html_url // ""')"
-            [[ "${sr_name}" == "Security Release" ]] || fail "run ${TRIGGERING_SECURITY_RELEASE_RUN_ID} workflow name is '${sr_name}' (required: Security Release)"
-            [[ "${sr_path}" == "${EXPECTED_SR_PATH}" ]] || fail "run ${TRIGGERING_SECURITY_RELEASE_RUN_ID} is not Security Release workflow file (path='${sr_path}', required '${EXPECTED_SR_PATH}')"
-            [[ "${sr_conc}" == "success" ]] || fail "Security Release run ${TRIGGERING_SECURITY_RELEASE_RUN_ID} conclusion is '${sr_conc}' (required success)"
-            {
-              echo "## Security Release run verified (production — automatic)"
-              echo "- **selected run**: [${TRIGGERING_SECURITY_RELEASE_RUN_ID}](${sr_url})"
-              echo "- **workflow file**: \`${sr_path}\`"
-              echo "- **workflow name**: \`${sr_name}\`"
-            } >> "${GITHUB_STEP_SUMMARY}"
-
-            rm -rf security-verdict-bundle
-            mkdir -p security-verdict-bundle
-            artifact_id=""
-            artifact_list_attempt=1
-            while [[ "${artifact_list_attempt}" -le 15 ]]; do
-              artifact_id="$(
-                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TRIGGERING_SECURITY_RELEASE_RUN_ID}/artifacts" \
-                  --jq '[.artifacts[]? | select(.name == "security-verdict") | .id] | .[0] // empty'
-              )" || true
-              if [[ -n "${artifact_id}" ]]; then
-                break
-              fi
-              if [[ "${artifact_list_attempt}" -lt 15 ]]; then
-                sleep $((8 + artifact_list_attempt * 2))
-              fi
-              artifact_list_attempt=$((artifact_list_attempt + 1))
-            done
-            [[ -n "${artifact_id}" ]] || fail "no security-verdict artifact on Security Release run ${TRIGGERING_SECURITY_RELEASE_RUN_ID} (after bounded retries; workflow ${EXPECTED_SR_PATH})"
-            verdict_zip_attempt=1
-            while [[ "${verdict_zip_attempt}" -le 5 ]]; do
-              if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > security-verdict-bundle/security-verdict.zip; then
-                break
-              fi
-              if [[ "${verdict_zip_attempt}" -lt 5 ]]; then
-                sleep 6
-              fi
-              verdict_zip_attempt=$((verdict_zip_attempt + 1))
-            done
-            [[ -f security-verdict-bundle/security-verdict.zip ]] || fail "failed to download security-verdict.zip"
-            python3 -m zipfile -e security-verdict-bundle/security-verdict.zip security-verdict-bundle
-            [[ -f security-verdict-bundle/security-verdict.json ]] || fail "security-verdict.zip did not contain security-verdict.json"
-            python3 -c "import json; json.load(open('security-verdict-bundle/security-verdict.json',encoding='utf-8'))" || fail "security-verdict.json is not valid JSON"
-            printenv WF_PROD_AUTOMATIC_RESOLVE | python3 -
-            BUILD_RUN_ID="$(grep '^workflow_run_id=' "${GITHUB_OUTPUT}" | tail -n1 | cut -d= -f2-)"
-            [[ "${BUILD_RUN_ID}" =~ ^[0-9]+$ ]] || fail "automatic path produced invalid workflow_run_id / build id"
-
-            build_run="$(
-              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}" \
-                --jq '[.name // "", .head_branch // "", .head_sha // "", .event // "", .status // "", .conclusion // "", .actor.login // ""] | @tsv'
-            )"
-
-            [[ -n "${build_run}" ]] || fail "could not read workflow run ${BUILD_RUN_ID}"
-
-            IFS=$'\t' read -r workflow_name source_branch source_commit_sha source_event run_status run_conclusion build_actor <<< "${build_run}"
-
-            [[ "${workflow_name}" == "Build and Push Images" ]] || fail "build_run_id must reference a 'Build and Push Images' workflow run"
-            [[ "${source_branch}" == "main" ]] || fail "build_run_id must come from the main branch"
-            [[ "${source_event}" == "push" || "${source_event}" == "workflow_dispatch" || "${source_event}" == "workflow_run" ]] || fail "build_run_id must reference a Build workflow triggered by push, workflow_dispatch, or workflow_run (semantic source_event is validated from promotion-manifest in image resolution)"
-            [[ "${run_status}" == "completed" ]] || fail "build_run_id must reference a completed build run"
-            [[ "${run_conclusion}" == "success" ]] || fail "build_run_id must reference a successful build run"
-
-            verdict_sha="$(grep '^source_commit_sha=' "${GITHUB_OUTPUT}" | tail -n1 | cut -d= -f2-)"
-            [[ -n "${verdict_sha}" ]] || fail "internal: source_commit_sha missing from resolver outputs"
-            [[ "${source_commit_sha}" == "${verdict_sha}" ]] || fail "Build run head_sha (${source_commit_sha}) does not match security-verdict source_sha (${verdict_sha}) — promotion uses verdict JSON, not workflow head_sha alone"
-
-            image_metadata_artifact_id="$(
-              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}/artifacts" \
-                --jq '[.artifacts[]? | select(.name == "image-metadata") | .id] | .[0] // empty'
-            )"
-            promotion_manifest_artifact_id="$(
-              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}/artifacts" \
-                --jq '[.artifacts[]? | select(.name == "promotion-manifest") | .id] | .[0] // empty'
-            )"
-
-            [[ -n "${image_metadata_artifact_id}" ]] || fail "selected build run is missing the image-metadata artifact"
-            [[ -n "${promotion_manifest_artifact_id}" ]] || fail "selected build run is missing the promotion-manifest artifact"
-
-            echo "build_actor=${build_actor}" >> "${GITHUB_OUTPUT}"
-            {
-              echo "## Automatic production deployment (Security Release → main)"
-              echo "- **production deploy decision**: \`proceed\` (security-verdict **pass**, build validation ok)"
-              echo "- **trigger**: \`workflow_run\` after **Security Release** on \`main\`"
-              echo "- **Security Release run id**: \`${TRIGGERING_SECURITY_RELEASE_RUN_ID}\`"
-              echo "- **Build and Push Images run id**: \`${BUILD_RUN_ID}\`"
-              echo "- **source branch**: \`${source_branch}\`"
-              echo "- **source SHA**: \`${source_commit_sha}\`"
-            } >> "${GITHUB_STEP_SUMMARY}"
-            exit 0
-          fi
+          [[ "${GITHUB_REF_NAME}" == "main" ]] || {
+            echo "error: production workflow_dispatch must be run from the main branch" >&2
+            exit 1
+          }
 
           ACTION_MODE_IN="${INPUT_ACTION_MODE}"
           RELEASE_TAG_IN="${INPUT_RELEASE_TAG}"
@@ -718,13 +465,7 @@ jobs:
 
   resolve-previous-production-deployment:
     if: |
-      (
-        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_run' &&
-          github.event.workflow_run.name == 'Security Release' &&
-          github.event.workflow_run.head_branch == 'main' &&
-          github.event.workflow_run.conclusion == 'success')
-      ) &&
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       (needs.resolve-build-run-id.outputs.action_mode == 'deploy' ||
         needs.resolve-build-run-id.outputs.action_mode == 'rollback')
     name: Resolve Previous Production Deployment
@@ -747,7 +488,7 @@ jobs:
       rollback_available: ${{ steps.lookup.outputs.rollback_available }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Load previous successful production deployment metadata
         id: lookup
@@ -856,7 +597,7 @@ jobs:
                 echo "### Previous production last-known-good (LKG)"
                 echo "- **rollback_available**: \`true\`"
                 echo "- **candidate run**: [#${previous_run_number}](${previous_run_url}) (id=\`${previous_run_id}\`)"
-                echo "- **trigger**: \`${previous_event:-unknown}\` — both **workflow_dispatch** and **workflow_run** (post–Security Release) are considered."
+                echo "- **trigger**: \`${previous_event:-unknown}\` — scans prior **Deploy Production** runs (manual \`workflow_dispatch\` on \`main\`; historical runs may include older trigger kinds)."
                 echo "- **manifest policy**: \`source_branch=main\`, \`action_mode=deploy\`, digest-pinned **app** and **goose** refs (rollback manifests excluded)."
                 echo "- manual **rollback** via workflow_dispatch — copy exactly (digest-pinned):"
                 echo '```'
@@ -878,7 +619,7 @@ jobs:
             {
               echo "### Previous production last-known-good"
               echo "- rollback_available: \`false\`"
-              echo "- **runs inspected**: \`${runs_checked}\` recent successful **Deploy Production** completions (\`workflow_dispatch\` or \`workflow_run\`), excluding this run."
+              echo "- **runs inspected**: \`${runs_checked}\` recent successful **Deploy Production** completions on \`main\` (this workflow is \`workflow_dispatch\`-only), excluding this run."
               echo "- **reason**: no eligible **production-deployment-manifest** from a prior **deploy** on **main** with digest-pinned app+goose (or artifact missing / expired)."
               if [[ -s "${skipped_log}" ]]; then
                 echo "- **skipped candidates** (newest-first run order):"
@@ -893,13 +634,7 @@ jobs:
 
   resolve-image-refs:
     if: |
-      (
-        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_run' &&
-          github.event.workflow_run.name == 'Security Release' &&
-          github.event.workflow_run.head_branch == 'main' &&
-          github.event.workflow_run.conclusion == 'success')
-      ) &&
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       (needs.resolve-build-run-id.outputs.action_mode == 'deploy' ||
         needs.resolve-build-run-id.outputs.action_mode == 'rollback')
     name: Resolve Production Image Refs
@@ -918,13 +653,7 @@ jobs:
 
   validate-promotion-selection:
     if: |
-      (
-        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_run' &&
-          github.event.workflow_run.name == 'Security Release' &&
-          github.event.workflow_run.head_branch == 'main' &&
-          github.event.workflow_run.conclusion == 'success')
-      ) &&
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       (needs.resolve-build-run-id.outputs.action_mode == 'deploy' ||
         needs.resolve-build-run-id.outputs.action_mode == 'rollback')
     name: Validate Production Promotion Selection
@@ -950,9 +679,6 @@ jobs:
           INPUT_ROLLBACK_GOOSE_IMAGE_REF: ${{ inputs.rollback_goose_image_ref }}
           RESOLVED_APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
           RESOLVED_GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
-          TRIGGER_KIND: ${{ needs.resolve-build-run-id.outputs.trigger_kind }}
-          AUTO_APP_IMAGE_REF: ${{ needs.resolve-build-run-id.outputs.auto_app_image_ref }}
-          AUTO_GOOSE_IMAGE_REF: ${{ needs.resolve-build-run-id.outputs.auto_goose_image_ref }}
         run: |
           set -Eeuo pipefail
 
@@ -975,13 +701,6 @@ jobs:
 
           if [[ "${ACTION_MODE}" == "deploy" ]]; then
             [[ "${EXPECTED_SOURCE_BRANCH}" == "main" ]] || fail "selected build run must resolve to the main branch"
-          fi
-
-          if [[ "${ACTION_MODE}" == "deploy" && "${TRIGGER_KIND}" == "automatic" ]]; then
-            [[ -n "${AUTO_APP_IMAGE_REF}" ]] || fail "automatic production path missing auto_app_image_ref from security-verdict"
-            [[ -n "${AUTO_GOOSE_IMAGE_REF}" ]] || fail "automatic production path missing auto_goose_image_ref from security-verdict"
-            [[ "${RESOLVED_APP_IMAGE_REF}" == "${AUTO_APP_IMAGE_REF}" ]] || fail "resolved app image ref must match security-verdict published_images for automatic production"
-            [[ "${RESOLVED_GOOSE_IMAGE_REF}" == "${AUTO_GOOSE_IMAGE_REF}" ]] || fail "resolved goose image ref must match security-verdict published_images for automatic production"
           fi
 
           if [[ "${ACTION_MODE}" == "deploy" && -n "${INPUT_APP_IMAGE_REF}" ]]; then
@@ -1010,13 +729,7 @@ jobs:
 
   validate-production-action-safety:
     if: |
-      (
-        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_run' &&
-          github.event.workflow_run.name == 'Security Release' &&
-          github.event.workflow_run.head_branch == 'main' &&
-          github.event.workflow_run.conclusion == 'success')
-      ) &&
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       (needs.resolve-build-run-id.outputs.action_mode == 'deploy' ||
         needs.resolve-build-run-id.outputs.action_mode == 'rollback')
     name: Validate Production Action Safety
@@ -1027,7 +740,7 @@ jobs:
       - validate-promotion-selection
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Reject obvious duplicate production action
         shell: bash
@@ -1094,13 +807,7 @@ jobs:
 
   validate-production-topology-assets:
     if: |
-      (
-        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_run' &&
-          github.event.workflow_run.name == 'Security Release' &&
-          github.event.workflow_run.head_branch == 'main' &&
-          github.event.workflow_run.conclusion == 'success')
-      ) &&
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       (needs.resolve-build-run-id.outputs.action_mode == 'deploy' ||
         needs.resolve-build-run-id.outputs.action_mode == 'rollback')
     name: Validate Production Topology Assets
@@ -1109,7 +816,7 @@ jobs:
       - resolve-build-run-id
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Validate app-node compose
         shell: bash
@@ -1161,13 +868,7 @@ jobs:
 
   prepare-promotion-context:
     if: |
-      (
-        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_run' &&
-          github.event.workflow_run.name == 'Security Release' &&
-          github.event.workflow_run.head_branch == 'main' &&
-          github.event.workflow_run.conclusion == 'success')
-      ) &&
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       (needs.resolve-build-run-id.outputs.action_mode == 'deploy' ||
         needs.resolve-build-run-id.outputs.action_mode == 'rollback')
     name: Prepare Production Promotion Context
@@ -1287,13 +988,7 @@ jobs:
 
   validate-production-security-verdict:
     if: |
-      (
-        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_run' &&
-          github.event.workflow_run.name == 'Security Release' &&
-          github.event.workflow_run.head_branch == 'main' &&
-          github.event.workflow_run.conclusion == 'success')
-      ) &&
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       (needs.resolve-build-run-id.outputs.action_mode == 'deploy' ||
         needs.resolve-build-run-id.outputs.action_mode == 'rollback')
     name: Validate Production Security Verdict
@@ -1316,7 +1011,7 @@ jobs:
       security_source_sha: ${{ steps.gate.outputs.security_source_sha }}
     steps:
       - name: Check out repository (release gate scripts)
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Resolve matching security verdict
         id: gate
@@ -1339,7 +1034,6 @@ jobs:
           PROVENANCE_ENFORCEMENT: ${{ vars.PROVENANCE_ENFORCEMENT || 'warn' }}
           GH_TOKEN: ${{ github.token }}
           INPUT_SECURITY_RELEASE_RUN_ID: ${{ inputs.security_release_run_id }}
-          TRIGGERING_SECURITY_RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -Eeuo pipefail
           mkdir -p security-gate
@@ -1403,36 +1097,14 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           SEC_IN="${INPUT_SECURITY_RELEASE_RUN_ID:-}"
-          if [[ -z "${SEC_IN}" && "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            SEC_IN="${TRIGGERING_SECURITY_RELEASE_RUN_ID:-}"
-          fi
-          [[ -n "${SEC_IN}" ]] || fail "security_release_run_id input is required for workflow_dispatch deploy, or triggering Security Release run id is missing for automatic production"
+          [[ -n "${SEC_IN}" ]] || fail "security_release_run_id input is required for deploy mode (workflow_dispatch — supply the successful Security Release run id that produced the authorizing security-verdict)"
           EXPECTED_SR_PATH=".github/workflows/security-release.yml"
           sec_path="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SEC_IN}" --jq -r '.path // ""')"
           sec_name="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SEC_IN}" --jq '.name // ""')"
           sec_conc="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SEC_IN}" --jq '.conclusion // ""')"
           [[ "${sec_name}" == "Security Release" ]] || fail "security_release_run_id must be a Security Release workflow (got: ${sec_name})"
           [[ "${sec_path}" == "${EXPECTED_SR_PATH}" ]] || fail "security_release_run_id ${SEC_IN} is not ${EXPECTED_SR_PATH} (path='${sec_path}') — repo Security workflow is not a deploy approval"
-          candidate_runs=""
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            tmp_cr="$(mktemp)"
-            printf '%s\tsuccess\n' "${SEC_IN}" > "${tmp_cr}"
-            page=1
-            while [[ "${page}" -le 5 ]]; do
-              gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security-release.yml/runs" \
-                -f branch=main -f status=completed -f per_page=30 -f page="${page}" \
-                --jq -r '.workflow_runs[]? | select((.name // "") == "Security Release" and .conclusion == "success") | "\(.id)\tsuccess"' >> "${tmp_cr}" 2>/dev/null || true
-              page=$((page + 1))
-            done
-            candidate_runs="$(awk -F'\t' 'NF==2 && $1 ~ /^[0-9]+$/ { if (!seen[$1]++) print $1 "\t" $2 }' "${tmp_cr}")"
-            rm -f "${tmp_cr}"
-            {
-              echo ""
-              echo "- **Security Release run enumeration**: \`${EXPECTED_SR_PATH}\` on \`main\` (primary run \`${SEC_IN}\` first); verdict match uses **JSON** \`source_sha\` / \`source_build_run_id\`, not \`head_sha\` alone."
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            candidate_runs="$(printf '%s\t%s\n' "${SEC_IN}" "${sec_conc}")"
-          fi
+          candidate_runs="$(printf '%s\t%s\n' "${SEC_IN}" "${sec_conc}")"
           [[ -n "${candidate_runs}" ]] || fail "no Security Release candidate runs to evaluate (workflow ${EXPECTED_SR_PATH})"
 
           matched_run_id=""
@@ -1562,13 +1234,7 @@ jobs:
 
   validate-production-scale-storm-gate:
     if: |
-      (
-        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_run' &&
-          github.event.workflow_run.name == 'Security Release' &&
-          github.event.workflow_run.head_branch == 'main' &&
-          github.event.workflow_run.conclusion == 'success')
-      ) &&
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       (needs.resolve-build-run-id.outputs.action_mode == 'deploy' ||
         needs.resolve-build-run-id.outputs.action_mode == 'rollback')
     name: Validate fleet scale storm evidence
@@ -1595,7 +1261,7 @@ jobs:
       storm_evidence_max_age_days_applied: ${{ steps.gate.outputs.storm_evidence_max_age_days_applied }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Validate fleet scale / storm evidence
         id: gate
@@ -1692,13 +1358,7 @@ jobs:
 
   deploy-prod:
     if: |
-      (
-        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'workflow_run' &&
-          github.event.workflow_run.name == 'Security Release' &&
-          github.event.workflow_run.head_branch == 'main' &&
-          github.event.workflow_run.conclusion == 'success')
-      ) &&
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       (needs.resolve-build-run-id.outputs.action_mode == 'deploy' ||
         needs.resolve-build-run-id.outputs.action_mode == 'rollback')
     name: Deploy production release
@@ -1721,7 +1381,7 @@ jobs:
       RELEASE_TAG: ${{ needs.resolve-build-run-id.outputs.release_tag }}
       SOURCE_BRANCH: ${{ needs.resolve-build-run-id.outputs.source_branch }}
       SOURCE_COMMIT_SHA: ${{ needs.resolve-build-run-id.outputs.source_commit_sha }}
-      SOURCE_COMMIT_SHA_NOTE: ${{ needs.resolve-build-run-id.outputs.trigger_kind == 'automatic' && 'security-release-verdict' || (inputs.source_commit_sha != '' && 'operator-confirmed' || 'selected-build-run') }}
+      SOURCE_COMMIT_SHA_NOTE: ${{ inputs.source_commit_sha != '' && 'operator-confirmed' || 'selected-build-run' }}
       TRIGGER_KIND: ${{ needs.resolve-build-run-id.outputs.trigger_kind }}
       SELECTED_BUILD_ACTOR: ${{ needs.resolve-build-run-id.outputs.build_actor }}
       SELECTED_BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
@@ -1764,9 +1424,15 @@ jobs:
       OBSERVABILITY_CHECK_URL: ${{ vars.PRODUCTION_OBSERVABILITY_CHECK_URL || '' }}
       OBSERVABILITY_HEALTHY_SUBSTRING: ${{ vars.PRODUCTION_OBSERVABILITY_HEALTHY_SUBSTRING || '' }}
       OBSERVABILITY_UNHEALTHY_BODY_REGEX: ${{ vars.PRODUCTION_OBSERVABILITY_UNHEALTHY_BODY_REGEX || '' }}
+      INPUT_RUN_MIGRATION: ${{ inputs.run_migration && 'true' || 'false' }}
+      INPUT_BACKUP_PROVIDER: ${{ inputs.backup_provider || '' }}
+      INPUT_BACKUP_EVIDENCE_ID: ${{ inputs.backup_evidence_id || '' }}
+      INPUT_BACKUP_COMPLETED_AT_UTC: ${{ inputs.backup_completed_at_utc || '' }}
+      INPUT_BACKUP_APPROVAL_REF: ${{ inputs.backup_approval_ref || '' }}
+      RUN_MIGRATION_ON_FIRST_NODE_FLAG: ${{ (needs.resolve-build-run-id.outputs.action_mode == 'deploy' && inputs.run_migration) && '1' || '0' }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Download release manifest from Security Release
         if: always()
@@ -1875,6 +1541,19 @@ jobs:
             echo "app_node_b_warning=${app_node_b_warning}"
           } >> "$GITHUB_OUTPUT"
 
+          if [[ "${ACTION_MODE}" == "deploy" ]]; then
+            rm_enable="${INPUT_RUN_MIGRATION:-true}"
+            rm_lc="$(printf '%s' "${rm_enable}" | tr '[:upper:]' '[:lower:]')"
+            if [[ "${rm_lc}" == "true" || "${rm_lc}" == "1" || "${rm_lc}" == "yes" ]]; then
+              bid="$(printf '%s' "${INPUT_BACKUP_EVIDENCE_ID:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+              bprov="$(printf '%s' "${INPUT_BACKUP_PROVIDER:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+              bcat="$(printf '%s' "${INPUT_BACKUP_COMPLETED_AT_UTC:-}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+              [[ -n "${bid}" ]] || fail "run_migration is enabled: backup_evidence_id is required (non-empty). See docs/runbooks/backup-evidence-for-production-migrations.md"
+              [[ -n "${bprov}" ]] || fail "run_migration is enabled: backup_provider is required (e.g. hcloud-snapshot, backup_managed_postgres, rds-snapshot, gh-artifact-name)"
+              [[ -n "${bcat}" ]] || fail "run_migration is enabled: backup_completed_at_utc is required (ISO-8601 UTC, e.g. 2026-04-26T12:00:00Z)"
+            fi
+          fi
+
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             rid="${ROLLOUT_DISPATCH_INPUT:-single-host}"
             rm_eff="$(echo "${rid}" | tr '[:upper:]' '[:lower:]')"
@@ -1973,13 +1652,19 @@ jobs:
       - name: Production DB backup expectation (pre-migration)
         if: ${{ env.ACTION_MODE == 'deploy' }}
         shell: bash
+        env:
+          INPUT_RUN_MIGRATION: ${{ env.INPUT_RUN_MIGRATION }}
         run: |
           set -Eeuo pipefail
           {
-            echo "## Database backup before migration (operator expectation)"
-            echo "- This workflow does **not** invoke **backup_managed_postgres.sh** (or provider snapshots) automatically before \`RUN_MIGRATION\` / goose **Up**."
-            echo "- **Operator / reviewer:** Ensure a current **database backup** (managed script execute mode or provider snapshot) exists **before** approving when this rollout runs migrations."
-            echo "- Reference: \`docs/runbooks/migration-safety.md\` and \`deployments/prod/shared/scripts/backup_managed_postgres.sh\`."
+            echo "## Database backup before migration"
+            if [[ "${INPUT_RUN_MIGRATION}" == "true" ]]; then
+              echo "- **Enforced for this run:** with \`run_migration: true\`, backup **provider / evidence id / completed-at** were required in preflight and are recorded in \`production-deployment-manifest.json\`."
+            else
+              echo "- **This run** uses \`run_migration: false\` — the workflow will **not** run goose \`Up\` on the first app node (image-only rollout)."
+            fi
+            echo "- This workflow does **not** invoke **backup_managed_postgres.sh** (or provider snapshots) automatically. Operators supply evidence via workflow inputs."
+            echo "- Reference: \`docs/runbooks/backup-evidence-for-production-migrations.md\`, \`docs/runbooks/migration-safety.md\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Show production rollout plan
@@ -1996,7 +1681,7 @@ jobs:
             echo "## Production Action Plan"
             echo "- **production deploy decision**: \`proceed\` (all pre-SSH gates passed)"
             echo "- **environment**: \`production\` (GitHub Environment protection)"
-            echo "- **trigger_kind**: \`${TRIGGER_KIND}\` (automatic = Security Release workflow_run on main; manual = workflow_dispatch)"
+            echo "- **trigger_kind**: \`${TRIGGER_KIND}\` (**manual** \`workflow_dispatch\` on \`main\` only — production is **not** triggered automatically when Security Release finishes)"
             echo "- action mode: \`${ACTION_MODE}\`"
             echo "- concurrency policy: \`production-deployment\` queue; in-flight production runs are not canceled"
             if [[ "${ACTION_MODE}" == "deploy" ]]; then
@@ -2007,6 +1692,13 @@ jobs:
               echo "- source SHA note: \`${SOURCE_COMMIT_SHA_NOTE}\`"
               if [[ -n "${SECURITY_WORKFLOW_RUN_ID}" ]]; then
                 echo "- Security Release run id (authorizing verdict): \`${SECURITY_WORKFLOW_RUN_ID}\`"
+              fi
+              echo "- run_migration (goose on first app wave): \`${INPUT_RUN_MIGRATION}\`"
+              if [[ "${INPUT_RUN_MIGRATION}" == "true" ]]; then
+                echo "- database backup (recorded, pre-SSH preflight): provider=\`${INPUT_BACKUP_PROVIDER}\` evidence_id=\`${INPUT_BACKUP_EVIDENCE_ID}\` completed_at_utc=\`${INPUT_BACKUP_COMPLETED_AT_UTC}\`"
+                if [[ -n "${INPUT_BACKUP_APPROVAL_REF}" ]]; then
+                  echo "- database backup optional approval / ticket: \`${INPUT_BACKUP_APPROVAL_REF}\`"
+                fi
               fi
             fi
             echo "- app image: \`${APP_IMAGE_REF}\`"
@@ -2297,7 +1989,7 @@ jobs:
           APP_NODE_SMOKE_JSON_FILE: deployment-evidence/smoke-app-node-a.json
           APP_NODE_SMOKE_LABEL_PREFIX: app-node-a
           RELEASE_EVIDENCE_FILE: deployment-evidence/release-events.jsonl
-          RUN_MIGRATION_ON_FIRST_NODE: "1"
+          RUN_MIGRATION_ON_FIRST_NODE: ${{ env.RUN_MIGRATION_ON_FIRST_NODE_FLAG }}
           SMOKE_API_DOMAIN: ${{ env.PRODUCTION_API_DOMAIN }}
           SMOKE_BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
           SMOKE_CONNECT_TO_HOST: ${{ env.APP_NODE_A_HOST }}
@@ -2337,7 +2029,7 @@ jobs:
           APP_NODE_SMOKE_JSON_FILE: deployment-evidence/smoke-canary-wave.json
           APP_NODE_SMOKE_LABEL_PREFIX: canary-wave
           RELEASE_EVIDENCE_FILE: deployment-evidence/release-events.jsonl
-          RUN_MIGRATION_ON_FIRST_NODE: "1"
+          RUN_MIGRATION_ON_FIRST_NODE: ${{ env.RUN_MIGRATION_ON_FIRST_NODE_FLAG }}
           SMOKE_API_DOMAIN: ${{ env.PRODUCTION_API_DOMAIN }}
           SMOKE_BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
           SMOKE_CONNECT_TO_HOST: ${{ steps.validate_deploy_inputs.outputs.canary_host }}
@@ -2441,12 +2133,12 @@ jobs:
 
       - name: Upload post-deploy smoke report
         if: always() && env.ACTION_MODE == 'deploy'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: post-deploy-smoke-report
           path: smoke-reports/smoke-test.json
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 180
 
       - name: Attempt automatic rollback after failed production release
         if: failure() && env.ACTION_MODE == 'deploy'
@@ -2663,7 +2355,6 @@ jobs:
           MANIFEST_GOOSE_DIGEST: ${{ needs.validate-promotion-selection.outputs.goose_digest }}
           MANIFEST_PREV_SOURCE_BRANCH: ${{ needs.resolve-previous-production-deployment.outputs.previous_source_branch }}
           MANIFEST_PREV_SOURCE_COMMIT_SHA: ${{ needs.resolve-previous-production-deployment.outputs.previous_source_commit_sha }}
-          ROLLOUT_MODE_EFFECTIVE: ${{ steps.validate_deploy_inputs.outputs.rollout_mode_effective }}
           CANARY_HOST: ${{ steps.validate_deploy_inputs.outputs.canary_host }}
           STABLE_HOST: ${{ steps.validate_deploy_inputs.outputs.stable_host }}
           CANARY_OBSERVABILITY_OUTCOME: ${{ steps.canary_observability_http.outcome || 'skipped' }}
@@ -2728,6 +2419,19 @@ jobs:
           export STORM_Q_BYPASSED="${storm_gate_bypassed_json}"
           export DEPLOY_SOURCE_SHA="${deploy_source_sha}"
           export DEPLOY_SOURCE_SHA_NOTE="${deploy_source_sha_note}"
+          if [[ "${ACTION_MODE}" == "deploy" ]]; then
+            export RUN_MIGRATION_FOR_MANIFEST="${INPUT_RUN_MIGRATION:-false}"
+            export BACKUP_PROVIDER_FOR_MANIFEST="${INPUT_BACKUP_PROVIDER:-}"
+            export BACKUP_EVIDENCE_ID_FOR_MANIFEST="${INPUT_BACKUP_EVIDENCE_ID:-}"
+            export BACKUP_COMPLETED_AT_UTC_FOR_MANIFEST="${INPUT_BACKUP_COMPLETED_AT_UTC:-}"
+            export BACKUP_APPROVAL_REF_FOR_MANIFEST="${INPUT_BACKUP_APPROVAL_REF:-}"
+          else
+            export RUN_MIGRATION_FOR_MANIFEST="false"
+            export BACKUP_PROVIDER_FOR_MANIFEST=""
+            export BACKUP_EVIDENCE_ID_FOR_MANIFEST=""
+            export BACKUP_COMPLETED_AT_UTC_FOR_MANIFEST=""
+            export BACKUP_APPROVAL_REF_FOR_MANIFEST=""
+          fi
           python3 scripts/release/write_deployment_manifest.py
 
           _smoke_compact="a=${app_node_a_smoke_result:-}; b=${app_node_b_smoke_result:-}; cluster=${final_cluster_smoke_result:-}; post=${smoke_post_deploy_result:-}"
@@ -2810,6 +2514,7 @@ jobs:
             echo "- rollback result: \`${ROLLBACK_RESULT}\`"
             echo "- final result: \`${FINAL_RESULT}\` / verdict=\`${final_deployment_verdict}\`"
             echo "- rollout evidence: \`${release_events_path}\`"
+            echo "- release rollup (ops audit): \`deployment-evidence/production-release-evidence.json\` and \`deployment-evidence/production-release-evidence.md\` (companion to \`production-deployment-manifest.json\` / \`production-deploy-evidence.json\`)"
             echo "- rollback path: \`remote rollback_app_node.sh\` (and \`rollback_data_node.sh\` when requested)"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -2840,32 +2545,32 @@ jobs:
 
       - name: Upload production deployment manifest
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: production-deployment-manifest
           path: deployment-evidence/production-deployment-manifest.json
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 180
 
       - name: Upload production deploy evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: production-deploy-evidence
           path: deployment-evidence
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 365
 
       - name: Upload release manifest (post-deploy)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-manifest-post-deploy
           path: |
             release-reports/release-manifest.json
             release-reports/release-summary.md
           if-no-files-found: ignore
-          retention-days: 90
+          retention-days: 180
 
       - name: Optional deployment webhook notify
         if: always()

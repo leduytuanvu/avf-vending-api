@@ -1,5 +1,5 @@
 # Enterprise release verification — **not** Security Release, **not** a deploy trigger, **not** an image gate.
-# Runs scripts/verify_enterprise_release.sh (compose/OpenAPI/legacy checks). Do not rename to imply
+# Runs `make verify-enterprise-release` → scripts/verify_enterprise_release.sh (compose/OpenAPI/legacy checks). Do not rename to imply
 # "security release" or replace security-release.yml.
 name: Enterprise release verification
 
@@ -28,10 +28,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25.9"
           cache: true
@@ -47,5 +47,5 @@ jobs:
       - name: Run enterprise release verification
         shell: bash
         run: |
-          set -euo pipefail
-          bash scripts/verify_enterprise_release.sh
+          set -Eeuo pipefail
+          make verify-enterprise-release

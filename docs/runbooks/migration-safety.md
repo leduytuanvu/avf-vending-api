@@ -63,10 +63,10 @@ See also manifest notes in `deploy-prod.yml` (`migration_rollback_policy`, `auto
 ## Database backup before production migration
 
 - **`release_app_node.sh`** runs goose when `RUN_MIGRATION=1`; it does **not** take a database backup first.
-- The **GitHub Actions** production workflow does **not** currently invoke `backup_postgres.sh` / `backup_managed_postgres.sh` automatically.
-- **Operator expectation:** take a **provider snapshot** or run **`deployments/prod/shared/scripts/backup_managed_postgres.sh`** (or your approved backup procedure) **before** approving a production deploy that will run migrations.
+- The **GitHub Actions** `deploy-prod.yml` workflow does **not** invoke `backup_postgres.sh` / `backup_managed_postgres.sh` automatically, but with **`run_migration: true`** on **Deploy Production** the operator **must** supply `backup_provider`, `backup_evidence_id`, and `backup_completed_at_utc` in `workflow_dispatch` — the job fails in preflight before SSH if they are empty.
+- For **image-only** rollouts, set `run_migration: false` (no backup fields required).
 
-The production deploy job appends a **step summary** reminder about this gap until automated backup is wired in.
+See **[backup-evidence-for-production-migrations.md](backup-evidence-for-production-migrations.md)** and the step summary on each production deploy.
 
 ---
 

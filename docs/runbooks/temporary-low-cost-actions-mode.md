@@ -7,7 +7,7 @@ This runbook describes the smallest practical set of temporary workflow changes 
 Reduce GitHub-hosted runner usage to near zero by:
 
 - disabling automatic CI/build/security/staging runs
-- disabling scheduled nightly/security jobs
+- disabling scheduled **Nightly Security Rescan** (and not running **Manual Ops Evidence Check** ad hoc)
 - keeping a manual production workflow available
 - making re-enable steps explicit and reversible
 
@@ -23,8 +23,8 @@ The highest-cost workflows are the automatic ones:
 2. `security.yml`
    - runs on `push`, `pull_request`, `workflow_run`, and `schedule`
    - includes published image scans
-3. `nightly-ops.yml`
-   - runs on a daily schedule
+3. `nightly-ops.yml` (**Manual Ops Evidence Check**)
+   - is already **`workflow_dispatch` only** in this repository (no `schedule`); cost accrues only when someone runs it
 4. `deploy-develop.yml`
    - runs automatically from successful `develop` image builds
 5. `ci.yml`
@@ -40,7 +40,7 @@ Use this mode if you want cost close to zero with the least operational impact:
 - make `build-push.yml` manual-only
 - make `security.yml` manual-only
 - disable `deploy-develop.yml` automatic staging
-- disable `nightly-ops.yml` schedule
+- for **Nightly Security Rescan**, remove the `schedule` block or set `on: workflow_dispatch` only
 - disable `ci.yml` automatic push / PR execution
 
 After these changes, Actions usage should only happen when someone explicitly runs a workflow by hand.
@@ -142,30 +142,9 @@ Notes:
 - this temporarily disables the automatic staging/pre-prod contract
 - if you later want manual staging, you may need to add explicit `workflow_dispatch` inputs; if not, simply restore the original trigger when re-enabling
 
-### 4. Disable nightly operations schedule
+### 4. `nightly-ops.yml` (Manual Ops Evidence Check)
 
-File: `.github/workflows/nightly-ops.yml`
-
-Replace:
-
-```yaml
-on:
-  schedule:
-    - cron: "42 2 * * *"
-  workflow_dispatch:
-```
-
-With:
-
-```yaml
-on:
-  workflow_dispatch:
-```
-
-Impact:
-
-- stops daily readiness / maintenance / restore-drill style workflows
-- keeps an operator-run path available
+This workflow is **already** `workflow_dispatch` only (no nightly `schedule` in the default file). You do **not** need to “remove a schedule” here — simply **do not run** it in low-cost mode, or add a `concurrency` cancel policy if you want to prevent parallel heavy runs. **Nightly Security Rescan** (`nightly-security.yml`) is the one with a `schedule` to disable if you need to cut scheduled runner minutes (see that file’s `on:` block).
 
 ### 5. Disable automatic CI
 
@@ -215,7 +194,7 @@ Keep `codeql.yml` unchanged unless you explicitly enable it later:
 
 Apply in this order:
 
-1. `nightly-ops.yml`
+1. `nightly-security.yml` (remove `schedule` if present)
 2. `security.yml`
 3. `deploy-develop.yml`
 4. `build-push.yml`
@@ -231,7 +210,7 @@ Restore the original `on:` blocks shown above:
 - `build-push.yml`: restore `push` + tag trigger + `workflow_dispatch`
 - `security.yml`: restore `pull_request`, `push`, `workflow_run`, `schedule`, `workflow_dispatch`
 - `deploy-develop.yml`: restore `workflow_run`
-- `nightly-ops.yml`: restore `schedule` + `workflow_dispatch`
+- `nightly-security.yml`: restore `schedule` + `workflow_dispatch` if you disabled the cron
 
 If you want a safer phased restore:
 
@@ -239,7 +218,7 @@ If you want a safer phased restore:
 2. restore `build-push.yml`
 3. restore `security.yml`
 4. restore `deploy-develop.yml`
-5. restore `nightly-ops.yml`
+5. (optional) re-enable any scheduled security rescan
 
 ## Expected cost profile after these temporary changes
 

@@ -6,6 +6,22 @@ This runbook describes how to configure **branch protection** and **GitHub Envir
 
 **Reality check:** `tools/verify_github_governance.py` can only **read** what the GitHub REST API exposes. It cannot create or lock settings. The **repo owner (or org admin)** must use the GitHub **Settings** UI (or org rules) to apply the policies below. When the API is missing permissions, returns **404** (e.g. **repository rulesets** instead of classic branch protection), or omits fields, follow the checklists in this file and the manual block printed by the verifier.
 
+**Run the verifier (same as CI wrapper):** `make verify-governance` or `bash scripts/ci/verify_github_governance.sh`  
+Needs **`GH_TOKEN` or `GITHUB_TOKEN`** (repo read; environment read may require admin scope depending on org) and **`GITHUB_REPOSITORY=owner/repo`**. Fails the process when protections are missing or the API response proves misconfiguration. If the response omits `protection_rules` or `deployment_branch_policy` but your org still enforces policy, use **`GITHUB_GOVERNANCE_WARN_ONLY=true`** to treat those items as **warnings** (not for gating merge CI), complete the [P0-4 manual checklist](#p0-4--manual-configuration-checklist-github-ui), then re-run with a token that can read environments.
+
+## P0-4 — Manual configuration checklist (GitHub UI)
+
+Use this when onboarding a repo or when `verify_github_governance` reports API **403/404** (rulesets) or missing fields. Nothing in this repository can set these; they are **Settings** only.
+
+| Area | You must configure |
+|------|-------------------|
+| **Branch: `main`** | **Settings → Branches → Branch protection** (pattern `main`). Require PRs, **≥1 approval**, required **status checks** (see [Recommended required checks for `main`](#recommended-required-checks-for-main)), **strict** (up to date), block **force push** and **deletion**, restrict who can push if policy allows. |
+| **Branch: `develop`** | **Settings → Branches** (pattern `develop`). Require PRs and/or **required checks** (see [develop checks](#recommended-required-checks-for-develop)), block **force push** and **deletion** (recommended). |
+| **Environment `production`** | **Settings → Environments → `production`**. **Required reviewers** (≥1 user/team). **Deployment branches: Selected branches** → **`main`** only (not “All branches”). Optional: wait timer, **Prevent self-review** if available. |
+| **Secrets for prod deploy** | **Settings → Environments → `production` → Environment secrets** (SSH, hosts, etc.). Do **not** commit production secrets to the repo. |
+| **Required checks (names)** | Must match the **Check name** column in the tables in this doc (GitHub shows `Workflow / job`). **CI**, **Security** blocking jobs, and (on `main`) **Enterprise release verification** and **Security Release** where applicable. |
+| **Deploy workflow** | Production goes only through **[`.github/workflows/deploy-prod.yml`](../../.github/workflows/deploy-prod.yml)** (`workflow_dispatch` on `main`); it does not auto-run from **Security Release** completion. |
+
 ## Active GitHub Actions workflows in this repository
 
 **Canonical deploy paths:** production rollouts and rollbacks go only through **[`.github/workflows/deploy-prod.yml`](../../.github/workflows/deploy-prod.yml)** (name **Deploy Production**). Staging (develop) goes only through **[`.github/workflows/deploy-develop.yml`](../../.github/workflows/deploy-develop.yml)** (name **Staging Deployment Contract**). There is **no** `deploy-staging.yml` — the job id `deploy-staging` is internal to that file only. **Do not** add a second staging or production deploy workflow that bypasses **Security Release**.
@@ -21,7 +37,7 @@ This runbook describes how to configure **branch protection** and **GitHub Envir
 | `deploy-prod.yml` | Deploy Production | **Only** file that can deploy/rollback **production** (`environment: production`). |
 | `deploy-production.yml` | Legacy pointer (no deploy) | **Not** a deploy: notice-only, legacy filename. Use **`deploy-prod.yml`**. |
 | `nightly-security.yml` | Nightly Security Rescan | Scheduled rescans; not merge/deploy gates. |
-| `nightly-ops.yml` | Nightly Ops | Operations / evidence; not deploy. |
+| `nightly-ops.yml` | Manual Ops Evidence Check | `workflow_dispatch` only (no `schedule`); ops/evidence, restore drill; **not** deploy. |
 | `environment-separation-gates.yml` | Environment separation gates | Policy checks. |
 | `enterprise-release-verify.yml` | Enterprise release verification | Static preflight; not a deploy. |
 | `telemetry-storm-staging.yml` | Staging telemetry storm suite | **Manual** load/storm; not general staging app deploy. |
@@ -178,7 +194,7 @@ Configure:
 
 4. **Save**.
 
-**Verification:** With `GH_TOKEN` / `GITHUB_TOKEN` and `GITHUB_REPOSITORY=owner/repo`, run `python tools/verify_github_governance.py`. With `ENFORCE_GITHUB_GOVERNANCE=true`, missing **production** or missing **required reviewers** (when visible in the API) fails the check. If the API does not return `protection_rules`, the tool prints a **manual verification** warning — still complete the UI steps above.
+**Verification:** With `GH_TOKEN` / `GITHUB_TOKEN` and `GITHUB_REPOSITORY=owner/repo`, run **`make verify-governance`** (or `python tools/verify_github_governance.py`). Missing **production** environment, **required reviewers** (when the API lists rules), or **main-only** deployment policy fails by default. If the API omits `protection_rules` / `deployment_branch_policy`, the verifier **fails** with a **manual verification** message (or set `GITHUB_GOVERNANCE_WARN_ONLY=true` to warn while you fix token permissions). `ENFORCE_GITHUB_GOVERNANCE=true` also tightens **branch** protection checks (e.g. strict required checks on `main`).
 
 **Rollback / LKG:** See [rollback-production.md](./rollback-production.md).
 

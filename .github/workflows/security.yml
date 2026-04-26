@@ -57,7 +57,7 @@ jobs:
 
     steps:
       - name: Review dependency changes
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
 
   govulncheck-pr:
     name: Go Vulnerability Scan
@@ -67,7 +67,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 1
 
@@ -92,7 +92,7 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25.9"
           cache: true
@@ -101,7 +101,7 @@ jobs:
       - name: Run govulncheck
         shell: bash
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
           govulncheck ./...
 
   secret-scan:
@@ -112,12 +112,12 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25.9"
           cache: true
@@ -139,16 +139,16 @@ jobs:
 
       - name: Upload gitleaks report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gitleaks-report
           path: security-reports/gitleaks.sarif
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
 
       - name: Upload gitleaks SARIF to code scanning
         if: always() && vars.ENABLE_CODE_SCANNING == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3
         with:
           sarif_file: security-reports/gitleaks.sarif
           category: gitleaks
@@ -161,7 +161,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Run Trivy config scan
         shell: bash
@@ -212,9 +212,9 @@ jobs:
 
       - name: Upload Trivy config report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: trivy-config-report
           path: security-reports/trivy-config.txt
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
