@@ -1,18 +1,30 @@
 #!/usr/bin/env bash
-# Read-only blackbox production smoke checks.
+# Production blackbox smoke: tiered (health, business-readonly, optional business-safe-synthetic).
+# Only GET/HEAD - never real payment capture, dispense, inventory mutation, or MQTT commands.
 set -Eeuo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "${ROOT}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROD_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+cd "${PROD_DIR}"
 
+EMITTER_PY="${REPO_ROOT}/scripts/smoke/emit_production_smoke_json.py"
 JSON_MODE=0
-if [[ "${SMOKE_JSON:-0}" == "1" ]]; then
-	JSON_MODE=1
-fi
+SMOKE_LEVEL="${SMOKE_LEVEL:-business-readonly}"
+SHOW_HELP=0
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 		--json)
 			JSON_MODE=1
+			shift
+			;;
+		--level)
+			shift
+			SMOKE_LEVEL="${1-}"
+			shift
+			;;
+		--help | -h)
+			SHOW_HELP=1
 			shift
 			;;
 		*)
@@ -20,21 +32,72 @@ while [[ $# -gt 0 ]]; do
 			;;
 	esac
 done
+if [[ "${SMOKE_JSON:-0}" == "1" ]]; then
+	JSON_MODE=1
+fi
+
+if [[ "${SHOW_HELP}" == "1" ]]; then
+	cat <<'EOF'
+Usage: smoke_prod.sh [--json] [--level LEVEL] [--help]
+
+Tiers (SMOKE_LEVEL):
+  health                  — reachability, /health/ready, /health/live, /version
+  business-readonly       — health + read-only business signal (default for production)
+  business-safe-synthetic | full — above + optional synthetic GET (no side effects) when enabled
+
+Environment (high level):
+  SMOKE_BASE_URL / SMOKE_API_DOMAIN / API_DOMAIN, SMOKE_CONNECT_TO_HOST, SMOKE_CONNECT_TO_PORT
+  SMOKE_LEVEL, SMOKE_ENABLE_BUSINESS_SYNTHETIC (0/1)
+  SMOKE_BUSINESS_READONLY_BEARER_TOKEN (optional Bearer for /v1/... GET probes)
+  SMOKE_BUSINESS_READONLY_SPECS — explicit checks: "name|path|statuses|regex" separated by ";;"
+  SMOKE_DB_READ_PATH, SMOKE_DB_READ_MATCH_REGEX (legacy DB read probe)
+  SMOKE_SYNTHETIC_GET_PATH, SMOKE_SYNTHETIC_BEARER_TOKEN, SMOKE_SYNTHETIC_MATCH_REGEX
+
+This script only issues GET. It must never trigger real payment, dispense, inventory
+changes, or MQTT. See docs/operations/production-smoke-tests.md
+EOF
+	exit 0
+fi
+
+if [[ $# -gt 0 ]]; then
+	echo "error: unexpected arguments: $* (try --help)" >&2
+	exit 2
+fi
+
+[[ -f "${EMITTER_PY}" ]] || {
+	echo "error: missing JSON emitter: ${EMITTER_PY}" >&2
+	exit 2
+}
 
 EXIT_CODE_CONFIG_FAILURE=30
 EXIT_CODE_SMOKE_FAILURE=31
 
 CHECKS_FILE="$(mktemp)"
+SKIP_REASONS_FILE="$(mktemp)"
 CONFIG_FAILURES=0
 FAILURES=0
 SKIPS=0
 
-BASE_URL_RESULT="not-run"
-CRITICAL_READ_RESULT="not-run"
-OPTIONAL_DB_READ_RESULT="not-run"
+# Tier outcomes for evidence (emitter)
+SMOKE_HEALTH_RESULT="not-run"
+SMOKE_BUSINESS_READONLY_RESULT="not-run"
+SMOKE_BUSINESS_SYNTHETIC_RESULT="not-run"
+SMOKE_BASE_URL_RESULT="not-run"
+SMOKE_CRITICAL_READ_RESULT="not-run"
+SMOKE_OPTIONAL_DB_READ_RESULT="not-run"
+SMOKE_ZERO_SIDE_EFFECTS_CLAIM="true"
+HEALTH_TIER_OK=1
+BR_TIER_OK=1
+SYN_TIER_OK=1
+
+append_skip_reason() {
+	local code="$1"
+	local detail="$2"
+	printf '%s\t%s\n' "${code}" "${detail}" >> "${SKIP_REASONS_FILE}"
+}
 
 cleanup() {
-	rm -f "${CHECKS_FILE}"
+	rm -f "${CHECKS_FILE}" "${SKIP_REASONS_FILE}"
 }
 trap cleanup EXIT
 
@@ -56,17 +119,9 @@ json_escape() {
 	printf '%s' "${value}"
 }
 
-note() {
-	emit_info "==> $*"
-}
-
-pass() {
-	emit_info "PASS: $1"
-}
-
-skip() {
-	emit_info "SKIP: $1"
-}
+note() { emit_info "==> $*"; }
+pass() { emit_info "PASS: $1"; }
+skip() { emit_info "SKIP: $1"; }
 
 read_env_optional() {
 	local key="$1"
@@ -98,12 +153,8 @@ record_check() {
 	local detail="$5"
 	printf '%s\t%s\t%s\t%s\t%s\n' "${name}" "${status}" "${url}" "${http_status}" "${detail}" >> "${CHECKS_FILE}"
 	case "${status}" in
-		fail)
-			FAILURES=$((FAILURES + 1))
-			;;
-		skip)
-			SKIPS=$((SKIPS + 1))
-			;;
+		fail) FAILURES=$((FAILURES + 1)) ;;
+		skip) SKIPS=$((SKIPS + 1)) ;;
 	esac
 }
 
@@ -159,12 +210,18 @@ curl_check() {
 		curl_args+=(--connect-to "${url_host}:${url_port}:${SMOKE_CONNECT_TO_HOST}:${SMOKE_CONNECT_TO_PORT:-${url_port}}")
 	fi
 
+	if [[ "${SMOKE_CURL_AUTH_MODE:-}" == "readonly" && -n "${SMOKE_BUSINESS_READONLY_BEARER_TOKEN:-}" ]]; then
+		curl_args+=(-H "Authorization: Bearer ${SMOKE_BUSINESS_READONLY_BEARER_TOKEN}")
+	elif [[ "${SMOKE_CURL_AUTH_MODE:-}" == "synthetic" && -n "${SMOKE_SYNTHETIC_BEARER_TOKEN:-}" ]]; then
+		curl_args+=(-H "Authorization: Bearer ${SMOKE_SYNTHETIC_BEARER_TOKEN}")
+	fi
+
 	set +e
 	http_status="$(curl "${curl_args[@]}" "${url}")"
 	curl_rc=$?
 	set -e
 
-	if (( curl_rc != 0 )); then
+	if ((curl_rc != 0)); then
 		detail="curl failed with exit code ${curl_rc}"
 		record_check "${name}" "fail" "${url}" "curl-exit-${curl_rc}" "${detail}"
 		eval "${result_var}=failed"
@@ -200,85 +257,57 @@ curl_check() {
 	return 0
 }
 
-emit_json_summary() {
-	local overall_status="pass"
-	local first="1"
-	local name status url http_status detail
-	if (( FAILURES > 0 )); then
-		overall_status="fail"
+# GET /swagger/doc.json — 404 is skip (not mounted); 5xx / curl error is fail; 200 + body = pass
+openapi_readonly_default_probe() {
+	local url="${BASE_URL}/swagger/doc.json"
+	local body http_status curl_rc curl_args=() url_host url_port
+	body="$(mktemp)"
+	curl_args=(
+		--silent
+		--show-error
+		--output "${body}"
+		--write-out "%{http_code}"
+		--max-time "${SMOKE_TIMEOUT_SECS:-10}"
+	)
+	if [[ -n "${SMOKE_CONNECT_TO_HOST:-}" ]]; then
+		url_host="$(python3 -c 'import sys; from urllib.parse import urlparse; print(urlparse(sys.argv[1]).hostname or "")' "${url}")"
+		url_port="$(python3 -c 'import sys; from urllib.parse import urlparse; p=urlparse(sys.argv[1]); print(p.port or (443 if p.scheme == "https" else 80))' "${url}")"
+		curl_args+=(--connect-to "${url_host}:${url_port}:${SMOKE_CONNECT_TO_HOST}:${SMOKE_CONNECT_TO_PORT:-${url_port}}")
 	fi
-
-	printf '{\n'
-	printf '  "overall_status": "%s",\n' "$(json_escape "${overall_status}")"
-	printf '  "base_url": "%s",\n' "$(json_escape "${BASE_URL}")"
-	printf '  "connect_to_host": "%s",\n' "$(json_escape "${SMOKE_CONNECT_TO_HOST:-}")"
-	printf '  "base_url_result": "%s",\n' "$(json_escape "${BASE_URL_RESULT}")"
-	printf '  "critical_read_result": "%s",\n' "$(json_escape "${CRITICAL_READ_RESULT}")"
-	printf '  "optional_db_read_result": "%s",\n' "$(json_escape "${OPTIONAL_DB_READ_RESULT}")"
-	printf '  "checks": ['
-	while IFS=$'\t' read -r name status url http_status detail; do
-		[[ -n "${name}" ]] || continue
-		if [[ "${first}" == "1" ]]; then
-			first="0"
-		else
-			printf ','
-		fi
-		printf '\n    {"name":"%s","status":"%s","url":"%s","http_status":"%s","detail":"%s"}' \
-			"$(json_escape "${name}")" \
-			"$(json_escape "${status}")" \
-			"$(json_escape "${url}")" \
-			"$(json_escape "${http_status}")" \
-			"$(json_escape "${detail}")"
-	done < "${CHECKS_FILE}"
-	if [[ "${first}" == "0" ]]; then
-		printf '\n'
+	set +e
+	http_status="$(curl "${curl_args[@]}" "${url}")"
+	curl_rc=$?
+	set -e
+	if ((curl_rc != 0)); then
+		record_check "business-readonly: openapi public document" "fail" "${url}" "curl-${curl_rc}" "curl failed"
+		rm -f "${body}"
+		return 1
 	fi
-	printf '  ],\n'
-	printf '  "failed_checks": ['
-	first="1"
-	while IFS=$'\t' read -r name status url http_status detail; do
-		[[ "${status}" == "fail" ]] || continue
-		if [[ "${first}" == "1" ]]; then
-			first="0"
-		else
-			printf ','
-		fi
-		printf '\n    {"name":"%s","url":"%s","http_status":"%s","detail":"%s"}' \
-			"$(json_escape "${name}")" \
-			"$(json_escape "${url}")" \
-			"$(json_escape "${http_status}")" \
-			"$(json_escape "${detail}")"
-	done < "${CHECKS_FILE}"
-	if [[ "${first}" == "0" ]]; then
-		printf '\n'
+	if [[ "${http_status}" == "404" ]]; then
+		record_check "business-readonly: openapi public document" "skip" "${url}" "404" "OpenAPI JSON not served at /swagger/doc.json (intentional in some prod configs)"
+		append_skip_reason "openapi_not_mounted" "GET /swagger/doc.json returned 404; use SMOKE_BUSINESS_READONLY_SPECS or SMOKE_DB_READ_PATH"
+		rm -f "${body}"
+		return 2
 	fi
-	printf '  ],\n'
-	printf '  "skipped_checks": ['
-	first="1"
-	while IFS=$'\t' read -r name status url http_status detail; do
-		[[ "${status}" == "skip" ]] || continue
-		if [[ "${first}" == "1" ]]; then
-			first="0"
-		else
-			printf ','
-		fi
-		printf '\n    {"name":"%s","detail":"%s"}' \
-			"$(json_escape "${name}")" \
-			"$(json_escape "${detail}")"
-	done < "${CHECKS_FILE}"
-	if [[ "${first}" == "0" ]]; then
-		printf '\n'
+	if [[ "${http_status}" == "200" ]] && grep -Eq 'openapi|swagger|"paths"' "${body}"; then
+		record_check "business-readonly: openapi public document" "pass" "${url}" "200" "ok"
+		rm -f "${body}"
+		return 0
 	fi
-	printf '  ]\n'
-	printf '}\n'
+	record_check "business-readonly: openapi public document" "fail" "${url}" "${http_status}" "unexpected response for OpenAPI discovery"
+	rm -f "${body}"
+	return 1
 }
 
-if [[ $# -gt 0 ]]; then
-	record_config_failure "smoke invocation" "unexpected arguments: $*"
-fi
-
-command -v curl >/dev/null 2>&1 || record_config_failure "smoke dependency" "curl is required on PATH"
-command -v python3 >/dev/null 2>&1 || record_config_failure "smoke dependency" "python3 is required on PATH"
+SMOKE_STARTED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+INVALID_SMOKE_LEVEL=0
+case "${SMOKE_LEVEL}" in
+	health | business-readonly | business-safe-synthetic | full) ;;
+	*)
+		INVALID_SMOKE_LEVEL=1
+		record_config_failure "smoke level" "invalid SMOKE_LEVEL='${SMOKE_LEVEL}' (use health, business-readonly, business-safe-synthetic, full)"
+		;;
+esac
 
 API_DOMAIN="${SMOKE_API_DOMAIN:-${PRODUCTION_API_DOMAIN:-$(read_env_optional API_DOMAIN)}}"
 BASE_URL="${SMOKE_BASE_URL:-${PUBLIC_BASE_URL:-$(read_env_optional PUBLIC_BASE_URL)}}"
@@ -296,48 +325,285 @@ CRITICAL_READ_MATCH_REGEX="${SMOKE_CRITICAL_READ_MATCH_REGEX:-\"version\"[[:spac
 DB_READ_PATH="${SMOKE_DB_READ_PATH:-}"
 DB_READ_MATCH_REGEX="${SMOKE_DB_READ_MATCH_REGEX:-}"
 
-note "blackbox smoke against ${BASE_URL}"
-if [[ -n "${SMOKE_CONNECT_TO_HOST:-}" ]]; then
-	note "forcing edge connection to ${SMOKE_CONNECT_TO_HOST}:${SMOKE_CONNECT_TO_PORT:-443}"
-fi
+ELIGIBLE_SYNTHETIC=0
+case "${SMOKE_LEVEL}" in
+	business-safe-synthetic | full) ELIGIBLE_SYNTHETIC=1 ;;
+esac
 
-curl_check \
-	"public base URL reachability" \
-	"${BASE_URL}" \
-	"${SMOKE_BASE_URL_ACCEPT_STATUSES:-200,301,302,307,308,401,403,404}" \
-	"" \
-	BASE_URL_RESULT
-
-curl_check \
-	"critical read-only API smoke" \
-	"${BASE_URL}${CRITICAL_READ_PATH}" \
-	"200" \
-	"${CRITICAL_READ_MATCH_REGEX}" \
-	CRITICAL_READ_RESULT
-
-if [[ -n "${DB_READ_PATH}" ]]; then
-	curl_check \
-		"optional DB-backed read smoke" \
-		"${BASE_URL}${DB_READ_PATH}" \
-		"${SMOKE_DB_READ_ACCEPT_STATUSES:-200}" \
-		"${DB_READ_MATCH_REGEX}" \
-		OPTIONAL_DB_READ_RESULT
-else
-	OPTIONAL_DB_READ_RESULT="skipped"
-	record_skip "optional DB-backed read smoke" "SMOKE_DB_READ_PATH not set"
-fi
-
-if [[ "${JSON_MODE}" == "1" ]]; then
-	emit_json_summary
-fi
-
-if (( CONFIG_FAILURES > 0 )); then
+if ((INVALID_SMOKE_LEVEL == 1)); then
+	SMOKE_HEALTH_RESULT="fail"
+	SMOKE_BUSINESS_READONLY_RESULT="not-run"
+	SMOKE_BUSINESS_SYNTHETIC_RESULT="not-run"
+	SMOKE_OVERALL_STATUS="fail"
+	SMOKE_COMPLETED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+	if [[ "${JSON_MODE}" == "1" ]]; then
+		export SMOKE_CHECKS_FILE="${CHECKS_FILE}"
+		export SMOKE_SKIPPED_REASONS_FILE="${SKIP_REASONS_FILE}"
+		export SMOKE_BASE_URL="${BASE_URL}"
+		export SMOKE_LABEL="${SMOKE_LABEL:-}"
+		export SMOKE_OVERALL_STATUS SMOKE_LEVEL SMOKE_STARTED_AT_UTC SMOKE_COMPLETED_AT_UTC
+		export SMOKE_HEALTH_RESULT SMOKE_BUSINESS_READONLY_RESULT SMOKE_BUSINESS_SYNTHETIC_RESULT
+		export SMOKE_BASE_URL_RESULT SMOKE_CRITICAL_READ_RESULT SMOKE_OPTIONAL_DB_READ_RESULT
+		export SMOKE_ZERO_SIDE_EFFECTS_CLAIM
+		python3 "${EMITTER_PY}"
+	fi
 	exit "${EXIT_CODE_CONFIG_FAILURE}"
 fi
-if (( FAILURES > 0 )); then
+
+# --- Tier: health (all valid levels) ---
+{
+	note "blackbox smoke level=${SMOKE_LEVEL} against ${BASE_URL}"
+	if [[ -n "${SMOKE_CONNECT_TO_HOST:-}" ]]; then
+		note "forcing edge connection to ${SMOKE_CONNECT_TO_HOST}:${SMOKE_CONNECT_TO_PORT:-443}"
+	fi
+
+	SMOKE_CURL_AUTH_MODE=none
+	if ! curl_check \
+		"public base URL reachability" \
+		"${BASE_URL}" \
+		"${SMOKE_BASE_URL_ACCEPT_STATUSES:-200,301,302,307,308,401,403,404}" \
+		"" \
+		SMOKE_BASE_URL_RESULT; then
+		HEALTH_TIER_OK=0
+	fi
+
+	if ! curl_check \
+		"health/ready" \
+		"${BASE_URL}/health/ready" \
+		"200" \
+		"^ok" \
+		HRDY; then
+		HEALTH_TIER_OK=0
+	fi
+
+	if ! curl_check \
+		"health/live" \
+		"${BASE_URL}/health/live" \
+		"200" \
+		"^ok" \
+		HLIV; then
+		HEALTH_TIER_OK=0
+	fi
+
+	if ! curl_check \
+		"critical read-only API smoke" \
+		"${BASE_URL}${CRITICAL_READ_PATH}" \
+		"200" \
+		"${CRITICAL_READ_MATCH_REGEX}" \
+		SMOKE_CRITICAL_READ_RESULT; then
+		HEALTH_TIER_OK=0
+	fi
+}
+
+# Optional strict git metadata (off by default)
+if [[ -n "${SMOKE_VERSION_REQUIRE_GIT_SHA:-}" && "${SMOKE_VERSION_REQUIRE_GIT_SHA}" == "1" ]]; then
+	SMOKE_CURL_AUTH_MODE=none
+	# best-effort second check: version payload includes git_sha
+	if ! curl_check \
+		"version includes git_sha" \
+		"${BASE_URL}${CRITICAL_READ_PATH}" \
+		"200" \
+		"\"git_sha\"[[:space:]]*:" \
+		vgit; then
+		HEALTH_TIER_OK=0
+	fi
+fi
+
+if ((HEALTH_TIER_OK == 1)); then
+	SMOKE_HEALTH_RESULT="pass"
+else
+	SMOKE_HEALTH_RESULT="fail"
+fi
+
+# Skipped tiers for health-only
+case "${SMOKE_LEVEL}" in
+	health)
+		SMOKE_BUSINESS_READONLY_RESULT="skipped"
+		SMOKE_BUSINESS_SYNTHETIC_RESULT="skipped"
+		SMOKE_OPTIONAL_DB_READ_RESULT="skipped"
+		append_skip_reason "business_readonly_not_run" "SMOKE_LEVEL=health (business checks not in scope for this run)"
+		append_skip_reason "synthetic_not_run" "SMOKE_LEVEL=health"
+		;;
+esac
+
+# --- business-readonly ---
+if [[ "${SMOKE_LEVEL}" != "health" ]]; then
+	RO_DID_PASS=0
+	if [[ -n "${SMOKE_BUSINESS_READONLY_SPECS:-}" ]]; then
+		SMOKE_CURL_AUTH_MODE=readonly
+		remaining="${SMOKE_BUSINESS_READONLY_SPECS}"
+		while [[ -n "${remaining}" ]]; do
+			chunk="${remaining%%::*}"
+			if [[ "${remaining}" == *::* ]]; then
+				remaining="${remaining#*::}"
+			else
+				remaining=""
+			fi
+			IFS='|' read -r br_name br_path br_statuses br_regex <<< "${chunk}||||"
+			br_name="$(printf '%s' "${br_name}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+			[[ -n "${br_name}" ]] || continue
+			br_path="$(printf '%s' "${br_path}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+			[[ -n "${br_path}" ]] || {
+				BR_TIER_OK=0
+				record_config_failure "business_readonly spec" "empty path in SMOKE_BUSINESS_READONLY_SPECS"
+				break
+			}
+			[[ -n "${br_statuses}" ]] || br_statuses="200"
+			brv="brv_${RANDOM}"
+			if ! curl_check "${br_name}" "${BASE_URL}${br_path}" "${br_statuses}" "${br_regex}" "${brv}"; then
+				BR_TIER_OK=0
+			else
+				RO_DID_PASS=1
+			fi
+		done
+		SMOKE_CURL_AUTH_MODE=none
+		# optional DB in addition
+		if [[ -n "${DB_READ_PATH}" ]]; then
+			SMOKE_CURL_AUTH_MODE=none
+			if curl_check \
+				"optional DB-backed read smoke" \
+				"${BASE_URL}${DB_READ_PATH}" \
+				"${SMOKE_DB_READ_ACCEPT_STATUSES:-200}" \
+				"${DB_READ_MATCH_REGEX}" \
+				SMOKE_OPTIONAL_DB_READ_RESULT; then
+				RO_DID_PASS=1
+			else
+				BR_TIER_OK=0
+			fi
+		else
+			SMOKE_OPTIONAL_DB_READ_RESULT="skipped"
+			record_skip "optional DB-backed read smoke" "SMOKE_DB_READ_PATH not set"
+		fi
+	else
+		# Default discovery: OpenAPI JSON (404 = skip) + optional DB
+		RO_DID_PASS=0
+		SMOKE_CURL_AUTH_MODE=none
+		openapi_readonly_default_probe
+		oprc=$?
+		if [[ "${oprc}" -eq 0 ]]; then
+			RO_DID_PASS=1
+		elif [[ "${oprc}" -eq 1 ]]; then
+			BR_TIER_OK=0
+		fi
+		if [[ -n "${DB_READ_PATH}" ]]; then
+			if curl_check \
+				"optional DB-backed read smoke" \
+				"${BASE_URL}${DB_READ_PATH}" \
+				"${SMOKE_DB_READ_ACCEPT_STATUSES:-200}" \
+				"${DB_READ_MATCH_REGEX}" \
+				SMOKE_OPTIONAL_DB_READ_RESULT; then
+				RO_DID_PASS=1
+			else
+				BR_TIER_OK=0
+			fi
+		else
+			SMOKE_OPTIONAL_DB_READ_RESULT="skipped"
+			record_skip "optional DB-backed read smoke" "SMOKE_DB_READ_PATH not set"
+		fi
+		if ((RO_DID_PASS == 0)); then
+			BR_TIER_OK=0
+			append_skip_reason "business_readonly_no_signal" "no successful business-readonly probe — set SMOKE_BUSINESS_READONLY_SPECS, SMOKE_DB_READ_PATH, or expose a passing /swagger/doc.json"
+			record_config_failure "business-readonly" "at least one business-readonly check must pass (OpenAPI, DB read, or explicit SPECS)"
+		fi
+	fi
+
+	if ((BR_TIER_OK == 1)); then
+		SMOKE_BUSINESS_READONLY_RESULT="pass"
+	else
+		SMOKE_BUSINESS_READONLY_RESULT="fail"
+	fi
+fi
+
+# --- business-safe-synthetic (optional) ---
+if [[ "${ELIGIBLE_SYNTHETIC}" -eq 1 ]]; then
+	if [[ "${SMOKE_ENABLE_BUSINESS_SYNTHETIC:-0}" != "1" ]]; then
+		SMOKE_BUSINESS_SYNTHETIC_RESULT="skipped"
+		append_skip_reason "synthetic_tier_disabled" "SMOKE_ENABLE_BUSINESS_SYNTHETIC is not 1 (default off)"
+	else
+		synth_path="${SMOKE_SYNTHETIC_GET_PATH:-}"
+		if [[ -z "${synth_path}" ]]; then
+			SMOKE_BUSINESS_SYNTHETIC_RESULT="skipped"
+			SMOKE_ZERO_SIDE_EFFECTS_CLAIM="true"
+			append_skip_reason "synthetic_not_configured" "no vetted safe synthetic GET path (SMOKE_SYNTHETIC_GET_PATH) — public API has no unauthenticated production dry-run; skipped, not pass"
+		else
+			# only GET, never POST
+			SMOKE_CURL_AUTH_MODE=synthetic
+			sy_regex="${SMOKE_SYNTHETIC_MATCH_REGEX:-.}"
+			if ! curl_check \
+				"business-safe-synthetic GET" \
+				"${BASE_URL}${synth_path}" \
+				"200" \
+				"${sy_regex}" \
+				sy_r; then
+				SYN_TIER_OK=0
+				SMOKE_BUSINESS_SYNTHETIC_RESULT="fail"
+				SMOKE_ZERO_SIDE_EFFECTS_CLAIM="false"
+			else
+				SMOKE_BUSINESS_SYNTHETIC_RESULT="pass"
+			fi
+			SMOKE_CURL_AUTH_MODE=none
+		fi
+	fi
+else
+	if [[ "${SMOKE_LEVEL}" == "health" ]]; then
+		:
+	else
+		SMOKE_BUSINESS_SYNTHETIC_RESULT="skipped"
+		append_skip_reason "synthetic_not_eligible" "raise SMOKE_LEVEL to business-safe-synthetic to attempt synthetic tier"
+	fi
+fi
+
+# Overall
+SMOKE_OVERALL_STATUS="pass"
+if ((CONFIG_FAILURES > 0)) || ((FAILURES > 0)); then
+	SMOKE_OVERALL_STATUS="fail"
+fi
+# Tier policy: must not claim success if health or BR failed (when in scope)
+if [[ "${SMOKE_LEVEL}" != "health" ]]; then
+	if [[ "${SMOKE_HEALTH_RESULT}" == "fail" || "${SMOKE_BUSINESS_READONLY_RESULT}" == "fail" ]]; then
+		SMOKE_OVERALL_STATUS="fail"
+	fi
+fi
+if [[ "${ELIGIBLE_SYNTHETIC}" -eq 1 && "${SMOKE_ENABLE_BUSINESS_SYNTHETIC:-0}" == "1" && -n "${SMOKE_SYNTHETIC_GET_PATH:-}" && "${SMOKE_BUSINESS_SYNTHETIC_RESULT}" == "fail" ]]; then
+	SMOKE_OVERALL_STATUS="fail"
+fi
+if [[ "${SMOKE_LEVEL}" == "health" ]]; then
+	if [[ "${SMOKE_HEALTH_RESULT}" == "fail" ]]; then
+		SMOKE_OVERALL_STATUS="fail"
+	fi
+fi
+
+SMOKE_COMPLETED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+if [[ "${JSON_MODE}" == "1" ]]; then
+	export SMOKE_CHECKS_FILE="${CHECKS_FILE}"
+	export SMOKE_SKIPPED_REASONS_FILE="${SKIP_REASONS_FILE}"
+	export SMOKE_LEVEL
+	export SMOKE_STARTED_AT_UTC
+	export SMOKE_COMPLETED_AT_UTC
+	export SMOKE_BASE_URL="${BASE_URL}"
+	export SMOKE_LABEL="${SMOKE_LABEL:-}"
+	export SMOKE_CONNECT_TO_HOST="${SMOKE_CONNECT_TO_HOST:-}"
+	export SMOKE_OVERALL_STATUS
+	export SMOKE_BUSINESS_SYNTHETIC_RESULT
+	export SMOKE_ZERO_SIDE_EFFECTS_CLAIM
+	export SMOKE_BASE_URL_RESULT SMOKE_CRITICAL_READ_RESULT SMOKE_OPTIONAL_DB_READ_RESULT
+	export SMOKE_HEALTH_RESULT SMOKE_BUSINESS_READONLY_RESULT
+	[[ -f "${EMITTER_PY}" ]]
+	python3 "${EMITTER_PY}"
+fi
+
+if ((CONFIG_FAILURES > 0)); then
+	exit "${EXIT_CODE_CONFIG_FAILURE}"
+fi
+if ((FAILURES > 0)); then
+	exit "${EXIT_CODE_SMOKE_FAILURE}"
+fi
+if [[ "${SMOKE_OVERALL_STATUS}" == "fail" ]]; then
 	exit "${EXIT_CODE_SMOKE_FAILURE}"
 fi
 
 if [[ "${JSON_MODE}" != "1" ]]; then
-	echo "smoke_prod: PASS"
+	echo "smoke_prod: PASS (level=${SMOKE_LEVEL})"
 fi
+exit 0

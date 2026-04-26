@@ -19,10 +19,12 @@ on:
 # verdict **pass** deploys; **skipped** / **no-candidate** is a **neutral** success (no staging deploy, exit 0).
 # **fail**, missing/empty/unknown **verdict**, or missing artifact / invalid JSON fails closed (no deploy).
 # Staging has two explicit modes (repository variable `ENABLE_REAL_STAGING_DEPLOY`):
-# 1) Contract-only: var is not `true` — the workflow may record evidence and a **passing** run must **not** read
-#    like a real deployment. Summary line: **contract-only, not a real staging deployment** (app not deployed).
-# 2) Real pre-prod / staging: var is `true` — requires host, SSH, secrets, remote `deploy_staging.sh`
-#    (compose config + digest-pinned pull on host), `/health/ready`, smoke, and published evidence JSON/artifacts.
+# 1) Real pre-prod / staging: var is `true` — requires host, SSH, secrets, remote `deploy_staging.sh`
+#    (compose config + digest-pinned pull on host), `/health/ready`, smoke, and artifacts
+#    `staging-deploy-evidence` (canonical promotion JSON) + `staging-release-evidence` (legacy compat).
+# 2) Contract-only: `ENABLE_REAL_STAGING_DEPLOY` is not `true` — only allowed if `vars.ALLOW_STAGING_CONTRACT_ONLY`
+#    is `true` (opt-in; not enterprise-ready; production will reject this as a staging gate unless production bypass).
+#    Otherwise this workflow **fails** so develop does not look like a real release when staging is not deployed.
 # For verdict=pass: automatic staging requires source_event push (validate_release_verdict.py staging-candidate).
 #
 # WARNING — canonical staging workflow: there is **no** separate `deploy-staging.yml` in this repo.
@@ -392,7 +394,43 @@ jobs:
             echo "- verdict generated at (UTC): \`${{ steps.gate.outputs.security_verdict_generated_at_utc }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # When real staging is off: validate the same release chain as above, then exit success without SSH/VPS.
+  # Fail closed: passing Security Release on develop but no real staging and no opt-in to contract-only.
+  block-staging-without-real-or-allow:
+    name: Staging — require real pre-prod or ALLOW_STAGING_CONTRACT_ONLY
+    if: |
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.name == 'Security Release' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'develop' &&
+      needs.resolve-staging-candidate.outputs.staging_verdict == 'pass' &&
+      vars.ENABLE_REAL_STAGING_DEPLOY != 'true' &&
+      vars.ALLOW_STAGING_CONTRACT_ONLY != 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - resolve-staging-candidate
+      - resolve-image-refs
+      - validate-staging-security-verdict
+    steps:
+      - name: Fail — staging is not a real pre-prod deploy
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          {
+            echo "## Staging release gate — **blocked (fail closed)**"
+            echo ""
+            echo "Security Release produced **verdict=pass** for this develop candidate, but **real staging is not enabled** and **contract-only mode is not explicitly allowed**."
+            echo ""
+            echo "- \`vars.ENABLE_REAL_STAGING_DEPLOY\` is not \`true\` — no remote staging / pre-prod host deploy, smoke, or \`real_staging\` \`staging-release-evidence\`."
+            echo "- \`vars.ALLOW_STAGING_CONTRACT_ONLY\` is not \`true\` — the repository does **not** opt in to a contract-only (no app deployment) pass."
+            echo ""
+            echo "### Fix"
+            echo "1. **Enterprise (recommended)**: set \`vars.ENABLE_REAL_STAGING_DEPLOY\` to \`true\` and configure host/SSH (see \`docs/runbooks/staging-preprod.md\`)."
+            echo "2. **Temporary** (not production-eligible on its own): set \`vars.ALLOW_STAGING_CONTRACT_ONLY\` to \`true\` to allow contract-only success until real staging is ready."
+          } >> "${GITHUB_STEP_SUMMARY}"
+          echo "error: real staging is disabled and ALLOW_STAGING_CONTRACT_ONLY is not true — see job summary" >&2
+          exit 1
+
+  # When real staging is off and org opted in: validate the same release chain, then record contract-only evidence.
   record-staging-disabled-outcome:
     name: Staging — contract-only (not a real deployment; no VPS)
     if: |
@@ -401,7 +439,8 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'develop' &&
       needs.resolve-staging-candidate.outputs.staging_verdict == 'pass' &&
-      vars.ENABLE_REAL_STAGING_DEPLOY != 'true'
+      vars.ENABLE_REAL_STAGING_DEPLOY != 'true' &&
+      vars.ALLOW_STAGING_CONTRACT_ONLY == 'true'
     runs-on: ubuntu-latest
     needs:
       - resolve-staging-candidate
@@ -417,6 +456,8 @@ jobs:
         id: noop
         shell: bash
         env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
           SRC_SHA: ${{ needs.resolve-staging-candidate.outputs.source_commit_sha }}
           BUILD_RUN: ${{ needs.resolve-staging-candidate.outputs.workflow_run_id }}
           SEC_RUN: ${{ needs.resolve-staging-candidate.outputs.security_workflow_run_id }}
@@ -431,12 +472,19 @@ jobs:
           python3 <<'PY'
           import json
           import os
+          import re
           from datetime import datetime, timezone
           from pathlib import Path
+
+          def dig(ref):
+              m = re.search(r"@(sha256:[a-f0-9]{64})\s*$", (ref or "").strip())
+              return m.group(1) if m else ""
 
           out = Path("deployment-evidence/staging-contract-outcome.json")
           out.parent.mkdir(parents=True, exist_ok=True)
           notice = "contract-only, not a real staging deployment"
+          rec_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+          run_id = os.environ.get("GITHUB_RUN_ID", "")
           payload = {
             "schema_version": "v2",
             "environment": "staging",
@@ -454,9 +502,58 @@ jobs:
             "goose_image_ref": os.environ.get("GOOSE_REF", ""),
             "release_gate_mode": os.environ.get("RG_MODE", ""),
             "release_gate_verdict": os.environ.get("RG_VER", ""),
-            "recorded_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "recorded_at_utc": rec_utc,
           }
           out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+          aref = os.environ.get("APP_REF", "")
+          gref = os.environ.get("GOOSE_REF", "")
+          gate = {
+            "schema_version": "staging-release-evidence-v1",
+            "workflow_name": "Staging Deployment Contract",
+            "staging_deployment_workflow_run_id": str(run_id),
+            "source_commit_sha": os.environ.get("SRC_SHA", ""),
+            "source_branch": "develop",
+            "build_run_id": os.environ.get("BUILD_RUN", ""),
+            "app_image_ref": aref,
+            "goose_image_ref": gref,
+            "app_image_digest": dig(aref),
+            "goose_image_digest": dig(gref),
+            "deployment_mode": "contract_only",
+            "meets_production_staging_gate": False,
+            "smoke_result": "not_run",
+            "health_readiness_result": "not_run",
+            "completed_at_utc": rec_utc,
+            "operator_notice": "contract-only path — not a real pre-prod deploy; do not use for strict production gating",
+          }
+          Path("deployment-evidence/staging-release-evidence.json").write_text(
+            json.dumps(gate, indent=2) + "\n", encoding="utf-8"
+          )
+          deploy_ev = {
+              "schema_version": "staging-deploy-evidence-v1",
+              "environment": "staging",
+              "repository": os.environ.get("GITHUB_REPOSITORY", ""),
+              "workflow_run_id": str(run_id),
+              "commit_sha": os.environ.get("SRC_SHA", ""),
+              "branch": "develop",
+              "build_run_id": os.environ.get("BUILD_RUN", ""),
+              "app_image_ref": aref,
+              "goose_image_ref": gref,
+              "app_digest": dig(aref) or "",
+              "goose_digest": dig(gref) or "",
+              "deployed_at_utc": rec_utc,
+              "host_count": 0,
+              "smoke_result": "not_run",
+              "readiness_result": "not_run",
+              "health_endpoint_category": "n/a (contract_only — no real deploy)",
+              "promotion_eligible": False,
+              "reason": os.environ["SKIP_REASON"],
+              "promotion_ineligible_reason": os.environ["SKIP_REASON"],
+              "deployment_mode": "contract_only",
+          }
+          Path("staging-evidence").mkdir(parents=True, exist_ok=True)
+          Path("staging-evidence/staging-deploy-evidence.json").write_text(
+            json.dumps(deploy_ev, indent=2) + "\n", encoding="utf-8"
+          )
           PY
           {
             echo "## **contract-only, not a real staging deployment**"
@@ -473,7 +570,8 @@ jobs:
             echo "- \`source_build_run_id\` (from security-verdict): \`${BUILD_RUN}\`"
             echo "- \`app_image_ref\` (digest-pinned): \`${APP_REF}\`"
             echo "- \`goose_image_ref\` (digest-pinned): \`${GOOSE_REF}\`"
-            echo "- Set \`vars.ENABLE_REAL_STAGING_DEPLOY=true\` and see \`docs/runbooks/staging-preprod.md\` for a real host deploy."
+            echo "- **\`promotion_eligible\`**: \`false\` — see artifact \`staging-deploy-evidence\` (not valid for production promotion)"
+            echo "- Set \`vars.ENABLE_REAL_STAGING_DEPLOY=true\` and see \`docs/operations/staging-preprod-gate.md\` / \`docs/runbooks/staging-preprod.md\` for a real host deploy."
           } >> "$GITHUB_STEP_SUMMARY"
           {
             echo "contract_validated=true"
@@ -487,6 +585,22 @@ jobs:
         with:
           name: staging-contract-outcome
           path: deployment-evidence/staging-contract-outcome.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload staging release evidence (contract-only; not production-ready alone)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-release-evidence
+          path: deployment-evidence/staging-release-evidence.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload staging deploy evidence (contract-only; not promotion eligible)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-deploy-evidence
+          path: staging-evidence/staging-deploy-evidence.json
           if-no-files-found: error
           retention-days: 90
 
@@ -584,11 +698,12 @@ jobs:
             missing+=("$1")
           }
 
-          [[ -n "${STAGING_HOST}" ]] || add_missing "STAGING_HOST"
-          [[ -n "${STAGING_DEPLOY_ROOT}" ]] || add_missing "STAGING_DEPLOY_ROOT"
-          [[ -n "${SSH_USER}" ]] || add_missing "STAGING_SSH_USER"
-          [[ -n "${SSH_PRIVATE_KEY}" ]] || add_missing "STAGING_SSH_KEY"
-          [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]] || add_missing "STAGING_SSH_KNOWN_HOSTS"
+          [[ -n "${STAGING_HOST}" ]] || add_missing "STAGING_HOST or PREPROD_HOST (secret or variable)"
+          [[ -n "${STAGING_DEPLOY_ROOT}" ]] || add_missing "STAGING_DEPLOY_ROOT or PREPROD_DEPLOY_ROOT (secret or variable)"
+          [[ -n "${SSH_USER}" ]] || add_missing "STAGING_SSH_USER or PREPROD_SSH_USER (secret or variable)"
+          [[ -n "${SSH_PRIVATE_KEY}" ]] || add_missing "STAGING_SSH_KEY or PREPROD_SSH_KEY (secret; deploy key for SSH)"
+          [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]] || add_missing "STAGING_SSH_KNOWN_HOSTS or PREPROD_SSH_KNOWN_HOSTS (pinned host key material)"
+          [[ -n "${STAGING_REMOTE_ENV_FILE:-}" ]] || add_missing "STAGING_REMOTE_ENV_FILE or PREPROD_REMOTE_ENV_FILE (set on-host path; no implicit default for real staging)"
           [[ -n "${APP_IMAGE_REF}" && "${APP_IMAGE_REF}" == *@sha256:* ]] || add_missing "APP_IMAGE_REF"
           [[ -n "${GOOSE_IMAGE_REF}" && "${GOOSE_IMAGE_REF}" == *@sha256:* ]] || add_missing "GOOSE_IMAGE_REF"
           [[ -n "${RELEASE_GATE_VERDICT}" && "${RELEASE_GATE_VERDICT}" == "pass" ]] || add_missing "RELEASE_GATE_VERDICT=pass"
@@ -597,7 +712,7 @@ jobs:
           [[ "${PROVENANCE_VERDICT}" == "verified" || "${PROVENANCE_VERDICT}" == "accepted-private-repo-no-github-attestations" ]] || add_missing "PROVENANCE_VERDICT in {verified, accepted-private-repo-no-github-attestations}"
           [[ "${SSH_PORT}" =~ ^[0-9]+$ ]] || add_missing "STAGING_SSH_PORT"
 
-          staging_remote_env_file="${STAGING_REMOTE_ENV_FILE:-${STAGING_DEPLOY_ROOT}/deployments/staging/.env.staging}"
+          staging_remote_env_file="${STAGING_REMOTE_ENV_FILE}"
           export STAGING_REMOTE_ENV_FILE_RESOLVED="${staging_remote_env_file}"
           printf '%s\n' "${missing[@]}" > deployment-evidence/staging-missing-prerequisites.txt
 
@@ -966,18 +1081,35 @@ jobs:
           HEALTHCHECK_OUTCOME: ${{ steps.healthcheck.outcome || 'skipped' }}
           SMOKE_OUTCOME: ${{ steps.smoke.outcome || 'skipped' }}
           SMOKE_POST_DEPLOY_OUTCOME: ${{ steps.smoke_post_deploy.outcome || 'skipped' }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
           MANIFEST_STAGING_BUILD_RUN: ${{ needs.resolve-staging-candidate.outputs.workflow_run_id }}
           WF_STAGING_VERDICT_JSON: |
             import json
             import os
+            import re
             from pathlib import Path
 
             def s(k, d=""):
                 return os.environ.get(k, d)
 
+            def img_digest(ref):
+                m = re.search(r"@(sha256:[a-f0-9]{64})$", (ref or "").strip())
+                return m.group(1) if m else ""
+
             deploy_attempted = s("DEPLOY_ATTEMPTED", "false").lower() == "true"
             deploy_outcome = s("DEPLOY_OUTCOME", "skipped")
             actual_done = deploy_outcome == "success"
+            vpre = s("STAGING_VERDICT_JSON_VERDICT")
+            gate_ok = (
+                deploy_attempted
+                and actual_done
+                and vpre == "pass"
+                and s("HEALTHCHECK_OUTCOME") == "success"
+                and s("SMOKE_OUTCOME") == "success"
+                and s("SMOKE_POST_DEPLOY_OUTCOME") == "success"
+                and s("FINAL_RESULT") == "success"
+            )
             payload = {
                 "environment": "staging",
                 "deployment_mode": "real_staging",
@@ -985,7 +1117,7 @@ jobs:
                 "workflow_intent": "real-staging-deploy",
                 "actual_deploy_attempted": deploy_attempted,
                 "actual_deploy_completed": actual_done,
-                "verdict": s("STAGING_VERDICT_JSON_VERDICT"),
+                "verdict": vpre,
                 "control_status": s("STAGING_VERDICT_CONTROL_STATUS"),
                 "summary_of_what_happened": s("STAGING_VERDICT_JSON_SUMMARY"),
                 "result": s("FINAL_RESULT"),
@@ -1020,6 +1152,69 @@ jobs:
             Path("deployment-evidence").mkdir(parents=True, exist_ok=True)
             Path("deployment-evidence/staging-deployment-verdict.json").write_text(
                 json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+            )
+            app_ref = s("APP_IMAGE_REF")
+            goose_ref = s("GOOSE_IMAGE_REF")
+            release_ev = {
+                "schema_version": "staging-release-evidence-v1",
+                "workflow_name": "Staging Deployment Contract",
+                "staging_deployment_workflow_run_id": s("GITHUB_RUN_ID"),
+                "source_commit_sha": s("SOURCE_COMMIT_SHA"),
+                "source_branch": "develop",
+                "build_run_id": s("MANIFEST_STAGING_BUILD_RUN"),
+                "app_image_ref": app_ref,
+                "goose_image_ref": goose_ref,
+                "app_image_digest": img_digest(app_ref),
+                "goose_image_digest": img_digest(goose_ref),
+                "deployment_mode": "real_staging",
+                "meets_production_staging_gate": gate_ok,
+                "smoke_result": s("SMOKE_POST_DEPLOY_OUTCOME"),
+                "health_readiness_result": s("HEALTHCHECK_OUTCOME"),
+                "remote_ssh_smoke_outcome": s("SMOKE_OUTCOME"),
+                "completed_at_utc": s("STAGING_VERDICT_COMPLETED_AT"),
+                "verdict": vpre,
+            }
+            Path("deployment-evidence/staging-release-evidence.json").write_text(
+                json.dumps(release_ev, indent=2) + "\n", encoding="utf-8"
+            )
+            inh_reason = ""
+            if not gate_ok:
+                inh_reason = (
+                    "real_staging did not meet promotion bar: verdict=%s deploy=%s health=%s smoke_ssh=%s smoke_runner=%s final=%s"
+                    % (
+                        vpre,
+                        deploy_outcome,
+                        s("HEALTHCHECK_OUTCOME"),
+                        s("SMOKE_OUTCOME"),
+                        s("SMOKE_POST_DEPLOY_OUTCOME"),
+                        s("FINAL_RESULT"),
+                    )
+                )
+            deploy_body = {
+                "schema_version": "staging-deploy-evidence-v1",
+                "environment": "staging",
+                "repository": s("GITHUB_REPOSITORY"),
+                "workflow_run_id": s("GITHUB_RUN_ID"),
+                "commit_sha": s("SOURCE_COMMIT_SHA"),
+                "branch": "develop",
+                "build_run_id": s("MANIFEST_STAGING_BUILD_RUN"),
+                "app_image_ref": app_ref,
+                "goose_image_ref": goose_ref,
+                "app_digest": img_digest(app_ref),
+                "goose_digest": img_digest(goose_ref),
+                "deployed_at_utc": s("STAGING_VERDICT_COMPLETED_AT"),
+                "host_count": 1,
+                "smoke_result": s("SMOKE_POST_DEPLOY_OUTCOME"),
+                "readiness_result": s("HEALTHCHECK_OUTCOME"),
+                "health_endpoint_category": "/health/ready (container + optional public URL smoke)",
+                "promotion_eligible": bool(gate_ok),
+                "reason": inh_reason,
+                "promotion_ineligible_reason": inh_reason,
+                "deployment_mode": "real_staging",
+            }
+            Path("staging-evidence").mkdir(parents=True, exist_ok=True)
+            Path("staging-evidence/staging-deploy-evidence.json").write_text(
+                json.dumps(deploy_body, indent=2) + "\n", encoding="utf-8"
             )
         run: |
           set -Eeuo pipefail
@@ -1080,6 +1275,24 @@ jobs:
         with:
           name: staging-deployment-verdict
           path: deployment-evidence/staging-deployment-verdict.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload staging release evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-release-evidence
+          path: deployment-evidence/staging-release-evidence.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload staging deploy evidence (promotion gate JSON)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-deploy-evidence
+          path: staging-evidence/staging-deploy-evidence.json
           if-no-files-found: error
           retention-days: 90
 

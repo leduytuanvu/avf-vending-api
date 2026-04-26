@@ -1,0 +1,15 @@
+# Supply chain allowlist: temporary exceptions to scripts/ci/verify_supply_chain_pinning.sh (tools/supply_chain_pinning.py)
+#
+# One entry per line (pipe | separated). All fields are required. Lines starting with # are comments.
+# Blank lines are ignored.
+#
+# Fields:
+#   expiry_utc    YYYY-MM-DD — row is ignored for suppression after this date (UTC calendar day; renew or remove)
+#   owner         team or person responsible for reviewing before expiry
+#   path_glob     path relative to repo root (forward slashes); fnmatch, e.g. .github/workflows/*.yml
+#   check_kind    one of: uses_ref, dockerfile_from, go_install, curl_bash, trivy_image, generic
+#   match_sub     substring that must appear in the reported violation line (or empty ".*" to match any)
+#   reason        free text (no unescaped |)
+#
+# Example (commented; remove leading # to activate):
+# 2027-12-31|platform@example.com|.github/workflows/temp.yml|uses_ref|uses: some/action@refs/heads/main|waiting for sha pin PR

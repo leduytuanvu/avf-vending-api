@@ -24,6 +24,7 @@ fi
 if [[ -n "${REMOTE_LOG_DIR}" ]]; then
 	mkdir -p "${REMOTE_LOG_DIR}"
 fi
+TRAFFIC_DRAIN_MODE="${TRAFFIC_DRAIN_MODE:-none}"
 
 EXIT_CODE_DEPLOY_FAILURE=41
 EXIT_CODE_READINESS_FAILURE=42
@@ -100,7 +101,14 @@ run_local_smoke_gate() {
 	append_release_evidence "app-node" "${host}" "smoke" "pass" "post-readiness blackbox smoke passed"
 }
 
-note "rolling app-node release across ${#APP_NODE_HOSTS[@]} host(s)"
+note "rolling app-node release across ${#APP_NODE_HOSTS[@]} host(s) (sequential; no parallel restarts)"
+ZERO_DOWNTIME_EVID="false"
+if [[ "${TRAFFIC_DRAIN_MODE}" == "caddy" ]]; then
+	ZERO_DOWNTIME_EVID="true"
+fi
+if [[ -n "${RELEASE_EVIDENCE_FILE}" ]]; then
+	append_release_evidence "app-cluster" "rollout" "policy" "info" "rolling_sequential=true traffic_drain_mode=${TRAFFIC_DRAIN_MODE} zero_downtime_claim_node_scope=${ZERO_DOWNTIME_EVID}" ""
+fi
 
 for idx in "${!APP_NODE_HOSTS[@]}"; do
 	host="${APP_NODE_HOSTS[$idx]}"
@@ -118,7 +126,11 @@ for idx in "${!APP_NODE_HOSTS[@]}"; do
 	fi
 	note "release ${host} (migration=${migrate_flag})"
 	append_release_evidence "app-node" "${host}" "deploy" "running" "starting app-node deploy" "{\"migration\":\"${migrate_flag}\"}"
-	if ! run_remote_with_log "${deploy_log_file}" run_remote_script "${target}" "${REMOTE_DIR}" "scripts/release_app_node.sh" "${1-}" "${2-}" "${migrate_flag}" "${TEMPORAL_ENABLED}"; then
+	remote_extra_env="TRAFFIC_DRAIN_MODE='${TRAFFIC_DRAIN_MODE:-none}' TRAFFIC_DRAIN_WAIT_SECONDS='${TRAFFIC_DRAIN_WAIT_SECONDS:-0}'"
+	if [[ -n "${TRAFFIC_DRAIN_EXTERNAL_SCRIPT:-}" ]]; then
+		remote_extra_env+=" TRAFFIC_DRAIN_EXTERNAL_SCRIPT='${TRAFFIC_DRAIN_EXTERNAL_SCRIPT}'"
+	fi
+	if ! run_remote_with_log "${deploy_log_file}" run_remote_script "${target}" "${REMOTE_DIR}" "scripts/release_app_node.sh" "${1-}" "${2-}" "${migrate_flag}" "${TEMPORAL_ENABLED}" "${remote_extra_env}"; then
 		append_release_evidence "app-node" "${host}" "deploy" "fail" "app-node deploy failed" "{\"migration\":\"${migrate_flag}\"}"
 		exit "${EXIT_CODE_DEPLOY_FAILURE}"
 	fi

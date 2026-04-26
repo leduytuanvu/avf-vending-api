@@ -1,13 +1,18 @@
 # GitHub governance — branch protection and environments
 
+**Settings-only quick steps (branch rules + `production` environment):** [../operations/github-governance.md](../operations/github-governance.md)
+
 **Maintainer index (pipelines, branches, and triage):** [cicd-release.md](./cicd-release.md).
 
 This runbook describes how to configure **branch protection** and **GitHub Environments** for the AVF vending backend so enterprise CI/CD matches repository contracts (`deploy-prod.yml`, `deploy-develop.yml`, `security-release.yml`, etc.).
 
 **Reality check:** `tools/verify_github_governance.py` can only **read** what the GitHub REST API exposes. It cannot create or lock settings. The **repo owner (or org admin)** must use the GitHub **Settings** UI (or org rules) to apply the policies below. When the API is missing permissions, returns **404** (e.g. **repository rulesets** instead of classic branch protection), or omits fields, follow the checklists in this file and the manual block printed by the verifier.
 
-**Run the verifier (same as CI wrapper):** `make verify-governance` or `bash scripts/ci/verify_github_governance.sh`  
-Needs **`GH_TOKEN` or `GITHUB_TOKEN`** (repo read; environment read may require admin scope depending on org) and **`GITHUB_REPOSITORY=owner/repo`**. Fails the process when protections are missing or the API response proves misconfiguration. If the response omits `protection_rules` or `deployment_branch_policy` but your org still enforces policy, use **`GITHUB_GOVERNANCE_WARN_ONLY=true`** to treat those items as **warnings** (not for gating merge CI), complete the [P0-4 manual checklist](#p0-4--manual-configuration-checklist-github-ui), then re-run with a token that can read environments.
+**Run the verifier (same as CI wrapper):** `make verify-governance` or `bash scripts/ci/verify_github_governance.sh`
+
+Offline self-test: `CHECK_MODE=offline bash scripts/ci/verify_github_governance.sh` (no API calls; validates CLI presence + planned checks).
+
+Needs **`GH_TOKEN` or `GITHUB_TOKEN`** (repo read; environment read may require admin scope depending on org) and **`GITHUB_REPOSITORY=owner/repo`** (or `REPOSITORY=owner/repo`). Fails the process when protections are missing or the API response proves misconfiguration. If the response omits `protection_rules` or `deployment_branch_policy` but your org still enforces policy, use **`GITHUB_GOVERNANCE_WARN_ONLY=true`** to treat those items as **warnings** (not for gating merge CI), complete the [P0-4 manual checklist](#p0-4--manual-configuration-checklist-github-ui), then re-run with a token that can read environments.
 
 ## P0-4 — Manual configuration checklist (GitHub UI)
 
@@ -219,6 +224,7 @@ Add these as **required status checks** on `main` (names must match what GitHub 
 | Check name |
 |------------|
 | CI / Workflow and Script Quality |
+| CI / GitHub repository governance |
 | CI / Go CI Gates |
 | CI / Docker Compose Config Validation |
 | Security / Secret Scan |
@@ -252,6 +258,7 @@ Add these as **required status checks** on `main` (names must match what GitHub 
 | Check name |
 |------------|
 | CI / Workflow and Script Quality |
+| CI / GitHub repository governance |
 | CI / Go CI Gates |
 | CI / Docker Compose Config Validation |
 | Security / Secret Scan |

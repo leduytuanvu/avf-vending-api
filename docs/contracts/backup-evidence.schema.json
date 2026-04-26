@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://avf-vending.api/docs/contracts/backup-evidence.schema.json",
+  "title": "Production database backup and restore-drill evidence",
+  "type": "object",
+  "additionalProperties": true,
+  "description": "Normative contract for production migration gating. The CI validator (scripts/ci/validate_backup_evidence.py) is authoritative for production deploys. database_name or logical_db_id must be set; backup_artifact_id or backup_location_redacted; created_by_workflow_run_id or operator.",
+  "required": [
+    "schema_version",
+    "evidence_type",
+    "repository",
+    "source_environment",
+    "backup_started_at_utc",
+    "backup_completed_at_utc",
+    "backup_size_bytes",
+    "backup_sha256",
+    "restore_drill_required",
+    "restore_drill_result",
+    "restore_target",
+    "schema_validation_result",
+    "expires_at_utc"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "backup-evidence-v1"
+    },
+    "evidence_type": {
+      "type": "string",
+      "const": "production-db-backup"
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 3
+    },
+    "source_environment": {
+      "type": "string",
+      "const": "production"
+    },
+    "logical_db_id": {
+      "type": "string",
+      "description": "Stable logical id if database_name is not used."
+    },
+    "database_name": {
+      "type": "string"
+    },
+    "backup_started_at_utc": {
+      "type": "string"
+    },
+    "backup_completed_at_utc": {
+      "type": "string"
+    },
+    "backup_artifact_id": {
+      "type": "string"
+    },
+    "backup_location_redacted": {
+      "type": "string"
+    },
+    "backup_size_bytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "backup_sha256": {
+      "type": "string"
+    },
+    "restore_drill_required": {
+      "type": "boolean"
+    },
+    "restore_drill_completed_at_utc": {
+      "type": ["string", "null"]
+    },
+    "restore_drill_result": {
+      "type": "string",
+      "enum": ["pass", "fail", "skipped"]
+    },
+    "restore_target": {
+      "type": "string",
+      "enum": ["staging", "preprod", "temp-db", "not_run"]
+    },
+    "schema_validation_result": {
+      "type": "string",
+      "enum": ["pass", "fail", "not_applicable"]
+    },
+    "created_by_workflow_run_id": {
+      "type": "string"
+    },
+    "operator": {
+      "type": "string"
+    },
+    "expires_at_utc": {
+      "type": "string"
+    }
+  }
+}

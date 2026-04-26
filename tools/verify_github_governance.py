@@ -31,6 +31,7 @@ ACCEPT = "application/vnd.github+json"
 # Status contexts as they appear in branch protection (workflow display name / job name).
 MAIN_RECOMMENDED_CONTEXTS: tuple[str, ...] = (
     "CI / Workflow and Script Quality",
+    "CI / GitHub repository governance",
     "CI / Go CI Gates",
     "CI / Docker Compose Config Validation",
     "Security / Secret Scan",
@@ -42,6 +43,7 @@ MAIN_RECOMMENDED_CONTEXTS: tuple[str, ...] = (
 
 DEVELOP_RECOMMENDED_CONTEXTS: tuple[str, ...] = (
     "CI / Workflow and Script Quality",
+    "CI / GitHub repository governance",
     "CI / Go CI Gates",
     "CI / Docker Compose Config Validation",
     "Security / Secret Scan",
@@ -53,13 +55,14 @@ DEVELOP_RECOMMENDED_CONTEXTS: tuple[str, ...] = (
 MANUAL_GOVERNANCE_CHECKLIST: str = """
 === Manual GitHub UI governance (repo owner) ===
 Code in this repository cannot create or lock branch protection, repository rules, or
-environment settings. The repo owner (or org admin) must apply these in the GitHub UI.
+environment settings. The repo owner (or org admin) must apply these in the GitHub UI
+(step-by-step: docs/operations/github-governance.md; full runbook: docs/runbooks/github-governance.md).
 
 Settings -> Branches -> Branch protection rules -> Add (or edit) rule for `main`
   - Protect `main` (pattern: main)
   - Require a pull request before merging
   - Require approvals (at least 1) on PRs; optionally Code Owners
-  - Require status checks to pass; add the checks named in docs/runbooks/github-governance.md
+  - Require status checks to pass; add the checks named in docs/runbooks/github-governance.md (include "CI / GitHub repository governance" when that CI job is enabled)
   - Require branch to be up to date before merging (strict / "up to date" toggle)
   - Do not allow bypassing the required pull requests and status checks (no admin bypass, per policy)
   - Do not allow force pushes; do not allow deletions
@@ -104,7 +107,15 @@ def _token() -> str | None:
     return None
 
 
+def _apply_repository_override() -> None:
+    """REPOSITORY=owner/name overrides GITHUB_REPOSITORY (set by verify_github_governance.sh)."""
+    ovr = (os.environ.get("REPOSITORY") or "").strip()
+    if ovr and "/" in ovr:
+        os.environ["GITHUB_REPOSITORY"] = ovr
+
+
 def _repo_slug() -> tuple[str, str] | None:
+    _apply_repository_override()
     ghr = os.environ.get("GITHUB_REPOSITORY", "").strip()
     if ghr and "/" in ghr:
         o, r = ghr.split("/", 1)
@@ -127,7 +138,9 @@ def _environment_path(owner: str, repo: str, environment: str, *suffix: str) -> 
 
 
 def _request_with_gh(api_path: str, token: str) -> tuple[int, bytes | None, str]:
-    """api_path: repos/owner/repo/... without leading slash."""
+    """api_path: repos/owner/repo/... without leading slash. Uses `gh api` (REST)."""
+    if not shutil.which("gh"):
+        return 127, None, "gh CLI not found on PATH (verify_github_governance.sh should require it for live mode)"
     env = {**os.environ, "GH_TOKEN": token, "GITHUB_TOKEN": token}
     p = subprocess.run(
         [
@@ -481,11 +494,12 @@ def _check_environment_staging(owner: str, repo: str, token: str, warnings: list
 
 
 def main() -> int:
+    _apply_repository_override()
     tok = _token()
     if not tok:
         msg = (
             "verify_github_governance: GH_TOKEN or GITHUB_TOKEN is not set; skipping GitHub API governance checks.\n"
-            "Set a token with repo read access and re-run, or see docs/runbooks/github-governance.md for manual setup."
+            "Set a token with repo read access and re-run, or see docs/operations/github-governance.md for manual setup."
         )
         if _enforce() and _is_ci():
             print(
@@ -493,20 +507,33 @@ def main() -> int:
                 "(set GH_TOKEN or GITHUB_TOKEN with repo read access).",
                 file=sys.stderr,
             )
+            print("GOVERNANCE_CHECK: FAIL", file=sys.stderr)
             _print_manual_checklist(sys.stderr)
             return 2
         print(msg, file=sys.stderr)
         _print_manual_checklist(sys.stdout)
+        print("GOVERNANCE_CHECK: SKIPPED (no token — see verify_github_governance.sh)")
         return 0
 
     slug = _repo_slug()
     if not slug:
         print(
-            "verify_github_governance: error: set GITHUB_REPOSITORY=owner/repo (or GITHUB_REPOSITORY_OWNER and GITHUB_REPOSITORY_NAME).",
+            "verify_github_governance: error: set GITHUB_REPOSITORY=owner/repo or REPOSITORY=owner/repo "
+            "(or GITHUB_REPOSITORY_OWNER and GITHUB_REPOSITORY_NAME).",
             file=sys.stderr,
         )
+        print("GOVERNANCE_CHECK: FAIL", file=sys.stderr)
         return 1
     owner, repo = slug
+
+    if tok and not shutil.which("gh"):
+        print(
+            "verify_github_governance: error: gh CLI is required on PATH when a token is set "
+            "(use scripts/ci/verify_github_governance.sh, which enforces this in live mode).",
+            file=sys.stderr,
+        )
+        print("GOVERNANCE_CHECK: FAIL", file=sys.stderr)
+        return 1
 
     errors: list[str] = []
     warnings: list[str] = []
@@ -541,10 +568,11 @@ def main() -> int:
         ):
             print(
                 "verify_github_governance: some failures may be API limits or **repository rulesets**; "
-                "use the manual checklist below and docs/runbooks/github-governance.md",
+                "use the manual checklist and docs/operations/github-governance.md",
                 file=sys.stderr,
             )
             _print_manual_checklist(sys.stderr)
+        print("GOVERNANCE_CHECK: FAIL (branch protection, production environment, or recommended checks — fix in GitHub UI)", file=sys.stderr)
         return 1
     if warnings:
         print(
@@ -553,6 +581,7 @@ def main() -> int:
             file=sys.stderr,
         )
     print("verify_github_governance: all governance checks passed.")
+    print("GOVERNANCE_CHECK: PASS")
     return 0
 
 

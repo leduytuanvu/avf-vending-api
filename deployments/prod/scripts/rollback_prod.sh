@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Legacy single-host rollback wrapper: delegates to release.sh rollback
 # using the last known good image refs (image-only; no DB schema undo).
+# For enterprise incident evidence + digest preflight in GitHub Actions, see
+# .github/workflows/rollback-prod.yml and docs/runbooks/production-rollback.md
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

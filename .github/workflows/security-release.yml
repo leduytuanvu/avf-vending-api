@@ -842,6 +842,27 @@ jobs:
           if-no-files-found: warn
           retention-days: 180
 
+      # security-release-audit-package: see docs/operations/release-evidence-retention.md
+      - name: Build release audit package (security phase)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ -f security-reports/security-verdict.json ]]; then
+            python3 scripts/release/build_release_evidence_package.py --out release-evidence --phase security --root . --strict-phase security
+          else
+            echo "::warning::security-reports/security-verdict.json not present; building non-strict audit manifest only"
+            python3 scripts/release/build_release_evidence_package.py --out release-evidence --phase security --root .
+          fi
+      - name: Upload release audit package
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: security-release-audit-package
+          path: release-evidence
+          if-no-files-found: warn
+          retention-days: 90
+
       - name: Security release signal — decision observability
         if: always()
         shell: bash

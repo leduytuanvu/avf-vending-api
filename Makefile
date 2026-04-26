@@ -1,4 +1,4 @@
-.PHONY: tidy fmt fmt-check vet test build proto sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates check-placeholders check-wiring check-migrations verify-governance verify-enterprise-release build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full
+.PHONY: tidy fmt fmt-apply fmt-check vet test test-short build proto sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates verify-workflows ci-workflows check-placeholders check-wiring check-migrations verify-governance verify-enterprise-release build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full
 
 BIN_DIR := bin
 GO ?= go
@@ -12,7 +12,11 @@ PY ?= python3
 tidy:
 	$(GO) mod tidy
 
-fmt:
+# CI policy matches .github/workflows/ci.yml: verify gofmt, do not only apply (use fmt-apply to fix).
+fmt: fmt-check
+
+# Apply gofmt to all packages (CI uses `fmt` / fmt-check to verify only).
+fmt-apply:
 	$(GO) fmt ./...
 
 # CI-style formatting check (fails if any .go file is not gofmt-clean).
@@ -61,11 +65,27 @@ check-migrations:
 # Repo-local gates (no Postgres or unit tests). Use before push; GitHub Actions runs `make ci-gates` and compose validation separately.
 ci-gates: fmt-check vet check-placeholders check-wiring check-migrations sqlc-check swagger-check postman-check
 
-# Fast local check (skips postgres integration tests via -short).
-ci: ci-gates test-short
+# fmt (check), vet, all package tests, and build. The Go CI job also runs tidy, sqlc, swagger, etc. (see
+# ci-gates) and `make test-short` in the workflow. For full static gates: make ci-gates; for short tests: make test-short
+ci: fmt vet test build
 
 # Mirrors GitHub Actions: same gates plus full go test (set TEST_DATABASE_URL for postgres tests).
 ci-full: ci-gates test
+
+# Local mirror of the workflow quality job in .github/workflows/ci.yml (actionlint + verify_workflow_contracts.sh).
+# verify_workflow_contracts.sh also runs tools/verify_github_workflow_cicd_contract.py (Make targets, SHA-pinned
+# third-party uses, production Docker digest policy, deploy-prod on/workflow_dispatch, staging gate strings).
+# Requires: actionlint on PATH (CI: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12).
+ci-workflows: verify-workflows
+verify-workflows:
+	@set -e; \
+	if ! command -v actionlint >/dev/null 2>&1; then \
+		echo "verify-workflows: actionlint is not on PATH. Install: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12" >&2; \
+		exit 1; \
+	fi; \
+	actionlint; \
+	chmod +x scripts/ci/verify_workflow_contracts.sh; \
+	bash scripts/ci/verify_workflow_contracts.sh
 
 # Live GitHub settings: branch protection (main/develop) and environment `production` (REST API). Requires
 # GH_TOKEN or GITHUB_TOKEN and GITHUB_REPOSITORY=owner/repo. See docs/runbooks/github-governance.md.

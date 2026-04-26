@@ -1,17 +1,21 @@
-name: Deploy Production
+﻿name: Deploy Production
 
-# Enterprise policy: production actions are workflow_dispatch only. There is no automatic deploy from
-# main or from Security Release. Operators supply build_run_id + security_release_run_id (successful
-# Security Release whose security-verdict authorizes the deploy).
-#
-# Automatic production deployment is disabled until the release chain is verified.
+# Production policy: this workflow is manual-only. Trigger is on.workflow_dispatch (Operators → Actions
+# → run workflow) on the main branch. There is no on.push, on.schedule, on.workflow_run, or other
+# Release audit: production-release-audit-package (this workflow), release-audit-package (Build and Push),
+# security-release-audit-package (Security Release) — see docs/operations/release-evidence-retention.md
+# automatic start for production. Operators provide build_run_id, security_release_run_id, digest-pinned
+# image refs, staging_evidence_id (run id of Staging Deployment Contract with artifact staging-deploy-evidence),
+# and confirmation text per the inputs below. Staging is the default release gate: without allow_missing_staging_evidence
+# + reason, the workflow downloads and validates that evidence against production image digests. Security Review /
+# Environment protection is configured in the GitHub UI for environment: production; it is not represented as workflow code here.
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
   workflow_dispatch:
-    # Manual only — no workflow_run / push / schedule. Merge to develop must not start this workflow.
+    # No other on.* triggers: merge to develop, Security Release completion, and scheduled jobs must not start this file.
     inputs:
       action_mode:
         description: "Production action to run"
@@ -104,15 +108,40 @@ on:
         default: "7"
         type: string
       run_migration:
-        description: production deploy mode input that indicates DB migration will be run.
+        description: "Whether to run the production database migration (goose Up) during this deploy. Default is image-only; do not enable without a confirmed backup."
         required: false
         default: false
         type: boolean
       backup_evidence_id:
-        description: required when run_migration=true; should reference a backup evidence artifact/run/id/path taken before migration.
+        description: "When run_migration is true, required. Must be a GitHub Actions run id (digits only) whose workflow uploaded artifact 'production-db-backup-evidence' (file backup-evidence/backup-evidence.json), or path:RELATIVE/TO/backup-evidence.json in this repo. JSON must pass scripts/ci/validate_backup_evidence.py (docs/contracts/backup-evidence.schema.json). Optional and not validated when run_migration is false (informational if supplied)."
         required: false
         default: ""
         type: string
+      staging_evidence_id:
+        description: "For deploy: GitHub Actions run id (staging_evidence_run_id) of a successful 'Staging Deployment Contract' run that uploaded artifact 'staging-deploy-evidence' (path staging-evidence/staging-deploy-evidence.json). Required unless allow_missing_staging_evidence (temporary bypass, noisy)."
+        required: false
+        default: ""
+        type: string
+      staging_evidence_max_age_hours:
+        description: "Reject staging deploy evidence when deployed_at_utc is older than this many hours (default 168 = 7 days)."
+        required: false
+        default: "168"
+        type: string
+      allow_missing_staging_evidence:
+        description: "TEMPORARY: allow production deploy without staging evidence (use only while staging gate is not enforceable). Requires missing_staging_evidence_reason. Default false — production stays strict for enterprise readiness."
+        required: false
+        default: false
+        type: boolean
+      missing_staging_evidence_reason:
+        description: "Mandatory non-empty, single-line justification when allow_missing_staging_evidence is true (echoed in summary and production manifest; remove bypass when staging is live)."
+        required: false
+        default: ""
+        type: string
+      enable_business_synthetic_smoke:
+        description: "Optional: final public smoke also attempts business-safe-synthetic (GET to operator-configured SMOKE_SYNTHETIC_GET_PATH; never real payment or dispense). Skipped with reason if not configured; off by default."
+        required: false
+        default: false
+        type: boolean
 
 # Production actions stay serialized under one stable gate.
 # Later runs queue behind the active rollout or rollback instead of canceling it.
@@ -140,6 +169,11 @@ jobs:
       source_branch: ${{ steps.lookup.outputs.source_branch }}
       source_event: ${{ steps.lookup.outputs.source_event }}
       workflow_run_id: ${{ steps.lookup.outputs.workflow_run_id }}
+      staging_release_gate: ${{ steps.lookup.outputs.staging_release_gate }}
+      staging_evidence_workflow_run_id: ${{ steps.lookup.outputs.staging_evidence_workflow_run_id }}
+      staging_evidence_bypassed: ${{ steps.lookup.outputs.staging_evidence_bypassed }}
+      missing_staging_evidence_reason: ${{ steps.lookup.outputs.missing_staging_evidence_reason }}
+      staging_digest_cross_check_note: ${{ steps.lookup.outputs.staging_digest_cross_check_note }}
     steps:
       - name: Validate production action inputs
         id: lookup
@@ -153,6 +187,12 @@ jobs:
           INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
           INPUT_SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
           INPUT_DEPLOY_PRODUCTION_CONFIRMATION: ${{ inputs.deploy_production_confirmation }}
+          INPUT_RUN_MIGRATION: ${{ inputs.run_migration && 'true' || 'false' }}
+          INPUT_BACKUP_EVIDENCE_ID: ${{ inputs.backup_evidence_id || '' }}
+          INPUT_STAGING_EVIDENCE_ID: ${{ inputs.staging_evidence_id || '' }}
+          INPUT_STAGING_EVIDENCE_MAX_AGE_HOURS: ${{ inputs.staging_evidence_max_age_hours || '168' }}
+          INPUT_ALLOW_MISSING_STAGING_EVIDENCE: ${{ inputs.allow_missing_staging_evidence && 'true' || 'false' }}
+          INPUT_MISSING_STAGING_EVIDENCE_REASON: ${{ inputs.missing_staging_evidence_reason || '' }}
           GH_TOKEN: ${{ github.token }}
           ROLLBACK_APP_IMAGE_REF: ${{ inputs.rollback_app_image_ref }}
           ROLLBACK_GOOSE_IMAGE_REF: ${{ inputs.rollback_goose_image_ref }}
@@ -208,6 +248,114 @@ jobs:
                 sys.exit(1)
             need_digest(app_in, "app_image_ref")
             need_digest(goose_in, "goose_image_ref")
+          WF_VALIDATE_STAGING_DEPLOY_EVIDENCE: |
+            import json
+            import os
+            import re
+            import sys
+            from datetime import datetime, timezone
+            from pathlib import Path
+
+            p = Path(os.environ["STAGING_EVID_PATH"])
+            if not p.is_file():
+                print("error: staging deploy evidence file missing at", p, file=sys.stderr)
+                sys.exit(1)
+            payload = json.loads(p.read_text(encoding="utf-8"))
+
+            def need_digest(r: str, label: str) -> str:
+                m = re.search(r"@(sha256:[0-9a-f]{64})\s*$", (r or "").strip())
+                if not m:
+                    print(f"error: {label} is not digest-pinned: {r!r}", file=sys.stderr)
+                    sys.exit(1)
+                return m.group(1)
+
+            if payload.get("schema_version") != "staging-deploy-evidence-v1":
+                print("error: staging-evidence/staging-deploy-evidence.json schema_version must be staging-deploy-evidence-v1", file=sys.stderr)
+                sys.exit(1)
+
+            gh_repo = (os.environ.get("GITHUB_REPOSITORY") or "").strip()
+            ev_repo = (payload.get("repository") or "").strip()
+            if not ev_repo or ev_repo != gh_repo:
+                print(
+                    f"error: staging evidence repository must match this repository (expected {gh_repo!r}, got {ev_repo!r})",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            env = (payload.get("environment") or "").strip()
+            if env not in ("staging", "preprod"):
+                print(
+                    f"error: staging evidence environment must be staging or preprod (got {env!r})",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            if not bool(payload.get("promotion_eligible")):
+                rsn = (payload.get("reason") or payload.get("promotion_ineligible_reason") or "").strip()
+                print(
+                    "error: promotion_eligible must be true for production deploy "
+                    f"(reason={rsn!r})",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            mode = (payload.get("deployment_mode") or "").strip()
+            if mode != "real_staging":
+                print(
+                    f"error: production requires deployment_mode=real_staging in staging-deploy-evidence (got {mode!r})",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            if int(payload.get("host_count") or 0) < 1:
+                print("error: staging host_count must be >= 1 in promotion-eligible evidence", file=sys.stderr)
+                sys.exit(1)
+
+            raw_dt = (payload.get("deployed_at_utc") or "").strip()
+            if not raw_dt:
+                print("error: deployed_at_utc is required in staging deploy evidence", file=sys.stderr)
+                sys.exit(1)
+            norm = raw_dt.replace("Z", "+00:00") if raw_dt.endswith("Z") else raw_dt
+            try:
+                dep_dt = datetime.fromisoformat(norm)
+                if dep_dt.tzinfo is None:
+                    dep_dt = dep_dt.replace(tzinfo=timezone.utc)
+                now = datetime.now(timezone.utc)
+                max_h = float(os.environ.get("INPUT_STAGING_EVIDENCE_MAX_AGE_HOURS", "168"))
+                age_h = (now - dep_dt).total_seconds() / 3600.0
+                if age_h > max_h:
+                    print(
+                        f"error: staging evidence too old: {age_h:.1f}h > max {max_h}h (deployed_at_utc={raw_dt!r})",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+                if age_h < -0.01:
+                    print("error: deployed_at_utc is in the future", file=sys.stderr)
+                    sys.exit(1)
+            except Exception as e:
+                print(f"error: could not parse deployed_at_utc: {e}", file=sys.stderr)
+                sys.exit(1)
+
+            if (payload.get("smoke_result") or "").strip() != "success":
+                print("error: staging deploy evidence smoke_result must be success for production", file=sys.stderr)
+                sys.exit(1)
+            if (payload.get("readiness_result") or "").strip() != "success":
+                print("error: staging deploy evidence readiness_result must be success for production", file=sys.stderr)
+                sys.exit(1)
+
+            app_in = (os.environ.get("INPUT_APP_IMAGE_REF") or "").strip()
+            goose_in = (os.environ.get("INPUT_GOOSE_IMAGE_REF") or "").strip()
+            d_app = need_digest(app_in, "operator app_image_ref")
+            d_goose = need_digest(goose_in, "operator goose_image_ref")
+            ev_d_app = (payload.get("app_digest") or "").strip()
+            ev_d_goose = (payload.get("goose_digest") or "").strip()
+            if not ev_d_app or not re.fullmatch(r"sha256:[0-9a-f]{64}", ev_d_app):
+                ev_d_app = need_digest((payload.get("app_image_ref") or "").strip(), "staging app_image_ref in evidence")
+            if not ev_d_goose or not re.fullmatch(r"sha256:[0-9a-f]{64}", ev_d_goose):
+                ev_d_goose = need_digest((payload.get("goose_image_ref") or "").strip(), "staging goose_image_ref in evidence")
+            if ev_d_app != d_app or ev_d_goose != d_goose:
+                print("error: app/goose digests in staging evidence do not match production image inputs", file=sys.stderr)
+                sys.exit(1)
         run: |
           set -Eeuo pipefail
 
@@ -251,6 +399,11 @@ jobs:
               echo "source_branch="
               echo "source_event="
               echo "workflow_run_id="
+              echo "staging_release_gate=skipped_rollback"
+              echo "staging_evidence_workflow_run_id="
+              echo "staging_evidence_bypassed=false"
+              echo "missing_staging_evidence_reason="
+              echo "staging_digest_cross_check_note="
             } >> "${GITHUB_OUTPUT}"
             exit 0
           fi
@@ -265,6 +418,9 @@ jobs:
             [[ "${INPUT_GOOSE_IMAGE_REF}" == *@sha256:* ]] || fail "manual deploy goose_image_ref must be digest-pinned (...@sha256:...)"
             [[ "${INPUT_APP_IMAGE_REF}" != *":latest"* ]] || fail "manual deploy app_image_ref must not use the latest tag"
             [[ "${INPUT_GOOSE_IMAGE_REF}" != *":latest"* ]] || fail "manual deploy goose_image_ref must not use the latest tag"
+            if [[ "${INPUT_RUN_MIGRATION:-false}" == "true" ]]; then
+              [[ -n "${INPUT_BACKUP_EVIDENCE_ID:-}" ]] || fail "backup_evidence_id is required when run_migration=true"
+            fi
           fi
 
           if [[ "${ACTION_MODE}" == "deploy" ]]; then
@@ -313,6 +469,94 @@ jobs:
             printenv WF_VALIDATE_DEPLOY_SECURITY_VERDICT | python3 -
           fi
 
+          STAGING_RELEASE_GATE="not_set"
+          STAGING_EVIDENCE_WORKFLOW_RUN_ID=""
+          STAGING_EVIDENCE_BYPASSED="false"
+          MISSING_STAGING_REASON_OUT=""
+          STAGING_DIGEST_CROSS_CHECK_NOTE=""
+
+          if [[ "${ACTION_MODE}" == "deploy" ]]; then
+            allow_miss="${INPUT_ALLOW_MISSING_STAGING_EVIDENCE:-false}"
+            stg_id="${INPUT_STAGING_EVIDENCE_ID:-}"
+            stg_id="${stg_id//[[:space:]]/}"
+            reason_in="${INPUT_MISSING_STAGING_EVIDENCE_REASON:-}"
+            if [[ "${allow_miss}" == "true" ]]; then
+              [[ -n "${reason_in//[[:space:]]/}" ]] || fail "missing_staging_evidence_reason is required when allow_missing_staging_evidence is true"
+              STAGING_RELEASE_GATE="bypassed_explicit"
+              STAGING_EVIDENCE_BYPASSED="true"
+              MISSING_STAGING_REASON_OUT="${reason_in}"
+              STAGING_DIGEST_CROSS_CHECK_NOTE="BYPASS: staging evidence not validated (allow_missing_staging_evidence)"
+              echo "::warning::PRODUCTION STAGING GATE BYPASS (allow_missing_staging_evidence) — reason: ${reason_in}"
+              if [[ -n "${stg_id}" ]]; then
+                echo "::warning::staging_evidence_id (${stg_id}) was provided but is IGNORED when allow_missing_staging_evidence is true" >&2
+              fi
+            else
+              [[ -n "${stg_id}" ]] || fail "deploy mode requires staging_evidence_id (run id of Staging Deployment Contract with artifact staging-deploy-evidence), or temporary allow_missing_staging_evidence + missing_staging_evidence_reason"
+              stg_name="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${stg_id}" \
+                  --jq '.name // ""'
+              )" || true
+              [[ "${stg_name}" == "Staging Deployment Contract" ]] || fail "staging_evidence_id must reference workflow 'Staging Deployment Contract' (got: ${stg_name})"
+              stg_status="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${stg_id}" \
+                  --jq '.status // ""'
+              )" || true
+              [[ "${stg_status}" == "completed" ]] || fail "staging evidence run must be completed (status=${stg_status})"
+              stg_conc="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${stg_id}" \
+                  --jq '.conclusion // ""'
+              )" || true
+              [[ "${stg_conc}" == "success" ]] || fail "staging evidence run must be successful (conclusion=${stg_conc})"
+              rm -rf staging-evidence-bundle
+              mkdir -p staging-evidence-bundle
+              st_artifact_id=""
+              st_attempt=1
+              while [[ "${st_attempt}" -le 6 ]]; do
+                st_artifact_id="$(
+                  gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${stg_id}/artifacts" \
+                    --jq '[.artifacts[]? | select(.name == "staging-deploy-evidence") | .id] | .[0] // empty'
+                )" || true
+                if [[ -n "${st_artifact_id}" ]]; then
+                  break
+                fi
+                if [[ "${st_attempt}" -lt 6 ]]; then
+                  sleep 6
+                fi
+                st_attempt=$((st_attempt + 1))
+              done
+              [[ -n "${st_artifact_id}" ]] || fail "no artifact named staging-deploy-evidence on Staging run ${stg_id} (pre-prod gate evidence missing)"
+              st_z=1
+              while [[ "${st_z}" -le 5 ]]; do
+                if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${st_artifact_id}/zip" > staging-evidence-bundle/bundle.zip; then
+                  break
+                fi
+                if [[ "${st_z}" -lt 5 ]]; then
+                  sleep 6
+                fi
+                st_z=$((st_z + 1))
+              done
+              [[ -f staging-evidence-bundle/bundle.zip ]] || fail "failed to download staging-deploy-evidence zip"
+              python3 -m zipfile -e staging-evidence-bundle/bundle.zip staging-evidence-bundle
+              stg_path="$(
+                find staging-evidence-bundle -name "staging-deploy-evidence.json" -print 2>/dev/null | head -1 || true
+              )"
+              [[ -n "${stg_path}" ]] || fail "staging-deploy-evidence archive did not contain staging-deploy-evidence.json"
+              export STAGING_EVID_PATH="${stg_path}"
+              export INPUT_STAGING_EVIDENCE_MAX_AGE_HOURS="${INPUT_STAGING_EVIDENCE_MAX_AGE_HOURS:-168}"
+              printenv WF_VALIDATE_STAGING_DEPLOY_EVIDENCE | python3 -
+              ev_b="$(
+                STAGING_EVID_PATH="${stg_path}" python3 -c 'import json, os; p=os.environ["STAGING_EVID_PATH"]; d=json.load(open(p, encoding="utf-8")); print(d.get("build_run_id") or "")'
+              )"
+              if [[ -n "${ev_b}" && "${ev_b}" == "${BUILD_RUN_ID}" ]]; then
+                STAGING_DIGEST_CROSS_CHECK_NOTE="staging evidence build_run_id matches production build_run_id; image digests matched"
+              else
+                STAGING_DIGEST_CROSS_CHECK_NOTE="staging build_run_id (${ev_b}) differs from production build_run_id (${BUILD_RUN_ID}) — image digests matched (typical: develop build vs main build for same release)"
+              fi
+              STAGING_RELEASE_GATE="validated"
+              STAGING_EVIDENCE_WORKFLOW_RUN_ID="${stg_id}"
+            fi
+          fi
+
           [[ "${BUILD_RUN_ID}" =~ ^[0-9]+$ ]] || fail "build_run_id must be a numeric GitHub Actions run id in deploy mode"
 
           build_run="$(
@@ -327,6 +571,7 @@ jobs:
 
           IFS=$'\t' read -r workflow_name source_branch source_commit_sha source_event run_status run_conclusion build_actor <<< "${build_run}"
 
+          # source_event = Build workflow run's event field from the GitHub API. Deploy Production is always started via workflow_dispatch; this is not github.event of *this* workflow.
           [[ "${workflow_name}" == "Build and Push Images" ]] || fail "build_run_id must reference a 'Build and Push Images' workflow run"
           [[ "${source_branch}" == "main" ]] || fail "build_run_id must come from the main branch"
           [[ "${source_event}" == "push" || "${source_event}" == "workflow_dispatch" || "${source_event}" == "workflow_run" ]] || fail "build_run_id must reference a Build workflow triggered by push, workflow_dispatch, or workflow_run (semantic source_event is validated from promotion-manifest in image resolution)"
@@ -346,6 +591,12 @@ jobs:
           [[ -n "${promotion_manifest_artifact_id}" ]] || fail "selected build run is missing the promotion-manifest artifact"
 
           workflow_run_id="${BUILD_RUN_ID}"
+          reason_one_line="$(
+            printf '%s' "${MISSING_STAGING_REASON_OUT}" | tr '\n' ' ' | tr -d '\r'
+          )"
+          note_one_line="$(
+            printf '%s' "${STAGING_DIGEST_CROSS_CHECK_NOTE}" | tr '\n' ' ' | tr -d '\r'
+          )"
           {
             echo "action_mode=deploy"
             echo "release_tag=${RELEASE_TAG_COMPUTED}"
@@ -354,6 +605,11 @@ jobs:
             echo "source_commit_sha=${source_commit_sha}"
             echo "source_branch=${source_branch}"
             echo "source_event=${source_event}"
+            echo "staging_release_gate=${STAGING_RELEASE_GATE}"
+            echo "staging_evidence_workflow_run_id=${STAGING_EVIDENCE_WORKFLOW_RUN_ID}"
+            echo "staging_evidence_bypassed=${STAGING_EVIDENCE_BYPASSED}"
+            echo "missing_staging_evidence_reason=${reason_one_line}"
+            echo "staging_digest_cross_check_note=${note_one_line}"
           } >> "${GITHUB_OUTPUT}"
 
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${ACTION_MODE}" == "deploy" ]]; then
@@ -362,6 +618,13 @@ jobs:
               echo "This run is an **operator-initiated manual deploy**, not an automatic Security Release candidate."
               echo "- confirmation: \`deploy_production_confirmation=DEPLOY_PRODUCTION\`"
               echo "- build run id: \`${workflow_run_id}\`"
+              echo "- **staging / pre-prod gate**: \`${STAGING_RELEASE_GATE}\` (staging workflow run: \`${STAGING_EVIDENCE_WORKFLOW_RUN_ID:-n/a}\`)"
+              if [[ "${STAGING_EVIDENCE_BYPASSED}" == "true" ]]; then
+                echo "- **\`STAGING GATE BYPASS\`**: \`allow_missing_staging_evidence\` with reason: \`${MISSING_STAGING_REASON_OUT}\`"
+              else
+                echo "- staging digest / build id note: \`${STAGING_DIGEST_CROSS_CHECK_NOTE}\`"
+              fi
+              echo "- security release run: \`${INPUT_SECURITY_RELEASE_RUN_ID}\`"
               echo "- digest-pinned refs were supplied and must match artifact resolution in later jobs."
             } >> "${GITHUB_STEP_SUMMARY}"
           fi
@@ -388,7 +651,7 @@ jobs:
       rollback_available: ${{ steps.lookup.outputs.rollback_available }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Load previous successful production deployment metadata
         id: lookup
@@ -509,6 +772,7 @@ jobs:
     uses: ./.github/workflows/_reusable-deploy.yml
     needs: resolve-build-run-id
     with:
+      # _reusable-deploy "workflow_run" mode: load immutable refs from the operator-selected build run id (artifacts via gh API). Not a GitHub on.workflow_run trigger.
       resolution_mode: ${{ needs.resolve-build-run-id.outputs.action_mode == 'rollback' && 'manual' || 'workflow_run' }}
       target_environment: production
       workflow_run_id: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
@@ -600,7 +864,7 @@ jobs:
       - validate-promotion-selection
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Reject obvious duplicate production action
         shell: bash
@@ -673,7 +937,7 @@ jobs:
       - resolve-build-run-id
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Validate app-node compose
         shell: bash
@@ -697,6 +961,7 @@ jobs:
           bash -n deployments/prod/scripts/smoke_prod.sh
           bash -n deployments/prod/shared/scripts/bootstrap_prereqs.sh
           bash -n deployments/prod/shared/scripts/lib_release.sh
+          bash -n deployments/prod/shared/scripts/traffic_drain_hook.sh
           bash -n deployments/prod/shared/scripts/release_app_cluster.sh
           bash -n deployments/prod/shared/scripts/healthcheck_app_node.sh
           bash -n deployments/prod/shared/scripts/release_data_node.sh
@@ -712,6 +977,11 @@ jobs:
           bash -n deployments/prod/data-node/scripts/rollback_data_node.sh
           bash -n deployments/prod/data-node/scripts/healthcheck_data_node.sh
           bash -n deployments/prod/data-node/scripts/bootstrap_emqx_data_node.sh
+          bash -n scripts/monitoring/collect_deploy_slo_evidence.sh
+          python3 -m py_compile scripts/smoke/emit_production_smoke_json.py
+          python3 -m py_compile scripts/release/build_release_evidence_package.py
+          python3 scripts/release/build_release_evidence_package.py --help >/dev/null
+          bash deployments/prod/scripts/smoke_prod.sh --help >/dev/null
           python3 -m py_compile deployments/prod/shared/scripts/validate_production_scale_storm_evidence.py
           python3 -m py_compile deployments/prod/shared/scripts/render_storm_evidence_manifest_fragment.py
 
@@ -1189,7 +1459,7 @@ jobs:
       storm_evidence_max_age_days_applied: ${{ steps.gate.outputs.storm_evidence_max_age_days_applied }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Validate fleet scale / storm evidence
         id: gate
@@ -1309,6 +1579,11 @@ jobs:
       SOURCE_COMMIT_SHA_NOTE: ${{ inputs.source_commit_sha != '' && 'operator-confirmed' || 'selected-build-run' }}
       SELECTED_BUILD_ACTOR: ${{ needs.resolve-build-run-id.outputs.build_actor }}
       SELECTED_BUILD_RUN_ID: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
+      STAGING_RELEASE_GATE: ${{ needs.resolve-build-run-id.outputs.staging_release_gate }}
+      STAGING_EVIDENCE_WORKFLOW_RUN_ID: ${{ needs.resolve-build-run-id.outputs.staging_evidence_workflow_run_id }}
+      STAGING_EVIDENCE_BYPASSED: ${{ needs.resolve-build-run-id.outputs.staging_evidence_bypassed }}
+      MISSING_STAGING_EVIDENCE_REASON: ${{ needs.resolve-build-run-id.outputs.missing_staging_evidence_reason }}
+      STAGING_DIGEST_CROSS_CHECK_NOTE: ${{ needs.resolve-build-run-id.outputs.staging_digest_cross_check_note }}
       PREVIOUS_ACTION_MODE: ${{ needs.resolve-previous-production-deployment.outputs.previous_action_mode }}
       PREVIOUS_ACTOR: ${{ needs.resolve-previous-production-deployment.outputs.previous_actor }}
       PREVIOUS_APP_DIGEST: ${{ needs.resolve-previous-production-deployment.outputs.previous_app_digest }}
@@ -1344,11 +1619,23 @@ jobs:
       PRODUCTION_PUBLIC_BASE_URL: ${{ secrets.PRODUCTION_PUBLIC_BASE_URL || vars.PRODUCTION_PUBLIC_BASE_URL || secrets.PROD_PUBLIC_BASE_URL || vars.PROD_PUBLIC_BASE_URL || secrets.PUBLIC_BASE_URL || vars.PUBLIC_BASE_URL || '' }}
       PRODUCTION_SMOKE_DB_READ_PATH: ${{ secrets.PRODUCTION_SMOKE_DB_READ_PATH || vars.PRODUCTION_SMOKE_DB_READ_PATH || secrets.PROD_SMOKE_DB_READ_PATH || vars.PROD_SMOKE_DB_READ_PATH || secrets.SMOKE_DB_READ_PATH || vars.SMOKE_DB_READ_PATH || '' }}
       PRODUCTION_SMOKE_DB_READ_MATCH_REGEX: ${{ secrets.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX || vars.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX || secrets.PROD_SMOKE_DB_READ_MATCH_REGEX || vars.PROD_SMOKE_DB_READ_MATCH_REGEX || secrets.SMOKE_DB_READ_MATCH_REGEX || vars.SMOKE_DB_READ_MATCH_REGEX || '' }}
+      # Enterprise smoke tiers: docs/operations/production-smoke-tests.md
+      PRODUCTION_SMOKE_BUSINESS_READONLY_SPECS: ${{ vars.PRODUCTION_SMOKE_BUSINESS_READONLY_SPECS || '' }}
+      PRODUCTION_SMOKE_SYNTHETIC_GET_PATH: ${{ vars.PRODUCTION_SMOKE_SYNTHETIC_GET_PATH || '' }}
+      PRODUCTION_SMOKE_SYNTHETIC_MATCH_REGEX: ${{ vars.PRODUCTION_SMOKE_SYNTHETIC_MATCH_REGEX || '' }}
+      PRODUCTION_SMOKE_BUSINESS_READONLY_BEARER_TOKEN: ${{ secrets.PRODUCTION_SMOKE_BUSINESS_READONLY_BEARER_TOKEN || '' }}
+      PRODUCTION_SMOKE_SYNTHETIC_BEARER_TOKEN: ${{ secrets.PRODUCTION_SMOKE_SYNTHETIC_BEARER_TOKEN || '' }}
       SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || secrets.PROD_SSH_PORT || vars.PROD_SSH_PORT || secrets.SSH_PORT || vars.SSH_PORT || '22' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || secrets.PROD_SSH_USER || vars.PROD_SSH_USER || secrets.SSH_USER || vars.SSH_USER }}
+      # Traffic drain: none (no global/LB claim) | caddy (node caddy stop is the in-compose drain) | external-lb (requires operator hook on the VPS; fail-fast if not configured)
+      TRAFFIC_DRAIN_MODE: ${{ vars.TRAFFIC_DRAIN_MODE || 'none' }}
+      TRAFFIC_DRAIN_WAIT_SECONDS: ${{ vars.TRAFFIC_DRAIN_WAIT_SECONDS || '0' }}
+      # Set PRODUCTION_ALLOW_SINGLE_APP_NODE=1 only for single app-node; default requires two distinct hosts for rolling deploy
+      PRODUCTION_ALLOW_SINGLE_APP_NODE: ${{ vars.PRODUCTION_ALLOW_SINGLE_APP_NODE || '0' }}
+      ALLOW_IDENTICAL_PRODUCTION_APP_NODES: ${{ vars.ALLOW_IDENTICAL_PRODUCTION_APP_NODES || '0' }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Validate production deploy inputs
         id: validate_deploy_inputs
@@ -1356,6 +1643,8 @@ jobs:
         env:
           SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || secrets.SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS }}
           SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.SSH_KEY }}
+          PRODUCTION_ALLOW_SINGLE_APP_NODE: ${{ vars.PRODUCTION_ALLOW_SINGLE_APP_NODE || '0' }}
+          ALLOW_IDENTICAL_PRODUCTION_APP_NODES: ${{ vars.ALLOW_IDENTICAL_PRODUCTION_APP_NODES || '0' }}
         run: |
           set -Eeuo pipefail
 
@@ -1435,6 +1724,118 @@ jobs:
             echo "- topology note: \`${app_node_b_warning}\`" >> "$GITHUB_STEP_SUMMARY"
           fi
 
+          if [[ "${ACTION_MODE}" == "deploy" && "${PRODUCTION_ALLOW_SINGLE_APP_NODE:-0}" != "1" ]]; then
+            [[ -n "${APP_NODE_B_HOST:-}" ]] || fail "two-VPS rolling production requires app node B host (PRODUCTION_APP_NODE_B_HOST or equivalent); set org var PRODUCTION_ALLOW_SINGLE_APP_NODE=1 for single app-node only. See docs/operations/two-vps-rolling-production-deploy.md"
+            if [[ -n "${APP_NODE_A_HOST:-}" && -n "${APP_NODE_B_HOST:-}" && "${APP_NODE_A_HOST}" == "${APP_NODE_B_HOST}" ]]; then
+              if [[ "${ALLOW_IDENTICAL_PRODUCTION_APP_NODES:-0}" != "1" ]]; then
+                fail "APP_NODE_A_HOST and APP_NODE_B_HOST must be different for sequential rolling deploy (or set var ALLOW_IDENTICAL_PRODUCTION_APP_NODES=1 for documented dry-runs only). See docs/operations/two-vps-rolling-production-deploy.md"
+              fi
+            fi
+          fi
+
+      - name: Fetch and validate production backup evidence (run_migration only)
+        if: inputs.action_mode == 'deploy' && inputs.run_migration
+        shell: bash
+        env:
+          INPUT_BACKUP_EVIDENCE_ID: ${{ inputs.backup_evidence_id || '' }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -Eeuo pipefail
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          ref_raw="${INPUT_BACKUP_EVIDENCE_ID:-}"
+          ref_raw="${ref_raw#"${ref_raw%%[![:space:]]*}"}"
+          ref_raw="${ref_raw%"${ref_raw##*[![:space:]]}"}"
+          [[ -n "${ref_raw}" ]] || fail "backup_evidence_id is required and non-empty when run_migration=true (use a workflow run id or path:...; see docs/operations/production-backup-restore-drill.md)"
+
+          ev_file=""
+          if [[ "${ref_raw}" == path:* ]]; then
+            rel_path="${ref_raw#path:}"
+            rel_path="${rel_path#./}"
+            while [[ "${rel_path}" == /* ]]; do
+              rel_path="${rel_path#/}"
+            done
+            [[ -n "${rel_path}" ]] || fail "backup_evidence_id path: prefix requires a non-empty relative path"
+            if [[ -n "${GITHUB_WORKSPACE:-}" ]]; then
+              ev_file="${GITHUB_WORKSPACE}/${rel_path}"
+            else
+              ev_file="$(pwd -P)/${rel_path}"
+            fi
+            if [[ -f "${ev_file}" ]]; then
+              : ok
+            elif [[ -f "${rel_path}" ]]; then
+              ev_file="${rel_path}"
+            else
+              fail "backup evidence not found: ${ev_file} (and not ./${rel_path})"
+            fi
+          elif [[ "${ref_raw}" =~ ^[0-9]+$ ]]; then
+            stg_id="${ref_raw}"
+            st_name="$(
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${stg_id}" --jq '.name // ""' 2>/dev/null || true
+            )"
+            st_conc="$(
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${stg_id}" --jq '.conclusion // ""' 2>/dev/null || true
+            )"
+            [[ -n "${st_name}" ]] || fail "could not read GitHub Actions run ${stg_id} (check run id and token permissions)"
+            [[ "${st_conc}" == "success" ]] || fail "backup evidence run ${stg_id} must be successful (conclusion=${st_conc})"
+            rm -rf backup-evidence-bundle
+            mkdir -p backup-evidence-bundle
+            st_artifact_id=""
+            st_attempt=1
+            while [[ "${st_attempt}" -le 6 ]]; do
+              st_artifact_id="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${stg_id}/artifacts" \
+                  --jq '[.artifacts[]? | select(.name == "production-db-backup-evidence") | .id] | .[0] // empty' 2>/dev/null || true
+              )" || true
+              if [[ -n "${st_artifact_id}" ]]; then
+                break
+              fi
+              if [[ "${st_attempt}" -lt 6 ]]; then
+                sleep 6
+              fi
+              st_attempt=$((st_attempt + 1))
+            done
+            [[ -n "${st_artifact_id}" ]] || \
+              fail "no artifact named production-db-backup-evidence on run ${stg_id} (see docs/operations/production-backup-restore-drill.md)"
+            st_z=1
+            while [[ "${st_z}" -le 5 ]]; do
+              if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${st_artifact_id}/zip" > backup-evidence-bundle/bundle.zip; then
+                break
+              fi
+              if [[ "${st_z}" -lt 5 ]]; then
+                sleep 6
+              fi
+              st_z=$((st_z + 1))
+            done
+            [[ -f backup-evidence-bundle/bundle.zip ]] || fail "failed to download production-db-backup-evidence zip"
+            python3 -m zipfile -e backup-evidence-bundle/bundle.zip backup-evidence-bundle
+            found="$(
+              find backup-evidence-bundle -type f -path '*/backup-evidence/backup-evidence.json' -print 2>/dev/null | head -1 || true
+            )"
+            if [[ -z "${found}" ]]; then
+              found="$(
+                find backup-evidence-bundle -type f -name 'backup-evidence.json' -print 2>/dev/null | head -1 || true
+              )"
+            fi
+            [[ -n "${found}" ]] || fail "archive did not contain backup-evidence/backup-evidence.json (or backup-evidence.json)"
+            ev_file="${found}"
+          else
+            fail "backup_evidence_id must be only digits (GitHub Actions run id) or path:relative/path/backup-evidence.json — got unsupported value (see docs/operations/production-backup-restore-drill.md)"
+          fi
+
+          python3 scripts/ci/validate_backup_evidence.py --for-production-migration --expect-repository "${GITHUB_REPOSITORY}" "${ev_file}"
+          {
+            echo ""
+            echo "## Production database backup evidence"
+            echo "- path validated: \`${ev_file}\`"
+            echo "- policy: \`--for-production-migration\` (source_environment=production, schema_validation_result=pass, restore drill rules, expiry)"
+            echo "- contract: \`docs/contracts/backup-evidence.schema.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Gate production release before SSH
         shell: bash
         run: |
@@ -1496,7 +1897,13 @@ jobs:
               echo "- source branch: \`${SOURCE_BRANCH}\`"
               echo "- source commit SHA: \`${SOURCE_COMMIT_SHA}\`"
               echo "- run_migration (workflow input): \`${INPUT_RUN_MIGRATION:-false}\`"
-              echo "- backup_evidence_id: \`${INPUT_BACKUP_EVIDENCE_ID:-}\`"
+              if [[ "${INPUT_RUN_MIGRATION:-false}" == "true" ]]; then
+                echo "- backup_evidence_id (validated in migration gate step): \`${INPUT_BACKUP_EVIDENCE_ID:-}\`"
+              elif [[ -n "${INPUT_BACKUP_EVIDENCE_ID:-}" ]]; then
+                echo "- backup_evidence_id (informational; run_migration is false, not schema-validated): \`${INPUT_BACKUP_EVIDENCE_ID}\`"
+              else
+                echo "- backup_evidence_id: \`(not set; optional when run_migration is false)\`"
+              fi
             fi
             echo "- app image: \`${APP_IMAGE_REF}\`"
             echo "- app digest: \`${{ needs.validate-promotion-selection.outputs.app_digest }}\`"
@@ -1720,7 +2127,7 @@ jobs:
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
 
       - name: Sync app-node assets to node B
-        if: steps.validate_deploy_inputs.outputs.deploy_app_node_b == 'true'
+        if: success() && steps.validate_deploy_inputs.outputs.deploy_app_node_b == 'true'
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -1749,6 +2156,24 @@ jobs:
           mkdir -p deployment-evidence
           printf 'started\n' > deployment-evidence/release-started
 
+      - name: Collect pre-deploy SLO evidence
+        if: env.ACTION_MODE == 'deploy'
+        shell: bash
+        env:
+          BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
+          DEPLOY_SLO_CRITICAL: "1"
+          APP_NODE_A_HOST: ${{ env.APP_NODE_A_HOST }}
+          APP_NODE_B_HOST: ${{ env.APP_NODE_B_HOST }}
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
+          PRODUCTION_DEPLOY_ROOT: ${{ env.PRODUCTION_DEPLOY_ROOT }}
+          SSH_USER: ${{ env.SSH_USER }}
+          SSH_PORT: ${{ env.SSH_PORT }}
+          SSH_OPTS: ${{ env.SSH_OPTS }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p deployment-evidence
+          bash scripts/monitoring/collect_deploy_slo_evidence.sh --json --phase pre_deploy --out deployment-evidence/slo-pre-deploy.json
+
       - name: Optionally deploy data-node fallback stack
         if: env.DEPLOY_DATA_NODE == 'true'
         id: deploy_data_node
@@ -1768,6 +2193,8 @@ jobs:
           GHCR_PULL_TOKEN: ${{ github.token }}
           APP_NODE_HOSTS: ${{ env.APP_NODE_A_HOST }}
           APP_NODE_ENABLE_TEMPORAL_PROFILE: ${{ env.ENABLE_TEMPORAL_PROFILE }}
+          TRAFFIC_DRAIN_MODE: ${{ env.TRAFFIC_DRAIN_MODE }}
+          TRAFFIC_DRAIN_WAIT_SECONDS: ${{ env.TRAFFIC_DRAIN_WAIT_SECONDS }}
           APP_NODE_RUN_SMOKE_AFTER_READY: ${{ env.ACTION_MODE == 'deploy' && '1' || '0' }}
           APP_NODE_SMOKE_JSON_FILE: deployment-evidence/smoke-app-node-a.json
           APP_NODE_SMOKE_LABEL_PREFIX: app-node-a
@@ -1778,25 +2205,64 @@ jobs:
           SMOKE_CONNECT_TO_HOST: ${{ env.APP_NODE_A_HOST }}
           SMOKE_DB_READ_PATH: ${{ env.PRODUCTION_SMOKE_DB_READ_PATH }}
           SMOKE_DB_READ_MATCH_REGEX: ${{ env.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX }}
+          SMOKE_LEVEL: business-readonly
+          SMOKE_ENABLE_BUSINESS_SYNTHETIC: "0"
+          SMOKE_BUSINESS_READONLY_SPECS: ${{ env.PRODUCTION_SMOKE_BUSINESS_READONLY_SPECS }}
+          SMOKE_BUSINESS_READONLY_BEARER_TOKEN: ${{ env.PRODUCTION_SMOKE_BUSINESS_READONLY_BEARER_TOKEN }}
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
+          export TRAFFIC_DRAIN_MODE="${TRAFFIC_DRAIN_MODE:-none}"
+          export TRAFFIC_DRAIN_WAIT_SECONDS="${TRAFFIC_DRAIN_WAIT_SECONDS:-0}"
           bash deployments/prod/shared/scripts/release_app_cluster.sh "${APP_IMAGE_REF}" "${GOOSE_IMAGE_REF}"
 
-      - name: Roll out app node B
+      - name: Collect post-node-A SLO evidence
+        if: always() && env.ACTION_MODE == 'deploy'
+        shell: bash
+        env:
+          BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
+          DEPLOY_SLO_CRITICAL: "0"
+          APP_NODE_A_HOST: ${{ env.APP_NODE_A_HOST }}
+          APP_NODE_B_HOST: ${{ env.APP_NODE_B_HOST }}
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
+          PRODUCTION_DEPLOY_ROOT: ${{ env.PRODUCTION_DEPLOY_ROOT }}
+          SSH_USER: ${{ env.SSH_USER }}
+          SSH_PORT: ${{ env.SSH_PORT }}
+          SSH_OPTS: ${{ env.SSH_OPTS }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p deployment-evidence
+          bash scripts/monitoring/collect_deploy_slo_evidence.sh --json --phase post_node_a --out deployment-evidence/slo-post-node-a.json
+
+      - name: Roll out app node B with smoke gate
         id: deploy_app_node_b
-        if: steps.validate_deploy_inputs.outputs.deploy_app_node_b == 'true'
+        if: success() && steps.validate_deploy_inputs.outputs.deploy_app_node_b == 'true'
         shell: bash
         env:
           GHCR_PULL_USERNAME: ${{ github.repository_owner }}
           GHCR_PULL_TOKEN: ${{ github.token }}
           APP_NODE_HOSTS: ${{ env.APP_NODE_B_HOST }}
           APP_NODE_ENABLE_TEMPORAL_PROFILE: ${{ env.ENABLE_TEMPORAL_PROFILE }}
-          APP_NODE_RUN_SMOKE_AFTER_READY: "0"
+          TRAFFIC_DRAIN_MODE: ${{ env.TRAFFIC_DRAIN_MODE }}
+          TRAFFIC_DRAIN_WAIT_SECONDS: ${{ env.TRAFFIC_DRAIN_WAIT_SECONDS }}
+          APP_NODE_RUN_SMOKE_AFTER_READY: ${{ env.ACTION_MODE == 'deploy' && '1' || '0' }}
+          APP_NODE_SMOKE_JSON_FILE: deployment-evidence/smoke-app-node-b.json
+          APP_NODE_SMOKE_LABEL_PREFIX: app-node-b
           RELEASE_EVIDENCE_FILE: deployment-evidence/release-events.jsonl
           RUN_MIGRATION_ON_FIRST_NODE: "0"
+          SMOKE_API_DOMAIN: ${{ env.PRODUCTION_API_DOMAIN }}
+          SMOKE_BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
+          SMOKE_CONNECT_TO_HOST: ${{ env.APP_NODE_B_HOST }}
+          SMOKE_DB_READ_PATH: ${{ env.PRODUCTION_SMOKE_DB_READ_PATH }}
+          SMOKE_DB_READ_MATCH_REGEX: ${{ env.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX }}
+          SMOKE_LEVEL: business-readonly
+          SMOKE_ENABLE_BUSINESS_SYNTHETIC: "0"
+          SMOKE_BUSINESS_READONLY_SPECS: ${{ env.PRODUCTION_SMOKE_BUSINESS_READONLY_SPECS }}
+          SMOKE_BUSINESS_READONLY_BEARER_TOKEN: ${{ env.PRODUCTION_SMOKE_BUSINESS_READONLY_BEARER_TOKEN }}
         run: |
           set -Eeuo pipefail
+          export TRAFFIC_DRAIN_MODE="${TRAFFIC_DRAIN_MODE:-none}"
+          export TRAFFIC_DRAIN_WAIT_SECONDS="${TRAFFIC_DRAIN_WAIT_SECONDS:-0}"
           bash deployments/prod/shared/scripts/release_app_cluster.sh "${APP_IMAGE_REF}" "${GOOSE_IMAGE_REF}"
 
       - name: Run final public smoke after app node B
@@ -1808,6 +2274,13 @@ jobs:
           SMOKE_BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
           SMOKE_DB_READ_PATH: ${{ env.PRODUCTION_SMOKE_DB_READ_PATH }}
           SMOKE_DB_READ_MATCH_REGEX: ${{ env.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX }}
+          SMOKE_LEVEL: ${{ inputs.enable_business_synthetic_smoke && 'business-safe-synthetic' || 'business-readonly' }}
+          SMOKE_ENABLE_BUSINESS_SYNTHETIC: ${{ inputs.enable_business_synthetic_smoke && '1' || '0' }}
+          SMOKE_BUSINESS_READONLY_SPECS: ${{ env.PRODUCTION_SMOKE_BUSINESS_READONLY_SPECS }}
+          SMOKE_BUSINESS_READONLY_BEARER_TOKEN: ${{ env.PRODUCTION_SMOKE_BUSINESS_READONLY_BEARER_TOKEN }}
+          SMOKE_SYNTHETIC_GET_PATH: ${{ env.PRODUCTION_SMOKE_SYNTHETIC_GET_PATH }}
+          SMOKE_SYNTHETIC_BEARER_TOKEN: ${{ env.PRODUCTION_SMOKE_SYNTHETIC_BEARER_TOKEN }}
+          SMOKE_SYNTHETIC_MATCH_REGEX: ${{ env.PRODUCTION_SMOKE_SYNTHETIC_MATCH_REGEX }}
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
@@ -1824,6 +2297,24 @@ jobs:
           printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"%s","detail":"%s"}\n' \
             "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${smoke_status}" "${smoke_detail}" >> deployment-evidence/release-events.jsonl
           exit "${smoke_rc}"
+
+      - name: Collect final post-deploy SLO evidence
+        if: always() && env.ACTION_MODE == 'deploy'
+        shell: bash
+        env:
+          BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
+          DEPLOY_SLO_CRITICAL: "0"
+          APP_NODE_A_HOST: ${{ env.APP_NODE_A_HOST }}
+          APP_NODE_B_HOST: ${{ env.APP_NODE_B_HOST }}
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
+          PRODUCTION_DEPLOY_ROOT: ${{ env.PRODUCTION_DEPLOY_ROOT }}
+          SSH_USER: ${{ env.SSH_USER }}
+          SSH_PORT: ${{ env.SSH_PORT }}
+          SSH_OPTS: ${{ env.SSH_OPTS }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p deployment-evidence
+          bash scripts/monitoring/collect_deploy_slo_evidence.sh --json --phase post_final --out deployment-evidence/slo-post-final.json
 
       - name: Attempt automatic rollback after failed production release
         if: failure() && env.ACTION_MODE == 'deploy'
@@ -1860,14 +2351,36 @@ jobs:
             exit 0
           fi
 
+          a_o="${APP_NODE_A_ROLLOUT_OUTCOME:-skipped}"
+          b_o="${APP_NODE_B_ROLLOUT_OUTCOME:-skipped}"
+          fs_o="${FINAL_SMOKE_OUTCOME:-skipped}"
+          # Selective automatic rollback: do not touch a healthy node. Node B is not rolled back if only node A failed (B never received the new release).
+          need_a=0
+          need_b=0
+          if [[ "${a_o}" == "failure" ]]; then
+            need_a=1
+            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting app node A only: node A rollout failed; node B left unchanged"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+          elif [[ "${a_o}" == "success" && "${b_o}" == "failure" ]]; then
+            need_b=1
+            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting app node B only: node A passed; B rollout failed"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+          elif [[ "${a_o}" == "success" && "${b_o}" == "success" && "${fs_o}" == "failure" ]]; then
+            need_a=1
+            need_b=1
+            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting both app nodes: final public smoke failed; revert cluster to prior digests"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+          elif [[ "${a_o}" == "success" && "${b_o}" == "skipped" && "${fs_o}" == "failure" ]]; then
+            need_a=1
+            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting app node A only: single-node or B not deployed; final public smoke failed"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+          fi
+          if [[ "${need_a}" -eq 0 && "${need_b}" -eq 0 ]]; then
+            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"no scoped app-node rollback from outcomes; may still rollback data node below"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+          fi
           app_nodes_need_rollback="false"
-          if [[ -n "${APP_NODE_A_ROLLOUT_OUTCOME}" && "${APP_NODE_A_ROLLOUT_OUTCOME}" != "skipped" ]]; then
-            app_nodes_need_rollback="true"
-          fi
-          if [[ -n "${APP_NODE_B_ROLLOUT_OUTCOME}" && "${APP_NODE_B_ROLLOUT_OUTCOME}" != "skipped" ]]; then
-            app_nodes_need_rollback="true"
-          fi
-          if [[ -n "${FINAL_SMOKE_OUTCOME}" && "${FINAL_SMOKE_OUTCOME}" != "skipped" ]]; then
+          if [[ "${need_a}" -eq 1 || "${need_b}" -eq 1 ]]; then
             app_nodes_need_rollback="true"
           fi
 
@@ -1895,23 +2408,23 @@ jobs:
           if [[ "${app_nodes_need_rollback}" == "true" ]]; then
             rollback_attempted="true"
             rollbacked_hosts=0
-            if [[ -n "${APP_NODE_A_ROLLOUT_OUTCOME}" && "${APP_NODE_A_ROLLOUT_OUTCOME}" != "skipped" ]]; then
+            if [[ "${need_a}" -eq 1 ]]; then
               if ! rollback_app_node "${APP_NODE_A_HOST}"; then
                 rollback_rc=1
               fi
               rollbacked_hosts=$((rollbacked_hosts + 1))
             fi
-            if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_ROLLOUT_OUTCOME}" && "${APP_NODE_B_ROLLOUT_OUTCOME}" != "skipped" ]]; then
+            if [[ "${need_b}" -eq 1 ]]; then
               if ! rollback_app_node "${APP_NODE_B_HOST}"; then
                 rollback_rc=1
               fi
               rollbacked_hosts=$((rollbacked_hosts + 1))
             fi
             if [[ "${rollback_rc}" -eq 0 ]]; then
-              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for %s app node(s); prior digest-pinned images redeployed without migration down"}\n' \
+              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"pass","detail":"automatic rollback completed for %s app node(s) (selective; prior digest-pinned images; no migration down)"}\n' \
                 "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${rollbacked_hosts}" >> deployment-evidence/release-events.jsonl
             else
-              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"fail","detail":"automatic rollback failed during app-node redeploy for %s host(s)"}\n' \
+              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"fail","detail":"automatic rollback failed during selective app-node redeploy (hosts=%s)"}\n' \
                 "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${rollbacked_hosts}" >> deployment-evidence/release-events.jsonl
             fi
           fi
@@ -2056,6 +2569,7 @@ jobs:
                 "app_node_a_smoke_result": smoke_status("deployment-evidence/smoke-app-node-a.json", "skipped" if action_mode != "deploy" else "not-run"),
                 "app_node_b_result": normalize_step_outcome(os.environ.get("APP_NODE_B_ROLLOUT_OUTCOME", "skipped"), "skipped"),
                 "app_node_b_readiness_result": latest_phase_status("app-node", app_node_b_host, "readiness", "not-run"),
+                "app_node_b_smoke_result": smoke_status("deployment-evidence/smoke-app-node-b.json", "skipped" if action_mode != "deploy" else "not-run"),
                 "final_cluster_smoke_result": smoke_status("deployment-evidence/smoke-cluster-final.json", "skipped" if action_mode != "deploy" else normalize_step_outcome(os.environ.get("FINAL_CLUSTER_SMOKE_STEP_OUTCOME", "skipped"), "not-run")),
                 "rollback_attempted": os.environ.get("ROLLBACK_ATTEMPTED", "false"),
                 "rollback_result": os.environ.get("ROLLBACK_RESULT", "not-attempted"),
@@ -2064,7 +2578,34 @@ jobs:
             }
             if deploy_data_node != "true":
                 derived["data_node_result"] = "skipped"
-
+            tdm = os.environ.get("TRAFFIC_DRAIN_MODE", "none")
+            derived["traffic_drain_mode"] = tdm
+            derived["zero_downtime_claim"] = "true" if tdm == "caddy" else "false"
+            derived["migration_node"] = "app_node_a" if os.environ.get("INPUT_RUN_MIGRATION", "false") == "true" else "none"
+            derived["node_a_deploy_result"] = derived["app_node_a_result"]
+            derived["node_b_deploy_result"] = derived["app_node_b_result"]
+            derived["node_a_smoke_result"] = derived["app_node_a_smoke_result"]
+            derived["node_b_smoke_result"] = derived["app_node_b_smoke_result"]
+            derived["final_public_smoke_result"] = derived["final_cluster_smoke_result"]
+            derived["rollback_available_before_deploy"] = "true" if os.environ.get("ROLLBACK_AVAILABLE_BEFORE_DEPLOY", "false") == "true" else "false"
+            fr = os.environ.get("FINAL_RESULT", "")
+            fa = derived["app_node_a_result"]
+            fb = derived["app_node_b_result"]
+            fcs = derived["final_cluster_smoke_result"]
+            if fr == "success" and fcs in ("pass",) and fa == "pass" and fb in ("pass", "skipped"):
+                derived["rollout_outcome_summary"] = "success_sequential_rolling_2vps" if fb == "pass" else "success_single_app_node"
+            elif fa == "fail":
+                derived["rollout_outcome_summary"] = "failed_at_node_A_partial_cluster"
+            elif fa == "pass" and fb == "fail":
+                derived["rollout_outcome_summary"] = "failed_at_node_B_node_A_on_new_rollback_B_eligible"
+            elif fcs == "fail" and fa == "pass":
+                derived["rollout_outcome_summary"] = "failed_final_public_smoke_rollback_both_or_single_per_auto"
+            else:
+                derived["rollout_outcome_summary"] = "partial_or_cancelled"
+            out_tl = Path("deployment-evidence/rollout-timeline.json")
+            out_tl.parent.mkdir(parents=True, exist_ok=True)
+            out_tl.write_text(json.dumps(events, indent=2) + "\n", encoding="utf-8")
+            derived["rollout_timeline_path"] = str(out_tl)
             for key, value in derived.items():
                 print(f"{key}={value}")
           WF_PRODUCTION_MANIFESTS_WRITER: |
@@ -2086,6 +2627,9 @@ jobs:
             gate_bypass_reason = json.loads(s("STORM_BYPASS_JSON_SNIPPET", "null") or "null")
             gate_evid = json.loads(s("STORM_EVID_PATH_JSON_SNIPPET", "null") or "null")
             rollback_before = s("ROLLBACK_AVAIL_FOR_JSON", "false") == "true"
+
+            rt_p = Path("deployment-evidence/rollout-timeline.json")
+            rollout_timeline = json.loads(rt_p.read_text(encoding="utf-8")) if rt_p.exists() else []
 
             m = {
                 "schema_version": 1,
@@ -2140,6 +2684,11 @@ jobs:
                 "security_verdict_max_age_hours": s("SECURITY_VERDICT_MAX_AGE_HOURS"),
                 "security_workflow_run_id": s("SECURITY_WORKFLOW_RUN_ID"),
                 "security_verdict_generated_at_utc": s("SECURITY_VERDICT_GENERATED_AT_UTC"),
+                "staging_release_gate": s("STAGING_RELEASE_GATE"),
+                "staging_evidence_workflow_run_id": s("STAGING_EVIDENCE_WORKFLOW_RUN_ID"),
+                "staging_evidence_bypassed": s("STAGING_EVIDENCE_BYPASSED") == "true",
+                "missing_staging_evidence_reason": s("MISSING_STAGING_EVIDENCE_REASON", ""),
+                "staging_digest_cross_check_note": s("STAGING_DIGEST_CROSS_CHECK_NOTE", ""),
                 "deploy_data_node": s("DEPLOY_DATA_NODE"),
                 "data_node_host": s("DATA_NODE_HOST"),
                 "app_node_a_host": s("APP_NODE_A_HOST"),
@@ -2150,7 +2699,19 @@ jobs:
                 "app_node_a_smoke_result": s("app_node_a_smoke_result"),
                 "app_node_b_result": s("app_node_b_result"),
                 "app_node_b_readiness_result": s("app_node_b_readiness_result"),
+                "app_node_b_smoke_result": s("app_node_b_smoke_result"),
+                "node_a_deploy_result": s("node_a_deploy_result"),
+                "node_b_deploy_result": s("node_b_deploy_result"),
+                "node_a_smoke_result": s("node_a_smoke_result"),
+                "node_b_smoke_result": s("node_b_smoke_result"),
                 "final_cluster_smoke_result": s("final_cluster_smoke_result"),
+                "final_public_smoke_result": s("final_public_smoke_result"),
+                "rollout_mode": "sequential_2vps_rolling",
+                "rollout_outcome_summary": s("rollout_outcome_summary"),
+                "traffic_drain_mode": s("traffic_drain_mode"),
+                "zero_downtime_claim": s("zero_downtime_claim"),
+                "migration_node": s("migration_node"),
+                "rollout_timeline": rollout_timeline,
                 "rollback_attempted": s("ROLLBACK_ATTEMPTED"),
                 "rollback_result": s("ROLLBACK_RESULT"),
                 "final_result": s("FINAL_RESULT"),
@@ -2163,6 +2724,11 @@ jobs:
                 "storm_gate_bypassed": gate_byp,
                 "storm_gate_bypass_reason": gate_bypass_reason,
                 "storm_evidence": storm_evidence,
+                "deploy_slo_evidence": {
+                    "pre_deploy": "deployment-evidence/slo-pre-deploy.json",
+                    "post_node_a": "deployment-evidence/slo-post-node-a.json",
+                    "post_final": "deployment-evidence/slo-post-final.json",
+                },
             }
             Path("deployment-evidence/production-deployment-manifest.json").write_text(json.dumps(m, indent=2) + "\n", encoding="utf-8")
 
@@ -2182,13 +2748,31 @@ jobs:
                 "security_verdict_age_seconds": s("SECURITY_VERDICT_AGE_SECONDS"),
                 "security_verdict_max_age_hours": s("SECURITY_VERDICT_MAX_AGE_HOURS"),
                 "security_workflow_run_id": s("SECURITY_WORKFLOW_RUN_ID"),
+                "staging_release_gate": s("STAGING_RELEASE_GATE"),
+                "staging_evidence_workflow_run_id": s("STAGING_EVIDENCE_WORKFLOW_RUN_ID"),
+                "staging_evidence_bypassed": s("STAGING_EVIDENCE_BYPASSED") == "true",
+                "missing_staging_evidence_reason": s("MISSING_STAGING_EVIDENCE_REASON", ""),
+                "staging_digest_cross_check_note": s("STAGING_DIGEST_CROSS_CHECK_NOTE", ""),
                 "data_node_result": s("data_node_result"),
                 "app_node_a_result": s("app_node_a_result"),
                 "app_node_a_readiness_result": s("app_node_a_readiness_result"),
                 "app_node_a_smoke_result": s("app_node_a_smoke_result"),
                 "app_node_b_result": s("app_node_b_result"),
                 "app_node_b_readiness_result": s("app_node_b_readiness_result"),
+                "app_node_b_smoke_result": s("app_node_b_smoke_result"),
+                "node_a_deploy_result": s("node_a_deploy_result"),
+                "node_b_deploy_result": s("node_b_deploy_result"),
+                "node_a_smoke_result": s("node_a_smoke_result"),
+                "node_b_smoke_result": s("node_b_smoke_result"),
                 "final_cluster_smoke_result": s("final_cluster_smoke_result"),
+                "final_public_smoke_result": s("final_public_smoke_result"),
+                "rollout_mode": "sequential_2vps_rolling",
+                "rollout_outcome_summary": s("rollout_outcome_summary"),
+                "traffic_drain_mode": s("traffic_drain_mode"),
+                "zero_downtime_claim": s("zero_downtime_claim"),
+                "migration_node": s("migration_node"),
+                "rollback_available_before_deploy": s("rollback_available_before_deploy") == "true",
+                "rollout_timeline": rollout_timeline,
                 "rollback_attempted": s("ROLLBACK_ATTEMPTED"),
                 "rollback_result": s("ROLLBACK_RESULT"),
                 "final_result": s("FINAL_RESULT"),
@@ -2201,6 +2785,11 @@ jobs:
                 "storm_gate_bypassed": gate_byp,
                 "storm_gate_bypass_reason": gate_bypass_reason,
                 "storm_evidence": storm_evidence,
+                "deploy_slo_evidence": {
+                    "pre_deploy": "deployment-evidence/slo-pre-deploy.json",
+                    "post_node_a": "deployment-evidence/slo-post-node-a.json",
+                    "post_final": "deployment-evidence/slo-post-final.json",
+                },
             }
             Path("deployment-evidence/production-deploy-evidence.json").write_text(json.dumps(e, indent=2) + "\n", encoding="utf-8")
 
@@ -2313,7 +2902,13 @@ jobs:
             echo "- provenance trust class: \`${PROVENANCE_TRUST_CLASS}\`"
             echo "- security release gate artifact: verdict=\`${RELEASE_GATE_VERDICT}\`, mode=\`${RELEASE_GATE_MODE}\`, repo=\`${REPO_RELEASE_VERDICT}\`, provenance=\`${PROVENANCE_RELEASE_VERDICT}\`, workflow_run=\`${SECURITY_WORKFLOW_RUN_ID:-n/a}\`, generated_at=\`${SECURITY_VERDICT_GENERATED_AT_UTC:-n/a}\`"
             echo "- security freshness policy: max-age=\`${freshness_window_display}\` / observed-age=\`${SECURITY_VERDICT_AGE_SECONDS:-n/a}\`"
-            echo "- scope note: \`production rollout evidence only; staging deployment and restore-drill controls are reported by their own workflows/artifacts\`"
+            echo "- **staging / pre-prod gate**: status=\`${STAGING_RELEASE_GATE:-n/a}\` / staging run id=\`${STAGING_EVIDENCE_WORKFLOW_RUN_ID:-n/a}\` / bypassed=\`${STAGING_EVIDENCE_BYPASSED:-false}\`"
+            if [[ "${STAGING_EVIDENCE_BYPASSED:-false}" == "true" ]]; then
+              echo "- **\`STAGING_GATE_BYPASS\`**: \`${MISSING_STAGING_EVIDENCE_REASON}\` (remove when staging is enforced)"
+            else
+              echo "- staging cross-check: \`${STAGING_DIGEST_CROSS_CHECK_NOTE:-n/a}\`"
+            fi
+            echo "- scope note: \`production manifest embeds staging_release_gate + staging evidence ids; full staging proof is the Staging workflow + staging-deploy-evidence artifact (staging-evidence/staging-deploy-evidence.json)\`"
             echo "- fleet scale target: \`${FLEET_SCALE_TARGET}\` / storm gate: required=\`${STORM_GATE_REQUIRED}\` result=\`${STORM_GATE_RESULT}\` bypassed=\`${STORM_GATE_BYPASSED}\` evidence=\`${STORM_GATE_EVIDENCE_PATH:-n/a}\`"
             echo "- data-node requested: \`${DEPLOY_DATA_NODE}\`"
             echo "- app node A: \`${APP_NODE_A_HOST}\`"
@@ -2323,9 +2918,13 @@ jobs:
               echo "- app node B: \`skipped\`"
             fi
             echo "- data node: \`${DATA_NODE_HOST:-not-requested}\`"
+            echo "- rollout: \`sequential (node A then node B; never parallel app-node restarts in CI)\`"
+            echo "- traffic_drain_mode / zero_downtime_claim: \`${TRAFFIC_DRAIN_MODE:-none}\` / \`${zero_downtime_claim:-n/a}\` (caddy=node-local drain via stopping edge proxy; not a global/LB claim unless external-lb hook is used)"
+            echo "- migration_node: \`${migration_node:-none}\`"
+            echo "- rollout_outcome_summary: \`${rollout_outcome_summary:-n/a}\`"
             echo "- rollout results: data-node=\`${data_node_result}\`, app-node-a=\`${app_node_a_result}\`, app-node-b=\`${app_node_b_result}\`"
             echo "- readiness checks: app-node-a=\`${app_node_a_readiness_result}\`, app-node-b=\`${app_node_b_readiness_result}\`"
-            echo "- smoke checks: app-node-a-public=\`${app_node_a_smoke_result}\`, final-cluster=\`${final_cluster_smoke_result}\`"
+            echo "- smoke: node-a direct=\`${app_node_a_smoke_result}\`, node-b direct=\`${app_node_b_smoke_result}\`, final-public=\`${final_public_smoke_result}\`"
             if [[ -n "${APP_NODE_B_WARNING}" ]]; then
               echo "- topology note: \`${APP_NODE_B_WARNING}\`"
             fi
@@ -2336,9 +2935,29 @@ jobs:
             echo "- rollback path: \`remote rollback_app_node.sh\` (and \`rollback_data_node.sh\` when requested)"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Build production release audit package
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ -f deployment-evidence/production-deploy-evidence.json ]]; then
+            python3 scripts/release/build_release_evidence_package.py --out release-audit-prod --phase production --root . --strict-phase production
+          else
+            echo "::warning::production-deploy-evidence.json missing; building non-strict audit manifest (rollback or pre-manifest run)"
+            python3 scripts/release/build_release_evidence_package.py --out release-audit-prod --phase production --root .
+          fi
+      - name: Upload production release audit package
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: production-release-audit-package
+          path: release-audit-prod
+          if-no-files-found: warn
+          retention-days: 90
+
       - name: Upload production deployment manifest
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: production-deployment-manifest
           path: deployment-evidence/production-deployment-manifest.json
@@ -2347,9 +2966,9 @@ jobs:
 
       - name: Upload production deploy evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: production-deploy-evidence
           path: deployment-evidence
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90

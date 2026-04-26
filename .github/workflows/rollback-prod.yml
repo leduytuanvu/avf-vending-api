@@ -1,0 +1,149 @@
+# Manual incident: record digest-validated **rollback preflight** evidence (environment reviewers).
+# This workflow does not SSH. Execute the actual **Deploy Production** rollback (action_mode=rollback) or
+# on-host release scripts with the same digest-pinned image refs. Never automatic (no push, no chain triggers).
+name: Rollback (Production — Incident)
+
+on:
+  workflow_dispatch:
+    inputs:
+      previous_deployment_manifest_id:
+        description: "Optional. Successful Deploy Production run id that uploaded 'production-deployment-manifest' (app/goose digests from manifest). If set, rollback_target_* can be left empty."
+        required: false
+        default: ""
+        type: string
+      rollback_target_app_image_ref:
+        description: "Required if manifest id empty. ghcr.io/.../...@sha256:... (app image, digest-pinned)"
+        required: false
+        default: ""
+        type: string
+      rollback_target_goose_image_ref:
+        description: "Required if manifest id empty. ghcr.io/...-goose@sha256:... (goose image, digest-pinned)"
+        required: false
+        default: ""
+        type: string
+      reason:
+        description: "Short reason for this rollback (operator-visible, non-secret summary)"
+        required: true
+        type: string
+      incident_id:
+        description: "External incident or ticket id (e.g. INC-2026-0001)"
+        required: true
+        type: string
+      dry_run:
+        description: "If true, validate digests and emit evidence only; no execution hook"
+        type: boolean
+        default: true
+
+concurrency:
+  group: production-rollback-evidence
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  preflight-rollback:
+    name: Validate digest targets and record evidence
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out (emit scripts, Python helpers)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Resolve digest-pinned app/goose (manifest or direct inputs) before any deploy action
+        id: target
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          MANIFEST_RUN_ID: ${{ inputs.previous_deployment_manifest_id || '' }}
+          IN_APP: ${{ inputs.rollback_target_app_image_ref || '' }}
+          IN_GOOSE: ${{ inputs.rollback_target_goose_image_ref || '' }}
+        run: |
+          set -Eeuo pipefail
+          fail() { echo "error: $*" >&2; exit 1; }
+
+          check_digest() {
+            local n="$1" v="$2"
+            [[ -n "$v" ]] || fail "empty ${n}"
+            if ! [[ "$v" =~ @sha256:[0-9a-fA-F]{64} ]]; then
+              fail "${n} must be digest-pinned: ...@sha256:<64-hex> (ref length ${#v})"
+            fi
+            [[ ${#v} -le 240 ]] || fail "${n} ref implausibly long"
+            [[ "$v" != *":latest"* ]] || fail "${n} must not use the :latest tag"
+          }
+
+          app="${IN_APP#"${IN_APP%%[![:space:]]*}"}"
+          app="${app%"${app##*[![:space:]]}"}"
+          goose="${IN_GOOSE#"${IN_GOOSE%%[![:space:]]*}"}"
+          goose="${goose%"${goose##*[![:space:]]}"}"
+          mr="${MANIFEST_RUN_ID#"${MANIFEST_RUN_ID%%[![:space:]]*}"}"
+          mr="${mr%"${mr##*[![:space:]]}"}"
+
+          if [[ -n "$mr" ]]; then
+            [[ "$mr" =~ ^[0-9]+$ ]] || fail "previous_deployment_manifest_id must be digits-only run id"
+            st_conc="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${mr}" --jq '.conclusion // ""' 2>/dev/null || true)"
+            [[ -n "$st_conc" ]] || fail "could not read run ${mr}"
+            [[ "$st_conc" == "success" ]] || fail "run ${mr} must be success (got ${st_conc})"
+            art_id="$(
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${mr}/artifacts" \
+                --jq '[.artifacts[]? | select(.name == "production-deployment-manifest") | .id] | .[0] // empty' 2>/dev/null || true
+            )"
+            [[ -n "${art_id}" ]] || fail "no artifact production-deployment-manifest on run ${mr}"
+            rm -rf mfb && mkdir -p mfb
+            gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${art_id}/zip" > mfb/m.zip
+            python3 -m zipfile -e mfb/m.zip mfb
+            mj="$(
+              find mfb -type f -name 'production-deployment-manifest.json' -print 2>/dev/null | head -1 || true
+            )"
+            [[ -n "${mj}" ]] || fail "zip did not contain production-deployment-manifest.json"
+            out="$(python3 -c "import json,sys; p=json.load(open(sys.argv[1],encoding='utf-8')); print((p.get('app_image_ref')or'').strip()); print((p.get('goose_image_ref')or'').strip())" "${mj}" )"
+            app="$(printf '%s' "${out}" | head -1)"
+            goose="$(printf '%s' "${out}" | tail -1)"
+            check_digest manifest_app_image_ref "$app"
+            check_digest manifest_goose_image_ref "$goose"
+            echo "app_ref=${app}" >> "${GITHUB_OUTPUT}"
+            echo "goose_ref=${goose}" >> "${GITHUB_OUTPUT}"
+            echo "source_manifest_run_id=${mr}" >> "${GITHUB_OUTPUT}"
+          else
+            check_digest rollback_target_app_image_ref "$app"
+            check_digest rollback_target_goose_image_ref "$goose"
+            echo "app_ref=${app}" >> "${GITHUB_OUTPUT}"
+            echo "goose_ref=${goose}" >> "${GITHUB_OUTPUT}"
+            echo "source_manifest_run_id=" >> "${GITHUB_OUTPUT}"
+          fi
+          {
+            echo "## Production rollback (incident) — preflight"
+            echo "- **incident_id**: \`${{ inputs.incident_id }}\`"
+            echo "- **dry_run**: \`${{ inputs.dry_run }}\`"
+            echo "- **rollback_target_app_image_ref (validated)**: \`${app}\`"
+            echo "- **rollback_target_goose_image_ref (validated)**: \`${goose}\`"
+            echo "- **Next**: run **Deploy Production** with \`action_mode: rollback\` and \`rollback_app_image_ref\` / \`rollback_goose_image_ref\` matching these digests, or the on-host release/rollback path."
+            echo "- **This workflow does not SSH**; it validates and records **production-rollback-evidence** for reviewers."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Write rollback workflow evidence (JSON, no secret values)
+        id: ev
+        shell: bash
+        env:
+          REASON: ${{ inputs.reason }}
+          INCIDENT_ID: ${{ inputs.incident_id }}
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/db/emit_rollback_workflow_evidence.py \
+            --repository "${{ github.repository }}" \
+            --incident-id "${INCIDENT_ID}" \
+            --reason "${REASON}" \
+            --dry-run "${{ inputs.dry_run }}" \
+            --app-ref "${{ steps.target.outputs.app_ref }}" \
+            --goose-ref "${{ steps.target.outputs.goose_ref }}" \
+            --previous-manifest-run-id "${{ steps.target.outputs.source_manifest_run_id }}" \
+            --github-run-id "${{ github.run_id }}"
+
+      - name: Upload rollback evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: production-rollback-evidence
+          path: rollback-evidence/
+          if-no-files-found: error

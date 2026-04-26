@@ -1,0 +1,171 @@
+# Manual: validate production backup evidence and record a **non-production** restore-drill workflow outcome.
+# Default is dry_run. No production database target (no environment: production). Never automatic chain triggers.
+name: Restore drill (non-production backup evidence)
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_evidence_id:
+        description: "Successful workflow run id (digits) with artifact production-db-backup-evidence, or path:repo/relative/backup-evidence.json"
+        required: true
+        type: string
+      restore_target:
+        description: "Declared restore drill target (must match backup JSON restore_target when evidence already records a drill)"
+        required: true
+        type: choice
+        options:
+          - staging
+          - preprod
+          - temp_db
+      dry_run:
+        description: "If true, validate JSON and record skipped outcome; no live restore on a host"
+        type: boolean
+        default: true
+      notes:
+        description: "Optional operator note (single line, non-secret)"
+        required: false
+        default: ""
+        type: string
+
+concurrency:
+  group: restore-drill-evidence
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  restore-drill:
+    name: Validate backup evidence and emit restore-drill evidence
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out (validator + emit script)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Resolve and validate backup-evidence.json (no production migration gate)
+        id: backup
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          REF_RAW: ${{ inputs.backup_evidence_id }}
+        run: |
+          set -Eeuo pipefail
+          fail() { echo "error: $*" >&2; exit 1; }
+
+          ref_raw="${REF_RAW#"${REF_RAW%%[![:space:]]*}"}"
+          ref_raw="${ref_raw%"${ref_raw##*[![:space:]]}"}"
+          [[ -n "${ref_raw}" ]] || fail "backup_evidence_id is empty"
+
+          ev_file=""
+          if [[ "${ref_raw}" == path:* ]]; then
+            rel_path="${ref_raw#path:}"
+            rel_path="${rel_path#./}"
+            while [[ "${rel_path}" == /* ]]; do rel_path="${rel_path#/}"; done
+            [[ -n "${rel_path}" ]] || fail "path: requires a relative path"
+            if [[ -n "${GITHUB_WORKSPACE:-}" ]]; then
+              ev_file="${GITHUB_WORKSPACE}/${rel_path}"
+            else
+              ev_file="$(pwd -P)/${rel_path}"
+            fi
+            [[ -f "${ev_file}" ]] || fail "backup evidence not found: ${ev_file}"
+          elif [[ "${ref_raw}" =~ ^[0-9]+$ ]]; then
+            stg_id="${ref_raw}"
+            st_conc="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${stg_id}" --jq '.conclusion // ""' 2>/dev/null || true)"
+            [[ -n "${st_conc}" ]] || fail "could not read run ${stg_id}"
+            [[ "${st_conc}" == "success" ]] || fail "backup evidence run ${stg_id} must be success (got ${st_conc})"
+            rm -rf beb && mkdir -p beb
+            st_artifact_id=""
+            for attempt in 1 2 3 4 5 6; do
+              st_artifact_id="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${stg_id}/artifacts" \
+                  --jq '[.artifacts[]? | select(.name == "production-db-backup-evidence") | .id] | .[0] // empty' 2>/dev/null || true
+              )" || true
+              [[ -n "${st_artifact_id}" ]] && break
+              [[ "${attempt}" -lt 6 ]] && sleep 6
+            done
+            [[ -n "${st_artifact_id}" ]] || fail "no artifact production-db-backup-evidence on run ${stg_id}"
+            z=1
+            while [[ "${z}" -le 5 ]]; do
+              if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${st_artifact_id}/zip" > beb/bundle.zip; then break; fi
+              [[ "${z}" -lt 5 ]] && sleep 6
+              z=$((z + 1))
+            done
+            [[ -f beb/bundle.zip ]] || fail "failed to download backup evidence zip"
+            python3 -m zipfile -e beb/bundle.zip beb
+            found="$(find beb -type f -path '*/backup-evidence/backup-evidence.json' -print 2>/dev/null | head -1 || true)"
+            if [[ -z "${found}" ]]; then
+              found="$(find beb -type f -name 'backup-evidence.json' -print 2>/dev/null | head -1 || true)"
+            fi
+            [[ -n "${found}" ]] || fail "archive missing backup-evidence json"
+            ev_file="${found}"
+          else
+            fail "backup_evidence_id must be digits or path:relative/.../backup-evidence.json"
+          fi
+
+          echo "evidence_path=${ev_file}" >> "${GITHUB_OUTPUT}"
+          python3 scripts/ci/validate_backup_evidence.py --expect-repository "${GITHUB_REPOSITORY}" "${ev_file}"
+          echo "validation_outcome=pass" >> "${GITHUB_OUTPUT}"
+
+      - name: Align restore_target (evidence vs input) and record outcome
+        id: align
+        if: success()
+        shell: bash
+        env:
+          EV_PATH: ${{ steps.backup.outputs.evidence_path }}
+          IN_TARGET: ${{ inputs.restore_target }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          set -Eeuo pipefail
+          case "${IN_TARGET}" in
+            temp_db) norm="temp-db" ;;
+            staging) norm="staging" ;;
+            preprod) norm="preprod" ;;
+            *) echo "error: unknown restore_target ${IN_TARGET}" >&2; exit 1 ;;
+          esac
+          rt="$(
+            python3 -c "import json,sys; print((json.load(open(sys.argv[1],encoding='utf-8')).get('restore_target') or '').strip())" \
+              "${EV_PATH}"
+          )"
+          if [[ -n "${rt}" && "${rt}" != "not_run" ]]; then
+            if [[ "${rt}" != "${norm}" ]]; then
+              echo "error: backup evidence restore_target is '${rt}' but this workflow selected '${norm}'" >&2
+              exit 1
+            fi
+          fi
+          if [[ "${DRY}" == "true" ]]; then
+            outcome="skipped"
+          else
+            outcome="pass"
+          fi
+          echo "norm_target=${norm}" >> "${GITHUB_OUTPUT}"
+          echo "workflow_outcome=${outcome}" >> "${GITHUB_OUTPUT}"
+
+      - name: Write restore-drill workflow evidence JSON
+        if: success()
+        shell: bash
+        env:
+          NOTES: ${{ inputs.notes || '' }}
+        run: |
+          set -Eeuo pipefail
+          val_line="validate_backup_evidence: ${{ steps.backup.outputs.validation_outcome }}"
+          if [[ -n "${NOTES}" ]]; then
+            val_line="${val_line}; notes=${NOTES}"
+          fi
+          python3 scripts/db/emit_restore_drill_workflow_evidence.py \
+            --repository "${{ github.repository }}" \
+            --backup-evidence-id "${{ inputs.backup_evidence_id }}" \
+            --restore-target "${{ steps.align.outputs.norm_target }}" \
+            --dry-run "${{ inputs.dry_run }}" \
+            --outcome "${{ steps.align.outputs.workflow_outcome }}" \
+            --backup-validation-output "${val_line}" \
+            --github-run-id "${{ github.run_id }}"
+
+      - name: Upload restore-drill workflow evidence
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: restore-drill-workflow-evidence
+          path: restore-drill-evidence/
+          if-no-files-found: error

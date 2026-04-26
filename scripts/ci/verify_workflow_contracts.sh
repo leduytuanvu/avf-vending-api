@@ -8,9 +8,18 @@
 #   - security-release: workflow_run GHA guards (success + push|dispatch + develop|main); never chain event as promotion source
 #   - security-release: no unprotected read/mapfile + < <( under set -e (or set +e/|| true); want_branch RESOLVED before BUILD_HEAD; smoke test
 #   - build-push: release_candidate + push gate (no fake release artifacts on skip)
+#   - build-push: publish-build-metadata has contents:read + actions:write + packages:read (checkout/artifacts/GHCR)
+#   - _reusable-build: cosign verify must use --output json (not unsupported --json) before the digest-pinned ref
 #   - deploy-develop: Security Release only (not Security), skipped verdict neutral exit, source_build_run_id
 #   - canonical display names, duplicate "Security", heredoc safety (see also Python heredoc check below)
 #   - verify_enterprise_release.sh: legacy docker-compose.prod uses PROD_ENV_FILE=.env.production.example in CI
+#   - root Makefile: every `make` target referenced from .github/workflows/*.yml must be defined
+#   - third-party/official `uses: owner/...@<ref>`: full 40-char commit SHA, expiring allowlist
+#     (tools/supply_chain_pinning.py via scripts/ci/verify_supply_chain_pinning.sh, run from this script)
+#   - deployments/prod: Dockerfiles and docker-compose* public `image:` / FROM lines digest-pinned
+#   - `scripts/ci/verify_supply_chain_pinning.sh` is a thin entrypoint; keep in sync
+#   - deploy-develop / deploy-prod: secrets+vars must match `docs/contracts/deployment-secrets-contract.yml`
+#     (scripts/ci/verify_deployment_config_contract.py)
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -76,6 +85,16 @@ grep -q '^name: Build and Push Images$' "${WF}/build-push.yml" || fail "build-pu
 grep -q '^name: Security Release$' "${WF}/security-release.yml" || fail "security-release.yml must be named \"Security Release\" (not \"Security\")"
 grep -q '^name: Staging Deployment Contract$' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must be named \"Staging Deployment Contract\""
 grep -q '^name: Deploy Production$' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must be named \"Deploy Production\""
+# deploy-prod is workflow_dispatch-only: never reference the upstream triggering object for production; use operator inputs and gh api.
+grep -qF "github.event.workflow_run" "${WF}/deploy-prod.yml" && \
+  fail "deploy-prod.yml must not reference github.event.workflow_run (production is manual; use workflow_dispatch inputs and run ids, not a workflow_run parent event)"
+# deploy-prod on: must not declare automatic triggers (detail: tools/verify_github_workflow_cicd_contract.py enforces {workflow_dispatch} only)
+dp_on_top_keys_block="$(
+  awk '/^on:/{p=1;next} /^concurrency:/{exit} p' "${WF}/deploy-prod.yml"
+)"
+if printf '%s\n' "${dp_on_top_keys_block}" | tr -d '\r' | grep -E '^[[:space:]]{2}(push|schedule|pull_request|workflow_run|repository_dispatch|workflow_call)[[:space:]]*:'; then
+  fail "deploy-prod.yml on: must be workflow_dispatch only (no automatic or callable production triggers in this file)"
+fi
 
 # --- security.yml: repo Security (push/PR/schedule); do not chain from Build (that is security-release.yml) ---
 if grep -qE '^[[:space:]]{2}workflow_run[[:space:]]*:' "${WF}/security.yml"; then
@@ -97,6 +116,15 @@ grep -qF "name: promotion-manifest" "${WF}/build-push.yml" || fail "build-push.y
 grep -qF "name: image-build-metadata" "${WF}/build-push.yml" || fail "build-push.yml must upload image-build-metadata (compatibility bundle)"
 grep -qF "uses: ./.github/workflows/_reusable-build.yml" "${WF}/build-push.yml" || fail "build-push.yml must call _reusable-build.yml (publishes image-metadata artifact used by Security Release)"
 grep -qF "name: image-metadata" "${WF}/_reusable-build.yml" || fail "_reusable-build.yml must upload the image-metadata artifact (Security Release / _reusable-deploy expect this name)"
+# _reusable-build: cosign verify JSON (must not use legacy/unsupported --json output flag; same paths → write_cosign_signing_evidence.py)
+if grep -qE 'cosign[[:space:]]+verify' "${WF}/_reusable-build.yml" 2>/dev/null; then
+  grep -qF -- "--output json" "${WF}/_reusable-build.yml" || fail "_reusable-build.yml cosign verify must use --output json (redirect stdout to cosign-verify-app.json / cosign-verify-goose.json; signing evidence contract)"
+  if grep -qE '^[[:space:]]*--json[[:space:]]*\\$' "${WF}/_reusable-build.yml" || \
+    grep -qE '\$\{ref\}"[[:space:]]+--json' "${WF}/_reusable-build.yml" 2>/dev/null || \
+    grep -qE '"\$\{ref\}"[[:space:]]+--json' "${WF}/_reusable-build.yml" 2>/dev/null; then
+    fail "_reusable-build.yml: cosign verify must not use the unsupported --json flag; use --output json before the image ref (redirect unchanged)"
+  fi
+fi
 
 # --- security-release: verdict must not be stoppable as empty; JSON comes from scripts/security/write_security_verdict.py ---
 grep -qF "blocking security verdict is empty" "${WF}/security-release.yml" || fail "security-release.yml must fail closed when the resolved verdict is empty (expected pass, fail, or skipped in SECURITY_VERDICT / security-verdict.json)"
@@ -331,6 +359,23 @@ grep -qF "Not a release candidate. No image was built or published." "${WF}/buil
 grep -qF "outputs.release_candidate" "${WF}/build-push.yml" || fail "build-push.yml must wire release_candidate into build-and-push when: (release artifacts only for real candidates)"
 grep -qE 'upstream-ci-release-gate' "${WF}/build-push.yml" || fail "build-push.yml must use job upstream-ci-release-gate for CI chain policy"
 
+# --- build-push: publish-build-metadata job permissions (actions/checkout, upload-artifact, GHCR pull) ---
+grep -qF "uses: actions/checkout@" "${WF}/build-push.yml" || fail "build-push.yml publish-build-metadata must use actions/checkout (pin contract)"
+pbd_block="$(
+  awk '/^  publish-build-metadata:/{p=1;next} p && /^  [a-zA-Z0-9_-]+:/{exit} p' "${WF}/build-push.yml"
+)"
+printf '%s\n' "${pbd_block}" | grep -qE '^[[:space:]]*permissions:' || fail "build-push.yml job publish-build-metadata must declare a permissions: block"
+pbd_perm_slice="$(
+  printf '%s\n' "${pbd_block}" | awk '/^[[:space:]]*permissions:/{p=1;next} p && /^[[:space:]]*steps:/{exit} p'
+)"
+printf '%s\n' "${pbd_perm_slice}" | grep -qE '^[[:space:]]*contents:[[:space:]]*read[[:space:]]*$' || fail "build-push.yml job publish-build-metadata must set contents: read (GITHUB_TOKEN default does not allow checkout when job permissions are explicit without contents)"
+printf '%s\n' "${pbd_perm_slice}" | grep -qE '^[[:space:]]*actions:[[:space:]]*write[[:space:]]*$' || fail "build-push.yml job publish-build-metadata must set actions: write (upload-artifact / download-artifact)"
+printf '%s\n' "${pbd_perm_slice}" | grep -qE '^[[:space:]]*packages:[[:space:]]*read[[:space:]]*$' || fail "build-push.yml job publish-build-metadata must set packages: read (GHCR image pull for SBOM)"
+pbd_key_count="$(
+  printf '%s\n' "${pbd_perm_slice}" | grep -E -c '^[[:space:]]+[a-zA-Z0-9_-]+:[[:space:]]*[^[:space:]]' || true
+)"
+[[ "${pbd_key_count}" -eq 3 ]] || fail "build-push.yml job publish-build-metadata must declare exactly three permission keys (contents: read, actions: write, packages: read); found ${pbd_key_count} key line(s) under permissions"
+
 # --- security-release: after Build and Push completed ---
 sr_on_block="$(on_until_concurrency "${WF}/security-release.yml")"
 printf '%s\n' "${sr_on_block}" | grep -q 'Build and Push Images' || fail "security-release.yml must trigger on Build and Push Images"
@@ -468,6 +513,64 @@ grep -q 'deploy_production_confirmation' "${WF}/deploy-prod.yml" || fail "deploy
 grep -q 'security_release_run_id' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must accept security_release_run_id (Security Release run for deploy mode)"
 grep -q "github.ref == 'refs/heads/main'" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must gate production jobs to the main branch ref"
 
+# --- deploy-prod: migration is opt-in; backup evidence is mandatory when run_migration is true ---
+deploy_prod_on_slice="$(
+  awk '/^on:/{p=1;next} p && /^[a-zA-Z#@]/ {exit} p' "${WF}/deploy-prod.yml"
+)"
+printf '%s\n' "${deploy_prod_on_slice}" | grep -qE '^[[:space:]]+run_migration:' || \
+  fail "deploy-prod.yml must define run_migration under workflow_dispatch inputs"
+printf '%s\n' "${deploy_prod_on_slice}" | grep -qE '^[[:space:]]+backup_evidence_id:' || \
+  fail "deploy-prod.yml must define backup_evidence_id under workflow_dispatch inputs"
+dp_run_mig_block="$(
+  awk '/^      run_migration:/{p=1; next}
+    p && /^      [a-zA-Z0-9_-]+:/ && $0 !~ /^      run_migration:/{ exit }
+    p' "${WF}/deploy-prod.yml"
+)"
+printf '%s\n' "${dp_run_mig_block}" | grep -qE '^[[:space:]]*default: false' || \
+  fail "deploy-prod.yml run_migration must default to false (image-only deploy by default)"
+grep -qF "backup_evidence_id is required when run_migration=true" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must fail closed when run_migration is true and backup_evidence_id is empty (pre-SSH / pre-artifact validation)"
+grep -qF "validate_backup_evidence.py" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must invoke scripts/ci/validate_backup_evidence.py (structured production backup / restore-drill JSON)"
+grep -qF "production-db-backup-evidence" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must reference artifact name production-db-backup-evidence for backup resolution by run id"
+grep -qF "backup-evidence/backup-evidence.json" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must resolve backup-evidence/backup-evidence.json inside the backup evidence artifact"
+grep -qF "docs/operations/production-backup-restore-drill.md" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must link operators to docs/operations/production-backup-restore-drill.md in backup error paths"
+grep -qF "docs/operations/two-vps-rolling-production-deploy.md" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must reference docs/operations/two-vps-rolling-production-deploy.md (2-VPS rolling topology)"
+grep -qF "docs/operations/production-smoke-tests.md" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must reference docs/operations/production-smoke-tests.md (enterprise production smoke)"
+grep -qF "SMOKE_LEVEL" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must set SMOKE_LEVEL for tiered production smoke"
+grep -qF "enable_business_synthetic_smoke" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must define enable_business_synthetic_smoke input (optional synthetic tier)"
+grep -qF "emit_production_smoke_json.py" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod validate job must py_compile scripts/smoke/emit_production_smoke_json.py"
+grep -qF "build_release_evidence_package.py" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod must validate scripts/release/build_release_evidence_package.py (release audit package)"
+grep -qF "build_release_evidence_package.py" "${WF}/build-push.yml" || \
+  fail "build-push must run scripts/release/build_release_evidence_package.py (release audit package)"
+grep -qF "build_release_evidence_package.py" "${WF}/security-release.yml" || \
+  fail "security-release must run scripts/release/build_release_evidence_package.py (release audit package)"
+grep -qF "release-audit-package" "${WF}/build-push.yml" || \
+  fail "build-push must upload release-audit-package (enterprise release evidence)"
+grep -qF "security-release-audit-package" "${WF}/security-release.yml" || \
+  fail "security-release must upload security-release-audit-package"
+grep -qF "production-release-audit-package" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod must upload production-release-audit-package"
+test -f "docs/operations/release-evidence-retention.md" || \
+  fail "docs/operations/release-evidence-retention.md is required (release evidence retention runbook)"
+grep -qF "rollout-timeline.json" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must write deployment-evidence/rollout-timeline.json (2-VPS rolling evidence)"
+grep -qF "rollout_outcome_summary" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must include rollout_outcome_summary in production evidence"
+grep -qF "TRAFFIC_DRAIN_MODE" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must pass TRAFFIC_DRAIN_MODE for drain / zero-downtime evidence"
+grep -qF "traffic_drain_hook.sh" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod validate job must bash -n traffic_drain_hook.sh"
+
 # --- Required verdict-style fields referenced in production workflow code ---
 for key in source_build_run_id source_sha source_branch app_image_ref goose_image_ref release_gate_verdict; do
   grep -q "${key}" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must reference field ${key} in workflow (security/artifact contract)"
@@ -486,7 +589,19 @@ grep -qE 'source_branch must be develop|staging candidate source_branch must be 
 grep -q 'automatic staging requires source_event push' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must require security-verdict source_event push for automatic staging"
 grep -qF "No releasable staging candidate. Staging deployment skipped." "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must neutral-skip (no deploy) when Security Release verdict is skipped / non-candidate"
 grep -qF "outputs.staging_verdict" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must expose staging_verdict to gate image resolution and deploy on verdict=pass only"
+grep -qF "name: staging-release-evidence" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must upload artifact staging-release-evidence (machine-readable pre-prod gate; contract + real_staging paths; legacy compat)"
+grep -qF "name: staging-deploy-evidence" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must upload artifact staging-deploy-evidence (canonical promotion JSON: staging-evidence/staging-deploy-evidence.json)"
+grep -qF "staging_evidence_id" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must accept staging_evidence_id (run id of Staging Deployment Contract with artifact staging-deploy-evidence)"
+grep -qF "allow_missing_staging_evidence" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must define allow_missing_staging_evidence (noisy bypass; default strict)"
+grep -qF "staging_release_gate" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must record staging_release_gate in job outputs and/or manifest (staging pre-prod gate status)"
+grep -qF "WF_VALIDATE_STAGING_DEPLOY_EVIDENCE" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must embed WF_VALIDATE_STAGING_DEPLOY_EVIDENCE (staging-evidence/staging-deploy-evidence.json before SSH)"
+grep -qF "promotion_eligible" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must validate promotion_eligible in staging deploy evidence (reject contract-only or failed staging)"
+grep -qF "staging-evidence/staging-deploy-evidence.json" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must download and validate path staging-evidence/staging-deploy-evidence.json"
 grep -q 'verify_workflow_contracts.sh' .github/workflows/ci.yml || fail "ci.yml must run scripts/ci/verify_workflow_contracts.sh"
+grep -qF 'verify_supply_chain_pinning.sh' "${ROOT}/scripts/ci/verify_workflow_contracts.sh" || \
+  fail "verify_workflow_contracts.sh must run scripts/ci/verify_supply_chain_pinning.sh (supply chain policy)"
+grep -qF 'verify_deployment_config_contract.py' "${ROOT}/scripts/ci/verify_workflow_contracts.sh" || \
+  fail "verify_workflow_contracts.sh must run scripts/ci/verify_deployment_config_contract.py (deployment secrets contract)"
 
 # --- build-push: must chain only from CI by name, push, develop/main (downstream security-verdict expects Build and Push run id) ---
 grep -qE "github.event.workflow_run.name == 'CI'|github.event.workflow_run.name == \"CI\"" "${WF}/build-push.yml" || fail "build-push.yml must gate on workflow_run.name == 'CI'"
@@ -500,6 +615,51 @@ dupes="$(
 )"
 if [[ -n "${dupes}" ]]; then
   fail "duplicate workflow name: values found:\n${dupes}"
+fi
+
+# --- Incident: rollback (production env) and restore drill (non-production) — manual workflow_dispatch only ---
+# (Do not use the generic `awk /^on:/{...} /^[a-zA-Z#@]/` slice here: leading # comments in the file make `#`
+#  match the exit condition and would truncate the on: block. Use explicit greps for top-level on: keys at 2 spaces.)
+if [[ -f "${WF}/rollback-prod.yml" ]]; then
+  if ! grep -qE '^[[:space:]]{2}workflow_dispatch:' "${WF}/rollback-prod.yml"; then
+    fail "rollback-prod.yml must declare on.workflow_dispatch (top-level, 2-space indent under on:)"
+  fi
+  if grep -qE '^[[:space:]]{2}workflow_run:' "${WF}/rollback-prod.yml"; then
+    fail "rollback-prod.yml must not declare on.workflow_run (no automatic production rollback from upstream)"
+  fi
+  if grep -qE '^[[:space:]]{2}push:' "${WF}/rollback-prod.yml"; then
+    fail "rollback-prod.yml must not declare on.push (incident is manual only)"
+  fi
+  if grep -qE '^[[:space:]]{2}pull_request:' "${WF}/rollback-prod.yml"; then
+    fail "rollback-prod.yml must not declare on.pull_request"
+  fi
+  if grep -qE '^[[:space:]]{2}schedule:' "${WF}/rollback-prod.yml"; then
+    fail "rollback-prod.yml must not declare on.schedule"
+  fi
+  grep -qE 'environment:[[:space:]]*production' "${WF}/rollback-prod.yml" || \
+    fail "rollback-prod.yml must set environment: production (Environment reviewers for production touch)"
+  grep -qF 'name: production-rollback-evidence' "${WF}/rollback-prod.yml" || \
+    fail "rollback-prod.yml must upload artifact name production-rollback-evidence"
+else
+  fail "Expected .github/workflows/rollback-prod.yml (incident rollback evidence contract)"
+fi
+if [[ -f "${WF}/restore-drill.yml" ]]; then
+  if ! grep -qE '^[[:space:]]{2}workflow_dispatch:' "${WF}/restore-drill.yml"; then
+    fail "restore-drill.yml must declare on.workflow_dispatch (top-level)"
+  fi
+  if grep -qE '^[[:space:]]{2}workflow_run:' "${WF}/restore-drill.yml"; then
+    fail "restore-drill.yml must not declare on.workflow_run (restore drill is not chain-triggered)"
+  fi
+  if grep -qE '^[[:space:]]{2}push:' "${WF}/restore-drill.yml"; then
+    fail "restore-drill.yml must not declare on.push (manual only)"
+  fi
+  if grep -E '^[[:space:]]*environment:[[:space:]]*production' "${WF}/restore-drill.yml" >/dev/null; then
+    fail "restore-drill.yml must not use environment: production (default targets are staging/preprod/temp; no prod DB in this path)"
+  fi
+  grep -qF 'name: restore-drill-workflow-evidence' "${WF}/restore-drill.yml" || \
+    fail "restore-drill.yml must upload artifact name restore-drill-workflow-evidence"
+else
+  fail "Expected .github/workflows/restore-drill.yml (non-production restore drill evidence)"
 fi
 
 # --- Only deploy-prod may combine workflow_run + production environment ---
@@ -600,5 +760,18 @@ if bad:
     print(f"  {b}", file=sys.stderr)
   sys.exit(1)
 PY
+
+echo "Running supply chain pinning (scripts/ci/verify_supply_chain_pinning.sh)..."
+chmod +x "${ROOT}/scripts/ci/verify_supply_chain_pinning.sh"
+bash "${ROOT}/scripts/ci/verify_supply_chain_pinning.sh" || fail "scripts/ci/verify_supply_chain_pinning.sh failed"
+
+# Deployment secrets / vars inventory vs deploy-develop + deploy-prod (docs/contracts/deployment-secrets-contract.yml)
+echo "Running scripts/ci/verify_deployment_config_contract.py..."
+"${python_exec}" "${ROOT}/scripts/ci/verify_deployment_config_contract.py" || \
+  fail "scripts/ci/verify_deployment_config_contract.py failed (sync docs/contracts/deployment-secrets-contract.yml with workflows)"
+
+# Enterprise graph + workflow ↔ Makefile targets (offline YAML)
+echo "Running tools/verify_github_workflow_cicd_contract.py (offline YAML contract graph + Makefile targets)..."
+"${python_exec}" "${ROOT}/tools/verify_github_workflow_cicd_contract.py" || fail "tools/verify_github_workflow_cicd_contract.py failed"
 
 echo "Workflow contract checks passed."

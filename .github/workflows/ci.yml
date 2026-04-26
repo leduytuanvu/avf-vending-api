@@ -77,9 +77,8 @@ jobs:
 
       - name: Verify CI/CD workflow contracts
         shell: bash
-        # Static checks only (scripts/ci/verify_workflow_contracts.sh): canonical workflow names, no develop→prod
-        # on push, staging/prod only after Security Release (workflow_run) + verdict gates, deploy-prod also workflow_dispatch,
-        # build-push release_candidate + push gate, Security Release verdict/JSON/skipped + emergency path; fails PRs.
+        # verify_workflow_contracts.sh: supply chain + deploy secrets/vars contract
+        # (verify_deployment_config_contract.py) + static guards + tools/verify_github_workflow_cicd_contract.py.
         run: |
           set -Eeuo pipefail
           chmod +x scripts/ci/verify_workflow_contracts.sh
@@ -104,6 +103,59 @@ jobs:
           set -Eeuo pipefail
           shfmt -d \
             deployments/prod/shared/scripts/*.sh
+
+  github-governance:
+    name: GitHub repository governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Skip governance for fork pull requests
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          {
+            echo "## GitHub repository governance"
+            echo "- **GOVERNANCE_CHECK**: \`SKIPPED\` — **pull_request** from a **fork**. The governance script calls the GitHub API for the **base** repository; fork PRs skip this job so contributor PRs are not blocked by org token or environment API quirks."
+            echo "- **When it runs**: pushes to \`main\` / \`develop\`, **same-repo** pull requests, and **workflow_dispatch**."
+            echo "- **Docs**: [docs/operations/github-governance.md](../../docs/operations/github-governance.md)"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          echo "GOVERNANCE_CHECK: SKIPPED (fork pull_request)"
+
+      - name: Check out repository
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install GitHub CLI if missing
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if ! command -v gh >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y gh
+          fi
+          gh --version
+
+      - name: Verify branch protection and production environment
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ENFORCE_GITHUB_GOVERNANCE: "true"
+        run: |
+          set -Eeuo pipefail
+          chmod +x scripts/ci/verify_github_governance.sh
+          bash scripts/ci/verify_github_governance.sh
+          {
+            echo "## GitHub repository governance"
+            echo "- **Script**: \`scripts/ci/verify_github_governance.sh\` (uses \`gh api\` via \`tools/verify_github_governance.py\`)."
+            echo "- **Result line**: look for \`GOVERNANCE_CHECK: PASS\` in the log (or FAIL / SKIPPED)."
+            echo "- **Configure GitHub** (branches + \`production\` environment): [docs/operations/github-governance.md](../../docs/operations/github-governance.md)"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
   go-ci:
     name: Go CI Gates
