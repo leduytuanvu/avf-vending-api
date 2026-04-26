@@ -2002,6 +2002,11 @@ jobs:
           MANIFEST_GOOSE_DIGEST: ${{ needs.validate-promotion-selection.outputs.goose_digest }}
           MANIFEST_PREV_SOURCE_BRANCH: ${{ needs.resolve-previous-production-deployment.outputs.previous_source_branch }}
           MANIFEST_PREV_SOURCE_COMMIT_SHA: ${{ needs.resolve-previous-production-deployment.outputs.previous_source_commit_sha }}
+
+          CANARY_HOST: ${{ steps.validate_deploy_inputs.outputs.canary_host }}
+          STABLE_HOST: ${{ steps.validate_deploy_inputs.outputs.stable_host }}
+          CANARY_OBSERVABILITY_OUTCOME: skipped
+
           WF_ROLLOUT_DERIVED_PY: |
             import json
             import os
@@ -2198,6 +2203,7 @@ jobs:
                 "storm_evidence": storm_evidence,
             }
             Path("deployment-evidence/production-deploy-evidence.json").write_text(json.dumps(e, indent=2) + "\n", encoding="utf-8")
+
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
