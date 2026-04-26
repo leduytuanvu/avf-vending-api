@@ -13,22 +13,55 @@ on:
       - develop
 
 # Staging only runs after a *successful* Security Release on develop (github.event.workflow_run.name
-# == 'Security Release'). Never from CI, repo Security, or Build directly. security-verdict from the
-# triggering run (github.event.workflow_run.id) is the only candidate source. verdict=skipped
-# (no releasable Security Release candidate) finishes cleanly — no build resolution, no deploy.
+# == 'Security Release'). Never from CI, repo-level **Security** (security.yml), or **Build and Push Images**
+# alone. The `security-verdict` artifact from **Security Release** (workflow file
+# `.github/workflows/security-release.yml`) is the only deploy gate — never from repo **Security**.
+# verdict **pass** deploys; **skipped** / **no-candidate** is a **neutral** success (no staging deploy, exit 0).
+# **fail**, missing/empty/unknown **verdict**, or missing artifact / invalid JSON fails closed (no deploy).
 # Real deploy: vars.ENABLE_REAL_STAGING_DEPLOY == true. Otherwise: validate only when verdict=pass.
+# For verdict=pass: automatic staging requires source_event push (validate_release_verdict.py staging-candidate).
+#
+# WARNING — canonical staging workflow: there is **no** separate `deploy-staging.yml` in this repo.
+# The job id `deploy-staging` below is an internal job name only. Do not add a second workflow file that
+# deploys staging from Build or repo Security; that would violate the enterprise release contract.
 
 permissions:
-  actions: read
+  actions: write
   attestations: read
   contents: read
   packages: read
+  deployments: write
 
 concurrency:
-  group: staging-deployment
+  group: staging-develop-${{ github.repository }}
   cancel-in-progress: true
 
 jobs:
+  fail-when-security-release-not-successful:
+    name: Block staging — Security Release did not succeed
+    if: |
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.name == 'Security Release' &&
+      github.event.workflow_run.head_branch == 'develop' &&
+      github.event.workflow_run.conclusion != 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail closed (no deploy path)
+        env:
+          UP_CONC: ${{ github.event.workflow_run.conclusion }}
+          UP_RUN: ${{ github.event.workflow_run.id }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo "## Staging deploy workflow — blocked"
+            echo "- **deploy decision**: \`blocked\`"
+            echo "- **reason**: triggering **Security Release** \`workflow_run.conclusion\` is \`${UP_CONC}\` (required: \`success\`)."
+            echo "- **Security Release run id**: \`${UP_RUN}\`"
+            echo "- Staging is **not** triggered by repo **Security** or **Build** alone; this run only follows **Security Release**."
+            echo "- No \`security-verdict\` download, image resolution, or deploy is attempted."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
   resolve-staging-candidate:
     name: Resolve Staging Deployment Candidate
     if: |
@@ -45,6 +78,24 @@ jobs:
       source_event: ${{ steps.lookup.outputs.source_event }}
       security_workflow_run_id: ${{ steps.lookup.outputs.security_workflow_run_id }}
     steps:
+      - name: Check out repository (release gate scripts)
+        uses: actions/checkout@v4
+
+      - name: Enterprise release chain (this workflow = Staging / Develop deploy)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          {
+            echo "## Enterprise release chain — **Deploy** (develop / staging)"
+            echo ""
+            echo "\`\`\`"
+            echo "…  →  Security Release (success)  →  *this run*  →  staging [verdict+vars]"
+            echo "\`\`\`"
+            echo ""
+            echo "- **Trigger** \`workflow_run\` on **Security Release** completed on \`develop\` (not on repo **Security** and not on **Build** alone)."
+            echo "- \`source_build_run_id\` and digest-pinned image refs are taken only from the **security-verdict** artifact of run \`${{ github.event.workflow_run.id }}\` (no separate latest-Build search on the automatic path)."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Resolve candidate from Security Release security-verdict artifact
         id: lookup
         shell: bash
@@ -52,103 +103,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SECURITY_RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
           SECURITY_RELEASE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          WF_STAGING_CANDIDATE_RESOLVE: |
-            import json
-            import os
-            import re
-            import sys
-            from pathlib import Path
-
-            path = Path("security-verdict-bundle/security-verdict.json")
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            sec_run = os.environ["SECURITY_RELEASE_RUN_ID"]
-            conc = os.environ["SECURITY_RELEASE_CONCLUSION"]
-
-            def out(k, v):
-                p = os.environ["GITHUB_OUTPUT"]
-                with open(p, "a", encoding="utf-8") as fh:
-                    fh.write(f"{k}={v}\n")
-
-            def need_digest_pinned(name, ref):
-                sref = (ref or "").strip()
-                if not sref or "@sha256:" not in sref or not re.search(r"sha256:[0-9a-f]{64}", sref):
-                    print(f"error: {name} must be digest-pinned (registry/.../img@sha256:...), got {ref!r}", file=sys.stderr)
-                    sys.exit(1)
-
-            if conc != "success":
-                print("Security Release run did not complete with conclusion success; refusing staging", file=sys.stderr)
-                sys.exit(1)
-
-            if str(payload.get("workflow_run_id", "")) != str(sec_run):
-                print(
-                    f"error: security-verdict workflow_run_id {payload.get('workflow_run_id')!r} does not match triggering Security Release run {sec_run!r}",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
-            verdict = (payload.get("verdict") or "").lower()
-            if verdict == "skipped":
-                out("staging_verdict", "skipped")
-                out("source_commit_sha", "")
-                out("workflow_run_id", "")
-                out("source_branch", "")
-                out("source_event", "")
-                out("security_workflow_run_id", sec_run)
-                summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-                if summary_path:
-                    with open(summary_path, "a", encoding="utf-8") as fh:
-                        fh.write("\n## Staging (neutral)\n\nNo releasable staging candidate. Staging deployment skipped.\n")
-                sys.exit(0)
-
-            if verdict != "pass":
-                for r in payload.get("failure_reasons") or []:
-                    print(f"failure_reason: {r}", file=sys.stderr)
-                print(f"error: security-verdict verdict is {verdict!r} (staging allows only pass or skipped)", file=sys.stderr)
-                sys.exit(1)
-
-            secv = payload.get("security_verdict")
-            if secv is not None and str(secv).lower() != "pass":
-                print("security-verdict security_verdict is not pass; refusing staging", file=sys.stderr)
-                sys.exit(1)
-
-            rgv = (payload.get("release_gate_verdict") or "").strip()
-            if rgv != "pass":
-                print(f"error: release_gate_verdict must be pass, got {rgv!r}", file=sys.stderr)
-                sys.exit(1)
-
-            branch = (payload.get("source_branch") or "").strip()
-            if branch != "develop":
-                print(f"error: staging candidate source_branch must be develop, got {branch!r}", file=sys.stderr)
-                sys.exit(1)
-
-            sha = (payload.get("source_sha") or "").strip()
-            if not sha or not re.fullmatch(r"[0-9a-f]{40}", sha):
-                print(f"error: source_sha must be a non-empty 40-character hex SHA, got {sha!r}", file=sys.stderr)
-                sys.exit(1)
-
-            build_id = str(payload.get("source_build_run_id") or "").strip()
-            if not build_id.isdigit():
-                print(f"error: source_build_run_id must be a numeric Actions run id, got {build_id!r}", file=sys.stderr)
-                sys.exit(1)
-
-            src_ev = (payload.get("source_event") or "").strip()
-            if src_ev != "push":
-                print(
-                    f"error: automatic staging requires source_event push (semantic build trigger), got {src_ev!r}",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
-            pub = payload.get("published_images") or {}
-            need_digest_pinned("published_images.app_image_ref", pub.get("app_image_ref", ""))
-            need_digest_pinned("published_images.goose_image_ref", pub.get("goose_image_ref", ""))
-
-            out("workflow_run_id", build_id)
-            out("source_commit_sha", sha)
-            out("source_branch", "develop")
-            out("source_event", src_ev)
-            out("security_workflow_run_id", sec_run)
-            out("staging_verdict", "pass")
         run: |
           set -Eeuo pipefail
 
@@ -157,24 +111,46 @@ jobs:
             exit 1
           }
 
+          EXPECTED_SR_PATH=".github/workflows/security-release.yml"
+
           [[ "${SECURITY_RELEASE_CONCLUSION}" == "success" ]] || fail "triggering Security Release conclusion must be success (got ${SECURITY_RELEASE_CONCLUSION})"
+
+          sr_meta="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SECURITY_RELEASE_RUN_ID}" \
+              --jq '{name: .name, path: .path, conclusion: .conclusion, head_branch: .head_branch, html_url: .html_url}' 2>/dev/null || true
+          )"
+          [[ -n "${sr_meta}" ]] || fail "could not load metadata for Security Release run ${SECURITY_RELEASE_RUN_ID}"
+          sr_name="$(printf '%s' "${sr_meta}" | jq -r '.name // ""')"
+          sr_path="$(printf '%s' "${sr_meta}" | jq -r '.path // ""')"
+          sr_conc="$(printf '%s' "${sr_meta}" | jq -r '.conclusion // ""')"
+          sr_url="$(printf '%s' "${sr_meta}" | jq -r '.html_url // ""')"
+          [[ "${sr_name}" == "Security Release" ]] || fail "run ${SECURITY_RELEASE_RUN_ID} workflow name is '${sr_name}' (required: Security Release)"
+          [[ "${sr_path}" == "${EXPECTED_SR_PATH}" ]] || fail "run ${SECURITY_RELEASE_RUN_ID} is not Security Release workflow file (path='${sr_path}', required '${EXPECTED_SR_PATH}') — refuse repo Security or other workflows"
+          [[ "${sr_conc}" == "success" ]] || fail "Security Release run ${SECURITY_RELEASE_RUN_ID} conclusion is '${sr_conc}' (required success)"
+          {
+            echo "## Security Release run verified (staging)"
+            echo "- **selected run**: [${SECURITY_RELEASE_RUN_ID}](${sr_url})"
+            echo "- **workflow file**: \`${sr_path}\`"
+            echo "- **workflow name**: \`${sr_name}\`"
+            echo "- **conclusion**: \`${sr_conc}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
 
           rm -rf security-verdict-bundle
           mkdir -p security-verdict-bundle
 
           artifact_id=""
-          for attempt in 1 2 3 4 5 6 7 8; do
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
             artifact_id="$(
               gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SECURITY_RELEASE_RUN_ID}/artifacts" \
                 --jq '[.artifacts[]? | select(.name == "security-verdict") | .id] | .[0] // empty'
             )" || true
             [[ -n "${artifact_id}" ]] && break
-            if [[ "${attempt}" -lt 8 ]]; then
-              echo "security-verdict artifact not visible on Security Release run ${SECURITY_RELEASE_RUN_ID} yet; retrying (${attempt}/8) …" >&2
-              sleep 8
+            if [[ "${attempt}" -lt 15 ]]; then
+              echo "security-verdict artifact not visible on Security Release run ${SECURITY_RELEASE_RUN_ID} yet; retrying (${attempt}/15) …" >&2
+              sleep $((8 + attempt * 2))
             fi
           done
-          [[ -n "${artifact_id}" ]] || fail "no security-verdict artifact on Security Release run ${SECURITY_RELEASE_RUN_ID} after bounded retries; cannot resolve build via source_build_run_id"
+          [[ -n "${artifact_id}" ]] || fail "no security-verdict artifact on Security Release run ${SECURITY_RELEASE_RUN_ID} after bounded retries (workflow ${EXPECTED_SR_PATH})"
 
           for dattempt in 1 2 3 4 5; do
             if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > security-verdict-bundle/security-verdict.zip; then
@@ -188,8 +164,56 @@ jobs:
           [[ -f security-verdict-bundle/security-verdict.zip ]] || fail "failed to download security-verdict zip"
           python3 -m zipfile -e security-verdict-bundle/security-verdict.zip security-verdict-bundle
           [[ -f security-verdict-bundle/security-verdict.json ]] || fail "security-verdict.zip did not contain security-verdict.json"
+          python3 -c "import json; json.load(open('security-verdict-bundle/security-verdict.json',encoding='utf-8'))" || fail "security-verdict.json is not valid JSON"
 
-          printenv WF_STAGING_CANDIDATE_RESOLVE | python3 -
+          verdict_raw="$(
+            python3 -c "import json; p=json.load(open('security-verdict-bundle/security-verdict.json',encoding='utf-8')); print((p.get('verdict') or '').strip().lower())"
+          )"
+          if [[ -z "${verdict_raw}" || "${verdict_raw}" == "unavailable" ]]; then
+            fail "error: security-verdict field verdict is missing or unavailable (got ${verdict_raw:-empty})"
+          fi
+          # Enterprise contract: neutral skip when verdict == "skipped" (or no-candidate) — do not run staging-candidate
+          # validation (it would fail closed for those verdicts; neutral path exits 0 and never deploys staging).
+          if [[ "${verdict_raw}" == "skipped" || "${verdict_raw}" == "no-candidate" ]]; then
+            src_sha="$(
+              python3 -c "import json; p=json.load(open('security-verdict-bundle/security-verdict.json',encoding='utf-8')); print((p.get('source_sha') or '').strip())"
+            )"
+            src_br="$(
+              python3 -c "import json; p=json.load(open('security-verdict-bundle/security-verdict.json',encoding='utf-8')); print((p.get('source_branch') or '').strip())"
+            )"
+            {
+              echo "## Staging / develop deploy skipped (neutral, success)"
+              echo ""
+              echo "Staging/develop deploy is **skipped** because **Security Release** produced a **non-release / ineligible / no-candidate** verdict (not a failure of this workflow)."
+              echo ""
+              echo "No releasable staging candidate. Staging deployment skipped."
+              echo ""
+              echo "- **Security Release** run: [${SECURITY_RELEASE_RUN_ID}](${sr_url})"
+              echo "- \`verdict\` in \`security-verdict.json\` from artifact **security-verdict**: \`${verdict_raw}\` (neutral — no digest deploy)"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            {
+              echo "staging_verdict=skipped"
+              echo "source_commit_sha=${src_sha}"
+              echo "workflow_run_id="
+              echo "source_branch=${src_br}"
+              echo "source_event="
+              echo "security_workflow_run_id=${SECURITY_RELEASE_RUN_ID}"
+            } >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          if [[ "${verdict_raw}" == "fail" ]]; then
+            {
+              echo "## Staging deploy blocked (Security Release verdict=fail)"
+              echo ""
+              echo "**security-verdict** for Security Release run [${SECURITY_RELEASE_RUN_ID}](${sr_url}) is \`verdict=fail\` — staging is **not** deployed (fail closed)."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            fail "security-verdict verdict is fail; staging deploy requires pass from Security Release"
+          fi
+          if [[ "${verdict_raw}" != "pass" ]]; then
+            fail "error: security-verdict verdict is '${verdict_raw}' (expected pass, fail, skipped, or no-candidate)"
+          fi
+
+          python3 scripts/release/validate_release_verdict.py staging-candidate
 
   resolve-image-refs:
     name: Resolve Staging Immutable Image Refs
@@ -207,6 +231,8 @@ jobs:
       workflow_run_id: ${{ needs.resolve-staging-candidate.outputs.workflow_run_id }}
       app_image_ref: ""
       goose_image_ref: ""
+      provenance_enforcement: ${{ vars.PROVENANCE_ENFORCEMENT || 'warn' }}
+      allow_private_repo_provenance_fallback: ${{ vars.ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK || 'true' }}
     secrets:
       gh_api_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -232,6 +258,9 @@ jobs:
       security_workflow_run_id: ${{ steps.gate.outputs.security_workflow_run_id }}
       security_verdict_generated_at_utc: ${{ steps.gate.outputs.security_verdict_generated_at_utc }}
     steps:
+      - name: Check out repository (release gate scripts)
+        uses: actions/checkout@v4
+
       - name: Re-validate security-verdict and immutable image alignment
         id: gate
         shell: bash
@@ -248,103 +277,9 @@ jobs:
           SECURITY_RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
           GH_TOKEN: ${{ github.token }}
           SECURITY_VERDICT_MAX_AGE_HOURS: ${{ secrets.STAGING_SECURITY_VERDICT_MAX_AGE_HOURS || vars.STAGING_SECURITY_VERDICT_MAX_AGE_HOURS || secrets.SECURITY_VERDICT_MAX_AGE_HOURS || vars.SECURITY_VERDICT_MAX_AGE_HOURS || '72' }}
+          SIGNING_ENFORCEMENT: ${{ vars.SIGNING_ENFORCEMENT || 'warn' }}
+          PROVENANCE_ENFORCEMENT: ${{ vars.PROVENANCE_ENFORCEMENT || 'warn' }}
           VERDICT_FILE: security-gate/verify/security-verdict.json
-          WF_STAGING_GATE_VALIDATE: |
-            import json
-            import os
-            import sys
-            from datetime import datetime, timezone
-            from pathlib import Path
-
-            private_repo_provenance_fallback = "accepted-private-repo-no-github-attestations"
-
-            def fail_msg(m):
-                print(m, file=sys.stderr)
-                sys.exit(1)
-
-            verdict_path = Path(os.environ["VERDICT_FILE"])
-            payload = json.loads(verdict_path.read_text(encoding="utf-8"))
-            run_id = os.environ["SECURITY_RELEASE_RUN_ID"]
-            expected_build = os.environ["EXPECTED_BUILD_RUN_ID"]
-            expected_sha = os.environ["EXPECTED_SOURCE_SHA"]
-            expected_app = os.environ["EXPECTED_APP_IMAGE_REF"]
-            expected_goose = os.environ["EXPECTED_GOOSE_IMAGE_REF"]
-            max_age_hours = int(os.environ["SECURITY_VERDICT_MAX_AGE_HOURS"])
-
-            required_keys = (
-                "schema_version", "event_name", "verdict", "source_build_run_id", "source_sha", "workflow_run_id",
-                "generated_at_utc", "published_images", "release_gate_verdict", "release_gate_mode", "release_gate",
-                "repo_level_checks", "image_level_checks", "provenance_release_checks",
-            )
-            missing = [k for k in required_keys if k not in payload]
-            if missing:
-                fail_msg(f"security-verdict.json missing keys: {missing}")
-
-            if payload.get("schema_version") != "v1":
-                fail_msg("security-verdict schema_version must be v1")
-
-            if str(payload.get("workflow_run_id", "")) != str(run_id):
-                fail_msg("security-verdict workflow_run_id does not match triggering Security Release run")
-
-            if str(payload.get("source_build_run_id", "")) != str(expected_build):
-                fail_msg("security-verdict source_build_run_id does not match candidate build run id")
-
-            if payload.get("source_sha", "") != expected_sha:
-                fail_msg("security-verdict source_sha does not match candidate source_commit_sha")
-
-            if payload.get("event_name") not in ("workflow_run", "workflow_dispatch"):
-                fail_msg(f"unexpected security-verdict event_name: {payload.get('event_name')!r}")
-
-            if (payload.get("verdict") or "").lower() != "pass":
-                fail_msg("Security Release verdict is not pass; refusing staging deploy")
-
-            secv = payload.get("security_verdict")
-            if secv is not None and str(secv).lower() != "pass":
-                fail_msg("Security Release verdict is not pass; refusing staging deploy")
-
-            if payload.get("release_gate_verdict", "") != "pass":
-                fail_msg(f"release_gate_verdict must be pass, got {payload.get('release_gate_verdict')!r}")
-
-            repo_release_verdict = (((payload.get("repo_level_checks") or {}).get("release_evidence") or {}).get("required_for_release_verdict", ""))
-            if repo_release_verdict != "pass":
-                fail_msg(f"repo release evidence not pass: {repo_release_verdict!r}")
-
-            image_release_verdict = ((payload.get("image_level_checks") or {}).get("required_for_release_verdict", ""))
-            if image_release_verdict != "pass":
-                fail_msg(f"image-level release evidence not pass: {image_release_verdict!r}")
-
-            provenance_release_verdict = ((payload.get("provenance_release_checks") or {}).get("required_for_release_verdict", ""))
-            if provenance_release_verdict not in ("pass", private_repo_provenance_fallback):
-                fail_msg(f"provenance release evidence not acceptable: {provenance_release_verdict!r}")
-
-            published_images = payload.get("published_images") or {}
-            if published_images.get("app_image_ref", "") != expected_app:
-                fail_msg("security-verdict app_image_ref does not match resolved immutable app ref")
-            if published_images.get("goose_image_ref", "") != expected_goose:
-                fail_msg("security-verdict goose_image_ref does not match resolved immutable goose ref")
-
-            generated_at_raw = payload.get("generated_at_utc", "")
-            try:
-                generated_at = datetime.strptime(generated_at_raw, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-            except ValueError:
-                fail_msg(f"generated_at_utc malformed: {generated_at_raw!r}")
-
-            age_seconds = int((datetime.now(timezone.utc) - generated_at).total_seconds())
-            if age_seconds < 0 or age_seconds > max_age_hours * 3600:
-                fail_msg(
-                    f"security-verdict is stale ({age_seconds}s old, max {max_age_hours}h); rerun Security Release or adjust STAGING_SECURITY_VERDICT_MAX_AGE_HOURS"
-                )
-
-            out_path = os.environ["GITHUB_OUTPUT"]
-            with open(out_path, "a", encoding="utf-8") as fh:
-                fh.write(f"security_verdict_age_seconds={age_seconds}\n")
-                fh.write(f"security_verdict_max_age_hours={max_age_hours}\n")
-                fh.write(f"release_gate_mode={payload.get('release_gate_mode', '')}\n")
-                fh.write(f"release_gate_verdict={payload.get('release_gate_verdict', '')}\n")
-                fh.write(f"repo_release_verdict={repo_release_verdict}\n")
-                fh.write(f"provenance_release_verdict={provenance_release_verdict}\n")
-                fh.write(f"security_workflow_run_id={run_id}\n")
-                fh.write(f"security_verdict_generated_at_utc={generated_at_raw}\n")
         run: |
           set -Eeuo pipefail
           mkdir -p security-gate
@@ -364,6 +299,10 @@ jobs:
           }
 
           [[ "${SECURITY_VERDICT_MAX_AGE_HOURS}" =~ ^[0-9]+$ ]] || fail "SECURITY_VERDICT_MAX_AGE_HOURS must be numeric"
+          EXPECTED_SR_PATH=".github/workflows/security-release.yml"
+          sr_path="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SECURITY_RELEASE_RUN_ID}" --jq -r '.path // ""')"
+          [[ "${sr_path}" == "${EXPECTED_SR_PATH}" ]] || fail "Security Release run ${SECURITY_RELEASE_RUN_ID} path is '${sr_path}' (required '${EXPECTED_SR_PATH}')"
+
           [[ -n "${EXPECTED_BUILD_RUN_ID}" ]] || fail "missing expected build run id for staging security gate"
           [[ -n "${EXPECTED_APP_IMAGE_REF}" ]] || fail "missing expected app image ref for staging security gate"
           [[ -n "${EXPECTED_GOOSE_IMAGE_REF}" ]] || fail "missing expected goose image ref for staging security gate"
@@ -375,15 +314,15 @@ jobs:
           [[ "${RESOLVED_ARTIFACT_WORKFLOW_NAME}" == "Build and Push Images" ]] || fail "artifact_source_workflow_name must be Build and Push Images, got ${RESOLVED_ARTIFACT_WORKFLOW_NAME:-empty}"
 
           artifact_id=""
-          for attempt in 1 2 3 4 5 6 7 8; do
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
             artifact_id="$(
               gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${SECURITY_RELEASE_RUN_ID}/artifacts" \
                 --jq '[.artifacts[]? | select(.name == "security-verdict") | .id] | .[0] // empty'
             )" || true
             [[ -n "${artifact_id}" ]] && break
-            if [[ "${attempt}" -lt 8 ]]; then
-              echo "security-verdict artifact not visible; retrying (${attempt}/8) …" >&2
-              sleep 8
+            if [[ "${attempt}" -lt 15 ]]; then
+              echo "security-verdict artifact not visible; retrying (${attempt}/15) …" >&2
+              sleep $((8 + attempt * 2))
             fi
           done
           [[ -n "${artifact_id}" ]] || fail "no security-verdict artifact on Security Release run ${SECURITY_RELEASE_RUN_ID} after bounded retries"
@@ -404,8 +343,9 @@ jobs:
           python3 -m zipfile -e "${extract_dir}/security-verdict.zip" "${extract_dir}"
           verdict_file="${extract_dir}/security-verdict.json"
           [[ -f "${verdict_file}" ]] || fail "security-verdict.zip did not contain security-verdict.json"
+          python3 -c "import json; json.load(open('${verdict_file}',encoding='utf-8'))" || fail "security-verdict.json is not valid JSON"
 
-          printenv WF_STAGING_GATE_VALIDATE | python3 -
+          python3 scripts/release/validate_release_verdict.py staging-gate
 
 
       - name: Record staging gate summary
@@ -413,13 +353,30 @@ jobs:
         shell: bash
         env:
           SECURITY_VERDICT_MAX_AGE_HOURS: ${{ secrets.STAGING_SECURITY_VERDICT_MAX_AGE_HOURS || vars.STAGING_SECURITY_VERDICT_MAX_AGE_HOURS || secrets.SECURITY_VERDICT_MAX_AGE_HOURS || vars.SECURITY_VERDICT_MAX_AGE_HOURS || '72' }}
+          SRC_SHA: ${{ needs.resolve-staging-candidate.outputs.source_commit_sha }}
+          SRC_BR: ${{ needs.resolve-staging-candidate.outputs.source_branch }}
+          APP_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          GOOSE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
         run: |
           set -Eeuo pipefail
+          app_d="${APP_REF#*@}"
+          goose_d="${GOOSE_REF#*@}"
           {
+            echo ""
+            echo "### Staging security-verdict (Security Release only)"
+            echo ""
+            echo "| Item | Value |"
+            echo "|---|---|"
+            echo "| **Selected Security Release run id** | \`${{ github.event.workflow_run.id }}\` |"
+            echo "| **source_branch** | \`${SRC_BR}\` |"
+            echo "| **source_sha** | \`${SRC_SHA}\` |"
+            echo "| **verdict** | \`pass\` |"
+            echo "| **app image digest** | \`${app_d}\` |"
+            echo "| **goose image digest** | \`${goose_d}\` |"
+            echo ""
             echo "- result: \`pass\`"
-            echo "- security workflow run: \`${{ github.event.workflow_run.id }}\`"
-            echo "- freshness window: \`${SECURITY_VERDICT_MAX_AGE_HOURS}h\`"
-            echo "- verdict age at evaluation: \`${{ steps.gate.outputs.security_verdict_age_seconds }}\`"
+            echo "- **release approval source**: workflow file \`.github/workflows/security-release.yml\` (name: \`Security Release\`), artifact \`security-verdict\`"
+            echo "- freshness window: \`${SECURITY_VERDICT_MAX_AGE_HOURS}h\` / verdict age: \`${{ steps.gate.outputs.security_verdict_age_seconds }}\`s"
             echo "- release gate mode: \`${{ steps.gate.outputs.release_gate_mode }}\`"
             echo "- release gate verdict: \`${{ steps.gate.outputs.release_gate_verdict }}\`"
             echo "- repo release verdict: \`${{ steps.gate.outputs.repo_release_verdict }}\`"
@@ -800,6 +757,7 @@ jobs:
     needs:
       - resolve-staging-candidate
       - resolve-image-refs
+      - validate-staging-security-verdict
       - validate-staging-prerequisites
     environment: staging
     env:
@@ -824,6 +782,23 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.resolve-staging-candidate.outputs.source_commit_sha }}
+
+      - name: Migration safety gate (staging)
+        shell: bash
+        env:
+          ALLOW_DESTRUCTIVE_MIGRATIONS: ${{ vars.ALLOW_DESTRUCTIVE_MIGRATIONS }}
+        run: |
+          set -Eeuo pipefail
+          bash scripts/deploy/migration_preflight.sh staging
+
+      - name: Upload migration safety evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-migration-safety-report
+          path: migration-evidence/migration-safety-report.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Start staging SSH agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -893,6 +868,45 @@ jobs:
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
             "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && bash 'scripts/smoke_staging.sh'"
 
+      - name: Post-deploy smoke test (runner, evidence + step summary)
+        id: smoke_post_deploy
+        shell: bash
+        env:
+          ENVIRONMENT_NAME: staging
+          STAGING_SMOKE_BASE_URL: ${{ vars.STAGING_SMOKE_BASE_URL || secrets.STAGING_SMOKE_BASE_URL }}
+          STAGING_PUBLIC_BASE_URL: ${{ vars.STAGING_PUBLIC_BASE_URL || secrets.STAGING_PUBLIC_BASE_URL }}
+          STAGING_API_READY_URL: ${{ secrets.STAGING_API_READY_URL }}
+          SMOKE_AUTH_TOKEN: ${{ secrets.STAGING_SMOKE_AUTH_TOKEN }}
+          SMOKE_AUTH_READ_PATH: ${{ vars.STAGING_SMOKE_AUTH_READ_PATH }}
+        run: |
+          set -Eeuo pipefail
+          BASE_URL="${STAGING_SMOKE_BASE_URL:-${STAGING_PUBLIC_BASE_URL:-}}"
+          if [[ -z "${BASE_URL}" && -n "${STAGING_API_READY_URL:-}" ]]; then
+            BASE_URL="$(python3 -c 'from urllib.parse import urlparse; import os; u=os.environ.get("STAGING_API_READY_URL",""); p=urlparse(u); print((p.scheme+"://"+p.netloc).rstrip("/") if p.scheme and p.netloc else "")')"
+          fi
+          if [[ -z "${BASE_URL}" ]]; then
+            echo "error: configure vars.STAGING_SMOKE_BASE_URL or STAGING_PUBLIC_BASE_URL (or secret STAGING_API_READY_URL with https URL) for post-deploy smoke" >&2
+            exit 1
+          fi
+          export BASE_URL
+          if [[ -n "${SMOKE_AUTH_TOKEN:-}" ]]; then
+            echo "::add-mask::${SMOKE_AUTH_TOKEN}"
+          fi
+          mkdir -p smoke-reports
+          bash scripts/deploy/staging_smoke_evidence.sh
+
+      - name: Upload staging smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-smoke-evidence
+          path: |
+            smoke-reports/smoke-test.json
+            smoke-reports/staging-smoke-report.json
+            smoke-reports/staging-smoke-summary.md
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Write staging deployment verdict
         if: always()
         shell: bash
@@ -903,6 +917,7 @@ jobs:
           FINAL_RESULT: ${{ job.status }}
           HEALTHCHECK_OUTCOME: ${{ steps.healthcheck.outcome || 'skipped' }}
           SMOKE_OUTCOME: ${{ steps.smoke.outcome || 'skipped' }}
+          SMOKE_POST_DEPLOY_OUTCOME: ${{ steps.smoke_post_deploy.outcome || 'skipped' }}
           MANIFEST_STAGING_BUILD_RUN: ${{ needs.resolve-staging-candidate.outputs.workflow_run_id }}
           WF_STAGING_VERDICT_JSON: |
             import json
@@ -946,6 +961,7 @@ jobs:
                 "deploy_outcome": s("DEPLOY_OUTCOME"),
                 "healthcheck_outcome": s("HEALTHCHECK_OUTCOME"),
                 "smoke_outcome": s("SMOKE_OUTCOME"),
+                "smoke_post_deploy_outcome": s("SMOKE_POST_DEPLOY_OUTCOME"),
                 "run_url": s("STAGING_VERDICT_RUN_URL"),
             }
             Path("deployment-evidence").mkdir(parents=True, exist_ok=True)
@@ -998,6 +1014,7 @@ jobs:
             echo "- deploy outcome: \`${DEPLOY_OUTCOME}\`"
             echo "- healthcheck outcome: \`${HEALTHCHECK_OUTCOME}\`"
             echo "- smoke outcome: \`${SMOKE_OUTCOME}\`"
+            echo "- post-deploy smoke (runner): \`${SMOKE_POST_DEPLOY_OUTCOME}\`"
             echo "- final result: \`${FINAL_RESULT}\`"
             echo "- outcome: \`${staging_summary}\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -1010,3 +1027,19 @@ jobs:
           path: deployment-evidence/staging-deployment-verdict.json
           if-no-files-found: error
           retention-days: 14
+
+      - name: Optional deployment webhook notify
+        if: always()
+        shell: bash
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ vars.NOTIFY_WEBHOOK_URL }}
+        run: |
+          set +e
+          bash scripts/deploy/notify_deployment_status.sh \
+            --status "${{ job.status }}" \
+            --environment staging \
+            --source-sha "${{ needs.resolve-staging-candidate.outputs.source_commit_sha }}" \
+            --source-branch develop \
+            --workflow-run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --message "Staging deploy: job_result=${{ job.status }} (see staging-deployment-verdict and job summary)" \
+            --event "staging-deploy"

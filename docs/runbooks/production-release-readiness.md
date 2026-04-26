@@ -100,7 +100,7 @@ When `fleet_scale_target` is **scale-100**, **scale-500**, or **scale-1000**, th
 1. Complete the **pilot** checklist on the release commit.
 2. Run **staging storm** to the minimum dimension for the target tier (100×100, 500×200, 1000×500) — workflows: [`.github/workflows/telemetry-storm-staging.yml`](../../.github/workflows/telemetry-storm-staging.yml).
 3. Capture **monitoring readiness** JSON (`check_monitoring_readiness.sh` or equivalent) with `final_result: pass`.
-4. Promote via [`.github/workflows/deploy-prod.yml`](../../.github/workflows/deploy-prod.yml) or [`.github/workflows/deploy-production.yml`](../../.github/workflows/deploy-production.yml) with manifest `fleet_scale_target` matching the tier **and** attach storm evidence for non-pilot.
+4. Promote via [`.github/workflows/deploy-prod.yml`](../../.github/workflows/deploy-prod.yml) (workflow **Deploy Production**). **Do not** use [`deploy-production.yml`](../../.github/workflows/deploy-production.yml) for rollouts — that file is a no-op **pointer** only. Set manifest `fleet_scale_target` for the tier **and** attach storm evidence for non-pilot.
 5. Assemble **`build_release_evidence_pack.sh`** with digest-pinned manifest, verify JSON, monitoring JSON (if not pilot), storm JSON (required for scale tiers), and non-empty `KNOWN_RISKS_PATH`.
 
 Do **not** mark **scale-1000** internally without a **1000×500** PASS and the field table above.
@@ -170,7 +170,7 @@ Document **which** path the org uses on the release ticket.
 
 | Option | When to use | Evidence |
 | --- | --- | --- |
-| **A. `deploy-prod.yml` or `deploy-production.yml`** | Primary GitHub deploy; digest-pinned images; `fleet_scale_target` in manifest | Successful workflow run + **`production-deployment-manifest.json`**; for scale tiers, storm artifact per [telemetry-production-rollout.md](./telemetry-production-rollout.md#production-ci-fleet-scale-gate-deploy-prodyml) |
+| **A. `deploy-prod.yml` only (Deploy Production)** | Primary and **only** GitHub deploy/rollback; digest-pinned images; `fleet_scale_target` in manifest. **`deploy-production.yml` is a legacy pointer and does not deploy.** | Successful workflow run + **`production-deployment-manifest.json`**; for scale tiers, storm artifact per [telemetry-production-rollout.md](./telemetry-production-rollout.md#production-ci-fleet-scale-gate-deploy-prodyml) |
 | **B. Manual / out-of-band deploy** | Bastion-only or customer CI | Same **logical** gates: static verify JSON, monitoring JSON, storm JSON (if not pilot), manifest, known risks — assembled via `deployments/prod/scripts/build_release_evidence_pack.sh` |
 | **C. Legacy single-host compose** | Rollback or rehearsal only | `deployments/prod/docker-compose.prod.yml` + `.env.production.example` validation in `verify-enterprise-release`; not the default 2-VPS story |
 

@@ -42,6 +42,7 @@ on:
 permissions:
   contents: read
   actions: write
+  deployments: write
 
 concurrency:
   group: telemetry-storm-staging-${{ github.ref }}

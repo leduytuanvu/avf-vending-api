@@ -1,6 +1,0 @@
-./client.go
-./doc.go
-./http_client.go
-./mirror_metrics.go
-./mirror_row.go
-./mirror_sink.go

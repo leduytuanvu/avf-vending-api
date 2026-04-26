@@ -1,6 +1,0 @@
-./errors.go
-./interceptors.go
-./internal_queries.go
-./server.go
-./server_auth_test.go
-./server_test.go

@@ -1,3 +1,18 @@
+# CodeQL static analysis for Go.
+#
+# Triggers (enterprise):
+#   - pull_request → develop, main
+#   - push → develop, main
+#   - schedule (weekly)
+#
+# Intentional skip (not a silent omission; skipped job is NOT a successful CodeQL run):
+#   The analyze job runs only when repository variable ENABLE_CODE_SCANNING is exactly the string 'true'
+#   (see jobs.analyze: if: vars.ENABLE_CODE_SCANNING == 'true').
+#   When unset or not 'true', GitHub shows the job as skipped — see docs/runbooks/github-governance.md
+#   (Security matrix: org-gated / not merge-blocking on its own when skipped).
+#   Enable when the org/repo has GitHub Code Scanning (Advanced Security) available.
+#   Fork PRs: GitHub may skip or restrict CodeQL on public fork PRs per platform policy; base-branch
+#   protection still relies on blocking jobs in security.yml (secret scan, govulncheck, config scan).
 name: CodeQL
 
 on:

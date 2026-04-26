@@ -1,7 +1,0 @@
-./class.go
-./critical_idempotency.go
-./envelope.go
-./limits.go
-./class_test.go
-./critical_idempotency_test.go
-./offline_replay_classify_test.go

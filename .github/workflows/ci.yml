@@ -20,6 +20,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   workflow-script-quality:
@@ -30,6 +31,27 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Enterprise release chain (CI position)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ev="${{ github.event_name }}"
+          {
+            echo "## Enterprise release chain — **CI** (this run)"
+            echo ""
+            echo "\`\`\`"
+            if [[ "${ev}" == "pull_request" ]]; then
+              echo "PR  →  CI  →  Security  →  (no image build; merge to develop/main to continue)"
+            else
+              echo "Push to develop/main  →  CI  →  Security  →  Build and Push Images  →  Security Release  →  Deploy (Staging|Production) [verdict+gates]"
+            fi
+            echo "\`\`\`"
+            echo ""
+            echo "- This workflow: **CI** (lint, contract checks, build/tests)."
+            echo "- **No deploy** and **no images** from this workflow alone; images run only from **Build and Push Images** after successful push CI, then **Security Release**."
+            echo "- **Security** (\`security.yml\`) is separate from **Security Release** (release gate after Build)."
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -56,8 +78,8 @@ jobs:
       - name: Verify CI/CD workflow contracts
         shell: bash
         # Static checks only (scripts/ci/verify_workflow_contracts.sh): canonical workflow names, no develop→prod
-        # auto-deploy, no on.workflow_run on deploy-prod, Staging on Security Release only, build-push release_candidate
-        # + push gate, Security Release verdict/JSON/skipped + emergency path, deploy-develop skipped verdict; fails PRs.
+        # on push, staging/prod only after Security Release (workflow_run) + verdict gates, deploy-prod also workflow_dispatch,
+        # build-push release_candidate + push gate, Security Release verdict/JSON/skipped + emergency path; fails PRs.
         run: |
           set -Eeuo pipefail
           chmod +x scripts/ci/verify_workflow_contracts.sh
@@ -117,10 +139,38 @@ jobs:
         run: make vet
 
       - name: Validate generated specs and repository invariants
-        run: make check-placeholders check-wiring check-migrations sqlc-check swagger-check postman-check
+        run: make check-placeholders check-wiring sqlc-check swagger-check postman-check
 
       - name: Run short Go test suite
         run: make test-short
+
+  migration-safety:
+    name: Migration Safety Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify goose migrations (layout + destructive SQL heuristics)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ci-reports
+          DEPLOY_TARGET=ci bash scripts/ci/verify_migrations.sh --report ci-reports/migration-safety-report.json
+
+      - name: Upload migration safety report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-safety-report
+          path: ci-reports/migration-safety-report.json
+          if-no-files-found: warn
+          retention-days: 14
 
   compose-config:
     name: Docker Compose Config Validation
@@ -161,6 +211,9 @@ jobs:
     name: Legacy Production Asset Contract
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: write
 
     steps:
       - name: Check out repository

@@ -1,6 +1,0 @@
-./config.go
-./doc.go
-./keys.go
-./store.go
-./config_test.go
-./keys_test.go
