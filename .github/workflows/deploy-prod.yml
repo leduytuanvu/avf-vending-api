@@ -2663,7 +2663,6 @@ jobs:
           MANIFEST_GOOSE_DIGEST: ${{ needs.validate-promotion-selection.outputs.goose_digest }}
           MANIFEST_PREV_SOURCE_BRANCH: ${{ needs.resolve-previous-production-deployment.outputs.previous_source_branch }}
           MANIFEST_PREV_SOURCE_COMMIT_SHA: ${{ needs.resolve-previous-production-deployment.outputs.previous_source_commit_sha }}
-          ROLLOUT_MODE_EFFECTIVE: ${{ steps.validate_deploy_inputs.outputs.rollout_mode_effective }}
           CANARY_HOST: ${{ steps.validate_deploy_inputs.outputs.canary_host }}
           STABLE_HOST: ${{ steps.validate_deploy_inputs.outputs.stable_host }}
           CANARY_OBSERVABILITY_OUTCOME: ${{ steps.canary_observability_http.outcome || 'skipped' }}
