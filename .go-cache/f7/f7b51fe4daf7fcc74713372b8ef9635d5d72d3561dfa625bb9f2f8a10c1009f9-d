@@ -1,7 +1,0 @@
-./application.go
-./capability_error.go
-./internal_queries.go
-./json_raw.go
-./ports.go
-./scope_errors.go
-./shadow_sql.go

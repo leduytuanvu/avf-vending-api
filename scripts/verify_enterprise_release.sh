@@ -5,6 +5,10 @@
 #
 # Does not connect to production or require real secrets.
 #
+# Intended CI/CD chain (see tools/verify_github_workflow_cicd_contract.py): CI -> Build and Push Images
+# -> Security Release (only release gate; security-verdict.json) -> staging (develop) / production (main, Security Release + dispatch).
+# Repo-level security.yml is push/PR/dispatch (nightly rescans: nightly-security.yml) — not a deployment trigger and not workflow_run from Build.
+#
 # Phase order matches docs/runbooks/production-release-readiness.md (includes P0 OpenAPI + doc contradiction gates).
 #
 # Environment (optional):
@@ -36,7 +40,11 @@ phase_go_test() {
     echo "SKIP: VERIFY_ENTERPRISE_SKIP_GO=1"
     return 0
   fi
-  go test ./...
+  # On some Windows hosts, Application Control (WDAC / AppLocker) may block go test; use Linux CI (GitHub Actions) as source of truth.
+  if ! go test ./...; then
+    echo "HINT: if go test failed due to enterprise Application Control on Windows, run this script on Linux or in CI (ubuntu-latest)." >&2
+    exit 1
+  fi
   echo "OK: Go tests"
 }
 
@@ -127,7 +135,8 @@ phase_docker_compose() {
 
   if [[ -f deployments/prod/.env.production.example ]] && [[ -f deployments/prod/docker-compose.prod.yml ]]; then
     echo "  legacy single-host prod (rollback path example)"
-    (cd deployments/prod && "${dc[@]}" --env-file .env.production.example -f docker-compose.prod.yml config >/dev/null)
+    # PROD_ENV_FILE must match --env-file: compose resolves env_file paths in YAML (${PROD_ENV_FILE:-.env.production}) and would otherwise require a real .env.production in CI.
+    (cd deployments/prod && PROD_ENV_FILE=.env.production.example "${dc[@]}" --env-file .env.production.example -f docker-compose.prod.yml config >/dev/null)
   fi
 
   echo "OK: compose config"

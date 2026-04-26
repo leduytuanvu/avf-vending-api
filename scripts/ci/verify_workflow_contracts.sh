@@ -3,12 +3,18 @@
 # Deterministic: reads only local .github/workflows/*.yml (no GitHub API, no network).
 #
 # Fails PR CI before merge on common regressions, including:
-#   - deploy-prod: on.workflow_run / develop / pull_request (production is workflow_dispatch on main)
-#   - security-release: non-empty verdict + security-verdict.json + write_security_verdict.py + emit_* paths
-#   - security-release: no unprotected read/mapfile + < <( under set -e; write_security_verdict required modes; want_branch RESOLVED before BUILD_HEAD; smoke test
+#   - security.yml: govulncheck-pr + secret-scan + config-scan share one canonical if: (PR+push+dispatch, exactly 3x); dependency-review PR-only + ENABLE_DEPENDENCY_REVIEW
+#   - codeql.yml: PR + push + schedule + ENABLE_CODE_SCANNING gate on analyze job
+#   - deploy-prod: automatic production from Security Release workflow_run (main) + workflow_dispatch; never from repo Security or Build alone
+#   - security-release: non-empty verdict + security-verdict.json + CONTRACT_VERDICT_MODES + emit before each exit 0 in signal step
+#   - security-release: workflow_run GHA guards (success + push|dispatch + develop|main); never chain event as promotion source
+#   - tools/verify_github_workflow_cicd_contract.py: PR workflows must not deploy / use deploy environments; full graph + deploy gate strings
+#   - security-release: no unprotected read/mapfile + < <( under set -e (or set +e/|| true); want_branch RESOLVED before BUILD_HEAD; smoke test
 #   - build-push: release_candidate + push gate (no fake release artifacts on skip)
-#   - deploy-develop: Security Release only (not Security), skipped verdict neutral exit, source_build_run_id
+#   - deploy-develop: Security Release only (not Security); non-pass verdict fail closed; source_build_run_id
 #   - canonical display names, duplicate "Security", heredoc safety (see also Python heredoc check below)
+#   - tools/verify_github_workflow_cicd_contract.py: action pinning (default warn on third-party non-SHA; ENFORCE_ACTION_SHA_PINNING=true fails; VERIFY_ACTION_SHA_PINNING=1 adds official action hints) — see docs/runbooks/supply-chain-security.md#github-actions-version-pins
+#   - verify_enterprise_release.sh: legacy docker-compose.prod uses PROD_ENV_FILE=.env.production.example in CI
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -21,6 +27,11 @@ fail() {
   exit 1
 }
 
+# --- verify_enterprise_release.sh: legacy single-host docker-compose.prod CI check uses example env for both --env-file and PROD_ENV_FILE ---
+# (YAML env_file: ${PROD_ENV_FILE:-.env.production} would otherwise make compose look for a real .env.production.)
+grep -qE 'PROD_ENV_FILE=\.env\.production\.example.*docker-compose\.prod\.yml' "${ROOT}/scripts/verify_enterprise_release.sh" || \
+  fail "verify_enterprise_release.sh must set PROD_ENV_FILE=.env.production.example when validating docker-compose.prod.yml (CI must not require deployments/prod/.env.production)"
+
 # From `on:` up to the next `concurrency:` (top level). Works for workflows where `concurrency` follows
 # the on block (possibly with # comments, e.g. deploy-prod).
 on_until_concurrency() {
@@ -31,11 +42,6 @@ on_until_concurrency() {
 # so we do not include `permissions:` in the "on" slice.
 on_until_column0_hash() {
   awk '/^on:/{p=1;next} p && /^#/{exit} p' "$1"
-}
-
-# deploy-prod: legacy extractor — same end condition as for deploy-prod in earlier revisions.
-deploy_prod_on_block() {
-  awk '/^on:/{p=1;next} p && /^[a-zA-Z#]/ {exit} p' "${WF}/deploy-prod.yml"
 }
 
 # `on:` block through first top-level `jobs:` (workflows with no `concurrency` before `jobs`, e.g. deploy-production pointer).
@@ -64,55 +70,126 @@ fi
 
 # --- Canonical workflow display names (required release-chain names) ---
 grep -q '^name: CI$' "${WF}/ci.yml" || fail "ci.yml must be named \"CI\" (canonical CI workflow)"
+grep -qE '^[[:space:]]{2}workflow-script-quality:' "${WF}/ci.yml" || fail "ci.yml must define workflow-script-quality job (Workflow and Script Quality)"
+grep -qE '^[[:space:]]{2}go-ci:' "${WF}/ci.yml" || fail "ci.yml must define go-ci job (Go CI Gates)"
+grep -qE '^[[:space:]]{2}compose-config:' "${WF}/ci.yml" || fail "ci.yml must define compose-config job (Docker Compose Config Validation)"
+if grep -qE '^[[:space:]]*environment:[[:space:]]*(production|staging)[[:space:]]*$' "${WF}/ci.yml"; then
+  fail "ci.yml must not declare environment: production or staging (CI does not deploy)"
+fi
 grep -q '^name: Security$' "${WF}/security.yml" || fail "security.yml must be named \"Security\" (repo-level; distinct from Security Release)"
 grep -q '^name: Build and Push Images$' "${WF}/build-push.yml" || fail "build-push.yml must be named \"Build and Push Images\""
 grep -q '^name: Security Release$' "${WF}/security-release.yml" || fail "security-release.yml must be named \"Security Release\" (not \"Security\")"
 grep -q '^name: Staging Deployment Contract$' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must be named \"Staging Deployment Contract\""
 grep -q '^name: Deploy Production$' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must be named \"Deploy Production\""
 
+# --- security.yml: repo Security (push/PR/dispatch; optional schedule); do not chain from Build (that is security-release.yml) ---
+if grep -qE '^[[:space:]]{2}workflow_run[[:space:]]*:' "${WF}/security.yml"; then
+  fail "security.yml must not declare on.workflow_run (repo Security is not a deployment trigger; security-release.yml must have on.workflow_run from Build and Push Images)"
+fi
+grep -qE '^[[:space:]]*pull_request[[:space:]]*:' "${WF}/security.yml" || fail "security.yml must declare on.pull_request (repo scans on PRs)"
+grep -qE '^[[:space:]]*push[[:space:]]*:' "${WF}/security.yml" || fail "security.yml must declare on.push (repo scans on develop/main)"
+grep -qE '^[[:space:]]*workflow_dispatch[[:space:]]*:' "${WF}/security.yml" || fail "security.yml must declare on.workflow_dispatch (manual repo scans)"
+if grep -qF 'name: security-verdict' "${WF}/security.yml"; then
+  fail "security.yml must not upload or name artifact security-verdict (only Security Release emits that artifact)"
+fi
+grep -qF "github.event_name == 'pull_request'" "${WF}/security.yml" || fail "security.yml must scope Dependency Review to pull_request (dependency-review-action is PR-only)"
+grep -qF "vars.ENABLE_DEPENDENCY_REVIEW" "${WF}/security.yml" || fail "security.yml dependency-review must gate on vars.ENABLE_DEPENDENCY_REVIEW (documented org toggle)"
+# Blocking jobs (govulncheck-pr, secret-scan, config-scan) must share one canonical if: (PR + push + dispatch; not vars-gated)
+_sec_canonical_if="github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'"
+_sec_if_count="$(grep -cF "${_sec_canonical_if}" "${WF}/security.yml" 2>/dev/null | tr -d ' ' || echo 0)"
+if [[ "${_sec_if_count}" -ne 3 ]]; then
+  fail "security.yml must set exactly three identical blocking job if: lines (govulncheck-pr, secret-scan, config-scan) to PR + push + workflow_dispatch; found ${_sec_if_count} occurrences of the canonical if"
+fi
+
+# --- codeql.yml: develop/main PR + push + schedule; explicit ENABLE_CODE_SCANNING gate ---
+[[ -f "${WF}/codeql.yml" ]] || fail "codeql.yml is required (CodeQL analysis)"
+grep -q '^name: CodeQL$' "${WF}/codeql.yml" || fail "codeql.yml workflow display name must be CodeQL"
+grep -qE '^[[:space:]]*pull_request[[:space:]]*:' "${WF}/codeql.yml" || fail "codeql.yml must declare on.pull_request"
+grep -qE '^[[:space:]]*push[[:space:]]*:' "${WF}/codeql.yml" || fail "codeql.yml must declare on.push"
+grep -q 'schedule:' "${WF}/codeql.yml" || fail "codeql.yml must declare on.schedule"
+grep -qF "vars.ENABLE_CODE_SCANNING == 'true'" "${WF}/codeql.yml" || fail "codeql.yml analyze job must use vars.ENABLE_CODE_SCANNING == 'true' (documented intentional skip)"
+
+# --- nightly-security.yml: scheduled main rescans; never deploy ---
+[[ -f "${WF}/nightly-security.yml" ]] || fail "nightly-security.yml is required (scheduled dependency + image rescan)"
+grep -q 'schedule:' "${WF}/nightly-security.yml" || fail "nightly-security.yml must declare on.schedule"
+grep -q 'workflow_dispatch:' "${WF}/nightly-security.yml" || fail "nightly-security.yml must declare workflow_dispatch"
+grep -q 'resolve_latest_main_release_images.sh' "${WF}/nightly-security.yml" || fail "nightly-security.yml must run scripts/security/resolve_latest_main_release_images.sh"
+grep -q 'Nightly Security Rescan' "${WF}/nightly-security.yml" || fail "nightly-security.yml workflow display name must stay Nightly Security Rescan"
+if grep -qE '^[[:space:]]{2}workflow_run[[:space:]]*:' "${WF}/nightly-security.yml"; then
+  fail "nightly-security.yml must not declare workflow_run (not a release/deploy chain consumer)"
+fi
+if grep -qE '^[[:space:]]*environment:[[:space:]]*production[[:space:]]*$' "${WF}/nightly-security.yml"; then
+  fail "nightly-security.yml must not target environment: production"
+fi
+
+# --- Obsolete contract strings (must not reappear in tooling; exclude this script which references the phrase in the fail text) ---
+_obsolete_hits="$(
+  grep -R -l "security.yml must have on.workflow_run from Build" scripts tools 2>/dev/null | grep -Fv "scripts/ci/verify_workflow_contracts.sh" || true
+)"
+[[ -z "${_obsolete_hits}" ]] || fail "obsolete contract text found (security.yml must not be described as listening to Build); fix files: ${_obsolete_hits}"
+
 # --- No duplicate canonical display names (beyond Security vs Security Release, checked above) ---
 # Note: duplicate top-level `name:` values are checked later in this script.
-
-# --- deploy-prod.yml must not declare on.workflow_run (no automatic production from develop or upstream chains) ---
-# Two-space indent matches keys directly under top-level `on:` in GitHub's workflow schema.
-if grep -qE '^[[:space:]]{2}workflow_run[[:space:]]*:' "${WF}/deploy-prod.yml"; then
-  fail "deploy-prod.yml must not declare on.workflow_run (Deploy Production is workflow_dispatch-only; no auto-deploy from develop)"
-fi
 
 # --- build-push: required release artifacts (downstream Security Release / staging consume these) ---
 grep -qF "name: immutable-image-contract" "${WF}/build-push.yml" || fail "build-push.yml must upload the immutable-image-contract artifact (digest-pinned contract; missing artifact breaks Security Release / staging)"
 grep -qF "name: promotion-manifest" "${WF}/build-push.yml" || fail "build-push.yml must upload the promotion-manifest artifact"
+grep -qF "name: sbom-reports" "${WF}/build-push.yml" || fail "build-push.yml must upload the sbom-reports artifact (CycloneDX SBOMs for release candidates)"
+grep -qF "name: cosign-signing-evidence" "${WF}/build-push.yml" || fail "build-push.yml must reference cosign-signing-evidence (download from build for promotion manifests)"
+grep -qF "name: release-candidate" "${WF}/build-push.yml" || fail "build-push.yml must upload the release-candidate artifact (release-candidate.json for Security Release / audit)"
+grep -qE 'cosign sign|Cosign sign' "${WF}/_reusable-build.yml" || fail "_reusable-build.yml must cosign-sign published images"
 grep -qF "name: image-build-metadata" "${WF}/build-push.yml" || fail "build-push.yml must upload image-build-metadata (compatibility bundle)"
 grep -qF "uses: ./.github/workflows/_reusable-build.yml" "${WF}/build-push.yml" || fail "build-push.yml must call _reusable-build.yml (publishes image-metadata artifact used by Security Release)"
 grep -qF "name: image-metadata" "${WF}/_reusable-build.yml" || fail "_reusable-build.yml must upload the image-metadata artifact (Security Release / _reusable-deploy expect this name)"
 
 # --- security-release: verdict must not be stoppable as empty; JSON comes from scripts/security/write_security_verdict.py ---
-grep -qF "blocking security verdict is empty" "${WF}/security-release.yml" || fail "security-release.yml must fail closed when the resolved verdict is empty (expected pass, fail, or skipped in SECURITY_VERDICT / security-verdict.json)"
+grep -qF "blocking security verdict is empty" "${WF}/security-release.yml" || fail "security-release.yml must fail closed when the resolved verdict is empty (expected pass, fail, skipped, or no-candidate in SECURITY_VERDICT / security-verdict.json)"
 grep -qF "SECURITY_VERDICT" "${WF}/security-release.yml" || fail "security-release.yml must use SECURITY_VERDICT in the Enforce step (blocking empty string)"
 grep -qF "security-reports/security-verdict.json" "${WF}/security-release.yml" || fail "security-release.yml must write security-reports/security-verdict.json (uploaded as security-verdict artifact)"
-# Verdict JSON is built by scripts/security/write_security_verdict.py; the workflow must invoke every required mode (regression: empty verdict paths).
-for _v_mode in skipped no-candidate unsupported-trigger full emergency; do
-  grep -qF "scripts/security/write_security_verdict.py ${_v_mode}" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py ${_v_mode} (verdict path must be reachable)"
-done
-grep -qF "No releasable candidate. Security release gate skipped." "${WF}/security-release.yml" || fail "security-release.yml must document the neutral no-release-candidate skipped outcome (Build chain did not produce a releasable candidate)"
-grep -qF "scripts/security/emit_security_verdict_outputs.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_outputs.py after each verdict write (GITHUB_OUTPUT contract)"
-grep -qF "scripts/security/emit_security_verdict_summary.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_summary.py (job summary contract)"
-grep -qF "export CANONICAL_SOURCE_SHA" "${WF}/security-release.yml" || fail "security-release.yml must export CANONICAL_SOURCE_SHA (artifact-first source coordinates for Security / verdict)"
-grep -qF "scripts/security/emit_release_signal_debug_table.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_release_signal_debug_table.py (source coordinate debug summary)"
+# Required writer modes are derived from scripts/security/write_security_verdict.py CONTRACT_VERDICT_MODES (checked in Python below; regression: empty verdict / missing skip path).
+grep -qF "No releasable candidate. Security release gate skipped." "${WF}/security-release.yml" "${ROOT}/scripts/release/security_release_signal.sh" || fail "security-release path must document the neutral no-release-candidate skipped outcome (workflow and/or security_release_signal.sh)"
+grep -qF "bash scripts/release/security_release_signal.sh" "${WF}/security-release.yml" || fail "security-release.yml must invoke scripts/release/security_release_signal.sh for the structured signal step"
+grep -qF "release-candidate" "${WF}/security-release.yml" || fail "security-release.yml must require the Build release-candidate artifact in preflight / signal"
+grep -qF "SBOM_POLICY" "${WF}/security-release.yml" || fail "security-release.yml must pass SBOM_POLICY (repository variable) for verdict SBOM policy"
+grep -qF "scripts/security/emit_security_verdict_outputs.py" "${ROOT}/scripts/release/security_release_signal.sh" || fail "security_release_signal.sh must call emit_security_verdict_outputs.py after each verdict write (GITHUB_OUTPUT contract)"
+grep -qF "scripts/security/emit_security_verdict_summary.py" "${ROOT}/scripts/release/security_release_signal.sh" || fail "security_release_signal.sh must call emit_security_verdict_summary.py (job summary contract)"
+grep -qF "export CANONICAL_SOURCE_SHA" "${ROOT}/scripts/release/security_release_signal.sh" || fail "security_release_signal.sh must export CANONICAL_SOURCE_SHA (artifact-first source coordinates for Security / verdict)"
+grep -qF "scripts/security/emit_release_signal_debug_table.py" "${ROOT}/scripts/release/security_release_signal.sh" || fail "security_release_signal.sh must call emit_release_signal_debug_table.py (source coordinate debug summary)"
 # Polling: must not use read < <(pipeline) on jq output (empty under set -e); require safe security_run_row + read <<< with || true
-grep -qF "security_run_row" "${WF}/security-release.yml" || fail "security-release.yml must use security_run_row for repo Security (push) run polling (safe under set -e)"
+grep -qF "security_run_row" "${ROOT}/scripts/release/resolve_repo_security_evidence.sh" || fail "resolve_repo_security_evidence.sh must use security_run_row for repo Security (push) run polling (safe under set -e)"
 # Release candidate identity: artifact-first (never prefer triggering workflow_run head over promotion-manifest)
-grep -qF 'release_source_sha="${RESOLVED_SOURCE_SHA' "${WF}/security-release.yml" || fail "security-release.yml must set release_source_sha from RESOLVED_SOURCE_SHA first (artifact source_sha)"
-grep -qF 'want_branch="${RESOLVED_SOURCE_BRANCH' "${WF}/security-release.yml" || fail "security-release.yml must set want_branch from RESOLVED_SOURCE_BRANCH before MANUAL_TARGET_BRANCH / GITHUB_REF_NAME (never BUILD_HEAD_BRANCH as candidate branch)"
-if grep -E 'want_branch=.*(BUILD_HEAD_BRANCH|TRIGGERING_BUILD_HEAD_BRANCH)' "${WF}/security-release.yml" 2>/dev/null; then
-  fail "security-release.yml: candidate want_branch must not be derived from BUILD_HEAD_BRANCH or TRIGGERING_BUILD_HEAD_BRANCH (use RESOLVED_SOURCE_BRANCH from promotion-manifest)"
+grep -qF 'release_source_sha="${RESOLVED_SOURCE_SHA' "${ROOT}/scripts/release/security_release_signal.sh" || fail "security_release_signal.sh must set release_source_sha from RESOLVED_SOURCE_SHA first (artifact source_sha)"
+grep -qF "WORKFLOW_SHA fallback is allowed only for workflow_dispatch" "${ROOT}/scripts/release/security_release_signal.sh" || fail "security_release_signal.sh must not use Security Release checkout SHA as automatic workflow_run release source (promotion-manifest only)"
+grep -qF 'want_branch="${RESOLVED_SOURCE_BRANCH' "${ROOT}/scripts/release/security_release_signal.sh" || fail "security_release_signal.sh must set want_branch from RESOLVED_SOURCE_BRANCH before MANUAL_TARGET_BRANCH / GITHUB_REF_NAME (never BUILD_HEAD_BRANCH as candidate branch)"
+if grep -E 'want_branch=.*(BUILD_HEAD_BRANCH|TRIGGERING_BUILD_HEAD_BRANCH)' "${ROOT}/scripts/release/security_release_signal.sh" "${ROOT}/scripts/release/resolve_repo_security_evidence.sh" 2>/dev/null; then
+  fail "signal scripts: candidate want_branch must not be derived from BUILD_HEAD_BRANCH or TRIGGERING_BUILD_HEAD_BRANCH (use RESOLVED_SOURCE_BRANCH from promotion-manifest)"
 fi
-grep -qF "scripts/security/write_security_verdict.py ineligible-branch" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py ineligible-branch (canonical branch not develop/main; neutral skip)"
-grep -qF "scripts/security/write_security_verdict.py unsupported-artifact-source-event" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py unsupported-artifact-source-event when ARTIFACT_SOURCE_EVENT is not an allowed semantic event"
+grep -qF "scripts/security/write_security_verdict.py ineligible-branch" "${ROOT}/scripts/release/security_release_signal.sh" || fail "security_release_signal.sh must call write_security_verdict.py ineligible-branch (canonical branch not develop/main; neutral skip)"
+grep -qF "scripts/security/write_security_verdict.py unsupported-artifact-source-event" "${ROOT}/scripts/release/security_release_signal.sh" || fail "security_release_signal.sh must call write_security_verdict.py unsupported-artifact-source-event when ARTIFACT_SOURCE_EVENT is not an allowed semantic event"
+if grep -qF "github.event.workflow_run.event == 'workflow_run'" "${WF}/security-release.yml" 2>/dev/null; then
+  fail "security-release.yml must not treat a Build and Push Images run whose GHA event is workflow_run (chain) as a release candidate (only push and workflow_dispatch)"
+fi
 # Primary SHA: never workflow_run head_sha; WORKFLOW_SHA-only fallback is allowed when RESOLVED is empty
-if grep -n "TRIGGER_WORKFLOW_RUN_SOURCE_SHA" "${WF}/security-release.yml" | grep -E 'release_source_sha=|source_sha=|CANONICAL_SOURCE' 2>/dev/null; then
-  fail "security-release.yml: must not assign candidate SHA from TRIGGER_WORKFLOW_RUN_SOURCE_SHA (misleading in workflow_run chains; use RESOLVED_SOURCE_SHA or WORKFLOW_SHA for dispatch)"
+if grep -n "TRIGGER_WORKFLOW_RUN_SOURCE_SHA" "${ROOT}/scripts/release/security_release_signal.sh" "${ROOT}/scripts/release/resolve_repo_security_evidence.sh" 2>/dev/null | grep -E 'release_source_sha=|source_sha=|CANONICAL_SOURCE' 2>/dev/null; then
+  fail "signal scripts: must not assign candidate SHA from TRIGGER_WORKFLOW_RUN_SOURCE_SHA (misleading in workflow_run chains; use RESOLVED_SOURCE_SHA or WORKFLOW_SHA for dispatch)"
 fi
+
+# --- security-release: automatic trigger must require success + push|dispatch + develop|main on workflow_run (defense against chain-only / wrong-branch builds) ---
+_sr_succ="$(grep -cF "github.event.workflow_run.conclusion == 'success'" "${WF}/security-release.yml" 2>/dev/null | tr -d ' ' || echo 0)"
+if [[ "${_sr_succ}" -lt 3 ]]; then
+  fail "security-release.yml: expected at least 3 occurrences of github.event.workflow_run.conclusion == 'success' in job if: filters (found ${_sr_succ}); release gate must require a successful Build run"
+fi
+_sr_ev="$(grep -cF "github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'" "${WF}/security-release.yml" 2>/dev/null | tr -d ' ' || echo 0)"
+if [[ "${_sr_ev}" -lt 3 ]]; then
+  fail "security-release.yml: expected at least 3 occurrences of (push || workflow_dispatch) on github.event.workflow_run.event (found ${_sr_ev}); workflow_run must not be treated as a valid Build source event for promotion"
+fi
+_sr_hb="$(grep -cF "(github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')" "${WF}/security-release.yml" 2>/dev/null | tr -d ' ' || echo 0)"
+if [[ "${_sr_hb}" -lt 3 ]]; then
+  fail "security-release.yml: expected at least 3 occurrences of head_branch develop|main guards on workflow_run (found ${_sr_hb})"
+fi
+grep -qF "github.event.workflow_run.event != 'push' && github.event.workflow_run.event != 'workflow_dispatch'" "${WF}/security-release.yml" || fail "security-release.yml must document the skip-when-build-incomplete negation (Build GHA event must be push or workflow_dispatch, not workflow_run chain-only)"
+grep -qF '[[ "${V}" == "fail" ]]' "${WF}/security-release.yml" || fail "security-release.yml Enforce step must block on verdict fail (full gate JSON with verdict=fail); missing fail branch allows pass with broken release gate"
+grep -qF "python3 scripts/security/write_security_verdict.py full" "${ROOT}/scripts/release/security_release_signal.sh" || fail "security_release_signal.sh must call write_security_verdict.py full (pass and fail outcomes both emit JSON via write_full)"
 
 # Prefer an interpreter that actually runs (skip broken Windows "python3" app-install stubs when possible).
 python_exec=""
@@ -128,71 +205,188 @@ if [[ -z "${python_exec}" ]]; then
   fail "a working python3 (or python) is required for workflow heredoc checks"
 fi
 
-# --- security-release: no unsafe `read ... < <(process subst)` under set -e; require `|| true` in the same read/procsub statement ---
-# --- security-release: want_branch (etc.) must not list BUILD_HEAD_BRANCH before RESOLVED_SOURCE_BRANCH in the same line ---
-"${python_exec}" - <<'PY' || fail "security-release.yml: static bash safety / candidate branch checks failed"
+# --- security-release: CONTRACT_VERDICT_MODES, signal-step emit before exit 0, read/mapfile + < <(, RESOLVED before BUILD_HEAD ---
+"${python_exec}" - <<'PY' || fail "security-release.yml: static bash safety / CONTRACT_VERDICT_MODES / signal emit checks failed"
+from __future__ import annotations
+
+import ast
 import re
 import sys
 from pathlib import Path
 
 lines = Path(".github/workflows/security-release.yml").read_text(encoding="utf-8", errors="replace").splitlines()
+signal_path = Path("scripts/release/security_release_signal.sh")
+if not signal_path.is_file():
+    print("verify_workflow_contracts: error: missing scripts/release/security_release_signal.sh", file=sys.stderr)
+    sys.exit(1)
+signal_lines = signal_path.read_text(encoding="utf-8", errors="replace").splitlines()
+wf_text = "\n".join(lines) + "\n" + "\n".join(signal_lines)
+
 
 def code_only(line: str) -> str:
     return line.split("#", 1)[0]
 
-# 1) read/mapfile + process substitution < <(  must be in a script block with || true (set -e safe).
-for i, line in enumerate(lines):
-    c0 = code_only(line)
-    if re.match(r"^\s*#", line):
-        continue
-    if re.match(r"^\s*actions:\s*read", c0) or re.match(r"^\s*-\s*read\s*:", c0):
-        continue
-    if not re.search(r"\b(read|mapfile)\b", c0):
-        continue
-    j_end = min(i + 35, len(lines))
-    block = [code_only(x) for x in lines[i:j_end]]
-    joined = "\n".join(block)
-    if "< <(" not in joined:
-        continue
-    if re.search(r"\|\|\s*true\b", joined):
-        continue
+
+def str_from_ast_elt(elt: ast.AST) -> str | None:
+    if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+        return elt.value
+    if isinstance(elt, ast.Str):
+        return elt.s
+    return None
+
+
+contract_modes: tuple[str, ...] | None = None
+mod = ast.parse(Path("scripts/security/write_security_verdict.py").read_text(encoding="utf-8", errors="replace"))
+for node in mod.body:
+    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == "CONTRACT_VERDICT_MODES":
+        if isinstance(node.value, ast.Tuple):
+            cm = tuple(x for elt in node.value.elts if (x := str_from_ast_elt(elt)))
+            if cm:
+                contract_modes = cm
+        break
+if not contract_modes:
     print(
-        "verify_workflow_contracts: error: security-release.yml line %d: read/mapfile with < <( and no || true "
-        "in the following 35 lines (set -e can exit when empty or pipe fails)." % (i + 1,),
+        "verify_workflow_contracts: error: scripts/security/write_security_verdict.py must define "
+        "CONTRACT_VERDICT_MODES = (\"skipped\", ...) for the workflow contract checker.",
         file=sys.stderr,
     )
-    print(joined[:1200], file=sys.stderr)
     sys.exit(1)
 
-# 2) Candidate branch: RESOLVED_SOURCE_BRANCH must be listed before any BUILD*HEAD*BRANCH on the same line
+for m in contract_modes:
+    needle = "write_security_verdict.py %s" % m
+    if needle not in wf_text:
+        print(
+            "verify_workflow_contracts: error: security-release signal path must invoke `python3 scripts/security/%s` "
+            "(every CONTRACT_VERDICT_MODES entry must have a reachable write path so security-verdict.json is never missing on skip/fail)." % needle,
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+# Signal step: every `exit 0` must follow a prior emit_verdict_outputs_and_summary (regression: trap / empty verdict).
+sig = None
+for i, line in enumerate(lines):
+    if "name: Write structured security release signal" in line:
+        sig = i
+        break
+if sig is None:
+    print("verify_workflow_contracts: error: security-release.yml missing step 'Write structured security release signal'", file=sys.stderr)
+    sys.exit(1)
+run_line = None
+run_j = None
+for j in range(sig, min(sig + 220, len(lines))):
+    m = re.match(r"^\s+run:\s*(.+)\s*$", lines[j])
+    if m:
+        run_line = m.group(1).strip()
+        run_j = j
+        break
+if run_line is None:
+    print("verify_workflow_contracts: error: security-release.yml signal step has no run: line", file=sys.stderr)
+    sys.exit(1)
+
+if re.search(r"security_release_signal\.sh", run_line):
+    body_lines = signal_lines
+    body_base = str(signal_path)
+else:
+    if not re.match(r"^\|\s*$", run_line):
+        print(
+            "verify_workflow_contracts: error: security-release signal step run must be `bash scripts/release/security_release_signal.sh` or `run: |`",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    run_j = run_j + 1
+    end = None
+    for k in range(run_j, len(lines)):
+        if lines[k].startswith("      - name:"):
+            end = k
+            break
+    if end is None:
+        print("verify_workflow_contracts: error: could not find end of signal run script (next step)", file=sys.stderr)
+        sys.exit(1)
+    body_lines = lines[run_j:end]
+    body_base = ".github/workflows/security-release.yml"
+
+for i, line in enumerate(body_lines):
+    if not re.match(r"^\s*exit 0(\s*;.*)?\s*$", line):
+        continue
+    chunk = body_lines[max(0, i - 55) : i + 1]
+    if "emit_verdict_outputs_and_summary" not in "\n".join(chunk):
+        print(
+            "verify_workflow_contracts: error: security-release signal (%s): `exit 0` at line %d "
+            "has no prior emit_verdict_outputs_and_summary in the prior 55 lines (skip/no-candidate paths must emit JSON outputs before exit)."
+            % (body_base, i + 1),
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+# read/mapfile + process substitution < <(  must be safe under set -e: || true, or set +e before / set -e after (tight window).
+_resolve = Path("scripts/release/resolve_repo_security_evidence.sh")
+if not _resolve.is_file():
+    print("verify_workflow_contracts: error: missing scripts/release/resolve_repo_security_evidence.sh", file=sys.stderr)
+    sys.exit(1)
+scan_files = (
+    (Path(".github/workflows/security-release.yml"), lines),
+    (Path("scripts/release/security_release_signal.sh"), signal_lines),
+    (_resolve, _resolve.read_text(encoding="utf-8", errors="replace").splitlines()),
+)
+for path, file_lines in scan_files:
+    for i, line in enumerate(file_lines):
+        c0 = code_only(line)
+        if re.match(r"^\s*#", line):
+            continue
+        if re.match(r"^\s*actions:\s*read", c0) or re.match(r"^\s*-\s*read\s*:", c0):
+            continue
+        if not re.search(r"\b(read|mapfile)\b", c0):
+            continue
+        j_end = min(i + 35, len(file_lines))
+        block = [code_only(x) for x in file_lines[i:j_end]]
+        joined = "\n".join(block)
+        if "< <(" not in joined:
+            continue
+        if re.search(r"\|\|\s*true\b", joined):
+            continue
+        small_before = "\n".join([code_only(x) for x in file_lines[max(0, i - 8) : i]])
+        small_after = "\n".join([code_only(x) for x in file_lines[i + 1 : min(i + 8, len(file_lines))]])
+        if "set +e" in small_before and "set -e" in small_after:
+            continue
+        print(
+            "verify_workflow_contracts: error: %s line %d: read/mapfile with < <( is not safe under set -e: "
+            "add `|| true` on the same statement, or place the line between `set +e` (within 8 lines before) and `set -e` (within 8 lines after)."
+            % (path, i + 1),
+            file=sys.stderr,
+        )
+        print(joined[:1200], file=sys.stderr)
+        sys.exit(1)
+
+# Candidate branch: RESOLVED_SOURCE_BRANCH must be listed before any BUILD*HEAD*BRANCH on the same line
 res_token = "RESOLVED_SOURCE_BRANCH"
 bad_tokens = ("BUILD_HEAD_BRANCH", "TRIGGERING_BUILD_HEAD_BRANCH")
-for n, line in enumerate(lines, 1):
-    if res_token not in line or not any(b in line for b in bad_tokens):
-        continue
-    if re.match(r"^\s*#", line):
-        continue
-    if not any(
-        k in line
-        for k in (
-            "want_branch",
-            "CANONICAL_SOURCE_BRANCH",
-            "C_BR",
-            "source_branch",
-            "release_source",
-        )
-    ):
-        continue
-    ri = line.find(res_token)
-    for bad in bad_tokens:
-        bi = line.find(bad)
-        if bi != -1 and ri != -1 and bi < ri:
-            print(
-                "verify_workflow_contracts: error: line %d: candidate resolution lists %s before %s" % (n, bad, res_token),
-                file=sys.stderr,
+for path, file_lines in scan_files:
+    for n, line in enumerate(file_lines, 1):
+        if res_token not in line or not any(b in line for b in bad_tokens):
+            continue
+        if re.match(r"^\s*#", line):
+            continue
+        if not any(
+            k in line
+            for k in (
+                "want_branch",
+                "CANONICAL_SOURCE_BRANCH",
+                "C_BR",
+                "source_branch",
+                "release_source",
             )
-            print(line.rstrip()[:200], file=sys.stderr)
-            sys.exit(1)
+        ):
+            continue
+        ri = line.find(res_token)
+        for bad in bad_tokens:
+            bi = line.find(bad)
+            if bi != -1 and ri != -1 and bi < ri:
+                print(
+                    "verify_workflow_contracts: error: %s line %d: candidate resolution lists %s before %s" % (path, n, bad, res_token),
+                    file=sys.stderr,
+                )
+                print(line.rstrip()[:200], file=sys.stderr)
+                sys.exit(1)
 PY
 
 # write_security_verdict.py smoke: always emits security-reports/security-verdict.json
@@ -230,9 +424,15 @@ printf '%s\n' "${sr_wr_block}" | grep -qE '^[[:space:]]*branches:' || fail "secu
 printf '%s\n' "${sr_wr_block}" | grep -q 'develop' && printf '%s\n' "${sr_wr_block}" | grep -q 'main' || fail "security-release.yml workflow_run.branches must list develop and main"
 grep -q 'github.event.workflow_run.id' "${WF}/security-release.yml" || fail "security-release.yml must use github.event.workflow_run.id for Build artifact run id"
 grep -qF "immutable-image-contract" "${WF}/security-release.yml" || fail "security-release.yml must require immutable-image-contract alongside other build artifacts (artifact-driven release)"
+grep -qF "sbom-reports" "${WF}/security-release.yml" || fail "security-release.yml must require sbom-reports from the Build and Push Images run (CycloneDX SBOM chain)"
+grep -qF "cosign-signing-evidence" "${WF}/security-release.yml" || fail "security-release.yml must require cosign-signing-evidence from the Build and Push Images run"
+grep -qF "image-cosign-verify" "${WF}/security-release.yml" || fail "security-release.yml must define image-cosign-verify job"
+grep -qF "SIGNING_ENFORCEMENT" "${WF}/security-release.yml" || fail "security-release.yml must wire SIGNING_ENFORCEMENT for cosign policy mode"
 grep -q 'TRIGGER_WORKFLOW_EVENT' "${WF}/security-release.yml" || fail "security-release.yml must set TRIGGER_WORKFLOW_EVENT (Build run GHA event; distinct from semantic source_event)"
 grep -q 'failure_reasons' "${WF}/security-release.yml" || fail "security-release.yml must emit failure_reasons in security-verdict"
 grep -q 'name: security-verdict' "${WF}/security-release.yml" || fail "security-release.yml must upload a security-verdict artifact (name: security-verdict)"
+grep -q 'name: release-manifest' "${WF}/security-release.yml" || fail "security-release.yml must upload a release-manifest artifact (release-reports/*)"
+grep -q 'tools/generate_release_manifest.py' "${WF}/security-release.yml" || fail "security-release.yml must invoke tools/generate_release_manifest.py for main candidates"
 grep -qE 'uses: actions/upload-artifact@|actions/upload-artifact' "${WF}/security-release.yml" || fail "security-release.yml must use actions/upload-artifact to publish the verdict"
 for key in source_build_run_id source_sha source_branch release_gate_verdict; do
   grep -q "${key}" "${WF}/security-release.yml" || fail "security-release.yml must reference security-verdict field in workflow code: ${key}"
@@ -285,7 +485,10 @@ grep -q 'source_build_run_id' "${WF}/deploy-develop.yml" || fail "deploy-develop
 grep -q 'security-verdict' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must consume the security-verdict artifact"
 grep -q 'staging deployment skipped because real staging is disabled' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml no-op path must state staging deployment skipped because real staging is disabled"
 grep -q 'github.event.workflow_run.id' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must use github.event.workflow_run.id (Security Release run) to download security-verdict"
-grep -qF 'verdict == "skipped"' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must treat verdict=skipped in security-verdict (neutral skip, no failed deploy)"
+grep -qF 'scripts/deploy/staging_smoke_evidence.sh' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must invoke scripts/deploy/staging_smoke_evidence.sh (staging post-deploy smoke evidence)"
+grep -qF 'name: staging-smoke-evidence' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must upload staging-smoke-evidence artifact"
+grep -qF 'verdict in ("skipped", "no-candidate", "fail")' "${WF}/deploy-develop.yml" "${ROOT}/scripts/release/validate_release_verdict.py" || fail "deploy-develop path must fail closed on skipped/no-candidate/fail Security Release verdicts (workflow and/or validate_release_verdict.py)"
+grep -qF 'verdict in ("skipped", "no-candidate", "fail")' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must fail closed on skipped/no-candidate/fail Security Release verdicts"
 # Do not use GitHub workflow runs list API to pick Build by yml (must use source_build_run_id from verdict).
 if grep -qE 'actions/workflows/[^"[:space:]]+\.(yml|yaml)/runs' "${WF}/deploy-develop.yml"; then
   fail "deploy-develop.yml must not list workflow runs by workflow yaml path; resolve build via security-verdict source_build_run_id"
@@ -320,7 +523,7 @@ if bad_line and (verdict_line is None or bad_line < verdict_line):
     sys.exit(1)
 PY
 
-# --- deploy-prod & deploy-production pointer: no automatic hooks (PR, push, develop branch, workflow_run) ---
+# --- deploy-prod & deploy-production pointer: no PR/push/schedule/develop; deploy-prod may use workflow_run from Security Release (main only) ---
 for prod_base in deploy-prod deploy-production; do
   prod_path="${WF}/${prod_base}.yml"
   [[ -f "${prod_path}" ]] || continue
@@ -332,22 +535,63 @@ for prod_base in deploy-prod deploy-production; do
   printf '%s\n' "${po}" | grep -qE '^[[:space:]]*pull_request[[:space:]]*:' && fail "production workflow ${prod_base}.yml must not declare on.pull_request (Deploy Production must not run from PR; use workflow_dispatch on main only)"
   printf '%s\n' "${po}" | grep -qE '^[[:space:]]*push[[:space:]]*:' && fail "production workflow ${prod_base}.yml must not declare on.push (develop merge must not start Deploy Production)"
   printf '%s\n' "${po}" | grep -qE '^[[:space:]]*schedule[[:space:]]*:' && fail "production workflow ${prod_base}.yml must not declare on.schedule"
-  if printf '%s\n' "${po}" | grep -qE '^[[:space:]]*workflow_run[[:space:]]*:'; then
-    fail "deploy-prod.yml must be workflow_dispatch-only while production auto is disabled (on.workflow_run is not allowed)"
+  if [[ "${prod_base}" == "deploy-production" ]]; then
+    if printf '%s\n' "${po}" | grep -qE '^[[:space:]]*workflow_run[[:space:]]*:'; then
+      fail "deploy-production.yml pointer must not declare on.workflow_run"
+    fi
   fi
   if printf '%s\n' "${po}" | grep -qE '^[[:space:]]*-[[:space:]]*develop[[:space:]]*$'; then
     fail "production workflow ${prod_base}.yml must not use branch develop in on: triggers (no automatic deploy from develop into production)"
   fi
 done
 
+# --- deploy-prod: automatic path listens to Security Release completed on main (plus workflow_dispatch) ---
+dp_on_block="$(on_until_concurrency "${WF}/deploy-prod.yml")"
+printf '%s\n' "${dp_on_block}" | grep -qE '^[[:space:]]*workflow_run:' || fail "deploy-prod.yml must declare on.workflow_run (Security Release → production gate)"
+printf '%s\n' "${dp_on_block}" | grep -q 'Security Release' || fail "deploy-prod.yml workflow_run must list Security Release"
+printf '%s\n' "${dp_on_block}" | grep -q 'completed' || fail "deploy-prod.yml workflow_run must use types completed"
+printf '%s\n' "${dp_on_block}" | grep -q 'main' || fail "deploy-prod.yml workflow_run.branches must include main"
+if printf '%s\n' "${dp_on_block}" | grep -E '^[[:space:]]*-[[:space:]]*develop[[:space:]]*$'; then
+  fail "deploy-prod.yml workflow_run.branches must not list develop (production is main only)"
+fi
+"${python_exec}" - <<'PY' || fail "deploy-prod.yml workflow_run.workflows must list only Security Release"
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(".github/workflows/deploy-prod.yml")
+text = path.read_text(encoding="utf-8")
+m = re.search(
+    r"(?ms)^[ \t]+workflow_run:\s*\n(?P<body>(?:^[ \t]+[^\n]+\n)+?)\s*^[ \t]+workflow_dispatch:",
+    text,
+)
+if not m:
+    print("verify_workflow_contracts: could not parse deploy-prod workflow_run block before workflow_dispatch", file=sys.stderr)
+    sys.exit(1)
+body = m.group("body")
+wm = re.search(
+    r"(?ms)^[ \t]+workflows:\s*\n(?P<items>(?:^[ \t]+-[^\n]+\n)+)",
+    body,
+)
+if not wm:
+    print("verify_workflow_contracts: could not find workflow_run.workflows in deploy-prod", file=sys.stderr)
+    sys.exit(1)
+for line in wm.group("items").splitlines():
+    item = re.sub(r"^[ \t]+-\s*", "", line).strip().strip('"').strip("'")
+    if not item:
+        continue
+    if item != "Security Release":
+        print(f"verify_workflow_contracts: deploy-prod disallowed workflow_run listener {item!r}", file=sys.stderr)
+        sys.exit(1)
+PY
+grep -q "github.event.workflow_run.id" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must use github.event.workflow_run.id for Security Release security-verdict download"
+grep -qF '.github/workflows/security-release.yml' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must verify Security Release workflow path (security-release.yml), not repo Security"
+grep -qF "non-pass Security Release verdict" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must fail closed when Security Release verdict is not pass"
+
 if grep -E '^[[:space:]]*-[[:space:]]+Security[[:space:]]*$' "${WF}/deploy-prod.yml" >/dev/null 2>&1; then
   fail "deploy-prod.yml must not list a workflow_run trigger named only 'Security' (use Security Release)."
 fi
 grep -q 'Security Release' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must reference Security Release for production evidence"
-dp_on_legacy="$(deploy_prod_on_block)"
-if echo "${dp_on_legacy}" | grep -qE '^[[:space:]]*workflow_run:'; then
-  fail "deploy-prod.yml must be workflow_dispatch-only while production auto is disabled (on.workflow_run in legacy on block)"
-fi
 grep -q 'workflow_dispatch:' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must be triggered with workflow_dispatch"
 grep -qE 'source_branch must be main|artifact_source_branch must be main for production' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must validate security-verdict source_branch is main"
 grep -q 'DEPLOY_PRODUCTION' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must require DEPLOY_PRODUCTION for manual deploy confirmation"
@@ -359,6 +603,10 @@ grep -q "github.ref == 'refs/heads/main'" "${WF}/deploy-prod.yml" || fail "deplo
 for key in source_build_run_id source_sha source_branch app_image_ref goose_image_ref release_gate_verdict; do
   grep -q "${key}" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must reference field ${key} in workflow (security/artifact contract)"
 done
+grep -q 'name: release-manifest-post-deploy' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must upload release-manifest-post-deploy after rollout"
+grep -q 'append-deploy' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must append deployment outcome to the release manifest (append-deploy)"
+grep -q 'tools/generate_release_manifest.py' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must invoke tools/generate_release_manifest.py"
+grep -q 'release-manifest' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must download or reference the Security Release release-manifest artifact"
 
 # --- Deployable image refs: digest-pinned in deploy paths ---
 for f in deploy-prod.yml deploy-develop.yml _reusable-deploy.yml; do
@@ -369,13 +617,19 @@ done
 grep -q "head_branch == 'develop'" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml should gate on develop (head_branch)"
 grep -q "branches:" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml should declare workflow_run branches"
 grep -A6 'workflow_run:' "${WF}/deploy-develop.yml" | grep -q 'develop' || fail "deploy-develop.yml workflow_run should filter develop"
-grep -qE 'source_branch must be develop|staging candidate source_branch must be develop' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must validate security-verdict source_branch is develop"
-grep -q 'automatic staging requires source_event push' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must require security-verdict source_event push for automatic staging"
-grep -qF "No releasable staging candidate. Staging deployment skipped." "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must neutral-skip (no deploy) when Security Release verdict is skipped / non-candidate"
+grep -qE 'source_branch must be develop|staging candidate source_branch must be develop' "${WF}/deploy-develop.yml" "${ROOT}/scripts/release/validate_release_verdict.py" || fail "deploy-develop path must validate security-verdict source_branch is develop (workflow and/or validate_release_verdict.py)"
+grep -qE 'automatic staging requires source_event push' "${WF}/deploy-develop.yml" "${ROOT}/scripts/release/validate_release_verdict.py" || fail "deploy-develop path must require security-verdict source_event push for automatic staging (workflow and/or validate_release_verdict.py)"
+grep -qF '.github/workflows/security-release.yml' "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must verify Security Release workflow path (security-release.yml), not repo Security"
+grep -qF "non-pass Security Release verdict" "${WF}/deploy-develop.yml" "${ROOT}/scripts/release/validate_release_verdict.py" || fail "deploy-develop path must fail closed when Security Release verdict is not pass (workflow and/or validate_release_verdict.py)"
 grep -qF "outputs.staging_verdict" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must expose staging_verdict to gate image resolution and deploy on verdict=pass only"
+grep -qF "scripts/release/validate_release_verdict.py" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must invoke scripts/release/validate_release_verdict.py (staging candidate + gate)"
+grep -qF "scripts/release/validate_release_verdict.py" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must invoke scripts/release/validate_release_verdict.py (production security verdict match)"
+grep -qF "scripts/release/derive_rollout_outcomes.py" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must invoke scripts/release/derive_rollout_outcomes.py for rollout summary inputs"
+grep -qF "scripts/release/write_deployment_manifest.py" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must invoke scripts/release/write_deployment_manifest.py for deployment evidence manifests"
 grep -q 'verify_workflow_contracts.sh' .github/workflows/ci.yml || fail "ci.yml must run scripts/ci/verify_workflow_contracts.sh"
 
 # --- build-push: must chain only from CI by name, push, develop/main (downstream security-verdict expects Build and Push run id) ---
+awk '/^on:/{p=1;next} /^[[:space:]]*jobs:/{exit} p' "${WF}/build-push.yml" | grep -qE '^[[:space:]]*push[[:space:]]*:' && fail "build-push.yml must not declare on.push (images only after CI workflow_run on develop/main or workflow_dispatch)"
 grep -qE "github.event.workflow_run.name == 'CI'|github.event.workflow_run.name == \"CI\"" "${WF}/build-push.yml" || fail "build-push.yml must gate on workflow_run.name == 'CI'"
 
 # --- Reusable deploy exposes artifact_source_event ---
@@ -406,6 +660,11 @@ fi
 if grep -q 'build-push.yml/runs' "${WF}/deploy-prod.yml"; then
   fail "deploy-prod.yml must not query build-push.yml/runs for automatic candidate resolution (use security-verdict)."
 fi
+if grep -q 'actions/workflows/security.yml/runs' "${WF}/deploy-develop.yml" "${WF}/deploy-prod.yml" 2>/dev/null; then
+  fail "deploy-develop.yml / deploy-prod.yml must not call actions/workflows/security.yml/runs to resolve release verdicts (Security Release security-verdict only)"
+fi
+grep -qF "github.event.workflow_run.name == 'Security Release'" "${WF}/deploy-develop.yml" || fail "deploy-develop.yml must gate on Security Release (display name), not repo Security"
+grep -qF "source_branch must be main for production" "${ROOT}/scripts/release/validate_release_verdict.py" || fail "validate_release_verdict production-match must enforce security-verdict source_branch main for production"
 
 # --- Anti-regression: dangerous jq that only allows push on build resolver (without workflow_run) in deploy workflows ---
 # Allow lines that include workflow_run in the same select expression.
@@ -485,7 +744,15 @@ if bad:
   )
   for b in bad:
     print(f"  {b}", file=sys.stderr)
-  sys.exit(1)
+    sys.exit(1)
 PY
+
+"${python_exec}" "${ROOT}/tools/verify_github_workflow_cicd_contract.py" || fail "tools/verify_github_workflow_cicd_contract.py failed (release graph + GITHUB_TOKEN permissions contract)"
+
+# Optional: GitHub branch protection + environments (REST API). Off by default; requires token + GITHUB_REPOSITORY.
+if [[ "${VERIFY_GITHUB_GOVERNANCE:-}" == "true" || "${VERIFY_GITHUB_GOVERNANCE:-}" == "1" ]]; then
+  chmod +x scripts/ci/verify_github_governance.sh
+  bash scripts/ci/verify_github_governance.sh
+fi
 
 echo "Workflow contract checks passed."

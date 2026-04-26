@@ -17,7 +17,10 @@ def main() -> None:
     p = Path("security-reports/security-verdict.json")
     vdata: dict
     if p.is_file():
-        vdata = json.loads(p.read_text(encoding="utf-8"))
+        try:
+            vdata = json.loads(p.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            vdata = {}
     else:
         vdata = {}
     v = vdata
@@ -54,10 +57,14 @@ def main() -> None:
     ]
     text = "\n".join(out) + "\n"
     ghs = os.environ.get("GITHUB_STEP_SUMMARY", "")
-    if ghs:
-        Path(ghs).open("a", encoding="utf-8").write(text)
-    else:
-        sys.stdout.write(text)
+    try:
+        if ghs:
+            Path(ghs).open("a", encoding="utf-8").write(text)
+        else:
+            sys.stdout.write(text)
+    except OSError as e:
+        print("emit_release_signal_debug_table: %s" % e, file=sys.stderr)
+        sys.exit(0)
 
 
 if __name__ == "__main__":

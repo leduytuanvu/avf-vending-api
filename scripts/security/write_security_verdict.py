@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,38 @@ from pathlib import Path
 REPORTS = Path("security-reports")
 VERDICT_PATH = REPORTS / "security-verdict.json"
 PRIVATE_REPO_PROVENANCE_FALLBACK = "accepted-private-repo-no-github-attestations"
+
+# Every mode here must be invocable from security-release (signal step) and listed by verify_workflow_contracts.sh;
+# keep argparse `choices` in main() in sync. "full" covers pass and fail (JSON verdict from write_full()).
+CONTRACT_VERDICT_MODES: tuple[str, ...] = (
+    "skipped",
+    "no-candidate",
+    "unsupported-trigger",
+    "ineligible-branch",
+    "unsupported-artifact-source-event",
+    "metadata-mismatch",
+    "full",
+    "emergency",
+)
+
+# security-verdict.json must always include these top-level fields (empty string allowed where N/A).
+CONTRACT_ROOT_STRING_KEYS: tuple[str, ...] = (
+    "verdict",
+    "release_gate_verdict",
+    "release_gate_mode",
+    "repo_security_verdict",
+    "repo_release_verdict",
+    "published_image_verdict",
+    "provenance_release_verdict",
+    "source_sha",
+    "source_branch",
+    "source_build_run_id",
+    "source_workflow_name",
+    "app_image_ref",
+    "goose_image_ref",
+    "security_workflow_run_id",
+    "generated_at_utc",
+)
 
 
 def _utc_now() -> str:
@@ -23,20 +56,111 @@ def _s(key: str, default: str = "") -> str:
     return os.environ.get(key, default)
 
 
+def _ensure_contract_baseline(p: dict) -> None:
+    """Ensure security-verdict.json always exposes the enterprise contract fields (machine-readable)."""
+    wrid = str(p.get("workflow_run_id") or p.get("security_workflow_run_id") or _s("WORKFLOW_RUN_ID", "") or "")
+    p.setdefault("schema_version", "v1")
+    p.setdefault("verdict", "")
+    if "security_verdict" not in p or p.get("security_verdict") in (None, ""):
+        p["security_verdict"] = p.get("verdict") or ""
+    p.setdefault("release_gate_verdict", "")
+    p.setdefault("release_gate_mode", "")
+    p.setdefault("repo_security_verdict", "")
+    p.setdefault("repo_release_verdict", "")
+    p.setdefault("published_image_verdict", "")
+    p.setdefault("provenance_release_verdict", "")
+    p.setdefault("source_sha", "")
+    p.setdefault("source_branch", "")
+    p.setdefault("source_build_run_id", "")
+    p.setdefault("source_workflow_name", "")
+    p.setdefault("workflow_run_id", p.get("workflow_run_id") or wrid)
+    p.setdefault("security_workflow_run_id", p.get("security_workflow_run_id") or wrid)
+    p.setdefault("generated_at_utc", p.get("generated_at_utc") or _utc_now())
+    fr = p.get("failure_reasons")
+    p["failure_reasons"] = list(fr) if isinstance(fr, list) else []
+    jr = p.get("job_results")
+    p["job_results"] = dict(jr) if isinstance(jr, dict) else {}
+    w = p.get("warnings")
+    p["warnings"] = list(w) if isinstance(w, list) else []
+    if "scanner_summary" not in p or not isinstance(p.get("scanner_summary"), dict):
+        p["scanner_summary"] = {}
+    if "image_level_checks" not in p or not isinstance(p.get("image_level_checks"), dict):
+        p["image_level_checks"] = {
+            "required_for_release_verdict": p.get("published_image_verdict") or "not_applicable",
+            "checks": {},
+        }
+    if "provenance_release_checks" not in p or not isinstance(p.get("provenance_release_checks"), dict):
+        p["provenance_release_checks"] = {
+            "required_for_release_verdict": p.get("provenance_release_verdict") or "not_applicable",
+            "published_image_provenance_verdict": "",
+            "evidence_source": "not_applicable",
+        }
+    if "repo_level_checks" not in p or not isinstance(p.get("repo_level_checks"), dict):
+        p["repo_level_checks"] = {
+            "current_event_verdict": p.get("repo_security_verdict") or "not_applicable",
+            "release_evidence": {
+                "evidence_source": "",
+                "source_event_name": "",
+                "matched_workflow_run_id": "",
+                "matched_workflow_conclusion": "",
+                "required_for_release_verdict": p.get("repo_release_verdict") or "not_applicable",
+                "summary": "",
+            },
+            "checks": {},
+        }
+    if "release_gate" not in p or not isinstance(p.get("release_gate"), dict):
+        p["release_gate"] = {
+            "mode": p.get("release_gate_mode") or "not-applicable",
+            "verdict": p.get("release_gate_verdict") or "",
+            "generated_at_utc": p.get("generated_at_utc") or _utc_now(),
+            "trust_model": "not-applicable",
+            "summary": "",
+        }
+    if "published_images" not in p or not isinstance(p.get("published_images"), dict):
+        p["published_images"] = {
+            "app_image_ref": "",
+            "app_digest": "",
+            "goose_image_ref": "",
+            "goose_digest": "",
+            "provenance_verdict": "",
+            "provenance_verdict_source": "not_applicable",
+        }
+    for k in CONTRACT_ROOT_STRING_KEYS:
+        p.setdefault(k, "")
+    pubm = p.get("published_images")
+    if not isinstance(pubm, dict):
+        pubm = {}
+    a_top = str(p.get("app_image_ref", "") or "").strip()
+    g_top = str(p.get("goose_image_ref", "") or "").strip()
+    a_pub = str(pubm.get("app_image_ref", "") or "").strip() if isinstance(pubm, dict) else ""
+    g_pub = str(pubm.get("goose_image_ref", "") or "").strip() if isinstance(pubm, dict) else ""
+    p["app_image_ref"] = a_top or a_pub
+    p["goose_image_ref"] = g_top or g_pub
+
+
 def _write(payload: dict) -> None:
     REPORTS.mkdir(parents=True, exist_ok=True)
     p = dict(payload)
-    # Ensure required top-level machine-readable contract fields exist.
-    p.setdefault("warnings", p.get("warnings") if isinstance(p.get("warnings"), list) else [])
-    p.setdefault("failure_reasons", p.get("failure_reasons") or [])
-    p.setdefault("generated_at_utc", p.get("generated_at_utc") or _utc_now())
-    p.setdefault("security_workflow_run_id", p.get("security_workflow_run_id") or p.get("workflow_run_id", ""))
-    if "verdict" in p and "security_verdict" not in p:
+    if "verdict" in p and ("security_verdict" not in p or not p.get("security_verdict")):
         p["security_verdict"] = p["verdict"]
+    _ensure_contract_baseline(p)
     VERDICT_PATH.write_text(json.dumps(p, indent=2) + "\n", encoding="utf-8")
 
 
-def write_emergency(reason: str) -> None:
+def write_emergency(reason: str, *, force: bool = False) -> None:
+    """Write emergency fail verdict. When force is False, do not replace an existing valid contract verdict."""
+    if (
+        not force
+        and VERDICT_PATH.is_file()
+        and VERDICT_PATH.stat().st_size > 0
+    ):
+        try:
+            existing = json.loads(VERDICT_PATH.read_text(encoding="utf-8"))
+            v = (existing.get("verdict") or "").strip().lower()
+            if v in ("pass", "fail", "skipped", "no-candidate"):
+                return
+        except (json.JSONDecodeError, OSError, ValueError):
+            pass
     gen = _s("GENERATED_AT_UTC") or _utc_now()
     wrid = _s("GITHUB_RUN_ID", "")
     reason_final = reason or (
@@ -52,9 +176,11 @@ def write_emergency(reason: str) -> None:
         "repo_release_verdict": "unavailable",
         "published_image_verdict": "fail",
         "provenance_release_verdict": "unavailable",
+        "app_image_ref": "",
+        "goose_image_ref": "",
         "source_build_run_id": _s("BUILD_RUN_ID", ""),
-        "source_sha": _s("RESOLVED_SOURCE_SHA", ""),
-        "source_branch": _s("RESOLVED_SOURCE_BRANCH", ""),
+        "source_sha": (_s("CANONICAL_SOURCE_SHA") or _s("RESOLVED_SOURCE_SHA", "")),
+        "source_branch": (_s("CANONICAL_SOURCE_BRANCH") or _s("RESOLVED_SOURCE_BRANCH", "")),
         "source_event": "",
         "trigger_workflow_event": _s("GITHUB_EVENT_NAME", ""),
         "source_workflow_name": "Build and Push Images",
@@ -86,7 +212,14 @@ def write_emergency(reason: str) -> None:
                 "summary": "emergency",
             },
         },
-        "published_images": {"app_image_ref": "", "goose_image_ref": ""},
+        "published_images": {
+            "app_image_ref": "",
+            "app_digest": "",
+            "goose_image_ref": "",
+            "goose_digest": "",
+            "provenance_verdict": "",
+            "provenance_verdict_source": "not_applicable",
+        },
     }
     _write(p)
 
@@ -259,7 +392,8 @@ def write_unsupported_artifact_source_event_skipped() -> None:
     wn = _s("WORKFLOW_NAME", "Security Release")
     a_ev = (_s("ARTIFACT_SOURCE_EVENT") or "").strip()
     reasons = [
-        "promotion-manifest source_event is %r (expected one of: push, workflow_dispatch, workflow_run, or manual for dispatch builds)."
+        "promotion-manifest source_event is %r (release promotion allows only: push, workflow_dispatch, or manual mapped to dispatch; "
+        "semantic source_event must not be workflow_run / chain-only)."
         % (a_ev,)
     ]
     _write(
@@ -299,6 +433,79 @@ def write_unsupported_artifact_source_event_skipped() -> None:
     )
 
 
+def write_metadata_mismatch_skipped() -> None:
+    """Triggering Build API metadata disagrees with promotion-manifest / same-run contract (no full gate, not emergency)."""
+    gen = _s("GENERATED_AT_UTC") or _utc_now()
+    ev = _s("EVENT_NAME", "")
+    wrid = _s("WORKFLOW_RUN_ID", "")
+    wn = _s("WORKFLOW_NAME", "Security Release")
+    primary = (_s("METADATA_CONFLICT_REASON") or "").strip() or (
+        "Triggering **Build and Push Images** run metadata does not match promotion-manifest / expected same-run contract."
+    )
+    reasons: list[str] = [primary]
+    extra = (_s("METADATA_CONFLICT_EXTRA") or "").strip()
+    if extra:
+        reasons.append(extra)
+    mv: dict = {
+        "triggering_build_run_id": _s("TRIGGERING_BUILD_ID", ""),
+        "triggering_build_event": _s("TRIGGERING_BUILD_EVENT", ""),
+        "triggering_build_head_branch": _s("TRIGGERING_BUILD_HEAD_BRANCH", ""),
+        "triggering_build_head_sha": _s("TRIGGERING_BUILD_HEAD_SHA", ""),
+        "triggering_workflow_name": _s("TRIGGERING_BUILD_WF_NAME", ""),
+        "triggering_workflow_conclusion": _s("TRIGGERING_BUILD_CONCLUSION", ""),
+        "artifact_source_event": _s("ARTIFACT_SOURCE_EVENT", ""),
+        "resolved_source_branch": _s("RESOLVED_SOURCE_BRANCH", ""),
+        "resolved_source_sha": _s("RESOLVED_SOURCE_SHA", ""),
+        "build_run_id_from_artifacts": _s("BUILD_RUN_ID", ""),
+        "decision": "skipped",
+    }
+    jr = {
+        "resolve_build_run": "success",
+        "resolve_image_refs": "success",
+        "image_vulnerability_scan": "success",
+    }
+    te = _s("TRIGGERING_BUILD_EVENT", "")
+    _write(
+        {
+            "schema_version": "v1",
+            "verdict": "skipped",
+            "security_verdict": "skipped",
+            "canonical_security_artifact": "security-verdict",
+            "nightly_security_verdict": "not_applicable",
+            "event_name": ev,
+            "workflow_name": wn,
+            "workflow_run_id": wrid,
+            "security_workflow_run_id": wrid,
+            "generated_at_utc": gen,
+            "source_build_run_id": _s("BUILD_RUN_ID", ""),
+            "source_sha": (_s("RESOLVED_SOURCE_SHA") or "").strip(),
+            "source_branch": (_s("RESOLVED_SOURCE_BRANCH") or "").strip(),
+            "source_event": (_s("ARTIFACT_SOURCE_EVENT") or "").strip(),
+            "trigger_workflow_event": te,
+            "source_workflow_name": "Build and Push Images",
+            "metadata_validation": mv,
+            "release_gate_verdict": "skipped",
+            "release_gate_mode": "skipped-artifact-trigger-mismatch",
+            "repo_security_verdict": "skipped",
+            "repo_release_verdict": "skipped",
+            "published_image_verdict": "skipped",
+            "provenance_release_verdict": "skipped",
+            "failure_reasons": list(reasons),
+            "skipped_reasons": list(reasons),
+            "warnings": [],
+            "decision_reasons": list(reasons),
+            "job_results": jr,
+            "release_gate": {
+                "mode": "skipped-artifact-trigger-mismatch",
+                "verdict": "skipped",
+                "generated_at_utc": gen,
+                "trust_model": "not-applicable",
+                "summary": "Defensive check: default-branch / workflow_run trigger context does not match promotion-manifest for this Build run id.",
+            },
+        }
+    )
+
+
 def write_unsupported_trigger_skipped() -> None:
     """Skipped: triggering Build event is not an allowed build trigger type for release gating."""
     gen = _s("GENERATED_AT_UTC") or _utc_now()
@@ -309,11 +516,17 @@ def write_unsupported_trigger_skipped() -> None:
     bid = _s("TRIGGERING_BUILD_ID", "")
     b_sha = _s("TRIGGERING_BUILD_HEAD_SHA", "")
     hb = _s("TRIGGERING_BUILD_HEAD_BRANCH", "")
-    reason = (
-        "Non-release candidate: triggering Build and Push Images workflow event is %r (expected one of: "
-        "workflow_run, push, workflow_dispatch for this repository's build chain). Full Security Release gate was not evaluated."
-        % te
-    )
+    if (te or "").strip() == "workflow_run":
+        reason = (
+            "Non-release candidate: the triggering **Build and Push Images** run was started by a `workflow_run` (upstream CI chain), not by a direct "
+            "`push` to `develop`/`main` or an allowed `workflow_dispatch`. Indirect/chain-only builds are not valid release candidates."
+        )
+    else:
+        reason = (
+            "Non-release candidate: triggering **Build and Push Images** GHA `event` is %r (release promotion only allows `push` or `workflow_dispatch` "
+            "on `develop`/`main`). Full Security Release gate was not evaluated."
+            % (te or "",)
+        )
     reasons = [reason]
     jr = {
         "skip_job": "success",
@@ -390,6 +603,9 @@ def write_no_candidate() -> None:
     wrid = _s("WORKFLOW_RUN_ID", "")
     wn = _s("WORKFLOW_NAME", "Security Release")
     reasons: list[str] = []
+    acn = (_s("ARTIFACT_CONSISTENCY_NOTE") or "").strip()
+    if acn:
+        reasons.append(acn)
     if ev == "workflow_run":
         tconc = (_s("TRIGGERING_BUILD_CONCLUSION") or "").strip()
         tname = (_s("TRIGGERING_BUILD_WF_NAME") or "").strip()
@@ -403,13 +619,13 @@ def write_no_candidate() -> None:
             reasons.append("Triggering workflow name was %r (expected Build and Push Images)." % tname)
         if thb and thb not in ("develop", "main"):
             reasons.append("Triggering head_branch was %r (expected develop or main for release gating)." % thb)
-    rbr = (_s("RESOLVE_BUILD_RUN_RESULT") or "").strip()
+    rb_res = (_s("RESOLVE_BUILD_RUN_RESULT") or "").strip()
     rir = (_s("RESOLVE_IMAGE_REFS_RESULT") or "").strip()
     ris = (_s("IMAGE_SCAN_RESULT") or "").strip()
-    if rbr != "success":
+    if rb_res != "success":
         reasons.append(
             "resolve-build-run-id did not succeed (result=%r); required build artifacts (image-metadata, promotion-manifest, immutable-image-contract) were not available for the release chain."
-            % rbr
+            % rb_res
         )
     if rir != "success":
         reasons.append(
@@ -420,15 +636,18 @@ def write_no_candidate() -> None:
         reasons.append("Triggering Build and Push Images run did not produce a releasable candidate")
     tw_ev = (_s("TRIGGERING_BUILD_EVENT") or "workflow_run").strip() or "workflow_run"
     jr = {
-        "resolve_build_run": rbr,
+        "resolve_build_run": rb_res,
         "resolve_image_refs": rir,
         "image_vulnerability_scan": ris,
     }
-    release_summary = "No releasable candidate. Security release gate skipped."
+    release_summary = "No releasable candidate. Security release gate did not run a full image/repo gate."
+    rsha = (_s("RESOLVED_SOURCE_SHA") or _s("CANONICAL_SOURCE_SHA") or "").strip()
+    src_branch = (_s("RESOLVED_SOURCE_BRANCH") or _s("CANONICAL_SOURCE_BRANCH") or "").strip()
+    brid = (_s("BUILD_RUN_ID") or "").strip()
     payload = {
         "schema_version": "v1",
-        "verdict": "skipped",
-        "security_verdict": "skipped",
+        "verdict": "no-candidate",
+        "security_verdict": "no-candidate",
         "canonical_security_artifact": "security-verdict",
         "nightly_security_verdict": "not_applicable",
         "event_name": ev,
@@ -436,14 +655,14 @@ def write_no_candidate() -> None:
         "workflow_run_id": wrid,
         "security_workflow_run_id": wrid,
         "generated_at_utc": gen,
-        "source_build_run_id": "",
-        "source_sha": "",
-        "source_branch": "",
+        "source_build_run_id": brid,
+        "source_sha": rsha,
+        "source_branch": src_branch,
         "source_event": "",
         "trigger_workflow_event": tw_ev,
         "source_workflow_name": "Build and Push Images",
-        "release_gate_verdict": "skipped",
-        "release_gate_mode": "skipped_no_release_candidate",
+        "release_gate_verdict": "no-candidate",
+        "release_gate_mode": "no-release-candidate",
         "repo_security_verdict": "skipped",
         "repo_release_verdict": "skipped",
         "published_image_verdict": "skipped",
@@ -472,9 +691,20 @@ def write_no_candidate() -> None:
             },
             "checks": {},
         },
+        "image_level_checks": {
+            "required_for_release_verdict": "skipped",
+            "signing_enforcement": (_s("SIGNING_ENFORCEMENT", "warn") or "warn").strip().lower(),
+            "checks": {},
+        },
+        "provenance_release_checks": {
+            "required_for_release_verdict": "skipped",
+            "published_image_provenance_verdict": "",
+            "evidence_source": "not_applicable",
+        },
+        "scanner_summary": {},
         "release_gate": {
-            "mode": "skipped_no_release_candidate",
-            "verdict": "skipped",
+            "mode": "no-release-candidate",
+            "verdict": "no-candidate",
             "generated_at_utc": gen,
             "trust_model": "not-applicable",
             "summary": release_summary,
@@ -495,6 +725,10 @@ def _trivy_norm(env_key: str) -> str:
     if r in ("", "skipped"):
         return "skipped"
     return "not_applicable"
+
+
+def _cosign_norm(env_key: str) -> str:
+    return _trivy_norm(env_key)
 
 
 def _verdict_for(results: dict, job_names: list[str]) -> str:
@@ -520,7 +754,13 @@ def _digest_from_ref(ref: str) -> str:
     return ""
 
 
-def _add_coordinate_mismatch(event_name: str, failure_reasons: list[str]) -> None:
+def _is_digest_pinned_image_ref(ref: str) -> bool:
+    r = (ref or "").strip()
+    return bool(r) and re.search(r"@sha256:[0-9a-f]{64}$", r) is not None
+
+
+def _add_coordinate_drift_warnings(event_name: str, warnings: list[str]) -> None:
+    """Triggering Build API coordinates may differ from promotion-manifest; resolved artifact fields win for matching."""
     if event_name != "workflow_run":
         return
     art_sha = (_s("RESOLVED_SOURCE_SHA") or "").strip()
@@ -528,13 +768,15 @@ def _add_coordinate_mismatch(event_name: str, failure_reasons: list[str]) -> Non
     tr_sha = (_s("TRIGGER_WORKFLOW_RUN_SOURCE_SHA") or "").strip()
     tr_br = (_s("BUILD_HEAD_BRANCH") or "").strip()
     if art_sha and tr_sha and art_sha != tr_sha:
-        failure_reasons.append(
-            "source-coordinate-mismatch: build artifact source_sha %r disagrees with triggering Build and Push Images workflow_run head_sha %r."
+        warnings.append(
+            "source-coordinate-drift (diagnostic): artifact RESOLVED_SOURCE_SHA %r differs from triggering Build workflow_run head_sha %r; "
+            "release matching uses RESOLVED_SOURCE_SHA."
             % (art_sha, tr_sha)
         )
     if art_br and tr_br and art_br != tr_br:
-        failure_reasons.append(
-            "source-coordinate-mismatch: build artifact source_branch %r disagrees with triggering Build and Push Images workflow_run head_branch %r."
+        warnings.append(
+            "source-coordinate-drift (diagnostic): artifact RESOLVED_SOURCE_BRANCH %r differs from triggering Build workflow_run head_branch %r; "
+            "release matching uses RESOLVED_SOURCE_BRANCH."
             % (art_br, tr_br)
         )
 
@@ -543,6 +785,18 @@ def write_full() -> None:
     """Full release gate verdict from environment (set by the workflow)."""
     generated_at_utc = _s("GENERATED_AT_UTC") or _utc_now()
     event_name = _s("EVENT_NAME", "")
+
+    signing_mode = (_s("SIGNING_ENFORCEMENT", "warn") or "warn").strip().lower()
+    if signing_mode not in ("warn", "enforce"):
+        signing_mode = "warn"
+    provenance_mode = (_s("PROVENANCE_ENFORCEMENT", "warn") or "warn").strip().lower()
+    if provenance_mode not in ("warn", "enforce"):
+        provenance_mode = "warn"
+    allow_priv_fb = (_s("ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK", "true") or "true").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     results = {
         "dependency_review": _s("DEPENDENCY_REVIEW_RESULT") or "not_applicable",
@@ -554,23 +808,36 @@ def write_full() -> None:
         "image_vulnerability_scan": _s("IMAGE_SCAN_RESULT") or "not_applicable",
         "trivy_image_app": _trivy_norm("TRIVY_APP_RESULT"),
         "trivy_image_goose": _trivy_norm("TRIVY_GOOSE_RESULT"),
+        "cosign_image_app": _cosign_norm("COSIGN_APP_RESULT"),
+        "cosign_image_goose": _cosign_norm("COSIGN_GOOSE_RESULT"),
         "govulncheck_nightly": _s("GOVULNCHECK_NIGHTLY_RESULT") or "not_applicable",
         "dependency_snapshot": _s("DEPENDENCY_SNAPSHOT_RESULT") or "not_applicable",
     }
 
+    caj = (_s("IMAGE_COSIGN_VERIFY_JOB_RESULT", "") or "").strip().lower()
+    if signing_mode == "enforce":
+        if caj == "failure":
+            if results.get("cosign_image_app") == "skipped":
+                results["cosign_image_app"] = "failure"
+            if results.get("cosign_image_goose") == "skipped":
+                results["cosign_image_goose"] = "failure"
+        elif results.get("resolve_image_refs") == "success" and caj in ("skipped", ""):
+            results["cosign_image_app"] = "failure"
+            results["cosign_image_goose"] = "failure"
+
     repo_security_verdict = _verdict_for(
         results, ["dependency_review", "govulncheck_pr", "secret_scan", "config_scan"]
     )
-    published_image_verdict = _verdict_for(
-        results,
-        [
-            "resolve_build_run",
-            "resolve_image_refs",
-            "image_vulnerability_scan",
-            "trivy_image_app",
-            "trivy_image_goose",
-        ],
-    )
+    image_gate_keys = [
+        "resolve_build_run",
+        "resolve_image_refs",
+        "image_vulnerability_scan",
+        "trivy_image_app",
+        "trivy_image_goose",
+    ]
+    if signing_mode == "enforce":
+        image_gate_keys.extend(["cosign_image_app", "cosign_image_goose"])
+    published_image_verdict = _verdict_for(results, image_gate_keys)
     nightly_security_verdict = _verdict_for(
         results, ["govulncheck_nightly", "dependency_snapshot"]
     )
@@ -584,9 +851,11 @@ def write_full() -> None:
         source_sha = can_sha
     elif artifact_sha:
         source_sha = artifact_sha
-    else:
-        # Do not use triggering workflow_run head_sha; dispatch-only / checkout fallback.
+    elif event_name == "workflow_dispatch":
+        # Do not use WORKFLOW_SHA for automatic `workflow_run` (must be promotion-manifest / RESOLVED or canonical from signal).
         source_sha = wf_sha
+    else:
+        source_sha = ""
 
     resolved_source_branch = (_s("RESOLVED_SOURCE_BRANCH") or "").strip()
     build_head_branch = (_s("BUILD_HEAD_BRANCH") or "").strip()  # diagnostic only (source_coordinates)
@@ -628,12 +897,35 @@ def write_full() -> None:
     if wnote:
         warnings.append(wnote)
 
-    if not artifact_sha and not can_sha and event_name == "workflow_run":
+    if signing_mode == "warn":
+        if results.get("cosign_image_app") == "failure":
+            warnings.append(
+                "Cosign: app image signature verification failed (SIGNING_ENFORCEMENT=warn; not blocking the release gate)."
+            )
+        if results.get("cosign_image_goose") == "failure":
+            warnings.append(
+                "Cosign: goose image signature verification failed (SIGNING_ENFORCEMENT=warn; not blocking the release gate)."
+            )
+    if (
+        provenance_mode == "warn"
+        and provenance_input == PRIVATE_REPO_PROVENANCE_FALLBACK
+        and allow_priv_fb
+        and event_name in ("workflow_run", "workflow_dispatch")
+    ):
         warnings.append(
-            "source_sha fallback: RESOLVED source_sha from build artifacts was empty; verdict uses this Security run checkout (WORKFLOW_SHA) only. Prefer build artifacts (promotion-manifest) to publish source_sha."
+            "Provenance is **not fully enforced** on GitHub Artifact Attestations: `accepted-private-repo-no-github-attestations` is recorded because "
+            "`ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK=true` and `PROVENANCE_ENFORCEMENT=warn`. "
+            "Digest-pinned images, Trivy, and Cosign (per `SIGNING_ENFORCEMENT`) still apply. "
+            "When the repo can run `gh attestation verify`, set `PROVENANCE_ENFORCEMENT=enforce` and `ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK=false`."
         )
 
-    _add_coordinate_mismatch(event_name, failure_reasons)
+    if not artifact_sha and not can_sha and event_name == "workflow_dispatch" and wf_sha:
+        warnings.append(
+            "source_sha: using Security Release job checkout (WORKFLOW_SHA) because RESOLVED was empty; prefer promotion-manifest from Build. "
+            "Automatic `workflow_run` after Build does not use WORKFLOW_SHA for source_sha (fails closed if artifacts are missing)."
+        )
+
+    _add_coordinate_drift_warnings(event_name, warnings)
 
     repo_release_checks = {
         "dependency_review": {
@@ -675,11 +967,21 @@ def write_full() -> None:
             if event_name != "workflow_dispatch":
                 release_gate_trust_model = "fully-verified-workflow-run-evidence"
         elif provenance_input == PRIVATE_REPO_PROVENANCE_FALLBACK:
-            provenance_release_verdict = PRIVATE_REPO_PROVENANCE_FALLBACK
-            if event_name == "workflow_dispatch":
-                release_gate_trust_model = "manual-security-private-repo-no-github-artifact-attestations"
+            if provenance_mode == "enforce":
+                provenance_release_verdict = "fail"
+                release_gate_trust_model = "private-repo-provenance-fallback-rejected-provenance-enforce"
+            elif not allow_priv_fb:
+                provenance_release_verdict = "fail"
+                release_gate_trust_model = "private-repo-fallback-not-allowed"
             else:
-                release_gate_trust_model = "private-repo-no-github-artifact-attestations"
+                provenance_release_verdict = PRIVATE_REPO_PROVENANCE_FALLBACK
+                if event_name == "workflow_dispatch":
+                    release_gate_trust_model = "manual-security-private-repo-no-github-artifact-attestations"
+                else:
+                    release_gate_trust_model = "private-repo-no-github-artifact-attestations"
+        elif provenance_input == "attestation-verify-failed":
+            provenance_release_verdict = "fail"
+            release_gate_trust_model = "gh-attestation-verify-failed-warn-mode"
         elif provenance_input:
             provenance_release_verdict = "fail"
             release_gate_trust_model = "provenance-verification-failed"
@@ -710,13 +1012,40 @@ def write_full() -> None:
         ]
         security_verdict = "pass" if (not applicable or all(v == "pass" for v in applicable)) else "fail"
 
+    sbom_from_pm: dict | None = None
+    _pmp = (_s("PROMOTION_MANIFEST_FOR_SBOM") or "").strip()
+    if _pmp:
+        try:
+            _pmt = json.loads(Path(_pmp).read_text(encoding="utf-8"))
+            _sbt = _pmt.get("sbom")
+            if isinstance(_sbt, dict) and _sbt:
+                sbom_from_pm = _sbt
+        except (OSError, json.JSONDecodeError):
+            pass
+    release_candidate_error = ""
+    release_candidate_doc: dict | None = None
+    _rcp = (_s("RELEASE_CANDIDATE_JSON") or "").strip()
+    if _rcp:
+        try:
+            _rct = json.loads(Path(_rcp).read_text(encoding="utf-8"))
+            if isinstance(_rct, dict):
+                if not _rct:
+                    release_candidate_error = "release-candidate.json must be a non-empty object"
+                else:
+                    release_candidate_doc = _rct
+            else:
+                release_candidate_error = "release-candidate.json root must be a JSON object"
+        except OSError as e:
+            release_candidate_error = "could not read release-candidate.json: %s" % e
+        except json.JSONDecodeError as e:
+            release_candidate_error = "invalid JSON in release-candidate.json: %s" % e
+    sbom_policy = (_s("SBOM_POLICY") or "warn").strip().lower()
+    if sbom_policy not in ("warn", "enforce"):
+        sbom_policy = "warn"
+
     if event_name in ("workflow_run", "workflow_dispatch") and not source_event:
         release_gate_verdict = "fail"
         security_verdict = "fail"
-    if any("source-coordinate-mismatch" in (r or "") for r in failure_reasons):
-        release_gate_verdict = "fail"
-        security_verdict = "fail"
-
     def add_failure_reason(message: str) -> None:
         if message and message not in failure_reasons:
             failure_reasons.append(message)
@@ -771,17 +1100,84 @@ def write_full() -> None:
                 add_failure_reason(
                     "Published image scan (**Trivy**): **goose** image did not pass policy (see `trivy-image-reports` / `trivy-image-goose.txt`)."
                 )
+            if signing_mode == "enforce" and (
+                results.get("cosign_image_app") == "failure" or results.get("cosign_image_goose") == "failure"
+            ):
+                add_failure_reason(
+                    "Published image **Cosign** verification failed (SIGNING_ENFORCEMENT=enforce): "
+                    "app and/or goose digest image is not signed or does not match GitHub Actions OIDC policy for this repository."
+                )
         if provenance_release_verdict not in ("pass", PRIVATE_REPO_PROVENANCE_FALLBACK):
             if provenance_release_verdict == "fail":
-                add_failure_reason(
-                    "Provenance: GitHub artifact attestation verification **failed** for a published image (not the private-repo fallback)."
-                )
+                if provenance_input == "attestation-verify-failed":
+                    add_failure_reason(
+                        "Provenance: `gh attestation verify` **failed** for a digest-pinned image (published_images provenance verdict `attestation-verify-failed`). "
+                        "Fix attestations or image refs; under `PROVENANCE_ENFORCEMENT=enforce` the reusable-deploy job fails closed instead of recording this verdict."
+                    )
+                else:
+                    add_failure_reason(
+                        "Provenance: GitHub artifact attestation verification **failed** or policy rejected the provenance state (not an accepted private-repo fallback)."
+                    )
             elif provenance_release_verdict == "unavailable" or not provenance_input:
                 add_failure_reason(
-                    "Provenance: verification result is **unavailable** or empty (expected `verified` or the private-repository attestation fallback)."
+                    "Provenance: verification result is **unavailable** or empty (expected `verified`, or private-repo fallback only when ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK=true and PROVENANCE_ENFORCEMENT=warn)."
                 )
             else:
                 add_failure_reason("Provenance: release gate rejected provenance state (%r)." % provenance_release_verdict)
+    if event_name in ("workflow_run", "workflow_dispatch") and results.get("resolve_image_refs") == "success":
+        if not _is_digest_pinned_image_ref(app_image_ref):
+            add_failure_reason(
+                "Published app image ref must be digest-pinned (…@sha256:…); mutable image tags are not accepted for the Security Release gate."
+            )
+        if not _is_digest_pinned_image_ref(goose_image_ref):
+            add_failure_reason(
+                "Published goose image ref must be digest-pinned (…@sha256:…); mutable image tags are not accepted for the Security Release gate."
+            )
+        if _rcp and release_candidate_error:
+            add_failure_reason("Build %s" % release_candidate_error)
+        elif not _rcp:
+            add_failure_reason(
+                "Build **release-candidate** artifact: path not set (expected `RELEASE_CANDIDATE_JSON` from downloaded Build run artifact `release-candidate`)."
+            )
+        elif release_candidate_doc:
+            rcb = str(
+                release_candidate_doc.get("build_run_id")
+                or release_candidate_doc.get("workflow_run_id")
+                or ""
+            ).strip()
+            if rcb and (source_build_run_id or "").strip() and rcb != str(source_build_run_id).strip():
+                add_failure_reason(
+                    "Build release-candidate.json `build_run_id` / `workflow_run_id` %r does not match resolved Build run id %r."
+                    % (rcb, source_build_run_id)
+                )
+            ra = (release_candidate_doc.get("app_image_ref") or "").strip() if isinstance(release_candidate_doc.get("app_image_ref"), str) else ""
+            rg = (release_candidate_doc.get("goose_image_ref") or "").strip() if isinstance(release_candidate_doc.get("goose_image_ref"), str) else ""
+            if ra and (app_image_ref or "").strip() and ra != (app_image_ref or "").strip():
+                add_failure_reason(
+                    "Build **release-candidate.json** `app_image_ref` does not match the Security Release resolved app digest ref; scans and verdict must use the same Build evidence."
+                )
+            if rg and (goose_image_ref or "").strip() and rg != (goose_image_ref or "").strip():
+                add_failure_reason(
+                    "Build **release-candidate.json** `goose_image_ref` does not match the Security Release resolved goose digest ref; scans and verdict must use the same Build evidence."
+                )
+            for _label, rref, field in (
+                ("app", release_candidate_doc.get("app_image_ref"), "app_image_ref"),
+                ("goose", release_candidate_doc.get("goose_image_ref"), "goose_image_ref"),
+            ):
+                sref = (rref or "") if isinstance(rref, str) else ""
+                if sref and not _is_digest_pinned_image_ref(sref):
+                    add_failure_reason(
+                        "Build **release-candidate.json** field %r must be a digest-pinned ref (mutable tags are not accepted)."
+                        % (field,)
+                    )
+        if sbom_policy == "enforce" and not sbom_from_pm:
+            add_failure_reason(
+                "Supply chain: CycloneDX **sbom** metadata is missing from the Build **promotion-manifest** (expected when `sbom-reports` is produced; SBOM_POLICY=enforce)."
+            )
+        if sbom_policy == "warn" and not sbom_from_pm:
+            warnings.append(
+                "Supply chain: **sbom** block missing from the downloaded **promotion-manifest** (SBOM_POLICY=warn; set repository variable `SBOM_POLICY=enforce` to fail closed if SBOM is required)."
+            )
     if security_verdict != "pass" and not failure_reasons:
         add_failure_reason("Release gate failed; inspect `job_results` and component verdict fields for the failing upstream job.")
     rr = (_s("RELEASE_RESOLUTION_ERROR") or "").strip()
@@ -797,30 +1193,42 @@ def write_full() -> None:
             add_failure_reason(
                 "Build artifacts missing or not resolved: required **image-metadata**, **promotion-manifest**, and **immutable-image-contract** (digest-pinned app/goose refs) from the Build and Push Images run id; see resolve-image-refs and _reusable-deploy."
             )
-    if (security_verdict or "") not in ("pass", "fail", "skipped"):
+    if (security_verdict or "") not in ("pass", "fail", "skipped", "no-candidate"):
         add_failure_reason(
-            "Internal normalization: security_verdict was %r (expected pass, fail, or skipped; coercing to fail)" % (security_verdict,)
+            "Internal normalization: security_verdict was %r (expected pass, fail, skipped, or no-candidate; coercing to fail)"
+            % (security_verdict,)
         )
         security_verdict = "fail"
         if (release_gate_verdict or "") == "pass":
             release_gate_verdict = "fail"
 
+    if failure_reasons and event_name in ("workflow_run", "workflow_dispatch"):
+        security_verdict = "fail"
+        release_gate_verdict = "fail"
+
     decision_reasons = list(failure_reasons)
     _consistency = wnote
+    _priv_fb_summary = (
+        "workflow_run release gating accepted digest-pinned published images with ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK=true "
+        "(GitHub gh attestation verify is not used on private repos; Cosign + Trivy + digest contract still apply; not full SLSA attestation enforcement)"
+        if provenance_input == PRIVATE_REPO_PROVENANCE_FALLBACK and event_name == "workflow_run"
+        else (
+            "workflow_dispatch release gating accepted digest-pinned published images with private-repo provenance fallback where applicable"
+            if provenance_input == PRIVATE_REPO_PROVENANCE_FALLBACK and event_name == "workflow_dispatch"
+            else None
+        )
+    )
     prov_summary_chain = (
-        "workflow_run release gating requires repo-level push security evidence plus published-image and provenance checks"
+        "workflow_run release gating requires repo-level push security evidence plus published-image and provenance checks "
+        "(PROVENANCE_ENFORCEMENT=%s, SIGNING_ENFORCEMENT=%s)" % (provenance_mode, signing_mode)
         if provenance_input != PRIVATE_REPO_PROVENANCE_FALLBACK and event_name == "workflow_run"
         else (
-            "workflow_run release gating accepted digest-pinned published images without GitHub Artifact Attestations because this private repository cannot use that GitHub feature"
-            if provenance_input == PRIVATE_REPO_PROVENANCE_FALLBACK and event_name == "workflow_run"
+            _priv_fb_summary
+            if _priv_fb_summary
             else (
                 "workflow_dispatch release gating uses the current manual security run plus resolved published-image evidence for the selected build"
                 if provenance_input != PRIVATE_REPO_PROVENANCE_FALLBACK and event_name == "workflow_dispatch"
-                else (
-                    "workflow_dispatch release gating accepted digest-pinned published images without GitHub Artifact Attestations because this private repository cannot use that GitHub feature"
-                    if provenance_input == PRIVATE_REPO_PROVENANCE_FALLBACK and event_name == "workflow_dispatch"
-                    else "release gating is not evaluated for this event type"
-                )
+                else "release gating is not evaluated for this event type"
             )
         )
     )
@@ -855,6 +1263,9 @@ def write_full() -> None:
                 "workflow-scoped security verdict for the current event",
                 "published image vulnerability scan status included in this run when applicable",
                 "published image provenance verdict imported from immutable image resolution when applicable",
+                "CycloneDX SBOM pointers from promotion-manifest when PROMOTION_MANIFEST_FOR_SBOM is available",
+                "Build **release-candidate** identity and digest-pinned app/goose refs when **RELEASE_CANDIDATE_JSON** is available (Security Release does not accept mutable tags)",
+                "Cosign keyless signatures for digest-pinned images when SIGNING_ENFORCEMENT applies",
                 "matched push security evidence for repo-level release checks when event_name=workflow_run",
                 "current workflow repo-level security evidence when event_name=workflow_dispatch",
             ],
@@ -867,6 +1278,7 @@ def write_full() -> None:
             ],
         },
         "release_policy": {
+            "supply_chain_sbom_policy": sbom_policy,
             "repo_level_required_for_release": [
                 "govulncheck_repo",
                 "secret_scan",
@@ -883,6 +1295,7 @@ def write_full() -> None:
                 "resolve_build_run",
                 "resolve_image_refs",
                 "trivy_images",
+                "cosign_images_when_enforced",
             ],
             "provenance_required_for_release": [
                 "published_image_provenance",
@@ -902,19 +1315,25 @@ def write_full() -> None:
         },
         "image_level_checks": {
             "required_for_release_verdict": image_required_for_release_verdict,
+            "signing_enforcement": signing_mode,
             "checks": {
                 "resolve_build_run": _normalize_result(results["resolve_build_run"]),
                 "resolve_image_refs": _normalize_result(results["resolve_image_refs"]),
                 "trivy_images": _normalize_result(results["image_vulnerability_scan"]),
                 "trivy_image_app": _normalize_result(results.get("trivy_image_app", "skipped")),
                 "trivy_image_goose": _normalize_result(results.get("trivy_image_goose", "skipped")),
+                "cosign_image_app": _normalize_result(results.get("cosign_image_app", "skipped")),
+                "cosign_image_goose": _normalize_result(results.get("cosign_image_goose", "skipped")),
             },
         },
         "provenance_release_checks": {
             "required_for_release_verdict": provenance_release_verdict,
             "published_image_provenance_verdict": provenance_input,
+            "provenance_enforcement": provenance_mode,
+            "allow_private_repo_provenance_fallback": "true" if allow_priv_fb else "false",
+            "signing_enforcement": signing_mode,
             "evidence_source": (
-                "resolve-image-refs workflow output (private repo fallback: GitHub Artifact Attestations unavailable)"
+                "resolve-image-refs workflow output (private repo fallback: GitHub Artifact Attestations unavailable; explicit ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK)"
                 if provenance_input == PRIVATE_REPO_PROVENANCE_FALLBACK
                 else ("resolve-image-refs workflow output" if provenance_input else "not_applicable")
             ),
@@ -939,6 +1358,8 @@ def write_full() -> None:
             "trivy_images": _normalize_result(results["image_vulnerability_scan"]),
             "trivy_image_app": _normalize_result(results.get("trivy_image_app", "skipped")),
             "trivy_image_goose": _normalize_result(results.get("trivy_image_goose", "skipped")),
+            "cosign_image_app": _normalize_result(results.get("cosign_image_app", "skipped")),
+            "cosign_image_goose": _normalize_result(results.get("cosign_image_goose", "skipped")),
             "govulncheck_nightly": _normalize_result(results["govulncheck_nightly"]),
         },
         "published_images": {
@@ -953,15 +1374,61 @@ def write_full() -> None:
                 else "resolve-image-refs workflow output"
             ),
         },
+        "build_release_evidence": {
+            "consumed_artifact": "release-candidate",
+            "local_path": _rcp,
+            "sbom_policy": sbom_policy,
+            "source_sha": (release_candidate_doc or {}).get("source_sha", "") if release_candidate_doc else "",
+            "source_branch": (release_candidate_doc or {}).get("source_branch", "") if release_candidate_doc else "",
+            "build_workflow_run_id": (
+                (str((release_candidate_doc or {}).get("workflow_run_id", "") or "").strip() or str((release_candidate_doc or {}).get("build_run_id", "") or "").strip())
+                if release_candidate_doc
+                else ""
+            ),
+            "repo": (release_candidate_doc or {}).get("repo", "") if release_candidate_doc else "",
+            "app_image_ref": (release_candidate_doc or {}).get("app_image_ref", "") if release_candidate_doc else "",
+            "goose_image_ref": (release_candidate_doc or {}).get("goose_image_ref", "") if release_candidate_doc else "",
+            "generated_at_utc": (release_candidate_doc or {}).get("generated_at_utc", "") if release_candidate_doc else "",
+        },
         "job_results": results,
         "failure_reasons": failure_reasons,
         "decision_reasons": decision_reasons,
+    }
+    _ca = results.get("cosign_image_app", "skipped")
+    _cg = results.get("cosign_image_goose", "skipped")
+    _app_sl = "pass" if _ca == "success" else ("fail" if _ca == "failure" else "skipped")
+    _goose_sl = "pass" if _cg == "success" else ("fail" if _cg == "failure" else "skipped")
+    if _app_sl == "pass" and _goose_sl == "pass":
+        _overall_sl = "pass"
+    elif _app_sl == "fail" or _goose_sl == "fail":
+        _overall_sl = "fail"
+    else:
+        _overall_sl = "skipped"
+    payload["image_signing"] = {
+        "enforcement": signing_mode,
+        "app": _app_sl,
+        "goose": _goose_sl,
+        "overall": _overall_sl,
+        "oidc_issuer": "https://token.actions.githubusercontent.com",
     }
     if _consistency:
         payload["artifact_consistency"] = {
             "note": _consistency,
             "source": "build-run-immutable-image-contract-compare",
         }
+
+    if sbom_from_pm:
+        payload["sbom"] = sbom_from_pm
+    else:
+        sbom_prom_path = (_s("PROMOTION_MANIFEST_FOR_SBOM") or "").strip()
+        if sbom_prom_path:
+            try:
+                pm_data = json.loads(Path(sbom_prom_path).read_text(encoding="utf-8"))
+                _sb = pm_data.get("sbom")
+                if isinstance(_sb, dict) and _sb:
+                    payload["sbom"] = _sb
+            except (OSError, json.JSONDecodeError):
+                pass
 
     # Observed coordinates for debugging (never silent mixing)
     if event_name == "workflow_run":
@@ -976,6 +1443,17 @@ def write_full() -> None:
             "trigger_workflow_head_branch": build_head_branch,
             "trigger_workflow_event": (_s("TRIGGERING_BUILD_EVENT") or "").strip(),
         }
+        payload["metadata_validation"] = {
+            "triggering_build_run_id": _s("TRIGGERING_BUILD_ID", ""),
+            "triggering_build_event": (_s("TRIGGERING_BUILD_EVENT") or "").strip(),
+            "triggering_build_head_branch": build_head_branch,
+            "triggering_build_head_sha": tr_sha,
+            "artifact_source_event": (_s("ARTIFACT_SOURCE_EVENT") or "").strip(),
+            "resolved_source_branch": resolved_source_branch,
+            "resolved_source_sha": artifact_sha,
+            "build_run_id_from_artifacts": source_build_run_id,
+            "decision": security_verdict,
+        }
 
     _write(payload)
 
@@ -984,18 +1462,15 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         "mode",
-        choices=(
-            "skipped",
-            "no-candidate",
-            "unsupported-trigger",
-            "ineligible-branch",
-            "unsupported-artifact-source-event",
-            "full",
-            "emergency",
-        ),
+        choices=CONTRACT_VERDICT_MODES,
         help="Verdict document to write",
     )
     ap.add_argument("--emergency-reason", default="", help="Only for mode=emergency")
+    ap.add_argument(
+        "--emergency-force",
+        action="store_true",
+        help="Only for mode=emergency: overwrite an existing pass/fail/skipped/no-candidate verdict (default: preserve)",
+    )
     args = ap.parse_args()
     exit_code = 0
     try:
@@ -1009,34 +1484,38 @@ def main() -> None:
             write_ineligible_branch_skipped()
         elif args.mode == "unsupported-artifact-source-event":
             write_unsupported_artifact_source_event_skipped()
+        elif args.mode == "metadata-mismatch":
+            write_metadata_mismatch_skipped()
         elif args.mode == "full":
             write_full()
         else:
-            write_emergency(args.emergency_reason)
+            write_emergency(args.emergency_reason, force=args.emergency_force)
     except Exception as e:  # noqa: BLE001 — last-resort so CI always gets a machine-readable file
         try:
-            write_emergency("Unexpected exception in write_security_verdict mode=%r: %s" % (args.mode, e))
+            write_emergency("Unexpected exception in write_security_verdict mode=%r: %s" % (args.mode, e), force=False)
         except Exception as e2:  # noqa: BLE001
-            REPORTS.mkdir(parents=True, exist_ok=True)
-            p = {
-                "schema_version": "v1",
-                "verdict": "fail",
-                "security_verdict": "fail",
-                "failure_reasons": [
-                    "Internal: write_emergency after exception failed: %r; original: %r" % (e2, e)
-                ],
-                "generated_at_utc": _utc_now(),
-            }
-            VERDICT_PATH.write_text(json.dumps(p, indent=2) + "\n", encoding="utf-8")
+            _write(
+                {
+                    "verdict": "fail",
+                    "security_verdict": "fail",
+                    "release_gate_mode": "emergency-fail",
+                    "release_gate_verdict": "fail",
+                    "failure_reasons": [
+                        "Internal: write_emergency after exception failed: %r; original: %r" % (e2, e)
+                    ],
+                }
+            )
         exit_code = 1
     if not VERDICT_PATH.is_file():
         try:
-            write_emergency("Internal: verdict writer completed without creating the output file")
+            write_emergency("Internal: verdict writer completed without creating the output file", force=False)
         except Exception:  # noqa: BLE001
-            REPORTS.mkdir(parents=True, exist_ok=True)
-            VERDICT_PATH.write_text(
-                '{"schema_version":"v1","verdict":"fail","security_verdict":"fail"}\n',
-                encoding="utf-8",
+            _write(
+                {
+                    "verdict": "fail",
+                    "security_verdict": "fail",
+                    "failure_reasons": ["Internal: could not write emergency verdict; minimal fail payload"],
+                }
             )
         exit_code = max(exit_code, 2)
     # Validate JSON
@@ -1044,12 +1523,14 @@ def main() -> None:
         json.loads(VERDICT_PATH.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         try:
-            write_emergency("Internal: written verdict was not valid JSON: %s" % e)
+            write_emergency("Internal: written verdict was not valid JSON: %s" % e, force=False)
         except Exception:  # noqa: BLE001
-            REPORTS.mkdir(parents=True, exist_ok=True)
-            VERDICT_PATH.write_text(
-                '{"schema_version":"v1","verdict":"fail","security_verdict":"fail"}\n',
-                encoding="utf-8",
+            _write(
+                {
+                    "verdict": "fail",
+                    "security_verdict": "fail",
+                    "failure_reasons": ["Internal: invalid JSON after write; minimal fail payload"],
+                }
             )
         exit_code = max(exit_code, 3)
     if exit_code:

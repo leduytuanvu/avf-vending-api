@@ -1,5 +1,9 @@
 # Release gate after "Build and Push Images" (image scan, security-verdict). Display name must stay
-# "Security Release" — distinct from repo-level "Security" (security.yml). Downstream staging listens here.
+# "Security Release" — distinct from repo-level "Security" (security.yml). Action pins: see
+# docs/runbooks/supply-chain-security.md#github-actions-version-pins (ENFORCE_ACTION_SHA_PINNING in contract verifier). Downstream **Deploy** workflows trigger
+# only on **this** workflow (not on repo Security). Source SHA / branch / image refs for the release gate must come
+# from **Build** artifacts (promotion-manifest + image-metadata via _reusable-deploy), not from `github.sha` of this run.
+# Post-release CVE discovery: nightly-security.yml (no deploy).
 name: Security Release
 
 env:
@@ -25,7 +29,7 @@ on:
           - develop
           - main
       build_workflow_run_id:
-        description: "Optional exact Build and Push Images workflow run id; leave empty to use the latest success on the target branch"
+        description: "Recommended: exact Build and Push Images run id (deterministic). If empty, latest success on the target branch (less deterministic when builds race)."
         type: string
         required: false
         default: ""
@@ -35,7 +39,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  actions: read
+  actions: write
   attestations: read
   contents: read
   packages: read
@@ -49,7 +53,7 @@ jobs:
         github.event.workflow_run.conclusion != 'success' ||
         github.event.workflow_run.name != 'Build and Push Images' ||
         (github.event.workflow_run.head_branch != 'develop' && github.event.workflow_run.head_branch != 'main') ||
-        (github.event.workflow_run.event != 'push' && github.event.workflow_run.event != 'workflow_run' && github.event.workflow_run.event != 'workflow_dispatch')
+        (github.event.workflow_run.event != 'push' && github.event.workflow_run.event != 'workflow_dispatch')
       )
     runs-on: ubuntu-latest
     steps:
@@ -57,9 +61,10 @@ jobs:
         run: |
           {
             echo "## Security Release (non-release candidate — will emit skipped verdict)"
-            echo "- The triggering **Build and Push Images** run is **not** a develop/main **success** release candidate, so the full image scan + release gate does not run here."
-            echo "- conclusion: \`${{ github.event.workflow_run.conclusion }}\` (required: \`success\` for gating) or name/branch ineligible (see \`on.workflow_run\` in this file)."
-            echo "- Downstream \`Security Release — outcome\` step uploads a \`security-verdict\` with \`verdict: skipped\` and **never** an empty \`verdict\` field."
+            echo "- Chain: \`CI → Security → Build → *Security Release* → Deploy\` (this run stops early; not deployable)."
+            echo "- The triggering **Build and Push Images** run is **not** a direct **push**/**workflow_dispatch** success on \`develop\`/\`main\`, so the full image scan + release gate does not run here (indirect \`workflow_run\`-triggered builds are excluded)."
+            echo "- conclusion: \`${{ github.event.workflow_run.conclusion }}\` (required: \`success\`); GHA \`event\` must be \`push\` or \`workflow_dispatch\` (not a chain-only \`workflow_run\`); \`head_branch\` must be \`develop\` or \`main\`."
+            echo "- Downstream \`Security Release — outcome\` step uploads a \`security-verdict\` with \`verdict: skipped\` or \`no-candidate\` when ineligible — **never** an empty \`verdict\` field."
           } >> "$GITHUB_STEP_SUMMARY"
 
   resolve-build-run-id:
@@ -70,7 +75,7 @@ jobs:
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.name == 'Build and Push Images' &&
         (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main') &&
-        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_run' || github.event.workflow_run.event == 'workflow_dispatch'))
+        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
     outputs:
       workflow_run_id: ${{ steps.lookup.outputs.workflow_run_id }}
@@ -85,6 +90,21 @@ jobs:
           TARGET_BRANCH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target_branch || '' }}
         run: |
           set -Eeuo pipefail
+
+          {
+            echo "## Enterprise release chain — **Security Release** (this job)"
+            echo ""
+            echo "\`\`\`"
+            echo "…  →  Build and Push Images  →  *this run*  →  Deploy (Staging|Production) if verdict=pass [+ env approval on prod]"
+            echo "\`\`\`"
+            echo ""
+            if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
+              echo "- **Build run id (deterministic)**: \`${{ github.event.workflow_run.id }}\` — the completed **Build and Push Images** run that triggered this Security Release. Artifacts are read from that run only (no latest-\`head_sha\` race for the automatic path)."
+            else
+              echo "- **Manual dispatch**: set \`build_workflow_run_id\` to the **Build and Push Images** run id to verify, or the workflow resolves the latest success on the target branch (less deterministic if builds race)."
+            fi
+            echo "- **promotion-manifest** and **image-metadata** from that Build run are the source of truth for commit SHA, branch, and digest-pinned image refs (see \`_reusable-deploy\` resolution)."
+          } >> "${GITHUB_STEP_SUMMARY}"
 
           if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
             # Triggering run is the Build and Push Images workflow; use its id for artifacts.
@@ -130,18 +150,18 @@ jobs:
         run: |
           set -Eeuo pipefail
           [[ -n "${RUN_ID}" ]]
-          need=(image-metadata promotion-manifest immutable-image-contract)
+          need=(image-metadata promotion-manifest immutable-image-contract sbom-reports cosign-signing-evidence release-candidate)
           for a in "${need[@]}"; do
             if ! gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
               --jq ".artifacts[]? | select(.name==\"${a}\") | .id" | grep -q .; then
-              echo "error: Build and Push Images run ${RUN_ID} is missing required artifact \"${a}\" (release candidate chain requires image-metadata, promotion-manifest, and immutable-image-contract from github.event.workflow_run.id)" >&2
+              echo "error: Build and Push Images run ${RUN_ID} is missing required artifact \"${a}\" (release candidate chain requires image-metadata, promotion-manifest, immutable-image-contract, sbom-reports, cosign-signing-evidence, and release-candidate from github.event.workflow_run.id)" >&2
               exit 1
             fi
           done
           {
             echo "## Build artifact preflight"
             echo "- run id: \`${RUN_ID}\` (github.event.workflow_run.id for automatic runs)"
-            echo "- found: \`image-metadata\`, \`promotion-manifest\`, \`immutable-image-contract\`"
+            echo "- found: \`image-metadata\`, \`promotion-manifest\`, \`immutable-image-contract\`, \`sbom-reports\`, \`cosign-signing-evidence\`, \`release-candidate\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
   resolve-image-refs:
@@ -152,12 +172,14 @@ jobs:
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.name == 'Build and Push Images' &&
         (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main') &&
-        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_run' || github.event.workflow_run.event == 'workflow_dispatch'))
+        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
     needs: resolve-build-run-id
     uses: ./.github/workflows/_reusable-deploy.yml
     with:
       resolution_mode: workflow_run
       workflow_run_id: ${{ needs.resolve-build-run-id.outputs.workflow_run_id }}
+      provenance_enforcement: ${{ vars.PROVENANCE_ENFORCEMENT || 'warn' }}
+      allow_private_repo_provenance_fallback: ${{ vars.ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK || 'true' }}
     secrets:
       gh_api_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -169,7 +191,7 @@ jobs:
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.name == 'Build and Push Images' &&
         (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main') &&
-        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_run' || github.event.workflow_run.event == 'workflow_dispatch'))
+        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: resolve-image-refs
@@ -200,6 +222,8 @@ jobs:
             echo "- Go vulnerability scan: fail on govulncheck findings in reachable code"
             echo "- config scan: fail on \`HIGH\` and \`CRITICAL\` misconfigurations"
             echo "- image scan: fail on \`HIGH\` and \`CRITICAL\` vulnerabilities with \`ignore-unfixed=true\`"
+            echo "- cosign verify: \`certificate-oidc-issuer\` = GitHub Actions (\`token.actions.githubusercontent.com\`); identity must match this repo; \`SIGNING_ENFORCEMENT\` repo variable: \`warn\` (default) or \`enforce\`"
+            echo "- provenance: \`PROVENANCE_ENFORCEMENT\` (\`warn\` | \`enforce\`) and \`ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK\` (\`true\` | \`false\`) — see \`docs/runbooks/supply-chain-security.md\`"
             echo "- app image: \`${APP_IMAGE_REF}\`"
             echo "- goose image: \`${GOOSE_IMAGE_REF}\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -343,6 +367,108 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  image-cosign-verify:
+    name: Published Image Cosign Verification
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.name == 'Build and Push Images' &&
+        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main') &&
+        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
+    runs-on: ubuntu-latest
+    needs: resolve-image-refs
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      cosign_app_result: ${{ steps.cosign_verify.outputs.cosign_app_result }}
+      cosign_goose_result: ${{ steps.cosign_verify.outputs.cosign_goose_result }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Verify image signatures (GitHub OIDC policy)
+        id: cosign_verify
+        shell: bash
+        env:
+          SIGNING_ENFORCEMENT: ${{ vars.SIGNING_ENFORCEMENT || 'warn' }}
+          APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          mode="$(echo "${SIGNING_ENFORCEMENT:-warn}" | tr '[:upper:]' '[:lower:]')"
+          if [[ "${mode}" != "warn" && "${mode}" != "enforce" ]]; then
+            mode="warn"
+          fi
+          issuer='^https://token.actions.githubusercontent.com$'
+          identity="^https://github.com/${GITHUB_REPOSITORY}/"
+          {
+            echo "## Cosign signature verification"
+            echo "- \`SIGNING_ENFORCEMENT\` (repo variable): \`${mode}\`"
+            echo "- \`certificate-oidc-issuer-regexp\`: \`${issuer}\`"
+            echo "- \`certificate-identity-regexp\`: \`${identity}\`"
+            echo "- app: \`${APP_IMAGE_REF}\`"
+            echo "- goose: \`${GOOSE_IMAGE_REF}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          rc_a=1
+          rc_g=1
+          set +e
+          cosign verify \
+            --certificate-identity-regexp "${identity}" \
+            --certificate-oidc-issuer-regexp "${issuer}" \
+            "${APP_IMAGE_REF}" 2>&1 | tee security-reports/cosign-verify-app.log
+          rc_a="${PIPESTATUS[0]}"
+          cosign verify \
+            --certificate-identity-regexp "${identity}" \
+            --certificate-oidc-issuer-regexp "${issuer}" \
+            "${GOOSE_IMAGE_REF}" 2>&1 | tee security-reports/cosign-verify-goose.log
+          rc_g="${PIPESTATUS[0]}"
+          set -e
+          ca="failure"
+          cg="failure"
+          [[ "${rc_a}" -eq 0 ]] && ca="success"
+          [[ "${rc_g}" -eq 0 ]] && cg="success"
+          {
+            echo "cosign_app_result=${ca}"
+            echo "cosign_goose_result=${cg}"
+          } >> "${GITHUB_OUTPUT}"
+          if [[ "${ca}" != "success" && "${mode}" == "warn" ]]; then
+            echo "::warning::Cosign verify failed for app image (rc=${rc_a}); SIGNING_ENFORCEMENT=warn — not failing the workflow."
+          fi
+          if [[ "${cg}" != "success" && "${mode}" == "warn" ]]; then
+            echo "::warning::Cosign verify failed for goose image (rc=${rc_g}); SIGNING_ENFORCEMENT=warn — not failing the workflow."
+          fi
+          if [[ "${mode}" == "enforce" ]]; then
+            if [[ "${ca}" != "success" || "${cg}" != "success" ]]; then
+              echo "error: SIGNING_ENFORCEMENT=enforce and cosign verify failed (app=${ca} rc=${rc_a}, goose=${cg} rc=${rc_g})" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Upload Cosign verify logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cosign-verify-logs
+          path: |
+            security-reports/cosign-verify-app.log
+            security-reports/cosign-verify-goose.log
+          if-no-files-found: warn
+          retention-days: 14
+
   security-release-signal:
     name: Security Release Signal
     if: always()
@@ -352,10 +478,13 @@ jobs:
       - resolve-build-run-id
       - resolve-image-refs
       - image-vulnerability-scan
+      - image-cosign-verify
     outputs:
       security_verdict: ${{ steps.signal.outputs.security_verdict }}
+      SECURITY_VERDICT: ${{ steps.signal.outputs.SECURITY_VERDICT }}
       source_build_run_id: ${{ steps.signal.outputs.source_build_run_id }}
       source_sha: ${{ steps.signal.outputs.source_sha }}
+      source_branch: ${{ steps.signal.outputs.source_branch }}
       source_workflow_name: ${{ steps.signal.outputs.source_workflow_name }}
       security_workflow_run_id: ${{ steps.signal.outputs.security_workflow_run_id }}
       release_gate_verdict: ${{ steps.signal.outputs.release_gate_verdict }}
@@ -364,10 +493,14 @@ jobs:
       repo_release_verdict: ${{ steps.signal.outputs.repo_release_verdict }}
       published_image_verdict: ${{ steps.signal.outputs.published_image_verdict }}
       provenance_release_verdict: ${{ steps.signal.outputs.provenance_release_verdict }}
+      app_image_ref: ${{ steps.signal.outputs.app_image_ref }}
+      goose_image_ref: ${{ steps.signal.outputs.goose_image_ref }}
+      generated_at_utc: ${{ steps.signal.outputs.generated_at_utc }}
     steps:
       - name: Check out repository (verdict scripts)
         uses: actions/checkout@v4
 
+      # CONTRACT(verify_workflow_contracts.sh): each write_security_verdict path here must reach emit_verdict_outputs_and_summary before any exit 0 (see scripts/ci/verify_workflow_contracts.sh).
       - name: Write structured security release signal
         id: signal
         shell: bash
@@ -381,6 +514,12 @@ jobs:
           RESOLVE_BUILD_RUN_RESULT: ${{ needs.resolve-build-run-id.result }}
           RESOLVE_IMAGE_REFS_RESULT: ${{ needs.resolve-image-refs.result }}
           IMAGE_SCAN_RESULT: ${{ needs.image-vulnerability-scan.result }}
+          COSIGN_APP_RESULT: ${{ needs.image-cosign-verify.outputs.cosign_app_result }}
+          COSIGN_GOOSE_RESULT: ${{ needs.image-cosign-verify.outputs.cosign_goose_result }}
+          SIGNING_ENFORCEMENT: ${{ vars.SIGNING_ENFORCEMENT || 'warn' }}
+          PROVENANCE_ENFORCEMENT: ${{ vars.PROVENANCE_ENFORCEMENT || 'warn' }}
+          ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK: ${{ vars.ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK || 'true' }}
+          IMAGE_COSIGN_VERIFY_JOB_RESULT: ${{ needs.image-cosign-verify.result }}
           GOVULNCHECK_NIGHTLY_RESULT: skipped
           DEPENDENCY_SNAPSHOT_RESULT: skipped
           APP_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
@@ -409,259 +548,15 @@ jobs:
           TRIGGERING_BUILD_WF_NAME: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.name || '' }}
           TRIGGERING_BUILD_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || '' }}
           TRIGGERING_BUILD_EVENT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.event || '' }}
+          PROMOTION_MANIFEST_ALLOW_SHA_MISMATCH: ${{ vars.PROMOTION_MANIFEST_ALLOW_SHA_MISMATCH || '' }}
+          SBOM_POLICY: ${{ vars.SBOM_POLICY || 'warn' }}
           SKIP_BUILD_CONC: ${{ github.event.workflow_run.conclusion }}
           SKIP_BUILD_HB: ${{ github.event.workflow_run.head_branch }}
           SKIP_BUILD_ID: ${{ github.event.workflow_run.id }}
           SKIP_BUILD_EVENT: ${{ github.event.workflow_run.event }}
           SKIP_BUILD_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           SKIP_WF_NAME: ${{ github.event.workflow_run.name }}
-        run: |
-          set -Eeuo pipefail
-          mkdir -p security-reports
-          generated_at_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          export GENERATED_AT_UTC="${generated_at_utc}"
-          emergency_on_missing() {
-            if [[ -f security-reports/security-verdict.json ]]; then
-              return 0
-            fi
-            export GENERATED_AT_UTC="${generated_at_utc}"
-            echo "::error::security-reports/security-verdict.json was not written; emitting emergency fail verdict" >&2
-            python3 scripts/security/write_security_verdict.py emergency --emergency-reason "Exit trap: verdict missing (Security Release signal step ended before a successful write)"
-            return 0
-          }
-          trap 'emergency_on_missing' EXIT
-          if [[ ! -f scripts/security/write_security_verdict.py ]]; then
-            echo "::error::expected scripts/security/write_security_verdict.py from checkout" >&2
-            exit 1
-          fi
-          # skip-when-build-incomplete: success => upstream Build ineligible; emit skipped verdict
-          SKIP_R="${SKIP_JOB_RESULT:-}"
-          if [[ "${SKIP_R}" == "success" ]]; then
-            if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-              te="${TRIGGERING_BUILD_EVENT:-}"
-              if [[ -n "${te}" && "${te}" != "push" && "${te}" != "workflow_run" && "${te}" != "workflow_dispatch" ]]; then
-                python3 scripts/security/write_security_verdict.py unsupported-trigger
-              else
-                python3 scripts/security/write_security_verdict.py skipped
-              fi
-            else
-              python3 scripts/security/write_security_verdict.py skipped
-            fi
-            python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
-            python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
-            trap - EXIT
-            exit 0
-          fi
-          RBR_RES="${RESOLVE_BUILD_RUN_RESULT:-}"
-          RIR_RES="${RESOLVE_IMAGE_REFS_RESULT:-}"
-          NO_RC=0
-          if [[ "${RBR_RES}" != "success" ]]; then
-            NO_RC=1
-          fi
-          if [[ "${RIR_RES}" != "success" ]]; then
-            NO_RC=1
-          fi
-          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            TCONC="${TRIGGERING_BUILD_CONCLUSION:-}"
-            TNAME="${TRIGGERING_BUILD_WF_NAME:-}"
-            if [[ -n "${TCONC}" && "${TCONC}" != "success" ]]; then
-              NO_RC=1
-            fi
-            if [[ -n "${TNAME}" && "${TNAME}" != "Build and Push Images" ]]; then
-              NO_RC=1
-            fi
-            # Do not use triggering Build head_branch for release-candidate identity (may differ from promotion-manifest when workflow_run chains).
-          fi
-          if [[ "${NO_RC}" -eq 1 ]]; then
-            python3 scripts/security/write_security_verdict.py no-candidate
-            python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
-            python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
-            {
-              echo ""
-              echo "## No releasable candidate. Security release gate skipped."
-            } >> "$GITHUB_STEP_SUMMARY"
-            trap - EXIT
-            exit 0
-          fi
-          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            te="${TRIGGERING_BUILD_EVENT:-}"
-            if [[ -n "${te}" && "${te}" != "push" && "${te}" != "workflow_run" && "${te}" != "workflow_dispatch" ]]; then
-              python3 scripts/security/write_security_verdict.py unsupported-trigger
-              python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
-              python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
-              trap - EXIT
-              exit 0
-            fi
-          fi
-          # Repo Security (push) — candidate identity: promotion-manifest / image-metadata only. Never prefer BUILD_HEAD_* over RESOLVED_*.
-          fail() {
-            echo "error: $*" >&2
-            exit 1
-          }
-          A_EV="${ARTIFACT_SOURCE_EVENT:-}"
-          # Primary SHA: RESOLVED (promotion-manifest / image-metadata). If empty: explicit Security run SHA only (workflow_dispatch / ref checkout). Never use triggering workflow_run head_sha.
-          release_source_sha="${RESOLVED_SOURCE_SHA:-}"
-          if [[ -z "${release_source_sha// }" ]]; then
-            release_source_sha="${WORKFLOW_SHA:-}"
-          fi
-          # Primary branch: RESOLVED, then manual dispatch target, then ref — never BUILD_HEAD_BRANCH / TRIGGERING_BUILD_HEAD_BRANCH for candidate identity.
-          want_branch="${RESOLVED_SOURCE_BRANCH:-${MANUAL_TARGET_BRANCH:-${GITHUB_REF_NAME:-}}}"
-          c_ev=""
-          if [[ "${A_EV}" == "manual" ]]; then
-            c_ev="workflow_dispatch"
-          elif [[ -n "${A_EV// }" && "${A_EV}" != "manual" ]]; then
-            c_ev="${A_EV}"
-          fi
-          export CANONICAL_SOURCE_SHA="${release_source_sha}"
-          export CANONICAL_SOURCE_BRANCH="${want_branch}"
-          export CANONICAL_SOURCE_EVENT="${c_ev}"
-          {
-            echo "- canonical source sha: ${release_source_sha}"
-            echo "- canonical source branch: ${want_branch}"
-            echo "- artifact source event: ${A_EV:-unknown}"
-            echo "- triggering workflow_run head branch: ${TRIGGERING_BUILD_HEAD_BRANCH:-unknown} (diagnostic only)"
-            echo "- resolved source workflow: ${RESOLVED_SOURCE_WORKFLOW_NAME:-}  build run id: ${BUILD_RUN_ID:-}  (artifact)"
-            echo "- diagnostic triggering workflow_run event: ${TRIGGERING_BUILD_EVENT:-unknown}"
-          } >> "$GITHUB_STEP_SUMMARY"
-          if [[ -n "${A_EV// }" && "${A_EV}" != "push" && "${A_EV}" != "workflow_dispatch" && "${A_EV}" != "workflow_run" && "${A_EV}" != "manual" ]]; then
-            python3 scripts/security/write_security_verdict.py unsupported-artifact-source-event
-            python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
-            python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
-            trap - EXIT
-            exit 0
-          fi
-          if [[ -z "${want_branch// }" || ( "${want_branch}" != "develop" && "${want_branch}" != "main" ) ]]; then
-            python3 scripts/security/write_security_verdict.py ineligible-branch
-            python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
-            python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
-            trap - EXIT
-            exit 0
-          fi
-          if [[ -z "${release_source_sha// }" ]]; then
-            fail "Release gate: empty canonical source SHA (set RESOLVED_SOURCE_SHA from build artifacts, or run via workflow_dispatch so WORKFLOW_SHA is available when artifacts lack SHA)"
-          fi
-          repo_release_evidence_source="api-security-workflow"
-          repo_release_source_event="push"
-          repo_release_matched_run_id=""
-          repo_release_matched_run_conclusion=""
-          repo_release_verdict=""
-          repo_release_dependency_review="not_applicable"
-          repo_release_govulncheck_repo="not_applicable"
-          repo_release_secret_scan="not_applicable"
-          repo_release_trivy_config="not_applicable"
-          repo_release_summary="(pending) API lookup for **Security** repo workflow run"
-          release_resolution_error=""
-
-          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            if [[ -z "${release_source_sha// }" || -z "${want_branch// }" ]]; then
-              release_resolution_error="workflow_run: could not determine canonical source SHA/branch (artifact + fallbacks) for the repo **Security** workflow match. Check promotion-manifest / image-metadata and Build trigger fields."
-            fi
-            if [[ -n "${release_resolution_error}" ]]; then
-              repo_release_evidence_source="workflow-resolution-failed"
-              repo_release_verdict="unavailable"
-              repo_release_summary="${release_resolution_error}"
-            else
-            repo_release_verdict="unavailable"
-            max_attempts=20
-            for attempt in $(seq 1 "${max_attempts}"); do
-              latest_json="$(
-                gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs" \
-                  -f "head_sha=${release_source_sha}" \
-                  -f "branch=${want_branch}" \
-                  -f "event=push" \
-                  -f "per_page=30" 2>/dev/null || true
-              )"
-              # Safe under set -e: empty jq (no run yet) must not make read(1) abort the step.
-              most_recent_id=""
-              most_recent_concl=""
-              security_run_row="$(
-                echo "${latest_json}" | jq -r --arg b "${want_branch}" '
-                  [.workflow_runs[]?
-                    | select(
-                        (.name // "") == "Security"
-                        and ((.head_branch // "") == $b)
-                      )
-                  ]
-                  | sort_by(.created_at)
-                  | reverse
-                  | (if length > 0 then .[0] | [((.id|tostring), (.conclusion // ""))] | @tsv else empty end)
-                ' 2>/dev/null | head -n 1 || true
-              )"
-              if [[ -n "${security_run_row// }" ]]; then
-                IFS=$'\t' read -r most_recent_id most_recent_concl <<< "${security_run_row}" || true
-              fi
-              most_recent_id="${most_recent_id//[[:space:]]/}"
-              most_recent_concl="${most_recent_concl//[[:space:]]/}"
-              if [[ -n "${most_recent_id}" && "${most_recent_id}" =~ ^[0-9]+$ ]]; then
-                if [[ "${most_recent_concl}" == "success" ]]; then
-                  repo_release_matched_run_id="${most_recent_id}"
-                  repo_release_matched_run_conclusion="success"
-                  repo_release_verdict="pass"
-                  repo_release_evidence_source="security-workflow-run-success"
-                  repo_release_summary="Security (repo) push run ${most_recent_id} completed successfully for head_sha=${release_source_sha} branch=${want_branch} (matches Build candidate)."
-                  break
-                fi
-                if [[ -n "${most_recent_concl}" && "${most_recent_concl}" != "success" && "${most_recent_concl}" != "null" ]]; then
-                  repo_release_evidence_source="security-workflow-run-not-successful"
-                  repo_release_matched_run_id="${most_recent_id}"
-                  repo_release_matched_run_conclusion="${most_recent_concl}"
-                  repo_release_verdict="fail"
-                  repo_release_summary="Security (repo) push run ${most_recent_id} for head_sha=${release_source_sha} branch=${want_branch} has conclusion=${most_recent_concl} (required: success)."
-                  break
-                fi
-              fi
-              if [[ "${attempt}" -lt "${max_attempts}" ]]; then
-                {
-                  echo "- **Poll ${attempt}/${max_attempts}**: waiting for a completed **Security** (repo) **push** run for \`head_sha=${release_source_sha}\` on branch \`${want_branch}\` …"
-                } >> "${GITHUB_STEP_SUMMARY}" 2>/dev/null || true
-                sleep 20
-              fi
-            done
-            if [[ "${repo_release_verdict}" != "pass" && "${repo_release_verdict}" != "fail" ]]; then
-              repo_release_evidence_source="security-workflow-not-found-or-not-successful"
-              repo_release_verdict="unavailable"
-              repo_release_matched_run_id=""
-              repo_release_matched_run_conclusion=""
-              repo_release_summary="No successful **Security** (repo) **push** run found for head_sha=${release_source_sha} branch=${want_branch} after ${max_attempts} attempts (~$(( max_attempts * 20 ))s). A push to develop/main that starts **Security** must exist for the same commit."
-            fi
-            fi
-          fi
-
-          export RELEASE_RESOLUTION_ERROR="${release_resolution_error:-}"
-          export RELEASE_SOURCE_SHA="${release_source_sha}"
-          export REPO_RELEASE_EVIDENCE_SOURCE="${repo_release_evidence_source}"
-          export REPO_RELEASE_SOURCE_EVENT="${repo_release_source_event}"
-          export REPO_RELEASE_MATCHED_RUN_ID="${repo_release_matched_run_id}"
-          export REPO_RELEASE_MATCHED_RUN_CONCLUSION="${repo_release_matched_run_conclusion}"
-          export REPO_RELEASE_VERDICT="${repo_release_verdict}"
-          export REPO_RELEASE_DEPENDENCY_REVIEW="${repo_release_dependency_review}"
-          export REPO_RELEASE_GOVULNCHECK_REPO="${repo_release_govulncheck_repo}"
-          export REPO_RELEASE_SECRET_SCAN="${repo_release_secret_scan}"
-          export REPO_RELEASE_TRIVY_CONFIG="${repo_release_trivy_config}"
-          export REPO_RELEASE_SUMMARY="${repo_release_summary}"
-          set +e
-          python3 scripts/security/write_security_verdict.py full
-          _vw=$?
-          set -e
-          if [[ "${_vw}" -ne 0 ]]; then
-            echo "::error::write_security_verdict.py full mode failed; writing emergency fail verdict" >&2
-            python3 scripts/security/write_security_verdict.py emergency --emergency-reason "write_security_verdict.py full exited with code ${_vw}"
-          fi
-          python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
-          python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
-          REPO_RELEASE_MATCHED_RUN_ID="${repo_release_matched_run_id:-}"
-          export REPO_RELEASE_MATCHED_RUN_ID
-          python3 scripts/security/emit_release_signal_debug_table.py
-          trap - EXIT
-
-      - name: Upload security verdict
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-verdict
-          path: security-reports/security-verdict.json
-          if-no-files-found: warn
-          retention-days: 14
+        run: bash scripts/release/security_release_signal.sh
 
       - name: Security release signal — decision observability
         if: always()
@@ -669,6 +564,8 @@ jobs:
         env:
           OUT_VERDICT: ${{ steps.signal.outputs.security_verdict }}
           OUT_SOURCE_SHA: ${{ steps.signal.outputs.source_sha }}
+          OUT_SOURCE_BRANCH: ${{ steps.signal.outputs.source_branch }}
+          OUT_SOURCE_WF: ${{ steps.signal.outputs.source_workflow_name }}
           OUT_SOURCE_BUILD: ${{ steps.signal.outputs.source_build_run_id }}
           OUT_SEC_RUN: ${{ steps.signal.outputs.security_workflow_run_id }}
           OUT_RG_VERDICT: ${{ steps.signal.outputs.release_gate_verdict }}
@@ -677,6 +574,9 @@ jobs:
           OUT_REPO_REL: ${{ steps.signal.outputs.repo_release_verdict }}
           OUT_PUB: ${{ steps.signal.outputs.published_image_verdict }}
           OUT_PROV: ${{ steps.signal.outputs.provenance_release_verdict }}
+          OUT_APP: ${{ steps.signal.outputs.app_image_ref }}
+          OUT_GOOSE: ${{ steps.signal.outputs.goose_image_ref }}
+          OUT_GENERATED: ${{ steps.signal.outputs.generated_at_utc }}
         run: |
           set -Eeuo pipefail
           f="security-reports/security-verdict.json"
@@ -695,8 +595,13 @@ jobs:
             echo "| \`published_image_verdict\` | \`${OUT_PUB:-<missing>}\` |"
             echo "| \`provenance_release_verdict\` | \`${OUT_PROV:-<missing>}\` |"
             echo "| \`source_sha\` | \`${OUT_SOURCE_SHA:-<missing>}\` |"
+            echo "| \`source_branch\` | \`${OUT_SOURCE_BRANCH:-<missing>}\` |"
+            echo "| \`source_workflow_name\` | \`${OUT_SOURCE_WF:-<missing>}\` |"
             echo "| \`source_build_run_id\` | \`${OUT_SOURCE_BUILD:-<missing>}\` |"
             echo "| \`security_workflow_run_id\` (this run) | \`${OUT_SEC_RUN:-<missing>}\` |"
+            echo "| \`generated_at_utc\` | \`${OUT_GENERATED:-<missing>}\` |"
+            echo "| \`app_image_ref\` | \`${OUT_APP:-<missing>}\` |"
+            echo "| \`goose_image_ref\` | \`${OUT_GOOSE:-<missing>}\` |"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
           if [[ ! -f "$f" ]]; then
@@ -707,7 +612,13 @@ jobs:
             echo "::warning::security-verdict.json is missing; see earlier steps."
             exit 0
           fi
+          set +e
           python3 scripts/security/emit_security_verdict_summary.py --section observability >> "$GITHUB_STEP_SUMMARY"
+          _obs=$?
+          set -e
+          if [[ "${_obs}" -ne 0 ]]; then
+            echo "::warning::emit_security_verdict_summary observability section failed (non-fatal)" >&2
+          fi
           {
             echo ""
             echo "---"
@@ -719,13 +630,24 @@ jobs:
         if: always()
         shell: bash
         env:
-          SECURITY_VERDICT: ${{ steps.signal.outputs.security_verdict }}
+          SECURITY_VERDICT: ${{ steps.signal.outputs.SECURITY_VERDICT }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
         run: |
           set -Eeuo pipefail
+          if [[ ! -f security-reports/security-verdict.json ]]; then
+            mkdir -p security-reports
+            export GENERATED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo "::error::security-reports/security-verdict.json missing before enforce; writing emergency-fail verdict" >&2
+            python3 scripts/security/write_security_verdict.py emergency --emergency-reason "security-reports/security-verdict.json was missing before enforce step (unexpected; signal step should always emit verdict JSON)"
+          fi
           if [[ -f security-reports/security-verdict.json ]]; then
             echo "### failure_reasons (blocking)" >> "${GITHUB_STEP_SUMMARY}"
             {
-              mapfile -t _fr < <(python3 -c 'import json,sys; p=json.load(open("security-reports/security-verdict.json","r",encoding="utf-8")); [print(x) for x in (p.get("failure_reasons") or [])]')
+              set +e
+              mapfile -t _fr < <(python3 -c 'import json,sys; p=json.load(open("security-reports/security-verdict.json","r",encoding="utf-8")); [print(x) for x in (p.get("failure_reasons") or [])]' 2>/dev/null) || true
+              set -e
               if [[ ${#_fr[@]} -gt 0 ]]; then
                 for line in "${_fr[@]}"; do
                   echo "- ${line}"
@@ -749,11 +671,17 @@ jobs:
             fi
           fi
           if [[ -z "${V// }" ]]; then
-            echo "error: blocking security verdict is empty; expected pass, fail, or skipped" >&2
+            echo "error: blocking security verdict is empty; expected pass, fail, skipped, or no-candidate" >&2
             exit 1
           fi
-          if [[ "${V}" == "pass" || "${V}" == "skipped" ]]; then
-            [[ "${V}" == "pass" ]] || { echo "Security Release outcome: **skipped** (not a develop/main success release candidate); workflow succeeds without blocking." >> "${GITHUB_STEP_SUMMARY}"; }
+          if [[ "${V}" == "pass" || "${V}" == "skipped" || "${V}" == "no-candidate" ]]; then
+            if [[ "${V}" == "pass" ]]; then
+              :
+            elif [[ "${V}" == "skipped" ]]; then
+              echo "Security Release outcome: **skipped** (ineligible run — not deployable; see verdict JSON \`failure_reasons\`)." >> "${GITHUB_STEP_SUMMARY}"
+            else
+              echo "Security Release outcome: **no-candidate** (no valid release candidate — not deployable; see verdict JSON \`failure_reasons\`)." >> "${GITHUB_STEP_SUMMARY}"
+            fi
             exit 0
           fi
           if [[ "${V}" == "fail" ]]; then
@@ -763,3 +691,135 @@ jobs:
           fi
           echo "error: unexpected security verdict: ${V}" >&2
           exit 1
+
+      - name: Generate release manifest (main branch candidates)
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_BUILD_RUN_ID: ${{ steps.signal.outputs.source_build_run_id }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p release-reports
+          if [[ ! -f security-reports/security-verdict.json ]]; then
+            echo "Skipping release manifest: security-verdict.json missing"
+            exit 0
+          fi
+          branch="$(python3 -c "import json;print(json.load(open('security-reports/security-verdict.json',encoding='utf-8')).get('source_branch','') or '')")"
+          if [[ "${branch}" != "main" ]]; then
+            echo "Skipping release manifest: source_branch=${branch} (not main)"
+            exit 0
+          fi
+          sha="$(python3 -c "import json;print(json.load(open('security-reports/security-verdict.json',encoding='utf-8')).get('source_sha','') or '')")"
+          export SOURCE_COMMIT_MESSAGE=""
+          if [[ -n "${sha}" ]]; then
+            SOURCE_COMMIT_MESSAGE="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${sha}" --jq -r '.commit.message // ""' 2>/dev/null | head -n 1 | head -c 500 || true)"
+          fi
+          export SOURCE_COMMIT_MESSAGE
+          export MIGRATION_SAFETY_VERDICT="unknown"
+          if [[ -n "${sha}" ]]; then
+            run_id="$(
+              gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+                -f head_sha="${sha}" -f per_page=20 \
+                --jq '.workflow_runs[] | select(.name=="CI" and .conclusion=="success") | .id' 2>/dev/null | head -n1 || true
+            )"
+            if [[ -n "${run_id}" ]]; then
+              mig="$(
+                gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --paginate \
+                  --jq '.jobs[] | select(.name=="Migration Safety Check") | .conclusion' 2>/dev/null | head -n1 || true
+              )"
+              if [[ "${mig}" == "success" ]]; then
+                export MIGRATION_SAFETY_VERDICT="pass"
+              elif [[ "${mig}" == "failure" ]]; then
+                export MIGRATION_SAFETY_VERDICT="fail"
+              elif [[ -n "${mig}" ]]; then
+                export MIGRATION_SAFETY_VERDICT="${mig}"
+              fi
+            fi
+          fi
+          prom_arg=()
+          if [[ -n "${SOURCE_BUILD_RUN_ID:-}" ]] && [[ "${SOURCE_BUILD_RUN_ID}" =~ ^[0-9]+$ ]]; then
+            _pd="$(mktemp -d)"
+            if gh run download "${SOURCE_BUILD_RUN_ID}" -n promotion-manifest -D "${_pd}" 2>/dev/null; then
+              if [[ -f "${_pd}/promotion-manifest.json" ]]; then
+                prom_arg=(--promotion-manifest "${_pd}/promotion-manifest.json")
+              fi
+            fi
+          fi
+          python3 tools/generate_release_manifest.py generate \
+            --verdict security-reports/security-verdict.json \
+            "${prom_arg[@]}" \
+            --environment-target production-candidate
+          if [[ -f release-reports/release-manifest.json ]]; then
+            {
+              echo ""
+              echo "### Release manifest (main)"
+              echo ""
+              echo "| Artifact | Files |"
+              echo "|---|---|"
+              echo "| **\`release-manifest\`** (this run) | \`release-reports/release-manifest.json\`, \`release-reports/release-summary.md\` |"
+              echo "| **\`security-verdict\`** (this run) | \`security-reports/security-verdict.json\` |"
+              echo "| **\`sbom-reports\`** (Build run \`${SOURCE_BUILD_RUN_ID:-n/a}\`) | CycloneDX SBOMs from **Build and Push Images** |"
+              echo "| **\`promotion-manifest\`** (Build run \`${SOURCE_BUILD_RUN_ID:-n/a}\`) | Build coordinates + SBOM metadata |"
+              echo ""
+              echo "Pre-deploy snapshot only; production deploy appends results to **\`release-manifest-post-deploy\`** when that workflow runs."
+            } >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Release dashboard (concise)
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash scripts/deploy/emit_release_dashboard_summary.sh security-release
+
+      - name: Upload security verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-verdict
+          path: security-reports/security-verdict.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload release manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest
+          path: |
+            release-reports/release-manifest.json
+            release-reports/release-summary.md
+          if-no-files-found: ignore
+          retention-days: 90
+
+  optional-notify-on-security-release-failure:
+    name: Optional webhook (Security Release failure)
+    if: always()
+    needs: [security-release-signal]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Optional failure notification
+        if: always()
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ vars.NOTIFY_WEBHOOK_URL }}
+        run: |
+          set +e
+          r="${{ needs.security-release-signal.result }}"
+          if [[ "${r}" != "failure" ]]; then
+            echo "optional notify: skipped (Security Release job result is not failure: ${r})"
+            exit 0
+          fi
+          bash scripts/deploy/notify_deployment_status.sh \
+            --status failure \
+            --environment security-release \
+            --source-sha "${{ needs.security-release-signal.outputs.source_sha }}" \
+            --source-branch "${{ needs.security-release-signal.outputs.source_branch }}" \
+            --workflow-run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --message "Security Release job failed (verdict, enforce, image gate, or signal; see job summary and security-verdict artifact when present)" \
+            --event "security-release"

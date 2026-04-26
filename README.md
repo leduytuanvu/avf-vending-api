@@ -45,11 +45,13 @@ The repo still follows a **strangler** posture for traffic cutover from any lega
 
 ## CI and local gates
 
-This repository's GitHub Actions CI foundation lives under `.github/workflows/`:
+**End-to-end pipeline and deploy chain (branches, staging, production, triage):** [docs/runbooks/cicd-release.md](docs/runbooks/cicd-release.md). Enterprise audit: [CI_CD_FINAL_AUDIT.md](CI_CD_FINAL_AUDIT.md).
 
-- `ci.yml` runs on pull requests and pushes to `main`, runs the same gate set as `make ci-gates`, and validates `deployments/docker/docker-compose.yml`
-- `security.yml` runs dependency review on pull requests and `govulncheck` on the repo
-- `build-push.yml` builds and pushes the production app and goose images
+This repository's GitHub Actions live under `.github/workflows/` (high level):
+
+- **`ci.yml` (`CI`)** — pull requests and pushes to `develop` and `main`, workflow contract and migration checks, and the same style of gates as `make ci-gates` (validates `deployments/docker/docker-compose.yml` among other steps).
+- **`security.yml` (`Security`)** — repository scans (ex.: govulncheck, **Secret**/**Config** jobs); **not** the same as **Security Release** (verdict/artifact) or a deploy trigger.
+- **`build-push.yml` (`Build and Push Images`)** — runs after a successful **CI** `workflow_run` for eligible `develop`/`main` pushes; builds and pushes digest-pinned app and goose images and promotion artifacts. **Not** the default path for every open PR in isolation.
 
 Local equivalents:
 

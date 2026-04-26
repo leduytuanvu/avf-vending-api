@@ -1,10 +1,27 @@
+# =============================================================================
+# WARNING — NO REAL DEPLOY: This file must never be used for production or staging rollouts. It
+# only prints a notice. The enterprise contract and `scripts/ci/verify_workflow_contracts.sh` require
+# that this file remain present for docs/checklists that link the legacy filename; do not delete
+# without updating those tests and runbooks. To hide this workflow in the UI: **Settings → Actions →**
+# **General** → disable the workflow, or use branch protection to never require it as a check.
+# =============================================================================
+# Comparison:
+#   - **deploy-prod.yml**   → "Deploy Production" — **the only** GitHub path that can deploy/rollback to prod.
+#   - **deploy-develop.yml** → "Staging Deployment Contract" — only staging; there is no deploy-staging.yml.
+#   - **this file**         → not a second deploy; does not set `environment: production`, no SSH, no images.
+# =============================================================================
+#
 # The production rollout workflow is implemented in deploy-prod.yml (Actions title: "Deploy Production").
 # This file exists so references to "deploy-production.yml" in checklists resolve; it is not a second deploy path.
 #
-# Last-known-good (LKG) image refs, production-deployment-manifest artifacts, digest-pinned rollback,
-# and automatic rollback after a failed deploy are defined only in deploy-prod.yml — keep that file canonical.
+# Last-known-good (LKG) scans successful **Deploy Production** runs for deploy-prod.yml from both
+# workflow_dispatch and workflow_run (after Security Release). See docs/runbooks/rollback-production.md.
+# production-deployment-manifest artifacts, digest-pinned rollback, and automatic rollback after a failed
+# deploy are defined only in deploy-prod.yml — keep that file canonical.
 #
-# Automatic production deployment is disabled until the release chain is verified. This file does not deploy.
+# Canonical production deploy is deploy-prod.yml (Security Release workflow_run on main + workflow_dispatch). This pointer does not deploy.
+# The real **Deploy Production** job uses `environment: production` only in deploy-prod.yml (GitHub Environments
+# gating is not applicable to this no-op pointer workflow).
 name: Legacy — deploy-production.yml pointer (workflow_dispatch only)
 
 on:
@@ -15,6 +32,9 @@ on:
         required: false
         default: "see deploy-prod.yml"
         type: string
+
+permissions:
+  contents: read
 
 jobs:
   pointer:

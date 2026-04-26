@@ -1,3 +1,6 @@
+# Enterprise release verification — **not** Security Release, **not** a deploy trigger, **not** an image gate.
+# Runs scripts/verify_enterprise_release.sh (compose/OpenAPI/legacy checks). Do not rename to imply
+# "security release" or replace security-release.yml.
 name: Enterprise release verification
 
 on:
@@ -15,6 +18,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   verify-enterprise-release:

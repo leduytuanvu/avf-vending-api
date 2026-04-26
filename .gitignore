@@ -24,8 +24,41 @@ deployments/prod/**/*.dump
 deployments/prod/**/*.tmp
 deployments/prod/**/*.bak
 
+# Go local build/test cache
+.go-cache/
+.gocache/
+.go-build/
+coverage.out
+.coverage
+coverage.xml
+htmlcov/
+
+# Python cache
+**/__pycache__/
+__pycache__/
+*.pyc
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local / one-off tool outputs and markers (if generated outside GitHub runners)
+trivy-*.txt
+**/*.exitcode
+.cache/
+
 # Editor / OS
 .idea/
 .vscode/
 *.swp
 Thumbs.db
+
+# Local CI/workflow dry-run outputs (never commit)
+/security-reports/
+/release-reports/
+/deployment-evidence/
+/smoke-reports/
+# Ephemeral (optional local mirror of CI log artifacts)
+/artifacts/
+/tmp-ci/

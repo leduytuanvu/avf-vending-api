@@ -1,7 +1,0 @@
-./doc.go
-./errors.go
-./ports.go
-./sale_line.go
-./service.go
-./types.go
-./webhook_types.go

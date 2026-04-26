@@ -38,6 +38,31 @@ def _assert_file_and_schema() -> dict:
     return json.loads(VERDICT.read_text(encoding="utf-8"))
 
 
+def _assert_contract_fields(d: dict) -> None:
+    for key in (
+        "verdict",
+        "release_gate_verdict",
+        "release_gate_mode",
+        "repo_security_verdict",
+        "repo_release_verdict",
+        "published_image_verdict",
+        "provenance_release_verdict",
+        "source_sha",
+        "source_branch",
+        "source_build_run_id",
+        "source_workflow_name",
+        "app_image_ref",
+        "goose_image_ref",
+        "security_workflow_run_id",
+        "generated_at_utc",
+        "failure_reasons",
+        "job_results",
+    ):
+        assert key in d, "missing contract key %r in verdict JSON" % key
+    assert isinstance(d.get("failure_reasons"), list)
+    assert isinstance(d.get("job_results"), dict)
+
+
 def _clear_verdict() -> None:
     if VERDICT.is_file():
         VERDICT.unlink()
@@ -59,18 +84,37 @@ def main() -> int:
     _run("emergency", "--emergency-reason", "smoke-test")
     d = _assert_file_and_schema()
     assert d.get("verdict") in ("fail", "error") or d.get("security_verdict") == "fail", d
+    _assert_contract_fields(d)
 
     # 2) skipped
     _clear_verdict()
     _run("skipped", env={"EVENT_NAME": "workflow_run", "WORKFLOW_RUN_ID": "1", "WORKFLOW_NAME": "Security Release"})
     d = _assert_file_and_schema()
     assert d.get("verdict") == "skipped", d
+    _assert_contract_fields(d)
 
     # 3) no-candidate
     _clear_verdict()
     _run("no-candidate", env={"EVENT_NAME": "workflow_run", "WORKFLOW_RUN_ID": "1", "RESOLVE_BUILD_RUN_RESULT": "failure"})
     d = _assert_file_and_schema()
-    assert d.get("verdict") in ("skipped", "fail", "pass"), d
+    assert d.get("verdict") == "no-candidate", d
+    assert d.get("release_gate_verdict") == "no-candidate", d
+    _assert_contract_fields(d)
+
+    # 3b) unsupported-trigger (chain-only Build: GHA event workflow_run)
+    _clear_verdict()
+    _run(
+        "unsupported-trigger",
+        env={
+            "EVENT_NAME": "workflow_run",
+            "WORKFLOW_RUN_ID": "1",
+            "WORKFLOW_NAME": "Security Release",
+            "TRIGGERING_BUILD_EVENT": "workflow_run",
+        },
+    )
+    d = _assert_file_and_schema()
+    assert d.get("verdict") == "skipped" and d.get("release_gate_mode", "").find("unsupported") != -1, d
+    _assert_contract_fields(d)
 
     # 4) full: repo release evidence unavailable (structured failure_reasons, not traceback)
     _clear_verdict()
@@ -102,7 +146,8 @@ def main() -> int:
     d = _assert_file_and_schema()
     fr = d.get("failure_reasons")
     assert isinstance(fr, list) and len(fr) > 0, f"expected non-empty failure_reasons, got {d!r}"
-    assert d.get("verdict") in ("pass", "fail", "skipped"), d
+    assert d.get("verdict") in ("pass", "fail", "skipped", "no-candidate"), d
+    _assert_contract_fields(d)
 
     _clear_verdict()
     return 0

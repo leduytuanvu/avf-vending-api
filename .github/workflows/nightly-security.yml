@@ -1,0 +1,387 @@
+# Scheduled rescans for main: dependencies, secrets, config, and latest digest-pinned release images.
+# Does not deploy. Does not replace push/PR checks in Security (security.yml).
+name: Nightly Security Rescan
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  schedule:
+    - cron: "29 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-security-${{ github.repository }}
+  cancel-in-progress: true
+
+permissions:
+  actions: write
+  attestations: read
+  contents: read
+  packages: read
+  security-events: write
+
+jobs:
+  nightly-repo-scans:
+    name: Nightly repo scans (main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Run govulncheck (blocking)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./... 2>&1 | tee security-reports/govulncheck-nightly.txt
+
+      - name: Run gitleaks
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          go install github.com/zricethezav/gitleaks/v8@v8.24.2
+          "$(go env GOPATH)/bin/gitleaks" dir \
+            --config .gitleaks.toml \
+            --report-format sarif \
+            --report-path security-reports/gitleaks-nightly.sarif \
+            --redact \
+            --no-banner \
+            .
+
+      - name: Run Trivy config scan
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          trivy_image="aquasec/trivy:0.57.1"
+
+          pull_trivy_image() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if docker pull "${trivy_image}"; then
+                return 0
+              fi
+              if [[ "${attempt}" -lt 5 ]]; then
+                echo "Trivy image pull failed; retrying (${attempt}/5)" >&2
+                sleep 10
+              fi
+            done
+            echo "error: failed to pull ${trivy_image} after retries" >&2
+            exit 1
+          }
+
+          pull_trivy_image
+          : > security-reports/trivy-config-nightly.txt
+          for target in \
+            deployments/prod/app-node \
+            deployments/prod/data-node \
+            deployments/prod/shared \
+            deployments/staging \
+            .github/workflows/ci.yml \
+            .github/workflows/security.yml \
+            .github/workflows/security-release.yml \
+            .github/workflows/nightly-security.yml \
+            .github/workflows/build-push.yml \
+            .github/workflows/deploy-develop.yml \
+            .github/workflows/deploy-prod.yml
+          do
+            echo "### Trivy config scan target: ${target}" | tee -a security-reports/trivy-config-nightly.txt
+            docker run --rm \
+              -v "${PWD}:/workdir" \
+              -w /workdir \
+              "${trivy_image}" \
+              config \
+              --config trivy.yaml \
+              --ignorefile .trivyignore \
+              "${target}" | tee -a security-reports/trivy-config-nightly.txt
+          done
+
+      # Informational only: module upgrade hints (not a blocking gate; no equivalent on PR/push in security.yml).
+      - name: Dependency update snapshot
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          go list -u -m -json all > security-reports/go-module-updates-nightly.json
+
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Nightly repo scans (main)"
+            echo ""
+            echo "Policy matches **Security Release** image/config expectations: **HIGH** and **CRITICAL** with \`ignore-unfixed=true\` where applicable (\`trivy.yaml\`)."
+            echo ""
+            echo "| Report artifact | Path |"
+            echo "|---|---|"
+            echo "| \`nightly-govulncheck-report\` | \`security-reports/govulncheck-nightly.txt\` |"
+            echo "| \`nightly-gitleaks-report\` | \`security-reports/gitleaks-nightly.sarif\` |"
+            echo "| \`nightly-trivy-config-report\` | \`security-reports/trivy-config-nightly.txt\` |"
+            echo "| \`nightly-dependency-snapshot\` | \`security-reports/go-module-updates-nightly.json\` |"
+            echo ""
+            echo "This workflow **does not deploy**. See \`docs/runbooks/security-rescan.md\`."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload govulncheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-govulncheck-report
+          path: security-reports/govulncheck-nightly.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-gitleaks-report
+          path: security-reports/gitleaks-nightly.sarif
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload gitleaks SARIF to code scanning
+        if: always() && vars.ENABLE_CODE_SCANNING == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: security-reports/gitleaks-nightly.sarif
+          category: gitleaks-nightly
+
+      - name: Upload Trivy config report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-trivy-config-report
+          path: security-reports/trivy-config-nightly.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload dependency snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-dependency-snapshot
+          path: security-reports/go-module-updates-nightly.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+  nightly-image-rescan:
+    name: Nightly image rescan (main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository (policy files)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Resolve latest main release image digests
+        id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p nightly-reports security-reports
+          set +e
+          bash scripts/security/resolve_latest_main_release_images.sh nightly-reports
+          rc=$?
+          set -e
+          if [[ "${rc}" -eq 2 ]]; then
+            echo "candidate_found=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          if [[ "${rc}" -ne 0 ]]; then
+            exit "${rc}"
+          fi
+          echo "candidate_found=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload image candidate resolution
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-image-candidate
+          path: nightly-reports/nightly-image-candidate.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: No image candidate — fail closed on image gate
+        if: steps.resolve.outputs.candidate_found != 'true'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          {
+            echo "## Nightly image rescan — **no candidate**"
+            echo ""
+            echo "Could not resolve digest-pinned **app** and **goose** images from a recent successful **Build and Push Images** run on \`main\` with a \`promotion-manifest\` artifact."
+            echo ""
+            echo "This is **not** a clean scan pass: the image rescan did not run. Triage: confirm main builds, artifact retention, and GH \`actions: read\` access."
+            echo ""
+            echo "Artifact \`nightly-image-candidate\` contains JSON with \`status: no-candidate\` when present."
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit 1
+
+      - name: Log in to GitHub Container Registry
+        if: steps.resolve.outputs.candidate_found == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan published app image (Trivy)
+        id: trivy_app
+        if: steps.resolve.outputs.candidate_found == 'true'
+        shell: bash
+        env:
+          APP_IMAGE_REF: ${{ steps.resolve.outputs.app_image_ref }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          trivy_image="aquasec/trivy:0.57.1"
+          for attempt in 1 2 3 4 5; do
+            docker pull "${trivy_image}" && break
+            [[ "${attempt}" -lt 5 ]] || { echo "error: trivy pull failed" >&2; exit 127; }
+            sleep 10
+          done
+          set +e
+          set -o pipefail
+          docker run --rm \
+            -v "${HOME}/.docker:/root/.docker:ro" \
+            -v "${PWD}:/workdir" \
+            -w /workdir \
+            "${trivy_image}" \
+            image \
+            --config trivy.yaml \
+            --ignorefile .trivyignore \
+            --scanners vuln \
+            "${APP_IMAGE_REF}" 2>&1 | tee security-reports/trivy-nightly-image-app.txt
+          rc="${PIPESTATUS[0]}"
+          set +o pipefail
+          set -e
+          echo "${rc}" > security-reports/trivy-nightly-app.exitcode
+          exit 0
+
+      - name: Scan published goose image (Trivy)
+        id: trivy_goose
+        if: always() && steps.resolve.outputs.candidate_found == 'true'
+        shell: bash
+        env:
+          GOOSE_IMAGE_REF: ${{ steps.resolve.outputs.goose_image_ref }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p security-reports
+          trivy_image="aquasec/trivy:0.57.1"
+          for attempt in 1 2 3 4 5; do
+            docker pull "${trivy_image}" && break
+            [[ "${attempt}" -lt 5 ]] || { echo "error: trivy pull failed" >&2; exit 127; }
+            sleep 10
+          done
+          set +e
+          set -o pipefail
+          docker run --rm \
+            -v "${HOME}/.docker:/root/.docker:ro" \
+            -v "${PWD}:/workdir" \
+            -w /workdir \
+            "${trivy_image}" \
+            image \
+            --config trivy.yaml \
+            --ignorefile .trivyignore \
+            --scanners vuln \
+            "${GOOSE_IMAGE_REF}" 2>&1 | tee security-reports/trivy-nightly-image-goose.txt
+          rc="${PIPESTATUS[0]}"
+          set +o pipefail
+          set -e
+          echo "${rc}" > security-reports/trivy-nightly-goose.exitcode
+          exit 0
+
+      - name: Enforce Trivy image policy (HIGH/CRITICAL, ignore-unfixed)
+        if: always() && steps.resolve.outputs.candidate_found == 'true'
+        shell: bash
+        env:
+          APP_IMAGE_REF: ${{ steps.resolve.outputs.app_image_ref }}
+          GOOSE_IMAGE_REF: ${{ steps.resolve.outputs.goose_image_ref }}
+          BUILD_RUN_ID: ${{ steps.resolve.outputs.build_run_id }}
+        run: |
+          set -Eeuo pipefail
+          rc_a="1"
+          rc_g="1"
+          [[ -f security-reports/trivy-nightly-app.exitcode ]] && rc_a="$(tr -d '[:space:]' < security-reports/trivy-nightly-app.exitcode || echo 1)"
+          [[ -f security-reports/trivy-nightly-goose.exitcode ]] && rc_g="$(tr -d '[:space:]' < security-reports/trivy-nightly-goose.exitcode || echo 1)"
+          if [[ "${rc_a}" -eq 0 ]]; then ta="success"; else ta="failure"; fi
+          if [[ "${rc_g}" -eq 0 ]]; then tg="success"; else tg="failure"; fi
+          {
+            echo "## Nightly image rescan (Trivy)"
+            echo ""
+            echo "- **Policy:** same as **Security Release** — \`trivy.yaml\` (\`HIGH\`/\`CRITICAL\`, \`ignore-unfixed: true\`)."
+            echo "- **Build run id (candidate):** \`${BUILD_RUN_ID}\`"
+            echo "- **App:** \`${APP_IMAGE_REF}\` → scan=${ta} (exit ${rc_a})"
+            echo "- **Goose:** \`${GOOSE_IMAGE_REF}\` → scan=${tg} (exit ${rc_g})"
+            echo ""
+            echo "| Artifact | Files |"
+            echo "|---|---|"
+            echo "| \`nightly-trivy-image-reports\` | \`security-reports/trivy-nightly-image-*.txt\`, exitcode files |"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          if [[ "${ta}" != "success" || "${tg}" != "success" ]]; then
+            echo "error: nightly Trivy image policy violated (app=${ta} exit ${rc_a}, goose=${tg} exit ${rc_g})" >&2
+            exit 1
+          fi
+
+      - name: Upload Trivy image reports
+        if: always() && steps.resolve.outputs.candidate_found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-trivy-image-reports
+          path: |
+            security-reports/trivy-nightly-image-app.txt
+            security-reports/trivy-nightly-image-goose.txt
+            security-reports/trivy-nightly-app.exitcode
+            security-reports/trivy-nightly-goose.exitcode
+          if-no-files-found: ignore
+          retention-days: 14
+
+  nightly-overview:
+    name: Nightly security overview
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - nightly-repo-scans
+      - nightly-image-rescan
+
+    steps:
+      - name: Summary
+        shell: bash
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPO_RESULT: ${{ needs.nightly-repo-scans.result }}
+          IMAGE_RESULT: ${{ needs.nightly-image-rescan.result }}
+        run: |
+          {
+            echo "## Nightly Security Rescan — overview"
+            echo ""
+            echo "- **Run:** [${GITHUB_RUN_ID}](${RUN_URL})"
+            echo "- **Repo scans job:** \`${REPO_RESULT}\`"
+            echo "- **Image rescan job:** \`${IMAGE_RESULT}\`"
+            echo ""
+            echo "**Artifacts:** \`nightly-govulncheck-report\`, \`nightly-gitleaks-report\`, \`nightly-trivy-config-report\`, \`nightly-dependency-snapshot\`, \`nightly-image-candidate\`, \`nightly-trivy-image-reports\`"
+            echo ""
+            echo "This workflow does **not** deploy production. Failures require triage; see \`docs/runbooks/security-rescan.md\`."
+          } >> "${GITHUB_STEP_SUMMARY}"

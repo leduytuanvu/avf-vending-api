@@ -1,8 +1,0 @@
-./config.go
-./contract.go
-./doc.go
-./publisher.go
-./router.go
-./subscriber.go
-./telemetry_limits.go
-./topics.go

@@ -4,6 +4,11 @@ name: Environment separation gates
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+  deployments: write
+
 concurrency:
   group: environment-separation-gates
   cancel-in-progress: true

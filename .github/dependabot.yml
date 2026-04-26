@@ -1,3 +1,8 @@
+# Dependabot opens dependency-update PRs (Actions, Go modules, Docker) on a schedule; it is not a blocking
+# status check in place of .github/workflows/security.yml. It does not run actions/dependency-review;
+# that is the Security workflow job dependency-review (pull_request, gated by vars.ENABLE_DEPENDENCY_REVIEW == 'true').
+# Blocking on every PR/push to develop+main: govulncheck, secret scan, config scan in Security — see
+# docs/runbooks/github-governance.md (Security matrix: informational vs blocking).
 version: 2
 updates:
   - package-ecosystem: github-actions
