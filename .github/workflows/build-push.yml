@@ -170,6 +170,7 @@ jobs:
     if: always() && needs.build-and-push.result == 'success'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       actions: write
       packages: read
 
