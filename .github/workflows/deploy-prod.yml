@@ -38,13 +38,6 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
-  workflow_run:
-    workflows:
-      - "Security Release"
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
     # Manual only — no workflow_run / push / schedule. Merge to develop must not start this workflow.
     inputs:
