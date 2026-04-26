@@ -16,8 +16,10 @@ on:
 # == 'Security Release'). Never from CI, repo-level **Security** (security.yml), or **Build and Push Images**
 # alone. The `security-verdict` artifact from **Security Release** (workflow file
 # `.github/workflows/security-release.yml`) is the only deploy gate — never from repo **Security**.
-# verdict **pass** only proceeds; skipped / no-candidate / fail / missing artifact fails closed (no deploy).
+# verdict **pass** deploys; **skipped** / **no-candidate** is a **neutral** success (no staging deploy, exit 0).
+# **fail**, missing/empty/unknown **verdict**, or missing artifact / invalid JSON fails closed (no deploy).
 # Real deploy: vars.ENABLE_REAL_STAGING_DEPLOY == true. Otherwise: validate only when verdict=pass.
+# For verdict=pass: automatic staging requires source_event push (validate_release_verdict.py staging-candidate).
 #
 # WARNING — canonical staging workflow: there is **no** separate `deploy-staging.yml` in this repo.
 # The job id `deploy-staging` below is an internal job name only. Do not add a second workflow file that
@@ -163,6 +165,53 @@ jobs:
           python3 -m zipfile -e security-verdict-bundle/security-verdict.zip security-verdict-bundle
           [[ -f security-verdict-bundle/security-verdict.json ]] || fail "security-verdict.zip did not contain security-verdict.json"
           python3 -c "import json; json.load(open('security-verdict-bundle/security-verdict.json',encoding='utf-8'))" || fail "security-verdict.json is not valid JSON"
+
+          verdict_raw="$(
+            python3 -c "import json; p=json.load(open('security-verdict-bundle/security-verdict.json',encoding='utf-8')); print((p.get('verdict') or '').strip().lower())"
+          )"
+          if [[ -z "${verdict_raw}" || "${verdict_raw}" == "unavailable" ]]; then
+            fail "error: security-verdict field verdict is missing or unavailable (got ${verdict_raw:-empty})"
+          fi
+          # Enterprise contract: neutral skip when verdict == "skipped" (or no-candidate) — do not run staging-candidate
+          # validation (it would fail closed for those verdicts; neutral path exits 0 and never deploys staging).
+          if [[ "${verdict_raw}" == "skipped" || "${verdict_raw}" == "no-candidate" ]]; then
+            src_sha="$(
+              python3 -c "import json; p=json.load(open('security-verdict-bundle/security-verdict.json',encoding='utf-8')); print((p.get('source_sha') or '').strip())"
+            )"
+            src_br="$(
+              python3 -c "import json; p=json.load(open('security-verdict-bundle/security-verdict.json',encoding='utf-8')); print((p.get('source_branch') or '').strip())"
+            )"
+            {
+              echo "## Staging / develop deploy skipped (neutral, success)"
+              echo ""
+              echo "Staging/develop deploy is **skipped** because **Security Release** produced a **non-release / ineligible / no-candidate** verdict (not a failure of this workflow)."
+              echo ""
+              echo "No releasable staging candidate. Staging deployment skipped."
+              echo ""
+              echo "- **Security Release** run: [${SECURITY_RELEASE_RUN_ID}](${sr_url})"
+              echo "- \`verdict\` in \`security-verdict.json\` from artifact **security-verdict**: \`${verdict_raw}\` (neutral — no digest deploy)"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            {
+              echo "staging_verdict=skipped"
+              echo "source_commit_sha=${src_sha}"
+              echo "workflow_run_id="
+              echo "source_branch=${src_br}"
+              echo "source_event="
+              echo "security_workflow_run_id=${SECURITY_RELEASE_RUN_ID}"
+            } >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          if [[ "${verdict_raw}" == "fail" ]]; then
+            {
+              echo "## Staging deploy blocked (Security Release verdict=fail)"
+              echo ""
+              echo "**security-verdict** for Security Release run [${SECURITY_RELEASE_RUN_ID}](${sr_url}) is \`verdict=fail\` — staging is **not** deployed (fail closed)."
+            } >> "${GITHUB_STEP_SUMMARY}"
+            fail "security-verdict verdict is fail; staging deploy requires pass from Security Release"
+          fi
+          if [[ "${verdict_raw}" != "pass" ]]; then
+            fail "error: security-verdict verdict is '${verdict_raw}' (expected pass, fail, skipped, or no-candidate)"
+          fi
 
           python3 scripts/release/validate_release_verdict.py staging-candidate
 
