@@ -424,7 +424,7 @@ jobs:
           GOOSE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
           RG_MODE: ${{ needs.validate-staging-security-verdict.outputs.release_gate_mode }}
           RG_VER: ${{ needs.validate-staging-security-verdict.outputs.release_gate_verdict }}
-          SKIP_REASON: 'contract-only, not a real staging deployment (ENABLE_REAL_STAGING_DEPLOY is not true; app not deployed)'
+          SKIP_REASON: 'contract-only, not a real staging deployment — staging deployment skipped because real staging is disabled (ENABLE_REAL_STAGING_DEPLOY is not true; app not deployed)'
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
