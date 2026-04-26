@@ -1,5 +1,6 @@
 # CI / workflow contract scripts
 
-- **`verify_workflow_contracts.sh`**: offline checks on `.github/workflows/*.yml` and related repo scripts. Invokes `tools/verify_github_workflow_cicd_contract.py` for the full release graph, permissions, and action-pin policy (no GitHub API).
+- **`verify_workflow_contracts.sh`**: runs `verify_supply_chain_pinning.sh` (image/action pins), `verify_deployment_config_contract.py` (deploy `secrets.*/vars.*` vs `docs/contracts/deployment-secrets-contract.yml`), offline checks on `.github/workflows/*.yml` and related repo scripts, then `tools/verify_github_workflow_cicd_contract.py` (enterprise graph, permissions, and every `make` in workflows must exist in the root `Makefile`). No GitHub API.
+- **`verify_github_governance.sh`**: requires **`gh`**, `GH_TOKEN` or `GITHUB_TOKEN`, and `GITHUB_REPOSITORY` (or `REPOSITORY`); delegates to `tools/verify_github_governance.py` (`gh api`). `CHECK_MODE=offline` runs no API calls (self-test). CI skips fork `pull_request` without failing. See [docs/operations/github-governance.md](../../docs/operations/github-governance.md).
 - **Which workflow is canonical for deploy?** See [docs/runbooks/github-governance.md](../../docs/runbooks/github-governance.md#active-github-actions-workflows-in-this-repository) — use **`deploy-prod.yml`** for production; **`deploy-production.yml`** is a no-op pointer only.
 - **Hygiene:** generated outputs and caches belong in paths listed in `.gitignore` (e.g. `__pycache__`, `security-reports/`, `trivy-*.txt`).

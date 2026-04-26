@@ -49,16 +49,18 @@ The repo still follows a **strangler** posture for traffic cutover from any lega
 
 This repository's GitHub Actions live under `.github/workflows/` (high level):
 
-- **`ci.yml` (`CI`)** — pull requests and pushes to `develop` and `main`, workflow contract and migration checks, and the same style of gates as `make ci-gates` (validates `deployments/docker/docker-compose.yml` among other steps).
+- **`ci.yml` (`CI`)** — pull requests and pushes to `develop` and `main`, workflow contract and migration checks, and the same style of gates as `make ci-gates` (validates `deployments/docker/docker-compose.yml` among other steps). It also runs a **GitHub repository governance** read-only check (`scripts/ci/verify_github_governance.sh`); **Settings** for branches and the `production` environment must still be configured in the UI — see [docs/operations/github-governance.md](docs/operations/github-governance.md).
 - **`security.yml` (`Security`)** — repository scans (ex.: govulncheck, **Secret**/**Config** jobs); **not** the same as **Security Release** (verdict/artifact) or a deploy trigger.
 - **`build-push.yml` (`Build and Push Images`)** — runs after a successful **CI** `workflow_run` for eligible `develop`/`main` pushes; builds and pushes digest-pinned app and goose images and promotion artifacts. **Not** the default path for every open PR in isolation.
 
 Local equivalents:
 
 ```powershell
-make ci          # gates + unit tests (-short)
-make ci-full     # gates + all tests (export TEST_DATABASE_URL for postgres integration tests)
-make ci-gates    # formatting, vet, sqlc drift, swagger drift, placeholder/wiring/migration scripts (no tests)
+make ci                 # fmt (gofmt check) + vet + go test + build — core go-ci make steps
+make ci-gates           # fmt-check, vet, sqlc, swagger, placeholders, wiring, migration script (no unit tests; matches static checks)
+make test-short         # go test -short (as in the Go CI Gates job)
+make verify-workflows   # actionlint + workflow contract scripts (Workflow and Script Quality; needs actionlint on PATH)
+make ci-full            # ci-gates + all tests (export TEST_DATABASE_URL for postgres integration tests)
 ```
 
 Install **sqlc** for `make sqlc-check` / `make ci-gates`: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0` (pin should match the workflow).
@@ -112,6 +114,7 @@ Integration-style tests under [`internal/modules/postgres`](internal/modules/pos
 
 ## Documentation
 
+- [Enterprise release process](docs/operations/release-process.md) and [operator checklists](docs/operations/production-release-checklist.md) (production is **manual-only**; see [CI/CD enterprise contract](docs/operations/ci-cd-enterprise-contract.md))
 - [Target architecture](docs/architecture/target-architecture.md)
 - [Current architecture (as built)](docs/architecture/current-architecture.md)
 - [Strangler / migration strategy](docs/architecture/migration-strategy.md)
@@ -126,7 +129,7 @@ Integration-style tests under [`internal/modules/postgres`](internal/modules/pos
 
 ## Makefile
 
-See `Makefile` for common targets such as `make ci-gates`, `make ci`, `make build`, and the `prod-*` helpers.
+See `Makefile` for common targets such as `make ci`, `make ci-gates`, `make verify-workflows`, `make build`, and the `prod-*` helpers.
 
 ## Lean production (telemetry hardening checks)
 

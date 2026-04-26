@@ -547,6 +547,20 @@ jobs:
           if-no-files-found: error
           retention-days: 180
 
+      # release-audit-package: canonical layout in docs/operations/release-evidence-retention.md
+      - name: Build release audit package (build phase)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/release/build_release_evidence_package.py --out release-evidence --phase build --root . --strict-phase build
+      - name: Upload release audit package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-audit-package
+          path: release-evidence
+          if-no-files-found: error
+          retention-days: 90
+
   # One place that always runs (with the gate) so the workflow run page shows whether images were built or not.
   build-and-push-outcome:
     name: Outcome (release candidate summary)

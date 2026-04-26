@@ -73,3 +73,4 @@ Optional: `NOTIFY_WEBHOOK_URL` for deployment notifications (staging is not prod
 - `.github/workflows/deploy-develop.yml` — staging / develop contract and deploy jobs.
 - `deployments/staging/scripts/deploy_staging.sh` — remote orchestration.
 - `deployments/staging/docker-compose.staging.yml` — staging stack definition.
+- [Deployment runbook: staging → production](deployment-staging-to-prod-gate.md) — collect `staging_evidence_id` and run **Deploy Production** with strict image-digest matching.

@@ -35,7 +35,7 @@ services:
       - "${OBSERVABILITY_BIND_IP:-127.0.0.1}:9093:9093"
 
   prometheus:
-    image: prom/prometheus:v3.0.1
+    image: prom/prometheus:v3.0.1@sha256:565ee86501224ebbb98fc10b332fa54440b100469924003359edf49cbce374bd # prom/prometheus:v3.0.1
     container_name: avf-prod-prometheus
     restart: unless-stopped
     command:
@@ -63,7 +63,7 @@ services:
         max-file: "3"
 
   loki:
-    image: grafana/loki:3.0.1
+    image: grafana/loki:3.0.1@sha256:ac6eb6be00ce34eb6584de508766974da66241cd073c51187f33251f97b4edd5 # grafana/loki:3.0.1
     container_name: avf-prod-loki
     restart: unless-stopped
     command: ["-config.file=/etc/loki/config.yml"]
@@ -86,7 +86,7 @@ services:
         max-file: "3"
 
   promtail:
-    image: grafana/promtail:3.0.1
+    image: grafana/promtail:3.0.1@sha256:ef0369d43d8f3832e91e7a1e547382232a6501d2653100992ca03aca7f46014b # grafana/promtail:3.0.1
     container_name: avf-prod-promtail
     restart: unless-stopped
     command: ["-config.file=/etc/promtail/config.yml", "-config.expand-env=true"]
@@ -112,7 +112,7 @@ services:
         max-file: "2"
 
   grafana:
-    image: grafana/grafana:11.4.0
+    image: grafana/grafana:11.4.0@sha256:d8ea37798ccc41061a62ab080f2676dda6bf7815558499f901bdb0f533a456fb # grafana/grafana:11.4.0
     container_name: avf-prod-grafana
     restart: unless-stopped
     environment:
@@ -145,7 +145,7 @@ services:
         max-file: "3"
 
   blackbox-exporter:
-    image: prom/blackbox-exporter:v0.25.0
+    image: prom/blackbox-exporter:v0.25.0@sha256:b04a9fef4fa086a02fc7fcd8dcdbc4b7b35cc30cdee860fdc6a19dd8b208d63e # prom/blackbox-exporter:v0.25.0
     container_name: avf-prod-blackbox
     restart: unless-stopped
     command:
@@ -168,7 +168,7 @@ services:
         max-file: "2"
 
   node-exporter:
-    image: prom/node-exporter:v1.8.2
+    image: prom/node-exporter:v1.8.2@sha256:4032c6d5bfd752342c3e631c2f1de93ba6b86c41db6b167b9a35372c139e7706 # prom/node-exporter:v1.8.2
     container_name: avf-prod-node-exporter
     restart: unless-stopped
     command:

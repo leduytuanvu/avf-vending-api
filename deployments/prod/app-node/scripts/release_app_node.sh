@@ -42,6 +42,12 @@ set_env_value "GOOSE_IMAGE_REF" "${GOOSE_IMAGE_REF_NEW}"
 compose_config_or_fail
 
 PHASE="drain"
+if [[ -f "${SHARED_ROOT}/scripts/traffic_drain_hook.sh" ]]; then
+	note "traffic drain hook (TRAFFIC_DRAIN_MODE=${TRAFFIC_DRAIN_MODE:-none})"
+	bash "${SHARED_ROOT}/scripts/traffic_drain_hook.sh"
+else
+	note "traffic_drain_hook.sh missing; using caddy stop only (record as no external drain)"
+fi
 note "drain app-node traffic by stopping caddy"
 "${COMPOSE[@]}" stop caddy >/dev/null 2>&1 || true
 
