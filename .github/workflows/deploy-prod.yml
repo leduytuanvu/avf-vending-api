@@ -103,6 +103,16 @@ on:
         required: false
         default: "7"
         type: string
+      run_migration:
+        description: production deploy mode input that indicates DB migration will be run.
+        required: false
+        default: false
+        type: boolean
+      backup_evidence_id:
+        description: required when run_migration=true; should reference a backup evidence artifact/run/id/path taken before migration.
+        required: false
+        default: ""
+        type: string
 
 # Production actions stay serialized under one stable gate.
 # Later runs queue behind the active rollout or rollback instead of canceling it.
@@ -1310,6 +1320,8 @@ jobs:
       PREVIOUS_RUN_NUMBER: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_number }}
       PREVIOUS_RUN_URL: ${{ needs.resolve-previous-production-deployment.outputs.previous_run_url }}
       ROLLBACK_AVAILABLE_BEFORE_DEPLOY: ${{ needs.resolve-previous-production-deployment.outputs.rollback_available }}
+      INPUT_RUN_MIGRATION: ${{ inputs.run_migration && 'true' || 'false' }}
+      INPUT_BACKUP_EVIDENCE_ID: ${{ inputs.backup_evidence_id || '' }}
       DEPLOY_DATA_NODE: ${{ inputs.deploy_data_node && 'true' || 'false' }}
       ALLOW_APP_NODE_ON_DATA_NODE: ${{ inputs.allow_app_node_on_data_node && 'true' || 'false' }}
       ENABLE_TEMPORAL_PROFILE: ${{ vars.PRODUCTION_ENABLE_TEMPORAL_PROFILE || 'false' }}
@@ -1386,6 +1398,9 @@ jobs:
           (( SSH_PORT >= 1 && SSH_PORT <= 65535 )) || fail "SSH_PORT must be between 1 and 65535"
           if [[ "${ACTION_MODE}" == "deploy" ]]; then
             [[ -n "${PRODUCTION_PUBLIC_BASE_URL}" ]] || fail "deploy mode requires PUBLIC_BASE_URL or API_DOMAIN for blackbox smoke"
+            if [[ "${INPUT_RUN_MIGRATION:-false}" == "true" ]]; then
+              [[ -n "${INPUT_BACKUP_EVIDENCE_ID:-}" ]] || fail "backup_evidence_id is required when run_migration=true"
+            fi
           fi
 
           if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
@@ -1480,6 +1495,8 @@ jobs:
               echo "- selected build actor: \`${SELECTED_BUILD_ACTOR}\`"
               echo "- source branch: \`${SOURCE_BRANCH}\`"
               echo "- source commit SHA: \`${SOURCE_COMMIT_SHA}\`"
+              echo "- run_migration (workflow input): \`${INPUT_RUN_MIGRATION:-false}\`"
+              echo "- backup_evidence_id: \`${INPUT_BACKUP_EVIDENCE_ID:-}\`"
             fi
             echo "- app image: \`${APP_IMAGE_REF}\`"
             echo "- app digest: \`${{ needs.validate-promotion-selection.outputs.app_digest }}\`"
@@ -1755,7 +1772,7 @@ jobs:
           APP_NODE_SMOKE_JSON_FILE: deployment-evidence/smoke-app-node-a.json
           APP_NODE_SMOKE_LABEL_PREFIX: app-node-a
           RELEASE_EVIDENCE_FILE: deployment-evidence/release-events.jsonl
-          RUN_MIGRATION_ON_FIRST_NODE: "1"
+          RUN_MIGRATION_ON_FIRST_NODE: ${{ inputs.action_mode == 'deploy' && inputs.run_migration && '1' || '0' }}
           SMOKE_API_DOMAIN: ${{ env.PRODUCTION_API_DOMAIN }}
           SMOKE_BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
           SMOKE_CONNECT_TO_HOST: ${{ env.APP_NODE_A_HOST }}
@@ -2076,6 +2093,8 @@ jobs:
                 "migration_rollback_policy": "never_automatic",
                 "auto_rollback_scope": "app_and_goose_images_only",
                 "auto_rollback_note": "Automatic rollback redeploys prior digest-pinned app and goose images via rollback_app_node.sh without RUN_MIGRATION; it does not reverse database migrations (no goose down).",
+                "run_migration_requested": s("RUN_MIGRATION_FOR_MANIFEST", "false"),
+                "backup_evidence_id": s("BACKUP_EVIDENCE_ID_FOR_MANIFEST", ""),
                 "source_commit_sha": s("DEPLOY_SOURCE_SHA"),
                 "source_commit_sha_note": s("DEPLOY_SOURCE_SHA_NOTE"),
                 "source_branch": s("SOURCE_BRANCH"),
@@ -2144,6 +2163,8 @@ jobs:
 
             e = {
                 "scope_note": "this production workflow attests only this production rollout and its release/security gates; it does not attest staging deployment or restore-drill controls",
+                "run_migration_requested": s("RUN_MIGRATION_FOR_MANIFEST", "false"),
+                "backup_evidence_id": s("BACKUP_EVIDENCE_ID_FOR_MANIFEST", ""),
                 "release_label": s("RELEASE_TAG"),
                 "resolved_release_label": s("RESOLVED_RELEASE_LABEL"),
                 "app_image_ref": s("APP_IMAGE_REF"),
@@ -2238,6 +2259,8 @@ jobs:
           export STORM_Q_BYPASSED="${storm_gate_bypassed_json}"
           export DEPLOY_SOURCE_SHA="${deploy_source_sha}"
           export DEPLOY_SOURCE_SHA_NOTE="${deploy_source_sha_note}"
+          export RUN_MIGRATION_FOR_MANIFEST="${INPUT_RUN_MIGRATION:-false}"
+          export BACKUP_EVIDENCE_ID_FOR_MANIFEST="${INPUT_BACKUP_EVIDENCE_ID:-}"
           printenv WF_PRODUCTION_MANIFESTS_WRITER | python3 -
 
           {
@@ -2260,6 +2283,10 @@ jobs:
               echo "- selected build actor: \`${SELECTED_BUILD_ACTOR}\`"
             fi
             echo "- release tag: \`${RELEASE_TAG}\`"
+            if [[ "${ACTION_MODE}" == "deploy" ]]; then
+              echo "- run_migration: \`${INPUT_RUN_MIGRATION:-false}\`"
+              echo "- backup_evidence_id: \`${INPUT_BACKUP_EVIDENCE_ID:-}\`"
+            fi
             echo "- app image: \`${APP_IMAGE_REF}\`"
             echo "- app digest: \`${{ needs.validate-promotion-selection.outputs.app_digest }}\`"
             echo "- goose image: \`${GOOSE_IMAGE_REF}\`"
