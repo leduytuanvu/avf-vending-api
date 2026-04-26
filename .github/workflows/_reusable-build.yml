@@ -237,7 +237,8 @@ jobs:
             cosign verify \
               --certificate-identity-regexp "${identity}" \
               --certificate-oidc-issuer-regexp "${issuer}" \
-              "${ref}" --json > "${out}"
+              --output json \
+              "${ref}" > "${out}"
           }
           run_verify "${APP_REF}" signing-evidence/cosign-verify-app.json
           run_verify "${GOOSE_REF}" signing-evidence/cosign-verify-goose.json
