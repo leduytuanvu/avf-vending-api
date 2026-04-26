@@ -38,7 +38,8 @@ volumes:
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # Immutable multi-arch index digest (bump with: docker buildx imagetools inspect postgres:16-alpine)
+    image: postgres:16-alpine@sha256:4e6e670bb069649261c9c18031f0aded7bb249a5b6664ddec29c013a89310d50 # postgres:16-alpine
     container_name: avf-prod-postgres
     restart: unless-stopped
     environment:
@@ -71,7 +72,7 @@ services:
         max-file: "3"
 
   nats:
-    image: nats:2.10-alpine
+    image: nats:2.10-alpine@sha256:b83efabe3e7def1e0a4a31ec6e078999bb17c80363f881df35edc70fcb6bb927 # nats:2.10-alpine
     container_name: avf-prod-nats
     restart: unless-stopped
     command: ["-js", "-sd", "/data", "-m", "8222"]
@@ -98,7 +99,7 @@ services:
         max-file: "2"
 
   emqx:
-    image: emqx/emqx:5.6.0
+    image: emqx/emqx:5.6.0@sha256:e1af4f7e3a46d4eba391edb4bd15c7a8b654893d0c9b8d943188640062537a43 # emqx/emqx:5.6.0
     container_name: avf-prod-emqx
     hostname: emqx
     restart: unless-stopped
@@ -320,7 +321,7 @@ services:
       ]
 
   caddy:
-    image: caddy:2.8-alpine
+    image: caddy:2.8-alpine@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17 # caddy:2.8-alpine
     container_name: avf-prod-caddy
     restart: unless-stopped
     ports:

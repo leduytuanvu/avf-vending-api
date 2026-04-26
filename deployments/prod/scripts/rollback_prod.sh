@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Legacy single-host rollback wrapper: delegates to release.sh rollback
 # using the last known good image refs (image-only; no DB schema undo).
+# For enterprise incident evidence + digest preflight in GitHub Actions, see
+# .github/workflows/rollback-prod.yml and docs/runbooks/production-rollback.md
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -16,7 +18,6 @@ legacy_banner() {
 ================================================================
 LEGACY SINGLE-HOST PRODUCTION PATH
 NOT THE PRIMARY 2-VPS RELEASE PATH
-LEGACY SINGLE-HOST ROLLBACK PATH ONLY
 This wrapper exists only for legacy/rollback/reference use.
 Set ALLOW_LEGACY_SINGLE_HOST=1 to proceed intentionally.
 ================================================================

@@ -1,65 +1,37 @@
-# Production rollback (AVF vending API)
+# Production rollback (incident)
 
-Production rollbacks are **image repins** only: they redeploy digest-pinned **app** and **goose** containers to a known-good pair. They **do not** run `goose down`, reverse SQL migrations, or otherwise mutate the database schema automatically.
+Use this when you need a **controlled, digest-pinned rollback** in production, with **reviewers** and an **evidence trail**.
 
-## Sources of truth
+## Two mechanisms
 
-| Artifact / doc | Purpose |
+1. **Evidence + validation (this repo):** `.github/workflows/rollback-prod.yml` — **Rollback (Production — Incident)** — `workflow_dispatch` only, **`environment: production`**, uploads **`production-rollback-evidence`**. It **does not SSH**; it resolves a prior manifest or explicit `ghcr.io/...@sha256:...` app/goose refs and validates them **before** any operator action that touches hosts.
+2. **Execution:** `.github/workflows/deploy-prod.yml` — **Deploy Production** with **`action_mode: rollback`**, `rollback_app_image_ref`, and `rollback_goose_image_ref` set to the **same** digest-pinned refs you validated, **or** on-host scripts (e.g. `deployments/prod/app-node/scripts/rollback_app_node.sh` in your topology).
+
+Legacy single-host reference: [deployments/prod/scripts/rollback_prod.sh](../deployments/prod/scripts/rollback_prod.sh) (requires `ALLOW_LEGACY_SINGLE_HOST=1`).
+
+## When to use the incident workflow
+
+- You need a **dedicated incident record** (ticket id, reason, `dry_run` preflight) and a JSON artifact for auditors.
+- You already have a **previous successful deploy** with artifact **`production-deployment-manifest`**, *or* you know the **exact** previous app and goose image digests to roll back to.
+
+## Inputs (Rollback incident workflow)
+
+| Input | Rule |
 | --- | --- |
-| Workflow **Deploy Production** (`.github/workflows/deploy-prod.yml`) | Canonical automation for deploy and rollback modes |
-| Artifact **`production-deployment-manifest`** | Last-known-good (LKG) record after every production run (success or failure); used to resolve **previous** digest-pinned refs |
-| This runbook | Operator procedure when automation or cluster state is unclear |
+| `previous_deployment_manifest_id` | Optional. Digits-only **run id** of a **successful** **Deploy Production** run that published **`production-deployment-manifest`**. If set, app/goose refs are read from the manifest JSON. |
+| `rollback_target_app_image_ref` / `rollback_target_goose_image_ref` | Required if manifest id is empty. Must be `...@sha256:<64-hex>`, no `:latest`. |
+| `incident_id` / `reason` | Required, non-secret operator context. |
+| `dry_run` | Default `true`. Validates and uploads evidence; does not imply SSH or compose changes. |
 
-## Last-known-good manifest (`production-deployment-manifest.json`)
+## After preflight (not dry run)
 
-Written on **every** workflow conclusion (`if: always()`), so a failed deploy still records what was attempted, `rollback_attempted`, and `rollback_result`.
+1. Get **Environment** approval (configured on the `production` environment in **Settings → Environments**).
+2. Run **Deploy Production** in **rollback** mode with the validated digests, or run the on-host rollback path you use for 2-VPS.
+3. Attach artifact **`production-rollback-evidence`** to the incident ticket.
 
-Fields operators rely on:
+## What not to do
 
-- **`app_image_ref`**, **`goose_image_ref`** — digest-pinned refs promoted in this run (when successful, this row becomes the next deploy’s “previous” LKG).
-- **`source_commit_sha`**, **`release_tag`**, **`deployed_at_utc`** / **`completed_at_utc`**, **`run_id`**, **`run_url`** — audit trail.
-- **`rollback_available_before_deploy`** — whether this run started with resolvable, digest-pinned **previous** refs (enables automatic rollback if deploy fails mid-flight).
-- **`previous_*`** — snapshot of the LKG **before** this run (rollback target for auto-rollback).
-- **`rollback_attempted`**, **`rollback_result`** — `not-attempted` \| `not-started` \| `no-previous-release` \| `nothing-to-rollback` \| `completed` \| `failed`.
-- **`migration_rollback_policy`**: `never_automatic` — schema is not reverted by this workflow.
-- **`auto_rollback_scope`**: `app_and_goose_images_only` — containers only; see **`auto_rollback_note`** in the JSON.
+- Do not add `on.push` / `on.workflow_run` to the rollback incident workflow (CI enforces this).
+- Do not use staging credentials or secrets for production rollback.
 
-Manifest **`schema_version`** is incremented only when JSON shape changes in a breaking way.
-
-## Before deploying
-
-1. Open the **Resolve Previous Production Deployment** job on the run you are about to execute. It prints whether **`rollback_available`** is true and copies **manual rollback** workflow inputs (digest-pinned).
-2. If **`rollback_available`** is false, a failed deploy **cannot** auto-revert live nodes. Mitigate before risky changes: complete a clean deploy to publish a manifest, or archive refs externally (registry + digests + `release_tag`).
-3. All production image refs must contain **`@sha256:`** and must not use **`latest`** (enforced in workflow and `deployments/prod/shared/scripts/validate_digest_pinned_image_refs.sh`).
-
-## Automatic rollback (failed deploy)
-
-When **`action_mode=deploy`**, rollout has passed **Mark production release start**, and a later step fails (readiness, smoke, second node, etc.):
-
-1. If **`PREVIOUS_APP_IMAGE_REF`** and **`PREVIOUS_GOOSE_IMAGE_REF`** were resolved from a prior successful manifest and are digest-pinned, the workflow runs **`rollback_app_node.sh`** on affected hosts with explicit refs and **`RUN_MIGRATION=0`**.
-2. If those refs are missing, the rollback step **fails with a clear error** — it does **not** claim success.
-3. If rollback commands fail (SSH, compose, healthcheck), **`rollback_result=failed`** and the step exits unsuccessfully; **verify live cluster state** before assuming safety.
-
-**Healthchecks** after rollback use the same **`healthcheck_app_node.sh`** path as a normal release (no bypass).
-
-## Manual rollback (workflow_dispatch)
-
-1. In **Deploy Production**, set **`action_mode=rollback`**.
-2. Set **`rollback_app_image_ref`** and **`rollback_goose_image_ref`** to the **exact** digest-pinned strings from the last good manifest (or the **Resolve Previous Production Deployment** summary).
-3. Leave **`build_run_id`** empty; do not pass deploy-only confirmation fields.
-4. Approve the **production** environment as usual.
-
-## After a successful deploy
-
-- Download and archive the **`production-deployment-manifest`** artifact (default retention **90** days in-repo).
-- Optionally mirror digest + `release_tag` + `source_commit_sha` to your change-management system so rollback does not depend on GitHub artifact TTL alone.
-
-## Operational warnings
-
-- If **migrations already ran** on production before failure, rolling back **images** can leave schema ahead of old binaries — treat as an incident; do not rely on image rollback alone without compatibility analysis.
-- **Data-node** rollback is separate from app-node rollback; automatic data-node rollback only runs when this workflow requested a data-node deploy in the same run.
-
-## Related
-
-- [production-2-vps.md](./production-2-vps.md) — topology and deploy root
-- [production-cutover-rollback.md](./production-cutover-rollback.md) — broader cutover and rollback context
+See also: [production-backup-restore-drill.md](production-backup-restore-drill.md), [../operations/two-vps-rolling-production-deploy.md](../operations/two-vps-rolling-production-deploy.md).

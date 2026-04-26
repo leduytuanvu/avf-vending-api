@@ -8,11 +8,8 @@ The GitHub Actions workflow enforces this in the **Validate production deploy in
 
 | Input | When required | Description |
 |-------|---------------|-------------|
-| `run_migration` | Every deploy (default `true`) | If `true`, the first app wave runs goose **Up** on the new goose image. If `false`, the rollout is **image-only** (no goose on the first node); backup evidence is not required. |
-| `backup_provider` | `run_migration: true` | How the database was protected (e.g. `hcloud-snapshot`, `rds-snapshot`, `s3-dump`, `backup_managed_postgres`, `gh-actions-artifact`). |
-| `backup_evidence_id` | `run_migration: true` | Primary reference: snapshot id, S3 key, `host:/path` dump, GitHub `artifact:run:filename`, or change ticket. |
-| `backup_completed_at_utc` | `run_migration: true` | When the backup finished, **ISO-8601 UTC** (e.g. `2026-04-26T12:00:00Z`). |
-| `backup_approval_ref` | Optional | Approver, ticket URL, PagerDuty id, or runbook link. |
+| `run_migration` | Every deploy (default `false`) | If `true`, the first app wave runs goose **Up** on the new goose image. If `false`, the rollout is **image-only** (no migration on the first node); backup evidence is not required. |
+| `backup_evidence_id` | `run_migration: true` | **Required** when `run_migration` is true: a traceable reference (snapshot id, S3 key, `host:/path` dump, GitHub artifact/run, change ticket, or similar) proving a backup or recovery path before migration. **Optional** for image-only deploys. |
 
 ## What counts as acceptable evidence
 
@@ -21,7 +18,7 @@ The GitHub Actions workflow enforces this in the **Validate production deploy in
 - **Cloud provider** automated backup or snapshot (RDS, Hetzner, etc.).
 - **GitHub** artifact or release asset containing a dump (name + run id in `backup_evidence_id`).
 
-The workflow does **not** create backups automatically; operators complete backup through normal procedures, then run **Deploy Production** with these fields.
+The workflow does **not** create backups automatically; operators complete backup through normal procedures, then run **Deploy Production** with `run_migration: true` and a non-empty `backup_evidence_id` (validated in **Validate production action inputs** in **Validate Production Artifact Source** before Security Release artifact download, and again before SSH in the deploy job).
 
 ## Artifacts and manifests
 

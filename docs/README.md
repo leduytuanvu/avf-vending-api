@@ -28,6 +28,10 @@ Runtime-oriented package docs (see each `doc.go`): `internal/platform/mqtt`, `na
 
 ## Operations
 
+- [Release process (enterprise)](operations/release-process.md) — `develop` / `main`, Build, Security Release, **manual** production deploy, required run and evidence ids.
+- [Production release checklist (operator)](operations/production-release-checklist.md) — governance, CI/Build/Security, staging id, backup id, digests, rollback, smoke, approval.
+- [Field rollout checklist (vending)](operations/field-rollout-checklist.md) — machines, payments, dispense, MQTT, offline/retry, evidence owner.
+- [CI/CD enterprise contract](operations/ci-cd-enterprise-contract.md) — what is enterprise-ready, what stays manual, evidence, and limitations.
 - [API surface security](runbooks/api-surface-security.md) — RBAC, tenant binding for machine URLs, metrics/Swagger exposure, device HTTP fallback vs MQTT.
 - [Enterprise API / backend / CI-CD audit report](runbooks/enterprise-api-backend-audit-report.md) — strict readiness verdicts (pilot vs 1000 machines), gaps, risks, release commands.
 - [Incident runbook](../ops/RUNBOOK.md) — operator sessions, outbox, NATS, reconciler, MQTT ingest; log fields and SQL.
