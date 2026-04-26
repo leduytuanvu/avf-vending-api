@@ -103,15 +103,19 @@ jobs:
             goose="$(printf '%s' "${out}" | tail -1)"
             check_digest manifest_app_image_ref "$app"
             check_digest manifest_goose_image_ref "$goose"
-            echo "app_ref=${app}" >> "${GITHUB_OUTPUT}"
-            echo "goose_ref=${goose}" >> "${GITHUB_OUTPUT}"
-            echo "source_manifest_run_id=${mr}" >> "${GITHUB_OUTPUT}"
+            {
+              echo "app_ref=${app}"
+              echo "goose_ref=${goose}"
+              echo "source_manifest_run_id=${mr}"
+            } >> "${GITHUB_OUTPUT}"
           else
             check_digest rollback_target_app_image_ref "$app"
             check_digest rollback_target_goose_image_ref "$goose"
-            echo "app_ref=${app}" >> "${GITHUB_OUTPUT}"
-            echo "goose_ref=${goose}" >> "${GITHUB_OUTPUT}"
-            echo "source_manifest_run_id=" >> "${GITHUB_OUTPUT}"
+            {
+              echo "app_ref=${app}"
+              echo "goose_ref=${goose}"
+              echo "source_manifest_run_id="
+            } >> "${GITHUB_OUTPUT}"
           fi
           {
             echo "## Production rollback (incident) — preflight"

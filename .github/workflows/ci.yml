@@ -145,6 +145,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
           ENFORCE_GITHUB_GOVERNANCE: "true"
         run: |
           set -Eeuo pipefail
@@ -153,7 +154,8 @@ jobs:
           {
             echo "## GitHub repository governance"
             echo "- **Script**: \`scripts/ci/verify_github_governance.sh\` (uses \`gh api\` via \`tools/verify_github_governance.py\`)."
-            echo "- **Result line**: look for \`GOVERNANCE_CHECK: PASS\` in the log (or FAIL / SKIPPED)."
+            echo "- **Result line**: \`GOVERNANCE_CHECK: PASS\` / \`FAIL\` / \`SKIPPED\` / (same-repo **pull_request** only) \`MANUAL_REVIEW_REQUIRED\` when the default token cannot read admin APIs — not a passing audit; verify in the GitHub UI using the runbook below."
+            echo "- **Full runbook**: [docs/runbooks/github-governance.md](../../docs/runbooks/github-governance.md)"
             echo "- **Configure GitHub** (branches + \`production\` environment): [docs/operations/github-governance.md](../../docs/operations/github-governance.md)"
           } >> "${GITHUB_STEP_SUMMARY}"
 

@@ -18,7 +18,6 @@ legacy_banner() {
 ================================================================
 LEGACY SINGLE-HOST PRODUCTION PATH
 NOT THE PRIMARY 2-VPS RELEASE PATH
-LEGACY SINGLE-HOST ROLLBACK PATH ONLY
 This wrapper exists only for legacy/rollback/reference use.
 Set ALLOW_LEGACY_SINGLE_HOST=1 to proceed intentionally.
 ================================================================

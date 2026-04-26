@@ -234,6 +234,18 @@ def _print_manual_checklist(stream) -> None:
     print(MANUAL_GOVERNANCE_CHECKLIST, file=stream)
 
 
+def _is_github_permission_denied_error(msg: str) -> bool:
+    """True when the API refused to read admin-only settings (typical for GITHUB_TOKEN on pull_request)."""
+    m = (msg or "").lower()
+    if "http 401" in m or "http 403" in m:
+        return True
+    if "no permission to read" in m:
+        return True
+    if "resource not accessible" in m or "not accessible by integration" in m:
+        return True
+    return False
+
+
 def _required_approving_count(prr: dict[str, Any] | None) -> int:
     if not isinstance(prr, dict):
         return 0
@@ -551,6 +563,23 @@ def main() -> int:
 
     for w in warnings:
         print(f"verify_github_governance: warning: {w}", file=sys.stderr)
+
+    pr_event = (os.environ.get("GITHUB_EVENT_NAME") or "").strip() == "pull_request"
+    if pr_event and errors and all(_is_github_permission_denied_error(e) for e in errors):
+        # GITHUB_TOKEN on pull_request often cannot read branch protection or environments; do not fail CI
+        # or claim PASS — operators verify Settings manually (see docs/operations/github-governance.md).
+        for e in errors:
+            print(
+                f"verify_github_governance: note (API read denied on pull_request; this is not a passing governance audit): {e}",
+                file=sys.stderr,
+            )
+        _print_manual_checklist(sys.stdout)
+        print(
+            "GOVERNANCE_CHECK: MANUAL_REVIEW_REQUIRED (token cannot read branch protection or environments; verify in GitHub UI — docs/operations/github-governance.md, docs/runbooks/github-governance.md)",
+            file=sys.stderr,
+        )
+        return 0
+
     if errors:
         print("verify_github_governance: governance check failed:", file=sys.stderr)
         for e in errors:
