@@ -175,6 +175,28 @@ def main() -> None:
     if "Security Release" not in wfw_st or "develop" not in st_br:
         print("ERROR: deploy-develop must run on workflow_run from Security Release, branches: [develop].", file=sys.stderr)
         raise SystemExit(1)
+    stg_path = WF / "deploy-develop.yml"
+    stg_text = stg_path.read_text(encoding="utf-8")
+    if "ENABLE_REAL_STAGING_DEPLOY" not in stg_text:
+        print(
+            "ERROR: deploy-develop must reference vars.ENABLE_REAL_STAGING_DEPLOY to distinguish contract-only "
+            "from real staging (see docs/runbooks/staging-preprod.md).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if "contract-only, not a real staging deployment" not in stg_text:
+        print(
+            "ERROR: deploy-develop must state contract-only, not a real staging deployment in the contract-only path "
+            "(workflow summary and JSON) so a no-op run is never mistaken for a real deploy.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if '"deployment_mode"' not in stg_text:
+        print(
+            "ERROR: deploy-develop must publish deployment_mode in staging evidence (contract_only vs real_staging).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
     prod = load("deploy-prod.yml")
     if (prod.get("name") or "").strip() != "Deploy Production":
@@ -200,6 +222,12 @@ def main() -> None:
         raise SystemExit(1)
     if "Security Release" not in text:
         print("ERROR: deploy-prod must reference Security Release (e.g. security_release_run_id) for production evidence.", file=sys.stderr)
+        raise SystemExit(1)
+    if "run_migration" not in text or "backup_evidence_id" not in text:
+        print(
+            "ERROR: deploy-prod must define run_migration and backup_evidence_id inputs (pre-migration backup evidence contract).",
+            file=sys.stderr,
+        )
         raise SystemExit(1)
 
     print("OK: GitHub workflow CI/CD contract (offline YAML)")

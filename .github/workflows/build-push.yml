@@ -176,16 +176,16 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Download Cosign signing evidence from build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: cosign-signing-evidence
           path: cosign-evidence
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -498,54 +498,54 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload SBOM reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sbom-reports
           path: |
             security-reports/sbom-app.cdx.json
             security-reports/sbom-goose.cdx.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 180
 
       - name: Upload build metadata manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: build-metadata-manifest
           path: build-evidence/build-metadata-manifest.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 180
 
       - name: Upload compatibility image build metadata manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: image-build-metadata
           path: build-evidence/image-build-metadata.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 180
 
       - name: Upload promotion manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: promotion-manifest
           path: build-evidence/promotion-manifest.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 180
 
       - name: Upload immutable image contract
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: immutable-image-contract
           path: build-evidence/immutable-image-contract.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 180
 
       - name: Upload release candidate (evidence for Security Release)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-candidate
           path: build-evidence/release-candidate.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 180
 
   # One place that always runs (with the gate) so the workflow run page shows whether images were built or not.
   build-and-push-outcome:

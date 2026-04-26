@@ -18,7 +18,11 @@ on:
 # `.github/workflows/security-release.yml`) is the only deploy gate — never from repo **Security**.
 # verdict **pass** deploys; **skipped** / **no-candidate** is a **neutral** success (no staging deploy, exit 0).
 # **fail**, missing/empty/unknown **verdict**, or missing artifact / invalid JSON fails closed (no deploy).
-# Real deploy: vars.ENABLE_REAL_STAGING_DEPLOY == true. Otherwise: validate only when verdict=pass.
+# Staging has two explicit modes (repository variable `ENABLE_REAL_STAGING_DEPLOY`):
+# 1) Contract-only: var is not `true` — the workflow may record evidence and a **passing** run must **not** read
+#    like a real deployment. Summary line: **contract-only, not a real staging deployment** (app not deployed).
+# 2) Real pre-prod / staging: var is `true` — requires host, SSH, secrets, remote `deploy_staging.sh`
+#    (compose config + digest-pinned pull on host), `/health/ready`, smoke, and published evidence JSON/artifacts.
 # For verdict=pass: automatic staging requires source_event push (validate_release_verdict.py staging-candidate).
 #
 # WARNING — canonical staging workflow: there is **no** separate `deploy-staging.yml` in this repo.
@@ -79,7 +83,7 @@ jobs:
       security_workflow_run_id: ${{ steps.lookup.outputs.security_workflow_run_id }}
     steps:
       - name: Check out repository (release gate scripts)
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Enterprise release chain (this workflow = Staging / Develop deploy)
         shell: bash
@@ -94,6 +98,10 @@ jobs:
             echo ""
             echo "- **Trigger** \`workflow_run\` on **Security Release** completed on \`develop\` (not on repo **Security** and not on **Build** alone)."
             echo "- \`source_build_run_id\` and digest-pinned image refs are taken only from the **security-verdict** artifact of run \`${{ github.event.workflow_run.id }}\` (no separate latest-Build search on the automatic path)."
+            echo ""
+            echo "### Staging mode (\`vars.ENABLE_REAL_STAGING_DEPLOY\`)"
+            echo "- If **not** \`true\`: this enterprise chain can still run **\`contract-only, not a real staging deployment\`** (release **contract** validation only; **no** app pushed to a VPS)."
+            echo "- If \`true\`: the workflow requires a **real** staging/pre-prod host, SSH, and runs remote deploy, compose pull (digests), \`/health/ready\`, and smoke. See \`docs/runbooks/staging-preprod.md\`."
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Resolve candidate from Security Release security-verdict artifact
@@ -259,7 +267,7 @@ jobs:
       security_verdict_generated_at_utc: ${{ steps.gate.outputs.security_verdict_generated_at_utc }}
     steps:
       - name: Check out repository (release gate scripts)
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Re-validate security-verdict and immutable image alignment
         id: gate
@@ -386,7 +394,7 @@ jobs:
 
   # When real staging is off: validate the same release chain as above, then exit success without SSH/VPS.
   record-staging-disabled-outcome:
-    name: Staging — Contract only (no VPS)
+    name: Staging — contract-only (not a real deployment; no VPS)
     if: |
       github.event_name == 'workflow_run' &&
       github.event.workflow_run.name == 'Security Release' &&
@@ -416,7 +424,7 @@ jobs:
           GOOSE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
           RG_MODE: ${{ needs.validate-staging-security-verdict.outputs.release_gate_mode }}
           RG_VER: ${{ needs.validate-staging-security-verdict.outputs.release_gate_verdict }}
-          SKIP_REASON: staging deployment skipped because real staging is disabled
+          SKIP_REASON: 'contract-only, not a real staging deployment — staging deployment skipped because real staging is disabled (ENABLE_REAL_STAGING_DEPLOY is not true; app not deployed)'
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
@@ -428,9 +436,13 @@ jobs:
 
           out = Path("deployment-evidence/staging-contract-outcome.json")
           out.parent.mkdir(parents=True, exist_ok=True)
+          notice = "contract-only, not a real staging deployment"
           payload = {
-            "schema_version": "v1",
+            "schema_version": "v2",
             "environment": "staging",
+            "deployment_mode": "contract_only",
+            "operator_notice": notice,
+            "not_a_deployment": True,
             "contract_validated": True,
             "deployment_executed": False,
             "staging_enabled": False,
@@ -447,16 +459,21 @@ jobs:
           out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
           {
-            echo "## Staging deployment contract (no real staging)"
+            echo "## **contract-only, not a real staging deployment**"
+            echo ""
+            echo "This run **validated the staging release chain contract** (security-verdict, digests) only."
+            echo "The **application was not deployed** to any server — **not** a pre-prod/staging stack rollout."
+            echo ""
+            echo "- **\`deployment_mode\`**: \`contract_only\` (see artifact \`staging-contract-outcome\` JSON)"
             echo "- **${SKIP_REASON}**"
-            echo "- \`contract_validated\`: \`true\`"
+            echo "- \`contract_validated\`: \`true\` (enterprise gate evidence)"
             echo "- \`staging_enabled\`: \`false\`"
             echo "- \`deployment_executed\`: \`false\`"
             echo "- \`source_sha\`: \`${SRC_SHA}\`"
             echo "- \`source_build_run_id\` (from security-verdict): \`${BUILD_RUN}\`"
             echo "- \`app_image_ref\` (digest-pinned): \`${APP_REF}\`"
             echo "- \`goose_image_ref\` (digest-pinned): \`${GOOSE_REF}\`"
-            echo "- (set repository variable \`ENABLE_REAL_STAGING_DEPLOY=true\` to require host, SSH, and remote deploy)"
+            echo "- Set \`vars.ENABLE_REAL_STAGING_DEPLOY=true\` and see \`docs/runbooks/staging-preprod.md\` for a real host deploy."
           } >> "$GITHUB_STEP_SUMMARY"
           {
             echo "contract_validated=true"
@@ -466,12 +483,12 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Upload staging contract outcome (disabled path)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: staging-contract-outcome
           path: deployment-evidence/staging-contract-outcome.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
 
   validate-staging-prerequisites:
     name: Validate Staging Deployment Contract
@@ -531,6 +548,7 @@ jobs:
             missing = [line.strip() for line in Path("deployment-evidence/staging-missing-prerequisites.txt").read_text(encoding="utf-8").splitlines() if line.strip()]
             payload = {
                 "environment": "staging",
+                "deployment_mode": "real_staging",
                 "contract_validated": True,
                 "staging_enabled": True,
                 "skip_reason": "",
@@ -586,7 +604,12 @@ jobs:
           printenv WF_STAGING_LOCAL_PREREQ_JSON | python3 -
 
           {
-            echo "## Staging Deployment Contract"
+            echo "## Real staging / pre-prod — required deployment contract"
+            echo ""
+            echo "- **This job runs only when \`vars.ENABLE_REAL_STAGING_DEPLOY\` is \`true\`**. The **contract-only** path (\`contract-only, not a real staging deployment\`) is a **different** job when that var is not \`true\`."
+            echo "- **Mode**: real remote deploy — missing host, SSH, or digest-pinned image refs **fails closed** here (no silent success)."
+            echo ""
+            echo "### Staging Deployment Contract"
             echo "- environment: \`staging\`"
             echo "- intended staging host: \`${STAGING_HOST:-missing}\`"
             echo "- intended deploy root: \`${STAGING_DEPLOY_ROOT:-missing}\`"
@@ -630,7 +653,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Start staging SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
           ssh-private-key: ${{ secrets.STAGING_SSH_KEY || secrets.STAGING_SSH_PRIVATE_KEY || secrets.PREPROD_SSH_KEY || secrets.PREPROD_SSH_PRIVATE_KEY }}
 
@@ -737,12 +760,12 @@ jobs:
 
       - name: Upload staging deployment contract report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: staging-deployment-contract-report
           path: deployment-evidence/staging-prerequisites.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
 
   deploy-staging:
     name: Execute Staging Deployment
@@ -779,9 +802,33 @@ jobs:
       SSH_USER: ${{ needs.validate-staging-prerequisites.outputs.ssh_user }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ needs.resolve-staging-candidate.outputs.source_commit_sha }}
+
+      - name: Validate staging docker compose config (runner, before SSH)
+        id: staging_compose_config
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p deployment-evidence
+          STAGING_ENV_FILE=.env.staging.example docker compose --env-file deployments/staging/.env.staging.example -f deployments/staging/docker-compose.staging.yml config > deployment-evidence/staging-compose.resolved.yml
+          sha256sum deployment-evidence/staging-compose.resolved.yml | awk '{print $1}' | tee deployment-evidence/staging-compose.resolved.yml.sha256
+          echo "compose_config_sha256=$(tr -d '\n' < deployment-evidence/staging-compose.resolved.yml.sha256)" >> "${GITHUB_OUTPUT}"
+          {
+            echo "### Staging compose — runner validation (not a deploy)"
+            echo "- Ran the same \`docker compose … config\` contract as CI (example env) to prove compose files resolve before any SSH step."
+            echo "- **\`staging-compose.resolved.yml.sha256\`**: \`$(tr -d '\n' < deployment-evidence/staging-compose.resolved.yml.sha256)\`"
+            echo "- On the host, \`deploy_staging.sh\` runs **\`docker compose config\`**, **digest-pinned \`docker compose pull\`**, then brings the stack up (see artifact \`staging-preprod-compose-runner-evidence\`)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload staging compose runner evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: staging-preprod-compose-runner-evidence
+          path: deployment-evidence/staging-compose.resolved.yml.sha256
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Migration safety gate (staging)
         shell: bash
@@ -793,15 +840,15 @@ jobs:
 
       - name: Upload migration safety evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: staging-migration-safety-report
           path: migration-evidence/migration-safety-report.json
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 90
 
       - name: Start staging SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
         with:
           ssh-private-key: ${{ secrets.STAGING_SSH_KEY || secrets.STAGING_SSH_PRIVATE_KEY || secrets.PREPROD_SSH_KEY || secrets.PREPROD_SSH_PRIVATE_KEY }}
 
@@ -897,7 +944,7 @@ jobs:
 
       - name: Upload staging smoke evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: staging-smoke-evidence
           path: |
@@ -905,13 +952,14 @@ jobs:
             smoke-reports/staging-smoke-report.json
             smoke-reports/staging-smoke-summary.md
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 90
 
       - name: Write staging deployment verdict
         if: always()
         shell: bash
         env:
           ACTOR: ${{ github.actor }}
+          STAGING_COMPOSE_CONFIG_SHA256: ${{ steps.staging_compose_config.outputs.compose_config_sha256 }}
           DEPLOY_ATTEMPTED: ${{ steps.deploy.outcome != 'skipped' }}
           DEPLOY_OUTCOME: ${{ steps.deploy.outcome || 'skipped' }}
           FINAL_RESULT: ${{ job.status }}
@@ -932,6 +980,8 @@ jobs:
             actual_done = deploy_outcome == "success"
             payload = {
                 "environment": "staging",
+                "deployment_mode": "real_staging",
+                "operator_notice": "Real staging / pre-prod: remote deploy, digest-pinned pull on host, /health/ready, and smoke. Contract-only runs use deployment_mode contract_only in staging-contract-outcome.json.",
                 "workflow_intent": "real-staging-deploy",
                 "actual_deploy_attempted": deploy_attempted,
                 "actual_deploy_completed": actual_done,
@@ -947,6 +997,9 @@ jobs:
                 "build_run_id": s("MANIFEST_STAGING_BUILD_RUN"),
                 "app_image_ref": s("APP_IMAGE_REF"),
                 "goose_image_ref": s("GOOSE_IMAGE_REF"),
+                "compose_config_runner_sha256": s("STAGING_COMPOSE_CONFIG_SHA256"),
+                "remote_image_pull": "docker compose pull (digest-pinned refs) in deployments/staging/scripts/deploy_staging.sh on the staging host",
+                "healthcheck": "scripts/healthcheck_staging.sh (includes /health/ready) and runner smoke (staging_smoke_evidence.sh)",
                 "release_gate_mode": s("RELEASE_GATE_MODE"),
                 "release_gate_verdict": s("RELEASE_GATE_VERDICT"),
                 "repo_release_verdict": s("REPO_RELEASE_VERDICT"),
@@ -994,8 +1047,10 @@ jobs:
           printenv WF_STAGING_VERDICT_JSON | python3 -
 
           {
-            echo "## Staging Deployment Result"
+            echo "## Staging Deployment Result — **real_staging** (not contract-only)"
+            echo "- **\`deployment_mode\`**: \`real_staging\` — this job is the **pre-prod stack** path; **contract-only** is \`record-staging-disabled-outcome\` when \`ENABLE_REAL_STAGING_DEPLOY\` is not \`true\`."
             echo "- environment: \`staging\`"
+            echo "- **compose (runner) sha256**: \`${STAGING_COMPOSE_CONFIG_SHA256:-n/a}\` (evidence: artifact \`staging-preprod-compose-runner-evidence\`)"
             echo "- actual deploy attempted: \`${DEPLOY_ATTEMPTED}\`"
             echo "- verdict: \`${staging_verdict}\`"
             echo "- build run id: \`${{ needs.resolve-staging-candidate.outputs.workflow_run_id }}\`"
@@ -1021,12 +1076,12 @@ jobs:
 
       - name: Upload staging deployment verdict
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: staging-deployment-verdict
           path: deployment-evidence/staging-deployment-verdict.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
 
       - name: Optional deployment webhook notify
         if: always()
@@ -1041,5 +1096,5 @@ jobs:
             --source-sha "${{ needs.resolve-staging-candidate.outputs.source_commit_sha }}" \
             --source-branch develop \
             --workflow-run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --message "Staging deploy: job_result=${{ job.status }} (see staging-deployment-verdict and job summary)" \
+            --message "Staging deploy (real_staging, not contract-only): job_result=${{ job.status }} (see staging-deployment-verdict and job summary)" \
             --event "staging-deploy"

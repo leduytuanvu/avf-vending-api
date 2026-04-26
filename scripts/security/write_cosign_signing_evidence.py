@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Merge Cosign verify --json outputs into a single signing-evidence document for CI artifacts."""
+"""Merge cosign verify --output json results into a single signing-evidence document for CI artifacts."""
 from __future__ import annotations
 
 import argparse
@@ -43,8 +43,8 @@ def main() -> int:
     ap.add_argument("--out", required=True, help="Output JSON path")
     ap.add_argument("--app-ref", required=True)
     ap.add_argument("--goose-ref", required=True)
-    ap.add_argument("--verify-app-json", default="", help="Path from cosign verify --json for app")
-    ap.add_argument("--verify-goose-json", default="", help="Path from cosign verify --json for goose")
+    ap.add_argument("--verify-app-json", default="", help="Path from cosign verify --output json for app")
+    ap.add_argument("--verify-goose-json", default="", help="Path from cosign verify --output json for goose")
     ap.add_argument("--workflow-run-id", default="")
     ap.add_argument("--repository", default="")
     ap.add_argument("--workflow-ref", default="")

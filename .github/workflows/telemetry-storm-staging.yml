@@ -57,7 +57,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Validate inputs
         shell: bash
@@ -175,7 +175,7 @@ jobs:
 
       - name: Upload storm suite artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: telemetry-storm-${{ inputs.scenario_mode }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -183,6 +183,7 @@ jobs:
             telemetry-storm-artifacts-${{ github.run_id }}-${{ github.run_attempt }}/telemetry-storm-suite-result.json
             telemetry-storm-artifacts-${{ github.run_id }}-${{ github.run_attempt }}/storm-suite.log
           if-no-files-found: warn
+          retention-days: 30
 
       - name: Upload scale-gate evidence (telemetry-storm-result)
         if: success()
@@ -202,8 +203,9 @@ jobs:
 
       - name: Upload artifact for production scale gate
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: telemetry-storm-result
           path: storm-gate-bundle/telemetry-storm-result.json
           if-no-files-found: error
+          retention-days: 180

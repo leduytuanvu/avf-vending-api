@@ -1,4 +1,6 @@
-name: Nightly Ops
+# Manual evidence / ops checks only — **no** `schedule` (restore drill can touch disposable DBs; other jobs are
+# read-mostly but can still be heavy). For scheduled security rescans, see `nightly-security.yml`.
+name: Manual Ops Evidence Check
 
 on:
   workflow_dispatch:
@@ -8,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nightly-ops-${{ github.ref }}
+  group: manual-ops-evidence-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -86,14 +88,14 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload promotion artifact readiness report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-promotion-artifact-readiness
           path: |
             nightly-reports/image-metadata.json
             nightly-reports/promotion-manifest.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
   go-maintenance-report:
     name: Go Dependency Maintenance Report
@@ -102,10 +104,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
           cache: true
@@ -114,24 +116,25 @@ jobs:
       - name: Generate Go maintenance report
         shell: bash
         run: |
+          set -Eeuo pipefail
           mkdir -p nightly-reports
           go mod verify > nightly-reports/go-mod-verify.txt
           go list -u -m -json all > nightly-reports/go-module-updates.json
           {
-            echo "### Nightly ops summary"
+            echo "### Go module maintenance (Manual Ops Evidence Check)"
             echo "- Verified the committed Go module cache with \`go mod verify\`."
             echo "- Captured available Go module updates in \`go-module-updates.json\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Go maintenance report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-go-maintenance-report
           path: |
             nightly-reports/go-mod-verify.txt
             nightly-reports/go-module-updates.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
   runtime-asset-assurance:
     name: Runtime Asset Contract Assurance
@@ -140,7 +143,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Verify production runtime assets
         shell: bash
@@ -157,14 +160,14 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload runtime asset report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-runtime-asset-assurance
           path: |
             nightly-reports/runtime-assets.sha256
             nightly-reports/runtime-assets-report.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
   restore-readiness:
     name: Restore Readiness Reports and Drill Verdict
@@ -173,7 +176,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install PostgreSQL client tools
         shell: bash
@@ -510,7 +513,7 @@ jobs:
 
       - name: Upload restore readiness-only reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-restore-readiness-reports
           path: |
@@ -521,11 +524,11 @@ jobs:
             nightly-reports/restore-readiness.txt
             nightly-reports/restore-readiness.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
       - name: Upload restore drill verdict and control summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-restore-drill-verdict
           path: |
@@ -533,11 +536,11 @@ jobs:
             nightly-reports/restore-drill-verdict.json
             nightly-reports/nightly-restore-preparedness.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
       - name: Upload actual restore drill execution evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-actual-restore-drill-execution
           path: |
@@ -548,7 +551,7 @@ jobs:
             nightly-reports/restore-drill-verdict.json
             nightly-reports/nightly-restore-preparedness.json
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 30
 
       - name: Enforce actual restore drill control verdict
         if: always()
@@ -571,14 +574,15 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Generate CI/CD inventory
         shell: bash
         run: |
+          set -Eeuo pipefail
           mkdir -p nightly-reports
           {
-            echo "Nightly CI/CD inventory"
+            echo "CI/CD inventory (Manual Ops Evidence Check)"
             echo
             echo "[Workflow files]"
             ls .github/workflows/*.yml
@@ -591,9 +595,9 @@ jobs:
           } > nightly-reports/ci-cd-inventory.txt
 
       - name: Upload CI/CD inventory
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-ci-cd-inventory
           path: nightly-reports/ci-cd-inventory.txt
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30

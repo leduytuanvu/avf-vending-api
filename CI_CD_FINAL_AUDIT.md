@@ -13,7 +13,7 @@
 
 ## Executive summary
 
-The repository implements a **single promotion chain** for releasable artifacts: **CI → repo Security → Build and Push Images → Security Release → (optional) staging or production deploy**. **Security Release** is the **only** workflow that publishes **`security-verdict`** and thus the **only** deploy approval source for **`deploy-develop.yml`** and the automatic path of **`deploy-prod.yml`**. Repo-level **Security** (`security.yml`) performs scans but **never** substitutes for that verdict. **Non-pass** verdicts (**skipped**, **no-candidate**, **fail**) **do not** authorize deploy; staging/production workflows **fail closed** on **skipped** / **no-candidate** / **fail** (enforced by workflow logic and offline contract scripts).
+The repository implements a **single promotion chain** for releasable artifacts: **CI → repo Security → Build and Push Images → Security Release → (optional) staging deploy; production is manual-only**. **Security Release** is the **only** workflow that publishes **`security-verdict`** and thus the **only** source of that verdict for **`deploy-develop.yml`**; **`deploy-prod.yml`** (production) is **`workflow_dispatch` only** and **does not** auto-run after **Security Release**, but it **requires** a passing **`security-verdict`** and matching Build/Security Release run ids in **inputs** (same contract). Repo-level **Security** (`security.yml`) performs scans but **never** substitutes for that verdict. **Non-pass** verdicts (**skipped**, **no-candidate**, **fail**) **do not** authorize deploy; deploy workflows **fail closed** on **skipped** / **no-candidate** / **fail** (enforced by workflow logic and offline contract scripts).
 
 **Overall enterprise readiness: 9 / 10** — one point reserved for **manual** GitHub configuration (branch protection rules, environment approvers, and protected storage for credentials and other sensitive values in **Settings**) that cannot be fully proven from the repo without an authenticated governance run.
 
@@ -47,7 +47,7 @@ After Security Release (workflow_run completed + success where required)
 
 Does NOT appear in the promotion chain for deploy authorization
 ├── security.yml as verdict source (no security-verdict artifact)
-├── nightly-security.yml / nightly-ops.yml → rescan / ops; no production deploy
+├── nightly-security.yml (scheduled rescan) / nightly-ops.yml (Manual Ops Evidence Check, manual only) → out-of-band; no production deploy
 ├── deploy-production.yml → pointer only (no deploy)
 └── enterprise-release-verify.yml → extra verification; not Security Release, not deploy
 ```
@@ -250,7 +250,7 @@ bash scripts/verify_enterprise_release.sh
 
 Same as develop through step 4; then:
 
-5. **Deploy Production** — automatic evaluation only for **Security Release** on **`main`** with **`verdict=pass`** and **`source_branch=main`** (plus gates). Manual **`workflow_dispatch`** for deploy/rollback with confirmations.
+5. **Deploy Production** — **manual** **`workflow_dispatch` only** on **`main`**. The operator must supply the Build run id, Security Release run id, and digest-pinned image refs; gates require **`verdict=pass`**, **`source_branch=main`**, and related evidence (this workflow does not start automatically when **Security Release** finishes).
 
 ---
 
