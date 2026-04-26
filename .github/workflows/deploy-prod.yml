@@ -1,4 +1,4 @@
-﻿name: Deploy Production
+name: Deploy Production
 
 # Enterprise policy: production actions are workflow_dispatch only. There is no automatic deploy from
 # main or from Security Release. Operators supply build_run_id + security_release_run_id (successful
