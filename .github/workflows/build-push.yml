@@ -27,15 +27,18 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  attestations: write
   contents: read
-  id-token: write
-  packages: write
+  actions: read
 
 # Contract (see scripts/ci/verify_workflow_contracts.sh; enforced in upstream-ci-release-gate):
 # - workflow_run auto release candidate: github.event.workflow_run.name == 'CI' && conclusion success &&
 #   github.event.workflow_run.event == 'push' && (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')
 # - If not a release candidate: workflow succeeds, no checkout/build/artifacts, clear step summary; no "fake" release artifacts.
+#
+# Provenance (supply chain): repo Actions variables PROVENANCE_ENFORCEMENT (warn|enforce) and
+# ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK (true|false) are interpreted in Security Release + _reusable-deploy + deploy gates
+# (see docs/runbooks/supply-chain-security.md). GitHub artifact attestation steps follow _reusable-build rules; this workflow
+# does not synthesize attestations — only real signing/evidence artifacts (e.g. cosign-signing-evidence) are uploaded when the build runs them.
 
 jobs:
   # Always runs. Sets release_candidate=true only when a real build should run (or manual dispatch to develop/main).
@@ -53,6 +56,16 @@ jobs:
           set -Eeuo pipefail
           {
             echo "## Upstream / trigger gate"
+            echo ""
+            echo "### Enterprise release chain (this workflow = **Build and Push Images**)"
+            echo ""
+            echo "\`\`\`"
+            echo "CI (success)  →  *this run*  →  Security Release  →  Deploy (Staging|Production) [verdict-only]"
+            echo "\`\`\`"
+            echo ""
+            echo "- Releasable images and artifacts (**promotion-manifest**, **image-metadata**, etc.) are produced only for: **push** \`CI\` success on \`develop\`/\`main\`, or \`workflow_dispatch\` to those branches (see gate below)."
+            echo "- This workflow is triggered **after** upstream **CI** completes (never the only step after push)."
+            echo "- **Security Release** is triggered by **this** workflow completing, then consumes **this run id** for artifacts (deterministic; no \`head_sha\` search on automatic runs)."
             echo "- this workflow event: \`${{ github.event_name }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
@@ -127,6 +140,12 @@ jobs:
   build-and-push:
     name: Build and Publish Images
     needs: upstream-ci-release-gate
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+      actions: write
+      attestations: write
     if: |
       always() &&
       needs.upstream-ci-release-gate.result == 'success' &&
@@ -150,11 +169,76 @@ jobs:
       - build-and-push
     if: always() && needs.build-and-push.result == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      packages: read
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download Cosign signing evidence from build
+        uses: actions/download-artifact@v4
+        with:
+          name: cosign-signing-evidence
+          path: cosign-evidence
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate CycloneDX SBOMs (Trivy, digest-pinned images)
+        shell: bash
+        env:
+          APP_REF: ${{ needs.build-and-push.outputs.app_ref }}
+          GOOSE_REF: ${{ needs.build-and-push.outputs.goose_ref }}
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${APP_REF}" ]]
+          [[ -n "${GOOSE_REF}" ]]
+          mkdir -p security-reports
+          trivy_image="aquasec/trivy:0.57.1"
+          pull_trivy() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if docker pull "${trivy_image}"; then
+                return 0
+              fi
+              if [[ "${attempt}" -lt 5 ]]; then
+                echo "Trivy image pull failed; retrying (${attempt}/5)" >&2
+                sleep 10
+              fi
+            done
+            echo "error: failed to pull ${trivy_image} after retries" >&2
+            return 1
+          }
+          pull_trivy
+          run_sbom() {
+            local out="$1"
+            local ref="$2"
+            docker run --rm \
+              -v "${HOME}/.docker:/root/.docker:ro" \
+              -v "${PWD}:/workdir" \
+              -w /workdir \
+              "${trivy_image}" \
+              image \
+              --format cyclonedx \
+              --output "${out}" \
+              "${ref}"
+          }
+          run_sbom "security-reports/sbom-app.cdx.json" "${APP_REF}"
+          run_sbom "security-reports/sbom-goose.cdx.json" "${GOOSE_REF}"
+          python3 -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' security-reports/sbom-app.cdx.json
+          python3 -c 'import json,sys; json.load(open(sys.argv[1],encoding="utf-8"))' security-reports/sbom-goose.cdx.json
+          echo "SBOM_GENERATED_AT_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "${GITHUB_ENV}"
+
       - name: Write build metadata summary
         shell: bash
         env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
           ACTOR: ${{ github.actor }}
           APP_DIGEST: ${{ needs.build-and-push.outputs.app_digest }}
           APP_IMAGE: ${{ needs.build-and-push.outputs.app_image }}
@@ -207,6 +291,39 @@ jobs:
             if bwm != "Build and Push Images":
                 print(f"error: expected this workflow name Build and Push Images, got {bwm!r}", file=sys.stderr)
                 raise SystemExit(2)
+            sbom_generated = s("SBOM_GENERATED_AT_UTC").strip()
+            if not sbom_generated:
+                print(
+                    "error: SBOM_GENERATED_AT_UTC is required (Generate CycloneDX SBOMs step must run before this step)",
+                    file=sys.stderr,
+                )
+                raise SystemExit(2)
+            sbom_meta = {
+                "artifact_name": "sbom-reports",
+                "generated_at_utc": sbom_generated,
+                "tool": "trivy",
+                "format": "cyclonedx",
+                "trivy_image": "aquasec/trivy:0.57.1",
+                "app_image_digest": s("APP_DIGEST"),
+                "goose_image_digest": s("GOOSE_DIGEST"),
+                "files": ["sbom-app.cdx.json", "sbom-goose.cdx.json"],
+            }
+            cosign_path = Path("cosign-evidence/cosign-signing-evidence.json")
+            if not cosign_path.is_file():
+                print(
+                    "error: cosign-evidence/cosign-signing-evidence.json missing "
+                    "(Build job must upload cosign-signing-evidence before publish metadata)",
+                    file=sys.stderr,
+                )
+                raise SystemExit(2)
+            try:
+                cosign_doc = json.loads(cosign_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as e:
+                print(f"error: cosign signing evidence is not valid JSON: {e}", file=sys.stderr)
+                raise SystemExit(2)
+            if cosign_doc.get("schema_version") != "v1":
+                print("error: cosign signing evidence schema_version must be v1", file=sys.stderr)
+                raise SystemExit(2)
             rc, di = s("RELEASE_CHANNEL"), s("DOWNSTREAM_INTENT")
             bmd = {
                 "schema_version": "v1",
@@ -241,6 +358,8 @@ jobs:
                     "ref": goose_ref,
                 },
             }
+            bmd["sbom"] = sbom_meta
+            bmd["cosign"] = cosign_doc
             prom = {
                 "schema_version": "v1",
                 "workflow_name": bwm,
@@ -273,6 +392,8 @@ jobs:
                     "go_sum_sha256": s("GO_SUM_SHA256"),
                 },
             }
+            prom["sbom"] = sbom_meta
+            prom["cosign"] = cosign_doc
             contract = {
                 "schema_version": "v1",
                 "artifact_kind": "image-build",
@@ -291,7 +412,34 @@ jobs:
                 "goose_image_digest": s("GOOSE_DIGEST"),
                 "generated_at_utc": gen_at,
             }
+            contract["sbom"] = sbom_meta
+            contract["cosign"] = cosign_doc
+            release_candidate = {
+                "schema_version": "v1",
+                "kind": "build-release-candidate",
+                "repo": s("GITHUB_REPOSITORY"),
+                "source_sha": src_sha,
+                "source_branch": s("SOURCE_BRANCH"),
+                "source_event": s("SOURCE_EVENT"),
+                "build_run_id": s("BUILD_RUN_ID"),
+                "workflow_run_id": s("BUILD_RUN_ID"),
+                "app_image_ref": app_ref,
+                "goose_image_ref": goose_ref,
+                "generated_at_utc": gen_at,
+                "downstream_artifact_names": {
+                    "image_metadata": "image-metadata",
+                    "promotion_manifest": "promotion-manifest",
+                    "immutable_image_contract": "immutable-image-contract",
+                    "sbom_reports": "sbom-reports",
+                    "cosign_signing_evidence": "cosign-signing-evidence",
+                    "build_metadata": ["build-metadata-manifest", "image-build-metadata"],
+                    "release_candidate": "release-candidate",
+                },
+            }
             Path("build-evidence").mkdir(parents=True, exist_ok=True)
+            Path("build-evidence/release-candidate.json").write_text(
+                json.dumps(release_candidate, indent=2) + "\n", encoding="utf-8"
+            )
             Path("build-evidence/build-metadata-manifest.json").write_text(json.dumps(bmd, indent=2) + "\n", encoding="utf-8")
             Path("build-evidence/image-build-metadata.json").write_text(
                 Path("build-evidence/build-metadata-manifest.json").read_text(encoding="utf-8"),
@@ -342,10 +490,21 @@ jobs:
             echo "- Dockerfile SHA256: \`${DOCKERFILE_SHA256}\`"
             echo "- Dockerfile.goose SHA256: \`${DOCKERFILE_GOOSE_SHA256}\`"
             echo "- go.sum SHA256: \`${GO_SUM_SHA256}\`"
-            echo "- SBOM: \`enabled\`"
+            echo "- SBOM: \`Trivy CycloneDX\` → artifact \`sbom-reports\` (\`sbom-app.cdx.json\`, \`sbom-goose.cdx.json\`; digest-pinned refs)"
+            echo "- Cosign: \`keyless (GitHub OIDC)\` → artifact \`cosign-signing-evidence\` (digest-pinned app/goose refs)"
             echo "- provenance: \`enabled (mode=max)\`"
-            echo "- downstream artifacts: \`build-metadata-manifest\`, \`image-build-metadata\`, \`promotion-manifest\`, \`immutable-image-contract\` (digest-pinned image refs required)"
+            echo "- downstream artifacts: \`build-metadata-manifest\`, \`image-build-metadata\`, \`promotion-manifest\`, \`immutable-image-contract\`, \`sbom-reports\`, \`cosign-signing-evidence\`, \`release-candidate\` (digest-pinned image refs required)"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload SBOM reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-reports
+          path: |
+            security-reports/sbom-app.cdx.json
+            security-reports/sbom-goose.cdx.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload build metadata manifest
         uses: actions/upload-artifact@v4
@@ -379,6 +538,14 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Upload release candidate (evidence for Security Release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          path: build-evidence/release-candidate.json
+          if-no-files-found: error
+          retention-days: 14
+
   # One place that always runs (with the gate) so the workflow run page shows whether images were built or not.
   build-and-push-outcome:
     name: Outcome (release candidate summary)
@@ -387,6 +554,10 @@ jobs:
       - upstream-ci-release-gate
       - build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+
     steps:
       - name: Write workflow-level outcome
         shell: bash
@@ -400,7 +571,7 @@ jobs:
           {
             echo "## Build and Push Images — outcome"
             if [[ "$b" == "success" ]]; then
-              echo "- **Result:** this run **built and pushed** real images to GHCR and (when publish ran) produced digest-pinned **promotion-manifest**, **image-metadata** (compatibility: **image-build-metadata**), and **immutable-image-contract** artifacts."
+              echo "- **Result:** this run **built and pushed** real images to GHCR and (when publish ran) produced digest-pinned **promotion-manifest**, **image-metadata** (compatibility: **image-build-metadata**), **immutable-image-contract**, **release-candidate** (audit identity), **sbom-reports** (CycloneDX), and **cosign-signing-evidence** artifacts."
             elif [[ "$g" == "success" && "$rc" == "false" ]]; then
               echo "- **Result:** not a **release candidate** (neutral success). \`Not a release candidate. No image was built or published.\` — **no** GHCR images and **no** release manifest uploads from this run."
             elif [[ "$g" != "success" ]]; then

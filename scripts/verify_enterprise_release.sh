@@ -6,8 +6,8 @@
 # Does not connect to production or require real secrets.
 #
 # Intended CI/CD chain (see tools/verify_github_workflow_cicd_contract.py): CI -> Build and Push Images
-# -> Security Release (release gate; security-verdict.json) -> staging (develop) / production (manual dispatch).
-# Repo-level security.yml is push/PR (not workflow_run from Build).
+# -> Security Release (only release gate; security-verdict.json) -> staging (develop) / production (main, Security Release + dispatch).
+# Repo-level security.yml is push/PR/dispatch (nightly rescans: nightly-security.yml) — not a deployment trigger and not workflow_run from Build.
 #
 # Phase order matches docs/runbooks/production-release-readiness.md (includes P0 OpenAPI + doc contradiction gates).
 #
@@ -40,7 +40,11 @@ phase_go_test() {
     echo "SKIP: VERIFY_ENTERPRISE_SKIP_GO=1"
     return 0
   fi
-  go test ./...
+  # On some Windows hosts, Application Control (WDAC / AppLocker) may block go test; use Linux CI (GitHub Actions) as source of truth.
+  if ! go test ./...; then
+    echo "HINT: if go test failed due to enterprise Application Control on Windows, run this script on Linux or in CI (ubuntu-latest)." >&2
+    exit 1
+  fi
   echo "OK: Go tests"
 }
 

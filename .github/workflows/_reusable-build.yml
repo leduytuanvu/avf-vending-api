@@ -52,6 +52,13 @@ on:
         description: "Git commit that was built (40-char), from checkout in this workflow"
         value: ${{ jobs.build-and-push.outputs.source_commit_sha }}
 
+permissions:
+  contents: read
+  actions: write
+  packages: write
+  attestations: write
+  id-token: write
+
 jobs:
   build-and-push:
     name: Build and Publish Images
@@ -195,6 +202,64 @@ jobs:
           subject-name: ${{ steps.tags.outputs.goose_image }}
           subject-digest: ${{ steps.build_goose.outputs.digest }}
           push-to-registry: true
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Cosign sign digest-pinned images (keyless, GitHub OIDC)
+        shell: bash
+        env:
+          APP_REF: ${{ steps.tags.outputs.app_image }}@${{ steps.build_app.outputs.digest }}
+          GOOSE_REF: ${{ steps.tags.outputs.goose_image }}@${{ steps.build_goose.outputs.digest }}
+        run: |
+          set -Eeuo pipefail
+          [[ "${APP_REF}" == *@sha256:* ]]
+          [[ "${GOOSE_REF}" == *@sha256:* ]]
+          cosign sign --yes "${APP_REF}"
+          cosign sign --yes "${GOOSE_REF}"
+
+      - name: Verify signatures and write signing evidence
+        shell: bash
+        env:
+          APP_REF: ${{ steps.tags.outputs.app_image }}@${{ steps.build_app.outputs.digest }}
+          GOOSE_REF: ${{ steps.tags.outputs.goose_image }}@${{ steps.build_goose.outputs.digest }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p signing-evidence
+          issuer='^https://token.actions.githubusercontent.com$'
+          identity="^https://github.com/${GITHUB_REPOSITORY}/"
+          run_verify() {
+            local ref="$1"
+            local out="$2"
+            cosign verify \
+              --certificate-identity-regexp "${identity}" \
+              --certificate-oidc-issuer-regexp "${issuer}" \
+              "${ref}" --json > "${out}"
+          }
+          run_verify "${APP_REF}" signing-evidence/cosign-verify-app.json
+          run_verify "${GOOSE_REF}" signing-evidence/cosign-verify-goose.json
+          python3 scripts/security/write_cosign_signing_evidence.py \
+            --out signing-evidence/cosign-signing-evidence.json \
+            --app-ref "${APP_REF}" \
+            --goose-ref "${GOOSE_REF}" \
+            --verify-app-json signing-evidence/cosign-verify-app.json \
+            --verify-goose-json signing-evidence/cosign-verify-goose.json \
+            --workflow-run-id "${GITHUB_RUN_ID}" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --workflow-ref "${GITHUB_WORKFLOW_REF}" \
+            --identity-regexp "${identity}" \
+            --issuer-regexp "${issuer}"
+
+      - name: Upload Cosign signing evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cosign-signing-evidence
+          path: signing-evidence/cosign-signing-evidence.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Publish image metadata
         id: metadata

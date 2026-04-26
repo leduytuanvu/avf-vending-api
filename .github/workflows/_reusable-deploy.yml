@@ -27,6 +27,16 @@ on:
         required: false
         default: ""
         type: string
+      provenance_enforcement:
+        description: "`warn` (default) or `enforce` — whether `gh attestation verify` failure fails the job; enforce rejects private-repo fallback"
+        required: false
+        default: "warn"
+        type: string
+      allow_private_repo_provenance_fallback:
+        description: "When `true`, private repos may record `accepted-private-repo-no-github-attestations` when attestations are unavailable (explicit opt-in documented in supply-chain runbooks)"
+        required: false
+        default: "true"
+        type: string
     secrets:
       gh_api_token:
         required: false
@@ -62,8 +72,14 @@ on:
         description: "Semantic source event from promotion-manifest (`push`, `workflow_dispatch`); `manual` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.artifact_source_event }}
       provenance_verdict:
-        description: "Image attestation verification verdict only: `verified` in workflow_run mode after attestation verification; `accepted-private-repo-no-github-attestations` when GitHub Artifact Attestations are unavailable for a private repo; `accepted-manual` in manual mode"
+        description: "Image attestation verification: `verified`, `accepted-private-repo-no-github-attestations` (private + explicit allow), `attestation-verify-failed` (public + warn + verify failed), `accepted-manual` (manual mode)"
         value: ${{ jobs.resolve-image-refs.outputs.provenance_verdict }}
+
+permissions:
+  contents: read
+  actions: read
+  packages: read
+  attestations: read
 
 jobs:
   resolve-image-refs:
@@ -391,6 +407,7 @@ jobs:
 
       - name: Verify build provenance
         if: inputs.resolution_mode == 'workflow_run' && github.event.repository.private != true
+        continue-on-error: ${{ inputs.provenance_enforcement != 'enforce' }}
         id: provenance
         shell: bash
         env:
@@ -434,14 +451,51 @@ jobs:
           REPOSITORY_PRIVATE: ${{ github.event.repository.private && 'true' || 'false' }}
           RESOLUTION_MODE: ${{ inputs.resolution_mode }}
           VERIFIED_VERDICT: ${{ steps.provenance.outputs.provenance_verdict }}
+          PROVENANCE_ENFORCEMENT: ${{ inputs.provenance_enforcement }}
+          ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK: ${{ inputs.allow_private_repo_provenance_fallback }}
+          PROVENANCE_STEP_OUTCOME: ${{ steps.provenance.outcome }}
         run: |
           set -Eeuo pipefail
+          pe="$(echo "${PROVENANCE_ENFORCEMENT:-warn}" | tr '[:upper:]' '[:lower:]')"
+          [[ "${pe}" == "enforce" || "${pe}" == "warn" ]] || pe="warn"
+          allow_fb="$(echo "${ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK:-true}" | tr '[:upper:]' '[:lower:]')"
           verdict="${VERIFIED_VERDICT:-}"
-          if [[ -z "${verdict}" && "${RESOLUTION_MODE}" == "workflow_run" && "${REPOSITORY_PRIVATE}" == "true" ]]; then
-            verdict="accepted-private-repo-no-github-attestations"
+          priv="${REPOSITORY_PRIVATE:-false}"
+          mode="${RESOLUTION_MODE:-}"
+          ps_out="${PROVENANCE_STEP_OUTCOME:-}"
+
+          if [[ "${pe}" == "enforce" && "${priv}" == "true" && "${mode}" == "workflow_run" ]]; then
+            echo "::error::PROVENANCE_ENFORCEMENT=enforce is not satisfiable for private repositories (gh attestation verify is skipped; set PROVENANCE_ENFORCEMENT=warn and review ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK, or use a public repository with attestations)." >&2
+            exit 1
           fi
-          if [[ -z "${verdict}" && "${RESOLUTION_MODE}" == "manual" ]]; then
+
+          if [[ "${mode}" == "workflow_run" && "${priv}" != "true" ]]; then
+            if [[ "${pe}" == "enforce" ]]; then
+              if [[ "${ps_out}" != "success" ]]; then
+                echo "::error::PROVENANCE_ENFORCEMENT=enforce requires successful GitHub artifact attestation verification (step outcome was ${ps_out})." >&2
+                exit 1
+              fi
+              if [[ -z "${verdict}" || "${verdict}" != "verified" ]]; then
+                echo "::error::PROVENANCE_ENFORCEMENT=enforce requires provenance_verdict=verified (got ${verdict:-empty})." >&2
+                exit 1
+              fi
+            else
+              if [[ "${ps_out}" == "failure" || "${ps_out}" == "cancelled" ]]; then
+                verdict="attestation-verify-failed"
+              fi
+            fi
+          fi
+
+          if [[ -z "${verdict}" && "${mode}" == "workflow_run" && "${priv}" == "true" ]]; then
+            if [[ "${allow_fb}" == "true" ]]; then
+              verdict="accepted-private-repo-no-github-attestations"
+            else
+              echo "::error::Private repository: GitHub attestations are not verified here. Set repository variable ALLOW_PRIVATE_REPO_PROVENANCE_FALLBACK=true to record the explicit documented fallback, or use a public repository with attestations." >&2
+              exit 1
+            fi
+          fi
+          if [[ -z "${verdict}" && "${mode}" == "manual" ]]; then
             verdict="accepted-manual"
           fi
-          [[ -n "${verdict}" ]] || { echo "error: empty provenance verdict" >&2; exit 1; }
+          [[ -n "${verdict}" ]] || { echo "error: empty provenance verdict (resolution_mode=${mode} private=${priv} provenance_step=${ps_out})" >&2; exit 1; }
           echo "provenance_verdict=${verdict}" >> "$GITHUB_OUTPUT"

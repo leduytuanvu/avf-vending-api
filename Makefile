@@ -56,7 +56,7 @@ check-wiring:
 	bash scripts/check_feature_wiring.sh
 
 check-migrations:
-	bash scripts/check_migrations.sh
+	bash scripts/ci/verify_migrations.sh
 
 # Repo-local gates (no Postgres or unit tests). Use before push; GitHub Actions runs `make ci-gates` and compose validation separately.
 ci-gates: fmt-check vet check-placeholders check-wiring check-migrations sqlc-check swagger-check postman-check
