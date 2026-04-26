@@ -143,7 +143,8 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional repository secret: read-only token that can call protection + environments APIs (avoids 403 from default GITHUB_TOKEN on some events). Falls back to github.token.
+          GITHUB_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN || github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           ENFORCE_GITHUB_GOVERNANCE: "true"
@@ -154,7 +155,7 @@ jobs:
           {
             echo "## GitHub repository governance"
             echo "- **Script**: \`scripts/ci/verify_github_governance.sh\` (uses \`gh api\` via \`tools/verify_github_governance.py\`)."
-            echo "- **Result line**: \`GOVERNANCE_CHECK: PASS\` / \`FAIL\` / \`SKIPPED\` / (same-repo **pull_request** only) \`MANUAL_REVIEW_REQUIRED\` when the default token cannot read admin APIs — not a passing audit; verify in the GitHub UI using the runbook below."
+            echo "- **Result line**: \`GOVERNANCE_CHECK: PASS\` / \`FAIL\` / \`SKIPPED\` / (same-repo **pull_request** only) \`MANUAL_REVIEW_REQUIRED\` when the token still cannot read admin APIs — not a passing audit. Prefer repository secret \`GOVERNANCE_AUDIT_TOKEN\` (read-only; see docs) so CI can verify settings."
             echo "- **Full runbook**: [docs/runbooks/github-governance.md](../../docs/runbooks/github-governance.md)"
             echo "- **Configure GitHub** (branches + \`production\` environment): [docs/operations/github-governance.md](../../docs/operations/github-governance.md)"
           } >> "${GITHUB_STEP_SUMMARY}"

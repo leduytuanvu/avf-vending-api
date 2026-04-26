@@ -85,6 +85,8 @@ Set `ENFORCE_GITHUB_GOVERNANCE=true` in CI when you want missing tokens to **fai
 
 Do not commit tokens. Use a fine-grained or classic PAT / GitHub Actions `GITHUB_TOKEN` with permission to read branch protection and environments.
 
+**CI (`.github/workflows/ci.yml` — governance job):** If the default `github.token` returns **HTTP 403** for protection or environment APIs, add the repository secret **`GOVERNANCE_AUDIT_TOKEN`**: a **read-only** fine-grained PAT scoped to this repo only, with **Administration: Read** and the other read-only limits described under **“CI: optional `GOVERNANCE_AUDIT_TOKEN`”** in [docs/operations/github-governance.md](../operations/github-governance.md). When unset, CI falls back to `github.token`. Do not use write permissions for this check.
+
 ## Repository `GITHUB_TOKEN` permissions (Actions)
 
 Every workflow under `.github/workflows/*.yml` declares an explicit top-level `permissions:` block. The repo enforces this in CI via `tools/verify_github_workflow_cicd_contract.py` (also invoked from `scripts/ci/verify_workflow_contracts.sh`): missing `permissions`, `write-all` / `read-all`, `contents: write`, or elevated scopes in the wrong workflow (for example `packages: write` outside image publish paths) will fail the check.

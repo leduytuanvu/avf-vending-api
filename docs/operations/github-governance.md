@@ -6,6 +6,23 @@ This page lists **exact UI steps** to configure **branch protection** and the **
 
 Deeper runbook (workflow names, check matrices, `GITHUB_TOKEN` patterns): [docs/runbooks/github-governance.md](../runbooks/github-governance.md).
 
+## CI: optional `GOVERNANCE_AUDIT_TOKEN` (repository secret)
+
+**GitHub repository governance** in `.github/workflows/ci.yml` sets `GITHUB_TOKEN` to `secrets.GOVERNANCE_AUDIT_TOKEN` when that secret **exists**, otherwise to the default `github.token`. Configure a **dedicated** read-only token so the job can read **branch protection** and **environment** details without HTTP 403 from the default Actions token (permission varies by event and org policy).
+
+**Fine-grained personal access token** (example shape — create in GitHub **Settings → Developer settings**; **do not** commit the value):
+
+| Permission | Level |
+| --- | --- |
+| Repository access | **Only** this repository (`avf-vending-api`) |
+| Administration | **Read-only** (needed to read classic branch protection) |
+| Actions | **Read-only** (when the API path requires it) |
+| Metadata | **Read** (default) |
+| Contents | **Read** only if the GitHub UI or `gh` requires it for your org |
+| All other access | **No access** (no write packages, workflows write, etc.) |
+
+No write scopes are required for this check. Store the token only as the repository secret **`GOVERNANCE_AUDIT_TOKEN`** in **Settings → Secrets and variables → Actions** (or org-level if your policy allows).
+
 ## Branches: protect `main` and `develop`
 
 1. Open **Repository** → **Settings** → **Branches** (or **Code and automation** → **Branches** in the new layout).
@@ -54,7 +71,8 @@ Deeper runbook (workflow names, check matrices, `GITHUB_TOKEN` patterns): [docs/
 
 ```bash
 export GITHUB_REPOSITORY=owner/repo   # or REPOSITORY=owner/repo
-export GH_TOKEN=ghp_...                # or GITHUB_TOKEN
+export GH_TOKEN=                      # set to a read-only PAT with repo+admin read (see above); never commit
+# or: export GITHUB_TOKEN=…
 bash scripts/ci/verify_github_governance.sh
 # Offline self-test (no network):
 CHECK_MODE=offline bash scripts/ci/verify_github_governance.sh
