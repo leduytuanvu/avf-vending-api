@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Enterprise release chain (CI position)
         shell: bash
@@ -54,7 +54,7 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25.9"
           cache: true
@@ -65,8 +65,8 @@ jobs:
           set -Eeuo pipefail
           sudo apt-get update
           sudo apt-get install -y shellcheck yamllint
-          go install github.com/rhysd/actionlint/cmd/actionlint@latest
-          go install mvdan.cc/sh/v3/cmd/shfmt@latest
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          go install mvdan.cc/sh/v3/cmd/shfmt@v3.13.1
           echo "$(go env GOPATH)/bin" >> "${GITHUB_PATH}"
 
       - name: Lint GitHub Actions workflows with actionlint
@@ -112,10 +112,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25.9"
           cache: true
@@ -154,7 +154,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Verify goose migrations (layout + destructive SQL heuristics)
         shell: bash
@@ -165,12 +165,12 @@ jobs:
 
       - name: Upload migration safety report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: migration-safety-report
           path: ci-reports/migration-safety-report.json
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 30
 
   compose-config:
     name: Docker Compose Config Validation
@@ -179,7 +179,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Validate local Docker Compose config
         run: docker compose -f deployments/docker/docker-compose.yml config
@@ -217,7 +217,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Validate legacy wrapper guards
         shell: bash
@@ -331,9 +331,9 @@ jobs:
 
       - name: Upload legacy production asset contract report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ci-legacy-production-asset-contract
           path: ci-reports
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30

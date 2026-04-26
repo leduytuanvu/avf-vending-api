@@ -6,8 +6,12 @@ when the GitHub CLI is available; otherwise uses urllib.
 
 Exit codes:
   0 — success, or skipped locally with warning + **manual UI checklist to stdout** when no token
-  1 — governance check failures; manual checklist to stderr for permission/ruleset/404 cases
+  1 — governance check failures (missing branch protection, production reviewers, branch deploy policy, etc.)
   2 — ENFORCE_GITHUB_GOVERNANCE=true in CI without a token (checklist to stderr)
+
+Environment:
+  ENFORCE_GITHUB_GOVERNANCE — stricter branch protection (e.g. strict required checks on main) when set to true.
+  GITHUB_GOVERNANCE_WARN_ONLY — if true, production environment API gaps downgrade to warnings (not for CI gating).
 """
 from __future__ import annotations
 
@@ -62,6 +66,10 @@ Settings -> Branches -> Branch protection rules -> Add (or edit) rule for `main`
   - Restrict who can push to matching branches (only automation/release roles) where policy allows
     (PR-only flow + required reviews is the default safe pattern; avoid casual direct push to `main`)
 
+Settings -> Branches -> branch protection for `develop` (pattern: develop)
+  - Require PRs and/or required status checks (see recommended checks in docs/runbooks/github-governance.md)
+  - Block force pushes and deletions (recommended for shared integration branches)
+
 Settings -> Environments -> `production` (exact name: deploy job uses `environment: production`)
   - Required reviewers: at least one user or team; production deploy jobs wait in the UI before SSH steps
   - Turn on "Prevent self-review" if the UI offers it (stops the actor who created the run from sole approval)
@@ -81,6 +89,11 @@ def _is_ci() -> bool:
 
 def _enforce() -> bool:
     return os.environ.get("ENFORCE_GITHUB_GOVERNANCE", "").lower() in ("1", "true", "yes")
+
+
+def _governance_warn_only() -> bool:
+    """If true, downgrades some would-be errors to warnings (e.g. migration / token limits). Not for CI gating."""
+    return os.environ.get("GITHUB_GOVERNANCE_WARN_ONLY", "").lower() in ("1", "true", "yes")
 
 
 def _token() -> str | None:
@@ -302,10 +315,19 @@ def _check_branch_protection(
                 + " (see docs/runbooks/github-governance.md)."
             )
     else:
-        # develop: require PR reviews OR at least one required context
-        if not isinstance(prr, dict) and len(contexts) == 0:
+        # develop: require PR reviews (>=1) and/or at least one required context; block force delete when API exposes
+        d_force = _bool_flag(data.get("allow_force_pushes"))
+        if d_force is True:
+            errors.append("Branch develop: force pushes are allowed (allow_force_pushes.enabled is true); must block.")
+        d_delete = _bool_flag(data.get("allow_deletions"))
+        if d_delete is True:
+            errors.append("Branch develop: branch deletion is allowed (allow_deletions.enabled is true); must block.")
+
+        has_pr_approval = isinstance(prr, dict) and _required_approving_count(prr) >= 1
+        if not has_pr_approval and len(contexts) == 0:
             errors.append(
-                "Branch develop: neither pull request reviews nor required status checks are configured; need at least one."
+                "Branch develop: require pull request reviews (at least 1) and/or required status check contexts; "
+                "neither is configured (if review count is 0, increase it or add required checks)."
             )
         expected = DEVELOP_RECOMMENDED_CONTEXTS
         missing = [c for c in expected if c not in contexts]
@@ -323,15 +345,15 @@ def _check_environment_production(
     token: str,
     errors: list[str],
     warnings: list[str],
-    *,
-    enforce: bool,
 ) -> None:
+    warn_only = _governance_warn_only()
     path = _environment_path(owner, repo, "production")
     code, env_data, err = github_get_json(path, token)
     if code in (401, 403):
         errors.append(
             f"Environment production: no permission to read (HTTP {code}). "
-            "Use a token with `repo` scope (or org-scoped read); verify required reviewers in UI."
+            "Use a token with `repo` scope and permission to read environments; verify required reviewers in UI. "
+            "See docs/runbooks/github-governance.md."
         )
         return
     if code == 404:
@@ -345,12 +367,20 @@ def _check_environment_production(
 
     prules = env_data.get("protection_rules")
     if prules is None:
-        warnings.append(
-            "Environment production: API response had no protection_rules; manually verify **Required reviewers** "
-            "and **Deployment branches** (Repository → Settings → Environments → production). "
-            "See docs/runbooks/github-governance.md and docs/runbooks/rollback-production.md."
+        msg = (
+            "Environment production: API response did not include `protection_rules` (cannot verify required reviewers). "
+            "Manually open Settings → Environments → production and confirm at least one **Required reviewer** and "
+            "**Deployment branches** limited to `main`. If your token cannot read this field, use a `repo` PAT with "
+            "appropriate access, or set GITHUB_GOVERNANCE_WARN_ONLY=true to treat this as a warning (not for merge CI)."
         )
-    elif isinstance(prules, list):
+        (warnings if warn_only else errors).append(msg)
+    elif not isinstance(prules, list):
+        msg = (
+            "Environment production: `protection_rules` is not a list; cannot verify required reviewers. "
+            "Manually confirm required reviewers in Settings → Environments → production."
+        )
+        (warnings if warn_only else errors).append(msg)
+    else:
         reviewer_slots = 0
         required_rules = 0
         for r in prules:
@@ -365,57 +395,50 @@ def _check_environment_production(
                 reviewer_slots += len(rev)
         if required_rules == 0:
             msg = (
-                "Environment production: no required_reviewers protection rule found in API response. "
-                "Production deploy jobs use `environment: production`; configure at least one required reviewer "
-                "in the environment so deploys are not auto-approved."
+                "Environment production: no `required_reviewers` rule in the API response. "
+                "Add **Required reviewers** under the environment (Deploy Production waits on approval)."
             )
-            if enforce:
-                errors.append(msg)
-            else:
-                warnings.append(msg + " (set ENFORCE_GITHUB_GOVERNANCE=true in CI to fail on this).")
+            (warnings if warn_only else errors).append(msg)
         elif reviewer_slots == 0:
             msg = (
-                "Environment production: required_reviewers rule exists but lists no reviewers; "
-                "add users or teams under the rule in Settings → Environments → production."
+                "Environment production: `required_reviewers` rule exists but no reviewers are listed; "
+                "add at least one user or team in Settings → Environments → production."
             )
-            if enforce:
-                errors.append(msg)
-            else:
-                warnings.append(msg)
-    else:
-        warnings.append(
-            "Environment production: protection_rules is not a list; cannot verify required reviewers via API."
-        )
+            (warnings if warn_only else errors).append(msg)
 
     dbp = env_data.get("deployment_branch_policy")
     if not isinstance(dbp, dict):
-        warnings.append(
-            "Environment production: no deployment_branch_policy in API response; verify deployment branches are limited to main in the UI."
+        msg = (
+            "Environment production: no `deployment_branch_policy` in the API response (cannot verify branch restriction). "
+            "Manually set **Deployment branches** to **Selected branches** → `main` only (not “All branches”)."
         )
+        (warnings if warn_only else errors).append(msg)
         return
 
     protected = bool(dbp.get("protected_branches"))
     custom = bool(dbp.get("custom_branch_policies"))
     if not protected and not custom:
-        warnings.append(
-            "Environment production: deployment branch policy is not restricted (protected_branches and custom_branch_policies both false). "
-            "In the UI, set **Deployment branches** → **Selected branches** → `main` only. "
-            "(API shape varies; if your org restricts deployments another way, document it.)"
+        msg = (
+            "Environment production: deployment is not limited by branch policy in the API (protected_branches and "
+            "custom_branch_policies are both false). In the UI, restrict deployments to `main` only."
         )
+        (warnings if warn_only else errors).append(msg)
         return
 
     if protected and not custom:
         warnings.append(
-            "Environment production: uses protected_branches-only policy; confirm the default protected branch is main for your org/repo."
+            "Environment production: `protected_branches` policy in use; confirm the protected branch is `main` for this repository."
         )
         return
 
     pol_path = _environment_path(owner, repo, "production", "deployment-branch-policies")
     pcode, policies, perr = github_get_json(pol_path, token)
     if pcode != 0 or not isinstance(policies, dict):
-        warnings.append(
-            f"Environment production: could not list deployment-branch-policies ({pcode} {perr}); verify main-only in UI."
+        msg = (
+            f"Environment production: could not list deployment-branch-policies (HTTP {pcode} {perr!s}). "
+            "Manually verify only `main` can deploy to this environment."
         )
+        (warnings if warn_only else errors).append(msg)
         return
 
     branch_policies = policies.get("branch_policies") or []
@@ -426,20 +449,21 @@ def _check_environment_production(
             if raw:
                 patterns.append(str(raw))
     if not patterns:
-        warnings.append("Environment production: custom_branch_policies is true but no branch patterns returned; verify in UI.")
+        msg = "Environment production: custom branch policies enabled but no branch patterns were returned; verify `main` only in the UI."
+        (warnings if warn_only else errors).append(msg)
         return
 
     allowed_main = frozenset({"main", "refs/heads/main"})
     bad = [p for p in patterns if p not in allowed_main]
     if bad:
         errors.append(
-            "Environment production: deployment branch policies must allow only main; disallowed or non-exact patterns: "
+            "Environment production: deployment branch policies must allow only main; got patterns: "
             + ", ".join(patterns)
-            + " (allowed exact names: main, refs/heads/main)."
+            + " (allowed exact: main, refs/heads/main)."
         )
     elif len(patterns) > 1:
         warnings.append(
-            "Environment production: multiple deployment branch patterns configured; confirm only main can deploy: "
+            "Environment production: multiple deployment branch patterns; confirm only `main` may deploy: "
             + ", ".join(patterns)
         )
 
@@ -495,7 +519,7 @@ def main() -> int:
     _check_branch_protection(
         owner, repo, "develop", tok, is_main=False, errors=errors, warnings=warnings, enforce=enforce
     )
-    _check_environment_production(owner, repo, tok, errors, warnings, enforce=enforce)
+    _check_environment_production(owner, repo, tok, errors, warnings)
     _check_environment_staging(owner, repo, tok, warnings)
 
     for w in warnings:

@@ -1,4 +1,4 @@
-.PHONY: tidy fmt fmt-check vet test build proto sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates check-placeholders check-wiring check-migrations verify-enterprise-release build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full
+.PHONY: tidy fmt fmt-check vet test build proto sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates check-placeholders check-wiring check-migrations verify-governance verify-enterprise-release build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full
 
 BIN_DIR := bin
 GO ?= go
@@ -66,6 +66,11 @@ ci: ci-gates test-short
 
 # Mirrors GitHub Actions: same gates plus full go test (set TEST_DATABASE_URL for postgres tests).
 ci-full: ci-gates test
+
+# Live GitHub settings: branch protection (main/develop) and environment `production` (REST API). Requires
+# GH_TOKEN or GITHUB_TOKEN and GITHUB_REPOSITORY=owner/repo. See docs/runbooks/github-governance.md.
+verify-governance:
+	bash scripts/ci/verify_github_governance.sh
 
 # Enterprise release readiness (pilot gate; scale tiers still need storm evidence — see production-release-readiness.md):
 #   1) go test ./...

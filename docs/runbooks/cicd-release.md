@@ -34,7 +34,7 @@ After merge to **`develop`** (or a direct push, if your policy allows):
 1. **Merge `develop` into `main`** via a **pull request** (normal promotion). Direct pushes to **`main`** may be restricted by [branch protection](./github-governance.md) in your org.
 2. On merge (push to **`main`**): **CI** and **Security** (push) run, then the same **Build** → **Security Release** chain as on **`develop`**, with triggers filtered to **`main`**.
 3. For **`main`**, **Security Release** can also generate a **release manifest** (artifact **release-manifest**) for production candidates, as described in [release-process.md](./release-process.md).
-4. **Deploy Production** (`.github/workflows/deploy-prod.yml`, name **Deploy Production**) is the **only** workflow that deploys to the **production** environment for GitHub-based rollouts. The automatic path runs on **`workflow_run`** after a **successful** **Security Release** on **`main`** with **`verdict: pass`**, **`source_branch: main`**, and digest-pinned image refs, plus the workflow’s other gates. **GitHub Environments** can require **manual approval** for the **`production`** job before the deploy proceeds.
+4. **Deploy Production** (`.github/workflows/deploy-prod.yml`, name **Deploy Production**) is the **only** workflow that deploys to the **production** environment for GitHub-based rollouts. It runs only on **`workflow_dispatch`** on **`main`**. It is **not** auto-triggered by **Security Release** or **merge to main**. The operator must supply the Build run id, Security Release run id, and digest-pinned image refs; gates require **`verdict: pass`**, **`source_branch: main`**, and related evidence. **GitHub Environments** can require **manual approval** for the **`production`** job before the deploy proceeds.
 5. The legacy file **`deploy-production.yml`** is a **no-op pointer** (notice only; no deploy). Use **`deploy-prod.yml`**.
 
 **Do not** use repo **Security** (`security.yml`) or **Build** alone as a deploy approval: only **Security Release** + **`security-verdict`** with **`verdict: pass`** authorizes the deploy workflows’ gates, as implemented.
@@ -52,7 +52,7 @@ After merge to **`develop`** (or a direct push, if your policy allows):
 | **Deploy** (staging / prod) | **Staging Deployment Contract** or **Deploy Production** red after a pass verdict | SSH/preflight/smoke per job; **automatic** image rollback in prod is **policy- and LKG-dependent**. | [deploy-failure.md](./deploy-failure.md) |
 | **Smoke** | Staging post-deploy smoke failed | **staging-smoke-evidence** artifact; required URLs / auth configured in repo for staging. | [deploy-failure.md](./deploy-failure.md), [post-deploy-smoke-tests.md](./post-deploy-smoke-tests.md) if present |
 
-**Nightly** workflows (**Nightly Security Rescan**, **Nightly Ops**) are **out of band** for the merge/deploy chain; they do not replace **Security** on PR/push or **Security Release** for promotion.
+Out-of-band workflows: **Nightly Security Rescan** (scheduled + manual) and **Manual Ops Evidence Check** (`nightly-ops.yml`, `workflow_dispatch` only — no `schedule`) are **out of band** for the merge/deploy chain; they do not replace **Security** on PR/push or **Security Release** for promotion.
 
 ---
 
@@ -103,7 +103,9 @@ The repository **code** does not set branch rules or environment rules. A **GitH
 | `build-push.yml` | Build and Push Images | After CI; images + promotion artifacts |
 | `security-release.yml` | Security Release | Image gate, **security-verdict** |
 | `deploy-develop.yml` | Staging Deployment Contract | Staging after **Security Release** on `develop` |
-| `deploy-prod.yml` | Deploy Production | **Only** file for GitHub **production** deploy/rollback |
+| `deploy-prod.yml` | Deploy Production | **Manual** `workflow_dispatch` only — **only** file for GitHub **production** deploy/rollback |
 | `deploy-production.yml` | Legacy pointer | **No deploy** — filename compatibility only |
+| `nightly-security.yml` | Nightly Security Rescan | Scheduled + manual; not merge/deploy gate |
+| `nightly-ops.yml` | Manual Ops Evidence Check | `workflow_dispatch` only; out-of-band evidence |
 
 Full table: [github-governance.md — Active GitHub Actions workflows](./github-governance.md#active-github-actions-workflows-in-this-repository).
