@@ -32,7 +32,7 @@ No write scopes are required for this check. Store the token only as the reposit
 
 1. In **rulesets** (preferred) or **classic** protection, target **`main`** (e.g. `refs/heads/main` in ruleset `ref_name` conditions).
 2. **Require a pull request before merging**; **required approvals: at least 1** (for a 2-person team, keep **1** — do not reduce reviewers to “opt out” of review; use **Prevent self-review** for production deployments instead of lowering the count). Enable **dismiss stale reviews on new push** and **last push approval** when the UI offers them.
-3. **Required status checks** — add the job checks your policy needs (see the runbook’s tables for **Workflow / job** names), with **up to date / strict** behavior.
+3. **Required status checks** — add the job checks your policy needs (see the runbook’s tables for **Workflow / job** names), with **up to date / strict** behavior. On **`main`**, include **Enterprise release verification**; do **not** list **Security Release / Security Release Signal** as a **required** ruleset check — that job is **post-merge** (after **Build**). See the runbook subsection *Post-merge: Security Release Signal* under [Recommended required checks for `main`](../runbooks/github-governance.md#recommended-required-checks-for-main).
 4. **Block force pushes** and **branch deletion** (ruleset: `non_fast_forward` and `deletion`).
 5. Optionally **restrict who can push** to matching branches, in addition to the PR flow.
 

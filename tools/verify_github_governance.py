@@ -34,6 +34,8 @@ API_VERSION = "2022-11-28"
 ACCEPT = "application/vnd.github+json"
 
 # Status contexts as they appear in branch protection (workflow display name / job name).
+# Security Release / Security Release Signal is intentionally omitted: that job is post-merge
+# (after Build) and is not a suitable branch-ruleset required check for PRs.
 MAIN_RECOMMENDED_CONTEXTS: tuple[str, ...] = (
     "CI / Workflow and Script Quality",
     "CI / GitHub repository governance",
@@ -43,7 +45,6 @@ MAIN_RECOMMENDED_CONTEXTS: tuple[str, ...] = (
     "Security / Go Vulnerability Scan",
     "Security / Deployment and Config Scan",
     "Enterprise release verification / verify-enterprise-release",
-    "Security Release / Security Release Signal",
 )
 
 DEVELOP_RECOMMENDED_CONTEXTS: tuple[str, ...] = (
@@ -92,10 +93,6 @@ REQUIRED_STATUS_CHECK_ALIASES: dict[str, tuple[str, ...]] = {
     "Enterprise release verification / verify-enterprise-release": (
         "Enterprise release verification / verify-enterprise-release",
         "verify-enterprise-release",
-    ),
-    "Security Release / Security Release Signal": (
-        "Security Release / Security Release Signal",
-        "Security Release Signal",
     ),
 }
 
