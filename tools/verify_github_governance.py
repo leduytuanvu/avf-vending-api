@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Verify GitHub branch protection and deployment environments (REST API).
 
-Reads credentials from GH_TOKEN or GITHUB_TOKEN (never printed). Prefers `gh api`
+Reads credentials from GOVERNANCE_AUDIT_TOKEN, GH_TOKEN, or GITHUB_TOKEN (never printed). Prefers `gh api`
 when the GitHub CLI is available; otherwise uses urllib.
+
+**Primary** branch policy check uses **Repository Rulesets** (`GET /repos/.../rulesets`) and matches `main` / `develop`
+via `conditions.ref_name`. **Fallback** to classic `GET /repos/.../branches/{br}/protection` when no active ruleset
+covers the ref or the rulesets API is unreadable.
 
 Exit codes:
   0 — success, or skipped locally with warning + **manual UI checklist to stdout** when no token
@@ -10,11 +14,12 @@ Exit codes:
   2 — ENFORCE_GITHUB_GOVERNANCE=true in CI without a token (checklist to stderr)
 
 Environment:
-  ENFORCE_GITHUB_GOVERNANCE — stricter branch protection (e.g. strict required checks on main) when set to true.
+  ENFORCE_GITHUB_GOVERNANCE — stricter required status checks (strict) when set to true.
   GITHUB_GOVERNANCE_WARN_ONLY — if true, production environment API gaps downgrade to warnings (not for CI gating).
 """
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import shutil
@@ -51,6 +56,79 @@ DEVELOP_RECOMMENDED_CONTEXTS: tuple[str, ...] = (
     "Security / Deployment and Config Scan",
 )
 
+# Canonical PR/UI display name -> accepted context strings. Repository Rulesets return
+# `required_status_checks[].context` as the short name (e.g. "Go CI Gates"); the PR checks
+# UI often shows "CI / Go CI Gates". A policy check is satisfied if *any* alias appears in
+# the merged required_status_checks from the API (no fuzzy matching).
+REQUIRED_STATUS_CHECK_ALIASES: dict[str, tuple[str, ...]] = {
+    "CI / Workflow and Script Quality": (
+        "CI / Workflow and Script Quality",
+        "Workflow and Script Quality",
+    ),
+    "CI / GitHub repository governance": (
+        "CI / GitHub repository governance",
+        "GitHub repository governance",
+    ),
+    "CI / Go CI Gates": (
+        "CI / Go CI Gates",
+        "Go CI Gates",
+    ),
+    "CI / Docker Compose Config Validation": (
+        "CI / Docker Compose Config Validation",
+        "Docker Compose Config Validation",
+    ),
+    "Security / Secret Scan": (
+        "Security / Secret Scan",
+        "Secret Scan",
+    ),
+    "Security / Go Vulnerability Scan": (
+        "Security / Go Vulnerability Scan",
+        "Go Vulnerability Scan",
+    ),
+    "Security / Deployment and Config Scan": (
+        "Security / Deployment and Config Scan",
+        "Deployment and Config Scan",
+    ),
+    "Enterprise release verification / verify-enterprise-release": (
+        "Enterprise release verification / verify-enterprise-release",
+        "verify-enterprise-release",
+    ),
+    "Security Release / Security Release Signal": (
+        "Security Release / Security Release Signal",
+        "Security Release Signal",
+    ),
+}
+
+
+def _aliases_for_recommended_status(canonical: str) -> frozenset[str]:
+    t = REQUIRED_STATUS_CHECK_ALIASES.get(canonical)
+    if t is not None:
+        return frozenset(t)
+    return frozenset((canonical,))
+
+
+def _missing_recommended_status_checks(
+    expected: tuple[str, ...], all_ctx: set[str]
+) -> list[str]:
+    """Return canonical names that have no accepted alias present in all_ctx."""
+    return [c for c in expected if not _aliases_for_recommended_status(c) & all_ctx]
+
+
+def _format_missing_recommended_status_message(
+    label: str, missing: list[str], all_ctx: set[str], *, api_contexts_phrase: str
+) -> str:
+    """Failure copy: canonical names, accepted aliases, and actual API contexts (rulesets or protection)."""
+    parts: list[str] = [f"{label}: required status checks missing recommended checks:"]
+    for canon in missing:
+        accepted = ", ".join(sorted(_aliases_for_recommended_status(canon)))
+        parts.append(f"  - {canon!r} — accepted: {accepted}")
+    observed = ", ".join(sorted(all_ctx)) if all_ctx else "(none)"
+    parts.append(
+        f"  {api_contexts_phrase} {observed} "
+        "(any one accepted name per check satisfies policy). See docs/runbooks/github-governance.md."
+    )
+    return "\n".join(parts)
+
 # Shown when GH_TOKEN is missing, API returns 403/404, or ENFORCE is set without token.
 MANUAL_GOVERNANCE_CHECKLIST: str = """
 === Manual GitHub UI governance (repo owner) ===
@@ -58,20 +136,10 @@ Code in this repository cannot create or lock branch protection, repository rule
 environment settings. The repo owner (or org admin) must apply these in the GitHub UI
 (step-by-step: docs/operations/github-governance.md; full runbook: docs/runbooks/github-governance.md).
 
-Settings -> Branches -> Branch protection rules -> Add (or edit) rule for `main`
-  - Protect `main` (pattern: main)
-  - Require a pull request before merging
-  - Require approvals (at least 1) on PRs; optionally Code Owners
-  - Require status checks to pass; add the checks named in docs/runbooks/github-governance.md (include "CI / GitHub repository governance" when that CI job is enabled)
-  - Require branch to be up to date before merging (strict / "up to date" toggle)
-  - Do not allow bypassing the required pull requests and status checks (no admin bypass, per policy)
-  - Do not allow force pushes; do not allow deletions
-  - Restrict who can push to matching branches (only automation/release roles) where policy allows
-    (PR-only flow + required reviews is the default safe pattern; avoid casual direct push to `main`)
-
-Settings -> Branches -> branch protection for `develop` (pattern: develop)
-  - Require PRs and/or required status checks (see recommended checks in docs/runbooks/github-governance.md)
-  - Block force pushes and deletions (recommended for shared integration branches)
+This repository uses **Repository rulesets** as the primary way to protect `main` and `develop`.
+In **Settings → Rules → Rulesets** (or org rules), ensure **active** branch rulesets target
+`main` and `develop` and include: pull requests (with approvals), required status checks, block force pushes,
+and block deletions. Classic **Branch protection** is an alternative if rulesets are not used.
 
 Settings -> Environments -> `production` (exact name: deploy job uses `environment: production`)
   - Required reviewers: at least one user or team; production deploy jobs wait in the UI before SSH steps
@@ -79,9 +147,8 @@ Settings -> Environments -> `production` (exact name: deploy job uses `environme
   - Deployment branches: Selected branches / limited to `main` only (not "All branches")
   - Optional: wait timer; add deployment-specific secrets (SSH, etc.) here; never commit them to the repo
 
-If GET /branches/{branch}/protection returns 404 but the branch is protected, you may be using
-Repository rulesets: extend automation to the rulesets API or verify rules in the UI manually.
-See docs/runbooks/github-governance.md
+If GET /branches/{branch}/protection returns 404, you may be using only rulesets — the verifier
+reads **GET /repos/.../rulesets** when possible.
 ================================================================================
 """.strip()
 
@@ -100,7 +167,7 @@ def _governance_warn_only() -> bool:
 
 
 def _token() -> str | None:
-    for key in ("GH_TOKEN", "GITHUB_TOKEN"):
+    for key in ("GOVERNANCE_AUDIT_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"):
         v = os.environ.get(key)
         if v and v.strip():
             return v.strip()
@@ -210,6 +277,227 @@ def github_get_json(api_path: str, token: str) -> tuple[int, Any | None, str]:
         return -1, None, f"invalid JSON: {e}"
 
 
+def _rulesets_list_path(owner: str, repo: str) -> str:
+    q = urllib.parse.urlencode({"includes_parents": "true", "per_page": "100"})
+    return f"repos/{owner}/{repo}/rulesets?{q}"
+
+
+def _fetch_full_rulesets(
+    owner: str,
+    repo: str,
+    token: str,
+) -> tuple[str, list[dict] | None, str]:
+    """Returns: status ('ok'|'forbidden'|'unavailable'|http code str), list of full ruleset objects or None, err text."""
+    path = _rulesets_list_path(owner, repo)
+    code, data, err = github_get_json(path, token)
+    if code in (401, 403):
+        return "forbidden", None, err or ""
+    if code == 404:
+        return "unavailable", None, err or ""
+    if code != 0 or not isinstance(data, list):
+        return str(code), None, err or ""
+    out: list[dict] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        rid = item.get("id")
+        if rid is None:
+            continue
+        c2, full, e2 = github_get_json(f"repos/{owner}/{repo}/rulesets/{rid}", token)
+        if c2 == 0 and isinstance(full, dict):
+            out.append(full)
+    return "ok", out, ""
+
+
+def _pattern_matches_ref(pattern: str, branch: str, default_branch: str) -> bool:
+    pattern = (pattern or "").strip()
+    if not pattern:
+        return False
+    if pattern == "~ALL":
+        return True
+    if pattern == "~DEFAULT_BRANCH":
+        return branch == default_branch
+    ref = f"refs/heads/{branch}"
+    if pattern in (branch, ref):
+        return True
+    # GitHub ref patterns: fnmatch-style on full ref; also try pattern as refs/heads/NAME
+    if fnmatch.fnmatchcase(ref, pattern) or fnmatch.fnmatchcase(branch, pattern):
+        return True
+    if not pattern.startswith("refs/") and not pattern.startswith("~"):
+        return fnmatch.fnmatchcase(ref, f"refs/heads/{pattern}")
+    return fnmatch.fnmatchcase(ref, pattern)
+
+
+def _ruleset_covers_ref(ruleset: dict[str, Any], branch: str, default_branch: str) -> bool:
+    if ruleset.get("target") != "branch":
+        return False
+    if (ruleset.get("enforcement") or "").lower() != "active":
+        return False
+    cond = ruleset.get("conditions")
+    if not isinstance(cond, dict):
+        return False
+    ref_name = cond.get("ref_name")
+    if not isinstance(ref_name, dict):
+        return False
+    includes = list(ref_name.get("include") or [])
+    excludes = list(ref_name.get("exclude") or [])
+    for ex in excludes:
+        if _pattern_matches_ref(str(ex), branch, default_branch):
+            return False
+    if not includes:
+        return False
+    for inc in includes:
+        if _pattern_matches_ref(str(inc), branch, default_branch):
+            return True
+    return False
+
+
+def _merge_rules_for_branch(rulesets: list[dict[str, Any]], branch: str, default_branch: str) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    for rs in rulesets:
+        if not _ruleset_covers_ref(rs, branch, default_branch):
+            continue
+        rules = rs.get("rules")
+        if isinstance(rules, list):
+            merged.extend(r for r in rules if isinstance(r, dict))
+    return merged
+
+
+def _verify_merged_rules(
+    merged: list[dict[str, Any]],
+    branch: str,
+    is_main: bool,
+    errors: list[str],
+    warnings: list[str],
+    enforce: bool,
+) -> bool:
+    """Return True if branch ruleset rules satisfy policy (or only warnings)."""
+    n_err_before = len(errors)
+    label = f"Ruleset rules for {branch!r}"
+
+    pr_params: list[dict[str, Any]] = []
+    rsc_params: list[dict[str, Any]] = []
+    types: set[str] = set()
+    for r in merged:
+        t = (r.get("type") or "").strip().lower()
+        if not t:
+            continue
+        types.add(t)
+        p = r.get("parameters")
+        if t == "pull_request" and isinstance(p, dict):
+            pr_params.append(p)
+        if t == "required_status_checks" and isinstance(p, dict):
+            rsc_params.append(p)
+
+    if "pull_request" not in types:
+        errors.append(f"{label}: add a **pull_request** rule (require a pull request before merging).")
+    else:
+        max_appr = 0
+        for p in pr_params:
+            try:
+                max_appr = max(max_appr, int(p.get("required_approving_review_count", 0) or 0))
+            except (TypeError, ValueError):
+                pass
+        if max_appr < 1:
+            errors.append(
+                f"{label}: set **at least 1** required approval (required_approving_review_count >= 1). "
+                "For a small (e.g. 2-person) team, keep **1** and enable **Prevent self-review** for production; "
+                "do not lower required reviews to bypass governance."
+            )
+
+        saw_dismiss: bool = False
+        any_dismiss_false = False
+        for p in pr_params:
+            if "dismiss_stale_reviews_on_push" in p:
+                saw_dismiss = True
+                if not p.get("dismiss_stale_reviews_on_push"):
+                    any_dismiss_false = True
+        if any_dismiss_false:
+            errors.append(
+                f"{label}: **Dismiss stale pull request approvals** when new commits are pushed must be enabled "
+                "(dismiss_stale_reviews_on_push: true in API)."
+            )
+        if not saw_dismiss:
+            warnings.append(
+                f"{label}: API did not report `dismiss_stale_reviews_on_push`; enable **Dismiss stale reviews when new "
+                "commits are pushed** in the ruleset and confirm in the UI."
+            )
+
+        saw_lpa = False
+        any_lpa_false = False
+        for p in pr_params:
+            if "require_last_push_approval" in p:
+                saw_lpa = True
+                if not p.get("require_last_push_approval"):
+                    any_lpa_false = True
+        if any_lpa_false:
+            errors.append(
+                f"{label}: **Require approval of the most recent reviewable push** must be enabled "
+                "when the API reports `require_last_push_approval`."
+            )
+        if not saw_lpa:
+            warnings.append(
+                f"{label}: `require_last_push_approval` not in API; enable **Require approval of the most recent "
+                "reviewable push** if the UI offers it (verify manually)."
+            )
+
+    if "required_status_checks" not in types:
+        errors.append(
+            f"{label}: add a **required_status_checks** rule and list your blocking CI/Security check names (see runbook)."
+        )
+    else:
+        strict_ok = any(bool(p.get("strict_required_status_checks_policy")) for p in rsc_params)
+        if rsc_params and not strict_ok:
+            msg = (
+                f"{label}: enable **strict** / “up to date” required status checks (strict_required_status_checks_policy) "
+                "in the ruleset."
+            )
+            if enforce:
+                errors.append(msg)
+            else:
+                warnings.append(msg + " (set ENFORCE_GITHUB_GOVERNANCE=true in CI to fail on this).")
+        all_ctx: set[str] = set()
+        for p in rsc_params:
+            for chk in p.get("required_status_checks") or []:
+                if isinstance(chk, dict) and chk.get("context"):
+                    all_ctx.add(str(chk["context"]))
+        if not all_ctx:
+            errors.append(
+                f"{label}: required_status_checks is present but has no check contexts; add the checks from the runbook."
+            )
+        else:
+            expected = MAIN_RECOMMENDED_CONTEXTS if is_main else DEVELOP_RECOMMENDED_CONTEXTS
+            missing = _missing_recommended_status_checks(expected, all_ctx)
+            if missing:
+                errors.append(
+                    _format_missing_recommended_status_message(
+                        label,
+                        missing,
+                        all_ctx,
+                        api_contexts_phrase="Rulesets API `required_status_checks[].context` values observed:",
+                    )
+                )
+
+    if "non_fast_forward" not in types:
+        errors.append(f"{label}: add **non_fast_forward** (Block force pushes) to the ruleset for this ref.")
+    if "deletion" not in types:
+        errors.append(f"{label}: add **deletion** (Block branch deletions) to the ruleset for this ref.")
+
+    return len(errors) == n_err_before
+
+
+def _ruleset_404_context(
+    rulesets_status: str,
+    all_rulesets: list[dict[str, Any]],
+    branch: str,
+) -> str:
+    if rulesets_status in ("forbidden", "unavailable", "401", "403"):
+        return "Could not list repository rulesets (API denied or unavailable); using classic **branch protection** API only. "
+    if not all_rulesets:
+        return "No rulesets are returned for this repository; using classic **branch protection** if configured. "
+    return f"No **active** ruleset **includes** this branch (`{branch}`) in `ref_name` conditions; using classic **branch protection** if configured. "
+
+
 def _collect_required_contexts(protection: dict[str, Any]) -> set[str]:
     out: set[str] = set()
     rsc = protection.get("required_status_checks")
@@ -255,7 +543,7 @@ def _required_approving_count(prr: dict[str, Any] | None) -> int:
         return 0
 
 
-def _check_branch_protection(
+def _check_branch_protection_classic(
     owner: str,
     repo: str,
     branch: str,
@@ -265,35 +553,53 @@ def _check_branch_protection(
     errors: list[str],
     warnings: list[str],
     enforce: bool,
+    not_found_prefix: str,
 ) -> None:
     path = _api_path(owner, repo, "branches", branch, "protection")
     code, data, err = github_get_json(path, token)
     if code in (401, 403):
         errors.append(
-            f"Branch {branch!r}: no permission to read branch protection (HTTP {code}). "
-            "Use a token with `repo` or `admin:org` (read) scope; see below for manual UI checklist."
+            f"Branch {branch!r}: no permission to read classic branch protection (HTTP {code}). "
+            "Use a read-only PAT with access to read rulesets and/or branch protection. "
+            + not_found_prefix
         )
         return
     if code == 404:
         errors.append(
-            f"Branch {branch!r} has no classic branch protection (404). If you use **repository rulesets**, "
-            "this endpoint will still be 404 — verify in UI or use the rulesets API; see docs/runbooks/github-governance.md."
+            f"Branch {branch!r}: `GET /branches/{branch}/protection` is 404. "
+            + not_found_prefix
+            + "Configure an **active** **repository ruleset** for this ref or classic branch protection. "
+            "See docs/operations/github-governance.md and docs/runbooks/github-governance.md."
         )
         return
     if code != 0 or not isinstance(data, dict):
-        errors.append(f"Could not read branch protection for {branch!r}: HTTP {code} {err}".strip())
+        errors.append(f"Could not read classic branch protection for {branch!r}: HTTP {code} {err}".strip())
         return
 
     rsc = data.get("required_status_checks")
     contexts = _collect_required_contexts(data)
     if not isinstance(rsc, dict):
-        errors.append(f"Branch {branch!r}: required status checks are not configured (required_status_checks missing).")
+        errors.append(
+            f"Branch {branch!r}: required status checks are not configured in classic API (required_status_checks missing)."
+        )
     elif not contexts:
-        errors.append(f"Branch {branch!r}: required status checks have no contexts (add required checks in branch protection).")
+        errors.append(
+            f"Branch {branch!r}: required status checks have no contexts (add required checks in branch protection or ruleset)."
+        )
     elif is_main and not rsc.get("strict"):
         msg = (
             f"Branch {branch!r}: required status checks are not in strict mode "
-            "(enable **Require branch to be up to date** / strict in branch protection)."
+            "(enable **Require branch to be up to date** in branch protection)."
+        )
+        if enforce:
+            errors.append(msg)
+        else:
+            warnings.append(msg + " (set ENFORCE_GITHUB_GOVERNANCE=true to fail on this).")
+    elif not is_main and not rsc.get("strict"):
+        # develop: require strict when ENFORCE to align with ruleset path
+        msg = (
+            f"Branch {branch!r}: required status checks are not in strict mode "
+            "(enable **Require branch to be up to date** in branch protection)."
         )
         if enforce:
             errors.append(msg)
@@ -301,67 +607,112 @@ def _check_branch_protection(
             warnings.append(msg + " (set ENFORCE_GITHUB_GOVERNANCE=true to fail on this).")
 
     prr = data.get("required_pull_request_reviews")
-    if is_main:
-        if not isinstance(prr, dict):
-            errors.append("Branch main: pull request reviews are not required (required_pull_request_reviews missing).")
-        else:
-            if _required_approving_count(prr) < 1:
-                errors.append(
-                    "Branch main: require at least **1 approving review** (required_approving_review_count >= 1) on pull requests."
-                )
-        force = _bool_flag(data.get("allow_force_pushes"))
-        if force is True:
-            errors.append("Branch main: force pushes are allowed (allow_force_pushes.enabled is true); must block.")
-        delete = _bool_flag(data.get("allow_deletions"))
-        if delete is True:
-            errors.append("Branch main: branch deletion is allowed (allow_deletions.enabled is true); must block.")
+    if not isinstance(prr, dict):
+        errors.append(
+            f"Branch {branch!r}: pull request reviews are not required in classic API (required_pull_request_reviews missing)."
+        )
+    else:
+        if _required_approving_count(prr) < 1:
+            errors.append(
+                f"Branch {branch!r}: require at least **1** approving review on pull requests "
+                f"(set required_approving_review_count; small teams: keep 1, enable self-review policy at environment level for prod)."
+            )
+        dsr = prr.get("dismiss_stale_reviews")
+        if dsr is False:
+            errors.append(
+                f"Branch {branch!r}: enable **dismiss stale reviews** on new commits (dismiss_stale_reviews) in branch protection when available."
+            )
+        elif dsr is None and isinstance(prr, dict):
+            warnings.append(
+                f"Branch {branch!r}: could not read dismiss_stale_reviews; confirm **Dismiss stale reviews** in the UI."
+            )
 
-        # Direct-push restriction: classic API exposes explicit push restrictions or PR-only flow.
+    force = _bool_flag(data.get("allow_force_pushes"))
+    if force is True:
+        errors.append(f"Branch {branch!r}: force pushes are allowed (allow_force_pushes.enabled is true); must block.")
+    delete = _bool_flag(data.get("allow_deletions"))
+    if delete is True:
+        errors.append(
+            f"Branch {branch!r}: branch deletion is allowed (allow_deletions.enabled is true); must block in classic protection or ruleset."
+        )
+
+    if is_main:
         restrictions = data.get("restrictions")
         has_push_restrictions = isinstance(restrictions, dict) and (
             (restrictions.get("users") and len(restrictions["users"]) > 0)
             or (restrictions.get("teams") and len(restrictions["teams"]) > 0)
             or (restrictions.get("apps") and len(restrictions["apps"]) > 0)
         )
-        if isinstance(data.get("required_pull_request_reviews"), dict) or has_push_restrictions:
-            pass  # satisfied
-        else:
+        if not isinstance(data.get("required_pull_request_reviews"), dict) and not has_push_restrictions:
             warnings.append(
                 "Branch main: neither required_pull_request_reviews nor restrictions (who can push) are set; "
-                "confirm merges are PR-only in GitHub settings (see manual checklist: block direct push to `main`)."
+                "confirm merges are PR-only in GitHub settings (see manual checklist)."
             )
 
         expected = MAIN_RECOMMENDED_CONTEXTS
-        missing = [c for c in expected if c not in contexts]
-        if missing:
+        missing = _missing_recommended_status_checks(expected, contexts)
+        if missing and isinstance(rsc, dict):
             errors.append(
-                "Branch main: required checks missing recommended contexts: "
-                + ", ".join(missing)
-                + " (see docs/runbooks/github-governance.md)."
+                _format_missing_recommended_status_message(
+                    "Branch main (classic branch protection API)",
+                    missing,
+                    contexts,
+                    api_contexts_phrase="Required check `context` values observed:",
+                )
             )
     else:
-        # develop: require PR reviews (>=1) and/or at least one required context; block force delete when API exposes
-        d_force = _bool_flag(data.get("allow_force_pushes"))
-        if d_force is True:
-            errors.append("Branch develop: force pushes are allowed (allow_force_pushes.enabled is true); must block.")
-        d_delete = _bool_flag(data.get("allow_deletions"))
-        if d_delete is True:
-            errors.append("Branch develop: branch deletion is allowed (allow_deletions.enabled is true); must block.")
-
-        has_pr_approval = isinstance(prr, dict) and _required_approving_count(prr) >= 1
-        if not has_pr_approval and len(contexts) == 0:
-            errors.append(
-                "Branch develop: require pull request reviews (at least 1) and/or required status check contexts; "
-                "neither is configured (if review count is 0, increase it or add required checks)."
-            )
         expected = DEVELOP_RECOMMENDED_CONTEXTS
-        missing = [c for c in expected if c not in contexts]
-        if missing:
+        missing = _missing_recommended_status_checks(expected, contexts)
+        if missing and isinstance(rsc, dict):
             errors.append(
-                "Branch develop: required checks missing recommended contexts: "
-                + ", ".join(missing)
-                + " (see docs/runbooks/github-governance.md)."
+                _format_missing_recommended_status_message(
+                    "Branch develop (classic branch protection API)",
+                    missing,
+                    contexts,
+                    api_contexts_phrase="Required check `context` values observed:",
+                )
             )
+
+
+def _check_branch_with_rulesets_first(
+    owner: str,
+    repo: str,
+    branch: str,
+    token: str,
+    *,
+    is_main: bool,
+    errors: list[str],
+    warnings: list[str],
+    enforce: bool,
+    default_branch: str,
+    rulesets_status: str,
+    all_rulesets: list[dict[str, Any]] | None,
+) -> None:
+    rs_list = all_rulesets or []
+    applicable = [rs for rs in rs_list if _ruleset_covers_ref(rs, branch, default_branch)]
+    if applicable:
+        merged = _merge_rules_for_branch(rs_list, branch, default_branch)
+        if not merged:
+            errors.append(
+                f"Branch {branch!r}: an active ruleset names this ref in `ref_name` but **rules** is empty. "
+                "Add pull request, required status checks, **non_fast_forward** (block force push), and **deletion** (block delete) rules."
+            )
+            return
+        if _verify_merged_rules(merged, branch, is_main, errors, warnings, enforce):
+            return
+        return
+
+    _check_branch_protection_classic(
+        owner,
+        repo,
+        branch,
+        token,
+        is_main=is_main,
+        errors=errors,
+        warnings=warnings,
+        enforce=enforce,
+        not_found_prefix=_ruleset_404_context(rulesets_status, rs_list, branch),
+    )
 
 
 def _check_environment_production(
@@ -498,8 +849,9 @@ def _check_environment_staging(owner: str, repo: str, token: str, warnings: list
     code, _, err = github_get_json(path, token)
     if code == 404:
         warnings.append(
-            "Environment staging not found (404). This repo uses environment: staging in workflows; create it or document an exception "
-            "(see docs/runbooks/github-governance.md)."
+            "Environment `staging` not found (404). Staging deploy workflows that use `environment: staging` will fail until "
+            "it exists under Settings → Environments, or the workflow is updated. This is a **warning** only — production policy "
+            "is enforced via the `production` environment above."
         )
     elif code != 0:
         warnings.append(f"Could not verify environment staging: HTTP {code} {err}".strip())
@@ -510,13 +862,13 @@ def main() -> int:
     tok = _token()
     if not tok:
         msg = (
-            "verify_github_governance: GH_TOKEN or GITHUB_TOKEN is not set; skipping GitHub API governance checks.\n"
+            "verify_github_governance: GOVERNANCE_AUDIT_TOKEN, GH_TOKEN, or GITHUB_TOKEN is not set; skipping GitHub API governance checks.\n"
             "Set a token with repo read access and re-run, or see docs/operations/github-governance.md for manual setup."
         )
         if _enforce() and _is_ci():
             print(
                 "verify_github_governance: error: ENFORCE_GITHUB_GOVERNANCE is set in CI but no token is available "
-                "(set GH_TOKEN or GITHUB_TOKEN with repo read access).",
+                "(set GOVERNANCE_AUDIT_TOKEN, GH_TOKEN, or GITHUB_TOKEN with repo read access).",
                 file=sys.stderr,
             )
             print("GOVERNANCE_CHECK: FAIL", file=sys.stderr)
@@ -538,7 +890,7 @@ def main() -> int:
         return 1
     owner, repo = slug
 
-    if tok and not shutil.which("gh"):
+    if not shutil.which("gh"):
         print(
             "verify_github_governance: error: gh CLI is required on PATH when a token is set "
             "(use scripts/ci/verify_github_governance.sh, which enforces this in live mode).",
@@ -549,14 +901,42 @@ def main() -> int:
 
     errors: list[str] = []
     warnings: list[str] = []
-
     enforce = _enforce()
 
-    _check_branch_protection(
-        owner, repo, "main", tok, is_main=True, errors=errors, warnings=warnings, enforce=enforce
+    rcode, repo_json, _rerr = github_get_json(f"repos/{owner}/{repo}", tok)
+    default_branch = "main"
+    if rcode == 0 and isinstance(repo_json, dict) and repo_json.get("default_branch"):
+        default_branch = str(repo_json["default_branch"])
+
+    rulesets_status, all_rulesets, _ = _fetch_full_rulesets(owner, repo, tok)
+    if all_rulesets is None:
+        all_rulesets = []
+
+    _check_branch_with_rulesets_first(
+        owner,
+        repo,
+        "main",
+        tok,
+        is_main=True,
+        errors=errors,
+        warnings=warnings,
+        enforce=enforce,
+        default_branch=default_branch,
+        rulesets_status=rulesets_status,
+        all_rulesets=all_rulesets,
     )
-    _check_branch_protection(
-        owner, repo, "develop", tok, is_main=False, errors=errors, warnings=warnings, enforce=enforce
+    _check_branch_with_rulesets_first(
+        owner,
+        repo,
+        "develop",
+        tok,
+        is_main=False,
+        errors=errors,
+        warnings=warnings,
+        enforce=enforce,
+        default_branch=default_branch,
+        rulesets_status=rulesets_status,
+        all_rulesets=all_rulesets,
     )
     _check_environment_production(owner, repo, tok, errors, warnings)
     _check_environment_staging(owner, repo, tok, warnings)
@@ -566,8 +946,6 @@ def main() -> int:
 
     pr_event = (os.environ.get("GITHUB_EVENT_NAME") or "").strip() == "pull_request"
     if pr_event and errors and all(_is_github_permission_denied_error(e) for e in errors):
-        # GITHUB_TOKEN on pull_request often cannot read branch protection or environments; do not fail CI
-        # or claim PASS — operators verify Settings manually (see docs/operations/github-governance.md).
         for e in errors:
             print(
                 f"verify_github_governance: note (API read denied on pull_request; this is not a passing governance audit): {e}",
@@ -575,7 +953,7 @@ def main() -> int:
             )
         _print_manual_checklist(sys.stdout)
         print(
-            "GOVERNANCE_CHECK: MANUAL_REVIEW_REQUIRED (token cannot read branch protection or environments; verify in GitHub UI — docs/operations/github-governance.md, docs/runbooks/github-governance.md)",
+            "GOVERNANCE_CHECK: MANUAL_REVIEW_REQUIRED (token cannot read rulesets, branch protection, or environments; verify in GitHub UI — docs/operations/github-governance.md, docs/runbooks/github-governance.md)",
             file=sys.stderr,
         )
         return 0
@@ -585,7 +963,7 @@ def main() -> int:
         for e in errors:
             print(f"  - {e}", file=sys.stderr)
         if any(
-            x in e
+            x in (e or "")
             for e in errors
             for x in (
                 "404",
@@ -596,17 +974,17 @@ def main() -> int:
             )
         ):
             print(
-                "verify_github_governance: some failures may be API limits or **repository rulesets**; "
+                "verify_github_governance: some failures may be API limits, missing **repository rulesets**, or classic **branch protection**; "
                 "use the manual checklist and docs/operations/github-governance.md",
                 file=sys.stderr,
             )
             _print_manual_checklist(sys.stderr)
-        print("GOVERNANCE_CHECK: FAIL (branch protection, production environment, or recommended checks — fix in GitHub UI)", file=sys.stderr)
+        print("GOVERNANCE_CHECK: FAIL (rulesets, branch protection, production environment, or recommended checks — fix in GitHub UI)", file=sys.stderr)
         return 1
     if warnings:
         print(
-            "verify_github_governance: (warnings only) re-check branch/environment settings in the GitHub UI; "
-            "set ENFORCE_GITHUB_GOVERNANCE=true to hard-fail on more checks.",
+            "verify_github_governance: (warnings only) re-check rulesets / branch and environment settings in the GitHub UI; "
+            "set ENFORCE_GITHUB_GOVERNANCE=true to hard-fail on more checks for classic API.",
             file=sys.stderr,
         )
     print("verify_github_governance: all governance checks passed.")
