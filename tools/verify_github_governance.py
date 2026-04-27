@@ -56,6 +56,79 @@ DEVELOP_RECOMMENDED_CONTEXTS: tuple[str, ...] = (
     "Security / Deployment and Config Scan",
 )
 
+# Canonical PR/UI display name -> accepted context strings. Repository Rulesets return
+# `required_status_checks[].context` as the short name (e.g. "Go CI Gates"); the PR checks
+# UI often shows "CI / Go CI Gates". A policy check is satisfied if *any* alias appears in
+# the merged required_status_checks from the API (no fuzzy matching).
+REQUIRED_STATUS_CHECK_ALIASES: dict[str, tuple[str, ...]] = {
+    "CI / Workflow and Script Quality": (
+        "CI / Workflow and Script Quality",
+        "Workflow and Script Quality",
+    ),
+    "CI / GitHub repository governance": (
+        "CI / GitHub repository governance",
+        "GitHub repository governance",
+    ),
+    "CI / Go CI Gates": (
+        "CI / Go CI Gates",
+        "Go CI Gates",
+    ),
+    "CI / Docker Compose Config Validation": (
+        "CI / Docker Compose Config Validation",
+        "Docker Compose Config Validation",
+    ),
+    "Security / Secret Scan": (
+        "Security / Secret Scan",
+        "Secret Scan",
+    ),
+    "Security / Go Vulnerability Scan": (
+        "Security / Go Vulnerability Scan",
+        "Go Vulnerability Scan",
+    ),
+    "Security / Deployment and Config Scan": (
+        "Security / Deployment and Config Scan",
+        "Deployment and Config Scan",
+    ),
+    "Enterprise release verification / verify-enterprise-release": (
+        "Enterprise release verification / verify-enterprise-release",
+        "verify-enterprise-release",
+    ),
+    "Security Release / Security Release Signal": (
+        "Security Release / Security Release Signal",
+        "Security Release Signal",
+    ),
+}
+
+
+def _aliases_for_recommended_status(canonical: str) -> frozenset[str]:
+    t = REQUIRED_STATUS_CHECK_ALIASES.get(canonical)
+    if t is not None:
+        return frozenset(t)
+    return frozenset((canonical,))
+
+
+def _missing_recommended_status_checks(
+    expected: tuple[str, ...], all_ctx: set[str]
+) -> list[str]:
+    """Return canonical names that have no accepted alias present in all_ctx."""
+    return [c for c in expected if not _aliases_for_recommended_status(c) & all_ctx]
+
+
+def _format_missing_recommended_status_message(
+    label: str, missing: list[str], all_ctx: set[str], *, api_contexts_phrase: str
+) -> str:
+    """Failure copy: canonical names, accepted aliases, and actual API contexts (rulesets or protection)."""
+    parts: list[str] = [f"{label}: required status checks missing recommended checks:"]
+    for canon in missing:
+        accepted = ", ".join(sorted(_aliases_for_recommended_status(canon)))
+        parts.append(f"  - {canon!r} — accepted: {accepted}")
+    observed = ", ".join(sorted(all_ctx)) if all_ctx else "(none)"
+    parts.append(
+        f"  {api_contexts_phrase} {observed} "
+        "(any one accepted name per check satisfies policy). See docs/runbooks/github-governance.md."
+    )
+    return "\n".join(parts)
+
 # Shown when GH_TOKEN is missing, API returns 403/404, or ENFORCE is set without token.
 MANUAL_GOVERNANCE_CHECKLIST: str = """
 === Manual GitHub UI governance (repo owner) ===
@@ -394,12 +467,15 @@ def _verify_merged_rules(
             )
         else:
             expected = MAIN_RECOMMENDED_CONTEXTS if is_main else DEVELOP_RECOMMENDED_CONTEXTS
-            missing = [c for c in expected if c not in all_ctx]
+            missing = _missing_recommended_status_checks(expected, all_ctx)
             if missing:
                 errors.append(
-                    f"{label}: required status checks missing recommended contexts: "
-                    + ", ".join(missing)
-                    + " (see docs/runbooks/github-governance.md)."
+                    _format_missing_recommended_status_message(
+                        label,
+                        missing,
+                        all_ctx,
+                        api_contexts_phrase="Rulesets API `required_status_checks[].context` values observed:",
+                    )
                 )
 
     if "non_fast_forward" not in types:
@@ -574,21 +650,27 @@ def _check_branch_protection_classic(
             )
 
         expected = MAIN_RECOMMENDED_CONTEXTS
-        missing = [c for c in expected if c not in contexts]
+        missing = _missing_recommended_status_checks(expected, contexts)
         if missing and isinstance(rsc, dict):
             errors.append(
-                "Branch main: required checks missing recommended contexts: "
-                + ", ".join(missing)
-                + " (see docs/runbooks/github-governance.md)."
+                _format_missing_recommended_status_message(
+                    "Branch main (classic branch protection API)",
+                    missing,
+                    contexts,
+                    api_contexts_phrase="Required check `context` values observed:",
+                )
             )
     else:
         expected = DEVELOP_RECOMMENDED_CONTEXTS
-        missing = [c for c in expected if c not in contexts]
+        missing = _missing_recommended_status_checks(expected, contexts)
         if missing and isinstance(rsc, dict):
             errors.append(
-                "Branch develop: required checks missing recommended contexts: "
-                + ", ".join(missing)
-                + " (see docs/runbooks/github-governance.md)."
+                _format_missing_recommended_status_message(
+                    "Branch develop (classic branch protection API)",
+                    missing,
+                    contexts,
+                    api_contexts_phrase="Required check `context` values observed:",
+                )
             )
 
 

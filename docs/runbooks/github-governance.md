@@ -24,7 +24,7 @@ Use this when onboarding a repo or when `verify_github_governance` reports API *
 | **Branch: `develop`** | Same as `main` for policy **class** (active ruleset or classic) with **develop**-scoped checks: [develop checks](#recommended-required-checks-for-develop). |
 | **Environment `production`** | **Settings → Environments → `production`**. **Required reviewers** (≥1 user/team) — for a 2-person team, keep **1** required approval and use **Prevent self-review** for deployments where available. **Deployment branches: Selected branches** → **`main` only** (not “All branches”). |
 | **Secrets for prod deploy** | **Settings → Environments → `production` → Environment secrets** (SSH, hosts, etc.). Do **not** commit production secrets to the repo. |
-| **Required checks (names)** | Must match the **Check name** column in the tables in this doc (GitHub shows `Workflow / job`). **CI**, **Security** blocking jobs, and (on `main`) **Enterprise release verification** and **Security Release** where applicable. |
+| **Required checks (names)** | Use the **Check name** column in the tables in this doc (the PR **Checks** tab often shows `Workflow / job`, e.g. `CI / Go CI Gates`). The **Repository rulesets** REST API stores each required check as a shorter `context` (often the job name only, e.g. `Go CI Gates`). The governance verifier (`tools/verify_github_governance.py`) accepts **either** form per the explicit alias list — see [Rulesets API vs PR Checks UI](#rulesets-api-vs-pr-checks-ui). |
 | **Deploy workflow** | Production goes only through **[`.github/workflows/deploy-prod.yml`](../../.github/workflows/deploy-prod.yml)** (`workflow_dispatch` on `main`); it does not auto-run from **Security Release** completion. |
 
 ## Active GitHub Actions workflows in this repository
@@ -219,7 +219,7 @@ If you intentionally omit a `staging` environment, document the exception in you
 
 ## Recommended required checks for `main`
 
-Add these as **required status checks** on `main` (names must match what GitHub shows in the PR checks UI — usually `Workflow display name / Job name`):
+Add these as **required status checks** on `main` (in the **Checks** tab you will usually see `Workflow / job`; the rulesets API may list only the job-style **context** — both are valid if they match the [alias rules](#rulesets-api-vs-pr-checks-ui)):
 
 **Blocking (merge)**
 
@@ -272,6 +272,20 @@ Add these as **required status checks** on `main` (names must match what GitHub 
 **Optional / org-gated:** CodeQL / Analyze Go with CodeQL when `ENABLE_CODE_SCANNING` is enabled.
 
 ---
+
+## Rulesets API vs PR Checks UI
+
+- The **PR Checks** tab lists combined labels such as `CI / Go CI Gates` (workflow display name, a slash, then job name).
+- **`GET /repos/{owner}/{repo}/rulesets/{id}`** returns `rules[].type == "required_status_checks"` and `parameters.required_status_checks[].context` using the **short** check context GitHub uses internally (e.g. `Go CI Gates`, `Secret Scan`, `verify-enterprise-release`). That is normal; it does not mean the wrong job is required.
+
+**How to verify:** fetch the ruleset JSON and read the `context` strings, then compare them to the **accepted** names for each recommended check (full UI label and short API name are both valid when listed in `REQUIRED_STATUS_CHECK_ALIASES` in `tools/verify_github_governance.py`).
+
+```bash
+# Replace RULESET_ID with the numeric id from: gh api "repos/OWNER/REPO/rulesets?per_page=100"
+gh api "repos/OWNER/REPO/rulesets/RULESET_ID" --jq '.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks'
+```
+
+**Alias examples (explicit; no fuzzy matching):** the verifier treats `CI / Go CI Gates` and `Go CI Gates` as the same policy requirement; `Security / Secret Scan` and `Secret Scan`; `Enterprise release verification / verify-enterprise-release` and `verify-enterprise-release`; `Security Release / Security Release Signal` and `Security Release Signal`. See the `REQUIRED_STATUS_CHECK_ALIASES` table in the Python verifier for the full list.
 
 ## Rulesets vs classic branch protection
 
