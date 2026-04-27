@@ -143,7 +143,8 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
         shell: bash
         env:
-          # Optional repository secret: read-only token that can call protection + environments APIs (avoids 403 from default GITHUB_TOKEN on some events). Falls back to github.token.
+          # When set, shell + verifier prefer this for rulesets/branch/protection/environment reads. Empty when the secret is not defined.
+          GOVERNANCE_AUDIT_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN || github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
