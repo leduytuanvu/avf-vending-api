@@ -27,11 +27,11 @@ print_offline_planned_checks() {
   cat <<'TEXT'
 The following are validated in live mode (only after CHECK_MODE is unset and credentials are set):
 
-  - Branch `main` (classic /protection or ruleset notes in verifier output on 404)
-    - Protected; required status checks; strict (up to date) when ENFORCE is on
-    - Required pull request reviews (>=1) on main
-    - Force pushes blocked; branch deletion blocked when API exposes it
-  - Branch `develop` — PR/reviews and/or required checks; force push and deletion blocked
+  - Branches `main` and `develop` — **Repository rulesets** (active, branch target, `ref_name` include) with rules:
+    - pull_request (approvals, stale review dismissal, last-push approval when the API reports them)
+    - required_status_checks (strict, named checks per runbook)
+    - non_fast_forward (block force push), deletion (block branch delete)
+  - If no ruleset covers a ref, **classic** `GET /repos/.../branches/{ref}/protection` (same policy intent)
   - GitHub Environment `production` — exists; required reviewers > 0; deployment branches limited
     to `main` (or protected-branches mode with main protected)
 
@@ -79,18 +79,20 @@ if [[ -n "${REPOSITORY:-}" ]]; then
 fi
 
 token=""
-if [[ -n "${GH_TOKEN:-}" ]]; then
+if [[ -n "${GOVERNANCE_AUDIT_TOKEN:-}" ]]; then
+  token="${GOVERNANCE_AUDIT_TOKEN}"
+elif [[ -n "${GH_TOKEN:-}" ]]; then
   token="${GH_TOKEN}"
 elif [[ -n "${GITHUB_TOKEN:-}" ]]; then
   token="${GITHUB_TOKEN}"
 fi
 if [[ -z "${token}" ]]; then
   if [[ "${ENFORCE_GITHUB_GOVERNANCE:-}" == "true" ]] && [[ "${GITHUB_ACTIONS:-}" == "true" || "${CI:-}" == "true" ]]; then
-    echo "verify_github_governance.sh: ENFORCE_GITHUB_GOVERNANCE is set in CI but no GH_TOKEN or GITHUB_TOKEN" >&2
+    echo "verify_github_governance.sh: ENFORCE_GITHUB_GOVERNANCE is set in CI but no GOVERNANCE_AUDIT_TOKEN, GH_TOKEN, or GITHUB_TOKEN" >&2
     echo "GOVERNANCE_CHECK: FAIL" >&2
     exit 2
   fi
-  echo "GOVERNANCE_CHECK: SKIPPED (no GH_TOKEN or GITHUB_TOKEN; export one with repo read access for live checks)"
+  echo "GOVERNANCE_CHECK: SKIPPED (no GOVERNANCE_AUDIT_TOKEN, GH_TOKEN, or GITHUB_TOKEN; export one with read access to rulesets and environments for live checks)"
   exit 0
 fi
 
