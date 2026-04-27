@@ -141,7 +141,7 @@ Use this when configuring **required status checks** in branch protection. **Nev
 |----------|------------------------------------|---------|
 | **Blocking — PRs to `develop` / `main`** | **CI** (script quality, Go, compose) + **Security** — **Go Vulnerability Scan**, **Secret Scan**, **Deployment and Config Scan** | Every open/updated PR must run these; failures block merge. Optional on PR: **Dependency Review** if `vars.ENABLE_DEPENDENCY_REVIEW == 'true'`. |
 | **Blocking — pushes to `develop`** | **CI** (push) + same three **Security** jobs | On each push, those jobs must pass. **Not** a substitute for **Security Release** (deploy). |
-| **Blocking — pushes to `main`** | **CI** (push) + same three **Security** jobs | Same as develop; you may add **main-only** required checks (e.g. **Enterprise release verification**, **Security Release** signal) in branch protection. |
+| **Blocking — pushes to `main`** | **CI** (push) + same three **Security** jobs | Same as develop, plus (for rulesets) **Enterprise release verification** on `main` as in the [main checks table](#recommended-required-checks-for-main). **Security Release Signal** is post-merge (after **Build**), not a branch **required** status check. |
 | **Informational, scheduled, or var-skipped (not a full pass on their own)** | See table below | Skipped = **intentional** when a repo var is unset; do not treat that skip as “all security green.” |
 
 ### Org-gated in-repo workflows (skip ≠ success)
@@ -233,7 +233,12 @@ Add these as **required status checks** on `main` (in the **Checks** tab you wil
 | Security / Go Vulnerability Scan |
 | Security / Deployment and Config Scan |
 | Enterprise release verification / verify-enterprise-release |
-| Security Release / Security Release Signal |
+
+### Post-merge: Security Release Signal (not a required branch check)
+
+| Item | Notes |
+|------|--------|
+| **Security Release / Security Release Signal** | Runs after **Build and Push Images** (`workflow_run`). It provides **verdict, artifacts, and release evidence** on pushes to `main` — **not** a check that can be expected on every PR head commit, so the governance verifier does **not** require it in **required status checks** for `main`. Track it in **Actions** after merge and in deploy inputs / runbooks, not as a merge gate. |
 
 **PR-only / when enabled (supply chain)**
 
@@ -246,8 +251,6 @@ Add these as **required status checks** on `main` (in the **Checks** tab you wil
 | Check name |
 |------------|
 | CodeQL / Analyze Go with CodeQL | Only when `vars.ENABLE_CODE_SCANNING` is `'true'`; otherwise the job is skipped by design. |
-
-**Note:** `Security Release` runs after **Build and Push Images** (`workflow_run`). It may not appear on every PR until those workflows have run on the target branch; still add it as a required check if your org wants merges blocked until the release gate has reported on `main`.
 
 **Do not** add **Nightly Security Rescan** or **nightly-dependency-snapshot** as required checks for day-to-day merges.
 
@@ -285,7 +288,7 @@ Add these as **required status checks** on `main` (in the **Checks** tab you wil
 gh api "repos/OWNER/REPO/rulesets/RULESET_ID" --jq '.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks'
 ```
 
-**Alias examples (explicit; no fuzzy matching):** the verifier treats `CI / Go CI Gates` and `Go CI Gates` as the same policy requirement; `Security / Secret Scan` and `Secret Scan`; `Enterprise release verification / verify-enterprise-release` and `verify-enterprise-release`; `Security Release / Security Release Signal` and `Security Release Signal`. See the `REQUIRED_STATUS_CHECK_ALIASES` table in the Python verifier for the full list.
+**Alias examples (explicit; no fuzzy matching):** the verifier treats `CI / Go CI Gates` and `Go CI Gates` as the same policy requirement; `Security / Secret Scan` and `Secret Scan`; `Enterprise release verification / verify-enterprise-release` and `verify-enterprise-release`. See `REQUIRED_STATUS_CHECK_ALIASES` in `tools/verify_github_governance.py` for the full list.
 
 ## Rulesets vs classic branch protection
 
