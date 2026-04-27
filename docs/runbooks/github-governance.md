@@ -4,15 +4,15 @@
 
 **Maintainer index (pipelines, branches, and triage):** [cicd-release.md](./cicd-release.md).
 
-This runbook describes how to configure **branch protection** and **GitHub Environments** for the AVF vending backend so enterprise CI/CD matches repository contracts (`deploy-prod.yml`, `deploy-develop.yml`, `security-release.yml`, etc.).
+This runbook describes how to configure **Repository rulesets** (primary in this repo), **classic branch protection** (fallback), and **GitHub Environments** for the AVF vending backend so enterprise CI/CD matches repository contracts (`deploy-prod.yml`, `deploy-develop.yml`, `security-release.yml`, etc.).
 
-**Reality check:** `tools/verify_github_governance.py` can only **read** what the GitHub REST API exposes. It cannot create or lock settings. The **repo owner (or org admin)** must use the GitHub **Settings** UI (or org rules) to apply the policies below. When the API is missing permissions, returns **404** (e.g. **repository rulesets** instead of classic branch protection), or omits fields, follow the checklists in this file and the manual block printed by the verifier.
+**Reality check:** `tools/verify_github_governance.py` can only **read** what the GitHub REST API exposes. It **lists active branch rulesets** via `GET /repos/.../rulesets` and verifies `main` and `develop` when an **active** ruleset’s `ref_name` conditions include those branches; if no such ruleset exists, it **falls back** to classic `GET /repos/.../branches/{branch}/protection`. The **repo owner (or org admin)** must use the **Settings** UI to apply the policies. When the token cannot read a surface, the API **404**s, or the payload omits fields, follow the checklists in this file and the manual block printed by the verifier.
 
 **Run the verifier (same as CI wrapper):** `make verify-governance` or `bash scripts/ci/verify_github_governance.sh`
 
 Offline self-test: `CHECK_MODE=offline bash scripts/ci/verify_github_governance.sh` (no API calls; validates CLI presence + planned checks).
 
-Needs **`GH_TOKEN` or `GITHUB_TOKEN`** (repo read; environment read may require admin scope depending on org) and **`GITHUB_REPOSITORY=owner/repo`** (or `REPOSITORY=owner/repo`). Fails the process when protections are missing or the API response proves misconfiguration. If the response omits `protection_rules` or `deployment_branch_policy` but your org still enforces policy, use **`GITHUB_GOVERNANCE_WARN_ONLY=true`** to treat those items as **warnings** (not for gating merge CI), complete the [P0-4 manual checklist](#p0-4--manual-configuration-checklist-github-ui), then re-run with a token that can read environments.
+Needs **`GOVERNANCE_AUDIT_TOKEN`**, **`GH_TOKEN`**, or **`GITHUB_TOKEN`** (read access to **rulesets**, **environments**, and classic **branch protection** as applicable; see [operations doc](../operations/github-governance.md)) and **`GITHUB_REPOSITORY=owner/repo`** (or `REPOSITORY=owner/repo`). Fails when policies are missing or the API response proves misconfiguration. If the response omits `protection_rules` or `deployment_branch_policy` but your org still enforces policy, use **`GITHUB_GOVERNANCE_WARN_ONLY=true`** to treat those items as **warnings** (not for gating merge CI), complete the [P0-4 manual checklist](#p0-4--manual-configuration-checklist-github-ui), then re-run with a token that can read environments.
 
 ## P0-4 — Manual configuration checklist (GitHub UI)
 
@@ -20,9 +20,9 @@ Use this when onboarding a repo or when `verify_github_governance` reports API *
 
 | Area | You must configure |
 |------|-------------------|
-| **Branch: `main`** | **Settings → Branches → Branch protection** (pattern `main`). Require PRs, **≥1 approval**, required **status checks** (see [Recommended required checks for `main`](#recommended-required-checks-for-main)), **strict** (up to date), block **force push** and **deletion**, restrict who can push if policy allows. |
-| **Branch: `develop`** | **Settings → Branches** (pattern `develop`). Require PRs and/or **required checks** (see [develop checks](#recommended-required-checks-for-develop)), block **force push** and **deletion** (recommended). |
-| **Environment `production`** | **Settings → Environments → `production`**. **Required reviewers** (≥1 user/team). **Deployment branches: Selected branches** → **`main`** only (not “All branches”). Optional: wait timer, **Prevent self-review** if available. |
+| **Branch: `main`** | **Settings → Rules → Rulesets** (preferred): **active** branch ruleset with `ref_name` including **`main`**, with rules **pull_request** (≥1 approval, stale + last-push where available), **required_status_checks** (strict), **non_fast_forward**, **deletion**. Or **Settings → Branches** (classic) with the same **intent**. Checks: [Recommended required checks for `main`](#recommended-required-checks-for-main). |
+| **Branch: `develop`** | Same as `main` for policy **class** (active ruleset or classic) with **develop**-scoped checks: [develop checks](#recommended-required-checks-for-develop). |
+| **Environment `production`** | **Settings → Environments → `production`**. **Required reviewers** (≥1 user/team) — for a 2-person team, keep **1** required approval and use **Prevent self-review** for deployments where available. **Deployment branches: Selected branches** → **`main` only** (not “All branches”). |
 | **Secrets for prod deploy** | **Settings → Environments → `production` → Environment secrets** (SSH, hosts, etc.). Do **not** commit production secrets to the repo. |
 | **Required checks (names)** | Must match the **Check name** column in the tables in this doc (GitHub shows `Workflow / job`). **CI**, **Security** blocking jobs, and (on `main`) **Enterprise release verification** and **Security Release** where applicable. |
 | **Deploy workflow** | Production goes only through **[`.github/workflows/deploy-prod.yml`](../../.github/workflows/deploy-prod.yml)** (`workflow_dispatch` on `main`); it does not auto-run from **Security Release** completion. |
@@ -53,8 +53,8 @@ Use this when onboarding a repo or when `verify_github_governance` reports API *
 
 ### Block direct push to `main` (or reduce it to automation only)
 
-1. **Repository** → **Settings** → **Branches** → **Branch protection rules** → **Add rule** (or add a **Repository ruleset** for `main` if you use the newer model).
-2. For pattern **`main`** (or the default branch you treat as production):
+1. **Repository** → **Settings** → **Repository rules** / **Rulesets** (or **Branches** for classic). Prefer an **active** **Repository ruleset** whose **branch** `ref_name` conditions include `refs/heads/main` (or `~DEFAULT_BRANCH` if that is `main`).
+2. For **`main`** (or the default branch you treat as production):
    - **Require a pull request before merging** (so normal work merges only via PR).
    - **Require approvals** (at least **1**; increase per org policy).
    - **Require status checks to pass** — add the checks listed in [Recommended required checks for `main`](#recommended-required-checks-for-main) below.
