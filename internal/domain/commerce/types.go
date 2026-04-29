@@ -66,4 +66,11 @@ type OutboxEvent struct {
 	LastPublishAttemptAt *time.Time
 	NextPublishAfter     *time.Time
 	DeadLetteredAt       *time.Time
+
+	Status      string
+	LockedBy    *string
+	LockedUntil *time.Time
+
+	UpdatedAt          time.Time
+	MaxPublishAttempts int32
 }

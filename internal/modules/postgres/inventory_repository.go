@@ -11,6 +11,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/inventoryapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -91,6 +92,7 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 	}
 
 	key := strings.TrimSpace(in.IdempotencyKey)
+	payloadHash := inventoryapp.ComputeAdjustmentPayloadSHA256(in)
 	if key != "" {
 		cnt, err := q.InventoryAdminCountInventoryEventsByIdempotencyKey(ctx, db.InventoryAdminCountInventoryEventsByIdempotencyKeyParams{
 			MachineID: in.MachineID,
@@ -100,6 +102,17 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 			return inventoryapp.AdjustmentBatchResult{}, err
 		}
 		if cnt > 0 {
+			stored, err := q.InventoryAdminGetInventoryIdempotencyPayloadHash(ctx, db.InventoryAdminGetInventoryIdempotencyPayloadHashParams{
+				MachineID: in.MachineID,
+				Column2:   key,
+			})
+			if err != nil {
+				return inventoryapp.AdjustmentBatchResult{}, err
+			}
+			stored = strings.TrimSpace(stored)
+			if stored != "" && !strings.EqualFold(stored, payloadHash) {
+				return inventoryapp.AdjustmentBatchResult{}, inventoryapp.ErrIdempotencyKeyConflict
+			}
 			if err := tx.Commit(ctx); err != nil {
 				return inventoryapp.AdjustmentBatchResult{}, err
 			}
@@ -147,6 +160,7 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 
 	for _, it := range in.Items {
 		if it.QuantityAfter < 0 {
+			productionmetrics.RecordInventoryNegativeStockAttempt()
 			return inventoryapp.AdjustmentBatchResult{}, errors.New("postgres: quantity_after must be non-negative")
 		}
 		var cur int32
@@ -176,6 +190,12 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		}
 		if key != "" {
 			meta["idempotency_key"] = key
+		}
+		if payloadHash != "" {
+			meta["idempotency_payload_sha256"] = payloadHash
+		}
+		if ce := strings.TrimSpace(in.ClientEventID); ce != "" {
+			meta["client_event_id"] = ce
 		}
 
 		slotCode := strings.TrimSpace(it.SlotCode)

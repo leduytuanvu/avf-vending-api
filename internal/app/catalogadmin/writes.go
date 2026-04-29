@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -123,6 +124,8 @@ func (s *Service) CreateProduct(ctx context.Context, in CreateProductInput) (db.
 		}
 		return db.Product{}, err
 	}
+	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionProductCreated, "catalog.product", row.ID, productAuditSnapshot(row))
+	s.bumpCatalogCache(ctx, in.OrganizationID)
 	return row, nil
 }
 
@@ -219,6 +222,8 @@ func (s *Service) UpdateProduct(ctx context.Context, in UpdateProductInput) (db.
 		}
 		return db.Product{}, err
 	}
+	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionProductUpdated, "catalog.product", row.ID, productAuditSnapshot(row))
+	s.bumpCatalogCache(ctx, in.OrganizationID)
 	return row, nil
 }
 
@@ -241,6 +246,8 @@ func (s *Service) DeactivateProduct(ctx context.Context, organizationID, product
 		}
 		return db.Product{}, err
 	}
+	s.recordCatalogWriteAudit(ctx, organizationID, compliance.ActionProductDeactivated, "catalog.product", row.ID, productAuditSnapshot(row))
+	s.bumpCatalogCache(ctx, organizationID)
 	return row, nil
 }
 
@@ -277,6 +284,7 @@ func (s *Service) CreateBrand(ctx context.Context, in CreateBrandInput) (db.Bran
 		}
 		return db.Brand{}, err
 	}
+	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionBrandCreated, "catalog.brand", row.ID, brandAuditSnapshot(row))
 	return row, nil
 }
 
@@ -318,6 +326,7 @@ func (s *Service) UpdateBrand(ctx context.Context, in UpdateBrandInput) (db.Bran
 		}
 		return db.Brand{}, err
 	}
+	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionBrandUpdated, "catalog.brand", row.ID, brandAuditSnapshot(row))
 	return row, nil
 }
 
@@ -384,6 +393,7 @@ func (s *Service) CreateCategory(ctx context.Context, in CreateCategoryInput) (d
 		}
 		return db.Category{}, err
 	}
+	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionCategoryCreated, "catalog.category", row.ID, categoryAuditSnapshot(row))
 	return row, nil
 }
 
@@ -431,6 +441,7 @@ func (s *Service) UpdateCategory(ctx context.Context, in UpdateCategoryInput) (d
 		}
 		return db.Category{}, err
 	}
+	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionCategoryUpdated, "catalog.category", row.ID, categoryAuditSnapshot(row))
 	return row, nil
 }
 
@@ -538,6 +549,7 @@ func (s *Service) UpdateTag(ctx context.Context, in UpdateTagInput) (db.Tag, err
 		}
 		return db.Tag{}, err
 	}
+	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionTagUpdated, "catalog.tag", row.ID, tagAuditSnapshot(row))
 	return row, nil
 }
 
@@ -578,6 +590,184 @@ type BindProductImageInput struct {
 	MimeType       string
 }
 
+// UpdateProductImageInput patches product-image presentation metadata.
+type UpdateProductImageInput struct {
+	OrganizationID uuid.UUID
+	ProductID      uuid.UUID
+	ImageID        uuid.UUID
+	SortOrder      *int32
+	IsPrimary      *bool
+	AltText        *string
+}
+
+// ListProductImages returns active product images unless includeArchived is true.
+func (s *Service) ListProductImages(ctx context.Context, organizationID, productID uuid.UUID, includeArchived bool) ([]db.ProductImage, error) {
+	if s == nil {
+		return nil, errors.New("catalogadmin: nil service")
+	}
+	if organizationID == uuid.Nil || productID == uuid.Nil {
+		return nil, ErrOrganizationRequired
+	}
+	return s.q.CatalogAdminListProductImagesForOrg(ctx, db.CatalogAdminListProductImagesForOrgParams{
+		OrganizationID: organizationID,
+		ID:             productID,
+		Column3:        includeArchived,
+	})
+}
+
+// ListProductMediumRowsForProduct returns projection rows for object-storage media (parallel to product_images ids).
+func (s *Service) ListProductMediumRowsForProduct(ctx context.Context, organizationID, productID uuid.UUID) ([]db.ProductMedium, error) {
+	if s == nil {
+		return nil, errors.New("catalogadmin: nil service")
+	}
+	if organizationID == uuid.Nil || productID == uuid.Nil {
+		return nil, ErrOrganizationRequired
+	}
+	return s.q.CatalogAdminListProductMediumRowsForProduct(ctx, db.CatalogAdminListProductMediumRowsForProductParams{
+		OrganizationID: organizationID,
+		ProductID:      productID,
+	})
+}
+
+// GetProductMediumForOrgProductImage returns the product_media row for an image id when present.
+func (s *Service) GetProductMediumForOrgProductImage(ctx context.Context, organizationID, productID, imageID uuid.UUID) (db.ProductMedium, error) {
+	if s == nil {
+		return db.ProductMedium{}, errors.New("catalogadmin: nil service")
+	}
+	if organizationID == uuid.Nil || productID == uuid.Nil || imageID == uuid.Nil {
+		return db.ProductMedium{}, ErrOrganizationRequired
+	}
+	return s.q.CatalogAdminGetProductMediumForOrgProductImage(ctx, db.CatalogAdminGetProductMediumForOrgProductImageParams{
+		OrganizationID: organizationID,
+		ProductID:      productID,
+		ID:             imageID,
+	})
+}
+
+// UpdateProductImage patches sort/primary/alt metadata. Setting primary clears other active primaries first.
+func (s *Service) UpdateProductImage(ctx context.Context, in UpdateProductImageInput) (db.ProductImage, error) {
+	if s == nil {
+		return db.ProductImage{}, errors.New("catalogadmin: nil service")
+	}
+	if in.OrganizationID == uuid.Nil || in.ProductID == uuid.Nil || in.ImageID == uuid.Nil {
+		return db.ProductImage{}, ErrOrganizationRequired
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return db.ProductImage{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := db.New(tx)
+	if in.IsPrimary != nil && *in.IsPrimary {
+		if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
+			OrganizationID: in.OrganizationID,
+			ID:             in.ProductID,
+		}); err != nil {
+			return db.ProductImage{}, err
+		}
+	}
+	var sort pgtype.Int4
+	if in.SortOrder != nil {
+		sort = pgtype.Int4{Int32: *in.SortOrder, Valid: true}
+	}
+	var primary pgtype.Bool
+	if in.IsPrimary != nil {
+		primary = pgtype.Bool{Bool: *in.IsPrimary, Valid: true}
+	}
+	var alt pgtype.Text
+	if in.AltText != nil {
+		alt = pgtype.Text{String: strings.TrimSpace(*in.AltText), Valid: true}
+	}
+	img, err := qtx.CatalogWriteUpdateProductImageMetadata(ctx, db.CatalogWriteUpdateProductImageMetadataParams{
+		OrganizationID: in.OrganizationID,
+		ID:             in.ProductID,
+		ID_2:           in.ImageID,
+		SortOrder:      sort,
+		IsPrimary:      primary,
+		AltText:        alt,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.ProductImage{}, ErrNotFound
+		}
+		return db.ProductImage{}, err
+	}
+	if in.IsPrimary != nil && *in.IsPrimary {
+		if _, err := qtx.CatalogWriteSetProductPrimaryImage(ctx, db.CatalogWriteSetProductPrimaryImageParams{
+			OrganizationID: in.OrganizationID,
+			ID:             in.ProductID,
+			PrimaryImageID: pgtype.UUID{Bytes: img.ID, Valid: true},
+		}); err != nil {
+			return db.ProductImage{}, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.ProductImage{}, err
+	}
+	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionProductUpdated, "catalog.product", in.ProductID, map[string]any{
+		"productImageId": img.ID.String(),
+		"mediaVersion":   img.MediaVersion,
+	})
+	s.bumpCatalogCache(ctx, in.OrganizationID)
+	return img, nil
+}
+
+// ArchiveProductImage hides an image from admin active lists and runtime catalogs.
+func (s *Service) ArchiveProductImage(ctx context.Context, organizationID, productID, imageID uuid.UUID) (db.ProductImage, error) {
+	if s == nil {
+		return db.ProductImage{}, errors.New("catalogadmin: nil service")
+	}
+	if organizationID == uuid.Nil || productID == uuid.Nil || imageID == uuid.Nil {
+		return db.ProductImage{}, ErrOrganizationRequired
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return db.ProductImage{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := db.New(tx)
+	cur, err := qtx.CatalogAdminGetProductImageForOrg(ctx, db.CatalogAdminGetProductImageForOrgParams{
+		OrganizationID: organizationID,
+		ID:             productID,
+		ID_2:           imageID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.ProductImage{}, ErrNotFound
+		}
+		return db.ProductImage{}, err
+	}
+	if cur.IsPrimary {
+		if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
+			OrganizationID: organizationID,
+			ID:             productID,
+		}); err != nil {
+			return db.ProductImage{}, err
+		}
+	}
+	img, err := qtx.CatalogWriteArchiveProductImage(ctx, db.CatalogWriteArchiveProductImageParams{
+		OrganizationID: organizationID,
+		ID:             productID,
+		ID_2:           imageID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.ProductImage{}, ErrNotFound
+		}
+		return db.ProductImage{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.ProductImage{}, err
+	}
+	s.recordCatalogWriteAudit(ctx, organizationID, compliance.ActionProductUpdated, "catalog.product", productID, map[string]any{
+		"productImageId": img.ID.String(),
+		"imageArchived":  true,
+		"mediaVersion":   img.MediaVersion,
+	})
+	s.bumpCatalogCache(ctx, organizationID)
+	return img, nil
+}
+
 // BindProductPrimaryImage replaces the primary image for a product.
 func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductImageInput) (db.Product, error) {
 	if s == nil {
@@ -586,14 +776,7 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 	if in.OrganizationID == uuid.Nil || in.ProductID == uuid.Nil || in.ArtifactID == uuid.Nil {
 		return db.Product{}, ErrOrganizationRequired
 	}
-	display := strings.TrimSpace(in.DisplayURL)
-	thumb := strings.TrimSpace(in.ThumbURL)
-	if display == "" {
-		return db.Product{}, fmt.Errorf("%w: displayUrl required", ErrInvalidArgument)
-	}
-	if thumb == "" {
-		thumb = display
-	}
+
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return db.Product{}, err
@@ -611,7 +794,46 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 		return db.Product{}, err
 	}
 
-	if err := qtx.CatalogWriteUnsetPrimaryImagesForProduct(ctx, db.CatalogWriteUnsetPrimaryImagesForProductParams{
+	var storageKey string
+	var displayPg, thumbPg pgtype.Text
+	var mime pgtype.Text
+
+	if s.media.Store != nil {
+		displayURL, thumbURL, dKey, artifactMIME, err := copyArtifactIntoProductDeterministicKeys(ctx, s.media.Store, in.OrganizationID, in.ArtifactID, in.ProductID, s.mediaMaxBytes(), s.media.PresignTTL)
+		if err != nil {
+			return db.Product{}, err
+		}
+		storageKey = dKey
+		displayPg = pgtype.Text{String: displayURL, Valid: true}
+		thumbPg = pgtype.Text{String: thumbURL, Valid: true}
+		mime = pgtype.Text{String: artifactMIME, Valid: true}
+	} else {
+		display := strings.TrimSpace(in.DisplayURL)
+		thumb := strings.TrimSpace(in.ThumbURL)
+		if display == "" {
+			return db.Product{}, fmt.Errorf("displayUrl required: %w", ErrInvalidArgument)
+		}
+		if thumb == "" {
+			thumb = display
+		}
+		if mt := strings.TrimSpace(in.MimeType); mt != "" {
+			if err := ValidateProductImageMIME(mt); err != nil {
+				return db.Product{}, err
+			}
+			mime = pgtype.Text{String: normalizeProductImageMIME(mt), Valid: true}
+		}
+		storageKey = "artifact:" + in.ArtifactID.String()
+		displayPg = pgtype.Text{String: display, Valid: true}
+		thumbPg = pgtype.Text{String: thumb, Valid: true}
+	}
+
+	if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
+		OrganizationID: in.OrganizationID,
+		ID:             in.ProductID,
+	}); err != nil {
+		return db.Product{}, err
+	}
+	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, db.CatalogWriteArchiveAllProductImagesForProductParams{
 		OrganizationID: in.OrganizationID,
 		ID:             in.ProductID,
 	}); err != nil {
@@ -630,19 +852,10 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 	if in.Height > 0 {
 		h = pgtype.Int4{Int32: in.Height, Valid: true}
 	}
-	var mime pgtype.Text
-	if mt := strings.TrimSpace(in.MimeType); mt != "" {
-		mime = pgtype.Text{String: mt, Valid: true}
-	}
-	var thumbPg pgtype.Text
-	if thumb != "" {
-		thumbPg = pgtype.Text{String: thumb, Valid: true}
-	}
-	displayPg := pgtype.Text{String: display, Valid: true}
 
 	img, err := qtx.CatalogWriteInsertProductImage(ctx, db.CatalogWriteInsertProductImageParams{
 		ProductID:   in.ProductID,
-		StorageKey:  "artifact:" + in.ArtifactID.String(),
+		StorageKey:  storageKey,
 		CdnUrl:      displayPg,
 		ThumbCdnUrl: thumbPg,
 		ContentHash: chText,
@@ -668,6 +881,11 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 	if err := tx.Commit(ctx); err != nil {
 		return db.Product{}, err
 	}
+	after := productAuditSnapshot(prod)
+	after["artifactId"] = in.ArtifactID.String()
+	after["primaryImageBound"] = true
+	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionProductUpdated, "catalog.product", prod.ID, after)
+	s.bumpCatalogCache(ctx, in.OrganizationID)
 	return prod, nil
 }
 
@@ -686,46 +904,54 @@ func (s *Service) ClearProductPrimaryImage(ctx context.Context, organizationID, 
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
 
-	p, err := qtx.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
+	if _, err := qtx.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
 		OrganizationID: organizationID,
 		ID:             productID,
-	})
-	if err != nil {
+	}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Product{}, ErrNotFound
 		}
 		return db.Product{}, err
 	}
-	if !p.PrimaryImageID.Valid {
-		if err := tx.Commit(ctx); err != nil {
-			return db.Product{}, err
-		}
-		row, gerr := s.q.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
-			OrganizationID: organizationID,
-			ID:             productID,
-		})
-		if gerr != nil {
-			return db.Product{}, gerr
-		}
-		return row, nil
-	}
-	imgID := uuid.UUID(p.PrimaryImageID.Bytes)
-	if err := qtx.CatalogWriteDeleteProductImage(ctx, db.CatalogWriteDeleteProductImageParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-		ID_2:           imgID,
-	}); err != nil {
-		return db.Product{}, err
-	}
-	prod, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
+
+	prev, ierr := qtx.CatalogAdminGetPrimaryProductImageForOrg(ctx, db.CatalogAdminGetPrimaryProductImageForOrgParams{
 		OrganizationID: organizationID,
 		ID:             productID,
 	})
-	if err != nil {
+	prevKey := ""
+	if ierr == nil {
+		prevKey = strings.TrimSpace(prev.StorageKey)
+	} else if !errors.Is(ierr, pgx.ErrNoRows) {
+		return db.Product{}, ierr
+	}
+
+	if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
+		OrganizationID: organizationID,
+		ID:             productID,
+	}); err != nil {
+		return db.Product{}, err
+	}
+	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, db.CatalogWriteArchiveAllProductImagesForProductParams{
+		OrganizationID: organizationID,
+		ID:             productID,
+	}); err != nil {
 		return db.Product{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.Product{}, err
 	}
-	return prod, nil
+
+	bestEffortDeleteDeterministicProductMedia(ctx, s.media.Store, prevKey, organizationID, productID)
+
+	row, gerr := s.q.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
+		OrganizationID: organizationID,
+		ID:             productID,
+	})
+	if gerr != nil {
+		return db.Product{}, gerr
+	}
+	s.recordCatalogWriteAudit(ctx, organizationID, compliance.ActionProductUpdated, "catalog.product", productID,
+		map[string]any{"productId": productID.String(), "primaryImageCleared": true})
+	s.bumpCatalogCache(ctx, organizationID)
+	return row, nil
 }

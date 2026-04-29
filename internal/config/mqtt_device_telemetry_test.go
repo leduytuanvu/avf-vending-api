@@ -8,12 +8,7 @@ import (
 )
 
 func TestLoad_Production_requiresNATSURL(t *testing.T) {
-	t.Setenv("APP_ENV", "production")
-	t.Setenv("LOG_LEVEL", "info")
-	t.Setenv("LOG_FORMAT", "json")
-	t.Setenv("HTTP_ADDR", ":8080")
-	t.Setenv("OTEL_SERVICE_NAME", "avf-api-prod")
-	t.Setenv("HTTP_AUTH_JWT_SECRET", strings.Repeat("x", 32))
+	setMinimalProductionLoadEnv(t)
 	t.Setenv(platformnats.EnvNATSURL, "")
 
 	_, err := Load()

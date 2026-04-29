@@ -30,6 +30,7 @@ type TenantCommerce struct {
 	Status          string
 	MachineID       *uuid.UUID
 	PaymentMethod   string
+	CaseType        string
 	Search          string
 	From            *time.Time
 	To              *time.Time

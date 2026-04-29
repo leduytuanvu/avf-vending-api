@@ -19,7 +19,7 @@ Companion to [kiosk-app-implementation-checklist.md](../kiosk-app-implementation
 | `/v1/commerce/orders/{orderId}/vend/success` | POST | **Required** | |
 | `/v1/commerce/orders/{orderId}/vend/failure` | POST | **Required** | |
 
-**Read paths (no idempotency):** `GET /v1/commerce/orders/{orderId}`, `GET .../reconciliation`.
+**Finalize success / inventory coupling:** retries of **`vend/success`** or device **`vend-results`** replay the same **`Idempotency-Key`**; **`FinalizeAfterVend`** builds the inventory duplicate-suppression string as **`{Idempotency-Key}:vend_sale_inventory`**, so **`orders`** + **`vend_sessions`** + **`machine_slot_state`** + ledger rows commit together—or roll back on insufficient stock—with no orphaned “paid but inventory missing” splits. `GET /v1/commerce/orders/{orderId}`, `GET .../reconciliation`.
 
 ## Device bridge (optional integration)
 

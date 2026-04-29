@@ -22,12 +22,18 @@ func (s *Store) ApplyReconciledPaymentTransition(ctx context.Context, in domainc
 		return domaincommerce.Payment{}, errors.New("postgres: payment_id is required")
 	}
 	to := strings.ToLower(strings.TrimSpace(in.ToState))
-	if to != "captured" && to != "failed" {
+	switch to {
+	case "captured", "failed", "expired", "canceled":
+	default:
 		return domaincommerce.Payment{}, fmt.Errorf("postgres: invalid reconciler target state %q", in.ToState)
 	}
 
 	q := db.New(s.pool)
 	cur, err := q.GetPaymentByID(ctx, in.PaymentID)
+	if err != nil {
+		return domaincommerce.Payment{}, err
+	}
+	ord, err := q.GetOrderByID(ctx, cur.OrderID)
 	if err != nil {
 		return domaincommerce.Payment{}, err
 	}
@@ -79,11 +85,49 @@ func (s *Store) ApplyReconciledPaymentTransition(ctx context.Context, in domainc
 	}); err != nil {
 		return domaincommerce.Payment{}, err
 	}
+	if shouldInsertReconciledPaymentOutbox(in) {
+		if _, err := qtx.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
+			OrganizationID: optionalUUIDToPg(&ord.OrganizationID),
+			Topic:          strings.TrimSpace(in.OutboxTopic),
+			EventType:      strings.TrimSpace(in.OutboxEventType),
+			Payload:        reconciledPaymentOutboxPayload(in, cur),
+			AggregateType:  strings.TrimSpace(in.OutboxAggregateType),
+			AggregateID:    in.OutboxAggregateID,
+			IdempotencyKey: optionalStringToPgText(strings.TrimSpace(in.OutboxIdempotencyKey)),
+		}); err != nil && !isUniqueViolation(err) {
+			return domaincommerce.Payment{}, err
+		}
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return domaincommerce.Payment{}, err
 	}
 	return mapPayment(updated), nil
+}
+
+func shouldInsertReconciledPaymentOutbox(in domaincommerce.ReconciledPaymentTransitionInput) bool {
+	return strings.TrimSpace(in.OutboxTopic) != "" &&
+		strings.TrimSpace(in.OutboxEventType) != "" &&
+		strings.TrimSpace(in.OutboxAggregateType) != "" &&
+		in.OutboxAggregateID != uuid.Nil &&
+		strings.TrimSpace(in.OutboxIdempotencyKey) != ""
+}
+
+func reconciledPaymentOutboxPayload(in domaincommerce.ReconciledPaymentTransitionInput, cur db.Payment) []byte {
+	if len(in.OutboxPayload) > 0 {
+		return coerceJSON(in.OutboxPayload)
+	}
+	b, err := json.Marshal(map[string]any{
+		"source":        "reconciler.provider_probe",
+		"order_id":      cur.OrderID.String(),
+		"payment_id":    cur.ID.String(),
+		"provider":      strings.TrimSpace(cur.Provider),
+		"payment_state": strings.TrimSpace(in.ToState),
+	})
+	if err != nil {
+		return []byte(`{}`)
+	}
+	return b
 }
 
 func coerceJSON(b []byte) []byte {

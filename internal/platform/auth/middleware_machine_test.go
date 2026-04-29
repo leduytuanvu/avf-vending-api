@@ -47,3 +47,24 @@ func TestRequireDenyMachinePrincipal_blocksMachineRole(t *testing.T) {
 		t.Fatal("downstream handler was invoked for machine principal")
 	}
 }
+
+func TestP06_Auth_MachineJWTBlockedFromAdminREST(t *testing.T) {
+	t.Parallel()
+	var nextCalled bool
+	h := RequireDenyMachinePrincipal(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		nextCalled = true
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin/machines", nil)
+	req = req.WithContext(WithPrincipal(req.Context(), Principal{
+		Subject: "m-1",
+		Roles:   []string{RoleMachine},
+	}))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("got status %d want 403", rec.Code)
+	}
+	if nextCalled {
+		t.Fatal("machine JWT must not reach admin REST handlers")
+	}
+}

@@ -7,14 +7,16 @@ import (
 
 // NewClient returns a Redis client when REDIS_ADDR is configured.
 func NewClient(cfg *config.RedisConfig) (*goredis.Client, error) {
-	if cfg == nil || cfg.Addr == "" {
+	if cfg == nil || !cfg.Enabled || cfg.Addr == "" {
 		return nil, nil
 	}
 
 	opts := &goredis.Options{
-		Addr:     cfg.Addr,
-		Password: cfg.Password,
-		DB:       cfg.DB,
+		Addr:      cfg.Addr,
+		Username:  cfg.Username,
+		Password:  cfg.Password,
+		DB:        cfg.DB,
+		TLSConfig: cfg.TLSConfig(),
 	}
 
 	c := goredis.NewClient(opts)

@@ -4,14 +4,19 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/observability/mqttprom"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+// ErrMQTTMaxDispatchAttemptsExceeded is returned when machine_command_attempts rows for a command_id reach command_ledger.max_dispatch_attempts.
+var ErrMQTTMaxDispatchAttemptsExceeded = errors.New("postgres: MQTT dispatch attempt limit reached for command")
 
 // ListDeviceCommandReceiptsByMachine returns recent command receipts for a machine (newest first).
 func (s *Store) ListDeviceCommandReceiptsByMachine(ctx context.Context, machineID uuid.UUID, limit int32) ([]db.DeviceCommandReceipt, error) {
@@ -21,9 +26,22 @@ func (s *Store) ListDeviceCommandReceiptsByMachine(ctx context.Context, machineI
 	})
 }
 
-// ApplyMQTTCommandAckTimeouts marks sent attempts whose ack deadline passed as ack_timeout.
+// ApplyMQTTCommandAckTimeouts marks sent attempts whose ledger timeout or ack deadline passed.
+// Ledger timeout (command_ledger.timeout_at) is applied before per-attempt ack_deadline so SLA-style
+// expiry wins when both are in the past (otherwise rows would only become ack_timeout).
 func (s *Store) ApplyMQTTCommandAckTimeouts(ctx context.Context, before time.Time) error {
-	return db.New(s.pool).ApplyMachineCommandAckTimeouts(ctx, pgtype.Timestamptz{Time: before, Valid: true})
+	q := db.New(s.pool)
+	nExp, err := q.ApplyMachineCommandLedgerExpired(ctx, pgtype.Timestamptz{Time: before, Valid: true})
+	if err != nil {
+		return err
+	}
+	mqttprom.AddCommandAttemptsExpired(nExp)
+	nAck, err := q.ApplyMachineCommandAckTimeouts(ctx, pgtype.Timestamptz{Time: before, Valid: true})
+	if err != nil {
+		return err
+	}
+	mqttprom.AddMachineCommandAckDeadlinesExceeded(nAck)
+	return nil
 }
 
 // GetCommandLedgerByMachineSequence loads a ledger row by machine and monotonic sequence.
@@ -40,7 +58,8 @@ func (s *Store) GetLatestMachineCommandAttemptByCommandID(ctx context.Context, c
 }
 
 // InsertMQTTDispatchAttemptWithLedgerMeta inserts a pending attempt and bumps command_ledger transport metadata atomically.
-func (s *Store) InsertMQTTDispatchAttemptWithLedgerMeta(ctx context.Context, commandID, machineID uuid.UUID, correlationID *uuid.UUID, requestWireJSON []byte, ledgerTimeoutAt time.Time) (db.MachineCommandAttempt, error) {
+// mqttRouteMeta, when non-empty, is stored in command_ledger.route_key (JSON: mqtt topic + payload sha256 hex for ops/debug).
+func (s *Store) InsertMQTTDispatchAttemptWithLedgerMeta(ctx context.Context, commandID, machineID uuid.UUID, correlationID *uuid.UUID, requestWireJSON []byte, ledgerTimeoutAt time.Time, mqttRouteMeta string) (db.MachineCommandAttempt, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return db.MachineCommandAttempt{}, err
@@ -48,6 +67,18 @@ func (s *Store) InsertMQTTDispatchAttemptWithLedgerMeta(ctx context.Context, com
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
+	ledger, err := q.GetCommandLedgerByID(ctx, commandID)
+	if err != nil {
+		return db.MachineCommandAttempt{}, err
+	}
+	nAttempts, err := q.CountMachineCommandAttemptsByCommandID(ctx, commandID)
+	if err != nil {
+		return db.MachineCommandAttempt{}, err
+	}
+	if nAttempts >= int64(ledger.MaxDispatchAttempts) {
+		mqttprom.RecordMQTTDispatchRefused("max_dispatch_attempts")
+		return db.MachineCommandAttempt{}, ErrMQTTMaxDispatchAttemptsExceeded
+	}
 	var corr pgtype.UUID
 	if correlationID != nil {
 		corr = pgtype.UUID{Bytes: *correlationID, Valid: true}
@@ -64,21 +95,27 @@ func (s *Store) InsertMQTTDispatchAttemptWithLedgerMeta(ctx context.Context, com
 	if err := q.UpdateCommandLedgerMQTTDispatchMeta(ctx, db.UpdateCommandLedgerMQTTDispatchMetaParams{
 		ID:        commandID,
 		TimeoutAt: pgtype.Timestamptz{Time: ledgerTimeoutAt, Valid: true},
+		Column3:   mqttRouteMeta,
 	}); err != nil {
 		return db.MachineCommandAttempt{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.MachineCommandAttempt{}, err
 	}
+	mqttprom.RecordCommandDispatchQueued()
 	return att, nil
 }
 
 // MarkMQTTDispatchAttemptSent marks a pending attempt as sent and sets the device ack deadline.
 func (s *Store) MarkMQTTDispatchAttemptSent(ctx context.Context, attemptID uuid.UUID, ackDeadline time.Time) error {
-	return db.New(s.pool).UpdateMachineCommandAttemptSent(ctx, db.UpdateMachineCommandAttemptSentParams{
+	if err := db.New(s.pool).UpdateMachineCommandAttemptSent(ctx, db.UpdateMachineCommandAttemptSentParams{
 		ID:            attemptID,
 		AckDeadlineAt: pgtype.Timestamptz{Time: ackDeadline, Valid: true},
-	})
+	}); err != nil {
+		return err
+	}
+	mqttprom.RecordCommandDispatchPublished()
+	return nil
 }
 
 // MarkMQTTDispatchAttemptPublishFailed marks a pending attempt failed after a transport publish error.
@@ -91,6 +128,7 @@ func (s *Store) MarkMQTTDispatchAttemptPublishFailed(ctx context.Context, attemp
 
 // HTTPCommandPollRow is a machine command still awaiting device-side handling (pending/sent attempt).
 type HTTPCommandPollRow struct {
+	CommandID      uuid.UUID
 	Sequence       int64
 	CommandType    string
 	Payload        []byte
@@ -111,7 +149,7 @@ func (s *Store) ListMachineCommandsForHTTPPoll(ctx context.Context, machineID uu
 		limit = 100
 	}
 	const q = `
-SELECT cl.sequence, cl.command_type, cl.payload, cl.correlation_id, cl.idempotency_key, mca.status
+SELECT cl.id, cl.sequence, cl.command_type, cl.payload, cl.correlation_id, cl.idempotency_key, mca.status
 FROM command_ledger cl
 INNER JOIN machine_command_attempts mca ON mca.command_id = cl.id
     AND mca.attempt_no = (
@@ -131,7 +169,7 @@ LIMIT $2`
 		var r HTTPCommandPollRow
 		var corr pgtype.UUID
 		var idem pgtype.Text
-		if err := rows.Scan(&r.Sequence, &r.CommandType, &r.Payload, &corr, &idem, &r.AttemptStatus); err != nil {
+		if err := rows.Scan(&r.CommandID, &r.Sequence, &r.CommandType, &r.Payload, &corr, &idem, &r.AttemptStatus); err != nil {
 			return nil, err
 		}
 		if corr.Valid {

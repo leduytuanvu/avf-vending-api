@@ -13,6 +13,265 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const ReportingCashCollectionsCount = `-- name: ReportingCashCollectionsCount :one
+SELECT
+    COUNT(*)::bigint AS cnt
+FROM cash_collections cc
+INNER JOIN machines m ON m.id = cc.machine_id
+    AND m.organization_id = cc.organization_id
+WHERE
+    cc.organization_id = $1
+    AND cc.collected_at >= $2::timestamptz
+    AND cc.collected_at < $3::timestamptz
+    AND (
+        $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $4::uuid)
+    AND (
+        $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR cc.machine_id = $5::uuid)
+`
+
+type ReportingCashCollectionsCountParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+	Column3        time.Time
+	Column4        uuid.UUID
+	Column5        uuid.UUID
+}
+
+func (q *Queries) ReportingCashCollectionsCount(ctx context.Context, arg ReportingCashCollectionsCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, ReportingCashCollectionsCount,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+	)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const ReportingCashCollectionsForOrganization = `-- name: ReportingCashCollectionsForOrganization :many
+SELECT
+    cc.id,
+    cc.organization_id,
+    cc.machine_id,
+    m.site_id,
+    m.serial_number AS machine_serial_number,
+    s.name AS site_name,
+    cc.collected_at,
+    cc.opened_at,
+    cc.closed_at,
+    cc.lifecycle_status,
+    cc.amount_minor,
+    cc.expected_amount_minor,
+    cc.variance_amount_minor,
+    cc.currency,
+    cc.reconciliation_status,
+    cc.created_at
+FROM
+    cash_collections cc
+    INNER JOIN machines m ON m.id = cc.machine_id
+        AND m.organization_id = cc.organization_id
+    INNER JOIN sites s ON s.id = m.site_id
+WHERE
+    cc.organization_id = $1
+    AND cc.collected_at >= $2::timestamptz
+    AND cc.collected_at < $3::timestamptz
+    AND (
+        $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $4::uuid)
+    AND (
+        $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR cc.machine_id = $5::uuid)
+ORDER BY
+    cc.collected_at DESC
+`
+
+type ReportingCashCollectionsForOrganizationParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+	Column3        time.Time
+	Column4        uuid.UUID
+	Column5        uuid.UUID
+}
+
+type ReportingCashCollectionsForOrganizationRow struct {
+	ID                   uuid.UUID
+	OrganizationID       uuid.UUID
+	MachineID            uuid.UUID
+	SiteID               uuid.UUID
+	MachineSerialNumber  string
+	SiteName             string
+	CollectedAt          time.Time
+	OpenedAt             time.Time
+	ClosedAt             pgtype.Timestamptz
+	LifecycleStatus      string
+	AmountMinor          int64
+	ExpectedAmountMinor  int64
+	VarianceAmountMinor  int64
+	Currency             string
+	ReconciliationStatus string
+	CreatedAt            time.Time
+}
+
+func (q *Queries) ReportingCashCollectionsForOrganization(ctx context.Context, arg ReportingCashCollectionsForOrganizationParams) ([]ReportingCashCollectionsForOrganizationRow, error) {
+	rows, err := q.db.Query(ctx, ReportingCashCollectionsForOrganization,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReportingCashCollectionsForOrganizationRow{}
+	for rows.Next() {
+		var i ReportingCashCollectionsForOrganizationRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.MachineID,
+			&i.SiteID,
+			&i.MachineSerialNumber,
+			&i.SiteName,
+			&i.CollectedAt,
+			&i.OpenedAt,
+			&i.ClosedAt,
+			&i.LifecycleStatus,
+			&i.AmountMinor,
+			&i.ExpectedAmountMinor,
+			&i.VarianceAmountMinor,
+			&i.Currency,
+			&i.ReconciliationStatus,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ReportingFailedVends = `-- name: ReportingFailedVends :many
+SELECT
+    vs.id AS vend_session_id,
+    vs.order_id,
+    vs.machine_id,
+    vs.slot_index,
+    vs.product_id,
+    vs.failure_reason,
+    vs.started_at,
+    vs.completed_at,
+    vs.created_at,
+    o.total_minor,
+    o.currency,
+    o.status AS order_status
+FROM vend_sessions vs
+INNER JOIN orders o ON o.id = vs.order_id
+WHERE
+    o.organization_id = $1
+    AND vs.state = 'failed'
+    AND COALESCE(vs.completed_at, vs.created_at) >= $2::timestamptz
+    AND COALESCE(vs.completed_at, vs.created_at) < $3::timestamptz
+ORDER BY
+    COALESCE(vs.completed_at, vs.created_at) DESC
+LIMIT $4 OFFSET $5
+`
+
+type ReportingFailedVendsParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+	Column3        time.Time
+	Limit          int32
+	Offset         int32
+}
+
+type ReportingFailedVendsRow struct {
+	VendSessionID uuid.UUID
+	OrderID       uuid.UUID
+	MachineID     uuid.UUID
+	SlotIndex     int32
+	ProductID     uuid.UUID
+	FailureReason pgtype.Text
+	StartedAt     pgtype.Timestamptz
+	CompletedAt   pgtype.Timestamptz
+	CreatedAt     time.Time
+	TotalMinor    int64
+	Currency      string
+	OrderStatus   string
+}
+
+func (q *Queries) ReportingFailedVends(ctx context.Context, arg ReportingFailedVendsParams) ([]ReportingFailedVendsRow, error) {
+	rows, err := q.db.Query(ctx, ReportingFailedVends,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReportingFailedVendsRow{}
+	for rows.Next() {
+		var i ReportingFailedVendsRow
+		if err := rows.Scan(
+			&i.VendSessionID,
+			&i.OrderID,
+			&i.MachineID,
+			&i.SlotIndex,
+			&i.ProductID,
+			&i.FailureReason,
+			&i.StartedAt,
+			&i.CompletedAt,
+			&i.CreatedAt,
+			&i.TotalMinor,
+			&i.Currency,
+			&i.OrderStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ReportingFailedVendsCount = `-- name: ReportingFailedVendsCount :one
+SELECT
+    COUNT(*)::bigint AS cnt
+FROM vend_sessions vs
+INNER JOIN orders o ON o.id = vs.order_id
+WHERE
+    o.organization_id = $1
+    AND vs.state = 'failed'
+    AND COALESCE(vs.completed_at, vs.created_at) >= $2::timestamptz
+    AND COALESCE(vs.completed_at, vs.created_at) < $3::timestamptz
+`
+
+type ReportingFailedVendsCountParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+	Column3        time.Time
+}
+
+func (q *Queries) ReportingFailedVendsCount(ctx context.Context, arg ReportingFailedVendsCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, ReportingFailedVendsCount, arg.OrganizationID, arg.Column2, arg.Column3)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
 const ReportingFleetIncidentsByStatus = `-- name: ReportingFleetIncidentsByStatus :many
 SELECT
     i.status,
@@ -292,9 +551,180 @@ func (q *Queries) ReportingInventoryExceptionsCount(ctx context.Context, arg Rep
 	return cnt, err
 }
 
+const ReportingMachineHealth = `-- name: ReportingMachineHealth :many
+SELECT
+    m.id AS machine_id,
+    m.site_id,
+    s.name AS site_name,
+    m.serial_number,
+    m.name AS machine_name,
+    m.status,
+    m.last_seen_at,
+    CASE
+        WHEN m.status IN ('offline', 'suspended', 'maintenance', 'retired', 'decommissioned', 'compromised') THEN TRUE
+        WHEN m.last_seen_at IS NULL THEN TRUE
+        WHEN m.last_seen_at < $2::timestamptz THEN TRUE
+        ELSE FALSE
+    END AS offline
+FROM machines m
+INNER JOIN sites s ON s.id = m.site_id
+WHERE
+    m.organization_id = $1
+ORDER BY
+    offline DESC,
+    m.last_seen_at ASC NULLS FIRST,
+    m.name ASC
+LIMIT $3 OFFSET $4
+`
+
+type ReportingMachineHealthParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+	Limit          int32
+	Offset         int32
+}
+
+type ReportingMachineHealthRow struct {
+	MachineID    uuid.UUID
+	SiteID       uuid.UUID
+	SiteName     string
+	SerialNumber string
+	MachineName  string
+	Status       string
+	LastSeenAt   pgtype.Timestamptz
+	Offline      bool
+}
+
+func (q *Queries) ReportingMachineHealth(ctx context.Context, arg ReportingMachineHealthParams) ([]ReportingMachineHealthRow, error) {
+	rows, err := q.db.Query(ctx, ReportingMachineHealth,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReportingMachineHealthRow{}
+	for rows.Next() {
+		var i ReportingMachineHealthRow
+		if err := rows.Scan(
+			&i.MachineID,
+			&i.SiteID,
+			&i.SiteName,
+			&i.SerialNumber,
+			&i.MachineName,
+			&i.Status,
+			&i.LastSeenAt,
+			&i.Offline,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ReportingMachineHealthCount = `-- name: ReportingMachineHealthCount :one
+SELECT
+    COUNT(*)::bigint AS cnt
+FROM machines m
+WHERE
+    m.organization_id = $1
+`
+
+func (q *Queries) ReportingMachineHealthCount(ctx context.Context, organizationID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, ReportingMachineHealthCount, organizationID)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const ReportingPaymentSettlement = `-- name: ReportingPaymentSettlement :many
+SELECT
+    (date_trunc('day', p.created_at AT TIME ZONE $4::text) AT TIME ZONE $4::text)::timestamptz AS bucket_start,
+    p.provider,
+    p.state,
+    p.settlement_status,
+    p.reconciliation_status,
+    COUNT(*)::bigint AS payment_count,
+    COALESCE(SUM(p.amount_minor), 0)::bigint AS amount_minor
+FROM payments p
+INNER JOIN orders o ON o.id = p.order_id
+WHERE
+    o.organization_id = $1
+    AND p.created_at >= $2::timestamptz
+    AND p.created_at < $3::timestamptz
+GROUP BY
+    1,
+    p.provider,
+    p.state,
+    p.settlement_status,
+    p.reconciliation_status
+ORDER BY
+    1 ASC,
+    p.provider ASC,
+    p.settlement_status ASC,
+    p.state ASC
+`
+
+type ReportingPaymentSettlementParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+	Column3        time.Time
+	Column4        string
+}
+
+type ReportingPaymentSettlementRow struct {
+	BucketStart          time.Time
+	Provider             string
+	State                string
+	SettlementStatus     string
+	ReconciliationStatus string
+	PaymentCount         int64
+	AmountMinor          int64
+}
+
+func (q *Queries) ReportingPaymentSettlement(ctx context.Context, arg ReportingPaymentSettlementParams) ([]ReportingPaymentSettlementRow, error) {
+	rows, err := q.db.Query(ctx, ReportingPaymentSettlement,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReportingPaymentSettlementRow{}
+	for rows.Next() {
+		var i ReportingPaymentSettlementRow
+		if err := rows.Scan(
+			&i.BucketStart,
+			&i.Provider,
+			&i.State,
+			&i.SettlementStatus,
+			&i.ReconciliationStatus,
+			&i.PaymentCount,
+			&i.AmountMinor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ReportingPaymentsByDay = `-- name: ReportingPaymentsByDay :many
 SELECT
-    (date_trunc('day', p.created_at AT TIME ZONE 'UTC'))::timestamptz AS bucket_start,
+    (date_trunc('day', p.created_at AT TIME ZONE $4::text) AT TIME ZONE $4::text)::timestamptz AS bucket_start,
     COUNT(*)::bigint AS payment_count,
     COALESCE(SUM(p.amount_minor), 0)::bigint AS amount_minor
 FROM payments p
@@ -313,6 +743,7 @@ type ReportingPaymentsByDayParams struct {
 	OrganizationID uuid.UUID
 	Column2        time.Time
 	Column3        time.Time
+	Column4        string
 }
 
 type ReportingPaymentsByDayRow struct {
@@ -322,7 +753,12 @@ type ReportingPaymentsByDayRow struct {
 }
 
 func (q *Queries) ReportingPaymentsByDay(ctx context.Context, arg ReportingPaymentsByDayParams) ([]ReportingPaymentsByDayRow, error) {
-	rows, err := q.db.Query(ctx, ReportingPaymentsByDay, arg.OrganizationID, arg.Column2, arg.Column3)
+	rows, err := q.db.Query(ctx, ReportingPaymentsByDay,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -473,9 +909,229 @@ func (q *Queries) ReportingPaymentsTotals(ctx context.Context, arg ReportingPaym
 	return i, err
 }
 
+const ReportingReconciliationQueue = `-- name: ReportingReconciliationQueue :many
+SELECT
+    c.id,
+    c.case_type,
+    c.status,
+    c.severity,
+    c.order_id,
+    c.payment_id,
+    c.vend_session_id,
+    c.refund_id,
+    c.provider,
+    c.reason,
+    c.first_detected_at,
+    c.last_detected_at
+FROM commerce_reconciliation_cases c
+WHERE
+    c.organization_id = $1
+    AND c.first_detected_at >= $2::timestamptz
+    AND c.first_detected_at < $3::timestamptz
+    AND c.status IN ('open', 'reviewing')
+ORDER BY
+    c.severity DESC,
+    c.last_detected_at DESC
+LIMIT $4 OFFSET $5
+`
+
+type ReportingReconciliationQueueParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+	Column3        time.Time
+	Limit          int32
+	Offset         int32
+}
+
+type ReportingReconciliationQueueRow struct {
+	ID              uuid.UUID
+	CaseType        string
+	Status          string
+	Severity        string
+	OrderID         pgtype.UUID
+	PaymentID       pgtype.UUID
+	VendSessionID   pgtype.UUID
+	RefundID        pgtype.UUID
+	Provider        pgtype.Text
+	Reason          string
+	FirstDetectedAt time.Time
+	LastDetectedAt  time.Time
+}
+
+func (q *Queries) ReportingReconciliationQueue(ctx context.Context, arg ReportingReconciliationQueueParams) ([]ReportingReconciliationQueueRow, error) {
+	rows, err := q.db.Query(ctx, ReportingReconciliationQueue,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReportingReconciliationQueueRow{}
+	for rows.Next() {
+		var i ReportingReconciliationQueueRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CaseType,
+			&i.Status,
+			&i.Severity,
+			&i.OrderID,
+			&i.PaymentID,
+			&i.VendSessionID,
+			&i.RefundID,
+			&i.Provider,
+			&i.Reason,
+			&i.FirstDetectedAt,
+			&i.LastDetectedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ReportingReconciliationQueueCount = `-- name: ReportingReconciliationQueueCount :one
+SELECT
+    COUNT(*)::bigint AS cnt
+FROM commerce_reconciliation_cases c
+WHERE
+    c.organization_id = $1
+    AND c.first_detected_at >= $2::timestamptz
+    AND c.first_detected_at < $3::timestamptz
+    AND c.status IN ('open', 'reviewing')
+`
+
+type ReportingReconciliationQueueCountParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+	Column3        time.Time
+}
+
+func (q *Queries) ReportingReconciliationQueueCount(ctx context.Context, arg ReportingReconciliationQueueCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, ReportingReconciliationQueueCount, arg.OrganizationID, arg.Column2, arg.Column3)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const ReportingRefunds = `-- name: ReportingRefunds :many
+SELECT
+    r.id AS refund_id,
+    r.payment_id,
+    r.order_id,
+    o.machine_id,
+    r.amount_minor,
+    r.currency,
+    r.state,
+    r.reason,
+    r.reconciliation_status,
+    r.settlement_status,
+    r.created_at
+FROM refunds r
+INNER JOIN orders o ON o.id = r.order_id
+WHERE
+    o.organization_id = $1
+    AND r.created_at >= $2::timestamptz
+    AND r.created_at < $3::timestamptz
+ORDER BY
+    r.created_at DESC
+LIMIT $4 OFFSET $5
+`
+
+type ReportingRefundsParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+	Column3        time.Time
+	Limit          int32
+	Offset         int32
+}
+
+type ReportingRefundsRow struct {
+	RefundID             uuid.UUID
+	PaymentID            uuid.UUID
+	OrderID              uuid.UUID
+	MachineID            uuid.UUID
+	AmountMinor          int64
+	Currency             string
+	State                string
+	Reason               pgtype.Text
+	ReconciliationStatus string
+	SettlementStatus     string
+	CreatedAt            time.Time
+}
+
+func (q *Queries) ReportingRefunds(ctx context.Context, arg ReportingRefundsParams) ([]ReportingRefundsRow, error) {
+	rows, err := q.db.Query(ctx, ReportingRefunds,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReportingRefundsRow{}
+	for rows.Next() {
+		var i ReportingRefundsRow
+		if err := rows.Scan(
+			&i.RefundID,
+			&i.PaymentID,
+			&i.OrderID,
+			&i.MachineID,
+			&i.AmountMinor,
+			&i.Currency,
+			&i.State,
+			&i.Reason,
+			&i.ReconciliationStatus,
+			&i.SettlementStatus,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ReportingRefundsCount = `-- name: ReportingRefundsCount :one
+SELECT
+    COUNT(*)::bigint AS cnt
+FROM refunds r
+INNER JOIN orders o ON o.id = r.order_id
+WHERE
+    o.organization_id = $1
+    AND r.created_at >= $2::timestamptz
+    AND r.created_at < $3::timestamptz
+`
+
+type ReportingRefundsCountParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+	Column3        time.Time
+}
+
+func (q *Queries) ReportingRefundsCount(ctx context.Context, arg ReportingRefundsCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, ReportingRefundsCount, arg.OrganizationID, arg.Column2, arg.Column3)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
 const ReportingSalesByDay = `-- name: ReportingSalesByDay :many
 SELECT
-    (date_trunc('day', o.created_at AT TIME ZONE 'UTC'))::timestamptz AS bucket_start,
+    (date_trunc('day', o.created_at AT TIME ZONE $4::text) AT TIME ZONE $4::text)::timestamptz AS bucket_start,
     COUNT(*)::bigint AS order_count,
     COALESCE(SUM(o.total_minor), 0)::bigint AS total_minor,
     COALESCE(SUM(o.subtotal_minor), 0)::bigint AS subtotal_minor,
@@ -495,6 +1151,7 @@ type ReportingSalesByDayParams struct {
 	OrganizationID uuid.UUID
 	Column2        time.Time
 	Column3        time.Time
+	Column4        string
 }
 
 type ReportingSalesByDayRow struct {
@@ -506,7 +1163,12 @@ type ReportingSalesByDayRow struct {
 }
 
 func (q *Queries) ReportingSalesByDay(ctx context.Context, arg ReportingSalesByDayParams) ([]ReportingSalesByDayRow, error) {
-	rows, err := q.db.Query(ctx, ReportingSalesByDay, arg.OrganizationID, arg.Column2, arg.Column3)
+	rows, err := q.db.Query(ctx, ReportingSalesByDay,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+	)
 	if err != nil {
 		return nil, err
 	}

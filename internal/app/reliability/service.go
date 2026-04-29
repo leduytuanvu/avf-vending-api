@@ -209,7 +209,9 @@ func (s *Service) ScanOrphanVendSessions(ctx context.Context, run ScanRunContext
 }
 
 // PlanOutboxRepublishBatch lists unpublished outbox work and marks which rows are safe to (re)publish now.
-func (s *Service) PlanOutboxRepublishBatch(ctx context.Context, run ScanRunContext, policy RecoveryPolicy, limits ScanLimits) (OutboxReplayPlan, error) {
+// When lease is non-nil and WorkerID is set, rows are claimed with SKIP LOCKED (status=publishing) and
+// all claimed rows are marked ShouldRepublish (min_age is enforced in SQL).
+func (s *Service) PlanOutboxRepublishBatch(ctx context.Context, run ScanRunContext, policy RecoveryPolicy, limits ScanLimits, lease *OutboxLeaseParams) (OutboxReplayPlan, error) {
 	if err := validateRunContext(run); err != nil {
 		return OutboxReplayPlan{}, err
 	}
@@ -226,12 +228,31 @@ func (s *Service) PlanOutboxRepublishBatch(ctx context.Context, run ScanRunConte
 	if err != nil {
 		return OutboxReplayPlan{}, err
 	}
-	events, err := s.outbox.ListUnpublished(ctx, limits.MaxItems)
+	var events []domainreliability.OutboxEvent
+	if lease != nil && strings.TrimSpace(lease.WorkerID) != "" {
+		lockTTL := lease.LockTTL
+		if lockTTL <= 0 {
+			lockTTL = 30 * time.Second
+		}
+		events, err = s.outbox.LeaseOutboxForPublish(ctx, lease.WorkerID, lockTTL, policy.OutboxMinAge, limits.MaxItems)
+	} else {
+		events, err = s.outbox.ListUnpublished(ctx, limits.MaxItems)
+	}
 	if err != nil {
 		return OutboxReplayPlan{}, err
 	}
 	out := make([]OutboxReplayDecision, 0, len(events))
 	for _, ev := range events {
+		if lease != nil && strings.TrimSpace(lease.WorkerID) != "" {
+			out = append(out, OutboxReplayDecision{
+				Event:           ev,
+				ShouldRepublish: true,
+				ReasonCode:      ReasonOutboxLeaseClaim,
+				TraceNote: fmt.Sprintf("outbox_id=%d lease_worker=%s action=republish_leased",
+					ev.ID, lease.WorkerID),
+			})
+			continue
+		}
 		out = append(out, s.DecideOutboxReplay(run, policy, ev))
 	}
 	return OutboxReplayPlan{Run: run, Decisions: out, Pipeline: pipeline}, nil
@@ -346,6 +367,15 @@ func (s *Service) DecideOutboxReplay(run ScanRunContext, policy RecoveryPolicy, 
 			ReasonCode:      ReasonOutboxPublishBackoff,
 			TraceNote: fmt.Sprintf("outbox_id=%d next_publish_after=%s",
 				ev.ID, ev.NextPublishAfter.Format(time.RFC3339Nano)),
+		}
+	}
+	if strings.EqualFold(ev.Status, "publishing") && ev.LockedUntil != nil && run.Now.Before(*ev.LockedUntil) {
+		return OutboxReplayDecision{
+			Event:           ev,
+			ShouldRepublish: false,
+			ReasonCode:      ReasonNoopPolicy,
+			TraceNote: fmt.Sprintf("outbox_id=%d active publish lease until %s",
+				ev.ID, ev.LockedUntil.Format(time.RFC3339Nano)),
 		}
 	}
 	age := run.Now.Sub(ev.CreatedAt)

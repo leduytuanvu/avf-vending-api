@@ -42,7 +42,7 @@ func TestDispatch_rejectsOversizePayload(t *testing.T) {
 			gotReason = reason
 		},
 	}
-	err := Dispatch(context.Background(), "pre", topic, payload, rejectIngest{}, lim, hooks)
+	err := Dispatch(context.Background(), TopicLayoutLegacy, "pre", topic, payload, rejectIngest{}, lim, hooks)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -72,6 +72,20 @@ func (c *captureIngest) IngestShadowDesired(ctx context.Context, in ShadowDesire
 func (c *captureIngest) IngestCommandReceipt(ctx context.Context, in CommandReceiptIngest) error {
 	c.lastReceipt = &in
 	return nil
+}
+
+func TestParseDeviceTopicWithLayout_enterprise(t *testing.T) {
+	t.Parallel()
+	prefix := "avf/staging"
+	mid := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	topic := prefix + "/machines/" + mid.String() + "/commands/ack"
+	gotMid, ch, err := ParseDeviceTopicWithLayout(TopicLayoutEnterprise, prefix, topic)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotMid != mid || ch != "commands/ack" {
+		t.Fatalf("mid=%s ch=%q", gotMid, ch)
+	}
 }
 
 func TestParseDeviceTopic_newChannels(t *testing.T) {
@@ -104,7 +118,7 @@ func TestDispatch_stateHeartbeat_derivesEventType(t *testing.T) {
 	mid := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 	topic := fmt.Sprintf("pre/%s/state/heartbeat", mid)
 	var cap captureIngest
-	err := Dispatch(context.Background(), "pre", topic, []byte(`{"boot_id":"55555555-5555-5555-5555-555555555555","seq_no":7,"payload":{}}`), &cap, nil, nil)
+	err := Dispatch(context.Background(), TopicLayoutLegacy, "pre", topic, []byte(`{"boot_id":"55555555-5555-5555-5555-555555555555","seq_no":7,"payload":{}}`), &cap, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,14 +139,37 @@ func TestDispatch_stateHeartbeat_derivesEventType(t *testing.T) {
 func TestDispatch_commandsAck_normalizesAckAlias(t *testing.T) {
 	t.Parallel()
 	mid := uuid.MustParse("66666666-6666-6666-6666-666666666666")
+	cmdID := uuid.MustParse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
 	topic := fmt.Sprintf("pre/%s/commands/ack", mid)
 	var cap captureIngest
-	payload := []byte(`{"sequence":1,"status":"ack","payload":{},"dedupe_key":"d1"}`)
-	if err := Dispatch(context.Background(), "pre", topic, payload, &cap, nil, nil); err != nil {
+	payload := []byte(fmt.Sprintf(
+		`{"machine_id":%q,"command_id":%q,"occurred_at":"2020-04-01T12:00:00Z","sequence":1,"status":"ack","payload":{},"dedupe_key":"d1"}`,
+		mid.String(), cmdID.String(),
+	))
+	if err := Dispatch(context.Background(), TopicLayoutLegacy, "pre", topic, payload, &cap, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if cap.lastReceipt == nil || cap.lastReceipt.Status != "acked" {
 		t.Fatalf("got %+v", cap.lastReceipt)
+	}
+}
+
+func TestDispatch_commandsAckRejectsBodyMachineMismatch(t *testing.T) {
+	t.Parallel()
+	topicMid := uuid.MustParse("66666666-6666-6666-6666-666666666666")
+	bodyMid := uuid.MustParse("77777777-7777-7777-7777-777777777777")
+	topic := fmt.Sprintf("pre/%s/commands/ack", topicMid)
+	var cap captureIngest
+	payload := []byte(fmt.Sprintf(
+		`{"machine_id":%q,"command_id":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee","occurred_at":"2020-04-01T12:00:00Z","sequence":1,"status":"ack","payload":{},"dedupe_key":"d1"}`,
+		bodyMid.String(),
+	))
+	err := Dispatch(context.Background(), TopicLayoutLegacy, "pre", topic, payload, &cap, nil, nil)
+	if err == nil {
+		t.Fatal("expected machine mismatch rejection")
+	}
+	if cap.lastReceipt != nil {
+		t.Fatal("mismatched ACK must not reach persistence ingest")
 	}
 }
 

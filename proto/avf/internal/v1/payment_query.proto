@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package avf.internal.v1;
+
+option go_package = "github.com/avf/avf-vending-api/internal/gen/avfinternalv1;internalv1";
+
+import "avf/internal/v1/commerce_query.proto";
+
+service InternalPaymentQueryService {
+  rpc GetPaymentById(GetPaymentByIdRequest) returns (GetPaymentByIdResponse);
+  rpc GetLatestPaymentForOrder(GetLatestPaymentForOrderRequest) returns (GetLatestPaymentForOrderResponse);
+}
+
+message GetPaymentByIdRequest {
+  string organization_id = 1;
+  string payment_id = 2;
+}
+
+message GetPaymentByIdResponse {
+  CommercePaymentSummary payment = 1;
+}
+
+message GetLatestPaymentForOrderRequest {
+  string organization_id = 1;
+  string order_id = 2;
+}
+
+message GetLatestPaymentForOrderResponse {
+  CommercePaymentSummary payment = 1;
+}

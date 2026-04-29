@@ -15,4 +15,6 @@ var (
 	ErrNotFound = errors.New("catalogadmin: not found")
 	// ErrInvalidArgument is returned for bad input.
 	ErrInvalidArgument = errors.New("catalogadmin: invalid argument")
+	// ErrConflict is returned when an operation violates business constraints (e.g. duplicate target assignment).
+	ErrConflict = errors.New("catalogadmin: conflict")
 )

@@ -1,5 +1,6 @@
 # Release gate after "Build and Push Images" (image scan, security-verdict). Display name must stay
 # "Security Release" — distinct from repo-level "Security" (security.yml). Downstream staging listens here.
+# Does **not** deploy to production; production is **workflow_dispatch Deploy Production** (`deploy-prod.yml`, `main` only).
 name: Security Release
 
 env:

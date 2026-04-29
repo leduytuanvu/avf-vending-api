@@ -1,5 +1,10 @@
 name: Staging Deployment Contract
 
+# Naming: the filename is deploy-develop.yml; the Actions **display name** must stay exactly as above (`verify_workflow_contracts.sh`).
+# There is **no dedicated develop/preproduction VPS** in this repo today — this workflow performs **staging / pre-prod** gates
+# after Security Release on **branch develop** only (`workflow_run`). It **cannot** start production deploy (**Deploy Production**
+# requires **main**, **workflow_dispatch**, and the protected **`production`** environment on the rollout job).
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 

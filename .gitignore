@@ -34,3 +34,16 @@ __pycache__/
 .vscode/
 *.swp
 Thumbs.db
+
+# Local build artifacts
+.bin/
+*.exe
+*.test
+
+# Local CI/security reports
+ci-reports/
+security-reports/
+*.sarif
+coverage.out
+coverage.xml
+repomix-output.xml

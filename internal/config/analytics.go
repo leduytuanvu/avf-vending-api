@@ -17,8 +17,12 @@ type AnalyticsConfig struct {
 	ClickHouseHTTPURL string
 	// MirrorOutboxPublished schedules one JSONEachRow insert per successfully marked outbox publish (async, bounded).
 	MirrorOutboxPublished bool
+	// ProjectOutboxEvents writes typed analytics projection rows derived from published outbox events.
+	ProjectOutboxEvents bool
 	// MirrorTable is the table name within the configured database (default avf_outbox_mirror).
 	MirrorTable string
+	// ProjectionTable is the table name for typed analytics projections (default avf_analytics_projection_events).
+	ProjectionTable string
 	// MirrorMaxConcurrent inserts in flight from the worker (default 8).
 	MirrorMaxConcurrent int
 	// InsertTimeout bounds each HTTP insert attempt (default 5s).
@@ -31,6 +35,10 @@ func loadAnalyticsConfig() AnalyticsConfig {
 	tc := strings.TrimSpace(getenv("ANALYTICS_CLICKHOUSE_TABLE", "avf_outbox_mirror"))
 	if tc == "" {
 		tc = "avf_outbox_mirror"
+	}
+	pc := strings.TrimSpace(getenv("ANALYTICS_PROJECTION_TABLE", "avf_analytics_projection_events"))
+	if pc == "" {
+		pc = "avf_analytics_projection_events"
 	}
 	mc := getenvInt("ANALYTICS_MIRROR_MAX_CONCURRENT", 8)
 	if mc < 1 {
@@ -50,7 +58,9 @@ func loadAnalyticsConfig() AnalyticsConfig {
 		ClickHouseEnabled:     getenvBool("ANALYTICS_CLICKHOUSE_ENABLED", false),
 		ClickHouseHTTPURL:     strings.TrimSpace(getenv("ANALYTICS_CLICKHOUSE_HTTP_URL", "")),
 		MirrorOutboxPublished: getenvBool("ANALYTICS_MIRROR_OUTBOX_PUBLISHED", false),
+		ProjectOutboxEvents:   getenvBool("ANALYTICS_PROJECT_OUTBOX_EVENTS", false),
 		MirrorTable:           tc,
+		ProjectionTable:       pc,
 		MirrorMaxConcurrent:   mc,
 		InsertTimeout:         mustParseDuration("ANALYTICS_INSERT_TIMEOUT", getenv("ANALYTICS_INSERT_TIMEOUT", "5s")),
 		InsertMaxAttempts:     attempts,
@@ -60,6 +70,9 @@ func loadAnalyticsConfig() AnalyticsConfig {
 func (a AnalyticsConfig) validate() error {
 	if a.MirrorOutboxPublished && !a.ClickHouseEnabled {
 		return errors.New("config: ANALYTICS_MIRROR_OUTBOX_PUBLISHED=true requires ANALYTICS_CLICKHOUSE_ENABLED=true")
+	}
+	if a.ProjectOutboxEvents && !a.ClickHouseEnabled {
+		return errors.New("config: ANALYTICS_PROJECT_OUTBOX_EVENTS=true requires ANALYTICS_CLICKHOUSE_ENABLED=true")
 	}
 	if !a.ClickHouseEnabled {
 		return nil
@@ -84,19 +97,26 @@ func (a AnalyticsConfig) validate() error {
 	if err := validateMirrorTableName(a.MirrorTable); err != nil {
 		return err
 	}
+	if err := validateAnalyticsTableName("ANALYTICS_PROJECTION_TABLE", a.ProjectionTable); err != nil {
+		return err
+	}
 	return nil
 }
 
 func validateMirrorTableName(name string) error {
+	return validateAnalyticsTableName("ANALYTICS_CLICKHOUSE_TABLE", name)
+}
+
+func validateAnalyticsTableName(envName, name string) error {
 	s := strings.TrimSpace(name)
 	if s == "" {
-		return errors.New("config: ANALYTICS_CLICKHOUSE_TABLE is empty")
+		return fmt.Errorf("config: %s is empty", envName)
 	}
 	for _, r := range s {
 		switch {
 		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_':
 		default:
-			return fmt.Errorf("config: ANALYTICS_CLICKHOUSE_TABLE %q contains invalid character %q", name, r)
+			return fmt.Errorf("config: %s %q contains invalid character %q", envName, name, r)
 		}
 	}
 	return nil

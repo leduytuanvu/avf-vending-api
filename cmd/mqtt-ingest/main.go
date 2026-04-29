@@ -69,12 +69,42 @@ func main() {
 
 	store := postgres.NewStore(pool)
 
+	// Periodic sweep: mark sent attempts past ack_deadline as ack_timeout, and stale ledger SLA as expired (same as API pre-dispatch sweep).
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				tctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				err := store.ApplyMQTTCommandAckTimeouts(tctx, time.Now().UTC())
+				cancel()
+				if err != nil {
+					log.Warn("mqtt_ingest_command_ack_deadline_sweep_failed", zap.Error(err))
+				}
+			}
+		}
+	}()
+
+	mqttLayout := platformmqtt.TopicLayoutLegacy
+	if strings.EqualFold(strings.TrimSpace(cfg.MQTT.TopicLayout), "enterprise") {
+		mqttLayout = platformmqtt.TopicLayoutEnterprise
+	}
 	mqttCfg := platformmqtt.BrokerConfig{
-		BrokerURL:   cfg.MQTT.BrokerURL,
-		ClientID:    cfg.MQTT.ClientIDForProcess(cfg.ProcessName),
-		Username:    cfg.MQTT.Username,
-		Password:    cfg.MQTT.Password,
-		TopicPrefix: cfg.MQTT.TopicPrefix,
+		BrokerURL:          cfg.MQTT.BrokerURL,
+		ClientID:           cfg.MQTT.ClientIDForProcess(cfg.ProcessName),
+		Username:           cfg.MQTT.Username,
+		Password:           cfg.MQTT.Password,
+		TopicPrefix:        cfg.MQTT.TopicPrefix,
+		TopicLayout:        mqttLayout,
+		AppEnv:             string(cfg.AppEnv),
+		TLSEnabled:         cfg.MQTT.TLSEnabled,
+		CAFile:             cfg.MQTT.CAFile,
+		CertFile:           cfg.MQTT.CertFile,
+		KeyFile:            cfg.MQTT.KeyFile,
+		InsecureSkipVerify: cfg.MQTT.InsecureSkipVerify,
 	}
 	if err := mqttCfg.Validate(); err != nil {
 		log.Fatal("mqtt config", zap.Error(err))

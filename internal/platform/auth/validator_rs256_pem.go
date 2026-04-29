@@ -14,13 +14,13 @@ import (
 )
 
 type rs256PEMValidator struct {
-	pub    *rsa.PublicKey
-	issuer string
-	aud    string
-	leeway time.Duration
+	pub       *rsa.PublicKey
+	issuer    string
+	audiences []string
+	leeway    time.Duration
 }
 
-func newRS256PEMValidator(pemBytes []byte, issuer, audience string, leeway time.Duration) (*rs256PEMValidator, error) {
+func newRS256PEMValidator(pemBytes []byte, issuer string, audiences []string, leeway time.Duration) (*rs256PEMValidator, error) {
 	pub, err := parseRSAPublicKeyPEM(pemBytes)
 	if err != nil {
 		return nil, err
@@ -28,7 +28,13 @@ func newRS256PEMValidator(pemBytes []byte, issuer, audience string, leeway time.
 	if leeway <= 0 {
 		leeway = DefaultClockLeeway
 	}
-	return &rs256PEMValidator{pub: pub, issuer: strings.TrimSpace(issuer), aud: strings.TrimSpace(audience), leeway: leeway}, nil
+	var auds []string
+	for _, a := range audiences {
+		if s := strings.TrimSpace(a); s != "" {
+			auds = append(auds, s)
+		}
+	}
+	return &rs256PEMValidator{pub: pub, issuer: strings.TrimSpace(issuer), audiences: auds, leeway: leeway}, nil
 }
 
 func parseRSAPublicKeyPEM(pemBytes []byte) (*rsa.PublicKey, error) {
@@ -59,9 +65,6 @@ func (v *rs256PEMValidator) ValidateAccessToken(_ context.Context, raw string) (
 	if v.issuer != "" {
 		opts = append(opts, jwt.WithIssuer(v.issuer))
 	}
-	if v.aud != "" {
-		opts = append(opts, jwt.WithAudience(v.aud))
-	}
 	parser := jwt.NewParser(opts...)
 
 	token, err := parser.ParseWithClaims(strings.TrimSpace(raw), jwt.MapClaims{}, func(t *jwt.Token) (any, error) {
@@ -75,6 +78,9 @@ func (v *rs256PEMValidator) ValidateAccessToken(_ context.Context, raw string) (
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
+		return Principal{}, ErrUnauthenticated
+	}
+	if len(v.audiences) > 0 && !jwtMapClaimsAudienceAllowed(claims, v.audiences) {
 		return Principal{}, ErrUnauthenticated
 	}
 	payload, err := json.Marshal(claims)

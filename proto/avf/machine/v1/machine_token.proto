@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+import "google/protobuf/timestamp.proto";
+
+// MachineTokenService rotates machine refresh tokens (public; no Bearer).
+service MachineTokenService {
+  rpc RefreshMachineToken(RefreshMachineTokenRequest) returns (RefreshMachineTokenResponse);
+}
+
+message RefreshMachineTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshMachineTokenResponse {
+  string machine_id = 1;
+  string organization_id = 2;
+  string site_id = 3;
+  string machine_name = 4;
+  string access_token = 5;
+  google.protobuf.Timestamp access_token_expires_at = 6;
+  string refresh_token = 7;
+  google.protobuf.Timestamp refresh_token_expires_at = 8;
+  string mqtt_broker_url = 9;
+  string mqtt_topic_prefix = 10;
+  string bootstrap_http_path = 11;
+}

@@ -422,6 +422,18 @@ WHERE
     machine_id = $1
     AND (metadata ->> 'idempotency_key') = $2::text;
 
+-- name: InventoryAdminGetInventoryIdempotencyPayloadHash :one
+SELECT
+    coalesce(metadata ->> 'idempotency_payload_sha256', '')::text AS payload_hash
+FROM
+    inventory_events
+WHERE
+    machine_id = $1
+    AND (metadata ->> 'idempotency_key') = $2::text
+ORDER BY
+    id ASC
+LIMIT 1;
+
 -- Slot aggregates aligned with InventoryAdminListMachineSlots (machine_slot_state + slots).
 -- name: InventoryAdminSummarizeSlotsForMachine :one
 SELECT
@@ -455,3 +467,73 @@ WHERE
     mss.machine_id = ANY($1::uuid[])
 GROUP BY
     mss.machine_id;
+
+-- Refill forecasting: slot inventory joined to vend velocity (successful dispenses) in a lookback window.
+-- Optional filters use uuid nil sentinel '00000000-0000-0000-0000-000000000000'. low_stock_only restricts to empty or <15% fill.
+-- name: InventoryAdminRefillForecastSlots :many
+SELECT
+    m.id AS machine_id,
+    m.name AS machine_name,
+    m.site_id,
+    st.name AS site_name,
+    mss.planogram_id,
+    pg.name AS planogram_name,
+    mss.slot_index,
+    s.product_id,
+    pr.sku AS product_sku,
+    pr.name AS product_name,
+    mss.current_quantity,
+    COALESCE(s.max_quantity, 0)::int AS max_quantity,
+    COALESCE(vel.units_sold, 0)::bigint AS units_sold_window
+FROM
+    machine_slot_state mss
+    INNER JOIN machines m ON m.id = mss.machine_id
+    INNER JOIN sites st ON st.id = m.site_id
+        AND st.organization_id = m.organization_id
+    INNER JOIN planograms pg ON pg.id = mss.planogram_id
+    LEFT JOIN slots s ON s.planogram_id = mss.planogram_id
+        AND s.slot_index = mss.slot_index
+    LEFT JOIN products pr ON pr.id = s.product_id
+        AND pr.organization_id = m.organization_id
+    LEFT JOIN (
+        SELECT
+            vs.machine_id,
+            vs.product_id,
+            COUNT(*)::bigint AS units_sold
+        FROM
+            vend_sessions vs
+            INNER JOIN machines mm ON mm.id = vs.machine_id
+        WHERE
+            mm.organization_id = $1
+            AND vs.state = 'success'
+            AND COALESCE(vs.completed_at, vs.created_at) >= $2::timestamptz
+            AND COALESCE(vs.completed_at, vs.created_at) < $3::timestamptz
+        GROUP BY
+            vs.machine_id,
+            vs.product_id
+    ) vel ON vel.machine_id = mss.machine_id
+    AND vel.product_id = s.product_id
+WHERE
+    m.organization_id = $1
+    AND s.product_id IS NOT NULL
+    AND (
+        $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $4)
+    AND (
+        $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.id = $5)
+    AND (
+        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR s.product_id = $6)
+    AND (
+        $7::boolean IS FALSE
+        OR mss.current_quantity <= 0
+        OR (
+            COALESCE(s.max_quantity, 0) > 0
+            AND mss.current_quantity::float / NULLIF(s.max_quantity, 0)::float < 0.15))
+ORDER BY
+    m.name ASC,
+    pr.name ASC,
+    mss.slot_index ASC
+LIMIT 10000;
+

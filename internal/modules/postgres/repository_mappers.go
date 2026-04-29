@@ -38,8 +38,17 @@ func mapMachine(row db.Machine) fleet.Machine {
 		SiteID:            row.SiteID,
 		HardwareProfileID: pgUUIDToPtr(row.HardwareProfileID),
 		SerialNumber:      row.SerialNumber,
+		Code:              row.Code,
+		Model:             pgTextToStringPtr(row.Model),
+		CabinetType:       row.CabinetType,
+		Timezone:          pgTextToStringPtr(row.TimezoneOverride),
 		Name:              row.Name,
 		Status:            row.Status,
+		CredentialVersion: row.CredentialVersion,
+		LastSeenAt:        pgTimestamptzToTimePtr(row.LastSeenAt),
+		ActivatedAt:       pgTimestamptzToTimePtr(row.ActivatedAt),
+		RevokedAt:         pgTimestamptzToTimePtr(row.RevokedAt),
+		RotatedAt:         pgTimestamptzToTimePtr(row.RotatedAt),
 		CommandSequence:   row.CommandSequence,
 		CreatedAt:         row.CreatedAt,
 		UpdatedAt:         row.UpdatedAt,
@@ -48,10 +57,30 @@ func mapMachine(row db.Machine) fleet.Machine {
 
 func mapTechnician(row db.Technician) fleet.Technician {
 	return fleet.Technician{
+		ID:              row.ID,
+		OrganizationID:  row.OrganizationID,
+		DisplayName:     row.DisplayName,
+		Email:           pgTextToStringPtr(row.Email),
+		Phone:           pgTextToStringPtr(row.Phone),
+		ExternalSubject: pgTextToStringPtr(row.ExternalSubject),
+		Status:          row.Status,
+		CreatedAt:       row.CreatedAt,
+		UpdatedAt:       row.UpdatedAt,
+	}
+}
+
+func mapFleetSite(row db.Site) fleet.Site {
+	return fleet.Site{
 		ID:             row.ID,
 		OrganizationID: row.OrganizationID,
-		DisplayName:    row.DisplayName,
+		RegionID:       pgUUIDToPtr(row.RegionID),
+		Name:           row.Name,
+		Address:        row.Address,
+		Timezone:       row.Timezone,
+		Code:           row.Code,
+		Status:         row.Status,
 		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
 	}
 }
 
@@ -100,6 +129,11 @@ func mapReliabilityOutbox(row db.OutboxEvent) reliability.OutboxEvent {
 		LastPublishAttemptAt: pgTimestamptzToTimePtr(row.LastPublishAttemptAt),
 		NextPublishAfter:     pgTimestamptzToTimePtr(row.NextPublishAfter),
 		DeadLetteredAt:       pgTimestamptzToTimePtr(row.DeadLetteredAt),
+		Status:               row.Status,
+		LockedBy:             pgTextToStringPtr(row.LockedBy),
+		LockedUntil:          pgTimestamptzToTimePtr(row.LockedUntil),
+		UpdatedAt:            row.UpdatedAt,
+		MaxPublishAttempts:   row.MaxPublishAttempts,
 	}
 }
 

@@ -11,6 +11,45 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AdminLoginAttempt struct {
+	ID              uuid.UUID
+	OrganizationID  pgtype.UUID
+	EmailNormalized string
+	UserID          pgtype.UUID
+	IpAddress       pgtype.Text
+	UserAgent       pgtype.Text
+	Success         bool
+	FailureReason   pgtype.Text
+	OccurredAt      time.Time
+}
+
+type AdminMfaFactor struct {
+	ID               uuid.UUID
+	OrganizationID   uuid.UUID
+	UserID           uuid.UUID
+	FactorType       string
+	SecretCiphertext []byte
+	Status           string
+	CreatedAt        time.Time
+	VerifiedAt       pgtype.Timestamptz
+	DisabledAt       pgtype.Timestamptz
+}
+
+type AdminSession struct {
+	ID               uuid.UUID
+	OrganizationID   uuid.UUID
+	UserID           uuid.UUID
+	RefreshTokenID   uuid.UUID
+	RefreshTokenHash []byte
+	Status           string
+	IpAddress        pgtype.Text
+	UserAgent        pgtype.Text
+	CreatedAt        time.Time
+	LastUsedAt       pgtype.Timestamptz
+	ExpiresAt        time.Time
+	RevokedAt        pgtype.Timestamptz
+}
+
 // Named product bundles for machine-specific merchandising.
 type Assortment struct {
 	ID             uuid.UUID
@@ -34,6 +73,30 @@ type AssortmentItem struct {
 	CreatedAt      time.Time
 }
 
+type AuditEvent struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	ActorType      string
+	ActorID        pgtype.Text
+	Action         string
+	ResourceType   string
+	ResourceID     pgtype.Text
+	MachineID      pgtype.UUID
+	SiteID         pgtype.UUID
+	RequestID      pgtype.Text
+	TraceID        pgtype.Text
+	IpAddress      pgtype.Text
+	UserAgent      pgtype.Text
+	BeforeJson     []byte
+	AfterJson      []byte
+	Metadata       []byte
+	Outcome        string
+	// When true, retention cleanup must not purge this enterprise audit event.
+	LegalHold  bool
+	OccurredAt time.Time
+	CreatedAt  time.Time
+}
+
 type AuditLog struct {
 	ID             int64
 	OrganizationID uuid.UUID
@@ -44,7 +107,9 @@ type AuditLog struct {
 	ResourceID     pgtype.UUID
 	Payload        []byte
 	Ip             pgtype.Text
-	CreatedAt      time.Time
+	// When true, retention cleanup must not purge this legacy audit log row.
+	LegalHold bool
+	CreatedAt time.Time
 }
 
 type AuthRefreshToken struct {
@@ -55,6 +120,8 @@ type AuthRefreshToken struct {
 	RevokedAt  pgtype.Timestamptz
 	CreatedAt  time.Time
 	LastUsedAt pgtype.Timestamptz
+	IpAddress  pgtype.Text
+	UserAgent  pgtype.Text
 }
 
 type Brand struct {
@@ -141,6 +208,7 @@ type Category struct {
 type CommandLedger struct {
 	ID             uuid.UUID
 	MachineID      uuid.UUID
+	OrganizationID uuid.UUID
 	Sequence       int64
 	CommandType    string
 	Payload        []byte
@@ -164,7 +232,32 @@ type CommandLedger struct {
 	// Opaque id from source_system for cross-system trace.
 	SourceEventID pgtype.Text
 	// This repo uses command_ledger as machine command rows (no separate machine_commands table).
-	OperatorSessionID pgtype.UUID
+	OperatorSessionID   pgtype.UUID
+	MaxDispatchAttempts int32
+}
+
+// Operator-visible payment/vend/refund reconciliation queue. Redis never stores authoritative case state.
+type CommerceReconciliationCase struct {
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	CaseType        string
+	Status          string
+	Severity        string
+	OrderID         pgtype.UUID
+	PaymentID       pgtype.UUID
+	VendSessionID   pgtype.UUID
+	RefundID        pgtype.UUID
+	MachineID       pgtype.UUID
+	Provider        pgtype.Text
+	ProviderEventID pgtype.Int8
+	CorrelationKey  string
+	Reason          string
+	Metadata        []byte
+	FirstDetectedAt time.Time
+	LastDetectedAt  time.Time
+	ResolvedAt      pgtype.Timestamptz
+	ResolvedBy      pgtype.UUID
+	ResolutionNote  pgtype.Text
 }
 
 type CriticalTelemetryEventStatus struct {
@@ -223,15 +316,79 @@ type DeviceTelemetryEvent struct {
 // Metadata for cold diagnostic bundles; blobs referenced by storage_key only.
 type DiagnosticBundleManifest struct {
 	ID              uuid.UUID
+	OrganizationID  pgtype.UUID
 	MachineID       uuid.UUID
+	RequestID       pgtype.UUID
+	CommandID       pgtype.UUID
 	StorageKey      string
 	StorageProvider string
 	ContentType     pgtype.Text
 	SizeBytes       pgtype.Int8
 	Sha256Hex       pgtype.Text
 	Metadata        []byte
+	Status          string
 	CreatedAt       time.Time
 	ExpiresAt       pgtype.Timestamptz
+}
+
+// Tenant-scoped feature switches; targets refine scope (site/machine/profile/canary).
+type FeatureFlag struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	FlagKey        string
+	DisplayName    string
+	Description    string
+	Enabled        bool
+	Metadata       []byte
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+// Scoped overrides for feature_flags (highest priority matching row wins).
+type FeatureFlagTarget struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	FeatureFlagID     uuid.UUID
+	TargetType        string
+	SiteID            pgtype.UUID
+	MachineID         pgtype.UUID
+	HardwareProfileID pgtype.UUID
+	CanaryPercent     pgtype.Numeric
+	Priority          int32
+	Enabled           bool
+	Metadata          []byte
+	CreatedAt         time.Time
+}
+
+// Immutable org/day/timezone (optional site/machine scope) snapshot; corrections via finance_daily_close_adjustments.
+type FinanceDailyClose struct {
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	CloseDate       pgtype.Date
+	Timezone        string
+	SiteID          pgtype.UUID
+	MachineID       pgtype.UUID
+	IdempotencyKey  string
+	GrossSalesMinor int64
+	DiscountMinor   int64
+	RefundMinor     int64
+	NetMinor        int64
+	CashMinor       int64
+	QrWalletMinor   int64
+	FailedMinor     int64
+	PendingMinor    int64
+	CreatedAt       time.Time
+}
+
+// Post-close corrections; immutable daily_close rows are never updated in place.
+type FinanceDailyCloseAdjustment struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	DailyCloseID   uuid.UUID
+	Reason         string
+	DeltaNetMinor  int64
+	Metadata       []byte
+	CreatedAt      time.Time
 }
 
 // Append-only monetary fact stream; no updated_at. Application: INSERT only (revoke UPDATE for app role or enforce in repo).
@@ -268,6 +425,25 @@ type Incident struct {
 	UpdatedAt         time.Time
 	OperatorSessionID pgtype.UUID
 	Metadata          []byte
+}
+
+// Operator-visible machine anomalies (inventory + operational detectors); open rows deduped by (machine_id, fingerprint); resolve/ignore closes rows for audit trails.
+type InventoryAnomaly struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	AnomalyType    string
+	Status         string
+	Fingerprint    string
+	SlotCode       pgtype.Text
+	ProductID      pgtype.UUID
+	Payload        []byte
+	DetectedAt     time.Time
+	ResolvedAt     pgtype.Timestamptz
+	ResolvedBy     pgtype.UUID
+	ResolutionNote pgtype.Text
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // Optional physical count visit context; link operator_session_id when known.
@@ -310,17 +486,29 @@ type InventoryEvent struct {
 }
 
 type Machine struct {
-	ID                uuid.UUID
-	OrganizationID    uuid.UUID
-	SiteID            uuid.UUID
-	HardwareProfileID pgtype.UUID
-	SerialNumber      string
-	TimezoneOverride  pgtype.Text
-	Name              string
-	Status            string
-	CommandSequence   int64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	ID                          uuid.UUID
+	OrganizationID              uuid.UUID
+	SiteID                      uuid.UUID
+	HardwareProfileID           pgtype.UUID
+	SerialNumber                string
+	Code                        string
+	Model                       pgtype.Text
+	CabinetType                 string
+	CredentialVersion           int64
+	LastSeenAt                  pgtype.Timestamptz
+	TimezoneOverride            pgtype.Text
+	Name                        string
+	Status                      string
+	CommandSequence             int64
+	CredentialRevokedAt         pgtype.Timestamptz
+	CredentialRotatedAt         pgtype.Timestamptz
+	CredentialLastUsedAt        pgtype.Timestamptz
+	ActivatedAt                 pgtype.Timestamptz
+	RevokedAt                   pgtype.Timestamptz
+	RotatedAt                   pgtype.Timestamptz
+	CreatedAt                   time.Time
+	UpdatedAt                   time.Time
+	PublishedPlanogramVersionID pgtype.UUID
 }
 
 // Links domain actions to operator_session_id when known; resource_type/resource_id are polymorphic (e.g. command_ledger uuid as text).
@@ -336,6 +524,19 @@ type MachineActionAttribution struct {
 	Metadata          []byte
 	// Optional request/correlation id aligned with device and auth event tracing.
 	CorrelationID pgtype.UUID
+}
+
+type MachineActivationClaim struct {
+	ID               uuid.UUID
+	ActivationCodeID uuid.UUID
+	OrganizationID   uuid.UUID
+	MachineID        uuid.UUID
+	FingerprintHash  []byte
+	ClaimedAt        time.Time
+	IpAddress        string
+	UserAgent        string
+	Result           string
+	FailureReason    string
 }
 
 type MachineActivationCode struct {
@@ -439,26 +640,88 @@ type MachineConfig struct {
 	CreatedAt         time.Time
 }
 
+// Staged rollout of machine_config_versions with optional canary and rollback lineage.
+type MachineConfigRollout struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	TargetVersionID   uuid.UUID
+	PreviousVersionID pgtype.UUID
+	Status            string
+	CanaryPercent     pgtype.Numeric
+	ScopeType         string
+	SiteID            pgtype.UUID
+	MachineID         pgtype.UUID
+	HardwareProfileID pgtype.UUID
+	Metadata          []byte
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+// Logical remote-config bundles for staged rollout (distinct from machine_configs apply log).
+type MachineConfigVersion struct {
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
+	VersionLabel    string
+	ConfigPayload   []byte
+	ParentVersionID pgtype.UUID
+	CreatedAt       time.Time
+}
+
+type MachineCredential struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	MachineID         uuid.UUID
+	CredentialVersion int64
+	SecretHash        []byte
+	Status            string
+	CreatedAt         time.Time
+	RotatedAt         pgtype.Timestamptz
+	RevokedAt         pgtype.Timestamptz
+	LastUsedAt        pgtype.Timestamptz
+}
+
 // Single current row per machine; updated by telemetry state/metrics workers — not a raw ingest log.
 type MachineCurrentSnapshot struct {
-	MachineID           uuid.UUID
-	OrganizationID      uuid.UUID
-	SiteID              uuid.UUID
-	ReportedFingerprint pgtype.Text
-	MetricsFingerprint  pgtype.Text
-	ReportedState       []byte
-	MetricsState        []byte
-	LastHeartbeatAt     pgtype.Timestamptz
-	AppVersion          pgtype.Text
-	FirmwareVersion     pgtype.Text
-	AndroidID           pgtype.Text
-	SimSerial           pgtype.Text
-	SimIccid            pgtype.Text
-	DeviceModel         pgtype.Text
-	OsVersion           pgtype.Text
-	LastIdentityAt      pgtype.Timestamptz
-	LastCheckInAt       pgtype.Timestamptz
-	UpdatedAt           time.Time
+	MachineID                          uuid.UUID
+	OrganizationID                     uuid.UUID
+	SiteID                             uuid.UUID
+	ReportedFingerprint                pgtype.Text
+	MetricsFingerprint                 pgtype.Text
+	ReportedState                      []byte
+	MetricsState                       []byte
+	LastHeartbeatAt                    pgtype.Timestamptz
+	AppVersion                         pgtype.Text
+	FirmwareVersion                    pgtype.Text
+	AndroidID                          pgtype.Text
+	SimSerial                          pgtype.Text
+	SimIccid                           pgtype.Text
+	DeviceModel                        pgtype.Text
+	OsVersion                          pgtype.Text
+	LastIdentityAt                     pgtype.Timestamptz
+	LastCheckInAt                      pgtype.Timestamptz
+	UpdatedAt                          time.Time
+	LastAcknowledgedConfigRevision     pgtype.Int4
+	LastAcknowledgedPlanogramVersionID pgtype.UUID
+}
+
+type MachineDeviceCertificate struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	MachineID         uuid.UUID
+	FingerprintSha256 []byte
+	SerialNumber      string
+	SubjectDn         string
+	IssuerDn          pgtype.Text
+	SansJson          []byte
+	NotBefore         time.Time
+	NotAfter          time.Time
+	Status            string
+	SupersededBy      pgtype.UUID
+	RevokedAt         pgtype.Timestamptz
+	RevokeReason      pgtype.Text
+	Metadata          []byte
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type MachineHardwareProfile struct {
@@ -467,6 +730,21 @@ type MachineHardwareProfile struct {
 	Name           string
 	Spec           []byte
 	CreatedAt      time.Time
+}
+
+type MachineIdempotencyKey struct {
+	ID               uuid.UUID
+	OrganizationID   uuid.UUID
+	MachineID        uuid.UUID
+	Operation        string
+	IdempotencyKey   string
+	RequestHash      []byte
+	ResponseSnapshot []byte
+	Status           string
+	FirstSeenAt      time.Time
+	LastSeenAt       time.Time
+	ExpiresAt        time.Time
+	TraceID          string
 }
 
 // Operational/security incidents promoted from telemetry; not raw high-frequency logs.
@@ -482,6 +760,15 @@ type MachineIncident struct {
 	UpdatedAt time.Time
 }
 
+type MachineLineage struct {
+	ID                 uuid.UUID
+	OrganizationID     uuid.UUID
+	PriorMachineID     uuid.UUID
+	SuccessorMachineID uuid.UUID
+	Reason             pgtype.Text
+	CreatedAt          time.Time
+}
+
 // Physical or logical sub-units on a machine (coin, motor bank, etc.).
 type MachineModule struct {
 	ID         uuid.UUID
@@ -490,6 +777,31 @@ type MachineModule struct {
 	ModuleCode pgtype.Text
 	Metadata   []byte
 	CreatedAt  time.Time
+}
+
+// Optional per-machine MQTT username; secret_ref is an opaque pointer to a secret manager (never store broker passwords in this row).
+type MachineMqttCredential struct {
+	MachineID   uuid.UUID
+	BrokerScope string
+	Username    pgtype.Text
+	SecretRef   pgtype.Text
+	UpdatedAt   time.Time
+}
+
+type MachineOfflineEvent struct {
+	ID               uuid.UUID
+	OrganizationID   uuid.UUID
+	MachineID        uuid.UUID
+	OfflineSequence  int64
+	EventType        string
+	EventID          string
+	ClientEventID    string
+	OccurredAt       time.Time
+	ReceivedAt       time.Time
+	Payload          []byte
+	ProcessingStatus string
+	ProcessingError  string
+	IdempotencyKey   string
 }
 
 // Append-only auth audit for operator sessions; do not UPDATE rows.
@@ -528,6 +840,40 @@ type MachineOperatorSession struct {
 	UpdatedAt   time.Time
 }
 
+type MachinePlanogramDraft struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	Status         string
+	Snapshot       []byte
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type MachinePlanogramSlot struct {
+	ID              uuid.UUID
+	VersionID       uuid.UUID
+	CabinetCode     string
+	LayoutKey       string
+	LayoutRevision  int32
+	SlotCode        string
+	LegacySlotIndex pgtype.Int4
+	ProductID       pgtype.UUID
+	MaxQuantity     int32
+	PriceMinor      int64
+}
+
+type MachinePlanogramVersion struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	VersionNo      int32
+	Snapshot       []byte
+	SourceDraftID  pgtype.UUID
+	PublishedAt    time.Time
+	PublishedBy    pgtype.UUID
+}
+
 type MachinePriceOverride struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
@@ -538,6 +884,31 @@ type MachinePriceOverride struct {
 	ValidFrom      time.Time
 	ValidTo        pgtype.Timestamptz
 	CreatedAt      time.Time
+}
+
+type MachineProvisioningBatch struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	SiteID            uuid.UUID
+	HardwareProfileID pgtype.UUID
+	CabinetType       string
+	Status            string
+	MachineCount      int32
+	Metadata          []byte
+	CreatedBy         pgtype.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type MachineProvisioningBatchMachine struct {
+	ID               uuid.UUID
+	BatchID          uuid.UUID
+	OrganizationID   uuid.UUID
+	MachineID        uuid.UUID
+	SerialNumber     string
+	ActivationCodeID pgtype.UUID
+	RowNo            int32
+	CreatedAt        time.Time
 }
 
 type MachineReconciliationSession struct {
@@ -554,6 +925,36 @@ type MachineReconciliationSession struct {
 	// actual - expected under session convention when closed.
 	VarianceAmountMinor int64
 	Status              string
+}
+
+type MachineRuntimeRefreshToken struct {
+	ID             uuid.UUID
+	MachineID      uuid.UUID
+	OrganizationID uuid.UUID
+	TokenHash      []byte
+	ExpiresAt      time.Time
+	CreatedAt      time.Time
+	RevokedAt      pgtype.Timestamptz
+	LastUsedAt     pgtype.Timestamptz
+	RotatedAt      pgtype.Timestamptz
+}
+
+type MachineSession struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	MachineID         uuid.UUID
+	CredentialID      uuid.UUID
+	RefreshTokenHash  []byte
+	AccessTokenJti    pgtype.Text
+	RefreshTokenJti   string
+	CredentialVersion int64
+	Status            string
+	IssuedAt          time.Time
+	ExpiresAt         time.Time
+	RevokedAt         pgtype.Timestamptz
+	LastUsedAt        pgtype.Timestamptz
+	UserAgent         pgtype.Text
+	IpAddress         pgtype.Text
 }
 
 type MachineShadow struct {
@@ -619,6 +1020,35 @@ type MachineStateTransition struct {
 	OccurredAt    time.Time
 }
 
+type MachineSyncCursor struct {
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	StreamName     string
+	LastSequence   int64
+	LastSyncedAt   pgtype.Timestamptz
+	UpdatedAt      time.Time
+}
+
+type MachineTagAssignment struct {
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	TagID          uuid.UUID
+	CreatedAt      time.Time
+}
+
+type MachineTechnicianAssignment struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	UserID         uuid.UUID
+	Role           string
+	Scope          bool
+	ActiveFrom     time.Time
+	ActiveUntil    pgtype.Timestamptz
+	CreatedBy      pgtype.UUID
+	CreatedAt      time.Time
+}
+
 // One logical connection from edge to cloud for correlation of attempts and raw frames.
 type MachineTransportSession struct {
 	ID           uuid.UUID
@@ -634,6 +1064,37 @@ type MachineTransportSession struct {
 	SessionMetadata  []byte
 }
 
+type MediaAsset struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	Kind              string
+	OriginalObjectKey string
+	ThumbObjectKey    string
+	DisplayObjectKey  string
+	SourceType        string
+	OriginalUrl       pgtype.Text
+	MimeType          pgtype.Text
+	SizeBytes         pgtype.Int8
+	Sha256            pgtype.Text
+	Width             pgtype.Int4
+	Height            pgtype.Int4
+	ObjectVersion     int32
+	Etag              pgtype.Text
+	Status            string
+	CreatedBy         pgtype.UUID
+	FailedReason      pgtype.Text
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type MessagingConsumerDedupe struct {
+	ID            int64
+	ConsumerName  string
+	BrokerSubject string
+	BrokerMsgID   string
+	ProcessedAt   time.Time
+}
+
 type Order struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
@@ -646,6 +1107,19 @@ type Order struct {
 	IdempotencyKey pgtype.Text
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+}
+
+// Append-only commerce order lifecycle events (reconciliation actions, refunds, operator visibility).
+type OrderTimeline struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	OrderID        uuid.UUID
+	EventType      string
+	ActorType      string
+	ActorID        pgtype.Text
+	Payload        []byte
+	OccurredAt     time.Time
+	CreatedAt      time.Time
 }
 
 type Organization struct {
@@ -669,22 +1143,55 @@ type OtaArtifact struct {
 }
 
 type OtaCampaign struct {
+	ID                 uuid.UUID
+	OrganizationID     uuid.UUID
+	Name               string
+	ArtifactID         uuid.UUID
+	ArtifactVersion    pgtype.Text
+	CampaignType       string
+	RolloutStrategy    string
+	CanaryPercent      int32
+	RollbackArtifactID pgtype.UUID
+	CreatedBy          pgtype.UUID
+	ApprovedBy         pgtype.UUID
+	ApprovedAt         pgtype.Timestamptz
+	Status             string
+	RolloutNextOffset  int32
+	PausedAt           pgtype.Timestamptz
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+type OtaCampaignEvent struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	Name           string
-	ArtifactID     uuid.UUID
-	Strategy       string
-	Status         string
+	CampaignID     uuid.UUID
+	EventType      string
+	Payload        []byte
+	ActorID        pgtype.UUID
 	CreatedAt      time.Time
 }
 
-type OtaTarget struct {
+type OtaCampaignTarget struct {
 	ID         uuid.UUID
 	CampaignID uuid.UUID
 	MachineID  uuid.UUID
 	State      string
 	LastError  pgtype.Text
 	UpdatedAt  time.Time
+}
+
+type OtaMachineResult struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	CampaignID     uuid.UUID
+	MachineID      uuid.UUID
+	Wave           string
+	CommandID      pgtype.UUID
+	Status         string
+	LastError      pgtype.Text
+	UpdatedAt      time.Time
+	CreatedAt      time.Time
 }
 
 type OutboxEvent struct {
@@ -703,6 +1210,23 @@ type OutboxEvent struct {
 	LastPublishAttemptAt pgtype.Timestamptz
 	NextPublishAfter     pgtype.Timestamptz
 	DeadLetteredAt       pgtype.Timestamptz
+	Status               string
+	LockedBy             pgtype.Text
+	LockedUntil          pgtype.Timestamptz
+	UpdatedAt            time.Time
+	MaxPublishAttempts   int32
+}
+
+type PasswordResetToken struct {
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	OrganizationID uuid.UUID
+	TokenHash      []byte
+	ExpiresAt      time.Time
+	UsedAt         pgtype.Timestamptz
+	CreatedAt      time.Time
+	Status         string
+	RevokedAt      pgtype.Timestamptz
 }
 
 type Payment struct {
@@ -731,10 +1255,32 @@ type PaymentAttempt struct {
 	CreatedAt         time.Time
 }
 
+// Chargeback/dispute foundation; links to internal order/payment when known.
+type PaymentDispute struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	Provider          string
+	ProviderDisputeID string
+	PaymentID         pgtype.UUID
+	OrderID           pgtype.UUID
+	AmountMinor       int64
+	Currency          string
+	Reason            pgtype.Text
+	Status            string
+	OpenedAt          time.Time
+	ResolvedAt        pgtype.Timestamptz
+	ResolvedBy        pgtype.UUID
+	ResolutionNote    pgtype.Text
+	Metadata          []byte
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
 // Raw PSP notifications; payment_id nullable for orphan webhooks until correlated.
 type PaymentProviderEvent struct {
 	ID                  int64
 	PaymentID           pgtype.UUID
+	OrganizationID      pgtype.UUID
 	Provider            string
 	ProviderRef         pgtype.Text
 	WebhookEventID      pgtype.Text
@@ -743,6 +1289,36 @@ type PaymentProviderEvent struct {
 	EventType           string
 	Payload             []byte
 	ReceivedAt          time.Time
+	ValidationStatus    string
+	ProviderMetadata    []byte
+	// When true, retention cleanup must not purge this PSP webhook evidence.
+	LegalHold bool
+	// Whether HTTP-layer signature verification succeeded before persistence.
+	SignatureValid bool
+	// When webhook processing successfully finished (payment state / side effects committed).
+	AppliedAt pgtype.Timestamptz
+	// Ingress/processing outcome for audit and replay diagnostics.
+	IngressStatus string
+	// When ingress_status is failed, short operator-safe error text.
+	IngressError pgtype.Text
+}
+
+// Imported PSP settlement reports for finance reconciliation.
+type PaymentProviderSettlement struct {
+	ID                   uuid.UUID
+	OrganizationID       uuid.UUID
+	Provider             string
+	ProviderSettlementID string
+	GrossAmountMinor     int64
+	FeeAmountMinor       int64
+	NetAmountMinor       int64
+	Currency             string
+	SettlementDate       pgtype.Date
+	TransactionRefs      []byte
+	Status               string
+	Metadata             []byte
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 type PaymentReconciliation struct {
@@ -758,6 +1334,26 @@ type PaymentReconciliation struct {
 	MismatchReason      pgtype.Text
 }
 
+// Compatibility projection over commerce_reconciliation_cases (canonical table).
+type PaymentReconciliationCase struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	MachineID      pgtype.UUID
+	OrderID        pgtype.UUID
+	PaymentID      pgtype.UUID
+	Provider       pgtype.Text
+	CaseType       string
+	Severity       string
+	Status         string
+	Reason         string
+	Metadata       []byte
+	CorrelationKey string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	ResolvedAt     pgtype.Timestamptz
+	ResolvedBy     pgtype.UUID
+}
+
 type Planogram struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
@@ -768,15 +1364,29 @@ type Planogram struct {
 	CreatedAt      time.Time
 }
 
-type PlatformAuthAccount struct {
+type PlanogramTemplate struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
-	Email          string
-	PasswordHash   string
-	Roles          []string
-	Status         string
+	Name           string
+	Description    string
+	Snapshot       []byte
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+}
+
+type PlatformAuthAccount struct {
+	ID               uuid.UUID
+	OrganizationID   uuid.UUID
+	Email            string
+	PasswordHash     string
+	Roles            []string
+	Status           string
+	FailedLoginCount int32
+	LockedUntil      pgtype.Timestamptz
+	LastLoginAt      pgtype.Timestamptz
+	InvitedAt        pgtype.Timestamptz
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 type PriceBook struct {
@@ -787,11 +1397,13 @@ type PriceBook struct {
 	EffectiveFrom  time.Time
 	EffectiveTo    pgtype.Timestamptz
 	IsDefault      bool
+	Active         bool
 	ScopeType      string
 	SiteID         pgtype.UUID
 	MachineID      pgtype.UUID
 	Priority       int32
 	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type PriceBookItem struct {
@@ -800,6 +1412,15 @@ type PriceBookItem struct {
 	PriceBookID    uuid.UUID
 	ProductID      uuid.UUID
 	UnitPriceMinor int64
+	CreatedAt      time.Time
+}
+
+type PriceBookTarget struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	PriceBookID    uuid.UUID
+	SiteID         pgtype.UUID
+	MachineID      pgtype.UUID
 	CreatedAt      time.Time
 }
 
@@ -824,19 +1445,49 @@ type Product struct {
 }
 
 type ProductImage struct {
-	ID          uuid.UUID
-	ProductID   uuid.UUID
-	StorageKey  string
-	CdnUrl      pgtype.Text
-	ThumbCdnUrl pgtype.Text
-	ContentHash pgtype.Text
-	Width       pgtype.Int4
-	Height      pgtype.Int4
-	MimeType    pgtype.Text
-	AltText     string
-	SortOrder   int32
-	IsPrimary   bool
-	CreatedAt   time.Time
+	ID           uuid.UUID
+	ProductID    uuid.UUID
+	StorageKey   string
+	CdnUrl       pgtype.Text
+	ThumbCdnUrl  pgtype.Text
+	ContentHash  pgtype.Text
+	Width        pgtype.Int4
+	Height       pgtype.Int4
+	MimeType     pgtype.Text
+	AltText      string
+	SortOrder    int32
+	IsPrimary    bool
+	MediaAssetID pgtype.UUID
+	MediaVersion int32
+	Status       string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+// Denormalized catalog media projection per product_images row (id matches product_images.id); maintained by triggers in migrations.
+type ProductMedium struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	ProductID         uuid.UUID
+	MediaType         string
+	SourceType        string
+	OriginalObjectKey pgtype.Text
+	ThumbObjectKey    pgtype.Text
+	DisplayObjectKey  pgtype.Text
+	OriginalUrl       pgtype.Text
+	ThumbUrl          pgtype.Text
+	DisplayUrl        pgtype.Text
+	MimeType          pgtype.Text
+	Width             pgtype.Int4
+	Height            pgtype.Int4
+	SizeBytes         int64
+	ContentHash       pgtype.Text
+	MediaVersion      int32
+	SortOrder         int32
+	Status            string
+	CreatedBy         pgtype.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type ProductTag struct {
@@ -850,6 +1501,9 @@ type Promotion struct {
 	OrganizationID   uuid.UUID
 	Name             string
 	ApprovalStatus   string
+	LifecycleStatus  string
+	Priority         int32
+	Stackable        bool
 	StartsAt         time.Time
 	EndsAt           time.Time
 	BudgetLimitMinor pgtype.Int8
@@ -878,6 +1532,7 @@ type PromotionTarget struct {
 	MachineID            pgtype.UUID
 	SiteID               pgtype.UUID
 	OrganizationTargetID pgtype.UUID
+	TagID                pgtype.UUID
 	CreatedAt            time.Time
 }
 
@@ -936,12 +1591,59 @@ type Refund struct {
 	SettlementBatchID    pgtype.UUID
 }
 
+// Human-initiated refund review rows linked to ledger refunds.refunds after PSP processing.
+type RefundRequest struct {
+	ID               uuid.UUID
+	OrganizationID   uuid.UUID
+	OrderID          uuid.UUID
+	PaymentID        pgtype.UUID
+	RefundID         pgtype.UUID
+	AmountMinor      int64
+	Currency         string
+	Reason           pgtype.Text
+	Status           string
+	ProviderRefundID pgtype.Text
+	RequestedBy      pgtype.UUID
+	ApprovedBy       pgtype.UUID
+	IdempotencyKey   pgtype.Text
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	CompletedAt      pgtype.Timestamptz
+}
+
 type Region struct {
 	ID             uuid.UUID
 	OrganizationID uuid.UUID
 	Name           string
 	Code           string
 	CreatedAt      time.Time
+}
+
+type RolloutCampaign struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	RolloutType    string
+	TargetVersion  string
+	Status         string
+	Strategy       []byte
+	CreatedBy      pgtype.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	StartedAt      pgtype.Timestamptz
+	CompletedAt    pgtype.Timestamptz
+	CancelledAt    pgtype.Timestamptz
+}
+
+type RolloutTarget struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	CampaignID     uuid.UUID
+	MachineID      uuid.UUID
+	Status         string
+	ErrMessage     pgtype.Text
+	CommandID      pgtype.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // PSP settlement window; link payments via settlement_batch_id when batched.
@@ -962,7 +1664,11 @@ type Site struct {
 	Name           string
 	Address        []byte
 	Timezone       string
+	Code           string
+	ContactInfo    []byte
+	Status         string
 	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type Slot struct {
@@ -991,17 +1697,24 @@ type Technician struct {
 	Email           pgtype.Text
 	Phone           pgtype.Text
 	ExternalSubject pgtype.Text
+	Status          string
 	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type TechnicianMachineAssignment struct {
-	ID           uuid.UUID
-	TechnicianID uuid.UUID
-	MachineID    uuid.UUID
-	Role         string
-	ValidFrom    time.Time
-	ValidTo      pgtype.Timestamptz
-	CreatedAt    time.Time
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	TechnicianID   uuid.UUID
+	MachineID      uuid.UUID
+	Role           string
+	Scope          string
+	Status         string
+	ValidFrom      time.Time
+	ValidTo        pgtype.Timestamptz
+	CreatedBy      pgtype.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // Aggregated telemetry; workers upsert buckets — raw MQTT metrics are not stored in Postgres.

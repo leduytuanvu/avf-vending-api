@@ -1,8 +1,13 @@
-.PHONY: tidy fmt fmt-apply fmt-check vet test test-short build proto sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates verify-workflows ci-workflows check-placeholders check-wiring check-migrations verify-governance verify-enterprise-release build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full
+.PHONY: tidy fmt fmt-apply fmt-check vet test test-short test-e2e-local build proto proto-generate proto-check machine-grpc-docs-check machine-grpc-smoke api-contract-check api-contract-test sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates verify-workflows ci-workflows check-placeholders check-wiring check-migrations verify-governance verify-enterprise-release build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full loadtest-build loadtest-small loadtest-100 loadtest-500 loadtest-1000
 
 BIN_DIR := bin
 GO ?= go
-BUF ?= buf
+# Pinned buf invocation so proto-check works locally without a PATH-installed buf binary.
+BUF_VERSION := v1.47.0
+BUF ?= $(GO) run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
+# Local breaking-change baseline for proto-check. Override in CI/PR jobs when comparing to a remote base branch.
+PROTO_BREAKING_AGAINST ?= ../.git#branch=HEAD,subdir=proto
+PROTO_BREAKING_PATH ?= avf/machine/v1
 # Pin sqlc to match CI (.github/workflows/ci.yml); uses go run so PATH sqlc is not required.
 SQLC_VERSION := v1.29.0
 SQLC_GEN := $(GO) run github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION)
@@ -32,10 +37,25 @@ test:
 test-short:
 	$(GO) test ./... -short
 
+# Integration correctness scenarios against Postgres (machine idempotency, commerce vend/webhooks, MQTT commands,
+# reconciliation). Requires TEST_DATABASE_URL with migrations applied (tests run goose up automatically).
+# CI runs `make test-short` without DB; use this locally or in dedicated integration jobs.
+# P06 naming prefix: TestP06_* e2e/storm scenarios; legacy machine replay tests keep explicit names.
+test-e2e-local:
+	$(GO) test -count=1 -timeout=45m \
+		./internal/e2e/correctness/... \
+		./internal/grpcserver \
+		./internal/platform/auth \
+		./internal/app/background \
+		-run 'TestP06_|TestMachineReplayLedger_|TestMachineOfflineSync_'
+
 # Regenerate sqlc and fail if generated Go drifts from what is committed.
 sqlc-check:
 	$(SQLC_GEN) generate
 	git diff --exit-code -- internal/gen/db/
+
+# --- API contract (OpenAPI + Postman + proto + sqlc + machine gRPC docs) ---
+# See docs/api/api-contract-checks.md and scripts/api-contract-check.sh (Git Bash wrapper).
 
 # Regenerate embedded OpenAPI 3.0 + docs/swagger/docs.go from swag-style comments (see tools/build_openapi.py).
 swagger:
@@ -43,15 +63,17 @@ swagger:
 
 # Fail if generated Swagger artifacts are out of date (run `make swagger` locally, then commit).
 swagger-check: swagger
+	"$(PY)" tools/openapi_verify_release.py
 	git diff --exit-code -- docs/swagger/
 
 # Regenerate Postman v2.1 collection + environment files (native artifacts; not a replacement for /swagger/doc.json).
 postman-generate: swagger
 	"$(PY)" tools/build_postman_collection.py
 
-# Validate committed Postman JSON, production/staging safety flags, and no secret-like content (offline).
-postman-check:
+# Validate committed Postman JSON, production/staging safety flags, no secret-like content, and generator drift (offline).
+postman-check: postman-generate
 	"$(PY)" tools/check_postman_artifacts.py
+	git diff --exit-code -- docs/postman/
 
 check-placeholders:
 	bash scripts/check_production_placeholders.sh
@@ -63,13 +85,14 @@ check-migrations:
 	bash scripts/ci/verify_migrations.sh
 
 # Repo-local gates (no Postgres or unit tests). Use before push; GitHub Actions runs `make ci-gates` and compose validation separately.
-ci-gates: fmt-check vet check-placeholders check-wiring check-migrations sqlc-check swagger-check postman-check
+ci-gates: fmt-check vet check-placeholders check-wiring check-migrations api-contract-check
 
 # fmt (check), vet, all package tests, and build. The Go CI job also runs tidy, sqlc, swagger, etc. (see
 # ci-gates) and `make test-short` in the workflow. For full static gates: make ci-gates; for short tests: make test-short
 ci: fmt vet test build
 
 # Mirrors GitHub Actions: same gates plus full go test (set TEST_DATABASE_URL for postgres tests).
+# For targeted correctness integration only: make test-e2e-local (requires TEST_DATABASE_URL).
 ci-full: ci-gates test
 
 # Local mirror of the workflow quality job in .github/workflows/ci.yml (actionlint + verify_workflow_contracts.sh).
@@ -94,7 +117,7 @@ verify-governance:
 
 # Enterprise release readiness (pilot gate; scale tiers still need storm evidence — see production-release-readiness.md):
 #   1) go test ./...
-#   2) make swagger + make swagger-check
+#   2) make api-contract-check (sqlc + swagger + postman + proto + machine gRPC docs)
 #   3) bash -n on scripts/**/*.sh and deployments/**/*.sh
 #   4) docker compose config against *example* env (offline)
 #   5) tools/openapi_verify_release.py (production+local servers, required P0 paths, Bearer on /v1, write examples, 2xx+error examples, no planned paths, no secret-like examples)
@@ -108,8 +131,29 @@ verify-enterprise-release:
 build-release-evidence-pack:
 	bash deployments/prod/scripts/build_release_evidence_pack.sh
 
-proto:
-	cd proto && $(BUF) generate
+proto: proto-generate
+
+proto-generate:
+	cd proto && $(BUF) generate --exclude-path avf/internal
+	cd proto && $(BUF) generate --template buf.gen.avfinternal.yaml --path avf/internal/v1
+
+proto-check: proto-generate
+	cd proto && $(BUF) lint
+	BUF="$(BUF)" "$(PY)" scripts/ci/check_proto_breaking.py --against "$(PROTO_BREAKING_AGAINST)" --path "$(PROTO_BREAKING_PATH)"
+	git diff --exit-code -- proto/avf/machine/v1/ proto/avf/v1/ internal/gen/avfinternalv1/
+
+machine-grpc-docs-check:
+	"$(PY)" scripts/ci/check_machine_grpc_docs.py
+
+# Requires grpcurl on PATH (optional CI/dev smoke against localhost:9090).
+machine-grpc-smoke:
+	bash scripts/grpc_machine_smoke.sh
+
+# Aggregate OpenAPI/Swagger + Postman + protobuf + sqlc + machine gRPC docs consistency gates (offline).
+api-contract-check: sqlc-check swagger-check postman-check proto-check machine-grpc-docs-check
+
+api-contract-test:
+	"$(PY)" -m unittest discover -s tests -p "*_test.py"
 
 # Regenerate internal/gen/db after editing db/queries/*.sql or db/schema (pinned sqlc via SQLC_VERSION).
 sqlc:
@@ -258,3 +302,24 @@ prod-validate-telemetry:
 	bash $(PROD_DIR)/scripts/validate_prod_telemetry.sh
 
 prod-smoke-full: prod-validate-telemetry prod-smoke
+
+# --- Load testing (optional; refuses -execute when LOAD_TEST_ENV=production) ---
+loadtest-build:
+	mkdir -p $(BIN_DIR)
+	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/avf-loadtest ./tools/loadtest/cmd/avf-loadtest
+
+# Safe default: dry-run plan only (no traffic). Use EXECUTE_LOAD_TEST=true or -execute after staging checklist.
+loadtest-small:
+	$(GO) run ./tools/loadtest/cmd/avf-loadtest -scenario storm
+
+# Staging-oriented fleet storms (100 / 500 / 1000 machines). Requires LOADTEST_MACHINE_MANIFEST and broker/admin/webhook env as needed.
+# Refuses LOAD_TEST_ENV=production with -execute inside avf-loadtest.
+loadtest-100:
+	bash scripts/loadtest/run_fleet_storm.sh 100 $(EXTRA_LOADTEST_FLAGS)
+
+loadtest-500:
+	bash scripts/loadtest/run_fleet_storm.sh 500 $(EXTRA_LOADTEST_FLAGS)
+
+# Prefer dedicated staging / perf stacks for 1000-machine simulations (see docs/testing/load-test.md).
+loadtest-1000:
+	bash scripts/loadtest/run_fleet_storm.sh 1000 $(EXTRA_LOADTEST_FLAGS)

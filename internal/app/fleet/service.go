@@ -10,11 +10,17 @@ import (
 )
 
 var allowedMachineStatuses = map[string]struct{}{
-	"provisioning": {},
-	"online":       {},
-	"offline":      {},
-	"maintenance":  {},
-	"retired":      {},
+	"draft":          {},
+	"provisioned":    {},
+	"active":         {},
+	"maintenance":    {},
+	"suspended":      {},
+	"retired":        {},
+	"decommissioned": {},
+	"compromised":    {},
+	"provisioning":   {},
+	"online":         {},
+	"offline":        {},
 }
 
 // Service orchestrates fleet workflows on top of FleetRepository.
@@ -38,6 +44,10 @@ type CreateMachineInput struct {
 	SiteID            uuid.UUID
 	HardwareProfileID *uuid.UUID
 	SerialNumber      string
+	Code              string
+	Model             string
+	CabinetType       string
+	Timezone          string
 	Name              string
 	Status            string
 }
@@ -49,6 +59,12 @@ type UpdateMachineMetadataInput struct {
 	Name              *string
 	Status            *string
 	HardwareProfileID *uuid.UUID
+	SiteID            *uuid.UUID
+	SerialNumber      *string
+	Code              *string
+	Model             *string
+	CabinetType       *string
+	Timezone          *string
 }
 
 // AssignTechnicianInput binds a technician to a machine with a role label.
@@ -57,6 +73,10 @@ type AssignTechnicianInput struct {
 	MachineID      uuid.UUID
 	TechnicianID   uuid.UUID
 	Role           string
+	Scope          string
+	CreatedBy      *uuid.UUID
+	// ActorTechnicianID is the caller's technician identity from JWT (if any). When it matches TechnicianID, assignment is rejected.
+	ActorTechnicianID uuid.UUID
 }
 
 // CreateMachine validates scope and inserts a machine row.
@@ -64,25 +84,31 @@ func (s *Service) CreateMachine(ctx context.Context, in CreateMachineInput) (dom
 	if err := validateNonZero("organization_id", in.OrganizationID); err != nil {
 		return domainfleet.Machine{}, err
 	}
-	if err := validateNonZero("site_id", in.SiteID); err != nil {
-		return domainfleet.Machine{}, err
-	}
 	serial := strings.TrimSpace(in.SerialNumber)
 	if serial == "" {
 		return domainfleet.Machine{}, errors.Join(ErrInvalidArgument, errors.New("serial_number is required"))
 	}
+	if strings.TrimSpace(in.Status) == "" {
+		in.Status = "draft"
+	}
 	if err := validateMachineStatus(in.Status); err != nil {
+		return domainfleet.Machine{}, err
+	}
+	if err := validateNonZero("site_id", in.SiteID); err != nil {
 		return domainfleet.Machine{}, err
 	}
 	if err := s.repo.AssertSiteInOrganization(ctx, in.OrganizationID, in.SiteID); err != nil {
 		return domainfleet.Machine{}, err
 	}
-	// TODO: When hardware profiles are exposed on FleetRepository, assert profile belongs to organization_id.
 	return s.repo.InsertMachine(ctx, InsertMachineParams{
 		OrganizationID:    in.OrganizationID,
 		SiteID:            in.SiteID,
 		HardwareProfileID: in.HardwareProfileID,
 		SerialNumber:      serial,
+		Code:              strings.TrimSpace(in.Code),
+		Model:             strings.TrimSpace(in.Model),
+		CabinetType:       strings.TrimSpace(in.CabinetType),
+		Timezone:          strings.TrimSpace(in.Timezone),
 		Name:              strings.TrimSpace(in.Name),
 		Status:            in.Status,
 	})
@@ -96,7 +122,7 @@ func (s *Service) UpdateMachineMetadata(ctx context.Context, in UpdateMachineMet
 	if err := validateNonZero("machine_id", in.MachineID); err != nil {
 		return domainfleet.Machine{}, err
 	}
-	if in.Name == nil && in.Status == nil && in.HardwareProfileID == nil {
+	if in.Name == nil && in.Status == nil && in.HardwareProfileID == nil && in.SiteID == nil && in.SerialNumber == nil && in.Code == nil && in.Model == nil && in.CabinetType == nil && in.Timezone == nil {
 		return domainfleet.Machine{}, errors.Join(ErrInvalidArgument, errors.New("at least one field must be updated"))
 	}
 	if in.Status != nil {
@@ -111,12 +137,23 @@ func (s *Service) UpdateMachineMetadata(ctx context.Context, in UpdateMachineMet
 	if current.OrganizationID != in.OrganizationID {
 		return domainfleet.Machine{}, ErrOrgMismatch
 	}
+	if in.SiteID != nil {
+		if err := s.repo.AssertSiteInOrganization(ctx, in.OrganizationID, *in.SiteID); err != nil {
+			return domainfleet.Machine{}, err
+		}
+	}
 	return s.repo.UpdateMachineMetadata(ctx, UpdateMachineMetadataParams{
 		OrganizationID:    in.OrganizationID,
 		MachineID:         in.MachineID,
 		Name:              trimStringPtr(in.Name),
 		Status:            in.Status,
 		HardwareProfileID: in.HardwareProfileID,
+		SiteID:            in.SiteID,
+		SerialNumber:      trimStringPtr(in.SerialNumber),
+		Code:              trimStringPtr(in.Code),
+		Model:             trimStringPtr(in.Model),
+		CabinetType:       trimStringPtr(in.CabinetType),
+		Timezone:          trimStringPtr(in.Timezone),
 	})
 }
 
@@ -135,6 +172,9 @@ func (s *Service) AssignTechnicianToMachine(ctx context.Context, in AssignTechni
 	if role == "" {
 		return domainfleet.TechnicianMachineAssignment{}, errors.Join(ErrInvalidArgument, errors.New("role is required"))
 	}
+	if in.ActorTechnicianID != uuid.Nil && in.ActorTechnicianID == in.TechnicianID {
+		return domainfleet.TechnicianMachineAssignment{}, ErrForbiddenTechnicianSelfAssignment
+	}
 	machine, err := s.repo.GetMachine(ctx, in.MachineID)
 	if err != nil {
 		return domainfleet.TechnicianMachineAssignment{}, err
@@ -147,9 +187,12 @@ func (s *Service) AssignTechnicianToMachine(ctx context.Context, in AssignTechni
 		return domainfleet.TechnicianMachineAssignment{}, ErrOrgMismatch
 	}
 	return s.repo.InsertTechnicianMachineAssignment(ctx, InsertAssignmentParams{
-		TechnicianID: in.TechnicianID,
-		MachineID:    in.MachineID,
-		Role:         role,
+		OrganizationID: in.OrganizationID,
+		TechnicianID:   in.TechnicianID,
+		MachineID:      in.MachineID,
+		Role:           role,
+		Scope:          strings.TrimSpace(in.Scope),
+		CreatedBy:      in.CreatedBy,
 	})
 }
 

@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"strings"
 
+	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
+	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	platformrefunds "github.com/avf/avf-vending-api/internal/platform/refunds"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
@@ -35,12 +38,37 @@ func BuildTemporalWorkerActivityDeps(ctx context.Context, cfg *config.Config, po
 		_ = nc.Conn.Drain()
 		return workfloworch.ActivityDeps{}, func() {}, fmt.Errorf("bootstrap: temporal worker refund sink: %w", err)
 	}
+	store := postgres.NewStore(pool)
+	commerceSvc := appcommerce.NewService(appcommerce.Deps{
+		OrderVend:              store,
+		Lifecycle:              store,
+		SaleLines:              store,
+		WorkflowOrchestration:  workfloworch.NewDisabled(),
+		PaymentSessionRegistry: platformpayments.NewRegistry(cfg),
+	})
 	return workfloworch.ActivityDeps{
-			Lifecycle:  postgres.NewStore(pool),
-			RefundSink: sink,
+			Lifecycle:   store,
+			RefundSink:  sink,
+			VendStarter: commerceSvc,
+			CommandAcks: commandAckStore{store: store},
 		}, func() {
 			if nc != nil && nc.Conn != nil {
 				_ = nc.Conn.Drain()
 			}
 		}, nil
+}
+
+type commandAckStore struct {
+	store *postgres.Store
+}
+
+func (s commandAckStore) LatestCommandAttempt(ctx context.Context, commandID uuid.UUID) (workfloworch.CommandAttemptSnapshot, error) {
+	row, err := s.store.GetLatestMachineCommandAttemptByCommandID(ctx, commandID)
+	if err != nil {
+		return workfloworch.CommandAttemptSnapshot{}, err
+	}
+	return workfloworch.CommandAttemptSnapshot{
+		CommandID: commandID,
+		Status:    row.Status,
+	}, nil
 }

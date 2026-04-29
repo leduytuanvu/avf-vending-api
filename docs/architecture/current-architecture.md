@@ -11,12 +11,13 @@ This document freezes the **repository truth as implemented today**. It is inten
 - **MQTT device ingress:** `cmd/mqtt-ingest` subscribes to device topics and feeds the ingest pipeline.
 - **Background processing:** `cmd/worker` handles outbox dispatch, reliability scans, telemetry JetStream consumers, and retention work.
 - **Commerce reconciliation:** `cmd/reconciler` runs reconciliation passes against commerce data.
-- **Internal gRPC queries:** `cmd/api` can expose authenticated internal-only gRPC query services for machine, telemetry, and commerce reads alongside `grpc.health.v1`.
+- **Public machine gRPC (`avf.machine.v1`):** when **`MACHINE_GRPC_ENABLED=true`** (or legacy **`GRPC_ENABLED=true`** in non-production), `cmd/api` exposes native kiosk/runtime RPCs (**Machine JWT**, idempotency ledger in Postgres). Production requires **`MACHINE_GRPC_ENABLED=true`** explicitly (`internal/config/deployment_env.go`).
+- **Internal gRPC queries (`avf.internal.v1`):** optional loopback-only **read/query** services for operators/automation (**service JWT**) when **`INTERNAL_GRPC_ENABLED=true`** — never the vending app primary API.
 
 ### Partially implemented
 
 - **MQTT-first runtime plane:** device ingress and command dispatch use MQTT, but production runtime flow also depends on NATS JetStream for telemetry buffering and worker-side async processing.
-- **gRPC:** optional listener exists in `cmd/api` and currently mounts internal query/read services only; it is not used for device traffic or general workflow mutation APIs.
+- **Internal vs machine gRPC:** machine runtime surfaces are implemented on **`avf.machine.v1`**; broader internal mutation/workflow RPCs beyond read/query (`avf.internal.v1`) remain future scope.
 - **Object storage:** S3-compatible storage is live for backend artifacts when `API_ARTIFACTS_ENABLED=true`, but not yet a generalized storage plane for diagnostics or OTA.
 - **Analytics path:** ClickHouse is optional and currently used only as a worker-side outbox mirror path when analytics flags are enabled.
 - **Temporal:** selected long-running compensation/review workflows are implemented behind feature flags, with execution in `cmd/temporal-worker`; broader workflow coverage is still follow-on work.
@@ -33,7 +34,7 @@ This document freezes the **repository truth as implemented today**. It is inten
 
 | Process | Implemented today | Partial / optional | Not implemented yet |
 | ------- | ----------------- | ------------------ | ------------------- |
-| `cmd/api` | HTTP `/v1`, health, auth, admin/operator/setup/device/commerce routes; internal gRPC query services (`grpc.health.v1`, machine/telemetry/commerce reads) | Optional Swagger, metrics, MQTT publisher, artifacts, Temporal client/scheduler dial | Broader internal gRPC mutation/workflow APIs |
+| `cmd/api` | HTTP `/v1`, health, auth, admin/operator/setup/device/commerce routes; optional **`avf.machine.v1`** (Machine JWT) + optional **`avf.internal.v1`** loopback reads (`grpc.health.v1`) | Optional Swagger, metrics, MQTT publisher, artifacts, Temporal client/scheduler dial | Broader internal gRPC mutation/workflow APIs |
 | `cmd/mqtt-ingest` | MQTT subscribe + ingest pipeline, Postgres-backed ingest fallback | JetStream telemetry buffering in environments with `NATS_URL`; Prometheus listener when enabled | Separate runtime-plane service outside this monolith |
 | `cmd/worker` | Reliability scans, outbox dispatch, telemetry consumers, telemetry retention | NATS outbox publish/DLQ, ClickHouse outbox mirror, Prometheus/health listener | Standalone analytics service or separate event processor |
 | `cmd/reconciler` | Commerce reconciliation reads and logging | Optional payment probe + refund enqueue path when `RECONCILER_ACTIONS_ENABLED=true` | Full end-to-end automated remediation workflow engine |
@@ -46,14 +47,14 @@ This document freezes the **repository truth as implemented today**. It is inten
 | --------- | ------------------- | ----------------------------- | ------------------- |
 | **HTTP** | Primary control/admin/operator/setup API in `cmd/api` | Sidecar metrics/health listeners on worker and mqtt-ingest are operational endpoints, not product APIs | Separate control-plane service |
 | **MQTT** | Device ingress in `cmd/mqtt-ingest`; outbound command dispatch from API when publisher is configured | MQTT is not the only runtime dependency in production because telemetry buffering and worker consumers use NATS JetStream | Direct device-plane microservice split |
-| **gRPC** | Optional internal listener with `grpc.health.v1` and internal query services for machine, telemetry, and commerce reads | OTLP exporter uses gRPC client transport to the collector; current RPCs are read-only and JWT-authenticated | Broader internal service-to-service contracts beyond the current query surface |
+| **gRPC** | **`avf.machine.v1`** — public machine runtime when enabled (**Machine JWT**). **`avf.internal.v1`** — optional loopback query-only (**service JWT**). `grpc.health.v1` | OTLP uses gRPC client to collector; legacy OpenAPI **machine REST** remains deprecated migration bridge when `MACHINE_REST_LEGACY_ENABLED=true` | Broader internal mutation/workflow APIs beyond current read/query split |
 | **NATS JetStream** | Used for telemetry buffering/consumption and optional outbox publish/DLQ | Required in production for API and mqtt-ingest startup posture; not exposed as a public product contract | Full event backbone for every bounded context |
 
 Policy summary:
 
-- **HTTP** is the current control plane.
-- **MQTT** is the current device ingress and command transport.
-- **gRPC** is present only where it already adds value today: internal query contracts, health checks, and observability plumbing, not device/runtime transport.
+- **HTTP** is the current **admin/control** plane (User JWT); legacy machine REST routes under OpenAPI **`deprecated: true`** are not the primary kiosk runtime.
+- **MQTT** is the current device ingress and backend→device command transport (ledger + ACK paths).
+- **gRPC** — **`avf.machine.v1`** is the **primary native machine runtime** when enabled; **`avf.internal.v1`** remains optional loopback query-only (service JWT).
 - **NATS JetStream** is part of the implemented async runtime path and should be documented alongside MQTT instead of treated as future-only.
 
 ## Current data flow map
@@ -62,6 +63,8 @@ Policy summary:
 
 1. **Control plane HTTP**
    `cmd/api` -> `internal/httpserver` -> `internal/app/*` -> `internal/modules/postgres` -> PostgreSQL
+1b. **Machine runtime gRPC (when enabled)**
+   vending app -> `cmd/api` **`avf.machine.v1`** -> `internal/grpcserver` -> `internal/app/*` -> PostgreSQL (Machine JWT + Postgres idempotency ledger)
 2. **Outbound device commands**
    `cmd/api` -> `internal/app/device` -> MQTT publisher -> device broker/topic
 3. **Inbound device telemetry**
@@ -84,8 +87,10 @@ Policy summary:
 
 ```mermaid
 flowchart LR
-  client[Admin/operator/client] --> api[cmd/api HTTP]
-  api --> app[internal/app]
+  admin[Admin Web / integrations] --> api[cmd/api HTTP]
+  kiosk[Vending app] --> grpc[cmd/api avf.machine.v1]
+  grpc --> app[internal/app]
+  api --> app
   app --> pg[(PostgreSQL)]
   api --> mqttPub[MQTT publish optional]
   mqttPub --> broker[(MQTT broker)]
@@ -118,7 +123,7 @@ flowchart LR
 ### Partially aligned
 
 - **MQTT first:** true for device transport, but the production runtime path is MQTT plus NATS JetStream, not MQTT alone.
-- **gRPC only where justified:** true in spirit; the current surface is limited to internal query/read contracts rather than a broad internal rewrite.
+- **gRPC split:** **`avf.machine.v1`** handles native machine runtime when enabled; **`avf.internal.v1`** stays read/query-only on loopback — neither replaces Admin REST for operators.
 - **RFC3339 timestamps end-to-end:** much of the HTTP/API surface uses RFC3339 or RFC3339Nano, but this is not yet documented or enforced as a uniform architectural invariant across every interface.
 - **Structured logs with correlation fields:** request/correlation IDs are present in middleware and some logs, but the full enterprise field set is not consistently attached everywhere.
 - **Thin handlers:** directionally correct, but not perfectly uniform across all HTTP handlers.
@@ -137,3 +142,4 @@ flowchart LR
 - Documented **ClickHouse** as an optional worker mirror path, instead of entirely unwired.
 - Documented **worker telemetry JetStream consumers** separately from the still-missing in-repo consumer for worker outbox subjects.
 - Corrected references so generated OpenAPI points at `docs/swagger/swagger.json`.
+- **Aligned machine transport messaging:** public **`avf.machine.v1`** (Machine JWT) is shipped in-repo; internal-only gRPC refers to **`avf.internal.v1`** loopback queries — see [`transport-boundary.md`](transport-boundary.md), [`data-flow.md`](data-flow.md), [`../api/machine-grpc.md`](../api/machine-grpc.md).

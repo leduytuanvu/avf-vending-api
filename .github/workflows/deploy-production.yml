@@ -14,15 +14,16 @@
 # The production rollout workflow is implemented in deploy-prod.yml (Actions title: "Deploy Production").
 # This file exists so references to "deploy-production.yml" in checklists resolve; it is not a second deploy path.
 #
-# Last-known-good (LKG) scans successful **Deploy Production** runs for deploy-prod.yml from both
-# workflow_dispatch and workflow_run (after Security Release). See docs/runbooks/rollback-production.md.
+# Last-known-good (LKG) scans successful **Deploy Production** runs for deploy-prod.yml (`workflow_dispatch` on `main` only).
+# See docs/runbooks/rollback-production.md.
 # production-deployment-manifest artifacts, digest-pinned rollback, and automatic rollback after a failed
 # deploy are defined only in deploy-prod.yml — keep that file canonical.
 #
-# Canonical production deploy is deploy-prod.yml (Security Release workflow_run on main + workflow_dispatch). This pointer does not deploy.
-# The real **Deploy Production** job uses `environment: production` only in deploy-prod.yml (GitHub Environments
-# gating is not applicable to this no-op pointer workflow).
-name: Legacy — deploy-production.yml pointer (workflow_dispatch only)
+# Canonical production deploy is **deploy-prod.yml** (`name: Deploy Production`) only — **workflow_dispatch on main**,
+# never `on.workflow_run` and never from this file. Production jobs that touch SSH/registry context use **`environment: production`**.
+# This pointer does not deploy.
+# The pointer workflow does **not** use GitHub Environment protection (by design — it performs no rollout).
+name: Legacy — deploy-production.yml pointer (use Deploy Production / deploy-prod.yml)
 
 on:
   workflow_dispatch:

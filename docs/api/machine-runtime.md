@@ -1,6 +1,10 @@
 # Machine runtime HTTP writes
 
-These paths are part of the **control/setup plane** under `/v1`. They are not the primary high-volume device runtime path; MQTT remains the preferred runtime transport for continuous telemetry and command/ack traffic.
+> **Catalog / sale surface:** For **P1 runtime catalog sync** (composite `catalog_version`, `GetCatalogDelta`, media manifest/delta, offline policy), read **[`kiosk-app-flow.md`](kiosk-app-flow.md)** and **[`media-sync.md`](../architecture/media-sync.md)** — gRPC is the primary transport for `MachineCatalogService` / `MachineMediaService` ([`machine-grpc.md`](machine-grpc.md)).
+
+> **Deprecation posture:** Native kiosk/runtime integration uses **`avf.machine.v1`** gRPC (**Machine JWT**) — see **[`machine-grpc.md`](machine-grpc.md)**. OpenAPI routes that overlap legacy HTTP machine commerce/control flows are marked **`deprecated: true`** in **`docs/swagger/swagger.json`**; keep **`MACHINE_REST_LEGACY_ENABLED=false`** in production unless you are explicitly migrating clients. **Do not** document these HTTP paths as the primary machine runtime.
+
+These paths are part of the **control/setup plane** under `/v1`. They are **not** the primary high-volume device runtime plane; continuous telemetry and backend→machine commands remain **MQTT + ledger**, while structured commerce/catalog/inventory mutations belong on **gRPC** when enabled.
 
 ## POST `/v1/machines/{machineId}/check-ins`
 

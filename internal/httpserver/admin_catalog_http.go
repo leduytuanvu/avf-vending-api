@@ -9,6 +9,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appcatalogadmin "github.com/avf/avf-vending-api/internal/app/catalogadmin"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -23,34 +24,57 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 		writeRL = func(h http.Handler) http.Handler { return h }
 	}
 	svc := app.CatalogAdmin
-	r.Get("/products", listAdminProducts(svc))
-	r.Get("/products/{productId}", getAdminProduct(svc))
-	r.With(writeRL).Post("/products", postAdminProductCreate(svc))
-	r.With(writeRL).Put("/products/{productId}", putAdminProductUpdate(svc))
-	r.With(writeRL).Patch("/products/{productId}", putAdminProductUpdate(svc))
-	r.With(writeRL).Delete("/products/{productId}", deleteAdminProduct(svc))
-	r.With(writeRL).Put("/products/{productId}/image", putAdminProductImage(svc))
-	r.With(writeRL).Delete("/products/{productId}/image", deleteAdminProductImage(svc))
-
-	r.Get("/brands", listAdminBrands(svc))
-	r.Get("/categories", listAdminCategories(svc))
-	r.Get("/tags", listAdminTags(svc))
-	r.With(writeRL).Post("/brands", postAdminBrandCreate(svc))
-	r.With(writeRL).Put("/brands/{brandId}", putAdminBrandUpdate(svc))
-	r.With(writeRL).Patch("/brands/{brandId}", putAdminBrandUpdate(svc))
-	r.With(writeRL).Delete("/brands/{brandId}", deleteAdminBrand(svc))
-	r.With(writeRL).Post("/categories", postAdminCategoryCreate(svc))
-	r.With(writeRL).Put("/categories/{categoryId}", putAdminCategoryUpdate(svc))
-	r.With(writeRL).Patch("/categories/{categoryId}", putAdminCategoryUpdate(svc))
-	r.With(writeRL).Delete("/categories/{categoryId}", deleteAdminCategory(svc))
-	r.With(writeRL).Post("/tags", postAdminTagCreate(svc))
-	r.With(writeRL).Put("/tags/{tagId}", putAdminTagUpdate(svc))
-	r.With(writeRL).Patch("/tags/{tagId}", putAdminTagUpdate(svc))
-	r.With(writeRL).Delete("/tags/{tagId}", deleteAdminTag(svc))
-
-	r.Get("/price-books", listAdminPriceBooks(svc))
-	r.Get("/planograms", listAdminPlanograms(svc))
-	r.Get("/planograms/{planogramId}", getAdminPlanogram(svc))
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAnyPermission(auth.PermCatalogRead))
+		r.Get("/products", listAdminProducts(svc))
+		r.Get("/products/{productId}", getAdminProduct(svc))
+		r.Get("/brands", listAdminBrands(svc))
+		r.Get("/categories", listAdminCategories(svc))
+		r.Get("/tags", listAdminTags(svc))
+		r.Get("/price-books", listAdminPriceBooks(svc))
+		r.Get("/price-books/{priceBookId}", getAdminPriceBookDetail(svc))
+		r.Get("/price-books/{priceBookId}/items", getAdminPriceBookItems(svc))
+		r.Post("/pricing/preview", postAdminPricingPreview(svc))
+		registerAdminPromotionReadRoutes(r, svc)
+		r.Get("/planograms", listAdminPlanograms(svc))
+		r.Get("/planograms/{planogramId}", getAdminPlanogram(svc))
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAnyPermission(auth.PermCatalogWrite))
+		r.With(writeRL).Post("/products", postAdminProductCreate(svc))
+		r.With(writeRL).Put("/products/{productId}", putAdminProductUpdate(svc))
+		r.With(writeRL).Patch("/products/{productId}", putAdminProductUpdate(svc))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermCatalogDelete)).Delete("/products/{productId}", deleteAdminProduct(svc))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Post("/products/{productId}/image", bindAdminProductImage(svc))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Put("/products/{productId}/image", bindAdminProductImage(svc))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Delete("/products/{productId}/image", deleteAdminProductImage(svc))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Post("/products/{productId}/media", bindAdminProductMedia(app))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Put("/products/{productId}/media", bindAdminProductMedia(app))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Delete("/products/{productId}/media/{mediaId}", deleteAdminProductMedia(app))
+		r.With(writeRL).Post("/brands", postAdminBrandCreate(svc))
+		r.With(writeRL).Put("/brands/{brandId}", putAdminBrandUpdate(svc))
+		r.With(writeRL).Patch("/brands/{brandId}", putAdminBrandUpdate(svc))
+		r.With(writeRL).Delete("/brands/{brandId}", deleteAdminBrand(svc))
+		r.With(writeRL).Post("/categories", postAdminCategoryCreate(svc))
+		r.With(writeRL).Put("/categories/{categoryId}", putAdminCategoryUpdate(svc))
+		r.With(writeRL).Patch("/categories/{categoryId}", putAdminCategoryUpdate(svc))
+		r.With(writeRL).Delete("/categories/{categoryId}", deleteAdminCategory(svc))
+		r.With(writeRL).Post("/tags", postAdminTagCreate(svc))
+		r.With(writeRL).Put("/tags/{tagId}", putAdminTagUpdate(svc))
+		r.With(writeRL).Patch("/tags/{tagId}", putAdminTagUpdate(svc))
+		r.With(writeRL).Delete("/tags/{tagId}", deleteAdminTag(svc))
+		r.With(writeRL).Post("/price-books", postAdminPriceBookCreate(svc))
+		r.With(writeRL).Patch("/price-books/{priceBookId}", patchAdminPriceBook(svc))
+		r.With(writeRL).Post("/price-books/{priceBookId}/activate", postAdminPriceBookActivate(svc, app))
+		r.With(writeRL).Post("/price-books/{priceBookId}/archive", postAdminPriceBookArchive(svc, app))
+		r.With(writeRL).Post("/price-books/{priceBookId}/deactivate", postAdminPriceBookDeactivate(svc, app))
+		r.With(writeRL).Put("/price-books/{priceBookId}/items", putAdminPriceBookItems(svc))
+		r.With(writeRL).Patch("/price-books/{priceBookId}/items/{productId}", patchAdminPriceBookItem(svc))
+		r.With(writeRL).Delete("/price-books/{priceBookId}/items/{productId}", deleteAdminPriceBookItem(svc))
+		r.With(writeRL).Post("/price-books/{priceBookId}/assign-target", postAdminPriceBookAssignTarget(svc))
+		r.With(writeRL).Delete("/price-books/{priceBookId}/targets/{targetId}", deleteAdminPriceBookTarget(svc))
+		registerAdminPromotionWriteRoutes(r, svc, writeRL)
+	})
 }
 
 func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
@@ -128,7 +152,7 @@ func getAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, mapAdminProduct(row))
+		writeAdminProductResponse(w, r, svc, orgID, row)
 	}
 }
 
@@ -144,7 +168,14 @@ func listAdminPriceBooks(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", err.Error())
 			return
 		}
-		rows, total, err := svc.ListPriceBooks(r.Context(), orgID, limit, offset)
+		includeInactive := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("include_inactive")), "true") ||
+			strings.TrimSpace(r.URL.Query().Get("include_inactive")) == "1"
+		rows, total, err := svc.ListPriceBooks(r.Context(), appcatalogadmin.ListPriceBooksParams{
+			OrganizationID:  orgID,
+			Limit:           limit,
+			Offset:          offset,
+			IncludeInactive: includeInactive,
+		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -412,7 +443,7 @@ func textFromPgText(t pgtype.Text) *string {
 	return &s
 }
 
-func mapAdminProduct(p db.Product) V1AdminProduct {
+func mapAdminProduct(p db.Product, img *db.ProductImage) V1AdminProduct {
 	out := V1AdminProduct{
 		ID:              p.ID.String(),
 		OrganizationID:  p.OrganizationID.String(),
@@ -431,12 +462,36 @@ func mapAdminProduct(p db.Product) V1AdminProduct {
 		CreatedAt:       formatAPITimeRFC3339Nano(p.CreatedAt),
 		UpdatedAt:       formatAPITimeRFC3339Nano(p.UpdatedAt),
 	}
+	if img != nil {
+		if img.CdnUrl.Valid {
+			s := strings.TrimSpace(img.CdnUrl.String)
+			if s != "" {
+				out.DisplayURL = &s
+				out.ImageURL = &s
+			}
+		}
+		if img.ThumbCdnUrl.Valid {
+			s := strings.TrimSpace(img.ThumbCdnUrl.String)
+			if s != "" {
+				out.ThumbURL = &s
+			}
+		}
+	}
 	if len(p.Attrs) > 0 && json.Valid(p.Attrs) {
 		out.Attrs = json.RawMessage(p.Attrs)
 	} else if len(p.Attrs) > 0 {
 		out.Attrs = json.RawMessage([]byte(`{}`))
 	}
 	return out
+}
+
+func writeAdminProductResponse(w http.ResponseWriter, r *http.Request, svc *appcatalogadmin.Service, orgID uuid.UUID, p db.Product) {
+	img, err := svc.PrimaryProductImageOrNil(r.Context(), orgID, p.ID)
+	if err != nil {
+		writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, mapAdminProduct(p, img))
 }
 
 func mapPriceBook(pb db.PriceBook) V1AdminPriceBook {
@@ -448,11 +503,13 @@ func mapPriceBook(pb db.PriceBook) V1AdminPriceBook {
 		EffectiveFrom:  formatAPITimeRFC3339Nano(pb.EffectiveFrom),
 		EffectiveTo:    timePtrFromTimestamptz(pb.EffectiveTo),
 		IsDefault:      pb.IsDefault,
+		Active:         pb.Active,
 		ScopeType:      pb.ScopeType,
 		SiteID:         uuidPtrFromPgUUID(pb.SiteID),
 		MachineID:      uuidPtrFromPgUUID(pb.MachineID),
 		Priority:       pb.Priority,
 		CreatedAt:      formatAPITimeRFC3339Nano(pb.CreatedAt),
+		UpdatedAt:      formatAPITimeRFC3339Nano(pb.UpdatedAt),
 	}
 }
 

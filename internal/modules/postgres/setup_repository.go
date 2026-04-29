@@ -105,18 +105,7 @@ func (r *SetupRepository) UpsertMachineTopology(ctx context.Context, machineID u
 	return tx.Commit(ctx)
 }
 
-// SaveDraftOrCurrentSlotConfigs writes machine_slot_configs as draft or current and optionally syncs legacy machine_slot_state.
-func (r *SetupRepository) SaveDraftOrCurrentSlotConfigs(ctx context.Context, machineID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
-	if len(in.Items) == 0 {
-		return nil
-	}
-
-	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
+func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
 	q := db.New(tx)
 	m, err := q.GetMachineByIDForUpdate(ctx, machineID)
 	if err != nil {
@@ -128,9 +117,10 @@ func (r *SetupRepository) SaveDraftOrCurrentSlotConfigs(ctx context.Context, mac
 
 	var legacySnapshot []db.InventoryAdminListMachineSlotsRow
 	if in.SyncLegacyReadModel {
-		legacySnapshot, err = q.InventoryAdminListMachineSlots(ctx, machineID)
-		if err != nil {
-			return err
+		var lsErr error
+		legacySnapshot, lsErr = q.InventoryAdminListMachineSlots(ctx, machineID)
+		if lsErr != nil {
+			return lsErr
 		}
 	}
 
@@ -222,6 +212,33 @@ func (r *SetupRepository) SaveDraftOrCurrentSlotConfigs(ctx context.Context, mac
 		}
 	}
 
+	return nil
+}
+
+// ApplyPublishedSlotConfigsInTx writes machine_slot_configs as draft or current inside an existing transaction.
+func (r *SetupRepository) ApplyPublishedSlotConfigsInTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
+	if len(in.Items) == 0 {
+		return nil
+	}
+	return applySlotConfigSaveTx(ctx, tx, machineID, in)
+}
+
+// SaveDraftOrCurrentSlotConfigs writes machine_slot_configs as draft or current and optionally syncs legacy machine_slot_state.
+func (r *SetupRepository) SaveDraftOrCurrentSlotConfigs(ctx context.Context, machineID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
+	if len(in.Items) == 0 {
+		return nil
+	}
+
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := applySlotConfigSaveTx(ctx, tx, machineID, in); err != nil {
+		return err
+	}
+
 	return tx.Commit(ctx)
 }
 
@@ -234,6 +251,9 @@ func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uui
 			return setupapp.MachineBootstrap{}, setupapp.ErrNotFound
 		}
 		return setupapp.MachineBootstrap{}, err
+	}
+	if strings.EqualFold(strings.TrimSpace(m.Status), "retired") || strings.EqualFold(strings.TrimSpace(m.Status), "decommissioned") {
+		return setupapp.MachineBootstrap{}, setupapp.ErrMachineNotEligibleForBootstrap
 	}
 
 	cabs, err := q.FleetAdminListMachineCabinets(ctx, machineID)
@@ -254,6 +274,18 @@ func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uui
 		return setupapp.MachineBootstrap{}, err
 	}
 
+	var pvID *uuid.UUID
+	var pvNo int32
+	if meta, perr := q.PlanogramGetPublishedMetaForMachine(ctx, machineID); perr == nil {
+		if meta.PublishedPlanogramVersionID.Valid {
+			u := uuid.UUID(meta.PublishedPlanogramVersionID.Bytes)
+			pvID = &u
+		}
+		if meta.VersionNo.Valid {
+			pvNo = meta.VersionNo.Int32
+		}
+	}
+
 	cabinets := mapSetupCabinetViews(cabs)
 	if len(cabinets) == 0 {
 		// Legacy machines may have no machine_cabinets rows; expose a stable default for clients and UIs.
@@ -272,10 +304,12 @@ func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uui
 	}
 
 	out := setupapp.MachineBootstrap{
-		Machine:             mapMachine(m),
-		Cabinets:            cabinets,
-		AssortmentProducts:  mapAssortmentProductViews(assortRows),
-		CurrentCabinetSlots: mapCabinetSlotConfigViews(cfgRows),
+		Machine:                     mapMachine(m),
+		Cabinets:                    cabinets,
+		AssortmentProducts:          mapAssortmentProductViews(assortRows),
+		CurrentCabinetSlots:         mapCabinetSlotConfigViews(cfgRows),
+		PublishedPlanogramVersionID: pvID,
+		PublishedPlanogramVersionNo: pvNo,
 	}
 	return out, nil
 }

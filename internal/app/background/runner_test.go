@@ -26,7 +26,7 @@ func TestRunTickerLoop_CancelStopsPromptly(t *testing.T) {
 	var runs int32
 	done := make(chan struct{})
 	go func() {
-		runTickerLoop(ctx, zap.NewNop(), "test_job", 50*time.Millisecond, 200*time.Millisecond, nil, func(c context.Context) error {
+		runTickerLoop(ctx, zap.NewNop(), "test_job", 50*time.Millisecond, 200*time.Millisecond, 0, nil, func(c context.Context) error {
 			atomic.AddInt32(&runs, 1)
 			<-c.Done()
 			return c.Err()
@@ -49,7 +49,7 @@ func TestRunTickerLoop_LogsErrorOnFailedCycle(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
-		runTickerLoop(ctx, log, "failing_job", time.Hour, 5*time.Second, nil, func(context.Context) error {
+		runTickerLoop(ctx, log, "failing_job", time.Hour, 5*time.Second, 0, nil, func(context.Context) error {
 			return errors.New("simulated cycle failure")
 		})
 		close(done)

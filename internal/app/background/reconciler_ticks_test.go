@@ -7,6 +7,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
+	domainreliability "github.com/avf/avf-vending-api/internal/domain/reliability"
 	"github.com/google/uuid"
 )
 
@@ -14,6 +15,9 @@ type stubReconReader struct {
 	pendingTimeout []domaincommerce.Payment
 	refundReview   []domaincommerce.Payment
 	duplicates     []domaincommerce.Payment
+	paidNoVend     []domaincommerce.PaidOrderVendStartCandidate
+	paidFailures   []domaincommerce.PaidVendFailureCandidate
+	pendingRefunds []domaincommerce.RefundPendingCandidate
 }
 
 func (s *stubReconReader) ListPaymentsPendingTimeout(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.Payment, error) {
@@ -62,6 +66,27 @@ func (s *stubReconReader) ListStaleCommandLedgerEntries(ctx context.Context, bef
 	_ = before
 	_ = limit
 	return nil, nil
+}
+
+func (s *stubReconReader) ListPaidOrdersWithoutVendStart(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.PaidOrderVendStartCandidate, error) {
+	_ = ctx
+	_ = before
+	_ = limit
+	return append([]domaincommerce.PaidOrderVendStartCandidate(nil), s.paidNoVend...), nil
+}
+
+func (s *stubReconReader) ListPaidVendFailuresForReview(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.PaidVendFailureCandidate, error) {
+	_ = ctx
+	_ = before
+	_ = limit
+	return append([]domaincommerce.PaidVendFailureCandidate(nil), s.paidFailures...), nil
+}
+
+func (s *stubReconReader) ListRefundsPendingTooLong(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.RefundPendingCandidate, error) {
+	_ = ctx
+	_ = before
+	_ = limit
+	return append([]domaincommerce.RefundPendingCandidate(nil), s.pendingRefunds...), nil
 }
 
 type stubPaymentGateway struct {
@@ -130,6 +155,16 @@ func (s *stubRefundSink) EnqueueRefundReview(ctx context.Context, ticket domainc
 	return nil
 }
 
+type stubCaseWriter struct {
+	cases []domaincommerce.ReconciliationCaseInput
+}
+
+func (s *stubCaseWriter) UpsertReconciliationCase(ctx context.Context, in domaincommerce.ReconciliationCaseInput) (domaincommerce.ReconciliationCase, error) {
+	_ = ctx
+	s.cases = append(s.cases, in)
+	return domaincommerce.ReconciliationCase{ID: uuid.New(), OrganizationID: in.OrganizationID, CaseType: in.CaseType}, nil
+}
+
 func TestPaymentProviderReconcileTick_settledAfterProbe(t *testing.T) {
 	t.Parallel()
 	pid := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
@@ -143,13 +178,15 @@ func TestPaymentProviderReconcileTick_settledAfterProbe(t *testing.T) {
 	ap := &stubPaymentApplier{}
 	ctx := context.Background()
 	deps := ReconcilerDeps{
-		Reader:         reader,
-		Gateway:        gw,
-		PaymentApplier: ap,
-		ActionsEnabled: true,
-		DryRun:         false,
-		StableAge:      time.Minute,
-		Limits:         10,
+		Reader:                     reader,
+		Gateway:                    gw,
+		PaymentApplier:             ap,
+		ActionsEnabled:             true,
+		DryRun:                     false,
+		StableAge:                  time.Minute,
+		Limits:                     10,
+		PaymentOutboxTopic:         "commerce.payments",
+		PaymentOutboxAggregateType: "payment",
 	}
 	if err := PaymentProviderReconcileTick(ctx, deps); err != nil {
 		t.Fatal(err)
@@ -159,6 +196,13 @@ func TestPaymentProviderReconcileTick_settledAfterProbe(t *testing.T) {
 	}
 	if ap.calls[0].ToState != "captured" || ap.calls[0].DryRun {
 		t.Fatalf("unexpected apply input: %+v", ap.calls[0])
+	}
+	if ap.calls[0].OutboxEventType != domainreliability.OutboxEventPaymentConfirmed ||
+		ap.calls[0].OutboxTopic != "commerce.payments" ||
+		ap.calls[0].OutboxAggregateType != "payment" ||
+		ap.calls[0].OutboxAggregateID != pid ||
+		ap.calls[0].OutboxIdempotencyKey == "" {
+		t.Fatalf("missing reconciler outbox metadata: %+v", ap.calls[0])
 	}
 }
 
@@ -393,5 +437,103 @@ func TestDuplicatePaymentRecoveryTick_schedulesWorkflowWhenEnabled(t *testing.T)
 	}
 	if len(wf.starts) != 1 || wf.starts[0].Kind != workfloworch.KindManualReviewEscalation {
 		t.Fatalf("starts=%+v", wf.starts)
+	}
+}
+
+func TestUnresolvedOrdersTick_paidNoVendStartCreatesCase(t *testing.T) {
+	t.Parallel()
+	org := uuid.New()
+	orderID := uuid.New()
+	paymentID := uuid.New()
+	vendID := uuid.New()
+	cases := &stubCaseWriter{}
+	reader := &stubReconReader{
+		paidNoVend: []domaincommerce.PaidOrderVendStartCandidate{{
+			OrderID:        orderID,
+			OrganizationID: org,
+			PaymentID:      paymentID,
+			VendSessionID:  vendID,
+			Provider:       "psp",
+			PaymentState:   "captured",
+			VendState:      "pending",
+			MachineID:      uuid.New(),
+		}},
+	}
+	if err := UnresolvedOrdersTick(context.Background(), ReconcilerDeps{Reader: reader, CaseWriter: cases, StableAge: time.Minute, Limits: 10}); err != nil {
+		t.Fatal(err)
+	}
+	if len(cases.cases) != 1 || cases.cases[0].CaseType != "payment_paid_vend_not_started" {
+		t.Fatalf("cases=%+v", cases.cases)
+	}
+}
+
+func TestP06_Reconciler_VendTimeoutPaidVendFailedCreatesReviewCase(t *testing.T) {
+	t.Parallel()
+	org := uuid.New()
+	cases := &stubCaseWriter{}
+	reader := &stubReconReader{
+		paidFailures: []domaincommerce.PaidVendFailureCandidate{{
+			OrderID:        uuid.New(),
+			OrganizationID: org,
+			PaymentID:      uuid.New(),
+			VendSessionID:  uuid.New(),
+			Provider:       "psp",
+			PaymentState:   "captured",
+			VendState:      "failed",
+			MachineID:      uuid.New(),
+		}},
+	}
+	if err := VendTimeoutReconcileTick(context.Background(), ReconcilerDeps{Reader: reader, CaseWriter: cases, StableAge: time.Minute, Limits: 10}); err != nil {
+		t.Fatal(err)
+	}
+	if len(cases.cases) != 1 || cases.cases[0].CaseType != "payment_paid_vend_failed" {
+		t.Fatalf("cases=%+v", cases.cases)
+	}
+}
+
+func TestRefundReviewDecisionTick_pendingRefundCreatesCase(t *testing.T) {
+	t.Parallel()
+	org := uuid.New()
+	cases := &stubCaseWriter{}
+	reader := &stubReconReader{
+		pendingRefunds: []domaincommerce.RefundPendingCandidate{{
+			RefundID:       uuid.New(),
+			PaymentID:      uuid.New(),
+			OrderID:        uuid.New(),
+			OrganizationID: org,
+			Provider:       "psp",
+			RefundState:    "processing",
+			AmountMinor:    100,
+			Currency:       "USD",
+		}},
+	}
+	if err := RefundReviewDecisionTick(context.Background(), ReconcilerDeps{Reader: reader, CaseWriter: cases, StableAge: time.Minute, Limits: 10}); err != nil {
+		t.Fatal(err)
+	}
+	if len(cases.cases) != 1 || cases.cases[0].CaseType != "refund_pending_too_long" {
+		t.Fatalf("cases=%+v", cases.cases)
+	}
+}
+
+func TestDuplicatePaymentRecoveryTick_safeConcurrentCaseUpserts(t *testing.T) {
+	t.Parallel()
+	org := uuid.New()
+	reader := &stubReconReader{duplicates: []domaincommerce.Payment{{ID: uuid.New(), OrderID: uuid.New(), State: "captured", AmountMinor: 100, Currency: "USD"}}}
+	run := func() error {
+		return DuplicatePaymentRecoveryTick(context.Background(), ReconcilerDeps{
+			Reader:     reader,
+			CaseWriter: &stubCaseWriter{},
+			OrderRead:  stubOrderReader{org: org},
+			StableAge:  time.Minute,
+			Limits:     10,
+		})
+	}
+	errc := make(chan error, 2)
+	go func() { errc <- run() }()
+	go func() { errc <- run() }()
+	for i := 0; i < 2; i++ {
+		if err := <-errc; err != nil {
+			t.Fatal(err)
+		}
 	}
 }

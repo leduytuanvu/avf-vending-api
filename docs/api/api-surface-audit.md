@@ -2,7 +2,7 @@
 
 **OpenAPI:** `docs/swagger/swagger.json` (generated). Regenerate: `make swagger` or `python tools/build_openapi.py`.
 
-**Server order:** Production `https://api.ldtv.dev` first, local second (enforced in `tools/build_openapi.py`, `tools/openapi_verify_release.py`, and `go test`).
+**Classification:** HTTP paths in OpenAPI are **`public` operator** (Bearer JWT admin), **device/bridge** (machine-scoped or technician flows; **not registered in production** unless `ENABLE_LEGACY_MACHINE_HTTP=true` with allow flag), **webhook** (HMAC), or **legacy/deprecated** machine REST. **`avf.machine.v1`** and **`avf.internal.v1`** are **not** Admin REST — do not publish them as `/v1/admin` or anonymous HTTP substitutes.
 
 **Telemetry:** High-volume device telemetry and primary command delivery are **MQTT-first**. HTTP device routes (`/v1/device/...`) are **integration / fallback**; `POST .../commands/poll` is **not** the primary command path.
 

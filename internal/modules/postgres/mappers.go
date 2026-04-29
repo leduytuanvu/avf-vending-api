@@ -80,5 +80,10 @@ func mapOutbox(row db.OutboxEvent) commerce.OutboxEvent {
 		LastPublishAttemptAt: pgTimestamptzToTimePtr(row.LastPublishAttemptAt),
 		NextPublishAfter:     pgTimestamptzToTimePtr(row.NextPublishAfter),
 		DeadLetteredAt:       pgTimestamptzToTimePtr(row.DeadLetteredAt),
+		Status:               row.Status,
+		LockedBy:             pgTextToStringPtr(row.LockedBy),
+		LockedUntil:          pgTimestamptzToTimePtr(row.LockedUntil),
+		UpdatedAt:            row.UpdatedAt,
+		MaxPublishAttempts:   row.MaxPublishAttempts,
 	}
 }

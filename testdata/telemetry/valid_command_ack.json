@@ -1,4 +1,7 @@
 {
+  "machine_id": "55555555-5555-5555-5555-555555555555",
+  "command_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "occurred_at": "2024-01-02T15:04:05Z",
   "sequence": 42,
   "status": "acked",
   "dedupe_key": "cmd-ack:55555555-5555-5555-5555-555555555555:42:01JR8CMD",

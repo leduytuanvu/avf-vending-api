@@ -1,16 +1,16 @@
 # avf-vending-api
 
-Go **1.25+** backend for the AVF vending platform: HTTP API (`cmd/api`), optional internal gRPC query services, background processes, and shared wiring (PostgreSQL, Redis, OpenTelemetry).
+Go **1.25+** backend for the AVF vending platform: HTTP Admin/control plane (`cmd/api`), **public machine gRPC** (`avf.machine.v1`, Machine JWT, when **`MACHINE_GRPC_ENABLED=true`**), optional **internal** loopback gRPC reads (`avf.internal.v1`, service JWT), background processes, and shared wiring (PostgreSQL, Redis, OpenTelemetry).
 
-**What runs today** (with env and migrations): HTTP `/v1`, Postgres-backed commerce/device/fleet flows, `cmd/worker` reliability ticks with **optional** NATS JetStream outbox publish when `NATS_URL` is set, **optional** ClickHouse analytics mirror when `ANALYTICS_*` is enabled (`ops/ANALYTICS_CLICKHOUSE.md`), `cmd/mqtt-ingest` MQTT→Postgres ingest, `cmd/reconciler` commerce reconciliation (list-only by default; **optional** close-the-loop actions when `RECONCILER_ACTIONS_ENABLED=true` with probe URL + NATS—see `internal/config/reconciler.go`), optional **internal gRPC query services** for machine, telemetry, and commerce reads behind Bearer JWT auth, and optional **Temporal-backed workflow follow-up** via `cmd/temporal-worker`. **Artifacts** use S3 when `API_ARTIFACTS_ENABLED=true`. **Not in this repo yet**: device/runtime traffic over gRPC and broad command/workflow mutation RPCs beyond the implemented compensation/review flows.
+**What runs today** (with env and migrations): HTTP `/v1` for admins/operators/webhooks; **native kiosk/runtime** on **`avf.machine.v1`** when machine gRPC is enabled (production requires **`MACHINE_GRPC_ENABLED=true`** explicitly); Postgres-backed commerce/device/fleet flows; legacy OpenAPI machine REST routes remain **`deprecated`** for migration windows only (`MACHINE_REST_LEGACY_ENABLED`). `cmd/worker` runs reliability ticks with **optional** NATS JetStream outbox publish when `NATS_URL` is set, **optional** ClickHouse analytics mirror when `ANALYTICS_*` is enabled (`ops/ANALYTICS_CLICKHOUSE.md`), `cmd/mqtt-ingest` MQTT→Postgres ingest, `cmd/reconciler` commerce reconciliation (list-only by default; **optional** close-the-loop actions when `RECONCILER_ACTIONS_ENABLED=true` with probe URL + NATS—see `internal/config/reconciler.go`). Optional **internal gRPC query services** (`INTERNAL_GRPC_ENABLED`) are loopback read/query only—not the vending app API. Optional **Temporal-backed workflow follow-up** via `cmd/temporal-worker`. **Artifacts** use S3 when `API_ARTIFACTS_ENABLED=true`. **Future scope:** broader internal gRPC mutation APIs and fully unified analytics/event planes—not missing native machine gRPC.
 
 ## Current architecture
 
 The repository is currently implemented as a **Go modular monolith** with multiple binaries under `cmd/*`, shared `internal/app/*` business logic, and Postgres-backed persistence under `internal/modules/postgres`.
 
-- **Implemented now:** `cmd/api` for HTTP control/admin/setup flows, `cmd/mqtt-ingest` for MQTT-first device ingest, `cmd/worker` for reliability/outbox/telemetry background work, and `cmd/reconciler` for commerce reconciliation.
-- **Partially implemented:** MQTT runtime flows also depend on NATS JetStream in production for buffering and async processing; gRPC is internal-only and currently limited to query/read services rather than a broad service mesh API; Temporal is implemented for selected long-running compensation/review flows behind feature flags; ClickHouse and object storage are wired for specific optional paths, not as universal platform dependencies.
-- **Not implemented yet:** broad internal gRPC mutation/workflow APIs and a fully closed-loop analytics/event architecture across every device/runtime flow.
+- **Implemented now:** `cmd/api` for HTTP control/admin/setup flows and optional **`avf.machine.v1`** + **`avf.internal.v1`** gRPC listeners; `cmd/mqtt-ingest` for MQTT-first device ingest; `cmd/worker` for reliability/outbox/telemetry background work; `cmd/reconciler` for commerce reconciliation.
+- **Partially implemented:** MQTT runtime flows also depend on NATS JetStream in production for buffering and async processing; internal gRPC remains read/query-only on loopback; Temporal is implemented for selected long-running compensation/review flows behind feature flags; ClickHouse and object storage are wired for specific optional paths, not as universal platform dependencies.
+- **Not implemented yet:** broad internal gRPC mutation/workflow APIs and a fully closed-loop analytics/event architecture across every bounded context.
 
 The as-built freeze for this phase lives in [`docs/architecture/current-architecture.md`](docs/architecture/current-architecture.md). It separates **implemented**, **partial**, and **not implemented yet** items and calls out corrected docs drift.
 
@@ -24,13 +24,13 @@ The repo still follows a **strangler** posture for traffic cutover from any lega
 | [`cmd/worker`](cmd/worker) | Reliability ticks (payments/commands/outbox); **NATS JetStream** outbox + **DLQ** (`AVF_INTERNAL_DLQ`) when `NATS_URL` is set; optional **ClickHouse** mirror (`ANALYTICS_*`); optional **`METRICS_ENABLED`** + `WORKER_METRICS_LISTEN` for Prometheus `/metrics` (see [`ops/METRICS.md`](ops/METRICS.md)) |
 | [`cmd/mqtt-ingest`](cmd/mqtt-ingest) | MQTT subscriber → Postgres device ingest (broker via env; see `internal/platform/mqtt`) |
 | [`cmd/reconciler`](cmd/reconciler) | Commerce reconciliation ticks; optional PSP probe + refund routing when `RECONCILER_ACTIONS_ENABLED=true` (validated at startup) |
-| [`cmd/temporal-worker`](cmd/temporal-worker) | Temporal workflow worker for payment-timeout, vend-failure, refund, and manual-review follow-up |
+| [`cmd/temporal-worker`](cmd/temporal-worker) | Temporal workflow worker for payment-to-vend, refund, command ACK, payment-timeout, vend-failure, and manual-review follow-up |
 | [`cmd/cli`](cmd/cli) | Operational CLI (`-validate-config`, `-version`) |
 | [`internal/config`](internal/config) | Environment-backed configuration with validation |
 | [`internal/httpserver`](internal/httpserver) | Chi HTTP server: `/health/*`, optional `/metrics` |
 | [`internal/bootstrap`](internal/bootstrap) | Process wiring (runtime clients, graceful shutdown) |
 | [`internal/modules/postgres`](internal/modules/postgres) | Postgres + sqlc-backed OLTP (orders/payments/commands; not Temporal) |
-| [`proto`](proto) | buf config + internal gRPC protobuf contracts (`avf/v1`) |
+| [`proto`](proto) | buf config — **`avf.machine.v1`** (public machine runtime), **`avf.internal.v1`** (loopback reads), legacy packages as applicable |
 | [`migrations`](migrations) | goose SQL migrations |
 | [`deployments/docker`](deployments/docker) | Local dependency stack (Compose) |
 | [`deployments/prod/app-node`](deployments/prod/app-node) | New 2-VPS stateless production app-node stack |
@@ -57,7 +57,7 @@ Local equivalents:
 
 ```powershell
 make ci                 # fmt (gofmt check) + vet + go test + build — core go-ci make steps
-make ci-gates           # fmt-check, vet, sqlc, swagger, placeholders, wiring, migration script (no unit tests; matches static checks)
+make ci-gates           # fmt-check, vet, placeholders, wiring, migrations, api-contract-check (includes sqlc + swagger + postman + proto + machine gRPC docs; no unit tests)
 make test-short         # go test -short (as in the Go CI Gates job)
 make verify-workflows   # actionlint + workflow contract scripts (Workflow and Script Quality; needs actionlint on PATH)
 make ci-full            # ci-gates + all tests (export TEST_DATABASE_URL for postgres integration tests)
@@ -67,7 +67,7 @@ Install **sqlc** for `make sqlc-check` / `make ci-gates`: `go install github.com
 
 **Swagger / OpenAPI** (embedded in the API process): annotations live in [`cmd/api/main.go`](cmd/api/main.go) (API metadata) and [`internal/httpserver/swagger_operations.go`](internal/httpserver/swagger_operations.go) (per-route docs). Regenerate committed artifacts with `make swagger` (uses Python 3 via `PY=python3` by default; on Windows use `make swagger PY=python` if needed). CI and `make swagger-check` fail when [`docs/swagger`](docs/swagger) is stale. With Swagger enabled (default in non-production; see `HTTP_SWAGGER_UI_ENABLED` in [`.env.example`](.env.example)), the server serves **Swagger UI** at `/swagger/index.html` and raw **OpenAPI 3.0** JSON at `/swagger/doc.json` (multi-environment **Servers** + shared error model).
 
-**Reporting** (`platform_admin` or `org_admin`, Bearer JWT): read-only JSON under **`/v1/reports/*`** (sales, payments, fleet health, inventory exceptions). Every report requires **`from`** and **`to`** (RFC3339) with a maximum span of **366 days**; **`organization_id`** is required when the caller is `platform_admin`, same as other tenant-picked admin routes. There is no CSV export or async job in this API surface—clients consume aggregates directly.
+**Reporting** (Bearer JWT + `reports.read`): read-only JSON under **`/v1/reports/*`** and organization-scoped Admin Web reports under **`/v1/admin/organizations/{organizationId}/reports/*`**. Every report requires **`from`** and **`to`** (RFC3339) with a maximum span of **366 days**; platform admins must pick the tenant explicitly. Supported CSV exports are synchronous (`format=csv` on selected Admin report routes, plus legacy `/v1/admin/reports/*/export.csv`) and audited.
 
 ## Local dependencies (Docker)
 
@@ -115,15 +115,22 @@ Integration-style tests under [`internal/modules/postgres`](internal/modules/pos
 ## Documentation
 
 - [Enterprise release process](docs/operations/release-process.md) and [operator checklists](docs/operations/production-release-checklist.md) (production is **manual-only**; see [CI/CD enterprise contract](docs/operations/ci-cd-enterprise-contract.md))
+- [Enterprise target model](docs/architecture/enterprise-target-model.md) and [transport boundary](docs/architecture/transport-boundary.md) (credentials + per-transport ownership)
+- [Current architecture (as built)](docs/architecture/current-architecture.md), [data flow overview](docs/architecture/data-flow.md), [deployment topology](docs/architecture/deployment-topology.md)
+- [P0 / P1 / P2 implementation roadmap](docs/architecture/p0-p1-p2-implementation-roadmap.md)
 - [Target architecture](docs/architecture/target-architecture.md)
-- [Current architecture (as built)](docs/architecture/current-architecture.md)
 - [Strangler / migration strategy](docs/architecture/migration-strategy.md)
 - [Documentation index](docs/README.md)
-- [Internal gRPC contract](docs/api/internal-grpc.md)
+- [Machine gRPC (`avf.machine.v1`)](docs/api/machine-grpc.md), [internal gRPC reads (`avf.internal.v1`)](docs/api/internal-grpc.md), [Admin REST](docs/api/admin-rest.md)
+- [Local testing guide](docs/testing/local-testing-guide.md) · [LOCAL_TEST_GUIDE.md](LOCAL_TEST_GUIDE.md)
 - [2-VPS production runbook](docs/runbooks/production-2-vps.md)
 - [2-VPS cutover and rollback](docs/runbooks/production-cutover-rollback.md)
 - [2-VPS backup, restore, and DR](docs/runbooks/production-backup-restore-dr.md)
 - [2-VPS day-2 incidents](docs/runbooks/production-day-2-incidents.md)
+- [Field pilot checklist](docs/operations/field-pilot-checklist.md)
+- [Field smoke tests](docs/runbooks/field-smoke-tests.md)
+- [Temporal workflow runbook](docs/runbooks/temporal-workflows.md)
+- [Machine activation runbook](docs/runbooks/machine-activation.md)
 - [Operations runbook](ops/RUNBOOK.md) — incidents, dashboards/alert ideas, SQL checks
 - [Metrics / signals](ops/METRICS.md)
 

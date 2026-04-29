@@ -2,10 +2,13 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
+	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -14,16 +17,28 @@ import (
 
 var _ appcommerce.PaymentWebhookPersistence = (*Store)(nil)
 
+func machineUUIDPtr(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+	v := id
+	return &v
+}
+
 func paymentTransitionAllowed(from, to string) bool {
 	if from == to {
 		return true
 	}
 	switch from {
 	case "created":
-		return to == "authorized" || to == "captured" || to == "failed"
+		return to == "authorized" || to == "captured" || to == "failed" || to == "expired" || to == "canceled"
 	case "authorized":
-		return to == "captured" || to == "failed"
-	case "captured", "failed", "refunded":
+		return to == "captured" || to == "failed" || to == "expired" || to == "canceled"
+	case "captured":
+		return to == "failed" || to == "refunded" || to == "partially_refunded"
+	case "partially_refunded":
+		return to == "refunded"
+	case "failed", "expired", "canceled", "refunded":
 		return false
 	default:
 		return false
@@ -74,6 +89,41 @@ func (s *Store) webhookReplayResultFromEvent(ctx context.Context, q *db.Queries,
 	}, nil
 }
 
+func (s *Store) auditPaymentWebhookTx(ctx context.Context, tx pgx.Tx, in appcommerce.ApplyPaymentProviderWebhookInput, replay bool, machineID *uuid.UUID) error {
+	if s.enterpriseAudit == nil {
+		return nil
+	}
+	action := compliance.ActionPaymentWebhookAccepted
+	if replay {
+		action = compliance.ActionPaymentWebhookReplayed
+	}
+	vstat := strings.TrimSpace(in.WebhookValidationStatus)
+	if vstat == "" {
+		vstat = "hmac_verified"
+	}
+	md, err := json.Marshal(map[string]any{
+		"order_id":         in.OrderID.String(),
+		"payment_id":       in.PaymentID.String(),
+		"provider":         in.Provider,
+		"webhook_event_id": strings.TrimSpace(in.WebhookEventID),
+		"replay":           replay,
+		"validation":       vstat,
+	})
+	if err != nil {
+		md = []byte("{}")
+	}
+	pid := in.PaymentID.String()
+	return s.enterpriseAudit.RecordCriticalTx(ctx, tx, compliance.EnterpriseAuditRecord{
+		OrganizationID: in.OrganizationID,
+		ActorType:      compliance.ActorPaymentProvider,
+		Action:         action,
+		ResourceType:   "commerce.payment",
+		ResourceID:     &pid,
+		MachineID:      machineID,
+		Metadata:       md,
+	})
+}
+
 func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.ApplyPaymentProviderWebhookInput) (appcommerce.ApplyPaymentProviderWebhookResult, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -91,6 +141,9 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		res, rerr := s.webhookReplayResultFromEvent(ctx, q, existingEv, in)
 		if rerr != nil {
 			return appcommerce.ApplyPaymentProviderWebhookResult{}, rerr
+		}
+		if err := s.auditPaymentWebhookTx(ctx, tx, in, true, machineUUIDPtr(res.Order.MachineID)); err != nil {
+			return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 		}
 		if err := tx.Commit(ctx); err != nil {
 			return appcommerce.ApplyPaymentProviderWebhookResult{}, err
@@ -110,6 +163,9 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 			res, rerr := s.webhookReplayResultFromEvent(ctx, q, existingByEv, in)
 			if rerr != nil {
 				return appcommerce.ApplyPaymentProviderWebhookResult{}, rerr
+			}
+			if err := s.auditPaymentWebhookTx(ctx, tx, in, true, machineUUIDPtr(res.Order.MachineID)); err != nil {
+				return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 			}
 			if err := tx.Commit(ctx); err != nil {
 				return appcommerce.ApplyPaymentProviderWebhookResult{}, err
@@ -139,8 +195,15 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, appcommerce.ErrOrgMismatch
 	}
 
+	if err := webhookAmountCurrencyMatches(pay, ord, in); err != nil {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+	}
+
 	target := strings.TrimSpace(strings.ToLower(in.NormalizedPaymentState))
 	if !paymentTransitionAllowed(pay.State, target) {
+		if webhookLateDeliveryAgainstTerminalState(ord, pay) {
+			return appcommerce.ApplyPaymentProviderWebhookResult{}, appcommerce.ErrWebhookAfterTerminalOrder
+		}
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, appcommerce.ErrIllegalTransition
 	}
 
@@ -163,15 +226,34 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 	if w := strings.TrimSpace(in.WebhookEventID); w != "" {
 		webhookEv = pgtype.Text{String: w, Valid: true}
 	}
+	vstat := strings.TrimSpace(in.WebhookValidationStatus)
+	if vstat == "" {
+		vstat = "hmac_verified"
+	}
+	meta := in.ProviderMetadata
+	if len(meta) == 0 {
+		meta = []byte(`{}`)
+	}
+	sigOK := vstat == "hmac_verified" || vstat == "unsigned_development"
+	now := time.Now().UTC()
+	applied := pgtype.Timestamptz{Time: now, Valid: true}
+
 	ev, err := q.InsertPaymentProviderEvent(ctx, db.InsertPaymentProviderEventParams{
 		PaymentID:           pgtype.UUID{Bytes: in.PaymentID, Valid: true},
+		OrganizationID:      pgtype.UUID{Bytes: in.OrganizationID, Valid: true},
 		Provider:            in.Provider,
 		ProviderRef:         pgtype.Text{String: in.ProviderReference, Valid: true},
 		WebhookEventID:      webhookEv,
 		ProviderAmountMinor: amt,
 		Currency:            cur,
 		EventType:           in.EventType,
-		Payload:             in.Payload,
+		Payload:             compliance.SanitizeJSONBytes(in.Payload),
+		ValidationStatus:    vstat,
+		ProviderMetadata:    meta,
+		SignatureValid:      sigOK,
+		AppliedAt:           applied,
+		IngressStatus:       "applied",
+		IngressError:        pgtype.Text{},
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -201,6 +283,23 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 			return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 		}
 	}
+	if shouldInsertWebhookOutbox(in) {
+		if _, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
+			OrganizationID: optionalUUIDToPg(&in.OrganizationID),
+			Topic:          in.OutboxTopic,
+			EventType:      in.OutboxEventType,
+			Payload:        webhookOutboxPayload(in),
+			AggregateType:  in.OutboxAggregateType,
+			AggregateID:    in.OutboxAggregateID,
+			IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
+		}); err != nil {
+			return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+		}
+	}
+
+	if err := s.auditPaymentWebhookTx(ctx, tx, in, false, machineUUIDPtr(ord.MachineID)); err != nil {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
@@ -213,6 +312,32 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		Attempt:       mapPaymentAttemptView(attemptRow),
 		ProviderRowID: ev.ID,
 	}, nil
+}
+
+func shouldInsertWebhookOutbox(in appcommerce.ApplyPaymentProviderWebhookInput) bool {
+	return strings.TrimSpace(in.OutboxTopic) != "" &&
+		strings.TrimSpace(in.OutboxEventType) != "" &&
+		strings.TrimSpace(in.OutboxAggregateType) != "" &&
+		in.OutboxAggregateID != uuid.Nil &&
+		strings.TrimSpace(in.OutboxIdempotencyKey) != ""
+}
+
+func webhookOutboxPayload(in appcommerce.ApplyPaymentProviderWebhookInput) []byte {
+	if len(in.OutboxPayload) > 0 {
+		return in.OutboxPayload
+	}
+	b, err := json.Marshal(map[string]any{
+		"source":           "payment_webhook",
+		"order_id":         in.OrderID.String(),
+		"payment_id":       in.PaymentID.String(),
+		"provider":         strings.TrimSpace(in.Provider),
+		"webhook_event_id": strings.TrimSpace(in.WebhookEventID),
+		"payment_state":    strings.TrimSpace(in.NormalizedPaymentState),
+	})
+	if err != nil {
+		return []byte(`{}`)
+	}
+	return b
 }
 
 func (s *Store) webhookReplayAfterUniqueViolation(ctx context.Context, in appcommerce.ApplyPaymentProviderWebhookInput) (appcommerce.ApplyPaymentProviderWebhookResult, error) {
@@ -254,4 +379,40 @@ func (s *Store) webhookReplayByWebhookEventID(ctx context.Context, in appcommerc
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 	}
 	return s.webhookReplayResultFromEvent(ctx, q, existingEv, in)
+}
+
+func webhookAmountCurrencyMatches(pay db.Payment, ord db.Order, in appcommerce.ApplyPaymentProviderWebhookInput) error {
+	if pay.AmountMinor != ord.TotalMinor {
+		return appcommerce.ErrWebhookAmountCurrencyMismatch
+	}
+	if strings.ToUpper(strings.TrimSpace(pay.Currency)) != strings.ToUpper(strings.TrimSpace(ord.Currency)) {
+		return appcommerce.ErrWebhookAmountCurrencyMismatch
+	}
+	if in.ProviderAmountMinor != nil && ord.TotalMinor != *in.ProviderAmountMinor {
+		return appcommerce.ErrWebhookAmountCurrencyMismatch
+	}
+	if in.Currency != nil && strings.TrimSpace(*in.Currency) != "" {
+		if normalizeWebhookCurrency(pay.Currency) != normalizeWebhookCurrency(*in.Currency) {
+			return appcommerce.ErrWebhookAmountCurrencyMismatch
+		}
+	}
+	return nil
+}
+
+func normalizeWebhookCurrency(s string) string {
+	return strings.ToUpper(strings.TrimSpace(s))
+}
+
+func webhookLateDeliveryAgainstTerminalState(ord db.Order, pay db.Payment) bool {
+	switch strings.TrimSpace(ord.Status) {
+	case "completed", "failed", "cancelled":
+		return true
+	default:
+	}
+	switch strings.TrimSpace(pay.State) {
+	case "refunded", "failed", "expired", "canceled":
+		return true
+	default:
+		return false
+	}
 }

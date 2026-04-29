@@ -9,11 +9,19 @@ import (
 )
 
 const (
+	WorkflowNamePaymentToVend = "workflow.payment_to_vend"
+	WorkflowNameRefund        = "workflow.refund"
+	WorkflowNameCommandAck    = "workflow.command_ack"
+
 	WorkflowNamePaymentPendingTimeoutFollowUp  = "workflow.payment_pending_timeout_follow_up"
 	WorkflowNameVendFailureAfterPaymentSuccess = "workflow.vend_failure_after_payment_success"
 	WorkflowNameRefundOrchestration            = "workflow.refund_orchestration"
 	WorkflowNameManualReviewEscalation         = "workflow.manual_review_escalation"
 
+	ActivityNameEnsureVendStartedForPaidOrder = "activity.ensure_vend_started_for_paid_order"
+	ActivityNameEvaluatePaymentToVend         = "activity.evaluate_payment_to_vend"
+	ActivityNameRequestProviderRefund         = "activity.request_provider_refund"
+	ActivityNameAssessCommandAck              = "activity.assess_command_ack"
 	ActivityNameResolvePaymentPendingTimeout  = "activity.resolve_payment_pending_timeout"
 	ActivityNameAssessVendFailureAfterPayment = "activity.assess_vend_failure_after_payment"
 	ActivityNameEnqueueRefundReview           = "activity.enqueue_refund_review"
@@ -25,6 +33,124 @@ type WorkflowOutcome struct {
 	Kind   Kind
 	Action string
 	Detail string
+}
+
+func PaymentToVendWorkflow(ctx workflow.Context, in PaymentToVendInput) (WorkflowOutcome, error) {
+	in = normalizePaymentToVendInput(in)
+	var started VendStartResult
+	if err := workflow.ExecuteActivity(writeActivityContext(ctx), ActivityNameEnsureVendStartedForPaidOrder, in).Get(ctx, &started); err != nil {
+		return WorkflowOutcome{Kind: KindPaymentToVend}, err
+	}
+	if in.VendResultTimeout > 0 {
+		if err := workflow.Sleep(ctx, in.VendResultTimeout); err != nil {
+			return WorkflowOutcome{Kind: KindPaymentToVend}, err
+		}
+	}
+	var decision PaymentToVendDecision
+	if err := workflow.ExecuteActivity(readActivityContext(ctx), ActivityNameEvaluatePaymentToVend, in).Get(ctx, &decision); err != nil {
+		return WorkflowOutcome{Kind: KindPaymentToVend}, err
+	}
+	if decision.QueueRefundReview {
+		var queued TicketDispatchResult
+		err := workflow.ExecuteActivity(
+			externalDispatchActivityContext(ctx),
+			ActivityNameEnqueueRefundReview,
+			RefundOrchestrationInput{
+				OrganizationID: decision.OrganizationID,
+				OrderID:        in.OrderID,
+				PaymentID:      in.PaymentID,
+				Reason:         decision.Reason,
+				RequestedAt:    workflow.Now(ctx),
+			},
+		).Get(ctx, &queued)
+		if err != nil {
+			return WorkflowOutcome{Kind: KindPaymentToVend}, err
+		}
+		return WorkflowOutcome{Kind: KindPaymentToVend, Action: queued.Action, Detail: decision.Detail}, nil
+	}
+	if decision.EscalateManualReview {
+		var queued TicketDispatchResult
+		err := workflow.ExecuteActivity(
+			externalDispatchActivityContext(ctx),
+			ActivityNameEnqueueManualReview,
+			ManualReviewEscalationInput{
+				OrganizationID: decision.OrganizationID,
+				OrderID:        in.OrderID,
+				PaymentID:      in.PaymentID,
+				Reason:         decision.Reason,
+				RequestedAt:    workflow.Now(ctx),
+			},
+		).Get(ctx, &queued)
+		if err != nil {
+			return WorkflowOutcome{Kind: KindPaymentToVend}, err
+		}
+		return WorkflowOutcome{Kind: KindPaymentToVend, Action: queued.Action, Detail: decision.Detail}, nil
+	}
+	action := "noop"
+	if started.Started {
+		action = "vend_started"
+	}
+	if decision.Action != "" {
+		action = decision.Action
+	}
+	return WorkflowOutcome{Kind: KindPaymentToVend, Action: action, Detail: decision.Detail}, nil
+}
+
+func RefundWorkflow(ctx workflow.Context, in RefundWorkflowInput) (WorkflowOutcome, error) {
+	in = normalizeRefundWorkflowInput(in)
+	var decision ProviderRefundDecision
+	if err := workflow.ExecuteActivity(externalDispatchActivityContext(ctx), ActivityNameRequestProviderRefund, in).Get(ctx, &decision); err != nil {
+		return WorkflowOutcome{Kind: KindRefund}, err
+	}
+	if decision.QueueRefundReview {
+		var queued TicketDispatchResult
+		err := workflow.ExecuteActivity(
+			externalDispatchActivityContext(ctx),
+			ActivityNameEnqueueRefundReview,
+			RefundOrchestrationInput{
+				OrganizationID: in.OrganizationID,
+				OrderID:        in.OrderID,
+				PaymentID:      in.PaymentID,
+				Reason:         decision.Reason,
+				RequestedAt:    in.RequestedAt,
+			},
+		).Get(ctx, &queued)
+		if err != nil {
+			return WorkflowOutcome{Kind: KindRefund}, err
+		}
+		return WorkflowOutcome{Kind: KindRefund, Action: queued.Action, Detail: decision.Detail}, nil
+	}
+	return WorkflowOutcome{Kind: KindRefund, Action: decision.Action, Detail: decision.Detail}, nil
+}
+
+func CommandAckWorkflow(ctx workflow.Context, in CommandAckWorkflowInput) (WorkflowOutcome, error) {
+	in = normalizeCommandAckWorkflowInput(in)
+	if in.AckTimeout > 0 {
+		if err := workflow.Sleep(ctx, in.AckTimeout); err != nil {
+			return WorkflowOutcome{Kind: KindCommandAck}, err
+		}
+	}
+	var decision CommandAckDecision
+	if err := workflow.ExecuteActivity(readActivityContext(ctx), ActivityNameAssessCommandAck, in).Get(ctx, &decision); err != nil {
+		return WorkflowOutcome{Kind: KindCommandAck}, err
+	}
+	if decision.EscalateManualReview {
+		var queued TicketDispatchResult
+		err := workflow.ExecuteActivity(
+			externalDispatchActivityContext(ctx),
+			ActivityNameEnqueueManualReview,
+			ManualReviewEscalationInput{
+				OrganizationID: in.OrganizationID,
+				Reason:         decision.Reason,
+				RequestedAt:    workflow.Now(ctx),
+			},
+		).Get(ctx, &queued)
+		if err != nil {
+			return WorkflowOutcome{Kind: KindCommandAck}, err
+		}
+		return WorkflowOutcome{Kind: KindCommandAck, Action: queued.Action, Detail: decision.Detail}, nil
+	}
+	return WorkflowOutcome{Kind: KindCommandAck, Action: decision.Action, Detail: decision.Detail}, nil
 }
 
 func PaymentPendingTimeoutFollowUpWorkflow(ctx workflow.Context, in PaymentPendingTimeoutInput) (WorkflowOutcome, error) {
@@ -143,6 +269,18 @@ func ManualReviewEscalationWorkflow(ctx workflow.Context, in ManualReviewEscalat
 }
 
 func readActivityContext(ctx workflow.Context) workflow.Context {
+	return workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		StartToCloseTimeout: 15 * time.Second,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval:    time.Second,
+			BackoffCoefficient: 2,
+			MaximumInterval:    5 * time.Second,
+			MaximumAttempts:    3,
+		},
+	})
+}
+
+func writeActivityContext(ctx workflow.Context) workflow.Context {
 	return workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: 15 * time.Second,
 		RetryPolicy: &temporal.RetryPolicy{

@@ -13,7 +13,7 @@ func TestClassifyProviderNormalizedState(t *testing.T) {
 		{" settled ", "captured", true},
 		{"paid", "captured", true},
 		{"Declined", "failed", true},
-		{"cancelled", "failed", true},
+		{"cancelled", "canceled", true},
 		{"pending", "", false},
 		{"", "", false},
 		{"processing", "", false},

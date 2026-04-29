@@ -56,10 +56,16 @@ const CatalogAdminCountPriceBooks = `-- name: CatalogAdminCountPriceBooks :one
 SELECT count(*)::bigint AS cnt
 FROM price_books pb
 WHERE pb.organization_id = $1
+  AND ($2::bool OR pb.active = true)
 `
 
-func (q *Queries) CatalogAdminCountPriceBooks(ctx context.Context, organizationID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, CatalogAdminCountPriceBooks, organizationID)
+type CatalogAdminCountPriceBooksParams struct {
+	OrganizationID uuid.UUID
+	Column2        bool
+}
+
+func (q *Queries) CatalogAdminCountPriceBooks(ctx context.Context, arg CatalogAdminCountPriceBooksParams) (int64, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminCountPriceBooks, arg.OrganizationID, arg.Column2)
 	var cnt int64
 	err := row.Scan(&cnt)
 	return cnt, err
@@ -84,6 +90,25 @@ func (q *Queries) CatalogAdminCountProducts(ctx context.Context, arg CatalogAdmi
 	var cnt int64
 	err := row.Scan(&cnt)
 	return cnt, err
+}
+
+const CatalogAdminCountProductsInOrgByIDs = `-- name: CatalogAdminCountProductsInOrgByIDs :one
+SELECT count(*)::bigint
+FROM products p
+WHERE p.organization_id = $1
+  AND p.id = ANY($2::uuid[])
+`
+
+type CatalogAdminCountProductsInOrgByIDsParams struct {
+	OrganizationID uuid.UUID
+	Column2        []uuid.UUID
+}
+
+func (q *Queries) CatalogAdminCountProductsInOrgByIDs(ctx context.Context, arg CatalogAdminCountProductsInOrgByIDsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminCountProductsInOrgByIDs, arg.OrganizationID, arg.Column2)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const CatalogAdminCountTags = `-- name: CatalogAdminCountTags :one
@@ -152,6 +177,24 @@ func (q *Queries) CatalogAdminGetCategory(ctx context.Context, arg CatalogAdminG
 	return i, err
 }
 
+const CatalogAdminGetMachineSiteForOrg = `-- name: CatalogAdminGetMachineSiteForOrg :one
+SELECT site_id
+FROM machines
+WHERE organization_id = $1 AND id = $2
+`
+
+type CatalogAdminGetMachineSiteForOrgParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CatalogAdminGetMachineSiteForOrg(ctx context.Context, arg CatalogAdminGetMachineSiteForOrgParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminGetMachineSiteForOrg, arg.OrganizationID, arg.ID)
+	var site_id uuid.UUID
+	err := row.Scan(&site_id)
+	return site_id, err
+}
+
 const CatalogAdminGetPlanogram = `-- name: CatalogAdminGetPlanogram :one
 SELECT
     pg.id,
@@ -182,6 +225,127 @@ func (q *Queries) CatalogAdminGetPlanogram(ctx context.Context, arg CatalogAdmin
 		&i.Status,
 		&i.Meta,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const CatalogAdminGetPriceBook = `-- name: CatalogAdminGetPriceBook :one
+SELECT
+    pb.id,
+    pb.organization_id,
+    pb.name,
+    pb.currency,
+    pb.effective_from,
+    pb.effective_to,
+    pb.is_default,
+    pb.active,
+    pb.scope_type,
+    pb.site_id,
+    pb.machine_id,
+    pb.priority,
+    pb.created_at,
+    pb.updated_at
+FROM price_books pb
+WHERE pb.organization_id = $1 AND pb.id = $2
+`
+
+type CatalogAdminGetPriceBookParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CatalogAdminGetPriceBook(ctx context.Context, arg CatalogAdminGetPriceBookParams) (PriceBook, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminGetPriceBook, arg.OrganizationID, arg.ID)
+	var i PriceBook
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Name,
+		&i.Currency,
+		&i.EffectiveFrom,
+		&i.EffectiveTo,
+		&i.IsDefault,
+		&i.Active,
+		&i.ScopeType,
+		&i.SiteID,
+		&i.MachineID,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const CatalogAdminGetPriceBookTarget = `-- name: CatalogAdminGetPriceBookTarget :one
+SELECT
+    id,
+    organization_id,
+    price_book_id,
+    site_id,
+    machine_id,
+    created_at
+FROM price_book_targets
+WHERE organization_id = $1 AND id = $2
+`
+
+type CatalogAdminGetPriceBookTargetParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CatalogAdminGetPriceBookTarget(ctx context.Context, arg CatalogAdminGetPriceBookTargetParams) (PriceBookTarget, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminGetPriceBookTarget, arg.OrganizationID, arg.ID)
+	var i PriceBookTarget
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.PriceBookID,
+		&i.SiteID,
+		&i.MachineID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const CatalogAdminGetPrimaryProductImageForOrg = `-- name: CatalogAdminGetPrimaryProductImageForOrg :one
+SELECT
+    pi.id, pi.product_id, pi.storage_key, pi.cdn_url, pi.thumb_cdn_url, pi.content_hash, pi.width, pi.height, pi.mime_type, pi.alt_text, pi.sort_order, pi.is_primary, pi.media_asset_id, pi.media_version, pi.status, pi.created_at, pi.updated_at
+FROM product_images pi
+JOIN products p ON p.id = pi.product_id
+INNER JOIN product_media pm ON pm.id = pi.id
+    AND pm.product_id = pi.product_id
+WHERE p.organization_id = $1
+  AND p.id = $2
+  AND pi.is_primary = true
+  AND pi.status = 'active'
+`
+
+type CatalogAdminGetPrimaryProductImageForOrgParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CatalogAdminGetPrimaryProductImageForOrg(ctx context.Context, arg CatalogAdminGetPrimaryProductImageForOrgParams) (ProductImage, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminGetPrimaryProductImageForOrg, arg.OrganizationID, arg.ID)
+	var i ProductImage
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.StorageKey,
+		&i.CdnUrl,
+		&i.ThumbCdnUrl,
+		&i.ContentHash,
+		&i.Width,
+		&i.Height,
+		&i.MimeType,
+		&i.AltText,
+		&i.SortOrder,
+		&i.IsPrimary,
+		&i.MediaAssetID,
+		&i.MediaVersion,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -234,6 +398,94 @@ func (q *Queries) CatalogAdminGetProduct(ctx context.Context, arg CatalogAdminGe
 		&i.AgeRestricted,
 		&i.AllergenCodes,
 		&i.NutritionalNote,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const CatalogAdminGetProductImageForOrg = `-- name: CatalogAdminGetProductImageForOrg :one
+SELECT
+    pi.id, pi.product_id, pi.storage_key, pi.cdn_url, pi.thumb_cdn_url, pi.content_hash, pi.width, pi.height, pi.mime_type, pi.alt_text, pi.sort_order, pi.is_primary, pi.media_asset_id, pi.media_version, pi.status, pi.created_at, pi.updated_at
+FROM product_images pi
+JOIN products p ON p.id = pi.product_id
+INNER JOIN product_media pm ON pm.id = pi.id
+    AND pm.product_id = pi.product_id
+WHERE p.organization_id = $1
+  AND p.id = $2
+  AND pi.id = $3
+`
+
+type CatalogAdminGetProductImageForOrgParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+	ID_2           uuid.UUID
+}
+
+func (q *Queries) CatalogAdminGetProductImageForOrg(ctx context.Context, arg CatalogAdminGetProductImageForOrgParams) (ProductImage, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminGetProductImageForOrg, arg.OrganizationID, arg.ID, arg.ID_2)
+	var i ProductImage
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.StorageKey,
+		&i.CdnUrl,
+		&i.ThumbCdnUrl,
+		&i.ContentHash,
+		&i.Width,
+		&i.Height,
+		&i.MimeType,
+		&i.AltText,
+		&i.SortOrder,
+		&i.IsPrimary,
+		&i.MediaAssetID,
+		&i.MediaVersion,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const CatalogAdminGetProductMediumForOrgProductImage = `-- name: CatalogAdminGetProductMediumForOrgProductImage :one
+SELECT pm.id, pm.organization_id, pm.product_id, pm.media_type, pm.source_type, pm.original_object_key, pm.thumb_object_key, pm.display_object_key, pm.original_url, pm.thumb_url, pm.display_url, pm.mime_type, pm.width, pm.height, pm.size_bytes, pm.content_hash, pm.media_version, pm.sort_order, pm.status, pm.created_by, pm.created_at, pm.updated_at
+FROM product_media pm
+JOIN products p ON p.id = pm.product_id
+WHERE p.organization_id = $1
+    AND pm.product_id = $2
+    AND pm.id = $3
+`
+
+type CatalogAdminGetProductMediumForOrgProductImageParams struct {
+	OrganizationID uuid.UUID
+	ProductID      uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CatalogAdminGetProductMediumForOrgProductImage(ctx context.Context, arg CatalogAdminGetProductMediumForOrgProductImageParams) (ProductMedium, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminGetProductMediumForOrgProductImage, arg.OrganizationID, arg.ProductID, arg.ID)
+	var i ProductMedium
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.ProductID,
+		&i.MediaType,
+		&i.SourceType,
+		&i.OriginalObjectKey,
+		&i.ThumbObjectKey,
+		&i.DisplayObjectKey,
+		&i.OriginalUrl,
+		&i.ThumbUrl,
+		&i.DisplayUrl,
+		&i.MimeType,
+		&i.Width,
+		&i.Height,
+		&i.SizeBytes,
+		&i.ContentHash,
+		&i.MediaVersion,
+		&i.SortOrder,
+		&i.Status,
+		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -400,6 +652,135 @@ func (q *Queries) CatalogAdminListPlanograms(ctx context.Context, arg CatalogAdm
 	return items, nil
 }
 
+const CatalogAdminListPriceBookItems = `-- name: CatalogAdminListPriceBookItems :many
+SELECT
+    id,
+    organization_id,
+    price_book_id,
+    product_id,
+    unit_price_minor,
+    created_at
+FROM price_book_items
+WHERE organization_id = $1 AND price_book_id = $2
+ORDER BY product_id ASC
+`
+
+type CatalogAdminListPriceBookItemsParams struct {
+	OrganizationID uuid.UUID
+	PriceBookID    uuid.UUID
+}
+
+func (q *Queries) CatalogAdminListPriceBookItems(ctx context.Context, arg CatalogAdminListPriceBookItemsParams) ([]PriceBookItem, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminListPriceBookItems, arg.OrganizationID, arg.PriceBookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PriceBookItem{}
+	for rows.Next() {
+		var i PriceBookItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.PriceBookID,
+			&i.ProductID,
+			&i.UnitPriceMinor,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const CatalogAdminListPriceBookTargetsByBook = `-- name: CatalogAdminListPriceBookTargetsByBook :many
+SELECT
+    id,
+    organization_id,
+    price_book_id,
+    site_id,
+    machine_id,
+    created_at
+FROM price_book_targets
+WHERE organization_id = $1 AND price_book_id = $2
+ORDER BY created_at ASC, id ASC
+`
+
+type CatalogAdminListPriceBookTargetsByBookParams struct {
+	OrganizationID uuid.UUID
+	PriceBookID    uuid.UUID
+}
+
+func (q *Queries) CatalogAdminListPriceBookTargetsByBook(ctx context.Context, arg CatalogAdminListPriceBookTargetsByBookParams) ([]PriceBookTarget, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminListPriceBookTargetsByBook, arg.OrganizationID, arg.PriceBookID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PriceBookTarget{}
+	for rows.Next() {
+		var i PriceBookTarget
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.PriceBookID,
+			&i.SiteID,
+			&i.MachineID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const CatalogAdminListPriceBookTargetsByOrg = `-- name: CatalogAdminListPriceBookTargetsByOrg :many
+SELECT
+    id,
+    organization_id,
+    price_book_id,
+    site_id,
+    machine_id,
+    created_at
+FROM price_book_targets
+WHERE organization_id = $1
+`
+
+func (q *Queries) CatalogAdminListPriceBookTargetsByOrg(ctx context.Context, organizationID uuid.UUID) ([]PriceBookTarget, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminListPriceBookTargetsByOrg, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PriceBookTarget{}
+	for rows.Next() {
+		var i PriceBookTarget
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.PriceBookID,
+			&i.SiteID,
+			&i.MachineID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const CatalogAdminListPriceBooks = `-- name: CatalogAdminListPriceBooks :many
 SELECT
     pb.id,
@@ -409,13 +790,16 @@ SELECT
     pb.effective_from,
     pb.effective_to,
     pb.is_default,
+    pb.active,
     pb.scope_type,
     pb.site_id,
     pb.machine_id,
     pb.priority,
-    pb.created_at
+    pb.created_at,
+    pb.updated_at
 FROM price_books pb
 WHERE pb.organization_id = $1
+  AND ($4::bool OR pb.active = true)
 ORDER BY pb.effective_from DESC, pb.priority DESC, pb.name
 LIMIT $2 OFFSET $3
 `
@@ -424,10 +808,16 @@ type CatalogAdminListPriceBooksParams struct {
 	OrganizationID uuid.UUID
 	Limit          int32
 	Offset         int32
+	Column4        bool
 }
 
 func (q *Queries) CatalogAdminListPriceBooks(ctx context.Context, arg CatalogAdminListPriceBooksParams) ([]PriceBook, error) {
-	rows, err := q.db.Query(ctx, CatalogAdminListPriceBooks, arg.OrganizationID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, CatalogAdminListPriceBooks,
+		arg.OrganizationID,
+		arg.Limit,
+		arg.Offset,
+		arg.Column4,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -443,11 +833,126 @@ func (q *Queries) CatalogAdminListPriceBooks(ctx context.Context, arg CatalogAdm
 			&i.EffectiveFrom,
 			&i.EffectiveTo,
 			&i.IsDefault,
+			&i.Active,
 			&i.ScopeType,
 			&i.SiteID,
 			&i.MachineID,
 			&i.Priority,
 			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const CatalogAdminListProductImagesForOrg = `-- name: CatalogAdminListProductImagesForOrg :many
+SELECT
+    pi.id, pi.product_id, pi.storage_key, pi.cdn_url, pi.thumb_cdn_url, pi.content_hash, pi.width, pi.height, pi.mime_type, pi.alt_text, pi.sort_order, pi.is_primary, pi.media_asset_id, pi.media_version, pi.status, pi.created_at, pi.updated_at
+FROM product_images pi
+JOIN products p ON p.id = pi.product_id
+INNER JOIN product_media pm ON pm.id = pi.id
+    AND pm.product_id = pi.product_id
+WHERE p.organization_id = $1
+  AND p.id = $2
+  AND ($3::bool OR pi.status = 'active')
+ORDER BY pi.is_primary DESC, pi.sort_order ASC, pi.created_at ASC
+`
+
+type CatalogAdminListProductImagesForOrgParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+	Column3        bool
+}
+
+func (q *Queries) CatalogAdminListProductImagesForOrg(ctx context.Context, arg CatalogAdminListProductImagesForOrgParams) ([]ProductImage, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminListProductImagesForOrg, arg.OrganizationID, arg.ID, arg.Column3)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ProductImage{}
+	for rows.Next() {
+		var i ProductImage
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.StorageKey,
+			&i.CdnUrl,
+			&i.ThumbCdnUrl,
+			&i.ContentHash,
+			&i.Width,
+			&i.Height,
+			&i.MimeType,
+			&i.AltText,
+			&i.SortOrder,
+			&i.IsPrimary,
+			&i.MediaAssetID,
+			&i.MediaVersion,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const CatalogAdminListProductMediumRowsForProduct = `-- name: CatalogAdminListProductMediumRowsForProduct :many
+SELECT pm.id, pm.organization_id, pm.product_id, pm.media_type, pm.source_type, pm.original_object_key, pm.thumb_object_key, pm.display_object_key, pm.original_url, pm.thumb_url, pm.display_url, pm.mime_type, pm.width, pm.height, pm.size_bytes, pm.content_hash, pm.media_version, pm.sort_order, pm.status, pm.created_by, pm.created_at, pm.updated_at
+FROM product_media pm
+WHERE pm.organization_id = $1
+    AND pm.product_id = $2
+ORDER BY pm.sort_order ASC, pm.created_at ASC
+`
+
+type CatalogAdminListProductMediumRowsForProductParams struct {
+	OrganizationID uuid.UUID
+	ProductID      uuid.UUID
+}
+
+func (q *Queries) CatalogAdminListProductMediumRowsForProduct(ctx context.Context, arg CatalogAdminListProductMediumRowsForProductParams) ([]ProductMedium, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminListProductMediumRowsForProduct, arg.OrganizationID, arg.ProductID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ProductMedium{}
+	for rows.Next() {
+		var i ProductMedium
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.ProductID,
+			&i.MediaType,
+			&i.SourceType,
+			&i.OriginalObjectKey,
+			&i.ThumbObjectKey,
+			&i.DisplayObjectKey,
+			&i.OriginalUrl,
+			&i.ThumbUrl,
+			&i.DisplayUrl,
+			&i.MimeType,
+			&i.Width,
+			&i.Height,
+			&i.SizeBytes,
+			&i.ContentHash,
+			&i.MediaVersion,
+			&i.SortOrder,
+			&i.Status,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -625,6 +1130,112 @@ func (q *Queries) CatalogAdminListTags(ctx context.Context, arg CatalogAdminList
 			&i.Slug,
 			&i.Name,
 			&i.Active,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const CatalogAdminPriceBookItemsForPreview = `-- name: CatalogAdminPriceBookItemsForPreview :many
+SELECT
+    pbi.price_book_id,
+    pbi.product_id,
+    pbi.unit_price_minor
+FROM price_book_items pbi
+WHERE pbi.organization_id = $1
+  AND pbi.price_book_id = ANY($2::uuid[])
+  AND pbi.product_id = ANY($3::uuid[])
+`
+
+type CatalogAdminPriceBookItemsForPreviewParams struct {
+	OrganizationID uuid.UUID
+	Column2        []uuid.UUID
+	Column3        []uuid.UUID
+}
+
+type CatalogAdminPriceBookItemsForPreviewRow struct {
+	PriceBookID    uuid.UUID
+	ProductID      uuid.UUID
+	UnitPriceMinor int64
+}
+
+func (q *Queries) CatalogAdminPriceBookItemsForPreview(ctx context.Context, arg CatalogAdminPriceBookItemsForPreviewParams) ([]CatalogAdminPriceBookItemsForPreviewRow, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminPriceBookItemsForPreview, arg.OrganizationID, arg.Column2, arg.Column3)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CatalogAdminPriceBookItemsForPreviewRow{}
+	for rows.Next() {
+		var i CatalogAdminPriceBookItemsForPreviewRow
+		if err := rows.Scan(&i.PriceBookID, &i.ProductID, &i.UnitPriceMinor); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const CatalogAdminPricingPreviewBooksActiveAt = `-- name: CatalogAdminPricingPreviewBooksActiveAt :many
+SELECT
+    pb.id,
+    pb.organization_id,
+    pb.name,
+    pb.currency,
+    pb.effective_from,
+    pb.effective_to,
+    pb.is_default,
+    pb.active,
+    pb.scope_type,
+    pb.site_id,
+    pb.machine_id,
+    pb.priority,
+    pb.created_at,
+    pb.updated_at
+FROM price_books pb
+WHERE pb.organization_id = $1
+  AND pb.active = true
+  AND pb.effective_from <= $2::timestamptz
+  AND (pb.effective_to IS NULL OR pb.effective_to > $2::timestamptz)
+`
+
+type CatalogAdminPricingPreviewBooksActiveAtParams struct {
+	OrganizationID uuid.UUID
+	Column2        time.Time
+}
+
+func (q *Queries) CatalogAdminPricingPreviewBooksActiveAt(ctx context.Context, arg CatalogAdminPricingPreviewBooksActiveAtParams) ([]PriceBook, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminPricingPreviewBooksActiveAt, arg.OrganizationID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PriceBook{}
+	for rows.Next() {
+		var i PriceBook
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.Name,
+			&i.Currency,
+			&i.EffectiveFrom,
+			&i.EffectiveTo,
+			&i.IsDefault,
+			&i.Active,
+			&i.ScopeType,
+			&i.SiteID,
+			&i.MachineID,
+			&i.Priority,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

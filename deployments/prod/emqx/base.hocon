@@ -14,7 +14,12 @@ listeners.ssl.default {
     cacertfile = "/opt/emqx/etc/certs/ca.crt"
     certfile = "/opt/emqx/etc/certs/server.crt"
     keyfile = "/opt/emqx/etc/certs/server.key"
+    # Server-auth TLS today; switch to verify_peer + fail_if_no_peer_cert=true
+    # when machine client certificates are issued fleet-wide.
     verify = verify_none
     fail_if_no_peer_cert = false
   }
 }
+
+# Per-machine topic ACL: see acl.conf.example and authorization.snippet.hocon in this directory.
+# Install /opt/emqx/etc/acl.conf on the broker, merge authorization.snippet.hocon, then set authorization.enable = true.

@@ -2,6 +2,8 @@
 
 This runbook covers bounded JetStream streams/consumers, worker-side Postgres projection throttling, duplicate handling for metrics rollups, and how to interpret lag vs database pressure.
 
+**Transactional outbox (`outbox_events`, `AVF_INTERNAL_OUTBOX`, `cmd/worker`) is a different pipeline** — it carries payment, commerce, inventory, command dispatch, and audit integration events written in the same database transaction as OLTP changes. Do not route those side effects through telemetry streams; use the outbox docs ([outbox.md](./outbox.md), [outbox-dlq-debug.md](./outbox-dlq-debug.md)).
+
 For **fleet rollout**, overload playbooks, rollback, and bursty validation procedures, see [telemetry-production-rollout.md](./telemetry-production-rollout.md).
 
 Prometheus alert names, SLO-style thresholds, and incident steps for lag / replay / projection failure live in [production-observability-alerts.md](./production-observability-alerts.md).
@@ -59,7 +61,7 @@ nats consumer info AVF_TELEMETRY_METRICS avf-w-telemetry-metrics
 
 Relevant **Stream** fields: `Bytes`, `Messages`, `Max Bytes`, `Max Age`, `Discard Old`. **Consumer** fields: `Unprocessed Messages` / pending, `Redelivered Messages`, `Ack Pending` (exact names vary by CLI version).
 
-**Prometheus (worker):** `avf_telemetry_consumer_lag{stream,durable}` tracks broker-side **`NumPending`** (lag). Use it alongside stream `Bytes` to see whether the broker is retaining a large backlog versus the consumer falling behind on acks.
+**Prometheus (worker):** `avf_telemetry_consumer_lag{stream,durable}` tracks broker-side **`NumPending`** (lag). **`avf_telemetry_projection_failures_total{reason}`** counts fetch/handler/Nak failures. **`avf_telemetry_projection_backlog`** tracks in-flight projection concurrency (semaphore). **`avf_telemetry_projection_flush_seconds`** observes end-to-end batch processing. Use them alongside stream `Bytes` to see whether the broker is retaining a large backlog versus the consumer falling behind on acks.
 
 **NATS monitoring HTTP** (often `8222` on the data node): `http://127.0.0.1:8222/jsz` (JetStream summary) when monitoring is enabled on the server process.
 

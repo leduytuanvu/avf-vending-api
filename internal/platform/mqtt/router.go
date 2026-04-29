@@ -8,8 +8,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/observability/mqttprom"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
+
+var mqttInvalidTopicsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	Namespace: "avf",
+	Subsystem: "mqtt",
+	Name:      "invalid_topics_total",
+	Help:      "MQTT messages rejected at ingest parse/validation (topic shape or envelope machine_id vs topic).",
+}, []string{"reason"})
 
 var allowedReceiptStatuses = map[string]struct{}{
 	"acked": {}, "nacked": {}, "failed": {}, "timeout": {},
@@ -147,6 +157,11 @@ func normalizeReceiptStatus(raw string) (string, bool) {
 	return st, true
 }
 
+// NormalizeReceiptStatus maps wire receipt/ack status strings to canonical persistence values.
+func NormalizeReceiptStatus(raw string) (string, bool) {
+	return normalizeReceiptStatus(raw)
+}
+
 func eventTypeForChannel(channel string, w deviceWire) (string, error) {
 	if et := strings.TrimSpace(w.EventType); et != "" {
 		return et, nil
@@ -168,16 +183,17 @@ func eventTypeForChannel(channel string, w deviceWire) (string, error) {
 		return "events.cash", nil
 	case "events/inventory":
 		return "events.inventory", nil
+	case "events":
+		return "", errors.New("mqtt: event_type is required when channel is events")
 	default:
 		return "", fmt.Errorf("mqtt: unsupported channel %q", channel)
 	}
 }
 
-// ParseDeviceTopic extracts machine id and channel key from a subscription topic under TopicPrefix.
-func ParseDeviceTopic(prefix, topic string) (machineID uuid.UUID, channel string, err error) {
+func parseLegacyDeviceTopic(prefix, topic string) (machineID uuid.UUID, channel string, err error) {
 	p := strings.TrimSuffix(strings.TrimSpace(prefix), "/")
-	if p == "" {
-		return uuid.Nil, "", errors.New("mqtt: empty topic prefix")
+	if err := ValidateTopicPrefix(p); err != nil {
+		return uuid.Nil, "", fmt.Errorf("mqtt: invalid topic prefix: %w", err)
 	}
 	if !strings.HasPrefix(topic, p+"/") {
 		return uuid.Nil, "", fmt.Errorf("mqtt: topic %q does not match prefix %q", topic, p)
@@ -196,6 +212,46 @@ func ParseDeviceTopic(prefix, topic string) (machineID uuid.UUID, channel string
 		return uuid.Nil, "", fmt.Errorf("mqtt: unknown device channel in topic %q", topic)
 	}
 	return machineID, ch, nil
+}
+
+func parseEnterpriseDeviceTopic(prefix, topic string) (machineID uuid.UUID, channel string, err error) {
+	p := strings.TrimSuffix(strings.TrimSpace(prefix), "/")
+	if err := ValidateTopicPrefix(p); err != nil {
+		return uuid.Nil, "", fmt.Errorf("mqtt: invalid topic prefix: %w", err)
+	}
+	if !strings.HasPrefix(topic, p+"/") {
+		return uuid.Nil, "", fmt.Errorf("mqtt: topic %q does not match prefix %q", topic, p)
+	}
+	rest := topic[len(p)+1:]
+	parts := strings.Split(rest, "/")
+	if len(parts) < 3 {
+		return uuid.Nil, "", errors.New("mqtt: enterprise topic too short")
+	}
+	if parts[0] != "machines" {
+		return uuid.Nil, "", fmt.Errorf("mqtt: enterprise topic missing machines segment in %q", topic)
+	}
+	machineID, err = uuid.Parse(parts[1])
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("mqtt: machine id: %w", err)
+	}
+	ch, ok := channelFromPathParts(parts[2:])
+	if !ok {
+		return uuid.Nil, "", fmt.Errorf("mqtt: unknown enterprise device channel in topic %q", topic)
+	}
+	return machineID, ch, nil
+}
+
+// ParseDeviceTopicWithLayout extracts machine id and channel for legacy or enterprise layouts.
+func ParseDeviceTopicWithLayout(layout TopicLayout, prefix, topic string) (machineID uuid.UUID, channel string, err error) {
+	if NormalizeTopicLayout(string(layout)) == TopicLayoutEnterprise {
+		return parseEnterpriseDeviceTopic(prefix, topic)
+	}
+	return parseLegacyDeviceTopic(prefix, topic)
+}
+
+// ParseDeviceTopic extracts machine id and channel key from a subscription topic under TopicPrefix (legacy layout).
+func ParseDeviceTopic(prefix, topic string) (machineID uuid.UUID, channel string, err error) {
+	return parseLegacyDeviceTopic(prefix, topic)
 }
 
 func ingestReject(hooks *IngestHooks, topic, reason string, payloadBytes int) {
@@ -222,6 +278,8 @@ func channelFromPathParts(parts []string) (string, bool) {
 		return "events/cash", true
 	case len(parts) == 2 && parts[0] == "events" && parts[1] == "inventory":
 		return "events/inventory", true
+	case len(parts) == 1 && parts[0] == "events":
+		return "events", true
 	case len(parts) == 2 && parts[0] == "shadow" && parts[1] == "reported":
 		return "shadow/reported", true
 	case len(parts) == 2 && parts[0] == "shadow" && parts[1] == "desired":
@@ -238,12 +296,13 @@ func channelFromPathParts(parts []string) (string, bool) {
 // Dispatch parses the topic and JSON body and invokes the appropriate ingest hook.
 // lim may be nil to skip optional ingress bounds (backwards compatible for tests).
 // hooks may be nil; when set, OnIngressRejected receives early rejections before DeviceIngest.
-func Dispatch(ctx context.Context, prefix, topic string, payload []byte, ing DeviceIngest, lim *TelemetryIngressLimits, hooks *IngestHooks) error {
+func Dispatch(ctx context.Context, layout TopicLayout, prefix, topic string, payload []byte, ing DeviceIngest, lim *TelemetryIngressLimits, hooks *IngestHooks) error {
 	if ing == nil {
 		return errors.New("mqtt: nil DeviceIngest")
 	}
-	mid, channel, err := ParseDeviceTopic(prefix, topic)
+	mid, channel, err := ParseDeviceTopicWithLayout(layout, prefix, topic)
 	if err != nil {
+		mqttInvalidTopicsTotal.WithLabelValues("parse").Inc()
 		ingestReject(hooks, topic, "topic_parse", len(payload))
 		return err
 	}
@@ -265,6 +324,7 @@ func Dispatch(ctx context.Context, prefix, topic string, payload []byte, ing Dev
 		return fmt.Errorf("mqtt: json: %w", err)
 	}
 	if err := assertWireMachine(mid, w); err != nil {
+		mqttInvalidTopicsTotal.WithLabelValues("machine_id_mismatch").Inc()
 		ingestReject(hooks, topic, "machine_id_mismatch", len(payload))
 		return err
 	}
@@ -329,6 +389,9 @@ func Dispatch(ctx context.Context, prefix, topic string, payload []byte, ing Dev
 			CorrelationID *uuid.UUID      `json:"correlation_id"`
 			Data          json.RawMessage `json:"payload"`
 			DedupeKey     string          `json:"dedupe_key"`
+			CommandID     uuid.UUID       `json:"command_id"`
+			MachineID     uuid.UUID       `json:"machine_id"`
+			OccurredAt    time.Time       `json:"occurred_at"`
 		}
 		if err := json.Unmarshal(payload, &body); err != nil {
 			ingestReject(hooks, topic, "receipt_json", len(payload))
@@ -347,6 +410,11 @@ func Dispatch(ctx context.Context, prefix, topic string, payload []byte, ing Dev
 			ingestReject(hooks, topic, "receipt_missing_dedupe", len(payload))
 			return errors.New("mqtt: commands.receipt.dedupe_key is required")
 		}
+		if err := ValidateEdgeCommandReceipt(mid, body.CommandID, body.MachineID, body.OccurredAt); err != nil {
+			mqttprom.RecordCommandAckRejected("invalid_edge_command_receipt")
+			ingestReject(hooks, topic, "receipt_identity_fields", len(payload))
+			return err
+		}
 		raw := []byte(body.Data)
 		if len(raw) == 0 {
 			raw = []byte("{}")
@@ -362,6 +430,8 @@ func Dispatch(ctx context.Context, prefix, topic string, payload []byte, ing Dev
 			CorrelationID: body.CorrelationID,
 			Payload:       raw,
 			DedupeKey:     strings.TrimSpace(body.DedupeKey),
+			CommandID:     body.CommandID,
+			OccurredAt:    body.OccurredAt,
 		})
 
 	default:

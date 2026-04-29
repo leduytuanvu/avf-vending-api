@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+import "avf/machine/v1/common.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// MachineCommandService exposes the command ledger read/ack contract for the
+// machine app. Realtime delivery remains MQTT TLS.
+service MachineCommandService {
+  // Deprecated: realtime backend→machine commands use MQTT TLS + ledger + ACK + expiry (see docs/api/mqtt-contract.md).
+  // HTTP/gRPC polling is not the primary delivery plane.
+  rpc GetPendingCommands(GetPendingCommandsRequest) returns (GetPendingCommandsResponse) {
+    option deprecated = true;
+  }
+  rpc AckCommand(AckCommandRequest) returns (AckCommandResponse) {
+    option deprecated = true;
+  }
+  rpc RejectCommand(RejectCommandRequest) returns (RejectCommandResponse) {
+    option deprecated = true;
+  }
+  rpc GetAssignedUpdate(GetAssignedUpdateRequest) returns (GetAssignedUpdateResponse);
+  rpc ReportUpdateStatus(ReportUpdateStatusRequest) returns (ReportUpdateStatusResponse);
+  rpc ReportDiagnosticBundleResult(ReportDiagnosticBundleResultRequest) returns (ReportDiagnosticBundleResultResponse);
+}
+
+message MachineCommand {
+  string command_id = 1;
+  int64 command_sequence = 2;
+  string command_type = 3;
+  google.protobuf.Struct payload = 4;
+  google.protobuf.Timestamp issued_at = 5;
+  string mqtt_topic = 6;
+}
+
+message GetPendingCommandsRequest {
+  MachineRequestMeta meta = 1;
+  int64 after_command_sequence = 2;
+  int32 limit = 3;
+}
+
+message GetPendingCommandsResponse {
+  MachineResponseMeta meta = 1;
+  repeated MachineCommand commands = 2;
+}
+
+message AckCommandRequest {
+  MachineRequestMeta meta = 1;
+  string command_id = 2;
+  int64 command_sequence = 3;
+  string receipt_id = 4;
+}
+
+message AckCommandResponse {
+  MachineResponseMeta meta = 1;
+}
+
+message RejectCommandRequest {
+  MachineRequestMeta meta = 1;
+  string command_id = 2;
+  int64 command_sequence = 3;
+  string reason = 4;
+}
+
+message RejectCommandResponse {
+  MachineResponseMeta meta = 1;
+}
+
+message AssignedUpdate {
+  string campaign_id = 1;
+  string artifact_id = 2;
+  string artifact_version = 3;
+  string campaign_type = 4;
+  string storage_key = 5;
+  string sha256_hex = 6;
+  int64 size_bytes = 7;
+  string status = 8;
+}
+
+message GetAssignedUpdateRequest {
+  MachineRequestMeta meta = 1;
+}
+
+message GetAssignedUpdateResponse {
+  MachineResponseMeta meta = 1;
+  AssignedUpdate update = 2;
+}
+
+message ReportUpdateStatusRequest {
+  MachineRequestMeta meta = 1;
+  string campaign_id = 2;
+  string status = 3;
+  string error_message = 4;
+}
+
+message ReportUpdateStatusResponse {
+  MachineResponseMeta meta = 1;
+}
+
+message ReportDiagnosticBundleResultRequest {
+  MachineRequestMeta meta = 1;
+  string request_id = 2;
+  string storage_key = 3;
+  string storage_provider = 4;
+  string content_type = 5;
+  int64 size_bytes = 6;
+  string sha256_hex = 7;
+  google.protobuf.Struct metadata = 8;
+  google.protobuf.Timestamp expires_at = 9;
+}
+
+message ReportDiagnosticBundleResultResponse {
+  MachineResponseMeta meta = 1;
+  string bundle_id = 2;
+}

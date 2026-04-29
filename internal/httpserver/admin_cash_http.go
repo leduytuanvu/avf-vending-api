@@ -1,6 +1,8 @@
 package httpserver
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -9,8 +11,10 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
 	cashdomain "github.com/avf/avf-vending-api/internal/domain/cash"
+	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -23,11 +27,17 @@ func mountAdminCashSettlementRoutes(r chi.Router, app *api.HTTPApplication, writ
 	if writeRL == nil {
 		writeRL = func(h http.Handler) http.Handler { return h }
 	}
-	r.Get("/machines/{machineId}/cashbox", getAdminMachineCashbox(app))
-	r.With(writeRL).Post("/machines/{machineId}/cash-collections", postAdminMachineCashCollectionStart(app))
-	r.Get("/machines/{machineId}/cash-collections", listAdminMachineCashCollections(app))
-	r.With(writeRL).Post("/machines/{machineId}/cash-collections/{collectionId}/close", postAdminMachineCashCollectionClose(app))
-	r.Get("/machines/{machineId}/cash-collections/{collectionId}", getAdminMachineCashCollection(app))
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAnyPermission(auth.PermCashRead))
+		r.Get("/machines/{machineId}/cashbox", getAdminMachineCashbox(app))
+		r.Get("/machines/{machineId}/cash-collections", listAdminMachineCashCollections(app))
+		r.Get("/machines/{machineId}/cash-collections/{collectionId}", getAdminMachineCashCollection(app))
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAnyPermission(auth.PermCashWrite))
+		r.With(writeRL).Post("/machines/{machineId}/cash-collections", postAdminMachineCashCollectionStart(app))
+		r.With(writeRL).Post("/machines/{machineId}/cash-collections/{collectionId}/close", postAdminMachineCashCollectionClose(app))
+	})
 }
 
 func cashVarianceThreshold(app *api.HTTPApplication) int64 {
@@ -157,6 +167,17 @@ func postAdminMachineCashCollectionStart(app *api.HTTPApplication) http.HandlerF
 			writeCashSettlementError(w, r, err)
 			return
 		}
+		recordCashCollectionAudit(r.Context(), app, row.OrganizationID, "cash.collection.started", row.ID, map[string]any{
+			"machine_id":       machineID.String(),
+			"collection_id":    row.ID.String(),
+			"idempotency_key":  idem,
+			"currency":         cur,
+			"operator_session": sid.String(),
+			"lifecycle_status": row.LifecycleStatus,
+			"reconciliation":   row.ReconciliationStatus,
+			"opened_at":        row.OpenedAt.UTC().Format(time.RFC3339Nano),
+			"fail_open_policy": "audit append errors do not roll back cash collection start",
+		})
 		writeJSON(w, http.StatusOK, v1CashCollectionFromDB(row))
 	}
 }
@@ -353,8 +374,45 @@ func postAdminMachineCashCollectionClose(app *api.HTTPApplication) http.HandlerF
 			writeCashSettlementError(w, r, err)
 			return
 		}
+		recordCashCollectionAudit(r.Context(), app, row.OrganizationID, compliance.ActionCashCollectionClosed, row.ID, map[string]any{
+			"machine_id":                   machineID.String(),
+			"collection_id":                row.ID.String(),
+			"currency":                     curClose,
+			"operator_session":             sid.String(),
+			"counted_amount_minor":         row.AmountMinor,
+			"expected_amount_minor":        row.ExpectedAmountMinor,
+			"variance_amount_minor":        row.VarianceAmountMinor,
+			"requires_review":              row.RequiresReview,
+			"lifecycle_status":             row.LifecycleStatus,
+			"reconciliation":               row.ReconciliationStatus,
+			"uses_extended_close_hash":     usesExtended,
+			"evidence_artifact_present":    ev != "",
+			"evidence_photo_artifact_used": photoID != "",
+			"fail_open_policy":             "audit append errors do not roll back cash collection close",
+		})
 		writeJSON(w, http.StatusOK, v1CashCollectionFromDB(row))
 	}
+}
+
+func recordCashCollectionAudit(ctx context.Context, app *api.HTTPApplication, orgID uuid.UUID, action string, collectionID uuid.UUID, meta map[string]any) {
+	if app == nil || app.EnterpriseAudit == nil {
+		return
+	}
+	at, aid := compliance.ActorUser, ""
+	if p, ok := auth.PrincipalFromContext(ctx); ok {
+		at, aid = p.Actor()
+	}
+	md, _ := json.Marshal(meta)
+	rid := collectionID.String()
+	_ = app.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
+		OrganizationID: orgID,
+		ActorType:      at,
+		ActorID:        stringPtrOrNil(aid),
+		Action:         action,
+		ResourceType:   "cash.collection",
+		ResourceID:     &rid,
+		Metadata:       md,
+	})
 }
 
 func writeCashSettlementError(w http.ResponseWriter, r *http.Request, err error) {

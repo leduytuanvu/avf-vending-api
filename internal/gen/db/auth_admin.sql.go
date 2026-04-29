@@ -10,10 +10,259 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const AuthAdminCountAccounts = `-- name: AuthAdminCountAccounts :one
+SELECT count(*)::bigint
+FROM platform_auth_accounts
+WHERE organization_id = $1
+`
+
+func (q *Queries) AuthAdminCountAccounts(ctx context.Context, organizationID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, AuthAdminCountAccounts, organizationID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const AuthAdminCountActiveOrgAdmins = `-- name: AuthAdminCountActiveOrgAdmins :one
+SELECT count(*)::bigint
+FROM platform_auth_accounts
+WHERE organization_id = $1
+  AND status = 'active'
+  AND 'org_admin'::text = ANY (roles)
+`
+
+func (q *Queries) AuthAdminCountActiveOrgAdmins(ctx context.Context, organizationID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, AuthAdminCountActiveOrgAdmins, organizationID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const AuthAdminCountActiveOrgAdminsExcluding = `-- name: AuthAdminCountActiveOrgAdminsExcluding :one
+SELECT count(*)::bigint
+FROM platform_auth_accounts
+WHERE organization_id = $1
+  AND id <> $2
+  AND status = 'active'
+  AND 'org_admin'::text = ANY (roles)
+`
+
+type AuthAdminCountActiveOrgAdminsExcludingParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) AuthAdminCountActiveOrgAdminsExcluding(ctx context.Context, arg AuthAdminCountActiveOrgAdminsExcludingParams) (int64, error) {
+	row := q.db.QueryRow(ctx, AuthAdminCountActiveOrgAdminsExcluding, arg.OrganizationID, arg.ID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const AuthAdminGetAccountByOrgAndID = `-- name: AuthAdminGetAccountByOrgAndID :one
+SELECT id, organization_id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+FROM platform_auth_accounts
+WHERE id = $1
+  AND organization_id = $2
+`
+
+type AuthAdminGetAccountByOrgAndIDParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) AuthAdminGetAccountByOrgAndID(ctx context.Context, arg AuthAdminGetAccountByOrgAndIDParams) (PlatformAuthAccount, error) {
+	row := q.db.QueryRow(ctx, AuthAdminGetAccountByOrgAndID, arg.ID, arg.OrganizationID)
+	var i PlatformAuthAccount
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Roles,
+		&i.Status,
+		&i.FailedLoginCount,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+		&i.InvitedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AuthAdminInsertAccount = `-- name: AuthAdminInsertAccount :one
+INSERT INTO platform_auth_accounts (organization_id, email, password_hash, roles, status)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, organization_id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+`
+
+type AuthAdminInsertAccountParams struct {
+	OrganizationID uuid.UUID
+	Email          string
+	PasswordHash   string
+	Roles          []string
+	Status         string
+}
+
+func (q *Queries) AuthAdminInsertAccount(ctx context.Context, arg AuthAdminInsertAccountParams) (PlatformAuthAccount, error) {
+	row := q.db.QueryRow(ctx, AuthAdminInsertAccount,
+		arg.OrganizationID,
+		arg.Email,
+		arg.PasswordHash,
+		arg.Roles,
+		arg.Status,
+	)
+	var i PlatformAuthAccount
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Roles,
+		&i.Status,
+		&i.FailedLoginCount,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+		&i.InvitedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AuthAdminListAccounts = `-- name: AuthAdminListAccounts :many
+SELECT id, organization_id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+FROM platform_auth_accounts
+WHERE organization_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type AuthAdminListAccountsParams struct {
+	OrganizationID uuid.UUID
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) AuthAdminListAccounts(ctx context.Context, arg AuthAdminListAccountsParams) ([]PlatformAuthAccount, error) {
+	rows, err := q.db.Query(ctx, AuthAdminListAccounts, arg.OrganizationID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PlatformAuthAccount{}
+	for rows.Next() {
+		var i PlatformAuthAccount
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.Email,
+			&i.PasswordHash,
+			&i.Roles,
+			&i.Status,
+			&i.FailedLoginCount,
+			&i.LockedUntil,
+			&i.LastLoginAt,
+			&i.InvitedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const AuthAdminSetPasswordHash = `-- name: AuthAdminSetPasswordHash :exec
+UPDATE platform_auth_accounts
+SET password_hash = $2,
+    updated_at = now()
+WHERE id = $1
+`
+
+type AuthAdminSetPasswordHashParams struct {
+	ID           uuid.UUID
+	PasswordHash string
+}
+
+func (q *Queries) AuthAdminSetPasswordHash(ctx context.Context, arg AuthAdminSetPasswordHashParams) error {
+	_, err := q.db.Exec(ctx, AuthAdminSetPasswordHash, arg.ID, arg.PasswordHash)
+	return err
+}
+
+const AuthAdminUpdateAccount = `-- name: AuthAdminUpdateAccount :one
+UPDATE platform_auth_accounts
+SET
+    email = $3,
+    roles = $4,
+    status = $5,
+    updated_at = now()
+WHERE id = $1
+  AND organization_id = $2
+RETURNING id, organization_id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+`
+
+type AuthAdminUpdateAccountParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	Email          string
+	Roles          []string
+	Status         string
+}
+
+func (q *Queries) AuthAdminUpdateAccount(ctx context.Context, arg AuthAdminUpdateAccountParams) (PlatformAuthAccount, error) {
+	row := q.db.QueryRow(ctx, AuthAdminUpdateAccount,
+		arg.ID,
+		arg.OrganizationID,
+		arg.Email,
+		arg.Roles,
+		arg.Status,
+	)
+	var i PlatformAuthAccount
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Roles,
+		&i.Status,
+		&i.FailedLoginCount,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+		&i.InvitedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AuthClearExpiredLock = `-- name: AuthClearExpiredLock :exec
+UPDATE platform_auth_accounts
+SET failed_login_count = 0,
+    locked_until = NULL,
+    status = 'active',
+    updated_at = now()
+WHERE id = $1
+  AND status = 'locked'
+  AND locked_until IS NOT NULL
+  AND locked_until <= now()
+`
+
+func (q *Queries) AuthClearExpiredLock(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, AuthClearExpiredLock, id)
+	return err
+}
+
 const AuthGetAccountByID = `-- name: AuthGetAccountByID :one
-SELECT id, organization_id, email, password_hash, roles, status, created_at, updated_at
+SELECT id, organization_id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
 FROM platform_auth_accounts
 WHERE id = $1
   AND status = 'active'
@@ -29,6 +278,10 @@ func (q *Queries) AuthGetAccountByID(ctx context.Context, id uuid.UUID) (Platfor
 		&i.PasswordHash,
 		&i.Roles,
 		&i.Status,
+		&i.FailedLoginCount,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+		&i.InvitedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -36,7 +289,7 @@ func (q *Queries) AuthGetAccountByID(ctx context.Context, id uuid.UUID) (Platfor
 }
 
 const AuthGetAccountByOrgEmail = `-- name: AuthGetAccountByOrgEmail :one
-SELECT id, organization_id, email, password_hash, roles, status, created_at, updated_at
+SELECT id, organization_id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
 FROM platform_auth_accounts
 WHERE organization_id = $1
   AND lower(email) = lower($2)
@@ -58,8 +311,47 @@ func (q *Queries) AuthGetAccountByOrgEmail(ctx context.Context, arg AuthGetAccou
 		&i.PasswordHash,
 		&i.Roles,
 		&i.Status,
+		&i.FailedLoginCount,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+		&i.InvitedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AuthGetPasswordResetTokenByHash = `-- name: AuthGetPasswordResetTokenByHash :one
+SELECT id, user_id, organization_id, token_hash, expires_at, used_at, created_at, status
+FROM password_reset_tokens
+WHERE token_hash = $1
+  AND status = 'active'
+  AND expires_at > now()
+`
+
+type AuthGetPasswordResetTokenByHashRow struct {
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	OrganizationID uuid.UUID
+	TokenHash      []byte
+	ExpiresAt      time.Time
+	UsedAt         pgtype.Timestamptz
+	CreatedAt      time.Time
+	Status         string
+}
+
+func (q *Queries) AuthGetPasswordResetTokenByHash(ctx context.Context, tokenHash []byte) (AuthGetPasswordResetTokenByHashRow, error) {
+	row := q.db.QueryRow(ctx, AuthGetPasswordResetTokenByHash, tokenHash)
+	var i AuthGetPasswordResetTokenByHashRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.OrganizationID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
+		&i.Status,
 	)
 	return i, err
 }
@@ -72,9 +364,19 @@ WHERE token_hash = $1
   AND expires_at > now()
 `
 
-func (q *Queries) AuthGetRefreshTokenByHash(ctx context.Context, tokenHash []byte) (AuthRefreshToken, error) {
+type AuthGetRefreshTokenByHashRow struct {
+	ID         uuid.UUID
+	AccountID  uuid.UUID
+	TokenHash  []byte
+	ExpiresAt  time.Time
+	RevokedAt  pgtype.Timestamptz
+	CreatedAt  time.Time
+	LastUsedAt pgtype.Timestamptz
+}
+
+func (q *Queries) AuthGetRefreshTokenByHash(ctx context.Context, tokenHash []byte) (AuthGetRefreshTokenByHashRow, error) {
 	row := q.db.QueryRow(ctx, AuthGetRefreshTokenByHash, tokenHash)
-	var i AuthRefreshToken
+	var i AuthGetRefreshTokenByHashRow
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
@@ -87,9 +389,33 @@ func (q *Queries) AuthGetRefreshTokenByHash(ctx context.Context, tokenHash []byt
 	return i, err
 }
 
+const AuthInsertPasswordResetToken = `-- name: AuthInsertPasswordResetToken :exec
+INSERT INTO password_reset_tokens (id, user_id, organization_id, token_hash, expires_at, status)
+VALUES ($1, $2, $3, $4, $5, 'active')
+`
+
+type AuthInsertPasswordResetTokenParams struct {
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	OrganizationID uuid.UUID
+	TokenHash      []byte
+	ExpiresAt      time.Time
+}
+
+func (q *Queries) AuthInsertPasswordResetToken(ctx context.Context, arg AuthInsertPasswordResetTokenParams) error {
+	_, err := q.db.Exec(ctx, AuthInsertPasswordResetToken,
+		arg.ID,
+		arg.UserID,
+		arg.OrganizationID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+	return err
+}
+
 const AuthInsertRefreshToken = `-- name: AuthInsertRefreshToken :exec
-INSERT INTO auth_refresh_tokens (id, account_id, token_hash, expires_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO auth_refresh_tokens (id, account_id, token_hash, expires_at, ip_address, user_agent)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type AuthInsertRefreshTokenParams struct {
@@ -97,6 +423,8 @@ type AuthInsertRefreshTokenParams struct {
 	AccountID uuid.UUID
 	TokenHash []byte
 	ExpiresAt time.Time
+	IpAddress pgtype.Text
+	UserAgent pgtype.Text
 }
 
 func (q *Queries) AuthInsertRefreshToken(ctx context.Context, arg AuthInsertRefreshTokenParams) error {
@@ -105,7 +433,90 @@ func (q *Queries) AuthInsertRefreshToken(ctx context.Context, arg AuthInsertRefr
 		arg.AccountID,
 		arg.TokenHash,
 		arg.ExpiresAt,
+		arg.IpAddress,
+		arg.UserAgent,
 	)
+	return err
+}
+
+const AuthLookupAccountByOrgEmailAnyStatus = `-- name: AuthLookupAccountByOrgEmailAnyStatus :one
+SELECT id, organization_id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+FROM platform_auth_accounts
+WHERE organization_id = $1
+  AND lower(email) = lower($2)
+`
+
+type AuthLookupAccountByOrgEmailAnyStatusParams struct {
+	OrganizationID uuid.UUID
+	Lower          string
+}
+
+func (q *Queries) AuthLookupAccountByOrgEmailAnyStatus(ctx context.Context, arg AuthLookupAccountByOrgEmailAnyStatusParams) (PlatformAuthAccount, error) {
+	row := q.db.QueryRow(ctx, AuthLookupAccountByOrgEmailAnyStatus, arg.OrganizationID, arg.Lower)
+	var i PlatformAuthAccount
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Roles,
+		&i.Status,
+		&i.FailedLoginCount,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+		&i.InvitedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AuthMarkPasswordResetTokenUsed = `-- name: AuthMarkPasswordResetTokenUsed :exec
+UPDATE password_reset_tokens
+SET
+    used_at = now(),
+    status = 'used'
+WHERE id = $1
+  AND status = 'active'
+`
+
+func (q *Queries) AuthMarkPasswordResetTokenUsed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, AuthMarkPasswordResetTokenUsed, id)
+	return err
+}
+
+const AuthRecordLoginFailure = `-- name: AuthRecordLoginFailure :exec
+UPDATE platform_auth_accounts
+SET failed_login_count = failed_login_count + 1,
+    locked_until = CASE WHEN failed_login_count + 1 >= $2 THEN now() + ($3::bigint * interval '1 second') ELSE locked_until END,
+    status = CASE WHEN failed_login_count + 1 >= $2 THEN 'locked' ELSE status END,
+    updated_at = now()
+WHERE id = $1
+`
+
+type AuthRecordLoginFailureParams struct {
+	ID               uuid.UUID
+	FailedLoginCount int32
+	Column3          int64
+}
+
+func (q *Queries) AuthRecordLoginFailure(ctx context.Context, arg AuthRecordLoginFailureParams) error {
+	_, err := q.db.Exec(ctx, AuthRecordLoginFailure, arg.ID, arg.FailedLoginCount, arg.Column3)
+	return err
+}
+
+const AuthRecordLoginSuccess = `-- name: AuthRecordLoginSuccess :exec
+UPDATE platform_auth_accounts
+SET failed_login_count = 0,
+    locked_until = NULL,
+    last_login_at = now(),
+    status = CASE WHEN status = 'locked' THEN 'active' ELSE status END,
+    updated_at = now()
+WHERE id = $1
+`
+
+func (q *Queries) AuthRecordLoginSuccess(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, AuthRecordLoginSuccess, id)
 	return err
 }
 

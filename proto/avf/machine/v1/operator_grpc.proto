@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+import "avf/machine/v1/common.proto";
+import "avf/machine/v1/inventory.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// MachineOperatorService exposes operator workflows callable with a Machine JWT on the device.
+// Human identity proof for opening/closing interactive sessions remains on HTTP routes where PIN/biometric flows exist.
+service MachineOperatorService {
+  rpc OpenOperatorSession(OpenOperatorSessionRequest) returns (OpenOperatorSessionResponse);
+  rpc CloseOperatorSession(CloseOperatorSessionRequest) returns (CloseOperatorSessionResponse);
+  rpc SubmitFillReport(SubmitFillReportRequest) returns (SubmitFillReportResponse);
+  rpc SubmitStockAdjustment(SubmitStockAdjustmentRequest) returns (SubmitStockAdjustmentResponse);
+
+  // Deprecated path names retained for backward-compatible clients.
+  rpc LoginOperator(LoginOperatorRequest) returns (LoginOperatorResponse);
+  rpc LogoutOperator(LogoutOperatorRequest) returns (LogoutOperatorResponse);
+  rpc HeartbeatOperatorSession(HeartbeatOperatorSessionRequest) returns (HeartbeatOperatorSessionResponse);
+}
+
+message OpenOperatorSessionRequest {}
+
+message OpenOperatorSessionResponse {}
+
+message CloseOperatorSessionRequest {
+  string session_id = 1;
+}
+
+message CloseOperatorSessionResponse {}
+
+message SubmitFillReportRequest {
+  SubmitFillResultRequest fill = 1;
+}
+
+message SubmitFillReportResponse {
+  SubmitFillResultResponse fill = 1;
+}
+
+message SubmitStockAdjustmentRequest {
+  SubmitInventoryAdjustmentRequest adjustment = 1;
+}
+
+message SubmitStockAdjustmentResponse {
+  SubmitInventoryAdjustmentResponse adjustment = 1;
+}
+
+message LoginOperatorRequest {}
+
+message LoginOperatorResponse {}
+
+message LogoutOperatorRequest {}
+
+message LogoutOperatorResponse {}
+
+message HeartbeatOperatorSessionRequest {
+  IdempotencyContext context = 1;
+  string session_id = 2;
+}
+
+message HeartbeatOperatorSessionResponse {
+  string session_id = 1;
+  google.protobuf.Timestamp expires_at = 2;
+  string status = 3;
+}

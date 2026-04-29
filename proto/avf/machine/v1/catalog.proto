@@ -1,0 +1,165 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+import "avf/machine/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// MachineCatalogService serves the runtime sale catalog for an activated machine (Machine JWT).
+// Media is URL + metadata only; never image bytes.
+service MachineCatalogService {
+  // GetSaleCatalog is an alias of GetCatalogSnapshot (spec-native name for the sale catalog).
+  rpc GetSaleCatalog(GetCatalogSnapshotRequest) returns (GetCatalogSnapshotResponse);
+
+  // SyncSaleCatalog is an alias of GetCatalogSnapshot — canonical native runtime name for full catalog sync.
+  rpc SyncSaleCatalog(GetCatalogSnapshotRequest) returns (GetCatalogSnapshotResponse);
+
+  // GetCatalogSnapshot returns the full sale catalog for the machine (planogram, price, availability, image URLs).
+  rpc GetCatalogSnapshot(GetCatalogSnapshotRequest) returns (GetCatalogSnapshotResponse);
+
+  // GetCatalogDelta compares basis_catalog_version to the published snapshot on the server.
+  // When basis_matches=true clients may skip replacing cached snapshot bytes.
+  rpc GetCatalogDelta(GetCatalogDeltaRequest) returns (GetCatalogDeltaResponse);
+
+  rpc AckCatalogVersion(AckCatalogVersionRequest) returns (AckCatalogVersionResponse);
+
+  // GetMediaManifest lists primary display media metadata per product on the machine catalog.
+  rpc GetMediaManifest(GetMediaManifestRequest) returns (GetMediaManifestResponse);
+}
+
+message GetCatalogSnapshotRequest {
+  MachineRequestMeta meta = 5;
+  // Optional override; must equal the authenticated machine or the call is rejected.
+  string machine_id = 1;
+  bool include_unavailable = 2;
+  // When unset, defaults to true (match HTTP sale-catalog default).
+  optional bool include_images = 3;
+  optional int64 if_none_match_config_version = 4;
+}
+
+message GetCatalogSnapshotResponse {
+  bool not_modified = 1;
+  CatalogSnapshot snapshot = 2;
+  MachineResponseMeta meta = 3;
+}
+
+message CatalogSnapshot {
+  string machine_id = 1;
+  string organization_id = 2;
+  string site_id = 3;
+  int64 config_version = 4;
+  string catalog_version = 5;
+  string currency = 6;
+  google.protobuf.Timestamp generated_at = 7;
+  repeated CatalogSlotItem items = 8;
+}
+
+message CatalogSlotItem {
+  int32 slot_index = 1;
+  string slot_code = 2;
+  string cabinet_code = 3;
+  string product_id = 4;
+  string sku = 5;
+  string name = 6;
+  string short_name = 7;
+  int64 price_minor = 8;
+  int32 available_quantity = 9;
+  int32 max_quantity = 10;
+  bool is_available = 11;
+  string unavailable_reason = 12;
+  int32 sort_order = 13;
+  ProductMediaRef primary_media = 14;
+}
+
+// Media rendition bound to a product image row (original upload vs thumb vs display).
+// HTTPS URL is a fetch location and may be a short-lived signed URL; integrity and cache keys must use checksum + media_asset_id + media_version.
+enum MediaVariantKind {
+  MEDIA_VARIANT_KIND_UNSPECIFIED = 0;
+  MEDIA_VARIANT_KIND_ORIGINAL = 1;
+  MEDIA_VARIANT_KIND_THUMB = 2;
+  MEDIA_VARIANT_KIND_DISPLAY = 3;
+}
+
+message ProductMediaVariant {
+  MediaVariantKind kind = 1;
+  // media_asset_id is the bound media_assets row (same id across renditions of one upload when derived).
+  string media_asset_id = 2;
+  string url = 3;
+  string content_type = 4;
+  string checksum_sha256 = 5;
+  string etag = 6;
+  int64 size_bytes = 7;
+  int32 width = 8;
+  int32 height = 9;
+  google.protobuf.Timestamp expires_at = 10;
+  int32 media_version = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message ProductMediaRef {
+  string thumb_url = 1;
+  string display_url = 2;
+  string checksum_sha256 = 3;
+  string etag = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  // media_id is the media_assets row when bound; empty for legacy product_images-only rows.
+  string media_id = 6;
+  int64 size_bytes = 7;
+  int32 object_version = 8;
+  int32 media_version = 9;
+  int32 width = 10;
+  int32 height = 11;
+  string content_type = 12;
+  // When true (typically from delta RPC), this asset was removed from the published catalog cache view.
+  bool deleted = 13;
+  google.protobuf.Timestamp expires_at = 14;
+  // Per-rendition metadata for durable kiosk caches (keys + hashes are stable; urls may rotate when presigned).
+  repeated ProductMediaVariant media_variants = 15;
+}
+
+message GetCatalogDeltaRequest {
+  string machine_id = 1;
+  string basis_catalog_version = 2;
+  MachineRequestMeta meta = 3;
+}
+
+message GetCatalogDeltaResponse {
+  MachineResponseMeta meta = 1;
+  bool basis_matches = 2;
+  // Present when basis_matches=false — full projected snapshot clients should reconcile against.
+  CatalogSnapshot snapshot = 3;
+}
+
+message AckCatalogVersionRequest {
+  MachineRequestMeta meta = 1;
+  string acknowledged_catalog_version = 2;
+}
+
+message AckCatalogVersionResponse {
+  MachineResponseMeta meta = 1;
+}
+
+message GetMediaManifestRequest {
+  string machine_id = 1;
+  bool include_unavailable = 2;
+  MachineRequestMeta meta = 3;
+}
+
+message GetMediaManifestResponse {
+  string machine_id = 1;
+  string catalog_version = 2;
+  string media_fingerprint = 3;
+  google.protobuf.Timestamp generated_at = 4;
+  repeated MediaManifestEntry entries = 5;
+  MachineResponseMeta meta = 6;
+}
+
+message MediaManifestEntry {
+  string product_id = 1;
+  string sku = 2;
+  ProductMediaRef primary_media = 3;
+  // Redundant convenience copy of primary_media.media_id for cache-keying clients.
+  string media_id = 4;
+}

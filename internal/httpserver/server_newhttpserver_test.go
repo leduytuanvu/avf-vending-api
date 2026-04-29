@@ -58,13 +58,16 @@ func testHTTPServerConfig(t *testing.T) *config.Config {
 			ShutdownTimeout:       5 * time.Second,
 			TracerShutdownTimeout: 10 * time.Second,
 		},
+		TransportBoundary: config.TransportBoundaryConfig{
+			MachineRESTLegacyEnabled: true, // mirrors non-production default from config.Load()
+		},
 	}
 }
 
 func TestNewHTTPServer_noPanic_healthAndSwagger(t *testing.T) {
 	t.Parallel()
 	cfg := testHTTPServerConfig(t)
-	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +101,7 @@ func TestNewHTTPServer_production_swaggerDisabled_noSwaggerRoutes(t *testing.T) 
 	cfg.AppEnv = config.AppEnvProduction
 	cfg.SwaggerUIEnabled = false
 	cfg.OpenAPIJSONEnabled = true
-	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +126,7 @@ func TestNewHTTPServer_production_openAPIDisabled_noDocJSON(t *testing.T) {
 	cfg.AppEnv = config.AppEnvProduction
 	cfg.SwaggerUIEnabled = false
 	cfg.OpenAPIJSONEnabled = false
-	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +148,7 @@ func TestNewHTTPServer_production_metrics_opsOnly_requiresHTTPOpsAddr(t *testing
 	cfg.MetricsEnabled = true
 	cfg.MetricsExposeOnPublicHTTP = false
 	cfg.Ops.HTTPAddr = ""
-	_, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	_, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{}, nil, nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "HTTP_OPS_ADDR")
 }
@@ -157,7 +160,7 @@ func TestNewHTTPServer_production_metrics_opsOnly_publicListenerNoMetrics(t *tes
 	cfg.MetricsEnabled = true
 	cfg.MetricsExposeOnPublicHTTP = false
 	cfg.Ops.HTTPAddr = "127.0.0.1:8081"
-	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{}, nil, nil)
 	require.NoError(t, err)
 	rec := httptest.NewRecorder()
 	hs.srv.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
@@ -176,7 +179,7 @@ func TestNewHTTPServer_production_metrics_opsListenerRequiresBearerWhenTokenSet(
 	cfg.MetricsExposeOnPublicHTTP = false
 	cfg.MetricsScrapeToken = "ops-metrics-token-16b"
 	cfg.Ops.HTTPAddr = "127.0.0.1:8081"
-	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{}, nil, nil)
 	require.NoError(t, err)
 	rec := httptest.NewRecorder()
 	hs.ops.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
@@ -201,7 +204,7 @@ func TestNewHTTPServer_production_metrics_publicRequiresBearer(t *testing.T) {
 	cfg.MetricsExposeOnPublicHTTP = true
 	cfg.MetricsScrapeToken = "test-metrics-token-16b"
 	cfg.Ops.HTTPAddr = "127.0.0.1:8081"
-	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{}, nil, nil)
 	require.NoError(t, err)
 	rec := httptest.NewRecorder()
 	hs.srv.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
@@ -217,7 +220,7 @@ func TestNewHTTPServer_development_metricsOnPublicWithoutToken(t *testing.T) {
 	t.Parallel()
 	cfg := testHTTPServerConfig(t)
 	cfg.MetricsEnabled = true
-	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{}, nil, nil)
 	require.NoError(t, err)
 	rec := httptest.NewRecorder()
 	hs.srv.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
@@ -230,7 +233,7 @@ func TestNewHTTPServer_production_swaggerEnabled_servesSwagger(t *testing.T) {
 	cfg.AppEnv = config.AppEnvProduction
 	cfg.SwaggerUIEnabled = true
 	cfg.OpenAPIJSONEnabled = true
-	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{})
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +254,7 @@ func TestMountV1_v1AuthRoutesNotDuplicated_chiWalk(t *testing.T) {
 	app := &api.HTTPApplication{}
 	cfg := &config.Config{}
 	writeRL := func(h http.Handler) http.Handler { return h }
-	mountV1(r, app, zap.NewNop(), cfg, stubAccessTokenValidator{}, writeRL)
+	mountV1(r, app, zap.NewNop(), cfg, stubAccessTokenValidator{}, writeRL, nil)
 
 	// With nil Auth, mountAuthRoutes registers nothing; duplicate /auth would still panic at mountV1.
 	seen := map[string]int{}

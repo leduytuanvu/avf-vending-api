@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+import "google/protobuf/timestamp.proto";
+
+// MachineActivationService exchanges activation codes for machine credentials (public; no Bearer).
+service MachineActivationService {
+  rpc ClaimActivation(ClaimActivationRequest) returns (ClaimActivationResponse);
+}
+
+message DeviceFingerprint {
+  string android_id = 1;
+  string serial_number = 2;
+  string manufacturer = 3;
+  string model = 4;
+  string package_name = 5;
+  string version_name = 6;
+  int32 version_code = 7;
+}
+
+message ClaimActivationRequest {
+  string activation_code = 1;
+  DeviceFingerprint device_fingerprint = 2;
+}
+
+message ClaimActivationResponse {
+  string machine_id = 1;
+  string organization_id = 2;
+  string site_id = 3;
+  string machine_name = 4;
+  string access_token = 5;
+  google.protobuf.Timestamp access_token_expires_at = 6;
+  string refresh_token = 7;
+  google.protobuf.Timestamp refresh_token_expires_at = 8;
+  string mqtt_broker_url = 9;
+  string mqtt_topic_prefix = 10;
+  string bootstrap_http_path = 11;
+  bool bootstrap_required = 12;
+}

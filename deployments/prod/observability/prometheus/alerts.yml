@@ -325,3 +325,302 @@ groups:
           summary: "Vend stuck reconciler cycles completing with error"
           description: "vend_stuck tick errors (DB/list failures) — not the same as stuck row count."
           runbook: "docs/runbooks/production-observability-alerts.md#avfreconcilervendstuckcycleerrors"
+
+  - name: avf-vending-production-operations
+    rules:
+      - alert: AVFAPIHigh5xxRate
+        expr: sum(rate(http_requests_total{job="avf_api_metrics",status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total{job="avf_api_metrics"}[5m])), 1) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "API 5xx rate is above 5%"
+          description: "HTTP 5xx responses are elevated (canonical metric http_requests_total on job avf_api_metrics)."
+          runbook: "docs/runbooks/observability-alerts.md#api-high-5xx-rate"
+
+      - alert: AVFGRPCHighErrorRate
+        expr: sum(rate(grpc_errors_total{job="avf_api_metrics"}[5m])) / clamp_min(sum(rate(grpc_requests_total{job="avf_api_metrics"}[5m])), 1) > 0.05
+        for: 10m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "gRPC error rate is above 5%"
+          description: "Non-OK gRPC responses (grpc_errors_total vs grpc_requests_total) on the API metrics scrape."
+          runbook: "docs/runbooks/observability-alerts.md#grpc-high-error-rate"
+
+      - alert: AVFGRPCHighLatencyP99
+        expr: histogram_quantile(0.99, sum(rate(grpc_request_duration_seconds_bucket{job="avf_api_metrics",grpc_code="OK"}[5m])) by (le)) > 3 and sum(rate(grpc_requests_total{job="avf_api_metrics"}[5m])) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "gRPC OK-path latency p99 is high"
+          description: "99th percentile unary duration for successful RPCs exceeds 3s over 15m — check Postgres, idempotency ledger, and handler hot paths."
+          runbook: "docs/runbooks/observability-alerts.md#grpc-high-latency-p99"
+
+      - alert: AVFGRPCMachineIdempotencyConflict
+        expr: increase(grpc_idempotency_conflicts_total{job="avf_api_metrics"}[15m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "Machine gRPC mutation idempotency conflict"
+          description: "Same idempotency_key reused with incompatible payload — investigate client bugs or duplicate sources."
+          runbook: "docs/runbooks/observability-alerts.md#grpc-machine-idempotency-conflict"
+
+      - alert: AVFPaymentPaidVendNotCompleted
+        expr: increase(avf_commerce_payment_paid_vend_failed_total{job="avf_reconciler_metrics"}[15m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "Paid payment has no completed vend (failed or stuck path)"
+          description: "Counter covers payment_paid_vend_failed and payment_paid_vend_not_started reconciler detections — customer money with bad or missing terminal vend."
+          runbook: "docs/runbooks/observability-alerts.md#payment-paid-but-vend-not-completed"
+
+      - alert: AVFCommandACKTimeoutSpike
+        expr: sum(rate(avf_mqtt_command_ack_timeout_total{job="avf_api_metrics"}[10m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Command ACK timeouts are spiking"
+          description: "Machine command ACK windows are expiring faster than normal (MQTT command plane on API scrape job)."
+          runbook: "docs/runbooks/observability-alerts.md#command-ack-timeout-spike"
+
+      - alert: AVFMQTTCommandDispatchRefusedElevated
+        expr: sum(rate(avf_mqtt_command_dispatch_refused_total{job="avf_api_metrics"}[10m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "MQTT machine command publishes are being refused before send"
+          description: "dispatch_refused_total is elevated (max_dispatch_attempts, validation, broker publish guard) — check EMQX/API logs and ledger state."
+          runbook: "docs/runbooks/observability-alerts.md#mqtt-command-dispatch-refused-elevated"
+
+      - alert: AVFMachineOfflineSpike
+        expr: (sum(avf_machine_connectivity_total{job="avf_worker_metrics",status="offline"}) / clamp_min(sum(avf_machine_connectivity_total{job="avf_worker_metrics"}), 1)) > 0.20
+        for: 15m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "More than 20% of machines are offline"
+          description: "Fleet connectivity gauges show a sustained offline spike."
+          runbook: "docs/runbooks/observability-alerts.md#machine-offline-spike"
+
+      - alert: AVFNATSOutboxLagHigh
+        expr: max(avf_worker_outbox_oldest_pending_age_seconds{job="avf_worker_metrics"}) > 600
+        for: 10m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "NATS outbox lag exceeds 10 minutes"
+          description: "The oldest unpublished outbox item is too old; JetStream publish or worker drain may be unhealthy."
+          runbook: "docs/runbooks/observability-alerts.md#nats-outbox-lag-high"
+
+      - alert: AVFRedisUnavailableProduction
+        expr: probe_success{job="avf_data_node_tcp",component="redis-tcp"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "Redis is unavailable in production"
+          description: "The production Redis TCP probe is failing."
+          runbook: "docs/runbooks/observability-alerts.md#redis-unavailable-in-production"
+
+      - alert: AVFPostgreSQLUnavailable
+        expr: probe_success{job="avf_data_node_tcp",component="postgres-tcp"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "PostgreSQL is unavailable"
+          description: "The production PostgreSQL TCP probe is failing."
+          runbook: "docs/runbooks/observability-alerts.md#postgresql-unavailable"
+
+      - alert: AVFMQTTIngestDown
+        expr: up{job="avf_mqtt_ingest_metrics"} == 0 or probe_success{job="avf_app_readiness",component="mqtt-ingest"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "MQTT ingest is down"
+          description: "The mqtt-ingest metrics scrape or readiness probe is failing."
+          runbook: "docs/runbooks/observability-alerts.md#mqtt-ingest-down"
+
+      - alert: AVFReconcilerFailing
+        expr: sum(rate(avf_reconciler_cycle_completions_total{job="avf_reconciler_metrics",result!="ok"}[10m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Reconciler cycles are failing"
+          description: "At least one reconciler job is completing with a non-ok result."
+          runbook: "docs/runbooks/observability-alerts.md#reconciler-failing"
+
+      - alert: AVFRefundPendingTooLong
+        expr: increase(avf_commerce_refund_pending_too_long_total{job="avf_reconciler_metrics"}[30m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Refund has been pending too long"
+          description: "The refund review reconciler detected a refund that needs manual or provider-side attention."
+          runbook: "docs/runbooks/observability-alerts.md#refund-pending-too-long"
+
+      - alert: AVFPaymentWebhookHMACRejectionsSpike
+        expr: sum(rate(payment_webhook_rejections_total{job="avf_api_metrics",reason=~".*[Hh]mac.*|^401_.*"}[10m])) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Elevated payment webhook HMAC / 401-style rejections"
+          description: "Spike in payment_webhook_rejections_total with HMAC or 401-ish reasons — replay attack, clock skew, secret rotation, or proxy stripping headers."
+          runbook: "docs/runbooks/observability-alerts.md#payment-webhook-hmac-rejections-spike"
+
+      - alert: AVFOutboxDeadLettered
+        expr: increase(avf_worker_outbox_dispatch_dead_lettered_total{job="avf_worker_metrics"}[20m]) >= 1
+        for: 10m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "Outbox rows were dead-lettered after publish exhaustion"
+          description: "Worker quarantined one or more outbox rows — inspect NATS JetStream, credentials, and DLQ companion publish path before clearing."
+          runbook: "docs/runbooks/observability-alerts.md#outbox-dead-lettered"
+
+      - alert: AVFMediaProcessingFailedAuditSpike
+        expr: increase(audit_events_total{job="avf_api_metrics",action="media.processing_failed"}[2h]) >= 10
+        for: 1h
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Elevated media variant / processing failures (audit trail)"
+          description: "audit_events_total for action media.processing_failed is high — object store, image decode, or sizing limits."
+          runbook: "docs/runbooks/observability-alerts.md#media-processing-failed-audit-spike"
+
+      - alert: AVFPaymentWebhookInvalidSignatureBurst
+        expr: sum(rate(payment_webhook_rejections_total{job="avf_api_metrics",reason="webhook_hmac_invalid"}[10m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Payment webhook invalid HMAC signature rate is elevated"
+          description: "Threshold: >0.1/s over 10m on payment_webhook_rejections_total{reason=\"webhook_hmac_invalid\"} — secret mismatch, tampering, or edge stripping X-AVF-Webhook-Signature."
+          runbook: "docs/runbooks/payment-webhook-replay.md#invalid-signature-spike"
+
+      - alert: AVFPaymentWebhookTimestampSkewBurst
+        expr: sum(rate(payment_webhook_rejections_total{job="avf_api_metrics",reason="webhook_timestamp_skew"}[10m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Payment webhook timestamp skew rejections elevated"
+          description: "Threshold: >0.1/s over 10m — clock skew between provider and API, or replay outside COMMERCE_PAYMENT_WEBHOOK_REPLAY_WINDOW."
+          runbook: "docs/runbooks/payment-webhook-replay.md#timestamp-skew"
+
+      - alert: AVFPaymentWebhookAmountCurrencyMismatch
+        expr: increase(payment_webhook_amount_currency_mismatch_total{job="avf_api_metrics"}[30m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "Webhook amount/currency disagreed with persisted payment"
+          description: "Threshold: any increase in 30m — opens webhook_amount_currency_mismatch reconciliation case; financial data mismatch risk."
+          runbook: "docs/runbooks/observability-alerts.md#payment-webhook-amount-currency-mismatch"
+
+      - alert: AVFPaymentProviderProbeStaleBacklog
+        expr: max(payment_provider_probe_stale_pending_queue{job="avf_reconciler_metrics"}) > 0
+        for: 30m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Payments remain past pending-timeout in provider-probe selection"
+          description: "Threshold: gauge >0 for 30m — PSP not transitioning rows, probe errors, or network; see reconciler logs payment_provider_probe."
+          runbook: "docs/runbooks/observability-alerts.md#payment-provider-probe-stale-backlog"
+
+      - alert: AVFPaymentPaidVendNotStartedCases
+        expr: increase(avf_commerce_reconciliation_cases_total{job="avf_reconciler_metrics",case_type="payment_paid_vend_not_started"}[30m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "Captured payment but vend never started"
+          description: "Threshold: any new case in 30m — money taken without vend kickoff; triage with payment_paid_vend_not_started queue."
+          runbook: "docs/runbooks/observability-alerts.md#payment-paid-vend-not-started"
+
+      - alert: AVFInventoryNegativeStockAttemptsSpike
+        expr: sum(rate(inventory_negative_stock_attempts_total{job="avf_api_metrics"}[15m])) > 0.02
+        for: 15m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Oversell prevention firing repeatedly (negative stock attempts)"
+          description: "Threshold: >0.02/s over 15m — planogram drift, double vend, or bad fill data."
+          runbook: "docs/runbooks/inventory-negative-stock.md"
+
+      - alert: AVFCatalogOrMediaGRPCErrorBurst
+        expr: sum(rate(grpc_errors_total{job="avf_api_metrics",service=~".*MachineCatalogService.*|.*MachineMediaService.*"}[10m])) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Machine catalog or media gRPC errors are elevated"
+          description: "Threshold: >0.2 non-OK completions/s over 10m for catalog/media services — DB, salecatalog build, or presign path."
+          runbook: "docs/runbooks/catalog-sync-mismatch.md"
+
+      - alert: AVFWorkerOutboxPendingDepthHigh
+        expr: max(avf_worker_outbox_pending_total{job="avf_worker_metrics"}) > 2000
+        for: 20m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "Worker outbox pending row count is very high"
+          description: "Threshold: >2000 unpublished rows for 20m — publish slowness or worker saturation; correlate with dispatch_publish_failed and oldest_pending_age_seconds."
+          runbook: "docs/runbooks/observability-alerts.md#worker-outbox-pending-depth-high"
+
+      - alert: AVFDataPlaneDependencyDegraded
+        expr: min(probe_success{job="avf_data_node_tcp",component=~"redis-tcp|postgres-tcp|nats-tcp"}) == 0
+        for: 3m
+        labels:
+          severity: critical
+          priority: P0
+        annotations:
+          summary: "One or more core data-plane TCP probes failing (Postgres/Redis/NATS)"
+          description: "Threshold: min(probe_success) over redis-tcp, postgres-tcp, nats-tcp on avf_data_node_tcp == 0 for 3m — at least one dependency unhealthy."
+          runbook: "docs/runbooks/production-day-2-incidents.md#managed-db-unavailable"
+
+      - alert: AVFEmqxProbeFlapping
+        expr: changes(probe_success{job="avf_data_node_http",component="emqx-status"}[20m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          priority: P1
+        annotations:
+          summary: "EMQX status probe is flapping"
+          description: "Threshold: >3 state changes in 20m — broker reload, cert, or host stress; correlate with mqtt-ingest and device offline rate."
+          runbook: "docs/runbooks/production-day-2-incidents.md#mqtt-broker-loss-when-self-hosted-fallback-is-used"

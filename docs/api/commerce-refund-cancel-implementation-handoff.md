@@ -70,6 +70,8 @@ Target product enum:
 
 **Provider:** if no PSP refund API wired, persist refund `requested` and enqueue outbox / workflow; document **webhook** can move to `completed` / `failed` (existing `payment_provider_events` patterns).
 
+**P1.2 reconciliation hardening:** failures such as **paid + vend failed**, **paid + no vend result after timeout**, **refund stuck pending**, **duplicate PSP deliveries**, **provider mismatch**, **amount/currency mismatch vs persisted payment**, and **late webhooks after terminal order/payment state** create or refresh rows in **`commerce_reconciliation_cases`** (including optional **`machine_id`** for fleet context). Cases are **never silently auto-refunded** by the reconciler loop alone—operators use **`POST .../commerce/reconciliation/{caseId}/request-refund`** (writes **`refunds`** via **`CreateRefund`** with deterministic idempotency) and **`POST .../resolve`** to close cases with audit.
+
 ### List / get refunds
 
 - sqlc queries: `ListRefundsByOrder`, `GetRefundByOrderAndID` scoped by `organization_id` join on `orders`.
@@ -123,6 +125,16 @@ make sqlc  # if new queries
 make swagger && make swagger-check
 go test ./...
 ```
+
+## P0.4 — Reconciliation queue, refund review, order timeline
+
+Shipped artifacts:
+
+- Tables: `order_timelines`, `refund_requests`; view `payment_reconciliation_cases` (see migrations + [`db/schema/01_platform.sql`](../../db/schema/01_platform.sql)).
+- Admin routes under `/v1/admin/organizations/{organizationId}/`: reconciliation list/detail/**resolve**/**ignore**, **request-refund**, **orders/{orderId}/timeline**, **refunds** list/get, **orders/{orderId}/refunds** (requires **Idempotency-Key**).
+- [`internal/app/commerceadmin/service.go`](../../internal/app/commerceadmin/service.go) — transactional resolve + timeline append; refund orchestration creates/links `refund_requests`.
+
+Runbook: [`docs/runbooks/payment-reconciliation.md`](../runbooks/payment-reconciliation.md).
 
 ---
 

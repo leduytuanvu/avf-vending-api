@@ -4,17 +4,17 @@ Operational checklist for **auth**, **tenant isolation**, and **client-appropria
 
 ## 1. Intended clients vs routes
 
-- **Kiosk runtime** should use machine-scoped JWTs for `/v1/machines/{machineId}/*` (shadow, telemetry reads, check-ins, config-applies, commerce) and **MQTT** for telemetry + commands.
-- **Admin portal** uses `platform_admin` / `org_admin` for `/v1/admin/*`, `/v1/reports/*`, and command dispatch.
-- **Technician setup** uses bootstrap, inventory/planogram admin routes, and operator-session APIs.
+- **Kiosk runtime** should use **`avf.machine.v1` gRPC** + Machine JWT for vend/commerce/telemetry/offline sync. **Do not** rely on `/v1/machines/{machineId}/*` HTTP in production (`ENABLE_LEGACY_MACHINE_HTTP` defaults **off** when `APP_ENV=production`).
+- **Admin portal** uses `platform_admin` / `org_admin` for `/v1/admin/*`, `/v1/reports/*`, and **fleet command dispatch** (`POST /v1/machines/{machineId}/commands/dispatch` — MQTT-backed; not gated as legacy vending HTTP).
+- **Technician setup** historically used HTTP bootstrap; production should align with gRPC + admin flows. Legacy HTTP setup/catalog/device bridge registers only when **`ENABLE_LEGACY_MACHINE_HTTP=true`**.
 - **Payment providers** use **only** the HMAC-verified webhook route (no Bearer JWT).
 
 ## 2. Role guards (code reference)
 
-Registration lives in `internal/httpserver/server.go`:
+Registration lives primarily in `internal/httpserver/server.go`:
 
-- `/v1/admin/*` — `RequireAnyRole(platform_admin, org_admin)`.
-- `/v1/reports/*` — same; machine-only tokens must not carry these roles.
+- **`/v1/admin/*`** — interactive **User JWT** (`auth.BearerAccessTokenMiddlewareWithValidator`), `RequireInteractiveAccountActive`, `RequireDenyMachinePrincipal`, mutation rate limits, then **per-namespace** middleware such as **`auth.RequireAnyPermission(...)`**, occasionally **`RequireAnyRole(RolePlatformAdmin)`** for platform-only tooling (system outbox, retention).
+- **`/v1/reports/*`** — `RequireDenyMachinePrincipal`, then `RequireAnyPermission(auth.PermReportsRead)`, plus bounded report windows.
 - `/v1/commerce/*` (except public webhook) — Bearer JWT + `RequireOrganizationScope`.
 - `/v1/device/machines/{machineId}/*` — Bearer JWT + `RequireMachineURLAccess` + **`RequireAnyRole(platform_admin, org_admin)`** today (`internal/httpserver/device_http.go`). **Hardening:** add `CanAccessHTTPDeviceBridge`-style policy so machine-scoped JWTs with `machine_ids` may call the bridge without org-admin role, still subject to tenant binding middleware in §3.
 - `/metrics` on the **main** HTTP server — **unauthenticated** when `METRICS_ENABLED=true`; restrict by **bind address**, reverse proxy ACL, or private network. Optional **ops** HTTP server (`OPS_HTTP_ADDR`) hosts readiness and may expose metrics separately — see `internal/observability/ops_http.go`.
@@ -33,10 +33,10 @@ Registration lives in `internal/httpserver/server.go`:
 
 **Implementation sketch:** middleware in `internal/httpserver` using `app.TelemetryStore.Pool()` + `GetMachineByID` (sqlc). When `TelemetryStore` is nil (incomplete test doubles), decide explicitly: fail closed for org-scoped principals or skip only in tests.
 
-## 4. Device HTTP fallback
+## 4. Device HTTP fallback (legacy)
 
-- `POST /v1/device/machines/{machineId}/commands/poll` is an **HTTP fallback** when MQTT is degraded — **not** the primary high-volume command path.
-- Document in OpenAPI descriptions that integrators should prefer **MQTT** command delivery (`docs/api/mqtt-contract.md`).
+- `POST /v1/device/machines/{machineId}/commands/poll` and related bridge routes are **legacy HTTP** and **not mounted** when `ENABLE_LEGACY_MACHINE_HTTP=false` (production default). **MQTT TLS + command ledger** is the production command path (`docs/api/mqtt-contract.md`).
+- Document in OpenAPI descriptions that integrators should prefer **MQTT** command delivery.
 - Telemetry firehose belongs on **MQTT → JetStream**, not on HTTP telemetry read models.
 
 ## 5. Commerce webhook verification
