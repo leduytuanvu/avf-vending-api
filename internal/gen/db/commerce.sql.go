@@ -301,6 +301,7 @@ const GetPaymentProviderEventByProviderRef = `-- name: GetPaymentProviderEventBy
 SELECT
     id,
     payment_id,
+    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
@@ -308,7 +309,14 @@ SELECT
     currency,
     event_type,
     payload,
-    received_at
+    received_at,
+    validation_status,
+    provider_metadata,
+    legal_hold,
+    signature_valid,
+    applied_at,
+    ingress_status,
+    ingress_error
 FROM payment_provider_events
 WHERE
     provider = $1
@@ -326,6 +334,7 @@ func (q *Queries) GetPaymentProviderEventByProviderRef(ctx context.Context, arg 
 	err := row.Scan(
 		&i.ID,
 		&i.PaymentID,
+		&i.OrganizationID,
 		&i.Provider,
 		&i.ProviderRef,
 		&i.WebhookEventID,
@@ -334,6 +343,13 @@ func (q *Queries) GetPaymentProviderEventByProviderRef(ctx context.Context, arg 
 		&i.EventType,
 		&i.Payload,
 		&i.ReceivedAt,
+		&i.ValidationStatus,
+		&i.ProviderMetadata,
+		&i.LegalHold,
+		&i.SignatureValid,
+		&i.AppliedAt,
+		&i.IngressStatus,
+		&i.IngressError,
 	)
 	return i, err
 }
@@ -342,6 +358,7 @@ const GetPaymentProviderEventByWebhookEventID = `-- name: GetPaymentProviderEven
 SELECT
     id,
     payment_id,
+    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
@@ -349,7 +366,14 @@ SELECT
     currency,
     event_type,
     payload,
-    received_at
+    received_at,
+    validation_status,
+    provider_metadata,
+    legal_hold,
+    signature_valid,
+    applied_at,
+    ingress_status,
+    ingress_error
 FROM payment_provider_events
 WHERE
     provider = $1
@@ -367,6 +391,7 @@ func (q *Queries) GetPaymentProviderEventByWebhookEventID(ctx context.Context, a
 	err := row.Scan(
 		&i.ID,
 		&i.PaymentID,
+		&i.OrganizationID,
 		&i.Provider,
 		&i.ProviderRef,
 		&i.WebhookEventID,
@@ -375,6 +400,13 @@ func (q *Queries) GetPaymentProviderEventByWebhookEventID(ctx context.Context, a
 		&i.EventType,
 		&i.Payload,
 		&i.ReceivedAt,
+		&i.ValidationStatus,
+		&i.ProviderMetadata,
+		&i.LegalHold,
+		&i.SignatureValid,
+		&i.AppliedAt,
+		&i.IngressStatus,
+		&i.IngressError,
 	)
 	return i, err
 }
@@ -699,13 +731,20 @@ func (q *Queries) InsertPaymentAttempt(ctx context.Context, arg InsertPaymentAtt
 const InsertPaymentProviderEvent = `-- name: InsertPaymentProviderEvent :one
 INSERT INTO payment_provider_events (
     payment_id,
+    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
     provider_amount_minor,
     currency,
     event_type,
-    payload
+    payload,
+    validation_status,
+    provider_metadata,
+    signature_valid,
+    applied_at,
+    ingress_status,
+    ingress_error
 ) VALUES (
     $1,
     $2,
@@ -714,11 +753,19 @@ INSERT INTO payment_provider_events (
     $5,
     $6,
     $7,
-    $8
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13,
+    $14,
+    $15
 )
 RETURNING
     id,
     payment_id,
+    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
@@ -726,11 +773,19 @@ RETURNING
     currency,
     event_type,
     payload,
-    received_at
+    received_at,
+    validation_status,
+    provider_metadata,
+    legal_hold,
+    signature_valid,
+    applied_at,
+    ingress_status,
+    ingress_error
 `
 
 type InsertPaymentProviderEventParams struct {
 	PaymentID           pgtype.UUID
+	OrganizationID      pgtype.UUID
 	Provider            string
 	ProviderRef         pgtype.Text
 	WebhookEventID      pgtype.Text
@@ -738,11 +793,18 @@ type InsertPaymentProviderEventParams struct {
 	Currency            pgtype.Text
 	EventType           string
 	Payload             []byte
+	ValidationStatus    string
+	ProviderMetadata    []byte
+	SignatureValid      bool
+	AppliedAt           pgtype.Timestamptz
+	IngressStatus       string
+	IngressError        pgtype.Text
 }
 
 func (q *Queries) InsertPaymentProviderEvent(ctx context.Context, arg InsertPaymentProviderEventParams) (PaymentProviderEvent, error) {
 	row := q.db.QueryRow(ctx, InsertPaymentProviderEvent,
 		arg.PaymentID,
+		arg.OrganizationID,
 		arg.Provider,
 		arg.ProviderRef,
 		arg.WebhookEventID,
@@ -750,11 +812,18 @@ func (q *Queries) InsertPaymentProviderEvent(ctx context.Context, arg InsertPaym
 		arg.Currency,
 		arg.EventType,
 		arg.Payload,
+		arg.ValidationStatus,
+		arg.ProviderMetadata,
+		arg.SignatureValid,
+		arg.AppliedAt,
+		arg.IngressStatus,
+		arg.IngressError,
 	)
 	var i PaymentProviderEvent
 	err := row.Scan(
 		&i.ID,
 		&i.PaymentID,
+		&i.OrganizationID,
 		&i.Provider,
 		&i.ProviderRef,
 		&i.WebhookEventID,
@@ -763,6 +832,13 @@ func (q *Queries) InsertPaymentProviderEvent(ctx context.Context, arg InsertPaym
 		&i.EventType,
 		&i.Payload,
 		&i.ReceivedAt,
+		&i.ValidationStatus,
+		&i.ProviderMetadata,
+		&i.LegalHold,
+		&i.SignatureValid,
+		&i.AppliedAt,
+		&i.IngressStatus,
+		&i.IngressError,
 	)
 	return i, err
 }
@@ -959,6 +1035,148 @@ func (q *Queries) ListOrdersWithUnresolvedPayment(ctx context.Context, arg ListO
 			&i.IdempotencyKey,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPaidOrdersWithoutVendStart = `-- name: ListPaidOrdersWithoutVendStart :many
+SELECT
+    o.id AS order_id,
+    o.organization_id,
+    o.machine_id,
+    p.id AS payment_id,
+    p.provider,
+    p.state AS payment_state,
+    v.id AS vend_session_id,
+    v.state AS vend_state,
+    o.updated_at
+FROM orders o
+INNER JOIN payments p ON p.order_id = o.id
+INNER JOIN vend_sessions v ON v.order_id = o.id
+WHERE
+    p.state IN ('captured', 'partially_refunded')
+    AND o.status = 'paid'
+    AND v.state = 'pending'
+    AND o.updated_at < $1
+ORDER BY
+    o.updated_at ASC
+LIMIT $2
+`
+
+type ListPaidOrdersWithoutVendStartParams struct {
+	UpdatedAt time.Time
+	Limit     int32
+}
+
+type ListPaidOrdersWithoutVendStartRow struct {
+	OrderID        uuid.UUID
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	PaymentID      uuid.UUID
+	Provider       string
+	PaymentState   string
+	VendSessionID  uuid.UUID
+	VendState      string
+	UpdatedAt      time.Time
+}
+
+func (q *Queries) ListPaidOrdersWithoutVendStart(ctx context.Context, arg ListPaidOrdersWithoutVendStartParams) ([]ListPaidOrdersWithoutVendStartRow, error) {
+	rows, err := q.db.Query(ctx, ListPaidOrdersWithoutVendStart, arg.UpdatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPaidOrdersWithoutVendStartRow{}
+	for rows.Next() {
+		var i ListPaidOrdersWithoutVendStartRow
+		if err := rows.Scan(
+			&i.OrderID,
+			&i.OrganizationID,
+			&i.MachineID,
+			&i.PaymentID,
+			&i.Provider,
+			&i.PaymentState,
+			&i.VendSessionID,
+			&i.VendState,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListPaidVendFailuresForReview = `-- name: ListPaidVendFailuresForReview :many
+SELECT
+    o.id AS order_id,
+    o.organization_id,
+    o.machine_id,
+    p.id AS payment_id,
+    p.provider,
+    p.state AS payment_state,
+    v.id AS vend_session_id,
+    v.state AS vend_state,
+    v.completed_at
+FROM payments p
+INNER JOIN orders o ON o.id = p.order_id
+INNER JOIN vend_sessions v ON v.order_id = o.id
+WHERE
+    p.state IN ('captured', 'partially_refunded')
+    AND o.status = 'failed'
+    AND v.state = 'failed'
+    AND v.completed_at < $1
+ORDER BY
+    v.completed_at ASC
+LIMIT $2
+`
+
+type ListPaidVendFailuresForReviewParams struct {
+	CompletedAt pgtype.Timestamptz
+	Limit       int32
+}
+
+type ListPaidVendFailuresForReviewRow struct {
+	OrderID        uuid.UUID
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	PaymentID      uuid.UUID
+	Provider       string
+	PaymentState   string
+	VendSessionID  uuid.UUID
+	VendState      string
+	CompletedAt    pgtype.Timestamptz
+}
+
+func (q *Queries) ListPaidVendFailuresForReview(ctx context.Context, arg ListPaidVendFailuresForReviewParams) ([]ListPaidVendFailuresForReviewRow, error) {
+	rows, err := q.db.Query(ctx, ListPaidVendFailuresForReview, arg.CompletedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPaidVendFailuresForReviewRow{}
+	for rows.Next() {
+		var i ListPaidVendFailuresForReviewRow
+		if err := rows.Scan(
+			&i.OrderID,
+			&i.OrganizationID,
+			&i.MachineID,
+			&i.PaymentID,
+			&i.Provider,
+			&i.PaymentState,
+			&i.VendSessionID,
+			&i.VendState,
+			&i.CompletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1228,6 +1446,75 @@ func (q *Queries) ListRefundsForOrder(ctx context.Context, orderID uuid.UUID) ([
 	return items, nil
 }
 
+const ListRefundsPendingTooLong = `-- name: ListRefundsPendingTooLong :many
+SELECT
+    r.id AS refund_id,
+    r.payment_id,
+    r.order_id,
+    o.organization_id,
+    p.provider,
+    r.state AS refund_state,
+    r.amount_minor,
+    r.currency,
+    r.created_at
+FROM refunds r
+INNER JOIN orders o ON o.id = r.order_id
+INNER JOIN payments p ON p.id = r.payment_id
+WHERE
+    r.state IN ('requested', 'processing')
+    AND r.created_at < $1
+ORDER BY
+    r.created_at ASC
+LIMIT $2
+`
+
+type ListRefundsPendingTooLongParams struct {
+	CreatedAt time.Time
+	Limit     int32
+}
+
+type ListRefundsPendingTooLongRow struct {
+	RefundID       uuid.UUID
+	PaymentID      uuid.UUID
+	OrderID        uuid.UUID
+	OrganizationID uuid.UUID
+	Provider       string
+	RefundState    string
+	AmountMinor    int64
+	Currency       string
+	CreatedAt      time.Time
+}
+
+func (q *Queries) ListRefundsPendingTooLong(ctx context.Context, arg ListRefundsPendingTooLongParams) ([]ListRefundsPendingTooLongRow, error) {
+	rows, err := q.db.Query(ctx, ListRefundsPendingTooLong, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRefundsPendingTooLongRow{}
+	for rows.Next() {
+		var i ListRefundsPendingTooLongRow
+		if err := rows.Scan(
+			&i.RefundID,
+			&i.PaymentID,
+			&i.OrderID,
+			&i.OrganizationID,
+			&i.Provider,
+			&i.RefundState,
+			&i.AmountMinor,
+			&i.Currency,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListStaleCommandLedgerEntries = `-- name: ListStaleCommandLedgerEntries :many
 SELECT
     id,
@@ -1260,15 +1547,35 @@ type ListStaleCommandLedgerEntriesParams struct {
 	Limit     int32
 }
 
-func (q *Queries) ListStaleCommandLedgerEntries(ctx context.Context, arg ListStaleCommandLedgerEntriesParams) ([]CommandLedger, error) {
+type ListStaleCommandLedgerEntriesRow struct {
+	ID                uuid.UUID
+	MachineID         uuid.UUID
+	Sequence          int64
+	CommandType       string
+	Payload           []byte
+	CorrelationID     pgtype.UUID
+	IdempotencyKey    pgtype.Text
+	CreatedAt         time.Time
+	ProtocolType      pgtype.Text
+	DeadlineAt        pgtype.Timestamptz
+	TimeoutAt         pgtype.Timestamptz
+	AttemptCount      int32
+	LastAttemptAt     pgtype.Timestamptz
+	RouteKey          pgtype.Text
+	SourceSystem      pgtype.Text
+	SourceEventID     pgtype.Text
+	OperatorSessionID pgtype.UUID
+}
+
+func (q *Queries) ListStaleCommandLedgerEntries(ctx context.Context, arg ListStaleCommandLedgerEntriesParams) ([]ListStaleCommandLedgerEntriesRow, error) {
 	rows, err := q.db.Query(ctx, ListStaleCommandLedgerEntries, arg.CreatedAt, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []CommandLedger{}
+	items := []ListStaleCommandLedgerEntriesRow{}
 	for rows.Next() {
-		var i CommandLedger
+		var i ListStaleCommandLedgerEntriesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.MachineID,
@@ -1312,6 +1619,7 @@ SELECT
     v.completed_at,
     v.final_command_attempt_id,
     v.created_at,
+    o.organization_id,
     o.status AS order_status
 FROM vend_sessions v
 INNER JOIN orders o ON o.id = v.order_id
@@ -1342,6 +1650,7 @@ type ListVendSessionsStuckForReconciliationRow struct {
 	CompletedAt           pgtype.Timestamptz
 	FinalCommandAttemptID pgtype.UUID
 	CreatedAt             time.Time
+	OrganizationID        uuid.UUID
 	OrderStatus           string
 }
 
@@ -1367,6 +1676,7 @@ func (q *Queries) ListVendSessionsStuckForReconciliation(ctx context.Context, ar
 			&i.CompletedAt,
 			&i.FinalCommandAttemptID,
 			&i.CreatedAt,
+			&i.OrganizationID,
 			&i.OrderStatus,
 		); err != nil {
 			return nil, err
@@ -1379,10 +1689,104 @@ func (q *Queries) ListVendSessionsStuckForReconciliation(ctx context.Context, ar
 	return items, nil
 }
 
+const LockOrderByIDAndOrgForUpdate = `-- name: LockOrderByIDAndOrgForUpdate :one
+SELECT
+    id,
+    organization_id,
+    machine_id,
+    status,
+    currency,
+    subtotal_minor,
+    tax_minor,
+    total_minor,
+    idempotency_key,
+    created_at,
+    updated_at
+FROM orders
+WHERE
+    id = $1
+    AND organization_id = $2
+FOR UPDATE
+`
+
+type LockOrderByIDAndOrgForUpdateParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) LockOrderByIDAndOrgForUpdate(ctx context.Context, arg LockOrderByIDAndOrgForUpdateParams) (Order, error) {
+	row := q.db.QueryRow(ctx, LockOrderByIDAndOrgForUpdate, arg.ID, arg.OrganizationID)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.MachineID,
+		&i.Status,
+		&i.Currency,
+		&i.SubtotalMinor,
+		&i.TaxMinor,
+		&i.TotalMinor,
+		&i.IdempotencyKey,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const LockVendSessionByOrderAndSlotForUpdate = `-- name: LockVendSessionByOrderAndSlotForUpdate :one
+SELECT
+    id,
+    order_id,
+    machine_id,
+    slot_index,
+    product_id,
+    state,
+    failure_reason,
+    correlation_id,
+    started_at,
+    completed_at,
+    final_command_attempt_id,
+    created_at
+FROM vend_sessions
+WHERE
+    order_id = $1
+    AND slot_index = $2
+FOR UPDATE
+`
+
+type LockVendSessionByOrderAndSlotForUpdateParams struct {
+	OrderID   uuid.UUID
+	SlotIndex int32
+}
+
+func (q *Queries) LockVendSessionByOrderAndSlotForUpdate(ctx context.Context, arg LockVendSessionByOrderAndSlotForUpdateParams) (VendSession, error) {
+	row := q.db.QueryRow(ctx, LockVendSessionByOrderAndSlotForUpdate, arg.OrderID, arg.SlotIndex)
+	var i VendSession
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.MachineID,
+		&i.SlotIndex,
+		&i.ProductID,
+		&i.State,
+		&i.FailureReason,
+		&i.CorrelationID,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.FinalCommandAttemptID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const MarkOutboxEventPublished = `-- name: MarkOutboxEventPublished :one
 UPDATE outbox_events
 SET
-    published_at = now()
+    published_at = now(),
+    status = 'published',
+    locked_by = NULL,
+    locked_until = NULL,
+    updated_at = now()
 WHERE
     id = $1
     AND published_at IS NULL
@@ -1401,7 +1805,12 @@ RETURNING
     last_publish_error,
     last_publish_attempt_at,
     next_publish_after,
-    dead_lettered_at
+    dead_lettered_at,
+    status,
+    locked_by,
+    locked_until,
+    updated_at,
+    max_publish_attempts
 `
 
 func (q *Queries) MarkOutboxEventPublished(ctx context.Context, id int64) (OutboxEvent, error) {
@@ -1423,6 +1832,11 @@ func (q *Queries) MarkOutboxEventPublished(ctx context.Context, id int64) (Outbo
 		&i.LastPublishAttemptAt,
 		&i.NextPublishAfter,
 		&i.DeadLetteredAt,
+		&i.Status,
+		&i.LockedBy,
+		&i.LockedUntil,
+		&i.UpdatedAt,
+		&i.MaxPublishAttempts,
 	)
 	return i, err
 }

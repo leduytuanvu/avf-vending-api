@@ -1,5 +1,11 @@
 # Production smoke tests (enterprise)
 
+**Scope (P0 CI / operator):** Describes **automated** **`smoke_prod.sh`** tiers attached to deploy workflows. These checks are **GET-only** and **zero side-effect by design** — they **do not** replace **[`../testing/field-test-cases.md`](../testing/field-test-cases.md)** (hardware/PSP/command/mutating rows) or **[`../runbooks/field-smoke-tests.md`](../runbooks/field-smoke-tests.md)** local/pilot mutating scripts.
+
+**Transport contract:** Kiosk **gRPC + MQTT** vs Admin **REST** is defined in **[`../architecture/production-final-contract.md`](../architecture/production-final-contract.md)** — smoke scripts only touch the **public HTTP** edge, not machine gRPC.
+
+**P2 note:** Claiming **fleet-scale** readiness still requires **[`../runbooks/production-release-readiness.md`](../runbooks/production-release-readiness.md)** storm thresholds + field matrix — not this file alone.
+
 Production deploys use [`deployments/prod/scripts/smoke_prod.sh`](../../deployments/prod/scripts/smoke_prod.sh) in **tiers** so safety is not based on `/health/ready` alone. JSON under `--json` is assembled by [`scripts/smoke/emit_production_smoke_json.py`](../../scripts/smoke/emit_production_smoke_json.py) for CI evidence.
 
 ## Smoke levels (`SMOKE_LEVEL`)

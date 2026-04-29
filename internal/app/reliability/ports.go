@@ -34,7 +34,7 @@ type Reconciler interface {
 	ScanStuckPayments(ctx context.Context, run ScanRunContext, policy RecoveryPolicy, limits ScanLimits) (StuckPaymentScanResult, error)
 	ScanStuckCommands(ctx context.Context, run ScanRunContext, policy RecoveryPolicy, limits ScanLimits) (StuckCommandScanResult, error)
 	ScanOrphanVendSessions(ctx context.Context, run ScanRunContext, policy RecoveryPolicy, limits ScanLimits) (OrphanVendScanResult, error)
-	PlanOutboxRepublishBatch(ctx context.Context, run ScanRunContext, policy RecoveryPolicy, limits ScanLimits) (OutboxReplayPlan, error)
+	PlanOutboxRepublishBatch(ctx context.Context, run ScanRunContext, policy RecoveryPolicy, limits ScanLimits, lease *OutboxLeaseParams) (OutboxReplayPlan, error)
 
 	DecideOutboxReplay(run ScanRunContext, policy RecoveryPolicy, ev domainreliability.OutboxEvent) OutboxReplayDecision
 	DecidePaymentRecovery(run ScanRunContext, policy RecoveryPolicy, c StuckPaymentCandidate) PaymentRecoveryDecision

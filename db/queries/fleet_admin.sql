@@ -129,7 +129,9 @@ SELECT
     t.email,
     t.phone,
     t.external_subject,
-    t.created_at
+    t.status,
+    t.created_at,
+    t.updated_at
 FROM technicians t
 WHERE
     t.organization_id = $1
@@ -267,7 +269,7 @@ SELECT
     c.id AS campaign_id,
     c.organization_id,
     c.name AS campaign_name,
-    c.strategy,
+    c.rollout_strategy AS strategy,
     c.status AS campaign_status,
     c.created_at,
     a.id AS artifact_id,

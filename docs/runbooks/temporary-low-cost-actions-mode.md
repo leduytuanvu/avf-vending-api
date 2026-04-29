@@ -2,6 +2,15 @@
 
 This runbook describes the smallest practical set of temporary workflow changes to bring GitHub Actions cost close to zero while preserving a manual path for production operations.
 
+## Enterprise / P2 evidence when CI workflows are paused
+
+If **`ci.yml`**, **`build-push.yml`**, or **`enterprise-release-verify.yml`** are temporarily manual-only (see sections below), **releases to production still require**:
+
+- **`make verify-enterprise-release`** (or equivalent **`verify_enterprise_result.json`**) executed on a controlled runner **before** **`deploy-prod`** approval.
+- Field evidence packs per **[`testing/field-test-cases.md`](../testing/field-test-cases.md)** + **[`operations/field-pilot-checklist.md`](../operations/field-pilot-checklist.md)** — **not replaced** by a green smoke script alone.
+
+---
+
 ## Goal
 
 Reduce GitHub-hosted runner usage to near zero by:

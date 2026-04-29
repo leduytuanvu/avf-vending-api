@@ -1,27 +1,26 @@
 package httpserver
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
-	"github.com/avf/avf-vending-api/internal/gen/db"
-	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	"github.com/avf/avf-vending-api/internal/app/salecatalog"
+	"github.com/avf/avf-vending-api/internal/app/setupapp"
+	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 func mountSaleCatalogRoute(r chi.Router, app *api.HTTPApplication) {
+	// Legacy HTTP sale-catalog snapshot. Prefer MachineCatalogService gRPC (GetSaleCatalog / SyncSaleCatalog).
 	if app == nil || app.TelemetryStore == nil {
 		return
 	}
-	r.With(RequireMachineTenantAccess(app, "machineId")).Get("/machines/{machineId}/sale-catalog", getSaleCatalog(app))
+	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCatalogRead)).Get("/machines/{machineId}/sale-catalog", getSaleCatalog(app))
 }
 
 func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
@@ -46,179 +45,82 @@ func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
 			}
 		}
 
-		pool := app.TelemetryStore.Pool()
-		queries := db.New(pool)
-		repo := postgres.NewSetupRepository(pool)
-		bootstrap, err := repo.GetMachineBootstrap(ctx, machineID)
-		if err != nil {
-			writeAPIError(w, ctx, http.StatusNotFound, "machine_not_found", "machine not found")
-			return
+		svc := app.SaleCatalog
+		if svc == nil {
+			svc = salecatalog.NewService(app.TelemetryStore.Pool())
 		}
-		slotView, err := repo.GetMachineSlotView(ctx, machineID)
-		if err != nil {
-			writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
-			return
-		}
-		legacyByIndex := make(map[int32]struct {
-			qty       int32
-			maxQty    int32
-			price     int64
-			planogram string
+		snap, err := svc.BuildSnapshot(ctx, machineID, salecatalog.Options{
+			IncludeUnavailable:       includeUnavailable,
+			IncludeImages:            includeImages,
+			IfNoneMatchConfigVersion: ifNone,
 		})
-		for _, l := range slotView.LegacySlots {
-			legacyByIndex[l.SlotIndex] = struct {
-				qty       int32
-				maxQty    int32
-				price     int64
-				planogram string
-			}{l.CurrentQuantity, l.MaxQuantity, l.PriceMinor, l.PlanogramName}
-		}
-
-		sortByProduct := make(map[uuid.UUID]int32)
-		for _, ap := range bootstrap.AssortmentProducts {
-			sortByProduct[ap.ProductID] = ap.SortOrder
-		}
-
-		var cfgVersion int64
-		ver, err := queries.GetMachineShadowVersion(ctx, machineID)
 		if err != nil {
-			if err != pgx.ErrNoRows {
+			switch {
+			case errors.Is(err, setupapp.ErrNotFound):
+				writeAPIError(w, ctx, http.StatusNotFound, "machine_not_found", "machine not found")
+			case errors.Is(err, setupapp.ErrMachineNotEligibleForBootstrap):
+				writeAPIError(w, ctx, http.StatusForbidden, "machine_not_eligible", "machine not eligible")
+			default:
 				writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
-				return
 			}
-			cfgVersion = 0
-		} else {
-			cfgVersion = ver
+			return
 		}
-		if ifNone != nil && *ifNone == cfgVersion {
+		if snap.NotModified {
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
 
-		cur, err := queries.InventoryAdminGetOrgDefaultCurrency(ctx, bootstrap.Machine.OrganizationID)
-		if err != nil {
-			writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
-			return
-		}
-
-		productIDs := make([]uuid.UUID, 0)
-		for _, sl := range bootstrap.CurrentCabinetSlots {
-			if !sl.IsCurrent || sl.ProductID == nil {
-				continue
-			}
-			productIDs = append(productIDs, *sl.ProductID)
-		}
-		prodByID := make(map[uuid.UUID]db.RuntimeGetProductsByIDsRow)
-		if len(productIDs) > 0 {
-			prodRows, err := queries.RuntimeGetProductsByIDs(ctx, db.RuntimeGetProductsByIDsParams{
-				OrganizationID: bootstrap.Machine.OrganizationID,
-				Column2:        productIDs,
-			})
-			if err != nil {
-				writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
-				return
-			}
-			for _, p := range prodRows {
-				prodByID[p.ID] = p
-			}
-		}
-
-		imgByProduct := make(map[uuid.UUID][]db.RuntimeListProductImagesForProductsRow)
-		if includeImages && len(productIDs) > 0 {
-			imgs, ierr := queries.RuntimeListProductImagesForProducts(ctx, productIDs)
-			if ierr != nil {
-				writeAPIError(w, ctx, http.StatusInternalServerError, "internal", ierr.Error())
-				return
-			}
-			for _, im := range imgs {
-				imgByProduct[im.ProductID] = append(imgByProduct[im.ProductID], im)
-			}
-		}
-
-		items := make([]map[string]any, 0)
-		for _, sl := range bootstrap.CurrentCabinetSlots {
-			if !sl.IsCurrent || sl.ProductID == nil {
-				continue
-			}
-			pid := *sl.ProductID
-			pmeta, ok := prodByID[pid]
-			if !ok {
-				continue
-			}
-			var slotIdx int32 = -1
-			if sl.SlotIndex != nil {
-				slotIdx = *sl.SlotIndex
-			}
-			leg, hasLeg := legacyByIndex[slotIdx]
-			qty := int32(0)
-			maxQ := sl.MaxQuantity
-			price := sl.PriceMinor
-			if hasLeg {
-				qty = leg.qty
-				if maxQ <= 0 {
-					maxQ = leg.maxQty
-				}
-				if price == 0 {
-					price = leg.price
-				}
-			}
-			priceOK := price > 0
-			stockOK := qty > 0
-			activeOK := pmeta.Active
-			reasons := make([]string, 0)
-			if !activeOK {
-				reasons = append(reasons, "product_inactive")
-			}
-			if !priceOK {
-				reasons = append(reasons, "no_price")
-			}
-			if !stockOK {
-				reasons = append(reasons, "out_of_stock")
-			}
-			available := activeOK && priceOK && stockOK
-			if !available && !includeUnavailable {
-				continue
-			}
-			var unavail *string
-			if !available {
-				s := strings.Join(reasons, ",")
-				unavail = &s
-			}
-			shortName := shortNameFromAttrs(pmeta.Name, pmeta.Attrs)
+		items := make([]map[string]any, 0, len(snap.Items))
+		for _, it := range snap.Items {
 			entry := map[string]any{
-				"slotIndex":         slotIdx,
-				"slotCode":          sl.SlotCode,
-				"cabinetCode":       sl.CabinetCode,
-				"productId":         pid.String(),
-				"sku":               pmeta.Sku,
-				"name":              pmeta.Name,
-				"shortName":         shortName,
-				"priceMinor":        price,
-				"availableQuantity": qty,
-				"maxQuantity":       maxQ,
-				"isAvailable":       available,
+				"slotIndex":         it.SlotIndex,
+				"slotCode":          it.SlotCode,
+				"cabinetCode":       it.CabinetCode,
+				"productId":         it.ProductID.String(),
+				"sku":               it.SKU,
+				"name":              it.Name,
+				"shortName":         it.ShortName,
+				"priceMinor":        it.PriceMinor,
+				"availableQuantity": it.AvailableQuantity,
+				"maxQuantity":       it.MaxQuantity,
+				"isAvailable":       it.IsAvailable,
 				"unavailableReason": nil,
-				"sortOrder":         sortByProduct[pid],
+				"sortOrder":         it.SortOrder,
 			}
-			if unavail != nil {
-				entry["unavailableReason"] = *unavail
+			if it.UnavailableReason != "" {
+				entry["unavailableReason"] = it.UnavailableReason
 			}
 			if includeImages {
-				if imgs := imgByProduct[pid]; len(imgs) > 0 {
-					im := pickDisplayImage(imgs)
-					thumb := productImageThumbURL(im)
-					disp := productImageDisplayURL(im)
-					if thumb == "" {
-						thumb = "https://cdn.example.invalid/missing-thumb.webp"
-					}
-					if disp == "" {
-						disp = thumb
-					}
-					entry["image"] = map[string]any{
-						"thumbUrl":    thumb,
-						"displayUrl":  disp,
-						"contentHash": productImageContentHash(im),
-						"updatedAt":   im.CreatedAt.UTC().Format(time.RFC3339),
+				if it.Image != nil {
+					if it.Image.Deleted {
+						entry["image"] = map[string]any{"deleted": true}
+					} else {
+						img := map[string]any{
+							"thumbUrl":    it.Image.ThumbURL,
+							"displayUrl":  it.Image.DisplayURL,
+							"contentHash": it.Image.ContentHash,
+							"etag":        it.Image.Etag,
+							"updatedAt":   it.Image.UpdatedAt.UTC().Format(time.RFC3339),
+						}
+						if it.Image.MediaID != uuid.Nil {
+							img["mediaId"] = it.Image.MediaID.String()
+						}
+						if it.Image.SizeBytes > 0 {
+							img["sizeBytes"] = it.Image.SizeBytes
+						}
+						if it.Image.ObjectVersion != 0 {
+							img["objectVersion"] = it.Image.ObjectVersion
+						}
+						if it.Image.MediaVersion != 0 {
+							img["mediaVersion"] = it.Image.MediaVersion
+						}
+						if it.Image.Width > 0 {
+							img["width"] = it.Image.Width
+						}
+						if it.Image.Height > 0 {
+							img["height"] = it.Image.Height
+						}
+						entry["image"] = img
 					}
 				} else {
 					entry["image"] = nil
@@ -228,73 +130,14 @@ func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{
-			"machineId":      machineID.String(),
-			"organizationId": bootstrap.Machine.OrganizationID.String(),
-			"siteId":         bootstrap.Machine.SiteID.String(),
-			"configVersion":  cfgVersion,
-			"currency":       strings.ToUpper(strings.TrimSpace(cur)),
-			"generatedAt":    time.Now().UTC().Format(time.RFC3339),
+			"machineId":      snap.MachineID.String(),
+			"organizationId": snap.OrganizationID.String(),
+			"siteId":         snap.SiteID.String(),
+			"configVersion":  snap.ConfigVersion,
+			"catalogVersion": snap.CatalogVersion,
+			"currency":       snap.Currency,
+			"generatedAt":    snap.GeneratedAt.UTC().Format(time.RFC3339),
 			"items":          items,
 		})
 	}
-}
-
-func shortNameFromAttrs(full string, attrs []byte) string {
-	var m map[string]any
-	if len(attrs) > 0 {
-		_ = json.Unmarshal(attrs, &m)
-	}
-	if m != nil {
-		if s, ok := m["short_name"].(string); ok && strings.TrimSpace(s) != "" {
-			return strings.TrimSpace(s)
-		}
-		if s, ok := m["shortName"].(string); ok && strings.TrimSpace(s) != "" {
-			return strings.TrimSpace(s)
-		}
-	}
-	if len(full) > 24 {
-		return full[:24]
-	}
-	return full
-}
-
-func productImageDisplayURL(r db.RuntimeListProductImagesForProductsRow) string {
-	if r.CdnUrl.Valid {
-		return strings.TrimSpace(r.CdnUrl.String)
-	}
-	return ""
-}
-
-func productImageThumbURL(r db.RuntimeListProductImagesForProductsRow) string {
-	if r.ThumbCdnUrl.Valid {
-		s := strings.TrimSpace(r.ThumbCdnUrl.String)
-		if s != "" {
-			return s
-		}
-	}
-	return productImageDisplayURL(r)
-}
-
-func productImageContentHash(r db.RuntimeListProductImagesForProductsRow) string {
-	if r.ContentHash.Valid {
-		s := strings.TrimSpace(r.ContentHash.String)
-		if s != "" {
-			return s
-		}
-	}
-	return "sha256:" + sha256Hex(r.StorageKey)
-}
-
-func pickDisplayImage(rows []db.RuntimeListProductImagesForProductsRow) db.RuntimeListProductImagesForProductsRow {
-	for _, r := range rows {
-		if r.IsPrimary {
-			return r
-		}
-	}
-	return rows[0]
-}
-
-func sha256Hex(s string) string {
-	sum := sha256.Sum256([]byte(s))
-	return hex.EncodeToString(sum[:])
 }

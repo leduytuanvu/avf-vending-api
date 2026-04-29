@@ -33,3 +33,21 @@ func TestCommercePublicPaymentWebhook_DoesNotRequireIdempotencyKey(t *testing.T)
 		t.Fatalf("expected webhook auth failure body, got %s", rec.Body.String())
 	}
 }
+
+func TestCommercePublicPaymentWebhook_UnsignedRejectedWhenDisallowed(t *testing.T) {
+	t.Parallel()
+
+	app := &api.HTTPApplication{}
+	cfg := &config.Config{AppEnv: config.AppEnvProduction}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/commerce/orders/11111111-1111-1111-1111-111111111111/payments/22222222-2222-2222-2222-222222222222/webhooks", strings.NewReader(`{"provider":"psp"}`))
+	rec := httptest.NewRecorder()
+	commercePublicPaymentWebhookHandler(app, cfg).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "webhook_hmac_required") {
+		t.Fatalf("expected hmac required body, got %s", rec.Body.String())
+	}
+}

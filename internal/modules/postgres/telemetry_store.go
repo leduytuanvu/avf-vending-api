@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
@@ -410,51 +409,6 @@ FROM machine_incidents WHERE machine_id = $1 ORDER BY opened_at DESC LIMIT $2`, 
 	return out, rows.Err()
 }
 
-// RunTelemetryRetention deletes aged telemetry projection rows (not financial OLTP).
-func RunTelemetryRetention(ctx context.Context, pool *pgxpool.Pool, now time.Time) error {
-	if pool == nil {
-		return errors.New("postgres: nil pool")
-	}
-	// Defaults per ops/TELEMETRY_PIPELINE.md
-	st := now.Add(-60 * 24 * time.Hour) // state transitions 60d
-	incLow := now.Add(-90 * 24 * time.Hour)
-	incHi := now.Add(-180 * 24 * time.Hour)
-	r1m := now.Add(-30 * 24 * time.Hour)
-	r1h := now.Add(-180 * 24 * time.Hour)
-	diag := now.Add(-365 * 24 * time.Hour)
-
-	batch := func(name, q string, args ...any) error {
-		tag, err := pool.Exec(ctx, q, args...)
-		if err != nil {
-			return fmt.Errorf("%s: %w", name, err)
-		}
-		if tag.RowsAffected() > 0 {
-			// optional: log deleted count via caller
-			_ = tag.RowsAffected()
-		}
-		return nil
-	}
-	if err := batch("prune_state_transitions", `DELETE FROM machine_state_transitions WHERE occurred_at < $1`, st); err != nil {
-		return err
-	}
-	if err := batch("prune_incidents_low", `DELETE FROM machine_incidents WHERE severity IN ('low','medium','info') AND opened_at < $1`, incLow); err != nil {
-		return err
-	}
-	if err := batch("prune_incidents_high", `DELETE FROM machine_incidents WHERE severity IN ('high','critical') AND opened_at < $1`, incHi); err != nil {
-		return err
-	}
-	if err := batch("prune_rollups_1m", `DELETE FROM telemetry_rollups WHERE granularity = '1m' AND bucket_start < $1`, r1m); err != nil {
-		return err
-	}
-	if err := batch("prune_rollups_1h", `DELETE FROM telemetry_rollups WHERE granularity = '1h' AND bucket_start < $1`, r1h); err != nil {
-		return err
-	}
-	if err := batch("prune_diagnostic_manifests", `DELETE FROM diagnostic_bundle_manifests WHERE created_at < $1`, diag); err != nil {
-		return err
-	}
-	return nil
-}
-
 // ParseMetricsPayload extracts numeric samples from a generic JSON payload for rollups.
 func ParseMetricsPayload(payload []byte) map[string]float64 {
 	out := make(map[string]float64)
@@ -679,21 +633,12 @@ func pickSlotSnapshotForVend(slots []db.InventoryAdminListMachineSlotsRow, slotI
 	return nil, fmt.Errorf("postgres: no machine_slot_state for slot_index=%d product=%s", slotIndex, productID)
 }
 
-// ApplyCommerceVendSuccessInventory decrements machine_slot_state after a successful vend (idempotent on idempotencyKey).
-func (s *Store) ApplyCommerceVendSuccessInventory(ctx context.Context, orgID, machineID, orderID uuid.UUID, slotIndex int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
-	if s == nil || s.pool == nil {
-		return false, errors.New("postgres: nil store")
-	}
+// applyCommerceVendSuccessInventoryTx decrements machine_slot_state after a successful vend (idempotent on idempotencyKey).
+// Caller must hold an open transaction; q must be bound to that transaction.
+func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, orgID, machineID, orderID uuid.UUID, slotIndex int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
 	if strings.TrimSpace(idempotencyKey) == "" {
 		return false, errors.New("postgres: idempotency_key is required for vend inventory")
 	}
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return false, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	q := db.New(tx)
 	m, err := q.GetMachineByIDForUpdate(ctx, machineID)
 	if err != nil {
 		return false, err
@@ -722,9 +667,6 @@ func (s *Store) ApplyCommerceVendSuccessInventory(ctx context.Context, orgID, ma
 		return false, err
 	}
 	if cnt > 0 {
-		if err := tx.Commit(ctx); err != nil {
-			return false, err
-		}
 		return true, nil
 	}
 	slots, err := q.InventoryAdminListMachineSlots(ctx, machineID)
@@ -784,8 +726,27 @@ func (s *Store) ApplyCommerceVendSuccessInventory(ctx context.Context, orgID, ma
 	}); err != nil {
 		return false, err
 	}
+	return false, nil
+}
+
+// ApplyCommerceVendSuccessInventory decrements machine_slot_state after a successful vend (idempotent on idempotencyKey).
+func (s *Store) ApplyCommerceVendSuccessInventory(ctx context.Context, orgID, machineID, orderID uuid.UUID, slotIndex int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
+	if s == nil || s.pool == nil {
+		return false, errors.New("postgres: nil store")
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := db.New(tx)
+	replay, err = applyCommerceVendSuccessInventoryTx(ctx, q, orgID, machineID, orderID, slotIndex, productID, idempotencyKey, correlationID)
+	if err != nil {
+		return false, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return false, err
 	}
-	return false, nil
+	return replay, nil
 }

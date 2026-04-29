@@ -14,12 +14,12 @@
       "type": "stat",
       "gridPos": { "h": 4, "w": 8, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "refId": "A", "expr": "up{job=\"avf_api\"}", "legendFormat": "up" }],
+      "targets": [{ "refId": "A", "expr": "up{job=\"avf_api_metrics\"}", "legendFormat": "up {{node}}" }],
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
     },
     {
       "id": 2,
-      "title": "HTTP p95 latency (s) — avf_http_request_duration_seconds",
+      "title": "HTTP p95 latency (s) — http_request_duration_seconds",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -27,22 +27,27 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum(rate(avf_http_request_duration_seconds_bucket{job=\"avf_api\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"avf_api_metrics\"}[5m])) by (le))",
           "legendFormat": "p95"
         }
       ]
     },
     {
       "id": 3,
-      "title": "Request rate by route (req/s)",
+      "title": "HTTP request rate & error fraction",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(avf_http_request_duration_seconds_count{job=\"avf_api\"}[5m])) by (route)",
-          "legendFormat": "{{route}}"
+          "expr": "sum(rate(http_requests_total{job=\"avf_api_metrics\"}[5m])) by (route)",
+          "legendFormat": "rate {{route}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(http_errors_total{job=\"avf_api_metrics\"}[5m]))",
+          "legendFormat": "http_errors_total"
         }
       ]
     }

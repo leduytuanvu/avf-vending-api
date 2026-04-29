@@ -6,6 +6,7 @@ import (
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
+	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/google/uuid"
 )
@@ -59,6 +60,12 @@ type InternalTelemetryQueryService interface {
 // InternalCommerceQueryService exposes authoritative commerce state for internal transports.
 type InternalCommerceQueryService interface {
 	GetCheckoutStatus(ctx context.Context, organizationID, orderID uuid.UUID, slotIndex int32) (appcommerce.CheckoutStatusView, error)
+}
+
+// InternalPaymentQueryService exposes payment-only read models for internal transports.
+type InternalPaymentQueryService interface {
+	GetPaymentByID(ctx context.Context, organizationID, paymentID uuid.UUID) (domaincommerce.Payment, error)
+	GetLatestPaymentForOrder(ctx context.Context, organizationID, orderID uuid.UUID) (domaincommerce.Payment, error)
 }
 
 type internalMachineQueryService struct {
@@ -165,4 +172,42 @@ func NewInternalCommerceQueryService(commerce *appcommerce.Service) InternalComm
 
 func (s *internalCommerceQueryService) GetCheckoutStatus(ctx context.Context, organizationID, orderID uuid.UUID, slotIndex int32) (appcommerce.CheckoutStatusView, error) {
 	return s.commerce.GetCheckoutStatus(ctx, organizationID, orderID, slotIndex)
+}
+
+type internalPaymentQueryService struct {
+	store *postgres.Store
+}
+
+// NewInternalPaymentQueryService returns internal payment reads backed by the existing store.
+func NewInternalPaymentQueryService(store *postgres.Store) InternalPaymentQueryService {
+	if store == nil {
+		panic("api.NewInternalPaymentQueryService: nil store")
+	}
+	return &internalPaymentQueryService{store: store}
+}
+
+func (s *internalPaymentQueryService) GetPaymentByID(ctx context.Context, organizationID, paymentID uuid.UUID) (domaincommerce.Payment, error) {
+	pay, err := s.store.GetPaymentByID(ctx, paymentID)
+	if err != nil {
+		return domaincommerce.Payment{}, err
+	}
+	order, err := s.store.GetOrderByID(ctx, pay.OrderID)
+	if err != nil {
+		return domaincommerce.Payment{}, err
+	}
+	if order.OrganizationID != organizationID {
+		return domaincommerce.Payment{}, appcommerce.ErrOrgMismatch
+	}
+	return pay, nil
+}
+
+func (s *internalPaymentQueryService) GetLatestPaymentForOrder(ctx context.Context, organizationID, orderID uuid.UUID) (domaincommerce.Payment, error) {
+	order, err := s.store.GetOrderByID(ctx, orderID)
+	if err != nil {
+		return domaincommerce.Payment{}, err
+	}
+	if order.OrganizationID != organizationID {
+		return domaincommerce.Payment{}, appcommerce.ErrOrgMismatch
+	}
+	return s.store.GetLatestPaymentForOrder(ctx, orderID)
 }

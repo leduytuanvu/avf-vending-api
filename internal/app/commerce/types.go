@@ -59,6 +59,45 @@ type FinalizeAfterVendInput struct {
 	SlotIndex         int32
 	TerminalVendState string
 	FailureReason     *string
+	// InventoryDedupeKey optionally overrides computed inventory suppression for successful dispense.
+	InventoryDedupeKey string
+	// ClientWriteIdempotencyKey is the mutating client's idempotency (HTTP Idempotency-Key or gRPC mutation idempotency).
+	// When InventoryDedupeKey is empty on success paths, Fulfill derives "{ClientWriteIdempotencyKey}:vend_sale_inventory"
+	// for legacy parity with `/v1/device/.../vend-results` and machine gRPC.
+	ClientWriteIdempotencyKey string
+	CorrelationID             *uuid.UUID
+}
+
+// FulfillSuccessfulVendInput binds one atomic DB transaction that completes the order after a successful vend and applies deduplicated inventory.
+type FulfillSuccessfulVendInput struct {
+	OrganizationID     uuid.UUID
+	OrderID            uuid.UUID
+	SlotIndex          int32
+	InventoryDedupeKey string
+	CorrelationID      *uuid.UUID
+}
+
+// FulfillSuccessfulVendResult is the outcome of FulfillSuccessfulVendAtomically.
+type FulfillSuccessfulVendResult struct {
+	Order           domaincommerce.Order
+	Vend            domaincommerce.VendSession
+	InventoryReplay bool
+	OrderVendReplay bool
+}
+
+// FulfillFailedVendInput binds one atomic DB transaction that records a failed vend alongside a failed order.
+type FulfillFailedVendInput struct {
+	OrganizationID uuid.UUID
+	OrderID        uuid.UUID
+	SlotIndex      int32
+	FailureReason  *string
+}
+
+// FulfillFailedVendResult is the outcome of FulfillFailedVendAtomically.
+type FulfillFailedVendResult struct {
+	Order  domaincommerce.Order
+	Vend   domaincommerce.VendSession
+	Replay bool
 }
 
 // UpdateVendSessionParams is passed to persistence for partial vend updates.
@@ -89,6 +128,10 @@ type PaymentAttemptView struct {
 type FinalizeOutcome struct {
 	Order domaincommerce.Order
 	Vend  domaincommerce.VendSession
+	// OrderVendReplay is true when the order and vend were already terminal (success or failed replay) before substantive mutation.
+	OrderVendReplay bool
+	// InventoryReplay is true when inventory decrement was skipped because the idempotency key already applied (success path).
+	InventoryReplay bool
 }
 
 // RefundEligibilityAssessment is an advisory decision for operator or payment-adapter follow-up.

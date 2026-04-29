@@ -42,6 +42,7 @@ func NewLogger(cfg *config.Config) (*zap.Logger, error) {
 		InitialFields: map[string]any{
 			"app_env":         string(cfg.AppEnv),
 			"service_name":    cfg.Telemetry.ServiceName,
+			"region":          cfg.Runtime.Region,
 			"node_name":       cfg.Runtime.NodeName,
 			"instance_id":     cfg.Runtime.InstanceID,
 			"runtime_role":    cfg.Runtime.EffectiveRuntimeRole(cfg.ProcessName),

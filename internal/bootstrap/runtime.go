@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	"github.com/avf/avf-vending-api/internal/config"
 	platformdb "github.com/avf/avf-vending-api/internal/platform/db"
+	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
+	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
@@ -35,9 +38,12 @@ type NATSRuntime interface {
 	Health(ctx context.Context) error
 }
 
-// PaymentProviderRegistry resolves outbound PSP clients (implementations added later).
+// PaymentProviderRegistry lists registered PSP adapters for readiness and admin metadata.
 type PaymentProviderRegistry interface {
 	Health(ctx context.Context) error
+	ProviderSummaries() []platformpayments.ProviderSummary
+	// ResolveForPaymentSession selects the outbound adapter for backend-owned payment sessions (machine gRPC / HTTP).
+	ResolveForPaymentSession(appEnv config.AppEnvironment, clientDeclaredProvider string) (platformpayments.PaymentProvider, string, error)
 }
 
 // WorkflowOrchestration schedules durable long-running work (Temporal when enabled).
@@ -63,6 +69,8 @@ type Runtime struct {
 	rdb  *goredis.Client
 
 	Deps RuntimeDeps
+
+	objectStoreReady func(context.Context) error
 
 	mqttClose func()
 
@@ -111,12 +119,38 @@ func BuildRuntime(ctx context.Context, cfg *config.Config) (*Runtime, error) {
 		prevClose()
 	}
 
+	var natsClient *platformnats.Client
+	if cfg.NATS.Required || cfg.APIWiring.RequireNATSRuntime || cfg.APIWiring.RequireOutboxPublisher {
+		natsClient, err = platformnats.ConnectJetStream(ctx, strings.TrimSpace(cfg.NATS.URL), "avf-api-runtime")
+		if err != nil {
+			closeFn()
+			return nil, fmt.Errorf("bootstrap: nats runtime: %w", err)
+		}
+		if err := platformnats.EnsureInternalStreams(natsClient.JS); err != nil {
+			_ = natsClient.Conn.Drain()
+			closeFn()
+			return nil, fmt.Errorf("bootstrap: nats internal streams: %w", err)
+		}
+		prevClose := closeFn
+		closeFn = func() {
+			_ = natsClient.Conn.Drain()
+			prevClose()
+		}
+	}
+
 	rt := &Runtime{
-		cfg:   cfg,
-		pool:  pool,
-		rdb:   rdb,
-		Deps:  RuntimeDeps{WorkflowOrchestration: orch},
+		cfg:  cfg,
+		pool: pool,
+		rdb:  rdb,
+		Deps: RuntimeDeps{
+			WorkflowOrchestration: orch,
+			PaymentProviders:      platformpayments.NewRegistry(cfg),
+		},
 		close: closeFn,
+	}
+	if natsClient != nil {
+		rt.Deps.NATS = natsClient
+		rt.Deps.OutboxPublisher = platformnats.NewJetStreamOutboxPublisher(natsClient.JS)
 	}
 	return rt, nil
 }
@@ -129,12 +163,28 @@ func (r *Runtime) Pool() *pgxpool.Pool {
 	return r.pool
 }
 
+// Redis exposes the optional Redis client when configured (nil when Redis address is unset).
+func (r *Runtime) Redis() *goredis.Client {
+	if r == nil {
+		return nil
+	}
+	return r.rdb
+}
+
 // SetMQTTDisconnect registers an optional teardown hook for the MQTT publisher client.
 func (r *Runtime) SetMQTTDisconnect(fn func()) {
 	if r == nil {
 		return
 	}
 	r.mqttClose = fn
+}
+
+// SetObjectStoreReadiness registers an optional HeadBucket-style probe when API_ARTIFACTS_ENABLED requires object storage.
+func (r *Runtime) SetObjectStoreReadiness(fn func(context.Context) error) {
+	if r == nil {
+		return
+	}
+	r.objectStoreReady = fn
 }
 
 // Close releases infrastructure clients.
@@ -189,7 +239,9 @@ func (r *Runtime) Ready(ctx context.Context) error {
 		err := r.rdb.Ping(rctx).Err()
 		cancel()
 		if err != nil {
-			return fmt.Errorf("readiness: redis ping: %w", err)
+			if r.cfg.ReadinessStrict {
+				return fmt.Errorf("readiness: redis ping: %w", err)
+			}
 		}
 	}
 
@@ -209,11 +261,20 @@ func (r *Runtime) Ready(ctx context.Context) error {
 		return err
 	}
 
+	if r.cfg.Artifacts.Enabled && r.objectStoreReady != nil {
+		pctx, cancel := context.WithTimeout(ctx, readinessTimeout)
+		err := r.objectStoreReady(pctx)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("readiness: object_store: %w", err)
+		}
+	}
+
 	return nil
 }
 
 func newRedisClient(cfg *config.RedisConfig) (*goredis.Client, error) {
-	if cfg == nil || cfg.Addr == "" {
+	if cfg == nil || !cfg.Enabled || cfg.Addr == "" {
 		return nil, nil
 	}
 	opts := &goredis.Options{

@@ -70,6 +70,10 @@ func (r *fleetRepository) InsertMachine(ctx context.Context, p appfleet.InsertMa
 		SiteID:            p.SiteID,
 		HardwareProfileID: optionalUUIDToPg(p.HardwareProfileID),
 		SerialNumber:      p.SerialNumber,
+		Code:              p.Code,
+		Model:             optionalStringToPgText(p.Model),
+		CabinetType:       p.CabinetType,
+		TimezoneOverride:  optionalStringToPgText(p.Timezone),
 		Name:              p.Name,
 		Status:            p.Status,
 	})
@@ -96,6 +100,30 @@ func (r *fleetRepository) UpdateMachineMetadata(ctx context.Context, p appfleet.
 	if p.Status != nil {
 		status = *p.Status
 	}
+	siteID := cur.SiteID
+	if p.SiteID != nil {
+		siteID = *p.SiteID
+	}
+	serial := cur.SerialNumber
+	if p.SerialNumber != nil {
+		serial = strings.TrimSpace(*p.SerialNumber)
+	}
+	code := cur.Code
+	if p.Code != nil {
+		code = strings.TrimSpace(*p.Code)
+	}
+	model := optionalStringPtrToPgText(cur.Model)
+	if p.Model != nil {
+		model = optionalStringToPgText(*p.Model)
+	}
+	cabinetType := cur.CabinetType
+	if p.CabinetType != nil {
+		cabinetType = strings.TrimSpace(*p.CabinetType)
+	}
+	tz := optionalStringPtrToPgText(cur.Timezone)
+	if p.Timezone != nil {
+		tz = optionalStringToPgText(*p.Timezone)
+	}
 	var hw pgtype.UUID
 	if p.HardwareProfileID != nil {
 		hw = optionalUUIDToPg(p.HardwareProfileID)
@@ -109,6 +137,12 @@ func (r *fleetRepository) UpdateMachineMetadata(ctx context.Context, p appfleet.
 		Name:              name,
 		Status:            status,
 		HardwareProfileID: hw,
+		SiteID:            siteID,
+		SerialNumber:      serial,
+		Code:              code,
+		Model:             model,
+		CabinetType:       cabinetType,
+		TimezoneOverride:  tz,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -141,11 +175,21 @@ func (r *fleetRepository) ListMachinesInScope(ctx context.Context, filter appfle
 	return out, nil
 }
 
+func (r *fleetRepository) RevokeMachineCredentials(ctx context.Context, organizationID, machineID uuid.UUID) (int64, error) {
+	return db.New(r.pool).RevokeMachineCredentials(ctx, db.RevokeMachineCredentialsParams{
+		ID:             machineID,
+		OrganizationID: organizationID,
+	})
+}
+
 func (r *fleetRepository) InsertTechnicianMachineAssignment(ctx context.Context, p appfleet.InsertAssignmentParams) (domainfleet.TechnicianMachineAssignment, error) {
 	row, err := db.New(r.pool).InsertTechnicianMachineAssignment(ctx, db.InsertTechnicianMachineAssignmentParams{
-		TechnicianID: p.TechnicianID,
-		MachineID:    p.MachineID,
-		Role:         p.Role,
+		OrganizationID: p.OrganizationID,
+		TechnicianID:   p.TechnicianID,
+		MachineID:      p.MachineID,
+		Role:           p.Role,
+		Scope:          p.Scope,
+		CreatedBy:      optionalUUIDToPg(p.CreatedBy),
 	})
 	if err != nil {
 		return domainfleet.TechnicianMachineAssignment{}, err
@@ -153,14 +197,34 @@ func (r *fleetRepository) InsertTechnicianMachineAssignment(ctx context.Context,
 	return mapTechnicianMachineAssignment(row), nil
 }
 
+func (r *fleetRepository) ReleaseTechnicianAssignmentForMachineUser(ctx context.Context, organizationID, machineID, technicianID uuid.UUID) (domainfleet.TechnicianMachineAssignment, error) {
+	row, err := db.New(r.pool).AdminReleaseTechnicianAssignmentForMachineUser(ctx, db.AdminReleaseTechnicianAssignmentForMachineUserParams{
+		OrganizationID: organizationID,
+		MachineID:      machineID,
+		TechnicianID:   technicianID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domainfleet.TechnicianMachineAssignment{}, appfleet.ErrNotFound
+		}
+		return domainfleet.TechnicianMachineAssignment{}, err
+	}
+	return mapTechnicianMachineAssignment(row), nil
+}
+
 func mapTechnicianMachineAssignment(row db.TechnicianMachineAssignment) domainfleet.TechnicianMachineAssignment {
 	return domainfleet.TechnicianMachineAssignment{
-		ID:           row.ID,
-		TechnicianID: row.TechnicianID,
-		MachineID:    row.MachineID,
-		Role:         row.Role,
-		ValidFrom:    row.ValidFrom,
-		ValidTo:      pgTimestamptzToTimePtr(row.ValidTo),
-		CreatedAt:    row.CreatedAt,
+		ID:             row.ID,
+		OrganizationID: row.OrganizationID,
+		TechnicianID:   row.TechnicianID,
+		MachineID:      row.MachineID,
+		Role:           row.Role,
+		Scope:          row.Scope,
+		Status:         row.Status,
+		ValidFrom:      row.ValidFrom,
+		ValidTo:        pgTimestamptzToTimePtr(row.ValidTo),
+		CreatedBy:      pgUUIDToPtr(row.CreatedBy),
+		CreatedAt:      row.CreatedAt,
+		UpdatedAt:      row.UpdatedAt,
 	}
 }

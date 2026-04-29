@@ -2,6 +2,8 @@
 
 **Audience:** Android / kiosk engineers and integration QA. Pair with [kiosk-app-implementation-checklist.md](kiosk-app-implementation-checklist.md), [mqtt-contract.md](mqtt-contract.md), and [api-surface-audit.md](api-surface-audit.md).
 
+**Production profile (normative):** See **[`production-final-contract.md`](../architecture/production-final-contract.md)**. In production: **vending runtime is `avf.machine.v1` gRPC + Machine JWT**; **Admin/operator HTTP is `/v1` REST + User JWT**; **commands arrive over MQTT TLS** from backend; **card/QR checkout** uses **`CreatePaymentSession`** (server returns QR/URL—never trust client-constructed PSP links); **legacy machine HTTP** (`/v1/machines/.../sale-catalog`, `/v1/commerce/...` on device) is **off** unless an explicit migration exception is documented. Staging/lab may still mirror HTTP routes for parity testing—**do not** treat HTTP as the kiosk primary in prod.
+
 **Repo static gate:** `make verify-enterprise-release` (see [production-release-readiness.md](../runbooks/production-release-readiness.md)).
 
 **Telemetry:** High-volume events and **primary command delivery** use **MQTT** (JetStream, idempotency in payload). HTTP under `/v1/device/...` is **fallback** (e.g. `POST .../commands/poll` is not the primary command path).
@@ -20,6 +22,8 @@
 | **Request ref** | OpenAPI `example` on the operation, or linked JSON under `testdata/`. |
 | **Idempotency** | Use `Idempotency-Key` on mutating routes that require it (see OpenAPI). |
 | **Retry / offline** | Queue writes when offline; retry with backoff; reuse keys for logical writes. |
+
+**Pricing:** The amount shown on **`GetCatalogSnapshot`** (and HTTP **`GET /v1/machines/{machineId}/sale-catalog`** when enabled for lab/legacy) for each slot is computed by **`pricingengine`** (slot list price, optional **`machine_price_overrides`**, active approved promotions). **`CreateOrder`** and **`CreatePaymentSession`** use the same engine path for totals; send PSP **`amount_minor`** equal to the **order `total_minor`** returned by **`CreateOrder`**. Do not compute charge amounts only on the client.
 
 ---
 
@@ -87,15 +91,48 @@ Admin pre-step: `POST /v1/admin/machines/{machineId}/activation-codes` (Bearer; 
 
 | Field | Value |
 | --- | --- |
-| Endpoint | `/v1/machines/{machineId}/sale-catalog` |
-| Method | `GET` |
+| Endpoint | **`GET /v1/machines/{machineId}/sale-catalog`** or **`avf.machine.v1.MachineCatalogService/GetCatalogSnapshot`** (aliases **`GetSaleCatalog`**, **`SyncSaleCatalog`**) |
+| Method | `GET` or gRPC |
 | Auth | Bearer (machine tenant) |
-| Request ref | OpenAPI (`include_images`, `if_none_match_config_version`, …) |
-| Response ref | OpenAPI 200 / **304** |
+| Request ref | OpenAPI (`include_images`, `if_none_match_config_version`, …); gRPC `GetCatalogSnapshotRequest` mirrors flags |
+| Response ref | OpenAPI **200** / conditional body; protobuf **`CatalogSnapshot`** with **`catalog_version`** (canonical **composite catalog fingerprint**) + **`generated_at`** + **`config_version`**; responses wrap **`MachineResponseMeta.server_time`** |
 | Idempotency | n/a |
-| Retry / offline | Use `configVersion` / ETag-style headers; fall back to bootstrap snapshot offline |
+| Retry / offline | Persist **`catalog_version`**, **`config_version`**, **`generated_at`**, and **`Meta.server_time`** locally; reconcile with **`GetCatalogDelta`** + **`basis_catalog_version`**; media-only delta via **`MachineMediaService/GetMediaDelta`** (**`basis_media_fingerprint`**) |
+
+**First sync**
+
+1. After machine JWT issuance, fetch **`GetCatalogSnapshot`** with default filters your UI needs (`include_unavailable` usually **`false`** for customer surfaces that should hide inactive/OOS SKUs unless you show greyed selections).
+2. Store rows + **`catalog_version`** + currency + timestamps.
+3. Optionally call **`AckCatalogVersion`** (audit-only) once durable on device.
+
+**Reconnect / incremental**
+
+1. Prefer **`GetCatalogDelta`** passing **`basis_catalog_version`** copied from **`GetCatalogSnapshot`**. The RPC sets **`IncludeUnavailable:true`** and **`IncludeImages:true`** server-side — keep your stored basis fingerprint from a snapshot **built under the same semantics** (`GetCatalogDelta` aligns with **`include_unavailable=true`**) or rely on unconditional **`GetCatalogSnapshot`**.
+2. If **`basis_catalog_version`** matches, server returns **`BasisMatches`** / **`MachineResponseStatus_NOT_MODIFIED`** without payload.
+3. Run **`MachineMediaService/GetMediaManifest`** then **`GetMediaDelta`** (**`basis_media_fingerprint`**) with the **`include_unavailable`** flag matching **`GetCatalogSnapshot/Manifest`** to avoid phantom mismatches (`docs/architecture/media-sync.md`).
+4. Hydrate **`MachineInventoryService/GetInventorySnapshot`** (or deltas) independently for authoritative stock ledger reconciliation; **`RuntimeSaleCatalogFingerprint`** reflects projected quantities used for UX but ledger RPCs remain source of truth for fill workflows.
+
+**Offline policy (explicit)**
+
+| Question | Guidance |
+| --- | --- |
+| Sell on cached catalog? | **Yes** only when your last stored snapshot is still **business-valid**: treat **`generated_at` + local max offline window** as a product decision; server does **not** embed a kiosk TTL proto field yet — default suggestion: hide online PSP checkout when staleness **`> 15 minutes`** unless config policy says otherwise, but **cash** may operate longer if treasury policy permits. Always **block PSP** when **`Meta.server_time` skew** exceeds payment risk tolerance or when **`catalog_version`** is unknown/expired locally. |
+| Catalog TTL | **Operational** rather than cryptographic: **`RuntimeSaleCatalogFingerprint`** changes whenever prices, assortment, inventory lines, media identity, currency, projection flags, or shadow **`config_version`** drift. |
+| Payment mode offline | **Cash / stored-value rails** acceptable offline when SKU/price in local ledger matches guarded policy; **card/QR PSP** requires online payment session creation — do not create new PSP sessions fully offline. |
+| Replay on reconnect | Drain **`MachineOfflineSyncService/PushOfflineEvents`** per idempotency rules, then **full catalog delta** + **media delta** + **`GetInventorySnapshot`**, MQTT command backlog (**`MQTT` QoS ledger** — see **`mqtt-contract.md`**), and commerce reconciliation for any dangling orders. |
+
+**Inactive/deleted SKUs**
+
+- With **`include_unavailable=false`** (default), **`products.active=false`** (**`product_inactive`**) SKUs **do not appear** — they are **not leaked** to trimmed customer lists; opt into **`include_unavailable=true`** to render grey-out rows with reasons.
 
 ---
+
+### 5′. Bootstrap feature hints (flags)
+
+**`GET /v1/setup/machines/{machineId}/bootstrap`** may include **`runtimeHints`** from feature-flag evaluation (see `internal/app/featureflags`). There is **no separate machine gRPC “flags only” RPC** in **`avf.machine.v1`** today — pair HTTP bootstrap polls with **`config_version`** on catalog responses when toggles affect UX.
+
+---
+
 
 ### 6. Image download / cache (contentHash)
 
@@ -192,6 +229,8 @@ Admin pre-step: `POST /v1/admin/machines/{machineId}/activation-codes` (Bearer; 
 | Response ref | OpenAPI (failure may include refund hints) |
 | Idempotency | **Required** on commerce vend routes |
 | Retry / offline | Device bridge route is **fallback**; prefer in-band commerce outcomes when online |
+
+Completing **`vend/success`** (or **`ConfirmVendSuccess`** over gRPC) applies **terminal vend success**, **order completed**, **deduplicated inventory movement**, and a **`order_timelines`** audit record in **one database transaction**. Replays must reuse the same write idempotency key; the backend ties inventory decrement to an idempotent key so duplicate deliveries cannot double-decrement stock. After capture, a **`vend/failure`** (or **`ReportVendFailure`**) persists **`orders.status=failed`** and appends **`commerce_vend_dispense_failed`** timeline metadata (`refund_required` vs **`local_cash_refund_required_hint`** for cash); PSP refund work is signaled out-of-band—not a separate **`refund_required`** literal on **`orders`** (schema uses **`failed`** + timelines).
 
 ---
 

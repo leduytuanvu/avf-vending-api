@@ -33,6 +33,143 @@ func TestOpenAPI_embeddedJSON_validAndProductionServerFirst(t *testing.T) {
 	}
 }
 
+func TestOpenAPI_allLocalRefsResolve(t *testing.T) {
+	t.Parallel()
+	var spec map[string]any
+	if err := json.Unmarshal(swagger.OpenAPIJSON(), &spec); err != nil {
+		t.Fatal(err)
+	}
+
+	var resolveJSONPointer = func(ref string) (any, bool) {
+		if !strings.HasPrefix(ref, "#/") {
+			return nil, false
+		}
+		cur := any(spec)
+		for _, raw := range strings.Split(strings.TrimPrefix(ref, "#/"), "/") {
+			part := strings.ReplaceAll(strings.ReplaceAll(raw, "~1", "/"), "~0", "~")
+			m, ok := cur.(map[string]any)
+			if !ok {
+				return nil, false
+			}
+			cur, ok = m[part]
+			if !ok {
+				return nil, false
+			}
+		}
+		return cur, true
+	}
+
+	var walk func(path string, v any)
+	walk = func(path string, v any) {
+		switch x := v.(type) {
+		case map[string]any:
+			if ref, ok := x["$ref"].(string); ok && strings.HasPrefix(ref, "#/") {
+				if _, ok := resolveJSONPointer(ref); !ok {
+					t.Errorf("unresolved local OpenAPI $ref at %s: %s", path, ref)
+				}
+			}
+			for k, vv := range x {
+				walk(path+"."+k, vv)
+			}
+		case []any:
+			for i, vv := range x {
+				walk(fmt.Sprintf("%s[%d]", path, i), vv)
+			}
+		}
+	}
+	walk("$", spec)
+}
+
+func TestOpenAPI_duplicateOperationIDsAbsent(t *testing.T) {
+	t.Parallel()
+	var spec map[string]any
+	if err := json.Unmarshal(swagger.OpenAPIJSON(), &spec); err != nil {
+		t.Fatal(err)
+	}
+	paths, ok := spec["paths"].(map[string]any)
+	if !ok {
+		t.Fatal("missing paths")
+	}
+	seen := make(map[string]string)
+	for path, pm := range paths {
+		methods, ok := pm.(map[string]any)
+		if !ok {
+			continue
+		}
+		for method, opAny := range methods {
+			method = strings.ToLower(method)
+			if strings.HasPrefix(method, "x-") {
+				continue
+			}
+			op, ok := opAny.(map[string]any)
+			if !ok {
+				continue
+			}
+			raw, ok := op["operationId"].(string)
+			if !ok || strings.TrimSpace(raw) == "" {
+				continue
+			}
+			id := strings.TrimSpace(raw)
+			label := strings.ToUpper(method) + " " + path
+			if prev, dup := seen[id]; dup {
+				t.Fatalf("duplicate operationId %q: %s vs %s", id, prev, label)
+			}
+			seen[id] = label
+		}
+	}
+}
+
+func TestOpenAPI_machineLegacyRESTMarkedDeprecated(t *testing.T) {
+	t.Parallel()
+	var spec map[string]any
+	if err := json.Unmarshal(swagger.OpenAPIJSON(), &spec); err != nil {
+		t.Fatal(err)
+	}
+	paths, ok := spec["paths"].(map[string]any)
+	if !ok {
+		t.Fatal("missing paths")
+	}
+	check := func(method, path string) {
+		t.Helper()
+		pm, ok := paths[path].(map[string]any)
+		if !ok {
+			t.Fatalf("missing path %s", path)
+		}
+		opAny, ok := pm[method].(map[string]any)
+		if !ok {
+			t.Fatalf("missing %s %s", strings.ToUpper(method), path)
+		}
+		if dep, ok := opAny["deprecated"].(bool); !ok || !dep {
+			t.Fatalf("%s %s: want deprecated=true", strings.ToUpper(method), path)
+		}
+	}
+	check("post", "/v1/machines/{machineId}/check-ins")
+	check("post", "/v1/device/machines/{machineId}/vend-results")
+}
+
+func TestOpenAPI_securitySchemesBearerAuthPresent(t *testing.T) {
+	t.Parallel()
+	var spec map[string]any
+	if err := json.Unmarshal(swagger.OpenAPIJSON(), &spec); err != nil {
+		t.Fatal(err)
+	}
+	comps, ok := spec["components"].(map[string]any)
+	if !ok {
+		t.Fatal("missing components")
+	}
+	schemes, ok := comps["securitySchemes"].(map[string]any)
+	if !ok {
+		t.Fatal("missing securitySchemes")
+	}
+	bearer, ok := schemes["bearerAuth"].(map[string]any)
+	if !ok {
+		t.Fatal("missing bearerAuth")
+	}
+	if bearer["type"] != "http" || bearer["scheme"] != "bearer" {
+		t.Fatalf("unexpected bearerAuth: %#v", bearer)
+	}
+}
+
 func TestOpenAPI_plannedOnlyPathsNotDocumented(t *testing.T) {
 	t.Parallel()
 	var spec map[string]any
@@ -103,9 +240,11 @@ func TestOpenAPI_bearerAuthOnProtectedV1Routes(t *testing.T) {
 	}
 	paths, _ := spec["paths"].(map[string]any)
 	noBearer := map[string]map[string]struct{}{
-		"/v1/auth/login":                   {"post": {}},
-		"/v1/auth/refresh":                 {"post": {}},
-		"/v1/setup/activation-codes/claim": {"post": {}},
+		"/v1/auth/login":                                              {"post": {}},
+		"/v1/auth/refresh":                                            {"post": {}},
+		"/v1/auth/password/reset/request":                             {"post": {}},
+		"/v1/auth/password/reset/confirm":                             {"post": {}},
+		"/v1/setup/activation-codes/claim":                            {"post": {}},
 		"/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks": {"post": {}},
 	}
 	for path, methods := range paths {
@@ -168,10 +307,12 @@ func TestOpenAPI_idempotencyParameterOnRetryableWrites(t *testing.T) {
 		{"post", "/v1/admin/machines/{machineId}/sync"},
 		{"post", "/v1/admin/machines/{machineId}/stock-adjustments"},
 		{"post", "/v1/admin/machines/{machineId}/cash-collections"},
+		{"post", "/v1/admin/machines/{machineId}/diagnostics/requests"},
 		{"post", "/v1/admin/products"},
 		{"put", "/v1/admin/products/{productId}"},
 		{"patch", "/v1/admin/products/{productId}"},
 		{"delete", "/v1/admin/products/{productId}"},
+		{"post", "/v1/admin/products/{productId}/image"},
 		{"put", "/v1/admin/products/{productId}/image"},
 		{"delete", "/v1/admin/products/{productId}/image"},
 		{"post", "/v1/admin/brands"},
@@ -307,7 +448,7 @@ func TestOpenAPI_successAndErrorJSONExamples(t *testing.T) {
 	}
 }
 
-// Keep in sync with tools/openapi_verify_release.py REQUIRED_P0_OPERATIONS.
+// Keep in sync with tools/build_openapi.py REQUIRED_OPERATIONS (pilot / P0 subset below).
 var requiredP0Operations = []struct {
 	method, path string
 }{
@@ -331,8 +472,21 @@ var requiredP0Operations = []struct {
 	{"put", "/v1/admin/products/{productId}"},
 	{"patch", "/v1/admin/products/{productId}"},
 	{"delete", "/v1/admin/products/{productId}"},
+	{"post", "/v1/admin/products/{productId}/image"},
 	{"put", "/v1/admin/products/{productId}/image"},
 	{"delete", "/v1/admin/products/{productId}/image"},
+	{"post", "/v1/admin/media/assets"},
+	{"post", "/v1/admin/media/uploads"},
+	{"post", "/v1/admin/media/{mediaId}/complete"},
+	{"get", "/v1/admin/media/assets"},
+	{"get", "/v1/admin/media/assets/{mediaId}"},
+	{"get", "/v1/admin/media"},
+	{"get", "/v1/admin/media/{mediaId}"},
+	{"delete", "/v1/admin/media/assets/{mediaId}"},
+	{"delete", "/v1/admin/media/{mediaId}"},
+	{"post", "/v1/admin/products/{productId}/media"},
+	{"put", "/v1/admin/products/{productId}/media"},
+	{"delete", "/v1/admin/products/{productId}/media/{mediaId}"},
 	{"post", "/v1/admin/brands"},
 	{"put", "/v1/admin/brands/{brandId}"},
 	{"patch", "/v1/admin/brands/{brandId}"},
@@ -361,6 +515,47 @@ func TestOpenAPI_embeddedJSON_requiredP0PathsPresent(t *testing.T) {
 		}
 		if _, ok := entry[op.method]; !ok {
 			t.Fatalf("missing %s %q", op.method, op.path)
+		}
+	}
+}
+
+func TestOpenAPI_adminCatalogReadDocumentedForPortal(t *testing.T) {
+	t.Parallel()
+	var spec map[string]any
+	if err := json.Unmarshal(swagger.OpenAPIJSON(), &spec); err != nil {
+		t.Fatal(err)
+	}
+	paths, _ := spec["paths"].(map[string]any)
+	entry, ok := paths["/v1/admin/products"].(map[string]any)
+	if !ok {
+		t.Fatal(`missing /v1/admin/products in OpenAPI`)
+	}
+	op, ok := entry["get"].(map[string]any)
+	if !ok {
+		t.Fatal(`missing GET /v1/admin/products`)
+	}
+	if strings.TrimSpace(fmt.Sprint(op["operationId"])) == "" {
+		t.Fatal("missing operationId for GET /v1/admin/products")
+	}
+}
+
+func TestOpenAPI_machineInternalGRPCNotDocumentedAsPublicHTTP(t *testing.T) {
+	t.Parallel()
+	var spec map[string]any
+	if err := json.Unmarshal(swagger.OpenAPIJSON(), &spec); err != nil {
+		t.Fatal(err)
+	}
+	paths, ok := spec["paths"].(map[string]any)
+	if !ok {
+		t.Fatal("missing paths")
+	}
+	for p := range paths {
+		pl := strings.ToLower(p)
+		if strings.HasPrefix(pl, "/v1/internal") {
+			t.Fatalf("must not document internal avf.internal.v1 bridge as public HTTP: %q", p)
+		}
+		if strings.Contains(pl, "/grpc/") || strings.HasSuffix(pl, "/grpc") {
+			t.Fatalf("must not document gRPC transports in OpenAPI paths: %q", p)
 		}
 	}
 }

@@ -2,6 +2,11 @@
 """Release-time OpenAPI checks (used by scripts/verify_enterprise_release.sh).
 
 Validates docs/swagger/swagger.json:
+  - ``$ref`` values resolve within the document (no unresolved fragments); no external ``$ref``
+  - ``components.securitySchemes.bearerAuth`` defines JWT bearer auth (HTTP bearer scheme)
+  - duplicate ``operationId`` values across operations (IDs mirror ``DocOp*`` names from swagger_operations.go)
+  - legacy machine HTTP bridge routes declare ``deprecated: true`` (see ``LEGACY_MACHINE_REST_DEPRECATED`` in build_openapi.py)
+  - full REST route-doc registry from ``tools/build_openapi.py`` (``REQUIRED_OPERATIONS`` / ``verify_paths``)
   - servers[0] is production URL
   - no planned-only path fragments appear as paths
   - POST/PUT/PATCH with application/json body include request body examples
@@ -22,6 +27,11 @@ from typing import Any, Iterator
 ROOT = Path(__file__).resolve().parents[1]
 SPEC_PATH = ROOT / "docs" / "swagger" / "swagger.json"
 
+_TOOLS_DIR = ROOT / "tools"
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+import openapi_refs  # noqa: E402
+
 FORBIDDEN_PATH_FRAGMENTS = (
     "/v1/activation",
     "/v1/machines/{machineId}/activation",
@@ -35,6 +45,8 @@ FORBIDDEN_PATH_SUFFIXES = ("/{orderId}/refund",)
 NO_BEARER = {
     "/v1/auth/login": {"post"},
     "/v1/auth/refresh": {"post"},
+    "/v1/auth/password/reset/request": {"post"},
+    "/v1/auth/password/reset/confirm": {"post"},
     "/v1/setup/activation-codes/claim": {"post"},
     "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks": {"post"},
 }
@@ -43,44 +55,6 @@ JSON_ERR_EXEMPT = {
     ("/health/ready", "get"),
     ("/metrics", "get"),
 }
-
-# Pilot P0 operations that must stay in sync with internal/httpserver/server.go mounts.
-REQUIRED_P0_OPERATIONS: tuple[tuple[str, str], ...] = (
-    ("post", "/v1/admin/machines/{machineId}/activation-codes"),
-    ("get", "/v1/admin/machines/{machineId}/activation-codes"),
-    ("delete", "/v1/admin/machines/{machineId}/activation-codes/{activationCodeId}"),
-    ("post", "/v1/setup/activation-codes/claim"),
-    ("get", "/v1/machines/{machineId}/sale-catalog"),
-    ("post", "/v1/device/machines/{machineId}/events/reconcile"),
-    ("get", "/v1/device/machines/{machineId}/events/{idempotencyKey}/status"),
-    ("post", "/v1/commerce/orders/{orderId}/cancel"),
-    ("post", "/v1/commerce/orders/{orderId}/refunds"),
-    ("get", "/v1/commerce/orders/{orderId}/refunds"),
-    ("get", "/v1/commerce/orders/{orderId}/refunds/{refundId}"),
-    ("get", "/v1/admin/machines/{machineId}/cashbox"),
-    ("post", "/v1/admin/machines/{machineId}/cash-collections"),
-    ("post", "/v1/admin/machines/{machineId}/cash-collections/{collectionId}/close"),
-    ("get", "/v1/admin/machines/{machineId}/cash-collections"),
-    ("get", "/v1/admin/machines/{machineId}/cash-collections/{collectionId}"),
-    ("post", "/v1/admin/products"),
-    ("put", "/v1/admin/products/{productId}"),
-    ("patch", "/v1/admin/products/{productId}"),
-    ("delete", "/v1/admin/products/{productId}"),
-    ("put", "/v1/admin/products/{productId}/image"),
-    ("delete", "/v1/admin/products/{productId}/image"),
-    ("post", "/v1/admin/brands"),
-    ("put", "/v1/admin/brands/{brandId}"),
-    ("patch", "/v1/admin/brands/{brandId}"),
-    ("delete", "/v1/admin/brands/{brandId}"),
-    ("post", "/v1/admin/categories"),
-    ("put", "/v1/admin/categories/{categoryId}"),
-    ("patch", "/v1/admin/categories/{categoryId}"),
-    ("delete", "/v1/admin/categories/{categoryId}"),
-    ("post", "/v1/admin/tags"),
-    ("put", "/v1/admin/tags/{tagId}"),
-    ("patch", "/v1/admin/tags/{tagId}"),
-    ("delete", "/v1/admin/tags/{tagId}"),
-)
 
 # Heuristics aligned with scripts/verify_enterprise_release.sh (docs/testdata scan).
 _SECRET_PATTERNS: list[tuple[str, str]] = [
@@ -163,6 +137,45 @@ def main() -> int:
         print(f"ERROR: missing {SPEC_PATH}", file=sys.stderr)
         return 1
     data: dict[str, Any] = json.loads(SPEC_PATH.read_text(encoding="utf-8"))
+
+    external = openapi_refs.non_local_refs(data)
+    if external:
+        print(
+            "ERROR: OpenAPI must only use same-document $ref fragments (#/...). External refs are not supported:",
+            file=sys.stderr,
+        )
+        for path, ref in external:
+            print(f"  at {path}: {ref}", file=sys.stderr)
+        print(
+            "hint: bundle referenced schemas into docs/swagger/swagger.json or regenerate with: make swagger",
+            file=sys.stderr,
+        )
+        return 1
+    print("OK: OpenAPI uses only local (#/) fragment $ref values")
+
+    unresolved = openapi_refs.unresolved_local_refs(data)
+    if unresolved:
+        print("ERROR: unresolved local $ref in OpenAPI (missing schema/component target):", file=sys.stderr)
+        for line in unresolved:
+            print(f"  {line}", file=sys.stderr)
+        print(
+            "hint: fix tools/build_openapi.py schemas/components or run make swagger and commit docs/swagger/",
+            file=sys.stderr,
+        )
+        return 1
+    print("OK: every local JSON Pointer $ref resolves to an existing path in the document")
+
+    comps = data.get("components") or {}
+    schemes = comps.get("securitySchemes") or {}
+    bearer = schemes.get("bearerAuth")
+    if not isinstance(bearer, dict) or bearer.get("type") != "http" or bearer.get("scheme") != "bearer":
+        print(
+            "ERROR: components.securitySchemes.bearerAuth must define JWT bearer auth (type=http, scheme=bearer)",
+            file=sys.stderr,
+        )
+        return 1
+    print("OK: components.securitySchemes.bearerAuth defines HTTP bearer JWT")
+
     servers = data.get("servers") or []
     if len(servers) < 1:
         print("ERROR: OpenAPI servers[] empty", file=sys.stderr)
@@ -185,6 +198,59 @@ def main() -> int:
     if not isinstance(paths, dict):
         print("ERROR: paths must be an object", file=sys.stderr)
         return 1
+
+    import build_openapi
+
+    route_miss = build_openapi.verify_paths(paths)
+    if route_miss:
+        print(
+            "ERROR: OpenAPI missing operations required by the route-doc registry (tools/build_openapi.py REQUIRED_OPERATIONS):",
+            file=sys.stderr,
+        )
+        for line in route_miss:
+            print(f"  {line}", file=sys.stderr)
+        print(
+            "hint: add DocOp* stubs with @Router in internal/httpserver/swagger_operations.go, then make swagger",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"OK: REST route-doc registry complete ({len(build_openapi.REQUIRED_OPERATIONS)} operations)")
+
+    dup_ids = openapi_refs.duplicate_operation_ids(paths)
+    if dup_ids:
+        print("ERROR: duplicate operationId values (must be unique across OpenAPI paths):", file=sys.stderr)
+        for line in dup_ids:
+            print(f"  {line}", file=sys.stderr)
+        print(
+            "hint: DocOp* function names in internal/httpserver/swagger_operations.go must stay unique",
+            file=sys.stderr,
+        )
+        return 1
+    print("OK: OpenAPI operationIds are unique")
+
+    missing_dep: list[str] = []
+    for method, legacy_path in build_openapi.LEGACY_MACHINE_REST_DEPRECATED:
+        entry = paths.get(legacy_path)
+        if not isinstance(entry, dict):
+            missing_dep.append(f"missing path {method.upper()} {legacy_path}")
+            continue
+        op_obj = entry.get(method)
+        if not isinstance(op_obj, dict) or op_obj.get("deprecated") is not True:
+            missing_dep.append(f"{method.upper()} {legacy_path}: expected deprecated=true")
+    if missing_dep:
+        print(
+            "ERROR: legacy machine REST surfaces must declare deprecated:true (prefer native gRPC):",
+            file=sys.stderr,
+        )
+        for line in missing_dep:
+            print(f"  {line}", file=sys.stderr)
+        print(
+            "hint: tools/build_openapi.py LEGACY_MACHINE_REST_DEPRECATED must stay aligned with transport_legacy_guard routes",
+            file=sys.stderr,
+        )
+        return 1
+    print("OK: legacy machine REST bridge endpoints are marked deprecated")
+
     bad: list[str] = []
     for p in paths:
         for suf in FORBIDDEN_PATH_SUFFIXES:
@@ -202,18 +268,6 @@ def main() -> int:
             print(f"  {p}", file=sys.stderr)
         return 1
     print("OK: no planned-only endpoint paths in OpenAPI")
-
-    missing_p0: list[str] = []
-    for method, path in REQUIRED_P0_OPERATIONS:
-        entry = paths.get(path)
-        if not isinstance(entry, dict) or method not in entry:
-            missing_p0.append(f"{method.upper()} {path}")
-    if missing_p0:
-        print("ERROR: OpenAPI missing required P0 operations:", file=sys.stderr)
-        for line in missing_p0:
-            print(f"  {line}", file=sys.stderr)
-        return 1
-    print(f"OK: required P0 operations present ({len(REQUIRED_P0_OPERATIONS)} checks)")
 
     missing_ex: list[str] = []
     bearer_missing: list[str] = []

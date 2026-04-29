@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
+	appfeatureflags "github.com/avf/avf-vending-api/internal/app/featureflags"
 	"github.com/avf/avf-vending-api/internal/app/operator"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/domain/fleet"
@@ -825,12 +826,13 @@ func writeOperatorError(w http.ResponseWriter, ctx context.Context, err error) {
 	}
 }
 
-// mountSetupBootstrapRoutes registers GET /setup/machines/{machineId}/bootstrap under the /v1 router.
+// mountSetupBootstrapRoutes registers GET /setup/machines/{machineId}/bootstrap (legacy HTTP).
+// Not mounted when ENABLE_LEGACY_MACHINE_HTTP is off in production; prefer gRPC setup/bootstrap flows.
 func mountSetupBootstrapRoutes(r chi.Router, app *api.HTTPApplication) {
 	if app == nil {
 		return
 	}
-	r.With(RequireMachineTenantAccess(app, "machineId")).Get("/setup/machines/{machineId}/bootstrap", getMachineSetupBootstrap(app))
+	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermSetupWrite)).Get("/setup/machines/{machineId}/bootstrap", getMachineSetupBootstrap(app))
 }
 
 func getMachineSetupBootstrap(app *api.HTTPApplication) http.HandlerFunc {
@@ -851,10 +853,40 @@ func getMachineSetupBootstrap(app *api.HTTPApplication) http.HandlerFunc {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found")
 				return
 			}
+			if errors.Is(err, setupapp.ErrMachineNotEligibleForBootstrap) {
+				writeAPIError(w, r.Context(), http.StatusForbidden, "machine_not_eligible", "machine is not eligible for bootstrap")
+				return
+			}
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, buildSetupBootstrapV1(b))
+		resp := buildSetupBootstrapV1(b)
+		if app.FeatureFlags != nil {
+			if rh, err := app.FeatureFlags.RuntimeHintsForMachine(r.Context(), machineID); err == nil && rh != nil {
+				resp.RuntimeHints = runtimeHintsToV1(rh)
+			}
+		}
+		writeJSON(w, http.StatusOK, resp)
+	}
+}
+
+func runtimeHintsToV1(h *appfeatureflags.RuntimeHints) *V1SetupMachineRuntimeHints {
+	if h == nil {
+		return nil
+	}
+	pr := make([]V1PendingMachineConfigRolloutHint, len(h.PendingMachineConfigRollouts))
+	for i, x := range h.PendingMachineConfigRollouts {
+		pr[i] = V1PendingMachineConfigRolloutHint{
+			RolloutID:          x.RolloutID,
+			TargetVersionID:    x.TargetVersionID,
+			TargetVersionLabel: x.TargetVersionLabel,
+			Status:             x.Status,
+		}
+	}
+	return &V1SetupMachineRuntimeHints{
+		FeatureFlags:                 h.FeatureFlags,
+		AppliedMachineConfigRevision: h.AppliedMachineConfigRevision,
+		PendingMachineConfigRollouts: pr,
 	}
 }
 
@@ -922,7 +954,7 @@ func buildSetupBootstrapV1(b setupapp.MachineBootstrap) V1SetupMachineBootstrapR
 		s := m.HardwareProfileID.String()
 		hw = &s
 	}
-	return V1SetupMachineBootstrapResponse{
+	out := V1SetupMachineBootstrapResponse{
 		Machine: V1SetupMachineSummary{
 			MachineID:         m.ID.String(),
 			OrganizationID:    m.OrganizationID.String(),
@@ -935,9 +967,18 @@ func buildSetupBootstrapV1(b setupapp.MachineBootstrap) V1SetupMachineBootstrapR
 			CreatedAt:         m.CreatedAt.UTC().Format(time.RFC3339Nano),
 			UpdatedAt:         m.UpdatedAt.UTC().Format(time.RFC3339Nano),
 		},
-		Topology: V1SetupTopology{Cabinets: cabinets},
-		Catalog:  V1SetupCatalog{Products: products},
+		Topology:                    V1SetupTopology{Cabinets: cabinets},
+		Catalog:                     V1SetupCatalog{Products: products},
+		CatalogFingerprint:          setupapp.CatalogFingerprint(b),
+		PricingFingerprint:          setupapp.PricingFingerprint(b),
+		PlanogramFingerprint:        setupapp.PlanogramFingerprint(b),
+		MediaFingerprint:            setupapp.MediaFingerprint(b),
+		PublishedPlanogramVersionNo: b.PublishedPlanogramVersionNo,
 	}
+	if b.PublishedPlanogramVersionID != nil && *b.PublishedPlanogramVersionID != uuid.Nil {
+		out.PublishedPlanogramVersionID = b.PublishedPlanogramVersionID.String()
+	}
+	return out
 }
 
 func rawJSONMeta(b []byte) json.RawMessage {

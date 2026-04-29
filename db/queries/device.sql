@@ -1,6 +1,7 @@
 -- name: InsertCommandLedgerEntry :one
 INSERT INTO command_ledger (
     machine_id,
+    organization_id,
     sequence,
     command_type,
     payload,
@@ -8,10 +9,11 @@ INSERT INTO command_ledger (
     idempotency_key,
     operator_session_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING
     id,
     machine_id,
+    organization_id,
     sequence,
     command_type,
     payload,
@@ -26,7 +28,8 @@ RETURNING
     route_key,
     source_system,
     source_event_id,
-    operator_session_id;
+    operator_session_id,
+    max_dispatch_attempts;
 
 -- name: UpsertMachineShadowDesired :one
 INSERT INTO machine_shadow (
@@ -53,6 +56,7 @@ WHERE machine_id = $1;
 SELECT
     id,
     machine_id,
+    organization_id,
     sequence,
     command_type,
     payload,
@@ -67,7 +71,8 @@ SELECT
     route_key,
     source_system,
     source_event_id,
-    operator_session_id
+    operator_session_id,
+    max_dispatch_attempts
 FROM command_ledger
 WHERE
     machine_id = $1

@@ -1,5 +1,7 @@
 package httpserver
 
+// rbac:handlers-only: mutation helpers and error mappers; route registration and RBAC belong to admin_catalog_http.go.
+
 import (
 	"encoding/json"
 	"errors"
@@ -26,6 +28,8 @@ func writeAdminCatalogError(w http.ResponseWriter, r *http.Request, err error) {
 		writeAPIError(w, r.Context(), http.StatusConflict, "duplicate_slug", "slug already exists in this organization")
 	case errors.Is(err, appcatalogadmin.ErrInvalidArgument):
 		writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_argument", err.Error())
+	case errors.Is(err, appcatalogadmin.ErrConflict):
+		writeAPIError(w, r.Context(), http.StatusConflict, "conflict", err.Error())
 	default:
 		writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 	}
@@ -180,7 +184,7 @@ func postAdminProductCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, mapAdminProduct(row))
+		writeAdminProductResponse(w, r, svc, orgID, row)
 	}
 }
 
@@ -223,7 +227,7 @@ func putAdminProductUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, mapAdminProduct(row))
+		writeAdminProductResponse(w, r, svc, orgID, row)
 	}
 }
 
@@ -248,11 +252,11 @@ func deleteAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, mapAdminProduct(row))
+		writeAdminProductResponse(w, r, svc, orgID, row)
 	}
 }
 
-func putAdminProductImage(svc *appcatalogadmin.Service) http.HandlerFunc {
+func bindAdminProductImage(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, err := requireWriteIdempotencyKey(r); err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
@@ -272,9 +276,18 @@ func putAdminProductImage(svc *appcatalogadmin.Service) http.HandlerFunc {
 		if !decodeStrictJSON(w, r, &body) {
 			return
 		}
-		if err := validateProductImageBindInput(body.DisplayURL, body.ThumbURL, body.ContentHash, body.MimeType); err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_image_bind", err.Error())
-			return
+		if svc.UsesDeterministicProductMedia() {
+			if strings.TrimSpace(body.MimeType) != "" {
+				if err := appcatalogadmin.ValidateProductImageMIME(body.MimeType); err != nil {
+					writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_image_bind", err.Error())
+					return
+				}
+			}
+		} else {
+			if err := validateProductImageBindInput(body.DisplayURL, body.ThumbURL, body.ContentHash, body.MimeType); err != nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_image_bind", err.Error())
+				return
+			}
 		}
 		aid, err := uuid.Parse(strings.TrimSpace(body.ArtifactID))
 		if err != nil || aid == uuid.Nil {
@@ -296,7 +309,7 @@ func putAdminProductImage(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, mapAdminProduct(row))
+		writeAdminProductResponse(w, r, svc, orgID, row)
 	}
 }
 
@@ -321,7 +334,7 @@ func deleteAdminProductImage(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, mapAdminProduct(row))
+		writeAdminProductResponse(w, r, svc, orgID, row)
 	}
 }
 

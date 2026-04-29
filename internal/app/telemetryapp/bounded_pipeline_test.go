@@ -264,7 +264,13 @@ func TestBoundedDeviceIngest_criticalCommandReceiptBypassesQueue(t *testing.T) {
 	}
 
 	rec := platformmqtt.CommandReceiptIngest{
-		MachineID: mid, Sequence: 1, Status: "acked", DedupeKey: "d1", Payload: []byte("{}"),
+		MachineID:  mid,
+		Sequence:   1,
+		Status:     "acked",
+		DedupeKey:  "d1",
+		Payload:    []byte("{}"),
+		CommandID:  uuid.New(),
+		OccurredAt: time.Now().UTC(),
 	}
 	if err := p.IngestCommandReceipt(ctx, rec); err != nil {
 		t.Fatalf("command receipt: %v", err)

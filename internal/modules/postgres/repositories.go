@@ -188,6 +188,34 @@ func (r *OutboxRepository) ListUnpublished(ctx context.Context, limit int32) ([]
 	return out, nil
 }
 
+func (r *OutboxRepository) LeaseOutboxForPublish(ctx context.Context, workerID string, lockTTL time.Duration, minAge time.Duration, limit int32) ([]reliability.OutboxEvent, error) {
+	if strings.TrimSpace(workerID) == "" {
+		return nil, errors.New("postgres: lease worker_id is required")
+	}
+	lt := int64(lockTTL.Round(time.Second) / time.Second)
+	if lt <= 0 {
+		lt = 30
+	}
+	ma := int64(minAge.Round(time.Second) / time.Second)
+	if ma < 0 {
+		ma = 0
+	}
+	rows, err := db.New(r.pool).LeaseOutboxForPublish(ctx, db.LeaseOutboxForPublishParams{
+		WorkerID:       pgtype.Text{String: workerID, Valid: true},
+		LockTtlSeconds: lt,
+		MinAgeSeconds:  ma,
+		BatchLimit:     limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]reliability.OutboxEvent, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, mapReliabilityOutbox(row))
+	}
+	return out, nil
+}
+
 const outboxPublishErrMsgMax = 512
 
 func truncateOutboxPublishErrMsg(s string) string {
@@ -219,8 +247,10 @@ func (r *OutboxRepository) GetOutboxPipelineStats(ctx context.Context) (reliabil
 		PendingTotal:           row.PendingTotal,
 		PendingDueNow:          row.PendingDueNow,
 		DeadLetteredTotal:      row.DeadLetteredTotal,
+		PublishingLeasedTotal:  row.PublishingLeasedTotal,
 		OldestPendingCreatedAt: coerceOldestPendingCreatedAt(row.OldestPendingCreatedAt),
 		MaxPendingAttempts:     row.MaxPendingAttempts,
+		FailedPendingTotal:     row.FailedPendingTotal,
 	}, nil
 }
 

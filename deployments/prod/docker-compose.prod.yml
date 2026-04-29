@@ -167,6 +167,7 @@ services:
     networks:
       - internal
       - edge
+    # Machine gRPC listens on GRPC_ADDR inside the container (default :9090). Publish :9090 on edge only when terminating TLS upstream — see docs/runbooks/grpc-production.md.
     depends_on:
       postgres:
         condition: service_healthy

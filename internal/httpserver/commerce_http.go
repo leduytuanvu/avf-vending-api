@@ -7,16 +7,19 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
+	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
 func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Config) {
+	// Legacy machine REST commerce (order/payment/vend HTTP). Production: disabled unless ENABLE_LEGACY_MACHINE_HTTP / MACHINE_REST_LEGACY_ENABLED; vending apps should use avf.machine.v1 gRPC.
 	if app == nil || app.Commerce == nil || cfg == nil {
 		return
 	}
@@ -25,7 +28,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 	r.Route("/commerce", func(r chi.Router) {
 		r.Use(auth.RequireOrganizationScope)
 
-		r.Post("/orders", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Post("/orders", func(w http.ResponseWriter, r *http.Request) {
 			idem, err := requireWriteIdempotencyKey(r)
 			if err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
@@ -86,7 +89,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			})
 		})
 
-		r.Post("/cash-checkout", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Post("/cash-checkout", func(w http.ResponseWriter, r *http.Request) {
 			idem, err := requireWriteIdempotencyKey(r)
 			if err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
@@ -172,7 +175,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			})
 		})
 
-		r.Post("/orders/{orderId}/payment-session", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Post("/orders/{orderId}/payment-session", func(w http.ResponseWriter, r *http.Request) {
 			idem, err := requireWriteIdempotencyKey(r)
 			if err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
@@ -234,15 +237,17 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeCommerceServiceError(w, r.Context(), err)
 				return
 			}
-			writeJSON(w, http.StatusOK, commercePaymentSessionResponse{
-				PaymentID:     res.Payment.ID.String(),
-				PaymentState:  res.Payment.State,
-				OutboxEventID: res.Outbox.ID,
-				Replay:        res.Replay,
-			})
+			slot := int32(parseSlotQuery(r, 0))
+			st, err := svc.GetCheckoutStatus(r.Context(), org, orderID, slot)
+			if err != nil {
+				writeCommerceServiceError(w, r.Context(), err)
+				return
+			}
+			view := appcommerce.BuildPaymentSessionKioskView(st, res, payload, idem)
+			writeJSON(w, http.StatusOK, commercePaymentSessionResponseFromView(view))
 		})
 
-		r.Get("/orders/{orderId}", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Get("/orders/{orderId}", func(w http.ResponseWriter, r *http.Request) {
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
@@ -267,7 +272,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			writeJSON(w, http.StatusOK, checkoutStatusToJSON(st))
 		})
 
-		r.Get("/orders/{orderId}/reconciliation", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Get("/orders/{orderId}/reconciliation", func(w http.ResponseWriter, r *http.Request) {
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
@@ -295,7 +300,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			})
 		})
 
-		r.Post("/orders/{orderId}/vend/start", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Post("/orders/{orderId}/vend/start", func(w http.ResponseWriter, r *http.Request) {
 			// Require Idempotency-Key on mutating routes for a uniform client contract; AdvanceVend
 			// persistence does not yet key off this value (duplicate POSTs are rejected by state machine).
 			if _, err := requireWriteIdempotencyKey(r); err != nil {
@@ -335,8 +340,9 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			writeJSON(w, http.StatusOK, commerceVendStateResponse{VendState: v.State, SlotIndex: v.SlotIndex})
 		})
 
-		r.Post("/orders/{orderId}/vend/success", func(w http.ResponseWriter, r *http.Request) {
-			if _, err := requireWriteIdempotencyKey(r); err != nil {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Post("/orders/{orderId}/vend/success", func(w http.ResponseWriter, r *http.Request) {
+			idem, err := requireWriteIdempotencyKey(r)
+			if err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 				return
 			}
@@ -361,11 +367,12 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			out, err := svc.FinalizeOrderAfterVend(r.Context(), appcommerce.FinalizeAfterVendInput{
-				OrganizationID:    org,
-				OrderID:           orderID,
-				SlotIndex:         body.SlotIndex,
-				TerminalVendState: "success",
-				FailureReason:     nil,
+				OrganizationID:            org,
+				OrderID:                   orderID,
+				SlotIndex:                 body.SlotIndex,
+				TerminalVendState:         "success",
+				FailureReason:             nil,
+				ClientWriteIdempotencyKey: idem,
 			})
 			if err != nil {
 				writeCommerceServiceError(w, r.Context(), err)
@@ -378,7 +385,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			})
 		})
 
-		r.Post("/orders/{orderId}/cancel", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermRefundsWrite, auth.PermInventoryAdjust)).Post("/orders/{orderId}/cancel", func(w http.ResponseWriter, r *http.Request) {
 			idem, err := requireWriteIdempotencyKey(r)
 			if err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
@@ -419,7 +426,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			})
 		})
 
-		r.Post("/orders/{orderId}/refunds", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermRefundsWrite)).Post("/orders/{orderId}/refunds", func(w http.ResponseWriter, r *http.Request) {
 			idem, err := requireWriteIdempotencyKey(r)
 			if err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
@@ -474,7 +481,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			})
 		})
 
-		r.Get("/orders/{orderId}/refunds", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Get("/orders/{orderId}/refunds", func(w http.ResponseWriter, r *http.Request) {
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
@@ -510,7 +517,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			writeJSON(w, http.StatusOK, map[string]any{"items": items})
 		})
 
-		r.Get("/orders/{orderId}/refunds/{refundId}", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Get("/orders/{orderId}/refunds/{refundId}", func(w http.ResponseWriter, r *http.Request) {
 			orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 			if err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
@@ -547,7 +554,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			})
 		})
 
-		r.Post("/orders/{orderId}/vend/failure", func(w http.ResponseWriter, r *http.Request) {
+		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Post("/orders/{orderId}/vend/failure", func(w http.ResponseWriter, r *http.Request) {
 			if _, err := requireWriteIdempotencyKey(r); err != nil {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 				return
@@ -667,12 +674,18 @@ func writeCommerceServiceError(w http.ResponseWriter, ctx context.Context, err e
 		writeAPIError(w, ctx, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, appcommerce.ErrOrgMismatch):
 		writeAPIError(w, ctx, http.StatusForbidden, "forbidden", "organization scope does not match this resource")
+	case errors.Is(err, appcommerce.ErrWebhookAmountCurrencyMismatch):
+		writeAPIError(w, ctx, http.StatusConflict, "webhook_amount_currency_mismatch", err.Error())
+	case errors.Is(err, appcommerce.ErrWebhookAfterTerminalOrder):
+		writeAPIError(w, ctx, http.StatusConflict, "webhook_after_terminal_order", err.Error())
 	case errors.Is(err, appcommerce.ErrIllegalTransition):
 		writeAPIError(w, ctx, http.StatusConflict, "illegal_transition", err.Error())
 	case errors.Is(err, appcommerce.ErrWebhookIdempotencyConflict):
 		writeAPIError(w, ctx, http.StatusConflict, "webhook_idempotency_conflict", "webhook replay does not match stored provider_reference or webhook_event_id")
 	case errors.Is(err, appcommerce.ErrWebhookProviderMismatch):
 		writeAPIError(w, ctx, http.StatusForbidden, "webhook_provider_mismatch", "webhook provider does not match payment provider")
+	case errors.Is(err, appcommerce.ErrIdempotencyPayloadConflict):
+		writeAPIError(w, ctx, http.StatusConflict, "idempotency_payload_conflict", err.Error())
 	case errors.Is(err, appcommerce.ErrPaymentNotSettled):
 		writeAPIError(w, ctx, http.StatusConflict, "payment_not_settled", err.Error())
 	case errors.Is(err, appcommerce.ErrCancelNotAllowed):
@@ -759,22 +772,46 @@ type commercePaymentSessionRequest struct {
 }
 
 type commercePaymentSessionResponse struct {
-	PaymentID     string `json:"payment_id"`
-	PaymentState  string `json:"payment_state"`
-	OutboxEventID int64  `json:"outbox_event_id"`
-	Replay        bool   `json:"replay"`
+	SaleID         string     `json:"sale_id"`
+	SessionID      string     `json:"session_id"`
+	PaymentID      string     `json:"payment_id"`
+	AmountMinor    int64      `json:"amount_minor"`
+	Currency       string     `json:"currency"`
+	Provider       string     `json:"provider"`
+	Status         string     `json:"status"`
+	PaymentState   string     `json:"payment_state"`
+	QrURL          *string    `json:"qr_url,omitempty"`
+	PaymentURL     *string    `json:"payment_url,omitempty"`
+	CheckoutURL    *string    `json:"checkout_url,omitempty"`
+	ExpiresAt      *time.Time `json:"expires_at,omitempty"`
+	IdempotencyKey string     `json:"idempotency_key"`
+	RequestID      string     `json:"request_id"`
+	OutboxEventID  int64      `json:"outbox_event_id"`
+	Replay         bool       `json:"replay"`
 }
 
-type commerceWebhookRequest struct {
-	Provider               string          `json:"provider"`
-	ProviderReference      string          `json:"provider_reference"`
-	WebhookEventID         string          `json:"webhook_event_id,omitempty"`
-	EventType              string          `json:"event_type"`
-	NormalizedPaymentState string          `json:"normalized_payment_state"`
-	PayloadJSON            json.RawMessage `json:"payload_json"`
-	ProviderAmountMinor    *int64          `json:"provider_amount_minor"`
-	Currency               *string         `json:"currency"`
+func commercePaymentSessionResponseFromView(v appcommerce.PaymentSessionKioskView) commercePaymentSessionResponse {
+	return commercePaymentSessionResponse{
+		SaleID:         v.SaleID,
+		SessionID:      v.SessionID,
+		PaymentID:      v.PaymentID,
+		AmountMinor:    v.AmountMinor,
+		Currency:       v.Currency,
+		Provider:       v.Provider,
+		Status:         v.Status,
+		PaymentState:   v.PaymentState,
+		QrURL:          v.QrURL,
+		PaymentURL:     v.PaymentURL,
+		CheckoutURL:    v.CheckoutURL,
+		ExpiresAt:      v.ExpiresAt,
+		IdempotencyKey: v.IdempotencyKey,
+		RequestID:      v.RequestID,
+		OutboxEventID:  v.OutboxEventID,
+		Replay:         v.Replay,
+	}
 }
+
+type commerceWebhookRequest = platformpayments.CommerceWebhookEventJSON
 
 type commerceWebhookResponse struct {
 	Replay          bool   `json:"replay"`

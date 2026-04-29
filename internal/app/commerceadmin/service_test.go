@@ -4,8 +4,8 @@ package commerceadmin
 
 import "testing"
 
-func TestNewService_nilQueries(t *testing.T) {
-	_, err := NewService(nil)
+func TestNewService_nilDeps(t *testing.T) {
+	_, err := NewService(nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}

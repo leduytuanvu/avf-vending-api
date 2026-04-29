@@ -54,6 +54,9 @@ func newPoolConfig(cfg *config.PostgresConfig, processName string) (*pgxpool.Con
 	pcfg.MinConns = cfg.MinConns
 	pcfg.MaxConnIdleTime = cfg.MaxConnIdleTime
 	pcfg.MaxConnLifetime = cfg.MaxConnLifetime
+	if tr := NewSlowQueryTracer(cfg.SlowQueryLogThresholdMS, slog.Default()); tr != nil {
+		pcfg.ConnConfig.Tracer = tr
+	}
 	return pcfg, nil
 }
 

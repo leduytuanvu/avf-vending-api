@@ -24,7 +24,7 @@ Domain truths (all stages):
 
 **Processes** (`cmd/`):
 
-- **`api`**: Chi HTTP server (liveness/readiness, optional Prometheus), JWT-backed **`/v1`** routes, application services from `internal/app/*`, Postgres via `internal/modules/postgres`. Optional **internal gRPC** listener when enabled: registers `grpc.health.v1` plus internal query/read services for machine, telemetry, and commerce state.
+- **`api`**: Chi HTTP server (liveness/readiness, optional Prometheus), JWT-backed **`/v1`** routes, application services from `internal/app/*`, Postgres via `internal/modules/postgres`. Optional **machine gRPC** listener (**`avf.machine.v1`**, Machine JWT) when **`MACHINE_GRPC_ENABLED`** / **`GRPC_ENABLED`**; optional **internal gRPC** listener (**`avf.internal.v1`**, service JWT, loopback) when **`INTERNAL_GRPC_ENABLED`** — registers `grpc.health.v1` plus internal query/read services for machine, telemetry, and commerce state.
 - **`worker`**: Scheduled **reliability** ticks (stuck payments/commands/orphan vends, outbox listing); **NATS JetStream** outbox publish **only when** `NATS_URL` (see `internal/platform/nats`) is set. When NATS is configured, the worker also runs **telemetry JetStream consumers** and retention work. Optional Temporal scheduling can enqueue payment-timeout follow-up when `TEMPORAL_SCHEDULE_PAYMENT_PENDING_TIMEOUT=true`.
 - **`reconciler`**: Periodic **commerce reconciliation** (unresolved orders, payment probes, stuck vends, duplicate-payment hints, refund review lists). Default posture is still list/log-oriented, but **optional** payment probe + refund enqueue adapters are wired when `RECONCILER_ACTIONS_ENABLED=true`. Optional Temporal scheduling can enqueue refund/manual-review workflows on top of those reads.
 - **`temporal-worker`**: Dedicated Temporal worker process that executes the registered long-running compensation/review workflows on the configured task queue.
@@ -40,8 +40,8 @@ Domain truths (all stages):
 - **NATS JetStream**: connection, streams, outbox publisher—**used** by `worker` when `NATS_URL` is set. The repo also uses JetStream for **telemetry buffering + worker-side telemetry consumers**. There is still **no in-repo consumer for worker-published outbox subjects**.
 - **MQTT**: broker config, subscriber, routing into the store—**used** by `mqtt-ingest`.
 - **Object storage (S3-compatible)**: used by **artifact** flows in `cmd/api` when `API_ARTIFACTS_ENABLED=true`; broader diagnostics / OTA usage is still follow-on work.
-- **Temporal**: SDK client/worker helpers in `internal/platform/temporal`; `cmd/api`, `cmd/worker`, and `cmd/reconciler` may schedule selected workflows when enabled, and `cmd/temporal-worker` executes the registered workflows/activities.
-- **ClickHouse** (`internal/platform/clickhouse`): optional **worker-side analytics mirror** for published outbox events when analytics flags are enabled; not a general telemetry analytics plane yet.
+- **Temporal**: SDK client/worker helpers in `internal/platform/temporal`; `cmd/api`, `cmd/worker`, and `cmd/reconciler` may schedule selected workflows when enabled, and `cmd/temporal-worker` executes the registered workflows/activities. Registered workflow coverage now includes payment-to-vend follow-up, refund orchestration/review handoff, command ACK timeout escalation, payment timeout review, vend-failure compensation review, and manual review escalation. Temporal is still optional unless `TEMPORAL_ENABLED=true`; disabled mode returns a no-op boundary and preserves the existing synchronous/reconciler paths.
+- **ClickHouse** (`internal/platform/clickhouse`): optional **worker-side analytics mirror** and typed projection sink for published outbox events when analytics flags are enabled. Typed projection classes cover sales, payment, vend, inventory delta, machine telemetry summary, and command lifecycle events derived from outbox metadata/payloads. PostgreSQL/outbox remain authoritative and analytics failure is cold-path only.
 - **Redis / OpenTelemetry**: Config and clients as used by bootstrap and readiness—not a substitute for Postgres SoR.
 
 **Observability**: OpenTelemetry hooks and standard health (and optional metrics) are wired from bootstrap where configured; Loki/Prometheus/Grafana stacks are **documented and sample-configured** under `ops/`—treat them as **deployment concerns**, not as “always running inside this Go binary.” **Incident response:** practical log fields, SQL, and alert ideas live in [`ops/RUNBOOK.md`](../../ops/RUNBOOK.md); worker/reconciler/MQTT are primarily **log-driven** until custom metrics exist ([`ops/METRICS.md`](../../ops/METRICS.md)).
@@ -92,9 +92,9 @@ That interim production topology is still simpler than the north-star multi-plan
 Same modular-monolith layout; items below are **absent or incomplete** in `cmd/*` / `internal/app` wiring until implemented:
 
 1. Extend **object storage** beyond the current artifact flows into OTA/diagnostic (or other) app paths.
-2. Expand the **Temporal worker** beyond the current compensation/review workflows where durable orchestration adds value.
+2. Wire additional **Temporal scheduling call sites** only where durable orchestration adds value. The worker can execute the payment-to-vend, refund, command ACK, compensation, and review workflows, but existing synchronous/reconciler paths remain the default unless their `TEMPORAL_SCHEDULE_*` flags are enabled or a caller explicitly starts a workflow.
 3. Add a **JetStream consumer** in-repo (or document an external consumer) for subjects produced by the worker outbox publisher.
-4. Introduce a broader **ClickHouse-backed ingest** (or sidecar writer) when schemas and SLOs exist; today only the worker outbox mirror path is implemented.
+4. Introduce a dedicated **ClickHouse backfill job** and broader telemetry/event ingest when schemas and SLOs exist; today online projection is fed from newly published outbox rows.
 5. Extend **internal gRPC** beyond the current query/read services when protobuf contracts for mutations or workflow boundaries are justified.
 
 ---
@@ -106,7 +106,8 @@ Same modular-monolith layout; items below are **absent or incomplete** in `cmd/*
 The system is organized into **separate runtime planes** with clear responsibilities:
 
 - **Public REST API plane**: external/admin/mobile integrations, synchronous request/response (**shipped**: Chi `/v1` in `cmd/api`).
-- **Internal gRPC plane (target)**: service-to-service protobuf contracts—**shipped today**: optional listener + `grpc.health.v1` + internal machine/telemetry/commerce query RPCs; broader domain RPC remains future work (`internal/grpcserver`).
+- **Machine gRPC plane (`avf.machine.v1`)**: native kiosk protobuf contracts — **shipped today** when machine gRPC is enabled (`internal/grpcserver`, Machine JWT interceptor). Legacy overlapping HTTP routes remain **`deprecated`** for migration windows only.
+- **Internal gRPC plane (`avf.internal.v1`)**: service-to-service protobuf contracts — **shipped today**: optional loopback listener + `grpc.health.v1` + internal machine/telemetry/commerce query RPCs; broader domain mutation RPC remains future work (`internal/grpcserver`).
 - **MQTT / device connectivity plane**: EMQX (or compatible broker) at the edge; ingest processes translate device protocols into domain persistence and optional event fan-out (**shipped**: `cmd/mqtt-ingest` → Postgres).
 - **Workflow plane (target)**: Temporal (or similar) for durable workflows (payouts, rollouts, incident response, refunds)—**partially shipped**: `cmd/temporal-worker` executes selected compensation/review workflows; broader workflow coverage remains future work.
 - **Telemetry / events plane (target)**: high-volume machine telemetry into **ClickHouse**; operational logs into **Loki** (and metrics via Prometheus)—topology below; current Go code only ships an optional worker outbox mirror path to ClickHouse, not a full telemetry analytics plane.

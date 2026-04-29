@@ -6,6 +6,15 @@ Use this list **before** clicking **Run workflow** on **Deploy Production** (`de
 
 **Two-VPS note:** a successful rolling job in CI does **not** by itself prove global zero downtime. Confirm traffic drain / load-balancer behavior per [two-vps-rolling-production-deploy.md](two-vps-rolling-production-deploy.md).
 
+**Priority tags (documentation only — aligns with `[production-release-readiness.md](../runbooks/production-release-readiness.md)` tiers):**
+
+| Tag | Meaning |
+| --- | ------- |
+| **P0** | Must pass before deploy proceeds (safety gates). |
+| **P1** | Required for normal release sign-off before production approval step. |
+
+**Evidence & owner:** For **each** subsection below, the change ticket must list **Approver / owner**, **Evidence** (workflow run URL, backup id, staging run id, digest lines), and **UTC timestamp**. Do not paste secrets.
+
 Record **run ids and names** in the change ticket; do **not** record secrets, tokens, or private keys.
 
 ---
@@ -15,6 +24,7 @@ Record **run ids and names** in the change ticket; do **not** record secrets, to
 - [ ] **Branch protection** on `main` is confirmed (required reviews, required checks, and merge rules match policy).
 - [ ] **`production` environment** has **required reviewers** (or equivalent rulesets) and is limited to the intended users.
 - [ ] The operator running deploy has **authorization** for production change in your org (separate from GitHub **admin** rights).
+- [ ] Client teams (Android + field) acknowledged **[`../architecture/production-final-contract.md`](../architecture/production-final-contract.md)** for this release (gRPC + MQTT + no legacy machine HTTP in prod unless waived).
 
 ## CI and build health
 
@@ -31,6 +41,8 @@ Record **run ids and names** in the change ticket; do **not** record secrets, to
 
 - [ ] **`run_migration`** decision matches the change (image-only vs schema change).
 - [ ] If migrations run, **backup evidence id** (or other required backup proof) is on hand per [production-backup-restore-drill.md](production-backup-restore-drill.md) and [backup-evidence-for-production-migrations.md](../runbooks/backup-evidence-for-production-migrations.md) if present.
+- [ ] Data migration review has followed [production-data-migration-safety.md](production-data-migration-safety.md), including replay/idempotency checks for outbox, payment webhooks, and machine offline events.
+- [ ] DR readiness context is known: `APP_REGION`, `APP_NODE_NAME`, and `APP_INSTANCE_ID` values for every production process match [multi-region-dr-readiness.md](../runbooks/multi-region-dr-readiness.md).
 
 ## Images and rollback
 
@@ -51,4 +63,6 @@ Record **run ids and names** in the change ticket; do **not** record secrets, to
 
 ## After deploy
 
-Use [field-rollout-checklist.md](field-rollout-checklist.md) for **machine- and field-level** checks. For rollback steps, see [../runbooks/production-rollback.md](../runbooks/production-rollback.md) and [two-vps-rolling-production-deploy.md](two-vps-rolling-production-deploy.md).
+Use [field-rollout-checklist.md](field-rollout-checklist.md) for **machine- and field-level** checks. Populate **[`../testing/field-test-cases.md`](../testing/field-test-cases.md)** rows for pilots; use [field-pilot-checklist.md](field-pilot-checklist.md) for **before / during / after** pilot sequencing. **`P2` fleet readiness** (storm JSON, expanded field matrix for 100–1000) is governed by **[`../runbooks/production-release-readiness.md`](../runbooks/production-release-readiness.md)** — not by this checklist alone.
+
+For rollback steps, see [../runbooks/production-rollback.md](../runbooks/production-rollback.md), [../runbooks/production-cutover-rollback.md](../runbooks/production-cutover-rollback.md) (2-VPS topology), and [two-vps-rolling-production-deploy.md](two-vps-rolling-production-deploy.md).

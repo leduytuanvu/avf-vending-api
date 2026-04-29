@@ -1,22 +1,28 @@
 # EMQX base configuration for the lean staging profile.
-# Keep plaintext MQTT available on the internal Docker network only.
-# TLS listener is defined here but remains disabled until real certificates are installed.
+# Keep plaintext MQTT loopback/internal only.
+# TLS listener is enabled for staging parity with production; install real certs before exposing 8883.
 
 listeners.tcp.default {
-  bind = "0.0.0.0:1883"
+  enable = true
+  bind = "127.0.0.1:1883"
 }
 
 listeners.ssl.default {
-  enable = false
+  enable = true
   bind = "0.0.0.0:8883"
   ssl_options {
     cacertfile = "/opt/emqx/etc/certs/ca.crt"
     certfile = "/opt/emqx/etc/certs/server.crt"
     keyfile = "/opt/emqx/etc/certs/server.key"
+    # Server-auth TLS today; switch to verify_peer + fail_if_no_peer_cert=true
+    # when machine client certificates are issued fleet-wide.
     verify = verify_none
     fail_if_no_peer_cert = false
   }
 }
+
+# Per-machine topic ACL: see acl.conf.example and authorization.snippet.hocon in this directory.
+# Install /opt/emqx/etc/acl.conf on the broker, merge authorization.snippet.hocon, then set authorization.enable = true.
 
 api_key {
   bootstrap_file = "/opt/emqx/etc/default_api_key.conf"

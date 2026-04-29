@@ -2,8 +2,8 @@
   "migrations_dir": "migrations",
   "deploy_target": "ci",
   "allow_destructive": false,
-  "blocked": false,
-  "exit_code": 0,
+  "blocked": true,
+  "exit_code": 1,
   "files_checked": [
     "00001_placeholder.sql",
     "00002_platform_schema.sql",
@@ -28,8 +28,137 @@
     "00021_cash_collection_settlement.sql",
     "00022_payment_provider_webhook_event_id.sql",
     "00023_p0_activation_reconcile_refunds.sql",
-    "00024_p1_catalog_cash_image.sql"
+    "00024_p1_catalog_cash_image.sql",
+    "00025_auth_admin_user_lifecycle.sql",
+    "00026_fleet_crud_lifecycle.sql",
+    "00027_payment_webhook_security.sql",
+    "00028_p1_pricebook_targets.sql",
+    "00029_p1_promotion_crud.sql",
+    "00030_p1_ota_campaign_lifecycle.sql",
+    "00031_enterprise_audit_events.sql",
+    "00032_finance_daily_close.sql",
+    "00033_p2_feature_flags_machine_config_rollout.sql",
+    "00034_machine_runtime_refresh_tokens.sql",
+    "00035_mqtt_command_transport_hardening.sql",
+    "00036_enterprise_audit_outcome.sql",
+    "00037_p1_media_assets.sql",
+    "00038_outbox_lease_status.sql",
+    "00039_messaging_consumer_dedupe.sql",
+    "00040_payment_states_expansion.sql",
+    "00041_machine_device_certificates.sql",
+    "00042_machine_jwt_hardening.sql",
+    "00043_machine_replay_ledger.sql",
+    "00044_auth_admin_enterprise_rbac.sql",
+    "00045_fleet_admin_p05_lifecycle.sql",
+    "00046_product_media_cache_contract.sql",
+    "00047_commerce_reconciliation_cases.sql",
+    "00048_machine_ota_diagnostics_foundation.sql",
+    "00049_compliance_retention_privacy.sql"
   ],
-  "findings": [],
-  "destructive_findings": []
+  "findings": [
+    {
+      "file": "00031_enterprise_audit_events.sql",
+      "goose_section": "layout",
+      "rule": "missing_goose_up",
+      "detail": "missing '-- +goose Up' directive"
+    },
+    {
+      "file": "00031_enterprise_audit_events.sql",
+      "goose_section": "layout",
+      "rule": "missing_goose_down",
+      "detail": "missing '-- +goose Down' directive"
+    },
+    {
+      "file": "00031_enterprise_audit_events.sql",
+      "goose_section": "layout",
+      "rule": "empty_goose_up",
+      "detail": "goose Up section has no SQL body"
+    },
+    {
+      "file": "00032_finance_daily_close.sql",
+      "goose_section": "layout",
+      "rule": "missing_goose_up",
+      "detail": "missing '-- +goose Up' directive"
+    },
+    {
+      "file": "00032_finance_daily_close.sql",
+      "goose_section": "layout",
+      "rule": "missing_goose_down",
+      "detail": "missing '-- +goose Down' directive"
+    },
+    {
+      "file": "00032_finance_daily_close.sql",
+      "goose_section": "layout",
+      "rule": "empty_goose_up",
+      "detail": "goose Up section has no SQL body"
+    },
+    {
+      "file": "00035_mqtt_command_transport_hardening.sql",
+      "goose_section": "layout",
+      "rule": "missing_goose_up",
+      "detail": "missing '-- +goose Up' directive"
+    },
+    {
+      "file": "00035_mqtt_command_transport_hardening.sql",
+      "goose_section": "layout",
+      "rule": "missing_goose_down",
+      "detail": "missing '-- +goose Down' directive"
+    },
+    {
+      "file": "00035_mqtt_command_transport_hardening.sql",
+      "goose_section": "layout",
+      "rule": "empty_goose_up",
+      "detail": "goose Up section has no SQL body"
+    },
+    {
+      "file": "00036_enterprise_audit_outcome.sql",
+      "goose_section": "layout",
+      "rule": "missing_goose_up",
+      "detail": "missing '-- +goose Up' directive"
+    },
+    {
+      "file": "00036_enterprise_audit_outcome.sql",
+      "goose_section": "layout",
+      "rule": "missing_goose_down",
+      "detail": "missing '-- +goose Down' directive"
+    },
+    {
+      "file": "00036_enterprise_audit_outcome.sql",
+      "goose_section": "layout",
+      "rule": "empty_goose_up",
+      "detail": "goose Up section has no SQL body"
+    },
+    {
+      "file": "00037_p1_media_assets.sql",
+      "goose_section": "layout",
+      "rule": "missing_goose_up",
+      "detail": "missing '-- +goose Up' directive"
+    },
+    {
+      "file": "00037_p1_media_assets.sql",
+      "goose_section": "layout",
+      "rule": "missing_goose_down",
+      "detail": "missing '-- +goose Down' directive"
+    },
+    {
+      "file": "00037_p1_media_assets.sql",
+      "goose_section": "layout",
+      "rule": "empty_goose_up",
+      "detail": "goose Up section has no SQL body"
+    },
+    {
+      "file": "00030_p1_ota_campaign_lifecycle.sql",
+      "goose_section": "Up",
+      "rule": "UPDATE without WHERE",
+      "detail": "UPDATE without WHERE clause"
+    }
+  ],
+  "destructive_findings": [
+    {
+      "file": "00030_p1_ota_campaign_lifecycle.sql",
+      "goose_section": "Up",
+      "rule": "UPDATE without WHERE",
+      "detail": "UPDATE without WHERE clause"
+    }
+  ]
 }

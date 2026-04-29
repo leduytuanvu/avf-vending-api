@@ -7,6 +7,12 @@ import (
 	"github.com/google/uuid"
 )
 
+// OutboxLeaseParams configures SKIP LOCKED leasing for multi-replica outbox workers.
+type OutboxLeaseParams struct {
+	WorkerID string
+	LockTTL  time.Duration
+}
+
 // ReasonCode values are stable identifiers for metrics and log correlation (not end-user text).
 const (
 	ReasonPaymentAgedNonTerminal = "PAYMENT_AGED_NON_TERMINAL"
@@ -15,6 +21,7 @@ const (
 	ReasonOutboxAgedUnpublished  = "OUTBOX_AGED_UNPUBLISHED"
 	ReasonOutboxDeadLettered     = "OUTBOX_DEAD_LETTERED"
 	ReasonOutboxPublishBackoff   = "OUTBOX_PUBLISH_BACKOFF"
+	ReasonOutboxLeaseClaim       = "OUTBOX_LEASE_CLAIM"
 	ReasonNoopPolicy             = "NOOP_POLICY"
 	ReasonNoopAlreadyTerminal    = "NOOP_ALREADY_TERMINAL"
 	ReasonNoopFresh              = "NOOP_BELOW_AGE_THRESHOLD"

@@ -14,6 +14,9 @@ type Config struct {
 	AccessKeyID     string
 	SecretAccessKey string
 	UsePathStyle    bool
+	// PublicBaseURL optional HTTPS origin for documentation or gateways (e.g. CDN in front of the bucket).
+	// Clients typically use PresignGet URLs; set via OBJECT_STORAGE_PUBLIC_BASE_URL when serving public manifests.
+	PublicBaseURL string
 }
 
 // ConfigFromEnv loads Config from standard AWS/MinIO-style variables.
@@ -39,6 +42,7 @@ func ConfigFromEnv() (Config, error) {
 	if endpoint != "" && !pathStyle {
 		pathStyle = true
 	}
+	publicBase := firstNonEmptyTrimmed(os.Getenv("OBJECT_STORAGE_PUBLIC_BASE_URL"), os.Getenv("CDN_PUBLIC_BASE_URL"))
 	return Config{
 		Region:          region,
 		Bucket:          bucket,
@@ -46,6 +50,7 @@ func ConfigFromEnv() (Config, error) {
 		AccessKeyID:     ak,
 		SecretAccessKey: sk,
 		UsePathStyle:    pathStyle,
+		PublicBaseURL:   strings.TrimRight(strings.TrimSpace(publicBase), "/"),
 	}, nil
 }
 

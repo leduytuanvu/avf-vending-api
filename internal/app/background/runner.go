@@ -39,7 +39,7 @@ type CycleEndMetricsHook func(job string, duration time.Duration, err error, res
 // runTickerLoop runs fn on a fixed interval until ctx is cancelled. Each invocation uses a
 // derived context capped by cycleTimeout so one slow pass cannot block observing ctx cancellation
 // indefinitely (callers should still pass ctx into I/O so cancellation propagates).
-func runTickerLoop(ctx context.Context, log *zap.Logger, name string, every, cycleTimeout time.Duration, cycleHook CycleEndMetricsHook, fn func(context.Context) error) {
+func runTickerLoop(ctx context.Context, log *zap.Logger, name string, every, cycleTimeout, backoffAfterFailure time.Duration, cycleHook CycleEndMetricsHook, fn func(context.Context) error) {
 	if log == nil {
 		log = zap.NewNop()
 	}
@@ -94,6 +94,13 @@ func runTickerLoop(ctx context.Context, log *zap.Logger, name string, every, cyc
 		if cycleHook != nil {
 			cycleHook(name, dur, err, result)
 		}
+		if backoffAfterFailure > 0 && result == "error" {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(backoffAfterFailure):
+			}
+		}
 	}
 
 	runOnce()
@@ -108,10 +115,10 @@ func runTickerLoop(ctx context.Context, log *zap.Logger, name string, every, cyc
 }
 
 // startTickerGoroutine launches runTickerLoop in a goroutine and registers it with wg.
-func startTickerGoroutine(wg *sync.WaitGroup, ctx context.Context, log *zap.Logger, name string, every, cycleTimeout time.Duration, cycleHook CycleEndMetricsHook, fn func(context.Context) error) {
+func startTickerGoroutine(wg *sync.WaitGroup, ctx context.Context, log *zap.Logger, name string, every, cycleTimeout, backoffAfterFailure time.Duration, cycleHook CycleEndMetricsHook, fn func(context.Context) error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runTickerLoop(ctx, log, name, every, cycleTimeout, cycleHook, fn)
+		runTickerLoop(ctx, log, name, every, cycleTimeout, backoffAfterFailure, cycleHook, fn)
 	}()
 }

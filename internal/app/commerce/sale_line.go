@@ -28,6 +28,14 @@ type ResolvedSaleLine struct {
 	SubtotalMinor int64
 	TaxMinor      int64
 	TotalMinor    int64
+
+	// Populated when resolved via pricingengine (promotions + machine overrides).
+	BasePriceMinor      int64
+	DiscountUnitMinor   int64
+	PromotionLabel      string
+	Currency            string
+	PricingFingerprint  string
+	AppliedPromotionIDs []uuid.UUID
 }
 
 // SaleLineResolver loads slot config rows and enforces published-assortment membership for the product.

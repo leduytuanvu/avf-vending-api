@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+import "avf/machine/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// MachineTelemetryService reserves the native telemetry ingest contract.
+// Backend-to-machine realtime commands remain MQTT; this service is for machine-to-backend telemetry.
+service MachineTelemetryService {
+  rpc PushTelemetryBatch(PushTelemetryBatchRequest) returns (PushTelemetryBatchResponse);
+  rpc PushCriticalEvent(PushCriticalEventRequest) returns (PushCriticalEventResponse);
+  rpc CheckIn(CheckInRequest) returns (CheckInResponse);
+  rpc SubmitTelemetryBatch(SubmitTelemetryBatchRequest) returns (SubmitTelemetryBatchResponse);
+  rpc ReconcileEvents(ReconcileEventsRequest) returns (ReconcileEventsResponse);
+  rpc GetEventStatus(GetEventStatusRequest) returns (GetEventStatusResponse);
+}
+
+message CheckInRequest {
+  IdempotencyContext context = 1;
+  string machine_id = 2;
+  string android_id = 3;
+  string sim_serial = 4;
+  string package_name = 5;
+  string version_name = 6;
+  int64 version_code = 7;
+  string android_release = 8;
+  int32 sdk_int = 9;
+  string manufacturer = 10;
+  string model = 11;
+  string timezone = 12;
+  string network_state = 13;
+  string boot_id = 14;
+  map<string, string> metadata = 15;
+}
+
+message CheckInResponse {
+  bool replay = 1;
+  string machine_id = 2;
+  google.protobuf.Timestamp server_received_at = 3;
+}
+
+message SubmitTelemetryBatchRequest {
+  IdempotencyContext context = 1;
+  repeated TelemetryEvent events = 2;
+}
+
+message TelemetryEvent {
+  string event_id = 1;
+  string event_type = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  map<string, string> attributes = 4;
+  string boot_id = 5;
+  int64 client_sequence = 6;
+}
+
+message PushTelemetryBatchRequest {
+  IdempotencyContext context = 1;
+  MachineRequestMeta meta = 2;
+  repeated TelemetryEvent events = 3;
+}
+
+message PushTelemetryBatchResponse {
+  bool accepted = 1;
+  int32 accepted_count = 2;
+  repeated string duplicate_event_ids = 3;
+  google.protobuf.Timestamp server_received_at = 4;
+  MachineResponseMeta meta = 5;
+}
+
+message PushCriticalEventRequest {
+  IdempotencyContext context = 1;
+  MachineRequestMeta meta = 2;
+  TelemetryEvent event = 3;
+  string severity = 4;
+}
+
+message PushCriticalEventResponse {
+  bool accepted = 1;
+  bool replay = 2;
+  google.protobuf.Timestamp server_received_at = 3;
+  MachineResponseMeta meta = 4;
+}
+
+message SubmitTelemetryBatchResponse {
+  bool accepted = 1;
+  int32 accepted_count = 2;
+  repeated string duplicate_event_ids = 3;
+  google.protobuf.Timestamp server_received_at = 4;
+}
+
+message ReconcileEventsRequest {
+  repeated string idempotency_keys = 1;
+}
+
+message ReconcileEventsResponse {
+  string machine_id = 1;
+  repeated TelemetryEventStatus items = 2;
+}
+
+message GetEventStatusRequest {
+  string idempotency_key = 1;
+}
+
+message GetEventStatusResponse {
+  TelemetryEventStatus item = 1;
+}
+
+message TelemetryEventStatus {
+  string idempotency_key = 1;
+  string status = 2;
+  string event_type = 3;
+  google.protobuf.Timestamp accepted_at = 4;
+  google.protobuf.Timestamp processed_at = 5;
+  bool retryable = 6;
+}

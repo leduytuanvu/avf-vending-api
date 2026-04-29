@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package avf.internal.v1;
+
+option go_package = "github.com/avf/avf-vending-api/internal/gen/avfinternalv1;internalv1";
+
+// InternalReportingQueryService exposes read-only reporting rollups as JSON (mirrors HTTP /v1/reports/sales-summary payload).
+service InternalReportingQueryService {
+  rpc GetSalesSummary(GetSalesSummaryRequest) returns (GetSalesSummaryResponse);
+}
+
+message GetSalesSummaryRequest {
+  string organization_id = 1;
+  string from_rfc3339 = 2;
+  string to_rfc3339 = 3;
+  // day | site | machine | payment_provider (matches listscope reporting).
+  string group_by = 4;
+}
+
+message GetSalesSummaryResponse {
+  string summary_json = 1;
+}

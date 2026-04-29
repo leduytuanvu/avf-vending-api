@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	appmw "github.com/avf/avf-vending-api/internal/middleware"
 	"github.com/avf/avf-vending-api/internal/observability"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
@@ -14,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
@@ -102,7 +104,11 @@ func requestLoggingMiddleware(base *zap.Logger) func(http.Handler) http.Handler 
 			next.ServeHTTP(ww, r)
 			ctx := attachRequestMetadata(r.Context(), r)
 			log := observability.EnrichLogger(observability.LoggerFromContext(r.Context(), base), ctx)
-			fields := append(observability.ContextFields(ctx),
+			fields := observability.ContextFields(ctx)
+			if cid := correlationIDFromContext(ctx); cid != "" {
+				fields = append(fields, zap.String("correlation_id", cid))
+			}
+			fields = append(fields,
 				zap.String("method", r.Method),
 				zap.String("route", routeLabel(r)),
 				zap.String("path", r.URL.Path),
@@ -170,9 +176,26 @@ func firstRequestHeader(r *http.Request, names ...string) string {
 	return ""
 }
 
+func correlationIDFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if sc := trace.SpanContextFromContext(ctx); sc.IsValid() {
+		id := sc.TraceID().String()
+		if id != "" && id != "00000000000000000000000000000000" {
+			return id
+		}
+	}
+	return appmw.RequestIDFromContext(ctx)
+}
+
 func logAPIError(ctx context.Context, status int, code, message string, details map[string]any) {
 	log := observability.LoggerFromContext(ctx, zap.NewNop())
-	fields := append(observability.ContextFields(ctx),
+	fields := observability.ContextFields(ctx)
+	if cid := correlationIDFromContext(ctx); cid != "" {
+		fields = append(fields, zap.String("correlation_id", cid))
+	}
+	fields = append(fields,
 		zap.Int("status", status),
 		zap.String("error_code", code),
 		zap.String("error_message", message),

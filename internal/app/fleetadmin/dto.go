@@ -75,6 +75,7 @@ type AdminTechnicianListItem struct {
 	Email           *string   `json:"email,omitempty"`
 	Phone           *string   `json:"phone,omitempty"`
 	ExternalSubject *string   `json:"externalSubject,omitempty"`
+	Status          string    `json:"status"`
 	CreatedAt       time.Time `json:"createdAt"`
 }
 

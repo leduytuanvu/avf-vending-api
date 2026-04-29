@@ -65,4 +65,20 @@ type CommandReceiptIngest struct {
 	CorrelationID *uuid.UUID
 	Payload       []byte
 	DedupeKey     string
+	CommandID     uuid.UUID
+	OccurredAt    time.Time
+}
+
+// ValidateEdgeCommandReceipt enforces topic/body identity fields required for MQTT command ACK safety.
+func ValidateEdgeCommandReceipt(topicMachineID, commandID, payloadMachineID uuid.UUID, occurredAt time.Time) error {
+	if commandID == uuid.Nil {
+		return fmt.Errorf("mqtt: command_id is required")
+	}
+	if payloadMachineID == uuid.Nil || payloadMachineID != topicMachineID {
+		return fmt.Errorf("mqtt: machine_id must match topic machine")
+	}
+	if occurredAt.IsZero() {
+		return fmt.Errorf("mqtt: occurred_at is required")
+	}
+	return nil
 }

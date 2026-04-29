@@ -35,9 +35,15 @@ func NewSubscriber(cfg BrokerConfig, log *zap.Logger, hooks *IngestHooks, limits
 
 // Run connects, subscribes to device topics, and blocks until ctx is cancelled.
 //
-// Ops: warn logs "mqtt ingest failed" / "mqtt subscribe failed"; optional hooks for Prometheus — see ops/METRICS.md.
+// Reconnect: uses Paho AutoReconnect + ConnectRetry (5s) by default. On each successful connect,
+// subscriptions are (re)applied at QoS 1 via OnConnectHandler. Session state uses the Paho default
+// (clean start / non-persistent session unless changed in a future config knob). After a broker
+// restart, expect a disconnect and full resubscribe; in-flight QoS 1 server-to-client messages may
+// be redelivered; application dedupe stays responsibility of device receipts and telemetry keys.
+//
+// Ops: warn logs "mqtt ingest failed" / "mqtt subscribe failed"; optional hooks for Prometheus; see ops/METRICS.md.
 func (s *Subscriber) Run(ctx context.Context, ing DeviceIngest) error {
-	topics := InboundDeviceTopicPatterns(s.cfg.TopicPrefix)
+	topics := InboundTopicPatterns(s.cfg.TopicLayout, s.cfg.TopicPrefix)
 
 	opts := pahomqtt.NewClientOptions()
 	opts.AddBroker(s.cfg.BrokerURL)
@@ -53,12 +59,16 @@ func (s *Subscriber) Run(ctx context.Context, ing DeviceIngest) error {
 	opts.SetConnectRetryInterval(5 * time.Second)
 	opts.SetOrderMatters(false)
 
+	if err := s.cfg.applySecurity(opts); err != nil {
+		return fmt.Errorf("mqtt tls: %w", err)
+	}
+
 	opts.SetDefaultPublishHandler(func(_ pahomqtt.Client, msg pahomqtt.Message) {
 		if msg == nil {
 			return
 		}
 		n := len(msg.Payload())
-		err := Dispatch(ctx, s.cfg.TopicPrefix, msg.Topic(), msg.Payload(), ing, s.limits, s.hooks)
+		err := Dispatch(ctx, s.cfg.TopicLayout, s.cfg.TopicPrefix, msg.Topic(), msg.Payload(), ing, s.limits, s.hooks)
 		if s.hooks != nil && s.hooks.OnDispatchOutcome != nil {
 			s.hooks.OnDispatchOutcome(err == nil, msg.Topic(), n)
 		}

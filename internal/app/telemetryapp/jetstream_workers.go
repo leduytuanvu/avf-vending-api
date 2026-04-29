@@ -22,6 +22,10 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
+// JetStreamWorkers pulls AVF_TELEMETRY_* streams into Postgres rollups. Critical domain side effects
+// (payments, commerce, inventory, MQTT command dispatch, audit) use the transactional outbox
+// (outbox_events / cmd/worker) — not this ingestion path.
+
 // JetStreamWorkersConfig wires durable telemetry consumers into Postgres projections.
 type JetStreamWorkersConfig struct {
 	Log       *zap.Logger
@@ -341,6 +345,7 @@ func (w *JetStreamWorkers) maxConsumerPending(js natssrv.JetStreamContext) (int6
 }
 
 func (w *JetStreamWorkers) handleHeartbeat(ctx context.Context, env tel.Envelope) error {
+	observeMachineLastSeenAge(env.ReceivedAt)
 	return w.store.UpsertHeartbeatSnapshot(ctx, env.MachineID, env.ReceivedAt.UTC())
 }
 
@@ -473,6 +478,9 @@ func (w *JetStreamWorkers) handleCommandReceipt(ctx context.Context, env tel.Env
 		CorrelationID *uuid.UUID      `json:"correlation_id"`
 		Payload       json.RawMessage `json:"payload"`
 		DedupeKey     string          `json:"dedupe_key"`
+		CommandID     uuid.UUID       `json:"command_id"`
+		MachineID     uuid.UUID       `json:"machine_id"`
+		OccurredAt    time.Time       `json:"occurred_at"`
 	}
 	if err := json.Unmarshal(env.Payload, &inner); err != nil {
 		return err
@@ -480,20 +488,36 @@ func (w *JetStreamWorkers) handleCommandReceipt(ctx context.Context, env tel.Env
 	if inner.DedupeKey == "" {
 		return fmt.Errorf("telemetryapp: command receipt missing dedupe_key")
 	}
+	if err := platformmqtt.ValidateEdgeCommandReceipt(env.MachineID, inner.CommandID, inner.MachineID, inner.OccurredAt); err != nil {
+		return err
+	}
 	raw := []byte(inner.Payload)
 	if len(raw) == 0 {
 		raw = []byte("{}")
 	}
+	normStatus, ok := platformmqtt.NormalizeReceiptStatus(inner.Status)
+	if !ok {
+		return fmt.Errorf("telemetryapp: invalid command receipt status %q", inner.Status)
+	}
 	res, err := w.store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
 		MachineID:     env.MachineID,
 		Sequence:      inner.Sequence,
-		Status:        strings.ToLower(strings.TrimSpace(inner.Status)),
+		Status:        normStatus,
 		CorrelationID: inner.CorrelationID,
 		Payload:       raw,
 		DedupeKey:     inner.DedupeKey,
+		CommandID:     inner.CommandID,
+		OccurredAt:    inner.OccurredAt,
 	})
 	if err != nil {
 		return err
+	}
+	if res.IgnoredConflict && w.log != nil {
+		w.log.Warn("telemetry_command_ack_ignored_conflict",
+			zap.String("machine_id", env.MachineID.String()),
+			zap.Int64("sequence", inner.Sequence),
+			zap.String("dedupe_key", inner.DedupeKey),
+		)
 	}
 	if res.ReceiptReplay {
 		if w.log != nil {

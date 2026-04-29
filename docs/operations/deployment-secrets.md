@@ -2,6 +2,52 @@
 
 This document explains how **GitHub Actions secrets/variables** relate to **on-host** configuration for staging and production, and how the machine-readable contract enforces a complete inventory.
 
+## Runtime secret matrix (DATABASE / Redis / NATS / MQTT / object storage / JWT / payment)
+
+| Binding | Where it lives | Required? | GitHub Actions |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | Staging or production **host `.env`** (path from `STAGING_REMOTE_ENV_FILE` / app-node example) | Required for app + migrations | **Never** as `secrets.DATABASE_URL` in deploy workflows — use `*.example` on-disk. Optional `PRODUCTION_DATABASE_URL` / `STAGING_DATABASE_URL` appear only in separation-gate tooling for fingerprint checks, **not** app SSH injection from `deploy-prod`. |
+| `REDIS_URL` / `REDIS_ADDR` | Host `.env` | **Required** in `APP_ENV=production` unless `PRODUCTION_ALLOW_MISSING_REDIS=true`; otherwise as enabled by Redis feature flags | **Not** modeled as vanilla `secrets.REDIS_*` operator keys — keep on VPS. |
+| `NATS_URL` | App nodes + optional data-node fallback | Required when telemetry/outbox pipelines are active | VPS only; distinguish staging vs prod cluster addresses. |
+| `MQTT_BROKER_URL`, EMQX bootstrap (`MQTT_*`, `EMQX_*`) | Host `.env`; production TLS posture `8883` | Required for machine plane where enabled | VPS only; staging `MQTT_TOPIC_PREFIX` must differ from prod (`avf/staging/devices` vs `avf/devices`). |
+| `OBJECT_STORAGE_*` (bucket, endpoint, keys, region) | Host `.env`; aliases `AWS_*`, `S3_*` documented in app-node example | Required when artifacts/media integrations are on | VPS only — same rule as DB: no raw operator key **names** in `deploy-develop` / `deploy-prod`. |
+| `HTTP_AUTH_JWT_SECRET` | Host `.env` | Required (`APP_ENV=staging` or production) | VPS-only material. |
+| Payment provider / PSP secrets (`PAYMENT_*`, webhook signing) | Host `.env` | Staging → **sandbox**; production → **live** | `PAYMENT_ENV` selects mode; staging PSP credentials must never be reused as production secrets. |
+
+### VPS `.env` inventory (name, scope, required, format, rotation)
+
+| Name | Environment | Required | Example format | Rotation |
+| --- | --- | --- | --- | --- |
+| `DATABASE_URL` | Staging + production host `.env` | Yes | `postgres://USER:PASSWORD@HOST:5432/DB?sslmode=require` | Rotate DB password at provider; update all app nodes; verify pool limits. |
+| `REDIS_URL` or `REDIS_ADDR` | Staging + production | Production **yes** (unless `PRODUCTION_ALLOW_MISSING_REDIS=true`) | `rediss://default:PASSWORD@HOST:6379/0` or `HOST:6379` | Rolling credential rotation at cache provider; brief cache flush acceptable. |
+| `NATS_URL` | Staging + production app/worker profiles | Yes when outbox/telemetry flags on | `nats://HOST:4222` | Cluster credential / TLS cert rotation per NATS ops runbook. |
+| `MQTT_BROKER_URL` | Staging + production | Yes when device plane uses MQTT | Production public: `tls://HOST:8883`, `ssl://`, `mqtts://`, or `wss://` (not `tcp`/`mqtt` to non-loopback without TLS) | Broker auth password rotation in EMQX; update all clients. |
+| `MQTT_USERNAME` / `MQTT_PASSWORD` | Staging + production | Yes for non-anonymous production brokers | User / password from EMQX | Rotate MQTT app password; roll clients. |
+| `MQTT_TOPIC_PREFIX` | Staging + production | Yes when MQTT used | Staging: e.g. `avf/staging/devices`; production: `avf/devices` | Avoid changing in-place; plan fleet cutover. |
+| `OBJECT_STORAGE_BUCKET` | Production when `API_ARTIFACTS_ENABLED` / object storage on | Conditional | DNS-safe bucket name | N/A (name); keys rotated separately. |
+| `OBJECT_STORAGE_ENDPOINT` / `OBJECT_STORAGE_REGION` | With object storage | Conditional | `https://s3.example` / `ap-southeast-1` | Follow object storage vendor rotation. |
+| `OBJECT_STORAGE_ACCESS_KEY` / `OBJECT_STORAGE_SECRET_KEY` | With object storage | Conditional | Vendor-specific access key id + secret | IAM-style key rotation with dual-sign period. |
+| `OBJECT_STORAGE_PUBLIC_BASE_URL` | Production artifacts on | Conditional | `https://cdn.example/` base for public object URLs | When CDN or bucket URL changes, update and purge caches. |
+| `HTTP_AUTH_JWT_SECRET` | Staging + production | Yes | ≥32 bytes random (HS256) | Staged rotation with `HTTP_AUTH_JWT_SECRET_PREVIOUS` if configured; force re-login. |
+| `HTTP_AUTH_MODE` / `USER_JWT_MODE` | Production | Yes (explicit) | `hs256` or enterprise JWKS modes | Mode change is a rollout event (issuer/JWKS coordination). |
+| `MACHINE_JWT_SECRET` | Staging + production with machine gRPC | Yes when `MACHINE_JWT_MODE=hs256` | ≥32 bytes random, distinct from admin secret | Rotate with kiosk/firmware update window; use `MACHINE_JWT_SECRET_PREVIOUS` if supported. |
+| `MACHINE_JWT_MODE` | Production | Yes (explicit) | `hs256`, `ed25519`, etc. | Align with vending app build. |
+| `AUTH_ISSUER` / `MACHINE_JWT_ISSUER` | Production HS256 | Yes | HTTPS issuer URL string | Must match token `iss`; coordinate with all issuers. |
+| `COMMERCE_PAYMENT_WEBHOOK_SECRET` / `COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET` / `PAYMENT_WEBHOOK_SECRET` | Staging + production | Yes (signed webhooks) | Long random string | Coordinate with PSP dashboard secret rotation; support dual secret via JSON map if used. |
+| `COMMERCE_PAYMENT_PROVIDER` | Staging + production | Production **yes** | Live key: `stripe`, `vnpay`, …; staging may use `sandbox` | N/A; changing key switches adapter behavior — coordinate PSP. |
+| `PAYMENT_ENV` | Staging + production | Yes | Staging: `sandbox`; production: `live` | Environment flag only; must match PSP credentials. |
+| `PAYMENT_*` PSP credentials | Host only | Per integration | PSP-specific | Per PSP security guidance; never reuse staging keys in prod. |
+| `GHCR_PULL_TOKEN` / `GHCR_PULL_USERNAME` | VPS (optional) | If GHCR images private | PAT or read token + username | Rotate PAT; update on all nodes. |
+| `GRPC_TLS_CERT_FILE` / `GRPC_TLS_KEY_FILE` | Optional on-node TLS | If not behind TLS proxy | Filesystem paths to PEM | Cert renewal before expiry; reload instances. |
+
+**GitHub Actions** inventory (SSH, deploy paths, smoke tokens) remains in [`docs/contracts/deployment-secrets-contract.yml`](../contracts/deployment-secrets-contract.yml). Production workflow jobs that touch SSH use **`environment: production`** — configure secrets there so staging-only keys are not exposed to production deploy approvals.
+
+**Develop “environment”**: there is **no** dedicated develop VPS today (`DEVELOP_HOST` is not part of this contract). Branch **`develop`** drives **staging** automation (`Staging Deployment Contract` workflow after Security Release); real staging SSH/deploy is gated by **`ENABLE_REAL_STAGING_DEPLOY`** / **`ALLOW_STAGING_CONTRACT_ONLY`** (see **`deploy-develop.yml`**). Production uses **`deploy-prod.yml`** on **`main`** with the protected **`production`** environment.
+
+**Rollback** workflow `rollback-prod.yml` uses **`environment: production`** and digest pins only — it **must not** use staging SSH/DB **`STAGING_*` / `PREPROD_*`**.
+
+Structured machine-readable mirror: **`docs/contracts/deployment-secrets-contract.yml`** (`runtime_binding_matrix`).
+
 ## Contract and automation
 
 - **Authoritative list:** `docs/contracts/deployment-secrets-contract.yml` — all `secrets.*` and `vars.*` names used in:

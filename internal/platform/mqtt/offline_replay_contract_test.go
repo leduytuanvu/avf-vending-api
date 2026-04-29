@@ -110,7 +110,7 @@ func TestOfflineReplayContract_validSamplesAccepted(t *testing.T) {
 		t.Run(tc.file, func(t *testing.T) {
 			t.Parallel()
 			ing := &criticalIdentityIngest{}
-			err := Dispatch(ctx, prefix, deviceTopic(t, prefix, tc.channel), readSample(t, tc.file), ing, nil, nil)
+			err := Dispatch(ctx, TopicLayoutLegacy, prefix, deviceTopic(t, prefix, tc.channel), readSample(t, tc.file), ing, nil, nil)
 			require.NoError(t, err)
 		})
 	}
@@ -118,7 +118,7 @@ func TestOfflineReplayContract_validSamplesAccepted(t *testing.T) {
 	t.Run("valid_command_ack", func(t *testing.T) {
 		t.Parallel()
 		ing := &criticalIdentityIngest{}
-		err := Dispatch(ctx, prefix, deviceTopic(t, prefix, "commands/ack"), readSample(t, "valid_command_ack.json"), ing, nil, nil)
+		err := Dispatch(ctx, TopicLayoutLegacy, prefix, deviceTopic(t, prefix, "commands/ack"), readSample(t, "valid_command_ack.json"), ing, nil, nil)
 		require.NoError(t, err)
 		require.Len(t, ing.receipts, 1)
 		require.Equal(t, "cmd-ack:55555555-5555-5555-5555-555555555555:42:01JR8CMD", ing.receipts[0].DedupeKey)
@@ -135,7 +135,7 @@ func TestOfflineReplayContract_validSamplesAccepted(t *testing.T) {
 			},
 		}
 		bad := []byte(`{"sequence":1,"status":"acked","payload":{}}`)
-		err := Dispatch(ctx, prefix, deviceTopic(t, prefix, "commands/ack"), bad, ing, nil, hooks)
+		err := Dispatch(ctx, TopicLayoutLegacy, prefix, deviceTopic(t, prefix, "commands/ack"), bad, ing, nil, hooks)
 		require.Error(t, err)
 		require.Contains(t, rejects, "receipt_missing_dedupe")
 		require.Empty(t, ing.receipts)
@@ -150,7 +150,7 @@ func TestOfflineReplayContract_invalidCriticalRejected(t *testing.T) {
 	t.Run("missing_identity", func(t *testing.T) {
 		t.Parallel()
 		ing := &criticalIdentityIngest{}
-		err := Dispatch(ctx, prefix, deviceTopic(t, prefix, "events/vend"), readSample(t, "invalid_critical_missing_identity.json"), ing, nil, nil)
+		err := Dispatch(ctx, TopicLayoutLegacy, prefix, deviceTopic(t, prefix, "events/vend"), readSample(t, "invalid_critical_missing_identity.json"), ing, nil, nil)
 		require.ErrorIs(t, err, tel.ErrCriticalTelemetryMissingIdentity)
 	})
 
@@ -163,7 +163,7 @@ func TestOfflineReplayContract_invalidCriticalRejected(t *testing.T) {
 				rejects = append(rejects, reason)
 			},
 		}
-		err := Dispatch(ctx, prefix, deviceTopic(t, prefix, "events/vend"), readSample(t, "invalid_critical_wrong_machine_id.json"), ing, nil, hooks)
+		err := Dispatch(ctx, TopicLayoutLegacy, prefix, deviceTopic(t, prefix, "events/vend"), readSample(t, "invalid_critical_wrong_machine_id.json"), ing, nil, hooks)
 		require.Error(t, err)
 		require.Contains(t, rejects, "machine_id_mismatch")
 	})
@@ -177,7 +177,7 @@ func TestOfflineReplayContract_invalidCriticalRejected(t *testing.T) {
 				rejects = append(rejects, reason)
 			},
 		}
-		err := Dispatch(ctx, prefix, deviceTopic(t, prefix, "events/vend"), readSample(t, "invalid_occurred_at_malformed.json"), ing, nil, hooks)
+		err := Dispatch(ctx, TopicLayoutLegacy, prefix, deviceTopic(t, prefix, "events/vend"), readSample(t, "invalid_occurred_at_malformed.json"), ing, nil, hooks)
 		require.Error(t, err)
 		require.Contains(t, rejects, "json_decode")
 	})
@@ -189,8 +189,8 @@ func TestOfflineReplayContract_duplicateReplaySameIdempotency(t *testing.T) {
 	ctx := context.Background()
 	ing := &criticalIdentityIngest{}
 	payload := readSample(t, "duplicate_replay_vend.json")
-	require.NoError(t, Dispatch(ctx, prefix, deviceTopic(t, prefix, "events/vend"), payload, ing, nil, nil))
-	require.NoError(t, Dispatch(ctx, prefix, deviceTopic(t, prefix, "events/vend"), payload, ing, nil, nil))
+	require.NoError(t, Dispatch(ctx, TopicLayoutLegacy, prefix, deviceTopic(t, prefix, "events/vend"), payload, ing, nil, nil))
+	require.NoError(t, Dispatch(ctx, TopicLayoutLegacy, prefix, deviceTopic(t, prefix, "events/vend"), payload, ing, nil, nil))
 	require.Len(t, ing.telemetry, 2)
 	k1, err := tel.StableCriticalIdempotencyKey(ing.telemetry[0].MachineID, ing.telemetry[0].EventType, tel.CriticalIngestIdentity{
 		DedupeKey: ing.telemetry[0].DedupeKey,
@@ -216,7 +216,7 @@ func TestOfflineReplayContract_droppableHeartbeatWithoutDedupe(t *testing.T) {
 	ctx := context.Background()
 	ing := &criticalIdentityIngest{}
 	b := []byte(`{"occurred_at":"2026-04-24T12:00:00Z","payload":{"ping":true}}`)
-	require.NoError(t, Dispatch(ctx, prefix, deviceTopic(t, prefix, "state/heartbeat"), b, ing, nil, nil))
+	require.NoError(t, Dispatch(ctx, TopicLayoutLegacy, prefix, deviceTopic(t, prefix, "state/heartbeat"), b, ing, nil, nil))
 	require.Len(t, ing.telemetry, 1)
 	require.Equal(t, "state.heartbeat", ing.telemetry[0].EventType)
 	require.Equal(t, tel.CriticalityDroppableMetrics, tel.CriticalityForEventType(ing.telemetry[0].EventType))

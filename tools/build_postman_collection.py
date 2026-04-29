@@ -94,7 +94,7 @@ def main() -> None:
         ],
     }
     out = POSTMAN_DIR / "avf-vending-api.postman_collection.json"
-    out.write_text(json.dumps(collection, indent=2) + "\n", encoding="utf-8")
+    out.write_text(json.dumps(collection, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"Wrote {out}")
 
     def env_file(
@@ -116,7 +116,7 @@ def main() -> None:
                 for k, v, en in values
             ],
         }
-        p.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        p.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8", newline="\n")
         print(f"Wrote {p}")
 
     env_file(

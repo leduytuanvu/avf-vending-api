@@ -5,19 +5,26 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var httpRequestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+var redisRateLimitHitsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 	Namespace: "avf",
-	Subsystem: "http",
-	Name:      "request_duration_seconds",
-	Help:      "HTTP request duration for this process.",
-	Buckets:   prometheus.ExponentialBuckets(0.001, 2, 16),
-}, []string{"method", "route", "status"})
+	Subsystem: "redis",
+	Name:      "rate_limit_hits_total",
+	Help:      "Redis-backed HTTP rate limit denials by route class.",
+}, []string{"route_class"})
+
+func recordRedisRateLimitHit(routeClass string) {
+	if routeClass == "" {
+		routeClass = "unknown"
+	}
+	redisRateLimitHitsTotal.WithLabelValues(routeClass).Inc()
+}
 
 func routeLabel(r *http.Request) string {
 	rc := chi.RouteContext(r.Context())
@@ -37,11 +44,9 @@ func requestMetricsMiddleware() func(http.Handler) http.Handler {
 			ww := chimw.NewWrapResponseWriter(w, r.ProtoMajor)
 			start := time.Now()
 			next.ServeHTTP(ww, r)
-			httpRequestDuration.WithLabelValues(
-				r.Method,
-				routeLabel(r),
-				strconv.Itoa(ww.Status()),
-			).Observe(time.Since(start).Seconds())
+			status := strconv.Itoa(ww.Status())
+			rl := routeLabel(r)
+			productionmetrics.RecordHTTPRequest(r.Method, rl, status, time.Since(start))
 		})
 	}
 }

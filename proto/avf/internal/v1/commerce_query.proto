@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package avf.internal.v1;
+
+option go_package = "github.com/avf/avf-vending-api/internal/gen/avfinternalv1;internalv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+service InternalCommerceQueryService {
+  rpc GetOrderPaymentVendState(GetOrderPaymentVendStateRequest) returns (GetOrderPaymentVendStateResponse);
+}
+
+message GetOrderPaymentVendStateRequest {
+  string organization_id = 1;
+  string order_id = 2;
+  int32 slot_index = 3;
+}
+
+message CommerceOrderSummary {
+  string id = 1;
+  string organization_id = 2;
+  string machine_id = 3;
+  string status = 4;
+  string currency = 5;
+  int64 subtotal_minor = 6;
+  int64 tax_minor = 7;
+  int64 total_minor = 8;
+  google.protobuf.StringValue idempotency_key = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message CommerceVendSummary {
+  string id = 1;
+  string order_id = 2;
+  string machine_id = 3;
+  int32 slot_index = 4;
+  string product_id = 5;
+  string state = 6;
+  google.protobuf.StringValue final_command_attempt_id = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message CommercePaymentSummary {
+  string id = 1;
+  string order_id = 2;
+  string provider = 3;
+  string state = 4;
+  int64 amount_minor = 5;
+  string currency = 6;
+  google.protobuf.StringValue idempotency_key = 7;
+  string reconciliation_status = 8;
+  string settlement_status = 9;
+  google.protobuf.StringValue settlement_batch_id = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+message GetOrderPaymentVendStateResponse {
+  CommerceOrderSummary order = 1;
+  CommerceVendSummary vend = 2;
+  CommercePaymentSummary payment = 3;
+  bool payment_present = 4;
+}

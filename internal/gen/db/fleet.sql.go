@@ -7,10 +7,692 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const AdminCountNonRetiredMachinesForSite = `-- name: AdminCountNonRetiredMachinesForSite :one
+SELECT count(*)::bigint AS cnt
+FROM machines
+WHERE
+    organization_id = $1
+    AND site_id = $2
+    AND status NOT IN ('retired', 'decommissioned')
+`
+
+type AdminCountNonRetiredMachinesForSiteParams struct {
+	OrganizationID uuid.UUID
+	SiteID         uuid.UUID
+}
+
+func (q *Queries) AdminCountNonRetiredMachinesForSite(ctx context.Context, arg AdminCountNonRetiredMachinesForSiteParams) (int64, error) {
+	row := q.db.QueryRow(ctx, AdminCountNonRetiredMachinesForSite, arg.OrganizationID, arg.SiteID)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const AdminCountSitesForOrg = `-- name: AdminCountSitesForOrg :one
+SELECT count(*)::bigint AS cnt
+FROM sites
+WHERE
+    organization_id = $1
+    AND ($2::boolean IS FALSE OR status = $3::text)
+`
+
+type AdminCountSitesForOrgParams struct {
+	OrganizationID uuid.UUID
+	Column2        bool
+	Column3        string
+}
+
+func (q *Queries) AdminCountSitesForOrg(ctx context.Context, arg AdminCountSitesForOrgParams) (int64, error) {
+	row := q.db.QueryRow(ctx, AdminCountSitesForOrg, arg.OrganizationID, arg.Column2, arg.Column3)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const AdminCountTechniciansForOrg = `-- name: AdminCountTechniciansForOrg :one
+SELECT count(*)::bigint AS cnt
+FROM technicians
+WHERE
+    organization_id = $1
+    AND ($2::boolean IS FALSE OR id = $3::uuid)
+    AND ($4::boolean IS FALSE OR status = $5::text)
+    AND (
+        $6::boolean IS FALSE
+        OR display_name ILIKE ('%' || $7::text || '%')
+        OR (
+            email IS NOT NULL
+            AND email::text ILIKE ('%' || $7::text || '%')
+        )
+    )
+`
+
+type AdminCountTechniciansForOrgParams struct {
+	OrganizationID uuid.UUID
+	Column2        bool
+	Column3        uuid.UUID
+	Column4        bool
+	Column5        string
+	Column6        bool
+	Column7        string
+}
+
+func (q *Queries) AdminCountTechniciansForOrg(ctx context.Context, arg AdminCountTechniciansForOrgParams) (int64, error) {
+	row := q.db.QueryRow(ctx, AdminCountTechniciansForOrg,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+		arg.Column6,
+		arg.Column7,
+	)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const AdminGetSiteForOrg = `-- name: AdminGetSiteForOrg :one
+SELECT id, organization_id, region_id, name, address, timezone, code, contact_info, status, created_at, updated_at
+FROM sites
+WHERE
+    id = $1
+    AND organization_id = $2
+`
+
+type AdminGetSiteForOrgParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) AdminGetSiteForOrg(ctx context.Context, arg AdminGetSiteForOrgParams) (Site, error) {
+	row := q.db.QueryRow(ctx, AdminGetSiteForOrg, arg.ID, arg.OrganizationID)
+	var i Site
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.RegionID,
+		&i.Name,
+		&i.Address,
+		&i.Timezone,
+		&i.Code,
+		&i.ContactInfo,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AdminGetTechnicianAssignmentForOrg = `-- name: AdminGetTechnicianAssignmentForOrg :one
+SELECT id, organization_id, technician_id, machine_id, role, scope, status, valid_from, valid_to, created_by, created_at, updated_at
+FROM technician_machine_assignments
+WHERE
+    id = $1
+    AND organization_id = $2
+`
+
+type AdminGetTechnicianAssignmentForOrgParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) AdminGetTechnicianAssignmentForOrg(ctx context.Context, arg AdminGetTechnicianAssignmentForOrgParams) (TechnicianMachineAssignment, error) {
+	row := q.db.QueryRow(ctx, AdminGetTechnicianAssignmentForOrg, arg.ID, arg.OrganizationID)
+	var i TechnicianMachineAssignment
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.TechnicianID,
+		&i.MachineID,
+		&i.Role,
+		&i.Scope,
+		&i.Status,
+		&i.ValidFrom,
+		&i.ValidTo,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AdminGetTechnicianForOrg = `-- name: AdminGetTechnicianForOrg :one
+SELECT id, organization_id, display_name, email, phone, external_subject, status, created_at, updated_at
+FROM technicians
+WHERE
+    id = $1
+    AND organization_id = $2
+`
+
+type AdminGetTechnicianForOrgParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) AdminGetTechnicianForOrg(ctx context.Context, arg AdminGetTechnicianForOrgParams) (Technician, error) {
+	row := q.db.QueryRow(ctx, AdminGetTechnicianForOrg, arg.ID, arg.OrganizationID)
+	var i Technician
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.DisplayName,
+		&i.Email,
+		&i.Phone,
+		&i.ExternalSubject,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AdminInsertSite = `-- name: AdminInsertSite :one
+INSERT INTO sites (organization_id, region_id, name, address, timezone, code, status)
+VALUES ($1, $2, $3, $4, $5, $6, 'active')
+RETURNING id, organization_id, region_id, name, address, timezone, code, contact_info, status, created_at, updated_at
+`
+
+type AdminInsertSiteParams struct {
+	OrganizationID uuid.UUID
+	RegionID       pgtype.UUID
+	Name           string
+	Address        []byte
+	Timezone       string
+	Code           string
+}
+
+func (q *Queries) AdminInsertSite(ctx context.Context, arg AdminInsertSiteParams) (Site, error) {
+	row := q.db.QueryRow(ctx, AdminInsertSite,
+		arg.OrganizationID,
+		arg.RegionID,
+		arg.Name,
+		arg.Address,
+		arg.Timezone,
+		arg.Code,
+	)
+	var i Site
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.RegionID,
+		&i.Name,
+		&i.Address,
+		&i.Timezone,
+		&i.Code,
+		&i.ContactInfo,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AdminInsertTechnician = `-- name: AdminInsertTechnician :one
+INSERT INTO technicians (
+    organization_id,
+    display_name,
+    email,
+    phone,
+    external_subject,
+    status
+) VALUES (
+    $1,
+    $2,
+    NULLIF(btrim($3::text), ''),
+    NULLIF(btrim($4::text), ''),
+    NULLIF(btrim($5::text), ''),
+    'active'
+)
+RETURNING id, organization_id, display_name, email, phone, external_subject, status, created_at, updated_at
+`
+
+type AdminInsertTechnicianParams struct {
+	OrganizationID uuid.UUID
+	DisplayName    string
+	Column3        string
+	Column4        string
+	Column5        string
+}
+
+func (q *Queries) AdminInsertTechnician(ctx context.Context, arg AdminInsertTechnicianParams) (Technician, error) {
+	row := q.db.QueryRow(ctx, AdminInsertTechnician,
+		arg.OrganizationID,
+		arg.DisplayName,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+	)
+	var i Technician
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.DisplayName,
+		&i.Email,
+		&i.Phone,
+		&i.ExternalSubject,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AdminListSitesForOrg = `-- name: AdminListSitesForOrg :many
+SELECT id, organization_id, region_id, name, address, timezone, code, contact_info, status, created_at, updated_at
+FROM sites
+WHERE
+    organization_id = $1
+    AND ($2::boolean IS FALSE OR status = $3::text)
+ORDER BY
+    name ASC
+LIMIT $4 OFFSET $5
+`
+
+type AdminListSitesForOrgParams struct {
+	OrganizationID uuid.UUID
+	Column2        bool
+	Column3        string
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) AdminListSitesForOrg(ctx context.Context, arg AdminListSitesForOrgParams) ([]Site, error) {
+	rows, err := q.db.Query(ctx, AdminListSitesForOrg,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Site{}
+	for rows.Next() {
+		var i Site
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.RegionID,
+			&i.Name,
+			&i.Address,
+			&i.Timezone,
+			&i.Code,
+			&i.ContactInfo,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const AdminListTechniciansForOrg = `-- name: AdminListTechniciansForOrg :many
+SELECT id, organization_id, display_name, email, phone, external_subject, status, created_at, updated_at
+FROM technicians
+WHERE
+    organization_id = $1
+    AND ($2::boolean IS FALSE OR id = $3::uuid)
+    AND ($4::boolean IS FALSE OR status = $5::text)
+    AND (
+        $6::boolean IS FALSE
+        OR display_name ILIKE ('%' || $7::text || '%')
+        OR (
+            email IS NOT NULL
+            AND email::text ILIKE ('%' || $7::text || '%')
+        )
+    )
+ORDER BY
+    display_name ASC
+LIMIT $8 OFFSET $9
+`
+
+type AdminListTechniciansForOrgParams struct {
+	OrganizationID uuid.UUID
+	Column2        bool
+	Column3        uuid.UUID
+	Column4        bool
+	Column5        string
+	Column6        bool
+	Column7        string
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) AdminListTechniciansForOrg(ctx context.Context, arg AdminListTechniciansForOrgParams) ([]Technician, error) {
+	rows, err := q.db.Query(ctx, AdminListTechniciansForOrg,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+		arg.Column6,
+		arg.Column7,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Technician{}
+	for rows.Next() {
+		var i Technician
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.DisplayName,
+			&i.Email,
+			&i.Phone,
+			&i.ExternalSubject,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const AdminReleaseTechnicianAssignment = `-- name: AdminReleaseTechnicianAssignment :one
+UPDATE technician_machine_assignments
+SET
+    status = 'released',
+    valid_to = COALESCE(valid_to, now()),
+    updated_at = now()
+WHERE
+    id = $1
+    AND organization_id = $2
+RETURNING id, organization_id, technician_id, machine_id, role, scope, status, valid_from, valid_to, created_by, created_at, updated_at
+`
+
+type AdminReleaseTechnicianAssignmentParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) AdminReleaseTechnicianAssignment(ctx context.Context, arg AdminReleaseTechnicianAssignmentParams) (TechnicianMachineAssignment, error) {
+	row := q.db.QueryRow(ctx, AdminReleaseTechnicianAssignment, arg.ID, arg.OrganizationID)
+	var i TechnicianMachineAssignment
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.TechnicianID,
+		&i.MachineID,
+		&i.Role,
+		&i.Scope,
+		&i.Status,
+		&i.ValidFrom,
+		&i.ValidTo,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AdminReleaseTechnicianAssignmentForMachineUser = `-- name: AdminReleaseTechnicianAssignmentForMachineUser :one
+UPDATE technician_machine_assignments
+SET
+    status = 'released',
+    valid_to = COALESCE(valid_to, now()),
+    updated_at = now()
+WHERE
+    organization_id = $1
+    AND machine_id = $2
+    AND technician_id = $3
+    AND status = 'active'
+    AND valid_to IS NULL
+RETURNING id, organization_id, technician_id, machine_id, role, scope, status, valid_from, valid_to, created_by, created_at, updated_at
+`
+
+type AdminReleaseTechnicianAssignmentForMachineUserParams struct {
+	OrganizationID uuid.UUID
+	MachineID      uuid.UUID
+	TechnicianID   uuid.UUID
+}
+
+func (q *Queries) AdminReleaseTechnicianAssignmentForMachineUser(ctx context.Context, arg AdminReleaseTechnicianAssignmentForMachineUserParams) (TechnicianMachineAssignment, error) {
+	row := q.db.QueryRow(ctx, AdminReleaseTechnicianAssignmentForMachineUser, arg.OrganizationID, arg.MachineID, arg.TechnicianID)
+	var i TechnicianMachineAssignment
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.TechnicianID,
+		&i.MachineID,
+		&i.Role,
+		&i.Scope,
+		&i.Status,
+		&i.ValidFrom,
+		&i.ValidTo,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AdminRevokeActiveMachineActivationCodes = `-- name: AdminRevokeActiveMachineActivationCodes :exec
+UPDATE machine_activation_codes
+SET
+    status = 'revoked',
+    updated_at = now()
+WHERE
+    machine_id = $1
+    AND organization_id = $2
+    AND status = 'active'
+`
+
+type AdminRevokeActiveMachineActivationCodesParams struct {
+	MachineID      uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) AdminRevokeActiveMachineActivationCodes(ctx context.Context, arg AdminRevokeActiveMachineActivationCodesParams) error {
+	_, err := q.db.Exec(ctx, AdminRevokeActiveMachineActivationCodes, arg.MachineID, arg.OrganizationID)
+	return err
+}
+
+const AdminSetTechnicianStatus = `-- name: AdminSetTechnicianStatus :one
+UPDATE technicians
+SET
+    status = $3,
+    updated_at = now()
+WHERE
+    id = $1
+    AND organization_id = $2
+RETURNING id, organization_id, display_name, email, phone, external_subject, status, created_at, updated_at
+`
+
+type AdminSetTechnicianStatusParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	Status         string
+}
+
+func (q *Queries) AdminSetTechnicianStatus(ctx context.Context, arg AdminSetTechnicianStatusParams) (Technician, error) {
+	row := q.db.QueryRow(ctx, AdminSetTechnicianStatus, arg.ID, arg.OrganizationID, arg.Status)
+	var i Technician
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.DisplayName,
+		&i.Email,
+		&i.Phone,
+		&i.ExternalSubject,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AdminUpdateSiteRow = `-- name: AdminUpdateSiteRow :one
+UPDATE sites
+SET
+    region_id = $3,
+    name = $4,
+    address = $5,
+    timezone = $6,
+    code = $7,
+    status = $8,
+    updated_at = now()
+WHERE
+    id = $1
+    AND organization_id = $2
+RETURNING id, organization_id, region_id, name, address, timezone, code, contact_info, status, created_at, updated_at
+`
+
+type AdminUpdateSiteRowParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	RegionID       pgtype.UUID
+	Name           string
+	Address        []byte
+	Timezone       string
+	Code           string
+	Status         string
+}
+
+func (q *Queries) AdminUpdateSiteRow(ctx context.Context, arg AdminUpdateSiteRowParams) (Site, error) {
+	row := q.db.QueryRow(ctx, AdminUpdateSiteRow,
+		arg.ID,
+		arg.OrganizationID,
+		arg.RegionID,
+		arg.Name,
+		arg.Address,
+		arg.Timezone,
+		arg.Code,
+		arg.Status,
+	)
+	var i Site
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.RegionID,
+		&i.Name,
+		&i.Address,
+		&i.Timezone,
+		&i.Code,
+		&i.ContactInfo,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AdminUpdateTechnicianAssignment = `-- name: AdminUpdateTechnicianAssignment :one
+UPDATE technician_machine_assignments
+SET
+    role = $3,
+    valid_to = $4,
+    status = $5,
+    updated_at = now()
+WHERE
+    id = $1
+    AND organization_id = $2
+RETURNING id, organization_id, technician_id, machine_id, role, scope, status, valid_from, valid_to, created_by, created_at, updated_at
+`
+
+type AdminUpdateTechnicianAssignmentParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	Role           string
+	ValidTo        pgtype.Timestamptz
+	Status         string
+}
+
+func (q *Queries) AdminUpdateTechnicianAssignment(ctx context.Context, arg AdminUpdateTechnicianAssignmentParams) (TechnicianMachineAssignment, error) {
+	row := q.db.QueryRow(ctx, AdminUpdateTechnicianAssignment,
+		arg.ID,
+		arg.OrganizationID,
+		arg.Role,
+		arg.ValidTo,
+		arg.Status,
+	)
+	var i TechnicianMachineAssignment
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.TechnicianID,
+		&i.MachineID,
+		&i.Role,
+		&i.Scope,
+		&i.Status,
+		&i.ValidFrom,
+		&i.ValidTo,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AdminUpdateTechnicianRow = `-- name: AdminUpdateTechnicianRow :one
+UPDATE technicians
+SET
+    display_name = $3,
+    email = NULLIF(btrim($4::text), ''),
+    phone = NULLIF(btrim($5::text), ''),
+    external_subject = NULLIF(btrim($6::text), ''),
+    updated_at = now()
+WHERE
+    id = $1
+    AND organization_id = $2
+RETURNING id, organization_id, display_name, email, phone, external_subject, status, created_at, updated_at
+`
+
+type AdminUpdateTechnicianRowParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+	DisplayName    string
+	Column4        string
+	Column5        string
+	Column6        string
+}
+
+func (q *Queries) AdminUpdateTechnicianRow(ctx context.Context, arg AdminUpdateTechnicianRowParams) (Technician, error) {
+	row := q.db.QueryRow(ctx, AdminUpdateTechnicianRow,
+		arg.ID,
+		arg.OrganizationID,
+		arg.DisplayName,
+		arg.Column4,
+		arg.Column5,
+		arg.Column6,
+	)
+	var i Technician
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.DisplayName,
+		&i.Email,
+		&i.Phone,
+		&i.ExternalSubject,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
 
 const BumpMachineCommandSequence = `-- name: BumpMachineCommandSequence :one
 UPDATE machines
@@ -29,8 +711,35 @@ func (q *Queries) BumpMachineCommandSequence(ctx context.Context, id uuid.UUID) 
 	return command_sequence, err
 }
 
+const BumpMachineCredentialVersion = `-- name: BumpMachineCredentialVersion :one
+UPDATE machines
+SET
+    credential_version = credential_version + 1,
+    credential_rotated_at = now(),
+    rotated_at = now(),
+    credential_revoked_at = NULL,
+    revoked_at = NULL,
+    updated_at = now()
+WHERE
+    id = $1
+    AND organization_id = $2
+RETURNING credential_version
+`
+
+type BumpMachineCredentialVersionParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) BumpMachineCredentialVersion(ctx context.Context, arg BumpMachineCredentialVersionParams) (int64, error) {
+	row := q.db.QueryRow(ctx, BumpMachineCredentialVersion, arg.ID, arg.OrganizationID)
+	var credential_version int64
+	err := row.Scan(&credential_version)
+	return credential_version, err
+}
+
 const GetMachineByID = `-- name: GetMachineByID :one
-SELECT id, organization_id, site_id, hardware_profile_id, serial_number, timezone_override, name, status, command_sequence, created_at, updated_at
+SELECT id, organization_id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
 FROM machines
 WHERE id = $1
 `
@@ -44,18 +753,30 @@ func (q *Queries) GetMachineByID(ctx context.Context, id uuid.UUID) (Machine, er
 		&i.SiteID,
 		&i.HardwareProfileID,
 		&i.SerialNumber,
+		&i.Code,
+		&i.Model,
+		&i.CabinetType,
+		&i.CredentialVersion,
+		&i.LastSeenAt,
 		&i.TimezoneOverride,
 		&i.Name,
 		&i.Status,
 		&i.CommandSequence,
+		&i.CredentialRevokedAt,
+		&i.CredentialRotatedAt,
+		&i.CredentialLastUsedAt,
+		&i.ActivatedAt,
+		&i.RevokedAt,
+		&i.RotatedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PublishedPlanogramVersionID,
 	)
 	return i, err
 }
 
 const GetMachineByIDForUpdate = `-- name: GetMachineByIDForUpdate :one
-SELECT id, organization_id, site_id, hardware_profile_id, serial_number, timezone_override, name, status, command_sequence, created_at, updated_at
+SELECT id, organization_id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
 FROM machines
 WHERE id = $1
 FOR UPDATE
@@ -70,12 +791,55 @@ func (q *Queries) GetMachineByIDForUpdate(ctx context.Context, id uuid.UUID) (Ma
 		&i.SiteID,
 		&i.HardwareProfileID,
 		&i.SerialNumber,
+		&i.Code,
+		&i.Model,
+		&i.CabinetType,
+		&i.CredentialVersion,
+		&i.LastSeenAt,
 		&i.TimezoneOverride,
 		&i.Name,
 		&i.Status,
 		&i.CommandSequence,
+		&i.CredentialRevokedAt,
+		&i.CredentialRotatedAt,
+		&i.CredentialLastUsedAt,
+		&i.ActivatedAt,
+		&i.RevokedAt,
+		&i.RotatedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PublishedPlanogramVersionID,
+	)
+	return i, err
+}
+
+const GetMachineCredentialGate = `-- name: GetMachineCredentialGate :one
+SELECT
+    credential_version,
+    status,
+    organization_id,
+    credential_revoked_at
+FROM
+    machines
+WHERE
+    id = $1
+`
+
+type GetMachineCredentialGateRow struct {
+	CredentialVersion   int64
+	Status              string
+	OrganizationID      uuid.UUID
+	CredentialRevokedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetMachineCredentialGate(ctx context.Context, id uuid.UUID) (GetMachineCredentialGateRow, error) {
+	row := q.db.QueryRow(ctx, GetMachineCredentialGate, id)
+	var i GetMachineCredentialGateRow
+	err := row.Scan(
+		&i.CredentialVersion,
+		&i.Status,
+		&i.OrganizationID,
+		&i.CredentialRevokedAt,
 	)
 	return i, err
 }
@@ -102,7 +866,7 @@ func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organi
 }
 
 const GetSiteByID = `-- name: GetSiteByID :one
-SELECT id, organization_id, region_id, name, address, timezone, created_at
+SELECT id, organization_id, region_id, name, address, timezone, code, contact_info, status, created_at, updated_at
 FROM sites
 WHERE id = $1
 `
@@ -117,7 +881,11 @@ func (q *Queries) GetSiteByID(ctx context.Context, id uuid.UUID) (Site, error) {
 		&i.Name,
 		&i.Address,
 		&i.Timezone,
+		&i.Code,
+		&i.ContactInfo,
+		&i.Status,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -130,7 +898,9 @@ SELECT
     email,
     phone,
     external_subject,
-    created_at
+    status,
+    created_at,
+    updated_at
 FROM technicians
 WHERE
     id = $1
@@ -146,7 +916,9 @@ func (q *Queries) GetTechnicianByID(ctx context.Context, id uuid.UUID) (Technici
 		&i.Email,
 		&i.Phone,
 		&i.ExternalSubject,
+		&i.Status,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -157,6 +929,10 @@ INSERT INTO machines (
     site_id,
     hardware_profile_id,
     serial_number,
+    code,
+    model,
+    cabinet_type,
+    timezone_override,
     name,
     status
 ) VALUES (
@@ -165,20 +941,13 @@ INSERT INTO machines (
     $3,
     $4,
     $5,
-    $6
+    $6,
+    $7,
+    $8,
+    $9,
+    $10
 )
-RETURNING
-    id,
-    organization_id,
-    site_id,
-    hardware_profile_id,
-    serial_number,
-    timezone_override,
-    name,
-    status,
-    command_sequence,
-    created_at,
-    updated_at
+RETURNING id, organization_id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
 `
 
 type InsertMachineParams struct {
@@ -186,6 +955,10 @@ type InsertMachineParams struct {
 	SiteID            uuid.UUID
 	HardwareProfileID pgtype.UUID
 	SerialNumber      string
+	Code              string
+	Model             pgtype.Text
+	CabinetType       string
+	TimezoneOverride  pgtype.Text
 	Name              string
 	Status            string
 }
@@ -196,6 +969,10 @@ func (q *Queries) InsertMachine(ctx context.Context, arg InsertMachineParams) (M
 		arg.SiteID,
 		arg.HardwareProfileID,
 		arg.SerialNumber,
+		arg.Code,
+		arg.Model,
+		arg.CabinetType,
+		arg.TimezoneOverride,
 		arg.Name,
 		arg.Status,
 	)
@@ -206,70 +983,88 @@ func (q *Queries) InsertMachine(ctx context.Context, arg InsertMachineParams) (M
 		&i.SiteID,
 		&i.HardwareProfileID,
 		&i.SerialNumber,
+		&i.Code,
+		&i.Model,
+		&i.CabinetType,
+		&i.CredentialVersion,
+		&i.LastSeenAt,
 		&i.TimezoneOverride,
 		&i.Name,
 		&i.Status,
 		&i.CommandSequence,
+		&i.CredentialRevokedAt,
+		&i.CredentialRotatedAt,
+		&i.CredentialLastUsedAt,
+		&i.ActivatedAt,
+		&i.RevokedAt,
+		&i.RotatedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PublishedPlanogramVersionID,
 	)
 	return i, err
 }
 
 const InsertTechnicianMachineAssignment = `-- name: InsertTechnicianMachineAssignment :one
 INSERT INTO technician_machine_assignments (
-    technician_id,
-    machine_id,
-    role
-) VALUES (
-    $1,
-    $2,
-    $3
-)
-RETURNING
-    id,
+    organization_id,
     technician_id,
     machine_id,
     role,
-    valid_from,
-    valid_to,
-    created_at
+    scope,
+    created_by,
+    status
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    'active'
+)
+RETURNING id, organization_id, technician_id, machine_id, role, scope, status, valid_from, valid_to, created_by, created_at, updated_at
 `
 
 type InsertTechnicianMachineAssignmentParams struct {
-	TechnicianID uuid.UUID
-	MachineID    uuid.UUID
-	Role         string
+	OrganizationID uuid.UUID
+	TechnicianID   uuid.UUID
+	MachineID      uuid.UUID
+	Role           string
+	Scope          string
+	CreatedBy      pgtype.UUID
 }
 
 func (q *Queries) InsertTechnicianMachineAssignment(ctx context.Context, arg InsertTechnicianMachineAssignmentParams) (TechnicianMachineAssignment, error) {
-	row := q.db.QueryRow(ctx, InsertTechnicianMachineAssignment, arg.TechnicianID, arg.MachineID, arg.Role)
+	row := q.db.QueryRow(ctx, InsertTechnicianMachineAssignment,
+		arg.OrganizationID,
+		arg.TechnicianID,
+		arg.MachineID,
+		arg.Role,
+		arg.Scope,
+		arg.CreatedBy,
+	)
 	var i TechnicianMachineAssignment
 	err := row.Scan(
 		&i.ID,
+		&i.OrganizationID,
 		&i.TechnicianID,
 		&i.MachineID,
 		&i.Role,
+		&i.Scope,
+		&i.Status,
 		&i.ValidFrom,
 		&i.ValidTo,
+		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const ListMachinesByOrganizationID = `-- name: ListMachinesByOrganizationID :many
-SELECT
-    id,
-    organization_id,
-    site_id,
-    hardware_profile_id,
-    serial_number,
-    timezone_override,
-    name,
-    status,
-    command_sequence,
-    created_at,
-    updated_at
+SELECT id, organization_id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
 FROM machines
 WHERE
     organization_id = $1
@@ -292,12 +1087,24 @@ func (q *Queries) ListMachinesByOrganizationID(ctx context.Context, organization
 			&i.SiteID,
 			&i.HardwareProfileID,
 			&i.SerialNumber,
+			&i.Code,
+			&i.Model,
+			&i.CabinetType,
+			&i.CredentialVersion,
+			&i.LastSeenAt,
 			&i.TimezoneOverride,
 			&i.Name,
 			&i.Status,
 			&i.CommandSequence,
+			&i.CredentialRevokedAt,
+			&i.CredentialRotatedAt,
+			&i.CredentialLastUsedAt,
+			&i.ActivatedAt,
+			&i.RevokedAt,
+			&i.RotatedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PublishedPlanogramVersionID,
 		); err != nil {
 			return nil, err
 		}
@@ -310,18 +1117,7 @@ func (q *Queries) ListMachinesByOrganizationID(ctx context.Context, organization
 }
 
 const ListMachinesBySiteAndOrganization = `-- name: ListMachinesBySiteAndOrganization :many
-SELECT
-    id,
-    organization_id,
-    site_id,
-    hardware_profile_id,
-    serial_number,
-    timezone_override,
-    name,
-    status,
-    command_sequence,
-    created_at,
-    updated_at
+SELECT id, organization_id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
 FROM machines
 WHERE
     site_id = $1
@@ -350,12 +1146,24 @@ func (q *Queries) ListMachinesBySiteAndOrganization(ctx context.Context, arg Lis
 			&i.SiteID,
 			&i.HardwareProfileID,
 			&i.SerialNumber,
+			&i.Code,
+			&i.Model,
+			&i.CabinetType,
+			&i.CredentialVersion,
+			&i.LastSeenAt,
 			&i.TimezoneOverride,
 			&i.Name,
 			&i.Status,
 			&i.CommandSequence,
+			&i.CredentialRevokedAt,
+			&i.CredentialRotatedAt,
+			&i.CredentialLastUsedAt,
+			&i.ActivatedAt,
+			&i.RevokedAt,
+			&i.RotatedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PublishedPlanogramVersionID,
 		); err != nil {
 			return nil, err
 		}
@@ -374,6 +1182,10 @@ SELECT
     m.site_id,
     m.hardware_profile_id,
     m.serial_number,
+    m.code,
+    m.model,
+    m.credential_version,
+    m.last_seen_at,
     m.timezone_override,
     m.name,
     m.status,
@@ -399,21 +1211,43 @@ type ListMachinesForTechnicianExternalSubjectParams struct {
 	OrganizationID  uuid.UUID
 }
 
-func (q *Queries) ListMachinesForTechnicianExternalSubject(ctx context.Context, arg ListMachinesForTechnicianExternalSubjectParams) ([]Machine, error) {
+type ListMachinesForTechnicianExternalSubjectRow struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	SiteID            uuid.UUID
+	HardwareProfileID pgtype.UUID
+	SerialNumber      string
+	Code              string
+	Model             pgtype.Text
+	CredentialVersion int64
+	LastSeenAt        pgtype.Timestamptz
+	TimezoneOverride  pgtype.Text
+	Name              string
+	Status            string
+	CommandSequence   int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+func (q *Queries) ListMachinesForTechnicianExternalSubject(ctx context.Context, arg ListMachinesForTechnicianExternalSubjectParams) ([]ListMachinesForTechnicianExternalSubjectRow, error) {
 	rows, err := q.db.Query(ctx, ListMachinesForTechnicianExternalSubject, arg.ExternalSubject, arg.OrganizationID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Machine{}
+	items := []ListMachinesForTechnicianExternalSubjectRow{}
 	for rows.Next() {
-		var i Machine
+		var i ListMachinesForTechnicianExternalSubjectRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OrganizationID,
 			&i.SiteID,
 			&i.HardwareProfileID,
 			&i.SerialNumber,
+			&i.Code,
+			&i.Model,
+			&i.CredentialVersion,
+			&i.LastSeenAt,
 			&i.TimezoneOverride,
 			&i.Name,
 			&i.Status,
@@ -438,6 +1272,10 @@ SELECT
     m.site_id,
     m.hardware_profile_id,
     m.serial_number,
+    m.code,
+    m.model,
+    m.credential_version,
+    m.last_seen_at,
     m.timezone_override,
     m.name,
     m.status,
@@ -456,21 +1294,43 @@ ORDER BY
     m.name ASC
 `
 
-func (q *Queries) ListMachinesForTechnicianID(ctx context.Context, technicianID uuid.UUID) ([]Machine, error) {
+type ListMachinesForTechnicianIDRow struct {
+	ID                uuid.UUID
+	OrganizationID    uuid.UUID
+	SiteID            uuid.UUID
+	HardwareProfileID pgtype.UUID
+	SerialNumber      string
+	Code              string
+	Model             pgtype.Text
+	CredentialVersion int64
+	LastSeenAt        pgtype.Timestamptz
+	TimezoneOverride  pgtype.Text
+	Name              string
+	Status            string
+	CommandSequence   int64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+func (q *Queries) ListMachinesForTechnicianID(ctx context.Context, technicianID uuid.UUID) ([]ListMachinesForTechnicianIDRow, error) {
 	rows, err := q.db.Query(ctx, ListMachinesForTechnicianID, technicianID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Machine{}
+	items := []ListMachinesForTechnicianIDRow{}
 	for rows.Next() {
-		var i Machine
+		var i ListMachinesForTechnicianIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OrganizationID,
 			&i.SiteID,
 			&i.HardwareProfileID,
 			&i.SerialNumber,
+			&i.Code,
+			&i.Model,
+			&i.CredentialVersion,
+			&i.LastSeenAt,
 			&i.TimezoneOverride,
 			&i.Name,
 			&i.Status,
@@ -486,6 +1346,50 @@ func (q *Queries) ListMachinesForTechnicianID(ctx context.Context, technicianID 
 		return nil, err
 	}
 	return items, nil
+}
+
+const MarkMachineCredentialUsed = `-- name: MarkMachineCredentialUsed :exec
+UPDATE machines
+SET
+    credential_last_used_at = now()
+WHERE
+    id = $1
+    AND organization_id = $2
+`
+
+type MarkMachineCredentialUsedParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) MarkMachineCredentialUsed(ctx context.Context, arg MarkMachineCredentialUsedParams) error {
+	_, err := q.db.Exec(ctx, MarkMachineCredentialUsed, arg.ID, arg.OrganizationID)
+	return err
+}
+
+const RevokeMachineCredentials = `-- name: RevokeMachineCredentials :one
+UPDATE machines
+SET
+    credential_version = credential_version + 1,
+    credential_revoked_at = now(),
+    revoked_at = now(),
+    updated_at = now()
+WHERE
+    id = $1
+    AND organization_id = $2
+RETURNING credential_version
+`
+
+type RevokeMachineCredentialsParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) RevokeMachineCredentials(ctx context.Context, arg RevokeMachineCredentialsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, RevokeMachineCredentials, arg.ID, arg.OrganizationID)
+	var credential_version int64
+	err := row.Scan(&credential_version)
+	return credential_version, err
 }
 
 const TechnicianActiveAssignmentExists = `-- name: TechnicianActiveAssignmentExists :one
@@ -521,22 +1425,18 @@ SET
     name = $3,
     status = $4,
     hardware_profile_id = $5,
+    site_id = $6,
+    serial_number = $7,
+    code = $8,
+    model = $9,
+    cabinet_type = $10,
+    timezone_override = $11,
+    activated_at = CASE WHEN $4 = 'active' AND activated_at IS NULL THEN now() ELSE activated_at END,
     updated_at = now()
 WHERE
     id = $1
     AND organization_id = $2
-RETURNING
-    id,
-    organization_id,
-    site_id,
-    hardware_profile_id,
-    serial_number,
-    timezone_override,
-    name,
-    status,
-    command_sequence,
-    created_at,
-    updated_at
+RETURNING id, organization_id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
 `
 
 type UpdateMachineMetadataRowParams struct {
@@ -545,6 +1445,12 @@ type UpdateMachineMetadataRowParams struct {
 	Name              string
 	Status            string
 	HardwareProfileID pgtype.UUID
+	SiteID            uuid.UUID
+	SerialNumber      string
+	Code              string
+	Model             pgtype.Text
+	CabinetType       string
+	TimezoneOverride  pgtype.Text
 }
 
 func (q *Queries) UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachineMetadataRowParams) (Machine, error) {
@@ -554,6 +1460,12 @@ func (q *Queries) UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachin
 		arg.Name,
 		arg.Status,
 		arg.HardwareProfileID,
+		arg.SiteID,
+		arg.SerialNumber,
+		arg.Code,
+		arg.Model,
+		arg.CabinetType,
+		arg.TimezoneOverride,
 	)
 	var i Machine
 	err := row.Scan(
@@ -562,12 +1474,24 @@ func (q *Queries) UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachin
 		&i.SiteID,
 		&i.HardwareProfileID,
 		&i.SerialNumber,
+		&i.Code,
+		&i.Model,
+		&i.CabinetType,
+		&i.CredentialVersion,
+		&i.LastSeenAt,
 		&i.TimezoneOverride,
 		&i.Name,
 		&i.Status,
 		&i.CommandSequence,
+		&i.CredentialRevokedAt,
+		&i.CredentialRotatedAt,
+		&i.CredentialLastUsedAt,
+		&i.ActivatedAt,
+		&i.RevokedAt,
+		&i.RotatedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PublishedPlanogramVersionID,
 	)
 	return i, err
 }

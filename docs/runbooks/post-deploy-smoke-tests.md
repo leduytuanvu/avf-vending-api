@@ -63,3 +63,7 @@ If the token is set but `SMOKE_AUTH_READ_PATH` is empty, the tool skips the auth
 - **Production:** the deploy job should fail; automatic rollback may run if previous image refs are available. If rollback cannot run, the workflow emits explicit errors — follow production runbooks and use digest-pinned rollback when needed.
 
 The smoke suite is intentionally **non-destructive**: no POST/PUT/PATCH/DELETE, no admin-only mutations, and tokens are not printed.
+
+## After smoke: Prometheus sanity (operators)
+
+If HTTP checks pass but user impact is reported, open Grafana / Prometheus and confirm in the last 30 minutes: `http_errors_total` and `grpc_errors_total` are not spiking on `avf_api_metrics`, `probe_success` for `avf_app_readiness` is green per component, and mqtt-ingest scrape is up. Cross-check `docs/runbooks/observability-alerts.md` for the matching alert playbooks.

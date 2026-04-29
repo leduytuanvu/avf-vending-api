@@ -107,3 +107,82 @@ WHERE
             AND p.idempotency_key::text ILIKE ('%' || $11::text || '%')
         )
     );
+
+-- name: CommerceAdminListReconciliationCases :many
+SELECT
+    id,
+    organization_id,
+    case_type,
+    status,
+    severity,
+    order_id,
+    payment_id,
+    vend_session_id,
+    refund_id,
+    machine_id,
+    provider,
+    provider_event_id,
+    correlation_key,
+    reason,
+    metadata,
+    first_detected_at,
+    last_detected_at,
+    resolved_at,
+    resolved_by,
+    resolution_note
+FROM commerce_reconciliation_cases
+WHERE
+    organization_id = $1
+    AND ($2::boolean IS FALSE OR status = $3::text)
+    AND ($4::boolean IS FALSE OR case_type = $5::text)
+ORDER BY
+    last_detected_at DESC
+LIMIT $6 OFFSET $7;
+
+-- name: CommerceAdminCountReconciliationCases :one
+SELECT count(*)::bigint
+FROM commerce_reconciliation_cases
+WHERE
+    organization_id = $1
+    AND ($2::boolean IS FALSE OR status = $3::text)
+    AND ($4::boolean IS FALSE OR case_type = $5::text);
+
+-- name: CommerceAdminGetReconciliationCase :one
+SELECT
+    id,
+    organization_id,
+    case_type,
+    status,
+    severity,
+    order_id,
+    payment_id,
+    vend_session_id,
+    refund_id,
+    machine_id,
+    provider,
+    provider_event_id,
+    correlation_key,
+    reason,
+    metadata,
+    first_detected_at,
+    last_detected_at,
+    resolved_at,
+    resolved_by,
+    resolution_note
+FROM commerce_reconciliation_cases
+WHERE
+    organization_id = $1
+    AND id = $2;
+
+-- name: CommerceAdminResolveReconciliationCase :one
+UPDATE commerce_reconciliation_cases
+SET
+    status = $3,
+    resolved_at = now(),
+    resolved_by = $4,
+    resolution_note = $5
+WHERE
+    organization_id = $1
+    AND id = $2
+    AND status IN ('open', 'reviewing', 'escalated')
+RETURNING *;

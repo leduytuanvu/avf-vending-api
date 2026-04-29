@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/background/outboxmetrics"
+	"github.com/avf/avf-vending-api/internal/app/background/workermetrics"
 	appreliability "github.com/avf/avf-vending-api/internal/app/reliability"
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	domainreliability "github.com/avf/avf-vending-api/internal/domain/reliability"
+	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
 	"go.uber.org/zap"
 )
 
@@ -28,6 +31,8 @@ type WorkerDeps struct {
 	Reliability *appreliability.Service
 	Policy      appreliability.RecoveryPolicy
 	Limits      appreliability.ScanLimits
+	// OutboxBatchMaxItems when >0 overrides Limits.MaxItems for outbox publish planning only.
+	OutboxBatchMaxItems int32
 
 	OutboxList domainreliability.OutboxRepository
 	OutboxMark domaincommerce.OutboxMarkPublishedWriter
@@ -38,6 +43,9 @@ type WorkerDeps struct {
 	// CycleTimeout caps one pass of a periodic job. Zero uses EffectivePeriodicCycleTimeout(tick).
 	CycleTimeout time.Duration
 
+	// CycleBackoffAfterFailure sleeps extra after a failed cycle before the next ticker wake (bounded abuse backoff).
+	CycleBackoffAfterFailure time.Duration
+
 	OutboxTick         time.Duration
 	PaymentTimeoutTick time.Duration
 	StuckCommandTick   time.Duration
@@ -45,6 +53,8 @@ type WorkerDeps struct {
 	RetentionTick time.Duration
 	// TelemetryRetention prunes machine_state_transitions, incidents, rollups, diagnostic manifests (not financial OLTP).
 	TelemetryRetention func(ctx context.Context) error
+	// EnterpriseRetention prunes aged terminal operational rows (published outbox, resolved webhook events, terminal commands, dedupe, audit).
+	EnterpriseRetention func(ctx context.Context) error
 
 	// MQTTCommandAckTimeouts optionally marks MQTT dispatch attempts as ack_timeout once ack_deadline_at passes.
 	MQTTCommandAckTimeouts func(ctx context.Context, before time.Time) error
@@ -55,6 +65,14 @@ type WorkerDeps struct {
 
 	WorkflowOrchestration         workfloworch.Boundary
 	SchedulePaymentPendingTimeout bool
+
+	// OutboxLease enables SKIP LOCKED row leasing before JetStream publish (recommended for multi-replica workers).
+	OutboxLease *appreliability.OutboxLeaseParams
+	// OutboxOnly runs only the outbox dispatch ticker (no payment timeout / stuck command scans).
+	OutboxOnly bool
+
+	// DistributedLocker optional Redis lock so multi-replica worker pools serialize recovery ticks.
+	DistributedLocker platformredis.Locker
 }
 
 // DefaultWorkerTickSchedule returns conservative polling defaults for non-API processes.
@@ -80,6 +98,11 @@ func commerceOutboxFromReliability(ev domainreliability.OutboxEvent) domaincomme
 		LastPublishAttemptAt: ev.LastPublishAttemptAt,
 		NextPublishAfter:     ev.NextPublishAfter,
 		DeadLetteredAt:       ev.DeadLetteredAt,
+		Status:               ev.Status,
+		LockedBy:             ev.LockedBy,
+		LockedUntil:          ev.LockedUntil,
+		UpdatedAt:            ev.UpdatedAt,
+		MaxPublishAttempts:   ev.MaxPublishAttempts,
 	}
 }
 
@@ -96,7 +119,11 @@ func OutboxDispatchTick(ctx context.Context, deps WorkerDeps) error {
 		return nil
 	}
 	run := appreliability.ScanRunContext{Now: time.Now().UTC()}
-	plan, err := deps.Reliability.PlanOutboxRepublishBatch(ctx, run, deps.Policy, deps.Limits)
+	batchLimits := deps.Limits
+	if deps.OutboxBatchMaxItems > 0 {
+		batchLimits = appreliability.ScanLimits{MaxItems: deps.OutboxBatchMaxItems}
+	}
+	plan, err := deps.Reliability.PlanOutboxRepublishBatch(ctx, run, deps.Policy, batchLimits, deps.OutboxLease)
 	if err != nil {
 		return err
 	}
@@ -106,7 +133,9 @@ func OutboxDispatchTick(ctx context.Context, deps WorkerDeps) error {
 		fields := []zap.Field{
 			zap.Int64("outbox_pending_total", pl.PendingTotal),
 			zap.Int64("outbox_pending_due_now", pl.PendingDueNow),
+			zap.Int64("outbox_failed_pending_total", pl.FailedPendingTotal),
 			zap.Int64("outbox_dead_lettered_total", pl.DeadLetteredTotal),
+			zap.Int64("outbox_publishing_leased_total", pl.PublishingLeasedTotal),
 			zap.Int64("outbox_max_pending_attempts", pl.MaxPendingAttempts),
 		}
 		if pl.OldestPendingCreatedAt != nil {
@@ -146,11 +175,13 @@ func OutboxDispatchTick(ctx context.Context, deps WorkerDeps) error {
 			continue
 		}
 		ev := commerceOutboxFromReliability(d.Event)
+		pubRPCStart := time.Now()
 		if err := deps.OutboxPub.Publish(ctx, ev); err != nil {
 			publishFailed++
 			outboxmetrics.IncDispatchPublishFailed()
 			nextAttempt := d.Event.PublishAttemptCount + 1
-			dead := appreliability.OutboxWillDeadLetterThisFailure(d.Event.PublishAttemptCount, deps.Policy.OutboxMaxPublishAttempts)
+			maxAttempts := appreliability.EffectiveOutboxMaxAttempts(d.Event, deps.Policy.OutboxMaxPublishAttempts)
+			dead := appreliability.OutboxWillDeadLetterThisFailure(d.Event.PublishAttemptCount, maxAttempts)
 			var nextAfter *time.Time
 			if !dead {
 				bo := appreliability.OutboxPublishBackoffAfterFailure(nextAttempt, deps.Policy.OutboxPublishBackoffBase, deps.Policy.OutboxPublishBackoffMax)
@@ -205,6 +236,8 @@ func OutboxDispatchTick(ctx context.Context, deps WorkerDeps) error {
 			}
 			continue
 		}
+		pubRPCSeconds := time.Since(pubRPCStart).Seconds()
+		outboxmetrics.ObservePublishRPCSeconds(pubRPCSeconds)
 		marked, err := deps.OutboxMark.MarkOutboxPublished(ctx, d.Event.ID)
 		if err != nil {
 			if deps.Log != nil {
@@ -226,13 +259,26 @@ func OutboxDispatchTick(ctx context.Context, deps WorkerDeps) error {
 					zap.Int64("outbox_id", d.Event.ID),
 					zap.String("topic", d.Event.Topic),
 					zap.Int32("prior_publish_attempts", d.Event.PublishAttemptCount),
+					zap.Float64("outbox_publish_jetstream_rpc_seconds", pubRPCSeconds),
 					zap.Float64("outbox_publish_lag_seconds", lagSec),
 				)
 			}
 			if deps.OnOutboxPublishedMirror != nil {
 				pubAt := run.Now
 				ev.PublishedAt = &pubAt
-				deps.OnOutboxPublishedMirror(ev)
+				func() {
+					defer func() {
+						if r := recover(); r != nil && deps.Log != nil {
+							deps.Log.Warn("outbox analytics hook panic recovered",
+								zap.Any("panic", r),
+								zap.Int64("outbox_id", ev.ID),
+								zap.String("topic", ev.Topic),
+								zap.String("note", "analytics is cold-path only; outbox dispatch remains successful"),
+							)
+						}
+					}()
+					deps.OnOutboxPublishedMirror(ev)
+				}()
 			}
 		} else {
 			publishOkMarkNoop++
@@ -399,13 +445,30 @@ func StuckCommandScanTick(ctx context.Context, deps WorkerDeps) error {
 	return nil
 }
 
+func workerLockTTL(interval time.Duration) time.Duration {
+	if interval <= 0 {
+		return 2 * time.Minute
+	}
+	d := interval * 3
+	if d > 15*time.Minute {
+		return 15 * time.Minute
+	}
+	return d
+}
+
 // RunWorker starts explicit ticker-driven jobs and blocks until ctx is cancelled.
 func RunWorker(ctx context.Context, deps WorkerDeps) error {
 	if deps.Log == nil {
 		deps.Log = zap.NewNop()
 	}
 	ob, pay, cmd, ret := deps.OutboxTick, deps.PaymentTimeoutTick, deps.StuckCommandTick, deps.RetentionTick
-	if ob <= 0 || pay <= 0 || cmd <= 0 || ret <= 0 {
+	if deps.OutboxOnly {
+		if ob <= 0 {
+			dob, _, _, _ := DefaultWorkerTickSchedule()
+			ob = dob
+		}
+		pay, cmd, ret = 0, 0, 0
+	} else if ob <= 0 || pay <= 0 || cmd <= 0 || ret <= 0 {
 		dob, dpay, dcmd, dret := DefaultWorkerTickSchedule()
 		if ob <= 0 {
 			ob = dob
@@ -420,14 +483,15 @@ func RunWorker(ctx context.Context, deps WorkerDeps) error {
 			ret = dret
 		}
 	}
-	if ret > 0 && deps.TelemetryRetention == nil {
-		return fmt.Errorf("background: RetentionTick>0 requires WorkerDeps.TelemetryRetention (set both or set RetentionTick<=0)")
+	if ret > 0 && deps.TelemetryRetention == nil && deps.EnterpriseRetention == nil {
+		return fmt.Errorf("background: RetentionTick>0 requires WorkerDeps.TelemetryRetention or WorkerDeps.EnterpriseRetention (set a hook or set RetentionTick<=0)")
 	}
 
 	retentionNote := "disabled"
 	if ret > 0 {
 		retentionNote = ret.String()
 	}
+	leaseOn := deps.OutboxLease != nil && strings.TrimSpace(deps.OutboxLease.WorkerID) != ""
 	deps.Log.Info("worker_startup",
 		zap.Int32("outbox_batch_limit", deps.Limits.MaxItems),
 		zap.Duration("tick_outbox_dispatch", ob),
@@ -436,17 +500,42 @@ func RunWorker(ctx context.Context, deps WorkerDeps) error {
 		zap.String("tick_retention_hook", retentionNote),
 		zap.Duration("example_cycle_timeout_outbox", EffectivePeriodicCycleTimeout(ob, deps.CycleTimeout)),
 		zap.Bool("outbox_publisher_configured", deps.OutboxPub != nil),
+		zap.Bool("outbox_only_mode", deps.OutboxOnly),
+		zap.Bool("outbox_lease_enabled", leaseOn),
+		zap.Bool("distributed_redis_locks", deps.DistributedLocker != nil),
 		zap.String("note", "recovery scans are policy-bounded; outbox uses PlanOutboxRepublishBatch limits"),
 	)
 
 	var wg sync.WaitGroup
 	cto := deps.CycleTimeout
-	startTickerGoroutine(&wg, ctx, deps.Log, "outbox_dispatch", ob, cto, nil, func(c context.Context) error { return OutboxDispatchTick(c, deps) })
-	startTickerGoroutine(&wg, ctx, deps.Log, "payment_timeout_scan", pay, cto, nil, func(c context.Context) error { return PaymentTimeoutScanTick(c, deps) })
-	startTickerGoroutine(&wg, ctx, deps.Log, "stuck_command_scan", cmd, cto, nil, func(c context.Context) error { return StuckCommandScanTick(c, deps) })
+	bo := deps.CycleBackoffAfterFailure
+	hook := CycleEndMetricsHook(workermetrics.RecordWorkerCycleEnd)
+	startTickerGoroutine(&wg, ctx, deps.Log, "outbox_dispatch", ob, cto, bo, hook, func(c context.Context) error {
+		return platformredis.RunExclusive(c, deps.DistributedLocker, "worker_outbox_dispatch", workerLockTTL(ob), func(c context.Context) error {
+			return OutboxDispatchTick(c, deps)
+		})
+	})
+	if pay > 0 {
+		startTickerGoroutine(&wg, ctx, deps.Log, "payment_timeout_scan", pay, cto, bo, hook, func(c context.Context) error {
+			return platformredis.RunExclusive(c, deps.DistributedLocker, "worker_payment_timeout_scan", workerLockTTL(pay), func(c context.Context) error {
+				return PaymentTimeoutScanTick(c, deps)
+			})
+		})
+	}
+	if cmd > 0 {
+		startTickerGoroutine(&wg, ctx, deps.Log, "stuck_command_scan", cmd, cto, bo, hook, func(c context.Context) error {
+			return platformredis.RunExclusive(c, deps.DistributedLocker, "worker_stuck_command_scan", workerLockTTL(cmd), func(c context.Context) error {
+				return StuckCommandScanTick(c, deps)
+			})
+		})
+	}
 	if ret > 0 && deps.TelemetryRetention != nil {
 		tr := deps.TelemetryRetention
-		startTickerGoroutine(&wg, ctx, deps.Log, "telemetry_retention", ret, cto, nil, func(c context.Context) error { return tr(c) })
+		startTickerGoroutine(&wg, ctx, deps.Log, "telemetry_retention", ret, cto, bo, hook, func(c context.Context) error { return tr(c) })
+	}
+	if ret > 0 && deps.EnterpriseRetention != nil {
+		er := deps.EnterpriseRetention
+		startTickerGoroutine(&wg, ctx, deps.Log, "enterprise_retention", ret, cto, bo, hook, func(c context.Context) error { return er(c) })
 	}
 
 	<-ctx.Done()

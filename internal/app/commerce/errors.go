@@ -15,4 +15,10 @@ var (
 	ErrWebhookIdempotencyConflict = errors.New("commerce: webhook idempotency conflict")
 	// ErrWebhookProviderMismatch means the webhook body provider does not match the payment's provider.
 	ErrWebhookProviderMismatch = errors.New("commerce: webhook provider does not match payment provider")
+	// ErrWebhookAmountCurrencyMismatch means provider-reported amounts or currency disagree with persisted payment and order totals.
+	ErrWebhookAmountCurrencyMismatch = errors.New("commerce: webhook amount or currency does not match payment")
+	// ErrWebhookAfterTerminalOrder means the PSP notified after order/payment reached a terminal lifecycle state.
+	ErrWebhookAfterTerminalOrder = errors.New("commerce: webhook rejected because order or payment is already terminal")
+	// ErrIdempotencyPayloadConflict means an idempotency key was reused with different semantic payload than the original request.
+	ErrIdempotencyPayloadConflict = errors.New("commerce: idempotency key conflict")
 )

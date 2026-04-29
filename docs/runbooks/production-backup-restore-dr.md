@@ -42,6 +42,11 @@ Document outside the repo:
 - restore contact/owner
 - current RPO and RTO target
 
+Repo baseline target:
+
+- RPO: 15 minutes or better when PITR is enabled; otherwise the snapshot interval.
+- RTO: 4 hours until a measured drill proves a tighter target.
+
 ### Object storage
 
 Expected posture for production artifact buckets:
@@ -152,7 +157,7 @@ Do not:
 
 ## DR event: Redis unavailable
 
-This repo treats Redis as optional for features that actually need it.
+This repo treats Redis as non-authoritative. Redis-backed cache, rate limit, session, revocation, lock, and catalog/media cache data may be lost and rebuilt, but business state must come from PostgreSQL.
 
 First actions:
 
@@ -160,6 +165,31 @@ First actions:
 2. Check provider health and TLS/auth settings.
 3. If Redis is optional for the current release, consider disabling the affected feature wiring rather than failing the entire stack.
 4. If Redis is required for the current release, restore provider connectivity first, then restart only the affected processes.
+
+Do not use Redis as source data for PostgreSQL recovery.
+
+## DR event: NATS/JetStream loss
+
+NATS/JetStream is a replay buffer for outbox and telemetry, not the source of truth.
+
+First actions:
+
+1. Freeze non-essential deploys and check whether the failure is broker, network, disk, or stream retention related.
+2. For outbox, inspect PostgreSQL outbox pending/dead-letter rows before replaying or retrying.
+3. For telemetry, check stream age/byte retention and consumer lag. If retention expired, use device reconcile and Postgres state instead of assuming NATS has every event.
+4. Recreate streams from config when needed, then bring workers back gradually to avoid replay storms.
+5. Record any DLQ subjects and dead-letter row ids for operator review.
+
+## DR event: object storage loss
+
+Object storage contains media, OTA artifacts, and diagnostic bundles. PostgreSQL stores references, not blob contents.
+
+First actions:
+
+1. Confirm bucket/provider incident scope and whether versioning can recover deleted or corrupted objects.
+2. Keep app artifact/media writes disabled if corruption is suspected.
+3. Validate a known media object, an OTA artifact if OTA is enabled, and a diagnostic bundle object if present.
+4. Restore from provider versioning/backup before changing PostgreSQL metadata.
 
 ## DR event: fallback MQTT broker loss
 
@@ -190,3 +220,5 @@ After any real recovery or drill, store:
 - restored env file checksum
 - final health-check output
 - open gaps that still required manual provider work
+
+Related: [multi-region-dr-readiness.md](multi-region-dr-readiness.md).

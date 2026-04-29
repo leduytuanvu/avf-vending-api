@@ -2,7 +2,9 @@ package telemetryapp
 
 import (
 	"strings"
+	"time"
 
+	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -65,6 +67,21 @@ var (
 		Name:      "db_fail_consecutive_max",
 		Help:      "Max consecutive handler/Nak failures seen across telemetry durables since last success per durable.",
 	})
+
+	machineConnectivity = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "avf",
+		Subsystem: "machine",
+		Name:      "connectivity_total",
+		Help:      "Machine fleet connectivity count by status (online/offline) from the latest fleet snapshot collector.",
+	}, []string{"status"})
+
+	machineLastSeenAge = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "avf",
+		Subsystem: "machine",
+		Name:      "last_seen_age_seconds",
+		Help:      "Age of machine last-seen timestamps observed while processing heartbeat projections.",
+		Buckets:   prometheus.ExponentialBuckets(1, 2, 16),
+	})
 )
 
 func recordTelemetryDuplicate(reason string) {
@@ -73,4 +90,28 @@ func recordTelemetryDuplicate(reason string) {
 		r = "unknown"
 	}
 	telemetryDuplicateTotal.WithLabelValues(r).Inc()
+}
+
+// SetMachineConnectivityCounts updates the online/offline fleet snapshot gauges.
+func SetMachineConnectivityCounts(online, offline int64) {
+	if online < 0 {
+		online = 0
+	}
+	if offline < 0 {
+		offline = 0
+	}
+	machineConnectivity.WithLabelValues("online").Set(float64(online))
+	machineConnectivity.WithLabelValues("offline").Set(float64(offline))
+}
+
+func observeMachineLastSeenAge(at time.Time) {
+	if at.IsZero() {
+		return
+	}
+	age := time.Since(at.UTC())
+	if age < 0 {
+		age = 0
+	}
+	machineLastSeenAge.Observe(age.Seconds())
+	productionmetrics.ObserveMachineLastSeenAge(age)
 }

@@ -38,3 +38,34 @@ This runbook covers **verifying** production backup **evidence** and recording a
 ## Helper script
 
 - Evidence emission: `scripts/db/emit_restore_drill_workflow_evidence.py` (used by the workflow; not a restore executor).
+
+## Copy-paste verification
+
+Git Bash:
+
+```bash
+python scripts/ci/validate_backup_evidence.py path:backup-evidence.json
+```
+
+PowerShell:
+
+```powershell
+python scripts/ci/validate_backup_evidence.py path:backup-evidence.json
+```
+
+For a real restore drill, record:
+
+- source backup evidence ID or path
+- restore target (`staging`, `preprod`, or disposable DB)
+- expected and observed RPO/RTO
+- `APP_REGION`, `APP_NODE_NAME`, and `APP_INSTANCE_ID` used by the restored app process
+- migration/schema version after restore
+- `go run ./cmd/cli -validate-config` result for the restored environment
+- read-only smoke result from `docs/runbooks/field-smoke-tests.md`
+- Redis state posture (`empty`, `restored`, or `recreated`) and confirmation that Redis was not treated as authoritative
+- NATS/JetStream posture (`empty`, `recreated`, or `restored`) and whether replay was intentionally tested
+- object storage bucket/versioning validation for at least one media/artifact object when artifacts are enabled
+
+Never run a production restore from this workflow. Production restore remains an operator-controlled incident procedure.
+
+Use [multi-region-dr-readiness.md](multi-region-dr-readiness.md) for the complete DR validation checklist.

@@ -59,6 +59,50 @@ func TestDeviceTopicHelpers(t *testing.T) {
 	}
 }
 
+func TestOutboundEnterpriseCommandTopic(t *testing.T) {
+	mid := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	got := OutboundEnterpriseCommandTopic("avf/staging", mid)
+	want := "avf/staging/machines/11111111-1111-1111-1111-111111111111/commands"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
+func TestInboundEnterpriseDeviceTopicPatterns(t *testing.T) {
+	pats := InboundEnterpriseDeviceTopicPatterns("avf/staging")
+	if len(pats) != 13 {
+		t.Fatalf("expected 13 subscribe patterns, got %d: %#v", len(pats), pats)
+	}
+}
+
+func TestInboundTopicPatterns_enterpriseNonEmpty(t *testing.T) {
+	pats := InboundTopicPatterns(TopicLayoutEnterprise, "avf/staging")
+	if len(pats) < 10 {
+		t.Fatalf("expected enterprise patterns, got %d: %#v", len(pats), pats)
+	}
+}
+
+func TestOutboundCommandPublishTopicStrictRejectsInvalidInputs(t *testing.T) {
+	mid := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	if _, err := OutboundCommandPublishTopicStrict(TopicLayoutLegacy, "avf/+/devices", mid); err == nil {
+		t.Fatal("expected wildcard prefix rejection")
+	}
+	if _, err := OutboundCommandPublishTopicStrict(TopicLayoutLegacy, "avf/devices", uuid.Nil); err == nil {
+		t.Fatal("expected nil machine id rejection")
+	}
+	if _, err := DeviceTopicStrict("avf/devices", mid, "commands/#"); err == nil {
+		t.Fatal("expected wildcard relative topic rejection")
+	}
+}
+
+func TestParseDeviceTopicRejectsWildcardPrefix(t *testing.T) {
+	mid := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	_, _, err := ParseDeviceTopic("avf/+/devices", "avf/x/devices/"+mid.String()+"/commands/ack")
+	if err == nil {
+		t.Fatal("expected wildcard prefix rejection")
+	}
+}
+
 func TestInboundDeviceTopicPatterns(t *testing.T) {
 	pats := InboundDeviceTopicPatterns("  avf/devices/  ")
 	if len(pats) != 12 {

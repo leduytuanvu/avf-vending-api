@@ -2,7 +2,11 @@
 
 package telemetryapp
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 func TestTopicKind(t *testing.T) {
 	t.Parallel()
@@ -29,4 +33,7 @@ func TestNewIngestHooks(t *testing.T) {
 	h.OnDispatchOutcome(true, "pre/mid/telemetry", 10)
 	h.OnDispatchOutcome(false, "pre/mid/telemetry", 0)
 	h.OnIngressRejected("pre/mid/telemetry", "payload_too_large", 99)
+	if _, err := prometheus.DefaultGatherer.Gather(); err != nil {
+		t.Fatal(err)
+	}
 }

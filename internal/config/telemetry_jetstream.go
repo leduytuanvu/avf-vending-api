@@ -24,6 +24,10 @@ const (
 )
 
 // TelemetryJetStreamConfig bounds JetStream telemetry streams, durable consumers, and worker projection behavior.
+//
+// This path is ingestion/projection-only (AVF_TELEMETRY_*). It is not a substitute for the transactional
+// outbox: payment, commerce, inventory, command, and audit side effects must be written to outbox_events
+// in the same Postgres transaction as OLTP changes and published by cmd/worker from outbox_events.
 type TelemetryJetStreamConfig struct {
 	StreamMaxBytes int64
 	// StreamMaxAgeBaseline is the maximum age for the longest-lived stream (diagnostic); other streams scale by fixed ratios.

@@ -99,3 +99,18 @@ func TestAuthObservabilityMiddleware_PropagatesPrincipalFields(t *testing.T) {
 		t.Fatalf("operator_id=%v", got["operator_id"])
 	}
 }
+
+func TestCorrelationIDFromContext_PrefersRequestIDWithoutTrace(t *testing.T) {
+	t.Parallel()
+	var inner http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if cid := correlationIDFromContext(r.Context()); cid != "fixed-req-id" {
+			t.Fatalf("correlation id %q", cid)
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	h := appmw.RequestID(inner)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Request-ID", "fixed-req-id")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+}

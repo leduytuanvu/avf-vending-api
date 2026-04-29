@@ -66,6 +66,20 @@ func (s *stubLifecycleForWorkflow) SumNonFailedRefundAmountForPayment(context.Co
 	return 0, nil
 }
 
+func (s *stubLifecycleForWorkflow) FulfillSuccessfulVendAtomically(context.Context, FulfillSuccessfulVendInput) (FulfillSuccessfulVendResult, error) {
+	return FulfillSuccessfulVendResult{}, ErrNotConfigured
+}
+
+func (s *stubLifecycleForWorkflow) FulfillFailedVendAtomically(_ context.Context, _ FulfillFailedVendInput) (FulfillFailedVendResult, error) {
+	s.vend.State = "failed"
+	s.order.Status = "failed"
+	return FulfillFailedVendResult{
+		Order:  s.order,
+		Vend:   s.vend,
+		Replay: false,
+	}, nil
+}
+
 type stubOrderVendWorkflow struct{}
 
 func (stubOrderVendWorkflow) CreateOrderWithVendSession(context.Context, domaincommerce.CreateOrderVendInput) (domaincommerce.CreateOrderVendResult, error) {

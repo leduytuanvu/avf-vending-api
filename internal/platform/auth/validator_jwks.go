@@ -17,32 +17,38 @@ import (
 )
 
 type rs256JWKSCachedValidator struct {
-	url    string
-	client *http.Client
-	ttl    time.Duration
-	issuer string
-	aud    string
-	leeway time.Duration
+	url       string
+	client    *http.Client
+	ttl       time.Duration
+	issuer    string
+	audiences []string
+	leeway    time.Duration
 
 	mu      sync.RWMutex
 	byKid   map[string]*rsa.PublicKey
 	expires time.Time
 }
 
-func newRS256JWKSCachedValidator(url string, ttl time.Duration, issuer, audience string, leeway time.Duration) *rs256JWKSCachedValidator {
+func newRS256JWKSCachedValidator(url string, ttl time.Duration, issuer string, audiences []string, leeway time.Duration) *rs256JWKSCachedValidator {
 	if ttl <= 0 {
 		ttl = 5 * time.Minute
 	}
 	if leeway <= 0 {
 		leeway = DefaultClockLeeway
 	}
+	var auds []string
+	for _, a := range audiences {
+		if s := strings.TrimSpace(a); s != "" {
+			auds = append(auds, s)
+		}
+	}
 	return &rs256JWKSCachedValidator{
-		url:    strings.TrimSpace(url),
-		client: &http.Client{Timeout: 15 * time.Second},
-		ttl:    ttl,
-		issuer: strings.TrimSpace(issuer),
-		aud:    strings.TrimSpace(audience),
-		leeway: leeway,
+		url:       strings.TrimSpace(url),
+		client:    &http.Client{Timeout: 15 * time.Second},
+		ttl:       ttl,
+		issuer:    strings.TrimSpace(issuer),
+		audiences: auds,
+		leeway:    leeway,
 	}
 }
 
@@ -149,9 +155,6 @@ func (v *rs256JWKSCachedValidator) ValidateAccessToken(ctx context.Context, raw 
 	if v.issuer != "" {
 		opts = append(opts, jwt.WithIssuer(v.issuer))
 	}
-	if v.aud != "" {
-		opts = append(opts, jwt.WithAudience(v.aud))
-	}
 	parser := jwt.NewParser(opts...)
 
 	token, err := parser.ParseWithClaims(raw, jwt.MapClaims{}, func(t *jwt.Token) (any, error) {
@@ -163,6 +166,9 @@ func (v *rs256JWKSCachedValidator) ValidateAccessToken(ctx context.Context, raw 
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
+		return Principal{}, ErrUnauthenticated
+	}
+	if len(v.audiences) > 0 && !jwtMapClaimsAudienceAllowed(claims, v.audiences) {
 		return Principal{}, ErrUnauthenticated
 	}
 	payload, err := json.Marshal(claims)

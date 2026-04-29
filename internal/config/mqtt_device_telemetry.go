@@ -84,14 +84,14 @@ func (c *Config) validateProductionTelemetryNATS() error {
 	if c == nil {
 		return errors.New("config: nil")
 	}
-	if c.AppEnv != AppEnvProduction {
+	if c.AppEnv != AppEnvProduction && c.AppEnv != AppEnvStaging {
 		return nil
 	}
 	if strings.TrimSpace(c.NATS.URL) == "" {
-		return fmt.Errorf("config: APP_ENV=production requires non-empty %s (NATS/JetStream is mandatory for telemetry, outbox, and worker consumers; direct MQTT→Postgres telemetry hot path is disabled in production)", platformnats.EnvNATSURL)
+		return fmt.Errorf("config: APP_ENV=%s requires non-empty %s (NATS/JetStream is mandatory for telemetry, outbox, and worker consumers; direct MQTT→Postgres telemetry hot path is disabled in deployed environments)", c.AppEnv, platformnats.EnvNATSURL)
 	}
 	if c.MQTTDeviceTelemetry.LegacyPostgresIngest {
-		return fmt.Errorf("config: APP_ENV=production forbids %s=true (high-frequency telemetry must use the NATS bridge)", envTelemetryLegacyPostgresIngest)
+		return fmt.Errorf("config: APP_ENV=%s forbids %s=true (high-frequency telemetry must use the NATS bridge)", c.AppEnv, envTelemetryLegacyPostgresIngest)
 	}
 	return nil
 }

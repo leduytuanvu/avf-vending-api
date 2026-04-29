@@ -16,7 +16,7 @@ Verified in `internal/httpserver/server.go` and `mount*` helpers:
 
 ## P0 Swagger paths
 
-- `tools/openapi_verify_release.py` **`REQUIRED_P0_OPERATIONS`** (34 operations) must exist under `paths` with correct methods.
+- `tools/openapi_verify_release.py` enforces the full REST route-doc registry (`tools/build_openapi.py` **`REQUIRED_OPERATIONS`**)—every listed operation must exist under `paths` with the correct HTTP method.
 - `servers[0]` = `https://api.ldtv.dev`, `servers[1]` = `http://localhost:8080`.
 - Mirror guard: `TestOpenAPI_embeddedJSON_requiredP0PathsPresent` in `internal/httpserver/openapi_spec_test.go` (keep lists in sync).
 

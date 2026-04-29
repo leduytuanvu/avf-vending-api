@@ -17,7 +17,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
@@ -53,6 +53,8 @@ services:
     profiles: [broker]
     image: emqx/emqx:5.6.0
     container_name: avf-emqx
+    # Local development broker only. Port 1883 is intentionally exposed for
+    # APP_ENV=development; staging/production must use TLS on 8883 or managed MQTT.
     environment:
       EMQX_NAME: emqx
       EMQX_HOST: emqx

@@ -1,0 +1,61 @@
+{
+  "uid": "avf-vending-ops-local",
+  "title": "AVF Vending — local operations",
+  "tags": ["avf", "vending", "local"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP 5xx rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(avf_http_requests_total{status=~\"5..\"}[5m]))", "legendFormat": "5xx" }]
+    },
+    {
+      "id": 2,
+      "title": "gRPC error rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(avf_grpc_request_errors_total[5m])) by (service)", "legendFormat": "{{service}}" }]
+    },
+    {
+      "id": 3,
+      "title": "Command ACK timeouts",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(avf_mqtt_command_ack_timeout_total[5m])) by (reason)", "legendFormat": "{{reason}}" }]
+    },
+    {
+      "id": 4,
+      "title": "Payment and refund exceptions",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(avf_commerce_payment_paid_vend_failed_total[10m]))", "legendFormat": "paid vend failed" },
+        { "refId": "B", "expr": "sum(rate(avf_commerce_refund_pending_too_long_total[30m]))", "legendFormat": "refund pending too long" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Infrastructure lag and failures",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "max(avf_worker_outbox_oldest_pending_age_seconds)", "legendFormat": "outbox lag seconds" },
+        { "refId": "B", "expr": "sum(rate(avf_object_storage_failures_total[5m]))", "legendFormat": "object storage failures" },
+        { "refId": "C", "expr": "sum(rate(avf_redis_rate_limit_hits_total[5m]))", "legendFormat": "redis rate limits" }
+      ]
+    }
+  ],
+  "templating": { "list": [] },
+  "annotations": { "list": [] }
+}

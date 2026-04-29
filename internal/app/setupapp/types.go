@@ -87,10 +87,12 @@ type CabinetSlotConfigView struct {
 
 // MachineBootstrap aggregates machine identity, cabinets, primary assortment, and current cabinet slot configs.
 type MachineBootstrap struct {
-	Machine             domainfleet.Machine
-	Cabinets            []CabinetView
-	AssortmentProducts  []AssortmentProductView
-	CurrentCabinetSlots []CabinetSlotConfigView
+	Machine                     domainfleet.Machine
+	Cabinets                    []CabinetView
+	AssortmentProducts          []AssortmentProductView
+	CurrentCabinetSlots         []CabinetSlotConfigView
+	PublishedPlanogramVersionID *uuid.UUID
+	PublishedPlanogramVersionNo int32
 }
 
 // LegacySlotRow mirrors planogram-backed machine_slot_state joined to catalog (legacy read model).

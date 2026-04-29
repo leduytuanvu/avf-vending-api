@@ -93,7 +93,8 @@ SET is_primary = false
 FROM products p
 WHERE pi.product_id = p.id
   AND p.organization_id = $1
-  AND p.id = $2;
+  AND p.id = $2
+  AND pi.status = 'active';
 
 -- name: CatalogWriteInsertProductImage :one
 INSERT INTO product_images (
@@ -117,16 +118,52 @@ RETURNING *;
 -- name: CatalogWriteGetPrimaryProductImage :one
 SELECT *
 FROM product_images
-WHERE product_id = $1 AND is_primary = true
+WHERE product_id = $1 AND is_primary = true AND status = 'active'
 LIMIT 1;
 
--- name: CatalogWriteDeleteProductImage :exec
-DELETE FROM product_images pi
-USING products p
+-- name: CatalogWriteArchiveProductImage :one
+UPDATE product_images pi
+SET
+    status = 'archived',
+    is_primary = false,
+    media_version = media_version + 1,
+    updated_at = now()
+FROM products p
 WHERE pi.id = $3
   AND pi.product_id = p.id
   AND p.organization_id = $1
-  AND p.id = $2;
+  AND p.id = $2
+  AND pi.status = 'active'
+RETURNING pi.*;
+
+-- name: CatalogWriteUpdateProductImageMetadata :one
+UPDATE product_images pi
+SET
+    sort_order = COALESCE(sqlc.narg('sort_order')::int, sort_order),
+    is_primary = COALESCE(sqlc.narg('is_primary')::bool, is_primary),
+    alt_text = COALESCE(sqlc.narg('alt_text')::text, alt_text),
+    media_version = media_version + 1,
+    updated_at = now()
+FROM products p
+WHERE pi.id = $3
+  AND pi.product_id = p.id
+  AND p.organization_id = $1
+  AND p.id = $2
+  AND pi.status = 'active'
+RETURNING pi.*;
+
+-- name: CatalogWriteArchiveAllProductImagesForProduct :exec
+UPDATE product_images pi
+SET
+    status = 'archived',
+    is_primary = false,
+    media_version = media_version + 1,
+    updated_at = now()
+FROM products p
+WHERE pi.product_id = p.id
+  AND p.organization_id = $1
+  AND p.id = $2
+  AND pi.status = 'active';
 
 -- name: CatalogWriteProductReferencedPublishedPlanogram :one
 SELECT EXISTS (
@@ -147,3 +184,82 @@ SELECT EXISTS (
       AND vs.product_id = $2
       AND o.status IN ('created', 'quoted', 'paid', 'vending')
 ) AS v;
+
+-- name: CatalogWriteInsertPriceBook :one
+INSERT INTO price_books (
+    organization_id,
+    name,
+    currency,
+    effective_from,
+    effective_to,
+    is_default,
+    active,
+    scope_type,
+    site_id,
+    machine_id,
+    priority
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+)
+RETURNING *;
+
+-- name: CatalogWriteUpdatePriceBook :one
+UPDATE price_books pb
+SET
+    name = $3,
+    currency = $4,
+    effective_from = $5,
+    effective_to = $6,
+    is_default = $7,
+    active = $8,
+    scope_type = $9,
+    site_id = $10,
+    machine_id = $11,
+    priority = $12,
+    updated_at = now()
+WHERE pb.organization_id = $1 AND pb.id = $2
+RETURNING *;
+
+-- name: CatalogWriteDeactivatePriceBook :one
+UPDATE price_books pb
+SET
+    active = false,
+    updated_at = now()
+WHERE pb.organization_id = $1 AND pb.id = $2
+RETURNING *;
+
+-- name: CatalogWriteUpsertPriceBookItem :one
+INSERT INTO price_book_items (
+    organization_id,
+    price_book_id,
+    product_id,
+    unit_price_minor
+) VALUES (
+    $1, $2, $3, $4
+)
+ON CONFLICT (organization_id, price_book_id, product_id)
+DO UPDATE SET unit_price_minor = EXCLUDED.unit_price_minor
+RETURNING *;
+
+-- name: CatalogWriteDeletePriceBookItem :execrows
+DELETE FROM price_book_items pbi
+WHERE pbi.organization_id = $1 AND pbi.price_book_id = $2 AND pbi.product_id = $3;
+
+-- name: CatalogWriteDeleteAllPriceBookItems :exec
+DELETE FROM price_book_items pbi
+WHERE pbi.organization_id = $1 AND pbi.price_book_id = $2;
+
+-- name: CatalogWriteInsertPriceBookTarget :one
+INSERT INTO price_book_targets (
+    organization_id,
+    price_book_id,
+    site_id,
+    machine_id
+) VALUES (
+    $1, $2, $3, $4
+)
+RETURNING *;
+
+-- name: CatalogWriteDeletePriceBookTarget :execrows
+DELETE FROM price_book_targets pbt
+WHERE pbt.organization_id = $1 AND pbt.id = $2;

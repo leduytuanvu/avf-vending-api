@@ -48,6 +48,41 @@ FROM products p
 WHERE p.organization_id = $1
   AND p.id = $2;
 
+-- name: CatalogAdminGetPrimaryProductImageForOrg :one
+SELECT
+    pi.*
+FROM product_images pi
+JOIN products p ON p.id = pi.product_id
+INNER JOIN product_media pm ON pm.id = pi.id
+    AND pm.product_id = pi.product_id
+WHERE p.organization_id = $1
+  AND p.id = $2
+  AND pi.is_primary = true
+  AND pi.status = 'active';
+
+-- name: CatalogAdminListProductImagesForOrg :many
+SELECT
+    pi.*
+FROM product_images pi
+JOIN products p ON p.id = pi.product_id
+INNER JOIN product_media pm ON pm.id = pi.id
+    AND pm.product_id = pi.product_id
+WHERE p.organization_id = $1
+  AND p.id = $2
+  AND ($3::bool OR pi.status = 'active')
+ORDER BY pi.is_primary DESC, pi.sort_order ASC, pi.created_at ASC;
+
+-- name: CatalogAdminGetProductImageForOrg :one
+SELECT
+    pi.*
+FROM product_images pi
+JOIN products p ON p.id = pi.product_id
+INNER JOIN product_media pm ON pm.id = pi.id
+    AND pm.product_id = pi.product_id
+WHERE p.organization_id = $1
+  AND p.id = $2
+  AND pi.id = $3;
+
 -- name: CatalogAdminListPriceBooks :many
 SELECT
     pb.id,
@@ -57,20 +92,132 @@ SELECT
     pb.effective_from,
     pb.effective_to,
     pb.is_default,
+    pb.active,
     pb.scope_type,
     pb.site_id,
     pb.machine_id,
     pb.priority,
-    pb.created_at
+    pb.created_at,
+    pb.updated_at
 FROM price_books pb
 WHERE pb.organization_id = $1
+  AND ($4::bool OR pb.active = true)
 ORDER BY pb.effective_from DESC, pb.priority DESC, pb.name
 LIMIT $2 OFFSET $3;
 
 -- name: CatalogAdminCountPriceBooks :one
 SELECT count(*)::bigint AS cnt
 FROM price_books pb
-WHERE pb.organization_id = $1;
+WHERE pb.organization_id = $1
+  AND ($2::bool OR pb.active = true);
+
+-- name: CatalogAdminGetPriceBook :one
+SELECT
+    pb.id,
+    pb.organization_id,
+    pb.name,
+    pb.currency,
+    pb.effective_from,
+    pb.effective_to,
+    pb.is_default,
+    pb.active,
+    pb.scope_type,
+    pb.site_id,
+    pb.machine_id,
+    pb.priority,
+    pb.created_at,
+    pb.updated_at
+FROM price_books pb
+WHERE pb.organization_id = $1 AND pb.id = $2;
+
+-- name: CatalogAdminPricingPreviewBooksActiveAt :many
+SELECT
+    pb.id,
+    pb.organization_id,
+    pb.name,
+    pb.currency,
+    pb.effective_from,
+    pb.effective_to,
+    pb.is_default,
+    pb.active,
+    pb.scope_type,
+    pb.site_id,
+    pb.machine_id,
+    pb.priority,
+    pb.created_at,
+    pb.updated_at
+FROM price_books pb
+WHERE pb.organization_id = $1
+  AND pb.active = true
+  AND pb.effective_from <= $2::timestamptz
+  AND (pb.effective_to IS NULL OR pb.effective_to > $2::timestamptz);
+
+-- name: CatalogAdminListPriceBookTargetsByOrg :many
+SELECT
+    id,
+    organization_id,
+    price_book_id,
+    site_id,
+    machine_id,
+    created_at
+FROM price_book_targets
+WHERE organization_id = $1;
+
+-- name: CatalogAdminListPriceBookTargetsByBook :many
+SELECT
+    id,
+    organization_id,
+    price_book_id,
+    site_id,
+    machine_id,
+    created_at
+FROM price_book_targets
+WHERE organization_id = $1 AND price_book_id = $2
+ORDER BY created_at ASC, id ASC;
+
+-- name: CatalogAdminGetPriceBookTarget :one
+SELECT
+    id,
+    organization_id,
+    price_book_id,
+    site_id,
+    machine_id,
+    created_at
+FROM price_book_targets
+WHERE organization_id = $1 AND id = $2;
+
+-- name: CatalogAdminListPriceBookItems :many
+SELECT
+    id,
+    organization_id,
+    price_book_id,
+    product_id,
+    unit_price_minor,
+    created_at
+FROM price_book_items
+WHERE organization_id = $1 AND price_book_id = $2
+ORDER BY product_id ASC;
+
+-- name: CatalogAdminGetMachineSiteForOrg :one
+SELECT site_id
+FROM machines
+WHERE organization_id = $1 AND id = $2;
+
+-- name: CatalogAdminPriceBookItemsForPreview :many
+SELECT
+    pbi.price_book_id,
+    pbi.product_id,
+    pbi.unit_price_minor
+FROM price_book_items pbi
+WHERE pbi.organization_id = $1
+  AND pbi.price_book_id = ANY($2::uuid[])
+  AND pbi.product_id = ANY($3::uuid[]);
+
+-- name: CatalogAdminCountProductsInOrgByIDs :one
+SELECT count(*)::bigint
+FROM products p
+WHERE p.organization_id = $1
+  AND p.id = ANY($2::uuid[]);
 
 -- name: CatalogAdminListPlanograms :many
 SELECT
@@ -169,3 +316,18 @@ WHERE t.organization_id = $1;
 SELECT *
 FROM tags t
 WHERE t.organization_id = $1 AND t.id = $2;
+
+-- name: CatalogAdminListProductMediumRowsForProduct :many
+SELECT pm.*
+FROM product_media pm
+WHERE pm.organization_id = $1
+    AND pm.product_id = $2
+ORDER BY pm.sort_order ASC, pm.created_at ASC;
+
+-- name: CatalogAdminGetProductMediumForOrgProductImage :one
+SELECT pm.*
+FROM product_media pm
+JOIN products p ON p.id = pm.product_id
+WHERE p.organization_id = $1
+    AND pm.product_id = $2
+    AND pm.id = $3;

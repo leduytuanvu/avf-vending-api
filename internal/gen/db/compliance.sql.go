@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -24,7 +25,7 @@ INSERT INTO audit_logs (
     ip
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, organization_id, actor_type, actor_id, action, resource_type, resource_id, payload, ip, created_at
+RETURNING id, organization_id, actor_type, actor_id, action, resource_type, resource_id, payload, ip, legal_hold, created_at
 `
 
 type InsertAuditLogParams struct {
@@ -60,6 +61,7 @@ func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) 
 		&i.ResourceID,
 		&i.Payload,
 		&i.Ip,
+		&i.LegalHold,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -94,7 +96,20 @@ type ListAuditLogsForActorInOrganizationParams struct {
 	Limit          int32
 }
 
-func (q *Queries) ListAuditLogsForActorInOrganization(ctx context.Context, arg ListAuditLogsForActorInOrganizationParams) ([]AuditLog, error) {
+type ListAuditLogsForActorInOrganizationRow struct {
+	ID             int64
+	OrganizationID uuid.UUID
+	ActorType      string
+	ActorID        string
+	Action         string
+	ResourceType   string
+	ResourceID     pgtype.UUID
+	Payload        []byte
+	Ip             pgtype.Text
+	CreatedAt      time.Time
+}
+
+func (q *Queries) ListAuditLogsForActorInOrganization(ctx context.Context, arg ListAuditLogsForActorInOrganizationParams) ([]ListAuditLogsForActorInOrganizationRow, error) {
 	rows, err := q.db.Query(ctx, ListAuditLogsForActorInOrganization,
 		arg.OrganizationID,
 		arg.ActorType,
@@ -105,9 +120,9 @@ func (q *Queries) ListAuditLogsForActorInOrganization(ctx context.Context, arg L
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AuditLog{}
+	items := []ListAuditLogsForActorInOrganizationRow{}
 	for rows.Next() {
-		var i AuditLog
+		var i ListAuditLogsForActorInOrganizationRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OrganizationID,
@@ -155,15 +170,28 @@ type ListAuditLogsForOrganizationParams struct {
 	Limit          int32
 }
 
-func (q *Queries) ListAuditLogsForOrganization(ctx context.Context, arg ListAuditLogsForOrganizationParams) ([]AuditLog, error) {
+type ListAuditLogsForOrganizationRow struct {
+	ID             int64
+	OrganizationID uuid.UUID
+	ActorType      string
+	ActorID        string
+	Action         string
+	ResourceType   string
+	ResourceID     pgtype.UUID
+	Payload        []byte
+	Ip             pgtype.Text
+	CreatedAt      time.Time
+}
+
+func (q *Queries) ListAuditLogsForOrganization(ctx context.Context, arg ListAuditLogsForOrganizationParams) ([]ListAuditLogsForOrganizationRow, error) {
 	rows, err := q.db.Query(ctx, ListAuditLogsForOrganization, arg.OrganizationID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AuditLog{}
+	items := []ListAuditLogsForOrganizationRow{}
 	for rows.Next() {
-		var i AuditLog
+		var i ListAuditLogsForOrganizationRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OrganizationID,

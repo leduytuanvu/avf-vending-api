@@ -14,6 +14,21 @@ type Client struct {
 	JS   natssrv.JetStreamContext
 }
 
+// Health verifies the NATS connection and JetStream API are usable.
+func (c *Client) Health(ctx context.Context) error {
+	if c == nil || c.Conn == nil || c.JS == nil {
+		return fmt.Errorf("nats: nil client")
+	}
+	if !c.Conn.IsConnected() {
+		return fmt.Errorf("nats: connection is not connected")
+	}
+	_, err := c.JS.AccountInfo(natssrv.Context(ctx))
+	if err != nil {
+		return fmt.Errorf("nats: jetstream account info: %w", err)
+	}
+	return nil
+}
+
 // ConnectJetStream opens NATS and prepares JetStream. Pass url from NATS_URL (e.g. nats://127.0.0.1:4222).
 func ConnectJetStream(ctx context.Context, url string, name string) (*Client, error) {
 	if url == "" {

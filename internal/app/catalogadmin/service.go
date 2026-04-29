@@ -4,27 +4,103 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Service provides catalog admin queries and writes for HTTP APIs.
 type Service struct {
-	q    *db.Queries
-	pool *pgxpool.Pool
+	q              *db.Queries
+	pool           *pgxpool.Pool
+	audit          compliance.EnterpriseRecorder
+	promotionAudit func(context.Context, PromotionAuditEvent)
+	media          ProductMediaDeps
+	cache          CatalogCacheInvalidator
+}
+
+type CatalogCacheInvalidator interface {
+	BumpOrganizationMedia(ctx context.Context, organizationID uuid.UUID)
 }
 
 // NewService constructs a catalog admin service (reads and writes).
-func NewService(q *db.Queries, pool *pgxpool.Pool) (*Service, error) {
+// audit may be nil (no enterprise audit rows). Optional ProductMediaDeps enables deterministic object keys (org/.../products/.../display.webp) when Store is non-nil.
+func NewService(q *db.Queries, pool *pgxpool.Pool, audit compliance.EnterpriseRecorder, media ...ProductMediaDeps) (*Service, error) {
 	if q == nil {
 		return nil, fmt.Errorf("catalogadmin: nil Queries")
 	}
 	if pool == nil {
 		return nil, fmt.Errorf("catalogadmin: nil pool")
 	}
-	return &Service{q: q, pool: pool}, nil
+	var m ProductMediaDeps
+	if len(media) > 0 {
+		m = media[0]
+	}
+	if m.MaxUploadBytes <= 0 {
+		m.MaxUploadBytes = 10 << 20
+	}
+	if m.Store != nil && m.PresignTTL <= 0 {
+		m.PresignTTL = 15 * time.Minute
+	}
+	return &Service{q: q, pool: pool, audit: audit, media: m}, nil
+}
+
+func (s *Service) SetCatalogCacheInvalidator(cache CatalogCacheInvalidator) {
+	if s != nil {
+		s.cache = cache
+	}
+}
+
+func (s *Service) bumpCatalogCache(ctx context.Context, organizationID uuid.UUID) {
+	if s == nil || s.cache == nil || organizationID == uuid.Nil {
+		return
+	}
+	s.cache.BumpOrganizationMedia(ctx, organizationID)
+}
+
+func (s *Service) mediaMaxBytes() int64 {
+	if s == nil {
+		return 10 << 20
+	}
+	if s.media.MaxUploadBytes > 0 {
+		return s.media.MaxUploadBytes
+	}
+	return 10 << 20
+}
+
+// UsesDeterministicProductMedia is true when object storage copies artifact payloads into org/.../products/... keys (artifacts subsystem configured).
+func (s *Service) UsesDeterministicProductMedia() bool {
+	return s != nil && s.media.Store != nil
+}
+
+// GetPrimaryProductImageForOrg returns the primary image row for a product within an organization (ErrNoRows if none).
+func (s *Service) GetPrimaryProductImageForOrg(ctx context.Context, organizationID, productID uuid.UUID) (db.ProductImage, error) {
+	if s == nil {
+		return db.ProductImage{}, errors.New("catalogadmin: nil service")
+	}
+	if organizationID == uuid.Nil || productID == uuid.Nil {
+		return db.ProductImage{}, ErrOrganizationRequired
+	}
+	return s.q.CatalogAdminGetPrimaryProductImageForOrg(ctx, db.CatalogAdminGetPrimaryProductImageForOrgParams{
+		OrganizationID: organizationID,
+		ID:             productID,
+	})
+}
+
+// PrimaryProductImageOrNil loads the primary image when present; returns (nil, nil) when no primary image exists.
+func (s *Service) PrimaryProductImageOrNil(ctx context.Context, organizationID, productID uuid.UUID) (*db.ProductImage, error) {
+	img, err := s.GetPrimaryProductImageForOrg(ctx, organizationID, productID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &img, nil
 }
 
 // ListProductsParams filters and pages products for an organization.
@@ -90,22 +166,34 @@ func (s *Service) GetProduct(ctx context.Context, organizationID, productID uuid
 	return row, nil
 }
 
-// ListPriceBooks returns price books for the organization.
-func (s *Service) ListPriceBooks(ctx context.Context, organizationID uuid.UUID, limit, offset int32) ([]db.PriceBook, int64, error) {
+// ListPriceBooksParams filters price books for pagination.
+type ListPriceBooksParams struct {
+	OrganizationID  uuid.UUID
+	Limit           int32
+	Offset          int32
+	IncludeInactive bool
+}
+
+// ListPriceBooks returns price books for the organization (active only unless IncludeInactive).
+func (s *Service) ListPriceBooks(ctx context.Context, p ListPriceBooksParams) ([]db.PriceBook, int64, error) {
 	if s == nil {
 		return nil, 0, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil {
+	if p.OrganizationID == uuid.Nil {
 		return nil, 0, ErrOrganizationRequired
 	}
-	cnt, err := s.q.CatalogAdminCountPriceBooks(ctx, organizationID)
+	cnt, err := s.q.CatalogAdminCountPriceBooks(ctx, db.CatalogAdminCountPriceBooksParams{
+		OrganizationID: p.OrganizationID,
+		Column2:        p.IncludeInactive,
+	})
 	if err != nil {
 		return nil, 0, err
 	}
 	rows, err := s.q.CatalogAdminListPriceBooks(ctx, db.CatalogAdminListPriceBooksParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-		Offset:         offset,
+		OrganizationID: p.OrganizationID,
+		Limit:          p.Limit,
+		Offset:         p.Offset,
+		Column4:        p.IncludeInactive,
 	})
 	if err != nil {
 		return nil, 0, err

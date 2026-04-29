@@ -34,6 +34,18 @@ type Principal struct {
 	MachineIDs     []uuid.UUID
 	TechnicianID   uuid.UUID
 	ExpiresAt      time.Time
+	// AccountStatus comes from JWT claim account_status when present (e.g. interactive login JWTs). Empty means unknown/legacy and is treated as active for routing.
+	AccountStatus string
+	// JWTAudience is the raw JWT "aud" claim when a single audience was present (best-effort).
+	JWTAudience string
+	// JWTType is the JWT "typ" claim when present (e.g. machine for vending runtime tokens).
+	JWTType string
+	// JTI is the JWT ID claim when present (access-token revocation / logout).
+	JTI string
+	// TokenUse distinguishes interactive access vs MFA challenge JWTs when present.
+	TokenUse string
+	// MFAEnrollment is true when the MFA pending JWT was issued for first-time MFA provisioning.
+	MFAEnrollment bool
 }
 
 // Actor returns stable audit tuple for this principal.
@@ -110,7 +122,23 @@ func (p Principal) CanAccessMachineRead(machineID uuid.UUID) bool {
 	return p.AllowsMachine(machineID)
 }
 
-// CanAccessAdminRoutes is true for platform or org administrators.
+// InteractiveAccountDisabled reports whether this interactive principal is blocked by account status (JWT claim).
+func (p Principal) InteractiveAccountDisabled() bool {
+	if p.IsMachinePrincipal() {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(p.AccountStatus), "disabled")
+}
+
+// CanAccessAdminRoutes reports whether the principal has any mapped RBAC permission for interactive admin APIs.
 func (p Principal) CanAccessAdminRoutes() bool {
-	return p.HasAnyRole(RolePlatformAdmin, RoleOrgAdmin)
+	if p.IsMachinePrincipal() {
+		return false
+	}
+	for _, role := range p.Roles {
+		if len(PermissionsForRole(role)) > 0 {
+			return true
+		}
+	}
+	return false
 }
