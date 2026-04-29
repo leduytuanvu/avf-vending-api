@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 type machineSaleServer struct {
@@ -150,10 +151,13 @@ func (s *machineTelemetryServer) PushCriticalEvent(ctx context.Context, req *mac
 	}
 	ev := req.GetEvent()
 	if ev != nil && strings.TrimSpace(req.GetSeverity()) != "" {
-		cp := *ev
-		cp.Attributes = cloneStringMap(ev.GetAttributes())
-		cp.Attributes["severity"] = strings.TrimSpace(req.GetSeverity())
-		ev = &cp
+		cloned, ok := proto.Clone(ev).(*machinev1.TelemetryEvent)
+		if !ok {
+			return nil, status.Error(codes.Internal, "failed to clone telemetry event")
+		}
+		cloned.Attributes = cloneStringMap(ev.GetAttributes())
+		cloned.Attributes["severity"] = strings.TrimSpace(req.GetSeverity())
+		ev = cloned
 	}
 	out, err := s.SubmitTelemetryBatch(ctx, &machinev1.SubmitTelemetryBatchRequest{
 		Context: req.GetContext(),
