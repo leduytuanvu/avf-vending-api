@@ -1,9 +1,9 @@
 -- P0.5 Enterprise admin auth: MFA factors, durable sessions mirror, login attempts audit,
 -- password_reset_tokens naming + lifecycle columns, refresh token metadata.
 
-BEGIN;
-
+-- +goose Up
 ALTER TABLE auth_refresh_tokens ADD COLUMN IF NOT EXISTS ip_address text;
+
 ALTER TABLE auth_refresh_tokens ADD COLUMN IF NOT EXISTS user_agent text;
 
 CREATE TABLE IF NOT EXISTS admin_mfa_factors (
@@ -99,4 +99,42 @@ WHERE
 
 CREATE INDEX ix_password_reset_tokens_user_created ON password_reset_tokens (user_id, created_at DESC);
 
-COMMIT;
+-- +goose Down
+DROP TABLE IF EXISTS admin_sessions;
+
+DROP TABLE IF EXISTS admin_mfa_factors;
+
+DROP TABLE IF EXISTS admin_login_attempts;
+
+ALTER TABLE auth_refresh_tokens DROP COLUMN IF EXISTS ip_address;
+
+ALTER TABLE auth_refresh_tokens DROP COLUMN IF EXISTS user_agent;
+
+DROP INDEX IF EXISTS ix_password_reset_tokens_user_created;
+
+DROP INDEX IF EXISTS ux_password_reset_tokens_active_hash;
+
+ALTER TABLE password_reset_tokens DROP CONSTRAINT IF EXISTS ck_password_reset_tokens_status;
+
+UPDATE password_reset_tokens
+SET used_at = COALESCE(used_at, now())
+WHERE used_at IS NULL
+    AND status IS NOT NULL
+    AND status <> 'active';
+
+ALTER TABLE password_reset_tokens DROP COLUMN IF EXISTS revoked_at;
+
+ALTER TABLE password_reset_tokens DROP COLUMN IF EXISTS status;
+
+ALTER TABLE password_reset_tokens DROP COLUMN IF EXISTS organization_id;
+
+ALTER TABLE password_reset_tokens RENAME COLUMN user_id TO account_id;
+
+ALTER TABLE password_reset_tokens RENAME TO auth_password_reset_tokens;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_auth_password_reset_tokens_active_hash
+    ON auth_password_reset_tokens (token_hash)
+    WHERE used_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS ix_auth_password_reset_tokens_account_created
+    ON auth_password_reset_tokens (account_id, created_at DESC);

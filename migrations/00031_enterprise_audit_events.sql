@@ -1,5 +1,6 @@
 -- P1.4 enterprise audit trail (audit_events). Distinct from legacy audit_logs (command/workflow rows).
 
+-- +goose Up
 CREATE TABLE audit_events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
@@ -35,3 +36,14 @@ WHERE
 CREATE INDEX ix_audit_events_org_resource ON audit_events (organization_id, resource_type, resource_id)
 WHERE
     resource_id IS NOT NULL;
+
+-- +goose Down
+DROP INDEX IF EXISTS ix_audit_events_org_resource;
+
+DROP INDEX IF EXISTS ix_audit_events_org_actor;
+
+DROP INDEX IF EXISTS ix_audit_events_org_action;
+
+DROP INDEX IF EXISTS ix_audit_events_org_created;
+
+DROP TABLE IF EXISTS audit_events;

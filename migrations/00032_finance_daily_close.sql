@@ -1,5 +1,6 @@
 -- Immutable finance daily close snapshot plus adjustment ledger hooks for corrections.
 
+-- +goose Up
 CREATE TABLE finance_daily_closes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
@@ -45,3 +46,16 @@ CREATE TABLE finance_daily_close_adjustments (
 CREATE INDEX ix_finance_daily_close_adjustments_close ON finance_daily_close_adjustments (daily_close_id);
 
 COMMENT ON TABLE finance_daily_close_adjustments IS 'Post-close corrections; immutable daily_close rows are never updated in place.';
+
+-- +goose Down
+DROP INDEX IF EXISTS ix_finance_daily_close_adjustments_close;
+
+DROP TABLE IF EXISTS finance_daily_close_adjustments;
+
+COMMENT ON TABLE finance_daily_closes IS NULL;
+
+DROP INDEX IF EXISTS ix_finance_daily_closes_org_date;
+
+DROP INDEX IF EXISTS ux_finance_daily_closes_scope;
+
+DROP TABLE IF EXISTS finance_daily_closes;

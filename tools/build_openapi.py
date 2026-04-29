@@ -4191,7 +4191,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "organizationId": _U2,
         "closeDate": "2026-04-27",
         "timezone": "Asia/Bangkok",
-        "idempotencyKey": "daily-close-001",
+        "idempotencyKey": "REPLACE_ME",
         "grossSalesMinor": 100000,
         "discountMinor": 0,
         "refundMinor": 500,

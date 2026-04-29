@@ -10,6 +10,13 @@ UPDATE ota_campaigns SET status = CASE status
     WHEN 'paused' THEN 'paused'
     WHEN 'completed' THEN 'completed'
     ELSE 'draft'
+END
+WHERE status IS DISTINCT FROM CASE status
+    WHEN 'active' THEN 'running'
+    WHEN 'draft' THEN 'draft'
+    WHEN 'paused' THEN 'paused'
+    WHEN 'completed' THEN 'completed'
+    ELSE 'draft'
 END;
 
 ALTER TABLE ota_campaigns RENAME COLUMN strategy TO rollout_strategy;
@@ -124,6 +131,14 @@ ALTER TABLE ota_campaigns
 ALTER TABLE ota_campaigns RENAME COLUMN rollout_strategy TO strategy;
 
 UPDATE ota_campaigns SET status = CASE status
+    WHEN 'running' THEN 'active'
+    WHEN 'approved' THEN 'draft'
+    WHEN 'failed' THEN 'completed'
+    WHEN 'cancelled' THEN 'completed'
+    WHEN 'rolled_back' THEN 'completed'
+    ELSE status
+END
+WHERE status IS DISTINCT FROM CASE status
     WHEN 'running' THEN 'active'
     WHEN 'approved' THEN 'draft'
     WHEN 'failed' THEN 'completed'

@@ -1,5 +1,6 @@
 -- P0.5: audit_events scope columns + payment_provider actor for PSP webhook attribution.
 
+-- +goose Up
 ALTER TABLE audit_events
     DROP CONSTRAINT IF EXISTS chk_audit_events_actor_type;
 
@@ -28,3 +29,22 @@ WHERE
 CREATE INDEX IF NOT EXISTS ix_audit_events_org_site_created ON audit_events (organization_id, site_id, created_at DESC)
 WHERE
     site_id IS NOT NULL;
+
+-- +goose Down
+DROP INDEX IF EXISTS ix_audit_events_org_site_created;
+
+DROP INDEX IF EXISTS ix_audit_events_org_machine_created;
+
+ALTER TABLE audit_events DROP COLUMN IF EXISTS site_id;
+
+ALTER TABLE audit_events DROP COLUMN IF EXISTS machine_id;
+
+UPDATE audit_events
+SET actor_type = 'webhook'
+WHERE actor_type = 'payment_provider';
+
+ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS chk_audit_events_actor_type;
+
+ALTER TABLE audit_events ADD CONSTRAINT chk_audit_events_actor_type CHECK (
+    actor_type IN ('user', 'machine', 'system', 'webhook', 'service')
+);

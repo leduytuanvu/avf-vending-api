@@ -1,5 +1,6 @@
 -- P1.1 enterprise media assets (object storage metadata + variants). product_images may reference media_assets.
 
+-- +goose Up
 CREATE TABLE media_assets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
@@ -33,3 +34,14 @@ ADD COLUMN media_asset_id uuid REFERENCES media_assets (id) ON DELETE SET NULL;
 CREATE INDEX ix_product_images_media_asset ON product_images (media_asset_id)
 WHERE
     media_asset_id IS NOT NULL;
+
+-- +goose Down
+DROP INDEX IF EXISTS ix_product_images_media_asset;
+
+ALTER TABLE product_images DROP COLUMN IF EXISTS media_asset_id;
+
+DROP INDEX IF EXISTS ix_media_assets_org_status;
+
+DROP INDEX IF EXISTS ix_media_assets_org_created;
+
+DROP TABLE IF EXISTS media_assets;
