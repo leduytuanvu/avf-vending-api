@@ -9,19 +9,24 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
-func mountMachineTelemetryRoutes(r chi.Router, app *api.HTTPApplication) {
+func mountMachineTelemetryRoutes(r chi.Router, app *api.HTTPApplication, abuse *AbuseProtection) {
+	// Legacy HTTP telemetry reads for machines. Prefer gRPC MachineTelemetryService for production kiosks.
 	if app == nil || app.TelemetryStore == nil {
 		return
 	}
+	if abuse == nil {
+		abuse = &AbuseProtection{}
+	}
 	st := app.TelemetryStore
-	r.With(RequireMachineTenantAccess(app, "machineId")).Get("/machines/{machineId}/telemetry/snapshot", telemetrySnapshotHandler(st))
-	r.With(RequireMachineTenantAccess(app, "machineId")).Get("/machines/{machineId}/telemetry/incidents", telemetryIncidentsHandler(st))
-	r.With(RequireMachineTenantAccess(app, "machineId")).Get("/machines/{machineId}/telemetry/rollups", telemetryRollupsHandler(st))
+	r.With(abuse.MachineScoped(), RequireMachineTenantAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/snapshot", telemetrySnapshotHandler(st))
+	r.With(abuse.MachineScoped(), RequireMachineTenantAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/incidents", telemetryIncidentsHandler(st))
+	r.With(abuse.MachineScoped(), RequireMachineTenantAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/rollups", telemetryRollupsHandler(st))
 }
 
 func telemetrySnapshotHandler(st *postgres.Store) http.HandlerFunc {

@@ -69,6 +69,7 @@ func TestNewOperationsMux_Version(t *testing.T) {
 		AppEnv:      config.AppEnvProduction,
 		ProcessName: "worker",
 		Runtime: config.RuntimeConfig{
+			Region:      "ap-southeast-1",
 			NodeName:    "node-a",
 			InstanceID:  "node-a-worker-1",
 			RuntimeRole: "worker",
@@ -84,7 +85,7 @@ func TestNewOperationsMux_Version(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("version status=%d", rec.Code)
 	}
-	if body := rec.Body.String(); body == "" || !containsAll(body, "1.2.3", "abc123", "worker") {
+	if body := rec.Body.String(); body == "" || !containsAll(body, "1.2.3", "abc123", "worker", "ap-southeast-1") {
 		t.Fatalf("unexpected version body: %q", body)
 	}
 }

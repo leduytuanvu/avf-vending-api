@@ -73,6 +73,12 @@ func workflowSpecForStart(in StartInput) (workflowStartSpec, error) {
 		return workflowStartSpec{}, fmt.Errorf("workfloworch: workflow_id is required for kind=%s", in.Kind)
 	}
 	switch in.Kind {
+	case KindPaymentToVend:
+		return workflowStartSpec{name: WorkflowNamePaymentToVend, args: in.Args}, nil
+	case KindRefund:
+		return workflowStartSpec{name: WorkflowNameRefund, args: in.Args}, nil
+	case KindCommandAck:
+		return workflowStartSpec{name: WorkflowNameCommandAck, args: in.Args}, nil
 	case KindPaymentPendingTimeoutFollowUp:
 		return workflowStartSpec{name: WorkflowNamePaymentPendingTimeoutFollowUp, args: in.Args}, nil
 	case KindVendFailureAfterPaymentSuccess:

@@ -10,14 +10,10 @@ The primary production path is the split `2-VPS` layout under `deployments/prod/
 
 The old single-host path in `deployments/prod/docker-compose.prod.yml` is legacy, not primary production, and not recommended for the enterprise target deployment.
 
-## Current VPS Snapshot
+## Current fleet snapshot
 
-- VPS-A: `srv1582786.hstgr.cloud` / `72.62.244.94` / `ssh root@72.62.244.94`
-- VPS-B: `srv1608106.hstgr.cloud` / `187.127.99.153` / `ssh root@187.127.99.153`
-- Location: `Malaysia - Kuala Lumpur` for both VPS
-- OS / plan: `Ubuntu 24.04 LTS` on `KVM 2`
-- Capacity per VPS: `2 vCPU`, `8 GB RAM`, `100 GB disk`
-- There is no dedicated develop VPS yet; the develop environment exists in GitHub workflow structure, but production currently runs on these 2 VPS only
+- Example layout: **`prod-app-node-a.example`** and **`prod-app-node-b.example`** (replace with operator inventory). Do **not** treat filenames in this repo as authoritative for live IPs or SSH endpoints.
+- There is **no dedicated develop VPS**. The **branch `develop`** flow runs staging automation only (**Staging Deployment Contract** after Security Release).
 
 ## Roles
 
@@ -72,6 +68,8 @@ For the current production direction, treat these as the default runtime contrac
 - NATS / EMQX: either managed endpoints or the optional fallback `data-node`
 
 This differs from local development, where local containers may still be used for convenience. Production scripts in the split topology should not assume a local Postgres or Redis container exists.
+
+**Fail-fast checks:** `cmd/*` binaries validate production env at startup (`internal/config`): `COMMERCE_PAYMENT_PROVIDER` must not be a mock/sandbox registry key, `MQTT_BROKER_URL` to a non-loopback host must imply TLS (or set `MQTT_TLS_ENABLED=true` with a documented private broker), Redis must be configured unless `PRODUCTION_ALLOW_MISSING_REDIS=true`, and legacy machine HTTP requires `MACHINE_REST_LEGACY_ALLOW_IN_PRODUCTION=true`. See [`docs/operations/deployment-secrets.md`](../operations/deployment-secrets.md) for the operator secret inventory.
 
 The same separation applies to MQTT transport posture: local or private-network exceptions may still use plaintext for narrowly scoped compatibility, but the production public path is TLS-first on `8883`.
 

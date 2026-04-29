@@ -30,10 +30,10 @@ func TestRegisterAll_RegistersExpectedWorkflowsAndActivities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(reg.workflows) != 4 {
+	if len(reg.workflows) != 7 {
 		t.Fatalf("workflow registrations=%d", len(reg.workflows))
 	}
-	if len(reg.activities) != 4 {
+	if len(reg.activities) != 8 {
 		t.Fatalf("activity registrations=%d", len(reg.activities))
 	}
 }

@@ -6,7 +6,7 @@ Set `METRICS_ENABLED=true` for any process that should expose `/metrics` on the 
 
 | Process | Listen address env | Default bind when env empty | Primary series |
 | ------- | ------------------- | -----------------------------| -------------- |
-| `cmd/api` | `HTTP_ADDR` (and optional `HTTP_OPS_ADDR`) | `:8080` | `avf_http_request_duration_seconds_*` (Chi routes + status), Go/process defaults via `promhttp` |
+| `cmd/api` | `HTTP_ADDR` (and optional `HTTP_OPS_ADDR`) | `:8080` | `avf_http_request_duration_seconds_*` (Chi routes + status), `avf_grpc_*` when machine gRPC is enabled, `avf_commerce_payment_webhook_requests_total`, `avf_commerce_vend_finalized_total`, Go/process defaults via `promhttp` |
 | `cmd/worker` | `WORKER_METRICS_LISTEN` | `127.0.0.1:9091` | `avf_worker_outbox_*` (pending gauges, publish counters, publish lag histogram) — see `internal/app/background/outboxmetrics`; optional ClickHouse mirror: `avf_analytics_mirror_*` — `internal/platform/clickhouse` |
 | `cmd/reconciler` | `RECONCILER_METRICS_LISTEN` | `127.0.0.1:9092` | `avf_reconciler_*` (`reconciler_job` label names the five tickers; avoids clashing with scrape `job`) — `internal/observability/reconcilerprom` |
 | `cmd/mqtt-ingest` | `MQTT_INGEST_METRICS_LISTEN` | `127.0.0.1:9093` | `avf_mqtt_ingest_dispatch_total{kind,result}` — `internal/observability/mqttingestprom` |

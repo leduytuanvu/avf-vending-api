@@ -13,10 +13,31 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 const metaSHA256Hex = "sha256hex"
 const metaOriginalFilename = "originalfilename"
+
+var objectStorageFailures = promauto.NewCounterVec(prometheus.CounterOpts{
+	Namespace: "avf",
+	Subsystem: "object_storage",
+	Name:      "failures_total",
+	Help:      "Object storage operation failures for backend artifacts and media processing.",
+}, []string{"operation", "reason"})
+
+func recordObjectStorageFailure(operation, reason string) {
+	operation = strings.TrimSpace(operation)
+	reason = strings.TrimSpace(reason)
+	if operation == "" {
+		operation = "unknown"
+	}
+	if reason == "" {
+		reason = "unknown"
+	}
+	objectStorageFailures.WithLabelValues(operation, reason).Inc()
+}
 
 // Deps wires object storage for backend-managed artifacts.
 type Deps struct {
@@ -62,6 +83,30 @@ func NewService(d Deps) *Service {
 	}
 }
 
+// Store returns the backing object store (catalog media reuse).
+func (s *Service) Store() objectstore.Store {
+	if s == nil {
+		return nil
+	}
+	return s.store
+}
+
+// MaxUploadBytes returns the configured artifact payload ceiling (reuse as catalog image cap).
+func (s *Service) MaxUploadBytes() int64 {
+	if s == nil {
+		return 0
+	}
+	return s.maxUploadBytes
+}
+
+// DownloadPresignTTL returns presigned GET TTL used for catalog URLs when wired.
+func (s *Service) DownloadPresignTTL() time.Duration {
+	if s == nil {
+		return 0
+	}
+	return s.downloadPresignTTL
+}
+
 // ReserveArtifact allocates a new artifact id (no object written yet).
 func (s *Service) ReserveArtifact(_ context.Context) (uuid.UUID, error) {
 	return uuid.New(), nil
@@ -98,19 +143,23 @@ func (s *Service) PutContent(ctx context.Context, organizationID, artifactID uui
 	}
 
 	if err := s.store.PutWithUserMetadata(ctx, key, tee, size, ct, meta); err != nil {
+		recordObjectStorageFailure("put_artifact", "store_put")
 		return err
 	}
 	sum := h.Sum(nil)
 	if subtle.ConstantTimeCompare(sum, want) != 1 {
 		_ = s.store.Delete(ctx, key)
+		recordObjectStorageFailure("put_artifact", "checksum_mismatch")
 		return ErrChecksumMismatch
 	}
 	extra, err := io.Copy(io.Discard, limited)
 	if extra > 0 {
 		_ = s.store.Delete(ctx, key)
+		recordObjectStorageFailure("put_artifact", "trailing_bytes")
 		return ErrTrailingBytes
 	}
 	if err != nil && !errors.Is(err, io.EOF) {
+		recordObjectStorageFailure("put_artifact", "read_error")
 		return err
 	}
 	return nil
@@ -219,6 +268,7 @@ func (s *Service) ListArtifacts(ctx context.Context, organizationID uuid.UUID) (
 	prefix := objectstore.BackendArtifactOrgPrefix(organizationID)
 	rows, err := s.store.ListPrefix(ctx, prefix, s.listMaxKeys)
 	if err != nil {
+		recordObjectStorageFailure("list_artifacts", "store_list")
 		return nil, err
 	}
 	out := make([]ArtifactInfo, 0, len(rows))
@@ -261,6 +311,7 @@ func (s *Service) DeleteArtifact(ctx context.Context, organizationID, artifactID
 	key := objectstore.BackendArtifactObjectKey(organizationID, artifactID)
 	err := s.store.Delete(ctx, key)
 	if err != nil {
+		recordObjectStorageFailure("delete_artifact", "store_delete")
 		return mapStoreError(err)
 	}
 	return nil
@@ -271,10 +322,12 @@ func (s *Service) PresignDownload(ctx context.Context, organizationID, artifactI
 	key := objectstore.BackendArtifactObjectKey(organizationID, artifactID)
 	_, err := s.store.Head(ctx, key)
 	if err != nil {
+		recordObjectStorageFailure("presign_download", "store_head")
 		return objectstore.SignedHTTP{}, time.Time{}, mapStoreError(err)
 	}
 	signed, err := s.store.PresignGet(ctx, key, s.downloadPresignTTL)
 	if err != nil {
+		recordObjectStorageFailure("presign_download", "store_presign")
 		return objectstore.SignedHTTP{}, time.Time{}, err
 	}
 	exp := time.Now().UTC().Add(s.downloadPresignTTL)

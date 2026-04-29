@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+import "avf/machine/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// MachineInventoryService is the kiosk inventory API (Machine JWT). machine_id is always the authenticated principal.
+service MachineInventoryService {
+  rpc PushInventoryDelta(ReportInventoryDeltaRequest) returns (ReportInventoryDeltaResponse);
+  rpc GetInventorySnapshot(GetInventorySnapshotRequest) returns (GetInventorySnapshotResponse);
+  rpc AckInventorySync(AckInventorySyncRequest) returns (AckInventorySyncResponse);
+  rpc GetPlanogram(GetPlanogramRequest) returns (GetPlanogramResponse);
+  rpc SubmitStockSnapshot(SubmitStockSnapshotRequest) returns (SubmitStockSnapshotResponse);
+  rpc SubmitFillResult(SubmitFillResultRequest) returns (SubmitFillResultResponse);
+  // SubmitFillReport is an alias of SubmitFillResult (direct request/response; spec-native name).
+  rpc SubmitFillReport(SubmitFillResultRequest) returns (SubmitFillResultResponse);
+  rpc SubmitRestock(SubmitRestockRequest) returns (SubmitRestockResponse);
+  rpc SubmitInventoryAdjustment(SubmitInventoryAdjustmentRequest) returns (SubmitInventoryAdjustmentResponse);
+  // SubmitStockAdjustment is an alias of SubmitInventoryAdjustment (spec-native name).
+  rpc SubmitStockAdjustment(SubmitInventoryAdjustmentRequest) returns (SubmitInventoryAdjustmentResponse);
+}
+
+message GetInventorySnapshotRequest {
+  MachineRequestMeta meta = 1;
+}
+
+message InventorySlotRow {
+  string planogram_id = 1;
+  string planogram_name = 2;
+  int32 slot_index = 3;
+  int32 current_quantity = 4;
+  int32 max_quantity = 5;
+  int64 price_minor = 6;
+  int32 planogram_revision_applied = 7;
+  string cabinet_code = 8;
+  int32 cabinet_index = 9;
+  string product_id = 10;
+  string product_sku = 11;
+  string product_name = 12;
+  bool is_empty = 13;
+}
+
+message GetInventorySnapshotResponse {
+  string machine_id = 1;
+  string organization_id = 2;
+  google.protobuf.Timestamp server_time = 3;
+  repeated InventorySlotRow slots = 4;
+  MachineResponseMeta meta = 5;
+}
+
+message GetPlanogramRequest {
+  // Optional override; must equal the authenticated machine or the call is rejected.
+  string machine_id = 1;
+}
+
+message GetPlanogramResponse {
+  string machine_id = 1;
+  string organization_id = 2;
+  google.protobuf.Timestamp server_time = 3;
+  repeated InventorySlotRow slots = 4;
+}
+
+message RestockLine {
+  string planogram_id = 1;
+  int32 slot_index = 2;
+  int32 quantity_before = 3;
+  int32 quantity_after = 4;
+  string cabinet_code = 5;
+  string slot_code = 6;
+  optional string product_id = 7;
+}
+
+message SubmitRestockRequest {
+  IdempotencyContext context = 1;
+  repeated RestockLine lines = 2;
+}
+
+message SubmitRestockResponse {
+  bool replay = 1;
+  repeated int64 event_ids = 2;
+}
+
+message SubmitFillResultRequest {
+  IdempotencyContext context = 1;
+  repeated RestockLine lines = 2;
+}
+
+message SubmitFillResultResponse {
+  bool replay = 1;
+  repeated int64 event_ids = 2;
+}
+
+message AdjustmentLine {
+  string planogram_id = 1;
+  int32 slot_index = 2;
+  int32 quantity_before = 3;
+  int32 quantity_after = 4;
+  string reason_code = 5;
+  string cabinet_code = 6;
+  string slot_code = 7;
+  optional string product_id = 8;
+}
+
+// reason must be one of: cycle_count, manual_adjustment, machine_reconcile (restock uses SubmitRestock).
+message SubmitInventoryAdjustmentRequest {
+  IdempotencyContext context = 1;
+  string reason = 2;
+  repeated AdjustmentLine lines = 3;
+}
+
+message SubmitInventoryAdjustmentResponse {
+  bool replay = 1;
+  repeated int64 event_ids = 2;
+}
+
+message SubmitStockSnapshotRequest {
+  IdempotencyContext context = 1;
+  repeated AdjustmentLine lines = 2;
+}
+
+message SubmitStockSnapshotResponse {
+  bool replay = 1;
+  repeated int64 event_ids = 2;
+}
+
+message ReportInventoryDeltaRequest {
+  IdempotencyContext context = 1;
+  MachineRequestMeta meta = 2;
+  string reason = 3;
+  repeated AdjustmentLine lines = 4;
+}
+
+message ReportInventoryDeltaResponse {
+  bool replay = 1;
+  repeated int64 event_ids = 2;
+  MachineResponseMeta meta = 3;
+}
+
+message AckInventorySyncRequest {
+  MachineRequestMeta meta = 1;
+  string sync_cursor = 2;
+}
+
+message AckInventorySyncResponse {
+  MachineResponseMeta meta = 1;
+}

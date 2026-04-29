@@ -1,5 +1,9 @@
 name: Deploy Production
 
+# Primary topology: **two app VPS** (`app-node` rolling) plus optional **`data-node`** or **managed**
+# Postgres/Redis/NATS/object storage/MQTT — not legacy single-host `docker-compose.prod.yml` as the enterprise path.
+# Develop branch automation does **not** deploy here; staging/pre-prod is **deploy-develop.yml** (after Security Release on develop).
+#
 # Production policy: this workflow is manual-only. Trigger is on.workflow_dispatch (Operators → Actions
 # → run workflow) on the main branch. There is no on.push, on.schedule, on.workflow_run, or other
 # Release audit: production-release-audit-package (this workflow), release-audit-package (Build and Push),

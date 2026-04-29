@@ -112,8 +112,9 @@ type OutboxPublisher interface {
 
 // VendReconciliationCandidate is a stuck vend row plus the parent order status for policy decisions.
 type VendReconciliationCandidate struct {
-	Session     VendSession
-	OrderStatus string
+	Session        VendSession
+	OrganizationID uuid.UUID
+	OrderStatus    string
 }
 
 // ReconciliationReader lists reconciliation candidates from Postgres (no provider I/O).
@@ -124,6 +125,13 @@ type ReconciliationReader interface {
 	ListPotentialDuplicatePayments(ctx context.Context, before time.Time, limit int32) ([]Payment, error)
 	ListPaymentsForRefundReview(ctx context.Context, before time.Time, limit int32) ([]Payment, error)
 	ListStaleCommandLedgerEntries(ctx context.Context, before time.Time, limit int32) ([]CommandLedgerSummary, error)
+	ListPaidOrdersWithoutVendStart(ctx context.Context, before time.Time, limit int32) ([]PaidOrderVendStartCandidate, error)
+	ListPaidVendFailuresForReview(ctx context.Context, before time.Time, limit int32) ([]PaidVendFailureCandidate, error)
+	ListRefundsPendingTooLong(ctx context.Context, before time.Time, limit int32) ([]RefundPendingCandidate, error)
+}
+
+type ReconciliationCaseWriter interface {
+	UpsertReconciliationCase(ctx context.Context, in ReconciliationCaseInput) (ReconciliationCase, error)
 }
 
 // OutboxMarkPublishedWriter marks outbox rows published after transport acknowledgement.

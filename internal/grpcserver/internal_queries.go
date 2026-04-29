@@ -4,14 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	appapi "github.com/avf/avf-vending-api/internal/app/api"
+	"github.com/avf/avf-vending-api/internal/app/listscope"
+	appsalecatalog "github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	domainfleet "github.com/avf/avf-vending-api/internal/domain/fleet"
+	internalv1 "github.com/avf/avf-vending-api/internal/gen/avfinternalv1"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
-	avfv1 "github.com/avf/avf-vending-api/proto/avf/v1"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -21,38 +24,58 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+// InternalQueryServices wires read-only internal gRPC handlers (avf.internal.v1) to application query ports.
 type InternalQueryServices struct {
 	Machine   appapi.InternalMachineQueryService
 	Telemetry appapi.InternalTelemetryQueryService
 	Commerce  appapi.InternalCommerceQueryService
+	Payment   appapi.InternalPaymentQueryService
+	Catalog   appsalecatalog.SnapshotBuilder
+	Inventory appapi.InternalInventoryQueryService
+	Reporting appapi.ReportingService
 }
 
+// RegisterInternalQueryServices registers split-ready internal query RPCs (separate listener; see NewInternalGRPCServer).
 func RegisterInternalQueryServices(services InternalQueryServices) ServiceRegistrar {
 	return func(s *grpc.Server) error {
-		if services.Machine == nil || services.Telemetry == nil || services.Commerce == nil {
-			return fmt.Errorf("grpcserver: internal query services require machine, telemetry, and commerce deps")
+		if services.Machine == nil || services.Telemetry == nil || services.Commerce == nil || services.Payment == nil ||
+			services.Catalog == nil || services.Inventory == nil || services.Reporting == nil {
+			return fmt.Errorf("grpcserver: internal query services require machine, telemetry, commerce, payment, catalog, inventory, and reporting deps")
 		}
-		avfv1.RegisterInternalMachineQueryServiceServer(s, &machineQueryServer{
+		internalv1.RegisterInternalMachineQueryServiceServer(s, &machineQueryServer{
 			machine:   services.Machine,
 			telemetry: services.Telemetry,
 		})
-		avfv1.RegisterInternalTelemetryQueryServiceServer(s, &telemetryQueryServer{
+		internalv1.RegisterInternalTelemetryQueryServiceServer(s, &telemetryQueryServer{
 			telemetry: services.Telemetry,
 		})
-		avfv1.RegisterInternalCommerceQueryServiceServer(s, &commerceQueryServer{
+		internalv1.RegisterInternalCommerceQueryServiceServer(s, &commerceQueryServer{
 			commerce: services.Commerce,
+		})
+		internalv1.RegisterInternalPaymentQueryServiceServer(s, &paymentQueryServer{
+			payment: services.Payment,
+		})
+		internalv1.RegisterInternalCatalogQueryServiceServer(s, &catalogQueryServer{
+			catalog: services.Catalog,
+		})
+		internalv1.RegisterInternalInventoryQueryServiceServer(s, &inventoryQueryServer{
+			inv:     services.Inventory,
+			machine: services.Machine,
+		})
+		internalv1.RegisterInternalReportingQueryServiceServer(s, &reportingQueryServer{
+			reporting: services.Reporting,
 		})
 		return nil
 	}
 }
 
 type machineQueryServer struct {
-	avfv1.UnimplementedInternalMachineQueryServiceServer
+	internalv1.UnimplementedInternalMachineQueryServiceServer
 	machine   appapi.InternalMachineQueryService
 	telemetry appapi.InternalTelemetryQueryService
 }
 
-func (s *machineQueryServer) GetMachineSummary(ctx context.Context, req *avfv1.GetMachineRequest) (*avfv1.GetMachineSummaryResponse, error) {
+func (s *machineQueryServer) GetMachineSummary(ctx context.Context, req *internalv1.GetMachineSummaryRequest) (*internalv1.GetMachineSummaryResponse, error) {
 	machineID, err := requireUUID(req.GetMachineId(), "machine_id")
 	if err != nil {
 		return nil, err
@@ -61,13 +84,13 @@ func (s *machineQueryServer) GetMachineSummary(ctx context.Context, req *avfv1.G
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeOrganizationRead(ctx, bootstrap.Machine.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, bootstrap.Machine.OrganizationID); err != nil {
 		return nil, err
 	}
-	return &avfv1.GetMachineSummaryResponse{Machine: mapMachineSummary(bootstrap.Machine)}, nil
+	return &internalv1.GetMachineSummaryResponse{Machine: mapMachineSummary(bootstrap.Machine)}, nil
 }
 
-func (s *machineQueryServer) GetMachineState(ctx context.Context, req *avfv1.GetMachineRequest) (*avfv1.GetMachineStateResponse, error) {
+func (s *machineQueryServer) GetMachineState(ctx context.Context, req *internalv1.GetMachineStateRequest) (*internalv1.GetMachineStateResponse, error) {
 	machineID, err := requireUUID(req.GetMachineId(), "machine_id")
 	if err != nil {
 		return nil, err
@@ -76,20 +99,20 @@ func (s *machineQueryServer) GetMachineState(ctx context.Context, req *avfv1.Get
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeOrganizationRead(ctx, snapshot.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, snapshot.OrganizationID); err != nil {
 		return nil, err
 	}
 	shadow, err := s.machine.GetShadow(ctx, machineID)
 	if err != nil {
 		return nil, mapError(err)
 	}
-	return &avfv1.GetMachineStateResponse{
+	return &internalv1.GetMachineStateResponse{
 		Shadow:   mapShadowState(shadow),
 		Snapshot: mapTelemetrySnapshot(snapshot),
 	}, nil
 }
 
-func (s *machineQueryServer) GetMachineCabinetSlotSummary(ctx context.Context, req *avfv1.GetMachineRequest) (*avfv1.GetMachineCabinetSlotSummaryResponse, error) {
+func (s *machineQueryServer) GetMachineCabinetSlotSummary(ctx context.Context, req *internalv1.GetMachineCabinetSlotSummaryRequest) (*internalv1.GetMachineCabinetSlotSummaryResponse, error) {
 	machineID, err := requireUUID(req.GetMachineId(), "machine_id")
 	if err != nil {
 		return nil, err
@@ -98,19 +121,19 @@ func (s *machineQueryServer) GetMachineCabinetSlotSummary(ctx context.Context, r
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeOrganizationRead(ctx, bootstrap.Machine.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, bootstrap.Machine.OrganizationID); err != nil {
 		return nil, err
 	}
 	slotView, err := s.machine.GetMachineSlotView(ctx, machineID)
 	if err != nil {
 		return nil, mapError(err)
 	}
-	resp := &avfv1.GetMachineCabinetSlotSummaryResponse{
+	resp := &internalv1.GetMachineCabinetSlotSummaryResponse{
 		Machine:            mapMachineSummary(bootstrap.Machine),
-		Cabinets:           make([]*avfv1.MachineCabinetSummary, 0, len(bootstrap.Cabinets)),
-		ConfiguredSlots:    make([]*avfv1.MachineConfiguredSlotSummary, 0, len(bootstrap.CurrentCabinetSlots)),
-		LegacySlots:        make([]*avfv1.MachineLegacySlotSummary, 0, len(slotView.LegacySlots)),
-		AssortmentProducts: make([]*avfv1.MachineAssortmentProductSummary, 0, len(bootstrap.AssortmentProducts)),
+		Cabinets:           make([]*internalv1.MachineCabinetSummary, 0, len(bootstrap.Cabinets)),
+		ConfiguredSlots:    make([]*internalv1.MachineConfiguredSlotSummary, 0, len(bootstrap.CurrentCabinetSlots)),
+		LegacySlots:        make([]*internalv1.MachineLegacySlotSummary, 0, len(slotView.LegacySlots)),
+		AssortmentProducts: make([]*internalv1.MachineAssortmentProductSummary, 0, len(bootstrap.AssortmentProducts)),
 	}
 	for _, cabinet := range bootstrap.Cabinets {
 		resp.Cabinets = append(resp.Cabinets, mapCabinetSummary(cabinet))
@@ -128,11 +151,11 @@ func (s *machineQueryServer) GetMachineCabinetSlotSummary(ctx context.Context, r
 }
 
 type telemetryQueryServer struct {
-	avfv1.UnimplementedInternalTelemetryQueryServiceServer
+	internalv1.UnimplementedInternalTelemetryQueryServiceServer
 	telemetry appapi.InternalTelemetryQueryService
 }
 
-func (s *telemetryQueryServer) GetLatestMachineTelemetry(ctx context.Context, req *avfv1.GetMachineRequest) (*avfv1.GetLatestMachineTelemetryResponse, error) {
+func (s *telemetryQueryServer) GetLatestMachineTelemetry(ctx context.Context, req *internalv1.GetLatestMachineTelemetryRequest) (*internalv1.GetLatestMachineTelemetryResponse, error) {
 	machineID, err := requireUUID(req.GetMachineId(), "machine_id")
 	if err != nil {
 		return nil, err
@@ -141,13 +164,13 @@ func (s *telemetryQueryServer) GetLatestMachineTelemetry(ctx context.Context, re
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeOrganizationRead(ctx, snapshot.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, snapshot.OrganizationID); err != nil {
 		return nil, err
 	}
-	return &avfv1.GetLatestMachineTelemetryResponse{Snapshot: mapTelemetrySnapshot(snapshot)}, nil
+	return &internalv1.GetLatestMachineTelemetryResponse{Snapshot: mapTelemetrySnapshot(snapshot)}, nil
 }
 
-func (s *telemetryQueryServer) GetMachineIncidentSummary(ctx context.Context, req *avfv1.GetMachineIncidentSummaryRequest) (*avfv1.GetMachineIncidentSummaryResponse, error) {
+func (s *telemetryQueryServer) GetMachineIncidentSummary(ctx context.Context, req *internalv1.GetMachineIncidentSummaryRequest) (*internalv1.GetMachineIncidentSummaryResponse, error) {
 	machineID, err := requireUUID(req.GetMachineId(), "machine_id")
 	if err != nil {
 		return nil, err
@@ -156,7 +179,7 @@ func (s *telemetryQueryServer) GetMachineIncidentSummary(ctx context.Context, re
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeOrganizationRead(ctx, snapshot.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, snapshot.OrganizationID); err != nil {
 		return nil, err
 	}
 	limit := req.GetLimit()
@@ -167,11 +190,11 @@ func (s *telemetryQueryServer) GetMachineIncidentSummary(ctx context.Context, re
 	if err != nil {
 		return nil, mapError(err)
 	}
-	resp := &avfv1.GetMachineIncidentSummaryResponse{
+	resp := &internalv1.GetMachineIncidentSummaryResponse{
 		MachineId: machineID.String(),
 		Limit:     limit,
 		Returned:  int32(len(items)),
-		Items:     make([]*avfv1.MachineIncidentSummary, 0, len(items)),
+		Items:     make([]*internalv1.MachineIncidentSummary, 0, len(items)),
 	}
 	for _, item := range items {
 		resp.Items = append(resp.Items, mapIncidentSummary(item))
@@ -180,11 +203,11 @@ func (s *telemetryQueryServer) GetMachineIncidentSummary(ctx context.Context, re
 }
 
 type commerceQueryServer struct {
-	avfv1.UnimplementedInternalCommerceQueryServiceServer
+	internalv1.UnimplementedInternalCommerceQueryServiceServer
 	commerce appapi.InternalCommerceQueryService
 }
 
-func (s *commerceQueryServer) GetOrderPaymentVendState(ctx context.Context, req *avfv1.GetOrderPaymentVendStateRequest) (*avfv1.GetOrderPaymentVendStateResponse, error) {
+func (s *commerceQueryServer) GetOrderPaymentVendState(ctx context.Context, req *internalv1.GetOrderPaymentVendStateRequest) (*internalv1.GetOrderPaymentVendStateResponse, error) {
 	organizationID, err := requireUUID(req.GetOrganizationId(), "organization_id")
 	if err != nil {
 		return nil, err
@@ -196,14 +219,14 @@ func (s *commerceQueryServer) GetOrderPaymentVendState(ctx context.Context, req 
 	if req.GetSlotIndex() < 0 {
 		return nil, status.Error(codes.InvalidArgument, "slot_index must be non-negative")
 	}
-	if err := authorizeOrganizationRead(ctx, organizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, organizationID); err != nil {
 		return nil, err
 	}
 	out, err := s.commerce.GetCheckoutStatus(ctx, organizationID, orderID, req.GetSlotIndex())
 	if err != nil {
 		return nil, mapError(err)
 	}
-	resp := &avfv1.GetOrderPaymentVendStateResponse{
+	resp := &internalv1.GetOrderPaymentVendStateResponse{
 		Order:          mapCommerceOrder(out.Order),
 		Vend:           mapCommerceVend(out.Vend),
 		PaymentPresent: out.PaymentPresent,
@@ -214,6 +237,155 @@ func (s *commerceQueryServer) GetOrderPaymentVendState(ctx context.Context, req 
 	return resp, nil
 }
 
+type paymentQueryServer struct {
+	internalv1.UnimplementedInternalPaymentQueryServiceServer
+	payment appapi.InternalPaymentQueryService
+}
+
+func (s *paymentQueryServer) GetPaymentById(ctx context.Context, req *internalv1.GetPaymentByIdRequest) (*internalv1.GetPaymentByIdResponse, error) {
+	organizationID, err := requireUUID(req.GetOrganizationId(), "organization_id")
+	if err != nil {
+		return nil, err
+	}
+	paymentID, err := requireUUID(req.GetPaymentId(), "payment_id")
+	if err != nil {
+		return nil, err
+	}
+	if err := authorizeInternalQueryRead(ctx, organizationID); err != nil {
+		return nil, err
+	}
+	pay, err := s.payment.GetPaymentByID(ctx, organizationID, paymentID)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return &internalv1.GetPaymentByIdResponse{Payment: mapCommercePayment(pay)}, nil
+}
+
+func (s *paymentQueryServer) GetLatestPaymentForOrder(ctx context.Context, req *internalv1.GetLatestPaymentForOrderRequest) (*internalv1.GetLatestPaymentForOrderResponse, error) {
+	organizationID, err := requireUUID(req.GetOrganizationId(), "organization_id")
+	if err != nil {
+		return nil, err
+	}
+	orderID, err := requireUUID(req.GetOrderId(), "order_id")
+	if err != nil {
+		return nil, err
+	}
+	if err := authorizeInternalQueryRead(ctx, organizationID); err != nil {
+		return nil, err
+	}
+	pay, err := s.payment.GetLatestPaymentForOrder(ctx, organizationID, orderID)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return &internalv1.GetLatestPaymentForOrderResponse{Payment: mapCommercePayment(pay)}, nil
+}
+
+type catalogQueryServer struct {
+	internalv1.UnimplementedInternalCatalogQueryServiceServer
+	catalog appsalecatalog.SnapshotBuilder
+}
+
+func (s *catalogQueryServer) GetSaleCatalogSnapshot(ctx context.Context, req *internalv1.GetSaleCatalogSnapshotRequest) (*internalv1.GetSaleCatalogSnapshotResponse, error) {
+	machineID, err := requireUUID(req.GetMachineId(), "machine_id")
+	if err != nil {
+		return nil, err
+	}
+	opts := appsalecatalog.Options{
+		IncludeUnavailable: req.GetIncludeUnavailable(),
+		IncludeImages:      req.GetIncludeImages(),
+	}
+	if req.IfNoneMatchConfigVersion != nil {
+		v := *req.IfNoneMatchConfigVersion
+		opts.IfNoneMatchConfigVersion = &v
+	}
+	snap, err := s.catalog.BuildSnapshot(ctx, machineID, opts)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	if err := authorizeInternalQueryRead(ctx, snap.OrganizationID); err != nil {
+		return nil, err
+	}
+	if snap.NotModified {
+		return &internalv1.GetSaleCatalogSnapshotResponse{NotModified: true, CatalogJson: "{}"}, nil
+	}
+	raw, err := json.Marshal(snap)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "catalog encode failed")
+	}
+	return &internalv1.GetSaleCatalogSnapshotResponse{CatalogJson: string(raw)}, nil
+}
+
+type inventoryQueryServer struct {
+	internalv1.UnimplementedInternalInventoryQueryServiceServer
+	inv     appapi.InternalInventoryQueryService
+	machine appapi.InternalMachineQueryService
+}
+
+func (s *inventoryQueryServer) GetMachineSlotInventory(ctx context.Context, req *internalv1.GetMachineSlotInventoryRequest) (*internalv1.GetMachineSlotInventoryResponse, error) {
+	machineID, err := requireUUID(req.GetMachineId(), "machine_id")
+	if err != nil {
+		return nil, err
+	}
+	bootstrap, err := s.machine.GetMachineBootstrap(ctx, machineID)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	if err := authorizeInternalQueryRead(ctx, bootstrap.Machine.OrganizationID); err != nil {
+		return nil, err
+	}
+	slotView, err := s.inv.GetMachineSlotView(ctx, machineID)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	out := &internalv1.GetMachineSlotInventoryResponse{
+		MachineId:   machineID.String(),
+		LegacySlots: make([]*internalv1.InventoryLegacySlotRow, 0, len(slotView.LegacySlots)),
+	}
+	for _, legacy := range slotView.LegacySlots {
+		out.LegacySlots = append(out.LegacySlots, mapInventoryLegacySlot(legacy))
+	}
+	return out, nil
+}
+
+type reportingQueryServer struct {
+	internalv1.UnimplementedInternalReportingQueryServiceServer
+	reporting appapi.ReportingService
+}
+
+func (s *reportingQueryServer) GetSalesSummary(ctx context.Context, req *internalv1.GetSalesSummaryRequest) (*internalv1.GetSalesSummaryResponse, error) {
+	organizationID, err := requireUUID(req.GetOrganizationId(), "organization_id")
+	if err != nil {
+		return nil, err
+	}
+	if err := authorizeInternalQueryRead(ctx, organizationID); err != nil {
+		return nil, err
+	}
+	from, err := time.Parse(time.RFC3339, strings.TrimSpace(req.GetFromRfc3339()))
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "from_rfc3339 must be RFC3339")
+	}
+	to, err := time.Parse(time.RFC3339, strings.TrimSpace(req.GetToRfc3339()))
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "to_rfc3339 must be RFC3339")
+	}
+	q := listscope.ReportingQuery{
+		OrganizationID:  organizationID,
+		From:            from,
+		To:              to,
+		GroupBy:         strings.TrimSpace(req.GetGroupBy()),
+		IsPlatformAdmin: false,
+	}
+	out, err := s.reporting.SalesSummary(ctx, q)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	raw, err := json.Marshal(out)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "reporting encode failed")
+	}
+	return &internalv1.GetSalesSummaryResponse{SummaryJson: string(raw)}, nil
+}
+
 func requireUUID(raw string, field string) (uuid.UUID, error) {
 	id, err := uuid.Parse(raw)
 	if err != nil || id == uuid.Nil {
@@ -222,15 +394,26 @@ func requireUUID(raw string, field string) (uuid.UUID, error) {
 	return id, nil
 }
 
-func authorizeOrganizationRead(ctx context.Context, organizationID uuid.UUID) error {
+func authorizeInternalQueryRead(ctx context.Context, organizationID uuid.UUID) error {
 	principal, ok := auth.PrincipalFromContext(ctx)
 	if !ok {
 		return status.Error(codes.Unauthenticated, "missing principal")
 	}
-	if !principal.HasAnyRole(auth.RoleService, auth.RolePlatformAdmin, auth.RoleOrgAdmin, auth.RoleOrgMember) {
+	if !strings.EqualFold(strings.TrimSpace(principal.JWTAudience), auth.AudienceInternalGRPC) ||
+		!strings.EqualFold(strings.TrimSpace(principal.JWTType), auth.JWTClaimTypeInternalService) {
+		return status.Error(codes.PermissionDenied, "requires avf-internal-grpc service token")
+	}
+	if !principal.HasRole(auth.RoleService) && !principal.HasRole(auth.RolePlatformAdmin) {
 		return status.Error(codes.PermissionDenied, "principal is not allowed to use internal gRPC queries")
 	}
-	if principal.HasRole(auth.RoleService) || principal.HasRole(auth.RolePlatformAdmin) {
+	if principal.HasRole(auth.RoleService) {
+		if principal.HasOrganization() && principal.OrganizationID != uuid.Nil && organizationID != uuid.Nil &&
+			principal.OrganizationID != organizationID {
+			return status.Error(codes.PermissionDenied, "organization scope mismatch")
+		}
+		return nil
+	}
+	if principal.HasRole(auth.RolePlatformAdmin) {
 		return nil
 	}
 	if !principal.HasOrganization() || principal.OrganizationID != organizationID {
@@ -239,12 +422,12 @@ func authorizeOrganizationRead(ctx context.Context, organizationID uuid.UUID) er
 	return nil
 }
 
-func mapMachineSummary(m domainfleet.Machine) *avfv1.MachineSummary {
+func mapMachineSummary(m domainfleet.Machine) *internalv1.MachineSummary {
 	var hardwareProfileID *wrapperspb.StringValue
 	if m.HardwareProfileID != nil && *m.HardwareProfileID != uuid.Nil {
 		hardwareProfileID = wrapperspb.String(m.HardwareProfileID.String())
 	}
-	return &avfv1.MachineSummary{
+	return &internalv1.MachineSummary{
 		MachineId:         m.ID.String(),
 		OrganizationId:    m.OrganizationID.String(),
 		SiteId:            m.SiteID.String(),
@@ -258,11 +441,11 @@ func mapMachineSummary(m domainfleet.Machine) *avfv1.MachineSummary {
 	}
 }
 
-func mapShadowState(v *appapi.ShadowView) *avfv1.MachineShadowState {
+func mapShadowState(v *appapi.ShadowView) *internalv1.MachineShadowState {
 	if v == nil {
 		return nil
 	}
-	return &avfv1.MachineShadowState{
+	return &internalv1.MachineShadowState{
 		MachineId:     v.MachineID.String(),
 		DesiredState:  structFromMap(v.DesiredState),
 		ReportedState: structFromMap(v.ReportedState),
@@ -270,8 +453,8 @@ func mapShadowState(v *appapi.ShadowView) *avfv1.MachineShadowState {
 	}
 }
 
-func mapTelemetrySnapshot(v appapi.TelemetrySnapshotView) *avfv1.MachineTelemetrySnapshot {
-	return &avfv1.MachineTelemetrySnapshot{
+func mapTelemetrySnapshot(v appapi.TelemetrySnapshotView) *internalv1.MachineTelemetrySnapshot {
+	return &internalv1.MachineTelemetrySnapshot{
 		MachineId:         v.MachineID.String(),
 		OrganizationId:    v.OrganizationID.String(),
 		SiteId:            v.SiteID.String(),
@@ -291,8 +474,8 @@ func mapTelemetrySnapshot(v appapi.TelemetrySnapshotView) *avfv1.MachineTelemetr
 	}
 }
 
-func mapCabinetSummary(v setupapp.CabinetView) *avfv1.MachineCabinetSummary {
-	return &avfv1.MachineCabinetSummary{
+func mapCabinetSummary(v setupapp.CabinetView) *internalv1.MachineCabinetSummary {
+	return &internalv1.MachineCabinetSummary{
 		Id:        v.ID.String(),
 		MachineId: v.MachineID.String(),
 		Code:      v.Code,
@@ -304,7 +487,7 @@ func mapCabinetSummary(v setupapp.CabinetView) *avfv1.MachineCabinetSummary {
 	}
 }
 
-func mapConfiguredSlotSummary(v setupapp.CabinetSlotConfigView) *avfv1.MachineConfiguredSlotSummary {
+func mapConfiguredSlotSummary(v setupapp.CabinetSlotConfigView) *internalv1.MachineConfiguredSlotSummary {
 	var productID *wrapperspb.StringValue
 	if v.ProductID != nil && *v.ProductID != uuid.Nil {
 		productID = wrapperspb.String(v.ProductID.String())
@@ -313,7 +496,7 @@ func mapConfiguredSlotSummary(v setupapp.CabinetSlotConfigView) *avfv1.MachineCo
 	if v.SlotIndex != nil {
 		slotIndex = wrapperspb.Int32(*v.SlotIndex)
 	}
-	return &avfv1.MachineConfiguredSlotSummary{
+	return &internalv1.MachineConfiguredSlotSummary{
 		ConfigId:            v.ConfigID.String(),
 		CabinetCode:         v.CabinetCode,
 		SlotCode:            v.SlotCode,
@@ -329,12 +512,12 @@ func mapConfiguredSlotSummary(v setupapp.CabinetSlotConfigView) *avfv1.MachineCo
 	}
 }
 
-func mapLegacySlotSummary(v setupapp.LegacySlotRow) *avfv1.MachineLegacySlotSummary {
+func mapLegacySlotSummary(v setupapp.LegacySlotRow) *internalv1.MachineLegacySlotSummary {
 	var productID *wrapperspb.StringValue
 	if v.ProductID != nil && *v.ProductID != uuid.Nil {
 		productID = wrapperspb.String(v.ProductID.String())
 	}
-	return &avfv1.MachineLegacySlotSummary{
+	return &internalv1.MachineLegacySlotSummary{
 		PlanogramId:       v.PlanogramID.String(),
 		PlanogramName:     v.PlanogramName,
 		SlotIndex:         v.SlotIndex,
@@ -348,8 +531,27 @@ func mapLegacySlotSummary(v setupapp.LegacySlotRow) *avfv1.MachineLegacySlotSumm
 	}
 }
 
-func mapAssortmentProductSummary(v setupapp.AssortmentProductView) *avfv1.MachineAssortmentProductSummary {
-	return &avfv1.MachineAssortmentProductSummary{
+func mapInventoryLegacySlot(v setupapp.LegacySlotRow) *internalv1.InventoryLegacySlotRow {
+	var productID *wrapperspb.StringValue
+	if v.ProductID != nil && *v.ProductID != uuid.Nil {
+		productID = wrapperspb.String(v.ProductID.String())
+	}
+	return &internalv1.InventoryLegacySlotRow{
+		PlanogramId:       v.PlanogramID.String(),
+		PlanogramName:     v.PlanogramName,
+		SlotIndex:         v.SlotIndex,
+		CurrentQuantity:   v.CurrentQuantity,
+		MaxQuantity:       v.MaxQuantity,
+		PriceMinor:        v.PriceMinor,
+		ProductId:         productID,
+		ProductSku:        v.ProductSKU,
+		ProductName:       v.ProductName,
+		PlanogramRevision: v.PlanogramRevision,
+	}
+}
+
+func mapAssortmentProductSummary(v setupapp.AssortmentProductView) *internalv1.MachineAssortmentProductSummary {
+	return &internalv1.MachineAssortmentProductSummary{
 		ProductId:      v.ProductID.String(),
 		Sku:            v.SKU,
 		Name:           v.Name,
@@ -359,8 +561,8 @@ func mapAssortmentProductSummary(v setupapp.AssortmentProductView) *avfv1.Machin
 	}
 }
 
-func mapIncidentSummary(v appapi.MachineIncidentView) *avfv1.MachineIncidentSummary {
-	return &avfv1.MachineIncidentSummary{
+func mapIncidentSummary(v appapi.MachineIncidentView) *internalv1.MachineIncidentSummary {
+	return &internalv1.MachineIncidentSummary{
 		Id:        v.ID.String(),
 		MachineId: v.MachineID.String(),
 		Severity:  v.Severity,
@@ -373,8 +575,8 @@ func mapIncidentSummary(v appapi.MachineIncidentView) *avfv1.MachineIncidentSumm
 	}
 }
 
-func mapCommerceOrder(v domaincommerce.Order) *avfv1.CommerceOrderSummary {
-	return &avfv1.CommerceOrderSummary{
+func mapCommerceOrder(v domaincommerce.Order) *internalv1.CommerceOrderSummary {
+	return &internalv1.CommerceOrderSummary{
 		Id:             v.ID.String(),
 		OrganizationId: v.OrganizationID.String(),
 		MachineId:      v.MachineID.String(),
@@ -389,12 +591,12 @@ func mapCommerceOrder(v domaincommerce.Order) *avfv1.CommerceOrderSummary {
 	}
 }
 
-func mapCommerceVend(v domaincommerce.VendSession) *avfv1.CommerceVendSummary {
+func mapCommerceVend(v domaincommerce.VendSession) *internalv1.CommerceVendSummary {
 	var finalCommandAttemptID *wrapperspb.StringValue
 	if v.FinalCommandAttemptID != nil && *v.FinalCommandAttemptID != uuid.Nil {
 		finalCommandAttemptID = wrapperspb.String(v.FinalCommandAttemptID.String())
 	}
-	return &avfv1.CommerceVendSummary{
+	return &internalv1.CommerceVendSummary{
 		Id:                    v.ID.String(),
 		OrderId:               v.OrderID.String(),
 		MachineId:             v.MachineID.String(),
@@ -406,12 +608,12 @@ func mapCommerceVend(v domaincommerce.VendSession) *avfv1.CommerceVendSummary {
 	}
 }
 
-func mapCommercePayment(v domaincommerce.Payment) *avfv1.CommercePaymentSummary {
+func mapCommercePayment(v domaincommerce.Payment) *internalv1.CommercePaymentSummary {
 	var settlementBatchID *wrapperspb.StringValue
 	if v.SettlementBatchID != nil && *v.SettlementBatchID != uuid.Nil {
 		settlementBatchID = wrapperspb.String(v.SettlementBatchID.String())
 	}
-	return &avfv1.CommercePaymentSummary{
+	return &internalv1.CommercePaymentSummary{
 		Id:                   v.ID.String(),
 		OrderId:              v.OrderID.String(),
 		Provider:             v.Provider,

@@ -410,6 +410,7 @@ func (s *Service) ListTechnicians(ctx context.Context, scope listscope.AdminFlee
 			Email:           pgTextStringPtr(t.Email),
 			Phone:           pgTextStringPtr(t.Phone),
 			ExternalSubject: pgTextStringPtr(t.ExternalSubject),
+			Status:          t.Status,
 			CreatedAt:       t.CreatedAt.UTC(),
 		})
 	}
@@ -559,66 +560,6 @@ func (s *Service) ListCommands(ctx context.Context, scope listscope.AdminFleet) 
 		})
 	}
 	return &CommandsListResponse{
-		Items: items,
-		Meta: listscope.CollectionMeta{
-			Limit:    scope.Limit,
-			Offset:   scope.Offset,
-			Returned: len(items),
-			Total:    total,
-		},
-	}, nil
-}
-
-// ListOTA implements api.OTAAdminService.
-func (s *Service) ListOTA(ctx context.Context, scope listscope.AdminFleet) (*OTAListResponse, error) {
-	if s == nil || s.q == nil {
-		return nil, errors.New("fleetadmin: nil service")
-	}
-	if scope.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrAdminOrganizationRequired
-	}
-	st, en := timeRangeOrAll(scope.From, scope.To)
-	filterStatus := strings.TrimSpace(scope.Status) != ""
-
-	listArg := db.FleetAdminListOTACampaignsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterStatus,
-		Column3:        strings.TrimSpace(scope.Status),
-		Column4:        st,
-		Column5:        en,
-		Limit:          scope.Limit,
-		Offset:         scope.Offset,
-	}
-	countArg := db.FleetAdminCountOTACampaignsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterStatus,
-		Column3:        strings.TrimSpace(scope.Status),
-		Column4:        st,
-		Column5:        en,
-	}
-	rows, err := s.q.FleetAdminListOTACampaigns(ctx, listArg)
-	if err != nil {
-		return nil, err
-	}
-	total, err := s.q.FleetAdminCountOTACampaigns(ctx, countArg)
-	if err != nil {
-		return nil, err
-	}
-	items := make([]AdminOTAListItem, 0, len(rows))
-	for _, r := range rows {
-		items = append(items, AdminOTAListItem{
-			CampaignID:         r.CampaignID.String(),
-			OrganizationID:     r.OrganizationID.String(),
-			CampaignName:       r.CampaignName,
-			Strategy:           r.Strategy,
-			CampaignStatus:     r.CampaignStatus,
-			CreatedAt:          r.CreatedAt.UTC(),
-			ArtifactID:         r.ArtifactID.String(),
-			ArtifactSemver:     pgTextStringPtr(r.ArtifactSemver),
-			ArtifactStorageKey: r.ArtifactStorageKey,
-		})
-	}
-	return &OTAListResponse{
 		Items: items,
 		Meta: listscope.CollectionMeta{
 			Limit:    scope.Limit,

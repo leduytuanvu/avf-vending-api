@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+import "google/protobuf/timestamp.proto";
+
+enum MachineResponseStatus {
+  MACHINE_RESPONSE_STATUS_UNSPECIFIED = 0;
+  MACHINE_RESPONSE_STATUS_ACCEPTED = 1;
+  MACHINE_RESPONSE_STATUS_REPLAYED = 2;
+  MACHINE_RESPONSE_STATUS_REJECTED = 3;
+  MACHINE_RESPONSE_STATUS_NOT_MODIFIED = 4;
+}
+
+// MachineRequestMeta is the common envelope for machine app RPCs. Machine JWT
+// claims remain authoritative for organization_id and machine_id on protected RPCs.
+message MachineRequestMeta {
+  string organization_id = 1;
+  string machine_id = 2;
+  string request_id = 3;
+  string idempotency_key = 4;
+  google.protobuf.Timestamp occurred_at = 5;
+  int64 client_sequence = 6;
+  int64 offline_sequence = 7;
+  string app_version = 8;
+  int64 config_version = 9;
+  string catalog_version = 10;
+  // Optional echo for offline correlation (also carried on IdempotencyContext.client_event_id for mutations).
+  string client_event_id = 11;
+}
+
+message MachineResponseMeta {
+  google.protobuf.Timestamp server_time = 1;
+  string trace_id = 2;
+  string request_id = 3;
+  MachineResponseStatus status = 4;
+  bool retryable = 5;
+  string error_code = 6;
+}
+
+// Money is a currency amount in minor units (e.g. cents).
+message Money {
+  string currency_code = 1;
+  int64 minor_units = 2;
+}
+
+message PageRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message PageResponse {
+  string next_page_token = 1;
+  int32 total_size = 2;
+}
+
+// MachineContext carries machine-scoped identity for RPCs (mirrors HTTP path scope).
+message MachineContext {
+  string machine_id = 1;
+  string organization_id = 2;
+  string site_id = 3;
+}
+
+message IdempotencyContext {
+  string idempotency_key = 1;
+  string client_event_id = 2;
+  google.protobuf.Timestamp client_created_at = 3;
+  optional string operator_session_id = 4;
+}
+
+message ClientEvent {
+  string event_type = 1;
+  google.protobuf.Timestamp occurred_at = 2;
+  map<string, string> attributes = 3;
+}
+
+// MediaAssetRef references binary media via HTTPS; bytes are never sent on gRPC.
+message MediaAssetRef {
+  string asset_id = 1;
+  string url = 2;
+  string content_type = 3;
+  int64 byte_length = 4;
+  map<string, string> cache_hints = 5;
+}
+
+// GrpcErrorDetail is a structured detail compatible with google.rpc-style consumers
+// without importing googleapis protos into this module.
+message GrpcErrorDetail {
+  string domain = 1;
+  string reason = 2;
+  map<string, string> metadata = 3;
+}

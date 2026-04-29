@@ -8,14 +8,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
+	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/observability"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
@@ -30,6 +33,9 @@ type Service struct {
 	saleLines                   SaleLineResolver
 	workflow                    workfloworch.Boundary
 	scheduleVendFailureFollowUp bool
+	enterpriseAudit             compliance.EnterpriseRecorder
+	webhookAppliedHook          func(context.Context, PaymentWebhookAppliedEvent)
+	paymentSessionReg           PaymentSessionRegistry
 }
 
 // NewService returns a commerce orchestrator. OrderVend workflow is required.
@@ -52,6 +58,9 @@ func NewService(d Deps) *Service {
 		saleLines:                   d.SaleLines,
 		workflow:                    wf,
 		scheduleVendFailureFollowUp: d.ScheduleVendFailureFollowUp,
+		enterpriseAudit:             d.EnterpriseAudit,
+		webhookAppliedHook:          d.WebhookAppliedHook,
+		paymentSessionReg:           d.PaymentSessionRegistry,
 	}
 }
 
@@ -60,6 +69,7 @@ var _ Orchestrator = (*Service)(nil)
 var (
 	paymentStates = map[string]struct{}{
 		"created": {}, "authorized": {}, "captured": {}, "failed": {}, "refunded": {},
+		"expired": {}, "canceled": {}, "partially_refunded": {},
 	}
 	vendStates = map[string]struct{}{
 		"pending": {}, "in_progress": {}, "success": {}, "failed": {},
@@ -234,6 +244,18 @@ func (s *Service) AdvanceVend(ctx context.Context, in AdvanceVendInput) (domainc
 	if _, allowed := next[in.ToState]; !ok || !allowed {
 		return domaincommerce.VendSession{}, ErrIllegalTransition
 	}
+	if in.ToState == "in_progress" {
+		pay, perr := s.life.GetLatestPaymentForOrder(ctx, in.OrderID)
+		if perr != nil && !errors.Is(perr, ErrNotFound) {
+			return domaincommerce.VendSession{}, perr
+		}
+		if errors.Is(perr, ErrNotFound) {
+			return domaincommerce.VendSession{}, ErrPaymentNotSettled
+		}
+		if pay.State != "captured" && pay.State != "partially_refunded" {
+			return domaincommerce.VendSession{}, ErrPaymentNotSettled
+		}
+	}
 	updated, err := s.life.UpdateVendSessionState(ctx, UpdateVendSessionParams{
 		OrderID:       in.OrderID,
 		SlotIndex:     in.SlotIndex,
@@ -273,16 +295,56 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 	if err != nil {
 		return FinalizeOutcome{}, err
 	}
-	if v.State == "success" || v.State == "failed" {
+
+	if strings.EqualFold(in.TerminalVendState, "success") {
+		dedupe := strings.TrimSpace(in.InventoryDedupeKey)
+		if dedupe == "" {
+			if cw := strings.TrimSpace(in.ClientWriteIdempotencyKey); cw != "" {
+				dedupe = cw + ":vend_sale_inventory"
+			} else {
+				dedupe = fmt.Sprintf("commerce_vend_sale:%s|%s|%d", in.OrganizationID.String(), in.OrderID.String(), in.SlotIndex)
+			}
+		}
+		res, err := s.life.FulfillSuccessfulVendAtomically(ctx, FulfillSuccessfulVendInput{
+			OrganizationID:     in.OrganizationID,
+			OrderID:            in.OrderID,
+			SlotIndex:          in.SlotIndex,
+			InventoryDedupeKey: dedupe,
+			CorrelationID:      in.CorrelationID,
+		})
+		if err != nil {
+			return FinalizeOutcome{}, err
+		}
+		recordVendFinalized("success")
+		return FinalizeOutcome{
+			Order:           res.Order,
+			Vend:            res.Vend,
+			OrderVendReplay: res.OrderVendReplay,
+			InventoryReplay: res.InventoryReplay,
+		}, nil
+	}
+
+	if v.State == "failed" && strings.EqualFold(in.TerminalVendState, "failed") {
 		o2, oErr := s.life.GetOrderByID(ctx, in.OrderID)
 		if oErr != nil {
 			return FinalizeOutcome{}, oErr
 		}
-		return FinalizeOutcome{Order: o2, Vend: v}, nil
+		return FinalizeOutcome{Order: o2, Vend: v, OrderVendReplay: true}, nil
 	}
+
 	next, ok := vendTransitions[v.State]
 	if _, allowed := next[in.TerminalVendState]; !ok || !allowed {
 		return FinalizeOutcome{}, ErrIllegalTransition
+	}
+
+	fr, err := s.life.FulfillFailedVendAtomically(ctx, FulfillFailedVendInput{
+		OrganizationID: in.OrganizationID,
+		OrderID:        in.OrderID,
+		SlotIndex:      in.SlotIndex,
+		FailureReason:  in.FailureReason,
+	})
+	if err != nil {
+		return FinalizeOutcome{}, err
 	}
 
 	pay, pErr := s.life.GetLatestPaymentForOrder(ctx, in.OrderID)
@@ -290,36 +352,12 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 		return FinalizeOutcome{}, pErr
 	}
 
-	vendUpdated, err := s.life.UpdateVendSessionState(ctx, UpdateVendSessionParams{
-		OrderID:       in.OrderID,
-		SlotIndex:     in.SlotIndex,
-		ToState:       in.TerminalVendState,
-		FailureReason: in.FailureReason,
-	})
-	if err != nil {
-		return FinalizeOutcome{}, err
-	}
-
-	if in.TerminalVendState == "success" {
-		if pErr != nil || pay.State != "captured" {
-			return FinalizeOutcome{}, ErrPaymentNotSettled
-		}
-		orderUpdated, err := s.life.UpdateOrderStatus(ctx, in.OrderID, in.OrganizationID, "completed")
-		if err != nil {
-			return FinalizeOutcome{}, err
-		}
-		return FinalizeOutcome{Order: orderUpdated, Vend: vendUpdated}, nil
-	}
-	orderUpdated, err := s.life.UpdateOrderStatus(ctx, in.OrderID, in.OrganizationID, "failed")
-	if err != nil {
-		return FinalizeOutcome{}, err
-	}
-	if pErr == nil && pay.State == "captured" && s.scheduleVendFailureFollowUp && s.workflow != nil && s.workflow.Enabled() {
+	if !fr.Replay && pErr == nil && (pay.State == "captured" || pay.State == "partially_refunded") && s.scheduleVendFailureFollowUp && s.workflow != nil && s.workflow.Enabled() {
 		if err := s.workflow.Start(ctx, workfloworch.StartVendFailureAfterPaymentSuccess(workfloworch.VendFailureAfterPaymentSuccessInput{
 			OrganizationID: in.OrganizationID,
 			OrderID:        in.OrderID,
 			PaymentID:      pay.ID,
-			VendID:         vendUpdated.ID,
+			VendID:         fr.Vend.ID,
 			SlotIndex:      in.SlotIndex,
 			FailureReason:  strings.TrimSpace(derefString(in.FailureReason)),
 			ObservedAt:     time.Now().UTC(),
@@ -328,11 +366,39 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 				zap.Error(err),
 				zap.String("order_id", in.OrderID.String()),
 				zap.String("payment_id", pay.ID.String()),
-				zap.String("vend_id", vendUpdated.ID.String()),
+				zap.String("vend_id", fr.Vend.ID.String()),
 			)
 		}
 	}
-	return FinalizeOutcome{Order: orderUpdated, Vend: vendUpdated}, nil
+	recordVendFinalized("failed")
+	return FinalizeOutcome{
+		Order:           fr.Order,
+		Vend:            fr.Vend,
+		OrderVendReplay: fr.Replay,
+	}, nil
+}
+
+// EnsureVendInProgressForPaidOrder moves vend_session from pending to in_progress when the order is paid or vending,
+// matching the device HTTP vend-result precondition. Safe to call multiple times.
+func (s *Service) EnsureVendInProgressForPaidOrder(ctx context.Context, organizationID, orderID uuid.UUID, slotIndex int32) error {
+	if s.life == nil {
+		return ErrNotConfigured
+	}
+	st, err := s.GetCheckoutStatus(ctx, organizationID, orderID, slotIndex)
+	if err != nil {
+		return err
+	}
+	if st.Vend.State == "pending" && (st.Order.Status == "paid" || st.Order.Status == "vending") {
+		if _, err := s.AdvanceVend(ctx, AdvanceVendInput{
+			OrganizationID: organizationID,
+			OrderID:        orderID,
+			SlotIndex:      slotIndex,
+			ToState:        "in_progress",
+		}); err != nil && !errors.Is(err, ErrIllegalTransition) {
+			return err
+		}
+	}
+	return nil
 }
 
 func derefString(v *string) string {
@@ -387,6 +453,9 @@ func (s *Service) EvaluateRefundEligibility(ctx context.Context, orderID uuid.UU
 	case pay.State == "refunded":
 		out.Eligible = false
 		out.Reason = "payment already refunded"
+	case pay.State == "partially_refunded" && vendState == "failed":
+		out.Eligible = true
+		out.Reason = "partially refunded payment with failed vend"
 	case pay.State == "captured" && vendState == "failed":
 		out.Eligible = true
 		out.Reason = "captured payment with failed vend"
@@ -455,7 +524,7 @@ func (s *Service) CancelOrder(ctx context.Context, organizationID, orderID uuid.
 		return domaincommerce.Order{}, ErrCancelNotAllowed
 	}
 	pay, pErr := s.life.GetLatestPaymentForOrder(ctx, orderID)
-	if pErr == nil && pay.State == "captured" {
+	if pErr == nil && (pay.State == "captured" || pay.State == "partially_refunded") {
 		return domaincommerce.Order{}, ErrCancelNotAllowed
 	}
 	if pErr != nil && !errors.Is(pErr, ErrNotFound) {
@@ -494,7 +563,7 @@ func (s *Service) CreateRefund(ctx context.Context, in CreateRefundInput) (Refun
 	if err != nil {
 		return RefundRowView{}, err
 	}
-	if pay.State != "captured" {
+	if pay.State != "captured" && pay.State != "partially_refunded" {
 		return RefundRowView{}, ErrRefundNotAllowed
 	}
 	if strings.ToUpper(strings.TrimSpace(pay.Currency)) != cur {
@@ -533,6 +602,30 @@ func (s *Service) CreateRefund(ctx context.Context, in CreateRefundInput) (Refun
 			return s.life.GetRefundByOrderIdempotency(ctx, in.OrderID, in.IdempotencyKey)
 		}
 		return RefundRowView{}, err
+	}
+	productionmetrics.RecordRefundRequested("commerce_api")
+	if s.enterpriseAudit != nil {
+		rid := row.ID.String()
+		md, err := json.Marshal(map[string]any{
+			"order_id":        in.OrderID.String(),
+			"refund_id":       rid,
+			"payment_id":      pay.ID.String(),
+			"amount_minor":    in.AmountMinor,
+			"currency":        cur,
+			"idempotency_key": strings.TrimSpace(in.IdempotencyKey),
+		})
+		if err != nil {
+			md = []byte("{}")
+		}
+		md = compliance.SanitizeJSONBytes(md)
+		_ = s.enterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
+			OrganizationID: in.OrganizationID,
+			ActorType:      compliance.ActorSystem,
+			Action:         compliance.ActionRefundRequested,
+			ResourceType:   "commerce.refund",
+			ResourceID:     &rid,
+			Metadata:       md,
+		})
 	}
 	return row, nil
 }
@@ -597,6 +690,9 @@ func (s *Service) GetCheckoutStatus(ctx context.Context, organizationID, orderID
 // Duplicate deliveries for the same (provider, provider_reference) or (provider, webhook_event_id) are idempotent replays.
 func (s *Service) ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPaymentProviderWebhookInput) (ApplyPaymentProviderWebhookResult, error) {
 	wid := strings.TrimSpace(in.WebhookEventID)
+	if wid == "" {
+		return ApplyPaymentProviderWebhookResult{}, errors.Join(ErrInvalidArgument, errors.New("webhook_event_id is required"))
+	}
 	if len(wid) > 256 {
 		return ApplyPaymentProviderWebhookResult{}, errors.Join(ErrInvalidArgument, errors.New("webhook_event_id too long"))
 	}
@@ -620,20 +716,66 @@ func (s *Service) ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPayme
 	if !json.Valid(payload) {
 		return ApplyPaymentProviderWebhookResult{}, errors.Join(ErrInvalidArgument, errors.New("payload must be JSON"))
 	}
-	in2 := ApplyPaymentProviderWebhookInput{
-		OrganizationID:         in.OrganizationID,
-		OrderID:                in.OrderID,
-		PaymentID:              in.PaymentID,
-		Provider:               strings.TrimSpace(in.Provider),
-		ProviderReference:      strings.TrimSpace(in.ProviderReference),
-		WebhookEventID:         wid,
-		EventType:              strings.TrimSpace(in.EventType),
-		NormalizedPaymentState: target,
-		Payload:                payload,
-		ProviderAmountMinor:    in.ProviderAmountMinor,
-		Currency:               in.Currency,
+	payload = compliance.SanitizeJSONBytes(payload)
+	vstat := strings.TrimSpace(in.WebhookValidationStatus)
+	switch vstat {
+	case "", "hmac_verified", "unsigned_development":
+	default:
+		return ApplyPaymentProviderWebhookResult{}, errors.Join(ErrInvalidArgument, errors.New("invalid webhook validation_status"))
 	}
-	return s.webhook.ApplyPaymentProviderWebhook(ctx, in2)
+	if vstat == "" {
+		vstat = "hmac_verified"
+	}
+	meta := in.ProviderMetadata
+	if len(meta) == 0 {
+		meta = []byte(`{}`)
+	}
+	if !json.Valid(meta) {
+		return ApplyPaymentProviderWebhookResult{}, errors.Join(ErrInvalidArgument, errors.New("provider_metadata must be JSON"))
+	}
+	meta = compliance.SanitizeJSONBytes(meta)
+	outboxPayload := in.OutboxPayload
+	if len(outboxPayload) > 0 && !json.Valid(outboxPayload) {
+		return ApplyPaymentProviderWebhookResult{}, errors.Join(ErrInvalidArgument, errors.New("outbox_payload must be JSON"))
+	}
+
+	in2 := ApplyPaymentProviderWebhookInput{
+		OrganizationID:          in.OrganizationID,
+		OrderID:                 in.OrderID,
+		PaymentID:               in.PaymentID,
+		Provider:                strings.TrimSpace(in.Provider),
+		ProviderReference:       strings.TrimSpace(in.ProviderReference),
+		WebhookEventID:          wid,
+		EventType:               strings.TrimSpace(in.EventType),
+		NormalizedPaymentState:  target,
+		Payload:                 payload,
+		ProviderAmountMinor:     in.ProviderAmountMinor,
+		Currency:                in.Currency,
+		WebhookValidationStatus: vstat,
+		ProviderMetadata:        meta,
+		OutboxTopic:             strings.TrimSpace(in.OutboxTopic),
+		OutboxEventType:         strings.TrimSpace(in.OutboxEventType),
+		OutboxPayload:           outboxPayload,
+		OutboxAggregateType:     strings.TrimSpace(in.OutboxAggregateType),
+		OutboxAggregateID:       in.OutboxAggregateID,
+		OutboxIdempotencyKey:    strings.TrimSpace(in.OutboxIdempotencyKey),
+	}
+	res, err := s.webhook.ApplyPaymentProviderWebhook(ctx, in2)
+	if err != nil {
+		return ApplyPaymentProviderWebhookResult{}, err
+	}
+	if s.webhookAppliedHook != nil {
+		s.webhookAppliedHook(ctx, PaymentWebhookAppliedEvent{
+			OrganizationID: in2.OrganizationID,
+			OrderID:        in2.OrderID,
+			PaymentID:      in2.PaymentID,
+			Replay:         res.Replay,
+			Provider:       in2.Provider,
+			WebhookEventID: wid,
+			Validation:     vstat,
+		})
+	}
+	return res, nil
 }
 
 func validateCreateOrder(in CreateOrderInput) error {

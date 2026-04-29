@@ -1,5 +1,8 @@
 name: Build and Push Images
 
+# Builds and publishes digest-pinned GHCR refs + artifacts only — **no deploy** to staging or production here.
+# Staging: **Staging Deployment Contract** after Security Release on **develop**. Production: **Deploy Production** (**main**, manual).
+
 on:
   workflow_run:
     workflows:

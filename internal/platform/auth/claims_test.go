@@ -34,6 +34,25 @@ func TestPrincipalFromJWTPayloadJSON_basicUser(t *testing.T) {
 	}
 }
 
+func TestPrincipalFromJWTPayloadJSON_accountStatus(t *testing.T) {
+	payload, err := json.Marshal(map[string]any{
+		"sub":            "user-1",
+		"roles":          []string{"viewer"},
+		"account_status": "disabled",
+		"exp":            time.Now().Add(time.Hour).Unix(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := PrincipalFromJWTPayloadJSON(payload, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.InteractiveAccountDisabled() {
+		t.Fatal("expected disabled principal")
+	}
+}
+
 func TestPrincipalFromJWTPayloadJSON_expiredRejected(t *testing.T) {
 	payload, err := json.Marshal(map[string]any{
 		"sub": "user-1",

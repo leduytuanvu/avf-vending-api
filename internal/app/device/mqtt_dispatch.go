@@ -2,6 +2,8 @@ package device
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"time"
 
 	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
+	domainfleet "github.com/avf/avf-vending-api/internal/domain/fleet"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/google/uuid"
@@ -24,11 +27,17 @@ type MQTTDispatchPublisher interface {
 	PublishDeviceDispatch(ctx context.Context, machineID uuid.UUID, payload []byte) error
 }
 
+type MachineCommandStatusReader interface {
+	GetMachine(ctx context.Context, machineID uuid.UUID) (domainfleet.Machine, error)
+}
+
 // MQTTCommandDispatcher persists command intent then publishes over MQTT (API process only).
 type MQTTCommandDispatcher struct {
 	wf                 domaindevice.CommandShadowWorkflow
 	store              *postgres.Store
 	pub                MQTTDispatchPublisher
+	outboundTopic      func(machineID uuid.UUID) (string, error)
+	machines           MachineCommandStatusReader
 	ackTimeout         time.Duration
 	publishMaxAttempts int
 	retryBackoff       time.Duration
@@ -39,9 +48,12 @@ type MQTTCommandDispatcherDeps struct {
 	Workflow           domaindevice.CommandShadowWorkflow
 	Store              *postgres.Store
 	Publisher          MQTTDispatchPublisher
+	Machines           MachineCommandStatusReader
 	AckTimeout         time.Duration
 	PublishMaxAttempts int // total publish tries including the first; default 3 when <= 0
 	RetryBackoff       time.Duration
+	// OutboundCommandTopic resolves the MQTT outbound topic for ledger.route_key diagnostics (same contract as MQTT publish).
+	OutboundCommandTopic func(machineID uuid.UUID) (string, error)
 }
 
 // NewMQTTCommandDispatcher returns nil when store or workflow is nil. Publisher may be nil (Dispatch will error explicitly).
@@ -65,6 +77,8 @@ func NewMQTTCommandDispatcher(d MQTTCommandDispatcherDeps) *MQTTCommandDispatche
 		wf:                 d.Workflow,
 		store:              d.Store,
 		pub:                d.Publisher,
+		outboundTopic:      d.OutboundCommandTopic,
+		machines:           d.Machines,
 		ackTimeout:         ack,
 		publishMaxAttempts: attempts,
 		retryBackoff:       backoff,
@@ -72,21 +86,36 @@ func NewMQTTCommandDispatcher(d MQTTCommandDispatcherDeps) *MQTTCommandDispatche
 }
 
 // RemoteCommandDispatchInput is the application input for dispatching a remote command.
+//
+// Transport retries: PublishMaxAttempts + RetryBackoff retry the same canonical MQTT wire payload
+// to the broker only (safe duplicate publish at the transport layer; the device dedupes by command_id
+// + sequence). Command-level retry after terminal failure or timeout requires an explicit replay
+// (idempotency key + Append rules) or admin-driven retry; do not assume repeated dispatch for
+// non-idempotent command_type without a product decision. AckDeadline / ack_deadline on attempts
+// comes from AckTimeout on this dispatcher (default 30s when unset).
 type RemoteCommandDispatchInput struct {
 	Append domaindevice.AppendCommandInput
 }
 
 // RemoteCommandDispatchResult is returned after a dispatch attempt.
 type RemoteCommandDispatchResult struct {
-	CommandID        uuid.UUID `json:"command_id"`
-	Sequence         int64     `json:"sequence"`
-	AttemptID        uuid.UUID `json:"attempt_id"`
-	Replay           bool      `json:"replay"`
-	DispatchState    string    `json:"dispatch_state"`
-	SkippedRepublish bool      `json:"skipped_republish,omitempty"`
+	CommandID        uuid.UUID  `json:"command_id"`
+	Sequence         int64      `json:"sequence"`
+	AttemptID        uuid.UUID  `json:"attempt_id"`
+	Replay           bool       `json:"replay"`
+	DispatchState    string     `json:"dispatch_state"`
+	Lifecycle        string     `json:"lifecycle"`
+	MQTTTopic        string     `json:"mqtt_topic,omitempty"`
+	PayloadSHA256Hex string     `json:"payload_sha256_hex,omitempty"`
+	AckDeadline      *time.Time `json:"ack_deadline,omitempty"`
+	RetryCount       int        `json:"retry_count,omitempty"`
+	LastError        *string    `json:"last_error,omitempty"`
+	SkippedRepublish bool       `json:"skipped_republish,omitempty"`
 }
 
 type dispatchWire struct {
+	CommandID      uuid.UUID       `json:"command_id"`
+	MachineID      uuid.UUID       `json:"machine_id"`
 	Sequence       int64           `json:"sequence"`
 	CommandType    string          `json:"command_type"`
 	Payload        json.RawMessage `json:"payload"`
@@ -107,11 +136,73 @@ func MapAttemptTransportState(attemptStatus string) string {
 		return "failed"
 	case "ack_timeout":
 		return "timed_out"
+	case "expired":
+		return "expired"
 	case "duplicate", "late":
 		return "superseded"
 	default:
 		return attemptStatus
 	}
+}
+
+// AttemptLifecycleStatus maps persisted machine_command_attempts.status to production P0 lifecycle labels:
+// queued, published, acked, timeout, failed, cancelled.
+func AttemptLifecycleStatus(attemptStatus string, timeoutReason *string) string {
+	rs := strings.ToLower(strings.TrimSpace(attemptStatus))
+	tr := ""
+	if timeoutReason != nil {
+		tr = strings.ToLower(strings.TrimSpace(*timeoutReason))
+	}
+	switch rs {
+	case "pending":
+		return "queued"
+	case "sent":
+		return "published"
+	case "completed":
+		return "acked"
+	case "ack_timeout", "expired":
+		return "timeout"
+	case "duplicate", "late":
+		return "acked"
+	case "failed", "nack":
+		if strings.Contains(tr, "admin_cancel") {
+			return "cancelled"
+		}
+		return "failed"
+	default:
+		return rs
+	}
+}
+
+func mqttLedgerRouteMeta(mqttTopic string, wirePayload []byte) (routeMetaJSON string, payloadSHAHex string) {
+	if len(wirePayload) == 0 {
+		wirePayload = []byte{}
+	}
+	sum := sha256.Sum256(wirePayload)
+	payloadSHAHex = hex.EncodeToString(sum[:])
+	meta := map[string]string{
+		"transport":          "mqtt",
+		"payload_sha256_hex": payloadSHAHex,
+	}
+	if strings.TrimSpace(mqttTopic) != "" {
+		meta["mqtt_topic"] = strings.TrimSpace(mqttTopic)
+	}
+	b, err := json.Marshal(meta)
+	if err != nil {
+		return "", payloadSHAHex
+	}
+	return string(b), payloadSHAHex
+}
+
+func ledgerMQTTMetaFromRouteKey(routeKey pgtype.Text) (topic string, shaHex string) {
+	if !routeKey.Valid || strings.TrimSpace(routeKey.String) == "" {
+		return "", ""
+	}
+	var meta map[string]string
+	if err := json.Unmarshal([]byte(routeKey.String), &meta); err != nil {
+		return "", ""
+	}
+	return strings.TrimSpace(meta["mqtt_topic"]), strings.TrimSpace(meta["payload_sha256_hex"])
 }
 
 // DispatchRemoteMQTTCommand persists the command (unless replay), ensures a transport attempt row, then publishes.
@@ -121,6 +212,9 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 	}
 	if d.pub == nil {
 		return RemoteCommandDispatchResult{}, ErrMQTTCommandPublisherMissing
+	}
+	if err := d.ensureMachineCommandable(ctx, in.Append.MachineID); err != nil {
+		return RemoteCommandDispatchResult{}, err
 	}
 
 	_ = d.store.ApplyMQTTCommandAckTimeouts(ctx, time.Now())
@@ -146,6 +240,8 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 	}
 
 	wire := dispatchWire{
+		CommandID:      ledgerRow.ID,
+		MachineID:      appendIn.MachineID,
 		Sequence:       appendRes.Sequence,
 		CommandType:    ledgerRow.CommandType,
 		Payload:        json.RawMessage(payloadWire),
@@ -156,6 +252,16 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 	if err != nil {
 		return RemoteCommandDispatchResult{}, fmt.Errorf("device: marshal dispatch wire: %w", err)
 	}
+
+	mqttTopicForMeta := ""
+	if d.outboundTopic != nil {
+		mt, terr := d.outboundTopic(appendIn.MachineID)
+		if terr != nil {
+			return RemoteCommandDispatchResult{}, fmt.Errorf("device: outbound mqtt topic: %w", terr)
+		}
+		mqttTopicForMeta = mt
+	}
+	routeLedgerMeta, payloadSHAHex := mqttLedgerRouteMeta(mqttTopicForMeta, wireBytes)
 
 	ledgerDeadline := time.Now().Add(d.ackTimeout)
 
@@ -169,7 +275,7 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline)
+		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline, routeLedgerMeta)
 		if err != nil {
 			return RemoteCommandDispatchResult{}, err
 		}
@@ -180,18 +286,18 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 			att = latest
 			skippedRepublish = true
 		} else {
-			att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline)
+			att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline, routeLedgerMeta)
 			if err != nil {
 				return RemoteCommandDispatchResult{}, err
 			}
 		}
-	case latest.Status == "ack_timeout" && appendRes.Replay:
-		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline)
+	case (latest.Status == "ack_timeout" || latest.Status == "expired") && appendRes.Replay:
+		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline, routeLedgerMeta)
 		if err != nil {
 			return RemoteCommandDispatchResult{}, err
 		}
 	case latest.Status == "failed" && appendRes.Replay && isPublishFailure(latest):
-		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline)
+		att, err = d.store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, appendIn.MachineID, pgUUIDPtr(ledgerRow.CorrelationID), wireBytes, ledgerDeadline, routeLedgerMeta)
 		if err != nil {
 			return RemoteCommandDispatchResult{}, err
 		}
@@ -203,12 +309,24 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 	}
 
 	if skippedRepublish {
+		mqTopic, mqSHA := ledgerMQTTMetaFromRouteKey(ledgerRow.RouteKey)
+		if mqSHA == "" {
+			// Ledger may predate route_key persistence; derive from current outbound topic + wire payload.
+			mqTopic = mqttTopicForMeta
+			mqSHA = payloadSHAHex
+		}
 		return RemoteCommandDispatchResult{
 			CommandID:        appendRes.CommandID,
 			Sequence:         appendRes.Sequence,
 			AttemptID:        att.ID,
 			Replay:           appendRes.Replay,
 			DispatchState:    MapAttemptTransportState(att.Status),
+			Lifecycle:        AttemptLifecycleStatus(att.Status, pgTextPtr(att.TimeoutReason)),
+			MQTTTopic:        mqTopic,
+			PayloadSHA256Hex: mqSHA,
+			AckDeadline:      pgTimestamptzPtr(att.AckDeadlineAt),
+			RetryCount:       int(att.AttemptNo - 1),
+			LastError:        pgTextPtr(att.TimeoutReason),
 			SkippedRepublish: true,
 		}, nil
 	}
@@ -239,12 +357,98 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 	}
 
 	return RemoteCommandDispatchResult{
-		CommandID:     appendRes.CommandID,
-		Sequence:      appendRes.Sequence,
-		AttemptID:     att.ID,
-		Replay:        appendRes.Replay,
-		DispatchState: "published",
+		CommandID:        appendRes.CommandID,
+		Sequence:         appendRes.Sequence,
+		AttemptID:        att.ID,
+		Replay:           appendRes.Replay,
+		DispatchState:    "published",
+		Lifecycle:        "published",
+		MQTTTopic:        mqttTopicForMeta,
+		PayloadSHA256Hex: payloadSHAHex,
+		AckDeadline:      &ackDeadline,
+		RetryCount:       int(att.AttemptNo - 1),
 	}, nil
+}
+
+// AdminRetryLedgerCommand replays MQTT dispatch for an existing command_ledger row (admin troubleshooting).
+func (d *MQTTCommandDispatcher) AdminRetryLedgerCommand(ctx context.Context, organizationID, commandID uuid.UUID) (RemoteCommandDispatchResult, error) {
+	if d == nil || d.store == nil || d.wf == nil {
+		return RemoteCommandDispatchResult{}, errors.New("device: nil MQTT command dispatcher")
+	}
+	q := db.New(d.store.Pool())
+	ledger, err := q.AdminOpsGetCommandLedgerForOrg(ctx, db.AdminOpsGetCommandLedgerForOrgParams{
+		ID:             commandID,
+		OrganizationID: organizationID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return RemoteCommandDispatchResult{}, ErrNotFound
+		}
+		return RemoteCommandDispatchResult{}, err
+	}
+	idem := strings.TrimSpace(pgTextString(ledger.IdempotencyKey))
+	if idem == "" {
+		return RemoteCommandDispatchResult{}, ErrCommandRetryRequiresIdempotency
+	}
+	latest, err := q.GetLatestMachineCommandAttemptByCommandID(ctx, ledger.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return RemoteCommandDispatchResult{}, err
+	}
+	if err == nil {
+		if !adminRetryableLatestAttemptStatus(latest.Status) {
+			return RemoteCommandDispatchResult{}, ErrCommandNotRetryable
+		}
+	}
+	desired, err := q.AdminOpsGetMachineShadowDesiredJSON(ctx, ledger.MachineID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return RemoteCommandDispatchResult{}, err
+	}
+	if len(desired) == 0 {
+		desired = []byte("{}")
+	}
+	var corr *uuid.UUID
+	if ledger.CorrelationID.Valid {
+		x := uuid.UUID(ledger.CorrelationID.Bytes)
+		corr = &x
+	}
+	return d.DispatchRemoteMQTTCommand(ctx, RemoteCommandDispatchInput{
+		Append: domaindevice.AppendCommandInput{
+			MachineID:      ledger.MachineID,
+			CommandType:    ledger.CommandType,
+			Payload:        ledger.Payload,
+			CorrelationID:  corr,
+			IdempotencyKey: idem,
+			DesiredState:   desired,
+		},
+	})
+}
+
+func adminRetryableLatestAttemptStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "completed", "duplicate", "late", "nack":
+		return false
+	default:
+		return true
+	}
+}
+
+func (d *MQTTCommandDispatcher) ensureMachineCommandable(ctx context.Context, machineID uuid.UUID) error {
+	if machineID == uuid.Nil {
+		return errors.Join(ErrInvalidArgument, errors.New("machine_id is required"))
+	}
+	if d.machines == nil {
+		return nil
+	}
+	m, err := d.machines.GetMachine(ctx, machineID)
+	if err != nil {
+		return err
+	}
+	switch strings.ToLower(strings.TrimSpace(m.Status)) {
+	case "active":
+		return nil
+	default:
+		return errors.Join(ErrMachineNotCommandable, fmt.Errorf("status %q", m.Status))
+	}
 }
 
 func isPublishFailure(a db.MachineCommandAttempt) bool {
@@ -256,7 +460,7 @@ func isPublishFailure(a db.MachineCommandAttempt) bool {
 
 func isTerminalAttemptStatus(s string) bool {
 	switch s {
-	case "completed", "nack", "failed", "ack_timeout", "duplicate", "late":
+	case "completed", "nack", "failed", "ack_timeout", "expired", "duplicate", "late":
 		return true
 	default:
 		return false
@@ -304,12 +508,18 @@ func truncateErr(err error, max int) string {
 
 // RemoteCommandStatusView is a read model for GET status.
 type RemoteCommandStatusView struct {
-	MachineID     uuid.UUID `json:"machine_id"`
-	CommandID     uuid.UUID `json:"command_id"`
-	Sequence      int64     `json:"sequence"`
-	CommandType   string    `json:"command_type"`
-	DispatchState string    `json:"dispatch_state"`
-	Attempt       *struct {
+	MachineID        uuid.UUID  `json:"machine_id"`
+	CommandID        uuid.UUID  `json:"command_id"`
+	Sequence         int64      `json:"sequence"`
+	CommandType      string     `json:"command_type"`
+	DispatchState    string     `json:"dispatch_state"`
+	Lifecycle        string     `json:"lifecycle,omitempty"`
+	MQTTTopic        string     `json:"mqtt_topic,omitempty"`
+	PayloadSHA256Hex string     `json:"payload_sha256_hex,omitempty"`
+	AckDeadline      *time.Time `json:"ack_deadline,omitempty"`
+	RetryCount       int        `json:"retry_count,omitempty"`
+	LastError        *string    `json:"last_error,omitempty"`
+	Attempt          *struct {
 		ID            uuid.UUID  `json:"id"`
 		AttemptNo     int32      `json:"attempt_no"`
 		Status        string     `json:"status"`
@@ -343,10 +553,19 @@ func (d *MQTTCommandDispatcher) GetRemoteCommandStatus(ctx context.Context, mach
 		CommandType:   ledger.CommandType,
 		DispatchState: "queued",
 	}
+	mqTopic, mqSHA := ledgerMQTTMetaFromRouteKey(ledger.RouteKey)
+	out.MQTTTopic = mqTopic
+	out.PayloadSHA256Hex = mqSHA
+
 	if errors.Is(err, pgx.ErrNoRows) {
+		out.Lifecycle = AttemptLifecycleStatus("pending", nil)
 		return out, nil
 	}
 	out.DispatchState = MapAttemptTransportState(latest.Status)
+	out.Lifecycle = AttemptLifecycleStatus(latest.Status, pgTextPtr(latest.TimeoutReason))
+	out.AckDeadline = pgTimestamptzPtr(latest.AckDeadlineAt)
+	out.RetryCount = int(latest.AttemptNo - 1)
+	out.LastError = pgTextPtr(latest.TimeoutReason)
 	out.Attempt = &struct {
 		ID            uuid.UUID  `json:"id"`
 		AttemptNo     int32      `json:"attempt_no"`
@@ -364,6 +583,7 @@ func (d *MQTTCommandDispatcher) GetRemoteCommandStatus(ctx context.Context, mach
 		ResultAt:      pgTimestamptzPtr(latest.ResultReceivedAt),
 		TimeoutReason: pgTextPtr(latest.TimeoutReason),
 	}
+
 	return out, nil
 }
 
@@ -398,6 +618,8 @@ func (d *MQTTCommandDispatcher) PollRemoteCommands(ctx context.Context, machineI
 			pl = []byte("{}")
 		}
 		out = append(out, dispatchWire{
+			CommandID:      row.CommandID,
+			MachineID:      machineID,
 			Sequence:       row.Sequence,
 			CommandType:    row.CommandType,
 			Payload:        json.RawMessage(pl),

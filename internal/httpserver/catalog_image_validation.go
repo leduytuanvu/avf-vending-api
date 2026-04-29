@@ -20,10 +20,19 @@ func validateHTTPSArtifactURL(label, raw string) error {
 		return fmt.Errorf("%s is required", label)
 	}
 	u, err := url.Parse(s)
-	if err != nil || u.Scheme != "https" || u.Host == "" {
-		return fmt.Errorf("%s must be an https URL with a host", label)
+	if err != nil || u.Host == "" {
+		return fmt.Errorf("%s must be a URL with a host", label)
 	}
-	return nil
+	switch strings.ToLower(u.Scheme) {
+	case "https":
+		return nil
+	case "http":
+		h := strings.ToLower(strings.TrimSpace(u.Hostname()))
+		if h == "localhost" || h == "127.0.0.1" || h == "::1" {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s must be https or http://localhost / http://127.0.0.1", label)
 }
 
 func validateProductImageBindInput(displayURL, thumbURL, contentHash, mimeType string) error {

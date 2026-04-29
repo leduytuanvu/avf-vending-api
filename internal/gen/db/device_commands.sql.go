@@ -12,7 +12,151 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const ApplyMachineCommandAckTimeouts = `-- name: ApplyMachineCommandAckTimeouts :exec
+const AdminOpsCancelOpenAttemptsForCommand = `-- name: AdminOpsCancelOpenAttemptsForCommand :execrows
+UPDATE machine_command_attempts
+SET
+    status = 'failed',
+    result_received_at = now(),
+    timeout_reason = 'admin_cancelled'
+WHERE
+    command_id = $1
+    AND status IN ('pending', 'sent')
+`
+
+func (q *Queries) AdminOpsCancelOpenAttemptsForCommand(ctx context.Context, commandID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, AdminOpsCancelOpenAttemptsForCommand, commandID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const AdminOpsGetCommandLedgerForOrg = `-- name: AdminOpsGetCommandLedgerForOrg :one
+SELECT
+    cl.id,
+    cl.machine_id,
+    cl.organization_id,
+    cl.sequence,
+    cl.command_type,
+    cl.payload,
+    cl.correlation_id,
+    cl.idempotency_key,
+    cl.created_at,
+    cl.protocol_type,
+    cl.deadline_at,
+    cl.timeout_at,
+    cl.attempt_count,
+    cl.last_attempt_at,
+    cl.route_key,
+    cl.source_system,
+    cl.source_event_id,
+    cl.operator_session_id,
+    cl.max_dispatch_attempts
+FROM command_ledger AS cl
+INNER JOIN machines AS m ON m.id = cl.machine_id
+WHERE
+    cl.id = $1
+    AND m.organization_id = $2
+`
+
+type AdminOpsGetCommandLedgerForOrgParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) AdminOpsGetCommandLedgerForOrg(ctx context.Context, arg AdminOpsGetCommandLedgerForOrgParams) (CommandLedger, error) {
+	row := q.db.QueryRow(ctx, AdminOpsGetCommandLedgerForOrg, arg.ID, arg.OrganizationID)
+	var i CommandLedger
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.OrganizationID,
+		&i.Sequence,
+		&i.CommandType,
+		&i.Payload,
+		&i.CorrelationID,
+		&i.IdempotencyKey,
+		&i.CreatedAt,
+		&i.ProtocolType,
+		&i.DeadlineAt,
+		&i.TimeoutAt,
+		&i.AttemptCount,
+		&i.LastAttemptAt,
+		&i.RouteKey,
+		&i.SourceSystem,
+		&i.SourceEventID,
+		&i.OperatorSessionID,
+		&i.MaxDispatchAttempts,
+	)
+	return i, err
+}
+
+const AdminOpsListAttemptsForCommand = `-- name: AdminOpsListAttemptsForCommand :many
+SELECT
+    id,
+    command_id,
+    machine_id,
+    transport_session_id,
+    attempt_no,
+    sent_at,
+    ack_deadline_at,
+    acked_at,
+    result_received_at,
+    status,
+    timeout_reason,
+    protocol_pack_no,
+    sequence_no,
+    correlation_id,
+    request_payload_json,
+    raw_request,
+    raw_response,
+    latency_ms
+FROM machine_command_attempts
+WHERE
+    command_id = $1
+ORDER BY attempt_no ASC
+`
+
+func (q *Queries) AdminOpsListAttemptsForCommand(ctx context.Context, commandID uuid.UUID) ([]MachineCommandAttempt, error) {
+	rows, err := q.db.Query(ctx, AdminOpsListAttemptsForCommand, commandID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MachineCommandAttempt{}
+	for rows.Next() {
+		var i MachineCommandAttempt
+		if err := rows.Scan(
+			&i.ID,
+			&i.CommandID,
+			&i.MachineID,
+			&i.TransportSessionID,
+			&i.AttemptNo,
+			&i.SentAt,
+			&i.AckDeadlineAt,
+			&i.AckedAt,
+			&i.ResultReceivedAt,
+			&i.Status,
+			&i.TimeoutReason,
+			&i.ProtocolPackNo,
+			&i.SequenceNo,
+			&i.CorrelationID,
+			&i.RequestPayloadJson,
+			&i.RawRequest,
+			&i.RawResponse,
+			&i.LatencyMs,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ApplyMachineCommandAckTimeouts = `-- name: ApplyMachineCommandAckTimeouts :execrows
 UPDATE machine_command_attempts
 SET
     status = 'ack_timeout',
@@ -24,15 +168,56 @@ WHERE
     AND ack_deadline_at < $1
 `
 
-func (q *Queries) ApplyMachineCommandAckTimeouts(ctx context.Context, ackDeadlineAt pgtype.Timestamptz) error {
-	_, err := q.db.Exec(ctx, ApplyMachineCommandAckTimeouts, ackDeadlineAt)
-	return err
+func (q *Queries) ApplyMachineCommandAckTimeouts(ctx context.Context, ackDeadlineAt pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, ApplyMachineCommandAckTimeouts, ackDeadlineAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
-const GetCommandLedgerByMachineSequence = `-- name: GetCommandLedgerByMachineSequence :one
+const ApplyMachineCommandLedgerExpired = `-- name: ApplyMachineCommandLedgerExpired :execrows
+UPDATE machine_command_attempts AS mca
+SET
+    status = 'expired',
+    result_received_at = now(),
+    timeout_reason = 'ledger_timeout_exceeded'
+FROM command_ledger AS cl
+WHERE
+    mca.command_id = cl.id
+    AND mca.status = 'sent'
+    AND cl.timeout_at IS NOT NULL
+    AND cl.timeout_at < $1
+`
+
+func (q *Queries) ApplyMachineCommandLedgerExpired(ctx context.Context, timeoutAt pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, ApplyMachineCommandLedgerExpired, timeoutAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const CountMachineCommandAttemptsByCommandID = `-- name: CountMachineCommandAttemptsByCommandID :one
+SELECT
+    count(*)::bigint AS n
+FROM machine_command_attempts
+WHERE
+    command_id = $1
+`
+
+func (q *Queries) CountMachineCommandAttemptsByCommandID(ctx context.Context, commandID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, CountMachineCommandAttemptsByCommandID, commandID)
+	var n int64
+	err := row.Scan(&n)
+	return n, err
+}
+
+const GetCommandLedgerByID = `-- name: GetCommandLedgerByID :one
 SELECT
     id,
     machine_id,
+    organization_id,
     sequence,
     command_type,
     payload,
@@ -47,7 +232,61 @@ SELECT
     route_key,
     source_system,
     source_event_id,
-    operator_session_id
+    operator_session_id,
+    max_dispatch_attempts
+FROM command_ledger
+WHERE
+    id = $1
+`
+
+func (q *Queries) GetCommandLedgerByID(ctx context.Context, id uuid.UUID) (CommandLedger, error) {
+	row := q.db.QueryRow(ctx, GetCommandLedgerByID, id)
+	var i CommandLedger
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.OrganizationID,
+		&i.Sequence,
+		&i.CommandType,
+		&i.Payload,
+		&i.CorrelationID,
+		&i.IdempotencyKey,
+		&i.CreatedAt,
+		&i.ProtocolType,
+		&i.DeadlineAt,
+		&i.TimeoutAt,
+		&i.AttemptCount,
+		&i.LastAttemptAt,
+		&i.RouteKey,
+		&i.SourceSystem,
+		&i.SourceEventID,
+		&i.OperatorSessionID,
+		&i.MaxDispatchAttempts,
+	)
+	return i, err
+}
+
+const GetCommandLedgerByMachineSequence = `-- name: GetCommandLedgerByMachineSequence :one
+SELECT
+    id,
+    machine_id,
+    organization_id,
+    sequence,
+    command_type,
+    payload,
+    correlation_id,
+    idempotency_key,
+    created_at,
+    protocol_type,
+    deadline_at,
+    timeout_at,
+    attempt_count,
+    last_attempt_at,
+    route_key,
+    source_system,
+    source_event_id,
+    operator_session_id,
+    max_dispatch_attempts
 FROM command_ledger
 WHERE
     machine_id = $1
@@ -65,6 +304,7 @@ func (q *Queries) GetCommandLedgerByMachineSequence(ctx context.Context, arg Get
 	err := row.Scan(
 		&i.ID,
 		&i.MachineID,
+		&i.OrganizationID,
 		&i.Sequence,
 		&i.CommandType,
 		&i.Payload,
@@ -80,6 +320,64 @@ func (q *Queries) GetCommandLedgerByMachineSequence(ctx context.Context, arg Get
 		&i.SourceSystem,
 		&i.SourceEventID,
 		&i.OperatorSessionID,
+		&i.MaxDispatchAttempts,
+	)
+	return i, err
+}
+
+const GetDeviceCommandReceiptIDByDedupeKey = `-- name: GetDeviceCommandReceiptIDByDedupeKey :one
+SELECT
+    id
+FROM device_command_receipts
+WHERE
+    dedupe_key = $1
+`
+
+func (q *Queries) GetDeviceCommandReceiptIDByDedupeKey(ctx context.Context, dedupeKey string) (int64, error) {
+	row := q.db.QueryRow(ctx, GetDeviceCommandReceiptIDByDedupeKey, dedupeKey)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const GetLatestDeviceCommandReceiptByMachineSequence = `-- name: GetLatestDeviceCommandReceiptByMachineSequence :one
+SELECT
+    id,
+    machine_id,
+    sequence,
+    status,
+    correlation_id,
+    payload,
+    dedupe_key,
+    received_at,
+    command_attempt_id
+FROM device_command_receipts
+WHERE
+    machine_id = $1
+    AND sequence = $2
+ORDER BY
+    id DESC
+LIMIT 1
+`
+
+type GetLatestDeviceCommandReceiptByMachineSequenceParams struct {
+	MachineID uuid.UUID
+	Sequence  int64
+}
+
+func (q *Queries) GetLatestDeviceCommandReceiptByMachineSequence(ctx context.Context, arg GetLatestDeviceCommandReceiptByMachineSequenceParams) (DeviceCommandReceipt, error) {
+	row := q.db.QueryRow(ctx, GetLatestDeviceCommandReceiptByMachineSequence, arg.MachineID, arg.Sequence)
+	var i DeviceCommandReceipt
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.Sequence,
+		&i.Status,
+		&i.CorrelationID,
+		&i.Payload,
+		&i.DedupeKey,
+		&i.ReceivedAt,
+		&i.CommandAttemptID,
 	)
 	return i, err
 }
@@ -332,7 +630,12 @@ SET
     protocol_type = COALESCE(protocol_type, 'mqtt'),
     timeout_at = $2,
     attempt_count = attempt_count + 1,
-    last_attempt_at = now()
+    last_attempt_at = now(),
+    route_key = CASE
+        WHEN $3::text IS NOT NULL
+        AND btrim($3::text) <> '' THEN $3::text
+        ELSE route_key
+    END
 WHERE
     id = $1
 `
@@ -340,10 +643,11 @@ WHERE
 type UpdateCommandLedgerMQTTDispatchMetaParams struct {
 	ID        uuid.UUID
 	TimeoutAt pgtype.Timestamptz
+	Column3   string
 }
 
 func (q *Queries) UpdateCommandLedgerMQTTDispatchMeta(ctx context.Context, arg UpdateCommandLedgerMQTTDispatchMetaParams) error {
-	_, err := q.db.Exec(ctx, UpdateCommandLedgerMQTTDispatchMeta, arg.ID, arg.TimeoutAt)
+	_, err := q.db.Exec(ctx, UpdateCommandLedgerMQTTDispatchMeta, arg.ID, arg.TimeoutAt, arg.Column3)
 	return err
 }
 

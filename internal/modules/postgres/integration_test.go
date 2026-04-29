@@ -649,6 +649,7 @@ func TestApplyCommandReceiptTransition_DedupeKeyPreventsDoubleApply(t *testing.T
 
 	dedupe := "rcp-dedupe-" + uuid.NewString()
 	shadow := []byte(`{"applied":true}`)
+	occAt := time.Now().UTC()
 	p1 := postgres.CommandReceiptTransitionParams{
 		MachineID:          mid,
 		Sequence:           appendRes.Sequence,
@@ -656,6 +657,8 @@ func TestApplyCommandReceiptTransition_DedupeKeyPreventsDoubleApply(t *testing.T
 		Payload:            []byte(`{}`),
 		DedupeKey:          dedupe,
 		ReportedShadowJSON: shadow,
+		CommandID:          appendRes.CommandID,
+		OccurredAt:         occAt,
 	}
 	r1, err := store.ApplyCommandReceiptTransition(ctx, p1)
 	require.NoError(t, err)
@@ -676,6 +679,142 @@ func TestApplyCommandReceiptTransition_DedupeKeyPreventsDoubleApply(t *testing.T
 		`SELECT reported_state FROM machine_shadow WHERE machine_id = $1`, mid,
 	).Scan(&reported))
 	require.Contains(t, string(reported), `"applied":true`)
+}
+
+func TestApplyCommandReceiptTransition_RejectsLateSuccessAck(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+	mid := testfixtures.DevMachineID
+
+	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
+		MachineID:      mid,
+		CommandType:    "noop",
+		Payload:        []byte(`{}`),
+		IdempotencyKey: "rcp-late-" + uuid.NewString(),
+		DesiredState:   []byte(`{}`),
+	})
+	require.NoError(t, err)
+
+	cmdRow, err := store.GetCommandLedgerByMachineSequence(ctx, mid, appendRes.Sequence)
+	require.NoError(t, err)
+	ledgerDeadline := time.Now().UTC().Add(time.Hour)
+	att, err := store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, cmdRow.ID, mid, nil, []byte(`{}`), ledgerDeadline, "")
+	require.NoError(t, err)
+	past := time.Now().UTC().Add(-time.Hour)
+	require.NoError(t, store.MarkMQTTDispatchAttemptSent(ctx, att.ID, past))
+
+	_, err = store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
+		MachineID:  mid,
+		Sequence:   appendRes.Sequence,
+		Status:     "acked",
+		Payload:    []byte(`{}`),
+		DedupeKey:  "late-ack-" + uuid.NewString(),
+		CommandID:  appendRes.CommandID,
+		OccurredAt: time.Now().UTC(),
+	})
+	require.Error(t, err)
+}
+
+func TestApplyCommandReceiptTransition_IdempotentTerminalOutcome(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+	mid := testfixtures.DevMachineID
+
+	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
+		MachineID:      mid,
+		CommandType:    "noop",
+		Payload:        []byte(`{}`),
+		IdempotencyKey: "rcp-term-" + uuid.NewString(),
+		DesiredState:   []byte(`{}`),
+	})
+	require.NoError(t, err)
+
+	cmdRow, err := store.GetCommandLedgerByMachineSequence(ctx, mid, appendRes.Sequence)
+	require.NoError(t, err)
+	att, err := store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, cmdRow.ID, mid, nil, []byte(`{}`), time.Now().UTC().Add(time.Hour), "")
+	require.NoError(t, err)
+	require.NoError(t, store.MarkMQTTDispatchAttemptSent(ctx, att.ID, time.Now().UTC().Add(30*time.Second)))
+
+	d1 := "term-d1-" + uuid.NewString()
+	p1 := postgres.CommandReceiptTransitionParams{
+		MachineID:  mid,
+		Sequence:   appendRes.Sequence,
+		Status:     "acked",
+		Payload:    []byte(`{}`),
+		DedupeKey:  d1,
+		CommandID:  appendRes.CommandID,
+		OccurredAt: time.Now().UTC(),
+	}
+	r1, err := store.ApplyCommandReceiptTransition(ctx, p1)
+	require.NoError(t, err)
+	require.False(t, r1.ReceiptReplay)
+
+	d2 := "term-d2-" + uuid.NewString()
+	r2, err := store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
+		MachineID:  mid,
+		Sequence:   appendRes.Sequence,
+		Status:     "acked",
+		Payload:    []byte(`{}`),
+		DedupeKey:  d2,
+		CommandID:  appendRes.CommandID,
+		OccurredAt: time.Now().UTC(),
+	})
+	require.NoError(t, err)
+	require.True(t, r2.ReceiptReplay)
+}
+
+func TestApplyCommandReceiptTransition_ConflictingAckIsAudited(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+	mid := testfixtures.DevMachineID
+
+	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
+		MachineID:      mid,
+		CommandType:    "noop",
+		Payload:        []byte(`{}`),
+		IdempotencyKey: "rcp-conf-" + uuid.NewString(),
+		DesiredState:   []byte(`{}`),
+	})
+	require.NoError(t, err)
+
+	cmdRow, err := store.GetCommandLedgerByMachineSequence(ctx, mid, appendRes.Sequence)
+	require.NoError(t, err)
+	confAtt, err := store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, cmdRow.ID, mid, nil, []byte(`{}`), time.Now().UTC().Add(time.Hour), "")
+	require.NoError(t, err)
+	require.NoError(t, store.MarkMQTTDispatchAttemptSent(ctx, confAtt.ID, time.Now().UTC().Add(30*time.Second)))
+
+	_, err = store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
+		MachineID:  mid,
+		Sequence:   appendRes.Sequence,
+		Status:     "acked",
+		Payload:    []byte(`{}`),
+		DedupeKey:  "conf-a-" + uuid.NewString(),
+		CommandID:  appendRes.CommandID,
+		OccurredAt: time.Now().UTC(),
+	})
+	require.NoError(t, err)
+
+	r, err := store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
+		MachineID:  mid,
+		Sequence:   appendRes.Sequence,
+		Status:     "failed",
+		Payload:    []byte(`{}`),
+		DedupeKey:  "conf-b-" + uuid.NewString(),
+		CommandID:  appendRes.CommandID,
+		OccurredAt: time.Now().UTC(),
+	})
+	require.NoError(t, err)
+	require.True(t, r.IgnoredConflict)
+
+	var n int64
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT count(*) FROM audit_events WHERE organization_id = $1 AND action = $2`,
+		testfixtures.DevOrganizationID, "mqtt.command_ack_conflict",
+	).Scan(&n))
+	require.GreaterOrEqual(t, n, int64(1))
 }
 
 func TestFleetQueries_OrganizationAndSiteScope(t *testing.T) {
@@ -722,4 +861,111 @@ func TestFleetQueries_TechnicianAssignmentScope(t *testing.T) {
 	empty, err := q.ListMachinesForTechnicianID(ctx, otherTech)
 	require.NoError(t, err)
 	require.Empty(t, empty)
+}
+
+func TestMessagingConsumerDedupe_DuplicateReturnsFalse(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	d := postgres.NewMessagingConsumerDeduper(pool)
+	msgID := "dup-" + uuid.NewString()
+	first, err := d.TryClaim(ctx, "integration_dup_consumer", "test.subject.dup", msgID)
+	require.NoError(t, err)
+	require.True(t, first)
+	dup, err := d.TryClaim(ctx, "integration_dup_consumer", "test.subject.dup", msgID)
+	require.NoError(t, err)
+	require.False(t, dup)
+}
+
+func TestOutboxRepository_LeaseOutboxForPublish_SetsPublishing(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+	repo := postgres.NewOutboxRepository(pool)
+
+	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
+		OrganizationID: testfixtures.DevOrganizationID,
+		MachineID:      testfixtures.DevMachineID,
+		ProductID:      testfixtures.DevProductWater,
+		SlotIndex:      5,
+		Currency:       "USD",
+		SubtotalMinor:  10,
+		TaxMinor:       0,
+		TotalMinor:     10,
+		IdempotencyKey: "obx-lease-order-" + uuid.NewString(),
+		OrderStatus:    "created",
+		VendState:      "pending",
+	})
+	require.NoError(t, err)
+
+	outTopic := "payments.lease." + uuid.NewString()
+	outIDem := "obx-lease-" + uuid.NewString()
+	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
+		OrganizationID:       testfixtures.DevOrganizationID,
+		OrderID:              orderRes.Order.ID,
+		Provider:             "test",
+		PaymentState:         "created",
+		AmountMinor:          10,
+		Currency:             "USD",
+		IdempotencyKey:       "pay-lease-" + uuid.NewString(),
+		OutboxTopic:          outTopic,
+		OutboxEventType:      "payment.created",
+		OutboxPayload:        []byte(`{}`),
+		OutboxAggregateType:  "order",
+		OutboxAggregateID:    orderRes.Order.ID,
+		OutboxIdempotencyKey: outIDem,
+	})
+	require.NoError(t, err)
+
+	var obID int64
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT id FROM outbox_events WHERE topic = $1 AND idempotency_key = $2`,
+		outTopic, outIDem,
+	).Scan(&obID))
+
+	_, err = pool.Exec(ctx, `UPDATE outbox_events SET created_at = now() - interval '2 hours' WHERE id = $1`, obID)
+	require.NoError(t, err)
+
+	leased, err := repo.LeaseOutboxForPublish(ctx, "test-worker-lease", 60*time.Second, 0, 50)
+	require.NoError(t, err)
+	var found bool
+	for _, e := range leased {
+		if e.ID == obID {
+			found = true
+			require.Equal(t, "publishing", e.Status)
+			require.NotNil(t, e.LockedBy)
+			require.Equal(t, "test-worker-lease", *e.LockedBy)
+			break
+		}
+	}
+	require.True(t, found, "leased batch should include the aged pending row")
+
+	var status string
+	require.NoError(t, pool.QueryRow(ctx, `SELECT status FROM outbox_events WHERE id = $1`, obID).Scan(&status))
+	require.Equal(t, "publishing", status)
+}
+
+func TestInsertMQTTDispatchAttemptWithLedgerMeta_RespectsMaxDispatchAttempts(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+	mid := testfixtures.DevMachineID
+
+	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
+		MachineID:      mid,
+		CommandType:    "noop",
+		Payload:        []byte(`{}`),
+		IdempotencyKey: "max-att-" + uuid.NewString(),
+		DesiredState:   []byte(`{}`),
+	})
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `UPDATE command_ledger SET max_dispatch_attempts = 1 WHERE id = $1`, appendRes.CommandID)
+	require.NoError(t, err)
+
+	deadline := time.Now().UTC().Add(time.Hour)
+	_, err = store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, mid, nil, []byte(`{}`), deadline, "")
+	require.NoError(t, err)
+
+	_, err = store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, mid, nil, []byte(`{}`), deadline, "")
+	require.ErrorIs(t, err, postgres.ErrMQTTMaxDispatchAttemptsExceeded)
 }

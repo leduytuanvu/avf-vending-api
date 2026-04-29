@@ -24,6 +24,16 @@ Still intentionally manual:
 - obtaining a real certificate for the MQTT hostname
 - placing `ca.crt`, `server.crt`, and `server.key` on the VPS under `deployments/prod/emqx/certs/`
 - deciding whether to keep server-only TLS (`verify_none`) or move to client-certificate validation (`verify_peer`)
+- **per-machine topic ACL**: copy `acl.conf.example` to `/opt/emqx/etc/acl.conf` (replace `TOPIC_PREFIX` with `MQTT_TOPIC_PREFIX`, usually `avf/devices`), provision **distinct** MQTT usernames for API publish (`avf-mqtt-api` pattern), mqtt-ingest (`avf-mqtt-ingest` pattern), and field devices (username equals machine UUID when using percent-u rules in the ACL file); merge `authorization.snippet.hocon` and set `authorization.enable = true` after the file exists on disk
+
+## Per-machine ACL (EMQX)
+
+Repo templates:
+
+- `deployments/prod/emqx/acl.conf.example` — file-based rules; machine **A** cannot publish/subscribe machine **B** topics when MQTT username is scoped to machine UUID.
+- `deployments/prod/emqx/authorization.snippet.hocon` — wire authorization to `/opt/emqx/etc/acl.conf`. **Start with `authorization.enable = false`** for greenfield bring-up, then flip to `true` once `acl.conf` is installed and VMQ/CLI tests pass.
+
+Without ACLs, authentication alone does not stop a compromised client from publishing to another machine’s topic tree; **enable authorization in production** before wide field rollout.
 
 ## MQTT TLS status
 

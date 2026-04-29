@@ -34,13 +34,14 @@ Use this runbook for:
    - `mqtt.ldtv.dev` -> data node only when self-hosted fallback EMQX is used
 4. Confirm managed dependencies are reachable from both app nodes:
    - PostgreSQL
-   - Redis if used
-   - object storage
+   - Redis (**required** for `APP_ENV=production` unless `PRODUCTION_ALLOW_MISSING_REDIS=true` is explicitly documented)
+   - object storage when product media / artifacts paths are enabled (`OBJECT_STORAGE_*`)
    - managed MQTT if used instead of the fallback data node
-5. Confirm the private network path exists between app nodes and the fallback data node for:
+5. Confirm commerce posture on each app node `.env`: `PAYMENT_ENV=live`, `COMMERCE_PAYMENT_PROVIDER` is a **live** PSP registry key (mock/sandbox family keys are rejected at startup), and webhook signing secrets (`COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET` / `PAYMENT_WEBHOOK_SECRET`, or provider JSON map) are set.
+6. Confirm the private network path exists between app nodes and the fallback data node for:
    - `4222/tcp` NATS
    - `8883/tcp` MQTT/TLS
-6. If you run observability separately, confirm it is live before traffic moves. Grafana is not part of this repo snapshot.
+7. If you run observability separately, confirm it is live before traffic moves. Grafana is not part of this repo snapshot.
 
 ## Pre-cutover validation
 
@@ -155,9 +156,23 @@ bash scripts/healthcheck_prod.sh
 5. Repoint public DNS or load balancer targets back to the legacy path.
 6. Do not re-enable the 2-VPS path until the root cause is understood.
 
+## Evidence register (go-live / cutover)
+
+Attach to the cutover ticket (owner + artifact id per row):
+
+| Gate | Verified by (owner) | Evidence stored (link / run id / checksum) | UTC |
+| ---- | -------------------- | ---------------------------------------------| --- |
+| Pre-cutover compose validate + digest pin | | | |
+| Data node / app node health scripts | | | |
+| Public **`/health/live`**, **`/health/ready`** | | | |
+| Post-release 15–30 min dashboards (outbox, MQTT, telemetry lag) | | | |
+| Rollback command dry-run or prior successful drill | | | |
+
+---
+
 ## Operator stop conditions
 
-Stop the cutover immediately if any of these happens:
+Stop the cutover or rollback immediately if any of these occurs:
 
 - node A does not pass readiness after release
 - public API `/health/ready` stays down for more than 2 minutes

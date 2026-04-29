@@ -168,6 +168,16 @@ scrape_configs:
           node: data-node
           role: data-node
           component: mqtt-tls
+      - targets: ["data-node.internal.example.com:5432"]
+        labels:
+          node: data-node
+          role: data-node
+          component: postgres-tcp
+      - targets: ["data-node.internal.example.com:6379"]
+        labels:
+          node: data-node
+          role: data-node
+          component: redis-tcp
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

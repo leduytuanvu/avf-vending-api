@@ -1,6 +1,20 @@
 # Runtime sale catalog — implementation handoff
 
-> **Stale / historical:** The sale-catalog route is **implemented** and documented in OpenAPI. Keep this file for design rationale only; do not treat it as a “to build” checklist.
+## Production note
+
+**Kiosk-facing catalog in production** is **`MachineCatalogService/GetCatalogSnapshot`** (+ **`GetCatalogDelta`**, **`GetMediaManifest`**, **`GetMediaDelta`**) per **[`production-final-contract.md`](../architecture/production-final-contract.md)**. The HTTP route **`GET /v1/machines/{machineId}/sale-catalog`** remains useful for **lab parity**, **OpenAPI**, and **staging** comparisons; on production fleets, assume **legacy machine HTTP is disabled** on the API unless operations explicitly enable a migration window.
+
+The composite fingerprint string (**`catalog_version`**) is an **opaque, server-generated** cache key (prefix/version evolve with releases—**do not** hardcode in clients).
+
+## P1 contract status (2026)
+
+- **Shipped:** Composite **`catalog_version`** (**`salecatalog.RuntimeSaleCatalogFingerprint`**, prefix such as `runtime_sale_catalog_v*` — **treat as opaque** per deployment) on **`MachineCatalogService/GetCatalogSnapshot`**, HTTP **`GET /v1/machines/{id}/sale-catalog`** (when legacy HTTP enabled), and **`GetMediaManifest.catalog_version`**. It includes **per-line promotion / override pricing** via `pricingengine` (see [pricing-promotion-runtime.md](../architecture/pricing-promotion-runtime.md)). Pair with **`generated_at`**, response **`Meta.server_time`**, and separate **`media_fingerprint`** for image-only deltas. **`ProductMediaRef.media_variants`** enumerates **original/thumb/display** metadata (URLs, hashes, etag, size, dimensions, presign **`expires_at`**, **`media_version`**, **`updated_at`**) for durable kiosk caches.
+- **Incremental sync:** **`GetCatalogDelta`** with **`basis_catalog_version`**; media path **`GetMediaDelta`** with **`basis_media_fingerprint`** (must match **`include_unavailable`** across calls). **No protobuf pagination token** on snapshots — very large fleets rely on delta + manifest guard + env **`CAPACITY_MAX_MEDIA_MANIFEST_ENTRIES`**.
+- **Offline / reconnect policy:** Documented in **[`kiosk-app-flow.md`](kiosk-app-flow.md)** §5 (first sync, reconnect, inactive SKU filtering, cash vs PSP behavior, replay list).
+- **Promotions:** Placeholder segment **`prm:none`** participates in the digest until machine-visible promotion eligibility ships on wire.
+- **Feature flags:** HTTP bootstrap **`runtimeHints`** — no dedicated machine gRPC flags RPC (see kiosk flow §5′).
+
+> **Historical note:** The original HTTP route checklist below remains for context; OpenAPI + gRPC are authoritative.
 
 **Route:** `GET /v1/machines/{machineId}/sale-catalog`
 
@@ -58,7 +72,7 @@ Reuse inventory read paths already used for admin slot view:
 1. **Slots + stock + price overlay:** [`inventoryadmin.ListSlotInventoryView`](../../internal/app/inventoryadmin/slot_inventory_view.go) (`InventoryAdminListMachineSlots` + `InventoryAdminListCurrentMachineSlotConfigsByMachine` + org currency).
 2. **Machine org/site:** `GetMachineByID` or `InventoryAdminGetMachineOrg` + machine row for `site_id`.
 3. **Product `active` + `attrs` (shortName):** batch-load `products` for distinct `product_id`s from slot rows (new sqlc query `CatalogGetProductsByIDs` or filter in app via existing catalog queries).
-4. **Primary image:** `product_images` where `is_primary` (or first by `sort_order`) — columns today: `storage_key`, `cdn_url`, `created_at`. **No `content_hash` in DB:** expose stable **`contentHash`** as hex(`sha256(storage_key + "\n" + product_image.id::text)`) or similar **without** leaking bucket secrets. **`thumbUrl` / `displayUrl`:** use `cdn_url` when non-empty; if only `storage_key` exists, either omit URLs or plug into existing **artifact presign** helper if the repo has one (do not return raw internal keys as “public” URLs).
+- **gRPC** `MachineCatalogService/GetCatalogSnapshot` and `GetCatalogDelta`: when object storage **`MediaStore`** is wired with **`MediaPresignTTL`**, the server **refreshes presigned HTTPS GET URLs** for thumb/display (`internal/app/salecatalog/presign.go`) exactly like **`GetMediaManifest`**, keeping links valid without embedding binary payloads.
 
 ## Cabinet-only machines (no `machine_slot_state` rows)
 

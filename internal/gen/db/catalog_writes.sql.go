@@ -7,10 +7,82 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const CatalogWriteArchiveAllProductImagesForProduct = `-- name: CatalogWriteArchiveAllProductImagesForProduct :exec
+UPDATE product_images pi
+SET
+    status = 'archived',
+    is_primary = false,
+    media_version = media_version + 1,
+    updated_at = now()
+FROM products p
+WHERE pi.product_id = p.id
+  AND p.organization_id = $1
+  AND p.id = $2
+  AND pi.status = 'active'
+`
+
+type CatalogWriteArchiveAllProductImagesForProductParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CatalogWriteArchiveAllProductImagesForProduct(ctx context.Context, arg CatalogWriteArchiveAllProductImagesForProductParams) error {
+	_, err := q.db.Exec(ctx, CatalogWriteArchiveAllProductImagesForProduct, arg.OrganizationID, arg.ID)
+	return err
+}
+
+const CatalogWriteArchiveProductImage = `-- name: CatalogWriteArchiveProductImage :one
+UPDATE product_images pi
+SET
+    status = 'archived',
+    is_primary = false,
+    media_version = media_version + 1,
+    updated_at = now()
+FROM products p
+WHERE pi.id = $3
+  AND pi.product_id = p.id
+  AND p.organization_id = $1
+  AND p.id = $2
+  AND pi.status = 'active'
+RETURNING pi.id, pi.product_id, pi.storage_key, pi.cdn_url, pi.thumb_cdn_url, pi.content_hash, pi.width, pi.height, pi.mime_type, pi.alt_text, pi.sort_order, pi.is_primary, pi.media_asset_id, pi.media_version, pi.status, pi.created_at, pi.updated_at
+`
+
+type CatalogWriteArchiveProductImageParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+	ID_2           uuid.UUID
+}
+
+func (q *Queries) CatalogWriteArchiveProductImage(ctx context.Context, arg CatalogWriteArchiveProductImageParams) (ProductImage, error) {
+	row := q.db.QueryRow(ctx, CatalogWriteArchiveProductImage, arg.OrganizationID, arg.ID, arg.ID_2)
+	var i ProductImage
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.StorageKey,
+		&i.CdnUrl,
+		&i.ThumbCdnUrl,
+		&i.ContentHash,
+		&i.Width,
+		&i.Height,
+		&i.MimeType,
+		&i.AltText,
+		&i.SortOrder,
+		&i.IsPrimary,
+		&i.MediaAssetID,
+		&i.MediaVersion,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
 
 const CatalogWriteClearProductPrimaryImage = `-- name: CatalogWriteClearProductPrimaryImage :one
 UPDATE products p
@@ -49,30 +121,98 @@ func (q *Queries) CatalogWriteClearProductPrimaryImage(ctx context.Context, arg 
 	return i, err
 }
 
-const CatalogWriteDeleteProductImage = `-- name: CatalogWriteDeleteProductImage :exec
-DELETE FROM product_images pi
-USING products p
-WHERE pi.id = $3
-  AND pi.product_id = p.id
-  AND p.organization_id = $1
-  AND p.id = $2
+const CatalogWriteDeactivatePriceBook = `-- name: CatalogWriteDeactivatePriceBook :one
+UPDATE price_books pb
+SET
+    active = false,
+    updated_at = now()
+WHERE pb.organization_id = $1 AND pb.id = $2
+RETURNING id, organization_id, name, currency, effective_from, effective_to, is_default, active, scope_type, site_id, machine_id, priority, created_at, updated_at
 `
 
-type CatalogWriteDeleteProductImageParams struct {
+type CatalogWriteDeactivatePriceBookParams struct {
 	OrganizationID uuid.UUID
 	ID             uuid.UUID
-	ID_2           uuid.UUID
 }
 
-func (q *Queries) CatalogWriteDeleteProductImage(ctx context.Context, arg CatalogWriteDeleteProductImageParams) error {
-	_, err := q.db.Exec(ctx, CatalogWriteDeleteProductImage, arg.OrganizationID, arg.ID, arg.ID_2)
+func (q *Queries) CatalogWriteDeactivatePriceBook(ctx context.Context, arg CatalogWriteDeactivatePriceBookParams) (PriceBook, error) {
+	row := q.db.QueryRow(ctx, CatalogWriteDeactivatePriceBook, arg.OrganizationID, arg.ID)
+	var i PriceBook
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Name,
+		&i.Currency,
+		&i.EffectiveFrom,
+		&i.EffectiveTo,
+		&i.IsDefault,
+		&i.Active,
+		&i.ScopeType,
+		&i.SiteID,
+		&i.MachineID,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const CatalogWriteDeleteAllPriceBookItems = `-- name: CatalogWriteDeleteAllPriceBookItems :exec
+DELETE FROM price_book_items pbi
+WHERE pbi.organization_id = $1 AND pbi.price_book_id = $2
+`
+
+type CatalogWriteDeleteAllPriceBookItemsParams struct {
+	OrganizationID uuid.UUID
+	PriceBookID    uuid.UUID
+}
+
+func (q *Queries) CatalogWriteDeleteAllPriceBookItems(ctx context.Context, arg CatalogWriteDeleteAllPriceBookItemsParams) error {
+	_, err := q.db.Exec(ctx, CatalogWriteDeleteAllPriceBookItems, arg.OrganizationID, arg.PriceBookID)
 	return err
 }
 
+const CatalogWriteDeletePriceBookItem = `-- name: CatalogWriteDeletePriceBookItem :execrows
+DELETE FROM price_book_items pbi
+WHERE pbi.organization_id = $1 AND pbi.price_book_id = $2 AND pbi.product_id = $3
+`
+
+type CatalogWriteDeletePriceBookItemParams struct {
+	OrganizationID uuid.UUID
+	PriceBookID    uuid.UUID
+	ProductID      uuid.UUID
+}
+
+func (q *Queries) CatalogWriteDeletePriceBookItem(ctx context.Context, arg CatalogWriteDeletePriceBookItemParams) (int64, error) {
+	result, err := q.db.Exec(ctx, CatalogWriteDeletePriceBookItem, arg.OrganizationID, arg.PriceBookID, arg.ProductID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const CatalogWriteDeletePriceBookTarget = `-- name: CatalogWriteDeletePriceBookTarget :execrows
+DELETE FROM price_book_targets pbt
+WHERE pbt.organization_id = $1 AND pbt.id = $2
+`
+
+type CatalogWriteDeletePriceBookTargetParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CatalogWriteDeletePriceBookTarget(ctx context.Context, arg CatalogWriteDeletePriceBookTargetParams) (int64, error) {
+	result, err := q.db.Exec(ctx, CatalogWriteDeletePriceBookTarget, arg.OrganizationID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const CatalogWriteGetPrimaryProductImage = `-- name: CatalogWriteGetPrimaryProductImage :one
-SELECT id, product_id, storage_key, cdn_url, thumb_cdn_url, content_hash, width, height, mime_type, alt_text, sort_order, is_primary, created_at
+SELECT id, product_id, storage_key, cdn_url, thumb_cdn_url, content_hash, width, height, mime_type, alt_text, sort_order, is_primary, media_asset_id, media_version, status, created_at, updated_at
 FROM product_images
-WHERE product_id = $1 AND is_primary = true
+WHERE product_id = $1 AND is_primary = true AND status = 'active'
 LIMIT 1
 `
 
@@ -92,7 +232,11 @@ func (q *Queries) CatalogWriteGetPrimaryProductImage(ctx context.Context, produc
 		&i.AltText,
 		&i.SortOrder,
 		&i.IsPrimary,
+		&i.MediaAssetID,
+		&i.MediaVersion,
+		&i.Status,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -162,6 +306,111 @@ func (q *Queries) CatalogWriteInsertCategory(ctx context.Context, arg CatalogWri
 		&i.Active,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const CatalogWriteInsertPriceBook = `-- name: CatalogWriteInsertPriceBook :one
+INSERT INTO price_books (
+    organization_id,
+    name,
+    currency,
+    effective_from,
+    effective_to,
+    is_default,
+    active,
+    scope_type,
+    site_id,
+    machine_id,
+    priority
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+)
+RETURNING id, organization_id, name, currency, effective_from, effective_to, is_default, active, scope_type, site_id, machine_id, priority, created_at, updated_at
+`
+
+type CatalogWriteInsertPriceBookParams struct {
+	OrganizationID uuid.UUID
+	Name           string
+	Currency       string
+	EffectiveFrom  time.Time
+	EffectiveTo    pgtype.Timestamptz
+	IsDefault      bool
+	Active         bool
+	ScopeType      string
+	SiteID         pgtype.UUID
+	MachineID      pgtype.UUID
+	Priority       int32
+}
+
+func (q *Queries) CatalogWriteInsertPriceBook(ctx context.Context, arg CatalogWriteInsertPriceBookParams) (PriceBook, error) {
+	row := q.db.QueryRow(ctx, CatalogWriteInsertPriceBook,
+		arg.OrganizationID,
+		arg.Name,
+		arg.Currency,
+		arg.EffectiveFrom,
+		arg.EffectiveTo,
+		arg.IsDefault,
+		arg.Active,
+		arg.ScopeType,
+		arg.SiteID,
+		arg.MachineID,
+		arg.Priority,
+	)
+	var i PriceBook
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Name,
+		&i.Currency,
+		&i.EffectiveFrom,
+		&i.EffectiveTo,
+		&i.IsDefault,
+		&i.Active,
+		&i.ScopeType,
+		&i.SiteID,
+		&i.MachineID,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const CatalogWriteInsertPriceBookTarget = `-- name: CatalogWriteInsertPriceBookTarget :one
+INSERT INTO price_book_targets (
+    organization_id,
+    price_book_id,
+    site_id,
+    machine_id
+) VALUES (
+    $1, $2, $3, $4
+)
+RETURNING id, organization_id, price_book_id, site_id, machine_id, created_at
+`
+
+type CatalogWriteInsertPriceBookTargetParams struct {
+	OrganizationID uuid.UUID
+	PriceBookID    uuid.UUID
+	SiteID         pgtype.UUID
+	MachineID      pgtype.UUID
+}
+
+func (q *Queries) CatalogWriteInsertPriceBookTarget(ctx context.Context, arg CatalogWriteInsertPriceBookTargetParams) (PriceBookTarget, error) {
+	row := q.db.QueryRow(ctx, CatalogWriteInsertPriceBookTarget,
+		arg.OrganizationID,
+		arg.PriceBookID,
+		arg.SiteID,
+		arg.MachineID,
+	)
+	var i PriceBookTarget
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.PriceBookID,
+		&i.SiteID,
+		&i.MachineID,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -236,7 +485,7 @@ INSERT INTO product_images (
     product_id, storage_key, cdn_url, thumb_cdn_url, content_hash,
     width, height, mime_type, alt_text, sort_order, is_primary
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, product_id, storage_key, cdn_url, thumb_cdn_url, content_hash, width, height, mime_type, alt_text, sort_order, is_primary, created_at
+RETURNING id, product_id, storage_key, cdn_url, thumb_cdn_url, content_hash, width, height, mime_type, alt_text, sort_order, is_primary, media_asset_id, media_version, status, created_at, updated_at
 `
 
 type CatalogWriteInsertProductImageParams struct {
@@ -281,7 +530,11 @@ func (q *Queries) CatalogWriteInsertProductImage(ctx context.Context, arg Catalo
 		&i.AltText,
 		&i.SortOrder,
 		&i.IsPrimary,
+		&i.MediaAssetID,
+		&i.MediaVersion,
+		&i.Status,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -470,6 +723,7 @@ FROM products p
 WHERE pi.product_id = p.id
   AND p.organization_id = $1
   AND p.id = $2
+  AND pi.status = 'active'
 `
 
 type CatalogWriteUnsetPrimaryImagesForProductParams struct {
@@ -566,6 +820,74 @@ func (q *Queries) CatalogWriteUpdateCategory(ctx context.Context, arg CatalogWri
 	return i, err
 }
 
+const CatalogWriteUpdatePriceBook = `-- name: CatalogWriteUpdatePriceBook :one
+UPDATE price_books pb
+SET
+    name = $3,
+    currency = $4,
+    effective_from = $5,
+    effective_to = $6,
+    is_default = $7,
+    active = $8,
+    scope_type = $9,
+    site_id = $10,
+    machine_id = $11,
+    priority = $12,
+    updated_at = now()
+WHERE pb.organization_id = $1 AND pb.id = $2
+RETURNING id, organization_id, name, currency, effective_from, effective_to, is_default, active, scope_type, site_id, machine_id, priority, created_at, updated_at
+`
+
+type CatalogWriteUpdatePriceBookParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+	Name           string
+	Currency       string
+	EffectiveFrom  time.Time
+	EffectiveTo    pgtype.Timestamptz
+	IsDefault      bool
+	Active         bool
+	ScopeType      string
+	SiteID         pgtype.UUID
+	MachineID      pgtype.UUID
+	Priority       int32
+}
+
+func (q *Queries) CatalogWriteUpdatePriceBook(ctx context.Context, arg CatalogWriteUpdatePriceBookParams) (PriceBook, error) {
+	row := q.db.QueryRow(ctx, CatalogWriteUpdatePriceBook,
+		arg.OrganizationID,
+		arg.ID,
+		arg.Name,
+		arg.Currency,
+		arg.EffectiveFrom,
+		arg.EffectiveTo,
+		arg.IsDefault,
+		arg.Active,
+		arg.ScopeType,
+		arg.SiteID,
+		arg.MachineID,
+		arg.Priority,
+	)
+	var i PriceBook
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Name,
+		&i.Currency,
+		&i.EffectiveFrom,
+		&i.EffectiveTo,
+		&i.IsDefault,
+		&i.Active,
+		&i.ScopeType,
+		&i.SiteID,
+		&i.MachineID,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const CatalogWriteUpdateProduct = `-- name: CatalogWriteUpdateProduct :one
 UPDATE products p
 SET
@@ -643,6 +965,64 @@ func (q *Queries) CatalogWriteUpdateProduct(ctx context.Context, arg CatalogWrit
 	return i, err
 }
 
+const CatalogWriteUpdateProductImageMetadata = `-- name: CatalogWriteUpdateProductImageMetadata :one
+UPDATE product_images pi
+SET
+    sort_order = COALESCE($4::int, sort_order),
+    is_primary = COALESCE($5::bool, is_primary),
+    alt_text = COALESCE($6::text, alt_text),
+    media_version = media_version + 1,
+    updated_at = now()
+FROM products p
+WHERE pi.id = $3
+  AND pi.product_id = p.id
+  AND p.organization_id = $1
+  AND p.id = $2
+  AND pi.status = 'active'
+RETURNING pi.id, pi.product_id, pi.storage_key, pi.cdn_url, pi.thumb_cdn_url, pi.content_hash, pi.width, pi.height, pi.mime_type, pi.alt_text, pi.sort_order, pi.is_primary, pi.media_asset_id, pi.media_version, pi.status, pi.created_at, pi.updated_at
+`
+
+type CatalogWriteUpdateProductImageMetadataParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+	ID_2           uuid.UUID
+	SortOrder      pgtype.Int4
+	IsPrimary      pgtype.Bool
+	AltText        pgtype.Text
+}
+
+func (q *Queries) CatalogWriteUpdateProductImageMetadata(ctx context.Context, arg CatalogWriteUpdateProductImageMetadataParams) (ProductImage, error) {
+	row := q.db.QueryRow(ctx, CatalogWriteUpdateProductImageMetadata,
+		arg.OrganizationID,
+		arg.ID,
+		arg.ID_2,
+		arg.SortOrder,
+		arg.IsPrimary,
+		arg.AltText,
+	)
+	var i ProductImage
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.StorageKey,
+		&i.CdnUrl,
+		&i.ThumbCdnUrl,
+		&i.ContentHash,
+		&i.Width,
+		&i.Height,
+		&i.MimeType,
+		&i.AltText,
+		&i.SortOrder,
+		&i.IsPrimary,
+		&i.MediaAssetID,
+		&i.MediaVersion,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const CatalogWriteUpdateTag = `-- name: CatalogWriteUpdateTag :one
 UPDATE tags t
 SET
@@ -679,6 +1059,46 @@ func (q *Queries) CatalogWriteUpdateTag(ctx context.Context, arg CatalogWriteUpd
 		&i.Active,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const CatalogWriteUpsertPriceBookItem = `-- name: CatalogWriteUpsertPriceBookItem :one
+INSERT INTO price_book_items (
+    organization_id,
+    price_book_id,
+    product_id,
+    unit_price_minor
+) VALUES (
+    $1, $2, $3, $4
+)
+ON CONFLICT (organization_id, price_book_id, product_id)
+DO UPDATE SET unit_price_minor = EXCLUDED.unit_price_minor
+RETURNING id, organization_id, price_book_id, product_id, unit_price_minor, created_at
+`
+
+type CatalogWriteUpsertPriceBookItemParams struct {
+	OrganizationID uuid.UUID
+	PriceBookID    uuid.UUID
+	ProductID      uuid.UUID
+	UnitPriceMinor int64
+}
+
+func (q *Queries) CatalogWriteUpsertPriceBookItem(ctx context.Context, arg CatalogWriteUpsertPriceBookItemParams) (PriceBookItem, error) {
+	row := q.db.QueryRow(ctx, CatalogWriteUpsertPriceBookItem,
+		arg.OrganizationID,
+		arg.PriceBookID,
+		arg.ProductID,
+		arg.UnitPriceMinor,
+	)
+	var i PriceBookItem
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.PriceBookID,
+		&i.ProductID,
+		&i.UnitPriceMinor,
+		&i.CreatedAt,
 	)
 	return i, err
 }

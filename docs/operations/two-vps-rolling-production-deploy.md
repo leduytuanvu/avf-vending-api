@@ -2,7 +2,14 @@
 
 This document describes the **two application VPS** production topology, how the GitHub Actions `Deploy Production` workflow rolls out changes, what “zero downtime” means in evidence, and how to operate rollbacks.
 
+## Credential boundaries (staging vs production vs rollback)
+
+- **Staging**: `STAGING_*` / `PREPROD_*` secrets and paths such as **`STAGING_REMOTE_ENV_FILE`** are for **`Staging Deployment Contract`** only ( **`develop`** branch automation). They **must not** be used as substitutes for **`PRODUCTION_*`** deploy targets when running **Deploy Production** or rollback.
+- **Production deploy** (`deploy-prod.yml`): the job that SSHs uses GitHub **`environment: production`**; host DSN/runtime keys (**`DATABASE_URL`**, **`REDIS_URL`/`REDIS_ADDR`**, **`MQTT_BROKER_URL`**, **`OBJECT_STORAGE_*`**, PSP keys) remain **on-disk on the VPS** — not `secrets.*` with unprefixed `.env` names (see **`docs/contracts/deployment-secrets-contract.yml`**).
+- **Rollback incident** (`rollback-prod.yml`): **production** environment validation + digest manifests only — **never** staging credentials.
+
 ## Required secrets and variables
+
 
 Configure these in the GitHub **environment** (or org/repo secrets/variables) as referenced by [`.github/workflows/deploy-prod.yml`](../../.github/workflows/deploy-prod.yml).
 

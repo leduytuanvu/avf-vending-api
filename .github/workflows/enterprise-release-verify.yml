@@ -1,4 +1,6 @@
 # Enterprise release verification — **not** Security Release, **not** a deploy trigger, **not** an image gate.
+# Does **not** run staging/production deploy workflows; operators use **Staging Deployment Contract** (develop chain)
+# and **Deploy Production** (main, manual + protected `production` env) separately.
 # Runs `make verify-enterprise-release` → scripts/verify_enterprise_release.sh (compose/OpenAPI/legacy checks). Do not rename to imply
 # "security release" or replace security-release.yml.
 name: Enterprise release verification

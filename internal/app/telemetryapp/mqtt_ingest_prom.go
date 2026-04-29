@@ -72,6 +72,13 @@ var (
 		Name:      "dispatch_total",
 		Help:      "MQTT messages passed to Dispatch (success or error), by channel kind.",
 	}, []string{"kind", "result"})
+
+	deviceHeartbeatIngestTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "avf",
+		Subsystem: "device",
+		Name:      "heartbeat_ingest_total",
+		Help:      "Device heartbeat MQTT messages observed at mqtt-ingest dispatch boundary.",
+	}, []string{"result"})
 )
 
 func topicKind(topic string) string {
@@ -82,6 +89,10 @@ func topicKind(topic string) string {
 		return "shadow_reported"
 	case strings.Contains(topic, "/commands/receipt"):
 		return "command_receipt"
+	case strings.Contains(topic, "/commands/ack"):
+		return "command_ack"
+	case strings.Contains(topic, "/state/heartbeat"):
+		return "heartbeat"
 	default:
 		return "other"
 	}
@@ -152,6 +163,9 @@ func NewIngestHooks() *platformmqtt.IngestHooks {
 				r = "ok"
 			}
 			dispatchTotal.WithLabelValues(k, r).Inc()
+			if k == "heartbeat" {
+				deviceHeartbeatIngestTotal.WithLabelValues(r).Inc()
+			}
 			if success {
 				ObserveTelemetryPayloadBytes(payloadBytes)
 			}

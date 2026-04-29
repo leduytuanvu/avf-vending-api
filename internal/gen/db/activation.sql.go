@@ -13,6 +13,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const CountMachineActivationCodesForOrganization = `-- name: CountMachineActivationCodesForOrganization :one
+SELECT
+    count(*)::bigint AS cnt
+FROM
+    machine_activation_codes
+WHERE
+    organization_id = $1
+`
+
+func (q *Queries) CountMachineActivationCodesForOrganization(ctx context.Context, organizationID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, CountMachineActivationCodesForOrganization, organizationID)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const CountSucceededMachineActivationClaims = `-- name: CountSucceededMachineActivationClaims :one
+SELECT
+    COUNT(*)::bigint AS cnt
+FROM
+    machine_activation_claims
+WHERE
+    activation_code_id = $1
+    AND result = 'succeeded'
+`
+
+func (q *Queries) CountSucceededMachineActivationClaims(ctx context.Context, activationCodeID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, CountSucceededMachineActivationClaims, activationCodeID)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
 const GetMachineActivationCodeByHashForUpdate = `-- name: GetMachineActivationCodeByHashForUpdate :one
 SELECT
     id, machine_id, organization_id, code_hash, max_uses, uses, expires_at, notes, status, claimed_fingerprint_hash, created_at, updated_at
@@ -74,6 +107,93 @@ func (q *Queries) GetMachineActivationCodeByIDForOrg(ctx context.Context, arg Ge
 		&i.ClaimedFingerprintHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const GetSucceededMachineActivationClaimByCodeAndFingerprint = `-- name: GetSucceededMachineActivationClaimByCodeAndFingerprint :one
+SELECT
+    id, activation_code_id, organization_id, machine_id, fingerprint_hash, claimed_at, ip_address, user_agent, result, failure_reason
+FROM
+    machine_activation_claims
+WHERE
+    activation_code_id = $1
+    AND fingerprint_hash = $2
+    AND result = 'succeeded'
+`
+
+type GetSucceededMachineActivationClaimByCodeAndFingerprintParams struct {
+	ActivationCodeID uuid.UUID
+	FingerprintHash  []byte
+}
+
+func (q *Queries) GetSucceededMachineActivationClaimByCodeAndFingerprint(ctx context.Context, arg GetSucceededMachineActivationClaimByCodeAndFingerprintParams) (MachineActivationClaim, error) {
+	row := q.db.QueryRow(ctx, GetSucceededMachineActivationClaimByCodeAndFingerprint, arg.ActivationCodeID, arg.FingerprintHash)
+	var i MachineActivationClaim
+	err := row.Scan(
+		&i.ID,
+		&i.ActivationCodeID,
+		&i.OrganizationID,
+		&i.MachineID,
+		&i.FingerprintHash,
+		&i.ClaimedAt,
+		&i.IpAddress,
+		&i.UserAgent,
+		&i.Result,
+		&i.FailureReason,
+	)
+	return i, err
+}
+
+const InsertMachineActivationClaim = `-- name: InsertMachineActivationClaim :one
+INSERT INTO machine_activation_claims (
+    activation_code_id,
+    organization_id,
+    machine_id,
+    fingerprint_hash,
+    ip_address,
+    user_agent,
+    result,
+    failure_reason
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, activation_code_id, organization_id, machine_id, fingerprint_hash, claimed_at, ip_address, user_agent, result, failure_reason
+`
+
+type InsertMachineActivationClaimParams struct {
+	ActivationCodeID uuid.UUID
+	OrganizationID   uuid.UUID
+	MachineID        uuid.UUID
+	FingerprintHash  []byte
+	IpAddress        string
+	UserAgent        string
+	Result           string
+	FailureReason    string
+}
+
+func (q *Queries) InsertMachineActivationClaim(ctx context.Context, arg InsertMachineActivationClaimParams) (MachineActivationClaim, error) {
+	row := q.db.QueryRow(ctx, InsertMachineActivationClaim,
+		arg.ActivationCodeID,
+		arg.OrganizationID,
+		arg.MachineID,
+		arg.FingerprintHash,
+		arg.IpAddress,
+		arg.UserAgent,
+		arg.Result,
+		arg.FailureReason,
+	)
+	var i MachineActivationClaim
+	err := row.Scan(
+		&i.ID,
+		&i.ActivationCodeID,
+		&i.OrganizationID,
+		&i.MachineID,
+		&i.FingerprintHash,
+		&i.ClaimedAt,
+		&i.IpAddress,
+		&i.UserAgent,
+		&i.Result,
+		&i.FailureReason,
 	)
 	return i, err
 }
@@ -177,29 +297,92 @@ func (q *Queries) ListMachineActivationCodesForMachine(ctx context.Context, mach
 	return items, nil
 }
 
-const MarkActivationCodeUsed = `-- name: MarkActivationCodeUsed :one
-UPDATE machine_activation_codes
-SET
-    uses = uses + 1,
-    claimed_fingerprint_hash = $2,
-    status = CASE
-        WHEN uses + 1 >= max_uses THEN 'expired'
-        ELSE status
-    END,
-    updated_at = now()
+const ListMachineActivationCodesForOrganization = `-- name: ListMachineActivationCodesForOrganization :many
+SELECT
+    id, machine_id, organization_id, code_hash, max_uses, uses, expires_at, notes, status, claimed_fingerprint_hash, created_at, updated_at
+FROM
+    machine_activation_codes
 WHERE
-    id = $1
-    AND status = 'active'
-RETURNING id, machine_id, organization_id, code_hash, max_uses, uses, expires_at, notes, status, claimed_fingerprint_hash, created_at, updated_at
+    organization_id = $1
+ORDER BY
+    created_at DESC
+LIMIT $2 OFFSET $3
 `
 
-type MarkActivationCodeUsedParams struct {
+type ListMachineActivationCodesForOrganizationParams struct {
+	OrganizationID uuid.UUID
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) ListMachineActivationCodesForOrganization(ctx context.Context, arg ListMachineActivationCodesForOrganizationParams) ([]MachineActivationCode, error) {
+	rows, err := q.db.Query(ctx, ListMachineActivationCodesForOrganization, arg.OrganizationID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MachineActivationCode{}
+	for rows.Next() {
+		var i MachineActivationCode
+		if err := rows.Scan(
+			&i.ID,
+			&i.MachineID,
+			&i.OrganizationID,
+			&i.CodeHash,
+			&i.MaxUses,
+			&i.Uses,
+			&i.ExpiresAt,
+			&i.Notes,
+			&i.Status,
+			&i.ClaimedFingerprintHash,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const RefreshMachineActivationCodeAggregate = `-- name: RefreshMachineActivationCodeAggregate :one
+WITH cnt AS (
+    SELECT
+        COUNT(*)::int AS c
+    FROM
+        machine_activation_claims
+    WHERE
+        activation_code_id = $1
+        AND result = 'succeeded'
+)
+UPDATE
+    machine_activation_codes AS mac
+SET
+    uses = cnt.c,
+    claimed_fingerprint_hash = $2,
+    status = CASE
+        WHEN cnt.c >= mac.max_uses THEN 'expired'::text
+        ELSE mac.status
+    END,
+    updated_at = now()
+FROM
+    cnt
+WHERE
+    mac.id = $1
+RETURNING
+    mac.id, mac.machine_id, mac.organization_id, mac.code_hash, mac.max_uses, mac.uses, mac.expires_at, mac.notes, mac.status, mac.claimed_fingerprint_hash, mac.created_at, mac.updated_at
+`
+
+type RefreshMachineActivationCodeAggregateParams struct {
 	ID                     uuid.UUID
 	ClaimedFingerprintHash []byte
 }
 
-func (q *Queries) MarkActivationCodeUsed(ctx context.Context, arg MarkActivationCodeUsedParams) (MachineActivationCode, error) {
-	row := q.db.QueryRow(ctx, MarkActivationCodeUsed, arg.ID, arg.ClaimedFingerprintHash)
+func (q *Queries) RefreshMachineActivationCodeAggregate(ctx context.Context, arg RefreshMachineActivationCodeAggregateParams) (MachineActivationCode, error) {
+	row := q.db.QueryRow(ctx, RefreshMachineActivationCodeAggregate, arg.ID, arg.ClaimedFingerprintHash)
 	var i MachineActivationCode
 	err := row.Scan(
 		&i.ID,
@@ -239,6 +422,43 @@ type RevokeMachineActivationCodeParams struct {
 
 func (q *Queries) RevokeMachineActivationCode(ctx context.Context, arg RevokeMachineActivationCodeParams) (MachineActivationCode, error) {
 	row := q.db.QueryRow(ctx, RevokeMachineActivationCode, arg.ID, arg.MachineID, arg.OrganizationID)
+	var i MachineActivationCode
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.OrganizationID,
+		&i.CodeHash,
+		&i.MaxUses,
+		&i.Uses,
+		&i.ExpiresAt,
+		&i.Notes,
+		&i.Status,
+		&i.ClaimedFingerprintHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const RevokeMachineActivationCodeForOrganization = `-- name: RevokeMachineActivationCodeForOrganization :one
+UPDATE machine_activation_codes
+SET
+    status = 'revoked',
+    updated_at = now()
+WHERE
+    id = $1
+    AND organization_id = $2
+    AND status = 'active'
+RETURNING id, machine_id, organization_id, code_hash, max_uses, uses, expires_at, notes, status, claimed_fingerprint_hash, created_at, updated_at
+`
+
+type RevokeMachineActivationCodeForOrganizationParams struct {
+	ID             uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) RevokeMachineActivationCodeForOrganization(ctx context.Context, arg RevokeMachineActivationCodeForOrganizationParams) (MachineActivationCode, error) {
+	row := q.db.QueryRow(ctx, RevokeMachineActivationCodeForOrganization, arg.ID, arg.OrganizationID)
 	var i MachineActivationCode
 	err := row.Scan(
 		&i.ID,

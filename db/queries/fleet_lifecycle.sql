@@ -1,0 +1,1 @@
+-- Fleet CRUD / lifecycle (P0.3); canonical SQL mirrored by postgres/fleet_lifecycle_repository.go until sqlc codegen is run.

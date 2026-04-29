@@ -1,10 +1,19 @@
-# Proto workspace for buf lint/generate. Includes internal-only gRPC contracts under avf/v1.
+# Proto workspace for buf lint/generate. Includes avf/v1 (internal queries) and avf/machine/v1 (machine app).
+# CI drift gate: `make proto-check` runs buf lint + breaking compare + git diff on generated outputs (see Makefile).
 version: v2
 modules:
   - path: .
 lint:
   use:
     - STANDARD
+  except:
+    # Intentional: machine runtime exposes multiple RPC names (spec + compatibility aliases) sharing types.
+    - RPC_REQUEST_RESPONSE_UNIQUE
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+  ignore_only:
+    IMPORT_USED:
+      - avf/machine/v1/machine_runtime.proto
 breaking:
   use:
     - FILE

@@ -114,6 +114,111 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch_writesLedgerQuantiti
 	require.Equal(t, "CAB-A", cab)
 }
 
+func TestInventoryRepository_CreateInventoryAdjustmentBatch_idempotentReplay(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+
+	var origQty int32
+	err := pool.QueryRow(ctx,
+		`SELECT current_quantity FROM machine_slot_state WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = 0`,
+		testfixtures.DevMachineID, testfixtures.DevPlanogramID,
+	).Scan(&origQty)
+	require.NoError(t, err)
+
+	defer func() {
+		_, _ = pool.Exec(ctx,
+			`DELETE FROM inventory_events WHERE machine_id = $1 AND metadata->>'idempotency_key' = 'grpc-idem-replay-test'`,
+			testfixtures.DevMachineID,
+		)
+		_, _ = pool.Exec(ctx,
+			`UPDATE machine_slot_state SET current_quantity = $1 WHERE machine_id = $2 AND planogram_id = $3 AND slot_index = 0`,
+			origQty, testfixtures.DevMachineID, testfixtures.DevPlanogramID,
+		)
+	}()
+
+	key := "grpc-idem-replay-test"
+	repo := postgres.NewInventoryRepository(pool)
+	in := inventoryapp.AdjustmentBatchInput{
+		OrganizationID: testfixtures.DevOrganizationID,
+		MachineID:      testfixtures.DevMachineID,
+		Reason:         "manual_adjustment",
+		IdempotencyKey: key,
+		ClientEventID:  "ce-replay-1",
+		Items: []inventoryapp.AdjustmentItem{{
+			PlanogramID:    testfixtures.DevPlanogramID,
+			SlotIndex:      0,
+			QuantityBefore: origQty,
+			QuantityAfter:  origQty + 1,
+			SlotCode:       "legacy-0",
+		}},
+	}
+	res1, err := repo.CreateInventoryAdjustmentBatch(ctx, in)
+	require.NoError(t, err)
+	require.False(t, res1.Replay)
+	require.NotEmpty(t, res1.EventIDs)
+
+	res2, err := repo.CreateInventoryAdjustmentBatch(ctx, in)
+	require.NoError(t, err)
+	require.True(t, res2.Replay)
+}
+
+func TestInventoryRepository_CreateInventoryAdjustmentBatch_idempotencyKeyConflict(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+
+	var origQty int32
+	err := pool.QueryRow(ctx,
+		`SELECT current_quantity FROM machine_slot_state WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = 0`,
+		testfixtures.DevMachineID, testfixtures.DevPlanogramID,
+	).Scan(&origQty)
+	require.NoError(t, err)
+
+	defer func() {
+		_, _ = pool.Exec(ctx,
+			`DELETE FROM inventory_events WHERE machine_id = $1 AND metadata->>'idempotency_key' = 'grpc-idem-conflict-test'`,
+			testfixtures.DevMachineID,
+		)
+		_, _ = pool.Exec(ctx,
+			`UPDATE machine_slot_state SET current_quantity = $1 WHERE machine_id = $2 AND planogram_id = $3 AND slot_index = 0`,
+			origQty, testfixtures.DevMachineID, testfixtures.DevPlanogramID,
+		)
+	}()
+
+	key := "grpc-idem-conflict-test"
+	repo := postgres.NewInventoryRepository(pool)
+	_, err = repo.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
+		OrganizationID: testfixtures.DevOrganizationID,
+		MachineID:      testfixtures.DevMachineID,
+		Reason:         "manual_adjustment",
+		IdempotencyKey: key,
+		ClientEventID:  "ce-1",
+		Items: []inventoryapp.AdjustmentItem{{
+			PlanogramID:    testfixtures.DevPlanogramID,
+			SlotIndex:      0,
+			QuantityBefore: origQty,
+			QuantityAfter:  origQty + 1,
+			SlotCode:       "legacy-0",
+		}},
+	})
+	require.NoError(t, err)
+
+	_, err = repo.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
+		OrganizationID: testfixtures.DevOrganizationID,
+		MachineID:      testfixtures.DevMachineID,
+		Reason:         "manual_adjustment",
+		IdempotencyKey: key,
+		ClientEventID:  "ce-2",
+		Items: []inventoryapp.AdjustmentItem{{
+			PlanogramID:    testfixtures.DevPlanogramID,
+			SlotIndex:      0,
+			QuantityBefore: origQty,
+			QuantityAfter:  origQty + 2,
+			SlotCode:       "legacy-0",
+		}},
+	})
+	require.ErrorIs(t, err, inventoryapp.ErrIdempotencyKeyConflict)
+}
+
 func TestInventoryRepository_CreateInventoryAdjustmentBatch_unknownSlot(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()

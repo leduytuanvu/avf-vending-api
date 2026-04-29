@@ -28,7 +28,12 @@ SELECT
     last_publish_error,
     last_publish_attempt_at,
     next_publish_after,
-    dead_lettered_at
+    dead_lettered_at,
+    status,
+    locked_by,
+    locked_until,
+    updated_at,
+    max_publish_attempts
 FROM outbox_events
 WHERE
     topic = $1
@@ -59,6 +64,11 @@ func (q *Queries) GetOutboxByTopicAndIdempotency(ctx context.Context, arg GetOut
 		&i.LastPublishAttemptAt,
 		&i.NextPublishAfter,
 		&i.DeadLetteredAt,
+		&i.Status,
+		&i.LockedBy,
+		&i.LockedUntil,
+		&i.UpdatedAt,
+		&i.MaxPublishAttempts,
 	)
 	return i, err
 }
@@ -74,12 +84,29 @@ SELECT
         WHERE
             published_at IS NULL
             AND dead_lettered_at IS NULL
+            AND status IN ('pending', 'failed')
             AND (
                 next_publish_after IS NULL
                 OR next_publish_after <= now()
             )
+            AND (
+                locked_until IS NULL
+                OR locked_until < now()
+            )
     )::bigint AS pending_due_now,
-    COUNT(*) FILTER (WHERE dead_lettered_at IS NOT NULL)::bigint AS dead_lettered_total,
+    COUNT(*) FILTER (
+        WHERE
+            dead_lettered_at IS NOT NULL
+            OR status = 'dead_letter'
+    )::bigint AS dead_lettered_total,
+    COUNT(*) FILTER (
+        WHERE
+            published_at IS NULL
+            AND dead_lettered_at IS NULL
+            AND status = 'publishing'
+            AND locked_until IS NOT NULL
+            AND locked_until >= now()
+    )::bigint AS publishing_leased_total,
     MIN(created_at) FILTER (
         WHERE
             published_at IS NULL
@@ -92,7 +119,13 @@ SELECT
                 AND dead_lettered_at IS NULL
         ),
         0
-    )::bigint AS max_pending_attempts
+    )::bigint AS max_pending_attempts,
+    COUNT(*) FILTER (
+        WHERE
+            published_at IS NULL
+            AND dead_lettered_at IS NULL
+            AND status = 'failed'
+    )::bigint AS failed_pending_total
 FROM
     outbox_events
 `
@@ -101,8 +134,10 @@ type GetOutboxPipelineStatsRow struct {
 	PendingTotal           int64
 	PendingDueNow          int64
 	DeadLetteredTotal      int64
+	PublishingLeasedTotal  int64
 	OldestPendingCreatedAt interface{}
 	MaxPendingAttempts     int64
+	FailedPendingTotal     int64
 }
 
 func (q *Queries) GetOutboxPipelineStats(ctx context.Context) (GetOutboxPipelineStatsRow, error) {
@@ -112,8 +147,10 @@ func (q *Queries) GetOutboxPipelineStats(ctx context.Context) (GetOutboxPipeline
 		&i.PendingTotal,
 		&i.PendingDueNow,
 		&i.DeadLetteredTotal,
+		&i.PublishingLeasedTotal,
 		&i.OldestPendingCreatedAt,
 		&i.MaxPendingAttempts,
+		&i.FailedPendingTotal,
 	)
 	return i, err
 }
@@ -144,7 +181,12 @@ RETURNING
     last_publish_error,
     last_publish_attempt_at,
     next_publish_after,
-    dead_lettered_at
+    dead_lettered_at,
+    status,
+    locked_by,
+    locked_until,
+    updated_at,
+    max_publish_attempts
 `
 
 type InsertOutboxEventParams struct {
@@ -184,8 +226,131 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 		&i.LastPublishAttemptAt,
 		&i.NextPublishAfter,
 		&i.DeadLetteredAt,
+		&i.Status,
+		&i.LockedBy,
+		&i.LockedUntil,
+		&i.UpdatedAt,
+		&i.MaxPublishAttempts,
 	)
 	return i, err
+}
+
+const LeaseOutboxForPublish = `-- name: LeaseOutboxForPublish :many
+WITH candidates AS (
+    SELECT
+        id
+    FROM
+        outbox_events
+    WHERE
+        published_at IS NULL
+        AND dead_lettered_at IS NULL
+        AND status NOT IN ('published', 'dead_letter')
+        AND (
+            next_publish_after IS NULL
+            OR next_publish_after <= now()
+        )
+        AND (
+            status IN ('pending', 'failed')
+            OR (
+                status = 'publishing'
+                AND (
+                    locked_until IS NULL
+                    OR locked_until < now()
+                )
+            )
+        )
+        AND created_at <= (now() - ($3::bigint * interval '1 second'))
+    ORDER BY
+        created_at ASC,
+        id ASC
+    LIMIT $4
+    FOR UPDATE
+        SKIP LOCKED
+)
+UPDATE outbox_events AS o
+SET
+    status = 'publishing',
+    locked_by = $1,
+    locked_until = now() + ($2::bigint * interval '1 second'),
+    updated_at = now()
+FROM
+    candidates AS c
+WHERE
+    o.id = c.id
+RETURNING
+    o.id,
+    o.organization_id,
+    o.topic,
+    o.event_type,
+    o.payload,
+    o.aggregate_type,
+    o.aggregate_id,
+    o.idempotency_key,
+    o.created_at,
+    o.published_at,
+    o.publish_attempt_count,
+    o.last_publish_error,
+    o.last_publish_attempt_at,
+    o.next_publish_after,
+    o.dead_lettered_at,
+    o.status,
+    o.locked_by,
+    o.locked_until,
+    o.updated_at,
+    o.max_publish_attempts
+`
+
+type LeaseOutboxForPublishParams struct {
+	WorkerID       pgtype.Text
+	LockTtlSeconds int64
+	MinAgeSeconds  int64
+	BatchLimit     int32
+}
+
+func (q *Queries) LeaseOutboxForPublish(ctx context.Context, arg LeaseOutboxForPublishParams) ([]OutboxEvent, error) {
+	rows, err := q.db.Query(ctx, LeaseOutboxForPublish,
+		arg.WorkerID,
+		arg.LockTtlSeconds,
+		arg.MinAgeSeconds,
+		arg.BatchLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OutboxEvent{}
+	for rows.Next() {
+		var i OutboxEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.Topic,
+			&i.EventType,
+			&i.Payload,
+			&i.AggregateType,
+			&i.AggregateID,
+			&i.IdempotencyKey,
+			&i.CreatedAt,
+			&i.PublishedAt,
+			&i.PublishAttemptCount,
+			&i.LastPublishError,
+			&i.LastPublishAttemptAt,
+			&i.NextPublishAfter,
+			&i.DeadLetteredAt,
+			&i.Status,
+			&i.LockedBy,
+			&i.LockedUntil,
+			&i.UpdatedAt,
+			&i.MaxPublishAttempts,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const ListOutboxUnpublished = `-- name: ListOutboxUnpublished :many
@@ -204,14 +369,30 @@ SELECT
     last_publish_error,
     last_publish_attempt_at,
     next_publish_after,
-    dead_lettered_at
+    dead_lettered_at,
+    status,
+    locked_by,
+    locked_until,
+    updated_at,
+    max_publish_attempts
 FROM outbox_events
 WHERE
     published_at IS NULL
     AND dead_lettered_at IS NULL
+    AND status NOT IN ('published', 'dead_letter')
     AND (
         next_publish_after IS NULL
         OR next_publish_after <= now()
+    )
+    AND (
+        status IN ('pending', 'failed')
+        OR (
+            status = 'publishing'
+            AND (
+                locked_until IS NULL
+                OR locked_until < now()
+            )
+        )
     )
 ORDER BY
     created_at ASC,
@@ -244,6 +425,11 @@ func (q *Queries) ListOutboxUnpublished(ctx context.Context, limit int32) ([]Out
 			&i.LastPublishAttemptAt,
 			&i.NextPublishAfter,
 			&i.DeadLetteredAt,
+			&i.Status,
+			&i.LockedBy,
+			&i.LockedUntil,
+			&i.UpdatedAt,
+			&i.MaxPublishAttempts,
 		); err != nil {
 			return nil, err
 		}
@@ -268,7 +454,14 @@ SET
     dead_lettered_at = CASE
         WHEN $4::boolean THEN now()
         ELSE dead_lettered_at
-    END
+    END,
+    status = CASE
+        WHEN $4::boolean THEN 'dead_letter'::text
+        ELSE 'failed'::text
+    END,
+    locked_by = NULL,
+    locked_until = NULL,
+    updated_at = now()
 WHERE
     id = $1
     AND published_at IS NULL

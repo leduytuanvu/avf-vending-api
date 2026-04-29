@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const CommerceAdminCountOrders = `-- name: CommerceAdminCountOrders :one
@@ -115,6 +116,97 @@ func (q *Queries) CommerceAdminCountPayments(ctx context.Context, arg CommerceAd
 	var cnt int64
 	err := row.Scan(&cnt)
 	return cnt, err
+}
+
+const CommerceAdminCountReconciliationCases = `-- name: CommerceAdminCountReconciliationCases :one
+SELECT count(*)::bigint
+FROM commerce_reconciliation_cases
+WHERE
+    organization_id = $1
+    AND ($2::boolean IS FALSE OR status = $3::text)
+    AND ($4::boolean IS FALSE OR case_type = $5::text)
+`
+
+type CommerceAdminCountReconciliationCasesParams struct {
+	OrganizationID uuid.UUID
+	Column2        bool
+	Column3        string
+	Column4        bool
+	Column5        string
+}
+
+func (q *Queries) CommerceAdminCountReconciliationCases(ctx context.Context, arg CommerceAdminCountReconciliationCasesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, CommerceAdminCountReconciliationCases,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+	)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const CommerceAdminGetReconciliationCase = `-- name: CommerceAdminGetReconciliationCase :one
+SELECT
+    id,
+    organization_id,
+    case_type,
+    status,
+    severity,
+    order_id,
+    payment_id,
+    vend_session_id,
+    refund_id,
+    machine_id,
+    provider,
+    provider_event_id,
+    correlation_key,
+    reason,
+    metadata,
+    first_detected_at,
+    last_detected_at,
+    resolved_at,
+    resolved_by,
+    resolution_note
+FROM commerce_reconciliation_cases
+WHERE
+    organization_id = $1
+    AND id = $2
+`
+
+type CommerceAdminGetReconciliationCaseParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+}
+
+func (q *Queries) CommerceAdminGetReconciliationCase(ctx context.Context, arg CommerceAdminGetReconciliationCaseParams) (CommerceReconciliationCase, error) {
+	row := q.db.QueryRow(ctx, CommerceAdminGetReconciliationCase, arg.OrganizationID, arg.ID)
+	var i CommerceReconciliationCase
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.CaseType,
+		&i.Status,
+		&i.Severity,
+		&i.OrderID,
+		&i.PaymentID,
+		&i.VendSessionID,
+		&i.RefundID,
+		&i.MachineID,
+		&i.Provider,
+		&i.ProviderEventID,
+		&i.CorrelationKey,
+		&i.Reason,
+		&i.Metadata,
+		&i.FirstDetectedAt,
+		&i.LastDetectedAt,
+		&i.ResolvedAt,
+		&i.ResolvedBy,
+		&i.ResolutionNote,
+	)
+	return i, err
 }
 
 const CommerceAdminListOrders = `-- name: CommerceAdminListOrders :many
@@ -324,4 +416,151 @@ func (q *Queries) CommerceAdminListPayments(ctx context.Context, arg CommerceAdm
 		return nil, err
 	}
 	return items, nil
+}
+
+const CommerceAdminListReconciliationCases = `-- name: CommerceAdminListReconciliationCases :many
+SELECT
+    id,
+    organization_id,
+    case_type,
+    status,
+    severity,
+    order_id,
+    payment_id,
+    vend_session_id,
+    refund_id,
+    machine_id,
+    provider,
+    provider_event_id,
+    correlation_key,
+    reason,
+    metadata,
+    first_detected_at,
+    last_detected_at,
+    resolved_at,
+    resolved_by,
+    resolution_note
+FROM commerce_reconciliation_cases
+WHERE
+    organization_id = $1
+    AND ($2::boolean IS FALSE OR status = $3::text)
+    AND ($4::boolean IS FALSE OR case_type = $5::text)
+ORDER BY
+    last_detected_at DESC
+LIMIT $6 OFFSET $7
+`
+
+type CommerceAdminListReconciliationCasesParams struct {
+	OrganizationID uuid.UUID
+	Column2        bool
+	Column3        string
+	Column4        bool
+	Column5        string
+	Limit          int32
+	Offset         int32
+}
+
+func (q *Queries) CommerceAdminListReconciliationCases(ctx context.Context, arg CommerceAdminListReconciliationCasesParams) ([]CommerceReconciliationCase, error) {
+	rows, err := q.db.Query(ctx, CommerceAdminListReconciliationCases,
+		arg.OrganizationID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CommerceReconciliationCase{}
+	for rows.Next() {
+		var i CommerceReconciliationCase
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.CaseType,
+			&i.Status,
+			&i.Severity,
+			&i.OrderID,
+			&i.PaymentID,
+			&i.VendSessionID,
+			&i.RefundID,
+			&i.MachineID,
+			&i.Provider,
+			&i.ProviderEventID,
+			&i.CorrelationKey,
+			&i.Reason,
+			&i.Metadata,
+			&i.FirstDetectedAt,
+			&i.LastDetectedAt,
+			&i.ResolvedAt,
+			&i.ResolvedBy,
+			&i.ResolutionNote,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const CommerceAdminResolveReconciliationCase = `-- name: CommerceAdminResolveReconciliationCase :one
+UPDATE commerce_reconciliation_cases
+SET
+    status = $3,
+    resolved_at = now(),
+    resolved_by = $4,
+    resolution_note = $5
+WHERE
+    organization_id = $1
+    AND id = $2
+    AND status IN ('open', 'reviewing', 'escalated')
+RETURNING id, organization_id, case_type, status, severity, order_id, payment_id, vend_session_id, refund_id, machine_id, provider, provider_event_id, correlation_key, reason, metadata, first_detected_at, last_detected_at, resolved_at, resolved_by, resolution_note
+`
+
+type CommerceAdminResolveReconciliationCaseParams struct {
+	OrganizationID uuid.UUID
+	ID             uuid.UUID
+	Status         string
+	ResolvedBy     pgtype.UUID
+	ResolutionNote pgtype.Text
+}
+
+func (q *Queries) CommerceAdminResolveReconciliationCase(ctx context.Context, arg CommerceAdminResolveReconciliationCaseParams) (CommerceReconciliationCase, error) {
+	row := q.db.QueryRow(ctx, CommerceAdminResolveReconciliationCase,
+		arg.OrganizationID,
+		arg.ID,
+		arg.Status,
+		arg.ResolvedBy,
+		arg.ResolutionNote,
+	)
+	var i CommerceReconciliationCase
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.CaseType,
+		&i.Status,
+		&i.Severity,
+		&i.OrderID,
+		&i.PaymentID,
+		&i.VendSessionID,
+		&i.RefundID,
+		&i.MachineID,
+		&i.Provider,
+		&i.ProviderEventID,
+		&i.CorrelationKey,
+		&i.Reason,
+		&i.Metadata,
+		&i.FirstDetectedAt,
+		&i.LastDetectedAt,
+		&i.ResolvedAt,
+		&i.ResolvedBy,
+		&i.ResolutionNote,
+	)
+	return i, err
 }

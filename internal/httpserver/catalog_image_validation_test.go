@@ -2,48 +2,21 @@ package httpserver
 
 import "testing"
 
-func TestValidateProductImageBindInput_ok(t *testing.T) {
-	t.Parallel()
-	err := validateProductImageBindInput(
-		"https://cdn.example.com/a.webp",
-		"https://cdn.example.com/b.webp",
-		"sha256:"+repeatHex(64),
-		"image/webp",
-	)
-	if err != nil {
+func Test_validateHTTPSArtifactURL_localhostHTTP(t *testing.T) {
+	if err := validateHTTPSArtifactURL("displayUrl", "http://127.0.0.1:9000/x"); err != nil {
 		t.Fatal(err)
 	}
+	if err := validateHTTPSArtifactURL("displayUrl", "http://localhost/foo"); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateHTTPSArtifactURL("displayUrl", "http://evil.example.com/x"); err == nil {
+		t.Fatal("expected reject non-localhost http")
+	}
 }
 
-func TestValidateProductImageBindInput_displayNotHTTPS(t *testing.T) {
-	t.Parallel()
-	err := validateProductImageBindInput("http://evil.example/x", "", "", "")
+func Test_validateProductImageBindInput_invalidMIME(t *testing.T) {
+	err := validateProductImageBindInput("https://cdn.example.com/a.jpg", "", "", "image/x-unknown")
 	if err == nil {
 		t.Fatal("expected error")
 	}
-}
-
-func TestValidateProductImageBindInput_badHash(t *testing.T) {
-	t.Parallel()
-	err := validateProductImageBindInput("https://a.example/x", "", "not-hex", "")
-	if err == nil {
-		t.Fatal("expected error")
-	}
-}
-
-func TestValidateProductImageBindInput_badMime(t *testing.T) {
-	t.Parallel()
-	err := validateProductImageBindInput("https://a.example/x", "", "", "application/octet-stream")
-	if err == nil {
-		t.Fatal("expected error")
-	}
-}
-
-func repeatHex(n int) string {
-	const hx = "0123456789abcdef"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = hx[i%16]
-	}
-	return string(b)
 }

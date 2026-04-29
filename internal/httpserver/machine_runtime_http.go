@@ -7,18 +7,24 @@ import (
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
+	appfeatureflags "github.com/avf/avf-vending-api/internal/app/featureflags"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func mountMachineRuntimeRoutes(r chi.Router, app *api.HTTPApplication) {
+func mountMachineRuntimeRoutes(r chi.Router, app *api.HTTPApplication, abuse *AbuseProtection) {
+	// Legacy HTTP check-ins and config-applies. Prefer gRPC MachineBootstrapService / MachineTelemetryService paths.
 	if app == nil || app.TelemetryStore == nil {
 		return
 	}
-	r.With(RequireMachineTenantAccess(app, "machineId")).Post("/machines/{machineId}/check-ins", postMachineCheckIn(app))
-	r.With(RequireMachineTenantAccess(app, "machineId")).Post("/machines/{machineId}/config-applies", postMachineConfigApply(app))
+	if abuse == nil {
+		abuse = &AbuseProtection{}
+	}
+	r.With(abuse.MachineScoped(), RequireMachineTenantAccess(app, "machineId")).Post("/machines/{machineId}/check-ins", postMachineCheckIn(app))
+	r.With(abuse.MachineScoped(), RequireMachineTenantAccess(app, "machineId")).Post("/machines/{machineId}/config-applies", postMachineConfigApply(app))
 }
 
 type machineCheckInRequest struct {
@@ -95,11 +101,38 @@ func postMachineCheckIn(app *api.HTTPApplication) http.HandlerFunc {
 			LastCheckInAt: pgtype.Timestamptz{Time: occurredAt.UTC(), Valid: true},
 		})
 
-		writeJSON(w, http.StatusCreated, map[string]any{
+		productionmetrics.RecordMachineCheckIn("http")
+		resp := map[string]any{
 			"id":          strconv.FormatInt(row.ID, 10),
 			"machine_id":  row.MachineID.String(),
 			"occurred_at": formatAPITimeRFC3339Nano(row.OccurredAt),
-		})
+		}
+		if app.FeatureFlags != nil {
+			if rh, err := app.FeatureFlags.RuntimeHintsForMachine(r.Context(), machineID); err == nil && rh != nil {
+				resp["runtime_hints"] = runtimeHintsMap(rh)
+			}
+		}
+		writeJSON(w, http.StatusCreated, resp)
+	}
+}
+
+func runtimeHintsMap(h *appfeatureflags.RuntimeHints) map[string]any {
+	if h == nil {
+		return nil
+	}
+	pr := make([]map[string]any, len(h.PendingMachineConfigRollouts))
+	for i, x := range h.PendingMachineConfigRollouts {
+		pr[i] = map[string]any{
+			"rolloutId":          x.RolloutID,
+			"targetVersionId":    x.TargetVersionID,
+			"targetVersionLabel": x.TargetVersionLabel,
+			"status":             x.Status,
+		}
+	}
+	return map[string]any{
+		"featureFlags":                 h.FeatureFlags,
+		"appliedMachineConfigRevision": h.AppliedMachineConfigRevision,
+		"pendingMachineConfigRollouts": pr,
 	}
 }
 

@@ -22,13 +22,19 @@ func mountArtifactAdminRoutes(r chi.Router, app *api.HTTPApplication, writeRL fu
 		return
 	}
 	svc := app.Artifacts
-	r.With(writeRL).Route("/organizations/{orgId}/artifacts", func(r chi.Router) {
-		r.Post("/", artifactReserveHandler(svc))
-		r.Get("/", artifactListHandler(svc))
-		r.Get("/{artifactId}", artifactGetHandler(svc))
-		r.Get("/{artifactId}/download", artifactDownloadURLHandler(svc))
-		r.Put("/{artifactId}/content", artifactPutContentHandler(svc))
-		r.Delete("/{artifactId}", artifactDeleteHandler(svc))
+	r.Route("/organizations/{orgId}/artifacts", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireAnyPermission(auth.PermCatalogRead))
+			r.Get("/", artifactListHandler(svc))
+			r.Get("/{artifactId}", artifactGetHandler(svc))
+			r.Get("/{artifactId}/download", artifactDownloadURLHandler(svc))
+		})
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireAnyPermission(auth.PermCatalogWrite))
+			r.With(writeRL).Post("/", artifactReserveHandler(svc))
+			r.With(writeRL).Put("/{artifactId}/content", artifactPutContentHandler(svc))
+			r.With(writeRL).Delete("/{artifactId}", artifactDeleteHandler(svc))
+		})
 	})
 }
 
@@ -53,7 +59,10 @@ func artifactOrgAllowed(p auth.Principal, orgID uuid.UUID) bool {
 	if p.HasRole(auth.RolePlatformAdmin) {
 		return true
 	}
-	return p.HasOrganization() && p.OrganizationID == orgID && p.HasRole(auth.RoleOrgAdmin)
+	if !p.HasOrganization() || p.OrganizationID != orgID {
+		return false
+	}
+	return auth.HasPermission(p, auth.PermCatalogRead) || auth.HasPermission(p, auth.PermCatalogWrite)
 }
 
 func artifactReserveHandler(svc *artifacts.Service) http.HandlerFunc {

@@ -1,52 +1,118 @@
-# Field rollout checklist (vending machines)
+# Field rollout checklist (machines · P1 widen · P2 fleet)
 
-Use this list **after** a production API deploy (or in a coordinated release that includes **device/edge** changes). It is **not** a substitute for the GitHub [production-release-checklist.md](production-release-checklist.md); it covers **on-machine** and **operator** validation for a vending control-plane rollout.
+Apply **after** a production API deploy coordinates with **edge/kiosk firmware** where relevant. Does **not** replace **[`production-release-checklist.md`](production-release-checklist.md)** — that governs **`workflow_dispatch`** to production; **this** checklist governs **field validation** widening toward **100–1000** machines.
 
-**Who owns evidence:** name an **evidence owner** (role + name) in the change ticket. That person ensures screenshots, log excerpts (non-secret), and sign-off are stored per your document retention policy.
+**Normative contract:** **[`../architecture/production-final-contract.md`](../architecture/production-final-contract.md)** (Admin REST · machine gRPC · MQTT · payments · media).
 
-**Secrets:** do not paste MQTT passwords, API keys, payment provider secrets, or SSH credentials into chat or uncontrolled tickets. Reference **internal secret stores** and **redacted** log lines only.
+**Infrastructure:** Default production story is **2 × app VPS** (+ optional data node / managed MQTT) per **[`../runbooks/production-2-vps.md`](../runbooks/production-2-vps.md)** — **managed PostgreSQL, Redis, object storage**, and either **managed MQTT** or **data-node** EMQX; **contradicts** documenting single-host Compose as primary. Rolling traffic + smoke: **[`two-vps-rolling-production-deploy.md`](two-vps-rolling-production-deploy.md)**.
+
+**Secrets:** No MQTT passwords / API keys / PSP secrets / SSH keys in tickets — reference vault paths; logs **redacted**.
+
+**Priority**
+
+| Tier | Applies here |
+|------|----------------|
+| **P1** | Every widen tranche |
+| **P2** | Additional when claiming **scale-100 / 500 / 1000** — storm JSON + **`production-release-readiness.md`** gates |
+
+Every section below: record **Evidence owner**, **Evidence link/id**, **Date (UTC)**.
 
 ---
 
-## Preconditions
+## Preconditions (P1)
 
-- [ ] **Machine online** (or a representative set) **before** the deploy window: connectivity to the public API, healthy check-in path, and expected firmware/app version if your fleet tracks one.
-- [ ] **Maintenance window** and **rollback owner** are agreed (API image rollback is distinct from long-running DB operations—see [two-vps-rolling-production-deploy.md](two-vps-rolling-production-deploy.md)).
+| Done | Checkpoint | Evidence | Owner |
+|------|------------|---------|-------|
+| ☐ | Representative machines **online** pre-change; JWT / cert policy understood | | |
+| ☐ | **Maintenance window**, **communication plan**, **rollback owner** documented — digest rollback **`!=`** DB downgrade — **[`../runbooks/production-cutover-rollback.md`](../runbooks/production-cutover-rollback.md)** | | |
 
-## Product and catalog
+---
 
-- [ ] **Product list sync** — machines show expected catalog/price book after the release (or after the next allowed sync), per your planogram process. Spot-check a **low-urgency** machine and a **high-SKU** machine if applicable.
-- [ ] **Inventory reconciliation** — known stock and reservations align with the operator’s view after a test transaction cycle (or per your **reconciler** runbook, if you run manual reconciliation jobs).
+## Product and catalog (P1)
 
-## Payments
+| Done | Checkpoint | Evidence | Owner |
+|------|------------|---------|-------|
+| ☐ | **Catalog / pricebook** projection matches planogram expectation after sync (**`MachineCatalogService/GetCatalogSnapshot`** on gRPC; HTTP sale-catalog only if legacy enabled) — **[`../api/kiosk-app-flow.md`](../api/kiosk-app-flow.md)** | **`FT-CAT-01`** row | |
+| ☐ | **Inventory alignment** vs operator dashboard after test cycle (**reconciler** read or manual audit per ops policy) | | |
 
-- [ ] **QR / cashless (sandbox or live, per policy)** — a **small-value** test payment completes successfully where regulations and PSP rules allow; decline paths behave as before.
-- [ ] **Cash** — if the deployment touches cash handling, bill/coin path, or MDB bridges, run the **manufacturer-allowed** test matrix (may require **hardware in lab**, not on every street unit).
+---
 
-## Dispense
+## Payments (P1)
 
-- [ ] **Dispense success** — at least one controlled test vend per critical machine model (or a statistically sound sample) completes end-to-end with correct telemetry/ACK if your product requires it.
-- [ ] **Dispense failure recovery** — intentional or simulated failure paths (jam, timeout, out-of-stock) result in a **defined operator outcome**: retry, refund/cancel, or service ticket, without orphan payments per [commerce / temporal](../architecture/current-architecture.md) behavior.
+| Done | Checkpoint | Evidence | Owner |
+|------|------------|---------|-------|
+| ☐ | **QR / PSP** — small-value **approved** sandbox or live test completes; PSP dashboard matches server order (**`FT-PAY-01`**). Webhook replay idempotent (**HMAC**) — **[`../runbooks/payment-webhook-debug.md`](../runbooks/payment-webhook-debug.md)** | | |
+| ☐ | **Cash** — `FT-PAY-02` lane if treasury policy mandates MDB/hardware proof (may be lab-only subset) | | |
 
-## Connectivity
+---
 
-- [ ] **MQTT reconnect** — after a **brief** network flap (or in lab), the device recovers without manual reboot (subject to your broker policy and keepalive settings). See [mqtt-contract.md](../api/mqtt-contract.md) for the contract in this repo.
-- [ ] **Offline / retry** — a machine that was offline during deploy later **replays** or **reconciles** per your client design; no duplicate settlement when idempotency keys are honored.
+## Dispense / commerce (P1)
 
-## Exception handling and money movement
+| Done | Checkpoint | Evidence | Owner |
+|------|------------|---------|-------|
+| ☐ | **Vend success** — `FT-VND-01` on **each critical model family** sampled | | |
+| ☐ | **Vend failure + refund** — `FT-PAY-03` (paid + vend fail; refund/ticket path); success replay is `FT-VND-01` | | |
+| ☐ | **Power loss mid-vend** — `FT-VND-03` on at least one pilot device | | |
 
-- [ ] **Refund or manual reconciliation path** — for stuck orders, the operator can complete **refund**, **cancel**, or **manual review** per your PSP and **Temporal** / admin flows (see API handoff docs and runbooks, not this checklist alone).
-- [ ] **Evidence owner** confirms **non-secret** evidence is attached: timestamps, machine ids, test transaction ids, and links to **Deploy Production** / **smoke** artifacts where required.
+---
+
+## Connectivity and offline (P1)
+
+| Done | Checkpoint | Evidence | Owner |
+|------|------------|---------|-------|
+| ☐ | **MQTT reconnect** transient flap — **[`../api/mqtt-contract.md`](../api/mqtt-contract.md)** | | |
+| ☐ | **Mid-payment network loss** — `FT-PAY-04` | | |
+| ☐ | **Offline replay** — `FT-OFF-01` — duplicate client event id **REPLAYED** | | |
+| ☐ | **Telemetry** — `FT-TEL-01` | | |
+
+---
+
+## Commands (P1)
+
+| Done | Checkpoint | Evidence | Owner |
+|------|------------|---------|-------|
+| ☐ | **Duplicate command ACK** — `FT-MQT-02` | | |
+
+---
+
+## Money movement and exceptions (P1)
+
+| Done | Checkpoint | Evidence | Owner |
+|------|------------|---------|-------|
+| ☐ | **Payment reconciliation** — **`FT-PAY-05`**: server totals vs PSP settlement for pilot sample | | Treasury / backend |
+| ☐ | **Outbox / worker drain** — **`FT-OBX-01`** when rollout touches payment or commerce paths | | SRE / backend |
+| ☐ | Stuck order / refund / manual reconciliation path exercised per org policy (Temporal/admin — not this doc alone) | | |
+
+---
+
+## Backup and rollback evidence (P0 / P2)
+
+| Done | Checkpoint | Evidence | Owner |
+|------|------------|---------|-------|
+| ☐ | **`FT-BKP-01`** — backup id before migration if schema move in rollout | | DBA |
+| ☐ | **`FT-RLB-01`** — previous **known-good** image digests + rollback procedure tested or table-top’d | | SRE |
+
+---
+
+## P2 fleet gate (100–1000 claim)
+
+| Done | Checkpoint | Evidence | Owner |
+|------|------------|---------|-------|
+| ☐ | Storm suite dimension matches **`fleet_scale_target`** (**`100×100`**, **`500×200`**, **`1000×500`**) per **[`../runbooks/production-release-readiness.md`](../runbooks/production-release-readiness.md)** | JSON artifact attach | |
+| ☐ | **Monitoring readiness** script pass when required (`check_monitoring_readiness.sh`) | JSON attach | |
+
+---
 
 ## Sign-off
 
-- [ ] **Field or pilot lead** signs off, or a **staged rollout** list is complete before fleet-wide enablement.
-- [ ] If anything fails, follow **incident** and **rollback** procedures before expanding scope ([../runbooks/deploy-failure.md](../runbooks/deploy-failure.md) if present, [../runbooks/production-rollback.md](../runbooks/production-rollback.md)).
+| Outcome | Name | Role | UTC date | Evidence bundle id |
+|---------|------|------|----------|-------------------|
+| Approved widen / Freeze / Rollback initiate | | | | |
 
 ---
 
 ## Related
 
-- [release-process.md](release-process.md) — when production deploys happen in the pipeline
-- [production-smoke-tests.md](production-smoke-tests.md) — what CI may probe vs what must be field-proven
-- [../runbooks/telemetry-production-rollout.md](../runbooks/telemetry-production-rollout.md) — telemetry-specific rollout notes, if in use
+- [`release-process.md`](release-process.md) — cadence (**do not confuse** **`deploy-production.yml` pointer-only** vs **`deploy-prod.yml`** — see **`production-release-readiness`**).
+- [`production-smoke-tests.md`](production-smoke-tests.md) — CI **`GET`** smoke tiers.
+- [`../testing/field-test-cases.md`](../testing/field-test-cases.md) — spreadsheet-style matrix.

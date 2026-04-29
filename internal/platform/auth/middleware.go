@@ -97,6 +97,55 @@ func JWTSecretFromEnv() []byte {
 	return []byte(strings.TrimSpace(os.Getenv(EnvJWTSecret)))
 }
 
+// RequireInteractiveAccountActive rejects interactive JWT principals whose account_status claim is disabled.
+func RequireInteractiveAccountActive(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p, ok := PrincipalFromContext(r.Context())
+		if !ok {
+			writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
+			return
+		}
+		if p.InteractiveAccountDisabled() {
+			writeAuthError(w, r, http.StatusForbidden, "account_disabled", "account is disabled")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// RequireInteractiveAccessToken rejects MFA challenge JWTs (token_use=mfa_pending). Use after Bearer middleware on session-backed APIs.
+func RequireInteractiveAccessToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p, ok := PrincipalFromContext(r.Context())
+		if !ok {
+			writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
+			return
+		}
+		if strings.EqualFold(strings.TrimSpace(p.TokenUse), TokenUseMFAPending) {
+			writeAuthError(w, r, http.StatusForbidden, "mfa_challenge_pending", "complete MFA verification")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// RequireMFAPendingOrInteractiveAccess allows normal access JWTs or MFA challenge JWTs (enrollment / verify flow).
+func RequireMFAPendingOrInteractiveAccess(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p, ok := PrincipalFromContext(r.Context())
+		if !ok {
+			writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
+			return
+		}
+		tu := strings.ToLower(strings.TrimSpace(p.TokenUse))
+		if tu == "" || tu == strings.ToLower(TokenUseInteractiveAccess) || tu == strings.ToLower(TokenUseMFAPending) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		writeAuthError(w, r, http.StatusForbidden, "forbidden", ErrForbidden.Error())
+	})
+}
+
 // RequireDenyMachinePrincipal blocks kiosk machine JWTs from administrative or reporting surfaces.
 func RequireDenyMachinePrincipal(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +154,7 @@ func RequireDenyMachinePrincipal(next http.Handler) http.Handler {
 			writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
 			return
 		}
-		if p.IsMachinePrincipal() {
+		if p.IsMachinePrincipal() || strings.EqualFold(strings.TrimSpace(p.JWTType), JWTClaimTypeMachine) {
 			writeAuthError(w, r, http.StatusForbidden, "forbidden", ErrForbidden.Error())
 			return
 		}
@@ -123,6 +172,69 @@ func RequireAnyRole(roles ...string) func(http.Handler) http.Handler {
 				return
 			}
 			if !p.HasAnyRole(roles...) {
+				writeAuthError(w, r, http.StatusForbidden, "forbidden", ErrForbidden.Error())
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequirePermission enforces a single RBAC permission granted via JWT role→permission mapping.
+func RequirePermission(permission string) func(http.Handler) http.Handler {
+	return RequireAnyPermission(permission)
+}
+
+// RequireAnyPermission requires that the interactive principal holds at least one permission (or PermAdminAll).
+func RequireAnyPermission(perms ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			p, ok := PrincipalFromContext(r.Context())
+			if !ok {
+				writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
+				return
+			}
+			if !HasAnyPermission(p, perms...) {
+				writeAuthError(w, r, http.StatusForbidden, "forbidden", ErrForbidden.Error())
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireFleetMachineLifecycle enforces disable/retire/credential-rotation: fleet.machine.write plus
+// platform_admin, org_admin, or fleet_manager (see CanFleetMachineLifecycle).
+func RequireFleetMachineLifecycle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p, ok := PrincipalFromContext(r.Context())
+		if !ok {
+			writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
+			return
+		}
+		if !CanFleetMachineLifecycle(p) {
+			writeAuthError(w, r, http.StatusForbidden, "forbidden", ErrForbidden.Error())
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// RequireInteractivePermissionOrMachinePrincipal allows kiosk/machine JWTs without RBAC permissions;
+// interactive callers must satisfy RequireAnyPermission(perms...).
+func RequireInteractivePermissionOrMachinePrincipal(perms ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			p, ok := PrincipalFromContext(r.Context())
+			if !ok {
+				writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
+				return
+			}
+			if p.IsMachinePrincipal() {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if !HasAnyPermission(p, perms...) {
 				writeAuthError(w, r, http.StatusForbidden, "forbidden", ErrForbidden.Error())
 				return
 			}

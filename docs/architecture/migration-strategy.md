@@ -79,7 +79,7 @@ The following is **descriptive of the codebase**, not a promise that every optio
 | **Object storage** | S3-compatible storage is **implemented for API artifacts** when `API_ARTIFACTS_ENABLED=true`; broader OTA/diagnostic usage is still follow-on work. |
 | **Temporal** | `internal/platform/temporal` now backs a real `cmd/temporal-worker`; `cmd/api`, `cmd/worker`, and `cmd/reconciler` can schedule selected workflow follow-up behind `TEMPORAL_SCHEDULE_*` flags. |
 | **ClickHouse** | Optional **worker** path for mirroring published outbox events when analytics flags are enabled; **not** yet the general telemetry analytics plane. |
-| **gRPC** | `internal/grpcserver`: `grpc.health.v1` plus internal machine/telemetry/commerce query services when `GRPC_ENABLED=true`; auth uses Bearer JWT validation on gRPC metadata. `proto/avf/v1/internal_queries.proto` is the in-repo contract source. |
+| **gRPC** | `internal/grpcserver`: **`avf.machine.v1`** (Machine JWT) when **`MACHINE_GRPC_ENABLED`** / **`GRPC_ENABLED`**; **`avf.internal.v1`** loopback query services when **`INTERNAL_GRPC_ENABLED`**; always **`grpc.health.v1`** when gRPC listens. Contracts: `proto/avf/machine/v1/*.proto`, `proto/avf/internal/v1/*.proto`. |
 | **Tests** | Unit/config tests always-on; Postgres **integration** tests under `internal/modules/postgres` require `TEST_DATABASE_URL` and migrations (see root `README.md`). |
 
 For the concise current-state freeze, see [`current-architecture.md`](current-architecture.md). When cutting over traffic from another system, update both documents and add links to runbooks, dashboards, and the exact routing flip checklist.

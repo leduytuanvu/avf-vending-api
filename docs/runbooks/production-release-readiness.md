@@ -2,6 +2,23 @@
 
 This runbook defines **what must pass** before calling a release **pilot-safe** vs **fleet-scale ready**, and how **storm evidence** blocks scale-up without proof.
 
+## P2 field documentation pack (100–1000 machines)
+
+**Do not** confuse static CI verify with field proof. For **go-live evidence** and reproducible operator steps, use this table as the **single intake path**:
+
+| Artifact | Path | Owner (typical) |
+| -------- | ---- | --------------- |
+| Normative production integration contract | [`../architecture/production-final-contract.md`](../architecture/production-final-contract.md) | TPM / all client teams |
+| Field test matrix (**Case ID … Owner** columns) | [`../testing/field-test-cases.md`](../testing/field-test-cases.md) | Field lead |
+| Android kiosk implementation checklist | [`../api/kiosk-app-implementation-checklist.md`](../api/kiosk-app-implementation-checklist.md) | Android lead |
+| Kiosk narrative flow | [`../api/kiosk-app-flow.md`](../api/kiosk-app-flow.md) | Android + QA |
+| **Post-deploy machine** widen | [`../operations/field-rollout-checklist.md`](../operations/field-rollout-checklist.md) | Field / SRE |
+| **Pre-deploy GitHub** checklist | [`../operations/production-release-checklist.md`](../operations/production-release-checklist.md) | Release manager |
+| Automated **GET-only** prod smoke | [`../operations/production-smoke-tests.md`](../operations/production-smoke-tests.md) | CI/CD — **not** a substitute for PSP/vend hardware tests |
+| Mutating smoke **commands** | [`field-smoke-tests.md`](field-smoke-tests.md) | Operator (staging/pilot) |
+
+**Topology:** Production **2-VPS rolling** + **managed** PostgreSQL / Redis / MQTT / object storage (**not** single-host Compose primary) — **[`production-2-vps.md`](production-2-vps.md)**, **[`production-cutover-rollback.md`](production-cutover-rollback.md)**. Legacy Compose is **rehearsal / emergency** only.
+
 ## Databases and environment separation (non-negotiable)
 
 - **Production** must use a **dedicated** production database (`PRODUCTION_DATABASE_URL` / your vault); it must **never** be the same connection string or host as **staging** (`STAGING_DATABASE_URL`). Run `bash scripts/verify_database_environment.sh` with `APP_ENV=production` before one-off or scripted migrations; `deployments/prod/scripts/release.sh` and app-node `release_app_node.sh` do this before Goose when migrations run.

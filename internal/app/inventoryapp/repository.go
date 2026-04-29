@@ -11,6 +11,8 @@ import (
 var (
 	ErrQuantityBeforeMismatch = errors.New("inventoryapp: quantity_before does not match current stock for slot")
 	ErrAdjustmentSlotNotFound = errors.New("inventoryapp: machine_slot_state row not found for planogram and slot_index")
+	// ErrIdempotencyKeyConflict is returned when an idempotency key was already used with a different payload.
+	ErrIdempotencyKeyConflict = errors.New("inventoryapp: idempotency key conflict")
 )
 
 // AdjustmentItem is one slot-level quantity change applied to inventory_events and machine_slot_state.
@@ -39,8 +41,10 @@ type AdjustmentBatchInput struct {
 	CorrelationID     *uuid.UUID
 	Reason            string
 	IdempotencyKey    string
-	Items             []AdjustmentItem
-	OccurredAt        *time.Time
+	// ClientEventID is an opaque client-generated identifier (logged into inventory_events.metadata).
+	ClientEventID string
+	Items         []AdjustmentItem
+	OccurredAt    *time.Time
 }
 
 // AdjustmentBatchResult reports inserted event ids or a replayed idempotent outcome.

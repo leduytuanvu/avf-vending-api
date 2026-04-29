@@ -16,6 +16,7 @@ const GetCommandLedgerByMachineIdempotency = `-- name: GetCommandLedgerByMachine
 SELECT
     id,
     machine_id,
+    organization_id,
     sequence,
     command_type,
     payload,
@@ -30,7 +31,8 @@ SELECT
     route_key,
     source_system,
     source_event_id,
-    operator_session_id
+    operator_session_id,
+    max_dispatch_attempts
 FROM command_ledger
 WHERE
     machine_id = $1
@@ -48,6 +50,7 @@ func (q *Queries) GetCommandLedgerByMachineIdempotency(ctx context.Context, arg 
 	err := row.Scan(
 		&i.ID,
 		&i.MachineID,
+		&i.OrganizationID,
 		&i.Sequence,
 		&i.CommandType,
 		&i.Payload,
@@ -63,6 +66,7 @@ func (q *Queries) GetCommandLedgerByMachineIdempotency(ctx context.Context, arg 
 		&i.SourceSystem,
 		&i.SourceEventID,
 		&i.OperatorSessionID,
+		&i.MaxDispatchAttempts,
 	)
 	return i, err
 }
@@ -89,6 +93,7 @@ func (q *Queries) GetMachineShadowByMachineID(ctx context.Context, machineID uui
 const InsertCommandLedgerEntry = `-- name: InsertCommandLedgerEntry :one
 INSERT INTO command_ledger (
     machine_id,
+    organization_id,
     sequence,
     command_type,
     payload,
@@ -96,10 +101,11 @@ INSERT INTO command_ledger (
     idempotency_key,
     operator_session_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING
     id,
     machine_id,
+    organization_id,
     sequence,
     command_type,
     payload,
@@ -114,11 +120,13 @@ RETURNING
     route_key,
     source_system,
     source_event_id,
-    operator_session_id
+    operator_session_id,
+    max_dispatch_attempts
 `
 
 type InsertCommandLedgerEntryParams struct {
 	MachineID         uuid.UUID
+	OrganizationID    uuid.UUID
 	Sequence          int64
 	CommandType       string
 	Payload           []byte
@@ -130,6 +138,7 @@ type InsertCommandLedgerEntryParams struct {
 func (q *Queries) InsertCommandLedgerEntry(ctx context.Context, arg InsertCommandLedgerEntryParams) (CommandLedger, error) {
 	row := q.db.QueryRow(ctx, InsertCommandLedgerEntry,
 		arg.MachineID,
+		arg.OrganizationID,
 		arg.Sequence,
 		arg.CommandType,
 		arg.Payload,
@@ -141,6 +150,7 @@ func (q *Queries) InsertCommandLedgerEntry(ctx context.Context, arg InsertComman
 	err := row.Scan(
 		&i.ID,
 		&i.MachineID,
+		&i.OrganizationID,
 		&i.Sequence,
 		&i.CommandType,
 		&i.Payload,
@@ -156,6 +166,7 @@ func (q *Queries) InsertCommandLedgerEntry(ctx context.Context, arg InsertComman
 		&i.SourceSystem,
 		&i.SourceEventID,
 		&i.OperatorSessionID,
+		&i.MaxDispatchAttempts,
 	)
 	return i, err
 }

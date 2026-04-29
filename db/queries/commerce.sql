@@ -113,6 +113,45 @@ FROM orders
 WHERE
     id = $1;
 
+-- name: LockOrderByIDAndOrgForUpdate :one
+SELECT
+    id,
+    organization_id,
+    machine_id,
+    status,
+    currency,
+    subtotal_minor,
+    tax_minor,
+    total_minor,
+    idempotency_key,
+    created_at,
+    updated_at
+FROM orders
+WHERE
+    id = $1
+    AND organization_id = $2
+FOR UPDATE;
+
+-- name: LockVendSessionByOrderAndSlotForUpdate :one
+SELECT
+    id,
+    order_id,
+    machine_id,
+    slot_index,
+    product_id,
+    state,
+    failure_reason,
+    correlation_id,
+    started_at,
+    completed_at,
+    final_command_attempt_id,
+    created_at
+FROM vend_sessions
+WHERE
+    order_id = $1
+    AND slot_index = $2
+FOR UPDATE;
+
 -- name: GetVendSessionByOrderAndSlot :one
 SELECT
     id,
@@ -212,6 +251,7 @@ SELECT
     v.completed_at,
     v.final_command_attempt_id,
     v.created_at,
+    o.organization_id,
     o.status AS order_status
 FROM vend_sessions v
 INNER JOIN orders o ON o.id = v.order_id
@@ -276,6 +316,73 @@ WHERE
     AND p.created_at < $1
 ORDER BY
     p.created_at ASC
+LIMIT $2;
+
+-- name: ListPaidOrdersWithoutVendStart :many
+SELECT
+    o.id AS order_id,
+    o.organization_id,
+    o.machine_id,
+    p.id AS payment_id,
+    p.provider,
+    p.state AS payment_state,
+    v.id AS vend_session_id,
+    v.state AS vend_state,
+    o.updated_at
+FROM orders o
+INNER JOIN payments p ON p.order_id = o.id
+INNER JOIN vend_sessions v ON v.order_id = o.id
+WHERE
+    p.state IN ('captured', 'partially_refunded')
+    AND o.status = 'paid'
+    AND v.state = 'pending'
+    AND o.updated_at < $1
+ORDER BY
+    o.updated_at ASC
+LIMIT $2;
+
+-- name: ListPaidVendFailuresForReview :many
+SELECT
+    o.id AS order_id,
+    o.organization_id,
+    o.machine_id,
+    p.id AS payment_id,
+    p.provider,
+    p.state AS payment_state,
+    v.id AS vend_session_id,
+    v.state AS vend_state,
+    v.completed_at
+FROM payments p
+INNER JOIN orders o ON o.id = p.order_id
+INNER JOIN vend_sessions v ON v.order_id = o.id
+WHERE
+    p.state IN ('captured', 'partially_refunded')
+    AND o.status = 'failed'
+    AND v.state = 'failed'
+    AND v.completed_at < $1
+ORDER BY
+    v.completed_at ASC
+LIMIT $2;
+
+-- name: ListRefundsPendingTooLong :many
+SELECT
+    r.id AS refund_id,
+    r.payment_id,
+    r.order_id,
+    o.organization_id,
+    p.provider,
+    r.state AS refund_state,
+    r.amount_minor,
+    r.currency,
+    r.created_at
+FROM refunds r
+INNER JOIN orders o ON o.id = r.order_id
+INNER JOIN payments p ON p.id = r.payment_id
+WHERE
+    r.state IN ('requested', 'processing')
+    AND r.created_at < $1
+ORDER BY
+    r.created_at ASC
 LIMIT $2;
 
 -- name: ListStaleCommandLedgerEntries :many
@@ -462,6 +569,7 @@ RETURNING
 SELECT
     id,
     payment_id,
+    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
@@ -469,7 +577,14 @@ SELECT
     currency,
     event_type,
     payload,
-    received_at
+    received_at,
+    validation_status,
+    provider_metadata,
+    legal_hold,
+    signature_valid,
+    applied_at,
+    ingress_status,
+    ingress_error
 FROM payment_provider_events
 WHERE
     provider = $1
@@ -479,6 +594,7 @@ WHERE
 SELECT
     id,
     payment_id,
+    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
@@ -486,7 +602,14 @@ SELECT
     currency,
     event_type,
     payload,
-    received_at
+    received_at,
+    validation_status,
+    provider_metadata,
+    legal_hold,
+    signature_valid,
+    applied_at,
+    ingress_status,
+    ingress_error
 FROM payment_provider_events
 WHERE
     provider = $1
@@ -495,13 +618,20 @@ WHERE
 -- name: InsertPaymentProviderEvent :one
 INSERT INTO payment_provider_events (
     payment_id,
+    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
     provider_amount_minor,
     currency,
     event_type,
-    payload
+    payload,
+    validation_status,
+    provider_metadata,
+    signature_valid,
+    applied_at,
+    ingress_status,
+    ingress_error
 ) VALUES (
     $1,
     $2,
@@ -510,11 +640,19 @@ INSERT INTO payment_provider_events (
     $5,
     $6,
     $7,
-    $8
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13,
+    $14,
+    $15
 )
 RETURNING
     id,
     payment_id,
+    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
@@ -522,12 +660,23 @@ RETURNING
     currency,
     event_type,
     payload,
-    received_at;
+    received_at,
+    validation_status,
+    provider_metadata,
+    legal_hold,
+    signature_valid,
+    applied_at,
+    ingress_status,
+    ingress_error;
 
 -- name: MarkOutboxEventPublished :one
 UPDATE outbox_events
 SET
-    published_at = now()
+    published_at = now(),
+    status = 'published',
+    locked_by = NULL,
+    locked_until = NULL,
+    updated_at = now()
 WHERE
     id = $1
     AND published_at IS NULL
@@ -546,7 +695,12 @@ RETURNING
     last_publish_error,
     last_publish_attempt_at,
     next_publish_after,
-    dead_lettered_at;
+    dead_lettered_at,
+    status,
+    locked_by,
+    locked_until,
+    updated_at,
+    max_publish_attempts;
 
 -- name: CommerceIsProductInMachinePublishedAssortment :one
 SELECT

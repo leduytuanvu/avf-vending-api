@@ -91,6 +91,18 @@ func New(ctx context.Context, cfg Config) (*S3Store, error) {
 	}, nil
 }
 
+// PingBucket verifies credentials and bucket reachability (readiness). It does not create the bucket.
+func (s *S3Store) PingBucket(ctx context.Context) error {
+	if s == nil || s.api == nil {
+		return fmt.Errorf("objectstore: nil store")
+	}
+	_, err := s.api.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(s.bucket)})
+	if err != nil {
+		return fmt.Errorf("objectstore: head bucket %q: %w", s.bucket, err)
+	}
+	return nil
+}
+
 // NewFromEnv builds an S3Store using ConfigFromEnv.
 func NewFromEnv(ctx context.Context) (*S3Store, error) {
 	cfg, err := ConfigFromEnv()

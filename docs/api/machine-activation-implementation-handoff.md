@@ -2,6 +2,8 @@
 
 **Implementation status:** **Shipped** — `internal/httpserver/activation_http.go`, `internal/app/activation`, `mountPublicActivationClaim` / `mountAdminActivationRoutes` in `internal/httpserver/server.go`.
 
+**P0.4 activation claims:** **`migrations/00052_machine_activation_claims.sql`** adds **`machine_activation_claims`** (per-attempt fingerprint hash, optional IP / user-agent, **`result`** ∈ succeeded | failed | rejected). **`max_uses`** is enforced against **COUNT(succeeded)** rows inside the same transaction as **`FOR UPDATE`** on **`machine_activation_codes`** (serialized concurrent claims). Partial unique index **`(activation_code_id, fingerprint_hash) WHERE result = 'succeeded'`** gives safe idempotent replay for the same device fingerprint. **`machine_activation_codes.uses`** / **`claimed_fingerprint_hash`** remain for backward compatibility and are refreshed via **`RefreshMachineActivationCodeAggregate`**. Rejected / failed attempts write **`machine_activation_claims`** rows and **`machine.activation.rejected`** audit when **`EnterpriseRecorder`** is wired.
+
 This document retains the **design checklist**, migration reference, and acceptance commands for reviewers.
 
 ## Routes (Chi)
@@ -123,15 +125,19 @@ Pass `cfg.Activation`, `cfg.MQTT`, and bootstrap path hints into [`HTTPApplicati
 
 ## Machine JWT ([`internal/platform/auth`](../../internal/platform/auth))
 
-Add `IssueMachineAccessToken(secret []byte, leeway, machineID, orgID, deviceBindingID uuid.UUID, ttl time.Duration, issuer, audience string) (token string, exp time.Time, err error)` using existing `SignHS256JWT` and claim shape compatible with [`PrincipalFromJWTPayloadJSON`](../../internal/platform/auth/claims.go):
+Machine access JWTs are issued separately from admin session semantics. Required claims are `iss`, `aud`, `sub=machine:{machine_id}`, `organization_id`, `machine_id`, `roles=["machine"]`, `typ=machine`, `token_use=machine_access`, `token_version`, `exp`, `iat`, and `nbf`.
 
-- `sub` = `device_binding_id.String()`
-- `org_id` = organization UUID
-- `machine_ids` = `[machineID.String()]`
-- `roles` = `[]` or omit (rely on `machine_ids` + [`AllowsMachine`](../../internal/platform/auth/principal.go))
-- `exp`, `iat`, optional `iss`/`aud`/`token_use: "machine_access"`
+Runtime gRPC auth validates signature, issuer, audience, `token_use`, role, token version, revocation, and machine lifecycle state. Machine refresh tokens remain opaque random values stored only as SHA-256 hashes in `machine_runtime_refresh_tokens`; refresh rotates the opaque refresh token and bumps `machines.credential_version`, invalidating old machine access JWTs.
 
-Validator already accepts HS256; use same secret as interactive tokens unless you add a dedicated `MACHINE_JWT_SECRET` later.
+Config aliases:
+
+- `AUTH_ISSUER`
+- `AUTH_ADMIN_AUDIENCE`
+- `AUTH_MACHINE_AUDIENCE`
+- `MACHINE_ACCESS_TTL`
+- `MACHINE_REFRESH_TTL`
+- `MACHINE_TOKEN_CLOCK_SKEW`
+- `MACHINE_AUTH_REQUIRE_AUDIENCE`
 
 ## HTTP DTOs
 

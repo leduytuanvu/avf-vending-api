@@ -67,45 +67,105 @@ func (q *Queries) RuntimeGetProductsByIDs(ctx context.Context, arg RuntimeGetPro
 }
 
 const RuntimeListProductImagesForProducts = `-- name: RuntimeListProductImagesForProducts :many
+
 SELECT
-    id,
-    product_id,
-    storage_key,
-    cdn_url,
-    thumb_cdn_url,
-    content_hash,
-    width,
-    height,
-    mime_type,
-    sort_order,
-    is_primary,
-    created_at
+    pi.id,
+    pi.product_id,
+    pi.storage_key,
+    COALESCE(NULLIF(TRIM(pm.display_url), ''), pi.cdn_url, '') AS cdn_url,
+    COALESCE(NULLIF(TRIM(pm.thumb_url), ''), pi.thumb_cdn_url, '') AS thumb_cdn_url,
+    CAST(
+        COALESCE(
+            NULLIF(TRIM(COALESCE(pm.original_url, '')), ''),
+            NULLIF(TRIM(COALESCE(ma.original_url, '')), ''),
+            ''
+        ) AS text
+    ) AS original_cdn_url,
+    COALESCE(NULLIF(TRIM(pm.content_hash), ''), pi.content_hash) AS content_hash,
+    pi.width,
+    pi.height,
+    pi.mime_type,
+    pi.sort_order,
+    pi.is_primary,
+    pi.created_at,
+    COALESCE(pm.media_version, pi.media_version) AS media_version,
+    GREATEST(pi.updated_at, pm.updated_at)::timestamptz AS updated_at,
+    pi.media_asset_id,
+    ma.sha256 AS asset_sha256,
+    ma.size_bytes AS asset_size_bytes,
+    ma.object_version AS asset_object_version,
+    ma.etag AS asset_etag,
+    ma.status AS asset_status,
+    CAST(
+        COALESCE(
+            NULLIF(TRIM(COALESCE(pm.original_object_key, '')), ''),
+            NULLIF(TRIM(COALESCE(ma.original_object_key, '')), ''),
+            ''
+        ) AS text
+    ) AS original_object_key,
+    CAST(
+        COALESCE(
+            NULLIF(TRIM(COALESCE(pm.thumb_object_key, '')), ''),
+            NULLIF(TRIM(COALESCE(ma.thumb_object_key, '')), ''),
+            ''
+        ) AS text
+    ) AS thumb_object_key,
+    CAST(
+        COALESCE(
+            NULLIF(TRIM(COALESCE(pm.display_object_key, '')), ''),
+            NULLIF(TRIM(COALESCE(ma.display_object_key, '')), ''),
+            ''
+        ) AS text
+    ) AS display_object_key
 FROM
-    product_images
+    product_images pi
+    INNER JOIN product_media pm ON pm.id = pi.id
+        AND pm.product_id = pi.product_id
+    LEFT JOIN media_assets ma ON ma.id = pi.media_asset_id
 WHERE
-    product_id = ANY ($1::uuid[])
+    pi.product_id = ANY ($1::uuid[])
+    AND pi.status = 'active'
+    AND pm.status = 'active'
+    AND (
+        pi.media_asset_id IS NULL
+        OR ma.status = 'ready'
+    )
 ORDER BY
-    product_id,
-    is_primary DESC,
-    sort_order,
-    created_at
+    pi.product_id,
+    pi.is_primary DESC,
+    pi.sort_order,
+    pi.created_at
 `
 
 type RuntimeListProductImagesForProductsRow struct {
-	ID          uuid.UUID
-	ProductID   uuid.UUID
-	StorageKey  string
-	CdnUrl      pgtype.Text
-	ThumbCdnUrl pgtype.Text
-	ContentHash pgtype.Text
-	Width       pgtype.Int4
-	Height      pgtype.Int4
-	MimeType    pgtype.Text
-	SortOrder   int32
-	IsPrimary   bool
-	CreatedAt   time.Time
+	ID                 uuid.UUID
+	ProductID          uuid.UUID
+	StorageKey         string
+	CdnUrl             string
+	ThumbCdnUrl        string
+	OriginalCdnUrl     string
+	ContentHash        pgtype.Text
+	Width              pgtype.Int4
+	Height             pgtype.Int4
+	MimeType           pgtype.Text
+	SortOrder          int32
+	IsPrimary          bool
+	CreatedAt          time.Time
+	MediaVersion       int32
+	UpdatedAt          time.Time
+	MediaAssetID       pgtype.UUID
+	AssetSha256        pgtype.Text
+	AssetSizeBytes     pgtype.Int8
+	AssetObjectVersion pgtype.Int4
+	AssetEtag          pgtype.Text
+	AssetStatus        pgtype.Text
+	OriginalObjectKey  string
+	ThumbObjectKey     string
+	DisplayObjectKey   string
 }
 
+// Runtime product images joined to denormalized `product_media` and optional `media_assets` for authoritative
+// checksums, etag, and deterministic thumb/display keys (presigned HTTPS refresh on gRPC snapshot/manifest).
 func (q *Queries) RuntimeListProductImagesForProducts(ctx context.Context, dollar_1 []uuid.UUID) ([]RuntimeListProductImagesForProductsRow, error) {
 	rows, err := q.db.Query(ctx, RuntimeListProductImagesForProducts, dollar_1)
 	if err != nil {
@@ -121,6 +181,7 @@ func (q *Queries) RuntimeListProductImagesForProducts(ctx context.Context, dolla
 			&i.StorageKey,
 			&i.CdnUrl,
 			&i.ThumbCdnUrl,
+			&i.OriginalCdnUrl,
 			&i.ContentHash,
 			&i.Width,
 			&i.Height,
@@ -128,6 +189,17 @@ func (q *Queries) RuntimeListProductImagesForProducts(ctx context.Context, dolla
 			&i.SortOrder,
 			&i.IsPrimary,
 			&i.CreatedAt,
+			&i.MediaVersion,
+			&i.UpdatedAt,
+			&i.MediaAssetID,
+			&i.AssetSha256,
+			&i.AssetSizeBytes,
+			&i.AssetObjectVersion,
+			&i.AssetEtag,
+			&i.AssetStatus,
+			&i.OriginalObjectKey,
+			&i.ThumbObjectKey,
+			&i.DisplayObjectKey,
 		); err != nil {
 			return nil, err
 		}

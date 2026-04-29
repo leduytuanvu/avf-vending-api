@@ -213,13 +213,21 @@ func (b *NATSBridge) IngestCommandReceipt(ctx context.Context, in platformmqtt.C
 		return err
 	}
 	now := time.Now().UTC()
-	wire, _ := json.Marshal(map[string]any{
-		"sequence":       in.Sequence,
-		"status":         in.Status,
-		"correlation_id": in.CorrelationID,
-		"payload":        json.RawMessage(in.Payload),
-		"dedupe_key":     in.DedupeKey,
-	})
+	msg := map[string]any{
+		"sequence":   in.Sequence,
+		"status":     in.Status,
+		"payload":    json.RawMessage(in.Payload),
+		"dedupe_key": in.DedupeKey,
+		"command_id": in.CommandID.String(),
+		"machine_id": in.MachineID.String(),
+	}
+	if in.CorrelationID != nil {
+		msg["correlation_id"] = *in.CorrelationID
+	}
+	if !in.OccurredAt.IsZero() {
+		msg["occurred_at"] = in.OccurredAt.UTC().Format(time.RFC3339Nano)
+	}
+	wire, _ := json.Marshal(msg)
 	env := tel.Envelope{
 		SchemaVersion: tel.DefaultSchemaVersion,
 		Class:         tel.ClassCommandReceipt,

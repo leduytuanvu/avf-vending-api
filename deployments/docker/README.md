@@ -29,6 +29,25 @@ docker compose -f deployments/docker/docker-compose.yml up -d
 docker compose -f deployments/docker/docker-compose.yml --profile broker --profile observability up -d
 ```
 
+## MQTT (EMQX) — local vs production
+
+Local Compose exposes **plain MQTT on port 1883** for `APP_ENV=development` only. This is convenient for laptops; it is **not** a production recommendation.
+
+**Local (insecure) example** — API / `cmd/mqtt-ingest`:
+
+- `MQTT_BROKER_URL=tcp://localhost:1883`
+- `MQTT_TOPIC_PREFIX=avf/devices` (legacy layout) or `MQTT_TOPIC_PREFIX=avf/dev` with `MQTT_TOPIC_LAYOUT=enterprise` (topics under `avf/dev/machines/{machineId}/...`)
+- `MQTT_CLIENT_ID_API` / `MQTT_CLIENT_ID_INGEST` (or `MQTT_CLIENT_ID`)
+- Optional auth: `MQTT_USERNAME` / `MQTT_PASSWORD` (never log the password)
+
+**Production / staging** — use **TLS** (e.g. `ssl://` or `tls://` on port 8883) or set `MQTT_TLS_ENABLED=true` with broker TCP and supply trust material:
+
+- `MQTT_CA_FILE` — PEM bundle for broker verification
+- `MQTT_CERT_FILE` / `MQTT_KEY_FILE` — optional mutual TLS client certificate
+- `MQTT_INSECURE_SKIP_VERIFY` — **only** allowed when `APP_ENV` is `development` or `test`
+
+Do not publish plain `1883` as the recommended production path; pair EMQX TLS listeners with the TLS env vars above.
+
 ## Prometheus scraping host processes
 
 Prometheus (in Docker) scrapes `host.docker.internal` for Go metrics. For each process set `METRICS_ENABLED=true` and bind metrics on **all interfaces**, e.g.:

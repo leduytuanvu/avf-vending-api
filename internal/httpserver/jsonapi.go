@@ -10,6 +10,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/apierr"
 	"github.com/avf/avf-vending-api/internal/app/api"
+	"github.com/avf/avf-vending-api/internal/app/listscope"
 	appmw "github.com/avf/avf-vending-api/internal/middleware"
 )
 
@@ -45,7 +46,7 @@ func writeV1ListError(w http.ResponseWriter, ctx context.Context, err error) {
 		))
 		return
 	}
-	if errors.Is(err, api.ErrAdminTenantScopeRequired) {
+	if errors.Is(err, api.ErrAdminTenantScopeRequired) || errors.Is(err, listscope.ErrAdminOrganizationRequired) {
 		writeAPIError(w, ctx, http.StatusBadRequest, "tenant_scope_required", "organization scope is required for this list")
 		return
 	}

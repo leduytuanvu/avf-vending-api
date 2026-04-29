@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 )
 
 func signAVFCommerceWebhook(secret string, ts int64, body []byte) (tsHeader, sigHeader string) {
@@ -25,7 +27,7 @@ func TestVerifyCommerceWebhookHMAC_valid(t *testing.T) {
 	body := []byte(`{"provider":"psp","provider_reference":"r1"}`)
 	ts := time.Now().Unix()
 	th, sh := signAVFCommerceWebhook(secret, ts, body)
-	if err := verifyCommerceWebhookHMAC(secret, th, sh, body, 300*time.Second); err != nil {
+	if err := platformpayments.VerifyCommerceWebhookHMAC(secret, th, sh, body, 300*time.Second); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -36,7 +38,7 @@ func TestVerifyCommerceWebhookHMAC_invalidSignature(t *testing.T) {
 	body := []byte(`{"provider":"psp","provider_reference":"r1"}`)
 	ts := time.Now().Unix()
 	th, _ := signAVFCommerceWebhook(secret, ts, body)
-	err := verifyCommerceWebhookHMAC(secret, th, "sha256=deadbeef", body, 300*time.Second)
+	err := platformpayments.VerifyCommerceWebhookHMAC(secret, th, "sha256=deadbeef", body, 300*time.Second)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -51,7 +53,7 @@ func TestVerifyCommerceWebhookHMAC_staleTimestamp(t *testing.T) {
 	body := []byte(`{}`)
 	ts := time.Now().Add(-400 * time.Second).Unix()
 	th, sh := signAVFCommerceWebhook(secret, ts, body)
-	err := verifyCommerceWebhookHMAC(secret, th, sh, body, 120*time.Second)
+	err := platformpayments.VerifyCommerceWebhookHMAC(secret, th, sh, body, 120*time.Second)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -62,7 +64,19 @@ func TestVerifyCommerceWebhookHMAC_staleTimestamp(t *testing.T) {
 
 func TestVerifyCommerceWebhookHMAC_missingHeaders(t *testing.T) {
 	t.Parallel()
-	if err := verifyCommerceWebhookHMAC("sec", "", "", []byte("{}"), time.Minute); err == nil {
+	if err := platformpayments.VerifyCommerceWebhookHMAC("sec", "", "", []byte("{}"), time.Minute); err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestVerifyCommerceWebhookHMAC_modifiedRawBodyFails(t *testing.T) {
+	t.Parallel()
+	secret := "test-secret-fixture"
+	body := []byte(`{"provider":"psp","provider_reference":"r1","webhook_event_id":"e1"}`)
+	ts := time.Now().Unix()
+	th, sh := signAVFCommerceWebhook(secret, ts, body)
+	tampered := []byte(`{"provider":"psp","provider_reference":"r1","webhook_event_id":"e1","x":true}`)
+	if err := platformpayments.VerifyCommerceWebhookHMAC(secret, th, sh, tampered, 300*time.Second); err == nil {
+		t.Fatal("expected invalid signature for tampered body")
 	}
 }

@@ -8,6 +8,7 @@ func TestConfigFromEnv_ObjectStorageAliases(t *testing.T) {
 	t.Setenv("OBJECT_STORAGE_SECRET_KEY", "fixture")
 	t.Setenv("OBJECT_STORAGE_REGION", "ap-southeast-1")
 	t.Setenv("OBJECT_STORAGE_ENDPOINT", "https://storage.example.com")
+	t.Setenv("OBJECT_STORAGE_PUBLIC_BASE_URL", "https://cdn.example.com/")
 
 	cfg, err := ConfigFromEnv()
 	if err != nil {
@@ -27,6 +28,9 @@ func TestConfigFromEnv_ObjectStorageAliases(t *testing.T) {
 	}
 	if !cfg.UsePathStyle {
 		t.Fatal("expected endpoint-based config to force path style")
+	}
+	if cfg.PublicBaseURL != "https://cdn.example.com" {
+		t.Fatalf("public base url: %q", cfg.PublicBaseURL)
 	}
 }
 

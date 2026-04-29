@@ -1,0 +1,202 @@
+# Local stack for avf-vending-api. Services without `profiles` always start (minimal core).
+# Optional profiles:
+#   broker         — EMQX + MinIO (device MQTT ingest, S3-style artifacts when enabled)
+#   observability  — Prometheus, Loki, Grafana, OTEL collector (metrics/logs; see ops/METRICS.md)
+#   experimental   — ClickHouse + Temporal (+ UI); NOT wired into Go production paths (placeholders / future work)
+#
+# Examples:
+#   docker compose -f deployments/docker/docker-compose.yml up -d
+#   docker compose -f deployments/docker/docker-compose.yml --profile broker --profile observability up -d
+name: avf-vending-local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: avf-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: avf-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: avf-nats
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  emqx:
+    profiles: [broker]
+    image: emqx/emqx:5.6.0
+    container_name: avf-emqx
+    environment:
+      EMQX_NAME: emqx
+      EMQX_HOST: emqx
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+      - "18083:18083"
+    volumes:
+      - emqx_data:/opt/emqx/data
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  minio:
+    profiles: [broker]
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    container_name: avf-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # Not used by Go services in production paths today (internal/platform/clickhouse is noop / fail-fast).
+  clickhouse:
+    profiles: [experimental]
+    image: clickhouse/clickhouse-server:24.8-alpine
+    container_name: avf-clickhouse
+    environment:
+      CLICKHOUSE_DB: avf
+      CLICKHOUSE_USER: avf
+      CLICKHOUSE_PASSWORD: avf
+    ports:
+      - "8123:8123"
+      - "9002:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  # Lab-only workflow engine; no Temporal client in cmd/* for this repo.
+  temporal:
+    profiles: [experimental]
+    image: temporalio/auto-setup:1.25.2
+    container_name: avf-temporal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgres
+    ports:
+      - "7233:7233"
+
+  temporal-ui:
+    profiles: [experimental]
+    image: temporalio/ui:2.31.2
+    container_name: avf-temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    ports:
+      - "8233:8080"
+
+  prometheus:
+    profiles: [observability]
+    image: prom/prometheus:v3.0.1
+    container_name: avf-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../../ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  loki:
+    profiles: [observability]
+    image: grafana/loki:3.0.1
+    container_name: avf-loki
+    command: ["-config.file=/etc/loki/config.yml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ../../ops/loki/config.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+
+  grafana:
+    profiles: [observability]
+    image: grafana/grafana:11.4.0
+    container_name: avf-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_DEFAULT_THEME: dark
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../../ops/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - loki
+
+  otel-collector:
+    profiles: [observability]
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    container_name: avf-otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8889:8889"
+    volumes:
+      - ../../ops/otel/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+
+volumes:
+  postgres_data:
+  redis_data:
+  emqx_data:
+  minio_data:
+  clickhouse_data:
+  prometheus_data:
+  loki_data:
+  grafana_data:

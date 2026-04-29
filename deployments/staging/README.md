@@ -6,3 +6,5 @@
 - **Smoke:** `scripts/smoke_staging.sh` wraps the top-level [scripts/smoke_staging.sh](../../scripts/smoke_staging.sh) and can derive `STAGING_BASE_URL` from `API_DOMAIN` in `.env.staging`
 
 See [docs/deployment/environments.md](../../docs/deployment/environments.md) for the local vs staging vs production map.
+
+**CI note:** **`develop`** can trigger staging automation (**Staging Deployment Contract**, after Security Release). Production rollout is **`deploy-prod.yml`** on **`main`**, manually.

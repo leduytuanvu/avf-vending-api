@@ -1,0 +1,14 @@
+# Sample Caddy site for machine gRPC behind TLS at machine-api.<domain>.
+# TLS terminates here; upstream speaks h2c on the Docker internal network (GRPC_BEHIND_TLS_PROXY=true on api).
+#
+# Replace domains/certificate paths; align GRPC_PUBLIC_BASE_URL with https/grpcs endpoint advertised to apps.
+
+machine-api.example.com {
+	tls /etc/ssl/machine-api/fullchain.pem /etc/ssl/machine-api/privkey.pem
+
+	reverse_proxy h2c://api:9090 {
+		transport http {
+			versions h2c
+		}
+	}
+}

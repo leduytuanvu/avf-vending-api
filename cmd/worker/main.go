@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -21,6 +22,7 @@ import (
 	platformclickhouse "github.com/avf/avf-vending-api/internal/platform/clickhouse"
 	platformdb "github.com/avf/avf-vending-api/internal/platform/db"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
+	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
 	"github.com/joho/godotenv"
 	natssrv "github.com/nats-io/nats.go"
 	"go.uber.org/zap"
@@ -33,7 +35,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	cfg.ProcessName = "worker"
+	if pn := strings.TrimSpace(os.Getenv("PROCESS_NAME")); pn != "" {
+		cfg.ProcessName = pn
+	} else {
+		cfg.ProcessName = "worker"
+	}
 
 	log, err := observability.NewLogger(cfg)
 	if err != nil {
@@ -71,7 +77,23 @@ func main() {
 	}
 	defer pool.Close()
 
-	policy := appreliability.NormalizeRecoveryPolicy(appreliability.RecoveryPolicy{})
+	rdb, err := platformredis.NewClient(&cfg.Redis)
+	if err != nil {
+		log.Fatal("redis client", zap.Error(err))
+	}
+	var workerLocker platformredis.Locker
+	if rdb != nil {
+		defer func() { _ = rdb.Close() }()
+		if cfg.RedisRuntime.LocksEnabled {
+			workerLocker = platformredis.NewRedisLocker(rdb, cfg.Redis.KeyPrefix)
+		}
+	}
+
+	policy := appreliability.NormalizeRecoveryPolicy(appreliability.RecoveryPolicy{
+		OutboxMaxPublishAttempts: cfg.Outbox.MaxAttempts,
+		OutboxPublishBackoffBase: cfg.Outbox.BackoffMin,
+		OutboxPublishBackoffMax:  cfg.Outbox.BackoffMax,
+	})
 	if err := appreliability.ValidateRecoveryPolicy(policy); err != nil {
 		log.Fatal("recovery policy", zap.Error(err))
 	}
@@ -114,10 +136,13 @@ func main() {
 			log.Fatal("nats telemetry consumers", zap.Error(err))
 		}
 		outboxPub = platformnats.NewJetStreamOutboxPublisher(nc.JS)
-		outboxDLQ = platformnats.NewOutboxDeadLetterJetStream(nc.JS)
+		if cfg.Outbox.DLQEnabled {
+			outboxDLQ = platformnats.NewOutboxDeadLetterJetStream(nc.JS)
+		}
 		log.Info("outbox jetstream publisher enabled",
 			zap.String("stream_outbox", platformnats.StreamOutbox),
 			zap.String("stream_dlq", platformnats.StreamDLQ),
+			zap.Bool("dlq_enabled", cfg.Outbox.DLQEnabled),
 		)
 		tw := telemetryapp.NewJetStreamWorkers(telemetryapp.JetStreamWorkersConfig{
 			Log:       log,
@@ -134,6 +159,13 @@ func main() {
 				log.Error("telemetry jetstream workers exited", zap.Error(err))
 			}
 		}()
+	}
+	if cfg.Outbox.PublisherRequired && outboxPub == nil {
+		log.Fatal("outbox publisher required but not configured",
+			zap.Bool("outbox_publisher_required", cfg.Outbox.PublisherRequired),
+			zap.Bool("nats_required", cfg.NATS.Required),
+			zap.String("nats_url", strings.TrimSpace(cfg.NATS.URL)),
+		)
 	}
 
 	addr := strings.TrimSpace(cfg.WorkerMetricsListen)
@@ -168,30 +200,105 @@ func main() {
 		observability.ShutdownHTTPServer(log, opsSrv, cfg.Ops.ShutdownTimeout, "worker ops shutdown")
 	}()
 
-	ob, pay, cmd, _ := appbackground.DefaultWorkerTickSchedule()
-	retention := 24 * time.Hour
+	ob := cfg.Capacity.WorkerTickOutbox
+	pay := cfg.Capacity.WorkerTickPaymentTimeout
+	cmd := cfg.Capacity.WorkerTickStuckCommand
+	var retentionTick time.Duration
+	var telemetryRetention func(context.Context) error
+	var enterpriseRetention func(context.Context) error
+
+	telCfg := cfg.TelemetryDataRetention
+	telCfg.CleanupDryRun = config.EffectiveRetentionDryRun(cfg.RetentionWorker.GlobalDryRun, cfg.TelemetryDataRetention.CleanupDryRun)
+	entCfg := cfg.EnterpriseRetention
+	entCfg.CleanupDryRun = config.EffectiveRetentionDryRun(cfg.RetentionWorker.GlobalDryRun, cfg.EnterpriseRetention.CleanupDryRun)
+
+	retentionWorkerOn := cfg.RetentionWorker.Enabled
+	if retentionWorkerOn && cfg.TelemetryDataRetention.CleanupEnabled {
+		retentionTick = 24 * time.Hour
+		telemetryRetention = func(c context.Context) error {
+			res, err := postgres.RunTelemetryRetention(c, pool, telCfg, time.Now().UTC())
+			if err != nil {
+				return err
+			}
+			log.Info("telemetry_retention_complete", zap.Bool("dry_run", res.DryRun), zap.Any("stages", res.Stages))
+			return nil
+		}
+	}
+	if retentionWorkerOn && cfg.EnterpriseRetention.CleanupEnabled {
+		retentionTick = 24 * time.Hour
+		enterpriseRetention = func(c context.Context) error {
+			result, err := postgres.RunEnterpriseRetention(c, pool, entCfg, time.Now().UTC())
+			if err != nil {
+				return err
+			}
+			fields := []zap.Field{zap.Bool("dry_run", result.DryRun)}
+			if result.DryRun {
+				fields = append(fields, zap.Any("candidates", result.Candidates))
+			} else {
+				fields = append(fields, zap.Any("deleted", result.Deleted))
+			}
+			log.Info("enterprise_retention_complete", fields...)
+			return nil
+		}
+	}
+	outboxOnly := cfg.WorkerOutboxOnly || strings.EqualFold(strings.TrimSpace(cfg.ProcessName), "outbox")
+	if outboxOnly {
+		retentionTick = 0
+		telemetryRetention = nil
+		enterpriseRetention = nil
+	}
+	var obLease *appreliability.OutboxLeaseParams
+	if !cfg.WorkerOutboxDisableLease {
+		workerID := strings.TrimSpace(cfg.Runtime.InstanceID)
+		if workerID == "" {
+			workerID = strings.TrimSpace(cfg.Runtime.NodeName)
+		}
+		if workerID == "" {
+			h, _ := os.Hostname()
+			workerID = fmt.Sprintf("%s-%d", h, os.Getpid())
+		}
+		ltSec := cfg.WorkerOutboxLockTTLSeconds
+		if ltSec <= 0 {
+			ltSec = 45
+		}
+		obLease = &appreliability.OutboxLeaseParams{
+			WorkerID: workerID,
+			LockTTL:  time.Duration(ltSec) * time.Second,
+		}
+	}
+
+	var outboxBatch int32
+	if v := cfg.Capacity.WorkerOutboxDispatchMaxItems; v > 0 {
+		outboxBatch = v
+	}
+
 	deps := appbackground.WorkerDeps{
-		Log:                log,
-		Reliability:        relSvc,
-		Policy:             policy,
-		Limits:             appreliability.ScanLimits{MaxItems: 200},
-		OutboxList:         outboxRepo,
-		OutboxMark:         outboxRepo,
-		OutboxPub:          outboxPub,
-		OutboxDeadLetter:   outboxDLQ,
-		OutboxTick:         ob,
-		PaymentTimeoutTick: pay,
-		StuckCommandTick:   cmd,
-		RetentionTick:      retention,
-		TelemetryRetention: func(c context.Context) error {
-			return postgres.RunTelemetryRetention(c, pool, time.Now().UTC())
-		},
+		Log:                           log,
+		Reliability:                   relSvc,
+		Policy:                        policy,
+		Limits:                        appreliability.ScanLimits{MaxItems: cfg.Capacity.WorkerRecoveryScanMaxItems},
+		OutboxBatchMaxItems:           outboxBatch,
+		OutboxList:                    outboxRepo,
+		OutboxMark:                    outboxRepo,
+		OutboxPub:                     outboxPub,
+		OutboxDeadLetter:              outboxDLQ,
+		OutboxLease:                   obLease,
+		OutboxOnly:                    outboxOnly,
+		OutboxTick:                    ob,
+		PaymentTimeoutTick:            pay,
+		StuckCommandTick:              cmd,
+		CycleBackoffAfterFailure:      cfg.Capacity.WorkerCycleBackoffAfterFailure,
+		RetentionTick:                 retentionTick,
+		TelemetryRetention:            telemetryRetention,
+		EnterpriseRetention:           enterpriseRetention,
 		MQTTCommandAckTimeouts:        store.ApplyMQTTCommandAckTimeouts,
 		WorkflowOrchestration:         workflowBoundary,
 		SchedulePaymentPendingTimeout: cfg.Temporal.SchedulePaymentPendingTimeout,
+		DistributedLocker:             workerLocker,
 	}
 
 	var mirrorSink *platformclickhouse.AsyncOutboxMirrorSink
+	var projectionSink *platformclickhouse.AsyncProjectionSink
 	if cfg.Analytics.ClickHouseEnabled {
 		pingCtx, pingCancel := context.WithTimeout(ctx, 15*time.Second)
 		chc, chErr := platformclickhouse.Open(pingCtx, platformclickhouse.Config{
@@ -216,12 +323,38 @@ func main() {
 			if sErr != nil {
 				log.Fatal("analytics mirror sink", zap.Error(sErr))
 			}
-			deps.OnOutboxPublishedMirror = mirrorSink.EnqueuePublished
+		}
+		if cfg.Analytics.ProjectOutboxEvents {
+			var sErr error
+			projectionSink, sErr = platformclickhouse.NewAsyncProjectionSink(
+				log,
+				chc,
+				cfg.Analytics.ProjectionTable,
+				cfg.Analytics.MirrorMaxConcurrent,
+				cfg.Analytics.InsertTimeout,
+				cfg.Analytics.InsertMaxAttempts,
+			)
+			if sErr != nil {
+				log.Fatal("analytics projection sink", zap.Error(sErr))
+			}
+		}
+		if mirrorSink != nil || projectionSink != nil {
+			deps.OnOutboxPublishedMirror = func(ev domaincommerce.OutboxEvent) {
+				if mirrorSink != nil {
+					mirrorSink.EnqueuePublished(ev)
+				}
+				if projectionSink != nil {
+					projectionSink.EnqueuePublished(ev)
+				}
+			}
 		}
 	}
 	defer func() {
 		if mirrorSink != nil {
 			mirrorSink.Shutdown()
+		}
+		if projectionSink != nil {
+			projectionSink.Shutdown()
 		}
 	}()
 

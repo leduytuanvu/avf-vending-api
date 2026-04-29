@@ -2,6 +2,7 @@ package background
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -9,9 +10,58 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
+	domainreliability "github.com/avf/avf-vending-api/internal/domain/reliability"
+	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
+	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
+
+var commerceReconciliationCasesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	Namespace: "avf",
+	Subsystem: "commerce",
+	Name:      "reconciliation_cases_total",
+	Help:      "Commerce payment/vend/refund reconciliation cases detected by background jobs.",
+}, []string{"case_type"})
+
+var paymentPaidVendFailedTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Namespace: "avf",
+	Subsystem: "commerce",
+	Name:      "payment_paid_vend_failed_total",
+	Help:      "Paid payments attached to vend sessions that failed or did not complete.",
+})
+
+var refundPendingTooLongTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Namespace: "avf",
+	Subsystem: "commerce",
+	Name:      "refund_pending_too_long_total",
+	Help:      "Refund review cases where a refund remained pending longer than the reconciler threshold.",
+})
+
+func recordCommerceReconciliationCase(caseType string) {
+	caseType = strings.TrimSpace(strings.ToLower(caseType))
+	if caseType == "" {
+		caseType = "unknown"
+	}
+	commerceReconciliationCasesTotal.WithLabelValues(caseType).Inc()
+	switch caseType {
+	case "payment_paid_vend_failed", "payment_paid_vend_not_started":
+		paymentPaidVendFailedTotal.Inc()
+	case "refund_pending_too_long":
+		refundPendingTooLongTotal.Inc()
+	}
+}
+
+func reconciliationCaseMetadata(v map[string]any) []byte {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return []byte(`{}`)
+	}
+	return b
+}
 
 // OrderReader loads an order aggregate for refund ticket enrichment.
 type OrderReader interface {
@@ -42,6 +92,7 @@ type ReconcilerDeps struct {
 	Telemetry ReconcilerTelemetry
 
 	Reader                domaincommerce.ReconciliationReader
+	CaseWriter            domaincommerce.ReconciliationCaseWriter
 	OrderRead             OrderReader
 	Gateway               domaincommerce.PaymentProviderGateway
 	RefundSink            domaincommerce.RefundReviewSink
@@ -55,6 +106,11 @@ type ReconcilerDeps struct {
 	PaymentApplier PaymentReconciliationApplier
 	MarkOrderPaid  OrderPaidAfterCapture
 
+	// PaymentOutboxTopic / AggregateType enable same-transaction outbox emission
+	// for reconciler-applied payment terminal transitions.
+	PaymentOutboxTopic         string
+	PaymentOutboxAggregateType string
+
 	// StableAge avoids selecting rows still being mutated in the same request lifecycle.
 	StableAge time.Duration
 	Limits    int32
@@ -64,6 +120,9 @@ type ReconcilerDeps struct {
 	// exceeds the tick interval the next tick is deferred until the current pass returns (Go ticker behavior).
 	CycleTimeout time.Duration
 
+	// ObservabilityPool optional Postgres pool used for reconciliation_cases_open_total gauge snapshots.
+	ObservabilityPool *pgxpool.Pool
+
 	UnresolvedOrdersTick           time.Duration
 	PaymentProbeTick               time.Duration
 	VendStuckTick                  time.Duration
@@ -71,6 +130,9 @@ type ReconcilerDeps struct {
 	RefundReviewTick               time.Duration
 	ScheduleRefundOrchestration    bool
 	ScheduleManualReviewEscalation bool
+
+	// DistributedLocker optional Redis lock so multi-replica reconcilers serialize commerce reconciliation ticks.
+	DistributedLocker platformredis.Locker
 }
 
 // DefaultReconcilerTickSchedule returns conservative polling defaults.
@@ -127,6 +189,37 @@ func UnresolvedOrdersTick(ctx context.Context, deps ReconcilerDeps) error {
 	if deps.Telemetry != nil {
 		deps.Telemetry.JobSummary("unresolved_orders", len(orders), 0, atLimit)
 	}
+	if deps.CaseWriter != nil {
+		paidNoVend, err := deps.Reader.ListPaidOrdersWithoutVendStart(ctx, before, lim)
+		if err != nil {
+			return err
+		}
+		for _, row := range paidNoVend {
+			orderID, paymentID, vendID := row.OrderID, row.PaymentID, row.VendSessionID
+			mid := row.MachineID
+			provider := strings.TrimSpace(row.Provider)
+			_, cerr := deps.CaseWriter.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
+				OrganizationID: row.OrganizationID,
+				CaseType:       "payment_paid_vend_not_started",
+				Severity:       "critical",
+				OrderID:        &orderID,
+				PaymentID:      &paymentID,
+				VendSessionID:  &vendID,
+				MachineID:      &mid,
+				Provider:       &provider,
+				Reason:         "captured payment has an order still paid while vend session is pending",
+				Metadata: reconciliationCaseMetadata(map[string]any{
+					"payment_state": row.PaymentState,
+					"vend_state":    row.VendState,
+					"machine_id":    row.MachineID.String(),
+				}),
+			})
+			if cerr != nil {
+				return cerr
+			}
+			recordCommerceReconciliationCase("payment_paid_vend_not_started")
+		}
+	}
 	return nil
 }
 
@@ -145,8 +238,10 @@ func PaymentProviderReconcileTick(ctx context.Context, deps ReconcilerDeps) erro
 	before := deps.beforeBoundary()
 	payments, err := deps.Reader.ListPaymentsPendingTimeout(ctx, before, lim)
 	if err != nil {
+		productionmetrics.SetPaymentProviderProbeStalePendingQueue(0)
 		return err
 	}
+	productionmetrics.SetPaymentProviderProbeStalePendingQueue(len(payments))
 	var fetchOK, fetchFail, transitioned, noopClassify int
 	for _, p := range payments {
 		snap, err := deps.Gateway.FetchPaymentStatus(ctx, domaincommerce.PaymentProviderLookup{
@@ -181,11 +276,17 @@ func PaymentProviderReconcileTick(ctx context.Context, deps ReconcilerDeps) erro
 			continue
 		}
 		updated, aerr := deps.PaymentApplier.ApplyReconciledPaymentTransition(ctx, domaincommerce.ReconciledPaymentTransitionInput{
-			PaymentID:    p.ID,
-			ToState:      toState,
-			Reason:       fmt.Sprintf("provider_probe:%s", strings.TrimSpace(snap.NormalizedState)),
-			ProviderHint: snap.ProviderHint,
-			DryRun:       deps.DryRun,
+			PaymentID:            p.ID,
+			ToState:              toState,
+			Reason:               fmt.Sprintf("provider_probe:%s", strings.TrimSpace(snap.NormalizedState)),
+			ProviderHint:         snap.ProviderHint,
+			DryRun:               deps.DryRun,
+			OutboxTopic:          strings.TrimSpace(deps.PaymentOutboxTopic),
+			OutboxEventType:      reconciledPaymentOutboxEventType(toState),
+			OutboxPayload:        reconciledPaymentOutboxPayload(p, toState, snap),
+			OutboxAggregateType:  strings.TrimSpace(deps.PaymentOutboxAggregateType),
+			OutboxAggregateID:    p.ID,
+			OutboxIdempotencyKey: reconciledPaymentOutboxIdempotencyKey(p.ID, toState),
 		})
 		if aerr != nil {
 			fetchFail++
@@ -260,6 +361,40 @@ func PaymentProviderReconcileTick(ctx context.Context, deps ReconcilerDeps) erro
 	return nil
 }
 
+func reconciledPaymentOutboxEventType(toState string) string {
+	switch strings.TrimSpace(strings.ToLower(toState)) {
+	case "captured":
+		return domainreliability.OutboxEventPaymentConfirmed
+	case "failed":
+		return domainreliability.OutboxEventPaymentFailed
+	default:
+		return ""
+	}
+}
+
+func reconciledPaymentOutboxIdempotencyKey(paymentID uuid.UUID, toState string) string {
+	eventType := reconciledPaymentOutboxEventType(toState)
+	if paymentID == uuid.Nil || eventType == "" {
+		return ""
+	}
+	return "payment_reconcile:" + paymentID.String() + ":" + eventType
+}
+
+func reconciledPaymentOutboxPayload(p domaincommerce.Payment, toState string, snap domaincommerce.PaymentStatusSnapshot) []byte {
+	b, err := json.Marshal(map[string]any{
+		"source":          "reconciler.provider_probe",
+		"order_id":        p.OrderID.String(),
+		"payment_id":      p.ID.String(),
+		"provider":        strings.TrimSpace(p.Provider),
+		"payment_state":   strings.TrimSpace(strings.ToLower(toState)),
+		"provider_status": strings.TrimSpace(snap.NormalizedState),
+	})
+	if err != nil {
+		return []byte(`{}`)
+	}
+	return b
+}
+
 // VendTimeoutReconcileTick lists vend sessions that are still non-terminal while parent orders progressed.
 func VendTimeoutReconcileTick(ctx context.Context, deps ReconcilerDeps) error {
 	if deps.Reader == nil {
@@ -280,6 +415,57 @@ func VendTimeoutReconcileTick(ctx context.Context, deps ReconcilerDeps) error {
 				zap.String("vend_state", row.Session.State),
 				zap.String("order_status", row.OrderStatus),
 			)
+		}
+		if deps.CaseWriter != nil && strings.EqualFold(row.Session.State, "in_progress") {
+			orderID, vendID := row.Session.OrderID, row.Session.ID
+			mid := row.Session.MachineID
+			_, cerr := deps.CaseWriter.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
+				OrganizationID: row.OrganizationID,
+				CaseType:       "vend_started_no_terminal_ack",
+				Severity:       "warning",
+				OrderID:        &orderID,
+				VendSessionID:  &vendID,
+				MachineID:      &mid,
+				Reason:         "vend session remains non-terminal after timeout",
+				Metadata: reconciliationCaseMetadata(map[string]any{
+					"vend_state":   row.Session.State,
+					"order_status": row.OrderStatus,
+					"machine_id":   row.Session.MachineID.String(),
+				}),
+			})
+			if cerr != nil && deps.Log != nil {
+				deps.Log.Warn("vend_stuck_reconciliation_case_failed", zap.Error(cerr), zap.String("vend_session_id", row.Session.ID.String()))
+			}
+		}
+	}
+	if deps.CaseWriter != nil {
+		failures, err := deps.Reader.ListPaidVendFailuresForReview(ctx, before, lim)
+		if err != nil {
+			return err
+		}
+		for _, row := range failures {
+			orderID, paymentID, vendID := row.OrderID, row.PaymentID, row.VendSessionID
+			mid := row.MachineID
+			provider := strings.TrimSpace(row.Provider)
+			if _, err := deps.CaseWriter.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
+				OrganizationID: row.OrganizationID,
+				CaseType:       "payment_paid_vend_failed",
+				Severity:       "critical",
+				OrderID:        &orderID,
+				PaymentID:      &paymentID,
+				VendSessionID:  &vendID,
+				MachineID:      &mid,
+				Provider:       &provider,
+				Reason:         "captured payment is attached to a failed vend",
+				Metadata: reconciliationCaseMetadata(map[string]any{
+					"payment_state": row.PaymentState,
+					"vend_state":    row.VendState,
+					"machine_id":    row.MachineID.String(),
+				}),
+			}); err != nil {
+				return err
+			}
+			recordCommerceReconciliationCase("payment_paid_vend_failed")
 		}
 	}
 	atLimit := int32(len(rows)) >= lim
@@ -326,6 +512,30 @@ func DuplicatePaymentRecoveryTick(ctx context.Context, deps ReconcilerDeps) erro
 				zap.String("provider", p.Provider),
 				zap.String("state", p.State),
 			)
+		}
+		if deps.CaseWriter != nil && deps.OrderRead != nil {
+			if o, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID); oerr == nil {
+				orderID, paymentID := p.OrderID, p.ID
+				mid := o.MachineID
+				provider := strings.TrimSpace(p.Provider)
+				if _, cerr := deps.CaseWriter.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
+					OrganizationID: o.OrganizationID,
+					CaseType:       "duplicate_payment",
+					Severity:       "critical",
+					OrderID:        &orderID,
+					PaymentID:      &paymentID,
+					MachineID:      &mid,
+					Provider:       &provider,
+					Reason:         "multiple payments with matching amount/currency exist for the same order",
+					Metadata: reconciliationCaseMetadata(map[string]any{
+						"payment_state": p.State,
+						"amount_minor":  p.AmountMinor,
+						"currency":      p.Currency,
+					}),
+				}); cerr == nil {
+					recordCommerceReconciliationCase("duplicate_payment")
+				}
+			}
 		}
 		if deps.ScheduleManualReviewEscalation && !deps.DryRun && deps.OrderRead != nil && deps.WorkflowOrchestration != nil && deps.WorkflowOrchestration.Enabled() {
 			o, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
@@ -424,6 +634,42 @@ func RefundReviewDecisionTick(ctx context.Context, deps ReconcilerDeps) error {
 		return err
 	}
 	var enqueued, skippedSink, orderFail, enqueueFail, scheduled int
+	if deps.CaseWriter != nil {
+		refunds, err := deps.Reader.ListRefundsPendingTooLong(ctx, before, lim)
+		if err != nil {
+			return err
+		}
+		for _, row := range refunds {
+			orderID, paymentID, refundID := row.OrderID, row.PaymentID, row.RefundID
+			provider := strings.TrimSpace(row.Provider)
+			var mid *uuid.UUID
+			if deps.OrderRead != nil {
+				if o, oerr := deps.OrderRead.GetOrderByID(ctx, row.OrderID); oerr == nil {
+					m := o.MachineID
+					mid = &m
+				}
+			}
+			if _, err := deps.CaseWriter.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
+				OrganizationID: row.OrganizationID,
+				CaseType:       "refund_pending_too_long",
+				Severity:       "warning",
+				OrderID:        &orderID,
+				PaymentID:      &paymentID,
+				RefundID:       &refundID,
+				MachineID:      mid,
+				Provider:       &provider,
+				Reason:         "refund remains requested/processing after reconciliation timeout",
+				Metadata: reconciliationCaseMetadata(map[string]any{
+					"refund_state": row.RefundState,
+					"amount_minor": row.AmountMinor,
+					"currency":     row.Currency,
+				}),
+			}); err != nil {
+				return err
+			}
+			recordCommerceReconciliationCase("refund_pending_too_long")
+		}
+	}
 	for _, p := range payments {
 		if deps.ScheduleRefundOrchestration && !deps.DryRun && deps.OrderRead != nil && deps.WorkflowOrchestration != nil && deps.WorkflowOrchestration.Enabled() {
 			o, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
@@ -529,6 +775,17 @@ func (d ReconcilerDeps) limits() int32 {
 	return d.Limits
 }
 
+func reconcilerLockTTL(interval time.Duration) time.Duration {
+	if interval <= 0 {
+		return 3 * time.Minute
+	}
+	d := interval * 3
+	if d > 15*time.Minute {
+		return 15 * time.Minute
+	}
+	return d
+}
+
 // RunReconciler starts five explicit commerce reconciliation tickers and blocks until ctx is cancelled.
 //
 // Ops: reconciler_job_summary, reconciler_batch_at_limit_may_lag, background_cycle_* per job name.
@@ -574,10 +831,39 @@ func RunReconciler(ctx context.Context, deps ReconcilerDeps) error {
 		zap.Bool("reader_configured", deps.Reader != nil),
 		zap.Bool("payment_gateway_configured", deps.Gateway != nil),
 		zap.Bool("refund_pipeline_configured", deps.RefundSink != nil && deps.OrderRead != nil),
+		zap.Bool("distributed_redis_locks", deps.DistributedLocker != nil),
 		zap.String("note", "list queries use stable_before=now-UTC-stable_age; rows newer than that are intentionally skipped to avoid racing in-flight API writes"),
 	)
 
 	var wg sync.WaitGroup
+	if deps.ObservabilityPool != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			updateOpenCasesGauge := func(c context.Context) {
+				qctx, cancel := context.WithTimeout(c, 5*time.Second)
+				defer cancel()
+				var n int64
+				err := deps.ObservabilityPool.QueryRow(qctx, `SELECT count(*)::bigint FROM commerce_reconciliation_cases WHERE status IN ('open', 'reviewing', 'escalated')`).Scan(&n)
+				if err != nil {
+					deps.Log.Warn("reconciliation_cases_open_gauge_query_failed", zap.Error(err))
+					return
+				}
+				productionmetrics.SetReconciliationCasesOpen(float64(n))
+			}
+			updateOpenCasesGauge(ctx)
+			ticker := time.NewTicker(30 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					updateOpenCasesGauge(ctx)
+				}
+			}
+		}()
+	}
 	cto := deps.CycleTimeout
 	var cycleHook CycleEndMetricsHook
 	if deps.Telemetry != nil {
@@ -586,11 +872,31 @@ func RunReconciler(ctx context.Context, deps ReconcilerDeps) error {
 			tel.CycleEnd(job, duration, err, result)
 		}
 	}
-	startTickerGoroutine(&wg, ctx, deps.Log, "unresolved_orders", u, cto, cycleHook, func(c context.Context) error { return UnresolvedOrdersTick(c, deps) })
-	startTickerGoroutine(&wg, ctx, deps.Log, "payment_provider_probe", pp, cto, cycleHook, func(c context.Context) error { return PaymentProviderReconcileTick(c, deps) })
-	startTickerGoroutine(&wg, ctx, deps.Log, "vend_stuck", v, cto, cycleHook, func(c context.Context) error { return VendTimeoutReconcileTick(c, deps) })
-	startTickerGoroutine(&wg, ctx, deps.Log, "duplicate_payments", d, cto, cycleHook, func(c context.Context) error { return DuplicatePaymentRecoveryTick(c, deps) })
-	startTickerGoroutine(&wg, ctx, deps.Log, "refund_review", r, cto, cycleHook, func(c context.Context) error { return RefundReviewDecisionTick(c, deps) })
+	startTickerGoroutine(&wg, ctx, deps.Log, "unresolved_orders", u, cto, 0, cycleHook, func(c context.Context) error {
+		return platformredis.RunExclusive(c, deps.DistributedLocker, "reconciler_unresolved_orders", reconcilerLockTTL(u), func(c context.Context) error {
+			return UnresolvedOrdersTick(c, deps)
+		})
+	})
+	startTickerGoroutine(&wg, ctx, deps.Log, "payment_provider_probe", pp, cto, 0, cycleHook, func(c context.Context) error {
+		return platformredis.RunExclusive(c, deps.DistributedLocker, "reconciler_payment_provider_probe", reconcilerLockTTL(pp), func(c context.Context) error {
+			return PaymentProviderReconcileTick(c, deps)
+		})
+	})
+	startTickerGoroutine(&wg, ctx, deps.Log, "vend_stuck", v, cto, 0, cycleHook, func(c context.Context) error {
+		return platformredis.RunExclusive(c, deps.DistributedLocker, "reconciler_vend_stuck", reconcilerLockTTL(v), func(c context.Context) error {
+			return VendTimeoutReconcileTick(c, deps)
+		})
+	})
+	startTickerGoroutine(&wg, ctx, deps.Log, "duplicate_payments", d, cto, 0, cycleHook, func(c context.Context) error {
+		return platformredis.RunExclusive(c, deps.DistributedLocker, "reconciler_duplicate_payments", reconcilerLockTTL(d), func(c context.Context) error {
+			return DuplicatePaymentRecoveryTick(c, deps)
+		})
+	})
+	startTickerGoroutine(&wg, ctx, deps.Log, "refund_review", r, cto, 0, cycleHook, func(c context.Context) error {
+		return platformredis.RunExclusive(c, deps.DistributedLocker, "reconciler_refund_review", reconcilerLockTTL(r), func(c context.Context) error {
+			return RefundReviewDecisionTick(c, deps)
+		})
+	})
 
 	<-ctx.Done()
 	deps.Log.Info("reconciler_shutdown_wait", zap.String("note", "waiting for in-flight job cycles to finish (bounded by per-cycle timeout)"))

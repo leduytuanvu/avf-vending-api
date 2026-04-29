@@ -1,5 +1,7 @@
-# Manual incident: record digest-validated **rollback preflight** evidence (environment reviewers).
-# This workflow does not SSH. Execute the actual **Deploy Production** rollback (action_mode=rollback) or
+# Manual incident: record digest-validated **rollback preflight** evidence (**GitHub Environment: production** only).
+# Credential contract: uses **production** approvals — **never** staging secrets (`STAGING_*`, `PREPROD_*`) or repository
+# workflows that SSH to staging. Downloading a prior Deploy Production manifest reads **Actions artifacts**, not staging DB/host.
+# This workflow does not SSH. Execute the actual **Deploy Production** rollback (`action_mode=rollback`) or
 # on-host release scripts with the same digest-pinned image refs. Never automatic (no push, no chain triggers).
 name: Rollback (Production — Incident)
 

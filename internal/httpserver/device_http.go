@@ -16,17 +16,24 @@ import (
 	"github.com/google/uuid"
 )
 
-func mountDeviceCommandRoutes(r chi.Router, app *api.HTTPApplication) {
+func mountDeviceCommandRoutes(r chi.Router, app *api.HTTPApplication, abuse *AbuseProtection) {
 	// Register static paths before /commands/{sequence}/… so "receipts" is not parsed as a sequence.
-	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin)).
+	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyPermission(auth.PermFleetRead)).
 		Get("/machines/{machineId}/commands/receipts", listMachineCommandReceipts(app))
-	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin)).
+	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyPermission(auth.PermFleetRead)).
 		Get("/machines/{machineId}/commands/{sequence}/status", getMachineCommandDispatchStatus(app))
-	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin)).
-		Post("/machines/{machineId}/commands/dispatch", postMachineCommandDispatch(app))
+	dispatchMW := []func(http.Handler) http.Handler{
+		RequireMachineTenantAccess(app, "machineId"),
+		auth.RequireAnyPermission(auth.PermDeviceCommandsWrite),
+	}
+	if abuse != nil {
+		dispatchMW = append(dispatchMW, abuse.CommandDispatchPOST())
+	}
+	r.With(dispatchMW...).Post("/machines/{machineId}/commands/dispatch", postMachineCommandDispatch(app))
 }
 
 func mountDeviceBridgeRoutes(r chi.Router, app *api.HTTPApplication) {
+	// Legacy HTTP bridge (vend-results, commands/poll fallback). Not mounted in production unless legacy machine HTTP is explicitly enabled.
 	if app == nil {
 		return
 	}
@@ -232,45 +239,34 @@ func postDeviceVendResults(app *api.HTTPApplication) http.HandlerFunc {
 		if body.CorrelationID != nil && *body.CorrelationID != uuid.Nil {
 			_ = app.TelemetryStore.TouchVendSessionCorrelation(ctx, body.OrderID, body.SlotIndex, *body.CorrelationID)
 		}
-		st, err := app.Commerce.GetCheckoutStatus(ctx, order.OrganizationID, body.OrderID, body.SlotIndex)
-		if err != nil {
+		if _, err := app.Commerce.GetCheckoutStatus(ctx, order.OrganizationID, body.OrderID, body.SlotIndex); err != nil {
 			writeCommerceServiceError(w, ctx, err)
 			return
 		}
-		if st.Vend.State == "pending" && (st.Order.Status == "paid" || st.Order.Status == "vending") {
-			if _, err := app.Commerce.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
-				OrganizationID: order.OrganizationID,
-				OrderID:        body.OrderID,
-				SlotIndex:      body.SlotIndex,
-				ToState:        "in_progress",
-			}); err != nil && !errors.Is(err, appcommerce.ErrIllegalTransition) {
-				writeCommerceServiceError(w, ctx, err)
-				return
-			}
+		if err := app.Commerce.EnsureVendInProgressForPaidOrder(ctx, order.OrganizationID, body.OrderID, body.SlotIndex); err != nil {
+			writeCommerceServiceError(w, ctx, err)
+			return
 		}
 		if outcome == "success" {
 			fout, err := app.Commerce.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
-				OrganizationID:    order.OrganizationID,
-				OrderID:           body.OrderID,
-				SlotIndex:         body.SlotIndex,
-				TerminalVendState: "success",
-				FailureReason:     nil,
+				OrganizationID:            order.OrganizationID,
+				OrderID:                   body.OrderID,
+				SlotIndex:                 body.SlotIndex,
+				TerminalVendState:         "success",
+				FailureReason:             nil,
+				ClientWriteIdempotencyKey: idem,
+				CorrelationID:             body.CorrelationID,
 			})
 			if err != nil {
 				writeCommerceServiceError(w, ctx, err)
 				return
 			}
-			invKey := idem + ":vend_sale_inventory"
-			invReplay, err := app.TelemetryStore.ApplyCommerceVendSuccessInventory(ctx, order.OrganizationID, machineID, body.OrderID, body.SlotIndex, st.Vend.ProductID, invKey, body.CorrelationID)
-			if err != nil {
-				writeAPIError(w, ctx, http.StatusInternalServerError, "inventory_projection_failed", err.Error())
-				return
-			}
+			fullReplay := fout.OrderVendReplay && fout.InventoryReplay
 			writeJSON(w, http.StatusOK, map[string]any{
 				"order_id":     fout.Order.ID.String(),
 				"order_status": fout.Order.Status,
 				"vend_state":   fout.Vend.State,
-				"replay":       invReplay,
+				"replay":       fullReplay,
 			})
 			return
 		}

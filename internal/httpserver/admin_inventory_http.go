@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,7 +15,9 @@ import (
 	appdevice "github.com/avf/avf-vending-api/internal/app/device"
 	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
 	"github.com/avf/avf-vending-api/internal/app/inventoryapp"
+	"github.com/avf/avf-vending-api/internal/app/listscope"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
+	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -40,14 +43,226 @@ func mountAdminInventoryRoutes(r chi.Router, app *api.HTTPApplication, writeRL f
 		writeRL = func(h http.Handler) http.Handler { return h }
 	}
 	svc := app.InventoryAdmin
-	r.Get("/machines/{machineId}/slots", listAdminMachineSlots(svc))
-	r.Get("/machines/{machineId}/inventory", getAdminMachineInventory(svc))
-	r.Get("/machines/{machineId}/inventory-events", listAdminMachineInventoryEvents(app))
-	r.With(writeRL).Post("/machines/{machineId}/stock-adjustments", postAdminMachineStockAdjustments(app))
-	r.With(writeRL).Put("/machines/{machineId}/topology", putAdminMachineTopology(app))
-	r.With(writeRL).Put("/machines/{machineId}/planograms/draft", putAdminMachinePlanogramDraft(app))
-	r.With(writeRL).Post("/machines/{machineId}/planograms/publish", postAdminMachinePlanogramPublish(app))
-	r.With(writeRL).Post("/machines/{machineId}/sync", postAdminMachineSetupSync(app))
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAnyPermission(auth.PermInventoryRead))
+		r.Get("/inventory/low-stock", getAdminInventoryLowStock(svc))
+		r.Get("/inventory/refill-suggestions", getAdminInventoryRefillSuggestions(svc))
+		r.Get("/machines/{machineId}/slots", listAdminMachineSlots(svc))
+		r.Get("/machines/{machineId}/inventory", getAdminMachineInventory(svc))
+		r.Get("/machines/{machineId}/inventory-events", listAdminMachineInventoryEvents(app))
+		r.Get("/machines/{machineId}/refill-suggestions", getAdminMachineRefillSuggestions(svc))
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAnyPermission(auth.PermInventoryWrite))
+		r.With(writeRL).Post("/machines/{machineId}/stock-adjustments", postAdminMachineStockAdjustments(app))
+		r.With(writeRL).Put("/machines/{machineId}/topology", putAdminMachineTopology(app))
+		r.With(writeRL).Put("/machines/{machineId}/planograms/draft", putAdminMachinePlanogramDraft(app))
+		r.With(writeRL).Post("/machines/{machineId}/planograms/publish", postAdminMachinePlanogramPublish(app))
+		r.With(writeRL).Post("/machines/{machineId}/sync", postAdminMachineSetupSync(app))
+	})
+}
+
+func parseInventoryRefillForecastQuery(r *http.Request, orgID uuid.UUID, machineFromPath *uuid.UUID, lowStockOnly bool) (appinventoryadmin.RefillForecastParams, error) {
+	var zero appinventoryadmin.RefillForecastParams
+	limit, offset, err := parseAdminLimitOffset(r)
+	if err != nil {
+		return zero, listscope.ErrInvalidListQuery
+	}
+	q := r.URL.Query()
+
+	var siteID *uuid.UUID
+	if raw := strings.TrimSpace(q.Get("site_id")); raw != "" {
+		sid, perr := uuid.Parse(raw)
+		if perr != nil || sid == uuid.Nil {
+			return zero, listscope.ErrInvalidListQuery
+		}
+		siteID = &sid
+	}
+	var machineID *uuid.UUID
+	if machineFromPath != nil {
+		machineID = machineFromPath
+		if raw := strings.TrimSpace(q.Get("machine_id")); raw != "" {
+			mid, perr := uuid.Parse(raw)
+			if perr != nil || mid == uuid.Nil || mid != *machineFromPath {
+				return zero, listscope.ErrInvalidListQuery
+			}
+		}
+	} else if raw := strings.TrimSpace(q.Get("machine_id")); raw != "" {
+		mid, perr := uuid.Parse(raw)
+		if perr != nil || mid == uuid.Nil {
+			return zero, listscope.ErrInvalidListQuery
+		}
+		machineID = &mid
+	}
+
+	var productID *uuid.UUID
+	if raw := strings.TrimSpace(q.Get("product_id")); raw != "" {
+		pid, perr := uuid.Parse(raw)
+		if perr != nil || pid == uuid.Nil {
+			return zero, listscope.ErrInvalidListQuery
+		}
+		productID = &pid
+	}
+
+	wd := 0
+	if raw := strings.TrimSpace(q.Get("velocity_days")); raw != "" {
+		n, perr := strconv.Atoi(raw)
+		if perr != nil || n <= 0 {
+			return zero, listscope.ErrInvalidListQuery
+		}
+		wd = n
+	}
+
+	urgency := strings.TrimSpace(strings.ToLower(q.Get("urgency")))
+	if urgency != "" {
+		switch urgency {
+		case appinventoryadmin.UrgencyCritical, appinventoryadmin.UrgencyHigh, appinventoryadmin.UrgencyMedium, appinventoryadmin.UrgencyLow:
+		default:
+			return zero, listscope.ErrInvalidListQuery
+		}
+	}
+
+	var daysThreshold *float64
+	if raw := strings.TrimSpace(q.Get("days_threshold")); raw != "" {
+		f, perr := strconv.ParseFloat(raw, 64)
+		if perr != nil {
+			return zero, listscope.ErrInvalidListQuery
+		}
+		daysThreshold = &f
+	}
+
+	return appinventoryadmin.RefillForecastParams{
+		OrganizationID:     orgID,
+		SiteID:             siteID,
+		MachineID:          machineID,
+		ProductID:          productID,
+		VelocityWindowDays: wd,
+		LowStockOnly:       lowStockOnly,
+		DaysThreshold:      daysThreshold,
+		UrgencyFilter:      urgency,
+		Limit:              limit,
+		Offset:             offset,
+	}, nil
+}
+
+func mapRefillForecastResponse(in *appinventoryadmin.RefillForecastResponse) V1AdminInventoryRefillForecastResponse {
+	if in == nil {
+		return V1AdminInventoryRefillForecastResponse{}
+	}
+	items := make([]V1AdminInventoryRefillForecastItem, len(in.Items))
+	for i := range in.Items {
+		it := in.Items[i]
+		items[i] = V1AdminInventoryRefillForecastItem{
+			MachineID:               it.MachineID,
+			MachineName:             it.MachineName,
+			SiteID:                  it.SiteID,
+			SiteName:                it.SiteName,
+			PlanogramID:             it.PlanogramID,
+			PlanogramName:           it.PlanogramName,
+			SlotIndex:               it.SlotIndex,
+			ProductID:               it.ProductID,
+			ProductSku:              it.ProductSku,
+			ProductName:             it.ProductName,
+			CurrentQuantity:         it.CurrentQuantity,
+			MaxQuantity:             it.MaxQuantity,
+			UnitsSoldInWindow:       it.UnitsSoldInWindow,
+			DailyVelocity:           it.DailyVelocity,
+			DaysToEmpty:             it.DaysToEmpty,
+			FillRatio:               it.FillRatio,
+			SuggestedRefillQuantity: it.SuggestedRefillQuantity,
+			Urgency:                 it.Urgency,
+		}
+	}
+	return V1AdminInventoryRefillForecastResponse{
+		OrganizationID:     in.OrganizationID,
+		VelocityWindowDays: in.VelocityWindowDays,
+		WindowStart:        in.WindowStart,
+		WindowEnd:          in.WindowEnd,
+		Items:              items,
+		Meta: V1AdminInventoryRefillForecastMeta{
+			Limit:    in.Meta.Limit,
+			Offset:   in.Meta.Offset,
+			Returned: in.Meta.Returned,
+			Total:    in.Meta.Total,
+		},
+	}
+}
+
+func getAdminInventoryLowStock(svc *appinventoryadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := parseAdminFleetOrganizationScope(r)
+		if err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		p, err := parseInventoryRefillForecastQuery(r, orgID, nil, true)
+		if err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		out, err := svc.ListRefillForecast(r.Context(), p)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, mapRefillForecastResponse(out))
+	}
+}
+
+func getAdminInventoryRefillSuggestions(svc *appinventoryadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := parseAdminFleetOrganizationScope(r)
+		if err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		p, err := parseInventoryRefillForecastQuery(r, orgID, nil, false)
+		if err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		out, err := svc.ListRefillForecast(r.Context(), p)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, mapRefillForecastResponse(out))
+	}
+}
+
+func getAdminMachineRefillSuggestions(svc *appinventoryadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		mid, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil || mid == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		orgID, err := parseAdminFleetOrganizationScope(r)
+		if err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		head, err := resolveInventoryMachine(r, svc, mid)
+		if err != nil {
+			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
+		if head.OrganizationID != orgID {
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "machine does not belong to the requested organization scope")
+			return
+		}
+		p, err := parseInventoryRefillForecastQuery(r, orgID, &mid, false)
+		if err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		out, err := svc.ListRefillForecast(r.Context(), p)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, mapRefillForecastResponse(out))
+	}
 }
 
 func listAdminMachineSlots(svc *appinventoryadmin.Service) http.HandlerFunc {
@@ -244,6 +459,38 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 			writeStockAdjustmentError(w, r.Context(), err)
 			return
 		}
+		if app.EnterpriseAudit != nil {
+			mid := machineID.String()
+			md, jerr := json.Marshal(map[string]any{
+				"reason":      body.Reason,
+				"item_count":  len(body.Items),
+				"replay":      res.Replay,
+				"event_ids":   res.EventIDs,
+				"idempotency": idem,
+			})
+			if jerr != nil {
+				md = []byte("{}")
+			}
+			md = compliance.SanitizeJSONBytes(md)
+			at, aid := compliance.ActorUser, ""
+			if p, ok := auth.PrincipalFromContext(r.Context()); ok {
+				at, aid = p.Actor()
+			}
+			var aidPtr *string
+			if aid != "" {
+				aidPtr = &aid
+			}
+			_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
+				OrganizationID: head.OrganizationID,
+				ActorType:      at,
+				ActorID:        aidPtr,
+				Action:         compliance.ActionMachineInventoryAdjust,
+				ResourceType:   "fleet.machine",
+				ResourceID:     &mid,
+				Metadata:       md,
+				Outcome:        compliance.OutcomeSuccess,
+			})
+		}
 		writeJSON(w, http.StatusOK, V1AdminStockAdjustmentsResponse{Replay: res.Replay, EventIds: res.EventIDs})
 	}
 }
@@ -256,6 +503,8 @@ func writeStockAdjustmentError(w http.ResponseWriter, ctx context.Context, err e
 		writeAPIError(w, ctx, http.StatusBadRequest, "invalid_reason", err.Error())
 	case errors.Is(err, inventoryapp.ErrAdjustmentSlotNotFound):
 		writeAPIError(w, ctx, http.StatusNotFound, "slot_not_found", err.Error())
+	case errors.Is(err, inventoryapp.ErrIdempotencyKeyConflict):
+		writeAPIError(w, ctx, http.StatusConflict, "idempotency_key_conflict", err.Error())
 	default:
 		writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
 	}
@@ -983,31 +1232,7 @@ func insertMachineConfigSnapshot(ctx context.Context, pool *pgxpool.Pool, orgID,
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	var maxRev int32
-	if err := tx.QueryRow(ctx, `SELECT COALESCE(MAX(config_revision), 0) FROM machine_configs WHERE machine_id = $1`, machineID).Scan(&maxRev); err != nil {
-		return db.MachineConfig{}, 0, err
-	}
-	next := maxRev + 1
-	meta, _ := json.Marshal(map[string]any{
-		"planogramId":       planogramID,
-		"planogramRevision": planogramRevision,
-	})
-	cfgPayload, _ := json.Marshal(map[string]any{
-		"kind":                 "planogram_publish",
-		"planogramId":          planogramID,
-		"planogramRevision":    planogramRevision,
-		"desiredConfigVersion": next,
-	})
-	q := db.New(tx)
-	row, err := q.InsertMachineConfigApplication(ctx, db.InsertMachineConfigApplicationParams{
-		OrganizationID:    orgID,
-		MachineID:         machineID,
-		AppliedAt:         time.Now().UTC(),
-		ConfigRevision:    next,
-		ConfigPayload:     cfgPayload,
-		OperatorSessionID: pgtype.UUID{Bytes: sessionID, Valid: true},
-		Metadata:          meta,
-	})
+	row, next, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, orgID, machineID, pgtype.UUID{Bytes: sessionID, Valid: true}, planogramID, planogramRevision, nil)
 	if err != nil {
 		return db.MachineConfig{}, 0, err
 	}

@@ -2,13 +2,18 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/domain/device"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/observability/mqttprom"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
+	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -56,6 +61,8 @@ type CommandReceiptTransitionParams struct {
 	CorrelationID      *uuid.UUID
 	Payload            []byte
 	DedupeKey          string
+	CommandID          uuid.UUID
+	OccurredAt         time.Time
 	CommandAttemptID   *uuid.UUID
 	ReportedShadowJSON []byte
 
@@ -64,7 +71,8 @@ type CommandReceiptTransitionParams struct {
 
 // CommandReceiptTransitionResult indicates whether the receipt insert was skipped due to dedupe.
 type CommandReceiptTransitionResult struct {
-	ReceiptReplay bool
+	ReceiptReplay   bool
+	IgnoredConflict bool
 }
 
 // CreateOrderWithVendSession inserts an order and its first vend session in one transaction.
@@ -316,11 +324,45 @@ func mapDeviceReceiptToAttemptStatus(receiptStatus string) string {
 	}
 }
 
+func isTerminalMachineAttemptStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "completed", "nack", "failed", "ack_timeout", "expired", "duplicate", "late":
+		return true
+	default:
+		return false
+	}
+}
+
 func auditPayloadBytes(p []byte) []byte {
 	if len(p) == 0 {
 		return []byte("{}")
 	}
 	return p
+}
+
+func enrichCommandReceiptPayload(raw []byte, occurredAt time.Time) []byte {
+	if occurredAt.IsZero() {
+		if len(raw) == 0 {
+			return []byte("{}")
+		}
+		return raw
+	}
+	var m map[string]any
+	if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &m)
+	}
+	if m == nil {
+		m = map[string]any{}
+	}
+	m["occurred_at"] = occurredAt.UTC().Format(time.RFC3339Nano)
+	b, err := json.Marshal(m)
+	if err != nil {
+		if len(raw) == 0 {
+			return []byte("{}")
+		}
+		return raw
+	}
+	return b
 }
 
 // maybeInsertAuditLog appends an audit row when audit metadata is present (best-effort correlation for workflows).
@@ -390,6 +432,7 @@ func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendC
 
 	cmdRow, err := q.InsertCommandLedgerEntry(ctx, db.InsertCommandLedgerEntryParams{
 		MachineID:         in.MachineID,
+		OrganizationID:    m.OrganizationID,
 		Sequence:          seq,
 		CommandType:       in.CommandType,
 		Payload:           in.Payload,
@@ -428,7 +471,7 @@ func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendC
 	if err := tx.Commit(ctx); err != nil {
 		return device.AppendCommandResult{}, err
 	}
-
+	productionmetrics.RecordCommandCreated()
 	return device.AppendCommandResult{CommandID: cmdRow.ID, Sequence: seq, Replay: false}, nil
 }
 
@@ -526,6 +569,7 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 
 	cmdRow, err := q.InsertCommandLedgerEntry(ctx, db.InsertCommandLedgerEntryParams{
 		MachineID:         in.Command.MachineID,
+		OrganizationID:    m.OrganizationID,
 		Sequence:          seq,
 		CommandType:       in.Command.CommandType,
 		Payload:           in.Command.Payload,
@@ -582,6 +626,7 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 		return AppendCommandWithOutboxResult{}, err
 	}
 
+	productionmetrics.RecordCommandCreated()
 	return AppendCommandWithOutboxResult{
 		CommandReplay: false,
 		Sequence:      seq,
@@ -599,6 +644,11 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 	if p.DedupeKey == "" {
 		return CommandReceiptTransitionResult{}, errors.New("postgres: dedupe_key is required")
 	}
+	st, ok := platformmqtt.NormalizeReceiptStatus(p.Status)
+	if !ok {
+		return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: invalid command receipt status %q", p.Status)
+	}
+	p.Status = st
 
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -608,38 +658,174 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 
 	q := db.New(tx)
 
-	if _, err := q.GetMachineByIDForUpdate(ctx, p.MachineID); err != nil {
+	m, err := q.GetMachineByIDForUpdate(ctx, p.MachineID)
+	if err != nil {
 		return CommandReceiptTransitionResult{}, err
 	}
 
-	payload := p.Payload
+	if _, err := q.GetDeviceCommandReceiptIDByDedupeKey(ctx, p.DedupeKey); err == nil {
+		mqttprom.RecordCommandAckDuplicate()
+		return CommandReceiptTransitionResult{ReceiptReplay: true}, nil
+	} else if !isNoRows(err) {
+		return CommandReceiptTransitionResult{}, err
+	}
+
+	cmdRow, err := q.GetCommandLedgerByMachineSequence(ctx, db.GetCommandLedgerByMachineSequenceParams{
+		MachineID: p.MachineID,
+		Sequence:  p.Sequence,
+	})
+	if err != nil {
+		if isNoRows(err) {
+			mqttprom.RecordCommandAckRejected("unknown_sequence")
+			return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: unknown sequence for machine")
+		}
+		return CommandReceiptTransitionResult{}, err
+	}
+
+	if p.CommandID == uuid.Nil {
+		mqttprom.RecordCommandAckRejected("missing_command_id")
+		return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command_id is required")
+	}
+	if p.CommandID != cmdRow.ID {
+		mdMismatch, _ := json.Marshal(map[string]any{
+			"machine_id":          p.MachineID.String(),
+			"sequence":            p.Sequence,
+			"incoming_command_id": p.CommandID.String(),
+			"ledger_command_id":   cmdRow.ID.String(),
+		})
+		machinePG := pgtype.UUID{Bytes: p.MachineID, Valid: true}
+		sitePG := pgtype.UUID{}
+		if m.SiteID != uuid.Nil {
+			sitePG = pgtype.UUID{Bytes: m.SiteID, Valid: true}
+		}
+		if _, aerr := q.EnterpriseAuditInsertEvent(ctx, db.EnterpriseAuditInsertEventParams{
+			OrganizationID: m.OrganizationID,
+			ActorType:      "machine",
+			ActorID:        pgtype.Text{String: p.MachineID.String(), Valid: true},
+			Action:         "mqtt.command_ack_command_id_mismatch",
+			ResourceType:   "command_ledger",
+			ResourceID:     pgtype.Text{String: cmdRow.ID.String(), Valid: true},
+			MachineID:      machinePG,
+			SiteID:         sitePG,
+			Metadata:       mdMismatch,
+			Outcome:        "failure",
+			OccurredAt:     pgtype.Timestamptz{},
+		}); aerr != nil {
+			return CommandReceiptTransitionResult{}, aerr
+		}
+		mqttprom.RecordCommandAckRejected("command_id_mismatch")
+		return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: command_id mismatch")
+	}
+	if cmdRow.OrganizationID != m.OrganizationID {
+		mqttprom.RecordCommandAckRejected("ledger_organization_mismatch")
+		return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: ledger organization mismatch")
+	}
+
+	openAtt, openErr := q.GetLatestOpenMachineCommandAttemptForCommand(ctx, cmdRow.ID)
+	var att db.MachineCommandAttempt
+	hasAttempt := false
+	if openErr == nil {
+		att = openAtt
+		hasAttempt = true
+	} else if isNoRows(openErr) {
+		lateAtt, aErr := q.GetLatestMachineCommandAttemptByCommandID(ctx, cmdRow.ID)
+		if aErr == nil {
+			att = lateAtt
+			hasAttempt = true
+		} else if !isNoRows(aErr) {
+			return CommandReceiptTransitionResult{}, aErr
+		}
+	} else {
+		return CommandReceiptTransitionResult{}, openErr
+	}
+
+	now := time.Now().UTC()
+
+	if hasAttempt {
+		if att.MachineID != p.MachineID {
+			mqttprom.RecordCommandAckRejected("attempt_machine_mismatch")
+			return CommandReceiptTransitionResult{}, errors.New("postgres: command attempt does not belong to machine")
+		}
+		mappedAttempt := mapDeviceReceiptToAttemptStatus(p.Status)
+		wantsSuccess := p.Status == "acked" && mappedAttempt == "completed"
+
+		if wantsSuccess {
+			if cmdRow.TimeoutAt.Valid && now.After(cmdRow.TimeoutAt.Time) {
+				mqttprom.RecordCommandAckRejected("ledger_timeout")
+				mqttprom.RecordCommandAckTimeout("ledger_timeout")
+				return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: ledger timeout exceeded")
+			}
+			if att.Status == "sent" && att.AckDeadlineAt.Valid && now.After(att.AckDeadlineAt.Time) {
+				mqttprom.RecordCommandAckRejected("ack_deadline_exceeded")
+				mqttprom.RecordCommandAckTimeout("ack_deadline_exceeded")
+				return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: ack deadline exceeded")
+			}
+			if att.Status == "expired" || att.Status == "ack_timeout" {
+				mqttprom.RecordCommandAckRejected("attempt_expired")
+				mqttprom.RecordCommandAckTimeout("attempt_expired")
+				return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: attempt no longer accepts success")
+			}
+		}
+	}
+
+	if hasAttempt && isTerminalMachineAttemptStatus(att.Status) {
+		latestRec, lrErr := q.GetLatestDeviceCommandReceiptByMachineSequence(ctx, db.GetLatestDeviceCommandReceiptByMachineSequenceParams{
+			MachineID: p.MachineID,
+			Sequence:  p.Sequence,
+		})
+		if lrErr == nil {
+			if latestRec.Status == p.Status {
+				mqttprom.RecordCommandAckDuplicate()
+				return CommandReceiptTransitionResult{ReceiptReplay: true}, nil
+			}
+			md, _ := json.Marshal(map[string]any{
+				"machine_id":                p.MachineID.String(),
+				"sequence":                  p.Sequence,
+				"incoming_status":           p.Status,
+				"latest_receipt_status":     latestRec.Status,
+				"attempt_status":            att.Status,
+				"incoming_dedupe_key":       p.DedupeKey,
+				"latest_receipt_dedupe_key": latestRec.DedupeKey,
+			})
+			machinePG := pgtype.UUID{Bytes: p.MachineID, Valid: true}
+			sitePG := pgtype.UUID{}
+			if m.SiteID != uuid.Nil {
+				sitePG = pgtype.UUID{Bytes: m.SiteID, Valid: true}
+			}
+			if _, aerr := q.EnterpriseAuditInsertEvent(ctx, db.EnterpriseAuditInsertEventParams{
+				OrganizationID: m.OrganizationID,
+				ActorType:      "machine",
+				ActorID:        pgtype.Text{String: p.MachineID.String(), Valid: true},
+				Action:         "mqtt.command_ack_conflict",
+				ResourceType:   "command_ledger",
+				ResourceID:     pgtype.Text{String: cmdRow.ID.String(), Valid: true},
+				MachineID:      machinePG,
+				SiteID:         sitePG,
+				Metadata:       md,
+				Outcome:        "success",
+				OccurredAt:     pgtype.Timestamptz{},
+			}); aerr != nil {
+				return CommandReceiptTransitionResult{}, aerr
+			}
+			mqttprom.RecordCommandAckConflict()
+			if err := tx.Commit(ctx); err != nil {
+				return CommandReceiptTransitionResult{}, err
+			}
+			return CommandReceiptTransitionResult{IgnoredConflict: true}, nil
+		}
+		if !isNoRows(lrErr) {
+			return CommandReceiptTransitionResult{}, lrErr
+		}
+	}
+
+	payload := enrichCommandReceiptPayload(p.Payload, p.OccurredAt)
 	if len(payload) == 0 {
 		payload = []byte("{}")
 	}
 
-	var attemptID *uuid.UUID
-	if p.CommandAttemptID != nil {
-		attemptID = p.CommandAttemptID
-	} else {
-		cmdRow, cErr := q.GetCommandLedgerByMachineSequence(ctx, db.GetCommandLedgerByMachineSequenceParams{
-			MachineID: p.MachineID,
-			Sequence:  p.Sequence,
-		})
-		if cErr == nil {
-			openAtt, aErr := q.GetLatestOpenMachineCommandAttemptForCommand(ctx, cmdRow.ID)
-			if aErr == nil {
-				attemptID = &openAtt.ID
-			} else if !isNoRows(aErr) {
-				return CommandReceiptTransitionResult{}, aErr
-			}
-		} else if !isNoRows(cErr) {
-			return CommandReceiptTransitionResult{}, cErr
-		}
-	}
-
 	var cmdAttempt pgtype.UUID
-	if attemptID != nil {
-		cmdAttempt = uuidToPg(*attemptID)
+	if hasAttempt {
+		cmdAttempt = uuidToPg(att.ID)
 	}
 	_, err = q.InsertDeviceCommandReceipt(ctx, db.InsertDeviceCommandReceiptParams{
 		MachineID:        p.MachineID,
@@ -652,18 +838,23 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
+			mqttprom.RecordCommandAckDuplicate()
 			return CommandReceiptTransitionResult{ReceiptReplay: true}, nil
 		}
 		return CommandReceiptTransitionResult{}, err
 	}
 
-	if attemptID != nil {
+	if hasAttempt {
+		prevAttemptStatus := att.Status
 		if newStatus := mapDeviceReceiptToAttemptStatus(p.Status); newStatus != "" {
 			if uErr := q.UpdateMachineCommandAttemptAfterDeviceReceipt(ctx, db.UpdateMachineCommandAttemptAfterDeviceReceiptParams{
-				ID:     *attemptID,
+				ID:     att.ID,
 				Status: newStatus,
 			}); uErr != nil {
 				return CommandReceiptTransitionResult{}, uErr
+			}
+			if newStatus == "completed" && prevAttemptStatus == "sent" {
+				mqttprom.ObserveCommandAckLatency(now.Sub(att.SentAt))
 			}
 		}
 	}
@@ -802,6 +993,8 @@ func (s *Store) IngestCommandReceipt(ctx context.Context, in platformmqtt.Comman
 		CorrelationID: in.CorrelationID,
 		Payload:       in.Payload,
 		DedupeKey:     in.DedupeKey,
+		CommandID:     in.CommandID,
+		OccurredAt:    in.OccurredAt,
 	})
 	return err
 }

@@ -24,7 +24,7 @@ func TestSessionIssuer_IssueAndValidate(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	tok, exp, err := iss.IssueAccessJWT(acct, org, []string{RoleOrgAdmin})
+	tok, exp, err := iss.IssueAccessJWT(acct, org, []string{RoleOrgAdmin}, "active")
 	require.NoError(t, err)
 	require.False(t, exp.IsZero())
 
@@ -34,6 +34,7 @@ func TestSessionIssuer_IssueAndValidate(t *testing.T) {
 	require.Equal(t, acct.String(), p.Subject)
 	require.Equal(t, org, p.OrganizationID)
 	require.True(t, p.HasRole(RoleOrgAdmin))
+	require.NotEmpty(t, p.JTI)
 }
 
 func TestNewRefreshToken_RoundTripHash(t *testing.T) {

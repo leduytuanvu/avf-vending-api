@@ -1,0 +1,30 @@
+%% EMQX 5.x file authorization rules for AVF machine isolation (staging copy; same rules as production).
+%% Copy to /opt/emqx/etc/acl.conf on the broker host.
+%%
+%% Prerequisites:
+%% - Use distinct MQTT usernames for backend vs field devices (see scripts/emqx_bootstrap.sh).
+%% - For rules using percent-u substitution, set each machine MQTT username to the canonical machine UUID
+%%   (or use an auth plugin that maps JWT claims to the same username EMQX will substitute).
+%%
+%% Replace TOPIC_PREFIX with MQTT_TOPIC_PREFIX (staging default often differs; no trailing slash).
+%%
+%% Rule order: first match wins. Put backend service accounts before the generic machine rules.
+
+%% --- Backend: API command publisher (set username to match EMQX user for MQTT_USERNAME on the API) ---
+{allow, {username, "avf-mqtt-api"}, publish, ["TOPIC_PREFIX/+/commands/dispatch", "TOPIC_PREFIX/machines/+/commands"]}.
+{allow, {username, "avf-mqtt-api"}, subscribe, []}.
+
+%% --- Backend: mqtt-ingest (subscribe-only under the fleet prefix) ---
+{allow, {username, "avf-mqtt-ingest"}, subscribe, ["TOPIC_PREFIX/#"]}.
+{allow, {username, "avf-mqtt-ingest"}, publish, []}.
+
+%% --- Field machine (enterprise layout): one machine may only use its own branch under machines/{uuid}/ ---
+{allow, all, subscribe, ["TOPIC_PREFIX/machines/%u/commands", "TOPIC_PREFIX/machines/%u/commands/#"]}.
+{allow, all, publish, ["TOPIC_PREFIX/machines/%u/commands/#", "TOPIC_PREFIX/machines/%u/telemetry/#", "TOPIC_PREFIX/machines/%u/events/#", "TOPIC_PREFIX/machines/%u/presence", "TOPIC_PREFIX/machines/%u/state/heartbeat", "TOPIC_PREFIX/machines/%u/shadow/reported", "TOPIC_PREFIX/machines/%u/shadow/desired"]}.
+
+%% --- Field machine (legacy layout): same UUID as username, topic prefix/{uuid}/... ---
+{allow, all, subscribe, ["TOPIC_PREFIX/%u/commands/dispatch", "TOPIC_PREFIX/%u/commands/#"]}.
+{allow, all, publish, ["TOPIC_PREFIX/%u/telemetry/#", "TOPIC_PREFIX/%u/presence", "TOPIC_PREFIX/%u/state/heartbeat", "TOPIC_PREFIX/%u/events/#", "TOPIC_PREFIX/%u/shadow/reported", "TOPIC_PREFIX/%u/shadow/desired", "TOPIC_PREFIX/%u/commands/#"]}.
+
+%% Deny everything else (machines must not use wildcards to reach other machines).
+{deny, all}.

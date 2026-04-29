@@ -1,5 +1,7 @@
 package httpserver
 
+// rbac:handlers-only: tenant scope parsing helpers consumed by fleet mounts; RBAC is declared in admin_fleet_write_http.go and server.go.
+
 import (
 	"errors"
 	"net/http"
@@ -22,6 +24,16 @@ func parseAdminFleetOrganizationScope(r *http.Request) (uuid.UUID, error) {
 	}
 	q := r.URL.Query()
 	var orgID uuid.UUID
+	if rawPathOrg := strings.TrimSpace(chi.URLParam(r, "organizationId")); rawPathOrg != "" {
+		pathOrg, perr := uuid.Parse(rawPathOrg)
+		if perr != nil || pathOrg == uuid.Nil {
+			return uuid.Nil, listscope.ErrInvalidListQuery
+		}
+		if p.HasRole(auth.RolePlatformAdmin) || p.OrganizationID == pathOrg {
+			return pathOrg, nil
+		}
+		return uuid.Nil, listscope.ErrInvalidListQuery
+	}
 	if p.HasRole(auth.RolePlatformAdmin) {
 		raw := strings.TrimSpace(q.Get("organization_id"))
 		id, perr := uuid.Parse(raw)
