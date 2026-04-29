@@ -200,11 +200,11 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          proto_against="../.git#branch=HEAD,subdir=proto"
+          proto_against="../.git#branch=${GITHUB_REF_NAME:-HEAD},subdir=proto"
           if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && -n "${GITHUB_BASE_REF}" ]]; then
             proto_against="../.git#branch=origin/${GITHUB_BASE_REF},subdir=proto"
           elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-            proto_against="../.git#branch=HEAD~1,subdir=proto"
+            proto_against="../.git#branch=${GITHUB_REF_NAME:-HEAD},ref=HEAD~1,subdir=proto,depth=100"
           fi
           make check-placeholders check-wiring api-contract-check PROTO_BREAKING_AGAINST="${proto_against}"
 
