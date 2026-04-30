@@ -5,7 +5,7 @@
 # Fails PR CI before merge on common regressions, including:
 #   - deploy-prod: on.workflow_run / develop / pull_request (production is workflow_dispatch on main)
 #   - security-release: non-empty verdict + security-verdict.json + CONTRACT_VERDICT_MODES + emit before each exit 0 in signal step
-#   - security-release: workflow_run GHA guards (success + push|dispatch + develop|main); never chain event as promotion source
+#   - security-release: workflow_run guards (success + Build name + develop/main head_branch); semantic source_event from promotion-manifest / immutable-image-contract (CI workflow_run chain allowed)
 #   - security-release: no unprotected read/mapfile + < <( under set -e (or set +e/|| true); want_branch RESOLVED before BUILD_HEAD; smoke test
 #   - build-push: release_candidate + push gate (no fake release artifacts on skip)
 #   - build-push: publish-build-metadata has contents:read + actions:write + packages:read (checkout/artifacts/GHCR)
@@ -146,28 +146,26 @@ if grep -E 'want_branch=.*(BUILD_HEAD_BRANCH|TRIGGERING_BUILD_HEAD_BRANCH)' "${W
 fi
 grep -qF "scripts/security/write_security_verdict.py ineligible-branch" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py ineligible-branch (canonical branch not develop/main; neutral skip)"
 grep -qF "scripts/security/write_security_verdict.py unsupported-artifact-source-event" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py unsupported-artifact-source-event when ARTIFACT_SOURCE_EVENT is not an allowed semantic event"
-if grep -qF "github.event.workflow_run.event == 'workflow_run'" "${WF}/security-release.yml" 2>/dev/null; then
-  fail "security-release.yml must not treat a Build and Push Images run whose GHA event is workflow_run (chain) as a release candidate (only push and workflow_dispatch)"
+# Semantic promotion eligibility: artifacts (not github.event.workflow_run.event); CI chain triggers allowed when manifest says push/workflow_dispatch
+grep -qF "promotion-manifest / immutable-image-contract" "${WF}/security-release.yml" || fail "security-release.yml must document artifact-first semantic promotion eligibility"
+if grep -qF "github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'" "${WF}/security-release.yml" 2>/dev/null; then
+  fail "security-release.yml must not gate automatic workflow_run eligibility on github.event.workflow_run.event push/dispatch only (semantic source_event comes from build artifacts)"
 fi
 # Primary SHA: never workflow_run head_sha; WORKFLOW_SHA-only fallback is allowed when RESOLVED is empty
 if grep -n "TRIGGER_WORKFLOW_RUN_SOURCE_SHA" "${WF}/security-release.yml" | grep -E 'release_source_sha=|source_sha=|CANONICAL_SOURCE' 2>/dev/null; then
   fail "security-release.yml: must not assign candidate SHA from TRIGGER_WORKFLOW_RUN_SOURCE_SHA (misleading in workflow_run chains; use RESOLVED_SOURCE_SHA or WORKFLOW_SHA for dispatch)"
 fi
 
-# --- security-release: automatic trigger must require success + push|dispatch + develop|main on workflow_run (defense against chain-only / wrong-branch builds) ---
+# --- security-release: automatic workflow_run trigger requires success + Build name + develop/main head_branch ---
 _sr_succ="$(grep -cF "github.event.workflow_run.conclusion == 'success'" "${WF}/security-release.yml" 2>/dev/null | tr -d ' ' || echo 0)"
 if [[ "${_sr_succ}" -lt 3 ]]; then
   fail "security-release.yml: expected at least 3 occurrences of github.event.workflow_run.conclusion == 'success' in job if: filters (found ${_sr_succ}); release gate must require a successful Build run"
-fi
-_sr_ev="$(grep -cF "github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'" "${WF}/security-release.yml" 2>/dev/null | tr -d ' ' || echo 0)"
-if [[ "${_sr_ev}" -lt 3 ]]; then
-  fail "security-release.yml: expected at least 3 occurrences of (push || workflow_dispatch) on github.event.workflow_run.event (found ${_sr_ev}); workflow_run must not be treated as a valid Build source event for promotion"
 fi
 _sr_hb="$(grep -cF "(github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main')" "${WF}/security-release.yml" 2>/dev/null | tr -d ' ' || echo 0)"
 if [[ "${_sr_hb}" -lt 3 ]]; then
   fail "security-release.yml: expected at least 3 occurrences of head_branch develop|main guards on workflow_run (found ${_sr_hb})"
 fi
-grep -qF "github.event.workflow_run.event != 'push' && github.event.workflow_run.event != 'workflow_dispatch'" "${WF}/security-release.yml" || fail "security-release.yml must document the skip-when-build-incomplete negation (Build GHA event must be push or workflow_dispatch, not workflow_run chain-only)"
+grep -qF "scripts/release/write_production_deploy_candidate_package.py" "${WF}/security-release.yml" || fail "security-release.yml must generate production-deploy-candidate via scripts/release/write_production_deploy_candidate_package.py"
 grep -qF '[[ "${V}" == "fail" ]]' "${WF}/security-release.yml" || fail "security-release.yml Enforce step must block on verdict fail (full gate JSON with verdict=fail); missing fail branch allows pass with broken release gate"
 grep -qF "python3 scripts/security/write_security_verdict.py full" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py full (pass and fail outcomes both emit JSON via write_full)"
 
