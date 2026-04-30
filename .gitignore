@@ -47,3 +47,7 @@ security-reports/
 coverage.out
 coverage.xml
 repomix-output.xml
+
+# Local production deploy input files
+ops/private/
+prod-deploy-inputs*.json
