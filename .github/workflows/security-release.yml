@@ -1,6 +1,7 @@
 # Release gate after "Build and Push Images" (image scan, security-verdict). Display name must stay
 # "Security Release" — distinct from repo-level "Security" (security.yml). Downstream staging listens here.
 # Does **not** deploy to production; production is **workflow_dispatch Deploy Production** (`deploy-prod.yml`, `main` only).
+# CONTRACT(verify_workflow_contracts): `write_security_verdict.py unsupported-trigger` remains for `scripts/release/security_release_signal.sh`; automatic eligibility uses artifact semantic `source_event`, not Build `workflow_run` wrapper rejection.
 name: Security Release
 
 env:
@@ -49,8 +50,7 @@ jobs:
       github.event_name == 'workflow_run' && (
         github.event.workflow_run.conclusion != 'success' ||
         github.event.workflow_run.name != 'Build and Push Images' ||
-        (github.event.workflow_run.head_branch != 'develop' && github.event.workflow_run.head_branch != 'main') ||
-        (github.event.workflow_run.event != 'push' && github.event.workflow_run.event != 'workflow_dispatch')
+        (github.event.workflow_run.head_branch != 'develop' && github.event.workflow_run.head_branch != 'main')
       )
     runs-on: ubuntu-latest
     steps:
@@ -58,11 +58,13 @@ jobs:
         run: |
           {
             echo "## Security Release (non-release candidate — will emit skipped verdict)"
-            echo "- The triggering **Build and Push Images** run is **not** a direct **push**/**workflow_dispatch** success on \`develop\`/\`main\`, so the full image scan + release gate does not run here (indirect \`workflow_run\`-triggered builds are excluded)."
-            echo "- conclusion: \`${{ github.event.workflow_run.conclusion }}\` (required: \`success\`); GHA \`event\` must be \`push\` or \`workflow_dispatch\` (not a chain-only \`workflow_run\`); \`head_branch\` must be \`develop\` or \`main\`."
-            echo "- Downstream \`Security Release — outcome\` step uploads a \`security-verdict\` with \`verdict: skipped\` and **never** an empty \`verdict\` field."
+            echo "- The triggering **Build and Push Images** run failed basic eligibility (workflow success, correct workflow name, \`develop\`/\`main\` \`head_branch\`)."
+            echo "- **Semantic promotion eligibility** (\`push\` vs \`workflow_dispatch\`) is decided from **promotion-manifest** / **immutable-image-contract** after artifacts resolve — **not** from whether the Build was started via CI \`workflow_run\` chain."
+            echo "- Diagnostic: conclusion=\`${{ github.event.workflow_run.conclusion }}\`, workflow=\`${{ github.event.workflow_run.name }}\`, \`head_branch\`=\`${{ github.event.workflow_run.head_branch }}\`, GHA \`event\`=\`${{ github.event.workflow_run.event }}\`."
+            echo "- Downstream \`Security Release — outcome\` uploads \`security-verdict\` with \`verdict: skipped\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Semantic promotion eligibility uses promotion-manifest / immutable-image-contract (not github.event.workflow_run.event).
   resolve-build-run-id:
     name: Resolve Published Build For Image Scan
     if: |
@@ -70,8 +72,7 @@ jobs:
       (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.name == 'Build and Push Images' &&
-        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main') &&
-        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
+        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     outputs:
       workflow_run_id: ${{ steps.lookup.outputs.workflow_run_id }}
@@ -152,8 +153,7 @@ jobs:
       (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.name == 'Build and Push Images' &&
-        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main') &&
-        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
+        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main'))
     needs: resolve-build-run-id
     uses: ./.github/workflows/_reusable-deploy.yml
     with:
@@ -169,8 +169,7 @@ jobs:
       (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.name == 'Build and Push Images' &&
-        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main') &&
-        (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
+        (github.event.workflow_run.head_branch == 'develop' || github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: resolve-image-refs
@@ -365,6 +364,7 @@ jobs:
       repo_release_verdict: ${{ steps.signal.outputs.repo_release_verdict }}
       published_image_verdict: ${{ steps.signal.outputs.published_image_verdict }}
       provenance_release_verdict: ${{ steps.signal.outputs.provenance_release_verdict }}
+      source_branch: ${{ steps.signal.outputs.source_branch }}
     steps:
       - name: Check out repository (verdict scripts)
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -460,47 +460,16 @@ jobs:
               echo "::warning::emit_release_signal_debug_table failed (non-fatal after verdict write)" >&2
             fi
           }
-          # skip-when-build-incomplete: success => upstream Build ineligible; emit skipped verdict (never reach full gate)
+          # skip-when-build-incomplete: skip job succeeded => upstream Build failed basic eligibility (never reach full gate)
           SKIP_R="${SKIP_JOB_RESULT:-}"
           if [[ "${SKIP_R}" == "success" ]]; then
-            if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-              te="${TRIGGERING_BUILD_EVENT:-}"
-              tconc="${TRIGGERING_BUILD_CONCLUSION:-}"
-              thb="${TRIGGERING_BUILD_HEAD_BRANCH:-}"
-              {
-                echo ""
-                echo "## Security Release skipped (ineligible **Build and Push Images** run)"
-              } >> "$GITHUB_STEP_SUMMARY"
-              if [[ "${te}" == "workflow_run" ]]; then
-                {
-                  echo "- **Why skipped**: the triggering **Build and Push Images** run was started by a \`workflow_run\` (CI chain), not a direct \`push\` to \`develop\`/\`main\` or an allowed \`workflow_dispatch\`. Indirect/chain-only builds are not valid release candidates."
-                  echo "- (diagnostic) \`github.event.workflow_run.event\`=\`${te}\`, \`head_branch\`=\`${thb}\`, \`conclusion\`=\`${tconc}\`."
-                } >> "$GITHUB_STEP_SUMMARY"
-                python3 scripts/security/write_security_verdict.py unsupported-trigger
-              elif [[ -n "${thb}" && "${thb}" != "develop" && "${thb}" != "main" ]]; then
-                {
-                  echo "- **Why skipped**: the triggering **Build and Push Images** \`head_branch\` is \`${thb}\` (only \`develop\` and \`main\` are release lines)."
-                } >> "$GITHUB_STEP_SUMMARY"
-                python3 scripts/security/write_security_verdict.py skipped
-              elif [[ -n "${tconc}" && "${tconc}" != "success" ]]; then
-                {
-                  echo "- **Why skipped**: the triggering **Build and Push Images** \`conclusion\` is \`${tconc}\` (required: \`success\`)."
-                } >> "$GITHUB_STEP_SUMMARY"
-                python3 scripts/security/write_security_verdict.py skipped
-              elif [[ -n "${te}" && "${te}" != "push" && "${te}" != "workflow_dispatch" ]]; then
-                {
-                  echo "- **Why skipped**: the triggering **Build and Push Images** GHA \`event\` is \`${te}\` (valid promotion sources: \`push\` or \`workflow_dispatch\` only)."
-                } >> "$GITHUB_STEP_SUMMARY"
-                python3 scripts/security/write_security_verdict.py unsupported-trigger
-              else
-                {
-                  echo "- **Why skipped**: release gate requires a direct **Build and Push Images** success from \`push\` or \`workflow_dispatch\` on \`develop\`/\`main\` (see reasons in verdict JSON)."
-                } >> "$GITHUB_STEP_SUMMARY"
-                python3 scripts/security/write_security_verdict.py skipped
-              fi
-            else
-              python3 scripts/security/write_security_verdict.py skipped
-            fi
+            {
+              echo ""
+              echo "## Security Release skipped (ineligible **Build and Push Images** run)"
+              echo "- Requires **success**, workflow name **Build and Push Images**, and \`develop\`/\`main\` \`head_branch\`."
+              echo "- **Semantic** promotion source (\`push\` vs \`workflow_dispatch\`) is enforced from **promotion-manifest** / **immutable-image-contract**, not from the Build workflow's outer GHA \`event\` (\`workflow_run\` chain triggers are allowed when artifacts prove an eligible semantic source)."
+            } >> "$GITHUB_STEP_SUMMARY"
+            python3 scripts/security/write_security_verdict.py skipped
             emit_verdict_outputs_and_summary
             trap - EXIT
             exit 0
@@ -534,44 +503,6 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             trap - EXIT
             exit 0
-          fi
-          if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            _ghe="${TRIGGERING_BUILD_EVENT:-}"
-            if [[ "${_ghe}" == "workflow_run" ]] || [[ -n "${_ghe}" && "${_ghe}" != "push" && "${_ghe}" != "workflow_dispatch" ]]; then
-              {
-                echo ""
-                echo "## Security Release skipped (defense: triggering Build GHA event is ineligible for promotion)"
-                echo "- **Why skipped**: full gate only runs for **Build and Push Images** when \`github.event.workflow_run.event\` is \`push\` or \`workflow_dispatch\` (got: \`${_ghe}\`)."
-              } >> "$GITHUB_STEP_SUMMARY"
-              python3 scripts/security/write_security_verdict.py unsupported-trigger
-              emit_verdict_outputs_and_summary
-              trap - EXIT
-              exit 0
-            fi
-            _thb2="${TRIGGERING_BUILD_HEAD_BRANCH:-}"
-            if [[ -n "${_thb2}" && "${_thb2}" != "develop" && "${_thb2}" != "main" ]]; then
-              {
-                echo ""
-                echo "## Security Release skipped (defense: triggering **Build and Push Images** \`head_branch\` is not develop/main)"
-                echo "- \`head_branch\`=\`${_thb2}\`"
-              } >> "$GITHUB_STEP_SUMMARY"
-              python3 scripts/security/write_security_verdict.py skipped
-              emit_verdict_outputs_and_summary
-              trap - EXIT
-              exit 0
-            fi
-            _tco2="${TRIGGERING_BUILD_CONCLUSION:-}"
-            if [[ -n "${_tco2}" && "${_tco2}" != "success" ]]; then
-              {
-                echo ""
-                echo "## Security Release skipped (defense: triggering **Build and Push Images** was not a success)"
-                echo "- \`conclusion\`=\`${_tco2}\`"
-              } >> "$GITHUB_STEP_SUMMARY"
-              python3 scripts/security/write_security_verdict.py no-candidate
-              emit_verdict_outputs_and_summary
-              trap - EXIT
-              exit 0
-            fi
           fi
           # Repo Security (push) — candidate identity: promotion-manifest / image-metadata only. Never prefer BUILD_HEAD_* over RESOLVED_*.
           A_EV="${ARTIFACT_SOURCE_EVENT:-}"
@@ -609,17 +540,11 @@ jobs:
             if [[ -z "${META_CONFLICT// }" && -n "${_tconc}" && "${_tconc}" != "success" ]]; then
               META_CONFLICT="Triggering workflow conclusion is ${_tconc} (expected success)."
             fi
-            if [[ -z "${META_CONFLICT// }" && -n "${_tev}" && "${_tev}" != "push" && "${_tev}" != "workflow_dispatch" ]]; then
-              META_CONFLICT="Triggering workflow GHA event is ${_tev} (expected push or workflow_dispatch for automatic release gating)."
-            fi
             if [[ -z "${META_CONFLICT// }" && -n "${_thb}" && "${_thb}" != "develop" && "${_thb}" != "main" ]]; then
               META_CONFLICT="Triggering head_branch is ${_thb} (expected develop or main)."
             fi
             if [[ -z "${META_CONFLICT// }" && -n "${_tid}" && -n "${_bid}" && "${_tid}" != "${_bid}" ]]; then
               META_CONFLICT="Build run id mismatch: triggering workflow run id is ${_tid} but artifact build_run_id is ${_bid} (must be the same Build and Push Images run for this Security Release)."
-            fi
-            if [[ -z "${META_CONFLICT// }" && -n "${_aev}" && "${_aev}" == "push" && "${_tev}" == "workflow_run" ]]; then
-              META_CONFLICT="Promotion manifest source_event is push but the triggering Build GHA event is workflow_run (default-branch/chain context cannot match direct push semantics with these artifacts)."
             fi
             if [[ -z "${META_CONFLICT// }" && "${_tev}" == "push" && "${_aev}" == "push" ]]; then
               if [[ -n "${_thb}" && -n "${_abr}" && "${_thb}" != "${_abr}" ]]; then
@@ -686,7 +611,7 @@ jobs:
             echo "| \`resolved_source_sha\` | \`${RESOLVED_SOURCE_SHA:-}\` |"
             echo "| \`decision\` (this stage) | \`proceed\` to repo **Security** run match and full verdict writer |"
           } >> "$GITHUB_STEP_SUMMARY"
-          # Semantic source_event in promotion-manifest: only push, workflow_dispatch, or manual; never workflow_run (chain) for release promotion
+          # Semantic source_event is authoritative from promotion-manifest (must be push / workflow_dispatch / manual); Build may be CI workflow_run-wrapped.
           if [[ -n "${A_EV// }" && "${A_EV}" != "push" && "${A_EV}" != "workflow_dispatch" && "${A_EV}" != "manual" ]]; then
             python3 scripts/security/write_security_verdict.py unsupported-artifact-source-event
             emit_verdict_outputs_and_summary
@@ -848,12 +773,12 @@ jobs:
         if: >-
           steps.signal.outputs.security_verdict == 'pass' &&
           steps.signal.outputs.release_gate_verdict == 'pass' &&
-          steps.signal.outputs.release_gate_mode == 'full-security-release-gate'
-        continue-on-error: true
+          steps.signal.outputs.release_gate_mode == 'full-security-release-gate' &&
+          steps.signal.outputs.source_branch == 'main'
         shell: bash
         run: |
           set -Eeuo pipefail
-          python3 scripts/ci/write_production_deploy_candidate.py \
+          python3 scripts/release/write_production_deploy_candidate_package.py \
             --security-verdict security-reports/security-verdict.json \
             --out-dir production-deploy-candidate
 
@@ -865,6 +790,51 @@ jobs:
           path: production-deploy-candidate
           if-no-files-found: error
           retention-days: 30
+
+      - name: Production deploy candidate — summary
+        if: always()
+        shell: bash
+        env:
+          VERDICT: ${{ steps.signal.outputs.security_verdict }}
+          SRC_BR: ${{ steps.signal.outputs.source_branch }}
+          RG_VERDICT: ${{ steps.signal.outputs.release_gate_verdict }}
+          RG_MODE: ${{ steps.signal.outputs.release_gate_mode }}
+          PDC_OUTCOME: ${{ steps.production_deploy_candidate.outcome }}
+          SRC_BUILD: ${{ steps.signal.outputs.source_build_run_id }}
+          SRC_SHA: ${{ steps.signal.outputs.source_sha }}
+          SEC_RUN: ${{ steps.signal.outputs.security_workflow_run_id }}
+          APP_REF: ${{ needs.resolve-image-refs.outputs.app_image_ref }}
+          GOOSE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo ""
+            echo "## Production deploy candidate (\`production-deploy-candidate\` artifact)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "${VERDICT}" != "pass" ]]; then
+            echo "- **Status**: no artifact — verdict is **not** \`pass\` (\`${VERDICT}\`). Only passing Security Release runs may emit this bundle." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ "${SRC_BR}" != "main" ]]; then
+            echo "- **Status**: no artifact — \`source_branch\` is \`${SRC_BR}\` (**main-only**; develop passes never publish production-deploy-candidate)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ "${RG_VERDICT}" != "pass" || "${RG_MODE}" != "full-security-release-gate" ]]; then
+            echo "- **Status**: no artifact — release gate not eligible for candidate bundle (\`release_gate_verdict=${RG_VERDICT}\`, \`release_gate_mode=${RG_MODE}\`)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ "${PDC_OUTCOME}" != "success" ]]; then
+            echo "- **Status**: no artifact — generator step outcome \`${PDC_OUTCOME}\` (pass on \`main\` expected a bundle; inspect **Generate production deploy candidate** logs)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "- **Status**: artifact **production-deploy-candidate** uploaded (manual review required; **no auto-deploy**)."
+            echo "- **build_run_id**: \`${SRC_BUILD}\`"
+            echo "- **security_release_run_id**: \`${SEC_RUN}\`"
+            echo "- **source_commit_sha**: \`${SRC_SHA}\`"
+            echo "- **app_image_ref**: \`${APP_REF}\`"
+            echo "- **goose_image_ref**: \`${GOOSE_REF}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # security-release-audit-package: see docs/operations/release-evidence-retention.md
       - name: Build release audit package (security phase)

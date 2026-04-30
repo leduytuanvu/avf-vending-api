@@ -68,9 +68,15 @@ def emit_main(payload: dict) -> None:
         print("- source SHA: `%s`" % payload["source_sha"])
     print("- source_event (from promotion-manifest / artifact): `%s`" % payload.get("source_event", ""))
     print(
-        "- trigger_workflow_event (Build run / this Security run GHA event, not semantic `source_event`): `%s`"
+        "- trigger_workflow_event (Build run GHA `event` — wrapper — not semantic `source_event`): `%s`"
         % payload.get("trigger_workflow_event", "")
     )
+    if (payload.get("verdict") or "").lower() == "pass" and (payload.get("source_branch") or "") == "main":
+        print("")
+        print(
+            "- **production-deploy-candidate**: when this run uploads that artifact, see the workflow summary section "
+            "**Production deploy candidate** (pass on `main` only; never auto-deploy)."
+        )
     vd = (payload.get("verdict") or "").lower()
     if vd not in ("pass", "skipped"):
         print("")
