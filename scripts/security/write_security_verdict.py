@@ -272,8 +272,8 @@ def write_unsupported_artifact_source_event_skipped() -> None:
     wn = _s("WORKFLOW_NAME", "Security Release")
     a_ev = (_s("ARTIFACT_SOURCE_EVENT") or "").strip()
     reasons = [
-        "promotion-manifest source_event is %r (release promotion allows only: push, workflow_dispatch, or manual mapped to dispatch; "
-        "semantic source_event must not be workflow_run / chain-only)."
+        "promotion-manifest semantic source_event is %r (release promotion requires `push` or `workflow_dispatch` "
+        "as recorded in build artifacts — not pull_request/schedule nor missing/malformed manifest fields)."
         % (a_ev,)
     ]
     _write(
@@ -387,7 +387,7 @@ def write_metadata_mismatch_skipped() -> None:
 
 
 def write_unsupported_trigger_skipped() -> None:
-    """Skipped: triggering Build event is not an allowed build trigger type for release gating."""
+    """Skipped: tooling / legacy path for unsupported Build wrapper events (automatic gate uses artifacts)."""
     gen = _s("GENERATED_AT_UTC") or _utc_now()
     ev = _s("EVENT_NAME", "")
     wrid = _s("WORKFLOW_RUN_ID", "")
@@ -396,17 +396,12 @@ def write_unsupported_trigger_skipped() -> None:
     bid = _s("TRIGGERING_BUILD_ID", "")
     b_sha = _s("TRIGGERING_BUILD_HEAD_SHA", "")
     hb = _s("TRIGGERING_BUILD_HEAD_BRANCH", "")
-    if (te or "").strip() == "workflow_run":
-        reason = (
-            "Non-release candidate: the triggering **Build and Push Images** run was started by a `workflow_run` (upstream CI chain), not by a direct "
-            "`push` to `develop`/`main` or an allowed `workflow_dispatch`. Indirect/chain-only builds are not valid release candidates."
-        )
-    else:
-        reason = (
-            "Non-release candidate: triggering **Build and Push Images** GHA `event` is %r (release promotion only allows `push` or `workflow_dispatch` "
-            "on `develop`/`main`). Full Security Release gate was not evaluated."
-            % (te or "",)
-        )
+    reason = (
+        "Non-release candidate (`unsupported-trigger` mode): triggering **Build and Push Images** GHA `event` was %r. "
+        "Automatic Security Release promotion eligibility is determined from **promotion-manifest** / **immutable-image-contract** "
+        "semantic `source_event` (`push` or `workflow_dispatch`); CI `workflow_run` chain triggers are allowed when artifacts prove that."
+        % ((te or "").strip() or "(empty)",)
+    )
     reasons = [reason]
     jr = {
         "skip_job": "success",
@@ -618,6 +613,10 @@ def _digest_from_ref(ref: str) -> str:
 
 def _add_coordinate_mismatch(event_name: str, failure_reasons: list[str]) -> None:
     if event_name != "workflow_run":
+        return
+    te = (_s("TRIGGERING_BUILD_EVENT") or "").strip()
+    if te == "workflow_run":
+        # CI chain: Build was started by workflow_run; semantic identity comes from promotion-manifest / image-metadata.
         return
     art_sha = (_s("RESOLVED_SOURCE_SHA") or "").strip()
     art_br = (_s("RESOLVED_SOURCE_BRANCH") or "").strip()

@@ -1,0 +1,251 @@
+#!/usr/bin/env python3
+"""Emit production-deploy-candidate artifact directory from security-verdict.json (pass + main only).
+
+Does not deploy production. Outputs: production-deploy-inputs.json, production-deploy-inputs.env,
+deploy-production-gh-command.sh, README.md — for manual Deploy Production (workflow_dispatch).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import shlex
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+EXPECTED_RELEASE_GATE_MODE = "full-security-release-gate"
+DEPLOY_WORKFLOW_TITLE = "Deploy Production"
+STAGING_TODO = ""  # operator must set staging_evidence_id in JSON/env before dispatch
+
+
+def _die(msg: str) -> None:
+    print("error: %s" % msg, file=sys.stderr)
+    sys.exit(1)
+
+
+def _require(cond: bool, msg: str) -> None:
+    if not cond:
+        _die(msg)
+
+
+def _as_str(v: Any) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, str):
+        return v
+    return str(v)
+
+
+def _digest_pinned(ref: str) -> bool:
+    return "@sha256:" in ref
+
+
+def load_verdict(path: Path) -> dict[str, Any]:
+    try:
+        return json.loads(path.read_text(encoding="utf-8-sig"))
+    except FileNotFoundError:
+        _die("security verdict file not found: %s" % path)
+    except json.JSONDecodeError as e:
+        _die("invalid JSON in %s: %s" % (path, e))
+
+
+def validate_eligibility(payload: dict[str, Any]) -> None:
+    verdict = _as_str(payload.get("verdict")).strip()
+    _require(
+        verdict == "pass",
+        'verdict must be "pass" (got %r); skipped/fail verdicts must not produce production-deploy-candidate'
+        % verdict,
+    )
+    if "security_verdict" in payload:
+        sv = _as_str(payload.get("security_verdict")).strip()
+        _require(sv == "pass", 'security_verdict must be "pass" when present (got %r)' % sv)
+    rgv = _as_str(payload.get("release_gate_verdict")).strip()
+    _require(rgv == "pass", 'release_gate_verdict must be "pass" (got %r)' % rgv)
+    rgm = _as_str(payload.get("release_gate_mode")).strip()
+    _require(
+        rgm == EXPECTED_RELEASE_GATE_MODE,
+        "release_gate_mode must be %r (got %r)" % (EXPECTED_RELEASE_GATE_MODE, rgm),
+    )
+    branch = _as_str(payload.get("source_branch")).strip()
+    _require(branch == "main", "source_branch must be main for production candidate (got %r)" % branch)
+    bid = _as_str(payload.get("source_build_run_id")).strip()
+    _require(bool(bid), "source_build_run_id must be non-empty")
+    _require(bid.isdigit(), "source_build_run_id must be digits only (got %r)" % bid)
+    sha = _as_str(payload.get("source_sha")).strip()
+    _require(bool(sha), "source_sha must be non-empty")
+    pub = payload.get("published_images")
+    _require(isinstance(pub, dict), "published_images must be an object")
+    app_ref = _as_str(pub.get("app_image_ref")).strip()
+    goose_ref = _as_str(pub.get("goose_image_ref")).strip()
+    _require(bool(app_ref), "published_images.app_image_ref must be non-empty")
+    _require(bool(goose_ref), "published_images.goose_image_ref must be non-empty")
+    _require(_digest_pinned(app_ref), "app_image_ref must be digest-pinned (@sha256:)")
+    _require(_digest_pinned(goose_ref), "goose_image_ref must be digest-pinned (@sha256:)")
+
+
+def security_release_run_id_from(payload: dict[str, Any]) -> str:
+    rid = _as_str(payload.get("security_workflow_run_id")).strip()
+    if not rid:
+        rid = _as_str(payload.get("workflow_run_id")).strip()
+    _require(bool(rid), "security release run id missing (security_workflow_run_id / workflow_run_id)")
+    _require(rid.isdigit(), "security_release_run_id must be digits only (got %r)" % rid)
+    return rid
+
+
+def short_sha(source_sha: str, n: int = 7) -> str:
+    s = source_sha.strip()
+    return s[:n] if len(s) >= n else s
+
+
+def default_release_tag(source_sha: str) -> str:
+    d = datetime.now(timezone.utc).strftime("%Y%m%d")
+    return "v%s-%s" % (d, short_sha(source_sha))
+
+
+def build_dispatch_inputs(payload: dict[str, Any], release_tag: str) -> dict[str, Any]:
+    pub = payload["published_images"]
+    sec_run = security_release_run_id_from(payload)
+    return {
+        "action_mode": "deploy",
+        "build_run_id": _as_str(payload.get("source_build_run_id")).strip(),
+        "security_release_run_id": sec_run,
+        "release_tag": release_tag,
+        "source_commit_sha": _as_str(payload.get("source_sha")).strip(),
+        "app_image_ref": _as_str(pub.get("app_image_ref")).strip(),
+        "goose_image_ref": _as_str(pub.get("goose_image_ref")).strip(),
+        "rollback_app_image_ref": "",
+        "rollback_goose_image_ref": "",
+        "deploy_data_node": False,
+        "allow_app_node_on_data_node": False,
+        "deploy_production_confirmation": "DEPLOY_PRODUCTION",
+        "fleet_scale_target": "pilot",
+        "telemetry_storm_evidence_repo_path": "",
+        "telemetry_storm_evidence_artifact_run_id": "",
+        "allow_scale_gate_bypass": False,
+        "scale_gate_bypass_reason": "",
+        "storm_evidence_max_age_days": "7",
+        "run_migration": False,
+        "backup_evidence_id": "",
+        "staging_evidence_id": STAGING_TODO,
+        "staging_evidence_max_age_hours": "168",
+        "allow_missing_staging_evidence": False,
+        "missing_staging_evidence_reason": "",
+        "enable_business_synthetic_smoke": False,
+    }
+
+
+def env_line(key: str, value: Any) -> str:
+    if isinstance(value, bool):
+        return "%s=%s" % (key, "true" if value else "false")
+    return "%s=%s" % (key, shlex.quote(str(value)))
+
+
+def write_env(path: Path, data: dict[str, Any]) -> None:
+    lines = [env_line(k, data[k]) for k in sorted(data.keys())]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def write_readme(path: Path, inputs: dict[str, Any], staging_todo_note: str) -> None:
+    body = """# Production deploy candidate
+
+This bundle is produced by **Security Release** after **verdict=pass** on **`main`** only.
+It does **not** deploy production and contains **no secrets**.
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `production-deploy-inputs.json` | `workflow_dispatch` inputs for **%s** (`deploy-prod.yml`). Safe to pass to `gh workflow run ... --json`. |
+| `production-deploy-inputs.env` | Same values as `KEY=value` for review. |
+| `deploy-production-gh-command.sh` | Example wrapper; **review JSON first**. |
+
+## Before dispatch
+
+1. Set **`staging_evidence_id`** in `production-deploy-inputs.json` (Staging Deployment Contract run id) unless your process uses an explicit staging bypass on the workflow (not enabled here).
+2. Optionally replace **`release_tag`** (`%s`).
+3. Confirm **`build_run_id`** matches **`security-verdict.source_build_run_id`** and **`security_release_run_id`** is this Security Release run (not the Build run).
+
+## Staging evidence TODO
+
+%s
+
+## CLI example
+
+From a clone of this repository (authenticated `gh`), after exporting `REPO_ROOT`:
+
+```bash
+bash deploy-production-gh-command.sh
+```
+
+Or:
+
+```bash
+gh workflow run \"%s\" --ref main --json < production-deploy-inputs.json
+```
+""" % (
+        DEPLOY_WORKFLOW_TITLE,
+        inputs.get("release_tag", ""),
+        staging_todo_note,
+        DEPLOY_WORKFLOW_TITLE,
+    )
+    path.write_text(body, encoding="utf-8")
+
+
+def write_gh_script(path: Path) -> None:
+    contents = """#!/usr/bin/env bash
+# =============================================================================
+# WARNING: Review production-deploy-inputs.json before running.
+# Security Release never auto-deploys production.
+# =============================================================================
+set -euo pipefail
+_JSON="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/production-deploy-inputs.json"
+cd "${REPO_ROOT:?export REPO_ROOT to your avf-vending-api clone}"
+gh workflow run "%s" --ref main --json < "${_JSON}"
+""" % (
+        DEPLOY_WORKFLOW_TITLE,
+    )
+    path.write_text(contents, encoding="utf-8")
+    mode = path.stat().st_mode
+    path.chmod(mode | 0o111)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--security-verdict", required=True, type=Path)
+    ap.add_argument("--out-dir", required=True, type=Path)
+    ap.add_argument(
+        "--release-tag",
+        default="",
+        help="override release_tag (default vYYYYMMDD-<short_sha>)",
+    )
+    args = ap.parse_args()
+
+    payload = load_verdict(args.security_verdict)
+    validate_eligibility(payload)
+
+    rel_tag = _as_str(args.release_tag).strip()
+    if not rel_tag:
+        rel_tag = default_release_tag(_as_str(payload.get("source_sha")))
+
+    inputs = build_dispatch_inputs(payload, rel_tag)
+    out = args.out_dir
+    out.mkdir(parents=True, exist_ok=True)
+
+    (out / "production-deploy-inputs.json").write_text(
+        json.dumps(inputs, indent=2, sort_keys=False) + "\n",
+        encoding="utf-8",
+    )
+    write_env(out / "production-deploy-inputs.env", inputs)
+
+    staging_note = (
+        "**`staging_evidence_id` is empty in this bundle.** "
+        "Set it to a successful **Staging Deployment Contract** run id before production dispatch "
+        "(or edit inputs intentionally if your operator process uses `allow_missing_staging_evidence`)."
+    )
+    write_readme(out / "README.md", inputs, staging_note)
+    write_gh_script(out / "deploy-production-gh-command.sh")
+
+
+if __name__ == "__main__":
+    main()

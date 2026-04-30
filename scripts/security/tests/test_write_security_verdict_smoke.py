@@ -72,7 +72,7 @@ def main() -> int:
     d = _assert_file_and_schema()
     assert d.get("verdict") in ("skipped", "fail", "pass"), d
 
-    # 3b) unsupported-trigger (chain-only Build: GHA event workflow_run)
+    # 3b) unsupported-trigger (legacy / operator script path)
     _clear_verdict()
     _run(
         "unsupported-trigger",

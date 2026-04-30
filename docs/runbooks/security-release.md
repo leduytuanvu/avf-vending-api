@@ -6,6 +6,10 @@ Security Release runs after **Build and Push Images** and is the **only** workfl
 
 Path in the artifact: `security-reports/security-verdict.json`.
 
+## Automatic Security Release after CI-chained Build
+
+**Build and Push Images** is often started by **CI** (`workflow_run`). Security Release still runs the **full** gate when that Build completes **successfully** on `develop` or `main`, because releasable identity is taken from **promotion-manifest** / **immutable-image-contract** semantic **`source_event`** (`push` or `workflow_dispatch`), not from rejecting Build's outer GitHub `event` when it is `workflow_run`.
+
 The JSON always includes (machine-readable contract):
 
 - `verdict`, `release_gate_verdict`, `release_gate_mode`
@@ -48,28 +52,28 @@ The signal step exit trap follows the same rule: it emits an emergency fail only
 
 ## Production deploy candidate artifact (`production-deploy-candidate`)
 
-After a **passing** Security Release that ran the **full** gate (`release_gate_mode: full-security-release-gate`), the workflow may attach artifact **`production-deploy-candidate`** (retention **30** days). This is **not** a deploy — it is a **prefilled input package** for the manual **Deploy Production** workflow (`deploy-prod.yml`). Skipped or failed verdicts **do not** produce this artifact.
+After **verdict=`pass`** on **`main`** only, Security Release may attach **`production-deploy-candidate`** (retention **30** days). **`develop`** passes never upload this artifact. This is **not** a deploy — it is a prefilled input bundle for manual **Deploy Production** (`deploy-prod.yml`). Skipped/fail verdicts **do not** produce it.
 
 ### Download
 
 1. Open the successful **Security Release** run on GitHub Actions.
 2. Under **Artifacts**, download **`production-deploy-candidate`** (zip).
-3. Unzip and review every file before any dispatch.
+3. Unzip and read **`README.md`** before editing inputs or running **`gh`**.
 
 ### Files
 
 | File | Purpose |
 |---|---|
-| `production-deploy-inputs.md` | Operator-friendly table (field, value, source, notes). Use for manual copy/paste into the Actions UI if you prefer not to use CLI JSON. |
-| `production-deploy-request.json` | **`workflow_dispatch`** inputs for **Deploy Production**, keyed exactly like `deploy-prod.yml`. Edit if needed (for example real **`staging_evidence_id`** when the candidate still has the placeholder). |
-| `production-deploy-inputs.env` | Same values as `KEY=value` for shell review or tooling. |
-| `deploy-prod-gh-command.sh` | Example **`gh workflow run`** wrapper; read the warnings inside — review JSON first. Canonical workflow path is **`.github/workflows/deploy-prod.yml`** (see also the legacy pointer docstring in `deploy-production.yml`). |
+| `README.md` | Operator checklist (staging evidence TODO, run id semantics, no auto-deploy). |
+| `production-deploy-inputs.json` | **`workflow_dispatch`** inputs for **Deploy Production**, keyed like `deploy-prod.yml`. **`staging_evidence_id`** starts empty — set a real Staging Deployment Contract run id before dispatch unless you intentionally use workflow bypass inputs. |
+| `production-deploy-inputs.env` | Same values as `KEY=value` for review. |
+| `deploy-production-gh-command.sh` | Example wrapper calling `gh workflow run "Deploy Production" --ref main --json < production-deploy-inputs.json` after **`REPO_ROOT`** is set. |
 
-### GitHub CLI (`production-deploy-request.json`)
+### GitHub CLI (`production-deploy-inputs.json`)
 
-From a checkout of this repo, after exporting **`REPO_ROOT`** to that clone (see `deploy-prod-gh-command.sh`), or run explicitly:
+From a checkout of this repo, after exporting **`REPO_ROOT`**:
 
-`gh workflow run .github/workflows/deploy-prod.yml --ref main --json < production-deploy-request.json`
+`gh workflow run "Deploy Production" --ref main --json < production-deploy-inputs.json`
 
 ### Mandatory semantics (do not mix run ids)
 
