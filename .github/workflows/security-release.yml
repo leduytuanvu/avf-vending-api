@@ -738,7 +738,7 @@ jobs:
               latest_json=""
               set +e
               latest_json="$(
-                gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs" \
+                gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/workflows/security.yml/runs" \
                   -f "head_sha=${release_source_sha}" \
                   -f "branch=${want_branch}" \
                   -f "event=push" \
