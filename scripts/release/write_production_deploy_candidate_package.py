@@ -190,12 +190,14 @@ gh workflow run \"%s\" --ref main --json < production-deploy-inputs.json
 
 
 def write_gh_script(path: Path) -> None:
+    # No %-formatting on this template: embedded Python in the heredoc legitimately uses "%"
+    # for its own string formatting; an outer % format would consume those and raise TypeError.
     contents = """#!/usr/bin/env bash
 # =============================================================================
 # WARNING: Review production-deploy-inputs.json before running.
 # Security Release never auto-deploys production.
 # =============================================================================
-set -euo pipefail
+set -Eeuo pipefail
 _HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _JSON="${_HERE}/production-deploy-inputs.json"
 python3 - "${_HERE}" <<'PY'
@@ -235,10 +237,8 @@ for fn in ("production-deploy-inputs.json", "production-deploy-request.json"):
     check(fn)
 PY
 cd "${REPO_ROOT:?export REPO_ROOT to your avf-vending-api clone}"
-gh workflow run "%s" --ref main --json < "${_JSON}"
-""" % (
-        DEPLOY_WORKFLOW_TITLE,
-    )
+gh workflow run "__DEPLOY_WORKFLOW_TITLE__" --ref main --json < "${_JSON}"
+""".replace("__DEPLOY_WORKFLOW_TITLE__", DEPLOY_WORKFLOW_TITLE)
     path.write_text(contents, encoding="utf-8")
     mode = path.stat().st_mode
     path.chmod(mode | 0o111)

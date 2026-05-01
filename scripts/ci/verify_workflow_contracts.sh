@@ -607,6 +607,18 @@ grep -qE "github.event.workflow_run.name == 'CI'|github.event.workflow_run.name 
 # --- Reusable deploy exposes artifact_source_event ---
 grep -q 'artifact_source_event:' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml must expose artifact_source_event output"
 
+# --- Reusable deploy: gh attestation verify (signer-workflow path only; branch via --source-ref) ---
+grep -qF 'signer_workflow="github.com/${GITHUB_REPOSITORY}/.github/workflows/_reusable-build.yml"' "${WF}/_reusable-deploy.yml" || \
+  fail "_reusable-deploy.yml: signer_workflow must be github.com/\${GITHUB_REPOSITORY}/.github/workflows/_reusable-build.yml without @refs/heads"
+grep -qF '_reusable-build.yml@refs/heads' "${WF}/_reusable-deploy.yml" && \
+  fail "_reusable-deploy.yml: signer_workflow must not embed @refs/heads (enforce branch with --source-ref)"
+grep -qF 'source_ref="refs/heads/${ARTIFACT_SOURCE_BRANCH}"' "${WF}/_reusable-deploy.yml" || \
+  fail "_reusable-deploy.yml must set source_ref=refs/heads/\${ARTIFACT_SOURCE_BRANCH}"
+grep -Fq -- '--source-ref "${source_ref}"' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml gh attestation verify must pass --source-ref \"\${source_ref}\""
+grep -Fq -- '--deny-self-hosted-runners' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml gh attestation verify must use --deny-self-hosted-runners"
+grep -Fq -- '--format json' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml gh attestation verify must use --format json"
+grep -qF 'gh --version' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml provenance step must run gh --version before attestation verify"
+
 # --- Unique workflow names (top-level name: key) ---
 dupes="$(
   grep -h '^name:' .github/workflows/*.yml 2>/dev/null | sed 's/^name:[[:space:]]*//' | tr -d '\r' | sort | uniq -d || true
