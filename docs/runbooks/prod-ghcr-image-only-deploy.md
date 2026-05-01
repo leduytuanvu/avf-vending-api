@@ -72,3 +72,4 @@ docker compose --env-file deployments/prod/.env.production -f deployments/prod/d
 
 - Operator-facing detail: [deployments/prod/README.md](../../deployments/prod/README.md)
 - 2-VPS rollout detail: [production-2-vps.md](production-2-vps.md)
+- Enterprise **Deploy Production** (`deploy-prod.yml`) aligns **`artifact_source_event`** from promotion-manifest with **semantic `source_event`** in **`security-verdict.json`**, not with the Build workflow’s GitHub **`workflow_run`** wrapper event (that remains **`trigger_workflow_event`** for diagnostics). See [security-release.md](security-release.md).

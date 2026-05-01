@@ -511,6 +511,16 @@ grep -q 'deploy_production_confirmation' "${WF}/deploy-prod.yml" || fail "deploy
 grep -q 'security_release_run_id' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must accept security_release_run_id (Security Release run for deploy mode)"
 grep -q "github.ref == 'refs/heads/main'" "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must gate production jobs to the main branch ref"
 
+# --- deploy-prod: semantic source_event from security-verdict vs Build workflow_run API wrapper ---
+grep -qF 'build_trigger_event' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must use build_trigger_event for Build workflow GitHub API event"
+grep -qF 'semantic_source_event' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must derive semantic source_event from security-verdict.json"
+grep -qF 'trigger_workflow_event=' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must emit trigger_workflow_event output (diagnostic)"
+grep -qF 'security-verdict-bundle/security-verdict.json' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must read security-verdict-bundle/security-verdict.json for semantic source_event"
+grep -qF 'p.get("source_event")' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must load semantic source_event from verdict JSON"
+grep -qF 'TRIGGER_WORKFLOW_EVENT_BUILD_API' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must pass TRIGGER_WORKFLOW_EVENT_BUILD_API into production security gate"
+grep -qE 'source_commit_sha source_event run_status' "${WF}/deploy-prod.yml" && fail "deploy-prod.yml must not parse Build API event into variable named source_event (use build_trigger_event)"
+grep -qF 'production-deploy-candidate-metadata.json' "${ROOT}/scripts/release/write_production_deploy_candidate_package.py" || fail "write_production_deploy_candidate_package.py must emit production-deploy-candidate-metadata.json"
+
 # --- deploy-prod: migration is opt-in; backup evidence is mandatory when run_migration is true ---
 deploy_prod_on_slice="$(
   awk '/^on:/{p=1;next} p && /^[a-zA-Z#@]/ {exit} p' "${WF}/deploy-prod.yml"
