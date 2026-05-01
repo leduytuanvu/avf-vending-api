@@ -16,7 +16,7 @@ from typing import Any
 
 EXPECTED_RELEASE_GATE_MODE = "full-security-release-gate"
 DEPLOY_WORKFLOW_TITLE = "Deploy Production"
-STAGING_TODO = ""  # operator must set staging_evidence_id in JSON/env before dispatch
+TODO_STAGING_EVIDENCE_RUN_ID = "TODO_STAGING_EVIDENCE_RUN_ID"
 
 
 def _die(msg: str) -> None:
@@ -103,7 +103,7 @@ def default_release_tag(source_sha: str) -> str:
     return "v%s-%s" % (d, short_sha(source_sha))
 
 
-def build_dispatch_inputs(payload: dict[str, Any], release_tag: str) -> dict[str, Any]:
+def build_dispatch_inputs(payload: dict[str, Any], release_tag: str, staging_evidence_id: str) -> dict[str, Any]:
     pub = payload["published_images"]
     sec_run = security_release_run_id_from(payload)
     return {
@@ -127,7 +127,7 @@ def build_dispatch_inputs(payload: dict[str, Any], release_tag: str) -> dict[str
         "storm_evidence_max_age_days": "7",
         "run_migration": False,
         "backup_evidence_id": "",
-        "staging_evidence_id": STAGING_TODO,
+        "staging_evidence_id": staging_evidence_id,
         "staging_evidence_max_age_hours": "168",
         "allow_missing_staging_evidence": False,
         "missing_staging_evidence_reason": "",
@@ -146,11 +146,13 @@ def write_env(path: Path, data: dict[str, Any]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_readme(path: Path, inputs: dict[str, Any], staging_todo_note: str) -> None:
+def write_readme(path: Path, inputs: dict[str, Any]) -> None:
     body = """# Production deploy candidate
 
 This bundle is produced by **Security Release** after **verdict=pass** on **`main`** only.
 It does **not** deploy production and contains **no secrets**.
+
+> **Replace TODO_STAGING_EVIDENCE_RUN_ID with a successful Staging Deployment Contract run id before production deploy. Do not run production deploy with this placeholder.**
 
 ## Files
 
@@ -158,17 +160,13 @@ It does **not** deploy production and contains **no secrets**.
 |------|---------|
 | `production-deploy-inputs.json` | `workflow_dispatch` inputs for **%s** (`deploy-prod.yml`). Safe to pass to `gh workflow run ... --json`. |
 | `production-deploy-inputs.env` | Same values as `KEY=value` for review. |
-| `deploy-production-gh-command.sh` | Example wrapper; **review JSON first**. |
+| `deploy-production-gh-command.sh` | Wrapper around **`gh workflow run`**; exits non‑zero if **`staging_evidence_id`** is TODO or empty without intentional bypass fields. |
 
 ## Before dispatch
 
-1. Set **`staging_evidence_id`** in `production-deploy-inputs.json` (Staging Deployment Contract run id) unless your process uses an explicit staging bypass on the workflow (not enabled here).
+1. Replace **`staging_evidence_id`** in `production-deploy-inputs.json` (successful **Staging Deployment Contract** run id). **`allow_missing_staging_evidence`** stays **false** here — use explicit bypass inputs only with **`missing_staging_evidence_reason`** when policy allows (not the normal path).
 2. Optionally replace **`release_tag`** (`%s`).
 3. Confirm **`build_run_id`** matches **`security-verdict.source_build_run_id`** and **`security_release_run_id`** is this Security Release run (not the Build run).
-
-## Staging evidence TODO
-
-%s
 
 ## CLI example
 
@@ -186,7 +184,6 @@ gh workflow run \"%s\" --ref main --json < production-deploy-inputs.json
 """ % (
         DEPLOY_WORKFLOW_TITLE,
         inputs.get("release_tag", ""),
-        staging_todo_note,
         DEPLOY_WORKFLOW_TITLE,
     )
     path.write_text(body, encoding="utf-8")
@@ -199,7 +196,44 @@ def write_gh_script(path: Path) -> None:
 # Security Release never auto-deploys production.
 # =============================================================================
 set -euo pipefail
-_JSON="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/production-deploy-inputs.json"
+_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_JSON="${_HERE}/production-deploy-inputs.json"
+python3 - "${_HERE}" <<'PY'
+import json, pathlib, sys
+
+TODO = "TODO_STAGING_EVIDENCE_RUN_ID"
+here = pathlib.Path(sys.argv[1])
+
+def check(name: str) -> None:
+    path = here / name
+    if not path.is_file():
+        return
+    raw = path.read_text(encoding="utf-8")
+    if TODO in raw:
+        print(
+            "error: %s contains %s — replace with a successful Staging Deployment Contract run id before deploy."
+            % (name, TODO),
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    data = json.loads(raw)
+    sid = (data.get("staging_evidence_id") or "").strip()
+    allow = data.get("allow_missing_staging_evidence") is True
+    reason = (data.get("missing_staging_evidence_reason") or "").strip()
+    if sid == TODO:
+        print("error: staging_evidence_id is still the TODO literal in %s." % name, file=sys.stderr)
+        sys.exit(1)
+    if not sid and not (allow and reason):
+        print(
+            "error: staging_evidence_id empty in %s without allow_missing_staging_evidence=true "
+            "and a non-empty missing_staging_evidence_reason." % name,
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+for fn in ("production-deploy-inputs.json", "production-deploy-request.json"):
+    check(fn)
+PY
 cd "${REPO_ROOT:?export REPO_ROOT to your avf-vending-api clone}"
 gh workflow run "%s" --ref main --json < "${_JSON}"
 """ % (
@@ -219,6 +253,11 @@ def main() -> None:
         default="",
         help="override release_tag (default vYYYYMMDD-<short_sha>)",
     )
+    ap.add_argument(
+        "--staging-evidence-run-id",
+        default="",
+        help="Staging Deployment Contract run id (default: TODO_STAGING_EVIDENCE_RUN_ID placeholder)",
+    )
     args = ap.parse_args()
 
     payload = load_verdict(args.security_verdict)
@@ -228,7 +267,11 @@ def main() -> None:
     if not rel_tag:
         rel_tag = default_release_tag(_as_str(payload.get("source_sha")))
 
-    inputs = build_dispatch_inputs(payload, rel_tag)
+    staging_id = _as_str(args.staging_evidence_run_id).strip()
+    if not staging_id:
+        staging_id = TODO_STAGING_EVIDENCE_RUN_ID
+
+    inputs = build_dispatch_inputs(payload, rel_tag, staging_id)
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
 
@@ -238,12 +281,7 @@ def main() -> None:
     )
     write_env(out / "production-deploy-inputs.env", inputs)
 
-    staging_note = (
-        "**`staging_evidence_id` is empty in this bundle.** "
-        "Set it to a successful **Staging Deployment Contract** run id before production dispatch "
-        "(or edit inputs intentionally if your operator process uses `allow_missing_staging_evidence`)."
-    )
-    write_readme(out / "README.md", inputs, staging_note)
+    write_readme(out / "README.md", inputs)
     write_gh_script(out / "deploy-production-gh-command.sh")
 
 

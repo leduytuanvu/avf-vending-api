@@ -15,7 +15,7 @@ from typing import Any
 
 EXPECTED_RELEASE_GATE_MODE = "full-security-release-gate"
 CANONICAL_DEPLOY_WORKFLOW = ".github/workflows/deploy-prod.yml"
-STAGING_PLACEHOLDER = "PLACEHOLDER_STAGING_EVIDENCE_RUN_ID"
+TODO_STAGING_EVIDENCE_RUN_ID = "TODO_STAGING_EVIDENCE_RUN_ID"
 
 
 def _die(msg: str) -> None:
@@ -165,6 +165,8 @@ def write_operator_md(
     lines: list[str] = [
         "# Production deploy candidate (manual review)",
         "",
+        "> **Replace TODO_STAGING_EVIDENCE_RUN_ID with a successful Staging Deployment Contract run id before production deploy. Do not run production deploy with this placeholder.**",
+        "",
         "This package **does not** deploy production. It only collects inputs aligned with "
         "`Deploy Production` (`deploy-prod.yml`) after a passing Security Release.",
         "",
@@ -183,10 +185,8 @@ def write_operator_md(
     if staging_is_placeholder:
         lines.extend(
             [
-                "> **Warning:** `staging_evidence_id` is still a **placeholder**. "
-                "Replace it with a real **Staging Deployment Contract** run id (artifact `staging-deploy-evidence`) "
-                "before dispatch unless your process explicitly uses `allow_missing_staging_evidence` "
-                "(not generated here).",
+                "> **Staging gate:** `staging_evidence_id` is **`TODO_STAGING_EVIDENCE_RUN_ID`**. "
+                "Edit **`production-deploy-request.json`** (and `.env`) before dispatch; **`deploy-production-gh-command.sh`** refuses TODO/empty staging unless bypass fields are set intentionally.",
                 "",
             ]
         )
@@ -218,7 +218,44 @@ def write_gh_script(path: Path, json_name: str) -> None:
 # Requires: gh CLI, repo auth, and cwd = repository root (so gh resolves workflows).
 # This script lives next to __JSON_NAME__; set REPO_ROOT to your avf-vending-api clone.
 set -euo pipefail
-_JSON="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/__JSON_NAME__"
+_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_JSON="${_HERE}/__JSON_NAME__"
+python3 - "${_HERE}" <<'PY'
+import json, pathlib, sys
+
+TODO = "TODO_STAGING_EVIDENCE_RUN_ID"
+here = pathlib.Path(sys.argv[1])
+
+def check(name: str) -> None:
+    path = here / name
+    if not path.is_file():
+        return
+    raw = path.read_text(encoding="utf-8")
+    if TODO in raw:
+        print(
+            "error: %s contains %s — replace with a successful Staging Deployment Contract run id before deploy."
+            % (name, TODO),
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    data = json.loads(raw)
+    sid = (data.get("staging_evidence_id") or "").strip()
+    allow = data.get("allow_missing_staging_evidence") is True
+    reason = (data.get("missing_staging_evidence_reason") or "").strip()
+    if sid == TODO:
+        print("error: staging_evidence_id is still the TODO literal in %s." % name, file=sys.stderr)
+        sys.exit(1)
+    if not sid and not (allow and reason):
+        print(
+            "error: staging_evidence_id empty in %s without allow_missing_staging_evidence=true "
+            "and a non-empty missing_staging_evidence_reason." % name,
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+for fn in ("__JSON_NAME__", "production-deploy-inputs.json"):
+    check(fn)
+PY
 cd "${REPO_ROOT:?Set REPO_ROOT to your avf-vending-api checkout directory}"
 gh workflow run __WORKFLOW__ --ref main --json < "${_JSON}"
 """
@@ -252,8 +289,8 @@ def main() -> None:
 
     staging_id = _as_str(args.staging_evidence_run_id).strip()
     if not staging_id:
-        staging_id = STAGING_PLACEHOLDER
-    staging_placeholder = staging_id == STAGING_PLACEHOLDER
+        staging_id = TODO_STAGING_EVIDENCE_RUN_ID
+    staging_placeholder = staging_id == TODO_STAGING_EVIDENCE_RUN_ID
 
     rel_tag = _as_str(args.release_tag).strip()
     if not rel_tag:
@@ -315,7 +352,7 @@ def main() -> None:
 
     write_operator_md(out_dir / "production-deploy-inputs.md", rows, staging_placeholder)
     write_env(out_dir / "production-deploy-inputs.env", req)
-    write_gh_script(out_dir / "deploy-prod-gh-command.sh", "production-deploy-request.json")
+    write_gh_script(out_dir / "deploy-production-gh-command.sh", "production-deploy-request.json")
 
 
 if __name__ == "__main__":
