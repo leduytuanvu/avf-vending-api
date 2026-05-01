@@ -65,7 +65,7 @@ After **verdict=`pass`** on **`main`** only, Security Release may attach **`prod
 | File | Purpose |
 |---|---|
 | `README.md` | Operator checklist (staging evidence TODO, run id semantics, no auto-deploy). |
-| `production-deploy-inputs.json` | **`workflow_dispatch`** inputs for **Deploy Production**, keyed like `deploy-prod.yml`. **`staging_evidence_id`** starts empty — set a real Staging Deployment Contract run id before dispatch unless you intentionally use workflow bypass inputs. |
+| `production-deploy-inputs.json` | **`workflow_dispatch`** inputs for **Deploy Production**, keyed like `deploy-prod.yml`. **`staging_evidence_id`** is **`TODO_STAGING_EVIDENCE_RUN_ID`** until you paste a real Staging Deployment Contract run id (see **`deploy-production-gh-command.sh`** guard). |
 | `production-deploy-inputs.env` | Same values as `KEY=value` for review. |
 | `deploy-production-gh-command.sh` | Example wrapper calling `gh workflow run "Deploy Production" --ref main --json < production-deploy-inputs.json` after **`REPO_ROOT`** is set. |
 

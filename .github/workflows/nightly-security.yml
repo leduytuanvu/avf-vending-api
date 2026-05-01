@@ -201,6 +201,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p nightly-reports security-reports
+          # Resolver: scripts/security/resolve_nightly_main_image_candidate.py (explicit GET + promotion-manifest diagnostics).
           set +e
           bash scripts/security/resolve_latest_main_release_images.sh nightly-reports
           rc=$?
