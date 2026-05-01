@@ -614,9 +614,9 @@ grep -qF '_reusable-build.yml@refs/heads' "${WF}/_reusable-deploy.yml" && \
   fail "_reusable-deploy.yml: signer_workflow must not embed @refs/heads (enforce branch with --source-ref)"
 grep -qF 'source_ref="refs/heads/${ARTIFACT_SOURCE_BRANCH}"' "${WF}/_reusable-deploy.yml" || \
   fail "_reusable-deploy.yml must set source_ref=refs/heads/\${ARTIFACT_SOURCE_BRANCH}"
-grep -qF '--source-ref "${source_ref}"' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml gh attestation verify must pass --source-ref \"\${source_ref}\""
-grep -qF '--deny-self-hosted-runners' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml gh attestation verify must use --deny-self-hosted-runners"
-grep -qF '--format json' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml gh attestation verify must use --format json"
+grep -Fq -- '--source-ref "${source_ref}"' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml gh attestation verify must pass --source-ref \"\${source_ref}\""
+grep -Fq -- '--deny-self-hosted-runners' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml gh attestation verify must use --deny-self-hosted-runners"
+grep -Fq -- '--format json' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml gh attestation verify must use --format json"
 grep -qF 'gh --version' "${WF}/_reusable-deploy.yml" || fail "_reusable-deploy.yml provenance step must run gh --version before attestation verify"
 
 # --- Unique workflow names (top-level name: key) ---
