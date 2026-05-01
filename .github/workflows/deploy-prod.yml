@@ -172,6 +172,7 @@ jobs:
       source_commit_sha: ${{ steps.lookup.outputs.source_commit_sha }}
       source_branch: ${{ steps.lookup.outputs.source_branch }}
       source_event: ${{ steps.lookup.outputs.source_event }}
+      trigger_workflow_event: ${{ steps.lookup.outputs.trigger_workflow_event }}
       workflow_run_id: ${{ steps.lookup.outputs.workflow_run_id }}
       staging_release_gate: ${{ steps.lookup.outputs.staging_release_gate }}
       staging_evidence_workflow_run_id: ${{ steps.lookup.outputs.staging_evidence_workflow_run_id }}
@@ -402,6 +403,7 @@ jobs:
               echo "source_commit_sha="
               echo "source_branch="
               echo "source_event="
+              echo "trigger_workflow_event="
               echo "workflow_run_id="
               echo "staging_release_gate=skipped_rollback"
               echo "staging_evidence_workflow_run_id="
@@ -573,12 +575,12 @@ jobs:
             exit 1
           }
 
-          IFS=$'\t' read -r workflow_name source_branch source_commit_sha source_event run_status run_conclusion build_actor <<< "${build_run}"
+          IFS=$'\t' read -r workflow_name source_branch source_commit_sha build_trigger_event run_status run_conclusion build_actor <<< "${build_run}"
 
-          # source_event = Build workflow run's event field from the GitHub API. Deploy Production is always started via workflow_dispatch; this is not github.event of *this* workflow.
+          # build_trigger_event = Build workflow run's GitHub API `.event` (often workflow_run when CI-chained). Semantic promotion source_event comes from security-verdict.json + promotion-manifest (resolved in _reusable-deploy), not from this field.
           [[ "${workflow_name}" == "Build and Push Images" ]] || fail "build_run_id must reference a 'Build and Push Images' workflow run"
           [[ "${source_branch}" == "main" ]] || fail "build_run_id must come from the main branch"
-          [[ "${source_event}" == "push" || "${source_event}" == "workflow_dispatch" || "${source_event}" == "workflow_run" ]] || fail "build_run_id must reference a Build workflow triggered by push, workflow_dispatch, or workflow_run (semantic source_event is validated from promotion-manifest in image resolution)"
+          [[ "${build_trigger_event}" == "push" || "${build_trigger_event}" == "workflow_dispatch" || "${build_trigger_event}" == "workflow_run" ]] || fail "build_run_id must reference a Build workflow triggered by push, workflow_dispatch, or workflow_run (GitHub API event; semantic source_event is validated against security-verdict and promotion-manifest)"
           [[ "${run_status}" == "completed" ]] || fail "build_run_id must reference a completed build run"
           [[ "${run_conclusion}" == "success" ]] || fail "build_run_id must reference a successful build run"
 
@@ -595,6 +597,16 @@ jobs:
           [[ -n "${promotion_manifest_artifact_id}" ]] || fail "selected build run is missing the promotion-manifest artifact"
 
           workflow_run_id="${BUILD_RUN_ID}"
+
+          semantic_source_event=""
+          if [[ "${ACTION_MODE}" == "deploy" ]]; then
+            semantic_source_event="$(
+              python3 -c 'import json; p=json.load(open("security-verdict-bundle/security-verdict.json",encoding="utf-8")); print((p.get("source_event") or "").strip())'
+            )" || fail "could not read semantic source_event from security-verdict.json"
+            [[ -n "${semantic_source_event}" ]] || fail "security-verdict.json missing semantic source_event (required for production alignment with promotion-manifest; do not use Build workflow_run wrapper event)"
+            [[ "${semantic_source_event}" == "push" || "${semantic_source_event}" == "workflow_dispatch" ]] || fail "semantic source_event must be push or workflow_dispatch for production (got: ${semantic_source_event})"
+          fi
+
           reason_one_line="$(
             printf '%s' "${MISSING_STAGING_REASON_OUT}" | tr '\n' ' ' | tr -d '\r'
           )"
@@ -608,7 +620,8 @@ jobs:
             echo "workflow_run_id=${workflow_run_id}"
             echo "source_commit_sha=${source_commit_sha}"
             echo "source_branch=${source_branch}"
-            echo "source_event=${source_event}"
+            echo "source_event=${semantic_source_event}"
+            echo "trigger_workflow_event=${build_trigger_event}"
             echo "staging_release_gate=${STAGING_RELEASE_GATE}"
             echo "staging_evidence_workflow_run_id=${STAGING_EVIDENCE_WORKFLOW_RUN_ID}"
             echo "staging_evidence_bypassed=${STAGING_EVIDENCE_BYPASSED}"
@@ -1096,6 +1109,8 @@ jobs:
             echo "- selected build actor: \`${{ needs.resolve-build-run-id.outputs.build_actor }}\`"
             echo "- selected source branch: \`${{ needs.resolve-build-run-id.outputs.source_branch }}\`"
             echo "- selected source commit: \`${{ needs.resolve-build-run-id.outputs.source_commit_sha }}\`"
+            echo "- semantic source_event (security-verdict): \`${{ needs.resolve-build-run-id.outputs.source_event }}\`"
+            echo "- Build workflow API event (diagnostic): \`${{ needs.resolve-build-run-id.outputs.trigger_workflow_event }}\`"
             echo "- app digest: \`${{ needs.validate-promotion-selection.outputs.app_digest }}\`"
             echo "- goose digest: \`${{ needs.validate-promotion-selection.outputs.goose_digest }}\`"
             echo "- previous app digest: \`${{ needs.resolve-previous-production-deployment.outputs.previous_app_digest || 'unknown' }}\`"
@@ -1144,6 +1159,7 @@ jobs:
           EXPECTED_GOOSE_IMAGE_REF: ${{ needs.resolve-image-refs.outputs.goose_image_ref }}
           EXPECTED_SOURCE_SHA: ${{ needs.resolve-build-run-id.outputs.source_commit_sha }}
           EXPECTED_SOURCE_EVENT: ${{ needs.resolve-build-run-id.outputs.source_event }}
+          TRIGGER_WORKFLOW_EVENT_BUILD_API: ${{ needs.resolve-build-run-id.outputs.trigger_workflow_event }}
           EXPECTED_SOURCE_WORKFLOW_NAME: ${{ needs.resolve-image-refs.outputs.artifact_source_workflow_name }}
           RESOLVED_ARTIFACT_BUILD_RUN_ID: ${{ needs.resolve-image-refs.outputs.artifact_build_run_id }}
           RESOLVED_ARTIFACT_SOURCE_SHA: ${{ needs.resolve-image-refs.outputs.artifact_source_sha }}
@@ -1160,7 +1176,7 @@ jobs:
             echo "## Production Security Gate"
             echo "- action mode: \`${ACTION_MODE}\`"
             echo "- source of truth: \`security-verdict\` artifact from the **Security Release** workflow (\`security-release.yml\`)"
-            echo "- immutable alignment: \`source_commit_sha\` / \`source_event\` from candidate resolution must match \`_reusable-deploy\` artifact metadata"
+            echo "- immutable alignment: \`source_commit_sha\` / **semantic** \`source_event\` from security-verdict must match \`_reusable-deploy\` promotion-manifest \`artifact_source_event\` (Build GitHub API wrapper event is diagnostic only)"
             echo "- scope: \`full Security Release gate: repo checks plus published-image and provenance evidence; rollout execution is validated separately in this workflow\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -1198,9 +1214,15 @@ jobs:
           [[ -n "${EXPECTED_SOURCE_SHA}" ]] || fail "missing expected source SHA for production security gate"
           [[ "${EXPECTED_BUILD_RUN_ID}" == "${RESOLVED_ARTIFACT_BUILD_RUN_ID}" ]] || fail "resolved artifact build run id does not match the selected build run"
           [[ "${EXPECTED_SOURCE_SHA}" == "${RESOLVED_ARTIFACT_SOURCE_SHA}" ]] || fail "resolved artifact source SHA does not match security-verdict source_commit_sha"
-          [[ -n "${EXPECTED_SOURCE_EVENT}" ]] || fail "missing expected source_event from production candidate resolution"
+          [[ -n "${EXPECTED_SOURCE_EVENT}" ]] || fail "missing semantic source_event from security-verdict (resolve-build-run-id)"
           [[ "${RESOLVED_ARTIFACT_BRANCH}" == "main" ]] || fail "artifact_source_branch must be main for production, got ${RESOLVED_ARTIFACT_BRANCH:-empty}"
-          [[ "${RESOLVED_ARTIFACT_EVENT}" == "${EXPECTED_SOURCE_EVENT}" ]] || fail "artifact_source_event (${RESOLVED_ARTIFACT_EVENT:-empty}) does not match candidate source_event (${EXPECTED_SOURCE_EVENT})"
+          [[ "${RESOLVED_ARTIFACT_EVENT}" == "${EXPECTED_SOURCE_EVENT}" ]] || fail "artifact_source_event (${RESOLVED_ARTIFACT_EVENT:-empty}) does not match security-verdict semantic source_event (${EXPECTED_SOURCE_EVENT})"
+
+          {
+            echo "- expected semantic source_event (security-verdict / promotion-manifest): \`${EXPECTED_SOURCE_EVENT}\`"
+            echo "- Build workflow GitHub API event (diagnostic, often workflow_run): \`${TRIGGER_WORKFLOW_EVENT_BUILD_API:-}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
           if [[ -n "${EXPECTED_SOURCE_WORKFLOW_NAME}" ]]; then
             [[ "${EXPECTED_SOURCE_WORKFLOW_NAME}" == "${RESOLVED_ARTIFACT_SOURCE_WORKFLOW_NAME}" ]] || fail "resolved artifact source workflow name does not match the selected build metadata"
           fi

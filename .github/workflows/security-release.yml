@@ -577,7 +577,7 @@ jobs:
               echo "| \`triggering_build_head_sha\` | \`${TRIGGERING_BUILD_HEAD_SHA:-}\` |"
               echo "| \`triggering_workflow_name\` | \`${TRIGGERING_BUILD_WF_NAME:-}\` |"
               echo "| \`triggering_workflow_conclusion\` | \`${TRIGGERING_BUILD_CONCLUSION:-}\` |"
-              echo "| \`artifact_source_event\` | \`${ARTIFACT_SOURCE_EVENT:-}\` |"
+              echo "| \`artifact_source_event\` (semantic, promotion-manifest) | \`${ARTIFACT_SOURCE_EVENT:-}\` |"
               echo "| \`resolved_source_branch\` | \`${RESOLVED_SOURCE_BRANCH:-}\` |"
               echo "| \`resolved_source_sha\` | \`${RESOLVED_SOURCE_SHA:-}\` |"
             } >> "$GITHUB_STEP_SUMMARY"
@@ -589,7 +589,7 @@ jobs:
           {
             echo "- canonical source sha: ${release_source_sha}"
             echo "- canonical source branch: ${want_branch}"
-            echo "- artifact source event: ${A_EV:-unknown}"
+            echo "- semantic artifact source_event (promotion-manifest): ${A_EV:-unknown}"
             echo "- Build vs artifact metadata (defensive check): \`ok\` — proceeding to full gate (see **metadata_validation** in JSON)"
             echo "- triggering \`build_run_id\` (GHA): \`${TRIGGERING_BUILD_ID:-}\`  artifact \`build_run_id\`: \`${BUILD_RUN_ID:-}\`"
             echo "- triggering \`head_branch\` (diagnostic): \`${TRIGGERING_BUILD_HEAD_BRANCH:-unknown}\`"
@@ -606,7 +606,7 @@ jobs:
             echo "| \`build_run_id_from_artifacts\` | \`${BUILD_RUN_ID:-}\` |"
             echo "| \`triggering_build_event\` | \`${TRIGGERING_BUILD_EVENT:-}\` |"
             echo "| \`triggering_build_head_branch\` | \`${TRIGGERING_BUILD_HEAD_BRANCH:-}\` |"
-            echo "| \`artifact_source_event\` | \`${A_EV:-}\` |"
+            echo "| \`artifact_source_event\` (semantic, promotion-manifest) | \`${A_EV:-}\` |"
             echo "| \`resolved_source_branch\` | \`${RESOLVED_SOURCE_BRANCH:-}\` |"
             echo "| \`resolved_source_sha\` | \`${RESOLVED_SOURCE_SHA:-}\` |"
             echo "| \`decision\` (this stage) | \`proceed\` to repo **Security** run match and full verdict writer |"
@@ -829,6 +829,7 @@ jobs:
           fi
           {
             echo "- **Status**: artifact **production-deploy-candidate** uploaded (manual review required; **no auto-deploy**)."
+            echo "- **Bundle**: \`production-deploy-inputs.json\`, \`production-deploy-candidate-metadata.json\` (semantic \`source_event\` vs \`trigger_workflow_event\`), \`deploy-production-gh-command.sh\`, README."
             echo "- **build_run_id**: \`${SRC_BUILD}\`"
             echo "- **security_release_run_id**: \`${SEC_RUN}\`"
             echo "- **source_commit_sha**: \`${SRC_SHA}\`"
