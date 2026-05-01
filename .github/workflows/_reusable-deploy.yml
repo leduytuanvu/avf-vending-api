@@ -423,13 +423,18 @@ jobs:
 
           printf '%s' "${GH_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin >/dev/null
 
-          signer_workflow="github.com/${GITHUB_REPOSITORY}/.github/workflows/_reusable-build.yml@refs/heads/${ARTIFACT_SOURCE_BRANCH}"
+          signer_workflow="github.com/${GITHUB_REPOSITORY}/.github/workflows/_reusable-build.yml"
           source_ref="refs/heads/${ARTIFACT_SOURCE_BRANCH}"
+
+          gh --version
+          echo "signer_workflow=${signer_workflow}"
+          echo "source_ref=${source_ref}"
 
           verify_ref() {
             local label="$1"
             local ref="$2"
             local output_file="${label}-attestation.json"
+            echo "provenance_verify_image=${label}"
             gh attestation verify "oci://${ref}" \
               --repo "${GITHUB_REPOSITORY}" \
               --signer-workflow "${signer_workflow}" \
