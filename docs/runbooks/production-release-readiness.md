@@ -25,6 +25,12 @@ This runbook defines **what must pass** before calling a release **pilot-safe** 
 - **Promotion:** Prefer deploying a **digest that already passed** staging and your security/verify gates, not a fresh image of the same commit without staging validation, when your org’s workflow enforces that contract.
 - Full narrative: [environment-strategy.md](./environment-strategy.md) and [docs/deployment/environments.md](../deployment/environments.md).
 
+### Deploy Production inputs (`staging_evidence_id`)
+
+**Deploy Production** (`deploy-prod.yml`) expects **`staging_evidence_id`** to reference a successful **Staging Deployment Contract** run that uploaded **`staging-deploy-evidence`**, unless an operator explicitly enables **`allow_missing_staging_evidence=true`** **with** a non-empty **`missing_staging_evidence_reason`** (temporary escape hatch — not routine).
+
+The **`production-deploy-candidate`** artifact may contain **`TODO_STAGING_EVIDENCE_RUN_ID`** until someone replaces it with a real staging run id. The bundled **`deploy-production-gh-command.sh`** exits non‑zero if **`staging_evidence_id`** is still TODO or empty without those bypass fields, so operators cannot accidentally **`gh workflow run`** with an unfinished staging pointer.
+
 ## Command: static enterprise verification
 
 From the repository root:
