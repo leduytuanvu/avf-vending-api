@@ -113,6 +113,59 @@ def assert_workflow_make_targets() -> None:
         raise SystemExit(1)
 
 
+def assert_reusable_deploy_attestation_verify_contract() -> None:
+    """gh attestation verify: signer-workflow is workflow path only; branch enforced via --source-ref."""
+    path = WF / "_reusable-deploy.yml"
+    text = path.read_text(encoding="utf-8")
+    if "gh attestation verify" not in text:
+        print(
+            "ERROR: _reusable-deploy.yml must run gh attestation verify (GitHub Artifact Attestation provenance gate).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    signer_ok = 'signer_workflow="github.com/${GITHUB_REPOSITORY}/.github/workflows/_reusable-build.yml"'
+    if signer_ok not in text:
+        print(
+            "ERROR: _reusable-deploy.yml signer_workflow must be "
+            'github.com/${GITHUB_REPOSITORY}/.github/workflows/_reusable-build.yml '
+            "(no @refs/heads; gh CLI expects --signer-workflow as host/owner/repo/workflow path only).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if "_reusable-build.yml@refs/heads" in text:
+        print(
+            "ERROR: _reusable-deploy.yml must not embed @refs/heads in the signer workflow string "
+            "(use --source-ref refs/heads/${ARTIFACT_SOURCE_BRANCH}).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if 'source_ref="refs/heads/${ARTIFACT_SOURCE_BRANCH}"' not in text:
+        print(
+            "ERROR: _reusable-deploy.yml must set source_ref=\"refs/heads/${ARTIFACT_SOURCE_BRANCH}\" "
+            "for gh attestation verify --source-ref.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    need = (
+        '--source-ref "${source_ref}"',
+        "--deny-self-hosted-runners",
+        "--format json",
+    )
+    for needle in need:
+        if needle not in text:
+            print(
+                f"ERROR: _reusable-deploy.yml gh attestation verify must include {needle!r}.",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+    if "gh --version" not in text:
+        print(
+            "ERROR: _reusable-deploy.yml provenance verification step should run gh --version before attestation verify.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+
 def _normalize_gha_doc(raw: object) -> object:
     # PyYAML 1.1 parses the key "on" as boolean True. GitHub uses "on:" for triggers.
     if isinstance(raw, dict) and True in raw and "on" not in raw and isinstance(raw.get(True), (dict, str, type(None), list)):
@@ -482,6 +535,7 @@ def main() -> None:
             )
             raise SystemExit(1)
 
+    assert_reusable_deploy_attestation_verify_contract()
     assert_workflow_make_targets()
     print("OK: GitHub workflow CI/CD contract (offline YAML)")
 
