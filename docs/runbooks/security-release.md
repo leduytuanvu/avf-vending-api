@@ -15,7 +15,8 @@ The JSON always includes (machine-readable contract):
 - `verdict`, `release_gate_verdict`, `release_gate_mode`
 - `repo_security_verdict`, `repo_release_verdict`, `published_image_verdict`, `provenance_release_verdict`
 - `provenance_release_checks` (includes `provenance_enforcement`, `allow_private_repo_provenance_fallback`, `signing_enforcement`, `published_image_provenance_verdict`, `evidence_source`)
-- `source_sha`, `source_branch`, `source_build_run_id`, `source_workflow_name`
+- `source_sha`, `source_branch`, `source_build_run_id`, **semantic `source_event`** (`push` / `workflow_dispatch` from promotion-manifest), **`trigger_workflow_event`** (Build run GitHub API `event`, often `workflow_run` when CI-chained — diagnostic only)
+- `source_workflow_name`
 - `security_workflow_run_id`, `generated_at_utc`
 - `failure_reasons`, `job_results`
 
@@ -67,6 +68,7 @@ After **verdict=`pass`** on **`main`** only, Security Release may attach **`prod
 | `README.md` | Operator checklist (staging evidence TODO, run id semantics, no auto-deploy). |
 | `production-deploy-inputs.json` | **`workflow_dispatch`** inputs for **Deploy Production**, keyed like `deploy-prod.yml`. **`staging_evidence_id`** is **`TODO_STAGING_EVIDENCE_RUN_ID`** until you paste a real Staging Deployment Contract run id (see **`deploy-production-gh-command.sh`** guard). |
 | `production-deploy-inputs.env` | Same values as `KEY=value` for review. |
+| `production-deploy-candidate-metadata.json` | **Semantic** `source_event` vs **`trigger_workflow_event`** (Build API wrapper), ids, digest refs — audit only; `gh workflow run` still uses `production-deploy-inputs.json`. |
 | `deploy-production-gh-command.sh` | Example wrapper calling `gh workflow run "Deploy Production" --ref main --json < production-deploy-inputs.json` after **`REPO_ROOT`** is set. |
 
 ### GitHub CLI (`production-deploy-inputs.json`)

@@ -414,6 +414,39 @@ def main() -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
+    if "source_commit_sha source_event run_status" in text:
+        print(
+            "ERROR: deploy-prod.yml must not bind the Build workflow GitHub API .event into a variable named "
+            "`source_event` (semantic promotion source_event comes from security-verdict.json; "
+            "use build_trigger_event for the API field).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    for needle in (
+        "build_trigger_event",
+        "semantic_source_event",
+        "trigger_workflow_event=",
+        "security-verdict-bundle/security-verdict.json",
+        'p.get("source_event")',
+        "TRIGGER_WORKFLOW_EVENT_BUILD_API",
+    ):
+        if needle not in text:
+            print(
+                f"ERROR: deploy-prod.yml missing {needle!r} "
+                "(production immutable alignment uses semantic source_event from security-verdict, not Build workflow_run wrapper).",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+
+    cand_pkg = ROOT / "scripts" / "release" / "write_production_deploy_candidate_package.py"
+    cand_src = cand_pkg.read_text(encoding="utf-8")
+    if "production-deploy-candidate-metadata.json" not in cand_src:
+        print(
+            "ERROR: write_production_deploy_candidate_package.py must write production-deploy-candidate-metadata.json "
+            "(semantic source_event + diagnostic trigger_workflow_event bundle).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     if "run_migration" not in text or "backup_evidence_id" not in text:
         print(
             "ERROR: deploy-prod must define run_migration and backup_evidence_id inputs (pre-migration backup evidence contract).",

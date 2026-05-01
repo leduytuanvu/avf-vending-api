@@ -69,7 +69,7 @@ on:
         description: "Source workflow name recorded in the artifact payload; `manual` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.artifact_source_workflow_name }}
       artifact_source_event:
-        description: "Semantic source event from promotion-manifest (`push`, `workflow_dispatch`); `manual` in manual mode"
+        description: "Semantic promotion-manifest source_event (`push`, `workflow_dispatch`); must align with security-verdict `source_event`, not the Build run's GitHub API wrapper (`workflow_run`) when CI-chained; `manual` in manual mode"
         value: ${{ jobs.resolve-image-refs.outputs.artifact_source_event }}
       provenance_verdict:
         description: "Image attestation verification: `verified`, `accepted-private-repo-no-github-attestations` (private + explicit allow), `attestation-verify-failed` (public + warn + verify failed), `accepted-manual` (manual mode)"

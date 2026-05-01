@@ -2,6 +2,7 @@
 """Emit production-deploy-candidate artifact directory from security-verdict.json (pass + main only).
 
 Does not deploy production. Outputs: production-deploy-inputs.json, production-deploy-inputs.env,
+production-deploy-candidate-metadata.json (semantic source_event vs trigger_workflow_event),
 deploy-production-gh-command.sh, README.md — for manual Deploy Production (workflow_dispatch).
 """
 from __future__ import annotations
@@ -82,6 +83,12 @@ def validate_eligibility(payload: dict[str, Any]) -> None:
     _require(bool(goose_ref), "published_images.goose_image_ref must be non-empty")
     _require(_digest_pinned(app_ref), "app_image_ref must be digest-pinned (@sha256:)")
     _require(_digest_pinned(goose_ref), "goose_image_ref must be digest-pinned (@sha256:)")
+    src_ev = _as_str(payload.get("source_event")).strip()
+    _require(
+        src_ev in ("push", "workflow_dispatch"),
+        "source_event must be push or workflow_dispatch for production candidate (semantic promotion field from security-verdict; got %r)"
+        % src_ev,
+    )
 
 
 def security_release_run_id_from(payload: dict[str, Any]) -> str:
@@ -146,6 +153,24 @@ def write_env(path: Path, data: dict[str, Any]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def write_candidate_metadata(path: Path, payload: dict[str, Any]) -> None:
+    pub = payload.get("published_images") or {}
+    if not isinstance(pub, dict):
+        pub = {}
+    rid = security_release_run_id_from(payload)
+    meta = {
+        "schema_version": "production-deploy-candidate-metadata-v1",
+        "source_event": _as_str(payload.get("source_event")).strip(),
+        "trigger_workflow_event": _as_str(payload.get("trigger_workflow_event")).strip(),
+        "source_build_run_id": _as_str(payload.get("source_build_run_id")).strip(),
+        "source_sha": _as_str(payload.get("source_sha")).strip(),
+        "app_image_ref": _as_str(pub.get("app_image_ref")).strip(),
+        "goose_image_ref": _as_str(pub.get("goose_image_ref")).strip(),
+        "security_workflow_run_id": rid,
+    }
+    path.write_text(json.dumps(meta, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+
+
 def write_readme(path: Path, inputs: dict[str, Any]) -> None:
     body = """# Production deploy candidate
 
@@ -160,6 +185,7 @@ It does **not** deploy production and contains **no secrets**.
 |------|---------|
 | `production-deploy-inputs.json` | `workflow_dispatch` inputs for **%s** (`deploy-prod.yml`). Safe to pass to `gh workflow run ... --json`. |
 | `production-deploy-inputs.env` | Same values as `KEY=value` for review. |
+| `production-deploy-candidate-metadata.json` | Machine-readable **semantic** `source_event` (promotion-manifest) vs **`trigger_workflow_event`** (Build GitHub API wrapper), plus ids and digest refs — not passed to `gh workflow run`. |
 | `deploy-production-gh-command.sh` | Wrapper around **`gh workflow run`**; exits non‑zero if **`staging_evidence_id`** is TODO or empty without intentional bypass fields. |
 
 ## Before dispatch
@@ -281,6 +307,7 @@ def main() -> None:
     )
     write_env(out / "production-deploy-inputs.env", inputs)
 
+    write_candidate_metadata(out / "production-deploy-candidate-metadata.json", payload)
     write_readme(out / "README.md", inputs)
     write_gh_script(out / "deploy-production-gh-command.sh")
 
