@@ -2340,12 +2340,49 @@ jobs:
           fi
           printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"%s","detail":"%s"}\n' \
             "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${smoke_status}" "${smoke_detail}" >> deployment-evidence/release-events.jsonl
-          if [[ "${smoke_rc}" -eq 0 ]]; then
-            write_final_smoke_meta 1 none
-          else
-            write_final_smoke_meta 1 runtime_smoke_failure
-          fi
-          exit "${smoke_rc}"
+          read -r FINAL_SMOKE_CLASSIFIED_KIND FINAL_SMOKE_JOB_EXIT < <(python3 - "${smoke_rc}" deployment-evidence/smoke-cluster-final.json <<'PY'
+import json
+import pathlib
+import sys
+
+smoke_rc = int(sys.argv[1])
+path = pathlib.Path(sys.argv[2])
+payload = json.loads(path.read_text(encoding="utf-8"))
+failed = payload.get("failed_checks") or []
+failed_n = len(failed) if isinstance(failed, list) else 0
+overall = (payload.get("overall_status") or "").strip().lower()
+
+
+def tier_ok(val: object) -> bool:
+    t = str(val or "").strip().lower()
+    return t in ("pass", "passed", "ok")
+
+
+core_ok = (
+    tier_ok(payload.get("health_result"))
+    and tier_ok(payload.get("critical_read_result"))
+    and tier_ok(payload.get("base_url_result"))
+)
+kind = "none"
+job_exit = 0
+if overall == "pass" and smoke_rc == 0:
+    kind = "none"
+    job_exit = 0
+elif failed_n > 0 or not core_ok:
+    kind = "runtime_smoke_failure"
+    job_exit = smoke_rc if smoke_rc != 0 else 31
+elif overall != "pass" or smoke_rc != 0:
+    kind = "smoke_semantics_failure"
+    job_exit = smoke_rc if smoke_rc != 0 else 1
+else:
+    kind = "none"
+    job_exit = 0
+print(kind)
+print(job_exit)
+PY
+)
+          write_final_smoke_meta 1 "${FINAL_SMOKE_CLASSIFIED_KIND}"
+          exit "${FINAL_SMOKE_JOB_EXIT}"
 
       - name: Collect final post-deploy SLO evidence
         if: always() && env.ACTION_MODE == 'deploy'
@@ -2389,9 +2426,12 @@ jobs:
             source deployment-evidence/final-smoke-meta.env
           fi
 
-          smoke_evidence_format_failure_only=0
+          smoke_skip_auto_rollback=0
           if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "evidence_format_failure" && "${FINAL_SMOKE_EVIDENCE_VALID:-1}" == "0" ]]; then
-            smoke_evidence_format_failure_only=1
+            smoke_skip_auto_rollback=1
+          fi
+          if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "smoke_semantics_failure" ]]; then
+            smoke_skip_auto_rollback=1
           fi
 
           write_rollback_outputs() {
@@ -2424,9 +2464,14 @@ jobs:
             printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting app node B only: node A passed; B rollout failed"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
           elif [[ "${a_o}" == "success" && "${b_o}" == "success" && "${fs_o}" == "failure" ]]; then
-            if [[ "${smoke_evidence_format_failure_only}" -eq 1 ]]; then
-              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because failure was evidence_format_failure after healthy rollout"}\n' \
-                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            if [[ "${smoke_skip_auto_rollback}" -eq 1 ]]; then
+              if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "smoke_semantics_failure" ]]; then
+                printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because final smoke had no failed checks and only optional skips (smoke_semantics_failure)"}\n' \
+                  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+              else
+                printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because failure was evidence_format_failure after healthy rollout"}\n' \
+                  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+              fi
             else
               need_a=1
               need_b=1
@@ -2434,13 +2479,27 @@ jobs:
                 "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
             fi
           elif [[ "${a_o}" == "success" && "${b_o}" == "skipped" && "${fs_o}" == "failure" ]]; then
-            if [[ "${smoke_evidence_format_failure_only}" -eq 1 ]]; then
-              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because failure was evidence_format_failure after healthy rollout"}\n' \
-                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            if [[ "${smoke_skip_auto_rollback}" -eq 1 ]]; then
+              if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "smoke_semantics_failure" ]]; then
+                printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because final smoke had no failed checks and only optional skips (smoke_semantics_failure)"}\n' \
+                  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+              else
+                printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because failure was evidence_format_failure after healthy rollout"}\n' \
+                  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+              fi
             else
               need_a=1
               printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting app node A only: single-node or B not deployed; final public smoke failed"}\n' \
                 "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            fi
+          fi
+          INCOMPAT_BLOCK_DIGEST="90154f32ffe0f0feabe5bd0f2bb81355ddbae7cec53c42169ab1764138171011"
+          if [[ "${need_a}" -eq 1 || "${need_b}" -eq 1 ]]; then
+            if [[ "${PREVIOUS_APP_IMAGE_REF:-}" == *"sha256:${INCOMPAT_BLOCK_DIGEST}"* ]] && [[ "${a_o}" != "failure" && "${b_o}" != "failure" ]]; then
+              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped: previous app image is a known runtime-incompatible LKG digest for current production env (sha256:%s)"}\n' \
+                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${INCOMPAT_BLOCK_DIGEST}" >> deployment-evidence/release-events.jsonl
+              need_a=0
+              need_b=0
             fi
           fi
           if [[ "${need_a}" -eq 0 && "${need_b}" -eq 0 ]]; then
