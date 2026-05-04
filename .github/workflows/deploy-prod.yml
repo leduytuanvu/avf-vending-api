@@ -2311,15 +2311,25 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
+          write_final_smoke_meta() {
+            echo "FINAL_SMOKE_EVIDENCE_VALID=$1" > deployment-evidence/final-smoke-meta.env
+            echo "FINAL_SMOKE_FAILURE_KIND=$2" >> deployment-evidence/final-smoke-meta.env
+          }
           set +e
-          bash deployments/prod/scripts/smoke_prod.sh --json > deployment-evidence/smoke-cluster-final.json
+          bash deployments/prod/scripts/smoke_prod.sh --json \
+            > deployment-evidence/smoke-cluster-final.json \
+            2> deployment-evidence/smoke-cluster-final.log
           smoke_rc=$?
           set -e
           if ! python3 -m json.tool deployment-evidence/smoke-cluster-final.json >/dev/null 2>&1; then
-            echo "error: deployment-evidence/smoke-cluster-final.json is not valid JSON (non-JSON output must not be mixed into smoke stdout in --json mode)" >&2
+            echo "error: deployment-evidence/smoke-cluster-final.json is not valid JSON after final public smoke" >&2
+            echo "error: first lines of smoke stderr log:" >&2
+            head -n 40 deployment-evidence/smoke-cluster-final.log >&2 || true
+            echo "error: first lines of captured stdout (intended JSON path):" >&2
             head -n 40 deployment-evidence/smoke-cluster-final.json >&2 || true
-            printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"fail","detail":"invalid smoke JSON artifact (python3 -m json.tool validation failed)"}\n' \
+            printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"evidence","status":"fail","detail":"final smoke JSON invalid / evidence_format_failure"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            write_final_smoke_meta 0 evidence_format_failure
             exit 2
           fi
           cat deployment-evidence/smoke-cluster-final.json
@@ -2330,6 +2340,11 @@ jobs:
           fi
           printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"%s","detail":"%s"}\n' \
             "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${smoke_status}" "${smoke_detail}" >> deployment-evidence/release-events.jsonl
+          if [[ "${smoke_rc}" -eq 0 ]]; then
+            write_final_smoke_meta 1 none
+          else
+            write_final_smoke_meta 1 runtime_smoke_failure
+          fi
           exit "${smoke_rc}"
 
       - name: Collect final post-deploy SLO evidence
@@ -2369,6 +2384,12 @@ jobs:
           rollback_attempted="false"
           rollback_result_out="not-attempted"
           rollback_rc=0
+          FINAL_SMOKE_FAILURE_KIND=""
+          FINAL_SMOKE_EVIDENCE_VALID=""
+          if [[ -f deployment-evidence/final-smoke-meta.env ]]; then
+            # shellcheck disable=SC1091
+            source deployment-evidence/final-smoke-meta.env
+          fi
 
           write_rollback_outputs() {
             {
@@ -2400,14 +2421,24 @@ jobs:
             printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting app node B only: node A passed; B rollout failed"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
           elif [[ "${a_o}" == "success" && "${b_o}" == "success" && "${fs_o}" == "failure" ]]; then
-            need_a=1
-            need_b=1
-            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting both app nodes: final public smoke failed; revert cluster to prior digests"}\n' \
-              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "evidence_format_failure" ]]; then
+              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because failure was evidence_format_failure after healthy rollout"}\n' \
+                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            else
+              need_a=1
+              need_b=1
+              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting both app nodes: final public smoke failed; revert cluster to prior digests"}\n' \
+                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            fi
           elif [[ "${a_o}" == "success" && "${b_o}" == "skipped" && "${fs_o}" == "failure" ]]; then
-            need_a=1
-            printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting app node A only: single-node or B not deployed; final public smoke failed"}\n' \
-              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "evidence_format_failure" ]]; then
+              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because failure was evidence_format_failure after healthy rollout"}\n' \
+                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            else
+              need_a=1
+              printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting app node A only: single-node or B not deployed; final public smoke failed"}\n' \
+                "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            fi
           fi
           if [[ "${need_a}" -eq 0 && "${need_b}" -eq 0 ]]; then
             printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"no scoped app-node rollback from outcomes; may still rollback data node below"}\n' \

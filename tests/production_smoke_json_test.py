@@ -95,7 +95,10 @@ class SmokeProdScriptJsonModeTests(unittest.TestCase):
 
         self.assertEqual(proc.returncode, 0, proc.stderr)
         out = proc.stdout.strip()
-        self.assertFalse(re.search(r"(PASS:|FAIL:|==>)", out), msg=f"human markers leaked to stdout: {out[:500]!r}")
+        self.assertFalse(
+            re.search(r"^(PASS|FAIL|SKIP|NOTE|WARN|==>)", out, re.MULTILINE),
+            msg=f"human markers leaked to stdout: {out[:500]!r}",
+        )
         doc = json.loads(out)
         self.assertEqual(doc.get("overall_status"), "pass")
         self.assertIn("checks", doc)
