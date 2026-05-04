@@ -14,10 +14,12 @@ EMITTER_PY="${REPO_ROOT}/scripts/smoke/emit_production_smoke_json.py"
 JSON_MODE=0
 SMOKE_LEVEL="${SMOKE_LEVEL:-business-readonly}"
 SHOW_HELP=0
-while [[ $# -gt 0 ]]; do
+	while [[ $# -gt 0 ]]; do
 	case "$1" in
 		--json)
 			JSON_MODE=1
+			SMOKE_JSON=1
+			export SMOKE_JSON
 			shift
 			;;
 		--level)
@@ -36,6 +38,10 @@ while [[ $# -gt 0 ]]; do
 done
 if [[ "${SMOKE_JSON:-0}" == "1" ]]; then
 	JSON_MODE=1
+fi
+if [[ "${JSON_MODE}" == "1" ]]; then
+	SMOKE_JSON=1
+	export SMOKE_JSON
 fi
 
 if [[ "${SHOW_HELP}" == "1" ]]; then
@@ -88,6 +94,83 @@ SKIP_REASONS_FILE="$(mktemp)"
 CONFIG_FAILURES=0
 FAILURES=0
 SKIPS=0
+SMOKE_JSON_EMITTED=0
+
+emit_smoke_json_minimal_critical() {
+	local reason="${1:-unexpected_script_exit}"
+	export SMOKE_EMIT_FALLBACK_REASON="${reason}"
+	export SMOKE_COMPLETED_AT_UTC="${SMOKE_COMPLETED_AT_UTC:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}"
+	if "${SMOKE_PYTHON}" -c '
+import json, os, sys
+reason = os.environ.get("SMOKE_EMIT_FALLBACK_REASON", "unexpected")
+payload = {
+    "level": os.environ.get("SMOKE_LEVEL", "unknown"),
+    "started_at_utc": os.environ.get("SMOKE_STARTED_AT_UTC", ""),
+    "completed_at_utc": os.environ.get("SMOKE_COMPLETED_AT_UTC", ""),
+    "overall_status": "fail",
+    "final_result": "fail",
+    "base_url": os.environ.get("SMOKE_BASE_URL", ""),
+    "connect_to_host": os.environ.get("SMOKE_CONNECT_TO_HOST", ""),
+    "smoke_label": os.environ.get("SMOKE_LABEL", ""),
+    "health_result": os.environ.get("SMOKE_HEALTH_RESULT", "not-run"),
+    "business_readonly_result": os.environ.get("SMOKE_BUSINESS_READONLY_RESULT", "not-run"),
+    "business_synthetic_result": os.environ.get("SMOKE_BUSINESS_SYNTHETIC_RESULT", "not-run"),
+    "zero_side_effects_claim": True,
+    "base_url_result": os.environ.get("SMOKE_BASE_URL_RESULT", "not-run"),
+    "critical_read_result": os.environ.get("SMOKE_CRITICAL_READ_RESULT", "not-run"),
+    "optional_db_read_result": os.environ.get("SMOKE_OPTIONAL_DB_READ_RESULT", "not-run"),
+    "checks": [],
+    "failed_checks": [],
+    "skipped_checks": [],
+    "skipped_reasons": [],
+    "emitter_fallback": True,
+    "fallback_detail": reason,
+}
+json.dump(payload, sys.stdout, indent=2)
+sys.stdout.write("\n")
+' 2>/dev/null; then
+		return 0
+	fi
+	printf '%s\n' '{"overall_status":"fail","final_result":"fail","level":"unknown","checks":[],"failed_checks":[],"skipped_checks":[],"skipped_reasons":[],"emitter_fallback":true,"fallback_detail":"python_emitter_unavailable"}'
+}
+
+try_emit_json_or_minimal() {
+	if [[ "${JSON_MODE:-0}" != "1" ]]; then
+		return 0
+	fi
+	if [[ "${SMOKE_JSON_EMITTED:-0}" == "1" ]]; then
+		return 0
+	fi
+	export SMOKE_CHECKS_FILE="${CHECKS_FILE}"
+	export SMOKE_SKIPPED_REASONS_FILE="${SKIP_REASONS_FILE}"
+	export SMOKE_LEVEL
+	export SMOKE_STARTED_AT_UTC
+	export SMOKE_BASE_URL="${BASE_URL:-}"
+	export SMOKE_LABEL="${SMOKE_LABEL:-}"
+	export SMOKE_CONNECT_TO_HOST="${SMOKE_CONNECT_TO_HOST:-}"
+	export SMOKE_OVERALL_STATUS
+	export SMOKE_BUSINESS_SYNTHETIC_RESULT
+	export SMOKE_ZERO_SIDE_EFFECTS_CLAIM
+	export SMOKE_BASE_URL_RESULT SMOKE_CRITICAL_READ_RESULT SMOKE_OPTIONAL_DB_READ_RESULT
+	export SMOKE_HEALTH_RESULT SMOKE_BUSINESS_READONLY_RESULT
+	SMOKE_COMPLETED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+	export SMOKE_COMPLETED_AT_UTC
+	if [[ ! -f "${EMITTER_PY}" ]]; then
+		human_log "WARN: missing JSON emitter; minimal fail JSON on stdout only"
+		emit_smoke_json_minimal_critical "missing_emitter_py"
+		SMOKE_JSON_EMITTED=1
+		return 0
+	fi
+	set +e
+	"${SMOKE_PYTHON}" "${EMITTER_PY}"
+	local _emit_rc=$?
+	set -e
+	if [[ "${_emit_rc}" -ne 0 ]]; then
+		human_log "WARN: smoke JSON emitter exited ${_emit_rc}; minimal fallback JSON on stdout"
+		emit_smoke_json_minimal_critical "emitter_exit_${_emit_rc}"
+	fi
+	SMOKE_JSON_EMITTED=1
+}
 
 # Tier outcomes for evidence (emitter)
 SMOKE_HEALTH_RESULT="not-run"
@@ -110,7 +193,12 @@ append_skip_reason() {
 cleanup() {
 	rm -f "${CHECKS_FILE}" "${SKIP_REASONS_FILE}"
 }
-trap cleanup EXIT
+
+on_smoke_shell_exit() {
+	try_emit_json_or_minimal
+	cleanup
+}
+trap on_smoke_shell_exit EXIT
 
 json_escape() {
 	local value="${1-}"
@@ -339,18 +427,6 @@ if ((INVALID_SMOKE_LEVEL == 1)); then
 	SMOKE_BUSINESS_READONLY_RESULT="not-run"
 	SMOKE_BUSINESS_SYNTHETIC_RESULT="not-run"
 	SMOKE_OVERALL_STATUS="fail"
-	SMOKE_COMPLETED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-	if [[ "${JSON_MODE}" == "1" ]]; then
-		export SMOKE_CHECKS_FILE="${CHECKS_FILE}"
-		export SMOKE_SKIPPED_REASONS_FILE="${SKIP_REASONS_FILE}"
-		export SMOKE_BASE_URL="${BASE_URL}"
-		export SMOKE_LABEL="${SMOKE_LABEL:-}"
-		export SMOKE_OVERALL_STATUS SMOKE_LEVEL SMOKE_STARTED_AT_UTC SMOKE_COMPLETED_AT_UTC
-		export SMOKE_HEALTH_RESULT SMOKE_BUSINESS_READONLY_RESULT SMOKE_BUSINESS_SYNTHETIC_RESULT
-		export SMOKE_BASE_URL_RESULT SMOKE_CRITICAL_READ_RESULT SMOKE_OPTIONAL_DB_READ_RESULT
-		export SMOKE_ZERO_SIDE_EFFECTS_CLAIM
-		"${SMOKE_PYTHON}" "${EMITTER_PY}"
-	fi
 	exit "${EXIT_CODE_CONFIG_FAILURE}"
 fi
 
@@ -577,37 +653,18 @@ if [[ "${SMOKE_LEVEL}" == "health" ]]; then
 	fi
 fi
 
-SMOKE_COMPLETED_AT_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-
-if [[ "${JSON_MODE}" == "1" ]]; then
-	export SMOKE_CHECKS_FILE="${CHECKS_FILE}"
-	export SMOKE_SKIPPED_REASONS_FILE="${SKIP_REASONS_FILE}"
-	export SMOKE_LEVEL
-	export SMOKE_STARTED_AT_UTC
-	export SMOKE_COMPLETED_AT_UTC
-	export SMOKE_BASE_URL="${BASE_URL}"
-	export SMOKE_LABEL="${SMOKE_LABEL:-}"
-	export SMOKE_CONNECT_TO_HOST="${SMOKE_CONNECT_TO_HOST:-}"
-	export SMOKE_OVERALL_STATUS
-	export SMOKE_BUSINESS_SYNTHETIC_RESULT
-	export SMOKE_ZERO_SIDE_EFFECTS_CLAIM
-	export SMOKE_BASE_URL_RESULT SMOKE_CRITICAL_READ_RESULT SMOKE_OPTIONAL_DB_READ_RESULT
-	export SMOKE_HEALTH_RESULT SMOKE_BUSINESS_READONLY_RESULT
-	[[ -f "${EMITTER_PY}" ]]
-	"${SMOKE_PYTHON}" "${EMITTER_PY}"
-fi
-
+OVERALL_RC=0
 if ((CONFIG_FAILURES > 0)); then
-	exit "${EXIT_CODE_CONFIG_FAILURE}"
-fi
-if ((FAILURES > 0)); then
-	exit "${EXIT_CODE_SMOKE_FAILURE}"
-fi
-if [[ "${SMOKE_OVERALL_STATUS}" == "fail" ]]; then
-	exit "${EXIT_CODE_SMOKE_FAILURE}"
+	OVERALL_RC="${EXIT_CODE_CONFIG_FAILURE}"
+elif ((FAILURES > 0)); then
+	OVERALL_RC="${EXIT_CODE_SMOKE_FAILURE}"
+elif [[ "${SMOKE_OVERALL_STATUS}" == "fail" ]]; then
+	OVERALL_RC="${EXIT_CODE_SMOKE_FAILURE}"
+else
+	OVERALL_RC=0
 fi
 
-if [[ "${JSON_MODE}" != "1" ]]; then
+if [[ "${JSON_MODE}" != "1" ]] && [[ "${OVERALL_RC}" -eq 0 ]]; then
 	human_log "smoke_prod: PASS (level=${SMOKE_LEVEL})"
 fi
-exit 0
+exit "${OVERALL_RC}"
