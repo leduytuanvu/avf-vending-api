@@ -23,6 +23,34 @@ func TestValidateRuntimeWiring_RequiresAuthAdapter(t *testing.T) {
 	}
 }
 
+func TestValidateRuntimeWiring_RequiresOutboxPublisher(t *testing.T) {
+	cfg := &config.Config{
+		APIWiring: config.APIWiringRequirements{RequireOutboxPublisher: true},
+	}
+	rt := &Runtime{}
+	err := ValidateRuntimeWiring(cfg, rt)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "API_REQUIRE_OUTBOX_PUBLISHER") {
+		t.Fatalf("unexpected: %v", err)
+	}
+}
+
+func TestValidateRuntimeWiring_RequiresNATSRuntimeWhenNil(t *testing.T) {
+	cfg := &config.Config{
+		APIWiring: config.APIWiringRequirements{RequireNATSRuntime: true},
+	}
+	rt := &Runtime{}
+	err := ValidateRuntimeWiring(cfg, rt)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "API_REQUIRE_NATS_RUNTIME") {
+		t.Fatalf("unexpected: %v", err)
+	}
+}
+
 func TestValidateRuntimeWiring_AllowsNilDepsWhenNotRequired(t *testing.T) {
 	cfg := &config.Config{}
 	rt := &Runtime{}
