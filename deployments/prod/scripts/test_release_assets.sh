@@ -78,7 +78,11 @@ class H(BaseHTTPRequestHandler):
 	def do_GET(self):
 		p = self.path.split("?", 1)[0]
 		self.send_response(200)
-		if p.rstrip("/").endswith("/health/ready") or p.rstrip("/").endswith("/health/live"):
+		if p.rstrip("/").endswith("/swagger/doc.json"):
+			self.send_header("Content-Type", "application/json")
+			self.end_headers()
+			self.wfile.write(b'{"openapi":"3.0.0","paths":{}}\n')
+		elif p.rstrip("/").endswith("/health/ready") or p.rstrip("/").endswith("/health/live"):
 			self.send_header("Content-Type", "text/plain")
 			self.end_headers()
 			self.wfile.write(b"ok\n")
@@ -107,21 +111,57 @@ PY
 	SMOKE_LOG_OUT="${TMP_DIR}/smoke-stderr.log"
 	if ! SMOKE_BASE_URL="http://127.0.0.1:${MOCK_PORT}" SMOKE_LEVEL=health bash "${ROOT}/scripts/smoke_prod.sh" --json >"${SMOKE_JSON_OUT}" 2>"${SMOKE_LOG_OUT}"; then
 		kill "${MOCK_PID}" 2>/dev/null || true
-		echo "error: smoke_prod.sh --json expected exit 0 against mock server" >&2
+		echo "error: smoke_prod.sh --json expected exit 0 against mock server (health)" >&2
 		cat "${SMOKE_LOG_OUT}" >&2 || true
+		exit 1
+	fi
+	if [[ ! -s "${SMOKE_JSON_OUT}" ]]; then
+		kill "${MOCK_PID}" 2>/dev/null || true
+		echo "error: smoke stdout JSON must be non-empty (health)" >&2
+		exit 1
+	fi
+	python3 -m json.tool "${SMOKE_JSON_OUT}" >/dev/null
+	if ! grep -q '"overall_status"' "${SMOKE_JSON_OUT}"; then
+		kill "${MOCK_PID}" 2>/dev/null || true
+		echo "error: smoke JSON must contain overall_status (health)" >&2
+		exit 1
+	fi
+	if grep -qE '^(PASS|FAIL|SKIP|NOTE|WARN|==>)' "${SMOKE_JSON_OUT}"; then
+		kill "${MOCK_PID}" 2>/dev/null || true
+		echo "error: smoke JSON stdout contains human-oriented line(s) (health)" >&2
+		exit 1
+	fi
+	if ! grep -q 'PASS:' "${SMOKE_LOG_OUT}"; then
+		kill "${MOCK_PID}" 2>/dev/null || true
+		echo "error: expected PASS lines on smoke stderr log (health)" >&2
+		exit 1
+	fi
+	SMOKE_JSON_BR="${TMP_DIR}/smoke-stdout-business-readonly.json"
+	SMOKE_LOG_BR="${TMP_DIR}/smoke-stderr-business-readonly.log"
+	if ! SMOKE_BASE_URL="http://127.0.0.1:${MOCK_PORT}" SMOKE_LEVEL=business-readonly bash "${ROOT}/scripts/smoke_prod.sh" --json >"${SMOKE_JSON_BR}" 2>"${SMOKE_LOG_BR}"; then
+		kill "${MOCK_PID}" 2>/dev/null || true
+		echo "error: smoke_prod.sh --json expected exit 0 against mock server (business-readonly)" >&2
+		cat "${SMOKE_LOG_BR}" >&2 || true
+		exit 1
+	fi
+	if [[ ! -s "${SMOKE_JSON_BR}" ]]; then
+		kill "${MOCK_PID}" 2>/dev/null || true
+		echo "error: smoke stdout JSON must be non-empty (business-readonly)" >&2
+		exit 1
+	fi
+	python3 -m json.tool "${SMOKE_JSON_BR}" >/dev/null
+	if ! grep -q '"overall_status"' "${SMOKE_JSON_BR}"; then
+		kill "${MOCK_PID}" 2>/dev/null || true
+		echo "error: smoke JSON must contain overall_status (business-readonly)" >&2
+		exit 1
+	fi
+	if grep -qE '^(PASS|FAIL|SKIP|NOTE|WARN|==>)' "${SMOKE_JSON_BR}"; then
+		kill "${MOCK_PID}" 2>/dev/null || true
+		echo "error: smoke JSON stdout contains human-oriented line(s) (business-readonly)" >&2
 		exit 1
 	fi
 	kill "${MOCK_PID}" 2>/dev/null || true
 	wait "${MOCK_PID}" 2>/dev/null || true
-	python3 -m json.tool "${SMOKE_JSON_OUT}" >/dev/null
-	if grep -qE '^(PASS|FAIL|SKIP|NOTE|WARN|==>)' "${SMOKE_JSON_OUT}"; then
-		echo "error: smoke JSON stdout contains human-oriented line(s)" >&2
-		exit 1
-	fi
-	if ! grep -q 'PASS:' "${SMOKE_LOG_OUT}"; then
-		echo "error: expected PASS lines on smoke stderr log" >&2
-		exit 1
-	fi
 else
 	echo "==> smoke_prod.sh --json: skipped (python3 not found)"
 fi
