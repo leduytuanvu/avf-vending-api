@@ -2341,46 +2341,44 @@ jobs:
           printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"%s","detail":"%s"}\n' \
             "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${smoke_status}" "${smoke_detail}" >> deployment-evidence/release-events.jsonl
           read -r FINAL_SMOKE_CLASSIFIED_KIND FINAL_SMOKE_JOB_EXIT < <(python3 - "${smoke_rc}" deployment-evidence/smoke-cluster-final.json <<'PY'
-import json
-import pathlib
-import sys
+          import json
+          import pathlib
+          import sys
 
-smoke_rc = int(sys.argv[1])
-path = pathlib.Path(sys.argv[2])
-payload = json.loads(path.read_text(encoding="utf-8"))
-failed = payload.get("failed_checks") or []
-failed_n = len(failed) if isinstance(failed, list) else 0
-overall = (payload.get("overall_status") or "").strip().lower()
+          smoke_rc = int(sys.argv[1])
+          path = pathlib.Path(sys.argv[2])
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          failed = payload.get("failed_checks") or []
+          failed_n = len(failed) if isinstance(failed, list) else 0
+          overall = (payload.get("overall_status") or "").strip().lower()
 
+          def tier_ok(val: object) -> bool:
+              t = str(val or "").strip().lower()
+              return t in ("pass", "passed", "ok")
 
-def tier_ok(val: object) -> bool:
-    t = str(val or "").strip().lower()
-    return t in ("pass", "passed", "ok")
-
-
-core_ok = (
-    tier_ok(payload.get("health_result"))
-    and tier_ok(payload.get("critical_read_result"))
-    and tier_ok(payload.get("base_url_result"))
-)
-kind = "none"
-job_exit = 0
-if overall == "pass" and smoke_rc == 0:
-    kind = "none"
-    job_exit = 0
-elif failed_n > 0 or not core_ok:
-    kind = "runtime_smoke_failure"
-    job_exit = smoke_rc if smoke_rc != 0 else 31
-elif overall != "pass" or smoke_rc != 0:
-    kind = "smoke_semantics_failure"
-    job_exit = smoke_rc if smoke_rc != 0 else 1
-else:
-    kind = "none"
-    job_exit = 0
-print(kind)
-print(job_exit)
-PY
-)
+          core_ok = (
+              tier_ok(payload.get("health_result"))
+              and tier_ok(payload.get("critical_read_result"))
+              and tier_ok(payload.get("base_url_result"))
+          )
+          kind = "none"
+          job_exit = 0
+          if overall == "pass" and smoke_rc == 0:
+              kind = "none"
+              job_exit = 0
+          elif failed_n > 0 or not core_ok:
+              kind = "runtime_smoke_failure"
+              job_exit = smoke_rc if smoke_rc != 0 else 31
+          elif overall != "pass" or smoke_rc != 0:
+              kind = "smoke_semantics_failure"
+              job_exit = smoke_rc if smoke_rc != 0 else 1
+          else:
+              kind = "none"
+              job_exit = 0
+          print(kind)
+          print(job_exit)
+          PY
+          )
           write_final_smoke_meta 1 "${FINAL_SMOKE_CLASSIFIED_KIND}"
           exit "${FINAL_SMOKE_JOB_EXIT}"
 
