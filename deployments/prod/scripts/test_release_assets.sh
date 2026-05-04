@@ -83,6 +83,18 @@ grep -q 'python3 -m json\.tool deployment-evidence/smoke-cluster-final\.json' "$
 	echo "error: deploy-prod must validate smoke-cluster-final.json with python3 -m json.tool" >&2
 	exit 1
 }
+grep -q 'final smoke normalized to pass because all required checks passed and only optional checks were skipped' "${DEPLOY_WF}" || {
+	echo "error: deploy-prod must log normalized optional-skip-only final smoke to release-events" >&2
+	exit 1
+}
+grep -qF '"${smoke_rc}" =~ ^[0-9]+$' "${DEPLOY_WF}" || {
+	echo "error: deploy-prod must validate smoke_rc is numeric after smoke_prod.sh" >&2
+	exit 1
+}
+grep -qF '"${FINAL_SMOKE_JOB_EXIT}" =~ ^[0-9]+$' "${DEPLOY_WF}" || {
+	echo "error: deploy-prod must validate FINAL_SMOKE_JOB_EXIT is numeric before exit" >&2
+	exit 1
+}
 
 echo "==> validate_release_assets"
 ALLOW_LEGACY_SINGLE_HOST=1 bash "${ROOT}/scripts/validate_release_assets.sh" "${TMP_ENV}"
@@ -230,6 +242,7 @@ assert p.get("overall_status") == "pass", p
 assert p.get("final_result") == "pass", p
 assert p.get("failed_checks") == [], p
 assert p.get("zero_side_effects_claim") is True, p
+assert any(c.get("status") == "skip" for c in p.get("checks", [])), p
 PY
 	then
 		kill "${MOCK_PID}" "${MOCK_PID_404}" 2>/dev/null || true
