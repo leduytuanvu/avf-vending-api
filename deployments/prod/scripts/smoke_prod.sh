@@ -8,6 +8,8 @@ PROD_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 cd "${PROD_DIR}"
 
+SMOKE_PYTHON="${SMOKE_PYTHON:-python3}"
+
 EMITTER_PY="${REPO_ROOT}/scripts/smoke/emit_production_smoke_json.py"
 JSON_MODE=0
 SMOKE_LEVEL="${SMOKE_LEVEL:-business-readonly}"
@@ -52,6 +54,7 @@ Environment (high level):
   SMOKE_BUSINESS_READONLY_SPECS — explicit checks: "name|path|statuses|regex" separated by ";;"
   SMOKE_DB_READ_PATH, SMOKE_DB_READ_MATCH_REGEX (legacy DB read probe)
   SMOKE_SYNTHETIC_GET_PATH, SMOKE_SYNTHETIC_BEARER_TOKEN, SMOKE_SYNTHETIC_MATCH_REGEX
+  SMOKE_PYTHON — interpreter for emit_production_smoke_json.py and URL helpers (default: python3)
 
 This script only issues GET. It must never trigger real payment, dispense, inventory
 changes, or MQTT. See docs/operations/production-smoke-tests.md
@@ -68,6 +71,12 @@ fi
 	echo "error: missing JSON emitter: ${EMITTER_PY}" >&2
 	exit 2
 }
+
+if [[ "${JSON_MODE}" == "1" ]]; then
+	# Deploy workflows capture stdout as JSON evidence; keep fd 1 JSON-only via Python >&3.
+	exec 3>&1
+	exec 1>&2
+fi
 
 EXIT_CODE_CONFIG_FAILURE=30
 EXIT_CODE_SMOKE_FAILURE=31
@@ -102,11 +111,8 @@ cleanup() {
 trap cleanup EXIT
 
 emit_info() {
-	if [[ "${JSON_MODE}" == "1" ]]; then
-		echo "$*" >&2
-	else
-		echo "$*"
-	fi
+	# With JSON_MODE, fd 1 is wired to stderr above so plain echo never pollutes JSON stdout.
+	echo "$*"
 }
 
 json_escape() {
@@ -205,8 +211,8 @@ curl_check() {
 	)
 
 	if [[ -n "${SMOKE_CONNECT_TO_HOST:-}" ]]; then
-		url_host="$(python3 -c 'import sys; from urllib.parse import urlparse; parsed = urlparse(sys.argv[1]); print(parsed.hostname or "")' "${url}")"
-		url_port="$(python3 -c 'import sys; from urllib.parse import urlparse; parsed = urlparse(sys.argv[1]); print(parsed.port or (443 if parsed.scheme == "https" else 80))' "${url}")"
+		url_host="$("${SMOKE_PYTHON}" -c 'import sys; from urllib.parse import urlparse; parsed = urlparse(sys.argv[1]); print(parsed.hostname or "")' "${url}")"
+		url_port="$("${SMOKE_PYTHON}" -c 'import sys; from urllib.parse import urlparse; parsed = urlparse(sys.argv[1]); print(parsed.port or (443 if parsed.scheme == "https" else 80))' "${url}")"
 		curl_args+=(--connect-to "${url_host}:${url_port}:${SMOKE_CONNECT_TO_HOST}:${SMOKE_CONNECT_TO_PORT:-${url_port}}")
 	fi
 
@@ -270,8 +276,8 @@ openapi_readonly_default_probe() {
 		--max-time "${SMOKE_TIMEOUT_SECS:-10}"
 	)
 	if [[ -n "${SMOKE_CONNECT_TO_HOST:-}" ]]; then
-		url_host="$(python3 -c 'import sys; from urllib.parse import urlparse; print(urlparse(sys.argv[1]).hostname or "")' "${url}")"
-		url_port="$(python3 -c 'import sys; from urllib.parse import urlparse; p=urlparse(sys.argv[1]); print(p.port or (443 if p.scheme == "https" else 80))' "${url}")"
+		url_host="$("${SMOKE_PYTHON}" -c 'import sys; from urllib.parse import urlparse; print(urlparse(sys.argv[1]).hostname or "")' "${url}")"
+		url_port="$("${SMOKE_PYTHON}" -c 'import sys; from urllib.parse import urlparse; p=urlparse(sys.argv[1]); print(p.port or (443 if p.scheme == "https" else 80))' "${url}")"
 		curl_args+=(--connect-to "${url_host}:${url_port}:${SMOKE_CONNECT_TO_HOST}:${SMOKE_CONNECT_TO_PORT:-${url_port}}")
 	fi
 	set +e
@@ -345,7 +351,7 @@ if ((INVALID_SMOKE_LEVEL == 1)); then
 		export SMOKE_HEALTH_RESULT SMOKE_BUSINESS_READONLY_RESULT SMOKE_BUSINESS_SYNTHETIC_RESULT
 		export SMOKE_BASE_URL_RESULT SMOKE_CRITICAL_READ_RESULT SMOKE_OPTIONAL_DB_READ_RESULT
 		export SMOKE_ZERO_SIDE_EFFECTS_CLAIM
-		python3 "${EMITTER_PY}"
+		"${SMOKE_PYTHON}" "${EMITTER_PY}" >&3
 	fi
 	exit "${EXIT_CODE_CONFIG_FAILURE}"
 fi
@@ -590,7 +596,7 @@ if [[ "${JSON_MODE}" == "1" ]]; then
 	export SMOKE_BASE_URL_RESULT SMOKE_CRITICAL_READ_RESULT SMOKE_OPTIONAL_DB_READ_RESULT
 	export SMOKE_HEALTH_RESULT SMOKE_BUSINESS_READONLY_RESULT
 	[[ -f "${EMITTER_PY}" ]]
-	python3 "${EMITTER_PY}"
+	"${SMOKE_PYTHON}" "${EMITTER_PY}" >&3
 fi
 
 if ((CONFIG_FAILURES > 0)); then
