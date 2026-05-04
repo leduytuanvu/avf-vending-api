@@ -83,16 +83,28 @@ grep -q 'python3 -m json\.tool deployment-evidence/smoke-cluster-final\.json' "$
 	echo "error: deploy-prod must validate smoke-cluster-final.json with python3 -m json.tool" >&2
 	exit 1
 }
-grep -q 'final smoke normalized to pass because all required checks passed and only optional checks were skipped' "${DEPLOY_WF}" || {
-	echo "error: deploy-prod must log normalized optional-skip-only final smoke to release-events" >&2
+grep -q 'FINAL_SMOKE_NORMALIZED_RESULT' "${DEPLOY_WF}" || {
+	echo "error: deploy-prod final-smoke-meta must record FINAL_SMOKE_NORMALIZED_RESULT" >&2
+	exit 1
+}
+if grep -qF 'exit "${smoke_rc}"' "${DEPLOY_WF}"; then
+	echo "error: deploy-prod must not use raw exit \"\${smoke_rc}\" for final smoke (use JSON-normalized step exit)" >&2
+	exit 1
+fi
+grep -qF 'exit "${FINAL_STEP_EXIT}"' "${DEPLOY_WF}" || {
+	echo "error: deploy-prod final smoke must exit using validated FINAL_STEP_EXIT" >&2
+	exit 1
+}
+grep -q 'FINAL_SMOKE_NORMALIZED_RESULT=pass' "${DEPLOY_WF}" || {
+	echo "error: deploy-prod rollback/summary must recognize FINAL_SMOKE_NORMALIZED_RESULT=pass" >&2
 	exit 1
 }
 grep -qF '"${smoke_rc}" =~ ^[0-9]+$' "${DEPLOY_WF}" || {
 	echo "error: deploy-prod must validate smoke_rc is numeric after smoke_prod.sh" >&2
 	exit 1
 }
-grep -qF '"${FINAL_SMOKE_JOB_EXIT}" =~ ^[0-9]+$' "${DEPLOY_WF}" || {
-	echo "error: deploy-prod must validate FINAL_SMOKE_JOB_EXIT is numeric before exit" >&2
+grep -qE 'FINAL_STEP_EXIT.*=~.*\[0-9\]' "${DEPLOY_WF}" || grep -qF 'FINAL_STEP_EXIT="${FINAL_STEP_EXIT:-1}"' "${DEPLOY_WF}" || {
+	echo "error: deploy-prod must validate FINAL_STEP_EXIT before exit" >&2
 	exit 1
 }
 

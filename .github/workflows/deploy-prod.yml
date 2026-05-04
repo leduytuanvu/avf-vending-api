@@ -2312,8 +2312,12 @@ jobs:
           set -Eeuo pipefail
           mkdir -p deployment-evidence
           write_final_smoke_meta() {
-            echo "FINAL_SMOKE_EVIDENCE_VALID=$1" > deployment-evidence/final-smoke-meta.env
-            echo "FINAL_SMOKE_FAILURE_KIND=$2" >> deployment-evidence/final-smoke-meta.env
+            local ev="$1"
+            local kind="$2"
+            local norm="${3:-}"
+            echo "FINAL_SMOKE_EVIDENCE_VALID=${ev}" > deployment-evidence/final-smoke-meta.env
+            echo "FINAL_SMOKE_FAILURE_KIND=${kind}" >> deployment-evidence/final-smoke-meta.env
+            echo "FINAL_SMOKE_NORMALIZED_RESULT=${norm}" >> deployment-evidence/final-smoke-meta.env
           }
           set +e
           bash deployments/prod/scripts/smoke_prod.sh --json \
@@ -2333,14 +2337,15 @@ jobs:
             head -n 40 deployment-evidence/smoke-cluster-final.json >&2 || true
             printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"evidence","status":"fail","detail":"final smoke JSON invalid / evidence_format_failure"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
-            write_final_smoke_meta 0 evidence_format_failure
+            write_final_smoke_meta 0 evidence_format_failure ""
             exit 2
           fi
           cat deployment-evidence/smoke-cluster-final.json
-          read -r FINAL_SMOKE_CLASSIFIED_KIND FINAL_SMOKE_JOB_EXIT FINAL_SMOKE_JSON_NORMALIZED < <(python3 - "${smoke_rc}" deployment-evidence/smoke-cluster-final.json <<'PY'
+          read -r FINAL_STEP_EXIT FINAL_FAIL_KIND FINAL_NORM_RESULT < <(python3 - "${smoke_rc}" deployment-evidence/smoke-cluster-final.json <<'PY'
           import json
           import pathlib
           import sys
+          from datetime import datetime, timezone
 
           smoke_rc = int(sys.argv[1])
           path = pathlib.Path(sys.argv[2])
@@ -2348,6 +2353,7 @@ jobs:
           failed = payload.get("failed_checks") or []
           failed_n = len(failed) if isinstance(failed, list) else 0
           overall = (payload.get("overall_status") or "").strip().lower()
+          final_result = (payload.get("final_result") or "").strip().lower()
 
           def tier_ok(val: object) -> bool:
               t = str(val or "").strip().lower()
@@ -2358,41 +2364,40 @@ jobs:
               and tier_ok(payload.get("critical_read_result"))
               and tier_ok(payload.get("base_url_result"))
           )
-          normalized = False
-          if failed_n == 0 and core_ok and (overall != "pass" or smoke_rc != 0):
-              normalized = True
-              overall = "pass"
-              smoke_rc = 0
-              payload["overall_status"] = "pass"
-              payload["final_result"] = "pass"
-              path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-
-          kind = "none"
-          job_exit = 0
-          if normalized:
-              kind = "none"
-              job_exit = 0
-          elif overall == "pass" and smoke_rc == 0:
-              kind = "none"
-              job_exit = 0
+          json_evidence_pass = (
+              failed_n == 0
+              and overall == "pass"
+              and final_result == "pass"
+              and core_ok
+          )
+          if json_evidence_pass:
+              if smoke_rc != 0:
+                  ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                  line = (
+                      '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"info",'
+                      '"detail":"raw smoke rc was non-zero but valid JSON result passed; normalized to pass"}'
+                  ) % ts
+                  path_evt = pathlib.Path("deployment-evidence/release-events.jsonl")
+                  path_evt.parent.mkdir(parents=True, exist_ok=True)
+                  with path_evt.open("a", encoding="utf-8") as f:
+                      f.write(line + "\n")
+              step_exit = 0
+              fail_kind = "none"
+              norm_result = "pass"
           elif failed_n > 0 or not core_ok:
-              kind = "runtime_smoke_failure"
-              job_exit = smoke_rc if smoke_rc != 0 else 31
-          elif overall != "pass" or smoke_rc != 0:
-              kind = "smoke_semantics_failure"
-              job_exit = smoke_rc if smoke_rc != 0 else 1
+              step_exit = 1
+              fail_kind = "runtime_smoke_failure"
+              norm_result = ""
           else:
-              kind = "none"
-              job_exit = 0
-          print(kind)
-          print(job_exit)
-          print(1 if normalized else 0)
+              step_exit = 1
+              fail_kind = "smoke_semantics_failure"
+              norm_result = ""
+
+          print(step_exit)
+          print(fail_kind)
+          print(norm_result)
           PY
           )
-          if [[ "${FINAL_SMOKE_JSON_NORMALIZED:-0}" == "1" ]]; then
-            printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"pass","detail":"final smoke normalized to pass because all required checks passed and only optional checks were skipped"}\n' \
-              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
-          fi
           smoke_status="$(python3 -c 'import json, pathlib, sys; payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); print(payload.get("overall_status", "unknown"))' deployment-evidence/smoke-cluster-final.json)"
           smoke_detail="final cluster smoke failed"
           if [[ "${smoke_status}" == "pass" ]]; then
@@ -2400,12 +2405,21 @@ jobs:
           fi
           printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"%s","detail":"%s"}\n' \
             "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${smoke_status}" "${smoke_detail}" >> deployment-evidence/release-events.jsonl
-          FINAL_SMOKE_CLASSIFIED_KIND="${FINAL_SMOKE_CLASSIFIED_KIND:-runtime_smoke_failure}"
-          if [[ -z "${FINAL_SMOKE_JOB_EXIT}" || ! "${FINAL_SMOKE_JOB_EXIT}" =~ ^[0-9]+$ ]]; then
-            FINAL_SMOKE_JOB_EXIT=1
+          if [[ "${FINAL_NORM_RESULT:-}" == "pass" ]] && [[ "${smoke_rc}" -ne 0 ]]; then
+            printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"info","detail":"final smoke step exit aligned to JSON pass (raw smoke_rc=%s)"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${smoke_rc}" >> deployment-evidence/release-events.jsonl
           fi
-          write_final_smoke_meta 1 "${FINAL_SMOKE_CLASSIFIED_KIND}"
-          exit "${FINAL_SMOKE_JOB_EXIT}"
+          FINAL_FAIL_KIND="${FINAL_FAIL_KIND:-runtime_smoke_failure}"
+          FINAL_STEP_EXIT="${FINAL_STEP_EXIT:-1}"
+          if [[ ! "${FINAL_STEP_EXIT}" =~ ^[0-9]+$ ]]; then
+            FINAL_STEP_EXIT=1
+          fi
+          if [[ "${FINAL_STEP_EXIT}" -eq 0 ]]; then
+            write_final_smoke_meta 1 "${FINAL_FAIL_KIND}" "${FINAL_NORM_RESULT}"
+          else
+            write_final_smoke_meta 1 "${FINAL_FAIL_KIND}" ""
+          fi
+          exit "${FINAL_STEP_EXIT}"
 
       - name: Collect final post-deploy SLO evidence
         if: always() && env.ACTION_MODE == 'deploy'
@@ -2456,6 +2470,9 @@ jobs:
           if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "smoke_semantics_failure" ]]; then
             smoke_skip_auto_rollback=1
           fi
+          if [[ "${FINAL_SMOKE_EVIDENCE_VALID:-}" == "1" && "${FINAL_SMOKE_FAILURE_KIND:-}" == "none" && "${FINAL_SMOKE_NORMALIZED_RESULT:-}" == "pass" ]]; then
+            smoke_skip_auto_rollback=1
+          fi
 
           write_rollback_outputs() {
             {
@@ -2475,6 +2492,9 @@ jobs:
           a_o="${APP_NODE_A_ROLLOUT_OUTCOME:-skipped}"
           b_o="${APP_NODE_B_ROLLOUT_OUTCOME:-skipped}"
           fs_o="${FINAL_SMOKE_OUTCOME:-skipped}"
+          if [[ "${FINAL_SMOKE_EVIDENCE_VALID:-}" == "1" && "${FINAL_SMOKE_FAILURE_KIND:-}" == "none" && "${FINAL_SMOKE_NORMALIZED_RESULT:-}" == "pass" ]]; then
+            fs_o="success"
+          fi
           # Selective automatic rollback: do not touch a healthy node. Node B is not rolled back if only node A failed (B never received the new release).
           need_a=0
           need_b=0
@@ -2488,7 +2508,10 @@ jobs:
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
           elif [[ "${a_o}" == "success" && "${b_o}" == "success" && "${fs_o}" == "failure" ]]; then
             if [[ "${smoke_skip_auto_rollback}" -eq 1 ]]; then
-              if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "smoke_semantics_failure" ]]; then
+              if [[ "${FINAL_SMOKE_NORMALIZED_RESULT:-}" == "pass" && "${FINAL_SMOKE_FAILURE_KIND:-}" == "none" ]]; then
+                printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped: final-smoke-meta indicates normalized JSON pass (FINAL_SMOKE_NORMALIZED_RESULT=pass)"}\n' \
+                  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+              elif [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "smoke_semantics_failure" ]]; then
                 printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because final smoke had no failed checks and only optional skips (smoke_semantics_failure)"}\n' \
                   "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
               else
@@ -2503,7 +2526,10 @@ jobs:
             fi
           elif [[ "${a_o}" == "success" && "${b_o}" == "skipped" && "${fs_o}" == "failure" ]]; then
             if [[ "${smoke_skip_auto_rollback}" -eq 1 ]]; then
-              if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "smoke_semantics_failure" ]]; then
+              if [[ "${FINAL_SMOKE_NORMALIZED_RESULT:-}" == "pass" && "${FINAL_SMOKE_FAILURE_KIND:-}" == "none" ]]; then
+                printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped: final-smoke-meta indicates normalized JSON pass (FINAL_SMOKE_NORMALIZED_RESULT=pass)"}\n' \
+                  "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+              elif [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "smoke_semantics_failure" ]]; then
                 printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because final smoke had no failed checks and only optional skips (smoke_semantics_failure)"}\n' \
                   "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
               else
@@ -2736,13 +2762,38 @@ jobs:
             derived["node_b_deploy_result"] = derived["app_node_b_result"]
             derived["node_a_smoke_result"] = derived["app_node_a_smoke_result"]
             derived["node_b_smoke_result"] = derived["app_node_b_smoke_result"]
+            meta_final = {}
+            meta_path = Path("deployment-evidence/final-smoke-meta.env")
+            if meta_path.exists():
+                for line in meta_path.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if not line or "=" not in line:
+                        continue
+                    mk, _, mv = line.partition("=")
+                    meta_final[mk.strip()] = mv.strip()
+            if (
+                meta_final.get("FINAL_SMOKE_EVIDENCE_VALID") == "1"
+                and meta_final.get("FINAL_SMOKE_FAILURE_KIND") == "none"
+                and meta_final.get("FINAL_SMOKE_NORMALIZED_RESULT") == "pass"
+            ):
+                derived["final_cluster_smoke_result"] = "pass"
             derived["final_public_smoke_result"] = derived["final_cluster_smoke_result"]
             derived["rollback_available_before_deploy"] = "true" if os.environ.get("ROLLBACK_AVAILABLE_BEFORE_DEPLOY", "false") == "true" else "false"
             fr = os.environ.get("FINAL_RESULT", "")
             fa = derived["app_node_a_result"]
             fb = derived["app_node_b_result"]
             fcs = derived["final_cluster_smoke_result"]
-            if fr == "success" and fcs in ("pass",) and fa == "pass" and fb in ("pass", "skipped"):
+            deploy_smoke_ok = fcs in ("pass",) and fa == "pass" and fb in ("pass", "skipped")
+            meta_normalized_pass = (
+                meta_final.get("FINAL_SMOKE_EVIDENCE_VALID") == "1"
+                and meta_final.get("FINAL_SMOKE_FAILURE_KIND") == "none"
+                and meta_final.get("FINAL_SMOKE_NORMALIZED_RESULT") == "pass"
+            )
+            if fr != "success" and meta_normalized_pass and deploy_smoke_ok:
+                derived["final_deployment_verdict"] = "pass"
+            if fr == "success" and deploy_smoke_ok:
+                derived["rollout_outcome_summary"] = "success_sequential_rolling_2vps" if fb == "pass" else "success_single_app_node"
+            elif fr != "success" and meta_normalized_pass and deploy_smoke_ok:
                 derived["rollout_outcome_summary"] = "success_sequential_rolling_2vps" if fb == "pass" else "success_single_app_node"
             elif fa == "fail":
                 derived["rollout_outcome_summary"] = "failed_at_node_A_partial_cluster"

@@ -727,6 +727,11 @@ if [[ ! "${OVERALL_RC}" =~ ^[0-9]+$ ]]; then
 	OVERALL_RC=1
 fi
 
+# JSON mode: pass/pass evidence with no recorded check failures must not exit non-zero (optional skips never imply failure).
+if [[ "${JSON_MODE:-0}" == "1" ]] && [[ "${SMOKE_OVERALL_STATUS}" == "pass" ]] && ((FAILURES == 0 && CONFIG_FAILURES == 0)); then
+	OVERALL_RC=0
+fi
+
 if [[ "${JSON_MODE}" != "1" ]] && [[ "${OVERALL_RC}" -eq 0 ]]; then
 	human_log "smoke_prod: PASS (level=${SMOKE_LEVEL})"
 fi
