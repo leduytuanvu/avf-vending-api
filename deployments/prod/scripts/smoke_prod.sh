@@ -72,11 +72,13 @@ fi
 	exit 2
 }
 
-if [[ "${JSON_MODE}" == "1" ]]; then
-	# Deploy workflows capture stdout as JSON evidence; keep fd 1 JSON-only via Python >&3.
-	exec 3>&1
-	exec 1>&2
-fi
+human_log() {
+	if [[ "${JSON_MODE:-0}" == "1" ]]; then
+		printf '%s\n' "$*" >&2
+	else
+		printf '%s\n' "$*"
+	fi
+}
 
 EXIT_CODE_CONFIG_FAILURE=30
 EXIT_CODE_SMOKE_FAILURE=31
@@ -110,11 +112,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-emit_info() {
-	# With JSON_MODE, fd 1 is wired to stderr above so plain echo never pollutes JSON stdout.
-	echo "$*"
-}
-
 json_escape() {
 	local value="${1-}"
 	value="${value//\\/\\\\}"
@@ -125,9 +122,10 @@ json_escape() {
 	printf '%s' "${value}"
 }
 
-note() { emit_info "==> $*"; }
-pass() { emit_info "PASS: $1"; }
-skip() { emit_info "SKIP: $1"; }
+note() { human_log "==> $*"; }
+pass() { human_log "PASS: $1"; }
+skip() { human_log "SKIP: $1"; }
+warn() { human_log "WARN: $*"; }
 
 read_env_optional() {
 	local key="$1"
@@ -169,7 +167,7 @@ record_config_failure() {
 	local detail="$2"
 	CONFIG_FAILURES=$((CONFIG_FAILURES + 1))
 	record_check "${name}" "fail" "" "" "${detail}"
-	echo "FAIL: ${name} — ${detail}" >&2
+	human_log "FAIL: ${name} — ${detail}"
 }
 
 record_skip() {
@@ -231,7 +229,7 @@ curl_check() {
 		detail="curl failed with exit code ${curl_rc}"
 		record_check "${name}" "fail" "${url}" "curl-exit-${curl_rc}" "${detail}"
 		eval "${result_var}=failed"
-		echo "FAIL: ${name} — ${detail}" >&2
+		human_log "FAIL: ${name} — ${detail}"
 		rm -f "${body_file}"
 		return 1
 	fi
@@ -240,7 +238,7 @@ curl_check() {
 		detail="unexpected HTTP status ${http_status} (expected ${expected_statuses})"
 		record_check "${name}" "fail" "${url}" "${http_status}" "${detail}"
 		eval "${result_var}=failed"
-		echo "FAIL: ${name} — ${detail}" >&2
+		human_log "FAIL: ${name} — ${detail}"
 		rm -f "${body_file}"
 		return 1
 	fi
@@ -250,7 +248,7 @@ curl_check() {
 			detail="response body did not match required pattern"
 			record_check "${name}" "fail" "${url}" "${http_status}" "${detail}"
 			eval "${result_var}=failed"
-			echo "FAIL: ${name} — ${detail}" >&2
+			human_log "FAIL: ${name} — ${detail}"
 			rm -f "${body_file}"
 			return 1
 		fi
@@ -351,7 +349,7 @@ if ((INVALID_SMOKE_LEVEL == 1)); then
 		export SMOKE_HEALTH_RESULT SMOKE_BUSINESS_READONLY_RESULT SMOKE_BUSINESS_SYNTHETIC_RESULT
 		export SMOKE_BASE_URL_RESULT SMOKE_CRITICAL_READ_RESULT SMOKE_OPTIONAL_DB_READ_RESULT
 		export SMOKE_ZERO_SIDE_EFFECTS_CLAIM
-		"${SMOKE_PYTHON}" "${EMITTER_PY}" >&3
+		"${SMOKE_PYTHON}" "${EMITTER_PY}"
 	fi
 	exit "${EXIT_CODE_CONFIG_FAILURE}"
 fi
@@ -596,7 +594,7 @@ if [[ "${JSON_MODE}" == "1" ]]; then
 	export SMOKE_BASE_URL_RESULT SMOKE_CRITICAL_READ_RESULT SMOKE_OPTIONAL_DB_READ_RESULT
 	export SMOKE_HEALTH_RESULT SMOKE_BUSINESS_READONLY_RESULT
 	[[ -f "${EMITTER_PY}" ]]
-	"${SMOKE_PYTHON}" "${EMITTER_PY}" >&3
+	"${SMOKE_PYTHON}" "${EMITTER_PY}"
 fi
 
 if ((CONFIG_FAILURES > 0)); then
@@ -610,6 +608,6 @@ if [[ "${SMOKE_OVERALL_STATUS}" == "fail" ]]; then
 fi
 
 if [[ "${JSON_MODE}" != "1" ]]; then
-	echo "smoke_prod: PASS (level=${SMOKE_LEVEL})"
+	human_log "smoke_prod: PASS (level=${SMOKE_LEVEL})"
 fi
 exit 0

@@ -34,4 +34,10 @@ Legacy single-host reference: [deployments/prod/scripts/rollback_prod.sh](../dep
 - Do not add `on.push` / `on.workflow_run` to the rollback incident workflow (CI enforces this).
 - Do not use staging credentials or secrets for production rollback.
 
+## Automatic rollback after Deploy Production
+
+**Deploy Production** may run an automatic app-node rollback when the job fails *after* a successful rollout. That path repins **prior digest-pinned** app and goose images; it does **not** run `goose down`.
+
+If the only failure is **invalid final smoke JSON** (CI evidence / stdout formatting — check `deployment-evidence/smoke-cluster-final.json`, `smoke-cluster-final.log`, and `release-events.jsonl` for `evidence_format_failure`), the workflow **skips** automatic rollback so production is **not** repinned to an older image while nodes are already healthy. The job still **fails** for audit integrity. Treat **`rollback_result=failed`** in workflow outputs as "rollback command or healthcheck did not complete cleanly"; it does **not** guarantee production matches the attempted previous digests—verify live health and image digests on the hosts.
+
 See also: [production-backup-restore-drill.md](production-backup-restore-drill.md), [../operations/two-vps-rolling-production-deploy.md](../operations/two-vps-rolling-production-deploy.md).
