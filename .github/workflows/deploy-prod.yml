@@ -2384,11 +2384,14 @@ jobs:
           rollback_attempted="false"
           rollback_result_out="not-attempted"
           rollback_rc=0
-          FINAL_SMOKE_FAILURE_KIND=""
-          FINAL_SMOKE_EVIDENCE_VALID=""
           if [[ -f deployment-evidence/final-smoke-meta.env ]]; then
             # shellcheck disable=SC1091
             source deployment-evidence/final-smoke-meta.env
+          fi
+
+          smoke_evidence_format_failure_only=0
+          if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "evidence_format_failure" && "${FINAL_SMOKE_EVIDENCE_VALID:-1}" == "0" ]]; then
+            smoke_evidence_format_failure_only=1
           fi
 
           write_rollback_outputs() {
@@ -2421,7 +2424,7 @@ jobs:
             printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"decision","status":"info","detail":"targeting app node B only: node A passed; B rollout failed"}\n' \
               "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
           elif [[ "${a_o}" == "success" && "${b_o}" == "success" && "${fs_o}" == "failure" ]]; then
-            if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "evidence_format_failure" ]]; then
+            if [[ "${smoke_evidence_format_failure_only}" -eq 1 ]]; then
               printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because failure was evidence_format_failure after healthy rollout"}\n' \
                 "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
             else
@@ -2431,7 +2434,7 @@ jobs:
                 "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
             fi
           elif [[ "${a_o}" == "success" && "${b_o}" == "skipped" && "${fs_o}" == "failure" ]]; then
-            if [[ "${FINAL_SMOKE_FAILURE_KIND:-}" == "evidence_format_failure" ]]; then
+            if [[ "${smoke_evidence_format_failure_only}" -eq 1 ]]; then
               printf '{"ts":"%s","component":"app-cluster","target":"rollback","phase":"rollback","status":"skipped","detail":"automatic rollback skipped because failure was evidence_format_failure after healthy rollout"}\n' \
                 "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
             else
