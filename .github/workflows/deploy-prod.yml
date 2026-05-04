@@ -976,6 +976,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           bash -n deployments/prod/scripts/smoke_prod.sh
+          bash -n deployments/prod/shared/scripts/check_managed_services.sh
           bash -n deployments/prod/shared/scripts/bootstrap_prereqs.sh
           bash -n deployments/prod/shared/scripts/lib_release.sh
           bash -n deployments/prod/shared/scripts/traffic_drain_hook.sh
@@ -2314,6 +2315,13 @@ jobs:
           bash deployments/prod/scripts/smoke_prod.sh --json > deployment-evidence/smoke-cluster-final.json
           smoke_rc=$?
           set -e
+          if ! python3 -m json.tool deployment-evidence/smoke-cluster-final.json >/dev/null 2>&1; then
+            echo "error: deployment-evidence/smoke-cluster-final.json is not valid JSON (non-JSON output must not be mixed into smoke stdout in --json mode)" >&2
+            head -n 40 deployment-evidence/smoke-cluster-final.json >&2 || true
+            printf '{"ts":"%s","component":"app-cluster","target":"final-cluster","phase":"smoke","status":"fail","detail":"invalid smoke JSON artifact (python3 -m json.tool validation failed)"}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> deployment-evidence/release-events.jsonl
+            exit 2
+          fi
           cat deployment-evidence/smoke-cluster-final.json
           smoke_status="$(python3 -c 'import json, pathlib, sys; payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")); print(payload.get("overall_status", "unknown"))' deployment-evidence/smoke-cluster-final.json)"
           smoke_detail="final cluster smoke failed"

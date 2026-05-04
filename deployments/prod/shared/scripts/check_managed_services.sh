@@ -83,6 +83,16 @@ elif mode == "host_port":
     if not host or not port:
         raise SystemExit(1)
     print(f"{host}:{port}")
+elif mode == "nats_url_host_port":
+    parsed = urlsplit(value)
+    host = parsed.hostname or ""
+    if not host:
+        raise SystemExit(1)
+    port = parsed.port
+    if port is None:
+        # nats://, tls://, ws://, wss:// — broker default
+        port = 4222
+    print(f"{host}:{port}")
 else:
     raise SystemExit(2)
 PY
@@ -173,6 +183,60 @@ check_managed_redis() {
 	fi
 }
 
+nats_policy_required() {
+	if [[ "${APP_ENV:-}" == "production" ]]; then
+		return 0
+	fi
+	if [[ "$(normalize_bool "${NATS_REQUIRED:-0}")" == "1" ]]; then
+		return 0
+	fi
+	if [[ "$(normalize_bool "${API_REQUIRE_NATS_RUNTIME:-0}")" == "1" ]]; then
+		return 0
+	fi
+	if [[ "$(normalize_bool "${OUTBOX_PUBLISHER_REQUIRED:-0}")" == "1" ]]; then
+		return 0
+	fi
+	if [[ "$(normalize_bool "${API_REQUIRE_OUTBOX_PUBLISHER:-0}")" == "1" ]]; then
+		return 0
+	fi
+	return 1
+}
+
+check_managed_nats() {
+	local host_port host port
+
+	if [[ -z "${NATS_URL:-}" ]]; then
+		if nats_policy_required; then
+			fail_or_skip "NATS_URL is required when APP_ENV=production or NATS/outbox runtime is required"
+		else
+			skip_check "managed NATS not configured (NATS_URL unset)"
+		fi
+		return 0
+	fi
+
+	if is_placeholder_value "${NATS_URL}"; then
+		if nats_policy_required; then
+			fail_or_skip "NATS_URL is placeholder-only; production NATS live validation not attempted"
+		else
+			skip_check "managed NATS not configured (NATS_URL is placeholder-only)"
+		fi
+		return 0
+	fi
+
+	host_port="$(python_value "nats_url_host_port" "${NATS_URL}")" || {
+		fail_check "NATS_URL is not parseable (expected nats://host[:port] or tls://host[:port])"
+		return 0
+	}
+	host="${host_port%:*}"
+	port="${host_port##*:}"
+
+	if tcp_check "${host}" "${port}" >/dev/null 2>&1; then
+		pass "managed NATS TCP reachability ${host}:${port}"
+	else
+		fail_check "managed NATS TCP reachability failed for ${host}:${port}"
+	fi
+}
+
 check_object_storage() {
 	local endpoint host_port host port
 	if [[ "$(normalize_bool "${API_ARTIFACTS_ENABLED:-0}")" != "1" ]]; then
@@ -213,6 +277,7 @@ check_object_storage() {
 note "managed production dependency checks"
 check_managed_postgres
 check_managed_redis
+check_managed_nats
 check_object_storage
 
 if [[ -n "${REPORT_PATH}" ]]; then
