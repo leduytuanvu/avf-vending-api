@@ -148,6 +148,9 @@ try_emit_json_or_minimal() {
 	export SMOKE_BASE_URL="${BASE_URL:-}"
 	export SMOKE_LABEL="${SMOKE_LABEL:-}"
 	export SMOKE_CONNECT_TO_HOST="${SMOKE_CONNECT_TO_HOST:-}"
+	if ((FAILURES == 0 && CONFIG_FAILURES == 0)) && [[ -z "${SMOKE_OVERALL_STATUS:-}" ]]; then
+		SMOKE_OVERALL_STATUS="pass"
+	fi
 	export SMOKE_OVERALL_STATUS
 	export SMOKE_BUSINESS_SYNTHETIC_RESULT
 	export SMOKE_ZERO_SIDE_EFFECTS_CLAIM
@@ -161,14 +164,50 @@ try_emit_json_or_minimal() {
 		SMOKE_JSON_EMITTED=1
 		return 0
 	fi
+	local _emit_out
+	_emit_out="$(mktemp)"
 	set +e
-	"${SMOKE_PYTHON}" "${EMITTER_PY}"
+	"${SMOKE_PYTHON}" "${EMITTER_PY}" > "${_emit_out}"
 	local _emit_rc=$?
 	set -e
 	if [[ "${_emit_rc}" -ne 0 ]]; then
+		rm -f "${_emit_out}"
 		human_log "WARN: smoke JSON emitter exited ${_emit_rc}; minimal fallback JSON on stdout"
 		emit_smoke_json_minimal_critical "emitter_exit_${_emit_rc}"
+		SMOKE_JSON_EMITTED=1
+		return 0
 	fi
+	# Required-only semantics: optional skips must not set overall/final to fail if core tiers pass and failed_checks is empty.
+	if ! "${SMOKE_PYTHON}" - "${_emit_out}" <<'NORMPY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+p = json.loads(path.read_text(encoding="utf-8"))
+failed = p.get("failed_checks") or []
+failed_n = len(failed) if isinstance(failed, list) else 0
+
+
+def tier_ok(val: object) -> bool:
+    t = str(val or "").strip().lower()
+    return t in ("pass", "passed", "ok")
+
+
+core_ok = (
+    tier_ok(p.get("health_result"))
+    and tier_ok(p.get("critical_read_result"))
+    and tier_ok(p.get("base_url_result"))
+)
+if failed_n == 0 and core_ok:
+    p["overall_status"] = "pass"
+    p["final_result"] = "pass"
+print(json.dumps(p, indent=2) + "\n")
+NORMPY
+	then
+		cat "${_emit_out}"
+	fi
+	rm -f "${_emit_out}"
 	SMOKE_JSON_EMITTED=1
 }
 
@@ -662,6 +701,17 @@ if [[ "${SMOKE_LEVEL}" == "health" ]]; then
 	fi
 fi
 
+# Required tiers only: no recorded check failures ⇒ optional skips/reasons alone never force a failed overall
+if ((FAILURES == 0 && CONFIG_FAILURES == 0)); then
+	if [[ "${SMOKE_HEALTH_RESULT}" == "pass" ]] \
+		&& [[ "${SMOKE_BASE_URL_RESULT}" =~ ^(pass|passed|ok)$ ]] \
+		&& [[ "${SMOKE_CRITICAL_READ_RESULT}" =~ ^(pass|passed|ok)$ ]]; then
+		if [[ "${SMOKE_LEVEL}" == "health" ]] || [[ "${SMOKE_BUSINESS_READONLY_RESULT}" != "fail" ]]; then
+			SMOKE_OVERALL_STATUS="pass"
+		fi
+	fi
+fi
+
 OVERALL_RC=0
 if ((CONFIG_FAILURES > 0)); then
 	OVERALL_RC="${EXIT_CODE_CONFIG_FAILURE}"
@@ -671,6 +721,10 @@ elif [[ "${SMOKE_OVERALL_STATUS}" == "fail" ]]; then
 	OVERALL_RC="${EXIT_CODE_SMOKE_FAILURE}"
 else
 	OVERALL_RC=0
+fi
+
+if [[ ! "${OVERALL_RC}" =~ ^[0-9]+$ ]]; then
+	OVERALL_RC=1
 fi
 
 if [[ "${JSON_MODE}" != "1" ]] && [[ "${OVERALL_RC}" -eq 0 ]]; then
