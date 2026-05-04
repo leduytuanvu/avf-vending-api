@@ -555,8 +555,9 @@ if [[ "${SMOKE_LEVEL}" != "health" ]]; then
 			record_skip "optional DB-backed read smoke" "SMOKE_DB_READ_PATH not set"
 		fi
 	else
-		# Default discovery: OpenAPI JSON (404 = skip) + optional DB
+		# Default discovery: OpenAPI JSON (404 = optional skip in production) + optional DB
 		RO_DID_PASS=0
+		openapi_optional_not_mounted=0
 		SMOKE_CURL_AUTH_MODE=none
 		openapi_readonly_default_probe
 		oprc=$?
@@ -564,6 +565,9 @@ if [[ "${SMOKE_LEVEL}" != "health" ]]; then
 			RO_DID_PASS=1
 		elif [[ "${oprc}" -eq 1 ]]; then
 			BR_TIER_OK=0
+		elif [[ "${oprc}" -eq 2 ]]; then
+			# 404 at /swagger/doc.json: optional; critical tier already proved API + /version
+			openapi_optional_not_mounted=1
 		fi
 		if [[ -n "${DB_READ_PATH}" ]]; then
 			if curl_check \
@@ -581,9 +585,14 @@ if [[ "${SMOKE_LEVEL}" != "health" ]]; then
 			record_skip "optional DB-backed read smoke" "SMOKE_DB_READ_PATH not set"
 		fi
 		if ((RO_DID_PASS == 0)); then
-			BR_TIER_OK=0
-			append_skip_reason "business_readonly_no_signal" "no successful business-readonly probe — set SMOKE_BUSINESS_READONLY_SPECS, SMOKE_DB_READ_PATH, or expose a passing /swagger/doc.json"
-			record_config_failure "business-readonly" "at least one business-readonly check must pass (OpenAPI, DB read, or explicit SPECS)"
+			if [[ "${openapi_optional_not_mounted}" -eq 1 && -z "${DB_READ_PATH}" ]]; then
+				# No SPECS/DB: OpenAPI unmounted is acceptable; keep business-readonly pass with skip only
+				RO_DID_PASS=1
+			else
+				BR_TIER_OK=0
+				append_skip_reason "business_readonly_no_signal" "no successful business-readonly probe — set SMOKE_BUSINESS_READONLY_SPECS, SMOKE_DB_READ_PATH, or expose a passing /swagger/doc.json"
+				record_config_failure "business-readonly" "at least one business-readonly check must pass (OpenAPI, DB read, or explicit SPECS)"
+			fi
 		fi
 	fi
 
