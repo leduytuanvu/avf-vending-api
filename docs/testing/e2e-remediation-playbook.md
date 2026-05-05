@@ -169,6 +169,23 @@ For each failure category: **symptom**, **likely cause**, **where to look**, **l
 
 ---
 
+## Run artifacts (`reports/` after finalize)
+
+After **`run-all-local.sh`** completes (success or failure), open the run directory printed on stderr:
+
+| Artifact | Purpose |
+|----------|---------|
+| **`reports/summary.md`** | What ran, environment snapshot, protocol tables, pass/fail/skip, merged coverage pointers |
+| **`reports/remediation.md`** | One section per failure: **failure_id**, scenario/step, protocol, endpoint/RPC/topic, expected vs actual (redacted), evidence file, likely cause, suggested fix, **--reuse-data** safety, safe rerun command |
+| **`reports/coverage.json`** | Machine-readable merge: Postman matrix, gRPC/MQTT JSONL payloads, Phase 8 rows, **`scenarioCoverage`** (harness step prefixes + Phase 8 outcomes) |
+| **`test-data.redacted.json`** | Same keys as **`test-data.json`** with token-like values masked |
+| **`reports/e2e-junit.xml`** | JUnit projection of **`events.jsonl`** for CI dashboards |
+| **`reports/e2e-report-context.json`** | Non-secret snapshot of `BASE_URL`, `GRPC_ADDR`, MQTT broker string, write flags |
+
+Tokens may still appear in raw **`rest/*.response.body`** files — treat the whole **`.e2e-runs/`** tree as sensitive.
+
+---
+
 ## Related
 
 - **[`e2e-troubleshooting.md`](e2e-troubleshooting.md)**

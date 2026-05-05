@@ -16,6 +16,17 @@ e2e_parse_common_args "$@"
 load_env
 e2e_restore_inherited_data_flags_if_needed
 
+# shellcheck disable=SC2317,SC3046
+eval "$(declare -f end_step | sed '1s/end_step/_e2e_original_end_step/')"
+end_step() {
+  local _st="$1"
+  shift || true
+  _e2e_original_end_step "$_st" "$@"
+  if [[ "$_st" == "failed" ]]; then
+    log_error "E2E run directory (failed step): ${E2E_RUN_DIR:-unknown}"
+  fi
+}
+
 require_cmd jq curl bash python3
 
 new_run_dir
@@ -46,30 +57,8 @@ invoke_child() {
   set -e
   if [[ "$ec" -ne 0 ]]; then
     OVERALL=1
+    log_error "Child script failed (exit ${ec}): ${script}; artifacts: ${E2E_RUN_DIR}"
   fi
-}
-
-e2e_append_phase8_summary_to_md() {
-  local jl="${E2E_RUN_DIR}/reports/phase8-scenario-results.jsonl"
-  local sm="${E2E_RUN_DIR}/reports/summary.md"
-  [[ -f "$jl" ]] && [[ -s "$jl" ]] || return 0
-  {
-    echo ""
-    echo "## Phase 8 business scenarios"
-    echo
-    echo "Structured one-row-per-scenario JSONL: \`${jl}\`."
-    echo
-    echo "| scenario_id | result | expected_state | actual_state | evidence | remediation |"
-    echo "|-------------|--------|----------------|--------------|----------|-------------|"
-  } >>"$sm"
-  while IFS= read -r line; do
-    [[ -z "$line" ]] && continue
-    echo "$line" | jq -r '
-      "| " + .scenario_id + " | " + .result + " | " + (.expected_state | gsub("\\|"; "\\\\|")) + " | " + (.actual_state | gsub("\\|"; "\\\\|")) + " | "
-      + ([ .evidence_files[]? ] | if length > 0 then join("; ") else "—" end | gsub("\\|"; "\\\\|")) + " | "
-      + (.remediation // "—" | gsub("\\|"; "\\\\|")) + " |"'
-  done <"$jl" >>"$sm"
-  echo >>"$sm"
 }
 
 start_step "preflight"
@@ -126,12 +115,12 @@ for _p8 in "${PHASE8_LIST[@]}"; do
   set -e
   if [[ "$_ec" -ne 0 ]]; then
     OVERALL=1
+    log_error "Phase 8 scenario failed (exit ${_ec}): ${_p8}; artifacts: ${E2E_RUN_DIR}"
   fi
 done
 
 # shellcheck source=lib/e2e_report.sh
 source "${SCRIPT_DIR}/lib/e2e_report.sh"
 e2e_finalize_reports "${OVERALL}"
-e2e_append_phase8_summary_to_md
 
 exit "${OVERALL}"

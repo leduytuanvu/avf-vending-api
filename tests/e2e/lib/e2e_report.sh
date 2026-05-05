@@ -20,6 +20,44 @@ e2e_stats_json() {
     }' "${ev}"
 }
 
+e2e_python_run() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 "$@"
+    return $?
+  fi
+  if command -v py >/dev/null 2>&1; then
+    py -3 "$@"
+    return $?
+  fi
+  return 127
+}
+
+e2e_write_report_context_json() {
+  [[ -n "${E2E_RUN_DIR:-}" ]] || return 0
+  mkdir -p "${E2E_RUN_DIR}/reports"
+  local mqtt_b="${MQTT_HOST:-127.0.0.1}:${MQTT_PORT:-1883}"
+  local prod_json=false
+  [[ -n "${E2E_PRODUCTION_WRITE_CONFIRMATION:-}" ]] && prod_json=true
+  jq -nc \
+    --arg base "${BASE_URL:-}" \
+    --arg grpc "${GRPC_ADDR:-}" \
+    --arg mqtt "$mqtt_b" \
+    --arg writes "${E2E_ALLOW_WRITES:-}" \
+    --argjson prod "$prod_json" \
+    --arg reuse "${E2E_REUSE_DATA:-false}" \
+    --arg dfile "${E2E_DATA_FILE:-}" \
+    '{
+      baseUrl: $base,
+      grpcAddr: $grpc,
+      mqttBroker: $mqtt,
+      allowWrites: $writes,
+      productionConfirmationSet: $prod,
+      reuseData: $reuse,
+      reuseDataSource: $dfile
+    }' \
+    >"${E2E_RUN_DIR}/reports/e2e-report-context.json"
+}
+
 e2e_generate_summary_md() {
   local out="${E2E_RUN_DIR}/reports/summary.md"
   mkdir -p "${E2E_RUN_DIR}/reports"
@@ -81,6 +119,8 @@ e2e_generate_remediation_md() {
     echo
     echo "Derived from **failed** events in this run. See \`docs/testing/e2e-remediation-playbook.md\` for full procedures."
     echo
+    echo "Run directory: \`${E2E_RUN_DIR}\`"
+    echo
   } >"${out}"
 
   local ev="${E2E_RUN_DIR}/events.jsonl"
@@ -129,7 +169,8 @@ e2e_generate_coverage_json() {
       testDataFile:$data,
       eventsFile:$evfile,
       counts:$stats,
-      events:$events
+      events:$events,
+      coverage: { note: "minimal fallback — run merge-events.py for full merge" }
     }' >"${out}"
 }
 
@@ -152,14 +193,50 @@ e2e_print_console_summary() {
   echo "Run directory:   ${E2E_RUN_DIR}" >&2
   echo "Test data file:  ${E2E_RUN_DIR}/test-data.json" >&2
   echo "Reports:         ${E2E_RUN_DIR}/reports/" >&2
+  if [[ "${exit_code}" -ne 0 ]] || [[ "${failed}" != "0" ]]; then
+    echo "On failure: open reports/remediation.md and reports/summary.md under the run directory above." >&2
+  fi
   echo "=================================" >&2
 }
 
 e2e_finalize_reports() {
   local exit_code="${1:-0}"
   export E2E_REPORT_DONE=1
-  e2e_generate_summary_md
-  e2e_generate_remediation_md
-  e2e_generate_coverage_json
+
+  local _lib _tools _repo
+  _lib="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  _tools="$(cd "${_lib}/../tools" && pwd)"
+  _repo="$(cd "${_lib}/../../.." && pwd)"
+
+  e2e_write_report_context_json
+
+  if e2e_python_run "${_tools}/merge-events.py" --run-dir "${E2E_RUN_DIR}"; then
+    :
+  else
+    log_warn "merge-events.py failed — continuing with partial reports"
+    e2e_generate_coverage_json
+  fi
+
+  if ! e2e_python_run "${_tools}/generate-summary.py" --run-dir "${E2E_RUN_DIR}" --repo-root "${_repo}"; then
+    log_warn "generate-summary.py failed — bash summary fallback"
+  fi
+  if ! e2e_python_run "${_tools}/generate-remediation.py" --run-dir "${E2E_RUN_DIR}" --playbook "${_repo}/docs/testing/e2e-remediation-playbook.md"; then
+    log_warn "generate-remediation.py failed — bash remediation fallback"
+  fi
+
+  [[ -f "${E2E_RUN_DIR}/reports/summary.md" ]] || e2e_generate_summary_md
+  [[ -f "${E2E_RUN_DIR}/reports/remediation.md" ]] || e2e_generate_remediation_md
+  [[ -f "${E2E_RUN_DIR}/reports/coverage.json" ]] || e2e_generate_coverage_json
+
+  # Mirrors at run root (reports/ remains canonical; copies for CI / triage globs)
+  for f in summary.md remediation.md coverage.json; do
+    if [[ -f "${E2E_RUN_DIR}/reports/${f}" ]]; then
+      cp -f "${E2E_RUN_DIR}/reports/${f}" "${E2E_RUN_DIR}/${f}"
+    fi
+  done
+  if [[ -f "${E2E_RUN_DIR}/reports/e2e-junit.xml" ]]; then
+    cp -f "${E2E_RUN_DIR}/reports/e2e-junit.xml" "${E2E_RUN_DIR}/junit.xml"
+  fi
+
   e2e_print_console_summary "${exit_code}"
 }

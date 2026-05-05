@@ -44,21 +44,30 @@ Each run writes artifacts under:
 .e2e-runs/run-<timestampUTC>-<pid>-<random>/
   run-meta.json
   events.jsonl
-  test-data.json          # public capture; tokens stored masked
+  test-data.json          # capture used for the run (may include secrets — gitignored)
+  test-data.redacted.json # same structure with token-like fields masked (safe to share in triage)
   secrets.private.json    # full tokens (local only)
   rest/                   # per-call: *.request.json, *.response.body, *.response.headers.txt, *.meta.json
                           # (older JSON mutations may also use *.response.json)
   grpc/                   # *.request.json, *.response.json, *.log, *.meta.json
   mqtt/                   # connect.log, telemetry.publish.json, command.subscribe.log, command.ack.json, …
   reports/
-    summary.md
+    summary.md            # human-readable rollup (REST/gRPC/MQTT/WA/VA/Phase 8 + coverage)
+    remediation.md        # structured per-failure hints (failure_id, evidence path, rerun)
+    e2e-report-context.json   # BASE_URL / GRPC_ADDR / MQTT / flags at finalize (no secrets)
+    coverage.json         # merged Postman + gRPC + MQTT + Phase 8 + scenarioCoverage
+    e2e-junit.xml         # JUnit from events.jsonl (optional CI ingest)
     grpc-contract-summary.md   # Phase 6 rollup (also appended to summary.md when run standalone)
     grpc-contract-results.jsonl
     mqtt-contract-summary.md   # Phase 7 rollup
     mqtt-contract-results.jsonl
-    remediation.md
-    coverage.json
+  summary.md              # copy of reports/summary.md (orchestrator finalize)
+  remediation.md          # copy of reports/remediation.md
+  coverage.json           # copy of reports/coverage.json
+  junit.xml               # copy of reports/e2e-junit.xml when present
 ```
+
+**Note:** The canonical report paths are **`reports/*`**; root-level **`summary.md`**, **`remediation.md`**, **`coverage.json`**, and **`junit.xml`** are mirrors for simple globbing.
 
 The directory **`.e2e-runs/`** is gitignored.
 
@@ -94,9 +103,11 @@ Common options:
 - **`--rest-equivalent`** — **`run-vending-app-flows.sh` only**: run machine REST mirror flows (VM-REST-02…08). Extra args from `run-all-local.sh` are forwarded to each phase; use e.g. `./tests/e2e/run-all-local.sh --reuse-data .e2e-runs/run-…/test-data.json --rest-equivalent` so the vending phase receives the flag **after** common options. **Field production apps use gRPC + MQTT**, not these REST paths.
 - **`-h` / `--help`**
 
-`run-all-local.sh` order: **preflight** → REST → web-admin flows → vending-app flows → gRPC → MQTT → **reports**.
+`run-all-local.sh` order: **preflight** → REST → web-admin flows → vending-app flows → gRPC → MQTT → **Phase 8 (scenarios 40–47)** → **reports** (`merge-events.py`, `generate-summary.py`, `generate-remediation.py`).
 
-When `run-all-local.sh` invokes phase scripts, it sets **`E2E_IN_PARENT=1`** and reuses the same `E2E_RUN_DIR`. Phase scripts avoid duplicate report generation; the orchestrator writes **one** `reports/` set at the end.
+On non-zero exit or failed steps, the console prints the **`E2E_RUN_DIR`** and reminds you to open **`reports/summary.md`** and **`reports/remediation.md`**.
+
+When `run-all-local.sh` invokes phase scripts, it sets **`E2E_IN_PARENT=1`** and reuses the same `E2E_RUN_DIR`. Phase scripts avoid duplicate report generation; the orchestrator writes **one** `reports/` set at the end (including **`test-data.redacted.json`** in the run root).
 
 Implemented / built-in scenarios:
 
