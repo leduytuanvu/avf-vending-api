@@ -82,7 +82,8 @@ load_env
 
 export E2E_ALLOW_WRITES=false
 
-require_cmd jq curl python3
+require_cmd jq curl
+e2e_require_python
 
 new_run_dir
 e2e_write_run_meta "run-flow-review"

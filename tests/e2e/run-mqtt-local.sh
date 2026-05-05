@@ -43,6 +43,7 @@ export MQTT_TOPIC_TELEMETRY MQTT_TOPIC_COMMANDS MQTT_TOPIC_COMMAND_ACK MQTT_TOPI
 export E2E_TARGET
 
 require_cmd jq bash
+e2e_require_python
 
 new_run_dir
 e2e_write_run_meta "run-mqtt-local"

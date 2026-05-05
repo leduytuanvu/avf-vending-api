@@ -11,7 +11,13 @@ e2e_strict_mode() {
 }
 
 load_env() {
-  local env_file="${1:-${E2E_SCRIPT_DIR}/.env}"
+  local env_file="${1:-}"
+  if [[ -z "${env_file}" ]]; then
+    env_file="${E2E_ENV_FILE:-}"
+  fi
+  if [[ -z "${env_file}" ]]; then
+    env_file="${E2E_SCRIPT_DIR}/.env"
+  fi
   if [[ -f "$env_file" ]]; then
     set -a
     # shellcheck disable=SC1090
@@ -65,6 +71,24 @@ require_env() {
       exit 2
     fi
   done
+}
+
+# Prefer Windows `py -3` when `python3` is missing or is a non-functional Store stub.
+e2e_python() {
+  if command -v py >/dev/null 2>&1 && py -3 -c "import sys" >/dev/null 2>&1; then
+    py -3 "$@"
+    return $?
+  fi
+  if command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then
+    python3 "$@"
+    return $?
+  fi
+  echo "FATAL: no working Python 3 (install from python.org or use \`py -3\`; on Windows disable App Execution Aliases for python.exe/python3.exe if they open the Store stub)" >&2
+  return 127
+}
+
+e2e_require_python() {
+  e2e_python -c "import sys" >/dev/null 2>&1 || exit 127
 }
 
 now_utc() {

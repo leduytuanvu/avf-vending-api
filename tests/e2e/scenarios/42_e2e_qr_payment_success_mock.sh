@@ -31,7 +31,7 @@ phase8_record() {
 
 p8_webhook_signature() {
   local body="$1"
-  python3 -c '
+  e2e_python -c '
 import os, sys, hmac, hashlib, time
 body = sys.argv[1].encode("utf-8")
 ts = str(int(time.time()))
@@ -154,7 +154,7 @@ PREFQ="$(jq -r '.provider_reference // .providerReference // .external_reference
 [[ -z "$PEX" || "$PEX" == "null" ]] && log_missing_field_issue "P2" "$SID" "42_e2e_qr_payment_success_mock.sh" "payment-session-expiry" "REST" "POST .../payment-session" "payment-session JSON lacks a clear expires_at / session TTL field for client UX" "QR flow may hang without deadline" "Document and return session_expires_at per OpenAPI" "$PSR"
 [[ -z "$PREFQ" || "$PREFQ" == "null" ]] && log_missing_field_issue "P2" "$SID" "42_e2e_qr_payment_success_mock.sh" "payment-session-provider-ref" "REST" "POST .../payment-session" "payment-session response lacks stable provider reference for reconciliation queries" "Finance trace harder" "Return provider_reference / PSP intent id consistently" "$PSR"
 
-WID="$(python3 -c 'import uuid; print(uuid.uuid4())' 2>/dev/null || echo "e2e-webhook-$(date +%s)")"
+WID="$(e2e_python -c 'import uuid; print(uuid.uuid4())' 2>/dev/null || echo "e2e-webhook-$(date +%s)")"
 PIREF="pi_e2e_p8_${RANDOM}"
 WBODY="$(jq -nc \
   --arg wid "$WID" \

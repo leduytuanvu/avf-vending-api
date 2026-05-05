@@ -21,15 +21,7 @@ e2e_stats_json() {
 }
 
 e2e_python_run() {
-  if command -v python3 >/dev/null 2>&1; then
-    python3 "$@"
-    return $?
-  fi
-  if command -v py >/dev/null 2>&1; then
-    py -3 "$@"
-    return $?
-  fi
-  return 127
+  e2e_python "$@"
 }
 
 e2e_write_report_context_json() {

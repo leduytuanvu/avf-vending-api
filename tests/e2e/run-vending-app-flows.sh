@@ -45,7 +45,8 @@ export BASE_URL GRPC_ADDR E2E_TARGET E2E_ALLOW_WRITES E2E_PRODUCTION_WRITE_CONFI
 export E2E_REUSE_DATA E2E_DATA_FILE E2E_CLI_FRESH_DATA
 export E2E_ACTIVATION_CODE E2E_SKIP_ACTIVATION_CLAIM E2E_DEVICE_FINGERPRINT_SERIAL E2E_SLOT_INDEX
 
-require_cmd jq curl python3
+require_cmd jq curl
+e2e_require_python
 
 new_run_dir
 e2e_write_run_meta "run-vending-app-flows"

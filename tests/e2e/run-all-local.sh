@@ -27,7 +27,8 @@ end_step() {
   fi
 }
 
-require_cmd jq curl bash python3
+require_cmd jq curl bash
+e2e_require_python
 
 new_run_dir
 e2e_write_run_meta "run-all-local"

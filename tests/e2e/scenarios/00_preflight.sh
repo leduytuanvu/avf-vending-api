@@ -8,7 +8,8 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_common.sh"
 # shellcheck source=../lib/e2e_http.sh
 source "${E2E_SCENARIO_DIR}/../lib/e2e_http.sh"
 
-require_cmd bash curl jq python3
+require_cmd bash curl jq
+e2e_require_python
 append_event_jsonl "preflight:tooling" "passed" "bash curl jq python3"
 
 for _o in newman grpcurl mosquitto_pub mosquitto_sub; do

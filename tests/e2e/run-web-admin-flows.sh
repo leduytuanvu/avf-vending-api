@@ -52,7 +52,8 @@ export E2E_REUSE_DATA E2E_DATA_FILE E2E_CLI_FRESH_DATA
 export ADMIN_TOKEN ADMIN_EMAIL ADMIN_PASSWORD E2E_ORGANIZATION_ID
 export E2E_SEED_FILE E2E_WEB_ADMIN_SKIP_BRAND E2E_WEB_ADMIN_SKIP_TAG
 
-require_cmd jq curl python3
+require_cmd jq curl
+e2e_require_python
 
 new_run_dir
 e2e_write_run_meta "run-web-admin-flows"

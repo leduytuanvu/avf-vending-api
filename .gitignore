@@ -1,5 +1,6 @@
 /.env
 /.env.local
+tests/e2e/.env.local
 /.env.staging
 /.env.production
 # Node env files (examples *.example are tracked)

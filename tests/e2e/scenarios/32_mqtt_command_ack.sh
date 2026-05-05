@@ -133,7 +133,7 @@ else
 fi
 
 if [[ -z "$RECV" ]]; then
-  SYN_ID="$(python3 -c 'import uuid; print(uuid.uuid4())' 2>/dev/null || echo "")"
+  SYN_ID="$(e2e_python -c 'import uuid; print(uuid.uuid4())' 2>/dev/null || echo "")"
   [[ -z "$SYN_ID" ]] && SYN_ID="$(uuidgen 2>/dev/null || echo "00000000-0000-4000-8000-000000000001")"
   SYN_PAYLOAD="$(jq -nc \
     --arg cid "$SYN_ID" \

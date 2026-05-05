@@ -9,7 +9,7 @@ e2e_http_log_dir() {
 _e2e_http_elapsed_ms() {
   local body_time="$1"
   if [[ "$body_time" =~ ^[0-9.]+$ ]]; then
-    python3 -c "print(int(round(float('${body_time}')*1000)))" 2>/dev/null || echo 0
+    e2e_python -c "print(int(round(float('${body_time}')*1000)))" 2>/dev/null || echo 0
   else
     echo 0
   fi

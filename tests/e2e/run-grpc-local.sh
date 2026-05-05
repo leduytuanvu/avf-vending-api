@@ -39,6 +39,7 @@ e2e_restore_inherited_data_flags_if_needed
 export GRPC_PROTO_ROOT GRPC_ADDR GRPC_USE_REFLECTION MACHINE_TOKEN MACHINE_ID GRPC_SEND_MACHINE_ID_HEADER
 
 require_cmd jq bash
+e2e_require_python
 
 new_run_dir
 e2e_write_run_meta "run-grpc-local"

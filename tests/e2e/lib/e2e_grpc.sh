@@ -139,15 +139,15 @@ e2e_grpc_call() {
   e2e_grpc_append_metadata_flags args "${idempotency_key}"
 
   local t0 t1 elapsed ge result
-  t0="$(python3 -c 'import time; print(time.time())')"
+  t0="$(e2e_python -c 'import time; print(time.time())')"
   echo "### $(now_utc) grpcurl ${GRPC_ADDR} ${full_method}" >>"${logf}"
   set +e
   grpcurl "${args[@]}" -max-time 60 "${GRPC_ADDR}" "${full_method}" >"${resp}" 2>>"${logf}"
   ge=$?
   set -e
   echo "### grpcurl exit ${ge}" >>"${logf}"
-  t1="$(python3 -c 'import time; print(time.time())')"
-  elapsed="$(python3 -c "print(int((${t1} - ${t0}) * 1000))")"
+  t1="$(e2e_python -c 'import time; print(time.time())')"
+  elapsed="$(e2e_python -c "print(int((${t1} - ${t0}) * 1000))")"
   result="error"
   [[ "$ge" -eq 0 ]] && result="ok"
   jq -nc \
@@ -188,15 +188,15 @@ e2e_grpc_call_unauthenticated() {
   fi
 
   local t0 t1 elapsed ge result
-  t0="$(python3 -c 'import time; print(time.time())')"
+  t0="$(e2e_python -c 'import time; print(time.time())')"
   echo "### $(now_utc) grpcurl (unauthenticated) ${GRPC_ADDR} ${full_method}" >>"${logf}"
   set +e
   grpcurl "${args[@]}" -max-time 60 "${GRPC_ADDR}" "${full_method}" >"${resp}" 2>>"${logf}"
   ge=$?
   set -e
   echo "### grpcurl exit ${ge}" >>"${logf}"
-  t1="$(python3 -c 'import time; print(time.time())')"
-  elapsed="$(python3 -c "print(int((${t1} - ${t0}) * 1000))")"
+  t1="$(e2e_python -c 'import time; print(time.time())')"
+  elapsed="$(e2e_python -c "print(int((${t1} - ${t0}) * 1000))")"
   result="error"
   [[ "$ge" -eq 0 ]] && result="ok"
   jq -nc \

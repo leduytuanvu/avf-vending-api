@@ -53,7 +53,8 @@ e2e_rest_runner_parse "$@"
 load_env
 e2e_restore_inherited_data_flags_if_needed
 
-require_cmd jq curl python3
+require_cmd jq curl
+e2e_require_python
 
 new_run_dir
 e2e_write_run_meta "run-rest-local"
@@ -86,17 +87,12 @@ e2e_run_postman_coverage() {
   fi
   local cov_out="${E2E_RUN_DIR}/reports/coverage-postman.json"
   mkdir -p "${E2E_RUN_DIR}/reports"
-  local -a py=(python3)
-  if ! command -v python3 >/dev/null 2>&1; then
-    if command -v py >/dev/null 2>&1; then
-      py=(py -3)
-    else
-      log_warn "Postman coverage skipped: python3 not found"
-      return 0
-    fi
+  if ! e2e_python -c "import sys" >/dev/null 2>&1; then
+    log_warn "Postman coverage skipped: no working Python 3"
+    return 0
   fi
   set +e
-  "${py[@]}" "${SCRIPT_DIR}/postman/coverage-from-postman.py" \
+  e2e_python "${SCRIPT_DIR}/postman/coverage-from-postman.py" \
     --collection "${E2E_POSTMAN_COLL_ABS}" \
     --matrix "${E2E_POSTMAN_MATRIX_ABS}" \
     --out "${cov_out}"
