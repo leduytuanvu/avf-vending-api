@@ -12,6 +12,7 @@ Multi-protocol local runs under **`tests/e2e/`** complement:
 | Default target | **`E2E_TARGET=local`** (`load_env` / `.env.example`). |
 | Local writes | **`E2E_ALLOW_WRITES=true`** by default so full flows work against a dev API; use **`E2E_ALLOW_WRITES=false`** for read-only smoke (e.g. `run-rest-local.sh --readonly`). |
 | Production writes | Blocked unless **`E2E_TARGET=production`**, **`E2E_ALLOW_WRITES=true`**, and **`E2E_PRODUCTION_WRITE_CONFIRMATION=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION`** (see `e2e_target_safety_guard` in **`lib/e2e_common.sh`**). |
+| Flow review (read-only) | **`./tests/e2e/run-flow-review.sh`** forces **`E2E_ALLOW_WRITES=false`** and only runs static analysis plus optional read-only GETs/gRPC (**`--static-only`** / **`--reuse-data`**). Intended for QA review and safe production read checks. |
 | Secrets | Real tokens live in **`.env`** (gitignored) and **`.e2e-runs/run-*/secrets.private.json`** (gitignored). **`test-data.json`** stores **masked** tokens via `e2e_save_token`; **`test-data.redacted.json`** is for triage. Never commit live secrets. |
 | Artifacts dir | **`.e2e-runs/`** is gitignored. |
 | Destructive / MQTT vs prod | Prefer local/staging for mutations; matrix **safety level** in **[`e2e-flow-coverage.md`](../../docs/testing/e2e-flow-coverage.md)** marks **prod-safe-test-machine-only** where relevant. |
@@ -64,6 +65,8 @@ E2E_FAIL_ON_P1_FINDINGS=true ./tests/e2e/run-all-local.sh --reuse-data path/to/.
 ./tests/e2e/run-mqtt-local.sh
 ./tests/e2e/run-web-admin-flows.sh --full
 ./tests/e2e/run-vending-app-flows.sh --rest-equivalent
+./tests/e2e/run-flow-review.sh --static-only
+./tests/e2e/run-flow-review.sh --reuse-data path/to/test-data.json
 ```
 
 With **flow review** enabled (default), each finished run directory should contain **`improvement-findings.jsonl`** (may be empty; JSON Schema **`tests/e2e/data/improvement-finding.schema.json`**), and after **`e2e_finalize_reports`**: **`improvement-summary.md`**, **`optimization-backlog.md`**, **`flow-review-scorecard.json`** under **`reports/`** and at the run root.

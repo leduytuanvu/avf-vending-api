@@ -45,7 +45,7 @@ py_json_load() {
 echo "verify_e2e_assets: repository root=${ROOT}"
 
 # Required flow-review tooling (must exist; bash/python checks also run globally below)
-for _req in tests/e2e/lib/e2e_flow_review.sh tests/e2e/data/improvement-finding.schema.json tests/e2e/tools/generate-improvement-summary.py tests/e2e/tools/generate-optimization-backlog.py tests/e2e/tools/generate-flow-scorecard.py; do
+for _req in tests/e2e/lib/e2e_flow_review.sh tests/e2e/data/improvement-finding.schema.json tests/e2e/tools/generate-improvement-summary.py tests/e2e/tools/generate-optimization-backlog.py tests/e2e/tools/generate-flow-scorecard.py tests/e2e/run-flow-review.sh tests/e2e/scenarios/90_flow_review_static.sh tests/e2e/scenarios/91_flow_review_existing_data.sh; do
   [[ -f "${ROOT}/${_req}" ]] || err "missing required E2E asset: ${_req}"
 done
 

@@ -49,6 +49,17 @@ After a failure, stderr shows the **run directory**; use **`reports/remediation.
 
 Machine-readable row shape for **`improvement-findings.jsonl`**: **`tests/e2e/data/improvement-finding.schema.json`** (see **`tests/e2e/data/improvement-finding.example.json`**). Helpers live in **`tests/e2e/lib/e2e_flow_review.sh`** (`log_api_contract_issue`, `log_no_improvement_findings`, etc.).
 
+### Non-destructive flow review
+
+Use **`./tests/e2e/run-flow-review.sh`** when you want improvement findings and reports **without** creating or changing server-side data:
+
+- **`--static-only`** — scans **`docs/testing/e2e-flow-coverage.md`**, the **Postman** collection (**`POSTMAN_COLLECTION`**), **`proto/avf/machine/v1`**, **`docs/api/mqtt-contract.md`**, and scenario scripts for coverage gaps and missing safety references. No **`curl`** mutations.
+- **`--reuse-data path/to/test-data.json`** — runs the static pass, copies the JSON into the run dir, checks required ids (**`organizationId`**, **`siteId`**, **`machineId`**, **`productId`** / **`productIds[0]`**, **`slotCode`** / slot ids), then issues **read-only** **`GET /health/live`**, **`GET /version`**, **`GET /v1/machines/{id}/sale-catalog?include_images=true`** (machine JWT from **`.env`** / **`secrets.private.json`** / **`MACHINE_TOKEN`**), optional admin **slots** list when **`ADMIN_TOKEN`** is set, and **`MachineBootstrapService/GetBootstrap`** via **`grpcurl`** when the port is open.
+
+The runner **always** sets **`E2E_ALLOW_WRITES=false`**, so it does not align with flows that require **`E2E_PRODUCTION_WRITE_CONFIRMATION`** for writes — by design it is safe to run against **production** for read-only probes when your tokens and policy allow.
+
+Artifacts match other runs: **`reports/summary.md`**, **`improvement-summary.md`**, **`optimization-backlog.md`**, **`flow-review-scorecard.json`**, **`coverage.json`** (includes **`flowReview`** when static/live fragments exist).
+
 **Postman paths:** `.env.example` references `docs/postman/avf-vending-api-function-path.postman_collection.json`. If that file does not exist in your tree yet, point `POSTMAN_COLLECTION` at an existing export such as `docs/postman/avf-vending-api.postman_collection.json`.
 
 ## Run directory layout

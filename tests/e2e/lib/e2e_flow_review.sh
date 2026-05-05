@@ -190,6 +190,10 @@ log_postman_gap() {
   _append_imp "$1" "postman_gap" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
 }
 
+log_postman_issue() {
+  log_postman_gap "$@"
+}
+
 log_test_data_gap() {
   _append_imp "$1" "test_data_gap" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
 }

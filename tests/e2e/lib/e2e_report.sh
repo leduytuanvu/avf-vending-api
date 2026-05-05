@@ -174,6 +174,33 @@ e2e_generate_coverage_json() {
     }' >"${out}"
 }
 
+e2e_merge_flow_review_coverage_fragments() {
+  local cov="${E2E_RUN_DIR}/reports/coverage.json"
+  [[ -f "$cov" ]] || return 0
+  local st="${E2E_RUN_DIR}/reports/flow-review-static.json"
+  local lv="${E2E_RUN_DIR}/reports/flow-review-live.json"
+  [[ -f "$st" || -f "$lv" ]] || return 0
+  local st_json lv_json
+  if [[ -f "$st" ]] && jq empty "$st" >/dev/null 2>&1; then
+    st_json="$(cat "$st")"
+  else
+    st_json='{}'
+  fi
+  if [[ -f "$lv" ]] && jq empty "$lv" >/dev/null 2>&1; then
+    lv_json="$(cat "$lv")"
+  else
+    lv_json='{}'
+  fi
+  local tmp
+  tmp="$(mktemp)"
+  if jq --argjson s "$st_json" --argjson l "$lv_json" '.flowReview={static:$s, live:$l}' "$cov" >"$tmp" 2>/dev/null; then
+    mv "$tmp" "$cov"
+  else
+    rm -f "$tmp"
+    log_warn "e2e_merge_flow_review_coverage_fragments: jq merge failed"
+  fi
+}
+
 e2e_print_console_summary() {
   local exit_code="${1:-0}"
   local stats
@@ -241,6 +268,8 @@ e2e_finalize_reports() {
   [[ -f "${E2E_RUN_DIR}/reports/summary.md" ]] || e2e_generate_summary_md
   [[ -f "${E2E_RUN_DIR}/reports/remediation.md" ]] || e2e_generate_remediation_md
   [[ -f "${E2E_RUN_DIR}/reports/coverage.json" ]] || e2e_generate_coverage_json
+
+  e2e_merge_flow_review_coverage_fragments
 
   if ! e2e_python_run "${_tools}/generate-improvement-summary.py" --run-dir "${E2E_RUN_DIR}" --repo-root "${_repo}"; then
     log_warn "generate-improvement-summary.py failed"
