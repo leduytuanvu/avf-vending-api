@@ -87,6 +87,32 @@ e2e_get_secret() {
   jq -r --arg k "$key" '.[$k] // empty' "${E2E_SECRETS_FILE}"
 }
 
+e2e_test_events_file() {
+  echo "${E2E_RUN_DIR}/test-events.jsonl"
+}
+
+# flow_id step_name protocol endpoint status message [resource_ids_json]
+e2e_append_test_event() {
+  local flow_id="$1"
+  local step_name="$2"
+  local protocol="$3"
+  local endpoint="$4"
+  local status="$5"
+  local message="$6"
+  local resource_ids="${7:-{}}"
+  [[ -n "${E2E_RUN_DIR:-}" ]] || return 0
+  jq -nc \
+    --arg ts "$(now_utc)" \
+    --arg flow_id "$flow_id" \
+    --arg step_name "$step_name" \
+    --arg protocol "$protocol" \
+    --arg endpoint "$endpoint" \
+    --arg status "$status" \
+    --arg message "$message" \
+    --argjson resource_ids "${resource_ids}" \
+    '{ts:$ts,flow_id:$flow_id,step_name:$step_name,protocol:$protocol,endpoint:$endpoint,resource_ids:$resource_ids,status:$status,message:$message}' >>"$(e2e_test_events_file)"
+}
+
 # Aliases for scenario scripts (spec names)
 initialize_test_data() { e2e_data_initialize; }
 set_data() { e2e_set_data "$@"; }
@@ -95,3 +121,4 @@ get_data() { e2e_get_data "$@"; }
 require_data() { e2e_require_data "$@"; }
 save_token() { e2e_save_token "$@"; }
 get_secret() { e2e_get_secret "$@"; }
+append_test_event() { e2e_append_test_event "$@"; }

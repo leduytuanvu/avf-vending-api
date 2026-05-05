@@ -119,6 +119,18 @@ For each failure category: **symptom**, **likely cause**, **where to look**, **l
 | Safe fix | Bring device online; fix ACL; cancel/retry per admin |
 | --reuse-data | Yes |
 
+## Web admin setup (`run-web-admin-flows.sh` / WA-SETUP-01)
+
+| Field | Detail |
+|-------|--------|
+| Symptom | Early **exit 2** (“E2E_ALLOW_WRITES”); **fail** on auth; **skip** rows in `test-events.jsonl` for planogram/operator/inventory |
+| Likely cause | Writes off; missing token/org; org has no published planogram; operator login disallowed |
+| Where to look | **`test-events.jsonl`**; **`rest/wa-*.response.json`**; **`reports/summary.md`** (when run standalone) |
+| Log file | **`.e2e-runs/run-*/rest/*.meta.json`**, **`*.response.json`**, **`*.request.json`** |
+| Safe fix | Enable **`E2E_ALLOW_WRITES`**; set **`ADMIN_TOKEN` + `E2E_ORGANIZATION_ID`** or email/password login; seed planogram; see **`docs/testing/e2e-test-data-guide.md`** (Web Admin section) |
+| --reuse-data | Yes — reuse **`organizationId` / `siteId` / `machineId`** to avoid duplicate machines |
+| --fresh-data | Yes — new sites/machines/SKUs when IDs collide or activation conflicts |
+
 ## Offline replay conflict
 
 | Field | Detail |

@@ -7,7 +7,9 @@
   "organization": {
     "name": "Example Vending Org (TEST)",
     "code": "EXV-TEST",
-    "timezone": "Asia/Ho_Chi_Minh"
+    "timezone": "Asia/Ho_Chi_Minh",
+    "organizationId_example": "00000000-0000-4000-8000-000000000000",
+    "note": "Web admin setup does not create an org; set E2E_ORGANIZATION_ID (or reuse test-data with organizationId). Use a real UUID from your local seed."
   },
   "site": {
     "name": "Example Site Alpha",

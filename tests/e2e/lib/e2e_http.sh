@@ -122,6 +122,50 @@ _e2e_http_write_meta() {
     '{step:$step,httpStatus:$code,elapsedMs:$elapsed_ms}' >"${dir}/${step}.meta.json"
 }
 
+# method step path json_body use_auth(yes|no) idem_key(optional)
+_e2e_http_json_mutate() {
+  local method="$1"
+  local step="$2"
+  local path="$3"
+  local json_body="$4"
+  local use_auth="${5:-yes}"
+  local idem="${6:-}"
+  local dir
+  dir="$(e2e_http_log_dir)"
+  mkdir -p "$dir"
+  local body_file="${dir}/${step}.body.json"
+  printf '%s' "$json_body" >"$body_file"
+  local url="${BASE_URL%/}${path}"
+  local req="${dir}/${step}.request.json"
+  local tmp_hdr
+  tmp_hdr="$(mktemp)"
+  local -a curl_opts=(-sS -D "${tmp_hdr}" -o "${dir}/${step}.response.json" -w '%{http_code}|%{time_total}')
+  curl_opts+=(-X "$method" -H "Content-Type: application/json" -d @"${body_file}")
+  if [[ "$use_auth" == "yes" ]] && [[ -n "${ADMIN_TOKEN:-}" ]]; then
+    curl_opts+=(-H "Authorization: Bearer ${ADMIN_TOKEN}")
+  fi
+  if [[ -n "$idem" ]]; then
+    curl_opts+=(-H "Idempotency-Key: ${idem}")
+  fi
+  jq -nc \
+    --arg method "$method" \
+    --arg url "$url" \
+    --arg idem "${idem}" \
+    --argjson auth "$( [[ "$use_auth" == "yes" ]] && [[ -n "${ADMIN_TOKEN:-}" ]] && echo true || echo false)" \
+    '{method:$method,url:$url,idempotencyKey:(if $idem != "" then $idem else null end),headers:{"Content-Type":"application/json",Authorization:(if $auth then "Bearer ***" else null end)}}' >"${req}"
+
+  local out
+  out="$(curl "${curl_opts[@]}" "$url" 2>/dev/null || true)"
+  rm -f "${tmp_hdr}"
+  local code="${out%%|*}"
+  local body_time="${out##*|}"
+  [[ -n "$code" ]] || code=0
+  local elapsed_ms
+  elapsed_ms="$(_e2e_http_elapsed_ms "$body_time")"
+  _e2e_http_write_meta "$step" "$code" "$elapsed_ms"
+  echo "$code"
+}
+
 e2e_http_request_json() {
   local method="$1"
   local step="$2"
@@ -183,36 +227,27 @@ e2e_http_delete() {
 }
 
 e2e_http_post_json() {
-  local step="$1"
-  local path="$2"
-  local json_body="$3"
-  local dir
-  dir="$(e2e_http_log_dir)"
-  local body_file="${dir}/${step}.body.json"
-  echo "$json_body" >"$body_file"
-  e2e_http_request_json "POST" "$step" "$path" "$body_file"
+  _e2e_http_json_mutate POST "$1" "$2" "$3" "yes" ""
+}
+
+e2e_http_post_json_anon() {
+  _e2e_http_json_mutate POST "$1" "$2" "$3" "no" ""
+}
+
+e2e_http_post_json_idem() {
+  _e2e_http_json_mutate POST "$1" "$2" "$3" "yes" "$4"
+}
+
+e2e_http_put_json_idem() {
+  _e2e_http_json_mutate PUT "$1" "$2" "$3" "yes" "$4"
 }
 
 e2e_http_put_json() {
-  local step="$1"
-  local path="$2"
-  local json_body="$3"
-  local dir
-  dir="$(e2e_http_log_dir)"
-  local body_file="${dir}/${step}.body.json"
-  echo "$json_body" >"$body_file"
-  e2e_http_request_json "PUT" "$step" "$path" "$body_file"
+  _e2e_http_json_mutate PUT "$1" "$2" "$3" "yes" ""
 }
 
 e2e_http_patch_json() {
-  local step="$1"
-  local path="$2"
-  local json_body="$3"
-  local dir
-  dir="$(e2e_http_log_dir)"
-  local body_file="${dir}/${step}.body.json"
-  echo "$json_body" >"$body_file"
-  e2e_http_request_json "PATCH" "$step" "$path" "$body_file"
+  _e2e_http_json_mutate PATCH "$1" "$2" "$3" "yes" ""
 }
 
 e2e_http_assert_status() {
