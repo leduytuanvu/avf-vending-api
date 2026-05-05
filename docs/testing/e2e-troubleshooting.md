@@ -38,6 +38,12 @@ Symptoms → likely causes → first checks. For remediation steps see **[`e2e-r
 - **Likely cause:** Code consumed; wrong org; reused seed file.
 - **Check:** Issue new code via admin; use `--fresh-data`.
 
+## gRPC machine tests (Phase 6): server unreachable
+
+- **Symptom:** `run-grpc-local.sh` fails immediately with **gRPC unreachable at `${GRPC_ADDR}`**; empty **`grpc-contract-results.jsonl`** or only partial rows.
+- **Likely cause:** API process has no gRPC listener on that host/port; TLS mismatch (harness uses **`-plaintext`**); firewall; wrong `GRPC_ADDR`.
+- **Check:** Confirm gRPC is enabled in local config; `GRPC_ADDR` matches server bind; if the server uses TLS, grpcurl needs TLS flags (adjust harness or use a plaintext dev port). With **reflection**, `grpcurl -plaintext "${GRPC_ADDR}" list` must succeed; without reflection, **TCP** to `${GRPC_ADDR}` must accept connections. See **`tests/e2e/run-grpc-local.sh -h`** and **`GRPC_PROTO_ROOT`** (defaults to repo **`proto/`**).
+
 ## gRPC reflection disabled
 
 - **Symptom:** `grpcurl` list fails; unknown service.

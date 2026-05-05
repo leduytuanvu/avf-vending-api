@@ -13,7 +13,7 @@ This guide describes how **multi-protocol local E2E** runs work using `tests/e2e
 1. **API server** running locally (default `BASE_URL`).
 2. **PostgreSQL** when scenarios assert DB state (same assumptions as [`local-e2e.md`](local-e2e.md)).
 3. **bash**, **curl**, **jq**, **python3** (required for all runners and HTTP timing in `e2e_http.sh`).
-4. **grpcurl** (optional until `tests/e2e/scenarios/grpc_local.sh` exists; runner skips if absent).
+4. **grpcurl** (required for **`run-grpc-local.sh`** Phase 6 machine contracts; optional for other phases).
 5. **mosquitto_pub** / **mosquitto_sub** (optional until `tests/e2e/scenarios/mqtt_local.sh` exists; runner skips if absent).
 
 ## Environment file
@@ -30,7 +30,9 @@ This guide describes how **multi-protocol local E2E** runs work using `tests/e2e
 | `E2E_TARGET` / `E2E_ALLOW_WRITES` | Target guard (`production` + writes needs confirmation — see `e2e_common.sh`) |
 | `E2E_REUSE_DATA` / `E2E_DATA_FILE` | Reuse capture file (env or overridden by CLI) |
 | `ADMIN_TOKEN`, `MACHINE_TOKEN`, MQTT credentials | Secrets — never commit |
-| `GRPC_PROTO_ROOT`, `GRPC_USE_REFLECTION` | gRPC / grpcurl |
+| `GRPC_PROTO_ROOT`, `GRPC_USE_REFLECTION` | gRPC: import root (defaults to repo **`proto/`**) vs server reflection |
+| `MACHINE_ID`, `GRPC_SEND_MACHINE_ID_HEADER` | Optional `x-machine-id` on grpcurl calls |
+| `E2E_ACTIVATION_CODE` | gRPC claim (**`20_grpc_machine_auth.sh`**) when no `machineToken` in secrets |
 
 **Postman paths:** `.env.example` references `docs/postman/avf-vending-api-function-path.postman_collection.json`. If that file does not exist in your tree yet, point `POSTMAN_COLLECTION` at an existing export such as `docs/postman/avf-vending-api.postman_collection.json`.
 
@@ -46,10 +48,12 @@ Each run writes artifacts under:
   secrets.private.json    # full tokens (local only)
   rest/                   # per-call: *.request.json, *.response.body, *.response.headers.txt, *.meta.json
                           # (older JSON mutations may also use *.response.json)
-  grpc/                   # *.request.json, *.response.json, *.log
+  grpc/                   # *.request.json, *.response.json, *.log, *.meta.json
   mqtt/                   # *.publish.json, *.publish.log, *.meta.json, *.subscribe.log
   reports/
     summary.md
+    grpc-contract-summary.md   # Phase 6 rollup (also appended to summary.md when run standalone)
+    grpc-contract-results.jsonl
     remediation.md
     coverage.json
 ```
@@ -102,8 +106,28 @@ Optional scenario stubs (still placeholders until you add them):
 - `tests/e2e/scenarios/rest_local.sh`
 - `tests/e2e/scenarios/web_admin_flows.sh`
 - `tests/e2e/scenarios/vending_app_flows.sh`
-- `tests/e2e/scenarios/grpc_local.sh`
 - `tests/e2e/scenarios/mqtt_local.sh`
+
+Phase **6** machine gRPC contracts are **`20_grpc_*.sh` … `24_grpc_*.sh`** (not stubs).
+
+### gRPC machine contracts (Phase 6)
+
+From repo root, with API + gRPC listener up (`GRPC_ADDR`, default `127.0.0.1:9090`):
+
+```bash
+# Proto files (default GRPC_PROTO_ROOT=$REPO_ROOT/proto when folder exists)
+GRPC_USE_REFLECTION=false \
+  ./tests/e2e/run-grpc-local.sh --reuse-data .e2e-runs/run-<…>/test-data.json
+
+# Or server reflection
+GRPC_USE_REFLECTION=true \
+  ./tests/e2e/run-grpc-local.sh --reuse-data .e2e-runs/run-<…>/test-data.json
+```
+
+- **`--reuse-data`** should provide **`organizationId`**, **`machineId`**, **`productId`** (for commerce); copy **`secrets.private.json`** with **`machineToken`** or rely on **`20_grpc_machine_auth.sh`** with **`E2E_ACTIVATION_CODE`** / `activationCodePlain`.
+- Mutating commerce steps need **`E2E_ALLOW_WRITES=true`** (see **`22_grpc_commerce_cash_sale.sh`**).
+- **`reports/grpc-contract-summary.md`**: pass / fail / skip table per RPC; **`reports/grpc-contract-results.jsonl`**: machine-readable log. Missing RPCs in repo protos are logged **`skip`** / **`method_not_in_repo`** (never silent).
+- **Metadata:** authenticated calls use **`Authorization: Bearer $MACHINE_TOKEN`** and optionally **`x-machine-id`**. Writes send **`idempotency-key`** where the harness sets one.
 
 ### Vending app REST-equivalent (Phase 5)
 
