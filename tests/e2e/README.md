@@ -66,7 +66,7 @@ E2E_FAIL_ON_P1_FINDINGS=true ./tests/e2e/run-all-local.sh --reuse-data path/to/.
 ./tests/e2e/run-vending-app-flows.sh --rest-equivalent
 ```
 
-With **flow review** enabled (default), each finished run directory should contain **`improvement-findings.jsonl`** (may be empty), and after **`e2e_finalize_reports`**: **`improvement-summary.md`**, **`optimization-backlog.md`**, **`flow-review-scorecard.json`** under **`reports/`** and at the run root.
+With **flow review** enabled (default), each finished run directory should contain **`improvement-findings.jsonl`** (may be empty; JSON Schema **`tests/e2e/data/improvement-finding.schema.json`**), and after **`e2e_finalize_reports`**: **`improvement-summary.md`**, **`optimization-backlog.md`**, **`flow-review-scorecard.json`** under **`reports/`** and at the run root.
 
 Common flags: `--reuse-data path/to/test-data.json`, `--fresh-data`, `-h`.
 

@@ -212,6 +212,11 @@ e2e_finalize_reports() {
   local exit_code="${1:-0}"
   export E2E_REPORT_DONE=1
 
+  if [[ -n "${E2E_RUN_DIR:-}" ]]; then
+    mkdir -p "${E2E_RUN_DIR}/reports"
+    : >>"${E2E_RUN_DIR}/improvement-findings.jsonl"
+  fi
+
   local _lib _tools _repo
   _lib="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   _tools="$(cd "${_lib}/../tools" && pwd)"

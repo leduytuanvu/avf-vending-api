@@ -45,8 +45,14 @@ py_json_load() {
 echo "verify_e2e_assets: repository root=${ROOT}"
 
 # Required flow-review tooling (must exist; bash/python checks also run globally below)
-for _req in tests/e2e/lib/e2e_flow_review.sh tests/e2e/tools/generate-improvement-summary.py tests/e2e/tools/generate-optimization-backlog.py; do
+for _req in tests/e2e/lib/e2e_flow_review.sh tests/e2e/data/improvement-finding.schema.json tests/e2e/tools/generate-improvement-summary.py tests/e2e/tools/generate-optimization-backlog.py; do
   [[ -f "${ROOT}/${_req}" ]] || err "missing required E2E asset: ${_req}"
+done
+
+for _rep in tests/e2e/lib/e2e_common.sh tests/e2e/lib/e2e_report.sh; do
+  if ! grep -q 'improvement-findings\.jsonl' "${ROOT}/${_rep}"; then
+    err "${_rep} must reference improvement-findings.jsonl (run lifecycle / reports)"
+  fi
 done
 
 # --- 1) bash -n ---
@@ -108,33 +114,50 @@ else
   warn "skipped JSON validation (no jq and no working python)"
 fi
 
-# Improvement finding example: required top-level keys
+# Improvement finding example: required top-level keys + optional JSON Schema validation
 if [[ -n "${python_exec}" ]] && [[ -f tests/e2e/data/improvement-finding.example.json ]]; then
   _imp_ex="tests/e2e/data/improvement-finding.example.json"
+  _imp_sch="tests/e2e/data/improvement-finding.schema.json"
   if [[ "${python_exec}" == "py" ]]; then
-    py -3 -c "
+      py -3 -c "
 import json
-keys = {'ts','finding_id','severity','category','flow_id','scenario_id','step_name','protocol',
-       'endpoint_or_rpc_or_topic','symptom','impact','recommendation','evidence_file','status'}
+keys = {'finding_id','created_at_utc','severity','category','flow_id','scenario_id','step_name','protocol',
+       'endpoint_or_rpc_or_topic','symptom','impact','recommendation','evidence_file','suggested_owner','status'}
 d = json.load(open(r'''${_imp_ex}''', encoding='utf-8'))
 missing = keys - set(d.keys())
 if missing:
     raise SystemExit('improvement-finding.example.json missing keys: ' + ', '.join(sorted(missing)))
 if str(d.get('severity')) not in ('P0','P1','P2','P3'):
     raise SystemExit('improvement-finding.example.json severity must be P0–P3')
-" || err "improvement-finding.example.json schema check failed"
+try:
+    import jsonschema
+    schema = json.load(open(r'''${_imp_sch}''', encoding='utf-8'))
+    jsonschema.validate(instance=d, schema=schema)
+except ImportError:
+    pass
+except jsonschema.exceptions.ValidationError as e:
+    raise SystemExit('improvement-finding.example.json failed schema: ' + str(e))
+" || err "improvement-finding.example.json check failed"
   else
-    "${python_exec}" -c "
+      "${python_exec}" -c "
 import json
-keys = {'ts','finding_id','severity','category','flow_id','scenario_id','step_name','protocol',
-       'endpoint_or_rpc_or_topic','symptom','impact','recommendation','evidence_file','status'}
+keys = {'finding_id','created_at_utc','severity','category','flow_id','scenario_id','step_name','protocol',
+       'endpoint_or_rpc_or_topic','symptom','impact','recommendation','evidence_file','suggested_owner','status'}
 d = json.load(open(r'''${_imp_ex}''', encoding='utf-8'))
 missing = keys - set(d.keys())
 if missing:
     raise SystemExit('improvement-finding.example.json missing keys: ' + ', '.join(sorted(missing)))
 if str(d.get('severity')) not in ('P0','P1','P2','P3'):
     raise SystemExit('improvement-finding.example.json severity must be P0–P3')
-" || err "improvement-finding.example.json schema check failed"
+try:
+    import jsonschema
+    schema = json.load(open(r'''${_imp_sch}''', encoding='utf-8'))
+    jsonschema.validate(instance=d, schema=schema)
+except ImportError:
+    pass
+except jsonschema.exceptions.ValidationError as e:
+    raise SystemExit('improvement-finding.example.json failed schema: ' + str(e))
+" || err "improvement-finding.example.json check failed"
   fi
 fi
 

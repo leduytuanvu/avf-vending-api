@@ -5,7 +5,7 @@ This playbook is aimed at **hard failures**: steps recorded as **failed** in `ev
 ## Failures vs flow improvement findings
 
 - **Failure:** the harness could not complete the scenario as written (wrong status code, missing resource, broker down, etc.). Fix the environment or the product behavior, then rerun. **`reports/remediation.md`** lists failure rows with evidence paths.
-- **Improvement finding:** the flow **passed or was skipped with a documented workaround**, but something about the API, contract, docs, performance, or safety still deserves a ticket. These are appended to **`improvement-findings.jsonl`** and summarized in **`improvement-summary.md`**, **`optimization-backlog.md`**, and **`flow-review-scorecard.json`**. They do **not** replace failure diagnosis — they complement it.
+- **Improvement finding:** the flow **passed or was skipped with a documented workaround**, but something about the API, contract, docs, performance, or safety still deserves a ticket. These are appended to **`improvement-findings.jsonl`** (JSON Schema: **`tests/e2e/data/improvement-finding.schema.json`**; each line includes **`created_at_utc`**, **`suggested_owner`**, **`status`**, etc.) and summarized in **`improvement-summary.md`**, **`optimization-backlog.md`**, and **`flow-review-scorecard.json`**. They do **not** replace failure diagnosis — they complement it.
 
 Optional skips and brittle workarounds should be logged as **P2/P3** (or **P1** if they block reliable automation), not omitted.
 

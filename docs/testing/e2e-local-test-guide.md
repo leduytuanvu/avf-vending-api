@@ -47,6 +47,8 @@ After a failure, stderr shows the **run directory**; use **`reports/remediation.
 | `E2E_FAIL_ON_P1_FINDINGS` | Default **false** — set **true** to fail on P1 findings too |
 | `E2E_GENERATE_OPTIMIZATION_BACKLOG` | When **true**, write **`optimization-backlog.md`** at finalize |
 
+Machine-readable row shape for **`improvement-findings.jsonl`**: **`tests/e2e/data/improvement-finding.schema.json`** (see **`tests/e2e/data/improvement-finding.example.json`**). Helpers live in **`tests/e2e/lib/e2e_flow_review.sh`** (`log_api_contract_issue`, `log_no_improvement_findings`, etc.).
+
 **Postman paths:** `.env.example` references `docs/postman/avf-vending-api-function-path.postman_collection.json`. If that file does not exist in your tree yet, point `POSTMAN_COLLECTION` at an existing export such as `docs/postman/avf-vending-api.postman_collection.json`.
 
 ## Run directory layout
