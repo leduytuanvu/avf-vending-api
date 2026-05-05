@@ -4,7 +4,7 @@ This guide describes how **multi-protocol local E2E** runs work using `tests/e2e
 
 ## Scope
 
-- **REST:** Web Admin + machine routes from **[`docs/swagger/swagger.json`](../swagger/swagger.json)** and **[`docs/postman/`](../postman/)**
+- **REST:** Web Admin (`/v1/admin/*`) + **machine-scoped** routes from **[`docs/swagger/swagger.json`](../swagger/swagger.json)** — used by the **vending REST-equivalent QA harness**; the **field vending app** in production uses **gRPC + MQTT** (see **`e2e-flow-coverage.md`**).
 - **gRPC:** `proto/avf/machine/v1/*.proto` services (vending app)
 - **MQTT:** **[`docs/api/mqtt-contract.md`](../api/mqtt-contract.md)** topic layouts
 
@@ -85,6 +85,7 @@ Common options:
 - **`--readonly`** (REST runner only) — read-only public GET smoke (`00_rest_readonly_smoke.sh`).
 - **`--fresh-data`** — empty `test-data.json` for the run.
 - **`--reuse-data PATH`** — copy capture JSON into `test-data.json`.
+- **`--rest-equivalent`** — **`run-vending-app-flows.sh` only**: run machine REST mirror flows (VM-REST-02…08). Extra args from `run-all-local.sh` are forwarded to each phase; use e.g. `./tests/e2e/run-all-local.sh --reuse-data .e2e-runs/run-…/test-data.json --rest-equivalent` so the vending phase receives the flag **after** common options. **Field production apps use gRPC + MQTT**, not these REST paths.
 - **`-h` / `--help`**
 
 `run-all-local.sh` order: **preflight** → REST → web-admin flows → vending-app flows → gRPC → MQTT → **reports**.
@@ -103,6 +104,21 @@ Optional scenario stubs (still placeholders until you add them):
 - `tests/e2e/scenarios/vending_app_flows.sh`
 - `tests/e2e/scenarios/grpc_local.sh`
 - `tests/e2e/scenarios/mqtt_local.sh`
+
+### Vending app REST-equivalent (Phase 5)
+
+Run from repo root (writes commerce paths when `E2E_ALLOW_WRITES=true`):
+
+```bash
+E2E_TARGET=local E2E_ALLOW_WRITES=true \
+  ./tests/e2e/run-vending-app-flows.sh --rest-equivalent --reuse-data .e2e-runs/run-<…>/test-data.json
+```
+
+- **`test-data.json`** should include `machineId`, `productId`, `organizationId` / site fields as produced by web-admin setup (or your lab seed). Optionally set **`e2eTestMachine`** to `true` in JSON for production-target guard alignment.
+- Copy **`secrets.private.json`** from the same prior run directory if you reuse data so **`machineToken`** is available; or set **`E2E_ACTIVATION_CODE`** / `activationCodePlain` in `test-data.json` and omit skip so **`02_machine_activation_bootstrap_rest.sh`** can claim. Use **`E2E_SKIP_ACTIVATION_CLAIM=1`** when the token is already in secrets.
+- Artifacts: **`reports/va-rest-results.jsonl`**, **`reports/summary.md`** (appended section), REST captures under **`rest/`**, and **`test-data.json`** fields such as **`vmCashSuccessOrderId`** / **`vmCashSuccessPaymentId`** after cash success.
+- **Production payment/refund:** requires `E2E_TARGET=production`, `E2E_ALLOW_WRITES=true`, `E2E_PRODUCTION_WRITE_CONFIRMATION=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION`, and **`e2eTestMachine`** `true` or `1` in `test-data.json`.
+- **Offline out-of-order:** scenario **VM-REST-08** documents skipping unless the API exposes an explicit test hook; `E2E_OFFLINE_OUT_OF_ORDER=1` is reserved for future wiring.
 
 ## Library layout
 
