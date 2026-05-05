@@ -1,0 +1,70 @@
+{
+  "$schema_comment": "Fictional example for local E2E — replace all UUIDs and secrets before use; do not commit real credentials.",
+  "environment": "local",
+  "api_base": "http://localhost:8080",
+  "grpc_host": "localhost:9090",
+  "grpc_tls": false,
+  "organization": {
+    "name": "Example Vending Org (TEST)",
+    "code": "EXV-TEST",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "organizationId_example": "00000000-0000-4000-8000-000000000000",
+    "note": "Web admin setup does not create an org; set E2E_ORGANIZATION_ID (or reuse test-data with organizationId). Use a real UUID from your local seed."
+  },
+  "site": {
+    "name": "Example Site Alpha",
+    "external_ref": "SITE-ALPHA-TEST-001"
+  },
+  "admin_user": {
+    "email": "admin.example+e2e@invalid.local",
+    "role_hint": "org_admin"
+  },
+  "machine": {
+    "serial": "SN-E2E-0001",
+    "external_id": "KIOSK-E2E-ALPHA-001",
+    "model": "AVF-Test-Cabinet",
+    "firmware_hint": "0.0.0-e2e"
+  },
+  "activation_code": {
+    "placeholder": "REPLACE_WITH_ISSUED_CODE",
+    "format_hint": "As returned from admin activation endpoint — never log plaintext in CI artifacts"
+  },
+  "planogram": {
+    "cabinet_code": "A",
+    "slots": [
+      {
+        "slot_code": "A1",
+        "product_sku": "COCA330-TEST",
+        "price_minor": 15000,
+        "currency": "VND",
+        "capacity": 10,
+        "initial_quantity": 8
+      },
+      {
+        "slot_code": "A2",
+        "product_sku": "WATER500-TEST",
+        "price_minor": 10000,
+        "currency": "VND",
+        "capacity": 12,
+        "initial_quantity": 12
+      }
+    ]
+  },
+  "categories": [
+    {
+      "name": "Beverages (TEST)",
+      "sort_order": 1
+    }
+  ],
+  "payment": {
+    "mode": "sandbox",
+    "provider_hint": "Configure PSP sandbox keys in local .env only",
+    "webhook_public_base": "https://example.invalid/e2e-webhook-replace"
+  },
+  "mqtt": {
+    "broker_url_tcp_example": "tcp://localhost:1883",
+    "topic_prefix_example": "avf/dev/e2e",
+    "layout": "enterprise",
+    "test_client_id_example": "e2e-mqtt-client-00000000-0000-4000-8000-000000000001"
+  }
+}

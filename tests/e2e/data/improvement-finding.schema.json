@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local/avf/e2e/improvement-finding.schema.json",
+  "title": "E2E improvement finding (JSONL row)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "finding_id",
+    "created_at_utc",
+    "severity",
+    "category",
+    "flow_id",
+    "scenario_id",
+    "step_name",
+    "protocol",
+    "endpoint_or_rpc_or_topic",
+    "symptom",
+    "impact",
+    "recommendation",
+    "evidence_file",
+    "suggested_owner",
+    "status"
+  ],
+  "properties": {
+    "finding_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3"]
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "flow_design",
+        "api_contract",
+        "response_shape",
+        "missing_field",
+        "missing_endpoint",
+        "unnecessary_complexity",
+        "idempotency",
+        "retry_semantics",
+        "offline_sync",
+        "protocol_mismatch",
+        "rest_grpc_mismatch",
+        "mqtt_contract",
+        "docs_gap",
+        "postman_gap",
+        "test_data_gap",
+        "production_safety",
+        "performance",
+        "flaky",
+        "observability",
+        "cleanup",
+        "security",
+        "unknown"
+      ]
+    },
+    "flow_id": {
+      "type": "string"
+    },
+    "scenario_id": {
+      "type": "string"
+    },
+    "step_name": {
+      "type": "string"
+    },
+    "protocol": {
+      "type": "string",
+      "enum": ["REST", "gRPC", "MQTT", "mixed", "docs", "data"]
+    },
+    "endpoint_or_rpc_or_topic": {
+      "type": "string"
+    },
+    "symptom": {
+      "type": "string"
+    },
+    "impact": {
+      "type": "string"
+    },
+    "recommendation": {
+      "type": "string"
+    },
+    "evidence_file": {
+      "type": "string"
+    },
+    "suggested_owner": {
+      "type": "string",
+      "enum": ["backend", "android", "admin-web", "qa", "devops", "docs", "unknown"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "acknowledged", "closed"]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "./test-data.schema.json",
+  "schemaVersion": 1,
+  "capturedAt": "2026-05-04T12:00:00.000Z",
+  "runId": "00000000-0000-4000-8000-000000000099",
+  "environment": "local",
+  "apiBaseUrl": "http://localhost:8080",
+  "organizationId": "11111111-2222-4333-8444-555555555501",
+  "siteId": "11111111-2222-4333-8444-555555555502",
+  "machineId": "11111111-2222-4333-8444-555555555503",
+  "activationCodeId": "11111111-2222-4333-8444-555555555504",
+  "activationCode": "E2E-REPLACE-ME",
+  "machineToken": "<redacted — store outside git>",
+  "adminToken": "<redacted — store outside git>",
+  "categoryIds": ["11111111-2222-4333-8444-555555555511"],
+  "brandIds": [],
+  "productIds": ["11111111-2222-4333-8444-555555555512"],
+  "slotIds": ["11111111-2222-4333-8444-555555555521"],
+  "cabinetIds": [],
+  "orderIds": [],
+  "paymentIds": [],
+  "commandIds": [],
+  "vendIds": [],
+  "refundIds": [],
+  "mqtt": {
+    "topicPrefix": "avf/dev/e2e",
+    "lastPublishedCommandId": null
+  },
+  "notes": "Populate arrays as flows create resources; never commit production identifiers or live tokens."
+}
