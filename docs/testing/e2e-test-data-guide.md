@@ -126,6 +126,14 @@ Runner: **`tests/e2e/run-web-admin-flows.sh`**, scenario **`tests/e2e/scenarios/
 | **Staging** | Admin/support APIs; revoke activation codes |
 | **Production** | No automated cleanup |
 
+## Flow improvement reports and `--reuse-data`
+
+After any full or partial E2E run, **`improvement-findings.jsonl`** may contain **improvement findings** (distinct from **hard failures** in **`events.jsonl`**). When you fix product or docs debt, rerun with **`--reuse-data path/to/test-data.json`** so stable **`organizationId`**, **`machineId`**, **`productId`**, and secrets stay aligned (see **Reuse data** above).
+
+- Read **`reports/improvement-summary.md`** and **`reports/optimization-backlog.md`** even on a green run.
+- Turn **P0 / P1 / P2** lines into tickets with **`finding_id`** and evidence paths under **`.e2e-runs/run-*`**.
+- For **review-only** debt collection against an existing capture (read-only HTTP/gRPC, no mutations), **`./tests/e2e/run-flow-review.sh --reuse-data …`** is appropriate; see **[`e2e-local-test-guide.md`](e2e-local-test-guide.md)** and **[`e2e-remediation-playbook.md`](e2e-remediation-playbook.md)** for the full workflow and **safe production read-only** notes.
+
 ## Related
 
 - **[`e2e-flow-coverage.md`](e2e-flow-coverage.md)**

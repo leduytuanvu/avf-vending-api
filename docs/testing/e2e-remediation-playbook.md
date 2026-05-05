@@ -1,22 +1,99 @@
 # E2E remediation playbook
 
-This playbook is aimed at **hard failures**: steps recorded as **failed** in `events.jsonl`, non-zero scenario exits, or HTTP/gRPC errors that block the scenario’s assertions.
+This playbook covers two different outcomes from a run:
 
-## Failures vs flow improvement findings
+1. **Hard failures** — the harness could not complete the scenario as written; fix before expecting a green pass.
+2. **Flow improvement findings** — the scenario may still **pass**, but the flow, API, docs, data shape, or protocol should be improved; tracked separately in improvement reports.
 
-- **Failure:** the harness could not complete the scenario as written (wrong status code, missing resource, broker down, etc.). Fix the environment or the product behavior, then rerun. **`reports/remediation.md`** lists failure rows with evidence paths.
-- **Improvement finding:** the flow **passed or was skipped with a documented workaround**, but something about the API, contract, docs, performance, or safety still deserves a ticket. These are appended to **`improvement-findings.jsonl`** (JSON Schema: **`tests/e2e/data/improvement-finding.schema.json`**; each line includes **`created_at_utc`**, **`suggested_owner`**, **`status`**, etc.). **Finalize** always writes **`reports/improvement-summary.md`**, **`reports/optimization-backlog.md`**, and **`reports/flow-review-scorecard.json`** (mirrors at the run root), even when there are zero findings; see **`## Flow Improvement Findings`** in **`reports/summary.md`**. They do **not** replace failure diagnosis — they complement it.
+---
 
-Optional skips and brittle workarounds should be logged as **P2/P3** (or **P1** if they block reliable automation), not omitted.
+## Hard failure vs improvement finding
+
+### Hard failure (must fix before pass)
+
+Use **`reports/remediation.md`** and **`events.jsonl`** as the source of truth.
+
+- An **API / RPC / MQTT topic** call did not succeed as the scenario requires (wrong HTTP status, gRPC error, broker unreachable, timeout, etc.).
+- The **expected state** was not reached (assertion failed, resource missing, wrong body shape for the check).
+- The **test harness or environment** is broken in a way that prevents the step from completing (bad token, wrong `BASE_URL`, missing tool).
+
+Until these are addressed, treat the run as **failed** regardless of improvement debt.
+
+### Improvement finding (test may still pass)
+
+Use **`improvement-findings.jsonl`**, **`reports/improvement-summary.md`**, and **`reports/optimization-backlog.md`**.
+
+- The step or scenario may **exit successfully** or **skip** with a documented reason, but there is still a **product or engineering debt** to record (ambiguous contract, missing doc, idempotency gap, slow path, safety note).
+- Findings are **non-blocking** by default (unless **`E2E_FAIL_ON_P0_FINDINGS`** / **`E2E_FAIL_ON_P1_FINDINGS`** causes finalize to exit non-zero).
+- Optional skips and brittle workarounds should be logged as **P2/P3** (or **P1** if they block reliable automation), not omitted.
+
+---
 
 ## Severity (P0–P3) for improvement findings
 
 | Severity | Meaning |
 |----------|--------|
-| **P0** | Blocks a reliable **production** vending flow or risks **money / inventory** corruption. **Default: fails the run** when **`E2E_FAIL_ON_P0_FINDINGS=true`**. |
-| **P1** | Blocks **automated** coverage or can leave **incorrect business state**; should be fixed before trusting CI. Optional run failure: **`E2E_FAIL_ON_P1_FINDINGS=true`**. |
-| **P2** | Slows delivery: unclear contracts, extra manual steps, perf hotspots, inconsistent protocols. |
-| **P3** | Cleanup, naming, ergonomics, minor doc gaps. |
+| **P0** | **Money / inventory / production** risk; behavior that can corrupt ledgers, stock, or payments, or block **vending production reliability**. Treat as **must fix immediately**. Harness default: **`E2E_FAIL_ON_P0_FINDINGS=true`** fails the run at finalize when P0 rows exist (excluding explicit “no findings” markers). |
+| **P1** | Blocks a **pilot** or **automation** goal, or indicates a **major correctness / testability** problem (missing RPC, broken idempotency contract, untraceable state). Optional: set **`E2E_FAIL_ON_P1_FINDINGS=true`** to fail the run on P1. |
+| **P2** | **Optimization**, ergonomics, **missing docs**, too many round-trips, performance hotspots, protocol friction. |
+| **P3** | **Cleanup / naming / minor** improvements (including small Postman or doc touch-ups). |
+
+---
+
+## Improvement artifacts (what each file is)
+
+| File | Purpose |
+|------|--------|
+| **`improvement-findings.jsonl`** | Append-only JSON Lines: one object per finding (`finding_id`, `severity`, `category`, `flow_id`, `scenario_id`, `symptom`, `impact`, `recommendation`, `evidence_file`, …). Schema: **`tests/e2e/data/improvement-finding.schema.json`**. |
+| **`reports/improvement-summary.md`** (mirror at run root) | Human-readable rollup of findings grouped for triage; read this first when the run exited **0** but you want debt visibility. |
+| **`reports/optimization-backlog.md`** (mirror at run root) | Checkbox-oriented backlog derived from findings; use for grooming and splitting work across teams. |
+| **`reports/flow-review-scorecard.json`** (mirror at run root) | Machine-readable per-flow rollup (counts / scores) for dashboards or CI summaries. |
+
+**Finalize** always regenerates **`improvement-summary.md`**, **`optimization-backlog.md`**, and **`flow-review-scorecard.json`** (even when there are zero findings). **`improvement-findings.jsonl`** is appended during scenarios (and touched at finalize); compare across runs for regressions. Hard failures remain in **`reports/remediation.md`** and **`events.jsonl`**.
+
+---
+
+## After every run (workflow)
+
+1. Open **`reports/summary.md`** (or root **`summary.md`**) for the overall pass/fail/skip picture and environment snapshot.
+2. If any step **failed**, open **`reports/remediation.md`** first and fix **hard failures** (infra, tokens, product bugs, harness bugs).
+3. Open **`reports/improvement-summary.md`** for **flow / API / docs** issues that did not necessarily fail the run.
+4. Open **`reports/optimization-backlog.md`** and turn **P0 / P1 / P2** items into tickets (**backend**, **admin**, **android**, **docs**) with **`finding_id`** and evidence paths from **`.e2e-runs/run-*`**.
+5. After fixes land, **rerun** with **`--reuse-data path/to/test-data.json`** when IDs are still valid (or **`--fresh-data`** after collisions or scratch reset).
+6. For **review-only** passes (no mutations), use **`./tests/e2e/run-flow-review.sh`** (see **[`e2e-local-test-guide.md`](e2e-local-test-guide.md)**). See **Safe production read-only** below.
+
+### Safe production read-only
+
+- Full E2E phases may perform **writes** when **`E2E_ALLOW_WRITES=true`**; **never** point those at production unless your runbook explicitly allows it and **`E2E_PRODUCTION_WRITE_CONFIRMATION`** is set per **`e2e_common.sh`**.
+- **`./tests/e2e/run-flow-review.sh`** always sets **`E2E_ALLOW_WRITES=false`**: **`--static-only`** never calls mutating APIs; **`--reuse-data`** only performs **read-only** GETs and optional **GetBootstrap** gRPC. You may still use it against **production** **only** when (a) organizational policy allows read probes, (b) tokens are **read-scoped**, and (c) responses are treated as sensitive. It does not remove other risks (e.g. logging PII); treat **`.e2e-runs/`** as secret-bearing.
+
+---
+
+## Example findings (illustrative)
+
+| Severity | Example |
+|----------|--------|
+| **P0** | Duplicate offline event replay creates a **duplicate payment** (idempotency / ledger bug). |
+| **P1** | **gRPC** surface missing or **Unimplemented** for **media delta ACK** expected by the vending app contract. |
+| **P2** | **Slot assignment** requires **too many API calls**; flow should be batched or documented as a single “publish” snapshot. |
+| **P3** | **Postman** request name or folder label is **unclear** vs the canonical path in **[`e2e-flow-coverage.md`](e2e-flow-coverage.md)**. |
+
+---
+
+## Suggested Cursor prompt (from `optimization-backlog.md`)
+
+Use this when you want an agent to implement backlog items without scope creep:
+
+```text
+Open optimization-backlog.md from my latest .e2e-runs/run-* directory (or paste the checkboxes).
+
+- Fix **P0** improvement findings first, then P1, then P2. Defer P3 unless trivial.
+- Propose a **minimal file scope** (backend / admin / android / docs) per finding; do not change unrelated modules.
+- For each P0/P1 item: **acceptance checklist** (behavior, API or proto change, observability), **tests to run** (Go/unit, local E2E command with --reuse-data if applicable).
+- Do not refactor or rename unrelated code; keep PRs reviewable.
+```
+
+---
 
 ## When a finding should become a backend (or client) ticket
 
@@ -203,20 +280,18 @@ For each failure category: **symptom**, **likely cause**, **where to look**, **l
 
 ## Run artifacts (`reports/` after finalize)
 
-After **`run-all-local.sh`** completes (success or failure), open the run directory printed on stderr:
+After **`run-all-local.sh`** or any runner that calls finalize, open the run directory printed on stderr:
 
 | Artifact | Purpose |
 |----------|---------|
 | **`reports/summary.md`** | What ran, environment snapshot, protocol tables, pass/fail/skip, merged coverage pointers |
-| **`reports/remediation.md`** | One section per failure: **failure_id**, scenario/step, protocol, endpoint/RPC/topic, expected vs actual (redacted), evidence file, likely cause, suggested fix, **--reuse-data** safety, safe rerun command |
-| **`reports/coverage.json`** | Machine-readable merge: Postman matrix, gRPC/MQTT JSONL payloads, Phase 8 rows, **`scenarioCoverage`** (harness step prefixes + Phase 8 outcomes) |
+| **`reports/remediation.md`** | **Hard failures** only: scenario/step, evidence paths, suggested reruns (**[`# Hard failure vs improvement finding`](#hard-failure-vs-improvement-finding)**) |
+| **`reports/coverage.json`** | Machine-readable merge: Postman matrix, gRPC/MQTT JSONL payloads, Phase 8 rows, **`scenarioCoverage`**; **`flowReview`** when **`run-flow-review.sh`** ran |
 | **`test-data.redacted.json`** | Same keys as **`test-data.json`** with token-like values masked |
 | **`reports/e2e-junit.xml`** | JUnit projection of **`events.jsonl`** for CI dashboards |
 | **`reports/e2e-report-context.json`** | Non-secret snapshot of `BASE_URL`, `GRPC_ADDR`, MQTT broker string, write flags |
-| **`improvement-findings.jsonl`** | Flow/API/design debt logged during the run (see intro above) |
-| **`improvement-summary.md`** | Human-readable rollup of findings (also under run root) |
-| **`optimization-backlog.md`** | Checkbox backlog by severity |
-| **`flow-review-scorecard.json`** | Per-flow scores and finding counts |
+
+**Improvement-only outputs** (details: **[# Improvement artifacts (what each file is)](#improvement-artifacts-what-each-file-is)**): **`improvement-findings.jsonl`**, **`reports/improvement-summary.md`**, **`reports/optimization-backlog.md`**, **`reports/flow-review-scorecard.json`** (mirrors at run root).
 
 Tokens may still appear in raw **`rest/*.response.body`** files — treat the whole **`.e2e-runs/`** tree as sensitive.
 

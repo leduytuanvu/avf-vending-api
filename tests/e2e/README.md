@@ -73,6 +73,24 @@ With **flow review** enabled (default), each finished run directory should conta
 
 Common flags: `--reuse-data path/to/test-data.json`, `--fresh-data`, `-h`.
 
+## Flow improvement findings and optimization workflow
+
+- **Hard failure:** API/RPC/topic did not work as required, expected state not reached — fix before pass (**`reports/remediation.md`**, **`events.jsonl`**).
+- **Improvement finding:** test may still **pass**, but flow/API/docs/data/protocol should improve — see **`improvement-findings.jsonl`**, **`reports/improvement-summary.md`**, **`reports/optimization-backlog.md`**, **`reports/flow-review-scorecard.json`**.
+
+**Severity (short):** **P0** money/inventory/production risk; **P1** pilot or automation blocker; **P2** optimization/docs/ergonomics; **P3** cleanup/naming. **P0/P1** gate env: **`E2E_FAIL_ON_P0_FINDINGS`**, **`E2E_FAIL_ON_P1_FINDINGS`** (`tests/e2e/.env.example`).
+
+**After each run:** open **`summary.md`** → **`remediation.md`** (if failures) → **`improvement-summary.md`** → **`optimization-backlog.md`** → create backend/admin/android/docs tickets from **P0/P1/P2** → rerun with **`--reuse-data`** when IDs still valid.
+
+**Review-only mode (no mutations):**
+
+```bash
+./tests/e2e/run-flow-review.sh --static-only
+./tests/e2e/run-flow-review.sh --reuse-data path/to/test-data.json
+```
+
+Uses **`E2E_ALLOW_WRITES=false`** only; see **[`docs/testing/e2e-remediation-playbook.md`](../../docs/testing/e2e-remediation-playbook.md)** for **safe production read-only** guardrails, **examples** (P0–P3), and a **Cursor prompt template** for **`optimization-backlog.md`**.
+
 ### Flow improvement logger env (optional)
 
 Set in **`tests/e2e/.env`** or the shell: **`E2E_ENABLE_FLOW_REVIEW`**, **`E2E_WARN_SLOW_MS`**, **`E2E_FAIL_ON_P0_FINDINGS`**, **`E2E_FAIL_ON_P1_FINDINGS`** (see **`tests/e2e/.env.example`**). **`improvement-summary.md`**, **`optimization-backlog.md`**, and **`flow-review-scorecard.json`** are always written at finalize (may be empty).
