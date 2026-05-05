@@ -32,6 +32,8 @@ e2e_data_initialize() {
     echo '{}' >"${E2E_TEST_DATA_FILE}"
     echo '{}' >"${E2E_SECRETS_FILE}"
   fi
+  # Always present for merge/summary (may stay empty if no module used e2e_append_test_event).
+  : >"$(e2e_test_events_file)"
 }
 
 e2e_set_data() {

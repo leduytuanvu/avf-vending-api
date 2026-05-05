@@ -9,6 +9,7 @@ Fake values below are **examples**; replace with locally generated UUIDs and **n
 | **`tests/e2e/.env.example`** | Documented variables for `tests/e2e/.env` (copy locally) |
 | **`.e2e-runs/run-*/test-data.json`** | Public capture produced per run (IDs, masked tokens) |
 | **`.e2e-runs/run-*/secrets.private.json`** | Full **ADMIN_TOKEN**, **MACHINE_TOKEN**, MQTT password, etc. (never copy out of the run dir) |
+| **`.e2e-runs/run-*/test-events.jsonl`** | **WA / gRPC / MQTT** structured events (`e2e_append_test_event`); **truncated empty at each `e2e_data_initialize`**, then appended by those phases |
 | **`tests/e2e/data/seed.local.example.json`** | Not loaded automatically — template for org/site/slots |
 | **`tests/e2e/data/reusable-test-data.example.json`** | Expected shape for `--reuse-data` |
 | **`tests/e2e/data/test-data.schema.json`** | JSON Schema for reusable capture |

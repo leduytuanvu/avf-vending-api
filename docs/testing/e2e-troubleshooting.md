@@ -2,6 +2,15 @@
 
 Symptoms → likely causes → first checks. For remediation steps see **[`e2e-remediation-playbook.md`](e2e-remediation-playbook.md)**.
 
+## After any failed run (next actions)
+
+1. Note **`E2E_RUN_DIR`** from stderr (orchestrators also log it on failed steps).
+2. Open **`${E2E_RUN_DIR}/reports/remediation.md`** (structured **failure_id**, evidence paths, rerun command, **`--reuse-data`** guidance).
+3. Open **`${E2E_RUN_DIR}/reports/summary.md`** for protocol tables and merged coverage pointers.
+4. Inspect **`events.jsonl`** (harness steps) and **`test-events.jsonl`** (WA/gRPC/MQTT rows); raw HTTP/gRPC/MQTT transcripts under **`rest/`**, **`grpc/`**, **`mqtt/`**.
+
+**Skips** should appear as **`skipped`** in **`events.jsonl`** / **`end_step`** / **`e2e_skip`** log lines — if a phase disappears silently, check the child script’s exit code and **`OVERALL`** in **`run-all-local.sh`**.
+
 ## E2E harness: missing jq, python3, or curl
 
 - **Symptom:** `FATAL: required command not found: jq` (or `python3` / `curl`) when running `run-all-local.sh`, `run-rest-local.sh`, or preflight.

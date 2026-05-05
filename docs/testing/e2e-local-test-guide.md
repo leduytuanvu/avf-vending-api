@@ -2,6 +2,14 @@
 
 This guide describes how **multi-protocol local E2E** runs work using `tests/e2e/run-*.sh` and `tests/e2e/lib/*.sh`. Database-heavy correctness tests still live under **[`local-e2e.md`](local-e2e.md)** (`make test-e2e-local`).
 
+## Safety
+
+- **`E2E_TARGET`** defaults to **`local`**. Production-targeted **writes** require **`E2E_ALLOW_WRITES=true`** plus **`E2E_PRODUCTION_WRITE_CONFIRMATION=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION`** (see **`tests/e2e/lib/e2e_common.sh`**).
+- **Secrets:** keep them in **`tests/e2e/.env`** and **`.e2e-runs/run-*/secrets.private.json`** (both gitignored). Surfaces meant for logs: **`test-data.json`** (masked tokens) and **`test-data.redacted.json`**.
+- **`.e2e-runs/`** is gitignored. Prefer **local/staging** for destructive or broker-connected flows; see matrix **safety level** in **[`e2e-flow-coverage.md`](e2e-flow-coverage.md)**.
+
+After a failure, stderr shows the **run directory**; use **`reports/remediation.md`** and **`reports/summary.md`** for next actions (see **[`e2e-troubleshooting.md`](e2e-troubleshooting.md)**).
+
 ## Scope
 
 - **REST:** Web Admin (`/v1/admin/*`) + **machine-scoped** routes from **[`docs/swagger/swagger.json`](../swagger/swagger.json)** — used by the **vending REST-equivalent QA harness**; the **field vending app** in production uses **gRPC + MQTT** (see **`e2e-flow-coverage.md`**).

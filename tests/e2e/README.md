@@ -5,6 +5,32 @@ Multi-protocol local runs under **`tests/e2e/`** complement:
 - **Go/DB correctness:** [`docs/testing/local-e2e.md`](../../docs/testing/local-e2e.md) (`make test-e2e-local`)
 - **Field pilot matrix:** [`docs/testing/field-test-cases.md`](../../docs/testing/field-test-cases.md)
 
+## Safety (local vs production)
+
+| Rule | Behavior |
+|------|----------|
+| Default target | **`E2E_TARGET=local`** (`load_env` / `.env.example`). |
+| Local writes | **`E2E_ALLOW_WRITES=true`** by default so full flows work against a dev API; use **`E2E_ALLOW_WRITES=false`** for read-only smoke (e.g. `run-rest-local.sh --readonly`). |
+| Production writes | Blocked unless **`E2E_TARGET=production`**, **`E2E_ALLOW_WRITES=true`**, and **`E2E_PRODUCTION_WRITE_CONFIRMATION=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION`** (see `e2e_target_safety_guard` in **`lib/e2e_common.sh`**). |
+| Secrets | Real tokens live in **`.env`** (gitignored) and **`.e2e-runs/run-*/secrets.private.json`** (gitignored). **`test-data.json`** stores **masked** tokens via `e2e_save_token`; **`test-data.redacted.json`** is for triage. Never commit live secrets. |
+| Artifacts dir | **`.e2e-runs/`** is gitignored. |
+| Destructive / MQTT vs prod | Prefer local/staging for mutations; matrix **safety level** in **[`e2e-flow-coverage.md`](../../docs/testing/e2e-flow-coverage.md)** marks **prod-safe-test-machine-only** where relevant. |
+
+## Coverage snapshot
+
+Authoritative matrix: **[`docs/testing/e2e-flow-coverage.md`](../../docs/testing/e2e-flow-coverage.md)** (REST / gRPC / MQTT / Postman exclusions).
+
+| Area | Harness |
+|------|---------|
+| **Web admin** | **WA-SETUP-01** (`01_web_admin_setup.sh`); **WA-CAT / WA-INV / WA-SUP / WA-RPT** (`10`–`13`). Maps to matrix **WA-002–016** (some rows **partial** / **planned**: deep RBAC user admin, full media upload pipeline, some command REST paths). |
+| **Vending app** | gRPC **20–24**; machine REST **02–08**; Phase 8 **40–47**. |
+| **Protocols** | REST, gRPC, MQTT. |
+| **Postman** | **`coverage-from-postman.py`** maps requests to the matrix or the **exclusions** table. |
+
+## Artifacts (orchestrated run)
+
+Under **`.e2e-runs/run-*`**: **`run-meta.json`**, **`events.jsonl`**, **`test-data.json`**, **`test-events.jsonl`** (created at data init, then filled by modules that call `e2e_append_test_event`), **`secrets.private.json`**, **`rest/`**, **`grpc/`**, **`mqtt/`**, **`reports/summary.md`**, **`reports/remediation.md`**, **`reports/coverage.json`**, **`test-data.redacted.json`**, optional **`reports/e2e-junit.xml`**. On failure, stderr prints **`E2E_RUN_DIR`**; start with **`reports/remediation.md`**.
+
 ## Quality (offline, no API)
 
 From the repo root — validates every `tests/e2e/**/*.sh` with `bash -n`, runs `py_compile` on `tests/e2e/tools/*.py`, checks JSON under `tests/e2e/data/`, scenario contracts, `.gitignore` for `.e2e-runs/`, and heuristics for committed secrets. **shellcheck** and **lychee** / **markdown-link-check** run when installed (otherwise skipped with a warning).
