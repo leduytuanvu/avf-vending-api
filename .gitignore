@@ -40,6 +40,9 @@ Thumbs.db
 *.exe
 *.test
 
+# Local E2E shell harness artifacts (planned scripts under tests/e2e/)
+.e2e-runs/
+
 # Local CI/security reports
 ci-reports/
 security-reports/

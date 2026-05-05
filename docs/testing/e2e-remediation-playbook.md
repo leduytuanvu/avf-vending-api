@@ -1,0 +1,138 @@
+# E2E remediation playbook
+
+For each failure category: **symptom**, **likely cause**, **where to look**, **log paths** (when harness exists), **safe fix**, **reuse vs fresh data**.
+
+## API not ready
+
+| Field | Detail |
+|-------|--------|
+| Symptom | Health checks fail; connection refused |
+| Likely cause | Service down; port mismatch |
+| Where to look | Terminal running API; `GET /health/live` |
+| Log file | `.e2e-runs/run-*/rest/health.log` (planned) |
+| Safe fix | Start stack per `docs/runbooks/local-dev.md`; verify `8080`/configured port |
+| --reuse-data | Yes (infra only) |
+| --fresh-data | No |
+
+## Missing admin token
+
+| Field | Detail |
+|-------|--------|
+| Symptom | 401 on admin routes |
+| Likely cause | Login not run; wrong env var |
+| Where to look | Postman `admin_token`; `E2E_ADMIN_TOKEN` |
+| Log file | `.e2e-runs/run-*/rest/auth.txt` (planned) |
+| Safe fix | Re-login; ensure Bearer header set |
+| --reuse-data | Yes after refresh |
+| --fresh-data | If account locked — new user |
+
+## Machine token invalid
+
+| Field | Detail |
+|-------|--------|
+| Symptom | gRPC/REST machine auth errors |
+| Likely cause | Expiry; rotation |
+| Where to look | Admin machine credential version; device logs |
+| Log file | `.e2e-runs/run-*/grpc/auth.log` |
+| Safe fix | `RefreshMachineToken`; re-activate only if policy allows |
+| --reuse-data | Yes after refresh |
+| --fresh-data | If machine revoked |
+
+## Activation code already claimed
+
+| Field | Detail |
+|-------|--------|
+| Symptom | Claim conflict |
+| Likely cause | Reused code |
+| Where to look | Admin activation list |
+| Log file | `.e2e-runs/run-*/grpc/activate.log` |
+| Safe fix | Issue new code |
+| --reuse-data | No |
+| --fresh-data | **Yes** |
+
+## gRPC reflection / proto path
+
+| Field | Detail |
+|-------|--------|
+| Symptom | grpcurl cannot list services |
+| Likely cause | Reflection disabled; wrong imports |
+| Where to look | Server config; `proto/` tree |
+| Log file | CLI stderr |
+| Safe fix | Use explicit proto files from repo |
+| --reuse-data | Yes |
+
+## MQTT broker auth
+
+| Field | Detail |
+|-------|--------|
+| Symptom | Connect or publish denied |
+| Likely cause | TLS, ACL, stale creds |
+| Where to look | Broker logs; [`mqtt-contract.md`](../api/mqtt-contract.md) |
+| Log file | `.e2e-runs/run-*/mqtt/broker-stderr.log` |
+| Safe fix | Fix `MQTT_*` env; rotate machine MQTT password version with backend |
+| --reuse-data | After credentials fixed |
+| --fresh-data | If machine must be re-bound |
+
+## Payment mock
+
+| Field | Detail |
+|-------|--------|
+| Symptom | Session create fails; no webhook |
+| Likely cause | Sandbox keys; tunnel |
+| Where to look | API commerce logs; PSP dashboard (test) |
+| Log file | `.e2e-runs/run-*/rest/payment.log` |
+| Safe fix | Configure PSP test keys; expose webhook URL |
+| --reuse-data | Yes for order retry with **new** idempotency key if order abandoned |
+| --fresh-data | If PSP customer reference collides |
+
+## Idempotency conflict (409)
+
+| Field | Detail |
+|-------|--------|
+| Symptom | 409 / gRPC aborted |
+| Likely cause | Key reuse with different body |
+| Where to look | Response `requestId`; DB ledger |
+| Log file | rest/grpc transcripts |
+| Safe fix | New key **only** for new logical operation |
+| --reuse-data | Yes |
+| --fresh-data | Rarely — if DB stuck |
+
+## Inventory insufficient
+
+| Field | Detail |
+|-------|--------|
+| Symptom | Cannot create order / vend |
+| Likely cause | Zero stock |
+| Where to look | Admin inventory |
+| Log file | rest inventory calls |
+| Safe fix | Stock adjustment or refill |
+| --reuse-data | Yes |
+
+## Command timeout (MQTT)
+
+| Field | Detail |
+|-------|--------|
+| Symptom | Pending command; no ACK |
+| Likely cause | Device offline; topic typo |
+| Where to look | `command_ledger`; [`mqtt-command-debug.md`](../runbooks/mqtt-command-debug.md) |
+| Log file | `.e2e-runs/run-*/mqtt/*.log` |
+| Safe fix | Bring device online; fix ACL; cancel/retry per admin |
+| --reuse-data | Yes |
+
+## Offline replay conflict
+
+| Field | Detail |
+|-------|--------|
+| Symptom | Sequence / gap errors |
+| Likely cause | Out-of-order upload |
+| Where to look | Offline queue export; server logs |
+| Log file | grpc offline sync |
+| Safe fix | Resync full queue or reset scratch machine |
+| --reuse-data | Sometimes |
+| --fresh-data | **Often** for clean sequence |
+
+---
+
+## Related
+
+- **[`e2e-troubleshooting.md`](e2e-troubleshooting.md)**
