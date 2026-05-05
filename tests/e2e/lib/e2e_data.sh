@@ -102,6 +102,9 @@ e2e_append_test_event() {
   local status="$5"
   local message="$6"
   local resource_ids="${7:-{}}"
+  if ! jq -e . >/dev/null 2>&1 <<<"${resource_ids}"; then
+    resource_ids='{}'
+  fi
   [[ -n "${E2E_RUN_DIR:-}" ]] || return 0
   jq -nc \
     --arg ts "$(now_utc)" \

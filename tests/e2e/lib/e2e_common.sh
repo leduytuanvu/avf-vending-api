@@ -12,6 +12,14 @@ e2e_strict_mode() {
 
 load_env() {
   local env_file="${1:-}"
+  # If the caller exported E2E_ALLOW_WRITES before sourcing the runner, keep it over values in the env file
+  # (e.g. read-only smoke with E2E_ENV_FILE pointing at a destructive template).
+  local _e2e_allow_writes_was_set=0
+  local _e2e_allow_writes_val=""
+  if [[ -n "${E2E_ALLOW_WRITES+set}" ]]; then
+    _e2e_allow_writes_was_set=1
+    _e2e_allow_writes_val="${E2E_ALLOW_WRITES}"
+  fi
   if [[ -z "${env_file}" ]]; then
     env_file="${E2E_ENV_FILE:-}"
   fi
@@ -24,6 +32,9 @@ load_env() {
     source "$env_file"
     set +a
   fi
+  if [[ "${_e2e_allow_writes_was_set}" -eq 1 ]]; then
+    export E2E_ALLOW_WRITES="${_e2e_allow_writes_val}"
+  fi
 
   : "${BASE_URL:=http://127.0.0.1:8080}"
   : "${GRPC_ADDR:=127.0.0.1:9090}"
@@ -33,12 +44,22 @@ load_env() {
   : "${POSTMAN_ENV:=docs/postman/avf-local.postman_environment.json}"
   : "${E2E_TARGET:=local}"
   : "${E2E_ALLOW_WRITES:=true}"
+  : "${E2E_ALLOW_DESTRUCTIVE:=false}"
+  : "${E2E_ALLOW_DESTRUCTIVE_CLEANUP:=false}"
+  : "${E2E_ALLOW_REAL_PAYMENT:=false}"
+  : "${E2E_ALLOW_REAL_DISPENSE:=false}"
+  : "${E2E_ALLOW_REAL_MACHINE_COMMANDS:=false}"
+  : "${E2E_ALLOW_EXTERNAL_NOTIFICATIONS:=false}"
   : "${E2E_REUSE_DATA:=false}"
   : "${E2E_ENABLE_FLOW_REVIEW:=true}"
   : "${E2E_WARN_SLOW_MS:=1500}"
   : "${E2E_FAIL_ON_P0_FINDINGS:=true}"
   : "${E2E_FAIL_ON_P1_FINDINGS:=false}"
   : "${E2E_GENERATE_OPTIMIZATION_BACKLOG:=true}"
+
+  export E2E_ALLOW_DESTRUCTIVE E2E_ALLOW_DESTRUCTIVE_CLEANUP
+  export E2E_ALLOW_REAL_PAYMENT E2E_ALLOW_REAL_DISPENSE E2E_ALLOW_REAL_MACHINE_COMMANDS
+  export E2E_ALLOW_EXTERNAL_NOTIFICATIONS
 
   e2e_target_safety_guard
 }
@@ -48,6 +69,13 @@ e2e_target_safety_guard() {
     if [[ "${E2E_PRODUCTION_WRITE_CONFIRMATION:-}" != "I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION" ]]; then
       echo "FATAL: E2E_TARGET=production with E2E_ALLOW_WRITES=true requires" >&2
       echo "      E2E_PRODUCTION_WRITE_CONFIRMATION=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION" >&2
+      exit 2
+    fi
+  fi
+  if [[ "${E2E_TARGET}" == "production" && "${E2E_ALLOW_WRITES}" == "true" && "${E2E_ALLOW_DESTRUCTIVE:-false}" == "true" ]]; then
+    if [[ "${E2E_PRODUCTION_DESTRUCTIVE_CONFIRMATION:-}" != "I_UNDERSTAND_DB_WILL_BE_RESET_AFTER_TEST" ]]; then
+      echo "FATAL: production destructive E2E (E2E_ALLOW_DESTRUCTIVE=true) requires" >&2
+      echo "      E2E_PRODUCTION_DESTRUCTIVE_CONFIRMATION=I_UNDERSTAND_DB_WILL_BE_RESET_AFTER_TEST" >&2
       exit 2
     fi
   fi
