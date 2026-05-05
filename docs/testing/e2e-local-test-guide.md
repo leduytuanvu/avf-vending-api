@@ -71,6 +71,16 @@ Each run writes artifacts under:
 
 The directory **`.e2e-runs/`** is gitignored.
 
+## Offline quality checks (no running API)
+
+Static validation for shell scripts, Python helpers, JSON fixtures, scenario conventions, and basic secret heuristics:
+
+```bash
+./scripts/ci/verify_e2e_assets.sh
+```
+
+Equivalent: **`make verify-e2e-assets`**. Optional **`shellcheck`** and **`lychee --offline`** (or **`markdown-link-check`**) tighten checks when installed.
+
 ## Commands
 
 ```bash

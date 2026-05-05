@@ -5,6 +5,16 @@ Multi-protocol local runs under **`tests/e2e/`** complement:
 - **Go/DB correctness:** [`docs/testing/local-e2e.md`](../../docs/testing/local-e2e.md) (`make test-e2e-local`)
 - **Field pilot matrix:** [`docs/testing/field-test-cases.md`](../../docs/testing/field-test-cases.md)
 
+## Quality (offline, no API)
+
+From the repo root — validates every `tests/e2e/**/*.sh` with `bash -n`, runs `py_compile` on `tests/e2e/tools/*.py`, checks JSON under `tests/e2e/data/`, scenario contracts, `.gitignore` for `.e2e-runs/`, and heuristics for committed secrets. **shellcheck** and **lychee** / **markdown-link-check** run when installed (otherwise skipped with a warning).
+
+```bash
+./scripts/ci/verify_e2e_assets.sh
+# or
+make verify-e2e-assets
+```
+
 ## Documentation
 
 | Doc | Purpose |
