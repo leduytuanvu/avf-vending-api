@@ -67,7 +67,7 @@ grpc_contract_try "$FLOW_ID" "reconcile-events" MachineTelemetryService Reconcil
 SCEN="23_grpc_inventory_telemetry_offline.sh"
 log_offline_sync_issue "P2" "$FLOW_ID" "$SCEN" "sync-cursor" "gRPC" "GetSyncCursor/PushOfflineEvents" "Harness sends empty offline bundle — strict sequence/cursor/idempotency of client_event_id not fully proven here" "Duplicate or gap risk in production" "Add tests that assert duplicate client_event_id returns idempotent replay signal" "${E2E_RUN_DIR}/grpc/g23-cursor.response.json"
 if [[ "${GRPC_USE_REFLECTION:-false}" != "true" ]]; then
-  log_docs_gap "P2" "$FLOW_ID" "$SCEN" "grpc-entry" "gRPC" "${GRPC_ADDR:-}" "Offline/telemetry methods need documented metadata (authorization, x-machine-id)" "Client misconfiguration" "Document required gRPC metadata matrix" "${E2E_RUN_DIR}/grpc/g23-inv-delta.meta.json"
+  log_docs_issue "P2" "$FLOW_ID" "$SCEN" "grpc-entry" "gRPC" "${GRPC_ADDR:-}" "Offline/telemetry methods need documented metadata (authorization, x-machine-id)" "Client misconfiguration" "Document required gRPC metadata matrix" "${E2E_RUN_DIR}/grpc/g23-inv-delta.meta.json"
 fi
 if [[ "${ec}" -eq 0 ]]; then
   e2e_flow_review_scenario_complete "$FLOW_ID" "$SCEN" "flow-review-complete" "grpc_inventory_telemetry_ok"

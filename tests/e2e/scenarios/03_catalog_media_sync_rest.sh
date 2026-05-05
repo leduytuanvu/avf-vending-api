@@ -14,6 +14,7 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_http.sh"
 source "${E2E_SCENARIO_DIR}/../lib/e2e_data.sh"
 
 FLOW_ID="VM-REST-03"
+SCENARIO_ID="$(basename "${BASH_SOURCE[0]}")"
 VA_LOG="${E2E_RUN_DIR}/reports/va-rest-results.jsonl"
 mkdir -p "${E2E_RUN_DIR}/reports"
 
@@ -51,6 +52,7 @@ if [[ "$code" != "200" ]]; then
 fi
 
 hit=""
+IMPROV_CATALOG=0
 [[ -n "$PRODUCT_ID" && "$PRODUCT_ID" != "null" ]] && hit="$(jq -r --arg p "$PRODUCT_ID" --arg sc "$SLOT" '
   [.items[]? | select(.productId==$p and .slotCode==$sc)] | length
 ' "${E2E_RUN_DIR}/rest/vm-sale-catalog.response.json")"
@@ -61,16 +63,24 @@ if [[ -n "$PRODUCT_ID" && "$PRODUCT_ID" != "null" ]] && [[ "${hit:-0}" -ge 1 ]];
   va_record "sale-catalog-a1-product" "GET .../sale-catalog" "pass" "$code" "slot ${SLOT} has productId ${PRODUCT_ID}"
 else
   va_record "sale-catalog-a1-product" "GET .../sale-catalog" "skip" "$code" "expected product ${PRODUCT_ID:-?} on $SLOT — check planogram/publish"
-  log_response_shape_issue "P2" "$FLOW_ID" "03_catalog_media_sync_rest.sh" "sale-catalog-slot" "REST" "GET /v1/machines/{id}/sale-catalog" "Expected product not found on configured slot — deterministic slot assignment not reflected in sale-catalog" "Vending UI/API may miss price/stock for app" "Ensure publish projects slot bindings; stable slot_code keys in response" "${E2E_RUN_DIR}/rest/vm-sale-catalog.response.json"
+  log_response_shape_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "sale-catalog-slot" "REST" "GET /v1/machines/{id}/sale-catalog" "Expected product not found on configured slot — deterministic slot assignment not reflected in sale-catalog" "Vending UI/API may miss price/stock for app" "Ensure publish projects slot bindings; stable slot_code keys in response" "${E2E_RUN_DIR}/rest/vm-sale-catalog.response.json"
+  IMPROV_CATALOG=1
 fi
 
 if [[ "${img_chk:-0}" -gt 0 ]]; then
   va_record "sale-catalog-media-urls" "GET .../sale-catalog" "pass" "$code" "image URLs present on ${img_chk} row(s) (no download performed)"
 else
   va_record "sale-catalog-media-urls" "GET .../sale-catalog" "skip" "$code" "no image.displayUrl in response (optional)"
-  log_missing_field_issue "P2" "$FLOW_ID" "03_catalog_media_sync_rest.sh" "sale-catalog-media" "REST" "GET .../sale-catalog?include_images=true" "Sale-catalog rows lack image URL (and checksum/fingerprint not asserted in this response)" "Kiosk cannot show product media" "Return thumb/display URL + checksum or media manifest link per OpenAPI" "${E2E_RUN_DIR}/rest/vm-sale-catalog.response.json"
+  log_missing_field_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "sale-catalog-media" "REST" "GET .../sale-catalog?include_images=true" "Sale-catalog rows lack image URL (and checksum/fingerprint not asserted in this response)" "Kiosk cannot show product media" "Return thumb/display URL + checksum or media manifest link per OpenAPI" "${E2E_RUN_DIR}/rest/vm-sale-catalog.response.json"
+  IMPROV_CATALOG=1
 fi
 
-e2e_flow_review_scenario_complete "$FLOW_ID" "03_catalog_media_sync_rest.sh" "flow-review-complete" "catalog_media_sync_reviewed"
+if [[ "${IMPROV_CATALOG:-0}" -eq 1 ]]; then
+  log_unnecessary_complexity_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "catalog-call-depth" "REST" "sale-catalog" "Machine sale screen may require multiple hops (bootstrap + catalog + media) vs a single aggregated vending snapshot" "Harder automation and app cold-start" "Offer composite snapshot RPC or REST with embedded media metadata" "${E2E_RUN_DIR}/rest/vm-sale-catalog.meta.json"
+else
+  log_no_improvement_findings "$FLOW_ID" "$SCENARIO_ID" "flow-review-complete"
+fi
+
+e2e_flow_review_scenario_complete "$FLOW_ID" "$SCENARIO_ID" "flow-review-complete" "catalog_media_sync_reviewed"
 
 exit 0

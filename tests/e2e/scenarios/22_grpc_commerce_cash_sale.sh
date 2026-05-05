@@ -41,6 +41,7 @@ META="$(jq -nc --arg o "$ORG" --arg m "$MID" --arg rid "g22-$(date +%s)" \
 grpc_contract_skip "$FLOW_ID" "create-payment-session-psp" MachineCommerceService CreatePaymentSession \
   "skipped_in_favor_of_confirm_cash_payment_for_contract_run"
 
+SCEN="22_grpc_commerce_cash_sale.sh"
 if [[ "${E2E_ALLOW_WRITES:-}" != "true" ]]; then
   grpc_contract_skip "$FLOW_ID" "create-order-gate" MachineCommerceService CreateOrder "E2E_ALLOW_WRITES_not_true"
   grpc_contract_skip "$FLOW_ID" "confirm-cash-gate" MachineCommerceService ConfirmCashPayment "E2E_ALLOW_WRITES_not_true"
@@ -55,6 +56,8 @@ if [[ "${E2E_ALLOW_WRITES:-}" != "true" ]]; then
   else
     grpc_contract_skip "$FLOW_ID" "get-order-status-readonly" MachineCommerceService GetOrderStatus "no_order_id_in_test_data"
   fi
+  log_data_setup_issue "P3" "$FLOW_ID" "$SCEN" "grpc-commerce-writes-gate" "gRPC" "MachineCommerceService/*" "gRPC commerce write RPCs skipped — E2E_ALLOW_WRITES not true (readonly GetOrderStatus path only)" "Reduced money/idempotency coverage in this run" "Run lab with E2E_ALLOW_WRITES=true; keep production guards" "${E2E_RUN_DIR}/test-data.json"
+  e2e_flow_review_scenario_complete "$FLOW_ID" "$SCEN" "flow-review-readonly" "grpc_commerce_readonly"
   exit 0
 fi
 
@@ -137,13 +140,14 @@ else
   grpc_contract_skip "$FLOW_ID" "vend-failure-probe" MachineCommerceService ReportVendFailure "skipped_success_path_incomplete"
 fi
 
-SCEN="22_grpc_commerce_cash_sale.sh"
-log_rest_grpc_mismatch "P2" "$FLOW_ID" "$SCEN" "rest-vs-grpc" "mixed" "VM-REST-04 vs gRPC" "Cash/vend lifecycle is duplicated across REST QA harness and gRPC — responses and ordering may drift" "Split-brain for operators" "Single source contract table; parity tests" "${E2E_RUN_DIR}/grpc/g22-create-order.response.json"
+log_rest_grpc_issue "P2" "$FLOW_ID" "$SCEN" "rest-vs-grpc" "mixed" "VM-REST-04 vs gRPC" "Cash/vend lifecycle is duplicated across REST QA harness and gRPC — responses and ordering may drift" "Split-brain for operators" "Single source contract table; parity tests" "${E2E_RUN_DIR}/grpc/g22-create-order.response.json"
 if [[ "${GRPC_USE_REFLECTION:-false}" != "true" ]]; then
-  log_docs_gap "P2" "$FLOW_ID" "$SCEN" "grpc-entry" "gRPC" "${GRPC_ADDR:-}" "Document grpcurl invocation without reflection for commerce methods" "Field integrators blocked" "Dev guide: GRPC_PROTO_ROOT + GRPC_ADDR" "${E2E_RUN_DIR}/grpc/g22-create-order.meta.json"
+  log_docs_issue "P2" "$FLOW_ID" "$SCEN" "grpc-entry" "gRPC" "${GRPC_ADDR:-}" "Document grpcurl invocation without reflection for commerce methods" "Field integrators blocked" "Dev guide: GRPC_PROTO_ROOT + GRPC_ADDR" "${E2E_RUN_DIR}/grpc/g22-create-order.meta.json"
 fi
 if [[ "${ec}" -eq 0 ]]; then
   e2e_flow_review_scenario_complete "$FLOW_ID" "$SCEN" "flow-review-complete" "grpc_commerce_ok"
+else
+  log_api_contract_issue "P2" "$FLOW_ID" "$SCEN" "grpc-commerce-incomplete" "gRPC" "MachineCommerceService" "One or more gRPC commerce steps failed — idempotency/retry semantics for CreateOrder/ConfirmCash/Vend not fully exercised" "Automation gap vs REST VM harness" "Align error surfaces; document replay keys" "${E2E_RUN_DIR}/grpc/g22-create-order.meta.json"
 fi
 
 exit "${ec}"

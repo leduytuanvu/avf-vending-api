@@ -26,6 +26,8 @@ done
 
 append_event_jsonl "rest-readonly" "passed" "required + optional GETs completed"
 
-e2e_flow_review_scenario_complete "WA-001-public" "00_rest_readonly_smoke.sh" "flow-review-complete" "readonly_smoke_ok_no_scenario_findings"
+FLOW_ID="WA-001-public"
+log_no_improvement_findings "$FLOW_ID" "00_rest_readonly_smoke.sh" "flow-review-complete"
+e2e_flow_review_scenario_complete "$FLOW_ID" "00_rest_readonly_smoke.sh" "flow-review-complete" "readonly_smoke_ok_no_scenario_findings"
 
 exit 0

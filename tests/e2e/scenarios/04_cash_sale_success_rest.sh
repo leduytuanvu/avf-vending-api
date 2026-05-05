@@ -15,6 +15,7 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_http.sh"
 source "${E2E_SCENARIO_DIR}/../lib/e2e_data.sh"
 
 FLOW_ID="VM-REST-04"
+SCENARIO_ID="$(basename "${BASH_SOURCE[0]}")"
 VA_LOG="${E2E_RUN_DIR}/reports/va-rest-results.jsonl"
 mkdir -p "${E2E_RUN_DIR}/reports"
 
@@ -44,6 +45,7 @@ vm_payment_guard_ok() {
 }
 
 if ! vm_payment_guard_ok; then
+  log_production_safety_issue "P0" "$FLOW_ID" "$SCENARIO_ID" "production-commerce-guard" "REST" "/v1/commerce/*" "VM-REST-04 blocked: production payment writes require E2E_ALLOW_WRITES, E2E_PRODUCTION_WRITE_CONFIRMATION, and test-data e2eTestMachine=true" "Prevents accidental prod vending mutations" "Keep guards; never disable without exec review" "${E2E_RUN_DIR}/test-data.json"
   log_error "VM-REST-04: production payment writes blocked (need E2E_ALLOW_WRITES + E2E_PRODUCTION_WRITE_CONFIRMATION + test-data e2eTestMachine=true)"
   va_record "safety" "—" "fail" "0" "production guard"
   exit 2
@@ -112,8 +114,10 @@ e2e_http_get "vm-order-final" "/v1/commerce/orders/${OID}" >/dev/null
 OST="$(jq -r '.order.status // .order.order_status // empty' "${E2E_RUN_DIR}/rest/vm-order-final.response.json")"
 va_record "order-status" "GET /v1/commerce/orders/{id}" "pass" "200" "status=${OST}"
 
-log_flow_design_issue "P2" "$FLOW_ID" "04_cash_sale_success_rest.sh" "order-status-shape" "REST" "GET /v1/commerce/orders/{id}" "Order status is read via multiple possible JSON paths (.order.status vs .order.order_status) — contract ambiguous for clients" "Incorrect UI/backend branching on lifecycle" "Single canonical status enum in OpenAPI; deprecate aliases" "${E2E_RUN_DIR}/rest/vm-order-final.response.json"
-log_api_contract_issue "P2" "$FLOW_ID" "04_cash_sale_success_rest.sh" "vend-after-payment" "REST" "POST .../vend/start" "Harness orders cash-checkout then vend start; server-side must reject vend when unpaid — negative path not asserted in REST VM harness" "Possible money/inventory inconsistency if checks missing" "Enforce payment gate; document state machine tests" "${E2E_RUN_DIR}/rest/vm-vend-start.meta.json"
+log_flow_design_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "order-status-shape" "REST" "GET /v1/commerce/orders/{id}" "Order status is read via multiple possible JSON paths (.order.status vs .order.order_status) — contract ambiguous for clients" "Incorrect UI/backend branching on lifecycle" "Single canonical status enum in OpenAPI; deprecate aliases" "${E2E_RUN_DIR}/rest/vm-order-final.response.json"
+log_api_contract_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "vend-after-payment" "REST" "POST .../vend/start" "Harness orders cash-checkout then vend start; server-side must reject vend when unpaid — negative path not asserted in REST VM harness" "Possible money/inventory inconsistency if checks missing" "Enforce payment gate; document state machine tests" "${E2E_RUN_DIR}/rest/vm-vend-start.meta.json"
+log_idempotency_issue "P1" "$FLOW_ID" "$SCENARIO_ID" "idempotency-key-cash" "REST" "POST /v1/commerce/cash-checkout" "Harness does not prove duplicate cash-checkout with same Idempotency-Key is a safe replay — double order/payment risk under retries" "Money loss or duplicate fulfillment" "Honor Idempotency-Key per OpenAPI; return same order_id/payment_id on replay" "${E2E_RUN_DIR}/rest/vm-cash-co.meta.json"
+log_observability_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "commerce-audit-trace" "REST" "commerce" "Order/payment/vend final state lacks asserted correlation to immutable audit/event ids in this harness" "Harder incident reconstruction" "Return request_id / event sequence on order GET; wire to audit export" "${E2E_RUN_DIR}/rest/vm-order-final.response.json"
 
 if [[ -n "$qty_before" ]] && [[ "$qty_before" =~ ^[0-9]+$ ]]; then
   e2e_http_get "vm-sc-qty-after" "/v1/machines/${MID}/sale-catalog?include_unavailable=true&include_images=false" >/dev/null
@@ -124,19 +128,19 @@ if [[ -n "$qty_before" ]] && [[ "$qty_before" =~ ^[0-9]+$ ]]; then
       va_record "inventory-sale-catalog" "GET .../sale-catalog" "pass" "200" "availableQty $qty_before→$qty_after"
     else
       va_record "inventory-sale-catalog" "GET .../sale-catalog" "skip" "200" "expected $exp got $qty_after (eventual consistency?)"
-      log_flow_design_issue "P1" "$FLOW_ID" "04_cash_sale_success_rest.sh" "inventory-verify" "REST" "GET .../sale-catalog" "Inventory decrement not verifiable via sale-catalog quantity after successful vend" "Cannot prove inventory correctness for cash sale in automation" "Strong read-after-write guarantees or inventory event API for machines" "${E2E_RUN_DIR}/rest/vm-sc-qty-after.meta.json"
+      log_flow_design_issue "P1" "$FLOW_ID" "$SCENARIO_ID" "inventory-verify" "REST" "GET .../sale-catalog" "Inventory decrement not verifiable via sale-catalog quantity after successful vend" "Cannot prove inventory correctness for cash sale in automation" "Strong read-after-write guarantees or inventory event API for machines" "${E2E_RUN_DIR}/rest/vm-sc-qty-after.meta.json"
     fi
   else
     va_record "inventory-sale-catalog" "GET .../sale-catalog" "skip" "200" "no qty after"
-    log_flow_design_issue "P1" "$FLOW_ID" "04_cash_sale_success_rest.sh" "inventory-field" "REST" "GET .../sale-catalog" "availableQuantity missing after sale — inventory not observable on catalog projection" "Blocks P0/P1 inventory proofs" "Expose machine inventory snapshot on REST or document alternative verify API" "${E2E_RUN_DIR}/rest/vm-sc-qty-after.response.json"
+    log_flow_design_issue "P1" "$FLOW_ID" "$SCENARIO_ID" "inventory-field" "REST" "GET .../sale-catalog" "availableQuantity missing after sale — inventory not observable on catalog projection" "Blocks P0/P1 inventory proofs" "Expose machine inventory snapshot on REST or document alternative verify API" "${E2E_RUN_DIR}/rest/vm-sc-qty-after.response.json"
   fi
 else
   va_record "inventory-sale-catalog" "—" "skip" "0" "no baseline qty"
-  log_flow_design_issue "P2" "$FLOW_ID" "04_cash_sale_success_rest.sh" "inventory-baseline" "REST" "sale-catalog" "No baseline quantity before sale — harness cannot assert inventory movement" "Weaker regression signal" "Ensure planogram + sale-catalog exposes qty in lab data" "${E2E_RUN_DIR}/rest/vm-sc-qty-before.meta.json"
+  log_flow_design_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "inventory-baseline" "REST" "sale-catalog" "No baseline quantity before sale — harness cannot assert inventory movement" "Weaker regression signal" "Ensure planogram + sale-catalog exposes qty in lab data" "${E2E_RUN_DIR}/rest/vm-sc-qty-before.meta.json"
 fi
 
-log_retry_issue "P2" "$FLOW_ID" "04_cash_sale_success_rest.sh" "cash-idempotency" "REST" "POST /v1/commerce/cash-checkout" "Duplicate submission behavior of cash-checkout under retries not exercised vs POST /v1/commerce/orders idempotency" "Double charge or duplicate order risk" "Document and test Idempotency-Key semantics for cash-checkout" "${E2E_RUN_DIR}/rest/vm-cash-co.meta.json"
+log_retry_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "cash-idempotency" "REST" "POST /v1/commerce/cash-checkout" "Duplicate submission behavior of cash-checkout under retries not exercised vs POST /v1/commerce/orders idempotency" "Double charge or duplicate order risk" "Document and test Idempotency-Key semantics for cash-checkout" "${E2E_RUN_DIR}/rest/vm-cash-co.meta.json"
 
-e2e_flow_review_scenario_complete "$FLOW_ID" "04_cash_sale_success_rest.sh" "flow-review-complete" "cash_sale_rest_reviewed"
+e2e_flow_review_scenario_complete "$FLOW_ID" "$SCENARIO_ID" "flow-review-complete" "cash_sale_rest_reviewed"
 
 exit 0

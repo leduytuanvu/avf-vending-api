@@ -15,6 +15,7 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_http.sh"
 source "${E2E_SCENARIO_DIR}/../lib/e2e_data.sh"
 
 FLOW_ID="VM-REST-02"
+SCENARIO_ID="$(basename "${BASH_SOURCE[0]}")"
 VA_LOG="${E2E_RUN_DIR}/reports/va-rest-results.jsonl"
 mkdir -p "${E2E_RUN_DIR}/reports"
 
@@ -103,10 +104,10 @@ e2e_set_data bootstrapCatalogProductCount "${CAT_N:-0}"
 va_record "machine-bootstrap" "GET /v1/setup/machines/{id}/bootstrap" "pass" "$code" "products=${CAT_N:-0} configRev=${CFG_VER:-n/a}"
 
 BOOT_R="${E2E_RUN_DIR}/rest/vm-bootstrap.response.json"
-log_protocol_mismatch "P2" "$FLOW_ID" "02_machine_activation_bootstrap_rest.sh" "bootstrap-path" "REST" "GET /v1/setup/machines/{id}/bootstrap" "REST bootstrap is lab path; production vending app uses gRPC GetBootstrap + MQTT" "Dual contracts to maintain and drift" "Document equivalence matrix; add contract tests" "$BOOT_R"
+log_protocol_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "bootstrap-path" "REST" "GET /v1/setup/machines/{id}/bootstrap" "REST bootstrap is lab path; production vending app uses gRPC GetBootstrap + MQTT" "Dual contracts to maintain and drift" "Document equivalence matrix; add contract tests" "$BOOT_R"
 if [[ -f "$BOOT_R" ]] && ! jq -e '(.runtimeHints.mqtt // .mqttTopics // .topicPrefix // empty)' "$BOOT_R" >/dev/null 2>&1; then
-  log_mqtt_contract_issue "P2" "$FLOW_ID" "02_machine_activation_bootstrap_rest.sh" "bootstrap-mqtt-hints" "REST" "bootstrap JSON" "Bootstrap payload does not surface MQTT topic layout hints in fields this harness checks" "Devices may rely on env-only broker configuration" "Include topic prefix/layout in bootstrap or linked config resource" "$BOOT_R"
+  log_mqtt_contract_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "bootstrap-mqtt-hints" "REST" "bootstrap JSON" "Bootstrap payload does not surface MQTT topic layout hints in fields this harness checks" "Devices may rely on env-only broker configuration" "Include topic prefix/layout in bootstrap or linked config resource" "$BOOT_R"
 fi
-e2e_flow_review_scenario_complete "$FLOW_ID" "02_machine_activation_bootstrap_rest.sh" "flow-review-complete" "activation_bootstrap_rest_reviewed"
+e2e_flow_review_scenario_complete "$FLOW_ID" "$SCENARIO_ID" "flow-review-complete" "activation_bootstrap_rest_reviewed"
 
 exit 0

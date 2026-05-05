@@ -35,6 +35,8 @@ done
 
 append_event_jsonl "preflight:api" "passed" "health/live health/ready version"
 
-e2e_flow_review_scenario_complete "PF-PREFLIGHT" "00_preflight.sh" "flow-review-complete" "toolchain_and_public_health_ok_no_scenario_findings"
+FLOW_ID="PF-PREFLIGHT"
+log_no_improvement_findings "$FLOW_ID" "00_preflight.sh" "flow-review-complete"
+e2e_flow_review_scenario_complete "$FLOW_ID" "00_preflight.sh" "flow-review-complete" "toolchain_and_public_health_ok_no_scenario_findings"
 
 exit 0

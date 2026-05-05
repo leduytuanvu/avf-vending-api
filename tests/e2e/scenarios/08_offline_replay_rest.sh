@@ -15,6 +15,7 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_http.sh"
 source "${E2E_SCENARIO_DIR}/../lib/e2e_data.sh"
 
 FLOW_ID="VM-REST-08"
+SCENARIO_ID="$(basename "${BASH_SOURCE[0]}")"
 VA_LOG="${E2E_RUN_DIR}/reports/va-rest-results.jsonl"
 mkdir -p "${E2E_RUN_DIR}/reports"
 
@@ -49,6 +50,7 @@ if [[ "${E2E_ALLOW_WRITES:-}" != "true" ]]; then
 fi
 
 if ! vm_payment_guard_ok; then
+  log_production_safety_issue "P0" "$FLOW_ID" "$SCENARIO_ID" "production-idempotency-guard" "REST" "/v1/commerce/orders" "VM-REST-08 blocked on production without full commerce write guard" "Accidental duplicate orders in prod" "Run against lab; keep confirmations" "${E2E_RUN_DIR}/test-data.json"
   log_error "VM-REST-08: production guard failed"
   exit 2
 fi
@@ -91,7 +93,7 @@ if [[ "$oid2" == "$oid1" ]] && [[ "$code2" == "201" || "$code2" == "200" ]]; the
   va_record "idempotency-repeat" "POST /v1/commerce/orders" "pass" "$code2" "same order_id replay=${rep2}"
 else
   va_record "idempotency-repeat" "POST /v1/commerce/orders" "skip" "$code2" "expected same order got oid1=$oid1 oid2=$oid2"
-  log_idempotency_issue "P1" "$FLOW_ID" "08_offline_replay_rest.sh" "idempotency-repeat" "REST" "POST /v1/commerce/orders" "Retry with same Idempotency-Key did not return same order_id — duplicate risk or broken replay contract" "Incorrect inventory/payment state" "Honor idempotency for create order per OpenAPI" "${E2E_RUN_DIR}/rest/vm-idem-b.meta.json"
+  log_idempotency_issue "P1" "$FLOW_ID" "$SCENARIO_ID" "idempotency-repeat" "REST" "POST /v1/commerce/orders" "Retry with same Idempotency-Key did not return same order_id — duplicate risk or broken replay contract" "Incorrect inventory/payment state" "Honor idempotency for create order per OpenAPI" "${E2E_RUN_DIR}/rest/vm-idem-b.meta.json"
 fi
 
 # Cancel unpaid idempotent order to avoid orphan pending orders when possible
@@ -101,13 +103,13 @@ if [[ -n "$oid1" ]]; then
 fi
 
 va_record "offline-out-of-order" "—" "skip" "0" "No public REST test hook for out-of-order offline bundles — use gRPC OfflineSync or device harness; set E2E_OFFLINE_OUT_OF_ORDER=1 only when API documents support"
-log_offline_sync_issue "P2" "$FLOW_ID" "08_offline_replay_rest.sh" "rest-offline-gap" "REST" "—" "No REST hook to validate strict offline sequence / cursor after reconnect in this harness" "Automation gap for offline-first clients" "Document REST replay if supported; prefer gRPC GetSyncCursor/PushOfflineEvents tests" "${E2E_RUN_DIR}/reports/va-rest-results.jsonl"
+log_offline_sync_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "rest-offline-gap" "REST" "—" "No REST hook to validate strict offline sequence / cursor after reconnect in this harness" "Automation gap for offline-first clients" "Document REST replay if supported; prefer gRPC GetSyncCursor/PushOfflineEvents tests" "${E2E_RUN_DIR}/reports/va-rest-results.jsonl"
 
 if [[ "${E2E_OFFLINE_OUT_OF_ORDER:-}" == "1" ]]; then
   va_record "offline-out-of-order" "—" "skip" "0" "E2E_OFFLINE_OUT_OF_ORDER=1 set but no REST route wired in this harness"
-  log_offline_sync_issue "P1" "$FLOW_ID" "08_offline_replay_rest.sh" "out-of-order-rest" "REST" "—" "Out-of-order offline replay flag set but no REST contract implemented for harness" "Undefined client/server behavior" "Define ordering rules and expose test vectors" "${E2E_RUN_DIR}/test-events.jsonl"
+  log_offline_sync_issue "P1" "$FLOW_ID" "$SCENARIO_ID" "out-of-order-rest" "REST" "—" "Out-of-order offline replay flag set but no REST contract implemented for harness" "Undefined client/server behavior" "Define ordering rules and expose test vectors" "${E2E_RUN_DIR}/test-events.jsonl"
 fi
 
-e2e_flow_review_scenario_complete "$FLOW_ID" "08_offline_replay_rest.sh" "flow-review-complete" "offline_replay_rest_reviewed"
+e2e_flow_review_scenario_complete "$FLOW_ID" "$SCENARIO_ID" "flow-review-complete" "offline_replay_rest_reviewed"
 
 exit 0

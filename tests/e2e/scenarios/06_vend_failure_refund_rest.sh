@@ -15,6 +15,7 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_http.sh"
 source "${E2E_SCENARIO_DIR}/../lib/e2e_data.sh"
 
 FLOW_ID="VM-REST-06"
+SCENARIO_ID="$(basename "${BASH_SOURCE[0]}")"
 VA_LOG="${E2E_RUN_DIR}/reports/va-rest-results.jsonl"
 mkdir -p "${E2E_RUN_DIR}/reports"
 
@@ -49,6 +50,7 @@ if [[ "${E2E_ALLOW_WRITES:-}" != "true" ]]; then
 fi
 
 if ! vm_payment_guard_ok; then
+  log_production_safety_issue "P0" "$FLOW_ID" "$SCENARIO_ID" "production-refund-guard" "REST" "/v1/commerce/*" "VM-REST-06 blocked on production without full write guard + e2eTestMachine — prevents unsafe refund probes" "Accidental prod ledger changes" "Use lab org; keep confirmations" "${E2E_RUN_DIR}/test-data.json"
   log_error "VM-REST-06: blocked on production without full guard + e2eTestMachine"
   va_record "safety" "—" "fail" "0" "production guard"
   exit 2
@@ -109,19 +111,19 @@ RBODY="$(jq -nc --argjson am "$TOT" --arg cur "$CUR" '{amount_minor:$am, currenc
 code="$(e2e_http_post_json_idem "vm-fail-refund" "/v1/commerce/orders/${OID}/refunds" "$RBODY" "e2e-rf-${OID}")"
 if [[ "$code" == "200" ]]; then
   va_record "refund" "POST .../refunds" "pass" "$code" "refund accepted"
-  log_api_contract_issue "P1" "$FLOW_ID" "06_vend_failure_refund_rest.sh" "refund-eligibility" "REST" "POST .../refunds" "Refund accepted in harness without asserting server-side eligibility matrix (wrong payment state, double refund)" "Financial inconsistency risk" "Return 409 for invalid refund; document audit trail fields" "${E2E_RUN_DIR}/rest/vm-fail-refund.meta.json"
+  log_api_contract_issue "P1" "$FLOW_ID" "$SCENARIO_ID" "refund-eligibility" "REST" "POST .../refunds" "Refund accepted in harness without asserting server-side eligibility matrix (wrong payment state, double refund)" "Financial inconsistency risk" "Return 409 for invalid refund; document audit trail fields" "${E2E_RUN_DIR}/rest/vm-fail-refund.meta.json"
 else
   va_record "refund" "POST .../refunds" "skip" "$code" "HTTP $code — policy/amount; see rest/vm-fail-refund.response.json"
-  log_api_contract_issue "P2" "$FLOW_ID" "06_vend_failure_refund_rest.sh" "refund-route" "REST" "POST .../refunds" "Refund POST not consistently available or policy blocks automation — support path for vend failure unclear" "Operators cannot complete failure compensation in all envs" "Align REST refund with gRPC/reporting; document final states" "${E2E_RUN_DIR}/rest/vm-fail-refund.response.json"
+  log_api_contract_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "refund-route" "REST" "POST .../refunds" "Refund POST not consistently available or policy blocks automation — support path for vend failure unclear" "Operators cannot complete failure compensation in all envs" "Align REST refund with gRPC/reporting; document final states" "${E2E_RUN_DIR}/rest/vm-fail-refund.response.json"
 fi
 
 e2e_http_get "vm-fail-order2" "/v1/commerce/orders/${OID}" >/dev/null
 OST2="$(jq -r '.order.status // empty' "${E2E_RUN_DIR}/rest/vm-fail-order2.response.json")"
 va_record "final-order-state" "GET /v1/commerce/orders/{id}" "pass" "200" "status=${OST2}"
 
-log_flow_design_issue "P1" "$FLOW_ID" "06_vend_failure_refund_rest.sh" "failure-consistency" "REST" "vend failure + inventory" "REST harness does not cross-check inventory restoration or payment ledger after vend failure" "Stale money or stock vs reality" "Add GET inventory/ledger hooks; mirror gRPC report failure semantics" "${E2E_RUN_DIR}/rest/vm-fail-vfail.meta.json"
-log_observability_issue "P2" "$FLOW_ID" "06_vend_failure_refund_rest.sh" "audit-trail" "REST" "order GET" "End-state order payload may not expose correlation to refund attempt for triage" "Support cannot trace failure compensation" "Include refund_id, request_id, audit sequence in order detail" "${E2E_RUN_DIR}/rest/vm-fail-order2.response.json"
+log_flow_design_issue "P1" "$FLOW_ID" "$SCENARIO_ID" "failure-consistency" "REST" "vend failure + inventory" "REST harness does not cross-check inventory restoration or payment ledger after vend failure" "Stale money or stock vs reality" "Add GET inventory/ledger hooks; mirror gRPC report failure semantics" "${E2E_RUN_DIR}/rest/vm-fail-vfail.meta.json"
+log_observability_issue "P1" "$FLOW_ID" "$SCENARIO_ID" "failure-audit-record" "REST" "order GET" "End-state order payload may not expose correlation to refund attempt or immutable audit sequence for vend failure" "Support cannot verify final compensated state" "Include refund_id, request_id, failure audit sequence in order detail" "${E2E_RUN_DIR}/rest/vm-fail-order2.response.json"
 
-e2e_flow_review_scenario_complete "$FLOW_ID" "06_vend_failure_refund_rest.sh" "flow-review-complete" "vend_failure_refund_rest_reviewed"
+e2e_flow_review_scenario_complete "$FLOW_ID" "$SCENARIO_ID" "flow-review-complete" "vend_failure_refund_rest_reviewed"
 
 exit 0

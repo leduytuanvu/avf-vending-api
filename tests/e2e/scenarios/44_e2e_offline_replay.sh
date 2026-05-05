@@ -43,7 +43,7 @@ EVID_JSON="$(jq -nc --arg a "${E2E_RUN_DIR}/grpc/p8-off-a.meta.json" --arg b "${
 
 if ! command -v grpcurl >/dev/null 2>&1; then
   phase8_record "$SID" "skip" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "grpcurl not on PATH" "$(jq -nc --arg f "${E2E_RUN_DIR}/reports/phase8-scenario-results.jsonl" '[$f]')" "Install grpcurl for Phase 8 offline replay"
-  log_docs_gap "P2" "$SID" "44_e2e_offline_replay.sh" "grpcurl-missing" "gRPC" "—" "Offline replay Phase 8 skipped — grpcurl not installed" "No cursor/idempotency coverage in CI" "Add grpcurl to CI image" "${E2E_RUN_DIR}/reports/phase8-scenario-results.jsonl"
+  log_docs_issue "P2" "$SID" "44_e2e_offline_replay.sh" "grpcurl-missing" "gRPC" "—" "Offline replay Phase 8 skipped — grpcurl not installed" "No cursor/idempotency coverage in CI" "Add grpcurl to CI image" "${E2E_RUN_DIR}/reports/phase8-scenario-results.jsonl"
   end_step skipped "E2E-44: grpcurl missing"
   e2e_flow_review_scenario_complete "$SID" "44_e2e_offline_replay.sh" "flow-review-skip" "offline_replay_skipped_no_grpcurl"
   exit 0
@@ -51,7 +51,7 @@ fi
 
 if ! e2e_grpc_server_reachable; then
   phase8_record "$SID" "skip" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "gRPC server unreachable at ${GRPC_ADDR}" "$(jq -nc --arg f "${E2E_RUN_DIR}/grpc" '[$f]')" "Start API gRPC listener; GRPC_ADDR; see e2e-troubleshooting"
-  log_docs_gap "P2" "$SID" "44_e2e_offline_replay.sh" "grpc-down" "gRPC" "${GRPC_ADDR:-}" "gRPC unreachable — offline replay not exercised" "Gap for offline contract" "Start listener; document GRPC_ADDR" "${E2E_RUN_DIR}/grpc"
+  log_docs_issue "P2" "$SID" "44_e2e_offline_replay.sh" "grpc-down" "gRPC" "${GRPC_ADDR:-}" "gRPC unreachable — offline replay not exercised" "Gap for offline contract" "Start listener; document GRPC_ADDR" "${E2E_RUN_DIR}/grpc"
   end_step skipped "E2E-44: gRPC unreachable"
   e2e_flow_review_scenario_complete "$SID" "44_e2e_offline_replay.sh" "flow-review-skip" "offline_replay_skipped_unreachable"
   exit 0

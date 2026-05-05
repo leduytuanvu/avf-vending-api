@@ -45,6 +45,7 @@ set -e
 if [[ "$ec" -ne 0 ]]; then
   ACTUAL="WA-INV-11 exit ${ec} — see ${E2E_RUN_DIR}/reports/wa-module-results.jsonl and rest/inv-*.meta.json"
   phase8_record "$SID" "fail" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" "ADMIN_TOKEN; operator session; planogramId; e2e-remediation Phase 4"
+  log_api_contract_issue "P2" "$SID" "46_e2e_inventory_restock_adjustment.sh" "wa-inv-delegate" "mixed" "WA-INV-11" "Delegated web-admin inventory scenario failed — restock/adjustment flow not proven in Phase 8" "Inventory regression signal lost" "Fix 11_web_admin_inventory_ops prerequisites; see remediation in phase8 record" "${E2E_RUN_DIR}/reports/wa-module-results.jsonl"
   end_step failed "E2E-46: ${ACTUAL}"
   exit 1
 fi
@@ -52,5 +53,6 @@ fi
 ACTUAL="wa_inv_11_ok"
 phase8_record "$SID" "pass" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" ""
 end_step passed "E2E-46 inventory / restock completed"
+log_no_improvement_findings "$SID" "46_e2e_inventory_restock_adjustment.sh" "phase8-inventory-wrapper"
 e2e_flow_review_scenario_complete "$SID" "46_e2e_inventory_restock_adjustment.sh" "flow-review-complete" "inventory_phase8_reviewed"
 exit 0

@@ -48,10 +48,15 @@ BID="$(jq -r '.bundleId // empty' "${E2E_RUN_DIR}/grpc/g24-diag.response.json" 2
 
 SCEN="24_grpc_command_update_status.sh"
 if [[ "${GRPC_USE_REFLECTION:-false}" != "true" ]]; then
-  log_docs_gap "P2" "$FLOW_ID" "$SCEN" "grpc-entry" "gRPC" "${GRPC_ADDR:-}" "MachineCommandService calls require TLS/plaintext and import path documentation alongside REST admin commands" "Ops confusion" "Link admin command REST docs to gRPC machine contract" "${E2E_RUN_DIR}/grpc/g24-assigned.meta.json"
+  log_docs_issue "P2" "$FLOW_ID" "$SCEN" "grpc-entry" "gRPC" "${GRPC_ADDR:-}" "MachineCommandService calls require TLS/plaintext and import path documentation alongside REST admin commands" "Ops confusion" "Link admin command REST docs to gRPC machine contract" "${E2E_RUN_DIR}/grpc/g24-assigned.meta.json"
 fi
 if [[ "${ec}" -eq 0 ]]; then
+  if [[ "${GRPC_USE_REFLECTION:-false}" == "true" ]]; then
+    log_no_improvement_findings "$FLOW_ID" "$SCEN" "grpc-command-status-clean"
+  fi
   e2e_flow_review_scenario_complete "$FLOW_ID" "$SCEN" "flow-review-complete" "grpc_command_status_ok"
+else
+  log_api_contract_issue "P2" "$FLOW_ID" "$SCEN" "grpc-command-incomplete" "gRPC" "MachineCommandService" "GetAssignedUpdate / ReportUpdateStatus / ReportDiagnosticBundleResult failed in harness" "OTA and support flows not contract-verified" "Check metadata, TLS, and campaign assignment fixtures" "${E2E_RUN_DIR}/grpc/g24-assigned.meta.json"
 fi
 
 exit "${ec}"

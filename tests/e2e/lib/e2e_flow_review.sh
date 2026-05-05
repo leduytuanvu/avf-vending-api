@@ -181,6 +181,11 @@ log_docs_gap() {
   _append_imp "$1" "docs_gap" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
 }
 
+# Alias: satisfy scenario lint that requires `log_*_issue` / append_improvement_finding naming.
+log_docs_issue() {
+  log_docs_gap "$@"
+}
+
 log_postman_gap() {
   _append_imp "$1" "postman_gap" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
 }
@@ -207,6 +212,14 @@ log_protocol_mismatch() {
 
 log_rest_grpc_mismatch() {
   _append_imp "$1" "rest_grpc_mismatch" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
+}
+
+log_rest_grpc_issue() {
+  log_rest_grpc_mismatch "$@"
+}
+
+log_protocol_issue() {
+  log_protocol_mismatch "$@"
 }
 
 log_mqtt_contract_issue() {
