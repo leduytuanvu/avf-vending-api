@@ -2,16 +2,37 @@
 
 Fake values below are **examples**; replace with locally generated UUIDs and **never** commit live passwords, HMAC secrets, TLS keys, or production MQTT passwords.
 
+## Harness files (Phase 1)
+
+| File | Purpose |
+|------|---------|
+| **`tests/e2e/.env.example`** | Documented variables for `tests/e2e/.env` (copy locally) |
+| **`.e2e-runs/run-*/test-data.json`** | Public capture produced per run (IDs, masked tokens) |
+| **`.e2e-runs/run-*/secrets.private.json`** | Full **ADMIN_TOKEN**, **MACHINE_TOKEN**, MQTT password, etc. (never copy out of the run dir) |
+| **`tests/e2e/data/seed.local.example.json`** | Not loaded automatically — template for org/site/slots |
+| **`tests/e2e/data/reusable-test-data.example.json`** | Expected shape for `--reuse-data` |
+| **`tests/e2e/data/test-data.schema.json`** | JSON Schema for reusable capture |
+
+Helpers in **`tests/e2e/lib/e2e_data.sh`**:
+
+- **`e2e_data_initialize`** — honors `--fresh-data` / `--reuse-data PATH` / env `E2E_REUSE_DATA` + `E2E_DATA_FILE`
+- **`e2e_set_data` / `e2e_get_data` / `e2e_require_data`** — flat string keys on `test-data.json` (**aliases:** `set_data`, `get_data`, `require_data`)
+- **`e2e_set_data_json`** — merge JSON-valued keys (**alias:** `set_data_json`)
+- **`e2e_save_token`** — writes full value to `secrets.private.json` and a **masked** value to `test-data.json` (**alias:** `save_token`)
+- **`e2e_data_initialize`** (**alias:** `initialize_test_data`)
+
+When **`run-all-local.sh`** runs phase scripts with **`E2E_IN_PARENT=1`**, reuse/fresh flags from the orchestrator are **restored after `load_env`** so a child’s `tests/e2e/.env` does not clobber the parent’s `--reuse-data`.
+
 ## Hierarchy
 
 | Entity | Description | Typical source |
 |--------|-------------|----------------|
-| **Organization** | Tenant boundary | Admin REST create or seed SQL |
+| **Organization** | Tenant boundary | Admin REST or seed |
 | **Site** | Physical/logical location | Under organization |
-| **Admin user** | Human or service operator | `POST /v1/auth/login` |
-| **Machine** | Vending asset | `POST /v1/admin/machines` (path per swagger) |
-| **Activation code** | One-time binding | Admin machine or org activation endpoints |
-| **Machine token** | JWT after claim | gRPC `MachineAuthService` response |
+| **Admin user** | Operator | `POST` login (paths per swagger) |
+| **Machine** | Vending asset | Admin machine APIs |
+| **Activation code** | One-time binding | Admin activation endpoints |
+| **Machine token** | JWT after claim | gRPC / auth responses |
 
 ## Catalog & planogram
 
@@ -19,55 +40,48 @@ Fake values below are **examples**; replace with locally generated UUIDs and **n
 |------|-------|
 | **Categories / brands** | Admin REST `/v1/admin/categories`, `/v1/admin/brands` |
 | **Products** | SKUs, tax flags, media refs |
-| **Planogram** | Draft → publish; records **`catalog_version`** consumed by gRPC catalog |
-| **Slots** | Cabinet/slot codes align with `SlotSelection` in `commerce.proto` |
-| **Prices** | Server-authoritative minors; machine **must not** forge totals |
-| **Inventory** | Quantities for vend; align with FT-VND rows in [`field-test-cases.md`](field-test-cases.md) |
+| **Planogram** | Draft → publish; **`catalog_version`** for gRPC |
+| **Slots** | Cabinet/slot codes align with commerce protos |
+| **Prices** | Server-authoritative minors |
+| **Inventory** | Quantities for vend; align with FT-VND in [`field-test-cases.md`](field-test-cases.md) |
 
 ## Payments
 
 | Mode | Guidance |
 |------|----------|
-| **PSP sandbox** | Use staging policy: `payment_env` ≠ `live` when base URL is staging (see Postman prerequest) |
-| **Cash** | `ConfirmCashPayment` / `ConfirmCashReceived` paths per **`MachineCommerceService`** |
-| **Webhooks** | REST PSP callbacks — configure test harness URL + HMAC secret in **local** env only |
+| **PSP sandbox** | Non-live keys in **local** `.env` only |
+| **Cash** | Machine commerce gRPC paths |
+| **Webhooks** | Configure URL + HMAC in local env only |
 
 ## MQTT
 
 | Item | Guidance |
 |------|----------|
-| **Prefix** | `MQTT_TOPIC_PREFIX`; enterprise vs legacy per [`mqtt-contract.md`](../api/mqtt-contract.md) |
-| **Client ID** | Machine-scoped; include credential version where broker requires it |
-| **Auth** | Username/password or mTLS per stack; store in `.env` gitignored |
-| **Subscribe** | Machine: **only** its command topic |
-| **Publish** | Telemetry, ACK, receipts on allowed tails only |
+| **Prefix** | Enterprise vs legacy per [`mqtt-contract.md`](../api/mqtt-contract.md) |
+| **Client ID** | Machine-scoped test client id (see seed example) |
+| **Auth** | `MQTT_USERNAME` / `MQTT_PASSWORD` in `.env` |
 
 ## Modes
 
 | Mode | When |
 |------|------|
-| **Reusable** | Stable org + machine for daily dev (`--reuse-data`) |
-| **Fresh** | After activation collision, credential rotation tests, or 409 idempotency (`--fresh-data`) |
+| **Reusable** | Stable org + machine (`--reuse-data`) |
+| **Fresh** | After activation collision or 409 idempotency (`--fresh-data`) |
 
 ## Idempotency
 
-- REST: header **`Idempotency-Key`** (alias `X-Idempotency-Key`) on **mutating** commerce/command routes (per swagger).
-- gRPC: `IdempotencyContext` in protos — align `client_request_id` / keys with replay tests in [`local-e2e.md`](local-e2e.md).
+- REST: **`Idempotency-Key`** / **`X-Idempotency-Key`** on mutating routes (per swagger).
+- gRPC: idempotency fields in protos — align with [`local-e2e.md`](local-e2e.md).
 
 ## Cleanup policy
 
 | Environment | Policy |
 |-------------|--------|
-| **Local scratch DB** | `DROP` schema or recreate container volume after full runs |
-| **Staging** | Delete entities via admin APIs or support playbook; **revoke** activation codes |
-| **Production** | **No** automated cleanup — field procedures only |
-
-## Seed & capture files
-
-- **`tests/e2e/data/seed.local.example.json`** — starting template
-- **`tests/e2e/data/reusable-test-data.example.json`** — shape after a successful run
-- **`tests/e2e/data/test-data.schema.json`** — JSON Schema for capture validation
+| **Local scratch DB** | Recreate volume or reset schema |
+| **Staging** | Admin/support APIs; revoke activation codes |
+| **Production** | No automated cleanup |
 
 ## Related
 
 - **[`e2e-flow-coverage.md`](e2e-flow-coverage.md)**
+- **[`e2e-local-test-guide.md`](e2e-local-test-guide.md)**
