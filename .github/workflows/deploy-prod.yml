@@ -668,7 +668,7 @@ jobs:
       rollback_available: ${{ steps.lookup.outputs.rollback_available }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Load previous successful production deployment metadata
         id: lookup
@@ -881,7 +881,7 @@ jobs:
       - validate-promotion-selection
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Reject obvious duplicate production action
         shell: bash
@@ -954,7 +954,7 @@ jobs:
       - resolve-build-run-id
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Validate app-node compose
         shell: bash
@@ -1486,7 +1486,7 @@ jobs:
       storm_evidence_max_age_days_applied: ${{ steps.gate.outputs.storm_evidence_max_age_days_applied }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Validate fleet scale / storm evidence
         id: gate
@@ -1662,7 +1662,7 @@ jobs:
       ALLOW_IDENTICAL_PRODUCTION_APP_NODES: ${{ vars.ALLOW_IDENTICAL_PRODUCTION_APP_NODES || '0' }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Validate production deploy inputs
         id: validate_deploy_inputs
@@ -3149,7 +3149,7 @@ jobs:
           fi
       - name: Upload production release audit package
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: production-release-audit-package
           path: release-audit-prod
@@ -3158,7 +3158,7 @@ jobs:
 
       - name: Upload production deployment manifest
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: production-deployment-manifest
           path: deployment-evidence/production-deployment-manifest.json
@@ -3167,7 +3167,7 @@ jobs:
 
       - name: Upload production deploy evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: production-deploy-evidence
           path: deployment-evidence

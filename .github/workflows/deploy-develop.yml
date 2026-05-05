@@ -90,7 +90,7 @@ jobs:
       security_workflow_run_id: ${{ steps.lookup.outputs.security_workflow_run_id }}
     steps:
       - name: Check out repository (release gate scripts)
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Enterprise release chain (this workflow = Staging / Develop deploy)
         shell: bash
@@ -274,7 +274,7 @@ jobs:
       security_verdict_generated_at_utc: ${{ steps.gate.outputs.security_verdict_generated_at_utc }}
     steps:
       - name: Check out repository (release gate scripts)
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Re-validate security-verdict and immutable image alignment
         id: gate
@@ -586,7 +586,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Upload staging contract outcome (disabled path)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staging-contract-outcome
           path: deployment-evidence/staging-contract-outcome.json
@@ -594,7 +594,7 @@ jobs:
           retention-days: 90
 
       - name: Upload staging release evidence (contract-only; not production-ready alone)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staging-release-evidence
           path: deployment-evidence/staging-release-evidence.json
@@ -602,7 +602,7 @@ jobs:
           retention-days: 90
 
       - name: Upload staging deploy evidence (contract-only; not promotion eligible)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staging-deploy-evidence
           path: staging-evidence/staging-deploy-evidence.json
@@ -773,7 +773,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Start staging SSH agent
-        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
+        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
           ssh-private-key: ${{ secrets.STAGING_SSH_KEY || secrets.STAGING_SSH_PRIVATE_KEY || secrets.PREPROD_SSH_KEY || secrets.PREPROD_SSH_PRIVATE_KEY }}
 
@@ -880,7 +880,7 @@ jobs:
 
       - name: Upload staging deployment contract report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staging-deployment-contract-report
           path: deployment-evidence/staging-prerequisites.json
@@ -922,7 +922,7 @@ jobs:
       SSH_USER: ${{ needs.validate-staging-prerequisites.outputs.ssh_user }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ needs.resolve-staging-candidate.outputs.source_commit_sha }}
 
@@ -943,7 +943,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload staging compose runner evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staging-preprod-compose-runner-evidence
           path: deployment-evidence/staging-compose.resolved.yml.sha256
@@ -960,7 +960,7 @@ jobs:
 
       - name: Upload migration safety evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staging-migration-safety-report
           path: migration-evidence/migration-safety-report.json
@@ -968,7 +968,7 @@ jobs:
           retention-days: 90
 
       - name: Start staging SSH agent
-        uses: webfactory/ssh-agent@dc588b651fe13675774614f8e6a936a468676387 # v0.9.0
+        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
           ssh-private-key: ${{ secrets.STAGING_SSH_KEY || secrets.STAGING_SSH_PRIVATE_KEY || secrets.PREPROD_SSH_KEY || secrets.PREPROD_SSH_PRIVATE_KEY }}
 
@@ -1064,7 +1064,7 @@ jobs:
 
       - name: Upload staging smoke evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staging-smoke-evidence
           path: |
@@ -1276,7 +1276,7 @@ jobs:
 
       - name: Upload staging deployment verdict
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staging-deployment-verdict
           path: deployment-evidence/staging-deployment-verdict.json
@@ -1285,7 +1285,7 @@ jobs:
 
       - name: Upload staging release evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staging-release-evidence
           path: deployment-evidence/staging-release-evidence.json
@@ -1294,7 +1294,7 @@ jobs:
 
       - name: Upload staging deploy evidence (promotion gate JSON)
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staging-deploy-evidence
           path: staging-evidence/staging-deploy-evidence.json
