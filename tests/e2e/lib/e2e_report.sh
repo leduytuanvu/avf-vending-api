@@ -25,6 +25,11 @@ e2e_generate_summary_md() {
   mkdir -p "${E2E_RUN_DIR}/reports"
   local stats
   stats="$(e2e_stats_json)"
+  local -a metas=()
+  local f
+  if [[ -d "${E2E_RUN_DIR}/rest" ]]; then
+    mapfile -t metas < <(find "${E2E_RUN_DIR}/rest" -maxdepth 1 -name '*.meta.json' -print 2>/dev/null | LC_ALL=C sort)
+  fi
   {
     echo "# E2E run summary"
     echo
@@ -48,6 +53,22 @@ e2e_generate_summary_md() {
       echo "\`\`\`"
     else
       echo "_(no events recorded)_"
+    fi
+    echo
+    echo "## REST endpoints exercised"
+    echo
+    if [[ ${#metas[@]} -eq 0 ]]; then
+      echo "_(no \`rest/*.meta.json\` files — no HTTP capture this run)_"
+    else
+      echo "| Step | Method | Path | HTTP | ms | Result |"
+      echo "|------|--------|------|------|-----|--------|"
+      for f in "${metas[@]}"; do
+        if jq -e '.path' "$f" >/dev/null 2>&1; then
+          jq -r '"| `\(.step)` | \(.method) | `\(.path)` | \(.httpStatus) | \(.elapsedMs) | \(.result) |"' "$f"
+        fi
+      done
+      echo
+      echo "Per-call artifacts live under \`${E2E_RUN_DIR}/rest/\`: \`*.request.json\`, \`*.response.body\`, \`*.response.headers.txt\`, \`*.meta.json\`."
     fi
   } >"${out}"
 }

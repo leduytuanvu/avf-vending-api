@@ -2,6 +2,18 @@
 
 Symptoms → likely causes → first checks. For remediation steps see **[`e2e-remediation-playbook.md`](e2e-remediation-playbook.md)**.
 
+## E2E harness: missing jq, python3, or curl
+
+- **Symptom:** `FATAL: required command not found: jq` (or `python3` / `curl`) when running `run-all-local.sh`, `run-rest-local.sh`, or preflight.
+- **Likely cause:** Host PATH does not include dev tools (common on minimal Windows shells).
+- **Check:** Install **jq** and **Python 3**; use **Git Bash** or WSL so `curl` behaves like GNU curl. Re-run with `command -v jq python3 curl`.
+
+## E2E harness: HTTP 000 or connection refused on health checks
+
+- **Symptom:** `rest/*/meta.json` shows `httpStatus` **0** or non-**200** on required GETs; preflight or `--readonly` smoke fails.
+- **Likely cause:** API not listening on `BASE_URL`, wrong port, or firewall.
+- **Check:** `curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL/health/live"` from the same shell; start the API and fix `BASE_URL`.
+
 ## Local API not ready
 
 - **Symptom:** `curl` to `/health/ready` fails or times out.

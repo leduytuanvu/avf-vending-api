@@ -12,7 +12,7 @@ This guide describes how **multi-protocol local E2E** runs work using `tests/e2e
 
 1. **API server** running locally (default `BASE_URL`).
 2. **PostgreSQL** when scenarios assert DB state (same assumptions as [`local-e2e.md`](local-e2e.md)).
-3. **bash**, **curl**, **jq** (required for all runners).
+3. **bash**, **curl**, **jq**, **python3** (required for all runners and HTTP timing in `e2e_http.sh`).
 4. **grpcurl** (optional until `tests/e2e/scenarios/grpc_local.sh` exists; runner skips if absent).
 5. **mosquitto_pub** / **mosquitto_sub** (optional until `tests/e2e/scenarios/mqtt_local.sh` exists; runner skips if absent).
 
@@ -44,7 +44,8 @@ Each run writes artifacts under:
   events.jsonl
   test-data.json          # public capture; tokens stored masked
   secrets.private.json    # full tokens (local only)
-  rest/                   # *.request.json, *.response.json, *.meta.json
+  rest/                   # per-call: *.request.json, *.response.body, *.response.headers.txt, *.meta.json
+                          # (older JSON mutations may also use *.response.json)
   grpc/                   # *.request.json, *.response.json, *.log
   mqtt/                   # *.publish.json, *.publish.log, *.meta.json, *.subscribe.log
   reports/
@@ -56,6 +57,17 @@ Each run writes artifacts under:
 The directory **`.e2e-runs/`** is gitignored.
 
 ## Commands
+
+```bash
+BASE_URL=http://127.0.0.1:8080 E2E_TARGET=local E2E_ALLOW_WRITES=false \
+  ./tests/e2e/run-rest-local.sh --readonly
+```
+
+This runs **`tests/e2e/scenarios/00_rest_readonly_smoke.sh`**: public **GET** checks only (`/health/live`, `/health/ready`, `/version`, optional `/swagger/doc.json` and `/metrics` with **404 → skipped**). No writes. Logs land under **`.e2e-runs/run-*/rest/`**; **`reports/summary.md`** lists every captured endpoint in **REST endpoints exercised**.
+
+`run-all-local.sh` first sources **`tests/e2e/scenarios/00_preflight.sh`** (tooling, required env, same three health/version GETs as gate).
+
+### Full orchestration
 
 From the **repository root**:
 
@@ -70,6 +82,7 @@ From the **repository root**:
 
 Common options:
 
+- **`--readonly`** (REST runner only) — read-only public GET smoke (`00_rest_readonly_smoke.sh`).
 - **`--fresh-data`** — empty `test-data.json` for the run.
 - **`--reuse-data PATH`** — copy capture JSON into `test-data.json`.
 - **`-h` / `--help`**
@@ -78,9 +91,13 @@ Common options:
 
 When `run-all-local.sh` invokes phase scripts, it sets **`E2E_IN_PARENT=1`** and reuses the same `E2E_RUN_DIR`. Phase scripts avoid duplicate report generation; the orchestrator writes **one** `reports/` set at the end.
 
-Optional scenario files (not required for Phase 1):
+Implemented / built-in scenarios:
 
-- `tests/e2e/scenarios/preflight.sh`
+- **`tests/e2e/scenarios/00_preflight.sh`** — tooling (bash, curl, jq, python3), optional tools (newman, grpcurl, mosquitto), required env, GET `/health/live`, `/health/ready`, `/version`.
+- **`tests/e2e/scenarios/00_rest_readonly_smoke.sh`** — read-only GET smoke (see **Commands** above).
+
+Optional scenario stubs (still placeholders until you add them):
+
 - `tests/e2e/scenarios/rest_local.sh`
 - `tests/e2e/scenarios/web_admin_flows.sh`
 - `tests/e2e/scenarios/vending_app_flows.sh`
@@ -109,7 +126,11 @@ See **[`e2e-test-data-guide.md`](e2e-test-data-guide.md)** for entity hierarchy 
 
 - **Console:** phase lines from `log_info` / `log_warn`.
 - **`events.jsonl`:** one JSON object per step outcome (`passed` / `failed` / `skipped`).
-- **`reports/summary.md`:** human-readable rollup.
+- **`reports/summary.md`:** human-readable rollup plus **REST endpoints exercised** (table built from `rest/*.meta.json` when present).
+
+### When the local server is not ready
+
+See **[`e2e-troubleshooting.md`](e2e-troubleshooting.md)** (“Local API not ready”, “E2E harness prerequisites”). Typical fixes: start `cmd/api` (or your compose stack), confirm `BASE_URL` port, run DB migrations so `/health/ready` returns **200** (not **503** `not ready`).
 - **`reports/remediation.md`:** failed steps only; link to **[`e2e-remediation-playbook.md`](e2e-remediation-playbook.md)**.
 - **`reports/coverage.json`:** machine-readable counts + full events array.
 

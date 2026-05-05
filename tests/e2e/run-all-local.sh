@@ -16,7 +16,7 @@ e2e_parse_common_args "$@"
 load_env
 e2e_restore_inherited_data_flags_if_needed
 
-require_cmd jq curl bash
+require_cmd jq curl bash python3
 
 new_run_dir
 e2e_write_run_meta "run-all-local"
@@ -26,6 +26,9 @@ source "${SCRIPT_DIR}/lib/e2e_data.sh"
 e2e_data_initialize
 
 cleanup_trap_register
+
+# shellcheck source=lib/e2e_http.sh
+source "${SCRIPT_DIR}/lib/e2e_http.sh"
 
 OVERALL=0
 
@@ -46,7 +49,7 @@ invoke_child() {
 }
 
 start_step "preflight"
-SCENARIO_PREFLIGHT="${SCRIPT_DIR}/scenarios/preflight.sh"
+SCENARIO_PREFLIGHT="${SCRIPT_DIR}/scenarios/00_preflight.sh"
 if [[ -f "$SCENARIO_PREFLIGHT" ]]; then
   set +e
   # shellcheck disable=SC1090
