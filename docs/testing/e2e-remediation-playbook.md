@@ -73,6 +73,18 @@ For each failure category: **symptom**, **likely cause**, **where to look**, **l
 | --reuse-data | After credentials fixed |
 | --fresh-data | If machine must be re-bound |
 
+## Phase 8 full stack (`run-all-local.sh`, scenarios `40`–`47`)
+
+| Field | Detail |
+|-------|--------|
+| Symptom | Non-zero exit from **`40_e2e_*.sh`–`47_e2e_*.sh`** after REST/admin/vending/gRPC/MQTT phases; **`reports/phase8-scenario-results.jsonl`** row shows **`result: fail`** |
+| Likely cause | Stale **`test-data.json`**; missing **`machineToken`** / **`ADMIN_TOKEN`**; commerce outbox **503** on payment-session; webhook **401/403** (HMAC); MQTT broker down; gRPC not listening; WA-INV / WA-RPT **5xx** |
+| Where to look | **`reports/summary.md`** Phase 8 table; per-scenario **`remediation`** string in **`phase8-scenario-results.jsonl`**; **`rest/p8-*.response.json`**, **`grpc/p8-off-*.log`**, **`mqtt/phase8-*.publish.json`** |
+| Log file | **`.e2e-runs/run-*/reports/phase8-scenario-results.jsonl`**, **`events.jsonl`** (step **`phase8-E2E-…`**) |
+| Safe fix | Fix infra per failure row: payment outbox + **`COMMERCE_PAYMENT_WEBHOOK_SECRET`** (or API **`COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED`** in dev only); **`MQTT_HOST`/`MQTT_PORT`**; **`GRPC_ADDR`**; re-run **`01`** + **`--fresh-data`** when IDs collide |
+| --reuse-data | Yes — when org/machine still valid |
+| --fresh-data | Yes — after activation collision or corrupted scratch |
+
 ## Payment mock
 
 | Field | Detail |

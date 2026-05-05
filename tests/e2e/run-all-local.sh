@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# Full local orchestration: preflight → REST → admin → vending → gRPC → MQTT → report.
+# Full local orchestration: preflight → REST → admin (--full) → vending (REST-equivalent) → gRPC → MQTT → Phase 8 → report.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/e2e_common.sh
@@ -34,18 +34,42 @@ OVERALL=0
 
 invoke_child() {
   local script="$1"
+  shift
   set +e
   E2E_IN_PARENT=1 \
     E2E_RUN_DIR="${E2E_RUN_DIR}" \
     E2E_REUSE_DATA="${E2E_REUSE_DATA}" \
     E2E_DATA_FILE="${E2E_DATA_FILE:-}" \
     E2E_CLI_FRESH_DATA="${E2E_CLI_FRESH_DATA}" \
-    bash "${script}" "${E2E_EXTRA_ARGS[@]+"${E2E_EXTRA_ARGS[@]}"}"
+    bash "${script}" "$@" ${E2E_EXTRA_ARGS[@]+"${E2E_EXTRA_ARGS[@]}"}
   local ec=$?
   set -e
   if [[ "$ec" -ne 0 ]]; then
     OVERALL=1
   fi
+}
+
+e2e_append_phase8_summary_to_md() {
+  local jl="${E2E_RUN_DIR}/reports/phase8-scenario-results.jsonl"
+  local sm="${E2E_RUN_DIR}/reports/summary.md"
+  [[ -f "$jl" ]] && [[ -s "$jl" ]] || return 0
+  {
+    echo ""
+    echo "## Phase 8 business scenarios"
+    echo
+    echo "Structured one-row-per-scenario JSONL: \`${jl}\`."
+    echo
+    echo "| scenario_id | result | expected_state | actual_state | evidence | remediation |"
+    echo "|-------------|--------|----------------|--------------|----------|-------------|"
+  } >>"$sm"
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    echo "$line" | jq -r '
+      "| " + .scenario_id + " | " + .result + " | " + (.expected_state | gsub("\\|"; "\\\\|")) + " | " + (.actual_state | gsub("\\|"; "\\\\|")) + " | "
+      + ([ .evidence_files[]? ] | if length > 0 then join("; ") else "—" end | gsub("\\|"; "\\\\|")) + " | "
+      + (.remediation // "—" | gsub("\\|"; "\\\\|")) + " |"'
+  done <"$jl" >>"$sm"
+  echo >>"$sm"
 }
 
 start_step "preflight"
@@ -68,13 +92,46 @@ else
 fi
 
 invoke_child "${SCRIPT_DIR}/run-rest-local.sh"
-invoke_child "${SCRIPT_DIR}/run-web-admin-flows.sh"
-invoke_child "${SCRIPT_DIR}/run-vending-app-flows.sh"
+invoke_child "${SCRIPT_DIR}/run-web-admin-flows.sh" --full
+invoke_child "${SCRIPT_DIR}/run-vending-app-flows.sh" --rest-equivalent
 invoke_child "${SCRIPT_DIR}/run-grpc-local.sh"
 invoke_child "${SCRIPT_DIR}/run-mqtt-local.sh"
+
+# --- Phase 8: end-to-end narratives + structured reports (40–47) ---
+PHASE8_LIST=(
+  40_e2e_first_boot.sh
+  41_e2e_cash_sale_success.sh
+  42_e2e_qr_payment_success_mock.sh
+  43_e2e_vend_failure_refund.sh
+  44_e2e_offline_replay.sh
+  45_e2e_remote_command_ack.sh
+  46_e2e_inventory_restock_adjustment.sh
+  47_e2e_reporting_audit.sh
+)
+for _p8 in "${PHASE8_LIST[@]}"; do
+  _path="${SCRIPT_DIR}/scenarios/${_p8}"
+  if [[ ! -f "$_path" ]]; then
+    log_error "Phase 8 scenario missing: ${_path}"
+    OVERALL=1
+    continue
+  fi
+  set +e
+  E2E_IN_PARENT=1 \
+    E2E_RUN_DIR="${E2E_RUN_DIR}" \
+    E2E_REUSE_DATA="${E2E_REUSE_DATA}" \
+    E2E_DATA_FILE="${E2E_DATA_FILE:-}" \
+    E2E_CLI_FRESH_DATA="${E2E_CLI_FRESH_DATA}" \
+    bash "${_path}" ${E2E_EXTRA_ARGS[@]+"${E2E_EXTRA_ARGS[@]}"}
+  _ec=$?
+  set -e
+  if [[ "$_ec" -ne 0 ]]; then
+    OVERALL=1
+  fi
+done
 
 # shellcheck source=lib/e2e_report.sh
 source "${SCRIPT_DIR}/lib/e2e_report.sh"
 e2e_finalize_reports "${OVERALL}"
+e2e_append_phase8_summary_to_md
 
 exit "${OVERALL}"
