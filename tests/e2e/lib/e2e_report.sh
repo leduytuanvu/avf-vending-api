@@ -242,6 +242,7 @@ e2e_finalize_reports() {
   if [[ -n "${E2E_RUN_DIR:-}" ]]; then
     mkdir -p "${E2E_RUN_DIR}/reports"
     : >>"${E2E_RUN_DIR}/improvement-findings.jsonl"
+    : >>"${E2E_RUN_DIR}/test-events.jsonl"
   fi
 
   local _lib _tools _repo
@@ -281,15 +282,46 @@ e2e_finalize_reports() {
     log_warn "generate-flow-scorecard.py failed"
   fi
 
-  if [[ -s "${E2E_RUN_DIR}/improvement-findings.jsonl" ]]; then
-    {
+  # Guarantee improvement reports exist even when Python generators fail (empty run is valid).
+  [[ -f "${E2E_RUN_DIR}/reports/improvement-summary.md" ]] || {
+    mkdir -p "${E2E_RUN_DIR}/reports"
+    printf '%s\n' "# E2E flow improvement summary" "" "_Generator unavailable or skipped — no structured rollup. See \`improvement-findings.jsonl\` (JSON Lines)._." "" \
+      >"${E2E_RUN_DIR}/reports/improvement-summary.md"
+    cp -f "${E2E_RUN_DIR}/reports/improvement-summary.md" "${E2E_RUN_DIR}/improvement-summary.md"
+  }
+  [[ -f "${E2E_RUN_DIR}/reports/optimization-backlog.md" ]] || {
+    printf '%s\n' "# Optimization Backlog" "" "_No backlog generated this run — see \`improvement-findings.jsonl\`._" "" \
+      >"${E2E_RUN_DIR}/reports/optimization-backlog.md"
+    cp -f "${E2E_RUN_DIR}/reports/optimization-backlog.md" "${E2E_RUN_DIR}/optimization-backlog.md"
+  }
+  [[ -f "${E2E_RUN_DIR}/reports/flow-review-scorecard.json" ]] || {
+    echo '[]' >"${E2E_RUN_DIR}/reports/flow-review-scorecard.json"
+    cp -f "${E2E_RUN_DIR}/reports/flow-review-scorecard.json" "${E2E_RUN_DIR}/flow-review-scorecard.json"
+  }
+
+  local _imp_p0 _imp_tot
+  _imp_p0="$(jq -s '[.[] | select(.severity == "P0" and ((.finding_id // "") | test("^E2E-NO-FINDINGS") | not))] | length' "${E2E_RUN_DIR}/improvement-findings.jsonl" 2>/dev/null || echo 0)"
+  _imp_tot="$(jq -s '[.[] | select(((.finding_id // "") | test("^E2E-NO-FINDINGS") | not) and ((.flow_id // "") != "_e2e_review_marker"))] | length' "${E2E_RUN_DIR}/improvement-findings.jsonl" 2>/dev/null || echo 0)"
+  {
+    echo ""
+    echo "## Related flow improvement reports"
+    echo ""
+    echo "This section lists **improvement debt** (distinct from **hard failures** above). Debt may exist while the run exits **0**."
+    echo ""
+    echo "| Artifact | Path |"
+    echo "|----------|------|"
+    echo "| improvement-findings.jsonl | \`${E2E_RUN_DIR}/improvement-findings.jsonl\` |"
+    echo "| improvement-summary.md | \`${E2E_RUN_DIR}/reports/improvement-summary.md\` |"
+    echo "| optimization-backlog.md | \`${E2E_RUN_DIR}/reports/optimization-backlog.md\` |"
+    echo "| flow-review-scorecard.json | \`${E2E_RUN_DIR}/reports/flow-review-scorecard.json\` |"
+    echo ""
+    echo "Triage: **\`docs/testing/e2e-remediation-playbook.md\`**. Gates: **\`E2E_FAIL_ON_P0_FINDINGS\`** (default **true**), **\`E2E_FAIL_ON_P1_FINDINGS\`** (default **false**)."
+    if [[ "${_imp_tot:-0}" -gt 0 ]]; then
       echo ""
-      echo "## Related flow improvement findings"
-      echo ""
-      echo "Non-blocking debt (and configured P0/P1 gates) lives in **\`improvement-findings.jsonl\`**, **\`improvement-summary.md\`**, **\`optimization-backlog.md\`**. See **\`docs/testing/e2e-remediation-playbook.md\`**."
-      echo ""
-    } >>"${E2E_RUN_DIR}/reports/remediation.md"
-  fi
+      echo "This run recorded **${_imp_tot}** actionable improvement row(s) (excluding no-finding markers); **P0=${_imp_p0:-0}**."
+    fi
+    echo ""
+  } >>"${E2E_RUN_DIR}/reports/remediation.md"
 
   # Mirrors at run root (reports/ remains canonical; copies for CI / triage globs)
   for f in summary.md remediation.md coverage.json improvement-summary.md optimization-backlog.md flow-review-scorecard.json; do

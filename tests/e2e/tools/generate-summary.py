@@ -317,6 +317,26 @@ def main() -> int:
 
 Full snapshot: `reports/e2e-report-context.json` (written at finalize; no secrets).
 
+## Report artifacts (index)
+
+Canonical paths are under **`reports/`** (this file); JSONL logs and redacted test data sit at the **run root** (`..` relative to here).
+
+| Artifact | Path |
+|----------|------|
+| Step events (pass/fail/skip) | [`../events.jsonl`](../events.jsonl) |
+| Scenario / module test events | [`../test-events.jsonl`](../test-events.jsonl) |
+| Flow improvement findings (JSON Lines) | [`../improvement-findings.jsonl`](../improvement-findings.jsonl) |
+| This summary | [`summary.md`](summary.md) |
+| Remediation (hard failures + related improvement links) | [`remediation.md`](remediation.md) |
+| Improvement rollup | [`improvement-summary.md`](improvement-summary.md) |
+| Optimization backlog | [`optimization-backlog.md`](optimization-backlog.md) |
+| Per-flow scorecard | [`flow-review-scorecard.json`](flow-review-scorecard.json) |
+| Merged coverage | [`coverage.json`](coverage.json) |
+| Public test data (redacted) | [`../test-data.redacted.json`](../test-data.redacted.json) |
+| JUnit (when produced) | [`e2e-junit.xml`](e2e-junit.xml) |
+
+Mirrors at run root (when present): `improvement-summary.md`, `optimization-backlog.md`, `flow-review-scorecard.json`, `summary.md`, `remediation.md`.
+
 ## Target safety mode
 
 {safety}

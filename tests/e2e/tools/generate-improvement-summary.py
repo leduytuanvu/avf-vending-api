@@ -129,9 +129,10 @@ def patch_main_summary(summ: Path, n0: int, n1: int, n2: int, n3: int) -> None:
 - P1: **{n1}**
 - P2: **{n2}**
 - P3: **{n3}**
-- improvement-summary.md: [`improvement-summary.md`](../improvement-summary.md)
-- optimization-backlog.md: [`optimization-backlog.md`](../optimization-backlog.md)
-- flow-review-scorecard.json: [`flow-review-scorecard.json`](../flow-review-scorecard.json)
+- improvement-findings.jsonl: [`improvement-findings.jsonl`](../improvement-findings.jsonl)
+- improvement-summary.md: [`improvement-summary.md`](improvement-summary.md)
+- optimization-backlog.md: [`optimization-backlog.md`](optimization-backlog.md)
+- flow-review-scorecard.json: [`flow-review-scorecard.json`](flow-review-scorecard.json)
 """
 
     markers = ("## Flow Improvement Findings", "## Flow improvement review")

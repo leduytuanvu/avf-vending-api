@@ -57,6 +57,12 @@ done
 if ! grep -q 'generate-flow-scorecard\.py' "${ROOT}/tests/e2e/lib/e2e_report.sh"; then
   err "tests/e2e/lib/e2e_report.sh must invoke generate-flow-scorecard.py"
 fi
+if ! grep -q 'test-events\.jsonl' "${ROOT}/tests/e2e/lib/e2e_report.sh"; then
+  err "tests/e2e/lib/e2e_report.sh must ensure test-events.jsonl at finalize (empty file is valid)"
+fi
+if ! grep -q 'Report artifacts' "${ROOT}/tests/e2e/tools/generate-summary.py"; then
+  err "tests/e2e/tools/generate-summary.py must include Report artifacts (index) linking run outputs"
+fi
 
 # --- 1) bash -n ---
 while IFS= read -r -d '' f; do
