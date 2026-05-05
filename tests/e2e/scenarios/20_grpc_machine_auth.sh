@@ -43,6 +43,13 @@ if [[ -n "${_mt:-}" ]] && [[ -n "${_mid:-}" ]] && [[ "${_mid}" != "null" ]]; the
       grpc_contract_skip "$FLOW_ID" "refresh-auth-wrapped" MachineAuthService RefreshMachineToken "no_machine_refresh_token_in_secrets"
     fi
   fi
+  SCEN="20_grpc_machine_auth.sh"
+  if [[ "${GRPC_USE_REFLECTION:-false}" != "true" ]]; then
+    log_docs_gap "P2" "$FLOW_ID" "$SCEN" "grpc-entry" "gRPC" "${GRPC_ADDR:-}" "Server reflection off — operators need documented GRPC_ADDR and proto import root" "Harder local integration" "Document ports; enable reflection in dev or publish proto bundle" "${E2E_RUN_DIR}/grpc/g20-claim.meta.json"
+  fi
+  if [[ "${ec}" -eq 0 ]]; then
+    e2e_flow_review_scenario_complete "$FLOW_ID" "$SCEN" "flow-review-complete" "grpc_auth_token_reuse_ok"
+  fi
   exit "${ec}"
 fi
 
@@ -50,6 +57,8 @@ AC="${E2E_ACTIVATION_CODE:-}"
 [[ -z "${AC}" || "${AC}" == "null" ]] && AC="$(get_data activationCodePlain)"
 if [[ -z "${AC}" || "${AC}" == "null" ]]; then
   grpc_contract_skip "$FLOW_ID" "claim-activation" MachineAuthService ClaimActivation "no_activation_code_set_E2E_ACTIVATION_CODE_or_activationCodePlain"
+  log_docs_gap "P2" "$FLOW_ID" "20_grpc_machine_auth.sh" "activation-input" "gRPC" "MachineAuthService/ClaimActivation" "No activation code available — full gRPC claim path not exercised in this run" "Coverage gap for pilots" "Document E2E_ACTIVATION_CODE and secrets wiring" "${E2E_RUN_DIR}/test-data.json"
+  e2e_flow_review_scenario_complete "$FLOW_ID" "20_grpc_machine_auth.sh" "flow-review-skip" "grpc_claim_skipped_no_code"
   exit 0
 fi
 
@@ -88,6 +97,14 @@ if [[ -n "${_rt:-}" ]] && [[ "${ec}" -eq 0 ]]; then
   grpc_contract_try "$FLOW_ID" "refresh-auth-wrapped" MachineAuthService RefreshMachineToken "$ABODY" "g20-refresh-auth" "g20-rt-auth" || ec=1
   _nr2="$(jq -r '.refresh.accessToken // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-auth.response.json" 2>/dev/null)"
   [[ -n "$_nr2" ]] && e2e_save_token machineToken "$_nr2"
+fi
+
+SCEN="20_grpc_machine_auth.sh"
+if [[ "${GRPC_USE_REFLECTION:-false}" != "true" ]]; then
+  log_docs_gap "P2" "$FLOW_ID" "$SCEN" "grpc-entry" "gRPC" "${GRPC_ADDR:-}" "gRPC uses proto files from GRPC_PROTO_ROOT when reflection disabled — document standard dev ports/paths" "Integration friction" "Publish connection guide; enable reflection in non-prod" "${E2E_RUN_DIR}/grpc/g20-claim.meta.json"
+fi
+if [[ "${ec}" -eq 0 ]]; then
+  e2e_flow_review_scenario_complete "$FLOW_ID" "$SCEN" "flow-review-complete" "grpc_auth_claim_path_ok"
 fi
 
 exit "${ec}"

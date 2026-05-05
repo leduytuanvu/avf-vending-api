@@ -180,4 +180,10 @@ else
   wa4_record "commerce-order-flow" "—" "skip" "0" "orderId" "none" "No order created or reused" ""
 fi
 
+log_observability_issue "P2" "$FLOW_ID" "13_web_admin_support_ops.sh" "support-trace" "REST" "support orders" "Support flow does not assert timeline rows include stable correlation across refund/cancel attempts" "Incident triage harder" "Expose order_id/payment_id/request_id consistently on timeline events" "${E2E_RUN_DIR}/reports/wa-module-results.jsonl"
+log_cleanup_issue "P3" "$FLOW_ID" "13_web_admin_support_ops.sh" "commerce-cleanup" "REST" "orders/refunds" "Partially mutated commerce orders may remain in odd states without dedicated E2E purge" "Ledger noise" "Document safe cancel/refund matrix; add test org reset guidance" "${E2E_RUN_DIR}/test-data.json"
+if [[ "$ANY_FAIL" -eq 0 ]]; then
+  e2e_flow_review_scenario_complete "$FLOW_ID" "13_web_admin_support_ops.sh" "flow-review-complete" "wa_support_ops_reviewed"
+fi
+
 exit "$ANY_FAIL"

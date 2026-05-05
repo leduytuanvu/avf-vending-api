@@ -61,12 +61,16 @@ if [[ -n "$PRODUCT_ID" && "$PRODUCT_ID" != "null" ]] && [[ "${hit:-0}" -ge 1 ]];
   va_record "sale-catalog-a1-product" "GET .../sale-catalog" "pass" "$code" "slot ${SLOT} has productId ${PRODUCT_ID}"
 else
   va_record "sale-catalog-a1-product" "GET .../sale-catalog" "skip" "$code" "expected product ${PRODUCT_ID:-?} on $SLOT — check planogram/publish"
+  log_response_shape_issue "P2" "$FLOW_ID" "03_catalog_media_sync_rest.sh" "sale-catalog-slot" "REST" "GET /v1/machines/{id}/sale-catalog" "Expected product not found on configured slot — deterministic slot assignment not reflected in sale-catalog" "Vending UI/API may miss price/stock for app" "Ensure publish projects slot bindings; stable slot_code keys in response" "${E2E_RUN_DIR}/rest/vm-sale-catalog.response.json"
 fi
 
 if [[ "${img_chk:-0}" -gt 0 ]]; then
   va_record "sale-catalog-media-urls" "GET .../sale-catalog" "pass" "$code" "image URLs present on ${img_chk} row(s) (no download performed)"
 else
   va_record "sale-catalog-media-urls" "GET .../sale-catalog" "skip" "$code" "no image.displayUrl in response (optional)"
+  log_missing_field_issue "P2" "$FLOW_ID" "03_catalog_media_sync_rest.sh" "sale-catalog-media" "REST" "GET .../sale-catalog?include_images=true" "Sale-catalog rows lack image URL (and checksum/fingerprint not asserted in this response)" "Kiosk cannot show product media" "Return thumb/display URL + checksum or media manifest link per OpenAPI" "${E2E_RUN_DIR}/rest/vm-sale-catalog.response.json"
 fi
+
+e2e_flow_review_scenario_complete "$FLOW_ID" "03_catalog_media_sync_rest.sh" "flow-review-complete" "catalog_media_sync_reviewed"
 
 exit 0

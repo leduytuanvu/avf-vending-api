@@ -51,5 +51,7 @@ fi
 
 ACTUAL="wa_rpt_10_ok"
 phase8_record "$SID" "pass" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" ""
+log_observability_issue "P2" "$SID" "47_e2e_reporting_audit.sh" "traceability" "REST" "reporting Phase 8" "Phase 8 delegates to read-only reporting — does not assert cross-resource trace (order→payment→vend) in responses" "Weaker compliance story" "Add golden-path audit event with correlation filters" "${E2E_RUN_DIR}/reports/wa-module-results.jsonl"
 end_step passed "E2E-47 reporting / audit completed"
+e2e_flow_review_scenario_complete "$SID" "47_e2e_reporting_audit.sh" "flow-review-complete" "reporting_audit_phase8_reviewed"
 exit 0

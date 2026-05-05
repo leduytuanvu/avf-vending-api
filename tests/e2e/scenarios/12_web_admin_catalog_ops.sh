@@ -191,4 +191,10 @@ else
   wa4_record "sale-catalog-contains-product" "—" "skip" "0" "machineId" "missing" "" ""
 fi
 
+log_flow_design_issue "P2" "$FLOW_ID" "12_web_admin_catalog_ops.sh" "sale-catalog-determinism" "REST" "GET /v1/machines/{id}/sale-catalog" "Product visibility on sale-catalog depends on publish/price/stock — harness only checks containment, not full vending-app field set" "Kiosk gaps for price/media/qty" "Document required sale-catalog fields; fail CI when missing" "${E2E_RUN_DIR}/rest/cat-sale-catalog.response.json"
+log_cleanup_issue "P3" "$FLOW_ID" "12_web_admin_catalog_ops.sh" "catalog-cleanup" "REST" "products/brands" "Test catalog entities may accumulate SKUs without documented bulk purge" "Org clutter" "Add archive SKUs and doc operator cleanup" "${E2E_RUN_DIR}/reports/wa-module-results.jsonl"
+if [[ "$ANY_FAIL" -eq 0 ]]; then
+  e2e_flow_review_scenario_complete "$FLOW_ID" "12_web_admin_catalog_ops.sh" "flow-review-complete" "wa_catalog_ops_reviewed"
+fi
+
 exit "$ANY_FAIL"

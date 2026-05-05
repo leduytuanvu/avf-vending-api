@@ -192,6 +192,15 @@ if [[ "$ADMIN_DISPATCH_PASS" == "yes" ]] && [[ -n "$HTTP_CID" ]]; then
   fi
 else
   mqtt_contract_record "$FLOW_ID" "verify-command-get" "—" "skip" "admin_full_flow_not_used_or_no_commandId"
+  log_mqtt_contract_issue "P2" "$FLOW_ID" "32_mqtt_command_ack.sh" "command-status-get" "MQTT+REST" "GET .../commands/{id}" "Command final state not verified via admin API when synthetic path or missing HTTP_CID" "Ops cannot confirm dispatch outcome" "Always document admin GET for command attempts; tie to command_id from dispatch" "${E2E_RUN_DIR}/reports/mqtt-contract-results.jsonl"
 fi
+
+if [[ "${E2E_TARGET:-local}" == "production" ]]; then
+  log_security_safety_issue "P1" "$FLOW_ID" "32_mqtt_command_ack.sh" "prod-command-test" "MQTT" "commands/dispatch" "Production MQTT command scenarios can affect real machines if guards are mis-set" "Physical vend/reboot risk" "Require e2eTestMachine + explicit ack env; noop-only payloads" "${E2E_RUN_DIR}/mqtt/connect.log"
+else
+  log_security_safety_issue "P2" "$FLOW_ID" "32_mqtt_command_ack.sh" "command-topic-safety" "MQTT" "commands/dispatch" "Command dispatch/ACK tests use real broker topics — isolate ACLs from production fleet" "Accidental cross-env dispatch" "Per-env broker + machine-scoped credentials" "${E2E_RUN_DIR}/mqtt/connect.log"
+fi
+
+e2e_flow_review_scenario_complete "$FLOW_ID" "32_mqtt_command_ack.sh" "flow-review-complete" "mqtt_command_ack_reviewed"
 
 exit 0

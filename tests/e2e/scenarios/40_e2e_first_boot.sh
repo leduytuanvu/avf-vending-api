@@ -141,8 +141,10 @@ if [[ "$RESULT" == "pass" ]]; then
   end_step passed "E2E-40 first boot completed"
 elif [[ "$RESULT" == "skip" ]]; then
   end_step skipped "E2E-40 completed with MQTT skipped — see phase8-scenario-results.jsonl and remediation"
+  log_mqtt_contract_issue "P2" "$SID" "40_e2e_first_boot.sh" "mqtt-heartbeat" "MQTT" "telemetry topic" "First-boot narrative skipped MQTT heartbeat (broker/clients missing) — field parity gap in CI" "Incomplete protocol coverage" "Run Phase 7 with broker or document skip" "${E2E_RUN_DIR}/reports/phase8-scenario-results.jsonl"
 else
   end_step failed "E2E-40 unexpected result ${RESULT}"
   exit 1
 fi
+e2e_flow_review_scenario_complete "$SID" "40_e2e_first_boot.sh" "flow-review-complete" "phase8_first_boot_reviewed"
 exit 0

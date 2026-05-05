@@ -52,4 +52,5 @@ fi
 ACTUAL="wa_inv_11_ok"
 phase8_record "$SID" "pass" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" ""
 end_step passed "E2E-46 inventory / restock completed"
+e2e_flow_review_scenario_complete "$SID" "46_e2e_inventory_restock_adjustment.sh" "flow-review-complete" "inventory_phase8_reviewed"
 exit 0

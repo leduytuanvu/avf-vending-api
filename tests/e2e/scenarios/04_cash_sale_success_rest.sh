@@ -112,6 +112,9 @@ e2e_http_get "vm-order-final" "/v1/commerce/orders/${OID}" >/dev/null
 OST="$(jq -r '.order.status // .order.order_status // empty' "${E2E_RUN_DIR}/rest/vm-order-final.response.json")"
 va_record "order-status" "GET /v1/commerce/orders/{id}" "pass" "200" "status=${OST}"
 
+log_flow_design_issue "P2" "$FLOW_ID" "04_cash_sale_success_rest.sh" "order-status-shape" "REST" "GET /v1/commerce/orders/{id}" "Order status is read via multiple possible JSON paths (.order.status vs .order.order_status) — contract ambiguous for clients" "Incorrect UI/backend branching on lifecycle" "Single canonical status enum in OpenAPI; deprecate aliases" "${E2E_RUN_DIR}/rest/vm-order-final.response.json"
+log_api_contract_issue "P2" "$FLOW_ID" "04_cash_sale_success_rest.sh" "vend-after-payment" "REST" "POST .../vend/start" "Harness orders cash-checkout then vend start; server-side must reject vend when unpaid — negative path not asserted in REST VM harness" "Possible money/inventory inconsistency if checks missing" "Enforce payment gate; document state machine tests" "${E2E_RUN_DIR}/rest/vm-vend-start.meta.json"
+
 if [[ -n "$qty_before" ]] && [[ "$qty_before" =~ ^[0-9]+$ ]]; then
   e2e_http_get "vm-sc-qty-after" "/v1/machines/${MID}/sale-catalog?include_unavailable=true&include_images=false" >/dev/null
   qty_after="$(jq -r --arg p "$PRODUCT_ID" '([.items[]? | select(.productId==$p) | .availableQuantity] | first) // empty' "${E2E_RUN_DIR}/rest/vm-sc-qty-after.response.json")"
@@ -121,12 +124,19 @@ if [[ -n "$qty_before" ]] && [[ "$qty_before" =~ ^[0-9]+$ ]]; then
       va_record "inventory-sale-catalog" "GET .../sale-catalog" "pass" "200" "availableQty $qty_before→$qty_after"
     else
       va_record "inventory-sale-catalog" "GET .../sale-catalog" "skip" "200" "expected $exp got $qty_after (eventual consistency?)"
+      log_flow_design_issue "P1" "$FLOW_ID" "04_cash_sale_success_rest.sh" "inventory-verify" "REST" "GET .../sale-catalog" "Inventory decrement not verifiable via sale-catalog quantity after successful vend" "Cannot prove inventory correctness for cash sale in automation" "Strong read-after-write guarantees or inventory event API for machines" "${E2E_RUN_DIR}/rest/vm-sc-qty-after.meta.json"
     fi
   else
     va_record "inventory-sale-catalog" "GET .../sale-catalog" "skip" "200" "no qty after"
+    log_flow_design_issue "P1" "$FLOW_ID" "04_cash_sale_success_rest.sh" "inventory-field" "REST" "GET .../sale-catalog" "availableQuantity missing after sale — inventory not observable on catalog projection" "Blocks P0/P1 inventory proofs" "Expose machine inventory snapshot on REST or document alternative verify API" "${E2E_RUN_DIR}/rest/vm-sc-qty-after.response.json"
   fi
 else
   va_record "inventory-sale-catalog" "—" "skip" "0" "no baseline qty"
+  log_flow_design_issue "P2" "$FLOW_ID" "04_cash_sale_success_rest.sh" "inventory-baseline" "REST" "sale-catalog" "No baseline quantity before sale — harness cannot assert inventory movement" "Weaker regression signal" "Ensure planogram + sale-catalog exposes qty in lab data" "${E2E_RUN_DIR}/rest/vm-sc-qty-before.meta.json"
 fi
+
+log_retry_issue "P2" "$FLOW_ID" "04_cash_sale_success_rest.sh" "cash-idempotency" "REST" "POST /v1/commerce/cash-checkout" "Duplicate submission behavior of cash-checkout under retries not exercised vs POST /v1/commerce/orders idempotency" "Double charge or duplicate order risk" "Document and test Idempotency-Key semantics for cash-checkout" "${E2E_RUN_DIR}/rest/vm-cash-co.meta.json"
+
+e2e_flow_review_scenario_complete "$FLOW_ID" "04_cash_sale_success_rest.sh" "flow-review-complete" "cash_sale_rest_reviewed"
 
 exit 0

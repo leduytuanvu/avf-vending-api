@@ -3,6 +3,8 @@
 # Preflight: toolchain, required env, and core health/version HTTP checks.
 
 E2E_SCENARIO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/e2e_common.sh
+source "${E2E_SCENARIO_DIR}/../lib/e2e_common.sh"
 # shellcheck source=../lib/e2e_http.sh
 source "${E2E_SCENARIO_DIR}/../lib/e2e_http.sh"
 
@@ -32,5 +34,7 @@ for path in "/health/live" "/health/ready" "/version"; do
 done
 
 append_event_jsonl "preflight:api" "passed" "health/live health/ready version"
+
+e2e_flow_review_scenario_complete "PF-PREFLIGHT" "00_preflight.sh" "flow-review-complete" "toolchain_and_public_health_ok_no_scenario_findings"
 
 exit 0

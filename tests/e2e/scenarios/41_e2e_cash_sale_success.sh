@@ -70,5 +70,9 @@ fi
 
 ACTUAL="cash_sale_vm_rest_04_ok ${AUDIT_NOTE}"
 phase8_record "$SID" "pass" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" ""
+if [[ "$AUDIT_NOTE" != "audit_http_200" ]] && [[ "$AUDIT_NOTE" != "audit_skip_no_admin" ]]; then
+  log_observability_issue "P2" "$SID" "41_e2e_cash_sale_success.sh" "audit-probe" "REST" "GET /v1/admin/audit/events" "Audit probe did not return clean 200 — correlation visibility for cash sale unverified" "Weaker ops traceability" "Stabilize audit read for CI role; document filters" "${E2E_RUN_DIR}/rest/p8-41-audit.meta.json"
+fi
 end_step passed "E2E-41 cash sale success completed"
+e2e_flow_review_scenario_complete "$SID" "41_e2e_cash_sale_success.sh" "flow-review-complete" "phase8_cash_sale_reviewed"
 exit 0

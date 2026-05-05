@@ -46,4 +46,12 @@ grpc_contract_try "$FLOW_ID" "report-diagnostic-bundle" MachineCommandService Re
 BID="$(jq -r '.bundleId // empty' "${E2E_RUN_DIR}/grpc/g24-diag.response.json" 2>/dev/null)"
 [[ -n "${BID:-}" ]] && e2e_set_data grpcDiagnosticBundleId "$BID"
 
+SCEN="24_grpc_command_update_status.sh"
+if [[ "${GRPC_USE_REFLECTION:-false}" != "true" ]]; then
+  log_docs_gap "P2" "$FLOW_ID" "$SCEN" "grpc-entry" "gRPC" "${GRPC_ADDR:-}" "MachineCommandService calls require TLS/plaintext and import path documentation alongside REST admin commands" "Ops confusion" "Link admin command REST docs to gRPC machine contract" "${E2E_RUN_DIR}/grpc/g24-assigned.meta.json"
+fi
+if [[ "${ec}" -eq 0 ]]; then
+  e2e_flow_review_scenario_complete "$FLOW_ID" "$SCEN" "flow-review-complete" "grpc_command_status_ok"
+fi
+
 exit "${ec}"

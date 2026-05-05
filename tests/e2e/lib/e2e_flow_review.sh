@@ -149,6 +149,19 @@ log_unknown_improvement() {
   append_improvement_finding "$(e2e_new_finding_id)" "$1" "unknown" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
 }
 
+# Explicit marker: scenario reviewed the flow; no additional rows added on this path.
+# Args: flow_id scenario_basename step_name [message]
+e2e_flow_review_scenario_complete() {
+  [[ "${E2E_ENABLE_FLOW_REVIEW:-true}" == "true" ]] || return 0
+  [[ -n "${E2E_RUN_DIR:-}" ]] || return 0
+  local flow_id="${1:?}" scen="${2:?}" step="${3:-flow-review-complete}" msg="${4:-no_improvement_findings_logged_this_scenario}"
+  if declare -F e2e_append_test_event >/dev/null 2>&1; then
+    e2e_append_test_event "$flow_id" "$step" "mixed" "e2e-flow-review" "pass" "$msg" "$(jq -nc --arg sid "$scen" '{scenario_id:$sid, flow_review_no_findings:true}')"
+  elif declare -F append_event_jsonl >/dev/null 2>&1; then
+    append_event_jsonl "flow-review:${scen}" "passed" "$msg"
+  fi
+}
+
 # Slow HTTP: bump counter, log P3 perf; third hit in run → P2 flaky.
 e2e_flow_review_note_http_slow() {
   [[ "${E2E_ENABLE_FLOW_REVIEW:-true}" == "true" ]] || return 0

@@ -142,4 +142,10 @@ else
   wa4_record "cash-collections-list" "—" "skip" "0" "machineId" "missing" "Run Phase 3 setup or reuse-data with machineId" ""
 fi
 
+log_observability_issue "P2" "$FLOW_ID" "10_reporting_audit_reconciliation.sh" "audit-correlation" "REST" "GET /v1/admin/audit/events" "Harness does not assert correlation_id / request_id presence on each audit row" "Cannot tie audit to commerce requests" "Require correlation fields in audit API and docs" "${E2E_RUN_DIR}/rest/rpt-audit-events.response.json"
+log_cleanup_issue "P3" "$FLOW_ID" "10_reporting_audit_reconciliation.sh" "report-filters" "REST" "reporting routes" "Commerce/finance lists may not filter cleanly by ephemeral E2E machine/order id" "Noisy shared environments" "Add narrow filters (machineId, external ref) per OpenAPI" "${E2E_RUN_DIR}/reports/wa-module-results.jsonl"
+if [[ "$ANY_FAIL" -eq 0 ]]; then
+  e2e_flow_review_scenario_complete "$FLOW_ID" "10_reporting_audit_reconciliation.sh" "flow-review-complete" "reporting_audit_reviewed"
+fi
+
 exit "$ANY_FAIL"

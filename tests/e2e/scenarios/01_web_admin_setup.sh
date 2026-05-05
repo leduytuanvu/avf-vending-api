@@ -268,7 +268,10 @@ plc="$(e2e_http_get "wa-planogram-list" "/v1/admin/planograms?${Q_ORG}&limit=20"
 if [[ "$plc" != "200" ]]; then
   wa_ev "planogram" "GET /v1/admin/planograms" "skip" "List planograms HTTP $plc (forbidden / wrong org?)" "{}"
   log_warn "Planogram list not available (HTTP ${plc}); skipping machine planogram + inventory."
+  log_flow_design_issue "P2" "$FLOW_ID" "01_web_admin_setup.sh" "planogram-list" "REST" "GET /v1/admin/planograms" "Cannot list planograms during setup — slot/publish pipeline blocked" "Incomplete machine readiness for vending automation" "Document org permissions; provide bootstrap planogram fixture" "${E2E_RUN_DIR}/rest/wa-planogram-list.meta.json"
+  log_data_setup_issue "P2" "$FLOW_ID" "01_web_admin_setup.sh" "planogram-list" "data" "planogram prerequisite" "Setup stops early; reuse-data may hide missing org fixtures" "Flaky Phase 4/8" "Seed minimum org planogram or add diagnostics endpoint" "${E2E_RUN_DIR}/rest/wa-planogram-list.meta.json"
   wa_ev "inventory" "—" "skip" "No planogram list" "{}"
+  e2e_flow_review_scenario_complete "$FLOW_ID" "01_web_admin_setup.sh" "flow-review-early" "stopped_after_planogram_list_failure"
   exit 0
 fi
 PG_ID="$(jq -r '(.items // [])[] | select(.status=="published") | .id' "${E2E_RUN_DIR}/rest/wa-planogram-list.response.json" 2>/dev/null | head -n1)"
@@ -284,7 +287,9 @@ esac
 if [[ -z "$PG_ID" ]]; then
   wa_ev "planogram" "GET /v1/admin/planograms" "skip" "No planogram in org — publish/slot/inventory steps skipped. Seed a planogram in admin UI or DB." "{}"
   log_warn "No planogram found; skipping operator session, draft, publish, and stock adjustment."
+  log_flow_design_issue "P2" "$FLOW_ID" "01_web_admin_setup.sh" "planogram-empty" "REST" "/v1/admin/planograms" "Org has no planogram row — cannot assign product to machine slot deterministically via API in this run" "Vending sale-catalog may be empty or inconsistent" "API or admin UX to clone default planogram; document minimum seed" "${E2E_RUN_DIR}/rest/wa-planogram-list.response.json"
   wa_ev "inventory" "—" "skip" "No planogram / slot pipeline" "{}"
+  e2e_flow_review_scenario_complete "$FLOW_ID" "01_web_admin_setup.sh" "flow-review-early" "stopped_no_planogram_in_org"
   exit 0
 fi
 e2e_set_data planogramId "$PG_ID"
@@ -298,6 +303,8 @@ if ! e2e_http_assert_status "wa-operator-login" "200" "$code"; then
   wa_ev "planogram-draft" "—" "skip" "No operator session" "{}"
   wa_ev "planogram-publish" "—" "skip" "No operator session" "{}"
   wa_ev "inventory" "—" "skip" "No operator session" "{}"
+  log_flow_design_issue "P2" "$FLOW_ID" "01_web_admin_setup.sh" "operator-session" "REST" "POST /v1/machines/{id}/operator-sessions/login" "Operator session required for planogram draft but automation cannot obtain it" "Blocks deterministic slot/planogram assignment" "Support machine-admin or service credentials for CI; document session preconditions" "${E2E_RUN_DIR}/rest/wa-operator-login.meta.json"
+  e2e_flow_review_scenario_complete "$FLOW_ID" "01_web_admin_setup.sh" "flow-review-early" "stopped_no_operator_session"
   exit 0
 fi
 OP_SID="$(e2e_jq_resp wa-operator-login -r '.session.id // empty')"
@@ -337,6 +344,8 @@ if ! e2e_http_assert_status "wa-planogram-draft" "204" "$code"; then
   wa_ev "planogram-draft" "$path" "skip" "Draft save HTTP $code — inspect rest/wa-planogram-draft.response.json" "{}"
   wa_ev "planogram-publish" "—" "skip" "Draft failed" "{}"
   wa_ev "inventory" "—" "skip" "Draft failed" "{}"
+  log_api_contract_issue "P2" "$FLOW_ID" "01_web_admin_setup.sh" "planogram-draft" "REST" "$path" "Planogram draft rejected — product-to-slot assignment not persisted" "Automated catalog incomplete" "Align OpenAPI with required fields; return structured validation errors" "${E2E_RUN_DIR}/rest/wa-planogram-draft.response.json"
+  e2e_flow_review_scenario_complete "$FLOW_ID" "01_web_admin_setup.sh" "flow-review-early" "stopped_planogram_draft_failed"
   exit 0
 fi
 wa_ev "planogram-draft" "$path" "pass" "Saved draft slots" "$(jq -nc --arg p "$PG_ID" '{planogramId:$p}')"
@@ -347,6 +356,8 @@ code="$(e2e_http_post_json_idem "wa-planogram-publish" "$path" "$PUB_JSON" "e2e-
 if ! e2e_http_assert_status "wa-planogram-publish" "200" "$code"; then
   wa_ev "planogram-publish" "$path" "skip" "Publish HTTP $code" "{}"
   wa_ev "inventory" "—" "skip" "Publish failed" "{}"
+  log_api_contract_issue "P2" "$FLOW_ID" "01_web_admin_setup.sh" "planogram-publish" "REST" "$path" "Planogram publish failed — version/ack of catalog on machine unclear" "Devices may not see product assignment" "Expose catalog_version and publish error details; document rollback" "${E2E_RUN_DIR}/rest/wa-planogram-publish.response.json"
+  e2e_flow_review_scenario_complete "$FLOW_ID" "01_web_admin_setup.sh" "flow-review-early" "stopped_planogram_publish_failed"
   exit 0
 fi
 wa_ev "planogram-publish" "$path" "pass" "Published planogram" "{}"
@@ -383,8 +394,14 @@ if e2e_http_assert_status "wa-stock" "200" "$code"; then
   wa_ev "inventory" "$path" "pass" "Stock adjustment" "$(jq -nc --arg sc "$SLOT" --argjson q "$Q_AFTER" '{slotCode:$sc,inventoryQuantity:$q}')"
 else
   wa_ev "inventory" "$path" "skip" "Stock adjustment HTTP $code (quantity_before mismatch or slot not ready)" "{}"
+  log_api_contract_issue "P2" "$FLOW_ID" "01_web_admin_setup.sh" "stock-adjustment" "REST" "$path" "Stock adjustment did not apply — inventory quantity may not match expected E2E state" "Sale/inventory tests may flake" "Deterministic quantity_before rules; clearer conflict responses" "${E2E_RUN_DIR}/rest/wa-stock.response.json"
 fi
 
 wa_ev "done" "—" "pass" "Web admin setup completed" "$(jq -nc --arg o "$ORG_ID" --arg s "$SITE_ID" --arg m "$MACHINE_ID" --arg p "$PRODUCT_ID" --arg sl "$SLOT" '{organizationId:$o,siteId:$s,machineId:$m,productId:$p,slotCode:$sl}')"
+
+log_unnecessary_complexity_issue "P3" "$FLOW_ID" "01_web_admin_setup.sh" "setup-call-depth" "mixed" "WA-SETUP-01" "Scratch setup requires many sequential admin REST calls before machine is vending-ready" "Slower CI; fragile ordering" "Provide bundled onboarding or fixture APIs; document minimal call graph" "${E2E_RUN_DIR}/test-data.json"
+log_response_shape_issue "P3" "$FLOW_ID" "01_web_admin_setup.sh" "machine-create-shape" "REST" "POST /v1/admin/organizations/{org}/machines" "Harness tolerates both .id and .machineId in create-machine response" "Clients may parse inconsistently" "Single canonical resource id field in OpenAPI" "${E2E_RUN_DIR}/rest/wa-machine-create.response.json"
+log_data_setup_issue "P3" "$FLOW_ID" "01_web_admin_setup.sh" "reuse-safety" "docs" "reuse vs --fresh-data" "Duplicate handling depends on idempotency keys and manual cleanup; no unified archive strategy asserted" "Shared-org QA collisions" "Document cleanup playbook; add delete/retire endpoints for E2E resources" "${E2E_RUN_DIR}/test-data.json"
+e2e_flow_review_scenario_complete "$FLOW_ID" "01_web_admin_setup.sh" "flow-review-complete" "wa_setup_completed_with_documented_debt"
 
 exit 0

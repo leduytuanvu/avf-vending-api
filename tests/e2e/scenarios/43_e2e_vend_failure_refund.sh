@@ -49,5 +49,7 @@ fi
 
 ACTUAL="vend_failure_refund_vm_rest_06_ok (refund may be skip row in va-rest log if route returns non-200)"
 phase8_record "$SID" "pass" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" ""
+log_flow_design_issue "P1" "$SID" "43_e2e_vend_failure_refund.sh" "refund-inventory-parity" "REST+gRPC" "vend failure + refund" "Phase 8 does not exhaustively prove inventory + payment ledger invariants after vend failure and refund across services" "Residual risk if server-side guards incomplete" "Add contract tests for forbidden refund states; assert inventory restoration" "${E2E_RUN_DIR}/rest/vm-fail-order2.meta.json"
 end_step passed "E2E-43 vend failure / refund completed"
+e2e_flow_review_scenario_complete "$SID" "43_e2e_vend_failure_refund.sh" "flow-review-complete" "vend_failure_refund_phase8_reviewed"
 exit 0

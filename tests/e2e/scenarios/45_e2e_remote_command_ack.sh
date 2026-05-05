@@ -58,6 +58,7 @@ if [[ ! -f "${E2E_RUN_DIR}/mqtt/command.ack.json" ]]; then
   ACTUAL="production_safety_or_broker_skip — no command.ack.json (see MQTT-32 guard in Phase 7)"
   phase8_record "$SID" "skip" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" "Run on local/staging or set e2eTestMachine + E2E_MQTT_COMMAND_TEST_ACK for production noop tests"
   end_step skipped "E2E-45: command ACK path skipped (see MQTT-32)"
+  e2e_flow_review_scenario_complete "$SID" "45_e2e_remote_command_ack.sh" "flow-review-skip" "remote_command_skipped_no_ack_file"
   exit 0
 fi
 
@@ -94,6 +95,7 @@ if ! command -v mosquitto_pub >/dev/null 2>&1 || ! e2e_mqtt_tcp_open; then
   ACTUAL="ACK ok but receipt publish skipped (mosquitto or broker)"
   phase8_record "$SID" "skip" "$IDS_JSON" "$(echo "$APIS_JSON" | jq -c --arg r "$REC_TOPIC" '. + ["MQTT " + $r]')" "$EXPECTED" "$ACTUAL" "$EVID_JSON" "Install mosquitto clients; start broker"
   end_step skipped "E2E-45: MQTT receipt skipped"
+  e2e_flow_review_scenario_complete "$SID" "45_e2e_remote_command_ack.sh" "flow-review-skip" "remote_command_skipped_no_receipt_pub"
   exit 0
 fi
 
@@ -108,5 +110,12 @@ fi
 EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg f "${E2E_RUN_DIR}/mqtt/phase8-command-receipt.publish.json" '. + [$f]')"
 ACTUAL="command_id=${CID} ack_ok receipt_published_to_${REC_TOPIC}"
 phase8_record "$SID" "pass" "$IDS_JSON" "$(echo "$APIS_JSON" | jq -c --arg r "$REC_TOPIC" '. + ["MQTT " + $r]')" "$EXPECTED" "$ACTUAL" "$EVID_JSON" ""
+if [[ "${E2E_TARGET:-local}" == "production" ]]; then
+  log_security_safety_issue "P1" "$SID" "45_e2e_remote_command_ack.sh" "physical-command-risk" "MQTT" "${REC_TOPIC}" "Phase 8 MQTT command+receipt against production target can enqueue hardware actions if misconfigured" "Revenue or safety impact" "Use lab broker; strict command allowlist" "${E2E_RUN_DIR}/mqtt/phase8-command-receipt.publish.json"
+else
+  log_security_safety_issue "P2" "$SID" "45_e2e_remote_command_ack.sh" "physical-command-risk" "MQTT" "${REC_TOPIC}" "MQTT command receipt publish exercises real topic names — keep staging/local brokers isolated from production fleet" "Cross-environment command leakage" "Separate credentials and topic roots per env" "${E2E_RUN_DIR}/mqtt/phase8-command-receipt.publish.json"
+fi
+log_mqtt_contract_issue "P2" "$SID" "45_e2e_remote_command_ack.sh" "bootstrap-topics" "MQTT" "commands/ack" "Command/ACK topic derivation still depends on prefix/layout env — bootstrap linkage not asserted in Phase 8 wrapper" "Clients may misconfigure topics" "Surface topic template in GetBootstrap response" "${E2E_RUN_DIR}/reports/mqtt-contract-results.jsonl"
 end_step passed "E2E-45 remote command ACK + receipt completed"
+e2e_flow_review_scenario_complete "$SID" "45_e2e_remote_command_ack.sh" "flow-review-complete" "remote_command_phase8_reviewed"
 exit 0

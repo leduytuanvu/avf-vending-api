@@ -124,11 +124,13 @@ def main() -> int:
     by_flow: dict[str, list[dict[str, Any]]] = defaultdict(list)
     by_proto = defaultdict(list)
     by_cat = defaultdict(list)
+    by_scenario: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for f in findings:
         by_sev[str(f.get("severity", "?"))].append(f)
         by_flow[str(f.get("flow_id", "unknown"))].append(f)
         by_proto[str(f.get("protocol", "?"))].append(f)
         by_cat[str(f.get("category", "unknown"))].append(f)
+        by_scenario[str(f.get("scenario_id", "unknown"))].append(f)
 
     flow_ids = set(by_flow.keys())
     for e in events:
@@ -214,6 +216,17 @@ def main() -> int:
         parts.append("")
         for f in by_flow[fid]:
             parts.append(f"- **{f.get('finding_id')}** ({f.get('severity')}): {f.get('symptom')} — _{f.get('recommendation')}_")
+        parts.append("")
+
+    parts.append("## Findings by scenario (script)")
+    parts.append("")
+    for sid in sorted(by_scenario.keys()):
+        parts.append(f"### `{sid}`")
+        parts.append("")
+        for f in by_scenario[sid]:
+            parts.append(
+                f"- **{f.get('finding_id')}** ({f.get('severity')} / {f.get('category')}): {f.get('symptom')}"
+            )
         parts.append("")
 
     parts.append("## Findings by protocol")

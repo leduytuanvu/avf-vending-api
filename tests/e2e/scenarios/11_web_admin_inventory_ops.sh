@@ -231,4 +231,9 @@ else
   fi
 fi
 
+log_cleanup_issue "P2" "$FLOW_ID" "11_web_admin_inventory_ops.sh" "e2e-cleanup" "REST" "inventory/planogram" "Test stock and cash-collection actions may lack automated teardown endpoints in harness" "Scratch org pollution" "Document cleanup; add archive APIs for E2E machines" "${E2E_RUN_DIR}/reports/wa-module-results.jsonl"
+if [[ "$ANY_FAIL" -eq 0 ]]; then
+  e2e_flow_review_scenario_complete "$FLOW_ID" "11_web_admin_inventory_ops.sh" "flow-review-complete" "wa_inventory_ops_reviewed"
+fi
+
 exit "$ANY_FAIL"

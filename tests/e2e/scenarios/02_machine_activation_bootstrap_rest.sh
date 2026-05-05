@@ -102,4 +102,11 @@ CAT_N="$(jq -r '.catalog.products | length // 0' "${E2E_RUN_DIR}/rest/vm-bootstr
 e2e_set_data bootstrapCatalogProductCount "${CAT_N:-0}"
 va_record "machine-bootstrap" "GET /v1/setup/machines/{id}/bootstrap" "pass" "$code" "products=${CAT_N:-0} configRev=${CFG_VER:-n/a}"
 
+BOOT_R="${E2E_RUN_DIR}/rest/vm-bootstrap.response.json"
+log_protocol_mismatch "P2" "$FLOW_ID" "02_machine_activation_bootstrap_rest.sh" "bootstrap-path" "REST" "GET /v1/setup/machines/{id}/bootstrap" "REST bootstrap is lab path; production vending app uses gRPC GetBootstrap + MQTT" "Dual contracts to maintain and drift" "Document equivalence matrix; add contract tests" "$BOOT_R"
+if [[ -f "$BOOT_R" ]] && ! jq -e '(.runtimeHints.mqtt // .mqttTopics // .topicPrefix // empty)' "$BOOT_R" >/dev/null 2>&1; then
+  log_mqtt_contract_issue "P2" "$FLOW_ID" "02_machine_activation_bootstrap_rest.sh" "bootstrap-mqtt-hints" "REST" "bootstrap JSON" "Bootstrap payload does not surface MQTT topic layout hints in fields this harness checks" "Devices may rely on env-only broker configuration" "Include topic prefix/layout in bootstrap or linked config resource" "$BOOT_R"
+fi
+e2e_flow_review_scenario_complete "$FLOW_ID" "02_machine_activation_bootstrap_rest.sh" "flow-review-complete" "activation_bootstrap_rest_reviewed"
+
 exit 0

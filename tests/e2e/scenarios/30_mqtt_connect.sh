@@ -84,4 +84,8 @@ else
   e2e_append_test_event "$FLOW_ID" "publish-telemetry" "MQTT" "${E2E_MQTT_TOPIC_TELEMETRY}" "pass" "ok" "{}"
 fi
 
+if [[ "$ec" -eq 0 ]]; then
+  e2e_flow_review_scenario_complete "$FLOW_ID" "30_mqtt_connect.sh" "flow-review-complete" "mqtt_connect_probe_ok"
+fi
+
 exit "$ec"

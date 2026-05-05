@@ -94,4 +94,13 @@ NEXT_FP="$(jq -r '.nextSyncToken // empty' "${E2E_RUN_DIR}/grpc/g21-media-delta.
 ACKM_BODY="$(jq -nc --argjson meta "$META" --arg f "$MFP" '{meta:$meta, acknowledgedMediaFingerprint:$f}')"
 grpc_contract_try "$FLOW_ID" "ack-media-version" MachineMediaService AckMediaVersion "$ACKM_BODY" "g21-ack-media" "g21-am" || ec=1
 
+SCEN="21_grpc_bootstrap_catalog_media.sh"
+if [[ "${GRPC_USE_REFLECTION:-false}" != "true" ]]; then
+  log_docs_gap "P2" "$FLOW_ID" "$SCEN" "grpc-reflection" "gRPC" "${GRPC_ADDR:-}" "Proto-based grpcurl calls require documented GRPC_ADDR and import path when reflection is off" "Setup friction" "See docs for gRPC local dev" "${E2E_RUN_DIR}/grpc/g21-bootstrap.meta.json"
+fi
+log_missing_field_issue "P2" "$FLOW_ID" "$SCEN" "media-fingerprint" "gRPC" "GetMediaManifest/GetMediaDelta" "Manifest responses may omit checksum/fingerprint fields asserted only indirectly in harness" "Stale media on device" "Require fingerprint/checksum in media manifest proto" "${E2E_RUN_DIR}/grpc/g21-media-man-media.response.json"
+if [[ "${ec}" -eq 0 ]]; then
+  e2e_flow_review_scenario_complete "$FLOW_ID" "$SCEN" "flow-review-complete" "grpc_bootstrap_catalog_ok"
+fi
+
 exit "${ec}"

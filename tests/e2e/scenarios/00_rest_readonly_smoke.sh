@@ -3,6 +3,8 @@
 # Read-only REST smoke: public GETs only; optional routes skip on 404.
 
 E2E_SCENARIO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/e2e_common.sh
+source "${E2E_SCENARIO_DIR}/../lib/e2e_common.sh"
 # shellcheck source=../lib/e2e_http.sh
 source "${E2E_SCENARIO_DIR}/../lib/e2e_http.sh"
 
@@ -23,5 +25,7 @@ for tuple in "/swagger/doc.json|ro-swagger-doc-json" "/metrics|ro-metrics"; do
 done
 
 append_event_jsonl "rest-readonly" "passed" "required + optional GETs completed"
+
+e2e_flow_review_scenario_complete "WA-001-public" "00_rest_readonly_smoke.sh" "flow-review-complete" "readonly_smoke_ok_no_scenario_findings"
 
 exit 0

@@ -50,7 +50,9 @@ start_step "phase8-${SID}"
 if [[ "${E2E_ALLOW_WRITES:-}" != "true" ]]; then
   IDS_JSON="$(jq -nc --arg m "$(get_data machineId)" '{machineId:$m}')"
   phase8_record "$SID" "skip" "$IDS_JSON" '[]' "payment session + webhook + vend" "E2E_ALLOW_WRITES!=true" "$(jq -nc --arg f "${E2E_RUN_DIR}/test-data.json" '[$f]')" "Set E2E_ALLOW_WRITES=true for commerce writes"
+  log_api_contract_issue "P2" "$SID" "42_e2e_qr_payment_success_mock.sh" "writes-off" "REST" "—" "QR payment Phase 8 skipped because writes disabled — local payment mock path not exercised" "No sandbox signal" "Enable writes for CI payment mock" "${E2E_RUN_DIR}/test-data.json"
   end_step skipped "E2E-42 skipped: writes disabled"
+  e2e_flow_review_scenario_complete "$SID" "42_e2e_qr_payment_success_mock.sh" "flow-review-skip" "qr_payment_skipped_writes"
   exit 0
 fi
 
@@ -127,7 +129,9 @@ EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg f "${E2E_RUN_DIR}/rest/p8-qr-ps.met
 if [[ "$code_ps" == "503" ]]; then
   ACTUAL="payment-session returned 503 capability_not_configured — commerce outbox not configured locally"
   phase8_record "$SID" "skip" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" "Configure v1.commerce.payment_session.outbox per swagger; see e2e-remediation-playbook Payment mock"
+  log_api_contract_issue "P2" "$SID" "42_e2e_qr_payment_success_mock.sh" "payment-mock" "REST" "POST .../payment-session" "Local payment-session unavailable (503) — PSP mock / sandbox not wired for deterministic QR tests" "Cannot exercise webhook idempotently in dev" "Configure outbox + test PSP keys per runbook" "${E2E_RUN_DIR}/rest/p8-qr-ps.response.json"
   end_step skipped "E2E-42: payment-session unavailable (503)"
+  e2e_flow_review_scenario_complete "$SID" "42_e2e_qr_payment_success_mock.sh" "flow-review-skip" "qr_payment_skipped_503"
   exit 0
 fi
 if [[ "$code_ps" != "200" ]]; then
@@ -143,6 +147,12 @@ if [[ -z "$PAY" ]]; then
   end_step failed "E2E-42: ${ACTUAL}"
   exit 1
 fi
+
+PSR="${E2E_RUN_DIR}/rest/p8-qr-ps.response.json"
+PEX="$(jq -r '.expires_at // .expiresAt // .sessionExpiresAt // .payment_session.expires_at // empty' "$PSR" 2>/dev/null)"
+PREFQ="$(jq -r '.provider_reference // .providerReference // .external_reference // empty' "$PSR" 2>/dev/null)"
+[[ -z "$PEX" || "$PEX" == "null" ]] && log_missing_field_issue "P2" "$SID" "42_e2e_qr_payment_success_mock.sh" "payment-session-expiry" "REST" "POST .../payment-session" "payment-session JSON lacks a clear expires_at / session TTL field for client UX" "QR flow may hang without deadline" "Document and return session_expires_at per OpenAPI" "$PSR"
+[[ -z "$PREFQ" || "$PREFQ" == "null" ]] && log_missing_field_issue "P2" "$SID" "42_e2e_qr_payment_success_mock.sh" "payment-session-provider-ref" "REST" "POST .../payment-session" "payment-session response lacks stable provider reference for reconciliation queries" "Finance trace harder" "Return provider_reference / PSP intent id consistently" "$PSR"
 
 WID="$(python3 -c 'import uuid; print(uuid.uuid4())' 2>/dev/null || echo "e2e-webhook-$(date +%s)")"
 PIREF="pi_e2e_p8_${RANDOM}"
@@ -186,7 +196,9 @@ EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg b "${E2E_RUN_DIR}/rest/p8-qr-wh1.re
 if [[ "$code_w1" != "200" ]]; then
   ACTUAL="webhook HTTP ${code_w1} — see ${E2E_RUN_DIR}/rest/p8-qr-wh1.response.json (webhook_hmac_required → set COMMERCE_PAYMENT_WEBHOOK_SECRET or enable COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED on API for local dev)"
   phase8_record "$SID" "skip" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" "docs/swagger webhook op + e2e-remediation-playbook Payment mock"
+  log_api_contract_issue "P2" "$SID" "42_e2e_qr_payment_success_mock.sh" "webhook-mock" "REST" "POST .../webhooks" "Webhook cannot be simulated idempotently without HMAC secret or dev-unsigned flag" "Blocks QR payment E2E" "Document COMMERCE_PAYMENT_WEBHOOK_SECRET setup; stable replay headers" "${E2E_RUN_DIR}/rest/p8-qr-wh1.response.json"
   end_step skipped "E2E-42: webhook rejected (configure HMAC or allow unsigned dev)"
+  e2e_flow_review_scenario_complete "$SID" "42_e2e_qr_payment_success_mock.sh" "flow-review-skip" "qr_payment_skipped_webhook"
   exit 0
 fi
 
@@ -226,5 +238,7 @@ EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg f "${E2E_RUN_DIR}/rest/p8-qr-order-
 
 ACTUAL="order=${OID} payment=${PAY} webhook_ok vend_ok final_status=${OST2} ${WEBHOOK_DUP_NOTE}"
 phase8_record "$SID" "pass" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" ""
+log_api_contract_issue "P2" "$SID" "42_e2e_qr_payment_success_mock.sh" "reconciliation-verify" "REST" "commerce reconciliation" "Phase 8 does not GET reconciliation endpoints to verify PSP/settlement row for mocked payment" "Pilot finance validation gap" "Add optional admin reconciliation assert keyed by order_id" "${E2E_RUN_DIR}/rest/p8-qr-order-final.response.json"
 end_step passed "E2E-42 QR payment mock completed"
+e2e_flow_review_scenario_complete "$SID" "42_e2e_qr_payment_success_mock.sh" "flow-review-complete" "qr_payment_mock_reviewed"
 exit 0
