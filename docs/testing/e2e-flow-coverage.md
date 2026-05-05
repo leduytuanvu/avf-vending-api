@@ -2,7 +2,7 @@
 
 This document maps **business flows** to **REST (Web Admin / Postman)**, **gRPC (Vending Machine App)**, and **MQTT** contracts. It aligns with **[`field-test-cases.md`](field-test-cases.md)** (field pilot), **[`docs/api/mqtt-contract.md`](../api/mqtt-contract.md)** (topics), **[`docs/swagger/swagger.json`](../swagger/swagger.json)** (admin + machine REST), and **`proto/avf/machine/v1/*.proto`**.
 
-**Automation status:** Web Admin **setup** (**WA-SETUP-01**, `scenarios/01_web_admin_setup.sh`) and **business flows** (Phase 4: `10_*`–`13_*`, `./tests/e2e/run-web-admin-flows.sh --full`) cover much of **WA-002–WA-009** plus read-only **finance / reconciliation / audit / artifacts / sale-catalog / orders** where the API exposes routes. **`./tests/e2e/run-all-local.sh`** runs **`run-web-admin-flows.sh --full`**, **`run-vending-app-flows.sh --rest-equivalent`**, gRPC, MQTT, then **Phase 8** (`40_e2e_*.sh`–`47_e2e_*.sh`). See **`reports/wa-module-results.jsonl`**, **`reports/phase8-scenario-results.jsonl`**, and **`reports/summary.md`**. Remaining matrix rows are **`planned`** or manual.
+**Automation status:** Web Admin **setup** (**WA-SETUP-01**, `scenarios/01_web_admin_setup.sh`) and **business flows** (Phase 4: `10_*`–`13_*`, `./tests/e2e/run-web-admin-flows.sh --full`) cover much of **WA-002–WA-009** plus read-only **finance / reconciliation / audit / artifacts / sale-catalog / orders** where the API exposes routes. **`./tests/e2e/run-all-local.sh`** runs **`run-web-admin-flows.sh --full`**, **`run-vending-app-flows.sh --rest-equivalent`**, gRPC, MQTT, then **Phase 8** (`40_e2e_*.sh`–`47_e2e_*.sh`). **Phase 9 (Postman):** **`tests/e2e/postman/run-newman.sh`** (+ optional **`coverage-from-postman.py`** from **`run-rest-local.sh`**) maps the **`POSTMAN_COLLECTION`** requests to this matrix — see **Postman / Newman coverage exclusions** below. Artifacts: **`reports/wa-module-results.jsonl`**, **`reports/phase8-scenario-results.jsonl`**, **`reports/coverage-postman.json`**, **`rest/newman-*.json`**, and **`reports/summary.md`**. Remaining matrix rows are **`planned`** or manual.
 
 **Machine gRPC (Phase 6):** **`./tests/e2e/run-grpc-local.sh`** exercises production-path **`avf.machine.v1`** RPCs via **grpcurl** (`scenarios/20_grpc_*.sh` … **`24_grpc_*.sh`**). Uses **`GRPC_PROTO_ROOT`** (defaults to repo **`proto/`**) when **`GRPC_USE_REFLECTION`≠true**, or **server reflection** when enabled. Results: **`reports/grpc-contract-results.jsonl`**, **`reports/grpc-contract-summary.md`** (pass / fail / skip per method).
 
@@ -12,7 +12,17 @@ This document maps **business flows** to **REST (Web Admin / Postman)**, **gRPC 
 
 **Runner modes:** `run-all-local.sh` runs Phase 3 web admin **`--full`** (setup + `10`–`13`), vending **`--rest-equivalent`** (`02`–`08` REST), Phase 6 gRPC, Phase 7 MQTT, then **Phase 8** integrated scenarios **`40_e2e_*.sh`–`47_e2e_*.sh`** with structured **`reports/phase8-scenario-results.jsonl`**. For Web Admin only, `--setup-only` / `--full` apply to **`run-web-admin-flows.sh`** in isolation. **`--reuse-data`** works for **`--full`** when `test-data.json` already holds `organizationId`, `machineId`, `productId`, etc.
 
-**Postman:** the checked-in **[`docs/postman/avf-vending-api.postman_collection.json`](../postman/avf-vending-api.postman_collection.json)** currently emphasizes **Public** health/version; import OpenAPI from `{{swagger_url}}` (`GET /swagger/doc.json`) for full admin routing parity. Where a dedicated named request does not exist yet, the column references the **canonical path**.
+**Postman:** the checked-in **[`docs/postman/avf-vending-api.postman_collection.json`](../postman/avf-vending-api.postman_collection.json)** currently emphasizes **Public** health/version; **`docs/postman/avf-vending-api-function-path.postman_collection.json`** is the same export used when **`POSTMAN_COLLECTION`** defaults in **`tests/e2e/.env.example`**. Import OpenAPI from `{{swagger_url}}` (`GET /swagger/doc.json`) for full admin routing parity. Where a dedicated named request does not exist yet, the column references the **canonical path**.
+
+### Postman / Newman coverage exclusions
+
+The **coverage gate** (`tests/e2e/postman/coverage-from-postman.py`) treats every Postman request as **covered** if its normalized path appears (directly or loosely) in the **Matrix** below, or **excluded** if it matches a row here. Add a row when a request is **intentionally** not mapped to a flow row (duplicate OpenAPI import, optional scrape, etc.).
+
+| match | kind | reason |
+|-------|------|--------|
+| `/metrics` | path | Optional **`GET /metrics`** scrape; not a business flow. |
+| `/swagger/` | prefix | Swagger UI static assets when enabled locally. |
+| `.*/\{\{[^/]+\}\}` | regex | Postman `{{variable}}` still present in URL (template / import stub). |
 
 ---
 

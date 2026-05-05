@@ -33,12 +33,15 @@ e2e_print_help() {
 Usage: ./tests/e2e/run-rest-local.sh [options]
 
 Options:
-  --readonly        Run read-only public GET smoke only (no writes)
+  --readonly        Run read-only public GET smoke only (no Newman / Postman coverage in this mode)
   --fresh-data      Empty test-data.json in this run dir
   --reuse-data PATH Seed test-data.json from capture file
   -h, --help        Show help
 
 Uses BASE_URL and optional ADMIN_TOKEN from tests/e2e/.env (see .env.example).
+
+When not --readonly: runs Newman (tests/e2e/postman/run-newman.sh) when present, then Postman
+coverage (coverage-from-postman.py) into reports/coverage-postman.json.
 
 Example (read-only smoke):
   BASE_URL=http://127.0.0.1:8080 E2E_TARGET=local E2E_ALLOW_WRITES=false \\
@@ -68,6 +71,45 @@ source "${SCRIPT_DIR}/lib/e2e_http.sh"
 
 start_step "rest-local-suite"
 
+e2e_resolve_postman_paths() {
+  : "${POSTMAN_COLLECTION:=docs/postman/avf-vending-api-function-path.postman_collection.json}"
+  E2E_POSTMAN_COLL_ABS="${POSTMAN_COLLECTION}"
+  [[ "${E2E_POSTMAN_COLL_ABS}" != /* ]] && E2E_POSTMAN_COLL_ABS="${E2E_REPO_ROOT}/${E2E_POSTMAN_COLL_ABS}"
+  E2E_POSTMAN_MATRIX_ABS="${E2E_REPO_ROOT}/docs/testing/e2e-flow-coverage.md"
+}
+
+e2e_run_postman_coverage() {
+  e2e_resolve_postman_paths
+  if [[ ! -f "${E2E_POSTMAN_COLL_ABS}" ]]; then
+    log_warn "Postman coverage skipped: collection not found at ${E2E_POSTMAN_COLL_ABS}"
+    return 0
+  fi
+  local cov_out="${E2E_RUN_DIR}/reports/coverage-postman.json"
+  mkdir -p "${E2E_RUN_DIR}/reports"
+  local -a py=(python3)
+  if ! command -v python3 >/dev/null 2>&1; then
+    if command -v py >/dev/null 2>&1; then
+      py=(py -3)
+    else
+      log_warn "Postman coverage skipped: python3 not found"
+      return 0
+    fi
+  fi
+  set +e
+  "${py[@]}" "${SCRIPT_DIR}/postman/coverage-from-postman.py" \
+    --collection "${E2E_POSTMAN_COLL_ABS}" \
+    --matrix "${E2E_POSTMAN_MATRIX_ABS}" \
+    --out "${cov_out}"
+  local c=$?
+  set -e
+  if [[ "$c" -ne 0 ]]; then
+    log_error "Postman coverage gate failed (exit ${c}) — see ${cov_out} and stderr above"
+    return "$c"
+  fi
+  log_info "Postman coverage written: ${cov_out}"
+  return 0
+}
+
 if [[ "${E2E_REST_READONLY}" == "true" ]]; then
   set +e
   # shellcheck disable=SC1090
@@ -83,25 +125,54 @@ if [[ "${E2E_REST_READONLY}" == "true" ]]; then
   fi
 else
   SCENARIO="${SCRIPT_DIR}/scenarios/rest_local.sh"
+  cov_ec=0
+  ne_ec=0
+  _ne_allow="${E2E_ALLOW_WRITES:-true}"
+  if [[ -f "${SCRIPT_DIR}/postman/run-newman.sh" ]]; then
+    set +e
+    E2E_ALLOW_WRITES="${_ne_allow}" bash "${SCRIPT_DIR}/postman/run-newman.sh"
+    ne_ec=$?
+    set -e
+  fi
+  if ! e2e_run_postman_coverage; then
+    cov_ec=1
+  fi
+
   if [[ -f "$SCENARIO" ]]; then
     set +e
     # shellcheck disable=SC1090
     source "$SCENARIO"
     ec=$?
     set -e
-    if [[ "$ec" -eq 0 ]]; then
-      end_step passed "REST scenarios completed"
-    else
+    if [[ "$ec" -ne 0 ]]; then
       end_step failed "REST scenario exit ${ec}"
       [[ "${E2E_IN_PARENT:-0}" == "1" ]] && exit 1
       exit 1
     fi
+  fi
+
+  if [[ "$ne_ec" -ne 0 ]]; then
+    end_step failed "Newman or prior REST step exit ${ne_ec} (see rest/newman-cli.log)"
+    [[ "${E2E_IN_PARENT:-0}" == "1" ]] && exit 1
+    exit 1
+  fi
+  if [[ "$cov_ec" -ne 0 ]]; then
+    end_step failed "Postman coverage gate exit ${cov_ec}"
+    [[ "${E2E_IN_PARENT:-0}" == "1" ]] && exit 1
+    exit 1
+  fi
+
+  e2e_resolve_postman_paths
+  if [[ -f "$SCENARIO" ]]; then
+    end_step passed "REST scenarios + Postman Newman/coverage completed"
+  elif [[ -f "${SCRIPT_DIR}/postman/run-newman.sh" ]] || [[ -f "${E2E_POSTMAN_COLL_ABS}" ]]; then
+    end_step passed "Postman Newman/coverage phase completed"
   else
     rel_coll="${E2E_REPO_ROOT}/${POSTMAN_COLLECTION}"
     if [[ ! -f "$rel_coll" ]]; then
       log_warn "Postman collection path not found (set POSTMAN_COLLECTION): ${rel_coll}"
     fi
-    e2e_skip "REST scenarios not implemented (${SCENARIO} missing); use --readonly for smoke or import OpenAPI/Postman"
+    e2e_skip "REST scenarios not implemented (${SCENARIO} missing); add postman/run-newman.sh or collection or use --readonly"
     end_step skipped "REST placeholder"
   fi
 fi
