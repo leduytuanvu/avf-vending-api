@@ -1,5 +1,6 @@
 /.env
 /.env.local
+tests/e2e/.env.local
 /.env.staging
 /.env.production
 # Node env files (examples *.example are tracked)
@@ -39,6 +40,9 @@ Thumbs.db
 .bin/
 *.exe
 *.test
+
+# Local E2E shell harness artifacts (planned scripts under tests/e2e/)
+.e2e-runs/
 
 # Local CI/security reports
 ci-reports/

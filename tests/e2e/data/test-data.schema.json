@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/avf-e2e-reusable-data.json",
+  "title": "AVF E2E reusable test data capture",
+  "type": "object",
+  "required": ["schemaVersion", "capturedAt", "environment"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "runId": { "type": "string", "format": "uuid" },
+    "environment": { "type": "string", "enum": ["local", "staging", "development"] },
+    "apiBaseUrl": { "type": "string", "format": "uri" },
+    "grpcHost": { "type": "string" },
+    "organizationId": { "type": "string", "format": "uuid" },
+    "siteId": { "type": "string", "format": "uuid" },
+    "machineId": { "type": "string", "format": "uuid" },
+    "activationCodeId": { "type": "string", "format": "uuid" },
+    "activationCode": { "type": "string" },
+    "machineToken": { "type": "string", "description": "Never commit live JWT" },
+    "adminToken": { "type": "string", "description": "Never commit live JWT" },
+    "categoryIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "brandIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "productIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "slotIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "cabinetIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "orderIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "paymentIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "commandIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "vendIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "refundIds": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "mqtt": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "topicPrefix": { "type": "string" },
+        "lastPublishedCommandId": { "type": ["string", "null"], "format": "uuid" }
+      }
+    },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": true
+}
