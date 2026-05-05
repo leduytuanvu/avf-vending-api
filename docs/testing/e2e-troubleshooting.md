@@ -56,11 +56,17 @@ Symptoms → likely causes → first checks. For remediation steps see **[`e2e-r
 - **Likely cause:** Wrong working directory; missing `proto/avf/...` tree.
 - **Check:** Run from repo root; include `proto` as import root.
 
+## MQTT Phase 7: broker unreachable
+
+- **Symptom:** **`run-mqtt-local.sh`** exits early with TCP connect failure; **`30_mqtt_connect.sh`** fails; no **`mqtt/connect.log`** success lines.
+- **Likely cause:** Broker not running; wrong **`MQTT_HOST`** / **`MQTT_PORT`**; firewall; Docker network not exposed to the host.
+- **Check:** From the same shell, reach **`MQTT_HOST:MQTT_PORT`** (default **1883**) with a TCP client. Start **mosquitto** (or your stack) and re-run. Install **mosquitto** clients if **`run-mqtt-local.sh`** skipped with “mosquitto missing”.
+
 ## MQTT broker auth failed
 
 - **Symptom:** Connect refused, **not authorized**, TLS handshake error.
-- **Likely cause:** Wrong URL scheme, bad password, ACL mismatch, stale `credential_version`.
-- **Check:** `MQTT_BROKER_URL`, TLS flags, broker ACL matrix in [`mqtt-contract.md`](../api/mqtt-contract.md).
+- **Likely cause:** Wrong credentials, ACL mismatch, TLS disabled in harness while broker requires TLS (or the opposite), stale `credential_version`.
+- **Check:** **`MQTT_USERNAME`**, **`MQTT_PASSWORD`**, **`MQTT_USE_TLS`**, **`MQTT_CA_CERT`**, and broker ACL matrix in [`mqtt-contract.md`](../api/mqtt-contract.md).
 
 ## Payment mock not configured
 

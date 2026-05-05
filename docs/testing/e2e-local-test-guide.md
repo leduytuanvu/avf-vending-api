@@ -14,7 +14,7 @@ This guide describes how **multi-protocol local E2E** runs work using `tests/e2e
 2. **PostgreSQL** when scenarios assert DB state (same assumptions as [`local-e2e.md`](local-e2e.md)).
 3. **bash**, **curl**, **jq**, **python3** (required for all runners and HTTP timing in `e2e_http.sh`).
 4. **grpcurl** (required for **`run-grpc-local.sh`** Phase 6 machine contracts; optional for other phases).
-5. **mosquitto_pub** / **mosquitto_sub** (optional until `tests/e2e/scenarios/mqtt_local.sh` exists; runner skips if absent).
+5. **mosquitto_pub** / **mosquitto_sub** (required for a real Phase 7 run: **`run-mqtt-local.sh`** skips the MQTT suite with a logged reason if they are missing; **`00_preflight.sh`** only notes them as optional on PATH).
 
 ## Environment file
 
@@ -49,11 +49,13 @@ Each run writes artifacts under:
   rest/                   # per-call: *.request.json, *.response.body, *.response.headers.txt, *.meta.json
                           # (older JSON mutations may also use *.response.json)
   grpc/                   # *.request.json, *.response.json, *.log, *.meta.json
-  mqtt/                   # *.publish.json, *.publish.log, *.meta.json, *.subscribe.log
+  mqtt/                   # connect.log, telemetry.publish.json, command.subscribe.log, command.ack.json, …
   reports/
     summary.md
     grpc-contract-summary.md   # Phase 6 rollup (also appended to summary.md when run standalone)
     grpc-contract-results.jsonl
+    mqtt-contract-summary.md   # Phase 7 rollup
+    mqtt-contract-results.jsonl
     remediation.md
     coverage.json
 ```
@@ -106,9 +108,8 @@ Optional scenario stubs (still placeholders until you add them):
 - `tests/e2e/scenarios/rest_local.sh`
 - `tests/e2e/scenarios/web_admin_flows.sh`
 - `tests/e2e/scenarios/vending_app_flows.sh`
-- `tests/e2e/scenarios/mqtt_local.sh`
 
-Phase **6** machine gRPC contracts are **`20_grpc_*.sh` … `24_grpc_*.sh`** (not stubs).
+Phase **6** machine gRPC contracts are **`20_grpc_*.sh` … `24_grpc_*.sh`**. Phase **7** MQTT contracts are **`30_mqtt_*.sh` … `32_mqtt_*.sh`** (invoked by **`run-mqtt-local.sh`**).
 
 ### gRPC machine contracts (Phase 6)
 
@@ -128,6 +129,20 @@ GRPC_USE_REFLECTION=true \
 - Mutating commerce steps need **`E2E_ALLOW_WRITES=true`** (see **`22_grpc_commerce_cash_sale.sh`**).
 - **`reports/grpc-contract-summary.md`**: pass / fail / skip table per RPC; **`reports/grpc-contract-results.jsonl`**: machine-readable log. Missing RPCs in repo protos are logged **`skip`** / **`method_not_in_repo`** (never silent).
 - **Metadata:** authenticated calls use **`Authorization: Bearer $MACHINE_TOKEN`** and optionally **`x-machine-id`**. Writes send **`idempotency-key`** where the harness sets one.
+
+### MQTT contracts (Phase 7)
+
+From repo root, with a reachable broker (`MQTT_HOST`, default port **1883** unless `MQTT_PORT` is set):
+
+```bash
+E2E_TARGET=local \
+  ./tests/e2e/run-mqtt-local.sh --reuse-data .e2e-runs/run-<…>/test-data.json
+```
+
+- **Topics:** default layout follows **`docs/api/mqtt-contract.md`** and **`internal/platform/mqtt/topics.go`**. Set **`MQTT_TOPIC_LAYOUT`** to `legacy` or `enterprise`, **`MQTT_TOPIC_PREFIX`** (default **`avf/devices`**), and **`MQTT_MACHINE_ID`** (or reuse **`machineId`** from **`test-data.json`**). Override individual topics with **`MQTT_TOPIC_TELEMETRY`**, **`MQTT_TOPIC_COMMANDS`**, **`MQTT_TOPIC_COMMAND_ACK`**, **`MQTT_TOPIC_EVENTS`** when needed.
+- **Auth / TLS:** **`MQTT_USERNAME`**, **`MQTT_PASSWORD`**, **`MQTT_CLIENT_ID`** (runner suffixes a unique id per mosquitto invocation); **`MQTT_USE_TLS=true`** with **`MQTT_CA_CERT`** when the broker requires TLS.
+- **Command / ACK path:** prefers admin **`POST …/commands`** with **`commandType` `noop`** when **`ADMIN_TOKEN`** and org/machine ids are available; otherwise exercises a **synthetic** command on the wire (broker-only). On **`E2E_TARGET=production`**, the command scenario is a no-op unless **`test-data.json`** marks **`e2eTestMachine`** and you set **`E2E_MQTT_COMMAND_TEST_ACK=I_UNDERSTAND_MQTT_COMMAND_TEST_ACK`** (never targets destructive command types).
+- **Artifacts:** **`mqtt/`** logs and JSON, **`reports/mqtt-contract-results.jsonl`**, **`reports/mqtt-contract-summary.md`** (and **`summary.md`** when not nested under **`run-all-local.sh`**).
 
 ### Vending app REST-equivalent (Phase 5)
 
