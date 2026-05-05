@@ -119,6 +119,18 @@ For each failure category: **symptom**, **likely cause**, **where to look**, **l
 | Safe fix | Bring device online; fix ACL; cancel/retry per admin |
 | --reuse-data | Yes |
 
+## Phase 4 web admin business (`--full`, scenarios `10`–`13`)
+
+| Field | Detail |
+|-------|--------|
+| Symptom | Non-zero exit from catalog / inventory / support / reporting scenarios; **fail** in **`reports/wa-module-results.jsonl`**; **`reports/remediation.md`** lists endpoint + **`rest/*`** artifact |
+| Likely cause | Weak **`test-data.json`** (no **`productId`** / **`planogramId`**); **403** missing role; commerce **503**; stock **quantityBefore** stale; price book missing product row |
+| Where to look | **`reports/summary.md`** (tables by module); **`reports/wa-module-results.jsonl`**; **`test-events.jsonl`** |
+| Log file | **`rest/*.response.json`**, **`*.request.json`**, **`*.meta.json`** |
+| Safe fix | Run **`--setup-only`** or **`--reuse-data`** with a full Phase 3 capture; re-export **`ADMIN_TOKEN`**; **`E2E_TARGET=production`** skips order/cancel/refund/cash **POST** mutations |
+| --reuse-data | Yes — reuse IDs; re-login if JWT not in **`secrets.private.json`** |
+| --fresh-data | Yes — avoids SKU / idempotency collisions |
+
 ## Web admin setup (`run-web-admin-flows.sh` / WA-SETUP-01)
 
 | Field | Detail |
