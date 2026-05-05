@@ -45,7 +45,7 @@ py_json_load() {
 echo "verify_e2e_assets: repository root=${ROOT}"
 
 # Required flow-review tooling (must exist; bash/python checks also run globally below)
-for _req in tests/e2e/lib/e2e_flow_review.sh tests/e2e/data/improvement-finding.schema.json tests/e2e/tools/generate-improvement-summary.py tests/e2e/tools/generate-optimization-backlog.py; do
+for _req in tests/e2e/lib/e2e_flow_review.sh tests/e2e/data/improvement-finding.schema.json tests/e2e/tools/generate-improvement-summary.py tests/e2e/tools/generate-optimization-backlog.py tests/e2e/tools/generate-flow-scorecard.py; do
   [[ -f "${ROOT}/${_req}" ]] || err "missing required E2E asset: ${_req}"
 done
 
@@ -54,6 +54,9 @@ for _rep in tests/e2e/lib/e2e_common.sh tests/e2e/lib/e2e_report.sh; do
     err "${_rep} must reference improvement-findings.jsonl (run lifecycle / reports)"
   fi
 done
+if ! grep -q 'generate-flow-scorecard\.py' "${ROOT}/tests/e2e/lib/e2e_report.sh"; then
+  err "tests/e2e/lib/e2e_report.sh must invoke generate-flow-scorecard.py"
+fi
 
 # --- 1) bash -n ---
 while IFS= read -r -d '' f; do
@@ -91,6 +94,15 @@ if [[ -n "${python_exec}" ]]; then
     fi
   done
   shopt -u nullglob
+  for _tool in \
+    tests/e2e/tools/generate-improvement-summary.py \
+    tests/e2e/tools/generate-optimization-backlog.py \
+    tests/e2e/tools/generate-flow-scorecard.py
+  do
+    if ! py_compile_file "${_tool}"; then
+      err "py_compile failed (required flow-report tool): ${_tool}"
+    fi
+  done
 fi
 
 # --- 4) JSON under tests/e2e/data/*.json ---

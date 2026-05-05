@@ -242,15 +242,14 @@ e2e_finalize_reports() {
   [[ -f "${E2E_RUN_DIR}/reports/remediation.md" ]] || e2e_generate_remediation_md
   [[ -f "${E2E_RUN_DIR}/reports/coverage.json" ]] || e2e_generate_coverage_json
 
-  if [[ "${E2E_ENABLE_FLOW_REVIEW:-true}" == "true" ]]; then
-    if ! e2e_python_run "${_tools}/generate-improvement-summary.py" --run-dir "${E2E_RUN_DIR}" --repo-root "${_repo}"; then
-      log_warn "generate-improvement-summary.py failed"
-    fi
-    if [[ "${E2E_GENERATE_OPTIMIZATION_BACKLOG:-true}" == "true" ]]; then
-      if ! e2e_python_run "${_tools}/generate-optimization-backlog.py" --run-dir "${E2E_RUN_DIR}"; then
-        log_warn "generate-optimization-backlog.py failed"
-      fi
-    fi
+  if ! e2e_python_run "${_tools}/generate-improvement-summary.py" --run-dir "${E2E_RUN_DIR}" --repo-root "${_repo}"; then
+    log_warn "generate-improvement-summary.py failed"
+  fi
+  if ! e2e_python_run "${_tools}/generate-optimization-backlog.py" --run-dir "${E2E_RUN_DIR}"; then
+    log_warn "generate-optimization-backlog.py failed"
+  fi
+  if ! e2e_python_run "${_tools}/generate-flow-scorecard.py" --run-dir "${E2E_RUN_DIR}" --repo-root "${_repo}"; then
+    log_warn "generate-flow-scorecard.py failed"
   fi
 
   if [[ -s "${E2E_RUN_DIR}/improvement-findings.jsonl" ]]; then

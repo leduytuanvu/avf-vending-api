@@ -24,7 +24,28 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def owner_for(f: dict[str, Any]) -> str:
+def is_noise_finding(f: dict[str, Any]) -> bool:
+    fid = str(f.get("finding_id", ""))
+    if fid.startswith("E2E-NO-FINDINGS"):
+        return True
+    if str(f.get("flow_id", "")) == "_e2e_review_marker":
+        return True
+    return False
+
+
+def title_for(f: dict[str, Any]) -> str:
+    s = str(f.get("symptom", "")).strip()
+    if not s:
+        s = str(f.get("endpoint_or_rpc_or_topic", "")).strip()
+    if len(s) > 100:
+        s = s[:97] + "…"
+    return s or "(no title)"
+
+
+def suggested_owner_for(f: dict[str, Any]) -> str:
+    o = str(f.get("suggested_owner", "")).strip()
+    if o:
+        return o
     c = str(f.get("category", "")).lower()
     if c in ("docs_gap", "postman_gap"):
         return "docs"
@@ -39,10 +60,10 @@ def owner_for(f: dict[str, Any]) -> str:
     return "backend"
 
 
-def acceptance(f: dict[str, Any]) -> str:
+def acceptance_criteria(f: dict[str, Any]) -> str:
     return (
         f"Resolve `{f.get('endpoint_or_rpc_or_topic')}` per recommendation; "
-        f"add regression test or matrix row; verify no new P0 for same symptom."
+        f"add regression test or matrix row; verify no new P0 for the same symptom."
     )
 
 
@@ -54,46 +75,45 @@ def main() -> int:
     rep = rd / "reports"
     rep.mkdir(parents=True, exist_ok=True)
 
-    findings = read_jsonl(rd / "improvement-findings.jsonl")
-    buckets = {"P0": [], "P1": [], "P2": [], "P3": []}
+    findings = [f for f in read_jsonl(rd / "improvement-findings.jsonl") if not is_noise_finding(f)]
+    buckets: dict[str, list[dict[str, Any]]] = {"P0": [], "P1": [], "P2": [], "P3": []}
     for f in findings:
         s = str(f.get("severity", "P3"))
         if s in buckets:
             buckets[s].append(f)
 
-    lines = [
-        "# Optimization backlog (from E2E flow review)",
-        "",
-        "Generated from **`improvement-findings.jsonl`**. Check items when addressed.",
-        "",
-    ]
+    lines: list[str] = ["# Optimization Backlog", ""]
 
-    def section(title: str, sev: str) -> None:
-        lines.append(f"## {title}")
+    def section(heading: str, sev: str) -> None:
+        lines.append(f"## {heading}")
         lines.append("")
         rows = buckets[sev]
         if not rows:
-            lines.append("_None._\n")
+            lines.append("_None._")
+            lines.append("")
             return
         for f in rows:
-            own = owner_for(f)
+            fid = f.get("finding_id", "")
+            ttl = title_for(f)
+            own = suggested_owner_for(f)
             ev = str(f.get("evidence_file", "—"))
-            lines.append(
-                f"- [ ] **`{f.get('finding_id', '')}`** — flow `{f.get('flow_id', '')}` — "
-                f"`{str(f.get('endpoint_or_rpc_or_topic', ''))[:72]}`\n"
-                f"  - **Evidence:** `{ev}`\n"
-                f"  - **Change:** {f.get('recommendation', '')}\n"
-                f"  - **Acceptance:** {acceptance(f)}\n"
-                f"  - **Owner:** {own}\n"
-            )
+            lines.append(f"- [ ] **{fid}** — {ttl}")
+            lines.append(f"  - Flow: `{f.get('flow_id', '')}`")
+            lines.append(f"  - Endpoint/RPC/topic: `{f.get('endpoint_or_rpc_or_topic', '')}`")
+            lines.append(f"  - Impact: {f.get('impact', '')}")
+            lines.append(f"  - Evidence: `{ev}`")
+            lines.append(f"  - Recommended change: {f.get('recommendation', '')}")
+            lines.append(f"  - Acceptance criteria: {acceptance_criteria(f)}")
+            lines.append(f"  - Suggested owner: **{own}**")
+            lines.append("")
         lines.append("")
 
-    section("P0 — Fix now", "P0")
-    section("P1 — Fix before pilot", "P1")
-    section("P2 — Optimize next sprint", "P2")
-    section("P3 — Cleanup", "P3")
+    section("P0 Fix Now", "P0")
+    section("P1 Fix Before Pilot", "P1")
+    section("P2 Optimize Next Sprint", "P2")
+    section("P3 Cleanup", "P3")
 
-    text = "\n".join(lines)
+    text = "\n".join(lines).rstrip() + "\n"
     (rd / "optimization-backlog.md").write_text(text, encoding="utf-8")
     (rep / "optimization-backlog.md").write_text(text, encoding="utf-8")
     return 0

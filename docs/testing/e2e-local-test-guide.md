@@ -45,7 +45,7 @@ After a failure, stderr shows the **run directory**; use **`reports/remediation.
 | `E2E_WARN_SLOW_MS` | HTTP duration threshold (default **1500**) for performance findings |
 | `E2E_FAIL_ON_P0_FINDINGS` | Default **true** — P0 improvement rows fail the run after finalize |
 | `E2E_FAIL_ON_P1_FINDINGS` | Default **false** — set **true** to fail on P1 findings too |
-| `E2E_GENERATE_OPTIMIZATION_BACKLOG` | When **true**, write **`optimization-backlog.md`** at finalize |
+| `E2E_GENERATE_OPTIMIZATION_BACKLOG` | Reserved (ignored): **`optimization-backlog.md`** is always generated at finalize |
 
 Machine-readable row shape for **`improvement-findings.jsonl`**: **`tests/e2e/data/improvement-finding.schema.json`** (see **`tests/e2e/data/improvement-finding.example.json`**). Helpers live in **`tests/e2e/lib/e2e_flow_review.sh`** (`log_api_contract_issue`, `log_no_improvement_findings`, etc.).
 

@@ -29,7 +29,7 @@ Authoritative matrix: **[`docs/testing/e2e-flow-coverage.md`](../../docs/testing
 
 ## Artifacts (orchestrated run)
 
-Under **`.e2e-runs/run-*`**: **`run-meta.json`**, **`events.jsonl`**, **`test-data.json`**, **`test-events.jsonl`** (created at data init, then filled by modules that call `e2e_append_test_event`), **`improvement-findings.jsonl`**, **`secrets.private.json`**, **`rest/`**, **`grpc/`**, **`mqtt/`**, **`reports/summary.md`**, **`reports/remediation.md`**, **`reports/coverage.json`**, **`reports/improvement-summary.md`**, **`reports/optimization-backlog.md`**, **`reports/flow-review-scorecard.json`**, **`test-data.redacted.json`**, optional **`reports/e2e-junit.xml`**, and mirrors **`improvement-summary.md`**, **`optimization-backlog.md`**, **`flow-review-scorecard.json`** at the run root. On failure, stderr prints **`E2E_RUN_DIR`**; start with **`reports/remediation.md`**. For API/contract debt, see **`reports/improvement-summary.md`** even when the run exits **0**.
+Under **`.e2e-runs/run-*`**: **`run-meta.json`**, **`events.jsonl`**, **`test-data.json`**, **`test-events.jsonl`** (created at data init, then filled by modules that call `e2e_append_test_event`), **`improvement-findings.jsonl`**, **`secrets.private.json`**, **`rest/`**, **`grpc/`**, **`mqtt/`**, **`reports/summary.md`**, **`reports/remediation.md`**, **`reports/coverage.json`**, **`reports/improvement-summary.md`**, **`reports/optimization-backlog.md`**, **`reports/flow-review-scorecard.json`** (these three are always written at finalize, even when empty), **`test-data.redacted.json`**, optional **`reports/e2e-junit.xml`**, and mirrors **`improvement-summary.md`**, **`optimization-backlog.md`**, **`flow-review-scorecard.json`** at the run root. On failure, stderr prints **`E2E_RUN_DIR`**; start with **`reports/remediation.md`**. For API/contract debt, see **`reports/improvement-summary.md`** even when the run exits **0**.
 
 ## Quality (offline, no API)
 
@@ -72,7 +72,7 @@ Common flags: `--reuse-data path/to/test-data.json`, `--fresh-data`, `-h`.
 
 ### Flow improvement logger env (optional)
 
-Set in **`tests/e2e/.env`** or the shell: **`E2E_ENABLE_FLOW_REVIEW`**, **`E2E_WARN_SLOW_MS`**, **`E2E_FAIL_ON_P0_FINDINGS`**, **`E2E_FAIL_ON_P1_FINDINGS`**, **`E2E_GENERATE_OPTIMIZATION_BACKLOG`** (see **`tests/e2e/.env.example`**).
+Set in **`tests/e2e/.env`** or the shell: **`E2E_ENABLE_FLOW_REVIEW`**, **`E2E_WARN_SLOW_MS`**, **`E2E_FAIL_ON_P0_FINDINGS`**, **`E2E_FAIL_ON_P1_FINDINGS`** (see **`tests/e2e/.env.example`**). **`improvement-summary.md`**, **`optimization-backlog.md`**, and **`flow-review-scorecard.json`** are always written at finalize (may be empty).
 
 ## Postman / Newman (Phase 9)
 
