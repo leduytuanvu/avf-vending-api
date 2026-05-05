@@ -42,6 +42,14 @@ if ! e2e_mqtt_resolve_topics; then
   exit 1
 fi
 
+if [[ -n "${MQTT_TOPIC_TELEMETRY:-}" ]]; then
+  log_mqtt_contract_issue "P2" "$FLOW_ID" "30_mqtt_connect" "resolve-topics" "MQTT" "${E2E_MQTT_TOPIC_TELEMETRY:-}" \
+    "MQTT topic layout came only from MQTT_TOPIC_* env overrides (not derived in harness from bootstrap/config)" \
+    "Field clients may lack a documented way to discover broker topics from API responses" \
+    "Expose topic prefix and layout via GetBootstrap or config; document in mqtt-contract.md" \
+    "$MLOG"
+fi
+
 echo "command_in_topic=${E2E_MQTT_TOPIC_COMMAND_IN}" >>"$MLOG"
 echo "telemetry_topic=${E2E_MQTT_TOPIC_TELEMETRY}" >>"$MLOG"
 

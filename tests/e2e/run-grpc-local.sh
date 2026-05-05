@@ -72,6 +72,8 @@ if ! e2e_grpc_server_reachable; then
   # shellcheck source=lib/e2e_report.sh
   source "${SCRIPT_DIR}/lib/e2e_report.sh"
   e2e_finalize_reports "${ec}"
+  fr=$?
+  [[ "${fr}" -ne 0 ]] && ec="${fr}"
   exit "${ec}"
 fi
 
@@ -165,6 +167,8 @@ if [[ "${E2E_IN_PARENT:-0}" != "1" ]]; then
   # shellcheck source=lib/e2e_report.sh
   source "${SCRIPT_DIR}/lib/e2e_report.sh"
   e2e_finalize_reports "${ec}"
+  fr=$?
+  [[ "${fr}" -ne 0 ]] && ec="${fr}"
   sm="${E2E_RUN_DIR}/reports/summary.md"
   if [[ -f "$sm" ]] && [[ -f "${E2E_RUN_DIR}/reports/grpc-contract-summary.md" ]]; then
     {

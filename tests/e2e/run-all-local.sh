@@ -122,5 +122,6 @@ done
 # shellcheck source=lib/e2e_report.sh
 source "${SCRIPT_DIR}/lib/e2e_report.sh"
 e2e_finalize_reports "${OVERALL}"
-
+fr=$?
+[[ "${fr}" -ne 0 ]] && OVERALL="${fr}"
 exit "${OVERALL}"

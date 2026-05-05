@@ -279,4 +279,22 @@ grpc_contract_skip() {
   local full="avf.machine.v1.${svc}/${rpc}"
   grpc_contract_record "$flow_id" "$step" "$full" "skip" "$reason"
   e2e_append_test_event "$flow_id" "$step" "gRPC" "$full" "skipped" "$reason" "{}"
+  if [[ "${E2E_ENABLE_FLOW_REVIEW:-true}" == "true" ]] && declare -F log_api_contract_issue >/dev/null 2>&1; then
+    case "$reason" in
+      *method_not_in_repo*)
+        log_api_contract_issue "P3" "$flow_id" "$flow_id" "$step" "gRPC" "$full" \
+          "RPC not declared in repo proto (skip: ${reason})" \
+          "Cannot validate server implementation from harness proto set" \
+          "Add proto stubs or document intentional omission" \
+          "${E2E_RUN_DIR}/reports/grpc-contract-results.jsonl"
+        ;;
+      *unimplemented*|*UNIMPLEMENTED*|*not_implemented*)
+        log_api_contract_issue "P1" "$flow_id" "$flow_id" "$step" "gRPC" "$full" \
+          "RPC reported unimplemented or blocked (${reason})" \
+          "Vending app flow may be broken in production path" \
+          "Implement RPC or return structured unavailable; update matrix" \
+          "${E2E_RUN_DIR}/grpc/${step}.log"
+        ;;
+    esac
+  fi
 }

@@ -28,6 +28,11 @@ load_env() {
   : "${E2E_TARGET:=local}"
   : "${E2E_ALLOW_WRITES:=true}"
   : "${E2E_REUSE_DATA:=false}"
+  : "${E2E_ENABLE_FLOW_REVIEW:=true}"
+  : "${E2E_WARN_SLOW_MS:=1500}"
+  : "${E2E_FAIL_ON_P0_FINDINGS:=true}"
+  : "${E2E_FAIL_ON_P1_FINDINGS:=false}"
+  : "${E2E_GENERATE_OPTIMIZATION_BACKLOG:=true}"
 
   e2e_target_safety_guard
 }
@@ -70,6 +75,7 @@ new_run_dir() {
   if [[ -n "${E2E_RUN_DIR:-}" ]] && [[ -d "${E2E_RUN_DIR}" ]]; then
     mkdir -p "${E2E_RUN_DIR}/rest" "${E2E_RUN_DIR}/grpc" "${E2E_RUN_DIR}/mqtt" "${E2E_RUN_DIR}/reports"
     : "${E2E_EVENTS_FILE:=${E2E_RUN_DIR}/events.jsonl}"
+    : >>"${E2E_RUN_DIR}/improvement-findings.jsonl"
     return 0
   fi
   local base="${E2E_REPO_ROOT}/.e2e-runs"
@@ -78,6 +84,7 @@ new_run_dir() {
   mkdir -p "${E2E_RUN_DIR}/rest" "${E2E_RUN_DIR}/grpc" "${E2E_RUN_DIR}/mqtt" "${E2E_RUN_DIR}/reports"
   export E2E_RUN_DIR
   : "${E2E_EVENTS_FILE:=${E2E_RUN_DIR}/events.jsonl}"
+  : >>"${E2E_RUN_DIR}/improvement-findings.jsonl"
 }
 
 log_info() {
@@ -276,3 +283,6 @@ Phase runners (same options):
   ./tests/e2e/run-mqtt-local.sh
 EOF
 }
+
+# shellcheck disable=SC1091
+source "${E2E_LIB_DIR}/e2e_flow_review.sh"

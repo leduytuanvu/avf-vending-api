@@ -41,6 +41,11 @@ After a failure, stderr shows the **run directory**; use **`reports/remediation.
 | `GRPC_PROTO_ROOT`, `GRPC_USE_REFLECTION` | gRPC: import root (defaults to repo **`proto/`**) vs server reflection |
 | `MACHINE_ID`, `GRPC_SEND_MACHINE_ID_HEADER` | Optional `x-machine-id` on grpcurl calls |
 | `E2E_ACTIVATION_CODE` | gRPC claim (**`20_grpc_machine_auth.sh`**) when no `machineToken` in secrets |
+| `E2E_ENABLE_FLOW_REVIEW` | When `true` (default), log flow/API debt to **`improvement-findings.jsonl`** |
+| `E2E_WARN_SLOW_MS` | HTTP duration threshold (default **1500**) for performance findings |
+| `E2E_FAIL_ON_P0_FINDINGS` | Default **true** — P0 improvement rows fail the run after finalize |
+| `E2E_FAIL_ON_P1_FINDINGS` | Default **false** — set **true** to fail on P1 findings too |
+| `E2E_GENERATE_OPTIMIZATION_BACKLOG` | When **true**, write **`optimization-backlog.md`** at finalize |
 
 **Postman paths:** `.env.example` references `docs/postman/avf-vending-api-function-path.postman_collection.json`. If that file does not exist in your tree yet, point `POSTMAN_COLLECTION` at an existing export such as `docs/postman/avf-vending-api.postman_collection.json`.
 
@@ -69,6 +74,13 @@ Each run writes artifacts under:
     grpc-contract-results.jsonl
     mqtt-contract-summary.md   # Phase 7 rollup
     mqtt-contract-results.jsonl
+    improvement-summary.md    # flow improvement rollup (when finalize runs)
+    optimization-backlog.md
+    flow-review-scorecard.json
+  improvement-findings.jsonl  # machine-readable improvement rows (JSON lines; starts empty)
+  improvement-summary.md      # mirror of reports/ after finalize
+  optimization-backlog.md
+  flow-review-scorecard.json
   summary.md              # copy of reports/summary.md (orchestrator finalize)
   remediation.md          # copy of reports/remediation.md
   coverage.json           # copy of reports/coverage.json

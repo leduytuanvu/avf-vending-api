@@ -193,6 +193,15 @@ e2e_print_console_summary() {
   echo "Run directory:   ${E2E_RUN_DIR}" >&2
   echo "Test data file:  ${E2E_RUN_DIR}/test-data.json" >&2
   echo "Reports:         ${E2E_RUN_DIR}/reports/" >&2
+  if [[ -s "${E2E_RUN_DIR}/improvement-findings.jsonl" ]] 2>/dev/null; then
+    local _fc _p0 _p1
+    _fc="$(wc -l <"${E2E_RUN_DIR}/improvement-findings.jsonl" | tr -d ' ')"
+    _p0="$(jq -s '[.[] | select(.severity=="P0")] | length' "${E2E_RUN_DIR}/improvement-findings.jsonl" 2>/dev/null || echo 0)"
+    _p1="$(jq -s '[.[] | select(.severity=="P1")] | length' "${E2E_RUN_DIR}/improvement-findings.jsonl" 2>/dev/null || echo 0)"
+    echo "Flow review:     improvement-findings.jsonl (${_fc} row(s); P0=${_p0} P1=${_p1}) → improvement-summary.md" >&2
+  else
+    echo "Flow review:     (no improvement rows)" >&2
+  fi
   if [[ "${exit_code}" -ne 0 ]] || [[ "${failed}" != "0" ]]; then
     echo "On failure: open reports/remediation.md and reports/summary.md under the run directory above." >&2
   fi
@@ -228,8 +237,29 @@ e2e_finalize_reports() {
   [[ -f "${E2E_RUN_DIR}/reports/remediation.md" ]] || e2e_generate_remediation_md
   [[ -f "${E2E_RUN_DIR}/reports/coverage.json" ]] || e2e_generate_coverage_json
 
+  if [[ "${E2E_ENABLE_FLOW_REVIEW:-true}" == "true" ]]; then
+    if ! e2e_python_run "${_tools}/generate-improvement-summary.py" --run-dir "${E2E_RUN_DIR}" --repo-root "${_repo}"; then
+      log_warn "generate-improvement-summary.py failed"
+    fi
+    if [[ "${E2E_GENERATE_OPTIMIZATION_BACKLOG:-true}" == "true" ]]; then
+      if ! e2e_python_run "${_tools}/generate-optimization-backlog.py" --run-dir "${E2E_RUN_DIR}"; then
+        log_warn "generate-optimization-backlog.py failed"
+      fi
+    fi
+  fi
+
+  if [[ -s "${E2E_RUN_DIR}/improvement-findings.jsonl" ]]; then
+    {
+      echo ""
+      echo "## Related flow improvement findings"
+      echo ""
+      echo "Non-blocking debt (and configured P0/P1 gates) lives in **\`improvement-findings.jsonl\`**, **\`improvement-summary.md\`**, **\`optimization-backlog.md\`**. See **\`docs/testing/e2e-remediation-playbook.md\`**."
+      echo ""
+    } >>"${E2E_RUN_DIR}/reports/remediation.md"
+  fi
+
   # Mirrors at run root (reports/ remains canonical; copies for CI / triage globs)
-  for f in summary.md remediation.md coverage.json; do
+  for f in summary.md remediation.md coverage.json improvement-summary.md optimization-backlog.md flow-review-scorecard.json; do
     if [[ -f "${E2E_RUN_DIR}/reports/${f}" ]]; then
       cp -f "${E2E_RUN_DIR}/reports/${f}" "${E2E_RUN_DIR}/${f}"
     fi
@@ -238,5 +268,13 @@ e2e_finalize_reports() {
     cp -f "${E2E_RUN_DIR}/reports/e2e-junit.xml" "${E2E_RUN_DIR}/junit.xml"
   fi
 
-  e2e_print_console_summary "${exit_code}"
+  local review_ec=0
+  e2e_flow_review_exit_gate || review_ec=1
+  local combined="${exit_code}"
+  if [[ "${review_ec}" -ne 0 ]]; then
+    combined=1
+  fi
+
+  e2e_print_console_summary "${combined}"
+  return "${combined}"
 }

@@ -1,5 +1,37 @@
 # E2E remediation playbook
 
+This playbook is aimed at **hard failures**: steps recorded as **failed** in `events.jsonl`, non-zero scenario exits, or HTTP/gRPC errors that block the scenario’s assertions.
+
+## Failures vs flow improvement findings
+
+- **Failure:** the harness could not complete the scenario as written (wrong status code, missing resource, broker down, etc.). Fix the environment or the product behavior, then rerun. **`reports/remediation.md`** lists failure rows with evidence paths.
+- **Improvement finding:** the flow **passed or was skipped with a documented workaround**, but something about the API, contract, docs, performance, or safety still deserves a ticket. These are appended to **`improvement-findings.jsonl`** and summarized in **`improvement-summary.md`**, **`optimization-backlog.md`**, and **`flow-review-scorecard.json`**. They do **not** replace failure diagnosis — they complement it.
+
+Optional skips and brittle workarounds should be logged as **P2/P3** (or **P1** if they block reliable automation), not omitted.
+
+## Severity (P0–P3) for improvement findings
+
+| Severity | Meaning |
+|----------|--------|
+| **P0** | Blocks a reliable **production** vending flow or risks **money / inventory** corruption. **Default: fails the run** when **`E2E_FAIL_ON_P0_FINDINGS=true`**. |
+| **P1** | Blocks **automated** coverage or can leave **incorrect business state**; should be fixed before trusting CI. Optional run failure: **`E2E_FAIL_ON_P1_FINDINGS=true`**. |
+| **P2** | Slows delivery: unclear contracts, extra manual steps, perf hotspots, inconsistent protocols. |
+| **P3** | Cleanup, naming, ergonomics, minor doc gaps. |
+
+## When a finding should become a backend (or client) ticket
+
+- **P0 / P1** API contract, idempotency, response shape, inventory/payment correctness → **backend** (or **android** for offline client behavior), with **`finding_id`** and evidence path from the run directory.
+- **Docs / Postman only** → **docs** ticket, unless the doc error hides a real API bug (then split).
+- Use **`optimization-backlog.md`** as the checklist for backlog grooming; link the **`improvement-summary.md`** section in the ticket.
+
+## Rerun after fixing
+
+1. Fix code/docs as needed; keep **`improvement-findings.jsonl`** from the failing run for comparison.
+2. Rerun the same scope, e.g. **`./tests/e2e/run-all-local.sh --reuse-data .e2e-runs/run-…/test-data.json`** when IDs are still valid, or **`--fresh-data`** after collisions.
+3. Confirm **failures** are gone in **`events.jsonl`** / **`reports/remediation.md`**, and that new **P0** rows are not added (unless you temporarily set **`E2E_FAIL_ON_P0_FINDINGS=false`** for exploratory runs only).
+
+---
+
 For each failure category: **symptom**, **likely cause**, **where to look**, **log paths** (when harness exists), **safe fix**, **reuse vs fresh data**.
 
 ## API not ready
@@ -181,6 +213,10 @@ After **`run-all-local.sh`** completes (success or failure), open the run direct
 | **`test-data.redacted.json`** | Same keys as **`test-data.json`** with token-like values masked |
 | **`reports/e2e-junit.xml`** | JUnit projection of **`events.jsonl`** for CI dashboards |
 | **`reports/e2e-report-context.json`** | Non-secret snapshot of `BASE_URL`, `GRPC_ADDR`, MQTT broker string, write flags |
+| **`improvement-findings.jsonl`** | Flow/API/design debt logged during the run (see intro above) |
+| **`improvement-summary.md`** | Human-readable rollup of findings (also under run root) |
+| **`optimization-backlog.md`** | Checkbox backlog by severity |
+| **`flow-review-scorecard.json`** | Per-flow scores and finding counts |
 
 Tokens may still appear in raw **`rest/*.response.body`** files — treat the whole **`.e2e-runs/`** tree as sensitive.
 

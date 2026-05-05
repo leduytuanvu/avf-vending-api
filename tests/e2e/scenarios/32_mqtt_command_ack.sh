@@ -164,6 +164,16 @@ ack_ec=$?
 set -e
 trap - EXIT
 if [[ "$ack_ec" -ne 0 ]]; then
+  if echo "$RECV" | jq -e . >/dev/null 2>&1; then
+    _cid_chk="$(echo "$RECV" | jq -r '.command_id // .commandId // empty')"
+    if [[ -z "$_cid_chk" || "$_cid_chk" == "null" ]]; then
+      log_mqtt_contract_issue "P1" "$FLOW_ID" "32_mqtt_command_ack" "publish-ack" "MQTT" "${CMD_IN}" \
+        "Subscribed command payload lacks command_id / commandId needed to correlate ACK" \
+        "Automation and ops cannot prove which command was acknowledged" \
+        "Require correlation fields in command message contract and Postman/swagger examples" \
+        "${SUB_LOG}"
+    fi
+  fi
   mqtt_contract_record "$FLOW_ID" "publish-ack" "$CMD_ACK" "fail" "mosquitto_pub_exit_${ack_ec}"
   e2e_append_test_event "$FLOW_ID" "publish-ack" "MQTT" "$CMD_ACK" "fail" "ack_failed" "{}"
   exit 1

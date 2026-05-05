@@ -1,0 +1,16 @@
+{
+  "ts": "2026-01-01T00:00:00Z",
+  "finding_id": "IMPR-EXAMPLE-00001",
+  "severity": "P3",
+  "category": "docs_gap",
+  "flow_id": "example-flow",
+  "scenario_id": "example-scenario",
+  "step_name": "example-step",
+  "protocol": "REST",
+  "endpoint_or_rpc_or_topic": "GET /v1/example",
+  "symptom": "Illustrative shape for improvement-findings.jsonl rows",
+  "impact": "None — schema sample only",
+  "recommendation": "Replace with real findings from harness",
+  "evidence_file": ".e2e-runs/run-*/rest/example.meta.json",
+  "status": "open"
+}

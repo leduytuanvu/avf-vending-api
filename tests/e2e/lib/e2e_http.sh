@@ -96,6 +96,10 @@ e2e_http_get_capture() {
       result:$result
     }' >"${meta}"
 
+  if declare -F e2e_flow_review_note_http_slow >/dev/null 2>&1; then
+    e2e_flow_review_note_http_slow "$step" "$elapsed_ms" "$path" "GET"
+  fi
+
   local ev_status="$result"
   local ev_msg="GET ${path} HTTP ${code} (${elapsed_ms}ms)"
   append_event_jsonl "http:${step}" "$ev_status" "$ev_msg"
@@ -163,6 +167,18 @@ _e2e_http_json_mutate() {
   local elapsed_ms
   elapsed_ms="$(_e2e_http_elapsed_ms "$body_time")"
   _e2e_http_write_meta "$step" "$code" "$elapsed_ms"
+  if declare -F e2e_flow_review_note_http_slow >/dev/null 2>&1; then
+    e2e_flow_review_note_http_slow "$step" "$elapsed_ms" "$path" "$method"
+  fi
+  if [[ "${E2E_ENABLE_FLOW_REVIEW:-true}" == "true" ]] && declare -F log_idempotency_issue >/dev/null 2>&1; then
+    if [[ -z "$idem" ]] && [[ "$method" =~ ^(POST|PUT|PATCH)$ ]] && [[ "$path" =~ /v1/(commerce|admin|setup|machines) ]]; then
+      log_idempotency_issue "P3" "http-mutate" "http-${step}" "$step" "REST" "${method} ${path}" \
+        "Mutating ${method} without Idempotency-Key (path looks business-critical)" \
+        "Retries may duplicate work without safe dedup" \
+        "Add client Idempotency-Key and document semantics in OpenAPI" \
+        "${dir}/${step}.request.json"
+    fi
+  fi
   echo "$code"
 }
 
@@ -211,6 +227,9 @@ e2e_http_request_json() {
 
   _e2e_http_write_meta "$step" "$code" "$elapsed_ms"
   rm -f "${tmp_hdr}"
+  if declare -F e2e_flow_review_note_http_slow >/dev/null 2>&1; then
+    e2e_flow_review_note_http_slow "$step" "$elapsed_ms" "$path" "$method"
+  fi
   echo "$code"
 }
 
