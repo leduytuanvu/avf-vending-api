@@ -1,5 +1,6 @@
 -- +goose Up
 -- P2.4: extend inventory_anomalies with operational / predictive restock detector types (same dedupe model: open fingerprint per machine).
+-- +goose StatementBegin
 DO $$
 DECLARE
     con_name text;
@@ -19,6 +20,7 @@ BEGIN
     END IF;
 END
 $$;
+-- +goose StatementEnd
 
 ALTER TABLE inventory_anomalies
 ADD CONSTRAINT inventory_anomalies_anomaly_type_check CHECK (
@@ -45,6 +47,7 @@ ADD CONSTRAINT inventory_anomalies_anomaly_type_check CHECK (
 COMMENT ON TABLE inventory_anomalies IS 'Operator-visible machine anomalies (inventory + operational detectors); open rows deduped by (machine_id, fingerprint); resolve/ignore closes rows for audit trails.';
 
 -- +goose Down
+-- +goose StatementBegin
 DO $$
 DECLARE
     con_name text;
@@ -64,6 +67,7 @@ BEGIN
     END IF;
 END
 $$;
+-- +goose StatementEnd
 
 ALTER TABLE inventory_anomalies
 ADD CONSTRAINT inventory_anomalies_anomaly_type_check CHECK (

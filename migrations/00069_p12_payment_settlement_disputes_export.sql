@@ -128,6 +128,8 @@ CREATE INDEX IF NOT EXISTS ix_payment_disputes_org_status
 COMMENT ON TABLE payment_provider_settlements IS 'Imported PSP settlement reports for finance reconciliation.';
 COMMENT ON TABLE payment_disputes IS 'Chargeback/dispute foundation; links to internal order/payment when known.';
 
+DROP VIEW IF EXISTS payment_reconciliation_cases;
+
 CREATE OR REPLACE VIEW payment_reconciliation_cases AS
 SELECT
     crc.id,
@@ -149,6 +151,8 @@ SELECT
 FROM commerce_reconciliation_cases crc;
 
 -- +goose Down
+DROP VIEW IF EXISTS payment_reconciliation_cases;
+
 CREATE OR REPLACE VIEW payment_reconciliation_cases AS
 SELECT
     crc.id,
