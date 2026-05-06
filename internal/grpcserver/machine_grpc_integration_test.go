@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
+	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
@@ -43,13 +43,6 @@ func testMachineGRPCIntegrationDSN(t *testing.T) string {
 	return dsn
 }
 
-func machineGRPCTestModuleRoot(t *testing.T) string {
-	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
-}
-
 func machineGRPCTestMigrate(t *testing.T, dsn string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -58,11 +51,15 @@ func machineGRPCTestMigrate(t *testing.T, dsn string) {
 	if goBin == "" {
 		goBin = "go"
 	}
+	repoRoot := testfixtures.RepoRoot(t)
+	absRoot, err := filepath.Abs(repoRoot)
+	require.NoError(t, err)
+	migrationsDir := filepath.Join(absRoot, "migrations")
 	cmd := exec.CommandContext(ctx, goBin, "run", "github.com/pressly/goose/v3/cmd/goose@v3.27.0",
-		"-dir", filepath.Join(machineGRPCTestModuleRoot(t), "migrations"),
+		"-dir", migrationsDir,
 		"postgres", dsn, "up",
 	)
-	cmd.Dir = machineGRPCTestModuleRoot(t)
+	cmd.Dir = absRoot
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "%s", string(out))
 }
@@ -76,6 +73,25 @@ func machineGRPCTestPool(t *testing.T) *pgxpool.Pool {
 	pool, err := pgxpool.New(ctx, dsn)
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
+	testfixtures.EnsureDevCommerceIntegrationData(t, pool)
+	return pool
+}
+
+// machineGRPCTestPoolWithDevSeedSessionLock migrates and seeds like machineGRPCTestPool, but holds a
+// session-level advisory lock for the whole test so other packages cannot interleave
+// EnsureDevCommerceIntegrationData (which resets machine_slot_state) while inventory assertions run.
+func machineGRPCTestPoolWithDevSeedSessionLock(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	dsn := testMachineGRPCIntegrationDSN(t)
+	machineGRPCTestMigrate(t, dsn)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, dsn)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+
+	conn := testfixtures.AcquireDevCommerceSeedSessionLock(t, pool)
+	testfixtures.EnsureDevCommerceIntegrationDataUsingLockedConn(t, conn)
 	return pool
 }
 
@@ -88,13 +104,14 @@ func TestMachineGRPC_GetBootstrap_RetiredMachineRejected(t *testing.T) {
 	siteID := uuid.New()
 	machineID := uuid.New()
 
-	_, err := pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'grpc-int', 'grpc-int-org', 'active')`, orgID)
+	slug := "grpc-int-org-" + uuid.NewString()
+	_, err := pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'grpc-int', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'retired', 1)`, machineID, orgID, siteID, "sn-retired-grpc")
+VALUES ($1, $2, $3, $4, 'retired', 1)`, machineID, orgID, siteID, "sn-retired-grpc-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	cfg := testMachineGRPCConfig()
@@ -165,13 +182,14 @@ func TestMachineGRPC_GetInventorySnapshot_MaintenanceMachineRejected(t *testing.
 	siteID := uuid.New()
 	machineID := uuid.New()
 
-	_, err := pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'grpc-inv', 'grpc-inv-org', 'active')`, orgID)
+	slugInv := "grpc-inv-org-" + uuid.NewString()
+	_, err := pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'grpc-inv', $2, 'active')`, orgID, slugInv)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'maintenance', 1)`, machineID, orgID, siteID, "sn-maint-grpc")
+VALUES ($1, $2, $3, $4, 'maintenance', 1)`, machineID, orgID, siteID, "sn-maint-grpc-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	cfg := testMachineGRPCConfig()

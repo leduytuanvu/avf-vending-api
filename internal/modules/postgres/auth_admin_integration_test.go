@@ -114,7 +114,8 @@ func TestAuthAdmin_ActivateDeactivateAndLastOrgAdmin(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := uuid.New()
+	insertAuditOrganization(t, pool, org)
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "solo-admin-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -193,7 +194,8 @@ func TestAuthAdmin_PatchRemovesLastOrgAdminForbidden(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := uuid.New()
+	insertAuditOrganization(t, pool, org)
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "patch-last-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")

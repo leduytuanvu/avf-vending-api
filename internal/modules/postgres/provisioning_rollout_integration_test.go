@@ -42,7 +42,7 @@ VALUES ($1, $2, 'Bulk Site', $3, 'active')
 	rows := make([]approvisioning.BulkMachineRow, 100)
 	for i := range rows {
 		rows[i] = approvisioning.BulkMachineRow{
-			SerialNumber: fmt.Sprintf("P21-BULK-%04d", i),
+			SerialNumber: fmt.Sprintf("%s-P21-%04d", orgID.String()[:8], i),
 			Name:         fmt.Sprintf("Bulk %d", i),
 			Model:        "AVF-TEST",
 		}

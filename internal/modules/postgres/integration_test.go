@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -33,18 +32,6 @@ func testDSN(t *testing.T) string {
 	return dsn
 }
 
-func moduleRoot(t *testing.T) string {
-	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
-}
-
-func migrationsDir(t *testing.T) string {
-	t.Helper()
-	return filepath.Join(moduleRoot(t), "migrations")
-}
-
 func migrateUp(t *testing.T, dsn string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -53,11 +40,15 @@ func migrateUp(t *testing.T, dsn string) {
 	if goBin == "" {
 		goBin = "go"
 	}
+	repoRoot := testfixtures.RepoRoot(t)
+	absRoot, err := filepath.Abs(repoRoot)
+	require.NoError(t, err)
+	migrationsDir := filepath.Join(absRoot, "migrations")
 	cmd := exec.CommandContext(ctx, goBin, "run", "github.com/pressly/goose/v3/cmd/goose@v3.27.0",
-		"-dir", migrationsDir(t),
+		"-dir", migrationsDir,
 		"postgres", dsn, "up",
 	)
-	cmd.Dir = moduleRoot(t)
+	cmd.Dir = absRoot
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "%s", string(out))
 }
@@ -71,6 +62,7 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	pool, err := pgxpool.New(ctx, dsn)
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
+	testfixtures.EnsureDevCommerceIntegrationData(t, pool)
 	return pool
 }
 
@@ -674,11 +666,13 @@ func TestApplyCommandReceiptTransition_DedupeKeyPreventsDoubleApply(t *testing.T
 	).Scan(&cnt))
 	require.Equal(t, 1, cnt)
 
-	var reported json.RawMessage
+	var reportedJSON []byte
 	require.NoError(t, pool.QueryRow(ctx,
 		`SELECT reported_state FROM machine_shadow WHERE machine_id = $1`, mid,
-	).Scan(&reported))
-	require.Contains(t, string(reported), `"applied":true`)
+	).Scan(&reportedJSON))
+	var reported map[string]any
+	require.NoError(t, json.Unmarshal(reportedJSON, &reported))
+	require.Equal(t, true, reported["applied"])
 }
 
 func TestApplyCommandReceiptTransition_RejectsLateSuccessAck(t *testing.T) {

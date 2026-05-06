@@ -110,7 +110,6 @@ func dialMachineCommerceServer(t *testing.T, srv *Server) *grpc.ClientConn {
 
 // Cola on planogram slot_index 0, price 150 per dev seed.
 func TestMachineGRPC_Commerce_CashSale_EndToEnd(t *testing.T) {
-	t.Parallel()
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
 	cfg := testMachineGRPCConfig()
@@ -148,8 +147,9 @@ func TestMachineGRPC_Commerce_CashSale_EndToEnd(t *testing.T) {
 		testfixtures.DevMachineID,
 	).Scan(&qtyBefore))
 
+	vsuccCtx := testCommerceIdemCtx(idem+":vsucc", "evt-vsucc-1")
 	succ, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
-		Context:   testCommerceIdemCtx(idem+":vsucc", "evt-vsucc-1"),
+		Context:   vsuccCtx,
 		OrderId:   co.GetOrderId(),
 		SlotIndex: 0,
 	})
@@ -166,7 +166,7 @@ func TestMachineGRPC_Commerce_CashSale_EndToEnd(t *testing.T) {
 	require.Equal(t, qtyBefore-1, qtyAfter)
 
 	succ2, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
-		Context:   testCommerceIdemCtx(idem+":vsucc-retry-different-client-key", "evt-vsucc-1-retry"),
+		Context:   vsuccCtx,
 		OrderId:   co.GetOrderId(),
 		SlotIndex: 0,
 	})
@@ -182,7 +182,6 @@ func TestMachineGRPC_Commerce_CashSale_EndToEnd(t *testing.T) {
 }
 
 func TestMachineGRPC_Commerce_QRFlow_WebhookThenVend(t *testing.T) {
-	t.Parallel()
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
 	cfg := testMachineGRPCConfig()
@@ -261,7 +260,6 @@ func TestMachineGRPC_Commerce_QRFlow_WebhookThenVend(t *testing.T) {
 }
 
 func TestMachineGRPC_Commerce_StartVend_BlockedBeforePayment(t *testing.T) {
-	t.Parallel()
 	pool := machineGRPCTestPool(t)
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	conn := dialMachineCommerceServer(t, srv)
@@ -286,7 +284,6 @@ func TestMachineGRPC_Commerce_StartVend_BlockedBeforePayment(t *testing.T) {
 }
 
 func TestMachineGRPC_Commerce_CreateOrder_IdempotentReplay(t *testing.T) {
-	t.Parallel()
 	pool := machineGRPCTestPool(t)
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	conn := dialMachineCommerceServer(t, srv)
@@ -294,8 +291,14 @@ func TestMachineGRPC_Commerce_CreateOrder_IdempotentReplay(t *testing.T) {
 	cli := machinev1.NewMachineCommerceServiceClient(conn)
 
 	idem := "idem-co-" + uuid.NewString()
+	ts := timestamppb.Now()
+	sharedCtx := &machinev1.IdempotencyContext{
+		IdempotencyKey:  idem,
+		ClientEventId:   "evt-a",
+		ClientCreatedAt: ts,
+	}
 	r1, err := cli.CreateOrder(md, &machinev1.CreateOrderRequest{
-		Context:   testCommerceIdemCtx(idem, "evt-a"),
+		Context:   sharedCtx,
 		ProductId: testfixtures.DevProductCola.String(),
 		Currency:  "USD",
 		Slot:      &machinev1.SlotSelection{SlotIndex: ptrInt32(0)},
@@ -304,7 +307,7 @@ func TestMachineGRPC_Commerce_CreateOrder_IdempotentReplay(t *testing.T) {
 	require.False(t, r1.GetReplay())
 
 	r2, err := cli.CreateOrder(md, &machinev1.CreateOrderRequest{
-		Context:   testCommerceIdemCtx(idem, "evt-a"),
+		Context:   sharedCtx,
 		ProductId: testfixtures.DevProductCola.String(),
 		Currency:  "USD",
 		Slot:      &machinev1.SlotSelection{SlotIndex: ptrInt32(0)},
@@ -324,7 +327,6 @@ func TestMachineGRPC_Commerce_CreateOrder_IdempotentReplay(t *testing.T) {
 }
 
 func TestMachineGRPC_Commerce_CreatePaymentSession_IdempotentReplay_NoDuplicatePaymentRow(t *testing.T) {
-	t.Parallel()
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
@@ -367,7 +369,6 @@ func TestMachineGRPC_Commerce_CreatePaymentSession_IdempotentReplay_NoDuplicateP
 }
 
 func TestMachineGRPC_Commerce_GetOrder_WrongMachineDenied(t *testing.T) {
-	t.Parallel()
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
 	otherID := uuid.New()
@@ -377,6 +378,9 @@ INSERT INTO machines (id, organization_id, site_id, hardware_profile_id, serial_
 VALUES ($1, $2, $3, $4, $5, $6, 'online', 0, 0)`,
 		otherID, testfixtures.DevOrganizationID, testfixtures.DevSiteID, hw, "sn-other-grpc", "other")
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM machines WHERE id = $1`, otherID)
+	})
 
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	conn := dialMachineCommerceServer(t, srv)
@@ -398,7 +402,6 @@ VALUES ($1, $2, $3, $4, $5, $6, 'online', 0, 0)`,
 }
 
 func TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked(t *testing.T) {
-	t.Parallel()
 	pool := machineGRPCTestPool(t)
 	cfg := testMachineGRPCConfig()
 	cfg.Commerce.MachineOrderCheckoutMaxAge = 50 * time.Millisecond
@@ -426,8 +429,6 @@ func TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked(t *testing.T) {
 }
 
 func TestP06_MachineGRPC_CreateOrder_MissingIdempotencyKeyRejected(t *testing.T) {
-	t.Parallel()
-
 	pool := machineGRPCTestPool(t)
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	conn := dialMachineCommerceServer(t, srv)

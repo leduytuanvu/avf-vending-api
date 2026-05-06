@@ -74,6 +74,8 @@ func TestSetupRepository_UpsertMachineTopology(t *testing.T) {
 func TestAssortmentRepository_BindMachineAssortment(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
+	_, err := pool.Exec(ctx, `DELETE FROM machine_assortment_bindings WHERE machine_id = $1`, testfixtures.DevMachineID)
+	require.NoError(t, err)
 	q := db.New(pool)
 
 	assRow, err := q.FleetAdminInsertAssortment(ctx, db.FleetAdminInsertAssortmentParams{
@@ -183,7 +185,7 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch(t *testing.T) {
 	).Scan(&opSess)
 	require.NoError(t, err)
 	require.True(t, opSess.Valid)
-	require.Equal(t, sess.ID, opSess.Bytes)
+	require.Equal(t, sess.ID, uuid.UUID(opSess.Bytes))
 
 	var qty int32
 	err = pool.QueryRow(ctx,
@@ -203,9 +205,10 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch(t *testing.T) {
 		Items: []inventoryapp.AdjustmentItem{{
 			PlanogramID:    testfixtures.DevPlanogramID,
 			SlotIndex:      0,
-			QuantityBefore: origQty - 1,
+			QuantityBefore: origQty,
 			QuantityAfter:  origQty - 1,
 			SlotCode:       "legacy-0",
+			ProductID:      ptrUUID(testfixtures.DevProductCola),
 		}},
 	})
 	require.NoError(t, err)

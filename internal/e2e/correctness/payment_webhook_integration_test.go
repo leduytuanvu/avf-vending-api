@@ -23,7 +23,7 @@ func TestP06_E2E_PaymentWebhook_duplicateDeliveryIsReplayWithoutDoublePosting(t 
 		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
-		SlotIndex:      2,
+		SlotIndex:      1,
 		Currency:       "USD",
 		SubtotalMinor:  200,
 		TaxMinor:       0,
@@ -55,13 +55,16 @@ func TestP06_E2E_PaymentWebhook_duplicateDeliveryIsReplayWithoutDoublePosting(t 
 
 	webhookOutboxIDem := orderIDem + ":webhook:captured"
 
+	provRef := "prov-ref-p06-wh-" + uuid.NewString()
+	webhookEv := "evt-p06-wh-dup-" + uuid.NewString()
+
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
 		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
-		ProviderReference:      "prov-ref-p06-wh",
-		WebhookEventID:         "evt-p06-wh-dup",
+		ProviderReference:      provRef,
+		WebhookEventID:         webhookEv,
 		EventType:              "payment.captured",
 		NormalizedPaymentState: "captured",
 		Payload:                []byte(`{}`),

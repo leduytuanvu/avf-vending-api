@@ -23,11 +23,13 @@ func TestP06_E2E_VendInventory_successDecrementThenReplayDoesNotDoubleApply(t *t
 	store := postgres.NewStore(pool)
 
 	orderIDem := "p06-vend-inv-" + uuid.NewString()
+	provRef := "prov-ref-p06-vend-" + uuid.NewString()
+	webhookEv := "evt-p06-vend-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
 		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
-		SlotIndex:      2,
+		SlotIndex:      1,
 		Currency:       "USD",
 		SubtotalMinor:  200,
 		TaxMinor:       0,
@@ -62,8 +64,8 @@ func TestP06_E2E_VendInventory_successDecrementThenReplayDoesNotDoubleApply(t *t
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
-		ProviderReference:      "prov-ref-p06-vend",
-		WebhookEventID:         "evt-p06-vend",
+		ProviderReference:      provRef,
+		WebhookEventID:         webhookEv,
 		EventType:              "payment.captured",
 		NormalizedPaymentState: "captured",
 		Payload:                []byte(`{}`),
@@ -77,7 +79,7 @@ func TestP06_E2E_VendInventory_successDecrementThenReplayDoesNotDoubleApply(t *t
 	require.NoError(t, err)
 
 	_, err = pool.Exec(ctx, `UPDATE vend_sessions SET state = 'success' WHERE order_id = $1 AND slot_index = $2`,
-		orderRes.Order.ID, int32(2))
+		orderRes.Order.ID, int32(1))
 	require.NoError(t, err)
 
 	idemInv := "inv-sale-" + uuid.NewString()
@@ -85,14 +87,14 @@ func TestP06_E2E_VendInventory_successDecrementThenReplayDoesNotDoubleApply(t *t
 	var qtyBefore int32
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT current_quantity FROM machine_slot_state
-WHERE machine_id = $1 AND slot_index = $2 AND product_id = $3`,
-		testfixtures.DevMachineID, int32(2), testfixtures.DevProductWater).Scan(&qtyBefore))
+WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
+		testfixtures.DevMachineID, testfixtures.DevPlanogramID, int32(1)).Scan(&qtyBefore))
 
 	replay1, err := store.ApplyCommerceVendSuccessInventory(ctx,
 		testfixtures.DevOrganizationID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
-		2,
+		1,
 		testfixtures.DevProductWater,
 		idemInv,
 		nil,
@@ -104,7 +106,7 @@ WHERE machine_id = $1 AND slot_index = $2 AND product_id = $3`,
 		testfixtures.DevOrganizationID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
-		2,
+		1,
 		testfixtures.DevProductWater,
 		idemInv,
 		nil,
@@ -115,8 +117,8 @@ WHERE machine_id = $1 AND slot_index = $2 AND product_id = $3`,
 	var qtyAfter int32
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT current_quantity FROM machine_slot_state
-WHERE machine_id = $1 AND slot_index = $2 AND product_id = $3`,
-		testfixtures.DevMachineID, int32(2), testfixtures.DevProductWater).Scan(&qtyAfter))
+WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
+		testfixtures.DevMachineID, testfixtures.DevPlanogramID, int32(1)).Scan(&qtyAfter))
 
 	require.Equal(t, qtyBefore-1, qtyAfter)
 }
@@ -131,7 +133,7 @@ func TestP06_E2E_VendInventory_failVendBlocksInventoryApply(t *testing.T) {
 		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
-		SlotIndex:      2,
+		SlotIndex:      1,
 		Currency:       "USD",
 		SubtotalMinor:  200,
 		TaxMinor:       0,
@@ -143,14 +145,14 @@ func TestP06_E2E_VendInventory_failVendBlocksInventoryApply(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = pool.Exec(ctx, `UPDATE vend_sessions SET state = 'failed' WHERE order_id = $1 AND slot_index = $2`,
-		orderRes.Order.ID, int32(2))
+		orderRes.Order.ID, int32(1))
 	require.NoError(t, err)
 
 	_, err = store.ApplyCommerceVendSuccessInventory(ctx,
 		testfixtures.DevOrganizationID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
-		2,
+		1,
 		testfixtures.DevProductWater,
 		"p06-no-inv-fail",
 		nil,
@@ -171,11 +173,13 @@ func TestP06_E2E_FinalizeSuccessfulVendReplayTripleDedupesInventory(t *testing.T
 	})
 
 	orderIDem := "p06-fulfill-inv-" + uuid.NewString()
+	provRef := "prov-ref-p06-atom-" + uuid.NewString()
+	webhookEv := "evt-p06-atom-vend-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
 		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
-		SlotIndex:      2,
+		SlotIndex:      1,
 		Currency:       "USD",
 		SubtotalMinor:  200,
 		TaxMinor:       0,
@@ -210,8 +214,8 @@ func TestP06_E2E_FinalizeSuccessfulVendReplayTripleDedupesInventory(t *testing.T
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
-		ProviderReference:      "prov-ref-p06-atom",
-		WebhookEventID:         "evt-p06-atom-vend",
+		ProviderReference:      provRef,
+		WebhookEventID:         webhookEv,
 		EventType:              "payment.captured",
 		NormalizedPaymentState: "captured",
 		Payload:                []byte(`{}`),
@@ -227,7 +231,7 @@ func TestP06_E2E_FinalizeSuccessfulVendReplayTripleDedupesInventory(t *testing.T
 	_, err = commerceSvc.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
 		OrganizationID: testfixtures.DevOrganizationID,
 		OrderID:        orderRes.Order.ID,
-		SlotIndex:      2,
+		SlotIndex:      1,
 		ToState:        "in_progress",
 	})
 	require.NoError(t, err)
@@ -235,15 +239,15 @@ func TestP06_E2E_FinalizeSuccessfulVendReplayTripleDedupesInventory(t *testing.T
 	var qtyBefore int32
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT current_quantity FROM machine_slot_state
-WHERE machine_id = $1 AND slot_index = $2 AND product_id = $3`,
-		testfixtures.DevMachineID, int32(2), testfixtures.DevProductWater).Scan(&qtyBefore))
+WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
+		testfixtures.DevMachineID, testfixtures.DevPlanogramID, int32(1)).Scan(&qtyBefore))
 
 	dedupe := "replay-3x|" + uuid.NewString()
 	for attempt := range 3 {
 		fout, err := commerceSvc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
 			OrganizationID:     testfixtures.DevOrganizationID,
 			OrderID:            orderRes.Order.ID,
-			SlotIndex:          2,
+			SlotIndex:          1,
 			TerminalVendState:  "success",
 			InventoryDedupeKey: dedupe,
 		})
@@ -262,8 +266,8 @@ WHERE machine_id = $1 AND slot_index = $2 AND product_id = $3`,
 	var qtyAfter int32
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT current_quantity FROM machine_slot_state
-WHERE machine_id = $1 AND slot_index = $2 AND product_id = $3`,
-		testfixtures.DevMachineID, int32(2), testfixtures.DevProductWater).Scan(&qtyAfter))
+WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
+		testfixtures.DevMachineID, testfixtures.DevPlanogramID, int32(1)).Scan(&qtyAfter))
 
 	require.Equal(t, qtyBefore-1, qtyAfter)
 }
@@ -281,11 +285,13 @@ func TestP06_E2E_ZerostockFinalizeSuccessRollsBack(t *testing.T) {
 	})
 
 	orderIDem := "p06-stock0-" + uuid.NewString()
+	provRef := "prov-stock0-" + uuid.NewString()
+	webhookEv := "evt-stock0-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
 		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
-		SlotIndex:      2,
+		SlotIndex:      1,
 		Currency:       "USD",
 		SubtotalMinor:  200,
 		TaxMinor:       0,
@@ -320,8 +326,8 @@ func TestP06_E2E_ZerostockFinalizeSuccessRollsBack(t *testing.T) {
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
-		ProviderReference:      "prov-stock0",
-		WebhookEventID:         "evt-stock0",
+		ProviderReference:      provRef,
+		WebhookEventID:         webhookEv,
 		EventType:              "payment.captured",
 		NormalizedPaymentState: "captured",
 		Payload:                []byte(`{}`),
@@ -337,7 +343,7 @@ func TestP06_E2E_ZerostockFinalizeSuccessRollsBack(t *testing.T) {
 	_, err = commerceSvc.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
 		OrganizationID: testfixtures.DevOrganizationID,
 		OrderID:        orderRes.Order.ID,
-		SlotIndex:      2,
+		SlotIndex:      1,
 		ToState:        "in_progress",
 	})
 	require.NoError(t, err)
@@ -345,14 +351,14 @@ func TestP06_E2E_ZerostockFinalizeSuccessRollsBack(t *testing.T) {
 	_, err = pool.Exec(ctx, `
 UPDATE machine_slot_state
 SET current_quantity = 0
-WHERE machine_id = $1 AND slot_index = $2 AND product_id = $3`,
-		testfixtures.DevMachineID, int32(2), testfixtures.DevProductWater)
+WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
+		testfixtures.DevMachineID, testfixtures.DevPlanogramID, int32(1))
 	require.NoError(t, err)
 
 	_, err = commerceSvc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
 		OrganizationID:     testfixtures.DevOrganizationID,
 		OrderID:            orderRes.Order.ID,
-		SlotIndex:          2,
+		SlotIndex:          1,
 		TerminalVendState:  "success",
 		InventoryDedupeKey: "stock0-inv|" + uuid.NewString(),
 	})
@@ -363,7 +369,7 @@ WHERE machine_id = $1 AND slot_index = $2 AND product_id = $3`,
 	require.NoError(t, err)
 	require.NotEqual(t, "completed", o.Status)
 
-	v, err := store.GetVendSessionByOrderAndSlot(ctx, orderRes.Order.ID, 2)
+	v, err := store.GetVendSessionByOrderAndSlot(ctx, orderRes.Order.ID, 1)
 	require.NoError(t, err)
 	require.Equal(t, "in_progress", v.State)
 }
@@ -381,11 +387,13 @@ func TestP06_E2E_VendFailsAfterCapturedWritesTimelineRefundHint(t *testing.T) {
 	})
 
 	orderIDem := "p06-fail-tl-" + uuid.NewString()
+	provRef := "prov-failtl-" + uuid.NewString()
+	webhookEv := "evt-failtl-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
 		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
-		SlotIndex:      2,
+		SlotIndex:      1,
 		Currency:       "USD",
 		SubtotalMinor:  200,
 		TaxMinor:       0,
@@ -420,8 +428,8 @@ func TestP06_E2E_VendFailsAfterCapturedWritesTimelineRefundHint(t *testing.T) {
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
-		ProviderReference:      "prov-failtl",
-		WebhookEventID:         "evt-failtl",
+		ProviderReference:      provRef,
+		WebhookEventID:         webhookEv,
 		EventType:              "payment.captured",
 		NormalizedPaymentState: "captured",
 		Payload:                []byte(`{}`),
@@ -437,7 +445,7 @@ func TestP06_E2E_VendFailsAfterCapturedWritesTimelineRefundHint(t *testing.T) {
 	_, err = commerceSvc.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
 		OrganizationID: testfixtures.DevOrganizationID,
 		OrderID:        orderRes.Order.ID,
-		SlotIndex:      2,
+		SlotIndex:      1,
 		ToState:        "in_progress",
 	})
 	require.NoError(t, err)
@@ -446,7 +454,7 @@ func TestP06_E2E_VendFailsAfterCapturedWritesTimelineRefundHint(t *testing.T) {
 	fout, err := commerceSvc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
 		OrganizationID:    testfixtures.DevOrganizationID,
 		OrderID:           orderRes.Order.ID,
-		SlotIndex:         2,
+		SlotIndex:         1,
 		TerminalVendState: "failed",
 		FailureReason:     &fr,
 	})

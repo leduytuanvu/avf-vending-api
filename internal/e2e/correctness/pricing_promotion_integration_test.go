@@ -41,6 +41,7 @@ func cleanupPricingTestMachine(ctx context.Context, t *testing.T, pool *pgxpool.
 func TestPricingPromotion_catalogOrderPaymentAmountAlignment(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
+	cleanupPricingTestMachine(ctx, t, pool, testfixtures.DevMachineID, uuid.Nil)
 	q := db.New(pool)
 
 	assRow, err := q.FleetAdminInsertAssortment(ctx, db.FleetAdminInsertAssortmentParams{

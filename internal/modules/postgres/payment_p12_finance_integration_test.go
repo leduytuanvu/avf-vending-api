@@ -59,12 +59,13 @@ func TestPaymentP12_webhookStoresIngressAndOrg(t *testing.T) {
 	require.NoError(t, err)
 
 	evID := "evt-p12-" + uuid.NewString()
+	provRef := "prov-p12-" + uuid.NewString()
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
 		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
-		ProviderReference:       "prov-p12-1",
+		ProviderReference:       provRef,
 		WebhookEventID:          evID,
 		EventType:               "payment.captured",
 		NormalizedPaymentState:  "captured",
@@ -128,12 +129,13 @@ func TestPaymentP12_settlementImport_idempotentAndMismatch(t *testing.T) {
 		OutboxIdempotencyKey: outIDem,
 	})
 	require.NoError(t, err)
+	settleTxRef := "pi-settle-" + uuid.NewString()
 	wIn := appcommerce.ApplyPaymentProviderWebhookInput{
 		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
-		ProviderReference:       "pi_settle_1",
+		ProviderReference:       settleTxRef,
 		WebhookEventID:          "evt-settle-1-" + uuid.NewString(),
 		EventType:               "payment.captured",
 		NormalizedPaymentState:  "captured",
@@ -151,7 +153,7 @@ func TestPaymentP12_settlementImport_idempotentAndMismatch(t *testing.T) {
 		NetAmountMinor:       500,
 		Currency:             "USD",
 		SettlementDate:       time.Now().UTC().Format("2006-01-02"),
-		TransactionRefs:      []string{"pi_settle_1"},
+		TransactionRefs:      []string{settleTxRef},
 	}
 	r1, err := adm.ImportSettlements(ctx, testfixtures.DevOrganizationID, "psp_fixture", []apppayments.SettlementImportItem{item})
 	require.NoError(t, err)

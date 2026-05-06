@@ -110,8 +110,8 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch_writesLedgerQuantiti
 	require.Equal(t, "manual_adjustment", reasonCode)
 	require.NotEmpty(t, curr)
 	require.Equal(t, "legacy-0", sc)
-	// cabinet_code falls back to CAB-A when unset (see inventory_repository.resolveAdjustmentCabinetCode).
-	require.Equal(t, "CAB-A", cab)
+	// When a machine cabinet row exists, inventory events store cabinet_code; otherwise legacy default CAB-A.
+	require.Equal(t, "A", cab)
 }
 
 func TestInventoryRepository_CreateInventoryAdjustmentBatch_idempotentReplay(t *testing.T) {

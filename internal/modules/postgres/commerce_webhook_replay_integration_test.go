@@ -56,13 +56,15 @@ func TestApplyPaymentProviderWebhook_replayByProviderRef(t *testing.T) {
 
 	payload := []byte(`{"ok":true}`)
 	webhookOutboxIDem := orderIDem + ":webhook:captured"
+	provRef := "prov-ref-" + uuid.NewString()
+	evPrimary := "evt-" + uuid.NewString()
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
 		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
-		ProviderReference:      "prov-ref-1",
-		WebhookEventID:         "evt-1",
+		ProviderReference:      provRef,
+		WebhookEventID:         evPrimary,
 		EventType:              "payment.captured",
 		NormalizedPaymentState: "captured",
 		Payload:                payload,
@@ -148,13 +150,14 @@ func TestApplyPaymentProviderWebhook_webhookEventIdConflict(t *testing.T) {
 	require.NoError(t, err)
 
 	payload, _ := json.Marshal(map[string]any{"seq": 1})
+	sharedEvt := "shared-evt-" + uuid.NewString()
 	in1 := appcommerce.ApplyPaymentProviderWebhookInput{
 		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
-		ProviderReference:      "prov-ref-a",
-		WebhookEventID:         "shared-evt",
+		ProviderReference:      "prov-ref-a-" + uuid.NewString(),
+		WebhookEventID:         sharedEvt,
 		EventType:              "payment.captured",
 		NormalizedPaymentState: "captured",
 		Payload:                payload,
@@ -163,7 +166,7 @@ func TestApplyPaymentProviderWebhook_webhookEventIdConflict(t *testing.T) {
 	require.NoError(t, err)
 
 	in2 := in1
-	in2.ProviderReference = "prov-ref-b"
+	in2.ProviderReference = "prov-ref-b-" + uuid.NewString()
 	_, err = store.ApplyPaymentProviderWebhook(ctx, in2)
 	require.Error(t, err)
 	require.ErrorIs(t, err, appcommerce.ErrWebhookIdempotencyConflict)
