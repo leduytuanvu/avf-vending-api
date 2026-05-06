@@ -13,7 +13,7 @@ param(
     [switch] $NoOpen
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 Set-StrictMode -Version 3.0
 
 $Lib = Join-Path $PSScriptRoot '_pslib.ps1'
