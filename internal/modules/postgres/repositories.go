@@ -233,7 +233,7 @@ func (r *OutboxRepository) RecordOutboxPublishFailure(ctx context.Context, rec r
 		ID:               rec.EventID,
 		LastPublishError: pgtype.Text{String: msg, Valid: true},
 		NextPublishAfter: optionalTimeToPgTimestamptz(rec.NextPublishAfter),
-		Column4:          rec.DeadLettered,
+		DeadLettered:     rec.DeadLettered,
 	})
 }
 

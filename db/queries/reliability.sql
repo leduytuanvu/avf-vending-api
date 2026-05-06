@@ -145,25 +145,25 @@ RETURNING
 UPDATE outbox_events
 SET
     publish_attempt_count = publish_attempt_count + 1,
-    last_publish_error = $2,
+    last_publish_error = sqlc.arg('last_publish_error'),
     last_publish_attempt_at = now(),
     next_publish_after = CASE
-        WHEN $4::boolean THEN NULL
-        ELSE $3
+        WHEN sqlc.arg('dead_lettered')::boolean THEN NULL::timestamptz
+        ELSE sqlc.narg('next_publish_after')::timestamptz
     END,
     dead_lettered_at = CASE
-        WHEN $4::boolean THEN now()
+        WHEN sqlc.arg('dead_lettered')::boolean THEN now()
         ELSE dead_lettered_at
     END,
     status = CASE
-        WHEN $4::boolean THEN 'dead_letter'::text
+        WHEN sqlc.arg('dead_lettered')::boolean THEN 'dead_letter'::text
         ELSE 'failed'::text
     END,
     locked_by = NULL,
     locked_until = NULL,
     updated_at = now()
 WHERE
-    id = $1
+    id = sqlc.arg('id')
     AND published_at IS NULL
     AND dead_lettered_at IS NULL;
 

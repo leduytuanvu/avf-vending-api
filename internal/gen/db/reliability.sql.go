@@ -445,42 +445,42 @@ const RecordOutboxPublishFailure = `-- name: RecordOutboxPublishFailure :exec
 UPDATE outbox_events
 SET
     publish_attempt_count = publish_attempt_count + 1,
-    last_publish_error = $2,
+    last_publish_error = $1,
     last_publish_attempt_at = now(),
     next_publish_after = CASE
-        WHEN $4::boolean THEN NULL
-        ELSE $3
+        WHEN $2::boolean THEN NULL::timestamptz
+        ELSE $3::timestamptz
     END,
     dead_lettered_at = CASE
-        WHEN $4::boolean THEN now()
+        WHEN $2::boolean THEN now()
         ELSE dead_lettered_at
     END,
     status = CASE
-        WHEN $4::boolean THEN 'dead_letter'::text
+        WHEN $2::boolean THEN 'dead_letter'::text
         ELSE 'failed'::text
     END,
     locked_by = NULL,
     locked_until = NULL,
     updated_at = now()
 WHERE
-    id = $1
+    id = $4
     AND published_at IS NULL
     AND dead_lettered_at IS NULL
 `
 
 type RecordOutboxPublishFailureParams struct {
-	ID               int64
 	LastPublishError pgtype.Text
+	DeadLettered     bool
 	NextPublishAfter pgtype.Timestamptz
-	Column4          bool
+	ID               int64
 }
 
 func (q *Queries) RecordOutboxPublishFailure(ctx context.Context, arg RecordOutboxPublishFailureParams) error {
 	_, err := q.db.Exec(ctx, RecordOutboxPublishFailure,
-		arg.ID,
 		arg.LastPublishError,
+		arg.DeadLettered,
 		arg.NextPublishAfter,
-		arg.Column4,
+		arg.ID,
 	)
 	return err
 }
