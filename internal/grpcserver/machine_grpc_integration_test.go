@@ -74,6 +74,8 @@ func machineGRPCTestPool(t *testing.T) *pgxpool.Pool {
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
 	testfixtures.EnsureDevCommerceIntegrationData(t, pool)
+	_, err = pool.Exec(ctx, `UPDATE machines SET status = 'online', last_seen_at = now() WHERE id = $1`, testfixtures.DevMachineID)
+	require.NoError(t, err)
 	return pool
 }
 

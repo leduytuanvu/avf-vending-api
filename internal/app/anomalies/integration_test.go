@@ -170,7 +170,7 @@ func TestP24_RestockSuggestions_seededVelocity(t *testing.T) {
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, orgID, siteID, "sn-rest-p24-"+uuid.NewString()[:8])
+VALUES ($1, $2, $3, $4, 'online', now(), 1)`, machineID, orgID, siteID, "sn-rest-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO products (id, organization_id, sku, name) VALUES ($1, $2, 'SKU2', 'Water')`, productID, orgID)
@@ -188,8 +188,9 @@ VALUES ($1, $2, 0, 5, 100, 1)`, machineID, planogramID)
 	orderID := uuid.New()
 	fix(`INSERT INTO orders (id, organization_id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor)
 VALUES ($1, $2, $3, 'completed', 'USD', 100, 0, 100)`, orderID, orgID, machineID)
+	completedAt := time.Now().UTC().Add(-72 * time.Hour)
 	fix(`INSERT INTO vend_sessions (order_id, machine_id, slot_index, product_id, state, completed_at)
-VALUES ($1, $2, 0, $3, 'success', now())`, orderID, machineID, productID)
+VALUES ($1, $2, 0, $3, 'success', $4)`, orderID, machineID, productID, completedAt)
 
 	out, err := svc.RestockSuggestions(ctx, inventoryadmin.RefillForecastParams{
 		OrganizationID:     orgID,
