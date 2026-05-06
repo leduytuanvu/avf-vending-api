@@ -45,6 +45,12 @@ Thumbs.db
 # Local E2E shell harness artifacts (planned scripts under tests/e2e/)
 .e2e-runs/
 
+# Local Go integration / PowerShell workflow output (.test-runs/<timestamp>/)
+.test-runs/
+
+# Postman desktop local workspace metadata (not docs/postman JSON collections)
+.postman/
+
 # Local CI/security reports
 ci-reports/
 security-reports/
