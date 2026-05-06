@@ -1,0 +1,195 @@
+{
+  "generated_at_utc": "2026-05-06T12:00:00Z",
+  "base_url": "https://api.ldtv.dev",
+  "audited_env_file": "tests/e2e/.env.production.destructive.local",
+  "gitignore": {
+    "tests/e2e/.env.production.destructive.local": true,
+    ".e2e-runs/": true
+  },
+  "read_only_health": {
+    "health_live": "pass",
+    "health_ready": "pass",
+    "version": "pass",
+    "response_bodies": "HTTP 200; bodies saved only on auditor workstation under a temp directory (not repo). Do not commit response files."
+  },
+  "env_classification_summary": {
+    "BASE_URL": "present_non_secret",
+    "E2E_TARGET": "present_non_secret",
+    "E2E_ENABLE_FLOW_REVIEW": "present_non_secret",
+    "E2E_WARN_SLOW_MS": "present_non_secret",
+    "E2E_FAIL_ON_P0_FINDINGS": "present_non_secret",
+    "E2E_FAIL_ON_P1_FINDINGS": "present_non_secret",
+    "E2E_ALLOW_WRITES": "present_non_secret",
+    "E2E_ALLOW_DESTRUCTIVE": "present_non_secret",
+    "E2E_ALLOW_DESTRUCTIVE_CLEANUP": "present_non_secret",
+    "E2E_PRODUCTION_WRITE_CONFIRMATION": "present_non_secret",
+    "E2E_PRODUCTION_DESTRUCTIVE_CONFIRMATION": "present_non_secret",
+    "E2E_ALLOW_REAL_PAYMENT": "present_non_secret",
+    "E2E_ALLOW_REAL_DISPENSE": "present_non_secret",
+    "E2E_ALLOW_REAL_MACHINE_COMMANDS": "present_non_secret",
+    "E2E_ALLOW_EXTERNAL_NOTIFICATIONS": "present_non_secret",
+    "ADMIN_TOKEN": "missing_required",
+    "ADMIN_EMAIL": "missing_optional",
+    "ADMIN_PASSWORD": "missing_optional",
+    "E2E_ORGANIZATION_ID": "missing_required",
+    "MACHINE_ID": "missing_required",
+    "MACHINE_TOKEN": "missing_required",
+    "E2E_ACTIVATION_CODE": "missing_optional",
+    "GRPC_ADDR": "present_non_secret",
+    "GRPC_USE_REFLECTION": "present_non_secret",
+    "GRPC_PROTO_ROOT": "missing_optional",
+    "MQTT_HOST": "missing_required",
+    "MQTT_PORT": "present_non_secret",
+    "MQTT_USE_TLS": "present_non_secret",
+    "MQTT_USERNAME": "missing_optional",
+    "MQTT_PASSWORD": "missing_optional",
+    "MQTT_CLIENT_ID": "present_non_secret",
+    "E2E_TEST_ORG_NAME": "present_non_secret",
+    "E2E_TEST_SITE_NAME": "present_non_secret",
+    "E2E_TEST_MACHINE_SERIAL": "present_non_secret",
+    "E2E_TEST_PRODUCT_PREFIX": "present_non_secret",
+    "E2E_TEST_SLOT_CODE": "present_non_secret",
+    "E2E_PAYMENT_MODE": "present_non_secret",
+    "DATABASE_URL": "absent_optional",
+    "E2E_ALLOW_DIRECT_DB_WRITE": "absent_optional",
+    "E2E_DIRECT_DB_WRITE_CONFIRMATION": "absent_optional",
+    "E2E_MEDIA_TEST_FILE": "absent_optional",
+    "E2E_ALLOW_OBJECT_STORAGE_WRITE": "absent_optional",
+    "COMMERCE_PAYMENT_WEBHOOK_SECRET": "absent_optional"
+  },
+  "sections": {
+    "core_flags": {
+      "status": "ready",
+      "missing": [],
+      "notes": [
+        "All required destructive confirmations and write flags match harness expectations for production destructive template.",
+        "Irreversible side-effect flags are false — real PSP, dispense, machine commands, external notifications remain blocked."
+      ]
+    },
+    "admin_auth": {
+      "status": "blocked",
+      "admin_auth_status": "no_token_no_password_login_ready",
+      "login_endpoint_found": "POST /v1/auth/login",
+      "login_reference": "internal/httpserver/auth_http.go mount under /v1/auth; tests/e2e/scenarios/01_web_admin_setup.sh",
+      "required_missing_fields": [
+        "ADMIN_TOKEN",
+        "E2E_ORGANIZATION_ID",
+        "Either (ADMIN_EMAIL and ADMIN_PASSWORD) or ADMIN_TOKEN"
+      ],
+      "notes": [
+        "If ADMIN_TOKEN is set, E2E_ORGANIZATION_ID is still required unless org id is in reused test-data.json.",
+        "Email/password path requires ADMIN_EMAIL, ADMIN_PASSWORD, and E2E_ORGANIZATION_ID per 01_web_admin_setup.sh."
+      ]
+    },
+    "test_namespace": {
+      "status": "ready",
+      "missing": [],
+      "notes": [
+        "E2E_* naming fields present in .env.production.destructive.local for org/site/product/slot."
+      ]
+    },
+    "database": {
+      "status": "not_applicable_for_standard_harness",
+      "canonical_backend_var": "DATABASE_URL",
+      "missing": [],
+      "notes": [
+        "Backend and ops use DATABASE_URL (see internal/config/deployment_env.go). E2E runners create state via REST/gRPC, not direct DSN in .env.",
+        "E2E_ALLOW_DIRECT_DB_WRITE / E2E_DIRECT_DB_WRITE_CONFIRMATION are not referenced by current tests/e2e harness — treat as future/operator-only if adding psql seed scripts."
+      ]
+    },
+    "grpc": {
+      "status": "blocked",
+      "grpc_proto_root_derivable": "proto",
+      "missing": [
+        "MACHINE_ID",
+        "MACHINE_TOKEN",
+        "E2E_ACTIVATION_CODE or secrets from prior run",
+        "GRPC_PROTO_ROOT (empty in local file — should be set to repo proto root when running from checkout)"
+      ],
+      "notes": [
+        "Proto sources live under repo path proto/avf/machine/v1/*.proto.",
+        "Harness e2e_grpc.sh uses grpcurl -plaintext only; production GRPC_ADDR on :443 typically implies TLS — likely needs harness or grpcurl flag work before full prod gRPC E2E.",
+        "GRPC_USE_REFLECTION=false — protos must be imported from GRPC_PROTO_ROOT."
+      ]
+    },
+    "mqtt": {
+      "status": "blocked",
+      "documentation_host_hint": "mqtt.ldtv.dev",
+      "missing": [
+        "MQTT_HOST in current .env.production.destructive.local",
+        "MQTT_USERNAME",
+        "MQTT_PASSWORD"
+      ],
+      "notes": [
+        "Runbook docs/runbooks/production-2-vps.md lists MQTT domain mqtt.ldtv.dev; broker ACLs/credentials are operator-provided.",
+        "Do not publish/subscribe in audit; scenarios under tests/e2e/scenarios/3*_mqtt_*.sh document expected flows.",
+        "Optional TLS client certs (MQTT_CA_CERT, MQTT_CLIENT_CERT, MQTT_CLIENT_KEY) not set — may be required for mTLS deployments."
+      ]
+    },
+    "payment": {
+      "status": "blocked_for_signed_webhook_mock",
+      "e2e_mode": "mock_or_sandbox_only",
+      "backend_env_reference": [
+        "PAYMENT_ENV",
+        "COMMERCE_PAYMENT_PROVIDER",
+        "COMMERCE_PAYMENT_WEBHOOK_SECRET",
+        "COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET",
+        "PAYMENT_WEBHOOK_SECRET",
+        "COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED (dev/test only per internal/config)"
+      ],
+      "notes": [
+        "E2E_ALLOW_REAL_PAYMENT=false — live PSP capture must remain off.",
+        "Phase 8 scenario 42_e2e_qr_payment_success_mock.sh signs webhooks using COMMERCE_PAYMENT_WEBHOOK_SECRET or legacy aliases from process env — operator must inject matching server secret for valid HMAC tests against prod.",
+        "Production PAYMENT_ENV is live per config rules; sandbox/mock path still depends on provider configuration and test data — classify further after admin + machine setup."
+      ]
+    },
+    "hardware_commands": {
+      "status": "blocked_external",
+      "e2e_allow_real_dispense": false,
+      "e2e_allow_real_machine_commands": false,
+      "e2e_allow_external_notifications": false,
+      "command_surface_notes": [
+        "MachineCommandService defines command_type string + payload Struct (proto/avf/machine/v1/command.proto) — specific dangerous types are policy/content-dependent.",
+        "Treat dispense, reboot, unlock, door, cashbox access, firmware push, and similar as high-risk unless E2E_ALLOW_REAL_MACHINE_COMMANDS=true and E2E_ALLOW_REAL_DISPENSE=true."
+      ],
+      "notes": [
+        "Synthetic MQTT command ACK tests may still run with broker credentials without real hardware if scenarios use noop/safe topics — subject to MQTT blockers above."
+      ]
+    },
+    "media_storage": {
+      "status": "optional_fixture_missing",
+      "notes": [
+        "No tests/e2e/fixtures/ media file in repo yet; propose tests/e2e/fixtures/test-product-image.png for future upload scenarios.",
+        "E2E_MEDIA_TEST_FILE / E2E_ALLOW_OBJECT_STORAGE_WRITE not set in destructive env."
+      ]
+    }
+  },
+  "can_run": {
+    "production_readonly": true,
+    "web_admin_full": false,
+    "vending_rest_equivalent": false,
+    "grpc_machine": false,
+    "mqtt": false,
+    "payment_mock": false,
+    "real_payment": false,
+    "real_hardware_commands": false,
+    "direct_db_seed": false
+  },
+  "missing_required_inputs": [
+    "ADMIN_TOKEN or (ADMIN_EMAIL + ADMIN_PASSWORD + E2E_ORGANIZATION_ID)",
+    "E2E_ORGANIZATION_ID when using password login or when ADMIN_TOKEN lacks org context in test-data",
+    "MACHINE_ID and (MACHINE_TOKEN or E2E_ACTIVATION_CODE) for machine/gRPC/MQTT-heavy phases",
+    "MQTT_HOST (+ likely MQTT_USERNAME/MQTT_PASSWORD) for MQTT phases",
+    "GRPC_PROTO_ROOT when running grpcurl with GRPC_USE_REFLECTION=false",
+    "Likely TLS/grpcurl compatibility for api.ldtv.dev:443 beyond current -plaintext harness"
+  ],
+  "operator_actions": [
+    "Copy updated tests/e2e/.env.production.destructive.example into tests/e2e/.env.production.destructive.local and merge your secrets (never commit .local).",
+    "Set MQTT_HOST (e.g. mqtt.ldtv.dev per runbook) and broker credentials from ops.",
+    "Set E2E_ORGANIZATION_ID to the target org UUID for admin login, or provide ADMIN_TOKEN plus org in reused test-data.json.",
+    "Provide MACHINE_TOKEN via prior run secrets.private.json reuse, or MACHINE_ID + E2E_ACTIVATION_CODE for claim flows.",
+    "Set GRPC_PROTO_ROOT to the absolute or repo-relative proto directory (e.g. proto) from your checkout.",
+    "If exercising signed payment webhooks, export COMMERCE_PAYMENT_WEBHOOK_SECRET (or HMAC alias) matching server config without committing it.",
+    "Re-run this audit after filling: use static flow review command in production-e2e-missing-inputs.md"
+  ]
+}
