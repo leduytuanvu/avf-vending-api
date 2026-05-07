@@ -22,7 +22,10 @@ func cleanupMachineSetupArtifacts(ctx context.Context, t *testing.T, pool *pgxpo
 	t.Helper()
 	_, err := pool.Exec(ctx, `DELETE FROM inventory_events WHERE machine_id = $1`, machineID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `DELETE FROM machine_slot_configs WHERE machine_id = $1`, machineID)
+	_, err = pool.Exec(ctx, `
+DELETE FROM machine_slot_configs
+WHERE machine_id = $1
+   OR machine_slot_layout_id IN (SELECT id FROM machine_slot_layouts WHERE machine_id = $1)`, machineID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `DELETE FROM machine_slot_layouts WHERE machine_id = $1`, machineID)
 	require.NoError(t, err)
