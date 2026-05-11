@@ -1,0 +1,101 @@
+{
+  "generated_at": "2026-05-11T15:38:00Z",
+  "final_claim": "BLOCKED: Production-readiness proof cannot be completed because required environment/tooling/URL/provider/hardware is missing.",
+  "baseline": {
+    "branch": "test/production-full-destructive-e2e",
+    "commit": "d9c60e3c8c29a3032c4cf2c133a0e7c9bae250f9",
+    "e2e_run_dir": ".e2e-runs/run-20260511T143948Z-409-30449",
+    "full_local_e2e": {
+      "status": "pass",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "local_gates": [
+    {
+      "name": "go vet ./...",
+      "status": "pass"
+    },
+    {
+      "name": "go test ./internal/grpcserver -run TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked -count=1",
+      "status": "pass"
+    },
+    {
+      "name": "go test ./internal/grpcserver -count=1",
+      "status": "pass"
+    },
+    {
+      "name": "go test ./... -count=1",
+      "status": "pass"
+    },
+    {
+      "name": "bash -n scripts/test/run-readonly-smoke.sh",
+      "status": "pass"
+    },
+    {
+      "name": "python -m py_compile scripts/test/rest_critical_live_coverage.py",
+      "status": "pass"
+    },
+    {
+      "name": "docker compose -f deployments/docker/docker-compose.yml --profile broker config",
+      "status": "pass"
+    },
+    {
+      "name": "bash tests/e2e/run-mqtt-local.sh",
+      "status": "pass"
+    },
+    {
+      "name": "python scripts/test/rest_critical_live_coverage.py",
+      "status": "pass"
+    }
+  ],
+  "blocked_gates": [
+    {
+      "name": "go test -race ./... -count=1",
+      "reason": "Local Windows/Git Bash host has no gcc for cgo race builds; Ubuntu CI workflow added but not executed."
+    },
+    {
+      "name": "make test-short",
+      "reason": "make is unavailable locally; Ubuntu CI workflow added but not executed."
+    },
+    {
+      "name": "make api-contract-check",
+      "reason": "make is unavailable locally; Ubuntu CI workflow added but not executed."
+    },
+    {
+      "name": "read-only staging/production smoke",
+      "reason": "No safe base URL configured in STAGING_BASE_URL, PRODUCTION_BASE_URL, PROD_BASE_URL, or BASE_URL_PROD."
+    }
+  ],
+  "critical_rest": {
+    "report": "reports/test/rest-critical-live-coverage.json",
+    "total_critical": 30,
+    "passed": 27,
+    "partial": 3,
+    "scope": "critical REST live coverage only; not full OpenAPI per-operation coverage"
+  },
+  "emqx": {
+    "docker_health": "healthy",
+    "healthcheck": "in-container MQTT listener on 1883 via /proc/net/tcp",
+    "mqtt_suite": "pass"
+  },
+  "secret_audit": {
+    "status": "pass",
+    "notes": "No unredacted local fixture values, JWT-shaped tokens, or Bearer-shaped secrets found in reports."
+  },
+  "changed_proof_files": [
+    ".github/workflows/production-proof.yml",
+    "deployments/docker/docker-compose.yml",
+    "internal/grpcserver/machine_commerce_grpc_integration_test.go",
+    "scripts/test/run-readonly-smoke.sh",
+    "scripts/test/rest_critical_live_coverage.py",
+    "reports/test/NEXT_PRODUCTION_PROOF_PLAN.md",
+    "reports/test/readonly-smoke.json",
+    "reports/test/readonly-smoke.md",
+    "reports/test/rest-critical-live-coverage.json",
+    "reports/test/rest-critical-live-coverage.md",
+    "reports/test/PRODUCTION_PROOF_REPORT.md",
+    "reports/test/PRODUCTION_PROOF_REPORT.json"
+  ]
+}

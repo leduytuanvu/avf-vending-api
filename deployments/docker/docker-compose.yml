@@ -65,7 +65,10 @@ services:
     volumes:
       - emqx_data:/opt/emqx/data
     healthcheck:
-      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      # The EMQX 5.6 local image can serve MQTT while `emqx ctl status`
+      # intermittently cannot ping the node after long Windows Docker Desktop
+      # uptime. For local E2E readiness, verify the in-container MQTT listener.
+      test: ["CMD-SHELL", "grep -qi ':075B' /proc/net/tcp /proc/net/tcp6"]
       interval: 10s
       timeout: 5s
       retries: 30
