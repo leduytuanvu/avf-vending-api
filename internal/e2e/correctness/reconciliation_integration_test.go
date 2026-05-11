@@ -14,9 +14,25 @@ import (
 func TestP06_E2E_Reconciliation_paidVendFailedCaseIsIdempotent(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	repo := postgres.NewCommerceReconcileRepository(pool)
+	store := postgres.NewStore(pool)
 
-	orderID := uuid.New()
+	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
+		OrganizationID: testfixtures.DevOrganizationID,
+		MachineID:      testfixtures.DevMachineID,
+		ProductID:      testfixtures.DevProductWater,
+		SlotIndex:      1,
+		Currency:       "USD",
+		SubtotalMinor:  200,
+		TaxMinor:       0,
+		TotalMinor:     200,
+		IdempotencyKey: "p06-recon-order-" + uuid.NewString(),
+		OrderStatus:    "created",
+		VendState:      "pending",
+	})
+	require.NoError(t, err)
+	orderID := orderRes.Order.ID
+
+	repo := postgres.NewCommerceReconcileRepository(pool)
 	in := commerce.ReconciliationCaseInput{
 		OrganizationID: testfixtures.DevOrganizationID,
 		CaseType:       "payment_paid_vend_failed",

@@ -8,6 +8,7 @@ ALTER TABLE machines
     ADD COLUMN IF NOT EXISTS revoked_at timestamptz,
     ADD COLUMN IF NOT EXISTS rotated_at timestamptz;
 
+-- +goose StatementBegin
 DO $$
 DECLARE
     constraint_name text;
@@ -26,6 +27,7 @@ BEGIN
         EXECUTE format('ALTER TABLE machines DROP CONSTRAINT %I', constraint_name);
     END IF;
 END $$;
+-- +goose StatementEnd
 
 UPDATE machines
 SET status = CASE status
@@ -79,6 +81,16 @@ ALTER TABLE technician_machine_assignments
 ALTER TABLE machines
     DROP CONSTRAINT IF EXISTS machines_status_check;
 
+UPDATE machines
+SET status = CASE status
+    WHEN 'draft' THEN 'provisioning'
+    WHEN 'active' THEN 'online'
+    WHEN 'suspended' THEN 'maintenance'
+    WHEN 'compromised' THEN 'maintenance'
+    ELSE status
+END
+WHERE status IN ('draft', 'active', 'suspended', 'compromised');
+
 ALTER TABLE machines
     ADD CONSTRAINT machines_status_check
     CHECK (status IN ('provisioning', 'online', 'offline', 'maintenance', 'retired'));
@@ -89,6 +101,5 @@ ALTER TABLE machines
     DROP COLUMN IF EXISTS activated_at,
     DROP COLUMN IF EXISTS cabinet_type;
 
-ALTER TABLE machines
 ALTER TABLE sites
     DROP COLUMN IF EXISTS contact_info;

@@ -23,8 +23,10 @@ MT="$(get_secret machineToken 2>/dev/null || true)"
 export MACHINE_TOKEN="$MT"
 export MACHINE_ID="$MID"
 
-META="$(jq -nc --arg o "$ORG" --arg m "$MID" --arg rid "g24-$(date +%s)" \
-  '{organizationId:$o, machineId:$m, requestId:$rid}')"
+TS_RFC3339="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+RID="g24-$(date +%s)"
+META="$(jq -nc --arg o "$ORG" --arg m "$MID" --arg rid "$RID" --arg ts "$TS_RFC3339" --arg ik "${RID}-meta" \
+  '{organizationId:$o, machineId:$m, requestId:$rid, occurredAt:$ts, idempotencyKey:$ik}')"
 
 GU_BODY="$(jq -nc --argjson meta "$META" '{meta:$meta}')"
 grpc_contract_try "$FLOW_ID" "get-assigned-update" MachineCommandService GetAssignedUpdate "$GU_BODY" "g24-assigned" "" || ec=1
@@ -39,7 +41,8 @@ else
 fi
 
 DIAG_BODY="$(jq -nc --argjson meta "$META" \
-  '{meta:$meta, requestId:"e2e-grpc-diag-req", storageKey:"e2e/diag/object",
+  --arg rid "$(e2e_python -c 'import uuid; print(uuid.uuid4())' 2>/dev/null || echo \"00000000-0000-0000-0000-000000000000\")" \
+  '{meta:$meta, requestId:$rid, storageKey:"e2e/diag/object",
     storageProvider:"test", contentType:"application/zip", sizeBytes:1, sha256Hex:"00"}')"
 grpc_contract_try "$FLOW_ID" "report-diagnostic-bundle" MachineCommandService ReportDiagnosticBundleResult "$DIAG_BODY" "g24-diag" "g24-diag" || ec=1
 

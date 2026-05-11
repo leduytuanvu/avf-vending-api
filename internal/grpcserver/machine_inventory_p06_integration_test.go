@@ -8,19 +8,19 @@ import (
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestP06_MachineGRPC_FillReport_AppliesExpectedStock(t *testing.T) {
-	t.Parallel()
-
-	pool := machineGRPCTestPool(t)
+	pool := machineGRPCTestPoolWithDevSeedSessionLock(t)
+	ensureDevMachineOnlineForInventoryGRPC(t, pool)
 	ctx := context.Background()
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
-	conn := dialMachineCommerceServer(t, srv)
+	grpcConn := dialMachineCommerceServer(t, srv)
 	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
-	cli := machinev1.NewMachineInventoryServiceClient(conn)
+	cli := machinev1.NewMachineInventoryServiceClient(grpcConn)
 
 	var qtyBefore int32
 	require.NoError(t, pool.QueryRow(ctx,
@@ -52,14 +52,13 @@ func TestP06_MachineGRPC_FillReport_AppliesExpectedStock(t *testing.T) {
 }
 
 func TestP06_MachineGRPC_StockAdjustment_IsAudited(t *testing.T) {
-	t.Parallel()
-
-	pool := machineGRPCTestPool(t)
+	pool := machineGRPCTestPoolWithDevSeedSessionLock(t)
+	ensureDevMachineOnlineForInventoryGRPC(t, pool)
 	ctx := context.Background()
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
-	conn := dialMachineCommerceServer(t, srv)
+	grpcConn := dialMachineCommerceServer(t, srv)
 	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
-	cli := machinev1.NewMachineInventoryServiceClient(conn)
+	cli := machinev1.NewMachineInventoryServiceClient(grpcConn)
 
 	var qtyBefore int32
 	require.NoError(t, pool.QueryRow(ctx,
@@ -96,14 +95,13 @@ WHERE organization_id = $1 AND action = $2 AND resource_id = $3`,
 }
 
 func TestP06_MachineGRPC_StockAdjustment_IdempotentLedgerReplayNoDoubleDelta(t *testing.T) {
-	t.Parallel()
-
-	pool := machineGRPCTestPool(t)
+	pool := machineGRPCTestPoolWithDevSeedSessionLock(t)
+	ensureDevMachineOnlineForInventoryGRPC(t, pool)
 	ctx := context.Background()
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
-	conn := dialMachineCommerceServer(t, srv)
+	grpcConn := dialMachineCommerceServer(t, srv)
 	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
-	cli := machinev1.NewMachineInventoryServiceClient(conn)
+	cli := machinev1.NewMachineInventoryServiceClient(grpcConn)
 
 	var qtyBefore int32
 	require.NoError(t, pool.QueryRow(ctx,
@@ -148,3 +146,10 @@ func TestP06_MachineGRPC_StockAdjustment_IdempotentLedgerReplayNoDoubleDelta(t *
 }
 
 func ptrString(s string) *string { return &s }
+
+func ensureDevMachineOnlineForInventoryGRPC(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := context.Background()
+	_, err := pool.Exec(ctx, `UPDATE machines SET status = 'online' WHERE id = $1`, testfixtures.DevMachineID)
+	require.NoError(t, err)
+}

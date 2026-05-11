@@ -20,17 +20,25 @@ func cleanupActiveOperatorSession(t *testing.T, pool *pgxpool.Pool, machineID uu
 	t.Helper()
 	ctx := context.Background()
 	repo := postgres.NewOperatorRepository(pool)
-	sess, err := repo.GetActiveSessionByMachineID(ctx, machineID)
-	if errors.Is(err, domainoperator.ErrNoActiveSession) {
+	for range 10 {
+		sess, err := repo.GetActiveSessionByMachineID(ctx, machineID)
+		if errors.Is(err, domainoperator.ErrNoActiveSession) {
+			return
+		}
+		require.NoError(t, err)
+		_, err = repo.EndOperatorSession(ctx, domainoperator.EndOperatorSessionParams{
+			SessionID: sess.ID,
+			Status:    domainoperator.SessionStatusEnded,
+			EndedAt:   time.Now().UTC(),
+		})
+		if errors.Is(err, domainoperator.ErrSessionNotActive) {
+			// Another connection may have transitioned the row between LIST and FOR UPDATE END.
+			continue
+		}
+		require.NoError(t, err)
 		return
 	}
-	require.NoError(t, err)
-	_, err = repo.EndOperatorSession(ctx, domainoperator.EndOperatorSessionParams{
-		SessionID: sess.ID,
-		Status:    domainoperator.SessionStatusEnded,
-		EndedAt:   time.Now().UTC(),
-	})
-	require.NoError(t, err)
+	require.FailNow(t, "cleanupActiveOperatorSession: exhausted retries clearing active session", machineID.String())
 }
 
 func TestOperatorRepository_EndWithLogoutIsAtomic(t *testing.T) {

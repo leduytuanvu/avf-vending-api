@@ -5,13 +5,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/anomalies"
 	"github.com/avf/avf-vending-api/internal/app/inventoryadmin"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
@@ -29,13 +29,6 @@ func testDSN(t *testing.T) string {
 	return dsn
 }
 
-func moduleRoot(t *testing.T) string {
-	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
-}
-
 func migrateUp(t *testing.T, dsn string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -44,11 +37,15 @@ func migrateUp(t *testing.T, dsn string) {
 	if goBin == "" {
 		goBin = "go"
 	}
+	repoRoot := testfixtures.RepoRoot(t)
+	absRoot, err := filepath.Abs(repoRoot)
+	require.NoError(t, err)
+	migrationsDir := filepath.Join(absRoot, "migrations")
 	cmd := exec.CommandContext(ctx, goBin, "run", "github.com/pressly/goose/v3/cmd/goose@v3.27.0",
-		"-dir", filepath.Join(moduleRoot(t), "migrations"),
+		"-dir", migrationsDir,
 		"postgres", dsn, "up",
 	)
-	cmd.Dir = moduleRoot(t)
+	cmd.Dir = absRoot
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "%s", string(out))
 }
@@ -78,14 +75,15 @@ func TestP24_Sync_OfflineMachineCreatesAnomaly(t *testing.T) {
 	svc, err := anomalies.NewService(pool, inv)
 	require.NoError(t, err)
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'a', 'anom-offline', 'active')`, orgID)
+	slug := "anom-offline-" + uuid.NewString()
+	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'a', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	past := time.Now().UTC().Add(-4 * time.Hour)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'active', $5, 1)`, machineID, orgID, siteID, "sn-offline-p24", past)
+VALUES ($1, $2, $3, $4, 'active', $5, 1)`, machineID, orgID, siteID, "sn-offline-p24-"+uuid.NewString()[:8], past)
 	require.NoError(t, err)
 
 	require.NoError(t, svc.Sync(ctx, orgID))
@@ -113,13 +111,14 @@ func TestP24_Sync_RepeatedVendFailure_Deduped(t *testing.T) {
 	svc, err := anomalies.NewService(pool, inv)
 	require.NoError(t, err)
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'b', 'anom-vend', 'active')`, orgID)
+	slug := "anom-vend-" + uuid.NewString()
+	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'b', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, orgID, siteID, "sn-vend-p24")
+VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, orgID, siteID, "sn-vend-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO products (id, organization_id, sku, name) VALUES ($1, $2, 'SKU1', 'Cola')`, productID, orgID)
@@ -164,13 +163,14 @@ func TestP24_RestockSuggestions_seededVelocity(t *testing.T) {
 	svc, err := anomalies.NewService(pool, inv)
 	require.NoError(t, err)
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'c', 'anom-rest', 'active')`, orgID)
+	slug := "anom-rest-" + uuid.NewString()
+	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'c', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, orgID, siteID, "sn-rest-p24")
+VALUES ($1, $2, $3, $4, 'online', now(), 1)`, machineID, orgID, siteID, "sn-rest-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO products (id, organization_id, sku, name) VALUES ($1, $2, 'SKU2', 'Water')`, productID, orgID)
@@ -188,8 +188,9 @@ VALUES ($1, $2, 0, 5, 100, 1)`, machineID, planogramID)
 	orderID := uuid.New()
 	fix(`INSERT INTO orders (id, organization_id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor)
 VALUES ($1, $2, $3, 'completed', 'USD', 100, 0, 100)`, orderID, orgID, machineID)
+	completedAt := time.Now().UTC().Add(-72 * time.Hour)
 	fix(`INSERT INTO vend_sessions (order_id, machine_id, slot_index, product_id, state, completed_at)
-VALUES ($1, $2, 0, $3, 'success', now())`, orderID, machineID, productID)
+VALUES ($1, $2, 0, $3, 'success', $4)`, orderID, machineID, productID, completedAt)
 
 	out, err := svc.RestockSuggestions(ctx, inventoryadmin.RefillForecastParams{
 		OrganizationID:     orgID,
@@ -219,13 +220,14 @@ func TestP24_Resolve_thenClosed(t *testing.T) {
 	svc, err := anomalies.NewService(pool, inv)
 	require.NoError(t, err)
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'd', 'anom-res', 'active')`, orgID)
+	slug := "anom-res-" + uuid.NewString()
+	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'd', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, orgID, siteID, "sn-res-p24")
+VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, orgID, siteID, "sn-res-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	anomalyID := uuid.New()
@@ -255,13 +257,14 @@ func TestP24_Ignore_thenIgnored(t *testing.T) {
 	svc, err := anomalies.NewService(pool, inv)
 	require.NoError(t, err)
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'e', 'anom-ign', 'active')`, orgID)
+	slug := "anom-ign-" + uuid.NewString()
+	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'e', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, orgID, siteID, "sn-ign-p24")
+VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, orgID, siteID, "sn-ign-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	anomalyID := uuid.New()

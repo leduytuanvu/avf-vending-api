@@ -58,11 +58,8 @@ launch_subscriber() {
   local topic="$1"
   local wait_sec="$2"
   local logf="$3"
-  local -a args=()
-  e2e_mqtt_build_client_args args
-  args+=(-t "$topic" -C 1 -W "$wait_sec" -q 1)
-  mosquitto_sub "${args[@]}" >"${logf}" 2>&1 &
-  echo $!
+  local pid_var="$4"
+  e2e_mqtt_subscribe_background_pid "$topic" "$wait_sec" "$logf" "$pid_var"
 }
 
 CMD_IN="${E2E_MQTT_TOPIC_COMMAND_IN}"
@@ -107,7 +104,7 @@ HTTP_CID=""
 ADMIN_DISPATCH_PASS="no"
 
 if admin_dispatch_ok; then
-  SPID="$(launch_subscriber "$CMD_IN" 45 "$SUB_LOG")"
+  launch_subscriber "$CMD_IN" 45 "$SUB_LOG" SPID
   sleep 1
   BODY='{"commandType":"noop","payload":{}}'
   IDK="e2e-mqtt-dispatch-${RANDOM}-$(date +%s)"
@@ -140,7 +137,7 @@ if [[ -z "$RECV" ]]; then
     --arg mid "$MID" \
     --arg ik "e2e-synthetic-${RANDOM}" \
     '{command_id:$cid, machine_id:$mid, sequence:1, command_type:"noop", payload:{}, idempotency_key:$ik}')"
-  SPID="$(launch_subscriber "$CMD_IN" 25 "$SUB_LOG")"
+  launch_subscriber "$CMD_IN" 25 "$SUB_LOG" SPID
   sleep 1
   e2e_mqtt_publish "$CMD_IN" "$SYN_PAYLOAD" "synthetic-command-publish"
   pub_s=$?

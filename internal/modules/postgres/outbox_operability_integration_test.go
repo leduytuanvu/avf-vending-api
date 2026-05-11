@@ -221,12 +221,12 @@ func TestOutbox_AdminReplayDeadLetter_AuditedInSameTransaction(t *testing.T) {
 		}
 	}
 
-	var auditCount int
+	var prior int
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM audit_events WHERE organization_id = $1 AND action = $2 AND resource_type = 'outbox_events'`,
-		testfixtures.DevOrganizationID, compliance.ActionAdminPlatformOutboxReplay,
-	).Scan(&auditCount))
-	require.Equal(t, 0, auditCount)
+		`SELECT count(*) FROM audit_events WHERE organization_id = $1 AND action = $2 AND resource_type = 'outbox_events' AND resource_id = $3`,
+		testfixtures.DevOrganizationID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
+	).Scan(&prior))
+	require.Equal(t, 0, prior)
 
 	rid := uuid.NewString()
 	resID := strconv.FormatInt(obID, 10)
@@ -246,6 +246,7 @@ func TestOutbox_AdminReplayDeadLetter_AuditedInSameTransaction(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 1, n)
 
+	var auditCount int
 	require.NoError(t, pool.QueryRow(ctx,
 		`SELECT count(*) FROM audit_events WHERE organization_id = $1 AND action = $2 AND resource_id = $3`,
 		testfixtures.DevOrganizationID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),

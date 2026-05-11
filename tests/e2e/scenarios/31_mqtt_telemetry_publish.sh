@@ -40,7 +40,6 @@ PAYLOAD="$(jq -nc \
 set +e
 e2e_mqtt_publish "${E2E_MQTT_TOPIC_TELEMETRY}" "$PAYLOAD" "telemetry"
 pub_ec=$?
-set -e
 if [[ "$pub_ec" -ne 0 ]]; then
   mqtt_contract_record "$FLOW_ID" "publish-heartbeat" "${E2E_MQTT_TOPIC_TELEMETRY}" "fail" "mosquitto_pub_${pub_ec}"
   e2e_append_test_event "$FLOW_ID" "publish-heartbeat" "MQTT" "${E2E_MQTT_TOPIC_TELEMETRY}" "fail" "pub_failed" "{}"

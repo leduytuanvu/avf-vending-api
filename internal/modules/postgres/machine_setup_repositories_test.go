@@ -22,7 +22,10 @@ func cleanupMachineSetupArtifacts(ctx context.Context, t *testing.T, pool *pgxpo
 	t.Helper()
 	_, err := pool.Exec(ctx, `DELETE FROM inventory_events WHERE machine_id = $1`, machineID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `DELETE FROM machine_slot_configs WHERE machine_id = $1`, machineID)
+	_, err = pool.Exec(ctx, `
+DELETE FROM machine_slot_configs
+WHERE machine_id = $1
+   OR machine_slot_layout_id IN (SELECT id FROM machine_slot_layouts WHERE machine_id = $1)`, machineID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `DELETE FROM machine_slot_layouts WHERE machine_id = $1`, machineID)
 	require.NoError(t, err)
@@ -74,6 +77,8 @@ func TestSetupRepository_UpsertMachineTopology(t *testing.T) {
 func TestAssortmentRepository_BindMachineAssortment(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
+	_, err := pool.Exec(ctx, `DELETE FROM machine_assortment_bindings WHERE machine_id = $1`, testfixtures.DevMachineID)
+	require.NoError(t, err)
 	q := db.New(pool)
 
 	assRow, err := q.FleetAdminInsertAssortment(ctx, db.FleetAdminInsertAssortmentParams{
@@ -183,7 +188,7 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch(t *testing.T) {
 	).Scan(&opSess)
 	require.NoError(t, err)
 	require.True(t, opSess.Valid)
-	require.Equal(t, sess.ID, opSess.Bytes)
+	require.Equal(t, sess.ID, uuid.UUID(opSess.Bytes))
 
 	var qty int32
 	err = pool.QueryRow(ctx,
@@ -203,9 +208,10 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch(t *testing.T) {
 		Items: []inventoryapp.AdjustmentItem{{
 			PlanogramID:    testfixtures.DevPlanogramID,
 			SlotIndex:      0,
-			QuantityBefore: origQty - 1,
+			QuantityBefore: origQty,
 			QuantityAfter:  origQty - 1,
 			SlotCode:       "legacy-0",
+			ProductID:      ptrUUID(testfixtures.DevProductCola),
 		}},
 	})
 	require.NoError(t, err)
@@ -218,6 +224,71 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch(t *testing.T) {
 	).Scan(&cnt)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, cnt, 1)
+}
+
+// Publishing current slot configs must keep commerce pricing in sync with the primary machine assortment
+// (CommerceIsProductInMachinePublishedAssortment), not only cabinet slot rows / sale-catalog projection.
+func TestSetupRepository_publishCurrentSyncsCommerceAssortment(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+
+	cleanupMachineSetupArtifacts(ctx, t, pool, testfixtures.DevMachineID, uuid.Nil)
+
+	repo := postgres.NewSetupRepository(pool)
+	require.NoError(t, repo.UpsertMachineTopology(ctx, testfixtures.DevMachineID,
+		[]setupapp.CabinetUpsert{{
+			Code:      "A",
+			Title:     "Alpha",
+			SortOrder: 1,
+			Metadata:  []byte(`{}`),
+		}},
+		[]setupapp.TopologyLayoutUpsert{{
+			CabinetCode: "A",
+			LayoutKey:   "default",
+			Revision:    1,
+			LayoutSpec:  []byte(`{"rows":1}`),
+			Status:      "published",
+		}},
+	))
+
+	slotIdx := int32(1)
+	prod := testfixtures.DevProductCola
+	require.NoError(t, repo.SaveDraftOrCurrentSlotConfigs(ctx, testfixtures.DevMachineID, setupapp.SlotConfigSaveInput{
+		PlanogramID:         testfixtures.DevPlanogramID,
+		PlanogramRevision:   1,
+		PublishAsCurrent:    true,
+		SyncLegacyReadModel: true,
+		Items: []setupapp.SlotConfigSaveItem{{
+			CabinetCode:     "A",
+			LayoutKey:       "default",
+			LayoutRevision:  1,
+			SlotCode:        "S1",
+			LegacySlotIndex: &slotIdx,
+			ProductID:       &prod,
+			MaxQuantity:     10,
+			PriceMinor:      100,
+			EffectiveFrom:   time.Now().UTC(),
+			Metadata:        []byte(`{}`),
+		}},
+	}))
+
+	q := db.New(pool)
+	ok, err := q.CommerceIsProductInMachinePublishedAssortment(ctx, db.CommerceIsProductInMachinePublishedAssortmentParams{
+		ID:             testfixtures.DevMachineID,
+		OrganizationID: testfixtures.DevOrganizationID,
+		ProductID:      prod,
+	})
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	arows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, db.FleetAdminListAssortmentProductsByMachineParams{
+		ID:             testfixtures.DevMachineID,
+		OrganizationID: testfixtures.DevOrganizationID,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, arows)
+	assID := arows[0].AssortmentID
+	defer cleanupMachineSetupArtifacts(ctx, t, pool, testfixtures.DevMachineID, assID)
 }
 
 func ptrUUID(u uuid.UUID) *uuid.UUID { return &u }

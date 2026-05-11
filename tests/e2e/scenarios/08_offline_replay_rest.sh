@@ -67,6 +67,7 @@ SC="$(get_data slotCode)"
 MT="$(get_secret machineToken 2>/dev/null || true)"
 [[ -z "$MT" ]] && { log_error "VM-REST-08: machineToken required"; exit 2; }
 export ADMIN_TOKEN="$MT"
+e2e_http_apply_sale_catalog_currency "$MID" "vm-idem-sale-cat" CUR
 
 IDK="e2e-idem-replay-${MID}-fixture"
 CBODY="$(jq -nc \

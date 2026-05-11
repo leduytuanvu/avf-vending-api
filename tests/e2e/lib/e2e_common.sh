@@ -10,8 +10,37 @@ e2e_strict_mode() {
   set -euo pipefail
 }
 
+# Git Bash on Windows: Mosquitto installs to Program Files but often omits PATH.
+# Idempotent; safe no-op on Linux/macOS/WSL without /c/Program Files.
+e2e_prepend_windows_tool_paths() {
+  [[ "${E2E_WINDOWS_TOOL_PATHS_DONE:-}" == "1" ]] && return 0
+  if [[ ! -d "/c/Program Files" ]] 2>/dev/null; then
+    export E2E_WINDOWS_TOOL_PATHS_DONE=1
+    return 0
+  fi
+  local d
+  for d in "/c/Program Files/Mosquitto" "/c/Program Files/mosquitto"; do
+    if [[ -x "${d}/mosquitto_pub.exe" ]] 2>/dev/null; then
+      case ":${PATH}:" in
+        *":${d}:"*) ;;
+        *) export PATH="${d}:${PATH}" ;;
+      esac
+      break
+    fi
+  done
+  export E2E_WINDOWS_TOOL_PATHS_DONE=1
+}
+
 load_env() {
   local env_file="${1:-}"
+  # If the caller exported E2E_ALLOW_WRITES before sourcing the runner, keep it over values in the env file
+  # (e.g. read-only smoke with E2E_ENV_FILE pointing at a destructive template).
+  local _e2e_allow_writes_was_set=0
+  local _e2e_allow_writes_val=""
+  if [[ -n "${E2E_ALLOW_WRITES+set}" ]]; then
+    _e2e_allow_writes_was_set=1
+    _e2e_allow_writes_val="${E2E_ALLOW_WRITES}"
+  fi
   if [[ -z "${env_file}" ]]; then
     env_file="${E2E_ENV_FILE:-}"
   fi
@@ -19,20 +48,44 @@ load_env() {
     env_file="${E2E_SCRIPT_DIR}/.env"
   fi
   if [[ -f "$env_file" ]]; then
+    # Normalize CRLF .env files (common on Windows) so values don't include `\r`.
+    local _env_tmp=""
+    _env_tmp="$(mktemp)"
+    tr -d '\r' <"$env_file" >"$_env_tmp"
     set -a
     # shellcheck disable=SC1090
-    source "$env_file"
+    source "$_env_tmp"
     set +a
+    rm -f "$_env_tmp"
+  fi
+  if [[ "${_e2e_allow_writes_was_set}" -eq 1 ]]; then
+    export E2E_ALLOW_WRITES="${_e2e_allow_writes_val}"
+  fi
+
+  # Local deterministic mock PSP webhook HMAC — must match the API process (scripts/local/start-api-local.ps1).
+  # Applied only when no secret material is exported (staging/production shells should export real values).
+  if [[ "${E2E_TARGET:=local}" == "local" ]]; then
+    if [[ -z "${COMMERCE_PAYMENT_WEBHOOK_SECRET:-}" ]] && [[ -z "${COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET:-}" ]] && [[ -z "${PAYMENT_WEBHOOK_SECRET:-}" ]] &&
+      [[ -z "${COMMERCE_PAYMENT_WEBHOOK_SECRETS_JSON:-}" ]]; then
+      export COMMERCE_PAYMENT_WEBHOOK_SECRET="e2e-local-commerce-webhook-hmac-not-provider-secret-xx"
+    fi
   fi
 
   : "${BASE_URL:=http://127.0.0.1:8080}"
   : "${GRPC_ADDR:=127.0.0.1:9090}"
+  : "${GRPC_USE_REFLECTION:=true}"
   : "${MQTT_HOST:=127.0.0.1}"
   : "${MQTT_PORT:=1883}"
   : "${POSTMAN_COLLECTION:=docs/postman/avf-vending-api-function-path.postman_collection.json}"
   : "${POSTMAN_ENV:=docs/postman/avf-local.postman_environment.json}"
   : "${E2E_TARGET:=local}"
   : "${E2E_ALLOW_WRITES:=true}"
+  : "${E2E_ALLOW_DESTRUCTIVE:=false}"
+  : "${E2E_ALLOW_DESTRUCTIVE_CLEANUP:=false}"
+  : "${E2E_ALLOW_REAL_PAYMENT:=false}"
+  : "${E2E_ALLOW_REAL_DISPENSE:=false}"
+  : "${E2E_ALLOW_REAL_MACHINE_COMMANDS:=false}"
+  : "${E2E_ALLOW_EXTERNAL_NOTIFICATIONS:=false}"
   : "${E2E_REUSE_DATA:=false}"
   : "${E2E_ENABLE_FLOW_REVIEW:=true}"
   : "${E2E_WARN_SLOW_MS:=1500}"
@@ -40,6 +93,12 @@ load_env() {
   : "${E2E_FAIL_ON_P1_FINDINGS:=false}"
   : "${E2E_GENERATE_OPTIMIZATION_BACKLOG:=true}"
 
+  export E2E_ALLOW_DESTRUCTIVE E2E_ALLOW_DESTRUCTIVE_CLEANUP
+  export E2E_ALLOW_REAL_PAYMENT E2E_ALLOW_REAL_DISPENSE E2E_ALLOW_REAL_MACHINE_COMMANDS
+  export E2E_ALLOW_EXTERNAL_NOTIFICATIONS
+  export GRPC_USE_REFLECTION
+
+  e2e_prepend_windows_tool_paths
   e2e_target_safety_guard
 }
 
@@ -48,6 +107,13 @@ e2e_target_safety_guard() {
     if [[ "${E2E_PRODUCTION_WRITE_CONFIRMATION:-}" != "I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION" ]]; then
       echo "FATAL: E2E_TARGET=production with E2E_ALLOW_WRITES=true requires" >&2
       echo "      E2E_PRODUCTION_WRITE_CONFIRMATION=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION" >&2
+      exit 2
+    fi
+  fi
+  if [[ "${E2E_TARGET}" == "production" && "${E2E_ALLOW_WRITES}" == "true" && "${E2E_ALLOW_DESTRUCTIVE:-false}" == "true" ]]; then
+    if [[ "${E2E_PRODUCTION_DESTRUCTIVE_CONFIRMATION:-}" != "I_UNDERSTAND_DB_WILL_BE_RESET_AFTER_TEST" ]]; then
+      echo "FATAL: production destructive E2E (E2E_ALLOW_DESTRUCTIVE=true) requires" >&2
+      echo "      E2E_PRODUCTION_DESTRUCTIVE_CONFIRMATION=I_UNDERSTAND_DB_WILL_BE_RESET_AFTER_TEST" >&2
       exit 2
     fi
   fi
@@ -307,6 +373,8 @@ Phase runners (same options):
   ./tests/e2e/run-mqtt-local.sh
 EOF
 }
+
+e2e_prepend_windows_tool_paths
 
 # shellcheck disable=SC1091
 source "${E2E_LIB_DIR}/e2e_flow_review.sh"

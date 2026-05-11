@@ -271,8 +271,7 @@ UPDATE machines
 SET
     updated_at = now(),
     status = CASE
-        WHEN status = 'offline' THEN 'online'
-        WHEN status = 'online' THEN 'online'
+        WHEN status IN ('offline', 'online', 'active') THEN 'online'
         ELSE status
     END
 WHERE id = $1

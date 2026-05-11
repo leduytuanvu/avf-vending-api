@@ -28,6 +28,8 @@ e2e_mqtt_resolve_topics() {
   if [[ -z "$mid" ]] && declare -F get_data >/dev/null 2>&1; then
     mid="$(get_data machineId 2>/dev/null || true)"
   fi
+  # Git Bash + Windows jq can yield CRLF; strip CR to keep topics valid UTF-8.
+  mid="${mid//$'\r'/}"
   [[ "$mid" == "null" ]] && mid=""
   if [[ -z "$mid" ]]; then
     log_error "e2e_mqtt: set MQTT_MACHINE_ID or machineId in test-data"
@@ -50,6 +52,8 @@ e2e_mqtt_resolve_topics() {
   layout="$(echo "${MQTT_TOPIC_LAYOUT:-legacy}" | tr '[:upper:]' '[:lower:]')"
   raw="${MQTT_TOPIC_PREFIX:-avf/devices}"
   raw="$(echo "$raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  # Windows `.env` files may carry CRLF; strip carriage returns to avoid malformed MQTT topics.
+  raw="${raw//$'\r'/}"
   prefix="${raw%/}"
   if [[ "$layout" == "enterprise" ]]; then
     export E2E_MQTT_TOPIC_TELEMETRY="${prefix}/machines/${mid}/telemetry"
@@ -107,6 +111,9 @@ e2e_mqtt_publish() {
   local output_name="$3"
   require_cmd mosquitto_pub
 
+  local _had_errexit=0
+  case "$-" in *e*) _had_errexit=1 ;; esac
+
   local dir
   dir="$(e2e_mqtt_log_dir)"
   mkdir -p "$dir"
@@ -128,13 +135,17 @@ e2e_mqtt_publish() {
   set +e
   mosquitto_pub "${args[@]}" >"${logf}" 2>&1
   local ec=$?
-  set -e
+  [[ "${_had_errexit}" -eq 1 ]] && set -e
 
   jq -nc \
     --arg topic "$topic" \
     --argjson exitCode "$ec" \
     '{topic:$topic,exitCode:$exitCode}' >"${dir}/${output_name}.meta.json"
 
+  # 27 is a common mosquitto_* "still connected / no error path" smoke exit on Windows; treat like subscribe probe.
+  if [[ "$ec" -eq 0 ]] || [[ "$ec" -eq 27 ]]; then
+    return 0
+  fi
   return "$ec"
 }
 
@@ -144,6 +155,9 @@ e2e_mqtt_subscribe_once() {
   local timeout_sec="$2"
   local output_name="$3"
   require_cmd mosquitto_sub
+
+  local _had_errexit=0
+  case "$-" in *e*) _had_errexit=1 ;; esac
 
   local dir
   dir="$(e2e_mqtt_log_dir)"
@@ -157,7 +171,7 @@ e2e_mqtt_subscribe_once() {
   set +e
   mosquitto_sub "${args[@]}" >"${logf}" 2>&1
   local ec=$?
-  set -e
+  [[ "${_had_errexit}" -eq 1 ]] && set -e
 
   jq -nc \
     --arg topic "$topic" \
@@ -166,6 +180,22 @@ e2e_mqtt_subscribe_once() {
     '{topic:$topic,timeoutSec:$timeout,exitCode:$exitCode}' >"${dir}/${output_name}.meta.json"
 
   return "$ec"
+}
+
+# Start mosquitto_sub in the current shell (must not use command substitution around this).
+# Writes background PID into the variable named by the 4th argument.
+e2e_mqtt_subscribe_background_pid() {
+  local topic="$1"
+  local timeout_sec="$2"
+  local logf="$3"
+  local pid_var="$4"
+  require_cmd mosquitto_sub
+  mkdir -p "$(dirname "$logf")"
+  local -a args=()
+  e2e_mqtt_build_client_args args
+  args+=(-t "$topic" -C 1 -W "$timeout_sec" -q 1)
+  mosquitto_sub "${args[@]}" >"${logf}" 2>&1 &
+  printf -v "$pid_var" '%s' "$!"
 }
 
 e2e_mqtt_subscribe_accept_connect() {

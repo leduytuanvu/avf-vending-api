@@ -16,9 +16,9 @@ func TestInventoryAdminRefillForecastSlots_unknownOrganizationEmpty(t *testing.T
 	q := db.New(pool)
 	end := time.Now().UTC()
 	start := end.AddDate(0, 0, -14)
-	foreignOrg := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	unknownOrg := uuid.New()
 	rows, err := q.InventoryAdminRefillForecastSlots(ctx, db.InventoryAdminRefillForecastSlotsParams{
-		OrganizationID: foreignOrg,
+		OrganizationID: unknownOrg,
 		Column2:        start,
 		Column3:        end,
 		Column4:        uuid.Nil,

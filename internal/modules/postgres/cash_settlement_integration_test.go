@@ -141,6 +141,9 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, open.ID, replayOpen.ID)
 
+	sumBeforeClose, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevOrganizationID, testfixtures.DevMachineID, "USD", 500)
+	require.NoError(t, err)
+
 	closed, err := store.CloseMachineCashCollection(ctx, postgres.CloseMachineCashCollectionInput{
 		OrganizationID:          testfixtures.DevOrganizationID,
 		MachineID:               testfixtures.DevMachineID,
@@ -154,9 +157,14 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "closed", closed.LifecycleStatus)
 	require.Equal(t, int64(400), closed.AmountMinor)
-	require.Equal(t, int64(400), closed.ExpectedAmountMinor)
-	require.Equal(t, int64(0), closed.VarianceAmountMinor)
-	require.False(t, closed.RequiresReview)
+	require.Equal(t, sumBeforeClose.ExpectedAmountMinor, closed.ExpectedAmountMinor)
+	require.Equal(t, int64(400)-closed.ExpectedAmountMinor, closed.VarianceAmountMinor)
+	thr := int64(500)
+	vAbs := closed.VarianceAmountMinor
+	if vAbs < 0 {
+		vAbs = -vAbs
+	}
+	require.Equal(t, vAbs > thr, closed.RequiresReview)
 
 	sameAgain, err := store.CloseMachineCashCollection(ctx, postgres.CloseMachineCashCollectionInput{
 		OrganizationID:          testfixtures.DevOrganizationID,

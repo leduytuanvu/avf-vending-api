@@ -58,14 +58,16 @@ func TestP06_PaymentReconciliation_providerCapturedLocalPendingVisible(t *testin
 	})
 	require.NoError(t, err)
 
+	provRef := "prov-ref-rec-a-" + uuid.NewString()
+	webhookEv := "evt-rec-a-" + uuid.NewString()
 	whIDem := orderIDem + ":webhook:captured"
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
 		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
-		ProviderReference:       "prov-ref-rec-a",
-		WebhookEventID:          "evt-rec-a",
+		ProviderReference:       provRef,
+		WebhookEventID:          webhookEv,
 		EventType:               "payment.captured",
 		NormalizedPaymentState:  "captured",
 		Payload:                 []byte(`{"normalized_payment_state":"captured"}`),
@@ -138,14 +140,16 @@ func TestP06_PaymentReconciliation_localCapturedMissingProviderEvidenceVisible(t
 	})
 	require.NoError(t, err)
 
+	provRef := "prov-ref-rec-b-" + uuid.NewString()
+	webhookEv := "evt-rec-b-" + uuid.NewString()
 	whIDem := orderIDem + ":webhook:captured"
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
 		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
-		ProviderReference:       "prov-ref-rec-b",
-		WebhookEventID:          "evt-rec-b",
+		ProviderReference:       provRef,
+		WebhookEventID:          webhookEv,
 		EventType:               "payment.captured",
 		NormalizedPaymentState:  "captured",
 		Payload:                 []byte(`{"normalized_payment_state":"captured"}`),
@@ -218,14 +222,16 @@ func TestP06_PaymentReconciliation_appliedWebhookAmountMismatchVisible(t *testin
 	})
 	require.NoError(t, err)
 
+	provRef := "prov-ref-rec-mm-" + uuid.NewString()
+	webhookEv := "evt-rec-mm-" + uuid.NewString()
 	whIDem := orderIDem + ":webhook:captured"
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
 		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
-		ProviderReference:       "prov-ref-rec-mm",
-		WebhookEventID:          "evt-rec-mm",
+		ProviderReference:       provRef,
+		WebhookEventID:          webhookEv,
 		EventType:               "payment.captured",
 		NormalizedPaymentState:  "captured",
 		Payload:                 []byte(`{"normalized_payment_state":"captured"}`),

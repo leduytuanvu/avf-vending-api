@@ -585,17 +585,35 @@ SELECT
     pg.name AS planogram_name,
     mss.slot_index,
     mss.current_quantity,
-    COALESCE(s.max_quantity, 0)::int AS max_quantity,
+    COALESCE(
+        msc.max_quantity,
+        s.max_quantity,
+        0
+    )::int AS max_quantity,
     mss.price_minor,
     mss.planogram_revision_applied,
     mss.updated_at,
-    s.product_id,
+    COALESCE(
+        msc.product_id,
+        s.product_id
+    ) AS product_id,
     pr.sku AS product_sku,
     pr.name AS product_name,
     (mss.current_quantity <= 0) AS is_empty,
     (
-        COALESCE(s.max_quantity, 0) > 0
-        AND mss.current_quantity::float / NULLIF(s.max_quantity, 0)::float < 0.15
+        COALESCE(
+            msc.max_quantity,
+            s.max_quantity,
+            0
+        ) > 0
+        AND mss.current_quantity::float / NULLIF(
+            COALESCE(
+                msc.max_quantity,
+                s.max_quantity,
+                0
+            ),
+            0
+        )::float < 0.15
     ) AS low_stock,
     coalesce(
         (
@@ -689,9 +707,21 @@ SELECT
     )::int AS cabinet_index
 FROM machine_slot_state mss
 JOIN planograms pg ON pg.id = mss.planogram_id
+LEFT JOIN machine_slot_configs msc
+    ON msc.machine_id = mss.machine_id
+        AND msc.slot_index = mss.slot_index
+        AND msc.is_current
 LEFT JOIN slots s ON s.planogram_id = mss.planogram_id
     AND s.slot_index = mss.slot_index
-LEFT JOIN products pr ON pr.id = s.product_id
+LEFT JOIN products pr
+    ON pr.id = COALESCE(msc.product_id, s.product_id)
+        AND pr.organization_id = (
+            SELECT
+                mm.organization_id
+            FROM machines mm
+            WHERE
+                mm.id = mss.machine_id
+        )
 WHERE mss.machine_id = $1
 ORDER BY mss.planogram_id, mss.slot_index
 `

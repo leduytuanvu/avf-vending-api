@@ -81,6 +81,8 @@ PostgreSQL is created with database **`avf_vending`** (see [`deployments/docker/
 
 More detail: [`deployments/docker/README.md`](deployments/docker/README.md). Quick lifecycle targets: `make dev-up`, `make dev-down`, `make dev-migrate`, `make dev-test`, `make dev-reset-db` (see [docs/runbooks/local-dev.md](docs/runbooks/local-dev.md)).
 
+**Windows (PowerShell):** helper scripts under [`scripts/local/`](scripts/local/) write Go test output to **`.test-runs/<timestamp>/`**, E2E harness output to **`.e2e-runs/run-*/`**, and default the API to **port 18080** so you do not collide with Apache on **8080**. See [docs/testing/local-testing-guide.md](docs/testing/local-testing-guide.md) — *Windows PowerShell local full test workflow*.
+
 **Environments:** [docs/runbooks/environment-strategy.md](docs/runbooks/environment-strategy.md) (local, staging, production). Per-environment **example** files (placeholders / safe local defaults only): [`.env.local.example`](.env.local.example), [`.env.staging.example`](.env.staging.example), [`.env.production.example`](.env.production.example).
 
 ## Configuration

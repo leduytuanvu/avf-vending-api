@@ -28,8 +28,16 @@ func TestRollout_TagFilter_SelectsIntersection(t *testing.T) {
 	}()
 
 	m1 := testfixtures.DevMachineID
-	var m2 uuid.UUID
-	require.NoError(t, pool.QueryRow(ctx, `SELECT id FROM machines WHERE organization_id = $1 AND id <> $2 LIMIT 1`, org, m1).Scan(&m2))
+	hw := uuid.MustParse("44444444-4444-4444-4444-444444444444")
+	m2 := uuid.New()
+	_, err = pool.Exec(ctx, `
+INSERT INTO machines (id, organization_id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
+VALUES ($1, $2, $3, $4, $5, 'rollout-tf-b', 'online', 0, 0)`,
+		m2, org, testfixtures.DevSiteID, hw, "sn-rollout-tf-"+m2.String())
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM machines WHERE id = $1`, m2)
+	})
 
 	_, err = pool.Exec(ctx, `INSERT INTO machine_tag_assignments (organization_id, machine_id, tag_id) VALUES ($1,$2,$3), ($1,$2,$4), ($1,$5,$3)`,
 		org, m1, tagA, tagB, m2)

@@ -130,10 +130,12 @@ func TestP06_E2E_PaymentWebhookHTTP_validHMACAccepted(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	ref := "ref-p06-http-" + uuid.NewString()
+	evt := "evt-p06-http-1-" + uuid.NewString()
 	bodyObj := map[string]any{
 		"provider":                 "psp_fixture",
-		"provider_reference":       "ref-p06-http",
-		"webhook_event_id":         "evt-p06-http-1",
+		"provider_reference":       ref,
+		"webhook_event_id":         evt,
 		"event_type":               "payment.captured",
 		"normalized_payment_state": "captured",
 		"payload_json":             map[string]any{"ok": true},
@@ -192,10 +194,12 @@ func TestP06_E2E_PaymentWebhookHTTP_duplicateSignedDeliveryIsIdempotentHTTP(t *t
 	})
 	require.NoError(t, err)
 
+	ref := "ref-dup-" + uuid.NewString()
+	evt := "evt-p06-dup-" + uuid.NewString()
 	bodyObj := map[string]any{
 		"provider":                 "psp_fixture",
-		"provider_reference":       "ref-dup",
-		"webhook_event_id":         "evt-p06-dup",
+		"provider_reference":       ref,
+		"webhook_event_id":         evt,
 		"event_type":               "payment.captured",
 		"normalized_payment_state": "captured",
 		"payload_json":             map[string]any{"ok": true},
@@ -265,7 +269,17 @@ func TestP06_E2E_PaymentWebhookHTTP_invalidHMACRejected(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	body := []byte(`{"provider":"psp_fixture","provider_reference":"r","webhook_event_id":"e1","event_type":"payment.captured","normalized_payment_state":"captured","payload_json":{},"provider_amount_minor":200,"currency":"USD"}`)
+	body, err := json.Marshal(map[string]any{
+		"provider":                 "psp_fixture",
+		"provider_reference":       "r-" + uuid.NewString(),
+		"webhook_event_id":         "e1-" + uuid.NewString(),
+		"event_type":               "payment.captured",
+		"normalized_payment_state": "captured",
+		"payload_json":             map[string]any{},
+		"provider_amount_minor":    200,
+		"currency":                 "USD",
+	})
+	require.NoError(t, err)
 	ts := strconv.FormatInt(time.Now().Unix(), 10)
 
 	rec := httptest.NewRecorder()
@@ -315,7 +329,17 @@ func TestP06_E2E_PaymentWebhookHTTP_oldTimestampRejected(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	body := []byte(`{"provider":"psp_fixture","provider_reference":"r-old","webhook_event_id":"e-old-ts","event_type":"payment.captured","normalized_payment_state":"captured","payload_json":{},"provider_amount_minor":200,"currency":"USD"}`)
+	body, err := json.Marshal(map[string]any{
+		"provider":                 "psp_fixture",
+		"provider_reference":       "r-old-" + uuid.NewString(),
+		"webhook_event_id":         "e-old-ts-" + uuid.NewString(),
+		"event_type":               "payment.captured",
+		"normalized_payment_state": "captured",
+		"payload_json":             map[string]any{},
+		"provider_amount_minor":    200,
+		"currency":                 "USD",
+	})
+	require.NoError(t, err)
 	oldUnix := time.Now().Add(-400 * time.Second).Unix()
 	ts := strconv.FormatInt(oldUnix, 10)
 	mac := hmac.New(sha256.New, []byte(secret))
@@ -371,10 +395,12 @@ func TestP06_E2E_PaymentWebhookHTTP_captureDoesNotAutoCompleteVend(t *testing.T)
 	})
 	require.NoError(t, err)
 
+	refVNC := "ref-vend-nc-" + uuid.NewString()
+	evtVNC := "evt-vend-nc-" + uuid.NewString()
 	bodyObj := map[string]any{
 		"provider":                 "psp_fixture",
-		"provider_reference":       "ref-vend-nc",
-		"webhook_event_id":         "evt-vend-nc",
+		"provider_reference":       refVNC,
+		"webhook_event_id":         evtVNC,
 		"event_type":               "payment.captured",
 		"normalized_payment_state": "captured",
 		"payload_json":             map[string]any{},
@@ -447,10 +473,12 @@ func TestP06_E2E_PaymentWebhookHTTP_amountMismatchCreatesReconciliationCase(t *t
 	})
 	require.NoError(t, err)
 
+	refMM := "ref-mm-" + uuid.NewString()
+	evtMM := "evt-mm-1-" + uuid.NewString()
 	bodyObj := map[string]any{
 		"provider":                 "psp_fixture",
-		"provider_reference":       "ref-mm",
-		"webhook_event_id":         "evt-mm-1",
+		"provider_reference":       refMM,
+		"webhook_event_id":         evtMM,
 		"event_type":               "payment.captured",
 		"normalized_payment_state": "captured",
 		"payload_json":             map[string]any{},
@@ -523,9 +551,13 @@ func TestP06_E2E_PaymentWebhookHTTP_terminalWebhookDoesNotCorruptWhenOutOfOrder(
 	})
 	require.NoError(t, err)
 
+	refTerm := "ref-term-" + uuid.NewString()
+	evtFirst := "evt-term-first-" + uuid.NewString()
+	evtSecond := "evt-term-second-" + uuid.NewString()
+
 	mkJSON := func(evt string) []byte {
 		b, mErr := json.Marshal(map[string]any{
-			"provider": "psp_fixture", "provider_reference": "ref-term", "webhook_event_id": evt,
+			"provider": "psp_fixture", "provider_reference": refTerm, "webhook_event_id": evt,
 			"event_type": "payment.captured", "normalized_payment_state": "captured",
 			"payload_json": map[string]any{}, "provider_amount_minor": 200, "currency": "USD",
 		})
@@ -538,8 +570,8 @@ func TestP06_E2E_PaymentWebhookHTTP_terminalWebhookDoesNotCorruptWhenOutOfOrder(
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
-		ProviderReference:       "ref-term",
-		WebhookEventID:          "evt-term-first",
+		ProviderReference:       refTerm,
+		WebhookEventID:          evtFirst,
 		EventType:               "payment.captured",
 		NormalizedPaymentState:  "captured",
 		Payload:                 []byte(`{}`),
@@ -549,12 +581,12 @@ func TestP06_E2E_PaymentWebhookHTTP_terminalWebhookDoesNotCorruptWhenOutOfOrder(
 		OutboxAggregateType:     "payment",
 		OutboxAggregateID:       payRes.Payment.ID,
 		OutboxIdempotencyKey:    orderIDem + ":wh:first",
-		WebhookValidationStatus: "test_unsigned",
+		WebhookValidationStatus: "unsigned_development",
 	}
 	_, err = store.ApplyPaymentProviderWebhook(ctx, in)
 	require.NoError(t, err)
 
-	body2 := mkJSON("evt-term-second")
+	body2 := mkJSON(evtSecond)
 	ts2, sig2 := p06SignCommerceWebhook(secret, body2)
 	rec := httptest.NewRecorder()
 	httpserver.IntegrationTestCommercePublicPaymentWebhook(app, cfg).ServeHTTP(rec,
@@ -608,10 +640,12 @@ func TestP06_E2E_PaymentWebhookHTTP_expiredTransitionFromCreatedAccepted(t *test
 	})
 	require.NoError(t, err)
 
+	refExp := "ref-exp-1-" + uuid.NewString()
+	evtExp := "evt-exp-1-" + uuid.NewString()
 	bodyObj := map[string]any{
 		"provider":                 "psp_fixture",
-		"provider_reference":       "ref-exp-1",
-		"webhook_event_id":         "evt-exp-1",
+		"provider_reference":       refExp,
+		"webhook_event_id":         evtExp,
 		"event_type":               "payment.expired",
 		"normalized_payment_state": "expired",
 		"payload_json":             map[string]any{},

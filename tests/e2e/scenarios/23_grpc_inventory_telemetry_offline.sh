@@ -19,6 +19,10 @@ ec=0
 ORG="$(get_data organizationId)"
 MID="$(get_data machineId)"
 MT="$(get_secret machineToken 2>/dev/null || true)"
+CAB="$(get_data slotCabinetCode)"
+SC="$(get_data slotCode)"
+SI="${E2E_SLOT_INDEX:-1}"
+PG="$(get_data planogramId)"
 [[ -z "${MT:-}" ]] && { log_error "GRPC-23: machine token required"; exit 2; }
 export MACHINE_TOKEN="$MT"
 export MACHINE_ID="$MID"
@@ -27,41 +31,62 @@ META="$(jq -nc --arg o "$ORG" --arg m "$MID" --arg rid "g23-$(date +%s)" \
   '{organizationId:$o, machineId:$m, requestId:$rid}')"
 
 TS="$(date +%s)"
-DELTA_BODY="$(jq -nc \
-  --arg ik "g23-delta-${TS}" \
-  --arg ce "g23-ce-d-${TS}" \
-  --argjson meta "$META" \
-  '{context:{idempotencyKey:$ik, clientEventId:$ce}, meta:$meta, reason:"machine_reconcile", lines:[]}')"
-grpc_contract_try "$FLOW_ID" "push-inventory-delta" MachineInventoryService PushInventoryDelta "$DELTA_BODY" "g23-inv-delta" "g23-delta-${TS}" || ec=1
+TS_RFC3339="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+[[ -z "${CAB:-}" || "${CAB}" == "null" ]] && CAB="A"
+[[ -z "${SC:-}" || "${SC}" == "null" ]] && SC="A1"
+[[ -z "${PG:-}" || "${PG}" == "null" ]] && PG="cccccccc-cccc-cccc-cccc-000000000001"
 
 SNAP_BODY="$(jq -nc --argjson meta "$META" '{meta:$meta}')"
 grpc_contract_try "$FLOW_ID" "get-inventory-snapshot" MachineInventoryService GetInventorySnapshot "$SNAP_BODY" "g23-inv-snap" "" || ec=1
+QBEFORE="$(jq -r --argjson si "$SI" '((.slots // []) | map(select(.slotIndex == $si)) | .[0].currentQuantity) // empty' "${E2E_RUN_DIR}/grpc/g23-inv-snap.response.json" 2>/dev/null || true)"
+[[ -z "${QBEFORE:-}" || "${QBEFORE}" == "null" ]] && QBEFORE="0"
+
+DELTA_BODY="$(jq -nc \
+  --arg ik "g23-delta-${TS}" \
+  --arg ce "g23-ce-d-${TS}" \
+  --arg ts "$TS_RFC3339" \
+  --argjson meta "$META" \
+  --arg pg "$PG" \
+  --arg cab "$CAB" \
+  --arg sc "$SC" \
+  --argjson si "$SI" \
+  --argjson qb "$QBEFORE" \
+  '{context:{idempotencyKey:$ik, clientEventId:$ce, clientCreatedAt:$ts},
+    meta:$meta,
+    reason:"machine_reconcile",
+    lines:[{planogramId:$pg, slotIndex:$si, quantityBefore:$qb, quantityAfter:$qb, reasonCode:"machine_reconcile", cabinetCode:$cab, slotCode:$sc}] }')"
+grpc_contract_try "$FLOW_ID" "push-inventory-delta" MachineInventoryService PushInventoryDelta "$DELTA_BODY" "g23-inv-delta" "g23-delta-${TS}" || ec=1
 
 TS2="$(date +%s)"
+TS2_RFC3339="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 TEL_BODY="$(jq -nc \
   --arg ik "g23-tb-${TS2}" \
+  --arg ts "$TS2_RFC3339" \
   --argjson meta "$META" \
   --arg eid "g23-ev-${TS2}" \
-  '{context:{idempotencyKey:$ik}, meta:$meta, events:[{eventId:$eid, eventType:"e2e.ping", occurredAt:"2024-01-01T00:00:00Z", bootId:"e2e-boot", clientSequence:1}]}')"
+  '{context:{idempotencyKey:$ik, clientEventId:$ik, clientCreatedAt:$ts}, meta:$meta, events:[{eventId:$eid, eventType:"e2e.ping", occurredAt:"2024-01-01T00:00:00Z", bootId:"e2e-boot", clientSequence:1}]}')"
 grpc_contract_try "$FLOW_ID" "push-telemetry-batch" MachineTelemetryService PushTelemetryBatch "$TEL_BODY" "g23-tel-batch" "g23-tb-${TS2}" || ec=1
 
 TS3="$(date +%s)"
+TS3_RFC3339="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 CRIT_BODY="$(jq -nc \
   --arg ik "g23-ce-${TS3}" \
+  --arg ts "$TS3_RFC3339" \
   --argjson meta "$META" \
   --arg eid "g23-crit-${TS3}" \
-  '{context:{idempotencyKey:$ik}, meta:$meta,
+  '{context:{idempotencyKey:$ik, clientEventId:$ik, clientCreatedAt:$ts}, meta:$meta,
     event:{eventId:$eid, eventType:"e2e.critical", occurredAt:"2024-01-01T00:00:01Z"},
     severity:"warn"}')"
 grpc_contract_try "$FLOW_ID" "push-critical-event" MachineTelemetryService PushCriticalEvent "$CRIT_BODY" "g23-crit" "g23-ce-${TS3}" || ec=1
 
-OFF_BODY="$(jq -nc --argjson meta "$META" '{meta:$meta, events:[]}')"
-grpc_contract_try "$FLOW_ID" "push-offline-events" MachineOfflineSyncService PushOfflineEvents "$OFF_BODY" "g23-offline" "" || ec=1
+OFF_META="$(jq -nc --argjson meta "$META" --arg ik "g23-off-${TS}" --arg ts "$TS_RFC3339" '$meta + {idempotencyKey:$ik, occurredAt:$ts, clientEventId:$ik}')"
+OFF_BODY="$(jq -nc --argjson meta "$OFF_META" '{meta:$meta, events:[]}')"
+grpc_contract_try "$FLOW_ID" "push-offline-events" MachineOfflineSyncService PushOfflineEvents "$OFF_BODY" "g23-offline" "g23-off-${TS}" || ec=1
 
 CUR_BODY="$(jq -nc --argjson meta "$META" '{meta:$meta}')"
 grpc_contract_try "$FLOW_ID" "get-sync-cursor" MachineOfflineSyncService GetSyncCursor "$CUR_BODY" "g23-cursor" "" || ec=1
 
-REC_BODY='{"idempotencyKeys":[]}'
+REC_BODY="$(jq -nc --arg ik "g23-tb-${TS2}" '{idempotencyKeys:[$ik]}')"
 grpc_contract_try "$FLOW_ID" "reconcile-events" MachineTelemetryService ReconcileEvents "$REC_BODY" "g23-recon" "" || ec=1
 
 SCEN="23_grpc_inventory_telemetry_offline.sh"
