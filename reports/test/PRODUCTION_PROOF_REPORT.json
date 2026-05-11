@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-11T17:05:00Z",
-  "final_claim": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
+  "generated_at": "2026-05-11T17:25:00Z",
+  "final_claim": "FAIL: Go Vulnerability Scan failed until the updated CI run passes.",
   "baseline": {
     "branch": "test/production-full-destructive-e2e",
     "commit": "28ca1200d4458da256c1d79569b86d6a492f3d22",
@@ -99,5 +99,21 @@
     "reports/test/rest-critical-live-coverage.md",
     "reports/test/PRODUCTION_PROOF_REPORT.md",
     "reports/test/PRODUCTION_PROOF_REPORT.json"
-  ]
+  ],
+  "security_scan_blocker": {
+    "status": "fail_until_updated_ci_passes",
+    "failed_run_id": 25685173325,
+    "failed_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25685173325",
+    "failed_check": "Go Vulnerability Scan",
+    "root_cause": [
+      "CI used Go 1.25.9 with standard library vulnerabilities fixed in Go 1.25.10",
+      "golang.org/x/net v0.52.0 affected by GO-2026-4918 and fixed in v0.53.0"
+    ],
+    "fix_applied": {
+      "go_toolchain": "1.25.10",
+      "golang.org/x/net": "v0.53.0"
+    },
+    "local_govulncheck": "pass with go1.25.10 and govulncheck@v1.3.0",
+    "ci_required": "updated Go Vulnerability Scan must pass before final claim can return to smoke-only BLOCKED"
+  }
 }

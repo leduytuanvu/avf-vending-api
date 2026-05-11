@@ -1,12 +1,12 @@
 # Production Proof Report
 
-Generated: `2026-05-11T17:05:00Z`
+Generated: `2026-05-11T17:25:00Z`
 
 ## Final Claim
 
-> **BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.**
+> **FAIL: Go Vulnerability Scan failed until the updated CI run passes.**
 
-All executable local gates run during this proof pass completed successfully after one flaky timing test was made deterministic. Ubuntu CI proof now also passed for `go test`, `go test -race`, `make test-short`, and `make api-contract-check`. Full production-readiness proof remains blocked only because no safe staging/production URL is configured for read-only smoke.
+Go Vulnerability Scan failed on PR `203` before this update because CI used Go `1.25.9` and `golang.org/x/net v0.52.0`. This change upgrades the repository toolchain references to Go `1.25.10` and `golang.org/x/net` to `v0.53.0`; production proof remains FAIL until the updated CI security workflow passes. Read-only staging/production smoke also remains blocked because no safe URL is configured.
 
 ## Proven Locally
 
@@ -20,6 +20,15 @@ All executable local gates run during this proof pass completed successfully aft
 - `docker compose -f deployments/docker/docker-compose.yml --profile broker config` passed.
 - Critical REST live coverage generated: `30` scoped critical checks, `27` live 2xx passes, `3` partial/non-2xx items. This is not 100% OpenAPI live coverage.
 - Final secret audit found no unredacted local fixture values, JWT-shaped tokens, or Bearer-shaped secrets in `reports`.
+- Local `govulncheck ./...` passed with explicit `go1.25.10` on `PATH` after installing `golang.org/x/vuln/cmd/govulncheck@v1.3.0`.
+- Local `go test ./... -count=1` did not complete cleanly on this Windows workstation due to integration setup failures/timeouts; CI remains the authoritative proof for the updated branch.
+
+## Security Scan Blocker Discovered
+
+- Failed CI run: `https://github.com/leduytuanvu/avf-vending-api/actions/runs/25685173325`
+- Failed check: `Go Vulnerability Scan`
+- Findings: Go standard library vulnerabilities fixed in Go `1.25.10`, plus `golang.org/x/net@v0.52.0` fixed in `v0.53.0`.
+- Fix applied: `go.mod` toolchain and CI/Docker Go references moved from `1.25.9` to `1.25.10`; `golang.org/x/net` moved to `v0.53.0`.
 
 ## Proven In GitHub Actions
 

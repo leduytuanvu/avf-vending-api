@@ -2,9 +2,9 @@
 
 ## Executive summary
 
-- **Overall status:** BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.
+- **Overall status:** FAIL: Go Vulnerability Scan failed until the updated CI run passes.
 - **Commit SHA:** `28ca1200d4458da256c1d79569b86d6a492f3d22`
-- **UTC time:** `2026-05-11T17:05:00Z`
+- **UTC time:** `2026-05-11T17:25:00Z`
 - **Tools used:** Go test suite, gofmt, go vet, Python coverage generators (`scripts/test/*`), OpenAPI (`docs/swagger/swagger.json`), proto corpus (`proto/`), MQTT contract doc.
 - **REST operations (OpenAPI):** 365 total; probe HTTP 200-ish: **6**; blocked rows: **0**
 - **gRPC methods enumerated:** 85
@@ -53,6 +53,8 @@
 - **Race tests:** passed in GitHub Actions Ubuntu production proof run `25683990468`
 - **Production proof workflow:** `https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683990468`, conclusion success
 - **Makefile gates:** `make test-short` and `make api-contract-check` passed in the production proof workflow
+- **Go vulnerability scan:** failed in CI run `25685173325` on Go `1.25.9` standard-library vulnerabilities and `golang.org/x/net v0.52.0`; this update moves toolchain references to Go `1.25.10` and `golang.org/x/net v0.53.0`
+- **Local govulncheck:** passed with explicit `go1.25.10` and `govulncheck@v1.3.0`
 - **REST OpenAPI coverage:** 365 operations; 99 scripted; 266 partial; 6 live probe OK responses
 - **REST critical live coverage:** 30 critical checks; 27 live 2xx passes; 3 partial/non-2xx items; not full OpenAPI live coverage
 - **gRPC coverage:** 85 methods enumerated; local gRPC suite passed
@@ -70,7 +72,8 @@ REST per-operation live probing remains partial and should not be represented as
 - **Flaky test fix:** `TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked` now deterministically ages its order in Postgres instead of relying on an 80ms sleep.
 - **Affected gates rerun:** `go vet ./...`, `go test ./internal/grpcserver -run TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked -count=1`, `go test ./internal/grpcserver -count=1`, `go test ./... -count=1`, script syntax/compile checks, compose config, MQTT suite, and REST critical coverage generation all passed.
 - **Secret audit:** no unredacted local fixture values, JWT-shaped tokens, or Bearer-shaped secrets found in `reports`.
+- **Security blocker:** updated CI must prove Go `1.25.10` and `golang.org/x/net v0.53.0` via Go Vulnerability Scan before the final claim can return to smoke-only BLOCKED.
 
 ## Final claim (exact)
 
-> **BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.**
+> **FAIL: Go Vulnerability Scan failed until the updated CI run passes.**

@@ -1,8 +1,8 @@
 {
   "executive": {
-    "status_line": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
+    "status_line": "FAIL: Go Vulnerability Scan failed until the updated CI run passes.",
     "commit_sha": "28ca1200d4458da256c1d79569b86d6a492f3d22",
-    "generated_at": "2026-05-11T17:05:00Z",
+    "generated_at": "2026-05-11T17:25:00Z",
     "environment": "local audit host (see audit-commands.json)",
     "rest": {
       "total_operations": 365,
@@ -166,6 +166,20 @@
       "affected_gates_rerun": "pass",
       "secret_audit": "pass"
     },
-    "final_claim": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured."
+    "final_claim": "FAIL: Go Vulnerability Scan failed until the updated CI run passes.",
+    "security_scan": {
+      "status": "fail_until_updated_ci_passes",
+      "failed_run_id": 25685173325,
+      "failed_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25685173325",
+      "failed_check": "Go Vulnerability Scan",
+      "go_toolchain_before": "1.25.9",
+      "go_toolchain_after": "1.25.10",
+      "golang.org/x/net_before": "v0.52.0",
+      "golang.org/x/net_after": "v0.53.0",
+      "local_govulncheck": "pass with go1.25.10 and govulncheck@v1.3.0",
+      "ci_required": "updated Go Vulnerability Scan must pass"
+    },
+    "go_toolchain": "1.25.10",
+    "golang.org/x/net": "v0.53.0"
   }
 }
