@@ -1,8 +1,8 @@
 {
   "executive": {
-    "status_line": "FAIL: Go Vulnerability Scan failed until the updated CI run passes.",
-    "commit_sha": "28ca1200d4458da256c1d79569b86d6a492f3d22",
-    "generated_at": "2026-05-11T17:25:00Z",
+    "status_line": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
+    "commit_sha": "2482821c7222bb008dd1ceb913b3c64c602cadfc",
+    "generated_at": "2026-05-11T17:55:00Z",
     "environment": "local audit host (see audit-commands.json)",
     "rest": {
       "total_operations": 365,
@@ -99,7 +99,7 @@
   },
   "final_full_verification": {
     "branch": "test/production-full-destructive-e2e",
-    "commit": "28ca1200d4458da256c1d79569b86d6a492f3d22",
+    "commit": "2482821c7222bb008dd1ceb913b3c64c602cadfc",
     "environment": "local Docker/local mock only",
     "database": "avf_vending_test_final",
     "api_url": "http://127.0.0.1:18080",
@@ -155,9 +155,9 @@
     "production_proof_addendum": {
       "workflow": ".github/workflows/production-proof.yml",
       "pr_url": "https://github.com/leduytuanvu/avf-vending-api/pull/203",
-      "run_id": 25683990468,
-      "run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683990468",
-      "head_sha": "28ca1200d4458da256c1d79569b86d6a492f3d22",
+      "run_id": 25686909181,
+      "run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686909181",
+      "head_sha": "2482821c7222bb008dd1ceb913b3c64c602cadfc",
       "go_test": "pass",
       "go_test_race": "pass",
       "make_test_short": "pass",
@@ -166,9 +166,9 @@
       "affected_gates_rerun": "pass",
       "secret_audit": "pass"
     },
-    "final_claim": "FAIL: Go Vulnerability Scan failed until the updated CI run passes.",
+    "final_claim": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
     "security_scan": {
-      "status": "fail_until_updated_ci_passes",
+      "status": "pass",
       "failed_run_id": 25685173325,
       "failed_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25685173325",
       "failed_check": "Go Vulnerability Scan",
@@ -177,7 +177,9 @@
       "golang.org/x/net_before": "v0.52.0",
       "golang.org/x/net_after": "v0.53.0",
       "local_govulncheck": "pass with go1.25.10 and govulncheck@v1.3.0",
-      "ci_required": "updated Go Vulnerability Scan must pass"
+      "ci_required": "satisfied: updated Go Vulnerability Scan passed",
+      "passed_run_id": 25686906495,
+      "passed_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686906495"
     },
     "go_toolchain": "1.25.10",
     "golang.org/x/net": "v0.53.0"

@@ -1,12 +1,12 @@
 # Production Proof Report
 
-Generated: `2026-05-11T17:25:00Z`
+Generated: `2026-05-11T17:55:00Z`
 
 ## Final Claim
 
-> **FAIL: Go Vulnerability Scan failed until the updated CI run passes.**
+> **BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.**
 
-Go Vulnerability Scan failed on PR `203` before this update because CI used Go `1.25.9` and `golang.org/x/net v0.52.0`. This change upgrades the repository toolchain references to Go `1.25.10` and `golang.org/x/net` to `v0.53.0`; production proof remains FAIL until the updated CI security workflow passes. Read-only staging/production smoke also remains blocked because no safe URL is configured.
+Go Vulnerability Scan failed on PR `203` before the security update because CI used Go `1.25.9` and `golang.org/x/net v0.52.0`. The repository now uses Go `1.25.10` and `golang.org/x/net v0.53.0`; the updated Security, CI, and Production Proof workflows all passed on commit `2482821c7222bb008dd1ceb913b3c64c602cadfc`. Production-readiness proof remains blocked only because no safe staging/production URL is configured for read-only smoke.
 
 ## Proven Locally
 
@@ -29,6 +29,8 @@ Go Vulnerability Scan failed on PR `203` before this update because CI used Go `
 - Failed check: `Go Vulnerability Scan`
 - Findings: Go standard library vulnerabilities fixed in Go `1.25.10`, plus `golang.org/x/net@v0.52.0` fixed in `v0.53.0`.
 - Fix applied: `go.mod` toolchain and CI/Docker Go references moved from `1.25.9` to `1.25.10`; `golang.org/x/net` moved to `v0.53.0`.
+- Updated Security workflow: `https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686906495` passed, including `Go Vulnerability Scan`.
+- Updated Production Proof workflow: `https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686909181` passed, including `go test`, `go test -race`, `make test-short`, and `make api-contract-check`.
 
 ## Proven In GitHub Actions
 

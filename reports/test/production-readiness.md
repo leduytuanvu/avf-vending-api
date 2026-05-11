@@ -69,7 +69,7 @@ No production writes, vends, refunds, command publishes, payment webhooks, or de
 
 ## Production Proof Addendum
 
-Generated: 2026-05-11T17:25:00Z
+Generated: 2026-05-11T17:55:00Z
 
 - EMQX Docker health is resolved for local proof: the compose healthcheck now verifies the in-container MQTT listener on port 1883, Docker reports `avf-emqx` healthy, and `tests/e2e/run-mqtt-local.sh` passed after the change.
 - Local affected gates passed: `go vet ./...`, `go test ./internal/grpcserver -run TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked -count=1`, `go test ./internal/grpcserver -count=1`, `go test ./... -count=1`, smoke script syntax, REST critical coverage Python compile, compose config, MQTT suite, and REST critical coverage generation.
@@ -79,5 +79,5 @@ Generated: 2026-05-11T17:25:00Z
 - Read-only staging/production smoke remains NOT RUN because no safe URL is configured; artifacts: `reports/test/readonly-smoke.json` and `reports/test/readonly-smoke.md`.
 - Critical REST live coverage artifacts were generated without overclaiming full OpenAPI live coverage: `30` critical checks, `27` live 2xx passes, `3` partial/non-2xx items.
 - Security scan blocker discovered: PR `203` Go Vulnerability Scan failed in run `25685173325` because CI used Go `1.25.9` and `golang.org/x/net v0.52.0`; this update moves the repository to Go `1.25.10` and `golang.org/x/net v0.53.0`.
-- Local `govulncheck ./...` passed with explicit `go1.25.10`; updated CI must still prove the security workflow before the production claim can return to BLOCKED-on-smoke.
-- Final claim: **FAIL: Go Vulnerability Scan failed until the updated CI run passes.**
+- Local `govulncheck ./...` passed with explicit `go1.25.10`; updated CI Security workflow run `25686906495` also passed Go Vulnerability Scan.
+- Final claim: **BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.**
