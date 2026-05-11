@@ -403,6 +403,7 @@ VALUES ($1, $2, $3, $4, $5, $6, 'online', 0, 0)`,
 
 func TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked(t *testing.T) {
 	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
 	cfg := testMachineGRPCConfig()
 	cfg.Commerce.MachineOrderCheckoutMaxAge = 50 * time.Millisecond
 	srv, issuer := machineCommerceTestServer(t, pool, cfg)
@@ -419,7 +420,8 @@ func TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	time.Sleep(80 * time.Millisecond)
+	_, err = pool.Exec(ctx, `UPDATE orders SET created_at = now() - interval '10 minutes' WHERE id = $1::uuid`, co.GetOrderId())
+	require.NoError(t, err)
 
 	_, err = cli.ConfirmCashPayment(md, &machinev1.ConfirmCashPaymentRequest{
 		Context: testCommerceIdemCtx(idem+":c", "evt-c"),

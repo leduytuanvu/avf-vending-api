@@ -104,6 +104,9 @@ func (s *machineTelemetryServer) CheckIn(ctx context.Context, req *machinev1.Che
 			MachineID:     claims.MachineID,
 			LastCheckInAt: pgtype.Timestamptz{Time: wctx.ClientCreatedAt, Valid: true},
 		})
+		// Mark machine connectivity as online/offline for inventory-gated RPCs.
+		// Best-effort: telemetry is not allowed to fail due to connectivity bookkeeping.
+		_ = q.TouchMachineConnectivity(ctx, claims.MachineID)
 		s.recordTelemetryAudit(ctx, claims, actionTelemetryCheckIn, map[string]any{
 			"idempotency_key": wctx.IdempotencyKey,
 			"client_event_id": wctx.ClientEventID,

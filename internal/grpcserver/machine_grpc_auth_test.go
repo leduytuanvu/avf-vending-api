@@ -49,12 +49,12 @@ func testMachineGRPCConfig() *config.Config {
 			DefaultPaymentProvider:      "psp_grpc_int",
 		},
 		Capacity: config.CapacityLimitsConfig{
-			MaxTelemetryGRPCBatchEvents:  500,
-			MaxTelemetryGRPCBatchBytes:   2 << 20,
-			MaxOfflineEventsPerRequest:   200,
-			MaxMediaManifestEntries:      5000,
-			ReportingSyncMaxSpanDays:     366,
-			ReportingExportMaxSpanDays:   730,
+			MaxTelemetryGRPCBatchEvents: 500,
+			MaxTelemetryGRPCBatchBytes:  2 << 20,
+			MaxOfflineEventsPerRequest:  200,
+			MaxMediaManifestEntries:     5000,
+			ReportingSyncMaxSpanDays:    366,
+			ReportingExportMaxSpanDays:  730,
 			WorkerRecoveryScanMaxItems:  200,
 		},
 	}

@@ -1,4 +1,4 @@
-# Shared helpers for scripts\local\*.ps1 — resolve repo root from any invocation path.
+﻿# Shared helpers for scripts\local\*.ps1 — resolve repo root from any invocation path.
 function Get-AvfRepoRoot {
     param(
         # Default: parent of scripts\local (repository root with go.mod)
@@ -110,4 +110,105 @@ function Export-GoTestJsonlSummary {
     }
 
     $failedTests | Set-Content -LiteralPath $OutFailed -Encoding utf8
+}
+
+# ---- E2E report parsing (strict; avoids false positives from "P0" in prose or env-var names) ----
+
+function Get-E2ERemediationStructuredFailureCount {
+    param([string] $RemediationMarkdownPath)
+    if (-not (Test-Path -LiteralPath $RemediationMarkdownPath)) {
+        return -1
+    }
+    $txt = Get-Content -LiteralPath $RemediationMarkdownPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    if ([string]::IsNullOrWhiteSpace($txt)) {
+        return -1
+    }
+    if ($txt -match '(?i)Structured hints for\s+\*\*(\d+)\*\*') {
+        return [int]$Matches[1]
+    }
+    if ($txt -match '(?si)\*\*No failed steps') {
+        return 0
+    }
+    if ($txt -match '(?i)^##\s+Result\b[^\r\n]*(?:\r?\n).*No failed steps') {
+        return 0
+    }
+    return -1
+}
+
+function Get-E2EFlowImprovementSeverityTotals {
+    param([string] $SnapshotDir)
+
+    $scorePath = Join-Path $SnapshotDir 'flow-review-scorecard.json'
+    if (Test-Path -LiteralPath $scorePath) {
+        try {
+            $json = Get-Content -LiteralPath $scorePath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+            $rows = @($json)
+            $p0Sum = 0
+            $p1Sum = 0
+            foreach ($row in $rows) {
+                if ($null -eq $row) { continue }
+                $fc = $row.finding_counts
+                if ($null -ne $fc) {
+                    if ($null -ne $fc.P0) { $p0Sum += [int]$fc.P0 }
+                    if ($null -ne $fc.P1) { $p1Sum += [int]$fc.P1 }
+                }
+            }
+            return [pscustomobject]@{
+                P0Count       = $p0Sum
+                P1Count       = $p1Sum
+                Source        = 'flow-review-scorecard.json'
+                SourcePath    = $scorePath
+            }
+        }
+        catch {
+            # Fall through to markdown fallbacks
+        }
+    }
+
+    $summaryPath = Join-Path $SnapshotDir 'summary.md'
+    if (Test-Path -LiteralPath $summaryPath) {
+        $txt = Get-Content -LiteralPath $summaryPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+        $p0m = [regex]::Match($txt, '(?im)^\s*-\s*P0:\s*\*\*\s*(\d+)\s*\*\*')
+        $p1m = [regex]::Match($txt, '(?im)^\s*-\s*P1:\s*\*\*\s*(\d+)\s*\*\*')
+        if ($p0m.Success -and $p1m.Success) {
+            return [pscustomobject]@{
+                P0Count       = [int]$p0m.Groups[1].Value
+                P1Count       = [int]$p1m.Groups[1].Value
+                Source        = 'summary.md (Flow Improvement Findings)'
+                SourcePath    = $summaryPath
+            }
+        }
+    }
+
+    $impPath = Join-Path $SnapshotDir 'improvement-summary.md'
+    if (Test-Path -LiteralPath $impPath) {
+        $txt = Get-Content -LiteralPath $impPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+        $tbl0 = [regex]::Match($txt, '(?im)^\|\s*P0\s*\|\s*(\d+)\s*\|')
+        $tbl1 = [regex]::Match($txt, '(?im)^\|\s*P1\s*\|\s*(\d+)\s*\|')
+        if ($tbl0.Success -and $tbl1.Success) {
+            return [pscustomobject]@{
+                P0Count       = [int]$tbl0.Groups[1].Value
+                P1Count       = [int]$tbl1.Groups[1].Value
+                Source        = 'improvement-summary.md (count table)'
+                SourcePath    = $impPath
+            }
+        }
+        $exec0 = [regex]::Match($txt, '\*\*P0=(\d+)\*\*')
+        $exec1 = [regex]::Match($txt, '\*\*P1=(\d+)\*\*')
+        if ($exec0.Success -and $exec1.Success) {
+            return [pscustomobject]@{
+                P0Count       = [int]$exec0.Groups[1].Value
+                P1Count       = [int]$exec1.Groups[1].Value
+                Source        = 'improvement-summary.md (executive summary)'
+                SourcePath    = $impPath
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        P0Count       = -1
+        P1Count       = -1
+        Source        = 'none'
+        SourcePath    = ''
+    }
 }

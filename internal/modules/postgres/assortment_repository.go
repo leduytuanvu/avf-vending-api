@@ -41,15 +41,39 @@ func (r *AssortmentRepository) BindMachineAssortment(ctx context.Context, in ass
 		return err
 	}
 
-	n, err := q.FleetAdminBindMachinePrimaryAssortment(ctx, db.FleetAdminBindMachinePrimaryAssortmentParams{
-		OrganizationID: m.OrganizationID,
-		ID:             in.MachineID,
-		AssortmentID:   in.AssortmentID,
-	})
+	if _, err := tx.Exec(ctx, `
+UPDATE machine_assortment_bindings
+SET valid_to = now()
+WHERE organization_id = $1
+  AND machine_id = $2
+  AND is_primary
+  AND valid_to IS NULL
+`, m.OrganizationID, in.MachineID); err != nil {
+		return err
+	}
+
+	tag, err := tx.Exec(ctx, `
+INSERT INTO machine_assortment_bindings (
+    organization_id,
+    machine_id,
+    assortment_id,
+    is_primary,
+    valid_from
+)
+SELECT
+    $1,
+    $2,
+    a.id,
+    TRUE,
+    now()
+FROM assortments a
+WHERE a.id = $3
+  AND a.organization_id = $1
+`, m.OrganizationID, in.MachineID, in.AssortmentID)
 	if err != nil {
 		return err
 	}
-	if n == 0 {
+	if tag.RowsAffected() == 0 {
 		return assortmentapp.ErrBindFailed
 	}
 

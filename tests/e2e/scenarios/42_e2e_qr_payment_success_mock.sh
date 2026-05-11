@@ -88,6 +88,7 @@ SLOT_IDX="${E2E_SLOT_INDEX:-1}"
 MT="$(get_secret machineToken 2>/dev/null || true)"
 [[ -z "$MT" ]] && { log_error "E2E-42: machineToken required"; exit 2; }
 export ADMIN_TOKEN="$MT"
+e2e_http_apply_sale_catalog_currency "$MID" "p8-42-sale-cat" CUR
 
 IDS_JSON="$(jq -nc --arg m "$MID" --arg o "${ORG:-}" --arg p "$PRODUCT_ID" '{machineId:$m,organizationId:$o,productId:$p}')"
 APIS_JSON='["POST /v1/commerce/orders","POST /v1/commerce/orders/{orderId}/payment-session","POST /v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks","GET /v1/commerce/orders/{orderId}","POST .../vend/start","POST .../vend/success"]'
@@ -100,7 +101,8 @@ OBODY="$(jq -nc \
   --arg cur "$CUR" \
   --arg cab "$CAB" \
   --arg sc "$SC" \
-  '{machine_id:$mid, product_id:$pid, currency:$cur, cabinet_code:$cab, slot_code:$sc}')"
+  --arg si "${SLOT_IDX:-1}" \
+  '{machine_id:$mid, product_id:$pid, currency:$cur, cabinet_code:$cab, slot_code:$sc, slot_index:($si|tonumber)}')"
 code_o="$(e2e_http_post_json_idem "p8-qr-order" "/v1/commerce/orders" "$OBODY" "e2e-p8-qr-order-$(date +%s)-${RANDOM}")"
 EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg f "${E2E_RUN_DIR}/rest/p8-qr-order.meta.json" '. + [$f]')"
 if [[ "$code_o" != "201" && "$code_o" != "200" ]]; then
@@ -117,14 +119,22 @@ if [[ -z "$OID" ]]; then
   exit 1
 fi
 
-AMT="$(jq -r '.order.total_minor // .order.totalMinor // 1000' "${E2E_RUN_DIR}/rest/p8-qr-order.response.json" 2>/dev/null || echo "1000")"
-[[ -z "$AMT" || "$AMT" == "null" ]] && AMT="1000"
+ORD_RESP="${E2E_RUN_DIR}/rest/p8-qr-order.response.json"
+AMT="$(jq -r '(.total_minor // .totalMinor // .order.total_minor // .order.totalMinor // empty)' "$ORD_RESP" 2>/dev/null || true)"
+if [[ -z "$AMT" || "$AMT" == "null" ]]; then
+  ACTUAL="no total_minor in order response — ${ORD_RESP}"
+  phase8_record "$SID" "fail" "$IDS_JSON" "$APIS_JSON" "$EXPECTED" "$ACTUAL" "$EVID_JSON" "Align jq paths with commerceCreateOrderResponse (flat fields)"
+  end_step failed "E2E-42: ${ACTUAL}"
+  exit 1
+fi
+ORD_CUR="$(jq -r '(.currency // .order.currency // empty)' "$ORD_RESP" 2>/dev/null || true)"
+[[ -n "$ORD_CUR" && "$ORD_CUR" != "null" ]] && CUR="$ORD_CUR"
 
 PSBODY="$(jq -nc \
   --argjson am "$AMT" \
   --arg cur "$CUR" \
   '{provider:"stripe",payment_state:"created",amount_minor:$am,currency:$cur,outbox_payload_json:{source:"e2e_phase8_42"}}')"
-code_ps="$(e2e_http_post_json_idem "p8-qr-ps" "/v1/commerce/orders/${OID}/payment-session" "$PSBODY" "e2e-p8-ps-${OID}")"
+code_ps="$(e2e_http_post_json_idem "p8-qr-ps" "/v1/commerce/orders/${OID}/payment-session?slot_index=${SLOT_IDX}" "$PSBODY" "e2e-p8-ps-${OID}")"
 EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg f "${E2E_RUN_DIR}/rest/p8-qr-ps.meta.json" '. + [$f]')"
 if [[ "$code_ps" == "503" ]]; then
   ACTUAL="payment-session returned 503 capability_not_configured — commerce outbox not configured locally"
@@ -149,6 +159,10 @@ if [[ -z "$PAY" ]]; then
 fi
 
 PSR="${E2E_RUN_DIR}/rest/p8-qr-ps.response.json"
+PS_AMT="$(jq -r '(.amount_minor // .amountMinor // empty)' "$PSR" 2>/dev/null || true)"
+PS_CUR="$(jq -r '(.currency // empty)' "$PSR" 2>/dev/null || true)"
+[[ -n "$PS_AMT" && "$PS_AMT" != "null" ]] && AMT="$PS_AMT"
+[[ -n "$PS_CUR" && "$PS_CUR" != "null" ]] && CUR="$PS_CUR"
 PEX="$(jq -r '.expires_at // .expiresAt // .sessionExpiresAt // .payment_session.expires_at // empty' "$PSR" 2>/dev/null)"
 PREFQ="$(jq -r '.provider_reference // .providerReference // .external_reference // empty' "$PSR" 2>/dev/null)"
 [[ -z "$PEX" || "$PEX" == "null" ]] && log_missing_field_issue "P2" "$SID" "42_e2e_qr_payment_success_mock.sh" "payment-session-expiry" "REST" "POST .../payment-session" "payment-session JSON lacks a clear expires_at / session TTL field for client UX" "QR flow may hang without deadline" "Document and return session_expires_at per OpenAPI" "$PSR"
@@ -159,12 +173,16 @@ PIREF="pi_e2e_p8_${RANDOM}"
 WBODY="$(jq -nc \
   --arg wid "$WID" \
   --arg pref "$PIREF" \
+  --argjson am "$AMT" \
+  --arg cur "$CUR" \
   '{
     webhook_event_id:$wid,
     provider:"stripe",
     provider_reference:$pref,
     event_type:"payment_intent.succeeded",
     normalized_payment_state:"captured",
+    provider_amount_minor:$am,
+    currency:$cur,
     payload_json:{id:$pref, status:"succeeded"}
   }')"
 
@@ -211,7 +229,7 @@ else
 fi
 EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg b "${E2E_RUN_DIR}/rest/p8-qr-wh2.response.json" '. + [$b]')"
 
-e2e_http_get "p8-qr-order-get" "/v1/commerce/orders/${OID}" >/dev/null
+e2e_http_get "p8-qr-order-get" "/v1/commerce/orders/${OID}?slot_index=${SLOT_IDX}" >/dev/null
 EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg f "${E2E_RUN_DIR}/rest/p8-qr-order-get.meta.json" '. + [$f]')"
 OST="$(jq -r '.order.status // .order.order_status // empty' "${E2E_RUN_DIR}/rest/p8-qr-order-get.response.json")"
 
@@ -232,7 +250,7 @@ if [[ "$code_vok" != "200" ]]; then
   exit 1
 fi
 
-e2e_http_get "p8-qr-order-final" "/v1/commerce/orders/${OID}" >/dev/null
+e2e_http_get "p8-qr-order-final" "/v1/commerce/orders/${OID}?slot_index=${SLOT_IDX}" >/dev/null
 OST2="$(jq -r '.order.status // empty' "${E2E_RUN_DIR}/rest/p8-qr-order-final.response.json")"
 EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg f "${E2E_RUN_DIR}/rest/p8-qr-order-final.meta.json" '. + [$f]')"
 

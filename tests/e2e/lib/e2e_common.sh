@@ -10,6 +10,27 @@ e2e_strict_mode() {
   set -euo pipefail
 }
 
+# Git Bash on Windows: Mosquitto installs to Program Files but often omits PATH.
+# Idempotent; safe no-op on Linux/macOS/WSL without /c/Program Files.
+e2e_prepend_windows_tool_paths() {
+  [[ "${E2E_WINDOWS_TOOL_PATHS_DONE:-}" == "1" ]] && return 0
+  if [[ ! -d "/c/Program Files" ]] 2>/dev/null; then
+    export E2E_WINDOWS_TOOL_PATHS_DONE=1
+    return 0
+  fi
+  local d
+  for d in "/c/Program Files/Mosquitto" "/c/Program Files/mosquitto"; do
+    if [[ -x "${d}/mosquitto_pub.exe" ]] 2>/dev/null; then
+      case ":${PATH}:" in
+        *":${d}:"*) ;;
+        *) export PATH="${d}:${PATH}" ;;
+      esac
+      break
+    fi
+  done
+  export E2E_WINDOWS_TOOL_PATHS_DONE=1
+}
+
 load_env() {
   local env_file="${1:-}"
   # If the caller exported E2E_ALLOW_WRITES before sourcing the runner, keep it over values in the env file
@@ -27,17 +48,32 @@ load_env() {
     env_file="${E2E_SCRIPT_DIR}/.env"
   fi
   if [[ -f "$env_file" ]]; then
+    # Normalize CRLF .env files (common on Windows) so values don't include `\r`.
+    local _env_tmp=""
+    _env_tmp="$(mktemp)"
+    tr -d '\r' <"$env_file" >"$_env_tmp"
     set -a
     # shellcheck disable=SC1090
-    source "$env_file"
+    source "$_env_tmp"
     set +a
+    rm -f "$_env_tmp"
   fi
   if [[ "${_e2e_allow_writes_was_set}" -eq 1 ]]; then
     export E2E_ALLOW_WRITES="${_e2e_allow_writes_val}"
   fi
 
+  # Local deterministic mock PSP webhook HMAC — must match the API process (scripts/local/start-api-local.ps1).
+  # Applied only when no secret material is exported (staging/production shells should export real values).
+  if [[ "${E2E_TARGET:=local}" == "local" ]]; then
+    if [[ -z "${COMMERCE_PAYMENT_WEBHOOK_SECRET:-}" ]] && [[ -z "${COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET:-}" ]] && [[ -z "${PAYMENT_WEBHOOK_SECRET:-}" ]] &&
+      [[ -z "${COMMERCE_PAYMENT_WEBHOOK_SECRETS_JSON:-}" ]]; then
+      export COMMERCE_PAYMENT_WEBHOOK_SECRET="e2e-local-commerce-webhook-hmac-not-provider-secret-xx"
+    fi
+  fi
+
   : "${BASE_URL:=http://127.0.0.1:8080}"
   : "${GRPC_ADDR:=127.0.0.1:9090}"
+  : "${GRPC_USE_REFLECTION:=true}"
   : "${MQTT_HOST:=127.0.0.1}"
   : "${MQTT_PORT:=1883}"
   : "${POSTMAN_COLLECTION:=docs/postman/avf-vending-api-function-path.postman_collection.json}"
@@ -60,7 +96,9 @@ load_env() {
   export E2E_ALLOW_DESTRUCTIVE E2E_ALLOW_DESTRUCTIVE_CLEANUP
   export E2E_ALLOW_REAL_PAYMENT E2E_ALLOW_REAL_DISPENSE E2E_ALLOW_REAL_MACHINE_COMMANDS
   export E2E_ALLOW_EXTERNAL_NOTIFICATIONS
+  export GRPC_USE_REFLECTION
 
+  e2e_prepend_windows_tool_paths
   e2e_target_safety_guard
 }
 
@@ -335,6 +373,8 @@ Phase runners (same options):
   ./tests/e2e/run-mqtt-local.sh
 EOF
 }
+
+e2e_prepend_windows_tool_paths
 
 # shellcheck disable=SC1091
 source "${E2E_LIB_DIR}/e2e_flow_review.sh"

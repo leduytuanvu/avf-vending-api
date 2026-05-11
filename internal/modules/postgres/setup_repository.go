@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -103,6 +105,78 @@ func (r *SetupRepository) UpsertMachineTopology(ctx context.Context, machineID u
 	}
 
 	return tx.Commit(ctx)
+}
+
+// syncPrimaryAssortmentFromPublishedSlots ensures CommerceIsProductInMachinePublishedAssortment matches
+// products on current slot configs after a publish: planogram routes write cabinet slots but checkout/pricing
+// also require assortment_items under the machine primary binding.
+func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, orgID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
+	q := db.New(tx)
+
+	pidSeen := map[uuid.UUID]struct{}{}
+	for _, it := range in.Items {
+		if it.ProductID == nil || *it.ProductID == uuid.Nil {
+			continue
+		}
+		pidSeen[*it.ProductID] = struct{}{}
+	}
+	if len(pidSeen) == 0 {
+		return nil
+	}
+	pids := make([]uuid.UUID, 0, len(pidSeen))
+	for p := range pidSeen {
+		pids = append(pids, p)
+	}
+	sort.Slice(pids, func(i, j int) bool { return pids[i].String() < pids[j].String() })
+
+	rows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, db.FleetAdminListAssortmentProductsByMachineParams{
+		ID:             machineID,
+		OrganizationID: orgID,
+	})
+	if err != nil {
+		return err
+	}
+
+	var assortmentID uuid.UUID
+	if len(rows) == 0 {
+		asm, err := q.FleetAdminInsertAssortment(ctx, db.FleetAdminInsertAssortmentParams{
+			OrganizationID: orgID,
+			Name:           fmt.Sprintf("Published slots — machine %s", machineID.String()),
+			Status:         "published",
+			Description:    "Auto-created when admin publishes machine slot configs so commerce can resolve primary assortment.",
+			Meta:           []byte(`{}`),
+		})
+		if err != nil {
+			return err
+		}
+		assortmentID = asm.ID
+		n, err := q.FleetAdminBindMachinePrimaryAssortment(ctx, db.FleetAdminBindMachinePrimaryAssortmentParams{
+			OrganizationID: orgID,
+			ID:             machineID,
+			AssortmentID:   assortmentID,
+		})
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return fmt.Errorf("setup: FleetAdminBindMachinePrimaryAssortment affected 0 rows (machine=%s assortment=%s)", machineID, assortmentID)
+		}
+	} else {
+		assortmentID = rows[0].AssortmentID
+	}
+
+	for i, pid := range pids {
+		if _, err := q.FleetAdminUpsertAssortmentItem(ctx, db.FleetAdminUpsertAssortmentItemParams{
+			OrganizationID: orgID,
+			AssortmentID:   assortmentID,
+			ProductID:      pid,
+			SortOrder:      int32(i),
+			Notes:          []byte(`{}`),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
@@ -209,6 +283,12 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 			if err != nil {
 				return err
 			}
+		}
+	}
+
+	if in.PublishAsCurrent {
+		if err := syncPrimaryAssortmentFromPublishedSlots(ctx, tx, machineID, m.OrganizationID, in); err != nil {
+			return err
 		}
 	}
 

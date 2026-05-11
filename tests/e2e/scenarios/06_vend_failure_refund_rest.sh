@@ -69,6 +69,7 @@ SLOT_IDX="${E2E_SLOT_INDEX:-1}"
 MT="$(get_secret machineToken 2>/dev/null || true)"
 [[ -z "$MT" ]] && { log_error "VM-REST-06: machineToken required"; exit 2; }
 export ADMIN_TOKEN="$MT"
+e2e_http_apply_sale_catalog_currency "$MID" "vm-fail-sale-cat" CUR
 
 CBODY="$(jq -nc \
   --arg mid "$MID" \

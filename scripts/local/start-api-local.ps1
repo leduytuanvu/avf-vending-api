@@ -72,6 +72,8 @@ $env:NATS_URL = 'nats://127.0.0.1:4222'
 $env:MQTT_BROKER_URL = 'tcp://127.0.0.1:1883'
 $env:MQTT_CLIENT_ID_API = 'avf-api-local'
 $env:MQTT_TOPIC_PREFIX = 'avf/devices'
+# Disposable local fixture (not a PSP secret). Matches E2E default in tests/e2e/lib/e2e_common.sh when unset.
+$env:COMMERCE_PAYMENT_WEBHOOK_SECRET = 'e2e-local-commerce-webhook-hmac-not-provider-secret-xx'
 $env:ENABLE_LEGACY_MACHINE_HTTP = 'true'
 $env:MACHINE_REST_LEGACY_ENABLED = 'true'
 

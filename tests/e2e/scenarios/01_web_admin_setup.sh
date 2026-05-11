@@ -184,6 +184,15 @@ else
   wa_ev "activation" "$path" "pass" "Issued activation code" "$(jq -nc --arg id "$AID" '{activationCodeId:$id}')"
 fi
 
+# Planogram publish triggers remote MQTT dispatch; dispatcher only accepts commandable (active) machines.
+path_act="/v1/admin/machines/${MACHINE_ID}?${Q_ORG}"
+ACT_BODY='{"status":"active"}'
+code_act="$(e2e_http_patch_json "wa-machine-status-active" "$path_act" "$ACT_BODY")"
+if ! e2e_http_assert_status "wa-machine-status-active" "200" "$code_act"; then
+  wa_fail "machine-activate" "$path_act" "PATCH machine status active failed HTTP $code_act — see rest/wa-machine-status-active.response.json (required for planogram publish / MQTT dispatch)"
+fi
+wa_ev "machine-activate" "$path_act" "pass" "Machine active for commissioning/MQTT" "{}"
+
 # --- Category ---
 CAT_ID=""
 CAT_SLUG="e2e-cat-${SUFFIX}"
@@ -315,6 +324,40 @@ OP_SID="$(e2e_jq_resp wa-operator-login -r '.session.id // empty')"
 e2e_set_data operatorSessionId "$OP_SID"
 wa_ev "operator-login" "POST /v1/machines/${MACHINE_ID}/operator-sessions/login" "pass" "Operator session" "$(jq -nc --arg s "$OP_SID" '{operatorSessionId:$s}')"
 
+# Planogram draft requires persisted cabinets + matching slot layout revisions (cabinet_not_found / slot_layout_not_found otherwise).
+TOPO_JSON="$(jq -nc \
+  --arg sid "$OP_SID" \
+  --arg cab "$CABINET" \
+  --arg lk "grid-4x6" \
+  '{
+    operator_session_id:$sid,
+    cabinets:[{
+      code:$cab,
+      title:("Cabinet "+$cab),
+      sortOrder:1,
+      metadata:{}
+    }],
+    layouts:[{
+      cabinetCode:$cab,
+      layoutKey:$lk,
+      revision:1,
+      layoutSpec:{},
+      status:"published"
+    }]
+  }')"
+path_topo="/v1/admin/machines/${MACHINE_ID}/topology?${Q_ORG}"
+code_topo="$(e2e_http_put_json "wa-machine-topology" "$path_topo" "$TOPO_JSON")"
+if ! e2e_http_assert_status "wa-machine-topology" "204" "$code_topo"; then
+  wa_ev "machine-topology" "$path_topo" "skip" "Topology PUT HTTP $code_topo — inspect rest/wa-machine-topology.response.json" "{}"
+  wa_ev "planogram-draft" "—" "skip" "Topology prerequisite failed" "{}"
+  wa_ev "planogram-publish" "—" "skip" "Topology prerequisite failed" "{}"
+  wa_ev "inventory" "—" "skip" "Topology prerequisite failed" "{}"
+  log_flow_design_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "machine-topology" "REST" "$path_topo" "PUT topology failed — cabinets/layouts missing for planogram draft" "Blocks slot assignment" "Ensure draft layoutKey/layoutRevision match UPSERT payloads; see rest/wa-machine-topology.response.json" "${E2E_RUN_DIR}/rest/wa-machine-topology.response.json"
+  e2e_flow_review_scenario_complete "$FLOW_ID" "$SCENARIO_ID" "flow-review-early" "stopped_machine_topology_failed"
+  exit 0
+fi
+wa_ev "machine-topology" "$path_topo" "pass" "Cabinet + layout for planogram draft" "$(jq -nc --arg c "$CABINET" '{cabinetCode:$c,layoutKey:"grid-4x6",revision:1}')"
+
 DRAFT_JSON="$(jq -nc \
   --arg sid "$OP_SID" \
   --arg pid "$PG_ID" \
@@ -332,7 +375,6 @@ DRAFT_JSON="$(jq -nc \
     items:[{
       cabinetCode:$cab,
       slotCode:$sc,
-      slotIndex:1,
       productId:$prid,
       maxQuantity:$qty,
       priceMinor:($price | tonumber),

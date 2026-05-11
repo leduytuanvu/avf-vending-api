@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Print paths and key files from the latest .test-runs and .e2e-runs directories.
 .PARAMETER NoOpen
@@ -53,6 +53,22 @@ if ($latestTest) {
     Write-FileOrWarn 'go-test-packages.txt' (Join-Path $tr 'go-test-packages.txt')
     Write-FileOrWarn 'go-test-failed-tests.txt' (Join-Path $tr 'go-test-failed-tests.txt')
     Write-FileOrWarn 'E2E_STATUS.txt' (Join-Path $tr 'E2E_STATUS.txt')
+
+    $snapRoot = Join-Path $tr 'e2e-latest-snapshot'
+    if (Test-Path -LiteralPath $snapRoot) {
+        Write-Host ''
+        Write-Host '---- E2E structured severity (snapshot) ----' -ForegroundColor Cyan
+        try {
+            $sevSnap = Get-E2EFlowImprovementSeverityTotals -SnapshotDir $snapRoot
+            $remSnap = Join-Path $snapRoot 'remediation.md'
+            $failCount = Get-E2ERemediationStructuredFailureCount -RemediationMarkdownPath $remSnap
+            Write-Host ('Structured P0={0} P1={1} (source={2})' -f $sevSnap.P0Count, $sevSnap.P1Count, $sevSnap.Source)
+            Write-Host ('Remediation structured failure count: {0}' -f $failCount)
+        }
+        catch {
+            Write-Host ('(could not parse E2E snapshot reports) ' + $_) -ForegroundColor DarkYellow
+        }
+    }
 
     $snapSum = Join-Path $tr 'e2e-latest-snapshot\summary.md'
     $snapRem = Join-Path $tr 'e2e-latest-snapshot\remediation.md'

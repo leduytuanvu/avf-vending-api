@@ -226,4 +226,69 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch(t *testing.T) {
 	require.GreaterOrEqual(t, cnt, 1)
 }
 
+// Publishing current slot configs must keep commerce pricing in sync with the primary machine assortment
+// (CommerceIsProductInMachinePublishedAssortment), not only cabinet slot rows / sale-catalog projection.
+func TestSetupRepository_publishCurrentSyncsCommerceAssortment(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+
+	cleanupMachineSetupArtifacts(ctx, t, pool, testfixtures.DevMachineID, uuid.Nil)
+
+	repo := postgres.NewSetupRepository(pool)
+	require.NoError(t, repo.UpsertMachineTopology(ctx, testfixtures.DevMachineID,
+		[]setupapp.CabinetUpsert{{
+			Code:      "A",
+			Title:     "Alpha",
+			SortOrder: 1,
+			Metadata:  []byte(`{}`),
+		}},
+		[]setupapp.TopologyLayoutUpsert{{
+			CabinetCode: "A",
+			LayoutKey:   "default",
+			Revision:    1,
+			LayoutSpec:  []byte(`{"rows":1}`),
+			Status:      "published",
+		}},
+	))
+
+	slotIdx := int32(1)
+	prod := testfixtures.DevProductCola
+	require.NoError(t, repo.SaveDraftOrCurrentSlotConfigs(ctx, testfixtures.DevMachineID, setupapp.SlotConfigSaveInput{
+		PlanogramID:         testfixtures.DevPlanogramID,
+		PlanogramRevision:   1,
+		PublishAsCurrent:    true,
+		SyncLegacyReadModel: true,
+		Items: []setupapp.SlotConfigSaveItem{{
+			CabinetCode:     "A",
+			LayoutKey:       "default",
+			LayoutRevision:  1,
+			SlotCode:        "S1",
+			LegacySlotIndex: &slotIdx,
+			ProductID:       &prod,
+			MaxQuantity:     10,
+			PriceMinor:      100,
+			EffectiveFrom:   time.Now().UTC(),
+			Metadata:        []byte(`{}`),
+		}},
+	}))
+
+	q := db.New(pool)
+	ok, err := q.CommerceIsProductInMachinePublishedAssortment(ctx, db.CommerceIsProductInMachinePublishedAssortmentParams{
+		ID:             testfixtures.DevMachineID,
+		OrganizationID: testfixtures.DevOrganizationID,
+		ProductID:      prod,
+	})
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	arows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, db.FleetAdminListAssortmentProductsByMachineParams{
+		ID:             testfixtures.DevMachineID,
+		OrganizationID: testfixtures.DevOrganizationID,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, arows)
+	assID := arows[0].AssortmentID
+	defer cleanupMachineSetupArtifacts(ctx, t, pool, testfixtures.DevMachineID, assID)
+}
+
 func ptrUUID(u uuid.UUID) *uuid.UUID { return &u }

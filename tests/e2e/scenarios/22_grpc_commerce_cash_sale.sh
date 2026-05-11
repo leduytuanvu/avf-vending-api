@@ -10,6 +10,8 @@ E2E_SCENARIO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${E2E_SCENARIO_DIR}/../lib/e2e_common.sh"
 # shellcheck source=../lib/e2e_data.sh
 source "${E2E_SCENARIO_DIR}/../lib/e2e_data.sh"
+# shellcheck source=../lib/e2e_http.sh
+source "${E2E_SCENARIO_DIR}/../lib/e2e_http.sh"
 # shellcheck source=../lib/e2e_grpc.sh
 source "${E2E_SCENARIO_DIR}/../lib/e2e_grpc.sh"
 
@@ -34,6 +36,10 @@ SI="${E2E_SLOT_INDEX:-1}"
 
 export MACHINE_TOKEN="$MT"
 export MACHINE_ID="$MID"
+export ADMIN_TOKEN="$MT"
+mkdir -p "${E2E_RUN_DIR}/rest"
+e2e_http_apply_sale_catalog_currency "$MID" "g22-sale-cat" CUR
+unset ADMIN_TOKEN
 
 META="$(jq -nc --arg o "$ORG" --arg m "$MID" --arg rid "g22-$(date +%s)" \
   '{organizationId:$o, machineId:$m, requestId:$rid}')"
@@ -62,9 +68,11 @@ if [[ "${E2E_ALLOW_WRITES:-}" != "true" ]]; then
 fi
 
 TS="$(date +%s)"
+TS_RFC3339="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 CO_BODY="$(jq -nc \
   --arg ik "g22-co-${TS}" \
   --arg ce "g22-ce-${TS}" \
+  --arg ts "$TS_RFC3339" \
   --arg m "$MID" \
   --arg p "$PRODUCT" \
   --arg cab "$CAB" \
@@ -72,7 +80,7 @@ CO_BODY="$(jq -nc \
   --argjson si "$SI" \
   --arg cur "$CUR" \
   --argjson meta "$META" \
-  '{context:{idempotencyKey:$ik, clientEventId:$ce}, machineId:$m, productId:$p,
+  '{context:{idempotencyKey:$ik, clientEventId:$ce, clientCreatedAt:$ts}, machineId:$m, productId:$p,
     slot:{cabinetCode:$cab, slotCode:$sc, slotIndex:$si}, currency:$cur, meta:$meta}')"
 grpc_contract_try "$FLOW_ID" "create-order" MachineCommerceService CreateOrder "$CO_BODY" "g22-create-order" "g22-co-${TS}" || ec=1
 
@@ -81,7 +89,8 @@ OID="$(jq -r '.orderId // empty' "${E2E_RUN_DIR}/grpc/g22-create-order.response.
 
 TS2="$(date +%s)"
 CC_BODY="$(jq -nc --arg ik "g22-cc-${TS2}" --arg ce "g22-ce-cc-${TS2}" --arg oid "$OID" \
-  '{context:{idempotencyKey:$ik, clientEventId:$ce}, orderId:$oid}')"
+  --arg ts "$TS_RFC3339" \
+  '{context:{idempotencyKey:$ik, clientEventId:$ce, clientCreatedAt:$ts}, orderId:$oid}')"
 grpc_contract_try "$FLOW_ID" "confirm-cash-payment" MachineCommerceService ConfirmCashPayment "$CC_BODY" "g22-cash" "g22-cc-${TS2}" || ec=1
 
 GO_BODY="$(jq -nc --arg oid "$OID" --argjson si "$SI" '{orderId:$oid, slotIndex:$si}')"
@@ -89,12 +98,14 @@ grpc_contract_try "$FLOW_ID" "get-order" MachineCommerceService GetOrder "$GO_BO
 
 TS3="$(date +%s)"
 SV_BODY="$(jq -nc --arg ik "g22-sv-${TS3}" --arg ce "g22-ce-sv-${TS3}" --arg oid "$OID" --argjson si "$SI" \
-  '{context:{idempotencyKey:$ik, clientEventId:$ce}, orderId:$oid, slotIndex:$si}')"
+  --arg ts "$TS_RFC3339" \
+  '{context:{idempotencyKey:$ik, clientEventId:$ce, clientCreatedAt:$ts}, orderId:$oid, slotIndex:$si}')"
 grpc_contract_try "$FLOW_ID" "start-vend" MachineCommerceService StartVend "$SV_BODY" "g22-vend-start" "g22-sv-${TS3}" || ec=1
 
 TS4="$(date +%s)"
 VS_BODY="$(jq -nc --arg ik "g22-vs-${TS4}" --arg ce "g22-ce-vs-${TS4}" --arg oid "$OID" --argjson si "$SI" \
-  '{context:{idempotencyKey:$ik, clientEventId:$ce}, orderId:$oid, slotIndex:$si}')"
+  --arg ts "$TS_RFC3339" \
+  '{context:{idempotencyKey:$ik, clientEventId:$ce, clientCreatedAt:$ts}, orderId:$oid, slotIndex:$si}')"
 grpc_contract_try "$FLOW_ID" "confirm-vend-success" MachineCommerceService ConfirmVendSuccess "$VS_BODY" "g22-vend-ok" "g22-vs-${TS4}" || ec=1
 
 ST_BODY="$(jq -nc --arg oid "$OID" --argjson si "$SI" '{orderId:$oid, slotIndex:$si}')"
@@ -102,9 +113,11 @@ grpc_contract_try "$FLOW_ID" "get-order-status-success" MachineCommerceService G
 
 if [[ "${ec}" -eq 0 ]]; then
 TS5="$(date +%s)"
+TS5_RFC3339="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 CO2_BODY="$(jq -nc \
   --arg ik "g22-co2-${TS5}" \
   --arg ce "g22-ce2-${TS5}" \
+  --arg ts "$TS5_RFC3339" \
   --arg m "$MID" \
   --arg p "$PRODUCT" \
   --arg cab "$CAB" \
@@ -112,7 +125,7 @@ CO2_BODY="$(jq -nc \
   --argjson si "$SI" \
   --arg cur "$CUR" \
   --argjson meta "$META" \
-  '{context:{idempotencyKey:$ik, clientEventId:$ce}, machineId:$m, productId:$p,
+  '{context:{idempotencyKey:$ik, clientEventId:$ce, clientCreatedAt:$ts}, machineId:$m, productId:$p,
     slot:{cabinetCode:$cab, slotCode:$sc, slotIndex:$si}, currency:$cur, meta:$meta}')"
 grpc_contract_try "$FLOW_ID" "create-order-fail-path" MachineCommerceService CreateOrder "$CO2_BODY" "g22-create-order-fail" "g22-co2-${TS5}" || ec=1
 
@@ -121,17 +134,20 @@ OID2="$(jq -r '.orderId // empty' "${E2E_RUN_DIR}/grpc/g22-create-order-fail.res
 
 TS6="$(date +%s)"
 CC2_BODY="$(jq -nc --arg ik "g22-cc2-${TS6}" --arg ce "g22-ce-cc2-${TS6}" --arg oid "$OID2" \
-  '{context:{idempotencyKey:$ik, clientEventId:$ce}, orderId:$oid}')"
+  --arg ts "$TS5_RFC3339" \
+  '{context:{idempotencyKey:$ik, clientEventId:$ce, clientCreatedAt:$ts}, orderId:$oid}')"
 grpc_contract_try "$FLOW_ID" "confirm-cash-fail-path" MachineCommerceService ConfirmCashPayment "$CC2_BODY" "g22-cash-fail" "g22-cc2-${TS6}" || ec=1
 
 TS7="$(date +%s)"
 SV2_BODY="$(jq -nc --arg ik "g22-sv2-${TS7}" --arg ce "g22-ce-sv2-${TS7}" --arg oid "$OID2" --argjson si "$SI" \
-  '{context:{idempotencyKey:$ik, clientEventId:$ce}, orderId:$oid, slotIndex:$si}')"
+  --arg ts "$TS5_RFC3339" \
+  '{context:{idempotencyKey:$ik, clientEventId:$ce, clientCreatedAt:$ts}, orderId:$oid, slotIndex:$si}')"
 grpc_contract_try "$FLOW_ID" "start-vend-fail-path" MachineCommerceService StartVend "$SV2_BODY" "g22-vend-start-fail" "g22-sv2-${TS7}" || ec=1
 
 TS8="$(date +%s)"
 VF_BODY="$(jq -nc --arg ik "g22-vf-${TS8}" --arg ce "g22-ce-vf-${TS8}" --arg oid "$OID2" --argjson si "$SI" \
-  '{context:{idempotencyKey:$ik, clientEventId:$ce}, orderId:$oid, slotIndex:$si, failureReason:"e2e_grpc_simulated_fault"}')"
+  --arg ts "$TS5_RFC3339" \
+  '{context:{idempotencyKey:$ik, clientEventId:$ce, clientCreatedAt:$ts}, orderId:$oid, slotIndex:$si, failureReason:"e2e_grpc_simulated_fault"}')"
 grpc_contract_try "$FLOW_ID" "report-vend-failure" MachineCommerceService ReportVendFailure "$VF_BODY" "g22-vend-fail" "g22-vf-${TS8}" || ec=1
 
 ST2_BODY="$(jq -nc --arg oid "$OID2" --argjson si "$SI" '{orderId:$oid, slotIndex:$si}')"

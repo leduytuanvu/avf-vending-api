@@ -14,6 +14,7 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_data.sh"
 source "${E2E_SCENARIO_DIR}/../lib/e2e_grpc.sh"
 
 FLOW_ID="GRPC-20"
+SCEN="$(basename "${BASH_SOURCE[0]}")"
 ec=0
 
 grpc_contract_skip "$FLOW_ID" "claim-parallel-activation-svc" MachineActivationService ClaimActivation \

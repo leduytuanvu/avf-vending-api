@@ -12,7 +12,14 @@ require_cmd bash curl jq
 e2e_require_python
 append_event_jsonl "preflight:tooling" "passed" "bash curl jq python3"
 
-for _o in newman grpcurl mosquitto_pub mosquitto_sub; do
+if ! command -v mosquitto_pub >/dev/null 2>&1 || ! command -v mosquitto_sub >/dev/null 2>&1; then
+  log_error "mosquitto_pub and mosquitto_sub are required on PATH for local E2E (MQTT phase + scenario E2E-45). Install: winget install --id EclipseFoundation.Mosquitto -e"
+  append_event_jsonl "preflight:mqtt-clients" "failed" "mosquitto clients missing"
+  exit 1
+fi
+append_event_jsonl "preflight:mqtt-clients" "passed" "mosquitto_pub mosquitto_sub"
+
+for _o in newman grpcurl; do
   if command -v "${_o}" >/dev/null 2>&1; then
     append_event_jsonl "preflight:opt:${_o}" "passed" "on PATH"
     log_info "optional tool present: ${_o}"
@@ -40,4 +47,4 @@ FLOW_ID="PF-PREFLIGHT"
 log_no_improvement_findings "$FLOW_ID" "00_preflight.sh" "flow-review-complete"
 e2e_flow_review_scenario_complete "$FLOW_ID" "00_preflight.sh" "flow-review-complete" "toolchain_and_public_health_ok_no_scenario_findings"
 
-exit 0
+return 0 2>/dev/null || exit 0

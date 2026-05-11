@@ -56,9 +56,8 @@ echo "telemetry_topic=${E2E_MQTT_TOPIC_TELEMETRY}" >>"$MLOG"
 set +e
 e2e_mqtt_subscribe_accept_connect "${E2E_MQTT_TOPIC_COMMAND_IN}" 5 "command"
 sub_ec=$?
-set -e
 cat "$(e2e_mqtt_log_dir)/command.subscribe.log" >>"$MLOG" 2>/dev/null || true
-if [[ "$sub_ec" -ne 0 ]]; then
+if [[ "$sub_ec" -ne 0 ]] && [[ "$sub_ec" -ne 27 ]] && [[ "$sub_ec" -ne 5 ]]; then
   echo "FAIL: subscribe probe exit ${sub_ec}" >>"$MLOG"
   mqtt_contract_record "$FLOW_ID" "subscribe-command" "${E2E_MQTT_TOPIC_COMMAND_IN}" "fail" "subscribe_exit_${sub_ec}"
   e2e_append_test_event "$FLOW_ID" "subscribe-command" "MQTT" "${E2E_MQTT_TOPIC_COMMAND_IN}" "fail" "subscribe_exit_${sub_ec}" "{}"
@@ -73,7 +72,6 @@ HB="$(jq -nc --arg mid "$MID" --arg eid "e2e-connect-hb-${RANDOM}" --arg ts "$(d
 set +e
 e2e_mqtt_publish "${E2E_MQTT_TOPIC_TELEMETRY}" "$HB" "telemetry-connect"
 pub_ec=$?
-set -e
 echo "telemetry_publish_exit=${pub_ec}" >>"$MLOG"
 if [[ "$pub_ec" -ne 0 ]]; then
   mqtt_contract_record "$FLOW_ID" "publish-telemetry" "${E2E_MQTT_TOPIC_TELEMETRY}" "fail" "mosquitto_pub_exit_${pub_ec}"

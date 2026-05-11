@@ -239,6 +239,25 @@ e2e_http_get() {
   e2e_http_request_json "GET" "$step" "$path" ""
 }
 
+# Machine JWT must be in ADMIN_TOKEN. On success assigns sale-catalog root .currency into variable named by third arg (e.g. CUR).
+e2e_http_apply_sale_catalog_currency() {
+  local mid="$1"
+  local step="$2"
+  local cur_var="$3"
+  local code
+  code="$(e2e_http_get "$step" "/v1/machines/${mid}/sale-catalog?include_unavailable=true&include_images=false")"
+  [[ "$code" == "200" ]] || return 0
+  local dir
+  dir="$(e2e_http_log_dir)"
+  local resp="${dir}/${step}.response.json"
+  [[ -f "$resp" ]] || return 0
+  local c
+  c="$(jq -r '.currency // empty' "$resp")"
+  if [[ -n "$c" && "$c" != "null" ]]; then
+    printf -v "$cur_var" '%s' "$c"
+  fi
+}
+
 e2e_http_delete() {
   local step="$1"
   local path="$2"
@@ -282,8 +301,9 @@ e2e_http_assert_status() {
 
 e2e_jq_resp() {
   local step="$1"
-  local jqexpr="$2"
+  shift
   local dir
   dir="$(e2e_http_log_dir)"
-  jq "$jqexpr" "${dir}/${step}.response.json"
+  # Pass through jq flags (e.g. -r, -c) + filter; callers use: e2e_jq_resp wa-login -r '.tokens.accessToken'.
+  jq "$@" "${dir}/${step}.response.json"
 }

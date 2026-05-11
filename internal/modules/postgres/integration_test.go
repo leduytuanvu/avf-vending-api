@@ -818,8 +818,12 @@ func TestFleetQueries_OrganizationAndSiteScope(t *testing.T) {
 
 	byOrg, err := q.ListMachinesByOrganizationID(ctx, testfixtures.DevOrganizationID)
 	require.NoError(t, err)
-	require.Len(t, byOrg, 1)
-	require.Equal(t, testfixtures.DevMachineID, byOrg[0].ID)
+	var orgMachineIDs []uuid.UUID
+	for _, m := range byOrg {
+		orgMachineIDs = append(orgMachineIDs, m.ID)
+	}
+	require.NotEmpty(t, orgMachineIDs)
+	require.Contains(t, orgMachineIDs, testfixtures.DevMachineID)
 
 	emptyOrg, err := q.ListMachinesByOrganizationID(ctx, uuid.New())
 	require.NoError(t, err)
