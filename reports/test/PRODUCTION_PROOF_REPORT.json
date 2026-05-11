@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-05-11T16:42:00Z",
+  "generated_at": "2026-05-11T17:05:00Z",
   "final_claim": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
   "baseline": {
     "branch": "test/production-full-destructive-e2e",
-    "commit": "271019198c5bfefd57530d8437c16f8320d4f067",
+    "commit": "28ca1200d4458da256c1d79569b86d6a492f3d22",
     "e2e_run_dir": ".e2e-runs/run-20260511T143948Z-409-30449",
     "full_local_e2e": {
       "status": "pass",
@@ -52,13 +52,13 @@
   ],
   "ci_proof": {
     "status": "pass",
-    "pr_url": "https://github.com/leduytuanvu/avf-vending-api/pull/202",
+    "pr_url": "https://github.com/leduytuanvu/avf-vending-api/pull/203",
     "workflow": "Production Proof",
-    "run_id": 25683385601,
-    "run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683385601",
+    "run_id": 25683990468,
+    "run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683990468",
     "job": "Linux race and contract gates",
-    "job_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683385601/job/75400591905",
-    "head_sha": "271019198c5bfefd57530d8437c16f8320d4f067",
+    "job_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683990468/job/75402700655",
+    "head_sha": "28ca1200d4458da256c1d79569b86d6a492f3d22",
     "go_test": "pass",
     "go_test_race": "pass",
     "make_test_short": "pass",

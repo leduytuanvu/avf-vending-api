@@ -1,8 +1,8 @@
 {
   "executive": {
     "status_line": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
-    "commit_sha": "271019198c5bfefd57530d8437c16f8320d4f067",
-    "generated_at": "2026-05-11T16:42:00Z",
+    "commit_sha": "28ca1200d4458da256c1d79569b86d6a492f3d22",
+    "generated_at": "2026-05-11T17:05:00Z",
     "environment": "local audit host (see audit-commands.json)",
     "rest": {
       "total_operations": 365,
@@ -99,7 +99,7 @@
   },
   "final_full_verification": {
     "branch": "test/production-full-destructive-e2e",
-    "commit": "271019198c5bfefd57530d8437c16f8320d4f067",
+    "commit": "28ca1200d4458da256c1d79569b86d6a492f3d22",
     "environment": "local Docker/local mock only",
     "database": "avf_vending_test_final",
     "api_url": "http://127.0.0.1:18080",
@@ -114,7 +114,7 @@
     },
     "go_vet": "pass",
     "go_test": "pass",
-    "go_test_race": "pass in GitHub Actions Ubuntu production proof run 25683385601",
+    "go_test_race": "pass in GitHub Actions Ubuntu production proof run 25683990468",
     "static_checks": {
       "gofmt": "pass",
       "bash_n": "pass",
@@ -154,10 +154,10 @@
     ],
     "production_proof_addendum": {
       "workflow": ".github/workflows/production-proof.yml",
-      "pr_url": "https://github.com/leduytuanvu/avf-vending-api/pull/202",
-      "run_id": 25683385601,
-      "run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683385601",
-      "head_sha": "271019198c5bfefd57530d8437c16f8320d4f067",
+      "pr_url": "https://github.com/leduytuanvu/avf-vending-api/pull/203",
+      "run_id": 25683990468,
+      "run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683990468",
+      "head_sha": "28ca1200d4458da256c1d79569b86d6a492f3d22",
       "go_test": "pass",
       "go_test_race": "pass",
       "make_test_short": "pass",

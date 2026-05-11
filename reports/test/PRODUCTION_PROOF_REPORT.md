@@ -1,6 +1,6 @@
 # Production Proof Report
 
-Generated: `2026-05-11T16:42:00Z`
+Generated: `2026-05-11T17:05:00Z`
 
 ## Final Claim
 
@@ -23,11 +23,11 @@ All executable local gates run during this proof pass completed successfully aft
 
 ## Proven In GitHub Actions
 
-- PR: `https://github.com/leduytuanvu/avf-vending-api/pull/202`
-- Workflow run: `https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683385601`
-- Run ID: `25683385601`
+- PR: `https://github.com/leduytuanvu/avf-vending-api/pull/203`
+- Workflow run: `https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683990468`
+- Run ID: `25683990468`
 - Job: `Linux race and contract gates`
-- Head SHA: `271019198c5bfefd57530d8437c16f8320d4f067`
+- Head SHA: `28ca1200d4458da256c1d79569b86d6a492f3d22`
 - `go test ./... -count=1`: passed.
 - `CGO_ENABLED=1 go test -race ./... -count=1`: passed.
 - `make test-short`: passed.

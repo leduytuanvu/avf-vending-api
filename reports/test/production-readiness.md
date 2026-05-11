@@ -21,7 +21,7 @@ Generated: 2026-05-11T14:50:00Z
 - Phase8-42 QR payment mock passed with signed local webhook and duplicate replay evidence.
 - `go vet ./...` passed.
 - `go test ./... -count=1` passed after fixing the deterministic assortment primary-binding race with the unique active-primary index.
-- `go test -race ./... -count=1` is blocked on this Windows host, but passed in GitHub Actions Ubuntu production proof run `25683385601`.
+- `go test -race ./... -count=1` is blocked on this Windows host, but passed in GitHub Actions Ubuntu production proof run `25683990468`.
 - Shell syntax checks for `scripts/**/*.sh` and `tests/**/*.sh` passed.
 - Python compile checks for `scripts`, `tools`, and `tests` passed.
 - `actionlint` passed; `shellcheck`, `golangci-lint`, and `make` were not installed on this host.
@@ -69,12 +69,12 @@ No production writes, vends, refunds, command publishes, payment webhooks, or de
 
 ## Production Proof Addendum
 
-Generated: 2026-05-11T16:42:00Z
+Generated: 2026-05-11T17:05:00Z
 
 - EMQX Docker health is resolved for local proof: the compose healthcheck now verifies the in-container MQTT listener on port 1883, Docker reports `avf-emqx` healthy, and `tests/e2e/run-mqtt-local.sh` passed after the change.
 - Local affected gates passed: `go vet ./...`, `go test ./internal/grpcserver -run TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked -count=1`, `go test ./internal/grpcserver -count=1`, `go test ./... -count=1`, smoke script syntax, REST critical coverage Python compile, compose config, MQTT suite, and REST critical coverage generation.
 - The checkout-window gRPC integration test no longer depends on sub-second sleep timing; it deterministically ages the test order before asserting `FailedPrecondition`.
-- GitHub Actions production proof passed on Ubuntu: `https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683385601`.
+- GitHub Actions production proof passed on Ubuntu: `https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683990468`.
 - CI-proven gates: `go test ./... -count=1`, `CGO_ENABLED=1 go test -race ./... -count=1`, `make test-short`, and `make api-contract-check`.
 - Read-only staging/production smoke remains NOT RUN because no safe URL is configured; artifacts: `reports/test/readonly-smoke.json` and `reports/test/readonly-smoke.md`.
 - Critical REST live coverage artifacts were generated without overclaiming full OpenAPI live coverage: `30` critical checks, `27` live 2xx passes, `3` partial/non-2xx items.
