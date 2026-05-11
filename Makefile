@@ -6,7 +6,7 @@ GO ?= go
 BUF_VERSION := v1.47.0
 BUF ?= $(GO) run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 # Local breaking-change baseline for proto-check. Override in CI/PR jobs when comparing to a remote base branch.
-PROTO_BREAKING_AGAINST ?= ../.git#branch=HEAD,subdir=proto
+PROTO_BREAKING_AGAINST ?= ../.git\#branch=HEAD,subdir=proto
 PROTO_BREAKING_PATH ?= avf/machine/v1
 # Pin sqlc to match CI (.github/workflows/ci.yml); uses go run so PATH sqlc is not required.
 SQLC_VERSION := v1.29.0
