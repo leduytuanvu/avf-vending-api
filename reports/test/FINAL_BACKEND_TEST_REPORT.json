@@ -1,8 +1,8 @@
 {
   "executive": {
-    "status_line": "BLOCKED: Full coverage cannot be proven because required environment/hardware/provider is missing.",
-    "commit_sha": "d9c60e3c8c29a3032c4cf2c133a0e7c9bae250f9",
-    "generated_at": "2026-05-11T14:54:45.470777+00:00",
+    "status_line": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
+    "commit_sha": "271019198c5bfefd57530d8437c16f8320d4f067",
+    "generated_at": "2026-05-11T16:42:00Z",
     "environment": "local audit host (see audit-commands.json)",
     "rest": {
       "total_operations": 365,
@@ -99,7 +99,7 @@
   },
   "final_full_verification": {
     "branch": "test/production-full-destructive-e2e",
-    "commit": "d9c60e3c8c29a3032c4cf2c133a0e7c9bae250f9",
+    "commit": "271019198c5bfefd57530d8437c16f8320d4f067",
     "environment": "local Docker/local mock only",
     "database": "avf_vending_test_final",
     "api_url": "http://127.0.0.1:18080",
@@ -114,7 +114,7 @@
     },
     "go_vet": "pass",
     "go_test": "pass",
-    "go_test_race": "blocked locally: cgo race build requires gcc; gcc not installed in PATH; Ubuntu CI proof workflow added but not executed",
+    "go_test_race": "pass in GitHub Actions Ubuntu production proof run 25683385601",
     "static_checks": {
       "gofmt": "pass",
       "bash_n": "pass",
@@ -149,16 +149,23 @@
     "production_readiness_report": "reports/test/production-readiness.md",
     "remaining_risks": [
       "REST per-operation live probing remains partial and should not be represented as 100% API live coverage.",
-      "Race tests blocked until gcc/cgo toolchain is installed on Windows host.",
       "Production smoke not run without configured safe URL.",
-      "Makefile gates require Ubuntu/CI proof because make is unavailable locally."
+      "REST full OpenAPI live coverage remains partial and should not be overclaimed."
     ],
     "production_proof_addendum": {
       "workflow": ".github/workflows/production-proof.yml",
+      "pr_url": "https://github.com/leduytuanvu/avf-vending-api/pull/202",
+      "run_id": 25683385601,
+      "run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683385601",
+      "head_sha": "271019198c5bfefd57530d8437c16f8320d4f067",
+      "go_test": "pass",
+      "go_test_race": "pass",
+      "make_test_short": "pass",
+      "make_api_contract_check": "pass",
       "emqx_health": "healthy after listener-based local compose healthcheck",
       "affected_gates_rerun": "pass",
       "secret_audit": "pass"
     },
-    "final_claim": "BLOCKED: Production-readiness proof cannot be completed because required environment/tooling/URL/provider/hardware is missing."
+    "final_claim": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured."
   }
 }

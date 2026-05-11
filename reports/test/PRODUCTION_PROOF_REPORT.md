@@ -1,12 +1,12 @@
 # Production Proof Report
 
-Generated: `2026-05-11T15:38:00Z`
+Generated: `2026-05-11T16:42:00Z`
 
 ## Final Claim
 
-> **BLOCKED: Production-readiness proof cannot be completed because required environment/tooling/URL/provider/hardware is missing.**
+> **BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.**
 
-All executable local gates run during this proof pass completed successfully after one flaky timing test was made deterministic. Full production-readiness proof remains blocked until the Ubuntu race/Makefile proof workflow is executed successfully and a safe staging/production URL is provided for read-only smoke.
+All executable local gates run during this proof pass completed successfully after one flaky timing test was made deterministic. Ubuntu CI proof now also passed for `go test`, `go test -race`, `make test-short`, and `make api-contract-check`. Full production-readiness proof remains blocked only because no safe staging/production URL is configured for read-only smoke.
 
 ## Proven Locally
 
@@ -21,11 +21,20 @@ All executable local gates run during this proof pass completed successfully aft
 - Critical REST live coverage generated: `30` scoped critical checks, `27` live 2xx passes, `3` partial/non-2xx items. This is not 100% OpenAPI live coverage.
 - Final secret audit found no unredacted local fixture values, JWT-shaped tokens, or Bearer-shaped secrets in `reports`.
 
+## Proven In GitHub Actions
+
+- PR: `https://github.com/leduytuanvu/avf-vending-api/pull/202`
+- Workflow run: `https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683385601`
+- Run ID: `25683385601`
+- Job: `Linux race and contract gates`
+- Head SHA: `271019198c5bfefd57530d8437c16f8320d4f067`
+- `go test ./... -count=1`: passed.
+- `CGO_ENABLED=1 go test -race ./... -count=1`: passed.
+- `make test-short`: passed.
+- `make api-contract-check`: passed.
+
 ## Still Blocked
 
-- `go test -race ./... -count=1` could not run locally because this Windows/Git Bash host has no `gcc` for cgo race builds.
-- `make test-short` and `make api-contract-check` could not run locally because `make` is unavailable in PowerShell and Git Bash.
-- `.github/workflows/production-proof.yml` now provides the Ubuntu proof path for `go test`, `go test -race`, `make test-short`, and `make api-contract-check`, but no CI run has been executed in this local session.
 - Read-only staging/production smoke was not run because none of `STAGING_BASE_URL`, `PRODUCTION_BASE_URL`, `PROD_BASE_URL`, or `BASE_URL_PROD` is configured.
 
 ## Changed Proof Artifacts
@@ -55,10 +64,9 @@ bash tests/e2e/run-mqtt-local.sh
 python scripts/test/rest_critical_live_coverage.py
 ```
 
-Ubuntu/CI proof still required:
+Read-only smoke proof still required when a safe URL is available:
 
 ```bash
-CGO_ENABLED=1 go test -race ./... -count=1
-make test-short
-make api-contract-check
+BASE_URL="$STAGING_BASE_URL" bash scripts/test/run-readonly-smoke.sh
+BASE_URL="$PRODUCTION_BASE_URL" bash scripts/test/run-readonly-smoke.sh
 ```

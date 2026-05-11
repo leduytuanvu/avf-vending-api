@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-05-11T15:38:00Z",
-  "final_claim": "BLOCKED: Production-readiness proof cannot be completed because required environment/tooling/URL/provider/hardware is missing.",
+  "generated_at": "2026-05-11T16:42:00Z",
+  "final_claim": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
   "baseline": {
     "branch": "test/production-full-destructive-e2e",
-    "commit": "d9c60e3c8c29a3032c4cf2c133a0e7c9bae250f9",
+    "commit": "271019198c5bfefd57530d8437c16f8320d4f067",
     "e2e_run_dir": ".e2e-runs/run-20260511T143948Z-409-30449",
     "full_local_e2e": {
       "status": "pass",
@@ -50,19 +50,21 @@
       "status": "pass"
     }
   ],
+  "ci_proof": {
+    "status": "pass",
+    "pr_url": "https://github.com/leduytuanvu/avf-vending-api/pull/202",
+    "workflow": "Production Proof",
+    "run_id": 25683385601,
+    "run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683385601",
+    "job": "Linux race and contract gates",
+    "job_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25683385601/job/75400591905",
+    "head_sha": "271019198c5bfefd57530d8437c16f8320d4f067",
+    "go_test": "pass",
+    "go_test_race": "pass",
+    "make_test_short": "pass",
+    "make_api_contract_check": "pass"
+  },
   "blocked_gates": [
-    {
-      "name": "go test -race ./... -count=1",
-      "reason": "Local Windows/Git Bash host has no gcc for cgo race builds; Ubuntu CI workflow added but not executed."
-    },
-    {
-      "name": "make test-short",
-      "reason": "make is unavailable locally; Ubuntu CI workflow added but not executed."
-    },
-    {
-      "name": "make api-contract-check",
-      "reason": "make is unavailable locally; Ubuntu CI workflow added but not executed."
-    },
     {
       "name": "read-only staging/production smoke",
       "reason": "No safe base URL configured in STAGING_BASE_URL, PRODUCTION_BASE_URL, PROD_BASE_URL, or BASE_URL_PROD."
