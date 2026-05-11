@@ -40,6 +40,7 @@ CREATE INDEX ix_product_media_product ON product_media (product_id);
 
 COMMENT ON TABLE product_media IS 'Denormalized catalog media projection per product_images row (id matches product_images.id); maintained by triggers.';
 
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION refresh_product_media_row (pi_id uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -109,7 +110,9 @@ BEGIN
         pi.id = pi_id;
 END;
 $$;
+-- +goose StatementEnd
 
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION trg_product_images_refresh_product_media ()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -127,12 +130,14 @@ BEGIN
     RETURN new;
 END;
 $$;
+-- +goose StatementEnd
 
 CREATE TRIGGER product_images_refresh_product_media_trg
 AFTER INSERT OR UPDATE OR DELETE ON product_images
 FOR EACH ROW
 EXECUTE FUNCTION trg_product_images_refresh_product_media ();
 
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION trg_media_assets_touch_product_media ()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -169,6 +174,7 @@ BEGIN
     RETURN new;
 END;
 $$;
+-- +goose StatementEnd
 
 CREATE TRIGGER media_assets_touch_product_media_trg
 AFTER INSERT OR UPDATE OR DELETE ON media_assets

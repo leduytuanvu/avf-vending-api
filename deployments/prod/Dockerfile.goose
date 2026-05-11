@@ -1,11 +1,11 @@
 # One-shot migrations: goose CLI on Alpine (matches prod migrate service).
 # Base image digests: multi-arch index (library/golang, library/alpine on Docker Hub). Bump digests when changing GO_VERSION / Alpine tag.
-ARG GO_VERSION=1.25.9
+ARG GO_VERSION=1.25.10
 ARG GOOSE_VERSION=v3.27.0
 ARG PGX_VERSION=v5.9.0
 ARG GRPC_VERSION=v1.79.3
 
-FROM golang:1.25.9-alpine@sha256:5caaf1cca9dc351e13deafbc3879fd4754801acba8653fa9540cea125d01a71f AS build
+FROM golang:1.25.10-alpine@sha256:8d22e29d960bc50cd025d93d5b7c7d220b1ee9aa7a239b3c8f55a57e987e8d45 AS build
 ARG GOOSE_VERSION
 ARG PGX_VERSION
 ARG GRPC_VERSION

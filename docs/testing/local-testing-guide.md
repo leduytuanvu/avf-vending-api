@@ -27,6 +27,8 @@ Copy **[`.env.example`](../../.env.example)** or **[`.env.local.example`](../../
 
 For integration tests, set **`TEST_DATABASE_URL`** to the same.
 
+For repeatable integration runs, prefer a **dedicated empty database** (for example `avf_vending_test` on your Postgres port) instead of reusing a long-lived `avf_vending` instance where manual data may collide with fixture assumptions. Parallel packages that touch the shared dev machine coordinate seeding via PostgreSQL advisory locks (see **`testfixtures.DevCommerceSeedAdvisoryLockKey`** in **`internal/testfixtures/dev_integration_seed.go`**).
+
 Enable machine gRPC for kiosk smoke tests:
 
 - **`GRPC_ENABLED=true`** or **`MACHINE_GRPC_ENABLED=true`**
@@ -105,7 +107,76 @@ Operational debugging: **`../runbooks/mqtt-command-debug.md`**, stuck commands: 
 
 ---
 
-## See also
+## Windows PowerShell local full test workflow
+
+These scripts work from **any current directory**: they locate the repository root by walking up to **`go.mod`** (so you are not stuck running from `C:\Users\…` or accidentally writing logs to drive roots).
+
+- **`127.0.0.1:8080`** is commonly occupied by **Apache** or other stacks. Use **`127.0.0.1:18080`** for this API unless you know the port is free.
+- A **passing Go test suite** does **not** guarantee E2E passes — run both when changing behavior that touches HTTP/MQTT/gRPC flows.
+- **Production destructive E2E** (and **`tests/e2e/.env.production.destructive.local`**) is **not** invoked by these helpers.
+- **`scripts/local/run-local-e2e.ps1`** is saved as **UTF-8 with BOM** so **Windows PowerShell 5.1** parses operators inside strings reliably. Prefer running it with **`-ExecutionPolicy Bypass`**, for example:
+  **`powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\local\run-local-e2e.ps1`**.
+- Bash steps may emit **WARN** lines to **stderr** even when exit code **0**. The runner lowers error handling noise for those calls only (failures still come from non-zero **`$LASTEXITCODE`** plus structured remediation / P0 totals).
+- **P0/P1** rollup in **`E2E_STATUS.txt`** and **`show-latest-test-status.ps1`** comes from **`flow-review-scorecard.json`** (or explicit count sections in summaries), **not** from scanning every **`P0`** substring in prose.
+
+### E2E optional tools (PATH on Windows)
+
+The harness looks for **Newman**, **mosquitto_pub** / **mosquitto_sub**, and **grpcurl** on `PATH` inside **Git Bash**. If installs succeed but preflight still reports “not on PATH”, add the folders to your **user** Path and open a new terminal:
+
+- **Newman** (`npm install -g newman`): typically **`%APPDATA%\npm`** (e.g. `C:\Users\<you>\AppData\Roaming\npm`).
+- **Eclipse Mosquitto** (`winget install EclipseFoundation.Mosquitto`, or equivalent): **`C:\Program Files\Mosquitto`** (publisher installers do not always update Path).
+- **grpcurl** (`go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest`): **`%USERPROFILE%\go\bin`**.
+
+One-off prepend for the current PowerShell session (adjust if your profile paths differ):
+
+```powershell
+$env:Path = "C:\Program Files\Mosquitto;$env:APPDATA\npm;$env:USERPROFILE\go\bin;$env:Path"
+```
+
+`scripts/local/run-local-e2e.ps1` attempts an **idempotent** `INSERT` into `platform_auth_accounts` (dev org `11111111-1111-1111-1111-111111111111`, user `e2e-local-admin@invalid.local`) when `docker exec avf-postgres` can reach `avf_vending_test` on the same DB as `start-api-local.ps1` / full Go tests. Override with `E2E_LOCAL_ADMIN_EMAIL`, `E2E_LOCAL_ADMIN_PASSWORD`, or `E2E_LOCAL_ORGANIZATION_ID` before running the script if you manage credentials yourself.
+
+### Artifacts
+
+| Location | Contents |
+| -------- | -------- |
+| **`.test-runs/<yyyyMMddTHHmmss>/`** | Docker logs, goose logs, `go test -json` (`.jsonl`), package summaries, `STATUS.txt`, optional `E2E_STATUS.txt` when you run E2E after tests. |
+| **`.e2e-runs/run-*`** | Harness output from `tests/e2e` runners (reports, events, coverage). |
+
+### Terminal layout (typical)
+
+**PowerShell terminal 1 — full Go tests + migrations + clean DB**
+
+```powershell
+.\scripts\local\run-full-go-tests.ps1
+```
+
+Optional: skip opening Explorer at the end:
+
+```powershell
+.\scripts\local\run-full-go-tests.ps1 -NoOpen
+```
+
+**PowerShell terminal 2 — API on 18080**
+
+```powershell
+.\scripts\local\start-api-local.ps1 -HttpPort 18080
+```
+
+**PowerShell terminal 3 — local E2E (read-only + safe writes pipeline; not production destructive)**
+
+```powershell
+.\scripts\local\run-local-e2e.ps1 -BaseUrl http://127.0.0.1:18080
+```
+
+**Show latest status (paths + key text files)**
+
+```powershell
+.\scripts\local\show-latest-test-status.ps1
+```
+
+Same with `-NoOpen` if you do not want Explorer windows.
+
+### See also
 
 | Topic | Doc |
 | ----- | --- |

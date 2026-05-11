@@ -175,15 +175,19 @@ func TestOperatorSession_TimeoutWhenExpired(t *testing.T) {
 	svc := operator.NewService(repo, machines, tech, assign)
 
 	tid := testfixtures.DevTechnicianID
-	past := time.Now().UTC().Add(-2 * time.Hour)
+	future := time.Now().UTC().Add(2 * time.Hour)
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
 		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
-		ExpiresAt:         &past,
+		ExpiresAt:         &future,
 		InitialAuthMethod: domainoperator.AuthMethodBadge,
 	})
+	require.NoError(t, err)
+
+	past := time.Now().UTC().Add(-2 * time.Hour)
+	_, err = pool.Exec(ctx, `UPDATE machine_operator_sessions SET expires_at = $1 WHERE id = $2`, past, sess.ID)
 	require.NoError(t, err)
 
 	timed, err := svc.TimeoutOperatorSession(ctx, operator.TimeoutOperatorSessionInput{

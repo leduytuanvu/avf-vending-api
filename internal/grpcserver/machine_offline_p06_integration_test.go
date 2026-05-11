@@ -70,23 +70,15 @@ func offlineProtoPayload(t *testing.T, msg proto.Message) *structpb.Struct {
 	return &s
 }
 
-func TestP06_OfflineSync_sortedDescendingMetaStillProcessesAscendingSequences(t *testing.T) {
-	t.Parallel()
-
-	pool := machineGRPCTestPool(t)
-	ctx := context.Background()
-	orgID := uuid.New()
-	siteID := uuid.New()
-	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
-
-	deps := offlineSyncIntegrationDeps(t, pool)
-	srv := &machineOfflineSyncServer{deps: deps}
-
+// telemetryBatchPayloadForOffline builds a telemetry.batch offline payload with its own nested
+// idempotency scope. Two offline events must not reuse the same batch idempotency key: telemetry
+// dedupes by key and compares JSON bytes, and encoding/json map key order is not stable across calls.
+func telemetryBatchPayloadForOffline(t *testing.T, batchIdempotencyKey, batchClientEventID string) *structpb.Struct {
+	t.Helper()
 	tbReq := &machinev1.SubmitTelemetryBatchRequest{
 		Context: &machinev1.IdempotencyContext{
-			IdempotencyKey:  "offline-seq-sort",
-			ClientEventId:   "client-seq-sort",
+			IdempotencyKey:  batchIdempotencyKey,
+			ClientEventId:   batchClientEventID,
 			ClientCreatedAt: timestamppb.Now(),
 		},
 		Events: []*machinev1.TelemetryEvent{
@@ -101,34 +93,53 @@ func TestP06_OfflineSync_sortedDescendingMetaStillProcessesAscendingSequences(t 
 	require.NoError(t, err)
 	var payloadStruct structpb.Struct
 	require.NoError(t, protojson.Unmarshal(payloadJSON, &payloadStruct))
+	return &payloadStruct
+}
+
+func TestP06_OfflineSync_sortedDescendingMetaStillProcessesAscendingSequences(t *testing.T) {
+	t.Parallel()
+
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	orgID := uuid.New()
+	siteID := uuid.New()
+	machineID := uuid.New()
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+
+	deps := offlineSyncIntegrationDeps(t, pool)
+	srv := &machineOfflineSyncServer{deps: deps}
+
+	id := uuid.NewString()[:8]
+	payloadSeq1 := telemetryBatchPayloadForOffline(t, "offline-seq-sort-"+id+"-s1", "client-seq-sort-"+id+"-s1")
+	payloadSeq2 := telemetryBatchPayloadForOffline(t, "offline-seq-sort-"+id+"-s2", "client-seq-sort-"+id+"-s2")
 
 	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
 	out, err := srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
-		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: "sync-sort", RequestId: "sync-sort"},
+		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: "sync-sort-" + id, RequestId: "sync-sort-" + id},
 		Events: []*machinev1.OfflineEvent{
 			{
 				Meta: &machinev1.MachineRequestMeta{
 					OfflineSequence: 2,
-					IdempotencyKey:  "oe-2",
-					RequestId:       "req-2",
-					ClientEventId:   "cli-2",
+					IdempotencyKey:  "oe-2-" + id,
+					RequestId:       "req-2-" + id,
+					ClientEventId:   "cli-2-" + id,
 					OccurredAt:      timestamppb.Now(),
 				},
 				EventType: "telemetry.batch",
-				Payload:   &payloadStruct,
+				Payload:   payloadSeq2,
 			},
 			{
 				Meta: &machinev1.MachineRequestMeta{
 					OfflineSequence: 1,
-					IdempotencyKey:  "oe-1",
-					RequestId:       "req-1",
-					ClientEventId:   "cli-1",
+					IdempotencyKey:  "oe-1-" + id,
+					RequestId:       "req-1-" + id,
+					ClientEventId:   "cli-1-" + id,
 					OccurredAt:      timestamppb.Now(),
 				},
 				EventType: "telemetry.batch",
-				Payload:   &payloadStruct,
+				Payload:   payloadSeq1,
 			},
 		},
 	})
@@ -410,12 +421,14 @@ func TestP06_OfflineSync_devMachineCashAndVendReplayDoesNotDoubleDecrement(t *te
 		_, _ = pool.Exec(ctx2, `UPDATE machine_slot_state SET current_quantity = $1 WHERE machine_id = $2 AND slot_index = 0`,
 			qtyRestore, testfixtures.DevMachineID)
 		_, _ = pool.Exec(ctx2, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
-		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursor WHERE machine_id = $1 AND stream_name = 'offline'`, testfixtures.DevMachineID)
+		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursors WHERE organization_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
+			testfixtures.DevOrganizationID, testfixtures.DevMachineID)
 	})
 
 	_, err := pool.Exec(ctx, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursor WHERE machine_id = $1 AND stream_name = 'offline'`, testfixtures.DevMachineID)
+	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE organization_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
+		testfixtures.DevOrganizationID, testfixtures.DevMachineID)
 	require.NoError(t, err)
 
 	deps := offlineSyncIntegrationDeps(t, pool)
@@ -546,12 +559,14 @@ func TestP06_OfflineSync_duplicateInventoryAdjustmentDoesNotDoubleApply(t *testi
 		_, _ = pool.Exec(ctx2, `UPDATE machine_slot_state SET current_quantity = $1 WHERE machine_id = $2 AND slot_index = 1`,
 			qtyRestore, testfixtures.DevMachineID)
 		_, _ = pool.Exec(ctx2, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
-		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursor WHERE machine_id = $1 AND stream_name = 'offline'`, testfixtures.DevMachineID)
+		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursors WHERE organization_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
+			testfixtures.DevOrganizationID, testfixtures.DevMachineID)
 	})
 
 	_, err := pool.Exec(ctx, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursor WHERE machine_id = $1 AND stream_name = 'offline'`, testfixtures.DevMachineID)
+	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE organization_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
+		testfixtures.DevOrganizationID, testfixtures.DevMachineID)
 	require.NoError(t, err)
 
 	deps := offlineSyncIntegrationDeps(t, pool)

@@ -3,12 +3,15 @@ package httpserver
 import (
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/avf/avf-vending-api/docs/swagger" // register OpenAPI with swag (init) + OpenAPIJSON()
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
 )
+
+var swaggerUIReadMu sync.Mutex
 
 // MountOpenAPIJSON serves only GET /swagger/doc.json (OpenAPI 3.0 JSON) without Bearer auth.
 // Use when HTTP_OPENAPI_JSON_ENABLED=true and HTTP_SWAGGER_UI_ENABLED=false (e.g. production + Postman import).
@@ -40,6 +43,8 @@ func MountSwaggerUI(r chi.Router, log *zap.Logger) {
 			http.Redirect(w, r, "/swagger/index.html", http.StatusTemporaryRedirect)
 			return
 		}
+		swaggerUIReadMu.Lock()
+		defer swaggerUIReadMu.Unlock()
 		inner.ServeHTTP(w, r)
 	}))
 }

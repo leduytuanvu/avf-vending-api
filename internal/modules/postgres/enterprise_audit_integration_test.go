@@ -261,8 +261,28 @@ func TestEnterpriseAudit_MachineFilterAndGetByID(t *testing.T) {
 
 	audit := appaudit.NewService(pool)
 	ctx := context.Background()
-	machineID := uuid.New()
 	siteID := uuid.New()
+	machineID := uuid.New()
+	hw := uuid.New()
+	_, err := pool.Exec(ctx, `
+INSERT INTO machine_hardware_profiles (id, organization_id, name, spec) VALUES ($1, $2, 'audit-hw', '{}'::jsonb)`,
+		hw, org)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+INSERT INTO sites (id, organization_id, name, address) VALUES ($1, $2, 'audit-site', '{}'::jsonb)`,
+		siteID, org)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+INSERT INTO machines (id, organization_id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
+VALUES ($1, $2, $3, $4, $5, 'm', 'online', 0, 0)`,
+		machineID, org, siteID, hw, "audit-sn-"+machineID.String()[:12])
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM machines WHERE id = $1`, machineID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM sites WHERE id = $1`, siteID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM machine_hardware_profiles WHERE id = $1`, hw)
+	})
+
 	rid := "res-machine-scope"
 	require.NoError(t, audit.Record(ctx, compliance.EnterpriseAuditRecord{
 		OrganizationID: org,

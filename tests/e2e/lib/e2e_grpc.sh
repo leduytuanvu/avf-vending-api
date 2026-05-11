@@ -135,14 +135,16 @@ e2e_grpc_call() {
 
   local -a args=()
   e2e_grpc_append_proto_flags args || return 2
-  args+=("-d" "@${req}")
+  # Headers/metadata must appear before stdin body (-d @); some grpcurl builds mishandle flags after stdin.
   e2e_grpc_append_metadata_flags args "${idempotency_key}"
+  # Read JSON from stdin: Windows grpcurl rejects a single `-d@file` flag; Bash/MSYS also mishandles `-d` + `@file` splits.
+  args+=("-d" "@")
 
   local t0 t1 elapsed ge result
   t0="$(e2e_python -c 'import time; print(time.time())')"
   echo "### $(now_utc) grpcurl ${GRPC_ADDR} ${full_method}" >>"${logf}"
   set +e
-  grpcurl "${args[@]}" -max-time 60 "${GRPC_ADDR}" "${full_method}" >"${resp}" 2>>"${logf}"
+  grpcurl "${args[@]}" -max-time 60 "${GRPC_ADDR}" "${full_method}" <"${req}" >"${resp}" 2>>"${logf}"
   ge=$?
   set -e
   echo "### grpcurl exit ${ge}" >>"${logf}"
@@ -182,16 +184,16 @@ e2e_grpc_call_unauthenticated() {
 
   local -a args=()
   e2e_grpc_append_proto_flags args || return 2
-  args+=("-d" "@${req}")
   if [[ -n "$idempotency_key" ]]; then
     args+=("-H" "idempotency-key: ${idempotency_key}")
   fi
+  args+=("-d" "@")
 
   local t0 t1 elapsed ge result
   t0="$(e2e_python -c 'import time; print(time.time())')"
   echo "### $(now_utc) grpcurl (unauthenticated) ${GRPC_ADDR} ${full_method}" >>"${logf}"
   set +e
-  grpcurl "${args[@]}" -max-time 60 "${GRPC_ADDR}" "${full_method}" >"${resp}" 2>>"${logf}"
+  grpcurl "${args[@]}" -max-time 60 "${GRPC_ADDR}" "${full_method}" <"${req}" >"${resp}" 2>>"${logf}"
   ge=$?
   set -e
   echo "### grpcurl exit ${ge}" >>"${logf}"

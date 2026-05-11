@@ -1,0 +1,187 @@
+{
+  "executive": {
+    "status_line": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
+    "commit_sha": "2482821c7222bb008dd1ceb913b3c64c602cadfc",
+    "generated_at": "2026-05-11T17:55:00Z",
+    "environment": "local audit host (see audit-commands.json)",
+    "rest": {
+      "total_operations": 365,
+      "probe_ok_count": 6,
+      "blocked_operations": 0,
+      "reachable": true
+    },
+    "grpc": {
+      "methods_enumerated": 85
+    },
+    "mqtt": {
+      "flows_enumerated": 5
+    },
+    "e2e_flows_mapped": 10
+  },
+  "audit_commands": [
+    {
+      "label": "go_test_audit",
+      "command": "go test ./...",
+      "cwd": "D:/admin/development/avf/avf-vending-system/avf-vending-api",
+      "exit_code": 0,
+      "duration_ms": 171
+    },
+    {
+      "label": "gofmt_audit",
+      "command": "gofmt -l \".\" (must be empty)",
+      "cwd": "D:/admin/development/avf/avf-vending-system/avf-vending-api",
+      "exit_code": 0,
+      "duration_ms": 1
+    },
+    {
+      "label": "go_vet_audit",
+      "command": "go vet ./...",
+      "cwd": "D:/admin/development/avf/avf-vending-system/avf-vending-api",
+      "exit_code": 0,
+      "duration_ms": 7
+    },
+    {
+      "label": "rest_inventory",
+      "command": "python scripts/test/rest_openapi_coverage.py --base-url http://127.0.0.1:18080",
+      "cwd": "D:/admin/development/avf/avf-vending-system/avf-vending-api",
+      "exit_code": 0,
+      "duration_ms": 0
+    },
+    {
+      "label": "grpc_inventory",
+      "command": "python scripts/test/grpc_inventory_coverage.py",
+      "cwd": "D:/admin/development/avf/avf-vending-system/avf-vending-api",
+      "exit_code": 0,
+      "duration_ms": 0
+    },
+    {
+      "label": "mqtt_inventory",
+      "command": "python scripts/test/mqtt_inventory_coverage.py",
+      "cwd": "D:/admin/development/avf/avf-vending-system/avf-vending-api",
+      "exit_code": 0,
+      "duration_ms": 0
+    },
+    {
+      "label": "e2e_flow_inventory",
+      "command": "python scripts/test/e2e_flow_inventory.py",
+      "cwd": "D:/admin/development/avf/avf-vending-system/avf-vending-api",
+      "exit_code": 0,
+      "duration_ms": 0
+    },
+    {
+      "label": "chk_api",
+      "command": "python scripts/test/check-api-coverage.py",
+      "cwd": "D:/admin/development/avf/avf-vending-system/avf-vending-api",
+      "exit_code": 0,
+      "duration_ms": 0
+    },
+    {
+      "label": "chk_flow",
+      "command": "python scripts/test/check-flow-coverage.py",
+      "cwd": "D:/admin/development/avf/avf-vending-system/avf-vending-api",
+      "exit_code": 0,
+      "duration_ms": 0
+    },
+    {
+      "label": "report_gen",
+      "command": "python scripts/test/generate-test-report.py",
+      "cwd": "D:/admin/development/avf/avf-vending-system/avf-vending-api",
+      "exit_code": 0,
+      "duration_ms": 1
+    }
+  ],
+  "artifacts": {
+    "rest_api_coverage_json": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-api-coverage.json",
+    "rest_api_jsonl": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-api-requests-responses.jsonl",
+    "grpc_coverage_json": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-coverage.json",
+    "mqtt_coverage_json": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\mqtt-coverage.json",
+    "e2e_flow_json": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\e2e-flow-coverage.json"
+  },
+  "final_full_verification": {
+    "branch": "test/production-full-destructive-e2e",
+    "commit": "2482821c7222bb008dd1ceb913b3c64c602cadfc",
+    "environment": "local Docker/local mock only",
+    "database": "avf_vending_test_final",
+    "api_url": "http://127.0.0.1:18080",
+    "grpc_addr": "127.0.0.1:9090",
+    "mqtt_broker": "127.0.0.1:1883",
+    "latest_e2e_run_dir": ".e2e-runs/run-20260511T143948Z-409-30449",
+    "run_all_local": {
+      "exit_code": 0,
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    "go_vet": "pass",
+    "go_test": "pass",
+    "go_test_race": "pass in GitHub Actions Ubuntu production proof run 25683990468",
+    "static_checks": {
+      "gofmt": "pass",
+      "bash_n": "pass",
+      "python_compileall": "pass",
+      "actionlint": "pass",
+      "shellcheck": "not installed",
+      "golangci_lint": "not installed",
+      "make": "not installed"
+    },
+    "grpc_suite": "pass",
+    "mqtt_suite": "pass",
+    "phase8_42": "pass",
+    "rest_openapi_coverage": {
+      "total_operations": 365,
+      "scripted": 99,
+      "partial": 266,
+      "live_probe_ok": 6
+    },
+    "rest_critical_live_coverage": {
+      "total_critical": 30,
+      "passed": 27,
+      "partial": 3,
+      "report": "reports/test/rest-critical-live-coverage.json",
+      "scope": "critical REST live coverage only; not full OpenAPI per-operation coverage"
+    },
+    "production_smoke": "not run: no safe production/staging URL configured; read-only smoke script and NOT RUN artifacts added",
+    "request_response_evidence": [
+      "reports/test/rest-api-requests-responses.jsonl",
+      "reports/test/api-request-response-report.jsonl",
+      "reports/test/e2e-evidence/run-all-local-last.log"
+    ],
+    "production_readiness_report": "reports/test/production-readiness.md",
+    "remaining_risks": [
+      "REST per-operation live probing remains partial and should not be represented as 100% API live coverage.",
+      "Production smoke not run without configured safe URL.",
+      "REST full OpenAPI live coverage remains partial and should not be overclaimed."
+    ],
+    "production_proof_addendum": {
+      "workflow": ".github/workflows/production-proof.yml",
+      "pr_url": "https://github.com/leduytuanvu/avf-vending-api/pull/203",
+      "run_id": 25686909181,
+      "run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686909181",
+      "head_sha": "2482821c7222bb008dd1ceb913b3c64c602cadfc",
+      "go_test": "pass",
+      "go_test_race": "pass",
+      "make_test_short": "pass",
+      "make_api_contract_check": "pass",
+      "emqx_health": "healthy after listener-based local compose healthcheck",
+      "affected_gates_rerun": "pass",
+      "secret_audit": "pass"
+    },
+    "final_claim": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
+    "security_scan": {
+      "status": "pass",
+      "failed_run_id": 25685173325,
+      "failed_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25685173325",
+      "failed_check": "Go Vulnerability Scan",
+      "go_toolchain_before": "1.25.9",
+      "go_toolchain_after": "1.25.10",
+      "golang.org/x/net_before": "v0.52.0",
+      "golang.org/x/net_after": "v0.53.0",
+      "local_govulncheck": "pass with go1.25.10 and govulncheck@v1.3.0",
+      "ci_required": "satisfied: updated Go Vulnerability Scan passed",
+      "passed_run_id": 25686906495,
+      "passed_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686906495"
+    },
+    "go_toolchain": "1.25.10",
+    "golang.org/x/net": "v0.53.0"
+  }
+}

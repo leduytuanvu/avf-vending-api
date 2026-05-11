@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-05-11T15:37:00Z",
+  "status": "not_run",
+  "reason": "No safe staging or production base URL configured.",
+  "checked_env": [
+    "STAGING_BASE_URL",
+    "PRODUCTION_BASE_URL",
+    "PROD_BASE_URL",
+    "BASE_URL_PROD"
+  ],
+  "script": "scripts/test/run-readonly-smoke.sh",
+  "writes_attempted": false,
+  "probes": []
+}

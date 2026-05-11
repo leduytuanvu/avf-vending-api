@@ -47,8 +47,20 @@ OVERALL=0
 invoke_child() {
   local script="$1"
   shift
+  : "${GRPC_ADDR:=127.0.0.1:9090}"
+  : "${MQTT_HOST:=127.0.0.1}"
+  : "${MQTT_PORT:=1883}"
+  : "${BASE_URL:=http://127.0.0.1:8080}"
   set +e
-  E2E_IN_PARENT=1 \
+  ADMIN_EMAIL="${ADMIN_EMAIL:-}" \
+    ADMIN_PASSWORD="${ADMIN_PASSWORD:-}" \
+    ADMIN_TOKEN="${ADMIN_TOKEN:-}" \
+    E2E_ORGANIZATION_ID="${E2E_ORGANIZATION_ID:-}" \
+    BASE_URL="${BASE_URL}" \
+    GRPC_ADDR="${GRPC_ADDR}" \
+    MQTT_HOST="${MQTT_HOST}" \
+    MQTT_PORT="${MQTT_PORT}" \
+    E2E_IN_PARENT=1 \
     E2E_RUN_DIR="${E2E_RUN_DIR}" \
     E2E_REUSE_DATA="${E2E_REUSE_DATA}" \
     E2E_DATA_FILE="${E2E_DATA_FILE:-}" \
@@ -106,7 +118,19 @@ for _p8 in "${PHASE8_LIST[@]}"; do
     continue
   fi
   set +e
-  E2E_IN_PARENT=1 \
+  : "${GRPC_ADDR:=127.0.0.1:9090}"
+  : "${MQTT_HOST:=127.0.0.1}"
+  : "${MQTT_PORT:=1883}"
+  : "${BASE_URL:=http://127.0.0.1:8080}"
+  ADMIN_EMAIL="${ADMIN_EMAIL:-}" \
+    ADMIN_PASSWORD="${ADMIN_PASSWORD:-}" \
+    ADMIN_TOKEN="${ADMIN_TOKEN:-}" \
+    E2E_ORGANIZATION_ID="${E2E_ORGANIZATION_ID:-}" \
+    BASE_URL="${BASE_URL}" \
+    GRPC_ADDR="${GRPC_ADDR}" \
+    MQTT_HOST="${MQTT_HOST}" \
+    MQTT_PORT="${MQTT_PORT}" \
+    E2E_IN_PARENT=1 \
     E2E_RUN_DIR="${E2E_RUN_DIR}" \
     E2E_REUSE_DATA="${E2E_REUSE_DATA}" \
     E2E_DATA_FILE="${E2E_DATA_FILE:-}" \

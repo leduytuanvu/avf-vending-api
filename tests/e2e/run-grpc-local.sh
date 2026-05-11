@@ -50,6 +50,19 @@ if [[ "${E2E_IN_PARENT:-0}" != "1" ]]; then
   e2e_data_initialize
 fi
 
+# If an operator passed MACHINE_TOKEN / MACHINE_ID via env (common when reusing a previously created machine),
+# persist them into this run's data/secrets so scenarios can read them via get_data/get_secret.
+if [[ "${E2E_IN_PARENT:-0}" != "1" ]]; then
+  _mid_existing="$(get_data machineId)"
+  _mt_existing="$(get_secret machineToken 2>/dev/null || true)"
+  if [[ -z "${_mid_existing:-}" ]] && [[ -n "${MACHINE_ID:-}" ]]; then
+    e2e_set_data machineId "${MACHINE_ID}"
+  fi
+  if [[ -z "${_mt_existing:-}" ]] && [[ -n "${MACHINE_TOKEN:-}" ]]; then
+    e2e_save_token machineToken "${MACHINE_TOKEN}"
+  fi
+fi
+
 [[ "${E2E_IN_PARENT:-0}" == "1" ]] || cleanup_trap_register
 
 start_step "grpc-local-suite"
@@ -79,8 +92,17 @@ if ! e2e_grpc_server_reachable; then
 fi
 
 refresh_grpc_machine_env() {
-  export MACHINE_ID="$(get_data machineId)"
-  export MACHINE_TOKEN="$(get_secret machineToken 2>/dev/null || true)"
+  # Prefer run data/secrets when present, but don't clobber explicit env overrides.
+  local mid mt
+  mid="$(get_data machineId)"
+  mt="$(get_secret machineToken 2>/dev/null || true)"
+  # Avoid `[[ ... ]] && ...` under `set -e` (empty values should not abort the runner).
+  if [[ -n "${mid:-}" ]]; then
+    export MACHINE_ID="${mid}"
+  fi
+  if [[ -n "${mt:-}" ]]; then
+    export MACHINE_TOKEN="${mt}"
+  fi
 }
 
 run_grpc_scenario() {

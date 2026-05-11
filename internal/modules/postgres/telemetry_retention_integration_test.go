@@ -225,7 +225,7 @@ VALUES ($1, $2, now() - interval '400 days')
 `, org, mid)
 	require.NoError(t, err)
 
-	var checkID uuid.UUID
+	var checkID int64
 	require.NoError(t, pool.QueryRow(ctx,
 		`SELECT id FROM machine_check_ins WHERE machine_id = $1 ORDER BY occurred_at DESC LIMIT 1`, mid,
 	).Scan(&checkID))

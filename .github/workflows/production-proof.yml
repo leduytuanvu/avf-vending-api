@@ -1,0 +1,66 @@
+name: Production Proof
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: production-proof-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  linux-race-and-contract:
+    name: Linux race and contract gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install proof toolchain
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gcc make protobuf-compiler curl jq
+
+      - name: Show toolchain
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          go version
+          go env
+          gcc --version
+          make --version
+          protoc --version
+          jq --version
+          curl --version
+
+      - name: Unit and integration test corpus
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          go test ./... -count=1
+
+      - name: Race test corpus
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          CGO_ENABLED=1 go test -race ./... -count=1
+
+      - name: Makefile contract gates
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          make test-short
+          make api-contract-check

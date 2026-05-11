@@ -44,7 +44,11 @@ func (s *Store) TouchMachineConnectivityFast(ctx context.Context, machineID uuid
 		return errors.New("postgres: nil store")
 	}
 	const q = `UPDATE machines SET updated_at = now(),
-		status = CASE WHEN status = 'offline' THEN 'online' ELSE status END
+		status = CASE
+			WHEN status = 'offline' THEN 'online'
+			WHEN status = 'active' THEN 'online'
+			ELSE status
+		END
 		WHERE id = $1`
 	ct, err := s.pool.Exec(ctx, q, machineID)
 	if err != nil {

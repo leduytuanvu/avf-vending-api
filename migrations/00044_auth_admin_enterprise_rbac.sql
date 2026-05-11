@@ -5,6 +5,7 @@ ALTER TABLE platform_auth_accounts
     ADD COLUMN IF NOT EXISTS last_login_at timestamptz,
     ADD COLUMN IF NOT EXISTS invited_at timestamptz;
 
+-- +goose StatementBegin
 DO $$
 DECLARE
     constraint_name text;
@@ -23,6 +24,7 @@ BEGIN
         EXECUTE format('ALTER TABLE platform_auth_accounts DROP CONSTRAINT %I', constraint_name);
     END IF;
 END $$;
+-- +goose StatementEnd
 
 ALTER TABLE platform_auth_accounts
     ADD CONSTRAINT chk_platform_auth_accounts_status

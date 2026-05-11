@@ -71,9 +71,16 @@ MT="$(get_secret machineToken 2>/dev/null || true)"
 export ADMIN_TOKEN="$MT"
 
 qty_before=""
-if [[ -n "$PRODUCT_ID" && "$PRODUCT_ID" != "null" ]]; then
-  e2e_http_get "vm-sc-qty-before" "/v1/machines/${MID}/sale-catalog?include_unavailable=true&include_images=false" >/dev/null
-  qty_before="$(jq -r --arg p "$PRODUCT_ID" '([.items[]? | select(.productId==$p) | .availableQuantity] | first) // empty' "${E2E_RUN_DIR}/rest/vm-sc-qty-before.response.json")"
+e2e_http_get "vm-sc-qty-before" "/v1/machines/${MID}/sale-catalog?include_unavailable=true&include_images=false" >/dev/null
+sale_cat="${E2E_RUN_DIR}/rest/vm-sc-qty-before.response.json"
+if [[ "$(jq -r '.httpStatus // 0' "${E2E_RUN_DIR}/rest/vm-sc-qty-before.meta.json" 2>/dev/null)" == "200" ]] && [[ -f "$sale_cat" ]]; then
+  cat_cur="$(jq -r '.currency // empty' "$sale_cat")"
+  if [[ -n "${cat_cur}" && "${cat_cur}" != "null" ]]; then
+    CUR="$cat_cur"
+  fi
+  if [[ -n "$PRODUCT_ID" && "$PRODUCT_ID" != "null" ]]; then
+    qty_before="$(jq -r --arg p "$PRODUCT_ID" '([.items[]? | select(.productId==$p) | .availableQuantity] | first) // empty' "$sale_cat")"
+  fi
 fi
 
 CBODY="$(jq -nc \

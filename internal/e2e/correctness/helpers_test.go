@@ -5,10 +5,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
@@ -26,13 +26,6 @@ func testDSN(t *testing.T) string {
 	return dsn
 }
 
-func moduleRoot(t *testing.T) string {
-	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
-}
-
 func migrateUp(t *testing.T, dsn string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -41,11 +34,15 @@ func migrateUp(t *testing.T, dsn string) {
 	if goBin == "" {
 		goBin = "go"
 	}
+	repoRoot := testfixtures.RepoRoot(t)
+	absRoot, err := filepath.Abs(repoRoot)
+	require.NoError(t, err)
+	migrationsDir := filepath.Join(absRoot, "migrations")
 	cmd := exec.CommandContext(ctx, goBin, "run", "github.com/pressly/goose/v3/cmd/goose@v3.27.0",
-		"-dir", filepath.Join(moduleRoot(t), "migrations"),
+		"-dir", migrationsDir,
 		"postgres", dsn, "up",
 	)
-	cmd.Dir = moduleRoot(t)
+	cmd.Dir = absRoot
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "%s", string(out))
 }
@@ -59,6 +56,7 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	pool, err := pgxpool.New(ctx, dsn)
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
+	testfixtures.EnsureDevCommerceIntegrationData(t, pool)
 	return pool
 }
 

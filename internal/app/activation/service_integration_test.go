@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -16,6 +15,7 @@ import (
 	appaudit "github.com/avf/avf-vending-api/internal/app/audit"
 	"github.com/avf/avf-vending-api/internal/config"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
@@ -33,13 +33,6 @@ func testActivationDSN(t *testing.T) string {
 	return dsn
 }
 
-func activationModuleRoot(t *testing.T) string {
-	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
-}
-
 func activationMigrate(t *testing.T, dsn string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -48,11 +41,15 @@ func activationMigrate(t *testing.T, dsn string) {
 	if goBin == "" {
 		goBin = "go"
 	}
+	repoRoot := testfixtures.RepoRoot(t)
+	absRoot, err := filepath.Abs(repoRoot)
+	require.NoError(t, err)
+	migrationsDir := filepath.Join(absRoot, "migrations")
 	cmd := exec.CommandContext(ctx, goBin, "run", "github.com/pressly/goose/v3/cmd/goose@v3.27.0",
-		"-dir", filepath.Join(activationModuleRoot(t), "migrations"),
+		"-dir", migrationsDir,
 		"postgres", dsn, "up",
 	)
-	cmd.Dir = activationModuleRoot(t)
+	cmd.Dir = absRoot
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "%s", string(out))
 }
@@ -89,13 +86,14 @@ func TestClaim_IdempotentReplaySameFingerprint(t *testing.T) {
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act', 'act-org', 'active')`, orgID)
+	slug := "act-org-" + uuid.NewString()
+	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-1")
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-1-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
@@ -138,13 +136,14 @@ func TestClaim_DifferentFingerprintRejectedWhenSingleUse(t *testing.T) {
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act2', 'act2-org', 'active')`, orgID)
+	slug := "act2-org-" + uuid.NewString()
+	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act2', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-2")
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-2-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
@@ -188,13 +187,14 @@ func TestClaim_TwoDistinctFingerprintsWhenMaxUsesTwo(t *testing.T) {
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act3', 'act3-org', 'active')`, orgID)
+	slug := "act3-org-" + uuid.NewString()
+	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act3', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-3")
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-3-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
@@ -249,13 +249,14 @@ func TestClaim_ConcurrentClaimsRespectMaxUses(t *testing.T) {
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act4', 'act4-org', 'active')`, orgID)
+	slug := "act4-org-" + uuid.NewString()
+	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act4', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-4")
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-4-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
@@ -313,13 +314,14 @@ func TestClaim_PersistsSucceededClaimAndAudit(t *testing.T) {
 	auditSvc := appaudit.NewService(pool)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), auditSvc)
 
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act5', 'act5-org', 'active')`, orgID)
+	slug := "act5-org-" + uuid.NewString()
+	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act5', $2, 'active')`, orgID, slug)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-5")
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-5-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
