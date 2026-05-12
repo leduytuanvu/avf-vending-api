@@ -1,39 +1,48 @@
 # Production Proof Report
 
-## Target commit
+## Current proof target
 
-- **Branch:** `security/goose-otel-fix`
-- **Commit:** `3536e9e42536bcbf92e70052325b74c41a106ffc`
+| Field | Value |
+|-------|--------|
+| Branch | `security/goose-otel-fix` |
+| Commit (tip) | `3fb3f281360354b498b3e160e10519c4aed8ff72` |
+| PR | [#210 → `develop`](https://github.com/leduytuanvu/avf-vending-api/pull/210) |
+
+## GitHub Actions (verified on head SHA)
+
+| Workflow | Run | Conclusion |
+|----------|-----|------------|
+| CI | [25723652856](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652856) | success |
+| Security | [25723652689](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652689) | success |
+| Production Proof | [25723652868](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652868) | success |
+| CodeQL | [25723652672](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652672) | skipped |
+
+**PR required checks (representative):** Go CI Gates — pass; Linux race and contract gates — pass; Go Vulnerability Scan (govulncheck) — pass; Deployment and Config Scan (Trivy config) — pass; Secret Scan — pass. Dependency Review — skipped (repo toggle).
+
+**Historical commit `3369b51` is not used as proof for this tip** — evidence above is for `3fb3f28` only.
+
+## Security Release / image Trivy (app + goose)
+
+**NOT_TRIGGERED for this PR event.** `build-push.yml` listens for successful **CI** on **push** to `develop`/`main` (not `pull_request` on a feature head). **Security Release** follows **Build and Push Images**. After merge to `develop`, confirm Build + Security Release for **published image** Trivy evidence.
 
 ## Production read-only smoke
 
-- **Status:** NOT_RUN
-- **Reason:** `STAGING_BASE_URL`, `PRODUCTION_BASE_URL`, `PROD_BASE_URL`, and `BASE_URL_PROD` were all unset in the verification environment.
-- **Next action:** Export a read-only-safe URL and run  
-  `BASE_URL="$STAGING_BASE_URL" bash scripts/test/run-production-readonly-smoke.sh`  
-  (or set `PRODUCTION_BASE_URL` / `PROD_BASE_URL` / `BASE_URL_PROD` per your convention.)
+**NOT_RUN** — `STAGING_BASE_URL`, `PRODUCTION_BASE_URL`, `PROD_BASE_URL`, `BASE_URL_PROD` were unset; `run-production-readonly-smoke.sh` was not executed.
 
-## CI / Security / Production Proof (exact commit)
+## Canary / PSP / hardware
 
-- **Status:** **NOT_VERIFIED** for `3536e9e`
-- **Evidence:** `gh run list --commit 3536e9e42536bcbf92e70052325b74c41a106ffc` returned **no runs**.
-- **Why:** `ci.yml`, `security.yml`, and `production-proof.yml` run on **pull_request** or **push** to **`develop` / `main`** — not on ordinary pushes to `security/goose-otel-fix`. At verification time there was **no open PR** whose head was this branch (`gh pr list --head security/goose-otel-fix` was empty).
-- **Last recorded green workflows (older SHA):** commit `3369b5129af2c8a49307272c6093f059cfd74c2e` — e.g. [CI](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985939), [Production Proof](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985923), [Security](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985930).
-- **Commits after that SHA without CI on `3536e9e`:** `35e5278`, `3536e9e`.
-- **Security Release (Trivy app/goose images):** runs after **Build and Push Images** on `develop`/`main` (`workflow_run`); **not** automatically re-run per feature-branch tip.
+- **Production canary E2E:** BLOCKED — full canary env not configured.
+- **PSP:** BLOCKED — no sandbox PSP proof in scope.
+- **Hardware:** BLOCKED — no canary device proof in scope.
 
-## Production canary / PSP / hardware
+## REST OpenAPI live coverage
 
-- **Production canary E2E:** BLOCKED — full canary env (`ALLOW_PROD_WRITES`, `PROD_WRITE_CONFIRMATION`, `CANARY_*`) not configured for this run.
-- **PSP / provider:** BLOCKED — no sandbox/production PSP proof in scope.
-- **Hardware:** BLOCKED — no canary machine / device evidence in scope.
+**PARTIAL** — 365 operations in spec; **6** pass / **359** blocked in `reports/test/rest-full-live-coverage.json`. **Do not claim 100% live REST verification.**
 
-## Local proof (reference only; not production)
+## Local reference (non-production)
 
-- **Full local E2E:** pass (23 passed, 0 failed, 0 skipped — prior session; do not commit `.e2e-runs`).
-- **Go test / govulncheck:** pass locally with correct DB env and `GOTOOLCHAIN=go1.25.10` (see earlier evidence).
-- **REST OpenAPI live runner:** **partial** — 365 operations; **6** pass; **359** blocked (`reports/test/rest-full-live-coverage.json`). **Do not claim 100% REST live coverage.**
+Full local E2E 23 passed / 0 failed / 0 skipped (prior session). .e2e-runs not committed.
 
 ## Secret audit
 
-- **Status:** pass — no live tokens or private keys in these committed reports.
+Pass — no live tokens in these report files.

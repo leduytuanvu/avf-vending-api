@@ -1,14 +1,35 @@
 # Production Readiness
 
-- **Target commit:** `3536e9e42536bcbf92e70052325b74c41a106ffc` on `security/goose-otel-fix`
-- **CI (required gates on exact commit):** **NOT_VERIFIED** — no GitHub Actions runs list `3536e9e`; workflows trigger on PR/push to `develop`/`main` only. Open a PR or merge to obtain fresh CI, Production Proof, and Security runs.
-- **Security Release / image Trivy:** **NOT_VERIFIED** for this tip — last green reference runs were for commit `3369b51`.
-- **Production read-only smoke:** **NOT_RUN** — `STAGING_BASE_URL`, `PRODUCTION_BASE_URL`, `PROD_BASE_URL`, `BASE_URL_PROD` unset.
-- **Production canary:** **BLOCKED** — canary env not provided.
-- **PSP provider proof:** **BLOCKED**
-- **Hardware proof:** **BLOCKED**
-- **REST OpenAPI live coverage:** **PARTIAL** (6 pass / 365 ops in `rest-full-live-coverage.json`) — **no full live coverage claim**
+- **Tip commit:** `3fb3f281360354b498b3e160e10519c4aed8ff72`
+- **PR:** https://github.com/leduytuanvu/avf-vending-api/pull/210 (`security/goose-otel-fix` → `develop`)
+
+## CI on current tip
+
+- **CI / Security / Production Proof:** **PASS** on `3fb3f28` (runs 25723652856, 25723652689, 25723652868). CodeQL skipped by configuration.
+- **Security Release + Trivy on built app/goose images:** **NOT_RUN** for this PR — triggers after merge via **Build and Push Images** on `develop`/`main`.
+
+## Production read-only smoke
+
+**NOT_RUN** — set `STAGING_BASE_URL` or `PRODUCTION_BASE_URL` / `PROD_BASE_URL` / `BASE_URL_PROD` and run `scripts/test/run-production-readonly-smoke.sh`.
+
+## Canary / PSP / hardware
+
+**BLOCKED** — environment not provided.
+
+## REST live coverage
+
+**PARTIAL (6/365)** — see `rest-full-live-coverage.json`; no full-coverage claim.
+
+## Workflow triggers (reference)
+
+| Workflow | `on` |
+|----------|------|
+| `ci.yml` | `pull_request` → `develop`/`main`; `push` → `develop`/`main`; `workflow_dispatch` |
+| `security.yml` | same |
+| `production-proof.yml` | `pull_request`; `workflow_dispatch` |
+| `build-push.yml` | `workflow_run` after CI **success**; **branches** `develop`/`main` (feature PR CI does not enqueue this) |
+| `security-release.yml` | `workflow_run` after **Build and Push Images** on `develop`/`main`; `workflow_dispatch` |
 
 ## Final claim
 
-**BLOCKED:** CI gates were not executed for commit `3536e9e`; production/staging smoke was not run; canary/PSP/hardware remain unproven. See `PRODUCTION_PROOF_REPORT.md` for required next actions.
+**BLOCKED:** CI proof on tip is **green**, but production smoke URL is missing, **image Security Release** was not part of this PR event, **canary/PSP/hardware** are unproven, and **REST** evidence remains **partial**.

@@ -1,10 +1,17 @@
 {
-  "generated_at": "2026-05-12T12:00:00+00:00",
+  "generated_at": "2026-05-12T16:45:00+00:00",
   "branch": "security/goose-otel-fix",
-  "commit": "3536e9e42536bcbf92e70052325b74c41a106ffc",
+  "commit": "3fb3f281360354b498b3e160e10519c4aed8ff72",
+  "pull_request": {
+    "number": 210,
+    "url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
+    "base": "develop",
+    "head_sha": "3fb3f281360354b498b3e160e10519c4aed8ff72",
+    "state": "OPEN"
+  },
   "production_readonly_smoke": "NOT_RUN",
-  "reason": "STAGING_BASE_URL / PRODUCTION_BASE_URL / PROD_BASE_URL / BASE_URL_PROD were not set in the execution environment; read-only smoke script was not executed against staging or production.",
-  "required_next_action": "Export a read-only-safe BASE_URL (e.g. STAGING_BASE_URL) and run: BASE_URL=\"$STAGING_BASE_URL\" bash scripts/test/run-production-readonly-smoke.sh",
+  "reason": "STAGING_BASE_URL / PRODUCTION_BASE_URL / PROD_BASE_URL / BASE_URL_PROD were not set in the verification environment; read-only smoke script was not executed against staging or production.",
+  "required_next_action": "Export a read-only-safe BASE_URL and run: BASE_URL=\"$STAGING_BASE_URL\" bash scripts/test/run-production-readonly-smoke.sh (or equivalent PRODUCTION_BASE_URL / PROD_BASE_URL / BASE_URL_PROD).",
   "probes": [],
   "local_executable_proof": {
     "host": "Windows 10 (developer workstation)",
@@ -14,33 +21,66 @@
     "api_base_url": "http://127.0.0.1:18080",
     "grpc_addr": "127.0.0.1:9090",
     "go_test": "pass (go test ./... -count=1; TEST_DATABASE_URL with clean DB)",
-    "go_test_race_local": "BLOCKED: gcc/cgo not available on this host; Linux race gate runs in CI (production-proof workflow).",
-    "govulncheck": "pass with GOTOOLCHAIN=go1.25.10",
-    "trivy_local": "BLOCKED: trivy not on PATH; Security Release / image scans run in GitHub Actions.",
-    "full_local_e2e": "pass per session log (tests/e2e/run-all-local.sh --fresh-data: 23 passed, 0 failed, 0 skipped, Phase 8–42 green; evidence under reports/test/e2e-evidence/ console logs — .e2e-runs not committed).",
-    "rest_full_live_coverage": "PARTIAL — reports/test/rest-full-live-coverage.json: 365 OpenAPI operations; 6 runner pass; 359 blocked; not full live coverage",
-    "grpc_full_coverage": "executed: reports/test/grpc-full-coverage.json (grpcurl list reachable; method probes partial/blocked per classification)",
-    "mqtt_full_coverage": "executed: reports/test/mqtt-full-coverage.json (broker round-trip pass + flow matrix)"
+    "go_test_race_local": "BLOCKED: gcc/cgo not available on this host; Linux race verified in CI Production Proof for PR #210.",
+    "govulncheck": "pass with GOTOOLCHAIN=go1.25.10 locally; Go Vulnerability Scan pass in CI for head SHA",
+    "trivy_local": "BLOCKED: trivy not on PATH locally",
+    "full_local_e2e": "pass per session log (23 passed, 0 failed, 0 skipped; .e2e-runs not committed).",
+    "rest_full_live_coverage": "PARTIAL — 365 OpenAPI operations; 6 runner pass; 359 blocked (reports/test/rest-full-live-coverage.json); not full live coverage",
+    "grpc_full_coverage": "reports/test/grpc-full-coverage.json",
+    "mqtt_full_coverage": "reports/test/mqtt-full-coverage.json"
   },
   "ci_proof": {
-    "status": "NOT_VERIFIED_FOR_HEAD_SHA",
-    "head_sha_verified": "3536e9e42536bcbf92e70052325b74c41a106ffc",
-    "reason": "gh run list --commit 3536e9e returned no workflow runs. CI.yml, security.yml, and production-proof.yml trigger on pull_request to develop/main or push to develop/main; pushes to feature branch security/goose-otel-fix alone do not run them. gh pr list --head security/goose-otel-fix returned no open PR at verification time.",
-    "last_recorded_green_sha": "3369b5129af2c8a49307272c6093f059cfd74c2e",
-    "commits_after_without_ci_for_head": [
-      "35e527857dfc2f42da41de9ab7e593728cacbbdb",
-      "3536e9e42536bcbf92e70052325b74c41a106ffc"
+    "status": "PASS",
+    "proof_target_commit": "3fb3f281360354b498b3e160e10519c4aed8ff72",
+    "verified_via": "gh pr checks 210 --watch; gh run list --commit 3fb3f281360354b498b3e160e10519c4aed8ff72",
+    "workflow_runs": [
+      {
+        "workflow": "CI",
+        "database_id": 25723652856,
+        "conclusion": "success",
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652856"
+      },
+      {
+        "workflow": "Security",
+        "database_id": 25723652689,
+        "conclusion": "success",
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652689"
+      },
+      {
+        "workflow": "Production Proof",
+        "database_id": 25723652868,
+        "conclusion": "success",
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652868"
+      },
+      {
+        "workflow": "CodeQL",
+        "database_id": 25723652672,
+        "conclusion": "skipped",
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652672"
+      }
     ],
-    "reference_runs_for_last_green_sha": {
-      "ci": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985939",
-      "production_proof": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985923",
-      "security": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985930"
+    "pr_required_checks_summary": {
+      "Go CI Gates": "pass",
+      "Linux race and contract gates": "pass (Ubuntu race + contract Makefile targets)",
+      "Go Vulnerability Scan": "pass",
+      "Deployment and Config Scan": "pass (Trivy config)",
+      "Secret Scan": "pass",
+      "Workflow and Script Quality": "pass",
+      "Docker Compose Config Validation": "pass",
+      "Migration Safety Check": "pass",
+      "Legacy Production Asset Contract": "pass",
+      "GitHub repository governance": "pass"
     },
-    "required_next_action": "Open/update a PR from security/goose-otel-fix targeting develop (or main), or merge to develop/main, or use workflow_dispatch where supported — then confirm all required checks on commit 3536e9e.",
-    "security_release_for_feature_branch": "Security Release workflow is driven by successful Build and Push Images on develop/main (workflow_run); not a per-commit feature-branch gate."
+    "dependency_review": "skipped (org toggle)",
+    "codeql": "skipped (org toggle)",
+    "security_release_and_image_trivy": {
+      "status": "NOT_TRIGGERED_FOR_THIS_PR",
+      "reason": "build-push.yml triggers from workflow_run after CI succeeds on push to develop/main only — not from pull_request CI on a feature head. Security Release follows Build and Push Images. Trivy scans of published app/goose images occur in that pipeline after merge to develop/main, not as part of this PR check suite.",
+      "next_action": "After merge to develop (or main), confirm Build and Push Images then Security Release for image-level Trivy evidence."
+    }
   },
   "secret_audit": {
     "status": "pass",
-    "notes": "No credentials committed in this change set; DSN passwords masked in reports."
+    "notes": "No credentials committed with these reports."
   }
 }

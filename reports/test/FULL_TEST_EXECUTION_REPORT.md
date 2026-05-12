@@ -1,18 +1,19 @@
 # FULL TEST EXECUTION REPORT
 
 - Branch: `security/goose-otel-fix`
-- Commit: `3536e9e42536bcbf92e70052325b74c41a106ffc`
+- Commit: `3fb3f281360354b498b3e160e10519c4aed8ff72`
+- PR: https://github.com/leduytuanvu/avf-vending-api/pull/210 → `develop`
 - API URL: `http://127.0.0.1:18080`
 - gRPC addr: `:9090`
 - MQTT broker: `127.0.0.1:1883`
-- REST summary: `{'total_operations': 365, 'passed': 6, 'failed': 0, 'partial': 0, 'blocked': 359}` — **partial live coverage only; not 365/365 live-tested**
+- REST summary: **partial** — 365 ops, **6** pass, **359** blocked (`rest-full-live-coverage.json`)
 - gRPC summary: `{'generated_at': '2026-05-12T08:23:55.203480+00:00', 'grpc_addr': '127.0.0.1:9090', 'server_status': 'reachable', 'server_reason': 'grpcurl list succeeded', 'total_methods': 85, 'passed': 0, 'failed': 0, 'partial': 54, 'blocked': 31}`
 - MQTT summary: `{'generated_at': '2026-05-12T08:24:38.836871+00:00', 'mqtt_host': '127.0.0.1', 'mqtt_port': '1883', 'mqtt_topic_prefix': 'avf-dev/devices', 'broker_status': 'reachable', 'broker_reason': 'publish/subscribe round-trip evidence captured', 'total_flows': 12, 'passed': 1, 'failed': 0, 'partial': 9, 'blocked': 2}`
 - Production smoke: `NOT_RUN`
 - Production canary: `BLOCKED`
 - PSP: `BLOCKED: PSP sandbox/canary credentials not configured in this run`
 - Hardware: `BLOCKED: real canary vending hardware/simulator not attached in this run`
-- CI: **NOT_VERIFIED** for this commit — `gh run list --commit 3536e9e` empty; CI/Security/Production Proof trigger on PR or push to `develop`/`main` only. Last green reference: SHA `3369b51` (runs 25710985939, 25710985923, 25710985930).
+- CI: **PASS** on `3fb3f28` — CI [25723652856](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652856), Security [25723652689](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652689), Production Proof [25723652868](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652868). Security Release / image Trivy not triggered for PR.
 
 ## Commands Run
 
@@ -39,4 +40,4 @@
 
 ## Final Claim
 
-**BLOCKED:** CI was not re-run on commit `3536e9e`. Production/staging read-only smoke was not run (URL env unset). Canary/PSP/hardware blocked. REST live coverage remains partial (6/365).
+**BLOCKED:** PR CI/Security/Production Proof **passed** on tip `3fb3f28`; production read-only smoke **NOT_RUN** (URL env unset); Security Release image scans **not** triggered on PR path; canary/PSP/hardware blocked; REST remains **6/365 partial**.

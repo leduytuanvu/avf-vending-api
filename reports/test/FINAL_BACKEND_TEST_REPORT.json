@@ -1,7 +1,13 @@
 {
-  "generated_at": "2026-05-12T12:00:00+00:00",
+  "generated_at": "2026-05-12T16:45:00+00:00",
   "branch": "security/goose-otel-fix",
-  "commit": "3536e9e42536bcbf92e70052325b74c41a106ffc",
+  "commit": "3fb3f281360354b498b3e160e10519c4aed8ff72",
+  "pull_request": {
+    "number": 210,
+    "url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
+    "base": "develop",
+    "head_sha": "3fb3f281360354b498b3e160e10519c4aed8ff72"
+  },
   "environment": {
     "db_name": "avf_vending_test_full_final (requested; local execution dependent)",
     "api_url": "http://127.0.0.1:18080",
@@ -191,16 +197,32 @@
   "psp_result": "BLOCKED: PSP sandbox/canary credentials not configured in this run",
   "hardware_result": "BLOCKED: real canary vending hardware/simulator not attached in this run",
   "security_scan_result": "see audit-commands.json / CI security workflows",
-  "ci_result": "NOT_VERIFIED for commit 3536e9e: no GitHub Actions runs list this SHA (gh run list --commit empty). Workflows trigger on PR/push to develop/main only. Last green CI/Security/Production Proof runs were for 3369b51 (see PRODUCTION_PROOF_REPORT.json ci_proof).",
+  "ci_result": "PASS on proof target SHA 3fb3f28 via PR #210: CI run 25723652856 success; Security 25723652689 success; Production Proof 25723652868 success (Linux race + contract gates). CodeQL skipped. Image-level Trivy (app/goose) via Security Release not triggered for PR — runs after merge + Build and Push on develop/main.",
   "ci_verification": {
-    "required_commit": "3536e9e42536bcbf92e70052325b74c41a106ffc",
-    "workflow_runs_for_required_commit": [],
-    "last_green_workflow_sha": "3369b5129af2c8a49307272c6093f059cfd74c2e",
-    "commits_since_last_green": [
-      "35e527857dfc2f42da41de9ab7e593728cacbbdb",
-      "3536e9e42536bcbf92e70052325b74c41a106ffc"
+    "proof_target_commit": "3fb3f281360354b498b3e160e10519c4aed8ff72",
+    "pull_request_url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
+    "workflow_runs": [
+      {
+        "name": "CI",
+        "id": 25723652856,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652856",
+        "conclusion": "success"
+      },
+      {
+        "name": "Security",
+        "id": 25723652689,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652689",
+        "conclusion": "success"
+      },
+      {
+        "name": "Production Proof",
+        "id": 25723652868,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652868",
+        "conclusion": "success"
+      }
     ],
-    "rest_openapi_live_coverage": "partial only: 365 ops; 6 pass; 359 blocked (reports/test/rest-full-live-coverage.json) — no 100% live REST claim"
+    "security_release_image_scans": "NOT_TRIGGERED — see PRODUCTION_PROOF_REPORT.json",
+    "rest_openapi_live_coverage": "partial: 365 ops; 6 pass; 359 blocked — no 100% live REST claim"
   },
   "bugs_fixed": [],
   "files_changed": [
@@ -1134,5 +1156,5 @@
       "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     }
   ],
-  "final_claim": "BLOCKED: CI gates were not executed for commit 3536e9e (no workflow runs on record; open a PR to develop/main or merge to run CI, Production Proof, Security). Production/staging read-only smoke was not run (STAGING_BASE_URL, PRODUCTION_BASE_URL, PROD_BASE_URL, BASE_URL_PROD unset). Production canary, PSP sandbox, and hardware proofs remain blocked pending environment. REST OpenAPI live coverage remains partial (6/365 pass per conservative runner) — do not claim full REST live coverage."
+  "final_claim": "BLOCKED: PR CI/Security/Production Proof passed on tip 3fb3f28 (PR #210), but production read-only smoke was NOT_RUN (STAGING_BASE_URL, PRODUCTION_BASE_URL, PROD_BASE_URL, BASE_URL_PROD unset). Security Release / published image Trivy (app/goose) was not triggered for this PR event. Production canary, PSP, and hardware proofs remain blocked. REST OpenAPI live coverage remains partial (6/365) — do not claim full REST coverage."
 }

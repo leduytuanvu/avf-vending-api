@@ -2,8 +2,8 @@
 
 | Area | Status | Evidence / next step |
 |------|--------|----------------------|
-| CI / Production Proof / Security on commit `3536e9e` | **NOT_VERIFIED** | No `gh run list --commit` entries; open PR to `develop`/`main` or merge — workflows do not run on feature-branch-only pushes |
-| Security Release (Trivy app/goose after build) | **NOT_VERIFIED for tip** | Gate is on `develop`/`main` build pipeline, not this standalone branch tip |
+| CI / Security / Production Proof on PR head `3fb3f28` | **PASS** | [PR #210](https://github.com/leduytuanvu/avf-vending-api/pull/210) — CI 25723652856, Security 25723652689, Production Proof 25723652868 |
+| Security Release (Trivy published app/goose images) | **NOT_TRIGGERED** | Runs after merge + Build and Push on `develop`/`main` — not fired by `pull_request` alone |
 | Production read-only HTTP smoke | **NOT_RUN** | Set `STAGING_BASE_URL` or `PRODUCTION_BASE_URL` and run `scripts/test/run-production-readonly-smoke.sh` |
 | Production canary E2E | **BLOCKED** | Requires explicit canary env + write confirmation; see `reports/test/production-canary-e2e.md` |
 | PSP / payment provider | **BLOCKED** | Sandbox or canary PSP credentials + webhook signing secret not in scope for this workstation proof |
