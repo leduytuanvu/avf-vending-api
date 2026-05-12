@@ -2,7 +2,7 @@
 
 | Area | Status | Evidence / next step |
 |------|--------|----------------------|
-| CI / Security / Production Proof on PR head `e052f8b` | **PASS** | [PR #210](https://github.com/leduytuanvu/avf-vending-api/pull/210) — CI 25724106668, Security 25724106664, Production Proof 25724106770 |
+| CI / Security / Production Proof on PR head `8046c83` | **PASS** | [PR #210](https://github.com/leduytuanvu/avf-vending-api/pull/210) — CI 25724622458, Security 25724622456, Production Proof 25724622493 |
 | Security Release (Trivy published app/goose images) | **NOT_TRIGGERED** | Runs after merge + Build and Push on `develop`/`main` — not fired by `pull_request` alone |
 | Production read-only HTTP smoke | **NOT_RUN** | Set `STAGING_BASE_URL` or `PRODUCTION_BASE_URL` and run `scripts/test/run-production-readonly-smoke.sh` |
 | Production canary E2E | **BLOCKED** | Requires explicit canary env + write confirmation; see `reports/test/production-canary-e2e.md` |

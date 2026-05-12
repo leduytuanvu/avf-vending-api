@@ -1,11 +1,11 @@
 # Production Readiness
 
-- **Tip commit:** `e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c`
+- **Tip commit:** `8046c8341ca832f467ce9ffdabec5aa030737dce`
 - **PR:** https://github.com/leduytuanvu/avf-vending-api/pull/210 (`security/goose-otel-fix` → `develop`)
 
 ## CI on current tip
 
-- **CI / Security / Production Proof:** **PASS** on `e052f8b` (runs 25724106668, 25724106664, 25724106770). CodeQL skipped by configuration.
+- **CI / Security / Production Proof:** **PASS** on `8046c83` (runs 25724622458, 25724622456, 25724622493). CodeQL skipped by configuration.
 - **Security Release + Trivy on built app/goose images:** **NOT_RUN** for this PR — triggers after merge via **Build and Push Images** on `develop`/`main`.
 
 ## Production read-only smoke

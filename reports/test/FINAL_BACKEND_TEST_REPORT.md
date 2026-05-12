@@ -1,7 +1,7 @@
 # FINAL BACKEND TEST REPORT
 
 - Branch: `security/goose-otel-fix`
-- Commit: `e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c`
+- Commit: `8046c8341ca832f467ce9ffdabec5aa030737dce`
 - PR: https://github.com/leduytuanvu/avf-vending-api/pull/210
 - API URL: `http://127.0.0.1:18080`
 - gRPC addr: `:9090`
@@ -13,7 +13,7 @@
 - Production canary: `BLOCKED`
 - PSP: `BLOCKED: PSP sandbox/canary credentials not configured in this run`
 - Hardware: `BLOCKED: real canary vending hardware/simulator not attached in this run`
-- CI: **PASS** on `e052f8b` — see `PRODUCTION_PROOF_REPORT.md` for run URLs.
+- CI: **PASS** on `8046c83` — see `PRODUCTION_PROOF_REPORT.md` for run URLs.
 
 ## Commands Run
 
@@ -40,4 +40,4 @@
 
 ## Final Claim
 
-**BLOCKED:** PR CI/Security/Production Proof **passed** on tip `e052f8b`; production smoke **NOT_RUN**; image Security Release **not** on PR path; canary/PSP/hardware blocked; REST **6/365 partial**.
+**BLOCKED:** PR CI/Security/Production Proof **passed** on tip `8046c83`; production smoke **NOT_RUN**; image Security Release **not** on PR path; canary/PSP/hardware blocked; REST **6/365 partial**.
