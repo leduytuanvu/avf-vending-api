@@ -1,7 +1,7 @@
 # FULL TEST EXECUTION REPORT
 
 - Branch: `security/goose-otel-fix`
-- Commit: `3fb3f281360354b498b3e160e10519c4aed8ff72`
+- Commit: `e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c`
 - PR: https://github.com/leduytuanvu/avf-vending-api/pull/210 → `develop`
 - API URL: `http://127.0.0.1:18080`
 - gRPC addr: `:9090`
@@ -13,7 +13,7 @@
 - Production canary: `BLOCKED`
 - PSP: `BLOCKED: PSP sandbox/canary credentials not configured in this run`
 - Hardware: `BLOCKED: real canary vending hardware/simulator not attached in this run`
-- CI: **PASS** on `3fb3f28` — CI [25723652856](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652856), Security [25723652689](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652689), Production Proof [25723652868](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652868). Security Release / image Trivy not triggered for PR.
+- CI: **PASS** on `e052f8b` — CI [25724106668](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106668), Security [25724106664](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106664), Production Proof [25724106770](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106770). Security Release / image Trivy not triggered for PR.
 
 ## Commands Run
 
@@ -40,4 +40,4 @@
 
 ## Final Claim
 
-**BLOCKED:** PR CI/Security/Production Proof **passed** on tip `3fb3f28`; production read-only smoke **NOT_RUN** (URL env unset); Security Release image scans **not** triggered on PR path; canary/PSP/hardware blocked; REST remains **6/365 partial**.
+**BLOCKED:** PR CI/Security/Production Proof **passed** on tip `e052f8b`; production read-only smoke **NOT_RUN** (URL env unset); Security Release image scans **not** triggered on PR path; canary/PSP/hardware blocked; REST remains **6/365 partial**.

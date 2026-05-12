@@ -1,12 +1,12 @@
 {
   "generated_at": "2026-05-12T16:45:00+00:00",
   "branch": "security/goose-otel-fix",
-  "commit": "3fb3f281360354b498b3e160e10519c4aed8ff72",
+  "commit": "e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c",
   "pull_request": {
     "number": 210,
     "url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
     "base": "develop",
-    "head_sha": "3fb3f281360354b498b3e160e10519c4aed8ff72",
+    "head_sha": "e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c",
     "state": "OPEN"
   },
   "production_readonly_smoke": "NOT_RUN",
@@ -31,32 +31,32 @@
   },
   "ci_proof": {
     "status": "PASS",
-    "proof_target_commit": "3fb3f281360354b498b3e160e10519c4aed8ff72",
-    "verified_via": "gh pr checks 210 --watch; gh run list --commit 3fb3f281360354b498b3e160e10519c4aed8ff72",
+    "proof_target_commit": "e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c",
+    "verified_via": "gh pr checks 210 --watch; gh run list --commit e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c",
     "workflow_runs": [
       {
         "workflow": "CI",
-        "database_id": 25723652856,
+        "database_id": 25724106668,
         "conclusion": "success",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652856"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106668"
       },
       {
         "workflow": "Security",
-        "database_id": 25723652689,
+        "database_id": 25724106664,
         "conclusion": "success",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652689"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106664"
       },
       {
         "workflow": "Production Proof",
-        "database_id": 25723652868,
+        "database_id": 25724106770,
         "conclusion": "success",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652868"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106770"
       },
       {
         "workflow": "CodeQL",
-        "database_id": 25723652672,
+        "database_id": 25724106654,
         "conclusion": "skipped",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652672"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106654"
       }
     ],
     "pr_required_checks_summary": {

@@ -1,12 +1,12 @@
 {
   "generated_at": "2026-05-12T16:45:00+00:00",
   "branch": "security/goose-otel-fix",
-  "commit": "3fb3f281360354b498b3e160e10519c4aed8ff72",
+  "commit": "e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c",
   "pull_request": {
     "number": 210,
     "url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
     "base": "develop",
-    "head_sha": "3fb3f281360354b498b3e160e10519c4aed8ff72"
+    "head_sha": "e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c"
   },
   "environment": {
     "db_name": "avf_vending_test_full_final (requested; local execution dependent)",
@@ -197,9 +197,9 @@
   "psp_result": "BLOCKED: PSP sandbox/canary credentials not configured in this run",
   "hardware_result": "BLOCKED: real canary vending hardware/simulator not attached in this run",
   "security_scan_result": "see audit-commands.json / CI security workflows",
-  "ci_result": "PASS on proof target SHA 3fb3f28 via PR #210: CI run 25723652856 success; Security 25723652689 success; Production Proof 25723652868 success (Linux race + contract gates). CodeQL skipped. Image-level Trivy (app/goose) via Security Release not triggered for PR — runs after merge + Build and Push on develop/main.",
+  "ci_result": "PASS on proof target SHA e052f8b via PR #210: CI run 25724106668 success; Security 25724106664 success; Production Proof 25724106770 success (Linux race + contract gates). CodeQL skipped. Image-level Trivy (app/goose) via Security Release not triggered for PR — runs after merge + Build and Push on develop/main.",
   "ci_verification": {
-    "proof_target_commit": "3fb3f281360354b498b3e160e10519c4aed8ff72",
+    "proof_target_commit": "e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c",
     "pull_request_url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
     "workflow_runs": [
       {
@@ -210,14 +210,14 @@
       },
       {
         "name": "Security",
-        "id": 25723652689,
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652689",
+        "id": 25724106664,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106664",
         "conclusion": "success"
       },
       {
         "name": "Production Proof",
-        "id": 25723652868,
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652868",
+        "id": 25724106770,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106770",
         "conclusion": "success"
       }
     ],
@@ -1156,5 +1156,5 @@
       "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     }
   ],
-  "final_claim": "BLOCKED: PR CI/Security/Production Proof passed on tip 3fb3f28 (PR #210), but production read-only smoke was NOT_RUN (STAGING_BASE_URL, PRODUCTION_BASE_URL, PROD_BASE_URL, BASE_URL_PROD unset). Security Release / published image Trivy (app/goose) was not triggered for this PR event. Production canary, PSP, and hardware proofs remain blocked. REST OpenAPI live coverage remains partial (6/365) — do not claim full REST coverage."
+  "final_claim": "BLOCKED: PR CI/Security/Production Proof passed on tip e052f8b (PR #210), but production read-only smoke was NOT_RUN (STAGING_BASE_URL, PRODUCTION_BASE_URL, PROD_BASE_URL, BASE_URL_PROD unset). Security Release / published image Trivy (app/goose) was not triggered for this PR event. Production canary, PSP, and hardware proofs remain blocked. REST OpenAPI live coverage remains partial (6/365) — do not claim full REST coverage."
 }

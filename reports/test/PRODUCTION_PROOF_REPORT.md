@@ -5,17 +5,17 @@
 | Field | Value |
 |-------|--------|
 | Branch | `security/goose-otel-fix` |
-| Commit (tip) | `3fb3f281360354b498b3e160e10519c4aed8ff72` |
+| Commit (tip) | `e052f8b2dd852f69c94ed8f3ae8db56463ad3c6c` |
 | PR | [#210 → `develop`](https://github.com/leduytuanvu/avf-vending-api/pull/210) |
 
 ## GitHub Actions (verified on head SHA)
 
 | Workflow | Run | Conclusion |
 |----------|-----|------------|
-| CI | [25723652856](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652856) | success |
-| Security | [25723652689](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652689) | success |
-| Production Proof | [25723652868](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652868) | success |
-| CodeQL | [25723652672](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652672) | skipped |
+| CI | [25724106668](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106668) | success |
+| Security | [25724106664](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106664) | success |
+| Production Proof | [25724106770](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106770) | success |
+| CodeQL | [25724106654](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724106654) | skipped |
 
 **PR required checks (representative):** Go CI Gates — pass; Linux race and contract gates — pass; Go Vulnerability Scan (govulncheck) — pass; Deployment and Config Scan (Trivy config) — pass; Secret Scan — pass. Dependency Review — skipped (repo toggle).
 
