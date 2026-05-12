@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-05-12T20:08:00+00:00",
+  "generated_at": "2026-05-12T22:05:00+00:00",
   "branch": "security/goose-otel-fix",
-  "commit": "35a699603143b5048d01b2d8e5defc279472488d",
+  "commit": "e204934d3975aa4a6afcab3a54d1c359c3fa8487",
   "pull_request": {
     "number": 210,
     "url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
     "base": "develop",
-    "head_sha": "35a699603143b5048d01b2d8e5defc279472488d",
+    "head_sha": "e204934d3975aa4a6afcab3a54d1c359c3fa8487",
     "state": "OPEN",
     "mergeStateStatus": "BLOCKED",
     "reviewDecision": "REVIEW_REQUIRED"
@@ -36,7 +36,7 @@
     "api_base_url": "http://127.0.0.1:18080",
     "grpc_addr": "127.0.0.1:9090",
     "go_test": "pass (go test ./... -count=1; TEST_DATABASE_URL with clean DB)",
-    "go_test_race_local": "verified in CI Production Proof for PR #210 head 35a6996",
+    "go_test_race_local": "verified in CI Production Proof for PR #210 head e204934",
     "govulncheck": "pass in CI Go Vulnerability Scan for PR head",
     "trivy_local": "BLOCKED locally; config scan in Security workflow on PR",
     "full_local_e2e": "pass per prior session (23 tests; .e2e-runs not committed)",
@@ -46,32 +46,32 @@
   },
   "ci_proof": {
     "status": "PASS",
-    "proof_target_commit": "35a699603143b5048d01b2d8e5defc279472488d",
+    "proof_target_commit": "e204934d3975aa4a6afcab3a54d1c359c3fa8487",
     "verified_via": "gh pr checks 210 --watch after documentation commit on branch head (2026-05-12 UTC); all required checks green including Linux race and contract gates",
     "workflow_runs": [
       {
         "workflow": "CI",
-        "database_id": 25725682062,
+        "database_id": 25726479840,
         "conclusion": "success",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682062"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479840"
       },
       {
         "workflow": "Security",
-        "database_id": 25725682070,
+        "database_id": 25726479824,
         "conclusion": "success",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682070"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479824"
       },
       {
         "workflow": "Production Proof",
-        "database_id": 25725682100,
+        "database_id": 25726479817,
         "conclusion": "success",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682100"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479817"
       },
       {
         "workflow": "CodeQL",
-        "database_id": 25725682090,
+        "database_id": 25726479818,
         "conclusion": "skipped",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682090"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479818"
       }
     ],
     "pr_required_checks_summary": {

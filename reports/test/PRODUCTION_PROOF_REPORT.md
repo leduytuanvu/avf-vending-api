@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|--------|
 | Branch | `security/goose-otel-fix` |
-| Commit (tip) | `35a699603143b5048d01b2d8e5defc279472488d` |
+| Commit (tip) | `e204934d3975aa4a6afcab3a54d1c359c3fa8487` |
 | PR | [#210 → `develop`](https://github.com/leduytuanvu/avf-vending-api/pull/210) |
 | Merge status | **NOT_MERGED** — `mergeStateStatus` BLOCKED; `reviewDecision` REVIEW_REQUIRED (`gh pr merge 210 --merge` rejected by branch policy) |
 
@@ -13,10 +13,10 @@
 
 | Workflow | Run | Conclusion |
 |----------|-----|------------|
-| CI | [25725682062](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682062) | success |
-| Security | [25725682070](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682070) | success |
-| Production Proof | [25725682100](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682100) | success |
-| CodeQL | [25725682090](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682090) | skipped |
+| CI | [25726479840](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479840) | success |
+| Security | [25726479824](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479824) | success |
+| Production Proof | [25726479817](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479817) | success |
+| CodeQL | [25726479818](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479818) | skipped |
 
 **PR required checks (representative):** Go CI Gates — pass; Linux race and contract gates — pass; Go Vulnerability Scan (govulncheck) — pass; Deployment and Config Scan (Trivy config) — pass; Secret Scan — pass. Dependency Review — skipped (repo toggle).
 
@@ -48,4 +48,4 @@ Pass — no live tokens in these report files.
 
 ## Final claim
 
-**BLOCKED:** Required PR checks are green on `35a6996`, but **merge did not land**; **post-merge** image security gates are **unverified**. Production smoke **NOT_RUN**; canary/PSP/hardware blocked; REST live coverage **partial (6/365)** — no full REST claim.
+**BLOCKED:** Required PR checks are green on `e204934`, but **merge did not land**; **post-merge** image security gates are **unverified**. Production smoke **NOT_RUN**; canary/PSP/hardware blocked; REST live coverage **partial (6/365)** — no full REST claim.

@@ -1,7 +1,7 @@
 # FULL TEST EXECUTION REPORT
 
 - Branch: `security/goose-otel-fix`
-- Commit: `35a699603143b5048d01b2d8e5defc279472488d`
+- Commit: `e204934d3975aa4a6afcab3a54d1c359c3fa8487`
 - PR: https://github.com/leduytuanvu/avf-vending-api/pull/210 → `develop`
 - API URL: `http://127.0.0.1:18080`
 - gRPC addr: `:9090`
@@ -14,7 +14,7 @@
 - PSP: `BLOCKED: PSP sandbox/canary credentials not configured in this run`
 - Hardware: `BLOCKED: real canary vending hardware/simulator not attached in this run`
 - **Merge:** **NOT_MERGED** — `REVIEW_REQUIRED` / branch policy (`gh pr merge 210 --merge` rejected).
-- CI: **PASS** on `35a6996` — CI [25725682062](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682062), Security [25725682070](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682070), Production Proof [25725682100](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682100). Post-merge Build, Security Release, published image Trivy: **NOT_RUN**.
+- CI: **PASS** on `e204934` — CI [25726479840](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479840), Security [25726479824](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479824), Production Proof [25726479817](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479817). Post-merge Build, Security Release, published image Trivy: **NOT_RUN**.
 
 ## Commands Run
 
@@ -41,4 +41,4 @@
 
 ## Final Claim
 
-**BLOCKED:** PR CI/Security/Production Proof **passed** on head `35a6996`, but **merge to develop did not occur** (required review). Post-merge Build / Security Release / image Trivy **not executed**. Production read-only smoke **NOT_RUN** (URL env unset). Canary/PSP/hardware blocked. REST remains **6/365 partial** — no full live REST claim.
+**BLOCKED:** PR CI/Security/Production Proof **passed** on head `e204934`, but **merge to develop did not occur** (required review). Post-merge Build / Security Release / image Trivy **not executed**. Production read-only smoke **NOT_RUN** (URL env unset). Canary/PSP/hardware blocked. REST remains **6/365 partial** — no full live REST claim.
