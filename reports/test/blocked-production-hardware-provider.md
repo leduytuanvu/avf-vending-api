@@ -2,8 +2,9 @@
 
 | Area | Status | Evidence / next step |
 |------|--------|----------------------|
-| CI / Security / Production Proof on PR head `8046c83` | **PASS** | [PR #210](https://github.com/leduytuanvu/avf-vending-api/pull/210) — CI 25724622458, Security 25724622456, Production Proof 25724622493 |
-| Security Release (Trivy published app/goose images) | **NOT_TRIGGERED** | Runs after merge + Build and Push on `develop`/`main` — not fired by `pull_request` alone |
+| CI / Security / Production Proof on PR head `35a6996` | **PASS** | [PR #210](https://github.com/leduytuanvu/avf-vending-api/pull/210) — CI [25725682062](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682062), Security [25725682070](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682070), Production Proof [25725682100](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682100) |
+| Merge to `develop` | **NOT_MERGED** | Required review / branch policy — `gh pr merge 210 --merge` rejected |
+| Security Release (Trivy published app/goose images) | **NOT_RUN** | **Build and Push Images** on `develop` not triggered because merge did not land |
 | Production read-only HTTP smoke | **NOT_RUN** | Set `STAGING_BASE_URL` or `PRODUCTION_BASE_URL` and run `scripts/test/run-production-readonly-smoke.sh` |
 | Production canary E2E | **BLOCKED** | Requires explicit canary env + write confirmation; see `reports/test/production-canary-e2e.md` |
 | PSP / payment provider | **BLOCKED** | Sandbox or canary PSP credentials + webhook signing secret not in scope for this workstation proof |

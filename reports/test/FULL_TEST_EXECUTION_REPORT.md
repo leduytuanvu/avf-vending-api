@@ -1,7 +1,7 @@
 # FULL TEST EXECUTION REPORT
 
 - Branch: `security/goose-otel-fix`
-- Commit: `8046c8341ca832f467ce9ffdabec5aa030737dce`
+- Commit: `35a699603143b5048d01b2d8e5defc279472488d`
 - PR: https://github.com/leduytuanvu/avf-vending-api/pull/210 → `develop`
 - API URL: `http://127.0.0.1:18080`
 - gRPC addr: `:9090`
@@ -13,7 +13,8 @@
 - Production canary: `BLOCKED`
 - PSP: `BLOCKED: PSP sandbox/canary credentials not configured in this run`
 - Hardware: `BLOCKED: real canary vending hardware/simulator not attached in this run`
-- CI: **PASS** on `8046c83` — CI [25724622458](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724622458), Security [25724622456](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724622456), Production Proof [25724622493](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724622493). Security Release / image Trivy not triggered for PR.
+- **Merge:** **NOT_MERGED** — `REVIEW_REQUIRED` / branch policy (`gh pr merge 210 --merge` rejected).
+- CI: **PASS** on `35a6996` — CI [25725682062](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682062), Security [25725682070](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682070), Production Proof [25725682100](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682100). Post-merge Build, Security Release, published image Trivy: **NOT_RUN**.
 
 ## Commands Run
 
@@ -40,4 +41,4 @@
 
 ## Final Claim
 
-**BLOCKED:** PR CI/Security/Production Proof **passed** on tip `8046c83`; production read-only smoke **NOT_RUN** (URL env unset); Security Release image scans **not** triggered on PR path; canary/PSP/hardware blocked; REST remains **6/365 partial**.
+**BLOCKED:** PR CI/Security/Production Proof **passed** on head `35a6996`, but **merge to develop did not occur** (required review). Post-merge Build / Security Release / image Trivy **not executed**. Production read-only smoke **NOT_RUN** (URL env unset). Canary/PSP/hardware blocked. REST remains **6/365 partial** — no full live REST claim.

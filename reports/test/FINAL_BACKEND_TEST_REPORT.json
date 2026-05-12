@@ -1,12 +1,14 @@
 {
-  "generated_at": "2026-05-12T16:45:00+00:00",
+  "generated_at": "2026-05-12T20:08:00+00:00",
   "branch": "security/goose-otel-fix",
-  "commit": "8046c8341ca832f467ce9ffdabec5aa030737dce",
+  "commit": "35a699603143b5048d01b2d8e5defc279472488d",
   "pull_request": {
     "number": 210,
     "url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
     "base": "develop",
-    "head_sha": "8046c8341ca832f467ce9ffdabec5aa030737dce"
+    "head_sha": "35a699603143b5048d01b2d8e5defc279472488d",
+    "mergeStateStatus": "BLOCKED",
+    "reviewDecision": "REVIEW_REQUIRED"
   },
   "environment": {
     "db_name": "avf_vending_test_full_final (requested; local execution dependent)",
@@ -197,31 +199,32 @@
   "psp_result": "BLOCKED: PSP sandbox/canary credentials not configured in this run",
   "hardware_result": "BLOCKED: real canary vending hardware/simulator not attached in this run",
   "security_scan_result": "see audit-commands.json / CI security workflows",
-  "ci_result": "PASS on proof target SHA 8046c83 via PR #210: CI run 25724622458 success; Security 25724622456 success; Production Proof 25724622493 success (Linux race + contract gates). CodeQL skipped. Image-level Trivy (app/goose) via Security Release not triggered for PR — runs after merge + Build and Push on develop/main.",
+  "ci_result": "PASS on PR #210 head 35a6996: CI 25725682062, Security 25725682070, Production Proof 25725682100. Merge to develop NOT completed — branch policy (review required). Post-merge Build/Security Release / image Trivy NOT executed.",
   "ci_verification": {
-    "proof_target_commit": "8046c8341ca832f467ce9ffdabec5aa030737dce",
+    "proof_target_commit": "35a699603143b5048d01b2d8e5defc279472488d",
     "pull_request_url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
+    "merge_attempt": "gh pr merge 210 --merge failed: base branch policy prohibits the merge; reviewDecision REVIEW_REQUIRED",
     "workflow_runs": [
       {
         "name": "CI",
-        "id": 25723652856,
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25723652856",
+        "id": 25725682062,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682062",
         "conclusion": "success"
       },
       {
         "name": "Security",
-        "id": 25724622456,
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724622456",
+        "id": 25725682070,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682070",
         "conclusion": "success"
       },
       {
         "name": "Production Proof",
-        "id": 25724622493,
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724622493",
+        "id": 25725682100,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682100",
         "conclusion": "success"
       }
     ],
-    "security_release_image_scans": "NOT_TRIGGERED — see PRODUCTION_PROOF_REPORT.json",
+    "post_merge_build_and_security_release": "NOT_RUN — merge blocked",
     "rest_openapi_live_coverage": "partial: 365 ops; 6 pass; 359 blocked — no 100% live REST claim"
   },
   "bugs_fixed": [],
@@ -1156,5 +1159,5 @@
       "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     }
   ],
-  "final_claim": "BLOCKED: PR CI/Security/Production Proof passed on tip 8046c83 (PR #210), but production read-only smoke was NOT_RUN (STAGING_BASE_URL, PRODUCTION_BASE_URL, PROD_BASE_URL, BASE_URL_PROD unset). Security Release / published image Trivy (app/goose) was not triggered for this PR event. Production canary, PSP, and hardware proofs remain blocked. REST OpenAPI live coverage remains partial (6/365) — do not claim full REST coverage."
+  "final_claim": "BLOCKED: PR #210 CI is green on head 35a6996 but merge to develop was blocked (review required / branch policy). Build and Push Images and Security Release (published image Trivy, security signal) did not run. Production read-only smoke NOT_RUN (URL env unset). Canary, PSP, hardware blocked. REST live coverage partial 6/365."
 }

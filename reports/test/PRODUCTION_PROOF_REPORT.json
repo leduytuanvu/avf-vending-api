@@ -1,13 +1,28 @@
 {
-  "generated_at": "2026-05-12T16:45:00+00:00",
+  "generated_at": "2026-05-12T20:08:00+00:00",
   "branch": "security/goose-otel-fix",
-  "commit": "8046c8341ca832f467ce9ffdabec5aa030737dce",
+  "commit": "35a699603143b5048d01b2d8e5defc279472488d",
   "pull_request": {
     "number": 210,
     "url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
     "base": "develop",
-    "head_sha": "8046c8341ca832f467ce9ffdabec5aa030737dce",
-    "state": "OPEN"
+    "head_sha": "35a699603143b5048d01b2d8e5defc279472488d",
+    "state": "OPEN",
+    "mergeStateStatus": "BLOCKED",
+    "reviewDecision": "REVIEW_REQUIRED"
+  },
+  "merge_to_develop": {
+    "status": "NOT_MERGED",
+    "attempted": "2026-05-12T19:30:00+00:00",
+    "gh_pr_merge_result": "rejected: base branch policy prohibits the merge; REVIEW_REQUIRED; auto-merge not enabled on repository",
+    "next_action": "Complete required code review approval on PR #210, then merge via GitHub UI or gh pr merge (with policy-compliant flags if applicable)."
+  },
+  "post_merge_pipeline": {
+    "build_and_push_images": "NOT_RUN — merge to develop did not occur from this session",
+    "security_release": "NOT_RUN — requires successful Build and Push Images on develop",
+    "trivy_published_app_image": "NOT_VERIFIED",
+    "trivy_published_goose_image": "NOT_VERIFIED",
+    "security_release_signal": "NOT_VERIFIED"
   },
   "production_readonly_smoke": "NOT_RUN",
   "reason": "STAGING_BASE_URL / PRODUCTION_BASE_URL / PROD_BASE_URL / BASE_URL_PROD were not set in the verification environment; read-only smoke script was not executed against staging or production.",
@@ -21,49 +36,49 @@
     "api_base_url": "http://127.0.0.1:18080",
     "grpc_addr": "127.0.0.1:9090",
     "go_test": "pass (go test ./... -count=1; TEST_DATABASE_URL with clean DB)",
-    "go_test_race_local": "BLOCKED: gcc/cgo not available on this host; Linux race verified in CI Production Proof for PR #210.",
-    "govulncheck": "pass with GOTOOLCHAIN=go1.25.10 locally; Go Vulnerability Scan pass in CI for head SHA",
-    "trivy_local": "BLOCKED: trivy not on PATH locally",
-    "full_local_e2e": "pass per session log (23 passed, 0 failed, 0 skipped; .e2e-runs not committed).",
-    "rest_full_live_coverage": "PARTIAL — 365 OpenAPI operations; 6 runner pass; 359 blocked (reports/test/rest-full-live-coverage.json); not full live coverage",
+    "go_test_race_local": "verified in CI Production Proof for PR #210 head 35a6996",
+    "govulncheck": "pass in CI Go Vulnerability Scan for PR head",
+    "trivy_local": "BLOCKED locally; config scan in Security workflow on PR",
+    "full_local_e2e": "pass per prior session (23 tests; .e2e-runs not committed)",
+    "rest_full_live_coverage": "PARTIAL — 365 ops; 6 pass; 359 blocked",
     "grpc_full_coverage": "reports/test/grpc-full-coverage.json",
     "mqtt_full_coverage": "reports/test/mqtt-full-coverage.json"
   },
   "ci_proof": {
     "status": "PASS",
-    "proof_target_commit": "8046c8341ca832f467ce9ffdabec5aa030737dce",
-    "verified_via": "gh pr checks 210 --watch; gh run list --commit 8046c8341ca832f467ce9ffdabec5aa030737dce",
+    "proof_target_commit": "35a699603143b5048d01b2d8e5defc279472488d",
+    "verified_via": "gh pr checks 210 --watch after documentation commit on branch head (2026-05-12 UTC); all required checks green including Linux race and contract gates",
     "workflow_runs": [
       {
         "workflow": "CI",
-        "database_id": 25724622458,
+        "database_id": 25725682062,
         "conclusion": "success",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724622458"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682062"
       },
       {
         "workflow": "Security",
-        "database_id": 25724622456,
+        "database_id": 25725682070,
         "conclusion": "success",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724622456"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682070"
       },
       {
         "workflow": "Production Proof",
-        "database_id": 25724622493,
+        "database_id": 25725682100,
         "conclusion": "success",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724622493"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682100"
       },
       {
         "workflow": "CodeQL",
-        "database_id": 25724622463,
+        "database_id": 25725682090,
         "conclusion": "skipped",
-        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25724622463"
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682090"
       }
     ],
     "pr_required_checks_summary": {
       "Go CI Gates": "pass",
-      "Linux race and contract gates": "pass (Ubuntu race + contract Makefile targets)",
+      "Linux race and contract gates": "pass",
       "Go Vulnerability Scan": "pass",
-      "Deployment and Config Scan": "pass (Trivy config)",
+      "Deployment and Config Scan": "pass",
       "Secret Scan": "pass",
       "Workflow and Script Quality": "pass",
       "Docker Compose Config Validation": "pass",
@@ -73,14 +88,10 @@
     },
     "dependency_review": "skipped (org toggle)",
     "codeql": "skipped (org toggle)",
-    "security_release_and_image_trivy": {
-      "status": "NOT_TRIGGERED_FOR_THIS_PR",
-      "reason": "build-push.yml triggers from workflow_run after CI succeeds on push to develop/main only — not from pull_request CI on a feature head. Security Release follows Build and Push Images. Trivy scans of published app/goose images occur in that pipeline after merge to develop/main, not as part of this PR check suite.",
-      "next_action": "After merge to develop (or main), confirm Build and Push Images then Security Release for image-level Trivy evidence."
-    }
+    "note": "Image-level Trivy for published app/goose containers runs after merge via Build and Push + Security Release — not executed because merge did not complete."
   },
   "secret_audit": {
     "status": "pass",
-    "notes": "No credentials committed with these reports."
+    "notes": "No credentials in these report files."
   }
 }

@@ -1,7 +1,7 @@
 # FINAL BACKEND TEST REPORT
 
 - Branch: `security/goose-otel-fix`
-- Commit: `8046c8341ca832f467ce9ffdabec5aa030737dce`
+- Commit: `35a699603143b5048d01b2d8e5defc279472488d`
 - PR: https://github.com/leduytuanvu/avf-vending-api/pull/210
 - API URL: `http://127.0.0.1:18080`
 - gRPC addr: `:9090`
@@ -13,7 +13,8 @@
 - Production canary: `BLOCKED`
 - PSP: `BLOCKED: PSP sandbox/canary credentials not configured in this run`
 - Hardware: `BLOCKED: real canary vending hardware/simulator not attached in this run`
-- CI: **PASS** on `8046c83` — see `PRODUCTION_PROOF_REPORT.md` for run URLs.
+- **Merge:** **NOT_MERGED** (branch policy / `REVIEW_REQUIRED`).
+- CI: **PASS** on `35a6996` — CI [25725682062](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682062), Security [25725682070](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682070), Production Proof [25725682100](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25725682100). Post-merge gates: see `PRODUCTION_PROOF_REPORT.md`.
 
 ## Commands Run
 
@@ -40,4 +41,4 @@
 
 ## Final Claim
 
-**BLOCKED:** PR CI/Security/Production Proof **passed** on tip `8046c83`; production smoke **NOT_RUN**; image Security Release **not** on PR path; canary/PSP/hardware blocked; REST **6/365 partial**.
+**BLOCKED:** PR CI/Security/Production Proof **passed** on head `35a6996`; **merge blocked** so Build/Security Release/image Trivy **not run**; production smoke **NOT_RUN**; canary/PSP/hardware blocked; REST **6/365 partial**.
