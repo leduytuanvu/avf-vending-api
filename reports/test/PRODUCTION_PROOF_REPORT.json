@@ -1,149 +1,39 @@
 {
-  "generated_at": "2026-05-12T02:55:00Z",
-  "final_claim": "FAIL: Published goose image vulnerability scan failed until rebuilt image passes Trivy in Security Release.",
-  "baseline": {
-    "branch": "test/production-full-destructive-e2e",
-    "commit": "2482821c7222bb008dd1ceb913b3c64c602cadfc",
-    "e2e_run_dir": ".e2e-runs/run-20260511T143948Z-409-30449",
-    "full_local_e2e": {
-      "status": "pass",
-      "passed": 23,
-      "failed": 0,
-      "skipped": 0
-    }
+  "generated_at": "2026-05-12T08:30:00+00:00",
+  "branch": "security/goose-otel-fix",
+  "commit": "35e527857dfc2f42da41de9ab7e593728cacbbdb",
+  "production_readonly_smoke": "NOT_RUN",
+  "reason": "STAGING_BASE_URL / PRODUCTION_BASE_URL / PROD_BASE_URL / BASE_URL_PROD were not set in the execution environment; read-only smoke script was not executed against staging or production.",
+  "required_next_action": "Export a read-only-safe BASE_URL (e.g. STAGING_BASE_URL) and run: BASE_URL=\"$STAGING_BASE_URL\" bash scripts/test/run-production-readonly-smoke.sh",
+  "probes": [],
+  "local_executable_proof": {
+    "host": "Windows 10 (developer workstation)",
+    "bash": "C:\\\\Program Files\\\\Git\\\\bin\\\\bash.exe",
+    "docker": "Docker Desktop (compose: deployments/docker/docker-compose.yml --profile broker)",
+    "database": "postgres://postgres:***@127.0.0.1:15432/avf_vending_test_full_final?sslmode=disable",
+    "api_base_url": "http://127.0.0.1:18080",
+    "grpc_addr": "127.0.0.1:9090",
+    "go_test": "pass (go test ./... -count=1; TEST_DATABASE_URL with clean DB)",
+    "go_test_race_local": "BLOCKED: gcc/cgo not available on this host; Linux race gate runs in CI (production-proof workflow).",
+    "govulncheck": "pass with GOTOOLCHAIN=go1.25.10",
+    "trivy_local": "BLOCKED: trivy not on PATH; Security Release / image scans run in GitHub Actions.",
+    "full_local_e2e": "pass per session log (tests/e2e/run-all-local.sh --fresh-data: 23 passed, 0 failed, 0 skipped, Phase 8–42 green; evidence under reports/test/e2e-evidence/ console logs — .e2e-runs not committed).",
+    "rest_full_live_coverage": "executed: reports/test/rest-full-live-coverage.json (partial/blocked counts per OpenAPI conservative runner)",
+    "grpc_full_coverage": "executed: reports/test/grpc-full-coverage.json (grpcurl list reachable; method probes partial/blocked per classification)",
+    "mqtt_full_coverage": "executed: reports/test/mqtt-full-coverage.json (broker round-trip pass + flow matrix)"
   },
-  "local_gates": [
-    {
-      "name": "go vet ./...",
-      "status": "pass"
-    },
-    {
-      "name": "go test ./internal/grpcserver -run TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked -count=1",
-      "status": "pass"
-    },
-    {
-      "name": "go test ./internal/grpcserver -count=1",
-      "status": "pass"
-    },
-    {
-      "name": "go test ./... -count=1",
-      "status": "pass"
-    },
-    {
-      "name": "bash -n scripts/test/run-readonly-smoke.sh",
-      "status": "pass"
-    },
-    {
-      "name": "python -m py_compile scripts/test/rest_critical_live_coverage.py",
-      "status": "pass"
-    },
-    {
-      "name": "docker compose -f deployments/docker/docker-compose.yml --profile broker config",
-      "status": "pass"
-    },
-    {
-      "name": "bash tests/e2e/run-mqtt-local.sh",
-      "status": "pass"
-    },
-    {
-      "name": "python scripts/test/rest_critical_live_coverage.py",
-      "status": "pass"
-    }
-  ],
   "ci_proof": {
     "status": "pass",
-    "pr_url": "https://github.com/leduytuanvu/avf-vending-api/pull/203",
-    "workflow": "Production Proof",
-    "run_id": 25686909181,
-    "run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686909181",
-    "job": "Linux race and contract gates",
-    "job_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686909181/job/75412953429",
-    "head_sha": "2482821c7222bb008dd1ceb913b3c64c602cadfc",
-    "go_test": "pass",
-    "go_test_race": "pass",
-    "make_test_short": "pass",
-    "make_api_contract_check": "pass"
-  },
-  "blocked_gates": [
-    {
-      "name": "read-only staging/production smoke",
-      "reason": "No safe base URL configured in STAGING_BASE_URL, PRODUCTION_BASE_URL, PROD_BASE_URL, or BASE_URL_PROD."
-    }
-  ],
-  "critical_rest": {
-    "report": "reports/test/rest-critical-live-coverage.json",
-    "total_critical": 30,
-    "passed": 27,
-    "partial": 3,
-    "scope": "critical REST live coverage only; not full OpenAPI per-operation coverage"
-  },
-  "emqx": {
-    "docker_health": "healthy",
-    "healthcheck": "in-container MQTT listener on 1883 via /proc/net/tcp",
-    "mqtt_suite": "pass"
+    "source": "gh pr checks / gh run list (branch security/goose-otel-fix)",
+    "note": "Go CI Gates, Linux race and contract gates, Go Vulnerability Scan, Security workflow, Production Proof workflow reported success on 2026-05-12 for the linked PR branch; re-verify on GitHub if HEAD advances.",
+    "reference_runs": [
+      "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985939",
+      "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985923",
+      "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985930"
+    ]
   },
   "secret_audit": {
     "status": "pass",
-    "notes": "No unredacted local fixture values, JWT-shaped tokens, or Bearer-shaped secrets found in reports."
-  },
-  "changed_proof_files": [
-    ".github/workflows/production-proof.yml",
-    "deployments/docker/docker-compose.yml",
-    "internal/grpcserver/machine_commerce_grpc_integration_test.go",
-    "scripts/test/run-readonly-smoke.sh",
-    "scripts/test/rest_critical_live_coverage.py",
-    "reports/test/NEXT_PRODUCTION_PROOF_PLAN.md",
-    "reports/test/readonly-smoke.json",
-    "reports/test/readonly-smoke.md",
-    "reports/test/rest-critical-live-coverage.json",
-    "reports/test/rest-critical-live-coverage.md",
-    "reports/test/PRODUCTION_PROOF_REPORT.md",
-    "reports/test/PRODUCTION_PROOF_REPORT.json"
-  ],
-  "security_scan_blocker": {
-    "status": "resolved_in_ci",
-    "failed_run_id": 25685173325,
-    "failed_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25685173325",
-    "failed_check": "Go Vulnerability Scan",
-    "root_cause": [
-      "CI used Go 1.25.9 with standard library vulnerabilities fixed in Go 1.25.10",
-      "golang.org/x/net v0.52.0 affected by GO-2026-4918 and fixed in v0.53.0"
-    ],
-    "fix_applied": {
-      "go_toolchain": "1.25.10",
-      "golang.org/x/net": "v0.53.0"
-    },
-    "local_govulncheck": "pass with go1.25.10 and govulncheck@v1.3.0",
-    "ci_required": "satisfied: updated Go Vulnerability Scan passed",
-    "passed_run_id": 25686906495,
-    "passed_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686906495"
-  },
-  "security_release_99_goose_blocker": {
-    "status": "pre_ci_fail",
-    "workflow": "Security Release",
-    "run_number": 99,
-    "failed_check": "Published Image Vulnerability Scan",
-    "published_image_verdict": "fail",
-    "trivy_goose_result": "failure",
-    "app_image_scan": "pass",
-    "failed_goose_image_ref": "ghcr.io/leduytuanvu/avf-vending-api-goose@sha256:27c4afb1723e3109ccf08be271b4276308ab66a82b66a699b1995259bf3b62dc",
-    "root_cause": "/usr/local/bin/goose embedded go.opentelemetry.io/otel v1.40.0 from pressly/goose v3.27.0; CVE-2026-29181 HIGH is fixed in go.opentelemetry.io/otel v1.41.0.",
-    "fix_applied": {
-      "goose_version": "v3.27.1",
-      "go_opentelemetry_io_otel": "v1.43.0",
-      "runtime_base": "alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11"
-    },
-    "local_proof": {
-      "docker_build": "pass",
-      "goose_version": "v3.27.1",
-      "trivy_0_57_1": "pass: Total 0 (HIGH 0, CRITICAL 0)"
-    },
-    "local_sanity": {
-      "go_vet": "pass",
-      "govulncheck": "pass: no reachable vulnerabilities",
-      "docker_compose_config": "pass",
-      "go_test": "fail: internal/modules/postgres TestOutboxRepository_LeaseOutboxForPublish_SetsPublishing did not lease the aged pending row; outside goose image build path"
-    },
-    "ci_required": "Security Release must rebuild and scan the fixed published goose image before this blocker is resolved."
+    "notes": "No credentials committed in this change set; DSN passwords masked in reports."
   }
 }

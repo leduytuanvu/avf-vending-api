@@ -1,25 +1,25 @@
 # REST Full Live Coverage
 
-- Generated At: `2026-05-12T07:45:35.247535+00:00`
+- Generated At: `2026-05-12T08:23:35.359631+00:00`
 - Mode: `local`
 - Base Url: `http://127.0.0.1:18080`
 - Total Operations: `365`
-- Passed: `0`
+- Passed: `6`
 - Failed: `0`
 - Partial: `0`
-- Blocked: `365`
+- Blocked: `359`
 - Evidence directory: `D:\admin\development\avf\avf-vending-system\avf-vending-api\reports\test\rest-full-live-evidence`
 
 | Method | Path | Priority | Class | Status | HTTP | Reason |
 |---|---|---|---|---|---:|---|
-| GET | `/health/live` | P0 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/health/ready` | P0 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/metrics` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/swagger/doc.json` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/swagger/index.html` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/assignments` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/audit/events` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/auth/users` | P1 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/health/live` | P0 | safe-read | **pass** | 200 | HTTP evidence captured |
+| GET | `/health/ready` | P0 | safe-read | **pass** | 200 | HTTP evidence captured |
+| GET | `/metrics` | P2 | safe-read | **pass** | 200 | HTTP evidence captured |
+| GET | `/swagger/doc.json` | P2 | safe-read | **pass** | 200 | HTTP evidence captured |
+| GET | `/swagger/index.html` | P2 | safe-read | **pass** | 200 | HTTP evidence captured |
+| GET | `/v1/admin/assignments` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/admin/audit/events` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/admin/auth/users` | P1 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/auth/users` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/admin/auth/users/{accountId}` | P1 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/auth/users/{accountId}` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -32,33 +32,33 @@
 | PUT | `/v1/admin/auth/users/{accountId}/roles` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | GET | `/v1/admin/auth/users/{accountId}/sessions` | P1 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/auth/users/{accountId}/status` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/brands` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/brands` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/brands` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | DELETE | `/v1/admin/brands/{brandId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/brands/{brandId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PUT | `/v1/admin/brands/{brandId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/categories` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/categories` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/categories` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | DELETE | `/v1/admin/categories/{categoryId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/categories/{categoryId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PUT | `/v1/admin/categories/{categoryId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/commands` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/feature-flags` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/commands` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/admin/feature-flags` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/feature-flags` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/admin/feature-flags/{flagId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/feature-flags/{flagId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/feature-flags/{flagId}/disable` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/feature-flags/{flagId}/enable` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PUT | `/v1/admin/feature-flags/{flagId}/targets` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/finance/daily-close` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/finance/daily-close` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/finance/daily-close` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/admin/finance/daily-close/{closeId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/inventory/low-stock` | P1 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/inventory/refill-suggestions` | P1 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/machine-config/rollouts` | P1 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/inventory/low-stock` | P1 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/admin/inventory/refill-suggestions` | P1 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/admin/machine-config/rollouts` | P1 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/machine-config/rollouts` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/admin/machine-config/rollouts/{rolloutId}` | P1 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/machines` | P1 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/machines` | P1 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/machines` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/admin/machines/{machineId}` | P1 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/machines/{machineId}` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -85,8 +85,8 @@
 | POST | `/v1/admin/machines/{machineId}/stock-adjustments` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/machines/{machineId}/sync` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PUT | `/v1/admin/machines/{machineId}/topology` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/media` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/media/assets` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/media` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/admin/media/assets` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/media/assets` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | DELETE | `/v1/admin/media/assets/{mediaId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | GET | `/v1/admin/media/assets/{mediaId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -94,9 +94,9 @@
 | DELETE | `/v1/admin/media/{mediaId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | GET | `/v1/admin/media/{mediaId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/media/{mediaId}/complete` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/ops/outbox` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/ops/outbox` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/ops/outbox/{outboxId}/retry` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/ops/retention` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/ops/retention` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | GET | `/v1/admin/organizations/{orgId}/artifacts` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/organizations/{orgId}/artifacts` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | DELETE | `/v1/admin/organizations/{orgId}/artifacts/{artifactId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -216,8 +216,8 @@
 | DELETE | `/v1/admin/organizations/{organizationId}/users/{userId}/roles/{role}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | GET | `/v1/admin/organizations/{organizationId}/users/{userId}/sessions` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/organizations/{organizationId}/users/{userId}/status` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/ota` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/ota/campaigns` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/ota` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/admin/ota/campaigns` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/ota/campaigns` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/admin/ota/campaigns/{campaignId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/ota/campaigns/{campaignId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -231,9 +231,9 @@
 | POST | `/v1/admin/ota/campaigns/{campaignId}/start` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | GET | `/v1/admin/ota/campaigns/{campaignId}/targets` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PUT | `/v1/admin/ota/campaigns/{campaignId}/targets` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/planograms` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/planograms` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | GET | `/v1/admin/planograms/{planogramId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/price-books` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/price-books` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/price-books` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/admin/price-books/{priceBookId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/price-books/{priceBookId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -247,7 +247,7 @@
 | PATCH | `/v1/admin/price-books/{priceBookId}/items/{productId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | DELETE | `/v1/admin/price-books/{priceBookId}/targets/{targetId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/pricing/preview` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
-| GET | `/v1/admin/products` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/products` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/products` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | DELETE | `/v1/admin/products/{productId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | GET | `/v1/admin/products/{productId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -259,7 +259,7 @@
 | POST | `/v1/admin/products/{productId}/media` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PUT | `/v1/admin/products/{productId}/media` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | DELETE | `/v1/admin/products/{productId}/media/{mediaId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/promotions` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/promotions` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/promotions` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | POST | `/v1/admin/promotions/preview` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/admin/promotions/{promotionId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -270,41 +270,41 @@
 | POST | `/v1/admin/promotions/{promotionId}/deactivate` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/promotions/{promotionId}/pause` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | DELETE | `/v1/admin/promotions/{promotionId}/targets/{targetId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/reports/cash-collections/export.csv` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/reports/cash-collections/export.csv` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | GET | `/v1/admin/reports/payments-summary/export.csv` | P0 | provider-required | **blocked-provider** |  | blocked-provider: external dependency required |
-| GET | `/v1/admin/reports/sales-summary/export.csv` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/sites` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/reports/sales-summary/export.csv` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/admin/sites` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/sites` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | DELETE | `/v1/admin/sites/{siteId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | GET | `/v1/admin/sites/{siteId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/sites/{siteId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/sites/{siteId}/disable` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/system/outbox` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/system/outbox/stats` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/system/outbox` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/admin/system/outbox/stats` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | GET | `/v1/admin/system/outbox/{eventId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/system/outbox/{eventId}/mark-dlq` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/system/outbox/{eventId}/replay` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/system/retention/dry-run` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | POST | `/v1/admin/system/retention/run` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
-| GET | `/v1/admin/system/retention/stats` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/admin/tags` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/system/retention/stats` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/admin/tags` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/tags` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | DELETE | `/v1/admin/tags/{tagId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/tags/{tagId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PUT | `/v1/admin/tags/{tagId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/technician-assignments` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/technician-assignments` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/technician-assignments` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | DELETE | `/v1/admin/technician-assignments/{assignmentId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | GET | `/v1/admin/technician-assignments/{assignmentId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/technician-assignments/{assignmentId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/technician-assignments/{assignmentId}/cancel` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/technicians` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/technicians` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/technicians` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/admin/technicians/{technicianId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/technicians/{technicianId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/technicians/{technicianId}/disable` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/admin/technicians/{technicianId}/enable` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/admin/users` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/admin/users` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/admin/users` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/admin/users/{userId}` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | PATCH | `/v1/admin/users/{userId}` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -320,7 +320,7 @@
 | POST | `/v1/auth/change-password` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | POST | `/v1/auth/login` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | POST | `/v1/auth/logout` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
-| GET | `/v1/auth/me` | P1 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/auth/me` | P1 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/auth/mfa/totp/disable` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | POST | `/v1/auth/mfa/totp/enroll` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | POST | `/v1/auth/mfa/totp/verify` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
@@ -329,7 +329,7 @@
 | POST | `/v1/auth/password/reset/request` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | POST | `/v1/auth/refresh` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | DELETE | `/v1/auth/sessions` | P0 | destructive | **blocked-hardware** |  | blocked-hardware: destructive route requires explicit scenario guard |
-| GET | `/v1/auth/sessions` | P1 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/auth/sessions` | P1 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | DELETE | `/v1/auth/sessions/{sessionId}` | P0 | destructive | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | POST | `/v1/commerce/cash-checkout` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | POST | `/v1/commerce/orders` | P0 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
@@ -367,13 +367,13 @@
 | GET | `/v1/machines/{machineId}/telemetry/rollups` | P1 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | GET | `/v1/machines/{machineId}/telemetry/snapshot` | P1 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
 | GET | `/v1/operator-insights/technicians/{technicianId}/action-attributions` | P2 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/v1/operator-insights/users/action-attributions` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/orders` | P1 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/operator-insights/users/action-attributions` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/orders` | P1 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | GET | `/v1/payments` | P0 | provider-required | **blocked-provider** |  | blocked-provider: external dependency required |
-| GET | `/v1/reports/fleet-health` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
-| GET | `/v1/reports/inventory-exceptions` | P1 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/reports/fleet-health` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
+| GET | `/v1/reports/inventory-exceptions` | P1 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | GET | `/v1/reports/payments-summary` | P0 | provider-required | **blocked-provider** |  | blocked-provider: external dependency required |
-| GET | `/v1/reports/sales-summary` | P2 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/v1/reports/sales-summary` | P2 | safe-read | **blocked-missing-seed** | 401 | auth/role credentials required |
 | POST | `/v1/setup/activation-codes/claim` | P2 | local-write | **blocked-missing-seed** |  | blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts |
 | GET | `/v1/setup/machines/{machineId}/bootstrap` | P1 | safe-read | **blocked-missing-seed** |  | blocked-missing-seed: templated path requires seeded resource IDs |
-| GET | `/version` | P0 | safe-read | **blocked-production-url** |  | API not reachable at http://127.0.0.1:18080 |
+| GET | `/version` | P0 | safe-read | **pass** | 200 | HTTP evidence captured |

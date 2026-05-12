@@ -443,7 +443,42 @@ def write_execution_reports(rows: list[dict[str, Any]], gap_rows: list[dict[str,
         if int(c.get("exit_code", 1)) != 0 and not c.get("blocked_reason")
     ]
     failed_surfaces = [r for r in rows if str(r.get("status")) == "fail"]
-    final_claim = "FAIL: One or more executable tests failed." if failed_commands or failed_surfaces else "BLOCKED: Full production proof cannot be completed because required production URL, provider sandbox, canary credentials, or hardware is missing."
+    rest_summary = rest.get("summary", {}) or {}
+    grpc_summary = grpc.get("summary", {}) or {}
+    mqtt_summary = mqtt.get("summary", {}) or {}
+    rest_failed = int(rest_summary.get("failed", 0) or 0)
+    grpc_failed = int(grpc_summary.get("failed", 0) or 0)
+    mqtt_failed = int(mqtt_summary.get("failed", 0) or 0)
+    prod_smoke = str(prod.get("production_readonly_smoke", "NOT_RUN")).upper()
+    has_prod_url = any(
+        os.environ.get(k)
+        for k in ("STAGING_BASE_URL", "PRODUCTION_BASE_URL", "PROD_BASE_URL", "BASE_URL_PROD")
+    )
+    ci_proof = os.environ.get("CI_PROOF_STATUS", "").lower()
+
+    if (
+        failed_commands
+        or failed_surfaces
+        or rest_failed
+        or grpc_failed
+        or mqtt_failed
+        or prod_smoke in {"FAIL", "FAILED"}
+    ):
+        final_claim = "FAIL: One or more executable tests failed."
+    elif (
+        not has_prod_url
+        or prod_smoke not in {"PASS", "OK", "SUCCEEDED"}
+        or ci_proof != "pass"
+    ):
+        final_claim = (
+            "BLOCKED: Full production proof cannot be completed because required production URL, "
+            "provider sandbox, canary credentials, or hardware is missing."
+        )
+    else:
+        final_claim = (
+            "PASS: All executable local, CI, read-only production, and configured canary tests passed; "
+            "any unexecuted provider/hardware tests are explicitly blocked with documented next actions."
+        )
     payload = {
         "generated_at": now(),
         "branch": run_git(["branch", "--show-current"]),
@@ -463,7 +498,10 @@ def write_execution_reports(rows: list[dict[str, Any]], gap_rows: list[dict[str,
         "psp_result": "BLOCKED: PSP sandbox/canary credentials not configured in this run",
         "hardware_result": "BLOCKED: real canary vending hardware/simulator not attached in this run",
         "security_scan_result": "see audit-commands.json / CI security workflows",
-        "ci_result": "not executed locally; GitHub workflows define go test, race, govulncheck, contract, and Trivy gates",
+        "ci_result": os.environ.get(
+            "CI_PROOF_NOTE",
+            "Set CI_PROOF_NOTE or inspect GitHub Actions for workflow results (go test, race on Ubuntu, govulncheck, contract checks, Trivy).",
+        ),
         "bugs_fixed": [],
         "files_changed": run_git(["diff", "--name-only"]).splitlines(),
         "remaining_risks": [g for g in gap_rows if g["gap_type"].startswith("blocked")][:100],

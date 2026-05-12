@@ -55,7 +55,14 @@ class RestOperation:
 
 
 def redact(value: str) -> str:
-    return SECRET_RE.sub(lambda m: (m.group(1) or m.group(4) or "") + "***REDACTED***", value)[:4000]
+    def _repl(m: re.Match[str]) -> str:
+        if m.group(1):
+            return m.group(1) + "***REDACTED***"
+        if m.group(2):
+            return m.group(2) + "***REDACTED***"
+        return "***REDACTED***"
+
+    return SECRET_RE.sub(_repl, value)[:4000]
 
 
 def load_json(path: Path) -> dict[str, Any]:

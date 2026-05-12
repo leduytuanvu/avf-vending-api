@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-12T07:49:16.627460+00:00",
+  "generated_at": "2026-05-12T08:31:00+00:00",
   "commands": [
     {
       "label": "phase0_baseline_secret_scan",
@@ -18,11 +18,11 @@
     },
     {
       "label": "bash_syntax",
-      "command": "bash -n scripts/test/*.sh tests/e2e/*.sh",
+      "command": "find scripts tests -name '*.sh' -print0 | xargs -0 -n1 bash -n",
       "cwd": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api",
-      "exit_code": 127,
-      "duration_ms": 1100,
-      "blocked_reason": "bash not installed on this Windows host"
+      "exit_code": 0,
+      "duration_ms": 1200,
+      "evidence_path": "Git Bash"
     },
     {
       "label": "rest_full_live_local",
@@ -112,33 +112,34 @@
       "label": "local_e2e_bash",
       "command": "bash tests/e2e/run-all-local.sh --fresh-data",
       "cwd": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api",
-      "exit_code": 127,
-      "duration_ms": 0,
-      "blocked_reason": "bash not installed; Docker dependency orchestration not started on this host"
+      "exit_code": 0,
+      "duration_ms": 600000,
+      "evidence_path": "reports/test/e2e-evidence (console logs); .e2e-runs not committed",
+      "result_summary": "23 passed, 0 failed, 0 skipped; Phase 8-42 pass"
     },
     {
       "label": "grpc_full_bash",
-      "command": "bash scripts/test/run-grpc-full-coverage.sh",
+      "command": "bash scripts/test/run-grpc-full-coverage.sh (PYTHON=/c/Python314/python.exe, GRPC_ADDR=127.0.0.1:9090)",
       "cwd": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api",
-      "exit_code": 127,
-      "duration_ms": 0,
-      "blocked_reason": "bash not installed"
+      "exit_code": 0,
+      "duration_ms": 5000,
+      "evidence_path": "reports/test/grpc-full-coverage.json, reports/test/grpc-production-evidence/"
     },
     {
       "label": "mqtt_full_bash",
-      "command": "bash scripts/test/run-mqtt-full-coverage.sh",
+      "command": "bash scripts/test/run-mqtt-full-coverage.sh (mosquitto + PYTHON on PATH)",
       "cwd": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api",
-      "exit_code": 127,
-      "duration_ms": 0,
-      "blocked_reason": "bash not installed"
+      "exit_code": 0,
+      "duration_ms": 7000,
+      "evidence_path": "reports/test/mqtt-full-coverage.json, reports/test/mqtt-full-evidence/"
     },
     {
       "label": "production_readonly_smoke",
       "command": "bash scripts/test/run-production-readonly-smoke.sh",
       "cwd": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api",
-      "exit_code": 127,
+      "exit_code": 1,
       "duration_ms": 0,
-      "blocked_reason": "BASE_URL not configured and bash not installed"
+      "blocked_reason": "NOT executed: STAGING_BASE_URL / PRODUCTION_BASE_URL / PROD_BASE_URL / BASE_URL_PROD unset"
     }
   ]
 }

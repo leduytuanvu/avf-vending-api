@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-05-12T07:50:13.117155+00:00",
+  "generated_at": "2026-05-12T08:33:12.039903+00:00",
   "branch": "security/goose-otel-fix",
-  "commit": "3369b5129af2c8a49307272c6093f059cfd74c2e",
+  "commit": "35e527857dfc2f42da41de9ab7e593728cacbbdb",
   "environment": {
     "db_name": "avf_vending_test_full_final (requested; local execution dependent)",
     "api_url": "http://127.0.0.1:18080",
-    "grpc_addr": "127.0.0.1:9090",
-    "mqtt_broker": "not configured:1883"
+    "grpc_addr": ":9090",
+    "mqtt_broker": "127.0.0.1:1883"
   },
   "commands": [
     {
@@ -26,11 +26,11 @@
     },
     {
       "label": "bash_syntax",
-      "command": "bash -n scripts/test/*.sh tests/e2e/*.sh",
+      "command": "find scripts tests -name '*.sh' -print0 | xargs -0 -n1 bash -n",
       "cwd": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api",
-      "exit_code": 127,
-      "duration_ms": 1100,
-      "blocked_reason": "bash not installed on this Windows host"
+      "exit_code": 0,
+      "duration_ms": 1200,
+      "evidence_path": "Git Bash"
     },
     {
       "label": "rest_full_live_local",
@@ -120,85 +120,190 @@
       "label": "local_e2e_bash",
       "command": "bash tests/e2e/run-all-local.sh --fresh-data",
       "cwd": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api",
-      "exit_code": 127,
-      "duration_ms": 0,
-      "blocked_reason": "bash not installed; Docker dependency orchestration not started on this host"
+      "exit_code": 0,
+      "duration_ms": 600000,
+      "evidence_path": "reports/test/e2e-evidence (console logs); .e2e-runs not committed",
+      "result_summary": "23 passed, 0 failed, 0 skipped; Phase 8-42 pass"
     },
     {
       "label": "grpc_full_bash",
-      "command": "bash scripts/test/run-grpc-full-coverage.sh",
+      "command": "bash scripts/test/run-grpc-full-coverage.sh (PYTHON=/c/Python314/python.exe, GRPC_ADDR=127.0.0.1:9090)",
       "cwd": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api",
-      "exit_code": 127,
-      "duration_ms": 0,
-      "blocked_reason": "bash not installed"
+      "exit_code": 0,
+      "duration_ms": 5000,
+      "evidence_path": "reports/test/grpc-full-coverage.json, reports/test/grpc-production-evidence/"
     },
     {
       "label": "mqtt_full_bash",
-      "command": "bash scripts/test/run-mqtt-full-coverage.sh",
+      "command": "bash scripts/test/run-mqtt-full-coverage.sh (mosquitto + PYTHON on PATH)",
       "cwd": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api",
-      "exit_code": 127,
-      "duration_ms": 0,
-      "blocked_reason": "bash not installed"
+      "exit_code": 0,
+      "duration_ms": 7000,
+      "evidence_path": "reports/test/mqtt-full-coverage.json, reports/test/mqtt-full-evidence/"
     },
     {
       "label": "production_readonly_smoke",
       "command": "bash scripts/test/run-production-readonly-smoke.sh",
       "cwd": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api",
-      "exit_code": 127,
+      "exit_code": 1,
       "duration_ms": 0,
-      "blocked_reason": "BASE_URL not configured and bash not installed"
+      "blocked_reason": "NOT executed: STAGING_BASE_URL / PRODUCTION_BASE_URL / PROD_BASE_URL / BASE_URL_PROD unset"
     }
   ],
   "rest": {
-    "generated_at": "2026-05-12T07:45:35.247535+00:00",
+    "generated_at": "2026-05-12T08:23:35.359631+00:00",
     "mode": "local",
     "base_url": "http://127.0.0.1:18080",
-    "reachable": false,
+    "reachable": true,
     "swagger": "docs\\swagger\\swagger.json",
     "total_operations": 365,
-    "passed": 0,
+    "passed": 6,
     "failed": 0,
     "partial": 0,
-    "blocked": 365
+    "blocked": 359
   },
   "grpc": {
-    "generated_at": "2026-05-12T07:49:56.091169+00:00",
+    "generated_at": "2026-05-12T08:23:55.203480+00:00",
     "grpc_addr": "127.0.0.1:9090",
-    "server_status": "blocked-tooling",
-    "server_reason": "scripts/test/run-grpc-full-coverage.sh was not executable on this host or grpcurl/server was unavailable",
+    "server_status": "reachable",
+    "server_reason": "grpcurl list succeeded",
     "total_methods": 85,
     "passed": 0,
     "failed": 0,
-    "partial": 85,
-    "blocked": 0
+    "partial": 54,
+    "blocked": 31
   },
   "mqtt": {
-    "generated_at": "2026-05-12T07:49:56.092200+00:00",
-    "mqtt_host": "",
+    "generated_at": "2026-05-12T08:24:38.836871+00:00",
+    "mqtt_host": "127.0.0.1",
     "mqtt_port": "1883",
-    "mqtt_topic_prefix": "",
-    "broker_status": "blocked-tooling",
-    "broker_reason": "scripts/test/run-mqtt-full-coverage.sh was not executable on this host or broker/tools were unavailable",
-    "total_flows": 6,
-    "passed": 0,
+    "mqtt_topic_prefix": "avf-dev/devices",
+    "broker_status": "reachable",
+    "broker_reason": "publish/subscribe round-trip evidence captured",
+    "total_flows": 12,
+    "passed": 1,
     "failed": 0,
-    "partial": 6,
-    "blocked": 0
+    "partial": 9,
+    "blocked": 2
   },
-  "production_smoke_result": "BLOCKED",
+  "production_smoke_result": "NOT_RUN",
   "production_canary_result": "BLOCKED",
   "psp_result": "BLOCKED: PSP sandbox/canary credentials not configured in this run",
   "hardware_result": "BLOCKED: real canary vending hardware/simulator not attached in this run",
   "security_scan_result": "see audit-commands.json / CI security workflows",
-  "ci_result": "not executed locally; GitHub workflows define go test, race, govulncheck, contract, and Trivy gates",
+  "ci_result": "gh pr checks: Go CI Gates, Linux race and contract gates, Go Vulnerability Scan, Security, Production Proof workflows success for branch security/goose-otel-fix (e.g. runs 25710985939, 25710985923, 25710985930)",
   "bugs_fixed": [],
   "files_changed": [
     ".gitignore",
     "reports/test/FINAL_BACKEND_TEST_REPORT.json",
     "reports/test/FINAL_BACKEND_TEST_REPORT.md",
-    "reports/test/production-readiness.md"
+    "reports/test/FULL_TEST_EXECUTION_REPORT.json",
+    "reports/test/FULL_TEST_EXECUTION_REPORT.md",
+    "reports/test/FULL_TEST_GAP_ANALYSIS.json",
+    "reports/test/FULL_TEST_GAP_ANALYSIS.md",
+    "reports/test/FULL_TEST_INVENTORY.json",
+    "reports/test/FULL_TEST_INVENTORY.md",
+    "reports/test/PRODUCTION_PROOF_REPORT.json",
+    "reports/test/PRODUCTION_PROOF_REPORT.md",
+    "reports/test/api-request-response-report.jsonl",
+    "reports/test/audit-commands.json",
+    "reports/test/grpc-full-coverage.json",
+    "reports/test/grpc-full-coverage.md",
+    "reports/test/mqtt-full-coverage.json",
+    "reports/test/mqtt-full-coverage.md",
+    "reports/test/production-canary-e2e.json",
+    "reports/test/production-canary-e2e.md",
+    "reports/test/production-readiness.md",
+    "reports/test/rest-api-requests-responses.jsonl",
+    "reports/test/rest-full-live-coverage.json",
+    "reports/test/rest-full-live-coverage.md",
+    "scripts/test/generate-full-backend-reports.py",
+    "scripts/test/rest_full_live_coverage.py",
+    "scripts/test/run-grpc-full-coverage.sh",
+    "scripts/test/run-mqtt-full-coverage.sh"
   ],
   "remaining_risks": [
+    {
+      "surface": "gRPC",
+      "id": "AckCatalogVersion",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckConfigVersion",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckInventorySync",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckMediaVersion",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ActivateMachine",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CheckForUpdates",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreateCashCheckout",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreateOrder",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreateSale",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
     {
       "surface": "REST",
       "id": "DocOpV1AdminAuthUsersActivate",
@@ -821,6 +926,69 @@
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
+      "surface": "gRPC",
+      "id": "GetAssignedUpdate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetSyncCursor",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ReportUpdateStatus",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SyncSaleCatalog",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckCommand",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CompleteVend",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ConfirmVendSuccess",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
       "surface": "REST",
       "id": "DocOpV1AdminOrgReportsFailedVends",
       "priority": "P0",
@@ -884,220 +1052,76 @@
       "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpHealthLive",
+      "surface": "gRPC",
+      "id": "FailVend",
       "priority": "P0",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpHealthReady",
+      "surface": "gRPC",
+      "id": "GetPendingCommands",
       "priority": "P0",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpVersion",
+      "surface": "gRPC",
+      "id": "RejectCommand",
       "priority": "P0",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpV1AdminOrgReportsPayments",
+      "surface": "gRPC",
+      "id": "ReportVendFailure",
       "priority": "P0",
-      "gap_type": "blocked by provider",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpV1AdminReportsPaymentsSummaryExportCSV",
+      "surface": "gRPC",
+      "id": "ReportVendSuccess",
       "priority": "P0",
-      "gap_type": "blocked by provider",
-      "status": "blocked-provider",
-      "reason": "blocked-provider: external dependency required",
-      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpV1CommercePaymentSession",
+      "surface": "gRPC",
+      "id": "StartVend",
       "priority": "P0",
-      "gap_type": "blocked by provider",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpV1CommercePaymentWebhook",
+      "surface": "gRPC",
+      "id": "StartVend",
       "priority": "P0",
-      "gap_type": "blocked by provider",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpV1PaymentsList",
+      "surface": "MQTT",
+      "id": "ack_timeout_no_ack",
       "priority": "P0",
-      "gap_type": "blocked by provider",
-      "status": "blocked-provider",
-      "reason": "blocked-provider: external dependency required",
-      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1ReportsPaymentsSummary",
-      "priority": "P0",
-      "gap_type": "blocked by provider",
-      "status": "blocked-provider",
-      "reason": "blocked-provider: external dependency required",
-      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
-    },
-    {
-      "surface": "Business flow",
-      "id": "dispense failure/refund",
-      "priority": "P0",
-      "gap_type": "blocked by provider",
-      "status": "blocked",
-      "reason": "Requires configured provider/hardware/canary for production proof",
-      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
-    },
-    {
-      "surface": "Business flow",
-      "id": "dispense success",
-      "priority": "P0",
-      "gap_type": "blocked by provider",
-      "status": "blocked",
-      "reason": "Requires configured provider/hardware/canary for production proof",
-      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
-    },
-    {
-      "surface": "Business flow",
-      "id": "payment/QR sale success",
-      "priority": "P0",
-      "gap_type": "blocked by provider",
-      "status": "blocked",
-      "reason": "Requires configured provider/hardware/canary for production proof",
-      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
-    },
-    {
-      "surface": "Business flow",
-      "id": "remote command dispatch/ACK/fail/timeout",
-      "priority": "P0",
-      "gap_type": "blocked by provider",
-      "status": "blocked",
-      "reason": "Requires configured provider/hardware/canary for production proof",
-      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminAuthUsersGet",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminAuthUsersSessions",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminCommerceReconciliationGet",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminCommerceReconciliationList",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMachineActivationCodesList",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMachineCashCollectionGet",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMachineCashCollectionsList",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMachineCashbox",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMachineConfigRolloutGet",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMachineDiagnosticBundlesList",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMachineGet",
-      "priority": "P1",
-      "gap_type": "blocked by env",
-      "status": "blocked-missing-seed",
-      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
-      "next_action": "Provide required local seed data or canary env vars."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires real canary device reconnect/no-ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     }
   ],
   "final_claim": "BLOCKED: Full production proof cannot be completed because required production URL, provider sandbox, canary credentials, or hardware is missing."

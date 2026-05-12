@@ -1,20 +1,20 @@
 {
   "summary": {
-    "generated_at": "2026-05-12T07:50:13.020124+00:00",
+    "generated_at": "2026-05-12T08:33:11.984958+00:00",
     "branch": "security/goose-otel-fix",
-    "commit": "3369b5129af2c8a49307272c6093f059cfd74c2e",
+    "commit": "35e527857dfc2f42da41de9ab7e593728cacbbdb",
     "counts_by_surface": {
       "REST": 365,
       "gRPC": 85,
-      "MQTT": 6,
+      "MQTT": 12,
       "Business flow": 25
     },
     "counts_by_status": {
-      "blocked-production-url": 45,
-      "blocked-missing-seed": 316,
-      "blocked-provider": 3,
-      "blocked-hardware": 1,
-      "partial": 112,
+      "pass": 7,
+      "blocked-missing-seed": 368,
+      "blocked-provider": 11,
+      "blocked-hardware": 13,
+      "partial": 84,
       "blocked": 4
     }
   },
@@ -34,10 +34,10 @@
       ],
       "error_responses": [],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_health_live.json",
+      "missing_test_gap": "HTTP evidence captured",
       "priority": "P0",
-      "status": "blocked-production-url"
+      "status": "pass"
     },
     {
       "surface": "REST",
@@ -56,10 +56,10 @@
         "503"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_health_ready.json",
+      "missing_test_gap": "HTTP evidence captured",
       "priority": "P0",
-      "status": "blocked-production-url"
+      "status": "pass"
     },
     {
       "surface": "REST",
@@ -79,10 +79,10 @@
         "404"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_metrics.json",
+      "missing_test_gap": "HTTP evidence captured",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "pass"
     },
     {
       "surface": "REST",
@@ -99,10 +99,10 @@
       ],
       "error_responses": [],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_swagger_doc.json.json",
+      "missing_test_gap": "HTTP evidence captured",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "pass"
     },
     {
       "surface": "REST",
@@ -119,10 +119,10 @@
       ],
       "error_responses": [],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_swagger_index.html.json",
+      "missing_test_gap": "HTTP evidence captured",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "pass"
     },
     {
       "surface": "REST",
@@ -144,10 +144,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_assignments.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -169,10 +169,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/47_e2e_reporting_audit.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_audit_events.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -194,10 +194,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/01_web_admin_setup.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_auth_users.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P1",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -513,10 +513,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_brands.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -619,10 +619,10 @@
       ],
       "error_responses": [],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_categories.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -724,10 +724,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_commands.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -748,10 +748,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_feature-flags.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -923,10 +923,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_finance_daily-close.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -1000,10 +1000,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/11_web_admin_inventory_ops.sh, tests/e2e/scenarios/46_e2e_inventory_restock_adjustment.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_inventory_low-stock.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P1",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -1025,10 +1025,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/11_web_admin_inventory_ops.sh, tests/e2e/scenarios/46_e2e_inventory_restock_adjustment.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_inventory_refill-suggestions.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P1",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -1049,10 +1049,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/02_machine_activation_bootstrap_rest.sh, tests/e2e/scenarios/40_e2e_first_boot.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_machine-config_rollouts.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P1",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -1124,10 +1124,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/02_machine_activation_bootstrap_rest.sh, tests/e2e/scenarios/40_e2e_first_boot.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_machines.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P1",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -1843,10 +1843,10 @@
         "403"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/03_catalog_media_sync_rest.sh, tests/e2e/scenarios/12_web_admin_catalog_ops.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_media.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -1867,10 +1867,10 @@
         "403"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/03_catalog_media_sync_rest.sh, tests/e2e/scenarios/12_web_admin_catalog_ops.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_media_assets.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -2063,10 +2063,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_ops_outbox.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -2112,10 +2112,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_ops_retention.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -4754,10 +4754,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_ota.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -4779,10 +4779,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_ota_campaigns.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -5151,10 +5151,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/11_web_admin_inventory_ops.sh, tests/e2e/scenarios/46_e2e_inventory_restock_adjustment.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_planograms.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P1",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -5202,10 +5202,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_price-books.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -5517,10 +5517,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/03_catalog_media_sync_rest.sh, tests/e2e/scenarios/12_web_admin_catalog_ops.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_products.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -5829,10 +5829,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_promotions.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -6064,10 +6064,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/47_e2e_reporting_audit.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_reports_cash-collections_export.csv.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -6114,10 +6114,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/04_cash_sale_success_rest.sh, tests/e2e/scenarios/41_e2e_cash_sale_success.sh, tests/e2e/scenarios/47_e2e_reporting_audit.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_reports_sales-summary_export.csv.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -6139,10 +6139,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_sites.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -6293,10 +6293,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_system_outbox.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -6317,10 +6317,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_system_outbox_stats.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -6468,10 +6468,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_system_retention_stats.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -6488,10 +6488,10 @@
       ],
       "error_responses": [],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_tags.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -6593,10 +6593,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_technician-assignments.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -6748,10 +6748,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_technicians.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -6901,10 +6901,10 @@
         "403"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_users.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -7244,10 +7244,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/01_web_admin_setup.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_auth_me.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P1",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -7447,10 +7447,10 @@
       ],
       "error_responses": [],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/01_web_admin_setup.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_auth_sessions.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P1",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -8448,10 +8448,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_operator-insights_users_action-attributions.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -8473,10 +8473,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/04_cash_sale_success_rest.sh, tests/e2e/scenarios/41_e2e_cash_sale_success.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_orders.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -8523,10 +8523,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/47_e2e_reporting_audit.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_reports_fleet-health.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -8548,10 +8548,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/11_web_admin_inventory_ops.sh, tests/e2e/scenarios/46_e2e_inventory_restock_adjustment.sh, tests/e2e/scenarios/47_e2e_reporting_audit.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_reports_inventory-exceptions.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P1",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -8598,10 +8598,10 @@
         "500"
       ],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/scenarios/04_cash_sale_success_rest.sh, tests/e2e/scenarios/41_e2e_cash_sale_success.sh, tests/e2e/scenarios/47_e2e_reporting_audit.sh",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_reports_sales-summary.json",
+      "missing_test_gap": "auth/role credentials required",
       "priority": "P2",
-      "status": "blocked-production-url"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "REST",
@@ -8668,10 +8668,10 @@
       ],
       "error_responses": [],
       "classification": "safe-read",
-      "existing_test_evidence": "scripts/test/rest_full_live_coverage.py",
-      "missing_test_gap": "API not reachable at http://127.0.0.1:18080",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_version.json",
+      "missing_test_gap": "HTTP evidence captured",
       "priority": "P0",
-      "status": "blocked-production-url"
+      "status": "pass"
     },
     {
       "surface": "gRPC",
@@ -8679,10 +8679,10 @@
       "rpc": "GetSaleCatalogSnapshot",
       "request_type": "GetSaleCatalogSnapshotRequest",
       "response_type": "GetSaleCatalogSnapshotResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8692,12 +8692,12 @@
       "rpc": "GetOrderPaymentVendState",
       "request_type": "GetOrderPaymentVendStateRequest",
       "response_type": "GetOrderPaymentVendStateResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
-      "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
+      "classification": "provider-required",
+      "existing_test_evidence": "proto/avf/internal/v1/commerce_query.proto",
+      "missing_test_gap": "requires payment/provider sandbox evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-provider"
     },
     {
       "surface": "gRPC",
@@ -8705,10 +8705,10 @@
       "rpc": "GetMachineSlotInventory",
       "request_type": "GetMachineSlotInventoryRequest",
       "response_type": "GetMachineSlotInventoryResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8718,10 +8718,10 @@
       "rpc": "GetMachineSummary",
       "request_type": "GetMachineSummaryRequest",
       "response_type": "GetMachineSummaryResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8731,10 +8731,10 @@
       "rpc": "GetMachineState",
       "request_type": "GetMachineStateRequest",
       "response_type": "GetMachineStateResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8744,10 +8744,10 @@
       "rpc": "GetMachineCabinetSlotSummary",
       "request_type": "GetMachineCabinetSlotSummaryRequest",
       "response_type": "GetMachineCabinetSlotSummaryResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8757,10 +8757,10 @@
       "rpc": "GetLatestMachineTelemetry",
       "request_type": "GetLatestMachineTelemetryRequest",
       "response_type": "GetLatestMachineTelemetryResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8770,10 +8770,10 @@
       "rpc": "GetMachineIncidentSummary",
       "request_type": "GetMachineIncidentSummaryRequest",
       "response_type": "GetMachineIncidentSummaryResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8783,12 +8783,12 @@
       "rpc": "GetPaymentById",
       "request_type": "GetPaymentByIdRequest",
       "response_type": "GetPaymentByIdResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
-      "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
-      "priority": "P1",
-      "status": "partial"
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
+      "classification": "provider-required",
+      "existing_test_evidence": "proto/avf/internal/v1/payment_query.proto",
+      "missing_test_gap": "requires payment/provider sandbox evidence",
+      "priority": "P0",
+      "status": "blocked-provider"
     },
     {
       "surface": "gRPC",
@@ -8796,12 +8796,12 @@
       "rpc": "GetLatestPaymentForOrder",
       "request_type": "GetLatestPaymentForOrderRequest",
       "response_type": "GetLatestPaymentForOrderResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
-      "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
-      "priority": "P1",
-      "status": "partial"
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
+      "classification": "provider-required",
+      "existing_test_evidence": "proto/avf/internal/v1/payment_query.proto",
+      "missing_test_gap": "requires payment/provider sandbox evidence",
+      "priority": "P0",
+      "status": "blocked-provider"
     },
     {
       "surface": "gRPC",
@@ -8809,10 +8809,10 @@
       "rpc": "GetSalesSummary",
       "request_type": "GetSalesSummaryRequest",
       "response_type": "GetSalesSummaryResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8822,12 +8822,12 @@
       "rpc": "ActivateMachine",
       "request_type": "ActivateMachineRequest",
       "response_type": "ActivateMachineResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
-      "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
-      "priority": "P1",
-      "status": "partial"
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
+      "classification": "write",
+      "existing_test_evidence": "proto/avf/machine/v1/auth.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
+      "priority": "P0",
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -8835,10 +8835,10 @@
       "rpc": "ClaimActivation",
       "request_type": "MachineAuthServiceClaimActivationRequest",
       "response_type": "MachineAuthServiceClaimActivationResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8848,10 +8848,10 @@
       "rpc": "RefreshMachineToken",
       "request_type": "MachineAuthServiceRefreshMachineTokenRequest",
       "response_type": "MachineAuthServiceRefreshMachineTokenResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8861,11 +8861,11 @@
       "rpc": "GetBootstrap",
       "request_type": "GetBootstrapRequest",
       "response_type": "GetBootstrapResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
-      "priority": "P1",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
+      "priority": "P0",
       "status": "partial"
     },
     {
@@ -8874,10 +8874,10 @@
       "rpc": "CheckIn",
       "request_type": "MachineBootstrapServiceCheckInRequest",
       "response_type": "MachineBootstrapServiceCheckInResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8887,12 +8887,12 @@
       "rpc": "AckConfigVersion",
       "request_type": "AckConfigVersionRequest",
       "response_type": "AckConfigVersionResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/bootstrap.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -8900,12 +8900,12 @@
       "rpc": "CheckForUpdates",
       "request_type": "CheckForUpdatesRequest",
       "response_type": "CheckForUpdatesResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/bootstrap.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -8913,10 +8913,10 @@
       "rpc": "GetSaleCatalog",
       "request_type": "GetCatalogSnapshotRequest",
       "response_type": "GetCatalogSnapshotResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8926,12 +8926,12 @@
       "rpc": "SyncSaleCatalog",
       "request_type": "GetCatalogSnapshotRequest",
       "response_type": "GetCatalogSnapshotResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/catalog.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -8939,10 +8939,10 @@
       "rpc": "GetCatalogSnapshot",
       "request_type": "GetCatalogSnapshotRequest",
       "response_type": "GetCatalogSnapshotResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8952,10 +8952,10 @@
       "rpc": "GetCatalogDelta",
       "request_type": "GetCatalogDeltaRequest",
       "response_type": "GetCatalogDeltaResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8965,12 +8965,12 @@
       "rpc": "AckCatalogVersion",
       "request_type": "AckCatalogVersionRequest",
       "response_type": "AckCatalogVersionResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/catalog.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -8978,10 +8978,10 @@
       "rpc": "GetMediaManifest",
       "request_type": "GetMediaManifestRequest",
       "response_type": "GetMediaManifestResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -8991,12 +8991,12 @@
       "rpc": "GetPendingCommands",
       "request_type": "GetPendingCommandsRequest",
       "response_type": "GetPendingCommandsResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/command.proto",
+      "missing_test_gap": "requires canary hardware/device ACK evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-hardware"
     },
     {
       "surface": "gRPC",
@@ -9004,12 +9004,12 @@
       "rpc": "AckCommand",
       "request_type": "AckCommandRequest",
       "response_type": "AckCommandResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/command.proto",
+      "missing_test_gap": "requires canary hardware/device ACK evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-hardware"
     },
     {
       "surface": "gRPC",
@@ -9017,12 +9017,12 @@
       "rpc": "RejectCommand",
       "request_type": "RejectCommandRequest",
       "response_type": "RejectCommandResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/command.proto",
+      "missing_test_gap": "requires canary hardware/device ACK evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-hardware"
     },
     {
       "surface": "gRPC",
@@ -9030,12 +9030,12 @@
       "rpc": "GetAssignedUpdate",
       "request_type": "GetAssignedUpdateRequest",
       "response_type": "GetAssignedUpdateResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/command.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -9043,12 +9043,12 @@
       "rpc": "ReportUpdateStatus",
       "request_type": "ReportUpdateStatusRequest",
       "response_type": "ReportUpdateStatusResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/command.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -9056,10 +9056,10 @@
       "rpc": "ReportDiagnosticBundleResult",
       "request_type": "ReportDiagnosticBundleResultRequest",
       "response_type": "ReportDiagnosticBundleResultResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9069,12 +9069,12 @@
       "rpc": "CreateOrder",
       "request_type": "CreateOrderRequest",
       "response_type": "CreateOrderResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -9082,12 +9082,12 @@
       "rpc": "CreatePaymentSession",
       "request_type": "CreatePaymentSessionRequest",
       "response_type": "CreatePaymentSessionResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
-      "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
+      "classification": "provider-required",
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires payment/provider sandbox evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-provider"
     },
     {
       "surface": "gRPC",
@@ -9095,12 +9095,12 @@
       "rpc": "AttachPaymentResult",
       "request_type": "CreatePaymentSessionRequest",
       "response_type": "CreatePaymentSessionResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
-      "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
-      "priority": "P1",
-      "status": "partial"
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
+      "classification": "provider-required",
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires payment/provider sandbox evidence",
+      "priority": "P0",
+      "status": "blocked-provider"
     },
     {
       "surface": "gRPC",
@@ -9108,12 +9108,12 @@
       "rpc": "ConfirmCashPayment",
       "request_type": "ConfirmCashPaymentRequest",
       "response_type": "ConfirmCashPaymentResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
-      "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
-      "priority": "P1",
-      "status": "partial"
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
+      "classification": "provider-required",
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires payment/provider sandbox evidence",
+      "priority": "P0",
+      "status": "blocked-provider"
     },
     {
       "surface": "gRPC",
@@ -9121,12 +9121,12 @@
       "rpc": "CreateCashCheckout",
       "request_type": "ConfirmCashPaymentRequest",
       "response_type": "ConfirmCashPaymentResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -9134,10 +9134,10 @@
       "rpc": "GetOrder",
       "request_type": "GetOrderRequest",
       "response_type": "GetOrderResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9147,10 +9147,10 @@
       "rpc": "GetOrderStatus",
       "request_type": "GetOrderStatusRequest",
       "response_type": "GetOrderStatusResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9160,12 +9160,12 @@
       "rpc": "StartVend",
       "request_type": "StartVendRequest",
       "response_type": "StartVendResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires canary hardware/device ACK evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-hardware"
     },
     {
       "surface": "gRPC",
@@ -9173,12 +9173,12 @@
       "rpc": "ConfirmVendSuccess",
       "request_type": "ConfirmVendSuccessRequest",
       "response_type": "ConfirmVendSuccessResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires canary hardware/device ACK evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-hardware"
     },
     {
       "surface": "gRPC",
@@ -9186,12 +9186,12 @@
       "rpc": "ReportVendSuccess",
       "request_type": "ReportVendSuccessRequest",
       "response_type": "ReportVendSuccessResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires canary hardware/device ACK evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-hardware"
     },
     {
       "surface": "gRPC",
@@ -9199,12 +9199,12 @@
       "rpc": "ReportVendFailure",
       "request_type": "ReportVendFailureRequest",
       "response_type": "ReportVendFailureResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires canary hardware/device ACK evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-hardware"
     },
     {
       "surface": "gRPC",
@@ -9212,10 +9212,10 @@
       "rpc": "CancelOrder",
       "request_type": "CancelOrderRequest",
       "response_type": "CancelOrderResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9225,12 +9225,12 @@
       "rpc": "CreateSale",
       "request_type": "CreateSaleRequest",
       "response_type": "CreateSaleResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -9238,12 +9238,12 @@
       "rpc": "AttachPayment",
       "request_type": "AttachPaymentRequest",
       "response_type": "AttachPaymentResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
-      "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
-      "priority": "P1",
-      "status": "partial"
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
+      "classification": "provider-required",
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires payment/provider sandbox evidence",
+      "priority": "P0",
+      "status": "blocked-provider"
     },
     {
       "surface": "gRPC",
@@ -9251,10 +9251,10 @@
       "rpc": "ConfirmCashReceived",
       "request_type": "ConfirmCashReceivedRequest",
       "response_type": "ConfirmCashReceivedResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9264,12 +9264,12 @@
       "rpc": "StartVend",
       "request_type": "StartVendRequest",
       "response_type": "StartVendResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires canary hardware/device ACK evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-hardware"
     },
     {
       "surface": "gRPC",
@@ -9277,12 +9277,12 @@
       "rpc": "CompleteVend",
       "request_type": "ConfirmVendSuccessRequest",
       "response_type": "ConfirmVendSuccessResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires canary hardware/device ACK evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-hardware"
     },
     {
       "surface": "gRPC",
@@ -9290,12 +9290,12 @@
       "rpc": "FailVend",
       "request_type": "ReportVendFailureRequest",
       "response_type": "ReportVendFailureResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/commerce.proto",
+      "missing_test_gap": "requires canary hardware/device ACK evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-hardware"
     },
     {
       "surface": "gRPC",
@@ -9303,10 +9303,10 @@
       "rpc": "CancelSale",
       "request_type": "CancelOrderRequest",
       "response_type": "CancelOrderResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9316,10 +9316,10 @@
       "rpc": "PushInventoryDelta",
       "request_type": "ReportInventoryDeltaRequest",
       "response_type": "ReportInventoryDeltaResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9329,10 +9329,10 @@
       "rpc": "GetInventorySnapshot",
       "request_type": "GetInventorySnapshotRequest",
       "response_type": "GetInventorySnapshotResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9342,12 +9342,12 @@
       "rpc": "AckInventorySync",
       "request_type": "AckInventorySyncRequest",
       "response_type": "AckInventorySyncResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/inventory.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -9355,10 +9355,10 @@
       "rpc": "GetPlanogram",
       "request_type": "GetPlanogramRequest",
       "response_type": "GetPlanogramResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9368,10 +9368,10 @@
       "rpc": "SubmitStockSnapshot",
       "request_type": "SubmitStockSnapshotRequest",
       "response_type": "SubmitStockSnapshotResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9381,10 +9381,10 @@
       "rpc": "SubmitFillResult",
       "request_type": "SubmitFillResultRequest",
       "response_type": "SubmitFillResultResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9394,10 +9394,10 @@
       "rpc": "SubmitFillReport",
       "request_type": "SubmitFillResultRequest",
       "response_type": "SubmitFillResultResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9407,10 +9407,10 @@
       "rpc": "SubmitRestock",
       "request_type": "SubmitRestockRequest",
       "response_type": "SubmitRestockResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9420,10 +9420,10 @@
       "rpc": "SubmitInventoryAdjustment",
       "request_type": "SubmitInventoryAdjustmentRequest",
       "response_type": "SubmitInventoryAdjustmentResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9433,10 +9433,10 @@
       "rpc": "SubmitStockAdjustment",
       "request_type": "SubmitInventoryAdjustmentRequest",
       "response_type": "SubmitInventoryAdjustmentResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9446,10 +9446,10 @@
       "rpc": "ClaimActivation",
       "request_type": "ClaimActivationRequest",
       "response_type": "ClaimActivationResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9459,10 +9459,10 @@
       "rpc": "RefreshMachineToken",
       "request_type": "RefreshMachineTokenRequest",
       "response_type": "RefreshMachineTokenResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9472,10 +9472,10 @@
       "rpc": "GetMediaManifest",
       "request_type": "MachineMediaServiceGetMediaManifestRequest",
       "response_type": "MachineMediaServiceGetMediaManifestResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9485,10 +9485,10 @@
       "rpc": "GetMediaDelta",
       "request_type": "GetMediaDeltaRequest",
       "response_type": "GetMediaDeltaResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9498,12 +9498,12 @@
       "rpc": "AckMediaVersion",
       "request_type": "AckMediaVersionRequest",
       "response_type": "AckMediaVersionResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/media.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -9511,10 +9511,10 @@
       "rpc": "PushOfflineEvents",
       "request_type": "SyncOfflineEventsRequest",
       "response_type": "SyncOfflineEventsResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9524,12 +9524,12 @@
       "rpc": "GetSyncCursor",
       "request_type": "GetSyncCursorRequest",
       "response_type": "GetSyncCursorResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "write",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "proto/avf/machine/v1/offline_sync.proto",
+      "missing_test_gap": "MACHINE_TOKEN not set for authenticated machine write method",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-missing-seed"
     },
     {
       "surface": "gRPC",
@@ -9537,10 +9537,10 @@
       "rpc": "OpenOperatorSession",
       "request_type": "OpenOperatorSessionRequest",
       "response_type": "OpenOperatorSessionResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9550,10 +9550,10 @@
       "rpc": "CloseOperatorSession",
       "request_type": "CloseOperatorSessionRequest",
       "response_type": "CloseOperatorSessionResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9563,10 +9563,10 @@
       "rpc": "SubmitFillReport",
       "request_type": "SubmitFillReportRequest",
       "response_type": "SubmitFillReportResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9576,10 +9576,10 @@
       "rpc": "SubmitStockAdjustment",
       "request_type": "SubmitStockAdjustmentRequest",
       "response_type": "SubmitStockAdjustmentResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9589,10 +9589,10 @@
       "rpc": "LoginOperator",
       "request_type": "LoginOperatorRequest",
       "response_type": "LoginOperatorResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9602,10 +9602,10 @@
       "rpc": "LogoutOperator",
       "request_type": "LogoutOperatorRequest",
       "response_type": "LogoutOperatorResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9615,10 +9615,10 @@
       "rpc": "HeartbeatOperatorSession",
       "request_type": "HeartbeatOperatorSessionRequest",
       "response_type": "HeartbeatOperatorSessionResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9628,10 +9628,10 @@
       "rpc": "PushTelemetryBatch",
       "request_type": "PushTelemetryBatchRequest",
       "response_type": "PushTelemetryBatchResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9641,10 +9641,10 @@
       "rpc": "PushCriticalEvent",
       "request_type": "PushCriticalEventRequest",
       "response_type": "PushCriticalEventResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9654,10 +9654,10 @@
       "rpc": "CheckIn",
       "request_type": "CheckInRequest",
       "response_type": "CheckInResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9667,10 +9667,10 @@
       "rpc": "SubmitTelemetryBatch",
       "request_type": "SubmitTelemetryBatchRequest",
       "response_type": "SubmitTelemetryBatchResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9680,10 +9680,10 @@
       "rpc": "ReconcileEvents",
       "request_type": "ReconcileEventsRequest",
       "response_type": "ReconcileEventsResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9693,10 +9693,10 @@
       "rpc": "GetEventStatus",
       "request_type": "GetEventStatusRequest",
       "response_type": "GetEventStatusResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9706,10 +9706,10 @@
       "rpc": "GetMachineSummary",
       "request_type": "GetMachineRequest",
       "response_type": "GetMachineSummaryResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9719,10 +9719,10 @@
       "rpc": "GetMachineState",
       "request_type": "GetMachineRequest",
       "response_type": "GetMachineStateResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9732,10 +9732,10 @@
       "rpc": "GetMachineCabinetSlotSummary",
       "request_type": "GetMachineRequest",
       "response_type": "GetMachineCabinetSlotSummaryResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9745,10 +9745,10 @@
       "rpc": "GetLatestMachineTelemetry",
       "request_type": "GetMachineRequest",
       "response_type": "GetLatestMachineTelemetryResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9758,10 +9758,10 @@
       "rpc": "GetMachineIncidentSummary",
       "request_type": "GetMachineIncidentSummaryRequest",
       "response_type": "GetMachineIncidentSummaryResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
       "classification": "read-only",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\grpc-production-evidence\\grpcurl-list.txt",
+      "missing_test_gap": "server reachable; generic grpcurl call requires method-specific request template",
       "priority": "P1",
       "status": "partial"
     },
@@ -9771,80 +9771,155 @@
       "rpc": "GetOrderPaymentVendState",
       "request_type": "GetOrderPaymentVendStateRequest",
       "response_type": "GetOrderPaymentVendStateResponse",
-      "auth_metadata": "authorization metadata required for protected machine/internal methods",
-      "classification": "hardware-required",
-      "existing_test_evidence": null,
-      "missing_test_gap": null,
+      "auth_metadata": "authorization metadata with redacted machine or service token when method is protected",
+      "classification": "provider-required",
+      "existing_test_evidence": "proto/avf/v1/internal_queries.proto",
+      "missing_test_gap": "requires payment/provider sandbox evidence",
       "priority": "P0",
-      "status": "partial"
+      "status": "blocked-provider"
     },
     {
       "surface": "MQTT",
-      "flow": null,
+      "flow": "connect",
       "topics": [],
       "classification": "safe-read",
-      "existing_test_evidence": "tests/e2e/run-mqtt-local.sh",
-      "missing_test_gap": null,
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\mqtt-full-evidence\\connect-subscribe.log",
+      "missing_test_gap": "publish/subscribe round-trip evidence captured",
       "priority": "P0",
-      "status": "partial"
+      "status": "pass"
     },
     {
       "surface": "MQTT",
-      "flow": null,
+      "flow": "telemetry_publish",
       "topics": [
-        "{prefix}/{machineId}/telemetry"
+        "{prefix}/{machineId}/telemetry",
+        "{prefix}/machines/{machineId}/telemetry"
       ],
       "classification": "local-write",
       "existing_test_evidence": "tests/e2e/run-mqtt-local.sh",
-      "missing_test_gap": null,
+      "missing_test_gap": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
       "priority": "P0",
       "status": "partial"
     },
     {
       "surface": "MQTT",
-      "flow": null,
+      "flow": "command_subscribe",
       "topics": [
-        "{prefix}/{machineId}/commands"
+        "{prefix}/{machineId}/commands/dispatch",
+        "{prefix}/machines/{machineId}/commands"
+      ],
+      "classification": "safe-read",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\mqtt-full-evidence\\connect-subscribe.log",
+      "missing_test_gap": "broker reachable; flow needs scenario assertion",
+      "priority": "P0",
+      "status": "partial"
+    },
+    {
+      "surface": "MQTT",
+      "flow": "command_dispatch",
+      "topics": [
+        "{prefix}/{machineId}/commands/dispatch",
+        "{prefix}/machines/{machineId}/commands"
       ],
       "classification": "canary-write",
       "existing_test_evidence": "tests/e2e/run-mqtt-local.sh",
-      "missing_test_gap": null,
+      "missing_test_gap": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
       "priority": "P0",
       "status": "partial"
     },
     {
       "surface": "MQTT",
-      "flow": null,
+      "flow": "ack_success",
       "topics": [
         "{prefix}/{machineId}/commands/ack"
       ],
-      "classification": "hardware-required",
+      "classification": "canary-write",
       "existing_test_evidence": "tests/e2e/run-mqtt-local.sh",
-      "missing_test_gap": null,
+      "missing_test_gap": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
       "priority": "P0",
       "status": "partial"
     },
     {
       "surface": "MQTT",
-      "flow": null,
+      "flow": "ack_duplicate",
       "topics": [
-        "{prefix}/invalid"
+        "{prefix}/{machineId}/commands/ack"
       ],
-      "classification": "local-write",
+      "classification": "canary-write",
       "existing_test_evidence": "tests/e2e/run-mqtt-local.sh",
-      "missing_test_gap": null,
+      "missing_test_gap": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
       "priority": "P1",
       "status": "partial"
     },
     {
       "surface": "MQTT",
-      "flow": null,
+      "flow": "ack_timeout_no_ack",
+      "topics": [
+        "{prefix}/{machineId}/commands/ack"
+      ],
+      "classification": "hardware-required",
+      "existing_test_evidence": "tests/e2e/run-mqtt-local.sh",
+      "missing_test_gap": "requires real canary device reconnect/no-ACK evidence",
+      "priority": "P0",
+      "status": "blocked-hardware"
+    },
+    {
+      "surface": "MQTT",
+      "flow": "invalid_payload",
+      "topics": [
+        "{prefix}/{machineId}/telemetry"
+      ],
+      "classification": "local-write",
+      "existing_test_evidence": "tests/e2e/run-mqtt-local.sh",
+      "missing_test_gap": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "priority": "P1",
+      "status": "partial"
+    },
+    {
+      "surface": "MQTT",
+      "flow": "topic_prefix_correctness",
+      "topics": [
+        "{prefix}/#"
+      ],
+      "classification": "safe-read",
+      "existing_test_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\mqtt-full-evidence\\connect-subscribe.log",
+      "missing_test_gap": "broker reachable; flow needs scenario assertion",
+      "priority": "P0",
+      "status": "partial"
+    },
+    {
+      "surface": "MQTT",
+      "flow": "crlf_windows_handling",
+      "topics": [
+        "{prefix}/{machineId}/telemetry"
+      ],
+      "classification": "local-write",
+      "existing_test_evidence": "tests/e2e/run-mqtt-local.sh",
+      "missing_test_gap": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "priority": "P1",
+      "status": "partial"
+    },
+    {
+      "surface": "MQTT",
+      "flow": "reconnect_offline",
       "topics": [
         "{prefix}/{machineId}/telemetry"
       ],
       "classification": "hardware-required",
       "existing_test_evidence": "tests/e2e/run-mqtt-local.sh",
-      "missing_test_gap": null,
+      "missing_test_gap": "requires real canary device reconnect/no-ACK evidence",
+      "priority": "P1",
+      "status": "blocked-hardware"
+    },
+    {
+      "surface": "MQTT",
+      "flow": "acl_topic_isolation",
+      "topics": [
+        "{prefix}/other-machine/#"
+      ],
+      "classification": "production-readonly",
+      "existing_test_evidence": "tests/e2e/run-mqtt-local.sh",
+      "missing_test_gap": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
       "priority": "P1",
       "status": "partial"
     },

@@ -5,6 +5,13 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PYTHON="${PYTHON:-python3}"
+if ! command -v "${PYTHON}" >/dev/null 2>&1; then
+  PYTHON="python"
+fi
+if ! command -v "${PYTHON}" >/dev/null 2>&1 && [[ -x "/c/Python314/python.exe" ]]; then
+  PYTHON="/c/Python314/python.exe"
+fi
 REPORT_DIR="${ROOT}/reports/test"
 EVIDENCE_DIR="${REPORT_DIR}/mqtt-full-evidence"
 mkdir -p "${REPORT_DIR}" "${EVIDENCE_DIR}"
@@ -19,7 +26,7 @@ OUT_MD="${REPORT_DIR}/mqtt-full-coverage.md"
 flows_json="$(mktemp)"
 trap 'rm -f "${flows_json}"' EXIT
 
-python3 - "${flows_json}" <<'PY'
+"${PYTHON}" - "${flows_json}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -70,7 +77,7 @@ else
   fi
 fi
 
-python3 - "${flows_json}" "${OUT_JSON}" "${OUT_MD}" "${broker_status}" "${broker_reason}" "${MQTT_HOST}" "${MQTT_PORT}" "${MQTT_TOPIC_PREFIX}" "${EVIDENCE_DIR}" <<'PY'
+"${PYTHON}" - "${flows_json}" "${OUT_JSON}" "${OUT_MD}" "${broker_status}" "${broker_reason}" "${MQTT_HOST}" "${MQTT_PORT}" "${MQTT_TOPIC_PREFIX}" "${EVIDENCE_DIR}" <<'PY'
 import json
 import os
 import sys

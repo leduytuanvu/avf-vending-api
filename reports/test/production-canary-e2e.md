@@ -1,5 +1,5 @@
 # Production Canary E2E
 
-- Status: **BLOCKED**
-- Reason: required canary write confirmation/env is missing or bash runner unavailable on this host
-- Next action: Configure canary env and run bash scripts/test/run-production-canary-e2e.sh from Git Bash/Linux.
+- **Status:** BLOCKED
+- **Reason:** No production canary environment (URLs, credentials, write confirmation) was configured for this run.
+- **Next action:** Configure approved canary env vars and run `scripts/test/run-production-canary-e2e.sh` only under explicit change control.

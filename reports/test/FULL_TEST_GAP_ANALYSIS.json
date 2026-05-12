@@ -1,16 +1,96 @@
 {
   "summary": {
-    "generated_at": "2026-05-12T07:50:13.113963+00:00",
-    "total_gaps": 481,
+    "generated_at": "2026-05-12T08:33:12.034797+00:00",
+    "total_gaps": 480,
     "by_type": {
-      "blocked by env": 307,
-      "blocked by hardware": 7,
-      "blocked by production URL": 45,
-      "blocked by provider": 10,
-      "partial test": 112
+      "blocked by env": 359,
+      "blocked by hardware": 19,
+      "blocked by provider": 18,
+      "partial test": 84
     }
   },
   "gaps": [
+    {
+      "surface": "gRPC",
+      "id": "AckCatalogVersion",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckConfigVersion",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckInventorySync",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckMediaVersion",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ActivateMachine",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CheckForUpdates",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreateCashCheckout",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreateOrder",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreateSale",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
     {
       "surface": "REST",
       "id": "DocOpV1AdminAuthUsersActivate",
@@ -633,6 +713,69 @@
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
+      "surface": "gRPC",
+      "id": "GetAssignedUpdate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetSyncCursor",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ReportUpdateStatus",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SyncSaleCatalog",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckCommand",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CompleteVend",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ConfirmVendSuccess",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
       "surface": "REST",
       "id": "DocOpV1AdminOrgReportsFailedVends",
       "priority": "P0",
@@ -696,31 +839,112 @@
       "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpHealthLive",
+      "surface": "gRPC",
+      "id": "FailVend",
       "priority": "P0",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpHealthReady",
+      "surface": "gRPC",
+      "id": "GetPendingCommands",
       "priority": "P0",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
-      "surface": "REST",
-      "id": "DocOpVersion",
+      "surface": "gRPC",
+      "id": "RejectCommand",
       "priority": "P0",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ReportVendFailure",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ReportVendSuccess",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "StartVend",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "StartVend",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "MQTT",
+      "id": "ack_timeout_no_ack",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires real canary device reconnect/no-ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AttachPayment",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AttachPaymentResult",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ConfirmCashPayment",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreatePaymentSession",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
     },
     {
       "surface": "REST",
@@ -777,6 +1001,42 @@
       "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
     },
     {
+      "surface": "gRPC",
+      "id": "GetLatestPaymentForOrder",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetOrderPaymentVendState",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetOrderPaymentVendState",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetPaymentById",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
       "surface": "Business flow",
       "id": "dispense failure/refund",
       "priority": "P0",
@@ -814,200 +1074,11 @@
     },
     {
       "surface": "gRPC",
-      "id": "AckCatalogVersion",
+      "id": "GetBootstrap",
       "priority": "P0",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "AckCommand",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "AckConfigVersion",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "AckInventorySync",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "AckMediaVersion",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "CheckForUpdates",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "CompleteVend",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "ConfirmVendSuccess",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "CreateCashCheckout",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "CreateOrder",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "CreatePaymentSession",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "CreateSale",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "FailVend",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "GetAssignedUpdate",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "GetOrderPaymentVendState",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "GetOrderPaymentVendState",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "GetPendingCommands",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "GetSyncCursor",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "MQTT",
-      "id": null,
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "MQTT",
-      "id": null,
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "MQTT",
-      "id": null,
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "MQTT",
-      "id": null,
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1020,66 +1091,12 @@
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
-      "surface": "gRPC",
-      "id": "RejectCommand",
+      "surface": "MQTT",
+      "id": "ack_success",
       "priority": "P0",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "ReportUpdateStatus",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "ReportVendFailure",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "ReportVendSuccess",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "StartVend",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "StartVend",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "SyncSaleCatalog",
-      "priority": "P0",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1107,6 +1124,24 @@
       "gap_type": "partial test",
       "status": "partial",
       "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "command_dispatch",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "command_subscribe",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "broker reachable; flow needs scenario assertion",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1218,12 +1253,39 @@
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
+      "surface": "MQTT",
+      "id": "telemetry_publish",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "topic_prefix_correctness",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "broker reachable; flow needs scenario assertion",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
       "surface": "REST",
       "id": "DocOpV1AdminAuthUsersGet",
       "priority": "P1",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -1251,6 +1313,24 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminInventoryLowStock",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminInventoryRefillSuggestions",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -1296,6 +1376,15 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineConfigRolloutsList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -1350,6 +1439,15 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachinesList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -1467,6 +1565,33 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPlanogramsList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthMe",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthSessionsList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -1624,6 +1749,15 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1ReportsInventoryExceptions",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1SetupMachineBootstrap",
       "priority": "P1",
       "gap_type": "blocked by env",
@@ -1632,112 +1766,13 @@
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
-      "surface": "REST",
-      "id": "DocOpV1AdminAuthUsersList",
+      "surface": "MQTT",
+      "id": "reconnect_offline",
       "priority": "P1",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminInventoryLowStock",
-      "priority": "P1",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminInventoryRefillSuggestions",
-      "priority": "P1",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMachineConfigRolloutsList",
-      "priority": "P1",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMachinesList",
-      "priority": "P1",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminPlanogramsList",
-      "priority": "P1",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AuthMe",
-      "priority": "P1",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AuthSessionsList",
-      "priority": "P1",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1ReportsInventoryExceptions",
-      "priority": "P1",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "gRPC",
-      "id": "ActivateMachine",
-      "priority": "P1",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "AttachPayment",
-      "priority": "P1",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "AttachPaymentResult",
-      "priority": "P1",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires real canary device reconnect/no-ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     },
     {
       "surface": "gRPC",
@@ -1745,7 +1780,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1754,7 +1789,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1763,7 +1798,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1772,7 +1807,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1781,7 +1816,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1790,7 +1825,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1799,16 +1834,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "ConfirmCashPayment",
-      "priority": "P1",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1817,16 +1843,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "GetBootstrap",
-      "priority": "P1",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1835,7 +1852,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1844,7 +1861,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1853,7 +1870,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1862,7 +1879,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1871,7 +1888,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1880,16 +1897,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "GetLatestPaymentForOrder",
-      "priority": "P1",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1898,7 +1906,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1907,7 +1915,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1916,7 +1924,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1925,7 +1933,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1934,7 +1942,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1943,7 +1951,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1952,7 +1960,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1961,7 +1969,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1970,7 +1978,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1979,7 +1987,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1988,7 +1996,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -1997,7 +2005,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2006,7 +2014,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2015,16 +2023,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "gRPC",
-      "id": "GetPaymentById",
-      "priority": "P1",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2033,7 +2032,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2042,7 +2041,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2051,7 +2050,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2060,7 +2059,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2069,7 +2068,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2078,7 +2077,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2087,25 +2086,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "MQTT",
-      "id": null,
-      "priority": "P1",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
-      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
-    },
-    {
-      "surface": "MQTT",
-      "id": null,
-      "priority": "P1",
-      "gap_type": "partial test",
-      "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2114,7 +2095,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2123,7 +2104,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2132,7 +2113,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2141,7 +2122,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2150,7 +2131,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2159,7 +2140,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2168,7 +2149,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2177,7 +2158,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2186,7 +2167,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2195,7 +2176,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2204,7 +2185,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2213,7 +2194,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2222,7 +2203,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2231,7 +2212,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2240,7 +2221,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2249,7 +2230,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2258,7 +2239,7 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2267,7 +2248,34 @@
       "priority": "P1",
       "gap_type": "partial test",
       "status": "partial",
-      "reason": "No passing evidence attached",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "ack_duplicate",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "acl_topic_isolation",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "crlf_windows_handling",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2277,6 +2285,15 @@
       "gap_type": "partial test",
       "status": "partial",
       "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "invalid_payload",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
       "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
     },
     {
@@ -2362,6 +2379,24 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminAssignmentsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuditEventsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminBrandCreate",
       "priority": "P2",
       "gap_type": "blocked by env",
@@ -2398,6 +2433,24 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminBrandsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCategoriesList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminCategoryCreate",
       "priority": "P2",
       "gap_type": "blocked by env",
@@ -2430,6 +2483,15 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCommandsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -2515,6 +2577,15 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminFeatureFlagsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminFeatureFlagsPost",
       "priority": "P2",
       "gap_type": "blocked by env",
@@ -2529,6 +2600,15 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFinanceDailyCloseList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -2569,6 +2649,15 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminMediaAssetsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminMediaDelete",
       "priority": "P2",
       "gap_type": "blocked by env",
@@ -2583,6 +2672,15 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMediaList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -2718,6 +2816,24 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTAList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -3379,6 +3495,15 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminOutboxOpsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminOutboxRetry",
       "priority": "P2",
       "gap_type": "blocked by env",
@@ -3496,6 +3621,15 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminPriceBooksList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminPricingPreview",
       "priority": "P2",
       "gap_type": "blocked by env",
@@ -3604,6 +3738,15 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminProductsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminPromotionActivate",
       "priority": "P2",
       "gap_type": "blocked by env",
@@ -3685,11 +3828,47 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminPromotionsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminPromotionsPreview",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminReportsCashCollectionsExportCSV",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminReportsSalesSummaryExportCSV",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminRetentionOpsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -3739,11 +3918,29 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminSitesList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminSystemOutboxGet",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSystemOutboxListGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -3766,6 +3963,15 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminSystemOutboxStatsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminSystemRetentionDryRunPost",
       "priority": "P2",
       "gap_type": "blocked by env",
@@ -3780,6 +3986,15 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSystemRetentionStatsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -3816,6 +4031,15 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTagsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -3865,6 +4089,15 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminTechnicianAssignmentsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminTechnicianCreate",
       "priority": "P2",
       "gap_type": "blocked by env",
@@ -3910,6 +4143,15 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1AdminTechniciansList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1AdminUsersCreate",
       "priority": "P2",
       "gap_type": "blocked by env",
@@ -3942,6 +4184,15 @@
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
       "next_action": "Provide required local seed data or canary env vars."
     },
     {
@@ -4027,309 +4278,48 @@
     },
     {
       "surface": "REST",
+      "id": "DocOpV1OperatorInsightsUserAttributions",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OrdersList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1ReportsFleetHealth",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1ReportsSalesSummary",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
       "id": "DocOpV1SetupActivationClaimPost",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
       "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
       "next_action": "Provide required local seed data or canary env vars."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpMetrics",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpSwaggerDocJSON",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpSwaggerIndex",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminAssignmentsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminAuditEventsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminBrandsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminCategoriesList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminCommandsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminFeatureFlagsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminFinanceDailyCloseList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMediaAssetsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminMediaList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminOTACampaignsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminOTAList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminOutboxOpsGet",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminPriceBooksList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminProductsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminPromotionsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminReportsCashCollectionsExportCSV",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminReportsSalesSummaryExportCSV",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminRetentionOpsGet",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminSitesList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminSystemOutboxListGet",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminSystemOutboxStatsGet",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminSystemRetentionStatsGet",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminTagsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminTechnicianAssignmentsList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminTechniciansList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1AdminUsersList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1OperatorInsightsUserAttributions",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1OrdersList",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1ReportsFleetHealth",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
-    },
-    {
-      "surface": "REST",
-      "id": "DocOpV1ReportsSalesSummary",
-      "priority": "P2",
-      "gap_type": "blocked by production URL",
-      "status": "blocked-production-url",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "next_action": "Set BASE_URL/STAGING_BASE_URL/PRODUCTION_BASE_URL and rerun read-only smoke."
     },
     {
       "surface": "Business flow",

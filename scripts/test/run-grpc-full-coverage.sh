@@ -5,6 +5,13 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PYTHON="${PYTHON:-python3}"
+if ! command -v "${PYTHON}" >/dev/null 2>&1; then
+  PYTHON="python"
+fi
+if ! command -v "${PYTHON}" >/dev/null 2>&1 && [[ -x "/c/Python314/python.exe" ]]; then
+  PYTHON="/c/Python314/python.exe"
+fi
 REPORT_DIR="${ROOT}/reports/test"
 EVIDENCE_DIR="${REPORT_DIR}/grpc-production-evidence"
 mkdir -p "${REPORT_DIR}" "${EVIDENCE_DIR}"
@@ -32,7 +39,7 @@ tmp_methods="$(mktemp)"
 tmp_results="$(mktemp)"
 trap 'rm -f "${tmp_methods}" "${tmp_results}"' EXIT
 
-python3 - "${ROOT}" "${tmp_methods}" <<'PY'
+"${PYTHON}" - "${ROOT}" "${tmp_methods}" <<'PY'
 import json
 import re
 import sys
@@ -92,7 +99,7 @@ else
   server_reason="grpcurl list succeeded"
 fi
 
-python3 - "${tmp_methods}" "${tmp_results}" "${server_status}" "${server_reason}" "${GRPC_ADDR}" "${EVIDENCE_DIR}" <<'PY'
+"${PYTHON}" - "${tmp_methods}" "${tmp_results}" "${server_status}" "${server_reason}" "${GRPC_ADDR}" "${EVIDENCE_DIR}" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
@@ -138,7 +145,7 @@ Path(sys.argv[2]).write_text(json.dumps({"summary": summary, "methods": methods}
 PY
 
 cp "${tmp_results}" "${OUT_JSON}"
-python3 - "${OUT_JSON}" "${OUT_MD}" <<'PY'
+"${PYTHON}" - "${OUT_JSON}" "${OUT_MD}" <<'PY'
 import json
 import sys
 from pathlib import Path

@@ -1,15 +1,15 @@
 {
   "summary": {
-    "generated_at": "2026-05-12T07:45:35.247535+00:00",
+    "generated_at": "2026-05-12T08:23:35.359631+00:00",
     "mode": "local",
     "base_url": "http://127.0.0.1:18080",
-    "reachable": false,
+    "reachable": true,
     "swagger": "docs\\swagger\\swagger.json",
     "total_operations": 365,
-    "passed": 0,
+    "passed": 6,
     "failed": 0,
     "partial": 0,
-    "blocked": 365
+    "blocked": 359
   },
   "operations": [
     {
@@ -31,11 +31,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "pass",
+      "http_status": 200,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_health_live.json",
+      "reason": "HTTP evidence captured",
+      "duration_ms": 1
     },
     {
       "method": "GET",
@@ -58,11 +58,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "pass",
+      "http_status": 200,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_health_ready.json",
+      "reason": "HTTP evidence captured",
+      "duration_ms": 17
     },
     {
       "method": "GET",
@@ -86,11 +86,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "pass",
+      "http_status": 200,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_metrics.json",
+      "reason": "HTTP evidence captured",
+      "duration_ms": 26
     },
     {
       "method": "GET",
@@ -111,11 +111,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "pass",
+      "http_status": 200,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_swagger_doc.json.json",
+      "reason": "HTTP evidence captured",
+      "duration_ms": 28
     },
     {
       "method": "GET",
@@ -136,11 +136,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "pass",
+      "http_status": 200,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_swagger_index.html.json",
+      "reason": "HTTP evidence captured",
+      "duration_ms": 24
     },
     {
       "method": "GET",
@@ -166,11 +166,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_assignments.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 6
     },
     {
       "method": "GET",
@@ -196,11 +196,11 @@
         "tests/e2e/scenarios/47_e2e_reporting_audit.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_audit_events.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 1
     },
     {
       "method": "GET",
@@ -226,11 +226,11 @@
         "tests/e2e/scenarios/01_web_admin_setup.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_auth_users.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 14
     },
     {
       "method": "POST",
@@ -610,11 +610,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_brands.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 1
     },
     {
       "method": "POST",
@@ -741,11 +741,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_categories.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 12
     },
     {
       "method": "POST",
@@ -871,11 +871,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_commands.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 2
     },
     {
       "method": "GET",
@@ -900,11 +900,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_feature-flags.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 26
     },
     {
       "method": "POST",
@@ -1110,11 +1110,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_finance_daily-close.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 1
     },
     {
       "method": "POST",
@@ -1203,11 +1203,11 @@
         "tests/e2e/scenarios/46_e2e_inventory_restock_adjustment.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_inventory_low-stock.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 11
     },
     {
       "method": "GET",
@@ -1234,11 +1234,11 @@
         "tests/e2e/scenarios/46_e2e_inventory_restock_adjustment.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_inventory_refill-suggestions.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 15
     },
     {
       "method": "GET",
@@ -1264,11 +1264,11 @@
         "tests/e2e/scenarios/40_e2e_first_boot.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_machine-config_rollouts.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 1
     },
     {
       "method": "POST",
@@ -1357,11 +1357,11 @@
         "tests/e2e/scenarios/40_e2e_first_boot.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_machines.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 17
     },
     {
       "method": "POST",
@@ -2246,11 +2246,11 @@
         "tests/e2e/scenarios/12_web_admin_catalog_ops.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_media.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 1
     },
     {
       "method": "GET",
@@ -2276,11 +2276,11 @@
         "tests/e2e/scenarios/12_web_admin_catalog_ops.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_media_assets.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 1
     },
     {
       "method": "POST",
@@ -2519,11 +2519,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_ops_outbox.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 20
     },
     {
       "method": "POST",
@@ -2578,11 +2578,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_ops_retention.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 14
     },
     {
       "method": "GET",
@@ -5884,11 +5884,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_ota.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 14
     },
     {
       "method": "GET",
@@ -5914,11 +5914,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_ota_campaigns.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 15
     },
     {
       "method": "POST",
@@ -6357,11 +6357,11 @@
         "tests/e2e/scenarios/46_e2e_inventory_restock_adjustment.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_planograms.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 14
     },
     {
       "method": "GET",
@@ -6419,11 +6419,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_price-books.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 2
     },
     {
       "method": "POST",
@@ -6807,11 +6807,11 @@
         "tests/e2e/scenarios/12_web_admin_catalog_ops.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_products.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 27
     },
     {
       "method": "POST",
@@ -7190,11 +7190,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_promotions.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 12
     },
     {
       "method": "POST",
@@ -7480,11 +7480,11 @@
         "tests/e2e/scenarios/47_e2e_reporting_audit.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_reports_cash-collections_export.csv.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 1
     },
     {
       "method": "GET",
@@ -7543,11 +7543,11 @@
         "tests/e2e/scenarios/47_e2e_reporting_audit.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_reports_sales-summary_export.csv.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 3
     },
     {
       "method": "GET",
@@ -7573,11 +7573,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_sites.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 1
     },
     {
       "method": "POST",
@@ -7757,11 +7757,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_system_outbox.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 20
     },
     {
       "method": "GET",
@@ -7786,11 +7786,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_system_outbox_stats.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 14
     },
     {
       "method": "GET",
@@ -7967,11 +7967,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_system_retention_stats.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 15
     },
     {
       "method": "GET",
@@ -7992,11 +7992,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_tags.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 14
     },
     {
       "method": "POST",
@@ -8122,11 +8122,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_technician-assignments.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 1
     },
     {
       "method": "POST",
@@ -8307,11 +8307,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_technicians.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 11
     },
     {
       "method": "POST",
@@ -8490,11 +8490,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_admin_users.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 15
     },
     {
       "method": "POST",
@@ -8913,11 +8913,11 @@
         "tests/e2e/scenarios/01_web_admin_setup.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_auth_me.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 1
     },
     {
       "method": "POST",
@@ -9161,11 +9161,11 @@
         "tests/e2e/scenarios/01_web_admin_setup.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_auth_sessions.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 12
     },
     {
       "method": "DELETE",
@@ -10396,11 +10396,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_operator-insights_users_action-attributions.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 2
     },
     {
       "method": "GET",
@@ -10427,11 +10427,11 @@
         "tests/e2e/scenarios/41_e2e_cash_sale_success.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_orders.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 11
     },
     {
       "method": "GET",
@@ -10487,11 +10487,11 @@
         "tests/e2e/scenarios/47_e2e_reporting_audit.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_reports_fleet-health.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 14
     },
     {
       "method": "GET",
@@ -10519,11 +10519,11 @@
         "tests/e2e/scenarios/47_e2e_reporting_audit.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_reports_inventory-exceptions.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 2
     },
     {
       "method": "GET",
@@ -10582,11 +10582,11 @@
         "tests/e2e/scenarios/47_e2e_reporting_audit.sh"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "blocked-missing-seed",
+      "http_status": 401,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_v1_reports_sales-summary.json",
+      "reason": "auth/role credentials required",
+      "duration_ms": 26
     },
     {
       "method": "POST",
@@ -10668,11 +10668,11 @@
         "scripts/test/rest_full_live_coverage.py"
       ],
       "missing_test_gap": "",
-      "status": "blocked-production-url",
-      "http_status": null,
-      "evidence_path": "",
-      "reason": "API not reachable at http://127.0.0.1:18080",
-      "duration_ms": null
+      "status": "pass",
+      "http_status": 200,
+      "evidence_path": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\reports\\test\\rest-full-live-evidence\\GET_version.json",
+      "reason": "HTTP evidence captured",
+      "duration_ms": 3
     }
   ]
 }
