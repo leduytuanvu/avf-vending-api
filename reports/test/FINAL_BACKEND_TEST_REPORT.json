@@ -1,8 +1,8 @@
 {
   "executive": {
-    "status_line": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
-    "commit_sha": "2482821c7222bb008dd1ceb913b3c64c602cadfc",
-    "generated_at": "2026-05-11T17:55:00Z",
+    "status_line": "FAIL: Published goose image vulnerability scan failed until rebuilt image passes Trivy in Security Release.",
+    "commit_sha": "2e42f2effe844a679f5300e8f26d6be16b7c8d27 plus pending goose supply-chain fix on security/goose-otel-fix",
+    "generated_at": "2026-05-12T02:55:00Z",
     "environment": "local audit host (see audit-commands.json)",
     "rest": {
       "total_operations": 365,
@@ -150,7 +150,8 @@
     "remaining_risks": [
       "REST per-operation live probing remains partial and should not be represented as 100% API live coverage.",
       "Production smoke not run without configured safe URL.",
-      "REST full OpenAPI live coverage remains partial and should not be overclaimed."
+      "REST full OpenAPI live coverage remains partial and should not be overclaimed.",
+      "Security Release #99 Published Image Vulnerability Scan remains failed until the fixed goose image is rebuilt, published, and scanned."
     ],
     "production_proof_addendum": {
       "workflow": ".github/workflows/production-proof.yml",
@@ -166,7 +167,7 @@
       "affected_gates_rerun": "pass",
       "secret_audit": "pass"
     },
-    "final_claim": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
+    "final_claim": "FAIL: Published goose image vulnerability scan failed until rebuilt image passes Trivy in Security Release.",
     "security_scan": {
       "status": "pass",
       "failed_run_id": 25685173325,
@@ -182,6 +183,34 @@
       "passed_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686906495"
     },
     "go_toolchain": "1.25.10",
-    "golang.org/x/net": "v0.53.0"
+    "golang.org/x/net": "v0.53.0",
+    "security_release_99_goose_blocker": {
+      "status": "pre_ci_fail",
+      "workflow": "Security Release",
+      "run_number": 99,
+      "failed_check": "Published Image Vulnerability Scan",
+      "published_image_verdict": "fail",
+      "trivy_goose_result": "failure",
+      "app_image_scan": "pass",
+      "failed_goose_image_ref": "ghcr.io/leduytuanvu/avf-vending-api-goose@sha256:27c4afb1723e3109ccf08be271b4276308ab66a82b66a699b1995259bf3b62dc",
+      "root_cause": "/usr/local/bin/goose embedded go.opentelemetry.io/otel v1.40.0 from pressly/goose v3.27.0; CVE-2026-29181 HIGH is fixed in go.opentelemetry.io/otel v1.41.0.",
+      "fix_applied": {
+        "goose_version": "v3.27.1",
+        "go_opentelemetry_io_otel": "v1.43.0",
+        "runtime_base": "alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11"
+      },
+      "local_proof": {
+        "docker_build": "pass",
+        "goose_version": "v3.27.1",
+        "trivy_0_57_1": "pass: Total 0 (HIGH 0, CRITICAL 0)"
+      },
+      "local_sanity": {
+        "go_vet": "pass",
+        "govulncheck": "pass: no reachable vulnerabilities",
+        "docker_compose_config": "pass",
+        "go_test": "fail: internal/modules/postgres TestOutboxRepository_LeaseOutboxForPublish_SetsPublishing did not lease the aged pending row; outside goose image build path"
+      },
+      "ci_required": "Security Release must rebuild and scan the fixed published goose image before this blocker is resolved."
+    }
   }
 }

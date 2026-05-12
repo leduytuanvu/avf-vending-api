@@ -1,6 +1,6 @@
 # Production Readiness Verification
 
-Generated: 2026-05-11T14:50:00Z
+Generated: 2026-05-12T02:55:00Z
 
 ## Environment
 
@@ -46,6 +46,17 @@ Production/staging smoke was not run. No safe production or staging base URL was
 
 No production writes, vends, refunds, command publishes, payment webhooks, or destructive endpoints were attempted.
 
+## Security Release #99 Goose Blocker
+
+Security Release #99 currently blocks production readiness because `Published Image Vulnerability Scan` failed only for the published goose image. The app image scan passed.
+
+- Failed goose image: `ghcr.io/leduytuanvu/avf-vending-api-goose@sha256:27c4afb1723e3109ccf08be271b4276308ab66a82b66a699b1995259bf3b62dc`.
+- Root cause: `/usr/local/bin/goose` embedded `go.opentelemetry.io/otel v1.40.0` from `pressly/goose v3.27.0`; Trivy reported `CVE-2026-29181` HIGH, fixed in OpenTelemetry `v1.41.0`.
+- Fix in this branch: `deployments/prod/Dockerfile.goose` now builds goose from `pressly/goose v3.27.1`, which uses OpenTelemetry `v1.43.0`, and uses supported digest-pinned `alpine:3.23` for the goose runtime image.
+- Local proof: rebuilt local goose image reports `goose version: v3.27.1`; local Trivy `0.57.1` scan passed with `Total: 0 (HIGH: 0, CRITICAL: 0)`.
+- Local sanity: `go vet ./...`, `govulncheck ./...`, and `docker compose -f deployments/docker/docker-compose.yml config` passed. `go test ./... -count=1` failed locally in `internal/modules/postgres` at `TestOutboxRepository_LeaseOutboxForPublish_SetsPublishing`; this is outside the goose image build path and remains for CI confirmation.
+- Release status before CI: **FAIL** until the updated goose image is built, published, and passes Security Release Trivy scanning.
+
 ## Operational Readiness Checklist
 
 - DB migrations: forward goose migration path exercised locally from an empty database.
@@ -66,10 +77,11 @@ No production writes, vends, refunds, command publishes, payment webhooks, or de
 - REST per-operation live probing remains partial and should not be represented as 100% API live coverage.
 - Production smoke is not run without an explicitly configured safe production/staging URL.
 - EMQX Docker health is resolved for the local compose stack by checking the in-container MQTT listener; production parity should still use the production broker health policy.
+- Published goose image scan remains failed until Security Release rebuilds and scans the fixed goose image.
 
 ## Production Proof Addendum
 
-Generated: 2026-05-11T17:55:00Z
+Generated: 2026-05-12T02:55:00Z
 
 - EMQX Docker health is resolved for local proof: the compose healthcheck now verifies the in-container MQTT listener on port 1883, Docker reports `avf-emqx` healthy, and `tests/e2e/run-mqtt-local.sh` passed after the change.
 - Local affected gates passed: `go vet ./...`, `go test ./internal/grpcserver -run TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked -count=1`, `go test ./internal/grpcserver -count=1`, `go test ./... -count=1`, smoke script syntax, REST critical coverage Python compile, compose config, MQTT suite, and REST critical coverage generation.
@@ -80,4 +92,4 @@ Generated: 2026-05-11T17:55:00Z
 - Critical REST live coverage artifacts were generated without overclaiming full OpenAPI live coverage: `30` critical checks, `27` live 2xx passes, `3` partial/non-2xx items.
 - Security scan blocker discovered: PR `203` Go Vulnerability Scan failed in run `25685173325` because CI used Go `1.25.9` and `golang.org/x/net v0.52.0`; this update moves the repository to Go `1.25.10` and `golang.org/x/net v0.53.0`.
 - Local `govulncheck ./...` passed with explicit `go1.25.10`; updated CI Security workflow run `25686906495` also passed Go Vulnerability Scan.
-- Final claim: **BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.**
+- Final claim: **FAIL: Published goose image vulnerability scan failed until rebuilt image passes Trivy in Security Release.**
