@@ -1,0 +1,6 @@
+{
+  "generated_at": "2026-05-12T07:49:16.831781+00:00",
+  "production_canary_e2e": "BLOCKED",
+  "reason": "required canary write confirmation/env is missing or bash runner unavailable on this host",
+  "required_next_action": "Configure canary env and run bash scripts/test/run-production-canary-e2e.sh from Git Bash/Linux."
+}

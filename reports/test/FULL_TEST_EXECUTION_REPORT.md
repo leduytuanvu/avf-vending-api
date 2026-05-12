@@ -1,4 +1,4 @@
-# FINAL BACKEND TEST REPORT
+# FULL TEST EXECUTION REPORT
 
 - Branch: `security/goose-otel-fix`
 - Commit: `3369b5129af2c8a49307272c6093f059cfd74c2e`
