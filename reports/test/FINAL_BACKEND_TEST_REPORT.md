@@ -2,9 +2,9 @@
 
 ## Executive summary
 
-- **Overall status:** BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.
-- **Commit SHA:** `2482821c7222bb008dd1ceb913b3c64c602cadfc`
-- **UTC time:** `2026-05-11T17:55:00Z`
+- **Overall status:** FAIL: Published goose image vulnerability scan failed until rebuilt image passes Trivy in Security Release.
+- **Commit SHA:** `2e42f2effe844a679f5300e8f26d6be16b7c8d27` plus pending goose supply-chain fix on `security/goose-otel-fix`
+- **UTC time:** `2026-05-12T02:55:00Z`
 - **Tools used:** Go test suite, gofmt, go vet, Python coverage generators (`scripts/test/*`), OpenAPI (`docs/swagger/swagger.json`), proto corpus (`proto/`), MQTT contract doc.
 - **REST operations (OpenAPI):** 365 total; probe HTTP 200-ish: **6**; blocked rows: **0**
 - **gRPC methods enumerated:** 85
@@ -60,6 +60,10 @@
 - **gRPC coverage:** 85 methods enumerated; local gRPC suite passed
 - **MQTT coverage:** 5 flows enumerated; local MQTT suite passed; EMQX local Docker health now reports healthy after listener-based healthcheck
 - **Production smoke:** not run; no safe production/staging URL configured; read-only smoke script and NOT RUN artifacts added
+- **Security Release #99 goose blocker:** published goose image Trivy failed on `/usr/local/bin/goose` because `pressly/goose v3.27.0` embedded `go.opentelemetry.io/otel v1.40.0` (`CVE-2026-29181` HIGH, fixed in `v1.41.0`)
+- **Goose fix pending CI:** `deployments/prod/Dockerfile.goose` now builds `pressly/goose v3.27.1`, which embeds OpenTelemetry `v1.43.0`, and uses digest-pinned `alpine:3.23` for the goose runtime image
+- **Local goose image Trivy:** `avf-vending-api-goose:local` passed Trivy `0.57.1` with `Total: 0 (HIGH: 0, CRITICAL: 0)`
+- **Local sanity for goose fix:** `go vet ./...`, `govulncheck ./...`, and compose config passed; `go test ./... -count=1` failed locally in `internal/modules/postgres` at `TestOutboxRepository_LeaseOutboxForPublish_SetsPublishing`, outside the goose image build path
 - **Request/response evidence:** `reports/test/rest-api-requests-responses.jsonl`, `reports/test/api-request-response-report.jsonl`, `reports/test/e2e-evidence/run-all-local-last.log`
 - **Production readiness:** see `reports/test/production-readiness.md`
 
@@ -73,7 +77,8 @@ REST per-operation live probing remains partial and should not be represented as
 - **Affected gates rerun:** `go vet ./...`, `go test ./internal/grpcserver -run TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked -count=1`, `go test ./internal/grpcserver -count=1`, `go test ./... -count=1`, script syntax/compile checks, compose config, MQTT suite, and REST critical coverage generation all passed.
 - **Secret audit:** no unredacted local fixture values, JWT-shaped tokens, or Bearer-shaped secrets found in `reports`.
 - **Security blocker:** resolved by Security workflow run `25686906495`; production readiness remains blocked only by missing read-only smoke URL.
+- **Security Release #99 blocker:** new published goose image scan failure remains **FAIL** until Security Release rebuilds and scans the fixed goose image.
 
 ## Final claim (exact)
 
-> **BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.**
+> **FAIL: Published goose image vulnerability scan failed until rebuilt image passes Trivy in Security Release.**
