@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-05-12T08:33:12.039903+00:00",
+  "generated_at": "2026-05-12T12:00:00+00:00",
   "branch": "security/goose-otel-fix",
-  "commit": "35e527857dfc2f42da41de9ab7e593728cacbbdb",
+  "commit": "3536e9e42536bcbf92e70052325b74c41a106ffc",
   "environment": {
     "db_name": "avf_vending_test_full_final (requested; local execution dependent)",
     "api_url": "http://127.0.0.1:18080",
@@ -191,7 +191,17 @@
   "psp_result": "BLOCKED: PSP sandbox/canary credentials not configured in this run",
   "hardware_result": "BLOCKED: real canary vending hardware/simulator not attached in this run",
   "security_scan_result": "see audit-commands.json / CI security workflows",
-  "ci_result": "gh pr checks: Go CI Gates, Linux race and contract gates, Go Vulnerability Scan, Security, Production Proof workflows success for branch security/goose-otel-fix (e.g. runs 25710985939, 25710985923, 25710985930)",
+  "ci_result": "NOT_VERIFIED for commit 3536e9e: no GitHub Actions runs list this SHA (gh run list --commit empty). Workflows trigger on PR/push to develop/main only. Last green CI/Security/Production Proof runs were for 3369b51 (see PRODUCTION_PROOF_REPORT.json ci_proof).",
+  "ci_verification": {
+    "required_commit": "3536e9e42536bcbf92e70052325b74c41a106ffc",
+    "workflow_runs_for_required_commit": [],
+    "last_green_workflow_sha": "3369b5129af2c8a49307272c6093f059cfd74c2e",
+    "commits_since_last_green": [
+      "35e527857dfc2f42da41de9ab7e593728cacbbdb",
+      "3536e9e42536bcbf92e70052325b74c41a106ffc"
+    ],
+    "rest_openapi_live_coverage": "partial only: 365 ops; 6 pass; 359 blocked (reports/test/rest-full-live-coverage.json) — no 100% live REST claim"
+  },
   "bugs_fixed": [],
   "files_changed": [
     ".gitignore",
@@ -1124,5 +1134,5 @@
       "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     }
   ],
-  "final_claim": "BLOCKED: Full production proof cannot be completed because required production URL, provider sandbox, canary credentials, or hardware is missing."
+  "final_claim": "BLOCKED: CI gates were not executed for commit 3536e9e (no workflow runs on record; open a PR to develop/main or merge to run CI, Production Proof, Security). Production/staging read-only smoke was not run (STAGING_BASE_URL, PRODUCTION_BASE_URL, PROD_BASE_URL, BASE_URL_PROD unset). Production canary, PSP sandbox, and hardware proofs remain blocked pending environment. REST OpenAPI live coverage remains partial (6/365 pass per conservative runner) — do not claim full REST live coverage."
 }

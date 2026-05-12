@@ -1,26 +1,39 @@
 # Production Proof Report
 
-- **Production read-only smoke:** NOT_RUN (no `STAGING_BASE_URL` / `PRODUCTION_BASE_URL` in environment)
-- **Reason:** Read-only staging/production probes require an explicit base URL; none was configured for this run.
+## Target commit
+
+- **Branch:** `security/goose-otel-fix`
+- **Commit:** `3536e9e42536bcbf92e70052325b74c41a106ffc`
+
+## Production read-only smoke
+
+- **Status:** NOT_RUN
+- **Reason:** `STAGING_BASE_URL`, `PRODUCTION_BASE_URL`, `PROD_BASE_URL`, and `BASE_URL_PROD` were all unset in the verification environment.
 - **Next action:** Export a read-only-safe URL and run  
-  `BASE_URL="$STAGING_BASE_URL" bash scripts/test/run-production-readonly-smoke.sh`
+  `BASE_URL="$STAGING_BASE_URL" bash scripts/test/run-production-readonly-smoke.sh`  
+  (or set `PRODUCTION_BASE_URL` / `PROD_BASE_URL` / `BASE_URL_PROD` per your convention.)
 
-## Local executable proof (this host)
+## CI / Security / Production Proof (exact commit)
 
-- **Branch / commit:** `security/goose-otel-fix` @ `35e527857dfc2f42da41de9ab7e593728cacbbdb`
-- **Go unit tests:** pass (`go test ./... -count=1` with clean DB `avf_vending_test_full_final`, DSN password redacted in docs)
-- **Race (`-race`):** BLOCKED locally (no gcc); **CI:** Linux race gate in Production Proof workflow
-- **govulncheck:** pass with `GOTOOLCHAIN=go1.25.10`
-- **Trivy:** BLOCKED locally (binary not installed); **CI:** Security / image workflows
-- **Full local E2E:** pass (23 passed, 0 failed, 0 skipped; Phase 8–42; session evidence under `reports/test/e2e-evidence/` — do not commit raw `.e2e-runs` dirs)
-- **REST full live coverage:** `reports/test/rest-full-live-coverage.json` (conservative OpenAPI runner — many routes blocked/partial by design)
-- **gRPC full coverage:** `reports/test/grpc-full-coverage.json`
-- **MQTT full coverage:** `reports/test/mqtt-full-coverage.json`
+- **Status:** **NOT_VERIFIED** for `3536e9e`
+- **Evidence:** `gh run list --commit 3536e9e42536bcbf92e70052325b74c41a106ffc` returned **no runs**.
+- **Why:** `ci.yml`, `security.yml`, and `production-proof.yml` run on **pull_request** or **push** to **`develop` / `main`** — not on ordinary pushes to `security/goose-otel-fix`. At verification time there was **no open PR** whose head was this branch (`gh pr list --head security/goose-otel-fix` was empty).
+- **Last recorded green workflows (older SHA):** commit `3369b5129af2c8a49307272c6093f059cfd74c2e` — e.g. [CI](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985939), [Production Proof](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985923), [Security](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25710985930).
+- **Commits after that SHA without CI on `3536e9e`:** `35e5278`, `3536e9e`.
+- **Security Release (Trivy app/goose images):** runs after **Build and Push Images** on `develop`/`main` (`workflow_run`); **not** automatically re-run per feature-branch tip.
 
-## CI proof
+## Production canary / PSP / hardware
 
-- **Status:** pass (per `gh pr checks` on branch `security/goose-otel-fix`; includes Go CI Gates, Linux race + contract, vulnerability scan, security workflows — confirm on GitHub if HEAD changes)
+- **Production canary E2E:** BLOCKED — full canary env (`ALLOW_PROD_WRITES`, `PROD_WRITE_CONFIRMATION`, `CANARY_*`) not configured for this run.
+- **PSP / provider:** BLOCKED — no sandbox/production PSP proof in scope.
+- **Hardware:** BLOCKED — no canary machine / device evidence in scope.
+
+## Local proof (reference only; not production)
+
+- **Full local E2E:** pass (23 passed, 0 failed, 0 skipped — prior session; do not commit `.e2e-runs`).
+- **Go test / govulncheck:** pass locally with correct DB env and `GOTOOLCHAIN=go1.25.10` (see earlier evidence).
+- **REST OpenAPI live runner:** **partial** — 365 operations; **6** pass; **359** blocked (`reports/test/rest-full-live-coverage.json`). **Do not claim 100% REST live coverage.**
 
 ## Secret audit
 
-- **Status:** pass — no live tokens or private keys committed with these reports.
+- **Status:** pass — no live tokens or private keys in these committed reports.

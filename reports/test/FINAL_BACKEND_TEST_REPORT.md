@@ -1,18 +1,18 @@
 # FINAL BACKEND TEST REPORT
 
 - Branch: `security/goose-otel-fix`
-- Commit: `35e527857dfc2f42da41de9ab7e593728cacbbdb`
+- Commit: `3536e9e42536bcbf92e70052325b74c41a106ffc`
 - API URL: `http://127.0.0.1:18080`
 - gRPC addr: `:9090`
 - MQTT broker: `127.0.0.1:1883`
-- REST summary: `{'generated_at': '2026-05-12T08:23:35.359631+00:00', 'mode': 'local', 'base_url': 'http://127.0.0.1:18080', 'reachable': True, 'swagger': 'docs\\swagger\\swagger.json', 'total_operations': 365, 'passed': 6, 'failed': 0, 'partial': 0, 'blocked': 359}`
+- REST summary: `{'total_operations': 365, 'passed': 6, 'failed': 0, 'partial': 0, 'blocked': 359}` — **partial live coverage only**
 - gRPC summary: `{'generated_at': '2026-05-12T08:23:55.203480+00:00', 'grpc_addr': '127.0.0.1:9090', 'server_status': 'reachable', 'server_reason': 'grpcurl list succeeded', 'total_methods': 85, 'passed': 0, 'failed': 0, 'partial': 54, 'blocked': 31}`
 - MQTT summary: `{'generated_at': '2026-05-12T08:24:38.836871+00:00', 'mqtt_host': '127.0.0.1', 'mqtt_port': '1883', 'mqtt_topic_prefix': 'avf-dev/devices', 'broker_status': 'reachable', 'broker_reason': 'publish/subscribe round-trip evidence captured', 'total_flows': 12, 'passed': 1, 'failed': 0, 'partial': 9, 'blocked': 2}`
 - Production smoke: `NOT_RUN`
 - Production canary: `BLOCKED`
 - PSP: `BLOCKED: PSP sandbox/canary credentials not configured in this run`
 - Hardware: `BLOCKED: real canary vending hardware/simulator not attached in this run`
-- CI: `gh pr checks: Go CI Gates, Linux race and contract gates, Go Vulnerability Scan, Security, Production Proof workflows success for branch security/goose-otel-fix (e.g. runs 25710985939, 25710985923, 25710985930)`
+- CI: **NOT_VERIFIED** for this commit — see `FULL_TEST_EXECUTION_REPORT.md` / `PRODUCTION_PROOF_REPORT.md`.
 
 ## Commands Run
 
@@ -39,4 +39,4 @@
 
 ## Final Claim
 
-**BLOCKED: Full production proof cannot be completed because required production URL, provider sandbox, canary credentials, or hardware is missing.**
+**BLOCKED:** CI was not re-run on commit `3536e9e`. Production/staging read-only smoke was not run (URL env unset). Canary/PSP/hardware blocked. REST live coverage remains partial (6/365).
