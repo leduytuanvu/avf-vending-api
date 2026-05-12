@@ -15,7 +15,7 @@
   "merge_to_develop": {
     "status": "NOT_MERGED",
     "attempted": "2026-05-12T19:30:00+00:00",
-    "gh_pr_merge_result": "rejected: base branch policy prohibits the merge; REVIEW_REQUIRED; auto-merge not enabled on repository",
+    "gh_pr_merge_result": "rejected: base branch policy prohibits the merge; REVIEW_REQUIRED; auto-merge not enabled on repository. Follow-up 2026-05-12: gh pr merge 210 --merge failed — head branch not up to date with base (mergeStateStatus BEHIND); update with develop before merge.",
     "next_action": "Complete required code review approval on PR #210, then merge via GitHub UI or gh pr merge (with policy-compliant flags if applicable)."
   },
   "post_merge_pipeline": {
@@ -45,7 +45,34 @@
     "grpc_full_coverage": "reports/test/grpc-full-coverage.json",
     "mqtt_full_coverage": "reports/test/mqtt-full-coverage.json"
   },
-  "ci_proof": {
+  "latest_github_state": {
+    "observed_at": "2026-05-12T23:45:00+00:00",
+    "headRefOid": "f36e39ddd2455ba02b5d7ec5f783e232ec359f9b",
+    "mergeStateStatus": "BEHIND",
+    "checks_on_head": "PASS via gh pr checks 210 --watch",
+    "workflow_runs": [
+      {
+        "workflow": "CI",
+        "database_id": 25727355368,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25727355368"
+      },
+      {
+        "workflow": "Security",
+        "database_id": 25727355333,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25727355333"
+      },
+      {
+        "workflow": "Production Proof",
+        "database_id": 25727355354,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25727355354"
+      },
+      {
+        "workflow": "CodeQL",
+        "database_id": 25727355319,
+        "url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25727355319"
+      }
+    ]
+  },
     "status": "PASS",
     "proof_target_commit": "d7d28ecc5cb910b66ec2d80a069f4bf5a5f3cbc5",
     "verified_via": "gh pr checks 210 --watch after force-push to head d7d28ec (2026-05-12 UTC); all required checks green including Linux race and contract gates",

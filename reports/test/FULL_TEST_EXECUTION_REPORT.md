@@ -41,4 +41,4 @@
 
 ## Final Claim
 
-**BLOCKED:** PR CI/Security/Production Proof **passed** on head `d7d28ec`, but **merge to develop did not occur** (required review). Post-merge Build / Security Release / image Trivy **not executed**. Production read-only smoke **NOT_RUN** (URL env unset). Canary/PSP/hardware blocked. REST remains **6/365 partial** — no full live REST claim.
+**BLOCKED:** PR checks **green** on latest head **`f36e39d`**, but branch is **BEHIND** `develop` and **merge** is **blocked** (review + update base). Post-merge Build / Security Release / image Trivy **not executed**. Production read-only smoke **NOT_RUN** (URL env unset). Canary/PSP/hardware blocked. REST remains **6/365 partial** — no full live REST claim.

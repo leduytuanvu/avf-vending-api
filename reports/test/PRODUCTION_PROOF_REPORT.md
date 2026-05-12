@@ -1,5 +1,13 @@
 # Production Proof Report
 
+## Latest GitHub state (after documentation follow-up commit)
+
+| Field | Value |
+|-------|--------|
+| headRefOid (2026-05-12) | `f36e39ddd2455ba02b5d7ec5f783e232ec359f9b` |
+| mergeStateStatus | **BEHIND** — sync with `develop` before merge |
+| Checks on head | **PASS** — CI [25727355368](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25727355368), Security [25727355333](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25727355333), Production Proof [25727355354](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25727355354), CodeQL [25727355319](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25727355319) (skipped) |
+
 ## Current proof target
 
 | Field | Value |
@@ -48,4 +56,4 @@ Pass — no live tokens in these report files.
 
 ## Final claim
 
-**BLOCKED:** Required PR checks are green on `d7d28ec`, but **merge did not land**; **post-merge** image security gates are **unverified**. Production smoke **NOT_RUN**; canary/PSP/hardware blocked; REST live coverage **partial (6/365)** — no full REST claim.
+**BLOCKED:** Required PR checks are green (latest **`f36e39d`**), but **merge did not land** (**BEHIND** `develop` + review); **post-merge** image security gates **unverified**. Production smoke **NOT_RUN**; canary/PSP/hardware blocked; REST **partial (6/365)**.

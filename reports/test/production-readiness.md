@@ -4,6 +4,8 @@
 - **PR:** https://github.com/leduytuanvu/avf-vending-api/pull/210 (`security/goose-otel-fix` → `develop`)
 - **Merge:** **NOT_MERGED** — required review / branch policy blocked `gh pr merge`.
 
+- **Latest head (post-report commit):** `f36e39ddd2455ba02b5d7ec5f783e232ec359f9b` — checks **PASS** (CI 25727355368, Security 25727355333, Production Proof 25727355354); **BEHIND** `develop` — rebase/merge **develop** before shipping.
+
 ## CI on current tip
 
 - **CI / Security / Production Proof:** **PASS** on `d7d28ec` (runs [25726935875](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935875), [25726935841](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935841), [25726935862](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935862)). CodeQL skipped by configuration.
@@ -33,4 +35,4 @@
 
 ## Final claim
 
-**BLOCKED:** PR checks **green** on `d7d28ec`, but **merge blocked**; production smoke URL missing; **post-merge** image Security Release unverified; **canary/PSP/hardware** unproven; **REST** evidence **partial (6/365)**.
+**BLOCKED:** PR checks **green** on **`f36e39d`**, but branch is **BEHIND** `develop`; production smoke URL missing; **post-merge** image Security Release unverified; **canary/PSP/hardware** unproven; **REST** **partial (6/365)**.

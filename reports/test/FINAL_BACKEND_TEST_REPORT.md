@@ -41,4 +41,4 @@
 
 ## Final Claim
 
-**BLOCKED:** PR CI/Security/Production Proof **passed** on head `d7d28ec`; **merge blocked** so Build/Security Release/image Trivy **not run**; production smoke **NOT_RUN**; canary/PSP/hardware blocked; REST **6/365 partial**.
+**BLOCKED:** PR checks **green** on **`f36e39d`**; branch **BEHIND** `develop`; **merge blocked**. Build/Security Release/image Trivy **not run**; smoke **NOT_RUN**; REST **6/365 partial**.
