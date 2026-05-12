@@ -1,12 +1,12 @@
 # Production Readiness
 
-- **Tip commit:** `e204934d3975aa4a6afcab3a54d1c359c3fa8487`
+- **Tip commit:** `d7d28ecc5cb910b66ec2d80a069f4bf5a5f3cbc5`
 - **PR:** https://github.com/leduytuanvu/avf-vending-api/pull/210 (`security/goose-otel-fix` → `develop`)
 - **Merge:** **NOT_MERGED** — required review / branch policy blocked `gh pr merge`.
 
 ## CI on current tip
 
-- **CI / Security / Production Proof:** **PASS** on `e204934` (runs [25726479840](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479840), [25726479824](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479824), [25726479817](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726479817)). CodeQL skipped by configuration.
+- **CI / Security / Production Proof:** **PASS** on `d7d28ec` (runs [25726935875](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935875), [25726935841](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935841), [25726935862](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935862)). CodeQL skipped by configuration.
 - **Security Release + Trivy on built app/goose images:** **NOT_RUN** — merge to `develop` did not complete; **Build and Push Images** was not triggered from this PR outcome.
 
 ## Production read-only smoke
@@ -33,4 +33,4 @@
 
 ## Final claim
 
-**BLOCKED:** PR checks **green** on `e204934`, but **merge blocked**; production smoke URL missing; **post-merge** image Security Release unverified; **canary/PSP/hardware** unproven; **REST** evidence **partial (6/365)**.
+**BLOCKED:** PR checks **green** on `d7d28ec`, but **merge blocked**; production smoke URL missing; **post-merge** image Security Release unverified; **canary/PSP/hardware** unproven; **REST** evidence **partial (6/365)**.
