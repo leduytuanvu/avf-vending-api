@@ -73,6 +73,7 @@
       }
     ]
   },
+  "ci_proof": {
     "status": "PASS",
     "proof_target_commit": "d7d28ecc5cb910b66ec2d80a069f4bf5a5f3cbc5",
     "verified_via": "gh pr checks 210 --watch after force-push to head d7d28ec (2026-05-12 UTC); all required checks green including Linux race and contract gates",
