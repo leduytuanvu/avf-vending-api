@@ -923,7 +923,8 @@ func TestOutboxRepository_LeaseOutboxForPublish_SetsPublishing(t *testing.T) {
 	_, err = pool.Exec(ctx, `UPDATE outbox_events SET created_at = now() - interval '2 hours' WHERE id = $1`, obID)
 	require.NoError(t, err)
 
-	leased, err := repo.LeaseOutboxForPublish(ctx, "test-worker-lease", 60*time.Second, 0, 50)
+	// Large batch: shared TEST_DATABASE_URL may contain many older pending outbox rows; a small limit can exclude this row.
+	leased, err := repo.LeaseOutboxForPublish(ctx, "test-worker-lease", 60*time.Second, 0, 10_000)
 	require.NoError(t, err)
 	var found bool
 	for _, e := range leased {

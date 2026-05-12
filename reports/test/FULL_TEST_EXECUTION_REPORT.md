@@ -1,20 +1,20 @@
-# FINAL BACKEND TEST REPORT
+# FULL TEST EXECUTION REPORT
 
 - Branch: `security/goose-otel-fix`
 - Commit: `d7d28ecc5cb910b66ec2d80a069f4bf5a5f3cbc5`
-- PR: https://github.com/leduytuanvu/avf-vending-api/pull/210
+- PR: https://github.com/leduytuanvu/avf-vending-api/pull/210 → `develop`
 - API URL: `http://127.0.0.1:18080`
 - gRPC addr: `:9090`
 - MQTT broker: `127.0.0.1:1883`
-- REST summary: **partial** — 365 ops, **6** pass, **359** blocked
+- REST summary: **partial** — 365 ops, **6** pass, **359** blocked (`rest-full-live-coverage.json`)
 - gRPC summary: `{'generated_at': '2026-05-12T08:23:55.203480+00:00', 'grpc_addr': '127.0.0.1:9090', 'server_status': 'reachable', 'server_reason': 'grpcurl list succeeded', 'total_methods': 85, 'passed': 0, 'failed': 0, 'partial': 54, 'blocked': 31}`
 - MQTT summary: `{'generated_at': '2026-05-12T08:24:38.836871+00:00', 'mqtt_host': '127.0.0.1', 'mqtt_port': '1883', 'mqtt_topic_prefix': 'avf-dev/devices', 'broker_status': 'reachable', 'broker_reason': 'publish/subscribe round-trip evidence captured', 'total_flows': 12, 'passed': 1, 'failed': 0, 'partial': 9, 'blocked': 2}`
 - Production smoke: `NOT_RUN`
 - Production canary: `BLOCKED`
 - PSP: `BLOCKED: PSP sandbox/canary credentials not configured in this run`
 - Hardware: `BLOCKED: real canary vending hardware/simulator not attached in this run`
-- **Merge:** **NOT_MERGED** (branch policy / `REVIEW_REQUIRED`).
-- CI: **PASS** on `d7d28ec` — CI [25726935875](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935875), Security [25726935841](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935841), Production Proof [25726935862](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935862). Post-merge gates: see `PRODUCTION_PROOF_REPORT.md`.
+- **Merge:** **NOT_MERGED** — `REVIEW_REQUIRED` / branch policy (`gh pr merge 210 --merge` rejected).
+- CI: **PASS** on `d7d28ec` — CI [25726935875](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935875), Security [25726935841](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935841), Production Proof [25726935862](https://github.com/leduytuanvu/avf-vending-api/actions/runs/25726935862). Post-merge Build, Security Release, published image Trivy: **NOT_RUN**.
 
 ## Commands Run
 
@@ -41,4 +41,4 @@
 
 ## Final Claim
 
-**BLOCKED:** PR checks **green** on **`f36e39d`**; branch **BEHIND** `develop`; **merge blocked**. Build/Security Release/image Trivy **not run**; smoke **NOT_RUN**; REST **6/365 partial**.
+**BLOCKED:** PR checks **green** on latest head **`f36e39d`**, but branch is **BEHIND** `develop` and **merge** is **blocked** (review + update base). Post-merge Build / Security Release / image Trivy **not executed**. Production read-only smoke **NOT_RUN** (URL env unset). Canary/PSP/hardware blocked. REST remains **6/365 partial** — no full live REST claim.

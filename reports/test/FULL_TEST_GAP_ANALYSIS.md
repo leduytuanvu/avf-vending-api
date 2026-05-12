@@ -1,0 +1,257 @@
+# Full Test Gap Analysis
+
+- Generated: `2026-05-12T08:33:12.034797+00:00`
+- Total gaps: **480**
+- Gap types: `{'blocked by env': 359, 'blocked by hardware': 19, 'blocked by provider': 18, 'partial test': 84}`
+
+## Ordered Implementation Plan
+
+### P0
+
+- `gRPC` `AckCatalogVersion`: **blocked by env** - Provide required local seed data or canary env vars.
+- `gRPC` `AckConfigVersion`: **blocked by env** - Provide required local seed data or canary env vars.
+- `gRPC` `AckInventorySync`: **blocked by env** - Provide required local seed data or canary env vars.
+- `gRPC` `AckMediaVersion`: **blocked by env** - Provide required local seed data or canary env vars.
+- `gRPC` `ActivateMachine`: **blocked by env** - Provide required local seed data or canary env vars.
+- `gRPC` `CheckForUpdates`: **blocked by env** - Provide required local seed data or canary env vars.
+- `gRPC` `CreateCashCheckout`: **blocked by env** - Provide required local seed data or canary env vars.
+- `gRPC` `CreateOrder`: **blocked by env** - Provide required local seed data or canary env vars.
+- `gRPC` `CreateSale`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersActivate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersDeactivate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersPatch`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersPatchRoles`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersPatchStatus`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersPostRoles`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersPutRoles`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersResetPassword`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersRevokeSessions`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCommerceReconciliationIgnore`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCommerceReconciliationResolve`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineActivationCodeDelete`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineActivationCodesPost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineCashCollectionClosePost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineCashCollectionsPost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineConfigRolloutsPost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineDiagnosticRequest`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineDisable`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineEnable`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachinePatch`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachinePlanogramDraftPut`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachinePlanogramPublishPost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineRetire`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineRotateCredential`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineSetupSyncPost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineStockAdjustmentsPost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineTopologyPut`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineArchive`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineMarkCompromised`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachinePatch`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineResume`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineRevokeCredentials`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineRevokeToken`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineRotateCredentials`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineRotateTokenVersion`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineSuspend`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineTechnicianDelete`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineTechniciansCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineTransferSite`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachinesCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationsInventoryAnomalyResolve`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationsMachineCommandsDispatch`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationsMachineInventoryReconcile`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgProvisioningBulkCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthChangePassword`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthLogin`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthLogout`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthMFADisable`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthMFAEnroll`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthMFAVerify`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthPasswordChange`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthPasswordResetConfirm`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthPasswordResetRequest`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthRefresh`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthSessionDelete`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1CommerceCashCheckout`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1CommerceCreateOrder`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1CommerceOrderCancel`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1CommerceRefundCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1DeviceMachineCommandsPoll`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1DeviceTelemetryReconcileBatch`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1MachineCheckIn`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1MachineCommandDispatch`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1MachineConfigApply`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1OperatorSessionHeartbeat`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1OperatorSessionLogin`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1OperatorSessionLogout`: **blocked by env** - Provide required local seed data or canary env vars.
+- `gRPC` `GetAssignedUpdate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `gRPC` `GetSyncCursor`: **blocked by env** - Provide required local seed data or canary env vars.
+
+### P1
+
+- `REST` `DocOpV1AdminAuthUsersGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuthUsersSessions`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCommerceReconciliationGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCommerceReconciliationList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminInventoryLowStock`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminInventoryRefillSuggestions`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineActivationCodesList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineCashCollectionGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineCashCollectionsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineCashbox`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineConfigRolloutGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineConfigRolloutsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineDiagnosticBundlesList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineInventory`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineInventoryEvents`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineRefillSuggestions`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachineSlots`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMachinesList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineOperationalHealthGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineOperationalTimeline`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachineTechniciansList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgMachinesList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationsInventoryAnomaliesList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationsMachineInventoryAnomaliesList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationsMachinesHealthList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsInventoryLowStock`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsInventoryUnified`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsMachineHealth`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsMachines`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminPlanogramGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminPlanogramsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthMe`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AuthSessionsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1CommerceGetOrder`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1CommerceReconciliationSnapshot`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1CommerceRefundGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1CommerceRefundsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1DeviceTelemetryReconcileStatusGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1MachineCommandReceipts`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1MachineCommandStatus`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1MachineSaleCatalogGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1MachineShadowGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1MachineTelemetryIncidents`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1MachineTelemetryRollups`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1MachineTelemetrySnapshot`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1OperatorSessionActionAttributions`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1OperatorSessionAuthEvents`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1OperatorSessionCurrent`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1OperatorSessionHistory`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1OperatorSessionTimeline`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1ReportsInventoryExceptions`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1SetupMachineBootstrap`: **blocked by env** - Provide required local seed data or canary env vars.
+- `MQTT` `reconnect_offline`: **blocked by hardware** - Attach canary vending hardware or approved simulator and rerun guarded tests.
+- `gRPC` `CancelOrder`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `CancelSale`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `CheckIn`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `CheckIn`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `ClaimActivation`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `ClaimActivation`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `CloseOperatorSession`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `ConfirmCashReceived`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetCatalogDelta`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetCatalogSnapshot`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetEventStatus`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetInventorySnapshot`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetLatestMachineTelemetry`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetLatestMachineTelemetry`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetMachineCabinetSlotSummary`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetMachineCabinetSlotSummary`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetMachineIncidentSummary`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetMachineIncidentSummary`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetMachineSlotInventory`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetMachineState`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetMachineState`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetMachineSummary`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetMachineSummary`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+- `gRPC` `GetMediaDelta`: **partial test** - Run the mapped local harness against clean dependencies and attach evidence.
+
+### P2
+
+- `REST` `DocOpV1AdminArtifactsDelete`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminArtifactsDownloadURL`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminArtifactsGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminArtifactsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminArtifactsPutContent`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminArtifactsReserve`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAssignmentsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminAuditEventsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminBrandCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminBrandDelete`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminBrandPatch`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminBrandReplace`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminBrandsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCategoriesList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCategoryCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCategoryDelete`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCategoryPatch`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCategoryReplace`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCommandsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCommerceOrderRefundPost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCommerceOrderTimelineGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCommerceRefundRequestGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminCommerceRefundRequestsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminFeatureFlagDisablePost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminFeatureFlagEnablePost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminFeatureFlagGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminFeatureFlagPatch`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminFeatureFlagTargetsPut`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminFeatureFlagsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminFeatureFlagsPost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminFinanceDailyCloseGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminFinanceDailyCloseList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminFinanceDailyClosePost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMediaAssetsCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMediaAssetsDelete`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMediaAssetsGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMediaAssetsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMediaDelete`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMediaGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMediaList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMediaUploadComplete`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminMediaUploadInit`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignApprove`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignCancel`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignPatch`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignPause`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignPublish`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignResultsGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignResume`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignRollback`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignStart`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignTargetsGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignTargetsPut`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTACampaignsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOTAList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgActivationCodeRevoke`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgActivationCodesList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgActivationCodesPost`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgAssignmentDelete`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgAssignmentGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgAssignmentsCreate`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgAssignmentsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationalAnomaliesList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationalAnomalyGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationalAnomalyIgnore`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationalAnomalyResolve`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationsCommandCancel`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationsCommandGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationsCommandRetry`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgOperationsCommandsList`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgProvisioningBatchGet`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsCash`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsCommands`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsExport`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsProducts`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsReconciliationBI`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsReconciliationQueue`: **blocked by env** - Provide required local seed data or canary env vars.
+- `REST` `DocOpV1AdminOrgReportsRefunds`: **blocked by env** - Provide required local seed data or canary env vars.
+

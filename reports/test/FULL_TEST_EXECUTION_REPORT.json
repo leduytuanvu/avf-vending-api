@@ -8,7 +8,6 @@
     "base": "develop",
     "head_sha": "d7d28ecc5cb910b66ec2d80a069f4bf5a5f3cbc5",
     "note_head_sha": "CI evidence (workflow runs in ci_verification) corresponds to this commit; after a documentation-only follow-up commit, use gh pr view for current headRefOid",
-    "mergeStateStatus": "BLOCKED",
     "reviewDecision": "REVIEW_REQUIRED"
   },
   "environment": {
@@ -200,7 +199,7 @@
   "psp_result": "BLOCKED: PSP sandbox/canary credentials not configured in this run",
   "hardware_result": "BLOCKED: real canary vending hardware/simulator not attached in this run",
   "security_scan_result": "see audit-commands.json / CI security workflows",
-  "ci_result": "PASS: proof commit d7d28ec (CI 25726935875, Security 25726935841, Production Proof 25726935862). Latest head f36e39d green (CI 25727355368, Security 25727355333, Production Proof 25727355354); branch BEHIND develop. Merge not completed.",
+  "ci_result": "PASS: Embedded proof targets commit d7d28ec (CI 25726935875, Security 25726935841, Production Proof 25726935862). Latest PR head f36e39d also green (CI 25727355368, Security 25727355333, Production Proof 25727355354) but branch is BEHIND develop — merge blocked until synced. Post-merge Build/Security Release / image Trivy NOT executed.",
   "ci_verification": {
     "proof_target_commit": "d7d28ecc5cb910b66ec2d80a069f4bf5a5f3cbc5",
     "pull_request_url": "https://github.com/leduytuanvu/avf-vending-api/pull/210",
@@ -1160,5 +1159,5 @@
       "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
     }
   ],
-  "final_claim": "BLOCKED: PR #210 checks green (latest f36e39d); branch BEHIND develop and review required — no merge. Post-merge pipelines not run. Smoke NOT_RUN. Canary/PSP/hardware blocked. REST partial 6/365."
+  "final_claim": "BLOCKED: PR #210 checks are green (latest head f36e39d); branch is BEHIND develop — must sync base before merge. Required review still blocks policy merge. Build/Security Release/image Trivy not run. Smoke NOT_RUN. Canary/PSP/hardware blocked. REST partial 6/365."
 }

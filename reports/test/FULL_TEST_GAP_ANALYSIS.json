@@ -1,0 +1,4334 @@
+{
+  "summary": {
+    "generated_at": "2026-05-12T08:33:12.034797+00:00",
+    "total_gaps": 480,
+    "by_type": {
+      "blocked by env": 359,
+      "blocked by hardware": 19,
+      "blocked by provider": 18,
+      "partial test": 84
+    }
+  },
+  "gaps": [
+    {
+      "surface": "gRPC",
+      "id": "AckCatalogVersion",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckConfigVersion",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckInventorySync",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckMediaVersion",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ActivateMachine",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CheckForUpdates",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreateCashCheckout",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreateOrder",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreateSale",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersActivate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersCreate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersDeactivate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersPatch",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersPatchRoles",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersPatchStatus",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersPostRoles",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersPutRoles",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersResetPassword",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersRevokeSessions",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCommerceReconciliationIgnore",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCommerceReconciliationResolve",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineActivationCodeDelete",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineActivationCodesPost",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineCashCollectionClosePost",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineCashCollectionsPost",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineConfigRolloutsPost",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineCreate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineDiagnosticRequest",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineDisable",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineEnable",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachinePatch",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachinePlanogramDraftPut",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachinePlanogramPublishPost",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineRetire",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineRotateCredential",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineSetupSyncPost",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineStockAdjustmentsPost",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineTopologyPut",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineArchive",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineMarkCompromised",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachinePatch",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineResume",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineRevokeCredentials",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineRevokeToken",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineRotateCredentials",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineRotateTokenVersion",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineSuspend",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineTechnicianDelete",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineTechniciansCreate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineTransferSite",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachinesCreate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationsInventoryAnomalyResolve",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationsMachineCommandsDispatch",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationsMachineInventoryReconcile",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgProvisioningBulkCreate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthChangePassword",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthLogin",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthLogout",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthMFADisable",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthMFAEnroll",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthMFAVerify",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthPasswordChange",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthPasswordResetConfirm",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthPasswordResetRequest",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthRefresh",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthSessionDelete",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceCashCheckout",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceCreateOrder",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceOrderCancel",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceRefundCreate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1DeviceMachineCommandsPoll",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1DeviceTelemetryReconcileBatch",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1MachineCheckIn",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1MachineCommandDispatch",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1MachineConfigApply",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OperatorSessionHeartbeat",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OperatorSessionLogin",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OperatorSessionLogout",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetAssignedUpdate",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetSyncCursor",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ReportUpdateStatus",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SyncSaleCatalog",
+      "priority": "P0",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "MACHINE_TOKEN not set for authenticated machine write method",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AckCommand",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CompleteVend",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ConfirmVendSuccess",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsFailedVends",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsVends",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthSessionsRevokeOthers",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "blocked-hardware: destructive route requires explicit scenario guard",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceVendFailure",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceVendStart",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceVendSuccess",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1DeviceMachineVendResults",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "FailVend",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetPendingCommands",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "RejectCommand",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ReportVendFailure",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ReportVendSuccess",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "StartVend",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "StartVend",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires canary hardware/device ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "MQTT",
+      "id": "ack_timeout_no_ack",
+      "priority": "P0",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires real canary device reconnect/no-ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AttachPayment",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "AttachPaymentResult",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ConfirmCashPayment",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CreatePaymentSession",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsPayments",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminReportsPaymentsSummaryExportCSV",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "blocked-provider: external dependency required",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommercePaymentSession",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommercePaymentWebhook",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1PaymentsList",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "blocked-provider: external dependency required",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1ReportsPaymentsSummary",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "blocked-provider: external dependency required",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetLatestPaymentForOrder",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetOrderPaymentVendState",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetOrderPaymentVendState",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetPaymentById",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked-provider",
+      "reason": "requires payment/provider sandbox evidence",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "Business flow",
+      "id": "dispense failure/refund",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked",
+      "reason": "Requires configured provider/hardware/canary for production proof",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "Business flow",
+      "id": "dispense success",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked",
+      "reason": "Requires configured provider/hardware/canary for production proof",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "Business flow",
+      "id": "payment/QR sale success",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked",
+      "reason": "Requires configured provider/hardware/canary for production proof",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "Business flow",
+      "id": "remote command dispatch/ACK/fail/timeout",
+      "priority": "P0",
+      "gap_type": "blocked by provider",
+      "status": "blocked",
+      "reason": "Requires configured provider/hardware/canary for production proof",
+      "next_action": "Configure PSP sandbox/canary credentials and signed webhook secret."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetBootstrap",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "RBAC allow/deny",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "ack_success",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "admin login/logout/session/refresh",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "amount/currency mismatch",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "cash sale success",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "command_dispatch",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "command_subscribe",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "broker reachable; flow needs scenario assertion",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "config/bootstrap/catalog/media pull",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "duplicate webhook/replay",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "health/live/ready/version",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "invalid token/expired token",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "invalid webhook/HMAC",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "inventory restock/adjustment/out-of-stock",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "machine create/register/activate/deactivate",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "machine token/credential lifecycle",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "offline replay/idempotency/outbox retry",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "organization/site/user/admin CRUD",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "planogram/slot publish",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "sale catalog",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "telemetry_publish",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "topic_prefix_correctness",
+      "priority": "P0",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "broker reachable; flow needs scenario assertion",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuthUsersSessions",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCommerceReconciliationGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCommerceReconciliationList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminInventoryLowStock",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminInventoryRefillSuggestions",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineActivationCodesList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineCashCollectionGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineCashCollectionsList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineCashbox",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineConfigRolloutGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineConfigRolloutsList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineDiagnosticBundlesList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineInventory",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineInventoryEvents",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineRefillSuggestions",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachineSlots",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMachinesList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineOperationalHealthGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineOperationalTimeline",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachineTechniciansList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgMachinesList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationsInventoryAnomaliesList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationsMachineInventoryAnomaliesList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationsMachinesHealthList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsInventoryLowStock",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsInventoryUnified",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsMachineHealth",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsMachines",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPlanogramGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPlanogramsList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthMe",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AuthSessionsList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceGetOrder",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceReconciliationSnapshot",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceRefundGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1CommerceRefundsList",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1DeviceTelemetryReconcileStatusGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1MachineCommandReceipts",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1MachineCommandStatus",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1MachineSaleCatalogGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1MachineShadowGet",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1MachineTelemetryIncidents",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1MachineTelemetryRollups",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1MachineTelemetrySnapshot",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OperatorSessionActionAttributions",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OperatorSessionAuthEvents",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OperatorSessionCurrent",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OperatorSessionHistory",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OperatorSessionTimeline",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1ReportsInventoryExceptions",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1SetupMachineBootstrap",
+      "priority": "P1",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "MQTT",
+      "id": "reconnect_offline",
+      "priority": "P1",
+      "gap_type": "blocked by hardware",
+      "status": "blocked-hardware",
+      "reason": "requires real canary device reconnect/no-ACK evidence",
+      "next_action": "Attach canary vending hardware or approved simulator and rerun guarded tests."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CancelOrder",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CancelSale",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CheckIn",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CheckIn",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ClaimActivation",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ClaimActivation",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "CloseOperatorSession",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ConfirmCashReceived",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetCatalogDelta",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetCatalogSnapshot",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetEventStatus",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetInventorySnapshot",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetLatestMachineTelemetry",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetLatestMachineTelemetry",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMachineCabinetSlotSummary",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMachineCabinetSlotSummary",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMachineIncidentSummary",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMachineIncidentSummary",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMachineSlotInventory",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMachineState",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMachineState",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMachineSummary",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMachineSummary",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMediaDelta",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMediaManifest",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetMediaManifest",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetOrder",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetOrderStatus",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetPlanogram",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetSaleCatalog",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetSaleCatalogSnapshot",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "GetSalesSummary",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "HeartbeatOperatorSession",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "LoginOperator",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "LogoutOperator",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "OpenOperatorSession",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "PushCriticalEvent",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "PushInventoryDelta",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "PushOfflineEvents",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "PushTelemetryBatch",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ReconcileEvents",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "RefreshMachineToken",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "RefreshMachineToken",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "ReportDiagnosticBundleResult",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SubmitFillReport",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SubmitFillReport",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SubmitFillResult",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SubmitInventoryAdjustment",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SubmitRestock",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SubmitStockAdjustment",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SubmitStockAdjustment",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SubmitStockSnapshot",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "gRPC",
+      "id": "SubmitTelemetryBatch",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "server reachable; generic grpcurl call requires method-specific request template",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "ack_duplicate",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "acl_topic_isolation",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "crlf_windows_handling",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "diagnostics create/resolve",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "MQTT",
+      "id": "invalid_payload",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "covered by tests/e2e/run-mqtt-local.sh; this generic runner only proves broker round-trip",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "product/category/media CRUD",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "reporting/audit",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "Business flow",
+      "id": "telemetry ingest",
+      "priority": "P1",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminArtifactsDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminArtifactsDownloadURL",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminArtifactsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminArtifactsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminArtifactsPutContent",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminArtifactsReserve",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAssignmentsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminAuditEventsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminBrandCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminBrandDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminBrandPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminBrandReplace",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminBrandsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCategoriesList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCategoryCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCategoryDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCategoryPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCategoryReplace",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCommandsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCommerceOrderRefundPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCommerceOrderTimelineGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCommerceRefundRequestGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminCommerceRefundRequestsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFeatureFlagDisablePost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFeatureFlagEnablePost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFeatureFlagGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFeatureFlagPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFeatureFlagTargetsPut",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFeatureFlagsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFeatureFlagsPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFinanceDailyCloseGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFinanceDailyCloseList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminFinanceDailyClosePost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMediaAssetsCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMediaAssetsDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMediaAssetsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMediaAssetsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMediaDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMediaGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMediaList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMediaUploadComplete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminMediaUploadInit",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignApprove",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignCancel",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignPause",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignPublish",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignResultsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignResume",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignRollback",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignStart",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignTargetsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignTargetsPut",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTACampaignsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOTAList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgActivationCodeRevoke",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgActivationCodesList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgActivationCodesPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgAssignmentDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgAssignmentGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgAssignmentsCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgAssignmentsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationalAnomaliesList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationalAnomalyGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationalAnomalyIgnore",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationalAnomalyResolve",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationsCommandCancel",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationsCommandGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationsCommandRetry",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgOperationsCommandsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgProvisioningBatchGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsCash",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsCommands",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsExport",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsProducts",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsReconciliationBI",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsReconciliationQueue",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsRefunds",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsSales",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgReportsTechnicianFills",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgRestockSuggestions",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgRolloutsCancel",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgRolloutsCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgRolloutsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgRolloutsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgRolloutsPause",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgRolloutsResume",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgRolloutsRollback",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgRolloutsStart",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgSiteArchive",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgSiteDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgSiteGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgSitePatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgSitesCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgSitesList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgTechnicianDisable",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgTechnicianEnable",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgTechnicianGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgTechnicianPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgTechniciansCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgTechniciansList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersDeleteRole",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersDisable",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersEnable",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersPatchRoles",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersPatchStatus",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersResetPassword",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersRevokeSessions",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersRoles",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrgUsersSessions",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationAuditEventGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationAuditEventsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationMediaAssetsDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationMediaAssetsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationMediaAssetsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationMediaProductImagesPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationMediaUploadComplete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationMediaUploadInit",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationProductImagesDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationProductImagesList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationProductImagesPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationProductImagesPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationProductMediaDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOrganizationProductMediaPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOutboxOpsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminOutboxRetry",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookActivate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookArchive",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookAssignTarget",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookDeactivate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookItemDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookItemPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookItemsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookItemsPut",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBookTargetDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPriceBooksList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPricingPreview",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductImageDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductImagePost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductImagePut",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductMediaDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductMediaPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductMediaPut",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductReplace",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminProductsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionActivate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionArchive",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionAssignTarget",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionDeactivate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionPause",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionTargetDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminPromotionsPreview",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminReportsCashCollectionsExportCSV",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminReportsSalesSummaryExportCSV",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminRetentionOpsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSiteCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSiteDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSiteDisable",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSiteGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSitePatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSitesList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSystemOutboxGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSystemOutboxListGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSystemOutboxMarkDLQPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSystemOutboxReplayPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSystemOutboxStatsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSystemRetentionDryRunPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSystemRetentionRunPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminSystemRetentionStatsGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTagCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTagDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTagPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTagReplace",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTagsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianAssignmentCancel",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianAssignmentCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianAssignmentDelete",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianAssignmentGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianAssignmentPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianAssignmentsList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianDisable",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianEnable",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechnicianPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminTechniciansList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersCreate",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersDisable",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersEnable",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersGet",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersPatch",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersPatchRoles",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersPatchStatus",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersPostRoles",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersPutRoles",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersResetPassword",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersRevokeSessions",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1AdminUsersSessions",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OperatorInsightsTechnicianAttributions",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: templated path requires seeded resource IDs",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OperatorInsightsUserAttributions",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1OrdersList",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1ReportsFleetHealth",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1ReportsSalesSummary",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "auth/role credentials required",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "REST",
+      "id": "DocOpV1SetupActivationClaimPost",
+      "priority": "P2",
+      "gap_type": "blocked by env",
+      "status": "blocked-missing-seed",
+      "reason": "blocked-missing-seed: generic local write needs scenario-specific fixtures; covered by E2E scripts",
+      "next_action": "Provide required local seed data or canary env vars."
+    },
+    {
+      "surface": "Business flow",
+      "id": "backup/restore docs/drill",
+      "priority": "P2",
+      "gap_type": "partial test",
+      "status": "partial",
+      "reason": "Covered by local harness when dependencies are running",
+      "next_action": "Run the mapped local harness against clean dependencies and attach evidence."
+    }
+  ]
+}
