@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-11T17:55:00Z",
-  "final_claim": "BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.",
+  "generated_at": "2026-05-12T02:55:00Z",
+  "final_claim": "FAIL: Published goose image vulnerability scan failed until rebuilt image passes Trivy in Security Release.",
   "baseline": {
     "branch": "test/production-full-destructive-e2e",
     "commit": "2482821c7222bb008dd1ceb913b3c64c602cadfc",
@@ -117,5 +117,33 @@
     "ci_required": "satisfied: updated Go Vulnerability Scan passed",
     "passed_run_id": 25686906495,
     "passed_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/25686906495"
+  },
+  "security_release_99_goose_blocker": {
+    "status": "pre_ci_fail",
+    "workflow": "Security Release",
+    "run_number": 99,
+    "failed_check": "Published Image Vulnerability Scan",
+    "published_image_verdict": "fail",
+    "trivy_goose_result": "failure",
+    "app_image_scan": "pass",
+    "failed_goose_image_ref": "ghcr.io/leduytuanvu/avf-vending-api-goose@sha256:27c4afb1723e3109ccf08be271b4276308ab66a82b66a699b1995259bf3b62dc",
+    "root_cause": "/usr/local/bin/goose embedded go.opentelemetry.io/otel v1.40.0 from pressly/goose v3.27.0; CVE-2026-29181 HIGH is fixed in go.opentelemetry.io/otel v1.41.0.",
+    "fix_applied": {
+      "goose_version": "v3.27.1",
+      "go_opentelemetry_io_otel": "v1.43.0",
+      "runtime_base": "alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11"
+    },
+    "local_proof": {
+      "docker_build": "pass",
+      "goose_version": "v3.27.1",
+      "trivy_0_57_1": "pass: Total 0 (HIGH 0, CRITICAL 0)"
+    },
+    "local_sanity": {
+      "go_vet": "pass",
+      "govulncheck": "pass: no reachable vulnerabilities",
+      "docker_compose_config": "pass",
+      "go_test": "fail: internal/modules/postgres TestOutboxRepository_LeaseOutboxForPublish_SetsPublishing did not lease the aged pending row; outside goose image build path"
+    },
+    "ci_required": "Security Release must rebuild and scan the fixed published goose image before this blocker is resolved."
   }
 }

@@ -1,12 +1,27 @@
 # Production Proof Report
 
-Generated: `2026-05-11T17:55:00Z`
+Generated: `2026-05-12T02:55:00Z`
 
 ## Final Claim
 
-> **BLOCKED: Production-readiness proof cannot be completed because no safe staging/production smoke URL is configured.**
+> **FAIL: Published goose image vulnerability scan failed until rebuilt image passes Trivy in Security Release.**
 
-Go Vulnerability Scan failed on PR `203` before the security update because CI used Go `1.25.9` and `golang.org/x/net v0.52.0`. The repository now uses Go `1.25.10` and `golang.org/x/net v0.53.0`; the updated Security, CI, and Production Proof workflows all passed on commit `2482821c7222bb008dd1ceb913b3c64c602cadfc`. Production-readiness proof remains blocked only because no safe staging/production URL is configured for read-only smoke.
+Security Release #99 failed after the app image scan passed because the published goose image `ghcr.io/leduytuanvu/avf-vending-api-goose@sha256:27c4afb1723e3109ccf08be271b4276308ab66a82b66a699b1995259bf3b62dc` embedded vulnerable Go module metadata in `/usr/local/bin/goose`.
+
+## Security Release #99 Goose Blocker
+
+- Failed workflow: Security Release #99, `Published Image Vulnerability Scan`.
+- Failed image: `ghcr.io/leduytuanvu/avf-vending-api-goose@sha256:27c4afb1723e3109ccf08be271b4276308ab66a82b66a699b1995259bf3b62dc`.
+- App image status: pass.
+- Goose OS scan: Alpine HIGH/CRITICAL count `0`.
+- Goose binary finding: `/usr/local/bin/goose` embedded `go.opentelemetry.io/otel v1.40.0`, affected by `CVE-2026-29181` HIGH, fixed in `v1.41.0`.
+- Root cause: `deployments/prod/Dockerfile.goose` cloned `pressly/goose v3.27.0`, whose module graph contains `go.opentelemetry.io/otel v1.40.0`.
+- Fix in this branch: build goose from `pressly/goose v3.27.1`, which pulls `go.opentelemetry.io/otel v1.43.0`, and move the goose runtime base from unsupported `alpine:3.20` to digest-pinned `alpine:3.23`.
+- Local proof: `docker build -f deployments/prod/Dockerfile.goose -t avf-vending-api-goose:local .` passed; `goose -version` reports `v3.27.1`; local Trivy `0.57.1` image scan passed with `Total: 0 (HIGH: 0, CRITICAL: 0)`.
+- Local sanity: `go vet ./...`, `govulncheck ./...`, and `docker compose -f deployments/docker/docker-compose.yml config` passed. `go test ./... -count=1` failed locally in `internal/modules/postgres` at `TestOutboxRepository_LeaseOutboxForPublish_SetsPublishing`; this is outside the goose image build path and remains for CI confirmation.
+- Release status before CI: still failed until Security Release rebuilds and scans the newly published goose image.
+
+The earlier Go Vulnerability Scan blocker is resolved: the repository uses Go `1.25.10` and `golang.org/x/net v0.53.0`; Security, CI, and Production Proof workflows passed for that update on commit `2482821c7222bb008dd1ceb913b3c64c602cadfc`.
 
 ## Proven Locally
 
@@ -47,6 +62,7 @@ Go Vulnerability Scan failed on PR `203` before the security update because CI u
 ## Still Blocked
 
 - Read-only staging/production smoke was not run because none of `STAGING_BASE_URL`, `PRODUCTION_BASE_URL`, `PROD_BASE_URL`, or `BASE_URL_PROD` is configured.
+- Full REST OpenAPI live coverage remains partial and must not be represented as 100% live API coverage.
 
 ## Changed Proof Artifacts
 
