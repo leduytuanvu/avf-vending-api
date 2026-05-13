@@ -17,8 +17,8 @@ Registration lives primarily in `internal/httpserver/server.go`:
 - **`/v1/reports/*`** — `RequireDenyMachinePrincipal`, then `RequireAnyPermission(auth.PermReportsRead)`, plus bounded report windows.
 - `/v1/commerce/*` (except public webhook) — Bearer JWT + `RequireOrganizationScope`.
 - `/v1/device/machines/{machineId}/*` — Bearer JWT + `RequireMachineURLAccess` + **`RequireAnyRole(platform_admin, org_admin)`** today (`internal/httpserver/device_http.go`). **Hardening:** add `CanAccessHTTPDeviceBridge`-style policy so machine-scoped JWTs with `machine_ids` may call the bridge without org-admin role, still subject to tenant binding middleware in §3.
-- `/metrics` on the **main** HTTP server — **unauthenticated** when `METRICS_ENABLED=true`; restrict by **bind address**, reverse proxy ACL, or private network. Optional **ops** HTTP server (`OPS_HTTP_ADDR`) hosts readiness and may expose metrics separately — see `internal/observability/ops_http.go`.
-- `/swagger/*` — intentionally **public documentation** when `HTTP_SWAGGER_UI_ENABLED=true`; `/v1/*` still requires Bearer JWT except explicitly public routes (e.g. commerce webhook).
+- `/metrics` on the **main** HTTP server — in **production** usually **not mounted** (404) when metrics are **ops-only**; optional **`METRICS_EXPOSE_ON_PUBLIC_HTTP`** with token + operator allow flags. Prefer **`HTTP_OPS_ADDR/metrics`** (see `internal/observability/ops_http.go`).
+- `/swagger/*` — OpenAPI JSON (`/swagger/doc.json`) and Swagger UI mount only when their respective env flags (and production allow flags) enable them; defaults are fail-closed in production. `/v1/*` still requires Bearer JWT except explicitly public routes (e.g. commerce webhook).
 
 ## 3. Tenant isolation for machine URLs
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # Production/staging read-only smoke. Never calls mutating routes.
+#
+# Optional (passed through to run-readonly-smoke.sh): APP_ENV, SMOKE_EXPECT_OPENAPI_JSON,
+# SMOKE_EXPECT_PUBLIC_METRICS, OPS_BASE_URL, METRICS_SCRAPE_TOKEN (never printed; use env only).
 
 set -Eeuo pipefail
 
@@ -49,12 +52,18 @@ from pathlib import Path
 src = Path(sys.argv[1])
 payload = json.loads(src.read_text(encoding="utf-8"))
 status = "PASS" if int(payload.get("exit_code", 1)) == 0 else "FAIL"
+exp = payload.get("expectations") or {}
 report = {
     "generated_at": payload.get("generated_at"),
     "production_readonly_smoke": status,
     "base_url": payload.get("base_url"),
+    "expectations": exp,
     "probes": payload.get("probes", []),
     "evidence_path": str(src),
+    "notes": [
+        "Public GET /metrics returning 404 in production is expected when METRICS_EXPOSE_ON_PUBLIC_HTTP is not enabled; scrape the ops listener (HTTP_OPS_ADDR) instead.",
+        "GET /swagger/doc.json returns 404 until HTTP_OPENAPI_JSON_ENABLED=true and (in production) PRODUCTION_OPENAPI_JSON_ALLOWED=true.",
+    ],
 }
 Path(sys.argv[2]).write_text(json.dumps(report, indent=2), encoding="utf-8")
 with Path(sys.argv[3]).open("w", encoding="utf-8") as f:
@@ -62,8 +71,21 @@ with Path(sys.argv[3]).open("w", encoding="utf-8") as f:
     f.write(f"- Production read-only smoke: **{status}**\n")
     f.write(f"- Base URL: `{payload.get('base_url')}`\n")
     f.write(f"- Evidence: `{src}`\n\n")
-    f.write("| Method | Path | Status | Latency ms |\n")
-    f.write("|---|---|---:|---:|\n")
+    if exp:
+        f.write("## Expectations (from smoke)\n\n")
+        for k, v in exp.items():
+            if v is not None:
+                f.write(f"- `{k}`: `{v}`\n")
+        f.write("\n")
+    f.write("## Notes\n\n")
+    for note in report["notes"]:
+        f.write(f"- {note}\n")
+    f.write("\n")
+    f.write("| Class | Path | Method | Status | Latency ms | Outcome |\n")
+    f.write("|---|---|:---:|---:|---:|---|\n")
     for probe in payload.get("probes", []):
-        f.write(f"| GET | `{probe.get('path')}` | {probe.get('status')} | {probe.get('latency_ms')} |\n")
+        cls = probe.get("probe_class", "")
+        f.write(
+            f"| {cls} | `{probe.get('path')}` | GET | {probe.get('status')} | {probe.get('latency_ms')} | {probe.get('outcome')} |\n"
+        )
 PY

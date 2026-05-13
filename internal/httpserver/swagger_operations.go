@@ -60,7 +60,7 @@ func DocOpVersion() {}
 
 // DocOpSwaggerDocJSON godoc
 // @Summary OpenAPI 3.0 document (embedded)
-// @Description Served when `HTTP_OPENAPI_JSON_ENABLED=true` (default on). Unrelated to Swagger UI. No `Authorization` header required.
+// @Description Served when `HTTP_OPENAPI_JSON_ENABLED=true`. In **production** the effective default when unset is **off**; turning the route on explicitly requires `PRODUCTION_OPENAPI_JSON_ALLOWED=true`. Unrelated to Swagger UI. No `Authorization` header required when mounted.
 // @Tags System
 // @Produce application/json
 // @Success 200 {object} object "OpenAPI 3.0 document root"
