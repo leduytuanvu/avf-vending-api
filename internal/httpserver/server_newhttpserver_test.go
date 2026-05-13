@@ -3,6 +3,7 @@ package httpserver
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -118,6 +119,28 @@ func TestNewHTTPServer_production_swaggerDisabled_noSwaggerRoutes(t *testing.T) 
 	if recDoc.Code != http.StatusOK {
 		t.Fatalf("GET /swagger/doc.json: status=%d want 200 (OpenAPI JSON without UI)", recDoc.Code)
 	}
+}
+
+func TestNewHTTPServer_production_openAPIJSONOnly_docJSONBodyShape(t *testing.T) {
+	t.Parallel()
+	cfg := testHTTPServerConfig(t)
+	cfg.AppEnv = config.AppEnvProduction
+	cfg.SwaggerUIEnabled = false
+	cfg.OpenAPIJSONEnabled = true
+	hs, err := NewHTTPServer(cfg, zap.NewNop(), stubReadinessProbe{}, &api.HTTPApplication{}, nil, nil)
+	require.NoError(t, err)
+	rec := httptest.NewRecorder()
+	hs.srv.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/swagger/doc.json", nil))
+	require.Equal(t, http.StatusOK, rec.Code)
+	ct := rec.Header().Get("Content-Type")
+	require.Contains(t, ct, "application/json", "Content-Type: %s", ct)
+	var doc map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &doc))
+	_, hasOpenapi := doc["openapi"]
+	_, hasSwagger2 := doc["swagger"]
+	require.True(t, hasOpenapi || hasSwagger2, "document should declare openapi or swagger version field")
+	_, hasPaths := doc["paths"]
+	require.True(t, hasPaths, "document should include paths")
 }
 
 func TestNewHTTPServer_production_openAPIDisabled_noDocJSON(t *testing.T) {
