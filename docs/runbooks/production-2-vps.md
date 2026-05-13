@@ -39,14 +39,15 @@ Responsibilities:
 - connect to managed or remote stateful services by env only
 - do not terminate MQTT/TCP
 
-### API documentation (Swagger UI)
+### API documentation (OpenAPI JSON)
 
-Production env templates set `HTTP_SWAGGER_UI_ENABLED=true`. Public URLs on the API host:
+Templates default to **no** public `GET /swagger/doc.json` until operators set `HTTP_OPENAPI_JSON_ENABLED=true` **and** `PRODUCTION_OPENAPI_JSON_ALLOWED=true`. **Swagger UI** stays off (`HTTP_SWAGGER_UI_ENABLED=false`) unless you also set `PRODUCTION_SWAGGER_UI_ALLOWED=true`.
 
-- Swagger UI: `https://api.ldtv.dev/swagger/index.html`
-- Raw OpenAPI JSON: `https://api.ldtv.dev/swagger/doc.json`
+When enabled, JSON-only is enough for Postman imports (`https://<api-host>/swagger/doc.json`) without serving `/swagger/index.html`.
 
 These endpoints are **documentation only**. **`/v1/*`** routes still require a valid **`Authorization: Bearer <JWT>`** (and remain subject to the same auth middleware as always).
+
+**Metrics:** Prometheus should scrape **`HTTP_OPS_ADDR`** (for example `http://127.0.0.1:8081/metrics` from the private network or sidecar), not public `:8080`, unless you deliberately enable `METRICS_EXPOSE_ON_PUBLIC_HTTP` with operator approval flags—see `docs/operations/production-openapi-and-metrics.md`.
 
 ### Data node
 
