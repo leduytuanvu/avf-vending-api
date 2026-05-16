@@ -3435,7 +3435,6 @@ func DocOpV1AdminMachineActivationCodesList() {}
 // @Router /v1/admin/machines/{machineId}/activation-codes/{activationCodeId} [delete]
 func DocOpV1AdminMachineActivationCodeDelete() {}
 
-
 // DocOpV1AdminTechniciansList godoc
 // @Summary List technicians (admin)
 // @Description Directory of technicians for the company. **platform_admin** requires **scope_id** query. Optional **technician_id**, **search** (matches display_name or email), **from** / **to** on `created_at`, pagination **limit** / **offset**.
