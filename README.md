@@ -65,7 +65,7 @@ make verify-workflows   # actionlint + workflow contract scripts (Workflow and S
 make ci-full            # ci-gates + all tests (export TEST_DATABASE_URL for postgres integration tests)
 ```
 
-Install **sqlc** for `make sqlc-check` / `make ci-gates`: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0` (pin should match the workflow).
+Install **sqlc** for `make sqlc-check` / `make ci-gates`: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1` (pin must match `SQLC_VERSION` in the `Makefile`; CI runs `make api-contract-check`).
 
 **Swagger / OpenAPI** (embedded in the API process): annotations live in [`cmd/api/main.go`](cmd/api/main.go) (API metadata) and [`internal/httpserver/swagger_operations.go`](internal/httpserver/swagger_operations.go) (per-route docs). Regenerate committed artifacts with `make swagger` (uses Python 3 via `PY=python3` by default; on Windows use `make swagger PY=python` if needed). CI and `make swagger-check` fail when [`docs/swagger`](docs/swagger) is stale. With Swagger enabled (default in non-production; see `HTTP_SWAGGER_UI_ENABLED` in [`.env.example`](.env.example)), the server serves **Swagger UI** at `/swagger/index.html` and raw **OpenAPI 3.0** JSON at `/swagger/doc.json` (multi-environment **Servers** + shared error model).
 

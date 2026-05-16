@@ -89,6 +89,8 @@ ALLOW_PROD_DESTRUCTIVE_MIGRATIONS=true DEPLOY_TARGET=production bash scripts/ci/
 
 - `scripts/check_migrations.sh` — thin wrapper; use `scripts/ci/verify_migrations.sh` for the full gate.
 - `docs/architecture/migration-strategy.md` — broader migration strategy.
+- **`docs/runbooks/manual-db-cleanup/`** — operator-run SQL that must **never** ship as goose `Up` (blocked patterns such as `DROP TABLE` / `DROP COLUMN`). Example: legacy scope teardown after the single-company app rollout.
+
 
 ## Prometheus signals during migration windows
 
