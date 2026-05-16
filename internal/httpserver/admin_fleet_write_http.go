@@ -35,6 +35,7 @@ func mountAdminFleetWriteRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 		r.Get("/technicians/{technicianId}", serveAdminTechnicianGet(app, f))
 		r.Get("/technician-assignments", serveAdminTechnicianAssignmentsList(app))
 		r.Get("/technician-assignments/{assignmentId}", serveAdminAssignmentGet(app, f))
+		r.Get("/assignments/{assignmentId}", serveAdminAssignmentGet(app, f))
 	})
 
 	r.Group(func(r chi.Router) {
@@ -42,6 +43,7 @@ func mountAdminFleetWriteRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 		r.With(writeRL).Post("/sites", serveAdminSiteCreate(app, f))
 		r.With(writeRL).Patch("/sites/{siteId}", serveAdminSitePatch(app, f))
 		r.With(writeRL).Post("/sites/{siteId}/disable", serveAdminSiteDisable(app, f))
+		r.With(writeRL).Post("/sites/{siteId}/archive", serveAdminSiteDisable(app, f))
 		r.With(writeRL).Delete("/sites/{siteId}", serveAdminSiteDeactivate(app, f))
 
 		r.With(writeRL).Post("/machines", serveAdminMachineCreate(app, f))
@@ -58,9 +60,22 @@ func mountAdminFleetWriteRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 			r.With(writeRL).Post("/machines/{machineId}/mark-compromised", serveAdminMachineCompromised(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/rotate-credential", serveAdminMachineRotateCredential(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/rotate-credentials", serveAdminMachineRotateCredential(app, f))
+			r.With(writeRL).Post("/machines/{machineId}/rotate-token-version", serveAdminMachineRotateCredential(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/revoke-credentials", serveAdminMachineRevokeCredential(app, f))
+			r.With(writeRL).Post("/machines/{machineId}/revoke-token", serveAdminMachineRevokeCredential(app, f))
+			r.With(writeRL).Post("/machines/{machineId}/transfer-site", serveAdminMachineTransferSite(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/revoke-sessions", serveAdminMachineRevokeSessions(app, f))
 		})
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAnyPermission(auth.PermFleetRead, auth.PermTechnicianRead))
+		r.Get("/machines/{machineId}/technicians", serveAdminMachineTechniciansList(app))
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAnyPermission(auth.PermTechnicianWrite, auth.PermFleetWrite))
+		r.With(writeRL).Post("/machines/{machineId}/technicians", serveAdminMachineTechnicianAssign(app, f))
+		r.With(writeRL).Delete("/machines/{machineId}/technicians/{userId}", serveAdminMachineTechnicianRemove(app, f))
 	})
 
 	r.Group(func(r chi.Router) {
@@ -74,6 +89,8 @@ func mountAdminFleetWriteRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 		r.With(writeRL).Patch("/technician-assignments/{assignmentId}", serveAdminAssignmentPatch(app, f))
 		r.With(writeRL).Post("/technician-assignments/{assignmentId}/cancel", serveAdminAssignmentCancel(app, f))
 		r.With(writeRL).Delete("/technician-assignments/{assignmentId}", serveAdminAssignmentRelease(app, f))
+		r.With(writeRL).Post("/assignments", serveAdminAssignmentCreate(app, f))
+		r.With(writeRL).Delete("/assignments/{assignmentId}", serveAdminAssignmentRelease(app, f))
 	})
 
 }

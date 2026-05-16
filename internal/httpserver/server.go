@@ -250,6 +250,10 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 					mountAdminFinanceDailyCloseRoutes(r, app)
 				})
 				mountAdminFleetWriteRoutes(r, app, writeRL)
+				mountAdminOperationsRoutes(r, app, writeRL)
+				mountAdminAnomalyRoutes(r, app, writeRL)
+				mountAdminProvisioningRoutes(r, app, writeRL)
+				mountAdminRolloutRoutes(r, app, writeRL)
 				mountAdminMachineDiagnosticsRoutes(r, app, writeRL)
 				r.Group(func(r chi.Router) {
 					r.Use(auth.RequireAnyPermission(auth.PermFleetRead, auth.PermSiteRead, auth.PermTechnicianRead))
@@ -298,6 +302,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 				mountAdminOTACampaignRoutes(r, app, writeRL)
 				mountArtifactAdminRoutes(r, app, writeRL)
 				mountAdminActivationRoutes(r, app, writeRL)
+				mountAdminCompanyScopedActivationRoutes(r, app, writeRL)
 				mountAdminPaymentProviderRoutes(r, app)
 			})
 

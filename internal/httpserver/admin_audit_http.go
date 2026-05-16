@@ -22,6 +22,7 @@ func mountAdminAuditRoutes(r chi.Router, app *api.HTTPApplication) {
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermAuditRead))
 		r.Get("/audit/events", getAdminAuditEvents(svc))
+		r.Get("/audit/events/{auditEventId}", getAdminOrgAuditEventByID(svc))
 	})
 }
 
