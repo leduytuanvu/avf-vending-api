@@ -8,9 +8,9 @@ import (
 // Canonical form uses colon namespaces (e.g. user:read, catalog:write). Legacy dotted strings from
 // older deployments are accepted in HasPermission via legacyPermissionCanonical.
 //
-// RBAC overview: platform_admin → admin.all and may target any organization when HTTP handlers supply an explicit
-// organizationId / organization_id query (see CanAccessOrganizationAdminData). org_admin receives orgScopedPermissions
-// and is limited to JWT org scope. Specialized roles map to subsets in permissionsByNormalizedRole.
+// RBAC overview: platform_admin → admin.all and may target any company when HTTP handlers supply an explicit
+// scopeId / scope_id query (see CanAccessCompanyAdminData). admin receives orgScopedPermissions
+// and is limited to JWT scope_id claims. Specialized roles map to subsets in permissionsByNormalizedRole.
 const (
 	PermAdminAll = "admin.all"
 
@@ -34,7 +34,7 @@ const (
 	PermFleetRead  = "fleet:read"
 	PermFleetWrite = "fleet:write"
 
-	// Site scope uses the same fleet tenant gates as other fleet routes.
+	// Site scope uses the same fleet single-company gates as other fleet routes.
 	PermSiteRead  = "fleet:read"
 	PermSiteWrite = "fleet:write"
 
@@ -114,7 +114,7 @@ func canonicalPermission(p string) string {
 	return p
 }
 
-// orgScopedPermissions is the full interactive capability set for organization administrators.
+// orgScopedPermissions is the full interactive capability set for company administrators.
 var orgScopedPermissions = []string{
 	PermUserRead, PermUserWrite, PermUserRoles, PermUserSessionsRevoke,
 	PermCatalogRead, PermCatalogWrite, PermCatalogDelete,
@@ -133,7 +133,7 @@ var orgScopedPermissions = []string{
 	PermAuditRead,
 }
 
-// viewerPermissions is read-only interactive access for tenant dashboards (no user administration).
+// viewerPermissions is read-only interactive access for single-company dashboards (no user administration).
 var viewerPermissions = []string{
 	PermCatalogRead,
 	PermFleetRead,
@@ -149,7 +149,7 @@ var viewerPermissions = []string{
 	PermOTARead,
 }
 
-// orgMemberPermissions matches viewerPermissions: safe read-only org member baseline (JWT role org_member).
+// orgMemberPermissions matches viewerPermissions: safe read-only org member baseline (JWT role member).
 var orgMemberPermissions = append([]string(nil), viewerPermissions...)
 
 var permissionsByNormalizedRole = map[string][]string{
@@ -249,7 +249,7 @@ func HasAnyPermission(p Principal, wants ...string) bool {
 }
 
 // CanFleetMachineLifecycle reports whether the principal may disable, retire, or rotate credentials
-// for machines. Requires fleet write plus platform_admin, org_admin, or fleet_manager.
+// for machines. Requires fleet write plus platform_admin, admin, or fleet_manager.
 // Other roles (e.g. technician_manager) may hold fleet write for provisioning but must not
 // perform destructive lifecycle operations until finer-grained fleet permissions exist.
 func CanFleetMachineLifecycle(p Principal) bool {

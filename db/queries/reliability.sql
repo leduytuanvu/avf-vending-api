@@ -1,6 +1,5 @@
 -- name: InsertOutboxEvent :one
 INSERT INTO outbox_events (
-    organization_id,
     topic,
     event_type,
     payload,
@@ -8,10 +7,16 @@ INSERT INTO outbox_events (
     aggregate_id,
     idempotency_key
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+)
 RETURNING
     id,
-    organization_id,
     topic,
     event_type,
     payload,
@@ -34,7 +39,6 @@ RETURNING
 -- name: ListOutboxUnpublished :many
 SELECT
     id,
-    organization_id,
     topic,
     event_type,
     payload,
@@ -121,7 +125,6 @@ WHERE
     o.id = c.id
 RETURNING
     o.id,
-    o.organization_id,
     o.topic,
     o.event_type,
     o.payload,
@@ -226,7 +229,6 @@ FROM
 -- name: GetOutboxByTopicAndIdempotency :one
 SELECT
     id,
-    organization_id,
     topic,
     event_type,
     payload,

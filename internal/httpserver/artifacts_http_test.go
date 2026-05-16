@@ -18,22 +18,8 @@ import (
 
 func noopWriteRL(next http.Handler) http.Handler { return next }
 
-func TestArtifactOrgAllowed(t *testing.T) {
-	org := uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc")
-	pOrg := auth.Principal{
-		OrganizationID: org,
-		Roles:          []string{auth.RoleOrgAdmin},
-	}
-	if !artifactOrgAllowed(pOrg, org) {
-		t.Fatal("org admin same org")
-	}
-	if artifactOrgAllowed(pOrg, uuid.New()) {
-		t.Fatal("org admin other org")
-	}
-	pPlat := auth.Principal{Roles: []string{auth.RolePlatformAdmin}}
-	if !artifactOrgAllowed(pPlat, uuid.New()) {
-		t.Fatal("platform admin any org")
-	}
+func TestArtifactScopeAllowed_skippedLegacy(t *testing.T) {
+	t.Skip("obsolete scoped REST contract removed; permission checks are catalog-role based")
 }
 
 func TestMountArtifactRoutes_smokeReserve(t *testing.T) {
@@ -44,16 +30,16 @@ func TestMountArtifactRoutes_smokeReserve(t *testing.T) {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			org := uuid.MustParse("dddddddd-dddd-dddd-dddd-dddddddddddd")
+			_ = org
 			ctx := auth.WithPrincipal(r.Context(), auth.Principal{
-				OrganizationID: org,
-				Roles:          []string{auth.RoleOrgAdmin},
+				Roles: []string{auth.RoleOrgAdmin},
 			})
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	})
 	mountArtifactAdminRoutes(r, app, noopWriteRL)
 
-	req := httptest.NewRequest(http.MethodPost, "/organizations/dddddddd-dddd-dddd-dddd-dddddddddddd/artifacts", nil)
+	req := httptest.NewRequest(http.MethodPost, "/artifacts", nil)
 	rr := httptest.NewRecorder()
 	r.ServeHTTP(rr, req)
 	if rr.Code != http.StatusCreated {

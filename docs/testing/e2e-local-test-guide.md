@@ -54,7 +54,7 @@ Machine-readable row shape for **`improvement-findings.jsonl`**: **`tests/e2e/da
 Use **`./tests/e2e/run-flow-review.sh`** when you want improvement findings and reports **without** creating or changing server-side data:
 
 - **`--static-only`** — scans **`docs/testing/e2e-flow-coverage.md`**, the **Postman** collection (**`POSTMAN_COLLECTION`**), **`proto/avf/machine/v1`**, **`docs/api/mqtt-contract.md`**, and scenario scripts for coverage gaps and missing safety references. No **`curl`** mutations.
-- **`--reuse-data path/to/test-data.json`** — runs the static pass, copies the JSON into the run dir, checks required ids (**`organizationId`**, **`siteId`**, **`machineId`**, **`productId`** / **`productIds[0]`**, **`slotCode`** / slot ids), then issues **read-only** **`GET /health/live`**, **`GET /version`**, **`GET /v1/machines/{id}/sale-catalog?include_images=true`** (machine JWT from **`.env`** / **`secrets.private.json`** / **`MACHINE_TOKEN`**), optional admin **slots** list when **`ADMIN_TOKEN`** is set, and **`MachineBootstrapService/GetBootstrap`** via **`grpcurl`** when the port is open.
+- **`--reuse-data path/to/test-data.json`** — runs the static pass, copies the JSON into the run dir, checks required ids (**`scopeId`**, **`siteId`**, **`machineId`**, **`productId`** / **`productIds[0]`**, **`slotCode`** / slot ids), then issues **read-only** **`GET /health/live`**, **`GET /version`**, **`GET /v1/machines/{id}/sale-catalog?include_images=true`** (machine JWT from **`.env`** / **`secrets.private.json`** / **`MACHINE_TOKEN`**), optional admin **slots** list when **`ADMIN_TOKEN`** is set, and **`MachineBootstrapService/GetBootstrap`** via **`grpcurl`** when the port is open.
 
 The runner **always** sets **`E2E_ALLOW_WRITES=false`**, so it does not align with flows that require **`E2E_PRODUCTION_WRITE_CONFIRMATION`** for writes — by design it is safe for **production read-only** smoke when your **tokens and org policy** allow probing health, version, **`sale-catalog`**, admin **slots** list, and **GetBootstrap** (still treat responses and **`.e2e-runs/`** as sensitive). Full triage workflow (failures vs findings, P0–P3, tickets, Cursor prompt): **[`e2e-remediation-playbook.md`](e2e-remediation-playbook.md)**.
 
@@ -179,7 +179,7 @@ GRPC_USE_REFLECTION=true \
   ./tests/e2e/run-grpc-local.sh --reuse-data .e2e-runs/run-<…>/test-data.json
 ```
 
-- **`--reuse-data`** should provide **`organizationId`**, **`machineId`**, **`productId`** (for commerce); copy **`secrets.private.json`** with **`machineToken`** or rely on **`20_grpc_machine_auth.sh`** with **`E2E_ACTIVATION_CODE`** / `activationCodePlain`.
+- **`--reuse-data`** should provide **`scopeId`**, **`machineId`**, **`productId`** (for commerce); copy **`secrets.private.json`** with **`machineToken`** or rely on **`20_grpc_machine_auth.sh`** with **`E2E_ACTIVATION_CODE`** / `activationCodePlain`.
 - Mutating commerce steps need **`E2E_ALLOW_WRITES=true`** (see **`22_grpc_commerce_cash_sale.sh`**).
 - **`reports/grpc-contract-summary.md`**: pass / fail / skip table per RPC; **`reports/grpc-contract-results.jsonl`**: machine-readable log. Missing RPCs in repo protos are logged **`skip`** / **`method_not_in_repo`** (never silent).
 - **Metadata:** authenticated calls use **`Authorization: Bearer $MACHINE_TOKEN`** and optionally **`x-machine-id`**. Writes send **`idempotency-key`** where the harness sets one.
@@ -207,7 +207,7 @@ E2E_TARGET=local E2E_ALLOW_WRITES=true \
   ./tests/e2e/run-vending-app-flows.sh --rest-equivalent --reuse-data .e2e-runs/run-<…>/test-data.json
 ```
 
-- **`test-data.json`** should include `machineId`, `productId`, `organizationId` / site fields as produced by web-admin setup (or your lab seed). Optionally set **`e2eTestMachine`** to `true` in JSON for production-target guard alignment.
+- **`test-data.json`** should include `machineId`, `productId`, `scopeId` / site fields as produced by web-admin setup (or your lab seed). Optionally set **`e2eTestMachine`** to `true` in JSON for production-target guard alignment.
 - Copy **`secrets.private.json`** from the same prior run directory if you reuse data so **`machineToken`** is available; or set **`E2E_ACTIVATION_CODE`** / `activationCodePlain` in `test-data.json` and omit skip so **`02_machine_activation_bootstrap_rest.sh`** can claim. Use **`E2E_SKIP_ACTIVATION_CLAIM=1`** when the token is already in secrets.
 - Artifacts: **`reports/va-rest-results.jsonl`**, **`reports/summary.md`** (appended section), REST captures under **`rest/`**, and **`test-data.json`** fields such as **`vmCashSuccessOrderId`** / **`vmCashSuccessPaymentId`** after cash success.
 - **Production payment/refund:** requires `E2E_TARGET=production`, `E2E_ALLOW_WRITES=true`, `E2E_PRODUCTION_WRITE_CONFIRMATION=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION`, and **`e2eTestMachine`** `true` or `1` in `test-data.json`.
@@ -226,7 +226,7 @@ E2E_TARGET=local E2E_ALLOW_WRITES=true \
 
 ## Reuse vs fresh data
 
-- **`--reuse-data PATH`** — same org/machine IDs across runs; faster regression.
+- **`--reuse-data PATH`** — same company/machine IDs across runs; faster regression.
 - **`--fresh-data`** — after activation collisions, idempotency conflicts, or corrupted scratch state.
 
 See **[`e2e-test-data-guide.md`](e2e-test-data-guide.md)** for entity hierarchy and cleanup.

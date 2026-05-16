@@ -38,9 +38,19 @@ WHERE
 
 -- name: InsertMachineCredential :one
 INSERT INTO
-    machine_credentials (organization_id, machine_id, credential_version, secret_hash, status)
+    machine_credentials (
+    machine_id,
+    credential_version,
+    secret_hash,
+    status
+)
 VALUES
-    ($1, $2, $3, $4, $5)
+    (
+    $1,
+    $2,
+    $3,
+    $4
+)
 RETURNING
     *;
 
@@ -51,8 +61,8 @@ SET
     rotated_at = now()
 WHERE
     machine_id = $1
-    AND organization_id = $2
-    AND credential_version = $3
+    AND TRUE
+    AND credential_version = $2
     AND status = 'active';
 
 -- name: MarkMachineCredentialsRevokedActive :exec
@@ -62,7 +72,7 @@ SET
     revoked_at = now()
 WHERE
     machine_id = $1
-    AND organization_id = $2
+    AND TRUE
     AND status = 'active';
 
 -- name: MarkMachineCredentialsCompromised :exec
@@ -72,26 +82,36 @@ SET
     revoked_at = COALESCE(revoked_at, now())
 WHERE
     machine_id = $1
-    AND organization_id = $2
+    AND TRUE
     AND status = 'active';
 
 -- name: InsertMachineSession :one
 INSERT INTO
     machine_sessions (
-        organization_id,
-        machine_id,
-        credential_id,
-        refresh_token_hash,
-        access_token_jti,
-        refresh_token_jti,
-        credential_version,
-        status,
-        expires_at,
-        user_agent,
-        ip_address
-    )
+    machine_id,
+    credential_id,
+    refresh_token_hash,
+    access_token_jti,
+    refresh_token_jti,
+    credential_version,
+    status,
+    expires_at,
+    user_agent,
+    ip_address
+)
 VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10
+)
 RETURNING
     *;
 
@@ -126,13 +146,12 @@ SET
     revoked_at = COALESCE(revoked_at, now())
 WHERE
     machine_id = $1
-    AND organization_id = $2
+    AND TRUE
     AND status = 'active';
 
 -- name: GetMachineSessionGate :one
 SELECT
     ms.id,
-    ms.organization_id,
     ms.machine_id,
     ms.credential_id,
     ms.credential_version AS session_credential_version,

@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-ALTER TABLE organizations
+ALTER TABLE companies
 ADD COLUMN default_timezone text NOT NULL DEFAULT 'UTC';
 
 ALTER TABLE sites
@@ -49,6 +49,6 @@ ALTER TABLE machines DROP COLUMN IF EXISTS timezone_override;
 
 ALTER TABLE sites DROP COLUMN IF EXISTS timezone;
 
-ALTER TABLE organizations DROP COLUMN IF EXISTS default_timezone;
+ALTER TABLE companies DROP COLUMN IF EXISTS default_timezone;
 
 -- +goose StatementEnd

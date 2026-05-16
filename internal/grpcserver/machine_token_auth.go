@@ -35,7 +35,7 @@ func (c *sqlMachineTokenCredentialChecker) ValidateMachineAccessClaims(ctx conte
 	if c == nil || c.q == nil {
 		return nil
 	}
-	if claims.MachineID == uuid.Nil || claims.OrganizationID == uuid.Nil {
+	if claims.MachineID == uuid.Nil {
 		return status.Error(codes.Unauthenticated, "machine identity claims required")
 	}
 	if claims.SessionID != uuid.Nil {
@@ -46,10 +46,6 @@ func (c *sqlMachineTokenCredentialChecker) ValidateMachineAccessClaims(ctx conte
 		if err != nil {
 			c.recordFailure(ctx, claims, "session_not_found")
 			return status.Error(codes.Unauthenticated, "machine session not found")
-		}
-		if sg.OrganizationID != claims.OrganizationID {
-			c.recordFailure(ctx, claims, "session_organization_mismatch")
-			return status.Error(codes.PermissionDenied, "machine organization mismatch")
 		}
 		now := time.Now().UTC()
 		if strings.ToLower(strings.TrimSpace(sg.SessionStatus)) != "active" || sg.SessionRevokedAt.Valid || !now.Before(sg.SessionExpiresAt.UTC()) {
@@ -77,20 +73,13 @@ func (c *sqlMachineTokenCredentialChecker) ValidateMachineAccessClaims(ctx conte
 			c.recordFailure(ctx, claims, "machine_not_active")
 			return status.Error(codes.PermissionDenied, "machine not active")
 		}
-		_ = c.q.MarkMachineCredentialUsed(ctx, db.MarkMachineCredentialUsedParams{
-			ID:             claims.MachineID,
-			OrganizationID: claims.OrganizationID,
-		})
+		_ = c.q.MarkMachineCredentialUsed(ctx, claims.MachineID)
 		return nil
 	}
 	row, err := c.q.GetMachineCredentialGate(ctx, claims.MachineID)
 	if err != nil {
 		c.recordFailure(ctx, claims, "machine_not_found")
 		return status.Error(codes.Unauthenticated, "machine not found")
-	}
-	if row.OrganizationID != claims.OrganizationID {
-		c.recordFailure(ctx, claims, "organization_mismatch")
-		return status.Error(codes.PermissionDenied, "machine organization mismatch")
 	}
 	if row.CredentialRevokedAt.Valid {
 		c.recordFailure(ctx, claims, "credentials_revoked")
@@ -106,15 +95,12 @@ func (c *sqlMachineTokenCredentialChecker) ValidateMachineAccessClaims(ctx conte
 		c.recordFailure(ctx, claims, "machine_not_active")
 		return status.Error(codes.PermissionDenied, "machine not active")
 	}
-	_ = c.q.MarkMachineCredentialUsed(ctx, db.MarkMachineCredentialUsedParams{
-		ID:             claims.MachineID,
-		OrganizationID: claims.OrganizationID,
-	})
+	_ = c.q.MarkMachineCredentialUsed(ctx, claims.MachineID)
 	return nil
 }
 
 func (c *sqlMachineTokenCredentialChecker) recordFailure(ctx context.Context, claims auth.MachineAccessClaims, reason string) {
-	if c == nil || c.audit == nil || claims.OrganizationID == uuid.Nil {
+	if c == nil || c.audit == nil {
 		return
 	}
 	mid := claims.MachineID.String()
@@ -131,12 +117,11 @@ func (c *sqlMachineTokenCredentialChecker) recordFailure(ctx context.Context, cl
 		md = []byte("{}")
 	}
 	_ = c.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: claims.OrganizationID,
-		ActorType:      compliance.ActorMachine,
-		ActorID:        &mid,
-		Action:         compliance.ActionMachineAuthFailed,
-		ResourceType:   "machine",
-		ResourceID:     &mid,
-		Metadata:       md,
+		ActorType:    compliance.ActorMachine,
+		ActorID:      &mid,
+		Action:       compliance.ActionMachineAuthFailed,
+		ResourceType: "machine",
+		ResourceID:   &mid,
+		Metadata:     md,
 	})
 }

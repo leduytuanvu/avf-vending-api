@@ -17,58 +17,58 @@ func timelineFetchLimit(limit int32) int32 {
 }
 
 // ListAuthEventsForMachine returns auth audit rows for a machine (newest first).
-func (s *Service) ListAuthEventsForMachine(ctx context.Context, organizationID, machineID uuid.UUID, limit int32) ([]domainoperator.AuthEvent, error) {
-	machine, err := s.machines.GetByID(ctx, machineID)
+func (s *Service) ListAuthEventsForMachine(ctx context.Context, companyID, machineID uuid.UUID, limit int32) ([]domainoperator.AuthEvent, error) {
+	_, err := s.machines.GetByID(ctx, machineID)
 	if err != nil {
 		return nil, err
 	}
-	if machine.OrganizationID != organizationID {
-		return nil, domainoperator.ErrOrganizationMismatch
+	if uuid.Nil != companyID {
+		return nil, domainoperator.ErrCompanyMismatch
 	}
 	return s.sessions.ListAuthEventsByMachineID(ctx, machineID, clampListLimit(limit))
 }
 
 // ListActionAttributionsForMachine returns operator-linked domain actions for a machine (newest first).
-func (s *Service) ListActionAttributionsForMachine(ctx context.Context, organizationID, machineID uuid.UUID, limit int32) ([]domainoperator.ActionAttribution, error) {
-	machine, err := s.machines.GetByID(ctx, machineID)
+func (s *Service) ListActionAttributionsForMachine(ctx context.Context, companyID, machineID uuid.UUID, limit int32) ([]domainoperator.ActionAttribution, error) {
+	_, err := s.machines.GetByID(ctx, machineID)
 	if err != nil {
 		return nil, err
 	}
-	if machine.OrganizationID != organizationID {
-		return nil, domainoperator.ErrOrganizationMismatch
+	if uuid.Nil != companyID {
+		return nil, domainoperator.ErrCompanyMismatch
 	}
 	return s.sessions.ListActionAttributionsByMachineID(ctx, machineID, clampListLimit(limit))
 }
 
-// ListActionAttributionsForTechnician returns attributions for sessions owned by a technician within an organization.
-func (s *Service) ListActionAttributionsForTechnician(ctx context.Context, organizationID, technicianID uuid.UUID, limit int32) ([]domainoperator.ActionAttribution, error) {
-	tech, err := s.technicians.GetByID(ctx, technicianID)
+// ListActionAttributionsForTechnician returns attributions for sessions owned by a technician within an company.
+func (s *Service) ListActionAttributionsForTechnician(ctx context.Context, companyID, technicianID uuid.UUID, limit int32) ([]domainoperator.ActionAttribution, error) {
+	_, err := s.technicians.GetByID(ctx, technicianID)
 	if err != nil {
 		return nil, err
 	}
-	if tech.OrganizationID != organizationID {
-		return nil, domainoperator.ErrOrganizationMismatch
+	if uuid.Nil != companyID {
+		return nil, domainoperator.ErrCompanyMismatch
 	}
-	return s.sessions.ListActionAttributionsForTechnician(ctx, organizationID, technicianID, clampListLimit(limit))
+	return s.sessions.ListActionAttributionsForTechnician(ctx, companyID, technicianID, clampListLimit(limit))
 }
 
-// ListActionAttributionsForUserPrincipal returns attributions for USER actor sessions in an organization.
-func (s *Service) ListActionAttributionsForUserPrincipal(ctx context.Context, organizationID uuid.UUID, userPrincipal string, limit int32) ([]domainoperator.ActionAttribution, error) {
+// ListActionAttributionsForUserPrincipal returns attributions for USER actor sessions in an company.
+func (s *Service) ListActionAttributionsForUserPrincipal(ctx context.Context, companyID uuid.UUID, userPrincipal string, limit int32) ([]domainoperator.ActionAttribution, error) {
 	principal := strings.TrimSpace(userPrincipal)
 	if principal == "" {
 		return nil, domainoperator.ErrInvalidActor
 	}
-	return s.sessions.ListActionAttributionsForUserPrincipal(ctx, organizationID, principal, clampListLimit(limit))
+	return s.sessions.ListActionAttributionsForUserPrincipal(ctx, companyID, principal, clampListLimit(limit))
 }
 
 // BuildMachineOperatorTimeline merges recent auth events, action attributions, and session lifecycle markers.
-func (s *Service) BuildMachineOperatorTimeline(ctx context.Context, organizationID, machineID uuid.UUID, limit int32) ([]TimelineItem, error) {
-	machine, err := s.machines.GetByID(ctx, machineID)
+func (s *Service) BuildMachineOperatorTimeline(ctx context.Context, companyID, machineID uuid.UUID, limit int32) ([]TimelineItem, error) {
+	_, err := s.machines.GetByID(ctx, machineID)
 	if err != nil {
 		return nil, err
 	}
-	if machine.OrganizationID != organizationID {
-		return nil, domainoperator.ErrOrganizationMismatch
+	if uuid.Nil != companyID {
+		return nil, domainoperator.ErrCompanyMismatch
 	}
 	fetch := timelineFetchLimit(limit)
 	auth, err := s.sessions.ListAuthEventsByMachineID(ctx, machineID, fetch)

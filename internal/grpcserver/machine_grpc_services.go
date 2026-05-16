@@ -145,7 +145,6 @@ func (s *machineActivationServer) ClaimActivation(ctx context.Context, req *mach
 	}
 	resp := &machinev1.ClaimActivationResponse{
 		MachineId:            out.MachineID.String(),
-		OrganizationId:       out.OrganizationID.String(),
 		SiteId:               out.SiteID.String(),
 		MachineName:          out.MachineName,
 		AccessToken:          out.MachineToken,
@@ -199,7 +198,6 @@ func (s *machineTokenServer) RefreshMachineToken(ctx context.Context, req *machi
 	}
 	return &machinev1.RefreshMachineTokenResponse{
 		MachineId:             out.MachineID.String(),
-		OrganizationId:        out.OrganizationID.String(),
 		SiteId:                out.SiteID.String(),
 		MachineName:           out.MachineName,
 		AccessToken:           out.MachineToken,
@@ -355,13 +353,12 @@ func recordMachineBootstrapAudit(ctx context.Context, deps MachineGRPCServicesDe
 	}
 	mid := claims.MachineID.String()
 	_ = deps.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: claims.OrganizationID,
-		ActorType:      compliance.ActorMachine,
-		ActorID:        &mid,
-		Action:         actionMachineBootstrapRequested,
-		ResourceType:   "machine",
-		ResourceID:     &mid,
-		Metadata:       []byte("{}"),
+		ActorType:    compliance.ActorMachine,
+		ActorID:      &mid,
+		Action:       actionMachineBootstrapRequested,
+		ResourceType: "machine",
+		ResourceID:   &mid,
+		Metadata:     []byte("{}"),
 	})
 }
 
@@ -435,7 +432,6 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 	resp := &machinev1.GetBootstrapResponse{
 		Machine: &machinev1.BootstrapMachine{
 			MachineId:         m.ID.String(),
-			OrganizationId:    m.OrganizationID.String(),
 			SiteId:            m.SiteID.String(),
 			HardwareProfileId: hw,
 			SerialNumber:      m.SerialNumber,

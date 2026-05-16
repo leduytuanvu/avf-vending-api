@@ -31,7 +31,6 @@
     "ADMIN_TOKEN": "missing_required",
     "ADMIN_EMAIL": "missing_optional",
     "ADMIN_PASSWORD": "missing_optional",
-    "E2E_ORGANIZATION_ID": "missing_required",
     "MACHINE_ID": "missing_required",
     "MACHINE_TOKEN": "missing_required",
     "E2E_ACTIVATION_CODE": "missing_optional",
@@ -73,19 +72,18 @@
       "login_reference": "internal/httpserver/auth_http.go mount under /v1/auth; tests/e2e/scenarios/01_web_admin_setup.sh",
       "required_missing_fields": [
         "ADMIN_TOKEN",
-        "E2E_ORGANIZATION_ID",
         "Either (ADMIN_EMAIL and ADMIN_PASSWORD) or ADMIN_TOKEN"
       ],
       "notes": [
-        "If ADMIN_TOKEN is set, E2E_ORGANIZATION_ID is still required unless org id is in reused test-data.json.",
-        "Email/password path requires ADMIN_EMAIL, ADMIN_PASSWORD, and E2E_ORGANIZATION_ID per 01_web_admin_setup.sh."
+        "If ADMIN_TOKEN is set, no company id is required in the single-company test harness.",
+        "Email/password path requires ADMIN_EMAIL and ADMIN_PASSWORD per 01_web_admin_setup.sh."
       ]
     },
     "test_namespace": {
       "status": "ready",
       "missing": [],
       "notes": [
-        "E2E_* naming fields present in .env.production.destructive.local for org/site/product/slot."
+        "E2E_* naming fields present in .env.production.destructive.local for company/site/product/slot."
       ]
     },
     "database": {
@@ -176,8 +174,8 @@
     "direct_db_seed": false
   },
   "missing_required_inputs": [
-    "ADMIN_TOKEN or (ADMIN_EMAIL + ADMIN_PASSWORD + E2E_ORGANIZATION_ID)",
-    "E2E_ORGANIZATION_ID when using password login or when ADMIN_TOKEN lacks org context in test-data",
+    "ADMIN_TOKEN or (ADMIN_EMAIL + ADMIN_PASSWORD)",
+    "E2E_SCOPE_ID when using password login or when ADMIN_TOKEN lacks company context in test-data",
     "MACHINE_ID and (MACHINE_TOKEN or E2E_ACTIVATION_CODE) for machine/gRPC/MQTT-heavy phases",
     "MQTT_HOST (+ likely MQTT_USERNAME/MQTT_PASSWORD) for MQTT phases",
     "GRPC_PROTO_ROOT when running grpcurl with GRPC_USE_REFLECTION=false",
@@ -186,7 +184,7 @@
   "operator_actions": [
     "Copy updated tests/e2e/.env.production.destructive.example into tests/e2e/.env.production.destructive.local and merge your secrets (never commit .local).",
     "Set MQTT_HOST (e.g. mqtt.ldtv.dev per runbook) and broker credentials from ops.",
-    "Set E2E_ORGANIZATION_ID to the target org UUID for admin login, or provide ADMIN_TOKEN plus org in reused test-data.json.",
+    "No company id is required for admin login; provide ADMIN_TOKEN or ADMIN_EMAIL+ADMIN_PASSWORD.",
     "Provide MACHINE_TOKEN via prior run secrets.private.json reuse, or MACHINE_ID + E2E_ACTIVATION_CODE for claim flows.",
     "Set GRPC_PROTO_ROOT to the absolute or repo-relative proto directory (e.g. proto) from your checkout.",
     "If exercising signed payment webhooks, export COMMERCE_PAYMENT_WEBHOOK_SECRET (or HMAC alias) matching server config without committing it.",

@@ -107,12 +107,11 @@ func serveAdminOTACampaignsList(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		out, err := app.AdminOTA.ListCampaigns(r.Context(), appotaadmin.CampaignListParams{
-			OrganizationID: scope.OrganizationID,
-			Limit:          scope.Limit,
-			Offset:         scope.Offset,
-			Status:         scope.Status,
-			From:           scope.From,
-			To:             scope.To,
+			Limit:  scope.Limit,
+			Offset: scope.Offset,
+			Status: scope.Status,
+			From:   scope.From,
+			To:     scope.To,
 		})
 		writeV1Collection(w, r.Context(), out, err)
 	}
@@ -120,7 +119,8 @@ func serveAdminOTACampaignsList(app *api.HTTPApplication) http.HandlerFunc {
 
 func serveAdminOTACampaignGet(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -130,7 +130,7 @@ func serveAdminOTACampaignGet(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_campaign_id", "invalid campaignId")
 			return
 		}
-		out, err := app.AdminOTA.GetCampaignDetail(r.Context(), orgID, cid)
+		out, err := app.AdminOTA.GetCampaignDetail(r.Context(), scopeID, cid)
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
 			return
@@ -155,7 +155,8 @@ func serveAdminOTACampaignCreate(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -171,7 +172,6 @@ func serveAdminOTACampaignCreate(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		out, err := app.AdminOTA.CreateCampaign(r.Context(), appotaadmin.CreateCampaignInput{
-			OrganizationID:     orgID,
 			Name:               body.Name,
 			ArtifactID:         body.ArtifactID,
 			ArtifactVersion:    body.ArtifactVersion,
@@ -204,7 +204,8 @@ func serveAdminOTACampaignPatch(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -219,7 +220,7 @@ func serveAdminOTACampaignPatch(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 			return
 		}
-		out, err := app.AdminOTA.PatchCampaign(r.Context(), orgID, cid, appotaadmin.PatchCampaignInput{
+		out, err := app.AdminOTA.PatchCampaign(r.Context(), scopeID, cid, appotaadmin.PatchCampaignInput{
 			Name:               body.Name,
 			ArtifactVersion:    body.ArtifactVersion,
 			CampaignType:       body.CampaignType,
@@ -241,7 +242,8 @@ func serveAdminOTACampaignTargetsPut(app *api.HTTPApplication) http.HandlerFunc 
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -257,9 +259,8 @@ func serveAdminOTACampaignTargetsPut(app *api.HTTPApplication) http.HandlerFunc 
 			return
 		}
 		err = app.AdminOTA.PutCampaignTargets(r.Context(), appotaadmin.PutTargetsInput{
-			OrganizationID: orgID,
-			CampaignID:     cid,
-			MachineIDs:     body.MachineIDs,
+			CampaignID: cid,
+			MachineIDs: body.MachineIDs,
 		})
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
@@ -271,7 +272,8 @@ func serveAdminOTACampaignTargetsPut(app *api.HTTPApplication) http.HandlerFunc 
 
 func serveAdminOTACampaignTargetsGet(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -281,7 +283,7 @@ func serveAdminOTACampaignTargetsGet(app *api.HTTPApplication) http.HandlerFunc 
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_campaign_id", "invalid campaignId")
 			return
 		}
-		items, err := app.AdminOTA.ListCampaignTargets(r.Context(), orgID, cid)
+		items, err := app.AdminOTA.ListCampaignTargets(r.Context(), scopeID, cid)
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
 			return
@@ -292,7 +294,8 @@ func serveAdminOTACampaignTargetsGet(app *api.HTTPApplication) http.HandlerFunc 
 
 func serveAdminOTACampaignResultsGet(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -302,7 +305,7 @@ func serveAdminOTACampaignResultsGet(app *api.HTTPApplication) http.HandlerFunc 
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_campaign_id", "invalid campaignId")
 			return
 		}
-		items, err := app.AdminOTA.ListCampaignResults(r.Context(), orgID, cid)
+		items, err := app.AdminOTA.ListCampaignResults(r.Context(), scopeID, cid)
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
 			return
@@ -317,7 +320,8 @@ func serveAdminOTACampaignPublish(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -332,7 +336,7 @@ func serveAdminOTACampaignPublish(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_campaign_id", "invalid campaignId")
 			return
 		}
-		out, err := app.AdminOTA.PublishCampaign(r.Context(), orgID, cid, actorID)
+		out, err := app.AdminOTA.PublishCampaign(r.Context(), scopeID, cid, actorID)
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
 			return
@@ -345,13 +349,12 @@ func serveAdminOTACampaignPublish(app *api.HTTPApplication) http.HandlerFunc {
 				at, aid = p.Actor()
 			}
 			_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-				OrganizationID: orgID,
-				ActorType:      at,
-				ActorID:        stringPtrOrNil(aid),
-				Action:         compliance.ActionOTACampaignPublished,
-				ResourceType:   "ota.campaign",
-				ResourceID:     &cs,
-				Metadata:       md,
+				ActorType:    at,
+				ActorID:      stringPtrOrNil(aid),
+				Action:       compliance.ActionOTACampaignPublished,
+				ResourceType: "ota.campaign",
+				ResourceID:   &cs,
+				Metadata:     md,
 			})
 		}
 		writeJSON(w, http.StatusOK, out)
@@ -364,7 +367,8 @@ func serveAdminOTACampaignApprove(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -379,7 +383,7 @@ func serveAdminOTACampaignApprove(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_campaign_id", "invalid campaignId")
 			return
 		}
-		out, err := app.AdminOTA.ApproveCampaign(r.Context(), orgID, cid, actorID)
+		out, err := app.AdminOTA.ApproveCampaign(r.Context(), scopeID, cid, actorID)
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
 			return
@@ -394,7 +398,8 @@ func serveAdminOTACampaignStart(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -404,7 +409,7 @@ func serveAdminOTACampaignStart(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_campaign_id", "invalid campaignId")
 			return
 		}
-		out, err := app.AdminOTA.StartCampaign(r.Context(), orgID, cid)
+		out, err := app.AdminOTA.StartCampaign(r.Context(), scopeID, cid)
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
 			return
@@ -419,7 +424,8 @@ func serveAdminOTACampaignPause(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -429,7 +435,7 @@ func serveAdminOTACampaignPause(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_campaign_id", "invalid campaignId")
 			return
 		}
-		out, err := app.AdminOTA.PauseCampaign(r.Context(), orgID, cid)
+		out, err := app.AdminOTA.PauseCampaign(r.Context(), scopeID, cid)
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
 			return
@@ -444,7 +450,8 @@ func serveAdminOTACampaignResume(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -454,7 +461,7 @@ func serveAdminOTACampaignResume(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_campaign_id", "invalid campaignId")
 			return
 		}
-		out, err := app.AdminOTA.ResumeCampaign(r.Context(), orgID, cid)
+		out, err := app.AdminOTA.ResumeCampaign(r.Context(), scopeID, cid)
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
 			return
@@ -469,7 +476,8 @@ func serveAdminOTACampaignCancel(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -479,7 +487,7 @@ func serveAdminOTACampaignCancel(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_campaign_id", "invalid campaignId")
 			return
 		}
-		out, err := app.AdminOTA.CancelCampaign(r.Context(), orgID, cid)
+		out, err := app.AdminOTA.CancelCampaign(r.Context(), scopeID, cid)
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
 			return
@@ -494,7 +502,8 @@ func serveAdminOTACampaignRollback(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -509,7 +518,7 @@ func serveAdminOTACampaignRollback(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 			return
 		}
-		out, err := app.AdminOTA.RollbackCampaign(r.Context(), orgID, cid, body.RollbackArtifactID)
+		out, err := app.AdminOTA.RollbackCampaign(r.Context(), scopeID, cid, body.RollbackArtifactID)
 		if err != nil {
 			writeOTAAdminError(w, r.Context(), err)
 			return

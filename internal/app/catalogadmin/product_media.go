@@ -21,11 +21,11 @@ type ProductMediaDeps struct {
 	PresignTTL     time.Duration
 }
 
-func copyArtifactIntoProductDeterministicKeys(ctx context.Context, store objectstore.Store, organizationID, artifactID, productID uuid.UUID, maxBytes int64, presignTTL time.Duration) (displayURL, thumbURL, displayKey, normalizedMIME string, err error) {
+func copyArtifactIntoProductDeterministicKeys(ctx context.Context, store objectstore.Store, companyID, artifactID, productID uuid.UUID, maxBytes int64, presignTTL time.Duration) (displayURL, thumbURL, displayKey, normalizedMIME string, err error) {
 	if store == nil {
 		return "", "", "", "", errors.New("catalogadmin: nil object store")
 	}
-	srcKey := objectstore.BackendArtifactObjectKey(organizationID, artifactID)
+	srcKey := objectstore.BackendArtifactObjectKey(companyID, artifactID)
 	meta, err := store.Head(ctx, srcKey)
 	if err != nil {
 		return "", "", "", "", fmt.Errorf("catalogadmin: artifact head %w", mapHeadErr(err))
@@ -53,8 +53,8 @@ func copyArtifactIntoProductDeterministicKeys(ctx context.Context, store objects
 		return "", "", "", "", fmt.Errorf("%w: artifact exceeds max_upload_bytes", ErrInvalidArgument)
 	}
 
-	displayKey = objectstore.ProductMediaDisplayWebpKey(organizationID, productID)
-	thumbKey := objectstore.ProductMediaThumbWebpKey(organizationID, productID)
+	displayKey = objectstore.ProductMediaDisplayWebpKey(companyID, productID)
+	thumbKey := objectstore.ProductMediaThumbWebpKey(companyID, productID)
 	rdr := bytes.NewReader(buf)
 	if err := store.Put(ctx, displayKey, rdr, int64(len(buf)), ct); err != nil {
 		return "", "", "", "", err
@@ -88,7 +88,7 @@ func mapHeadErr(err error) error {
 	return err
 }
 
-func bestEffortDeleteDeterministicProductMedia(ctx context.Context, store objectstore.Store, storageKey string, organizationID, productID uuid.UUID) {
+func bestEffortDeleteDeterministicProductMedia(ctx context.Context, store objectstore.Store, storageKey string, companyID, productID uuid.UUID) {
 	if store == nil {
 		return
 	}
@@ -97,11 +97,11 @@ func bestEffortDeleteDeterministicProductMedia(ctx context.Context, store object
 		return
 	}
 	org, pid, ok := objectstore.ParseProductMediaDisplayKey(sk)
-	if !ok || org != organizationID || pid != productID {
+	if !ok || org != companyID || pid != productID {
 		return
 	}
-	dk := objectstore.ProductMediaDisplayWebpKey(organizationID, productID)
-	tk := objectstore.ProductMediaThumbWebpKey(organizationID, productID)
+	dk := objectstore.ProductMediaDisplayWebpKey(companyID, productID)
+	tk := objectstore.ProductMediaThumbWebpKey(companyID, productID)
 	_ = store.Delete(ctx, dk)
 	_ = store.Delete(ctx, tk)
 }

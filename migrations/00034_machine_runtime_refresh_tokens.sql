@@ -2,7 +2,7 @@
 CREATE TABLE machine_runtime_refresh_tokens (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     token_hash bytea NOT NULL,
     expires_at timestamptz NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),

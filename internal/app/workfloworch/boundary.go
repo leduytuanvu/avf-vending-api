@@ -46,7 +46,6 @@ type PaymentPendingTimeoutInput struct {
 
 // PaymentToVendInput orchestrates a paid/authorized payment into vend start and follow-up.
 type PaymentToVendInput struct {
-	OrganizationID    uuid.UUID
 	OrderID           uuid.UUID
 	PaymentID         uuid.UUID
 	VendID            uuid.UUID
@@ -57,18 +56,16 @@ type PaymentToVendInput struct {
 
 // VendFailureAfterPaymentSuccessInput schedules compensation after a failed vend with captured payment.
 type VendFailureAfterPaymentSuccessInput struct {
-	OrganizationID uuid.UUID
-	OrderID        uuid.UUID
-	PaymentID      uuid.UUID
-	VendID         uuid.UUID
-	SlotIndex      int32
-	FailureReason  string
-	ObservedAt     time.Time
+	OrderID       uuid.UUID
+	PaymentID     uuid.UUID
+	VendID        uuid.UUID
+	SlotIndex     int32
+	FailureReason string
+	ObservedAt    time.Time
 }
 
 // RefundWorkflowInput orchestrates provider refund attempt/review handoff without faking PSP success.
 type RefundWorkflowInput struct {
-	OrganizationID uuid.UUID
 	OrderID        uuid.UUID
 	PaymentID      uuid.UUID
 	RefundID       uuid.UUID
@@ -81,31 +78,28 @@ type RefundWorkflowInput struct {
 
 // CommandAckWorkflowInput waits for a command ACK window and escalates if the device did not ACK.
 type CommandAckWorkflowInput struct {
-	OrganizationID uuid.UUID
-	MachineID      uuid.UUID
-	CommandID      uuid.UUID
-	Sequence       int64
-	CommandType    string
-	DispatchedAt   time.Time
-	AckTimeout     time.Duration
+	MachineID    uuid.UUID
+	CommandID    uuid.UUID
+	Sequence     int64
+	CommandType  string
+	DispatchedAt time.Time
+	AckTimeout   time.Duration
 }
 
 // RefundOrchestrationInput schedules refund follow-up on an existing review/manual pipeline.
 type RefundOrchestrationInput struct {
-	OrganizationID uuid.UUID
-	OrderID        uuid.UUID
-	PaymentID      uuid.UUID
-	Reason         string
-	RequestedAt    time.Time
+	OrderID     uuid.UUID
+	PaymentID   uuid.UUID
+	Reason      string
+	RequestedAt time.Time
 }
 
 // ManualReviewEscalationInput schedules a human-review escalation on the existing review/manual pipeline.
 type ManualReviewEscalationInput struct {
-	OrganizationID uuid.UUID
-	OrderID        uuid.UUID
-	PaymentID      uuid.UUID
-	Reason         string
-	RequestedAt    time.Time
+	OrderID     uuid.UUID
+	PaymentID   uuid.UUID
+	Reason      string
+	RequestedAt time.Time
 }
 
 // Boundary schedules durable workflows. Implementations must be safe to call from async paths;

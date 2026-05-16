@@ -35,21 +35,19 @@ FROM
         GROUP BY
             order_id
     ) vc ON vc.order_id = o.id
-    LEFT JOIN products pr ON pr.organization_id = o.organization_id
         AND pr.id = vs.product_id
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
-    AND o.created_at < $3::timestamptz
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR o.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR vs.product_id = $6::uuid)
+        OR vs.product_id = $5::uuid)
 GROUP BY
     vs.product_id
 ORDER BY
@@ -75,18 +73,17 @@ FROM
     INNER JOIN orders o ON o.id = vs.order_id
     INNER JOIN machines m ON m.id = o.machine_id
 WHERE
-    o.organization_id = $1
-    AND COALESCE(vs.completed_at, vs.created_at) >= $2::timestamptz
-    AND COALESCE(vs.completed_at, vs.created_at) < $3::timestamptz
+    COALESCE(vs.completed_at, vs.created_at) >= $1::timestamptz
+    AND COALESCE(vs.completed_at, vs.created_at) < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR o.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR vs.product_id = $6::uuid);
+        OR vs.product_id = $5::uuid);
 
 -- name: ReportingStockMovementCount :one
 SELECT
@@ -95,18 +92,17 @@ FROM
     inventory_events ie
     INNER JOIN machines m ON m.id = ie.machine_id
 WHERE
-    ie.organization_id = $1
-    AND ie.occurred_at >= $2::timestamptz
-    AND ie.occurred_at < $3::timestamptz
+    ie.occurred_at >= $1::timestamptz
+    AND ie.occurred_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR ie.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR ie.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR ie.product_id = $6::uuid);
+        OR ie.product_id = $5::uuid);
 
 -- name: ReportingStockMovement :many
 SELECT
@@ -125,24 +121,22 @@ SELECT
 FROM
     inventory_events ie
     INNER JOIN machines m ON m.id = ie.machine_id
-    LEFT JOIN products pr ON pr.organization_id = ie.organization_id
         AND pr.id = ie.product_id
 WHERE
-    ie.organization_id = $1
-    AND ie.occurred_at >= $2::timestamptz
-    AND ie.occurred_at < $3::timestamptz
+    ie.occurred_at >= $1::timestamptz
+    AND ie.occurred_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR ie.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR ie.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR ie.product_id = $6::uuid)
+        OR ie.product_id = $5::uuid)
 ORDER BY
     ie.occurred_at DESC
-LIMIT $7 OFFSET $8;
+LIMIT $6 OFFSET $7;
 
 -- name: ReportingCommandFailuresCount :one
 SELECT
@@ -151,16 +145,15 @@ FROM
     machine_command_attempts a
     INNER JOIN machines m ON m.id = a.machine_id
 WHERE
-    m.organization_id = $1
-    AND a.sent_at >= $2::timestamptz
-    AND a.sent_at < $3::timestamptz
+    a.sent_at >= $1::timestamptz
+    AND a.sent_at < $2::timestamptz
     AND a.status IN ('failed', 'ack_timeout', 'expired', 'nack')
     AND (
-        $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
-        $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.id = $5::uuid);
+        $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.id = $4::uuid);
 
 -- name: ReportingCommandFailures :many
 SELECT
@@ -176,19 +169,18 @@ FROM
     machine_command_attempts a
     INNER JOIN machines m ON m.id = a.machine_id
 WHERE
-    m.organization_id = $1
-    AND a.sent_at >= $2::timestamptz
-    AND a.sent_at < $3::timestamptz
+    a.sent_at >= $1::timestamptz
+    AND a.sent_at < $2::timestamptz
     AND a.status IN ('failed', 'ack_timeout', 'expired', 'nack')
     AND (
-        $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
-        $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.id = $5::uuid)
+        $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.id = $4::uuid)
 ORDER BY
     a.sent_at DESC
-LIMIT $6 OFFSET $7;
+LIMIT $5 OFFSET $6;
 
 -- name: ReportingReconciliationSummary :one
 SELECT
@@ -203,9 +195,8 @@ SELECT
 FROM
     commerce_reconciliation_cases c
 WHERE
-    c.organization_id = $1
-    AND c.first_detected_at >= $2::timestamptz
-    AND c.first_detected_at < $3::timestamptz;
+    c.first_detected_at >= $1::timestamptz
+    AND c.first_detected_at < $2::timestamptz;
 
 -- name: ReportingReconciliationCasesCount :one
 SELECT
@@ -213,16 +204,15 @@ SELECT
 FROM
     commerce_reconciliation_cases c
 WHERE
-    c.organization_id = $1
-    AND c.first_detected_at >= $2::timestamptz
-    AND c.first_detected_at < $3::timestamptz
+    c.first_detected_at >= $1::timestamptz
+    AND c.first_detected_at < $2::timestamptz
     AND (
-        $4::text = 'all'
+        $3::text = 'all'
         OR (
-            $4::text = 'open'
+            $3::text = 'open'
             AND c.status IN ('open', 'reviewing', 'escalated'))
         OR (
-            $4::text = 'closed'
+            $3::text = 'closed'
             AND c.status IN ('resolved', 'dismissed', 'ignored')));
 
 -- name: ReportingReconciliationCases :many
@@ -243,20 +233,19 @@ SELECT
 FROM
     commerce_reconciliation_cases c
 WHERE
-    c.organization_id = $1
-    AND c.first_detected_at >= $2::timestamptz
-    AND c.first_detected_at < $3::timestamptz
+    c.first_detected_at >= $1::timestamptz
+    AND c.first_detected_at < $2::timestamptz
     AND (
-        $4::text = 'all'
+        $3::text = 'all'
         OR (
-            $4::text = 'open'
+            $3::text = 'open'
             AND c.status IN ('open', 'reviewing', 'escalated'))
         OR (
-            $4::text = 'closed'
+            $3::text = 'closed'
             AND c.status IN ('resolved', 'dismissed', 'ignored')))
 ORDER BY
     c.last_detected_at DESC
-LIMIT $5 OFFSET $6;
+LIMIT $4 OFFSET $5;
 
 -- Filtered sales/payments (site, machine, product) for admin reports. Sentinel nil UUID = unset.
 
@@ -270,17 +259,16 @@ FROM
     orders o
     INNER JOIN machines m ON m.id = o.machine_id
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
-    AND o.created_at < $3::timestamptz
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR o.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR EXISTS (
             SELECT
                 1
@@ -288,11 +276,11 @@ WHERE
                 vend_sessions vs
             WHERE
                 vs.order_id = o.id
-                AND vs.product_id = $6::uuid));
+                AND vs.product_id = $5::uuid));
 
 -- name: ReportingSalesByDayFiltered :many
 SELECT
-    (date_trunc('day', o.created_at AT TIME ZONE $7::text) AT TIME ZONE $7::text)::timestamptz AS bucket_start,
+    (date_trunc('day', o.created_at AT TIME ZONE $1::text) AT TIME ZONE $1::text)::timestamptz AS bucket_start,
     COUNT(*)::bigint AS order_count,
     COALESCE(SUM(o.total_minor), 0)::bigint AS total_minor,
     COALESCE(SUM(o.subtotal_minor), 0)::bigint AS subtotal_minor,
@@ -301,8 +289,7 @@ FROM
     orders o
     INNER JOIN machines m ON m.id = o.machine_id
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
+    o.created_at >= $2::timestamptz
     AND o.created_at < $3::timestamptz
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
@@ -336,17 +323,16 @@ FROM
     orders o
     INNER JOIN machines m ON m.id = o.machine_id
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
-    AND o.created_at < $3::timestamptz
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR o.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR EXISTS (
             SELECT
                 1
@@ -354,7 +340,7 @@ WHERE
                 vend_sessions vs
             WHERE
                 vs.order_id = o.id
-                AND vs.product_id = $6::uuid))
+                AND vs.product_id = $5::uuid))
 GROUP BY
     m.site_id
 ORDER BY
@@ -371,17 +357,16 @@ FROM
     orders o
     INNER JOIN machines m ON m.id = o.machine_id
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
-    AND o.created_at < $3::timestamptz
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR o.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR EXISTS (
             SELECT
                 1
@@ -389,7 +374,7 @@ WHERE
                 vend_sessions vs
             WHERE
                 vs.order_id = o.id
-                AND vs.product_id = $6::uuid))
+                AND vs.product_id = $5::uuid))
 GROUP BY
     o.machine_id
 ORDER BY
@@ -409,17 +394,16 @@ FROM
     INNER JOIN payments p ON p.order_id = o.id
         AND p.state IN ('authorized', 'captured')
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
-    AND o.created_at < $3::timestamptz
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR o.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR EXISTS (
             SELECT
                 1
@@ -427,7 +411,7 @@ WHERE
                 vend_sessions vs
             WHERE
                 vs.order_id = o.id
-                AND vs.product_id = $6::uuid))
+                AND vs.product_id = $5::uuid))
 GROUP BY
     p.provider
 ORDER BY
@@ -472,17 +456,16 @@ FROM
     INNER JOIN orders o ON o.id = p.order_id
     INNER JOIN machines m ON m.id = o.machine_id
 WHERE
-    o.organization_id = $1
-    AND p.created_at >= $2::timestamptz
-    AND p.created_at < $3::timestamptz
+    p.created_at >= $1::timestamptz
+    AND p.created_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR o.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR EXISTS (
             SELECT
                 1
@@ -490,11 +473,11 @@ WHERE
                 vend_sessions vs
             WHERE
                 vs.order_id = o.id
-                AND vs.product_id = $6::uuid));
+                AND vs.product_id = $5::uuid));
 
 -- name: ReportingPaymentsByDayFiltered :many
 SELECT
-    (date_trunc('day', p.created_at AT TIME ZONE $7::text) AT TIME ZONE $7::text)::timestamptz AS bucket_start,
+    (date_trunc('day', p.created_at AT TIME ZONE $1::text) AT TIME ZONE $1::text)::timestamptz AS bucket_start,
     COUNT(*)::bigint AS payment_count,
     COALESCE(SUM(p.amount_minor), 0)::bigint AS amount_minor
 FROM
@@ -502,8 +485,7 @@ FROM
     INNER JOIN orders o ON o.id = p.order_id
     INNER JOIN machines m ON m.id = o.machine_id
 WHERE
-    o.organization_id = $1
-    AND p.created_at >= $2::timestamptz
+    p.created_at >= $2::timestamptz
     AND p.created_at < $3::timestamptz
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
@@ -537,17 +519,16 @@ FROM
     INNER JOIN orders o ON o.id = p.order_id
     INNER JOIN machines m ON m.id = o.machine_id
 WHERE
-    o.organization_id = $1
-    AND p.created_at >= $2::timestamptz
-    AND p.created_at < $3::timestamptz
+    p.created_at >= $1::timestamptz
+    AND p.created_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR o.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR EXISTS (
             SELECT
                 1
@@ -555,7 +536,7 @@ WHERE
                 vend_sessions vs
             WHERE
                 vs.order_id = o.id
-                AND vs.product_id = $6::uuid))
+                AND vs.product_id = $5::uuid))
 GROUP BY
     p.provider,
     p.state
@@ -564,7 +545,7 @@ ORDER BY
 
 -- name: ReportingPaymentSettlementFiltered :many
 SELECT
-    (date_trunc('day', p.created_at AT TIME ZONE $7::text) AT TIME ZONE $7::text)::timestamptz AS bucket_start,
+    (date_trunc('day', p.created_at AT TIME ZONE $1::text) AT TIME ZONE $1::text)::timestamptz AS bucket_start,
     p.provider,
     p.state,
     p.settlement_status,
@@ -576,8 +557,7 @@ FROM
     INNER JOIN orders o ON o.id = p.order_id
     INNER JOIN machines m ON m.id = o.machine_id
 WHERE
-    o.organization_id = $1
-    AND p.created_at >= $2::timestamptz
+    p.created_at >= $2::timestamptz
     AND p.created_at < $3::timestamptz
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
@@ -613,15 +593,14 @@ SELECT
 FROM
     machines m
 WHERE
-    m.organization_id = $1
+    (
+        $1::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $1::uuid)
     AND (
         $2::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $2::uuid)
+        OR m.id = $2::uuid)
     AND (
         $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.id = $3::uuid)
-    AND (
-        $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR EXISTS (
             SELECT
                 1
@@ -630,10 +609,10 @@ WHERE
                 INNER JOIN orders o ON o.id = vs.order_id
             WHERE
                 o.machine_id = m.id
-                AND o.organization_id = m.organization_id
-                AND vs.product_id = $4::uuid
-                AND COALESCE(vs.completed_at, vs.created_at) >= $5::timestamptz
-                AND COALESCE(vs.completed_at, vs.created_at) < $6::timestamptz));
+                AND TRUE
+                AND vs.product_id = $3::uuid
+                AND COALESCE(vs.completed_at, vs.created_at) >= $4::timestamptz
+                AND COALESCE(vs.completed_at, vs.created_at) < $5::timestamptz));
 
 -- name: ReportingMachineHealthFiltered :many
 SELECT
@@ -647,15 +626,14 @@ SELECT
     CASE
         WHEN m.status IN ('offline', 'suspended', 'maintenance', 'retired', 'decommissioned', 'compromised') THEN TRUE
         WHEN m.last_seen_at IS NULL THEN TRUE
-        WHEN m.last_seen_at < $7::timestamptz THEN TRUE
+        WHEN m.last_seen_at < $1::timestamptz THEN TRUE
         ELSE FALSE
     END AS offline
 FROM
     machines m
     INNER JOIN sites s ON s.id = m.site_id
 WHERE
-    m.organization_id = $1
-    AND (
+    (
         $2::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR m.site_id = $2::uuid)
     AND (
@@ -671,7 +649,7 @@ WHERE
                 INNER JOIN orders o ON o.id = vs.order_id
             WHERE
                 o.machine_id = m.id
-                AND o.organization_id = m.organization_id
+                AND TRUE
                 AND vs.product_id = $4::uuid
                 AND COALESCE(vs.completed_at, vs.created_at) >= $5::timestamptz
                 AND COALESCE(vs.completed_at, vs.created_at) < $6::timestamptz))
@@ -679,7 +657,7 @@ ORDER BY
     offline DESC,
     m.last_seen_at ASC NULLS FIRST,
     m.name ASC
-LIMIT $8 OFFSET $9;
+LIMIT $7 OFFSET $8;
 
 -- name: ReportingFailedVendsCountFiltered :one
 SELECT
@@ -689,19 +667,18 @@ FROM
     INNER JOIN orders o ON o.id = vs.order_id
     INNER JOIN machines m ON m.id = vs.machine_id
 WHERE
-    o.organization_id = $1
-    AND vs.state = 'failed'
-    AND COALESCE(vs.completed_at, vs.created_at) >= $2::timestamptz
-    AND COALESCE(vs.completed_at, vs.created_at) < $3::timestamptz
+    vs.state = 'failed'
+    AND COALESCE(vs.completed_at, vs.created_at) >= $1::timestamptz
+    AND COALESCE(vs.completed_at, vs.created_at) < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR o.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR vs.product_id = $6::uuid);
+        OR vs.product_id = $5::uuid);
 
 -- name: ReportingFailedVendsFiltered :many
 SELECT
@@ -722,22 +699,21 @@ FROM
     INNER JOIN orders o ON o.id = vs.order_id
     INNER JOIN machines m ON m.id = vs.machine_id
 WHERE
-    o.organization_id = $1
-    AND vs.state = 'failed'
-    AND COALESCE(vs.completed_at, vs.created_at) >= $2::timestamptz
-    AND COALESCE(vs.completed_at, vs.created_at) < $3::timestamptz
+    vs.state = 'failed'
+    AND COALESCE(vs.completed_at, vs.created_at) >= $1::timestamptz
+    AND COALESCE(vs.completed_at, vs.created_at) < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR o.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR vs.product_id = $6::uuid)
+        OR vs.product_id = $5::uuid)
 ORDER BY
     COALESCE(vs.completed_at, vs.created_at) DESC
-LIMIT $7 OFFSET $8;
+LIMIT $6 OFFSET $7;
 
 -- name: ReportingInventoryExceptionsFilteredCount :one
 SELECT
@@ -749,28 +725,27 @@ FROM
     LEFT JOIN slots s ON s.planogram_id = mss.planogram_id
         AND s.slot_index = mss.slot_index
 WHERE
-    m.organization_id = $1
-    AND (
+    (
         (
-            $2::boolean IS TRUE
+            $1::boolean IS TRUE
             AND mss.current_quantity <= 0
         )
         OR (
-            $3::boolean IS TRUE
+            $2::boolean IS TRUE
             AND COALESCE(s.max_quantity, 0) > 0
             AND mss.current_quantity > 0
             AND mss.current_quantity::float / NULLIF(s.max_quantity, 0)::float < 0.15
         )
     )
     AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
+    AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR m.id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR s.product_id = $6::uuid);
+        OR s.product_id = $5::uuid);
 
 -- name: ReportingInventoryExceptionsFiltered :many
 SELECT
@@ -800,34 +775,34 @@ FROM
         AND s.slot_index = mss.slot_index
     LEFT JOIN products pr ON pr.id = s.product_id
 WHERE
-    m.organization_id = $1
-    AND (
+    (
         (
-            $2::boolean IS TRUE
+            $1::boolean IS TRUE
             AND mss.current_quantity <= 0
         )
         OR (
-            $3::boolean IS TRUE
+            $2::boolean IS TRUE
             AND COALESCE(s.max_quantity, 0) > 0
             AND mss.current_quantity > 0
             AND mss.current_quantity::float / NULLIF(s.max_quantity, 0)::float < 0.15
         )
     )
     AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
+    AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR m.id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR s.product_id = $6::uuid)
+        OR s.product_id = $5::uuid)
 ORDER BY
     m.name ASC,
     mss.slot_index ASC
-LIMIT $7 OFFSET $8;
+LIMIT $6 OFFSET $7;
 
 -- Technician / refill / operator-attributed inventory operations (excludes sale ledger rows).
+
 -- name: ReportingTechnicianFillOpsCount :one
 SELECT
     count(*)::bigint AS cnt
@@ -835,9 +810,8 @@ FROM
     inventory_events ie
     INNER JOIN machines m ON m.id = ie.machine_id
 WHERE
-    ie.organization_id = $1
-    AND ie.occurred_at >= $2::timestamptz
-    AND ie.occurred_at < $3::timestamptz
+    ie.occurred_at >= $1::timestamptz
+    AND ie.occurred_at < $2::timestamptz
     AND ie.event_type <> 'sale'
     AND (
         ie.technician_id IS NOT NULL
@@ -851,14 +825,14 @@ WHERE
             'correction',
             'adjustment'))
     AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
+    AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR ie.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR ie.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR ie.product_id = $6::uuid);
+        OR ie.product_id = $5::uuid);
 
 -- name: ReportingTechnicianFillOps :many
 SELECT
@@ -881,14 +855,12 @@ SELECT
 FROM
     inventory_events ie
     INNER JOIN machines m ON m.id = ie.machine_id
-    LEFT JOIN products pr ON pr.organization_id = ie.organization_id
         AND pr.id = ie.product_id
     LEFT JOIN technicians t ON t.id = ie.technician_id
-        AND t.organization_id = ie.organization_id
+        AND TRUE
 WHERE
-    ie.organization_id = $1
-    AND ie.occurred_at >= $2::timestamptz
-    AND ie.occurred_at < $3::timestamptz
+    ie.occurred_at >= $1::timestamptz
+    AND ie.occurred_at < $2::timestamptz
     AND ie.event_type <> 'sale'
     AND (
         ie.technician_id IS NOT NULL
@@ -902,14 +874,14 @@ WHERE
             'correction',
             'adjustment'))
     AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
+    AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
+        OR ie.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR ie.machine_id = $5::uuid)
-    AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR ie.product_id = $6::uuid)
+        OR ie.product_id = $5::uuid)
 ORDER BY
     ie.occurred_at DESC
-LIMIT $7 OFFSET $8;
+LIMIT $6 OFFSET $7;

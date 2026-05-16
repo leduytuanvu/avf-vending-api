@@ -14,11 +14,10 @@ import (
 
 // PricingPreviewParams drives POST /v1/admin/pricing/preview.
 type PricingPreviewParams struct {
-	OrganizationID uuid.UUID
-	MachineID      *uuid.UUID
-	SiteID         *uuid.UUID
-	ProductIDs     []uuid.UUID
-	At             time.Time
+	MachineID  *uuid.UUID
+	SiteID     *uuid.UUID
+	ProductIDs []uuid.UUID
+	At         time.Time
 }
 
 // PricingPreviewLine is one resolved price for a product.
@@ -96,7 +95,7 @@ func applicability(machineID, siteID *uuid.UUID, b db.PriceBook, tgts []db.Price
 		if siteID != nil && b.SiteID.Valid && uuid.UUID(b.SiteID.Bytes) == *siteID {
 			return 2, uuid.Nil, true
 		}
-	case "organization":
+	case "company":
 		if len(tgts) == 0 {
 			return 1, uuid.Nil, true
 		}
@@ -120,13 +119,10 @@ func applicability(machineID, siteID *uuid.UUID, b db.PriceBook, tgts []db.Price
 	return 0, uuid.Nil, false
 }
 
-// PreviewPricing resolves effective prices for products at At under tenant scope.
+// PreviewPricing resolves effective prices for products at At under company scope.
 func (s *Service) PreviewPricing(ctx context.Context, p PricingPreviewParams) (*PricingPreviewResult, error) {
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
-	}
-	if p.OrganizationID == uuid.Nil {
-		return nil, ErrOrganizationRequired
 	}
 	if len(p.ProductIDs) == 0 {
 		return nil, fmt.Errorf("%w: product_ids required", ErrInvalidArgument)
@@ -138,15 +134,12 @@ func (s *Service) PreviewPricing(ctx context.Context, p PricingPreviewParams) (*
 		at = at.UTC()
 	}
 
-	nProd, err := s.q.CatalogAdminCountProductsInOrgByIDs(ctx, db.CatalogAdminCountProductsInOrgByIDsParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        p.ProductIDs,
-	})
+	nProd, err := s.q.CatalogAdminCountProductsInOrgByIDs(ctx, p.ProductIDs)
 	if err != nil {
 		return nil, err
 	}
 	if int64(len(p.ProductIDs)) != nProd {
-		return nil, fmt.Errorf("%w: one or more products not found in organization", ErrInvalidArgument)
+		return nil, fmt.Errorf("%w: one or more products not found in company", ErrInvalidArgument)
 	}
 
 	var machineID *uuid.UUID
@@ -154,10 +147,7 @@ func (s *Service) PreviewPricing(ctx context.Context, p PricingPreviewParams) (*
 	switch {
 	case p.MachineID != nil && *p.MachineID != uuid.Nil:
 		machineID = p.MachineID
-		sid, err := s.q.CatalogAdminGetMachineSiteForOrg(ctx, db.CatalogAdminGetMachineSiteForOrgParams{
-			OrganizationID: p.OrganizationID,
-			ID:             *machineID,
-		})
+		sid, err := s.q.CatalogAdminGetMachineSiteForOrg(ctx, *machineID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil, fmt.Errorf("%w: machine not found", ErrInvalidArgument)
@@ -175,14 +165,11 @@ func (s *Service) PreviewPricing(ctx context.Context, p PricingPreviewParams) (*
 		siteID = nil
 	}
 
-	books, err := s.q.CatalogAdminPricingPreviewBooksActiveAt(ctx, db.CatalogAdminPricingPreviewBooksActiveAtParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        at,
-	})
+	books, err := s.q.CatalogAdminPricingPreviewBooksActiveAt(ctx, at)
 	if err != nil {
 		return nil, err
 	}
-	allTargets, err := s.q.CatalogAdminListPriceBookTargetsByOrg(ctx, p.OrganizationID)
+	allTargets, err := s.q.CatalogAdminListPriceBookTargetsByOrg(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -197,9 +184,8 @@ func (s *Service) PreviewPricing(ctx context.Context, p PricingPreviewParams) (*
 	}
 
 	itemRows, err := s.q.CatalogAdminPriceBookItemsForPreview(ctx, db.CatalogAdminPriceBookItemsForPreviewParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        bookIDs,
-		Column3:        p.ProductIDs,
+		Column1: bookIDs,
+		Column2: p.ProductIDs,
 	})
 	if err != nil {
 		return nil, err

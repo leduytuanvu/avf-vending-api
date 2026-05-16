@@ -3,32 +3,15 @@
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
-CREATE TABLE organizations (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    name text NOT NULL,
-    slug text NOT NULL,
-    status text NOT NULL CHECK (status IN ('active', 'suspended')),
-    default_timezone text NOT NULL DEFAULT 'UTC',
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE UNIQUE INDEX ux_organizations_slug_lower ON organizations (lower(slug));
-
 CREATE TABLE regions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     name text NOT NULL,
     code text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_regions_org_code ON regions (organization_id, lower(code));
-CREATE INDEX ix_regions_organization_id ON regions (organization_id);
-
 CREATE TABLE sites (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     region_id uuid REFERENCES regions (id) ON DELETE SET NULL,
     name text NOT NULL,
     address jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -40,28 +23,17 @@ CREATE TABLE sites (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_sites_organization_id ON sites (organization_id);
 CREATE INDEX ix_sites_region_id ON sites (region_id);
-
-CREATE UNIQUE INDEX ux_sites_org_id ON sites (organization_id, id);
-
-CREATE UNIQUE INDEX ux_sites_org_code_lower ON sites (organization_id, lower(code))
-WHERE
-    btrim(code) <> '';
 
 CREATE TABLE machine_hardware_profiles (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid REFERENCES organizations (id) ON DELETE CASCADE,
     name text NOT NULL,
     spec jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_machine_hardware_profiles_organization_id ON machine_hardware_profiles (organization_id);
-
 CREATE TABLE machines (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     site_id uuid NOT NULL REFERENCES sites (id) ON DELETE RESTRICT,
     hardware_profile_id uuid REFERENCES machine_hardware_profiles (id) ON DELETE SET NULL,
     serial_number text NOT NULL,
@@ -81,18 +53,11 @@ CREATE TABLE machines (
     revoked_at timestamptz,
     rotated_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT ux_machines_org_serial UNIQUE (organization_id, serial_number)
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX ix_machines_site_id ON machines (site_id);
 CREATE INDEX ix_machines_hardware_profile_id ON machines (hardware_profile_id);
-
-CREATE UNIQUE INDEX ux_machines_org_id ON machines (organization_id, id);
-
-CREATE UNIQUE INDEX ux_machines_org_code_lower ON machines (organization_id, lower(code))
-WHERE
-    btrim(code) <> '';
 
 CREATE UNIQUE INDEX ux_machines_serial_global_lower ON machines (lower(trim(serial_number)))
 WHERE
@@ -100,7 +65,6 @@ WHERE
 
 CREATE TABLE machine_credentials (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     credential_version bigint NOT NULL,
     secret_hash bytea NULL,
@@ -118,7 +82,6 @@ CREATE INDEX ix_machine_credentials_machine_status ON machine_credentials (machi
 
 CREATE TABLE machine_sessions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     credential_id uuid NOT NULL REFERENCES machine_credentials (id) ON DELETE CASCADE,
     refresh_token_hash bytea NOT NULL,
@@ -146,7 +109,6 @@ CREATE INDEX ix_machine_sessions_credential ON machine_sessions (credential_id);
 
 CREATE TABLE technicians (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     display_name text NOT NULL,
     email text,
     phone text,
@@ -156,14 +118,8 @@ CREATE TABLE technicians (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_technicians_org_email_lower ON technicians (organization_id, lower(email))
-    WHERE email IS NOT NULL AND btrim(email) <> '';
-
-CREATE INDEX ix_technicians_organization_id ON technicians (organization_id);
-
 CREATE TABLE technician_machine_assignments (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     technician_id uuid NOT NULL REFERENCES technicians (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     role text NOT NULL,
@@ -178,16 +134,14 @@ CREATE TABLE technician_machine_assignments (
 
 CREATE INDEX ix_tma_technician_id ON technician_machine_assignments (technician_id);
 CREATE INDEX ix_tma_machine_id ON technician_machine_assignments (machine_id);
-CREATE INDEX ix_tma_organization_id ON technician_machine_assignments (organization_id);
 
 CREATE UNIQUE INDEX ux_tma_one_active_machine_technician
-    ON technician_machine_assignments (organization_id, machine_id, technician_id)
+    ON technician_machine_assignments (machine_id, technician_id)
     WHERE status = 'active' AND valid_to IS NULL;
 
 CREATE VIEW machine_technician_assignments AS
 SELECT
     id,
-    organization_id,
     machine_id,
     technician_id AS user_id,
     role,
@@ -200,7 +154,6 @@ FROM technician_machine_assignments;
 
 CREATE TABLE machine_lineage (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     prior_machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
     successor_machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
     reason text,
@@ -210,12 +163,9 @@ CREATE TABLE machine_lineage (
     CONSTRAINT ck_machine_lineage_distinct CHECK (prior_machine_id <> successor_machine_id)
 );
 
-CREATE INDEX ix_machine_lineage_org ON machine_lineage (organization_id);
-
 -- Machine operator sessions (see migrations/00008_machine_operator_sessions.sql). Text CHECKs replace PG enums in this repo.
 CREATE TABLE machine_operator_sessions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     actor_type text NOT NULL CHECK (actor_type IN ('TECHNICIAN', 'USER')),
     technician_id uuid REFERENCES technicians (id) ON DELETE SET NULL,
@@ -244,14 +194,8 @@ CREATE UNIQUE INDEX ux_machine_operator_sessions_one_active ON machine_operator_
     WHERE status = 'ACTIVE';
 
 CREATE INDEX ix_machine_operator_sessions_machine_started ON machine_operator_sessions (machine_id, started_at DESC);
-CREATE INDEX ix_machine_operator_sessions_org_started ON machine_operator_sessions (organization_id, started_at DESC);
 CREATE INDEX ix_machine_operator_sessions_technician ON machine_operator_sessions (technician_id, started_at DESC)
     WHERE technician_id IS NOT NULL;
-CREATE INDEX ix_machine_operator_sessions_user_principal ON machine_operator_sessions (organization_id, user_principal, started_at DESC)
-    WHERE actor_type = 'USER' AND user_principal IS NOT NULL;
-CREATE INDEX ix_machine_operator_sessions_org_machine_started ON machine_operator_sessions (organization_id, machine_id, started_at DESC);
-CREATE INDEX ix_machine_operator_sessions_org_active_started ON machine_operator_sessions (organization_id, started_at DESC)
-    WHERE status = 'ACTIVE';
 
 COMMENT ON TABLE machine_operator_sessions IS 'Machine-side operator login context; machine identity stays on machines, technician identity on technicians, USER uses opaque user_principal (IdP sub / admin id).';
 COMMENT ON COLUMN machine_operator_sessions.user_principal IS 'Non-technician operator identity when actor_type=USER; never store technician PII here.';
@@ -317,7 +261,6 @@ COMMENT ON COLUMN machine_action_attributions.correlation_id IS 'Optional reques
 
 CREATE TABLE categories (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     slug text NOT NULL,
     name text NOT NULL,
     parent_id uuid REFERENCES categories (id) ON DELETE SET NULL,
@@ -326,15 +269,10 @@ CREATE TABLE categories (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_categories_org_slug_lower ON categories (organization_id, lower(slug));
-CREATE UNIQUE INDEX ux_categories_org_id ON categories (organization_id, id);
-
-CREATE INDEX ix_categories_organization_id ON categories (organization_id);
 CREATE INDEX ix_categories_parent_id ON categories (parent_id);
 
 CREATE TABLE brands (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     slug text NOT NULL,
     name text NOT NULL,
     active boolean NOT NULL DEFAULT true,
@@ -342,14 +280,8 @@ CREATE TABLE brands (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_brands_org_slug_lower ON brands (organization_id, lower(slug));
-CREATE UNIQUE INDEX ux_brands_org_id ON brands (organization_id, id);
-
-CREATE INDEX ix_brands_organization_id ON brands (organization_id);
-
 CREATE TABLE products (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     sku text NOT NULL,
     barcode text,
     name text NOT NULL,
@@ -364,24 +296,11 @@ CREATE TABLE products (
     allergen_codes text[],
     nutritional_note text,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT ux_products_org_sku UNIQUE (organization_id, sku),
-    CONSTRAINT fk_products_org_category FOREIGN KEY (organization_id, category_id)
-        REFERENCES categories (organization_id, id),
-    CONSTRAINT fk_products_org_brand FOREIGN KEY (organization_id, brand_id)
-        REFERENCES brands (organization_id, id)
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
-
-CREATE UNIQUE INDEX ux_products_org_id ON products (organization_id, id);
-
-CREATE UNIQUE INDEX ux_products_org_barcode_lower ON products (organization_id, lower(trim(barcode)))
-    WHERE barcode IS NOT NULL AND length(trim(barcode)) > 0;
-
-CREATE INDEX ix_products_organization_id ON products (organization_id);
 
 CREATE TABLE tags (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     slug text NOT NULL,
     name text NOT NULL,
     active boolean NOT NULL DEFAULT true,
@@ -389,36 +308,23 @@ CREATE TABLE tags (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_tags_org_slug_lower ON tags (organization_id, lower(slug));
-
-CREATE INDEX ix_tags_organization_id ON tags (organization_id);
-
 CREATE TABLE product_tags (
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     product_id uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
     tag_id uuid NOT NULL REFERENCES tags (id) ON DELETE CASCADE,
     PRIMARY KEY (product_id, tag_id)
 );
 
-CREATE INDEX ix_product_tags_org ON product_tags (organization_id);
-
 -- P1.4 fleet rollout targeting: assign catalog tags to machines (see migrations/00070_p14_rollout_machine_tags_app_version.sql).
 CREATE TABLE machine_tag_assignments (
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     tag_id uuid NOT NULL REFERENCES tags (id) ON DELETE CASCADE,
     created_at timestamptz NOT NULL DEFAULT now (),
     PRIMARY KEY (machine_id, tag_id)
 );
 
-CREATE INDEX ix_machine_tag_assignments_org_tag ON machine_tag_assignments (organization_id, tag_id);
-
-CREATE INDEX ix_machine_tag_assignments_org_machine ON machine_tag_assignments (organization_id, machine_id);
-
 -- P1.1 media pipeline: canonical object keys + variant paths (see migrations/00037_p1_media_assets.sql).
 CREATE TABLE media_assets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     kind text NOT NULL DEFAULT 'product_image' CONSTRAINT chk_media_assets_kind CHECK (
         kind IN ('product_image')
     ),
@@ -444,10 +350,6 @@ CREATE TABLE media_assets (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
-
-CREATE INDEX ix_media_assets_org_created ON media_assets (organization_id, created_at DESC);
-
-CREATE INDEX ix_media_assets_org_status ON media_assets (organization_id, status);
 
 CREATE TABLE product_images (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -485,7 +387,6 @@ ALTER TABLE products
 
 CREATE TABLE product_media (
     id uuid PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     product_id uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
     media_type text NOT NULL DEFAULT 'image' CONSTRAINT chk_product_media_media_type CHECK (
         media_type IN ('image')
@@ -515,84 +416,47 @@ CREATE TABLE product_media (
     CONSTRAINT fk_product_media_product_image_row FOREIGN KEY (product_id, id) REFERENCES product_images (product_id, id)
 );
 
-CREATE INDEX ix_product_media_org_product ON product_media (organization_id, product_id);
-
 CREATE INDEX ix_product_media_product ON product_media (product_id);
 
 COMMENT ON TABLE product_media IS 'Denormalized catalog media projection per product_images row (id matches product_images.id); maintained by triggers in migrations.';
 
 CREATE TABLE price_books (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     name text NOT NULL,
     currency char(3) NOT NULL,
     effective_from timestamptz NOT NULL,
     effective_to timestamptz,
     is_default boolean NOT NULL DEFAULT false,
     active boolean NOT NULL DEFAULT true,
-    scope_type text NOT NULL DEFAULT 'organization' CHECK (scope_type IN ('organization', 'site', 'machine')),
+    scope_type text NOT NULL DEFAULT 'global' CHECK (scope_type IN ('global', 'site', 'machine')),
     site_id uuid,
     machine_id uuid,
     priority int NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ck_price_books_scope_shape CHECK (
-        (scope_type = 'organization' AND site_id IS NULL AND machine_id IS NULL)
+        (scope_type = 'global' AND site_id IS NULL AND machine_id IS NULL)
         OR (scope_type = 'site' AND site_id IS NOT NULL AND machine_id IS NULL)
         OR (scope_type = 'machine' AND machine_id IS NOT NULL AND site_id IS NULL)
-    ),
-    CONSTRAINT fk_price_books_org_site FOREIGN KEY (organization_id, site_id)
-        REFERENCES sites (organization_id, id),
-    CONSTRAINT fk_price_books_org_machine FOREIGN KEY (organization_id, machine_id)
-        REFERENCES machines (organization_id, id)
+    )
 );
-
-CREATE UNIQUE INDEX ux_price_books_org_id ON price_books (organization_id, id);
-
-CREATE UNIQUE INDEX ux_price_books_org_scope_org_name_effective
-    ON price_books (organization_id, lower(name), effective_from)
-    WHERE scope_type = 'organization';
-
-CREATE UNIQUE INDEX ux_price_books_org_scope_site_name_effective
-    ON price_books (organization_id, site_id, lower(name), effective_from)
-    WHERE scope_type = 'site';
-
-CREATE UNIQUE INDEX ux_price_books_org_scope_machine_name_effective
-    ON price_books (organization_id, machine_id, lower(name), effective_from)
-    WHERE scope_type = 'machine';
-
-CREATE INDEX ix_price_books_organization_id ON price_books (organization_id);
 
 CREATE TABLE price_book_items (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     price_book_id uuid NOT NULL,
     product_id uuid NOT NULL,
     unit_price_minor bigint NOT NULL CHECK (unit_price_minor >= 0),
-    created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT fk_price_book_items_org_book FOREIGN KEY (organization_id, price_book_id)
-        REFERENCES price_books (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_price_book_items_org_product FOREIGN KEY (organization_id, product_id)
-        REFERENCES products (organization_id, id) ON DELETE RESTRICT,
-    CONSTRAINT ux_price_book_items_org_book_product UNIQUE (organization_id, price_book_id, product_id)
+    created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX ix_price_book_items_product_id ON price_book_items (product_id);
-CREATE INDEX ix_price_book_items_organization_id ON price_book_items (organization_id);
 
 CREATE TABLE price_book_targets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     price_book_id uuid NOT NULL,
     site_id uuid,
     machine_id uuid,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT fk_price_book_targets_org_book FOREIGN KEY (organization_id, price_book_id)
-        REFERENCES price_books (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_price_book_targets_org_site FOREIGN KEY (organization_id, site_id)
-        REFERENCES sites (organization_id, id),
-    CONSTRAINT fk_price_book_targets_org_machine FOREIGN KEY (organization_id, machine_id)
-        REFERENCES machines (organization_id, id),
     CONSTRAINT ck_price_book_targets_exactly_one CHECK (
         (site_id IS NOT NULL AND machine_id IS NULL)
         OR (machine_id IS NOT NULL AND site_id IS NULL)
@@ -603,12 +467,8 @@ CREATE UNIQUE INDEX ux_price_book_targets_book_machine ON price_book_targets (pr
 
 CREATE UNIQUE INDEX ux_price_book_targets_book_site ON price_book_targets (price_book_id, site_id) WHERE site_id IS NOT NULL;
 
-CREATE INDEX ix_price_book_targets_organization_id ON price_book_targets (organization_id);
-CREATE INDEX ix_price_book_targets_book ON price_book_targets (organization_id, price_book_id);
-
 CREATE TABLE machine_price_overrides (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     product_id uuid NOT NULL REFERENCES products (id) ON DELETE RESTRICT,
     unit_price_minor bigint NOT NULL CHECK (unit_price_minor >= 0),
@@ -616,10 +476,6 @@ CREATE TABLE machine_price_overrides (
     valid_from timestamptz NOT NULL,
     valid_to timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT fk_machine_price_overrides_org_machine FOREIGN KEY (organization_id, machine_id)
-        REFERENCES machines (organization_id, id),
-    CONSTRAINT fk_machine_price_overrides_org_product FOREIGN KEY (organization_id, product_id)
-        REFERENCES products (organization_id, id),
     CONSTRAINT ex_machine_price_overrides_no_overlap EXCLUDE USING gist (
         machine_id WITH =,
         product_id WITH =,
@@ -630,11 +486,8 @@ CREATE TABLE machine_price_overrides (
 CREATE INDEX ix_machine_price_overrides_machine_product_valid
     ON machine_price_overrides (machine_id, product_id, valid_from DESC);
 
-CREATE INDEX ix_machine_price_overrides_organization_id ON machine_price_overrides (organization_id);
-
 CREATE TABLE promotions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     name text NOT NULL,
     approval_status text NOT NULL DEFAULT 'draft' CHECK (
         approval_status IN ('draft', 'pending_approval', 'approved', 'rejected', 'archived')
@@ -653,11 +506,6 @@ CREATE TABLE promotions (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_promotions_org_id ON promotions (organization_id, id);
-
-CREATE INDEX ix_promotions_organization_id ON promotions (organization_id);
-CREATE INDEX ix_promotions_org_approval ON promotions (organization_id, approval_status);
-
 CREATE TABLE promotion_rules (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     promotion_id uuid NOT NULL REFERENCES promotions (id) ON DELETE CASCADE,
@@ -673,53 +521,29 @@ CREATE INDEX ix_promotion_rules_promotion_id ON promotion_rules (promotion_id);
 CREATE TABLE promotion_targets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     promotion_id uuid NOT NULL REFERENCES promotions (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
-    target_type text NOT NULL CHECK (target_type IN ('product', 'category', 'machine', 'site', 'organization', 'tag')),
+    target_type text NOT NULL CHECK (target_type IN ('product', 'category', 'machine', 'site', 'tag')),
     product_id uuid,
     category_id uuid,
     machine_id uuid,
     site_id uuid,
-    organization_target_id uuid,
     tag_id uuid REFERENCES tags (id) ON DELETE CASCADE,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT fk_promotion_targets_org_promo FOREIGN KEY (organization_id, promotion_id)
-        REFERENCES promotions (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_pt_org_product FOREIGN KEY (organization_id, product_id)
-        REFERENCES products (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_pt_org_category FOREIGN KEY (organization_id, category_id)
-        REFERENCES categories (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_pt_org_machine FOREIGN KEY (organization_id, machine_id)
-        REFERENCES machines (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_pt_org_site FOREIGN KEY (organization_id, site_id)
-        REFERENCES sites (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_pt_organization_target FOREIGN KEY (organization_target_id)
-        REFERENCES organizations (id) ON DELETE CASCADE,
     CONSTRAINT ck_promotion_targets_one_target CHECK (
-        (target_type = 'product' AND product_id IS NOT NULL AND category_id IS NULL AND machine_id IS NULL AND site_id IS NULL AND organization_target_id IS NULL AND tag_id IS NULL)
-        OR (target_type = 'category' AND category_id IS NOT NULL AND product_id IS NULL AND machine_id IS NULL AND site_id IS NULL AND organization_target_id IS NULL AND tag_id IS NULL)
-        OR (target_type = 'machine' AND machine_id IS NOT NULL AND product_id IS NULL AND category_id IS NULL AND site_id IS NULL AND organization_target_id IS NULL AND tag_id IS NULL)
-        OR (target_type = 'site' AND site_id IS NOT NULL AND product_id IS NULL AND category_id IS NULL AND machine_id IS NULL AND organization_target_id IS NULL AND tag_id IS NULL)
-        OR (target_type = 'organization' AND organization_target_id IS NOT NULL AND product_id IS NULL AND category_id IS NULL AND machine_id IS NULL AND site_id IS NULL AND tag_id IS NULL)
-        OR (target_type = 'tag' AND tag_id IS NOT NULL AND product_id IS NULL AND category_id IS NULL AND machine_id IS NULL AND site_id IS NULL AND organization_target_id IS NULL)
+        ((product_id IS NOT NULL)::int + (category_id IS NOT NULL)::int + (machine_id IS NOT NULL)::int + (site_id IS NOT NULL)::int + (tag_id IS NOT NULL)::int) = 1
     )
 );
 
 CREATE INDEX ix_promotion_targets_promotion_id ON promotion_targets (promotion_id);
-CREATE INDEX ix_promotion_targets_organization_id ON promotion_targets (organization_id);
 CREATE INDEX ix_promotion_targets_tag_id ON promotion_targets (tag_id) WHERE tag_id IS NOT NULL;
 
 CREATE TABLE planograms (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     name text NOT NULL,
     revision int NOT NULL DEFAULT 1,
     status text NOT NULL CHECK (status IN ('draft', 'published', 'archived')),
     meta jsonb NOT NULL DEFAULT '{}'::jsonb,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT ux_planograms_org_name_revision UNIQUE (organization_id, name, revision)
+    created_at timestamptz NOT NULL DEFAULT now()
 );
-
-CREATE INDEX ix_planograms_organization_id ON planograms (organization_id);
 
 CREATE TABLE slots (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -749,7 +573,6 @@ CREATE INDEX ix_machine_slot_state_planogram_id ON machine_slot_state (planogram
 
 CREATE TABLE orders (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
     status text NOT NULL CHECK (status IN ('created', 'quoted', 'paid', 'vending', 'completed', 'failed', 'cancelled')),
     currency char(3) NOT NULL,
@@ -760,9 +583,6 @@ CREATE TABLE orders (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
-
-CREATE UNIQUE INDEX ux_orders_org_idempotency ON orders (organization_id, idempotency_key)
-    WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) <> '';
 
 CREATE INDEX ix_orders_machine_id ON orders (machine_id);
 
@@ -819,12 +639,11 @@ CREATE UNIQUE INDEX ux_machine_reconciliation_sessions_open_per_day ON machine_r
 
 CREATE INDEX ix_machine_reconciliation_sessions_machine_date ON machine_reconciliation_sessions (machine_id, business_date DESC);
 
-COMMENT ON COLUMN machine_reconciliation_sessions.business_date IS 'Operator calendar day in organization TZ; store date only—resolve TZ in application.';
+COMMENT ON COLUMN machine_reconciliation_sessions.business_date IS 'Operator calendar day in system timezone; store date only - resolve timezone in application.';
 COMMENT ON COLUMN machine_reconciliation_sessions.variance_amount_minor IS 'actual - expected under session convention when closed.';
 
 CREATE TABLE cash_collections (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     collected_at timestamptz NOT NULL,
     opened_at timestamptz NOT NULL,
@@ -847,7 +666,6 @@ CREATE TABLE cash_collections (
 );
 
 CREATE INDEX ix_cash_collections_machine_collected ON cash_collections (machine_id, collected_at DESC);
-CREATE INDEX ix_cash_collections_org_collected ON cash_collections (organization_id, collected_at DESC);
 CREATE INDEX ix_cash_collections_unreconciled ON cash_collections (machine_id, collected_at DESC)
     WHERE reconciliation_status <> 'matched';
 CREATE INDEX ix_cash_collections_operator_session ON cash_collections (operator_session_id)
@@ -867,7 +685,6 @@ COMMENT ON COLUMN cash_collections.operator_session_id IS 'Operator session acti
 
 CREATE TABLE cash_events (
     id bigserial PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     event_type text NOT NULL CHECK (
         event_type IN ('insert', 'dispense_change', 'reject', 'audit_adjust', 'transfer', 'other')
@@ -880,7 +697,6 @@ CREATE TABLE cash_events (
     reconciliation_session_id uuid REFERENCES machine_reconciliation_sessions (id) ON DELETE SET NULL
 );
 
-CREATE INDEX ix_cash_events_org_occurred ON cash_events (organization_id, occurred_at DESC);
 CREATE INDEX ix_cash_events_machine_occurred ON cash_events (machine_id, occurred_at DESC);
 CREATE INDEX ix_cash_events_session ON cash_events (reconciliation_session_id)
     WHERE reconciliation_session_id IS NOT NULL;
@@ -977,7 +793,6 @@ CREATE INDEX ix_refunds_settlement_batch ON refunds (settlement_batch_id)
 CREATE TABLE payment_provider_events (
     id bigserial PRIMARY KEY,
     payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
-    organization_id uuid REFERENCES organizations (id) ON DELETE SET NULL,
     provider text NOT NULL,
     provider_ref text,
     webhook_event_id text,
@@ -1015,8 +830,6 @@ CREATE INDEX ix_payment_provider_events_payment ON payment_provider_events (paym
     WHERE payment_id IS NOT NULL;
 CREATE INDEX ix_payment_provider_events_received ON payment_provider_events (provider, received_at DESC);
 CREATE INDEX ix_payment_provider_events_legal_hold_received ON payment_provider_events (legal_hold, received_at);
-CREATE INDEX ix_payment_provider_events_org_received ON payment_provider_events (organization_id, received_at DESC)
-    WHERE organization_id IS NOT NULL;
 
 COMMENT ON TABLE payment_provider_events IS 'Raw PSP notifications; payment_id nullable for orphan webhooks until correlated.';
 COMMENT ON COLUMN payment_provider_events.legal_hold IS 'When true, retention cleanup must not purge this PSP webhook evidence.';
@@ -1027,7 +840,6 @@ COMMENT ON COLUMN payment_provider_events.ingress_error IS 'When ingress_status 
 
 CREATE TABLE payment_provider_settlements (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     provider text NOT NULL,
     provider_settlement_id text NOT NULL,
     gross_amount_minor bigint NOT NULL,
@@ -1041,17 +853,13 @@ CREATE TABLE payment_provider_settlements (
     ),
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT ux_payment_provider_settlements_org_provider_ext UNIQUE (organization_id, provider, provider_settlement_id)
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
-
-CREATE INDEX ix_payment_provider_settlements_org_date ON payment_provider_settlements (organization_id, settlement_date DESC, created_at DESC);
 
 COMMENT ON TABLE payment_provider_settlements IS 'Imported PSP settlement reports for finance reconciliation.';
 
 CREATE TABLE payment_disputes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     provider text NOT NULL,
     provider_dispute_id text NOT NULL,
     payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
@@ -1068,11 +876,8 @@ CREATE TABLE payment_disputes (
     resolution_note text,
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT ux_payment_disputes_org_provider_ext UNIQUE (organization_id, provider, provider_dispute_id)
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
-
-CREATE INDEX ix_payment_disputes_org_status ON payment_disputes (organization_id, status, opened_at DESC);
 
 COMMENT ON TABLE payment_disputes IS 'Chargeback/dispute foundation; links to internal order/payment when known.';
 
@@ -1115,7 +920,6 @@ COMMENT ON COLUMN cash_reconciliations.cash_session_id IS 'Reserved for future c
 
 CREATE TABLE commerce_reconciliation_cases (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     case_type text NOT NULL CHECK (
         case_type IN (
             'payment_paid_vend_not_started',
@@ -1151,7 +955,6 @@ CREATE TABLE commerce_reconciliation_cases (
 
 CREATE UNIQUE INDEX ux_commerce_reconciliation_cases_open_identity
     ON commerce_reconciliation_cases (
-        organization_id,
         case_type,
         COALESCE(order_id, '00000000-0000-0000-0000-000000000000'::uuid),
         COALESCE(payment_id, '00000000-0000-0000-0000-000000000000'::uuid),
@@ -1162,9 +965,6 @@ CREATE UNIQUE INDEX ux_commerce_reconciliation_cases_open_identity
     )
     WHERE status IN ('open', 'reviewing', 'escalated');
 
-CREATE INDEX ix_commerce_reconciliation_cases_org_status
-    ON commerce_reconciliation_cases (organization_id, status, last_detected_at DESC);
-
 CREATE INDEX ix_commerce_reconciliation_cases_payment
     ON commerce_reconciliation_cases (payment_id, last_detected_at DESC)
     WHERE payment_id IS NOT NULL;
@@ -1173,7 +973,6 @@ COMMENT ON TABLE commerce_reconciliation_cases IS 'Operator-visible payment/vend
 
 CREATE TABLE order_timelines (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
     event_type text NOT NULL,
     actor_type text NOT NULL CHECK (
@@ -1185,13 +984,10 @@ CREATE TABLE order_timelines (
     created_at timestamptz NOT NULL DEFAULT now ()
 );
 
-CREATE INDEX ix_order_timelines_org_order_occurred ON order_timelines (organization_id, order_id, occurred_at DESC);
-
 COMMENT ON TABLE order_timelines IS 'Append-only commerce order lifecycle events (reconciliation actions, refunds, operator visibility).';
 
 CREATE TABLE refund_requests (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
     payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
     refund_id uuid REFERENCES refunds (id) ON DELETE SET NULL,
@@ -1210,21 +1006,11 @@ CREATE TABLE refund_requests (
     completed_at timestamptz
 );
 
-CREATE UNIQUE INDEX ux_refund_requests_org_idempotency ON refund_requests (organization_id, idempotency_key)
-WHERE
-    idempotency_key IS NOT NULL
-    AND btrim(idempotency_key) <> '';
-
-CREATE INDEX ix_refund_requests_org_created ON refund_requests (organization_id, created_at DESC);
-
-CREATE INDEX ix_refund_requests_org_order ON refund_requests (organization_id, order_id, created_at DESC);
-
 COMMENT ON TABLE refund_requests IS 'Human-initiated refund review rows linked to ledger refunds.refunds after PSP processing.';
 
 CREATE VIEW payment_reconciliation_cases AS
 SELECT
     crc.id,
-    crc.organization_id,
     crc.machine_id,
     crc.order_id,
     crc.payment_id,
@@ -1245,7 +1031,6 @@ COMMENT ON VIEW payment_reconciliation_cases IS 'Compatibility projection over c
 
 CREATE TABLE financial_ledger_entries (
     id bigserial PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid REFERENCES machines (id) ON DELETE SET NULL,
     site_id uuid REFERENCES sites (id) ON DELETE SET NULL,
     order_id uuid REFERENCES orders (id) ON DELETE SET NULL,
@@ -1277,7 +1062,6 @@ CREATE TABLE financial_ledger_entries (
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
-CREATE INDEX ix_financial_ledger_entries_org_time ON financial_ledger_entries (organization_id, occurred_at DESC);
 CREATE INDEX ix_financial_ledger_entries_machine_time ON financial_ledger_entries (machine_id, occurred_at DESC)
     WHERE machine_id IS NOT NULL;
 CREATE INDEX ix_financial_ledger_entries_payment ON financial_ledger_entries (payment_id)
@@ -1298,7 +1082,6 @@ COMMENT ON COLUMN financial_ledger_entries.reference_type IS 'Polymorphic pointe
 CREATE TABLE command_ledger (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     sequence bigint NOT NULL,
     command_type text NOT NULL,
     payload jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -1468,7 +1251,6 @@ CREATE TABLE machine_shadow (
 
 CREATE TABLE outbox_events (
     id bigserial PRIMARY KEY,
-    organization_id uuid REFERENCES organizations (id) ON DELETE SET NULL,
     topic text NOT NULL,
     event_type text NOT NULL,
     payload jsonb NOT NULL,
@@ -1527,7 +1309,6 @@ CREATE INDEX ix_messaging_consumer_dedupe_processed ON messaging_consumer_dedupe
 
 CREATE TABLE audit_logs (
     id bigserial PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     actor_type text NOT NULL,
     actor_id text NOT NULL DEFAULT '',
     action text NOT NULL,
@@ -1539,12 +1320,9 @@ CREATE TABLE audit_logs (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_audit_logs_organization_id ON audit_logs (organization_id);
-
 -- P1.4 enterprise audit_events (see migrations/00031_enterprise_audit_events.sql).
 CREATE TABLE audit_events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     actor_type text NOT NULL CONSTRAINT chk_audit_events_actor_type CHECK (
         actor_type IN ('user', 'machine', 'system', 'webhook', 'service', 'payment_provider')
     ),
@@ -1569,31 +1347,13 @@ CREATE TABLE audit_events (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_audit_events_org_created ON audit_events (organization_id, created_at DESC);
-
-CREATE INDEX ix_audit_events_org_action ON audit_events (organization_id, action);
-
-CREATE INDEX ix_audit_events_org_actor ON audit_events (
-    organization_id,
+CREATE INDEX ix_audit_events_actor ON audit_events (
     actor_type,
     actor_id
 )
 WHERE
     actor_id IS NOT NULL;
 
-CREATE INDEX ix_audit_events_org_machine_created ON audit_events (organization_id, machine_id, created_at DESC)
-WHERE
-    machine_id IS NOT NULL;
-
-CREATE INDEX ix_audit_events_org_site_created ON audit_events (organization_id, site_id, created_at DESC)
-WHERE
-    site_id IS NOT NULL;
-
-CREATE INDEX ix_audit_events_org_resource ON audit_events (organization_id, resource_type, resource_id)
-WHERE
-    resource_id IS NOT NULL;
-
-CREATE INDEX ix_audit_events_org_outcome ON audit_events (organization_id, outcome, created_at DESC);
 CREATE INDEX ix_audit_events_legal_hold_created ON audit_events (legal_hold, created_at);
 CREATE INDEX ix_audit_logs_legal_hold_created ON audit_logs (legal_hold, created_at);
 
@@ -1603,7 +1363,6 @@ COMMENT ON COLUMN audit_logs.legal_hold IS 'When true, retention cleanup must no
 -- P2.3 machine device TLS client certificates (see migrations/00041_machine_device_certificates.sql).
 CREATE TABLE machine_device_certificates (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     fingerprint_sha256 bytea NOT NULL,
     serial_number text NOT NULL,
@@ -1626,11 +1385,8 @@ CREATE TABLE machine_device_certificates (
 
 CREATE INDEX ix_machine_device_certificates_machine_status ON machine_device_certificates (machine_id, status);
 
-CREATE INDEX ix_machine_device_certificates_org_machine ON machine_device_certificates (organization_id, machine_id);
-
 CREATE TABLE ota_artifacts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     storage_key text NOT NULL,
     sha256 text,
     size_bytes bigint CHECK (size_bytes IS NULL OR size_bytes >= 0),
@@ -1638,11 +1394,8 @@ CREATE TABLE ota_artifacts (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_ota_artifacts_organization_id ON ota_artifacts (organization_id);
-
 CREATE TABLE ota_campaigns (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     name text NOT NULL,
     artifact_id uuid NOT NULL REFERENCES ota_artifacts (id) ON DELETE RESTRICT,
     artifact_version text,
@@ -1675,8 +1428,6 @@ CREATE TABLE ota_campaigns (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_ota_campaigns_organization_id ON ota_campaigns (organization_id);
-
 CREATE TABLE ota_campaign_targets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     campaign_id uuid NOT NULL REFERENCES ota_campaigns (id) ON DELETE CASCADE,
@@ -1691,7 +1442,6 @@ CREATE INDEX ix_ota_campaign_targets_campaign_id ON ota_campaign_targets (campai
 
 CREATE TABLE ota_campaign_events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     campaign_id uuid NOT NULL REFERENCES ota_campaigns (id) ON DELETE CASCADE,
     event_type text NOT NULL,
     payload jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -1703,7 +1453,6 @@ CREATE INDEX ix_ota_campaign_events_campaign ON ota_campaign_events (campaign_id
 
 CREATE TABLE ota_machine_results (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     campaign_id uuid NOT NULL REFERENCES ota_campaigns (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     wave text NOT NULL DEFAULT 'forward' CHECK (wave IN ('forward', 'rollback')),
@@ -1723,7 +1472,6 @@ CREATE INDEX ix_ota_machine_results_campaign ON ota_machine_results (campaign_id
 CREATE TABLE machine_activation_codes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     code_hash bytea NOT NULL,
     max_uses int NOT NULL DEFAULT 1 CHECK (max_uses > 0),
     uses int NOT NULL DEFAULT 0 CHECK (uses >= 0),
@@ -1742,7 +1490,6 @@ CREATE INDEX ix_machine_activation_codes_machine ON machine_activation_codes (ma
 CREATE TABLE machine_activation_claims (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     activation_code_id uuid NOT NULL REFERENCES machine_activation_codes (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     fingerprint_hash bytea NOT NULL,
     claimed_at timestamptz NOT NULL DEFAULT now (),
@@ -1759,8 +1506,6 @@ CREATE INDEX ix_machine_activation_claims_code ON machine_activation_claims (
     claimed_at DESC
 );
 
-CREATE INDEX ix_machine_activation_claims_org_machine ON machine_activation_claims (organization_id, machine_id);
-
 CREATE UNIQUE INDEX ux_machine_activation_claim_code_fp_succeeded ON machine_activation_claims (
     activation_code_id,
     fingerprint_hash
@@ -1772,7 +1517,6 @@ WHERE
 CREATE TABLE machine_runtime_refresh_tokens (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     token_hash bytea NOT NULL,
     expires_at timestamptz NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -1791,7 +1535,6 @@ CREATE INDEX ix_machine_runtime_refresh_machine ON machine_runtime_refresh_token
 
 CREATE TABLE machine_idempotency_keys (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     operation text NOT NULL,
     idempotency_key text NOT NULL,
@@ -1801,15 +1544,15 @@ CREATE TABLE machine_idempotency_keys (
     first_seen_at timestamptz NOT NULL DEFAULT now(),
     last_seen_at timestamptz NOT NULL DEFAULT now(),
     expires_at timestamptz NOT NULL,
-    trace_id text NOT NULL DEFAULT '',
-    CONSTRAINT ux_machine_idempotency_key UNIQUE (organization_id, machine_id, operation, idempotency_key)
+    trace_id text NOT NULL DEFAULT ''
 );
+
+CREATE UNIQUE INDEX ux_machine_idempotency_machine_op_key ON machine_idempotency_keys (machine_id, operation, idempotency_key);
 
 CREATE INDEX ix_machine_idempotency_expiry ON machine_idempotency_keys (expires_at);
 
 CREATE TABLE machine_offline_events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     offline_sequence bigint NOT NULL,
     event_type text NOT NULL,
@@ -1831,20 +1574,10 @@ CREATE TABLE machine_offline_events (
         )
     ),
     processing_error text NOT NULL DEFAULT '',
-    idempotency_key text NOT NULL DEFAULT '',
-    CONSTRAINT ux_machine_offline_sequence UNIQUE (organization_id, machine_id, offline_sequence)
+    idempotency_key text NOT NULL DEFAULT ''
 );
 
-CREATE INDEX ix_machine_offline_pending ON machine_offline_events (organization_id, machine_id, offline_sequence)
-WHERE
-    processing_status IN ('pending', 'processing');
-
-CREATE INDEX ix_machine_offline_event_id ON machine_offline_events (organization_id, machine_id, event_id)
-WHERE
-    event_id <> '';
-
 CREATE UNIQUE INDEX ux_machine_offline_client_event_id ON machine_offline_events (
-    organization_id,
     machine_id,
     client_event_id
 )
@@ -1863,13 +1596,11 @@ WHERE
     );
 
 CREATE TABLE machine_sync_cursors (
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     stream_name text NOT NULL,
     last_sequence bigint NOT NULL DEFAULT 0,
     last_synced_at timestamptz,
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (organization_id, machine_id, stream_name)
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE critical_telemetry_event_status (
@@ -1938,7 +1669,6 @@ COMMENT ON TABLE device_command_receipts IS 'Device-reported outcome for a comma
 -- Telemetry pipeline (migrations/00013_telemetry_pipeline.sql): rollups + snapshots, not raw high-frequency MQTT.
 CREATE TABLE machine_current_snapshot (
     machine_id uuid PRIMARY KEY REFERENCES machines (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     site_id uuid NOT NULL REFERENCES sites (id) ON DELETE CASCADE,
     reported_fingerprint text,
     metrics_fingerprint text,
@@ -1957,14 +1687,11 @@ CREATE TABLE machine_current_snapshot (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_machine_current_snapshot_org ON machine_current_snapshot (organization_id);
-
 COMMENT ON TABLE machine_current_snapshot IS 'Single current row per machine; updated by telemetry state/metrics workers — not a raw ingest log.';
 
 -- Machine runtime check-ins (migrations/00020_machine_check_ins_config_ack.sql).
 CREATE TABLE machine_check_ins (
     id bigserial PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     android_id text,
     sim_serial text,
@@ -1980,13 +1707,10 @@ CREATE TABLE machine_check_ins (
     boot_id text NOT NULL DEFAULT '',
     occurred_at timestamptz NOT NULL,
     recorded_at timestamptz NOT NULL DEFAULT now(),
-    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-    CONSTRAINT fk_machine_check_ins_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE INDEX ix_machine_check_ins_machine_occurred ON machine_check_ins (machine_id, occurred_at DESC);
-
-CREATE INDEX ix_machine_check_ins_org_occurred ON machine_check_ins (organization_id, occurred_at DESC);
 
 COMMENT ON TABLE machine_check_ins IS 'Append-only Android device boot/runtime check-ins; occurred_at is client business time with timezone.';
 
@@ -2045,7 +1769,6 @@ COMMENT ON TABLE telemetry_rollups IS 'Aggregated telemetry; workers upsert buck
 
 CREATE TABLE diagnostic_bundle_manifests (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     request_id uuid,
     command_id uuid REFERENCES command_ledger (id) ON DELETE SET NULL,
@@ -2062,7 +1785,6 @@ CREATE TABLE diagnostic_bundle_manifests (
 );
 
 CREATE INDEX ix_diagnostic_bundle_manifests_machine_created ON diagnostic_bundle_manifests (machine_id, created_at DESC);
-CREATE INDEX ix_diagnostic_bundle_manifests_org_machine_created ON diagnostic_bundle_manifests (organization_id, machine_id, created_at DESC);
 
 COMMENT ON TABLE diagnostic_bundle_manifests IS 'Metadata for cold diagnostic bundles; blobs referenced by storage_key only.';
 
@@ -2116,7 +1838,6 @@ COMMENT ON TABLE protocol_ack_events IS 'Low-level ack/nack/timeout for retry an
 
 CREATE TABLE refill_sessions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     started_at timestamptz NOT NULL DEFAULT now(),
     ended_at timestamptz,
@@ -2127,8 +1848,6 @@ CREATE TABLE refill_sessions (
 
 CREATE INDEX ix_refill_sessions_machine_started ON refill_sessions (machine_id, started_at DESC);
 
-CREATE INDEX ix_refill_sessions_org_started ON refill_sessions (organization_id, started_at DESC);
-
 CREATE INDEX ix_refill_sessions_operator_session ON refill_sessions (operator_session_id)
 WHERE
     operator_session_id IS NOT NULL;
@@ -2138,7 +1857,6 @@ COMMENT ON TABLE refill_sessions IS 'Field refill visit context; link operator_s
 CREATE TABLE refill_session_lines (
     id bigserial PRIMARY KEY,
     refill_session_id uuid NOT NULL REFERENCES refill_sessions (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     cabinet_code text NOT NULL,
     slot_code text NOT NULL,
     product_id uuid,
@@ -2153,8 +1871,7 @@ CREATE TABLE refill_session_lines (
     CONSTRAINT ck_refill_session_lines_nonneg CHECK (
         before_quantity >= 0
         AND after_quantity >= 0
-    ),
-    CONSTRAINT fk_refill_session_lines_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE SET NULL
+    )
 );
 
 CREATE INDEX ix_refill_session_lines_session ON refill_session_lines (refill_session_id, created_at DESC);
@@ -2163,7 +1880,6 @@ COMMENT ON TABLE refill_session_lines IS 'Per-slot deltas recorded during a refi
 
 CREATE TABLE machine_configs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     applied_at timestamptz NOT NULL DEFAULT now(),
     config_revision int NOT NULL DEFAULT 1,
@@ -2175,8 +1891,6 @@ CREATE TABLE machine_configs (
 
 CREATE INDEX ix_machine_configs_machine_applied ON machine_configs (machine_id, applied_at DESC);
 
-CREATE INDEX ix_machine_configs_org_applied ON machine_configs (organization_id, applied_at DESC);
-
 CREATE INDEX ix_machine_configs_operator_session ON machine_configs (operator_session_id)
 WHERE
     operator_session_id IS NOT NULL;
@@ -2187,27 +1901,22 @@ COMMENT ON TABLE machine_configs IS 'Machine-local config application snapshots;
 
 CREATE TABLE feature_flags (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     flag_key text NOT NULL,
     display_name text NOT NULL DEFAULT '',
     description text NOT NULL DEFAULT '',
     enabled boolean NOT NULL DEFAULT false,
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now (),
-    updated_at timestamptz NOT NULL DEFAULT now (),
-    CONSTRAINT ux_feature_flags_org_key UNIQUE (organization_id, flag_key)
+    updated_at timestamptz NOT NULL DEFAULT now ()
 );
 
-CREATE INDEX ix_feature_flags_organization_id ON feature_flags (organization_id);
-
-COMMENT ON TABLE feature_flags IS 'Tenant-scoped feature switches; targets refine scope (site/machine/profile/canary).';
+COMMENT ON TABLE feature_flags IS 'Single-company feature switches; targets refine scope (site/machine/profile/canary).';
 
 CREATE TABLE feature_flag_targets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     feature_flag_id uuid NOT NULL REFERENCES feature_flags (id) ON DELETE CASCADE,
     target_type text NOT NULL CHECK (
-        target_type IN ('organization', 'site', 'machine', 'hardware_profile', 'canary')
+        target_type IN ('global', 'site', 'machine', 'hardware_profile', 'canary')
     ),
     site_id uuid REFERENCES sites (id) ON DELETE CASCADE,
     machine_id uuid REFERENCES machines (id) ON DELETE CASCADE,
@@ -2227,27 +1936,20 @@ CREATE TABLE feature_flag_targets (
 
 CREATE INDEX ix_feature_flag_targets_flag ON feature_flag_targets (feature_flag_id);
 
-CREATE INDEX ix_feature_flag_targets_org ON feature_flag_targets (organization_id);
-
 COMMENT ON TABLE feature_flag_targets IS 'Scoped overrides for feature_flags (highest priority matching row wins).';
 
 CREATE TABLE machine_config_versions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     version_label text NOT NULL,
     config_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
     parent_version_id uuid REFERENCES machine_config_versions (id) ON DELETE SET NULL,
-    created_at timestamptz NOT NULL DEFAULT now (),
-    CONSTRAINT ux_machine_config_versions_org_label UNIQUE (organization_id, version_label)
+    created_at timestamptz NOT NULL DEFAULT now ()
 );
-
-CREATE INDEX ix_machine_config_versions_org_created ON machine_config_versions (organization_id, created_at DESC);
 
 COMMENT ON TABLE machine_config_versions IS 'Logical remote-config bundles for staged rollout (distinct from machine_configs apply log).';
 
 CREATE TABLE machine_config_rollouts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     target_version_id uuid NOT NULL REFERENCES machine_config_versions (id) ON DELETE RESTRICT,
     previous_version_id uuid REFERENCES machine_config_versions (id) ON DELETE SET NULL,
     status text NOT NULL DEFAULT 'pending' CHECK (
@@ -2261,7 +1963,7 @@ CREATE TABLE machine_config_rollouts (
         )
     ),
     scope_type text NOT NULL CHECK (
-        scope_type IN ('organization', 'site', 'machine', 'hardware_profile')
+        scope_type IN ('global', 'site', 'machine', 'hardware_profile')
     ),
     site_id uuid REFERENCES sites (id) ON DELETE CASCADE,
     machine_id uuid REFERENCES machines (id) ON DELETE CASCADE,
@@ -2271,7 +1973,7 @@ CREATE TABLE machine_config_rollouts (
     updated_at timestamptz NOT NULL DEFAULT now (),
     CONSTRAINT chk_mc_rollout_scope_exclusive CHECK (
         (
-            scope_type = 'organization'
+            scope_type = 'global'
             AND site_id IS NULL
             AND machine_id IS NULL
             AND hardware_profile_id IS NULL
@@ -2297,15 +1999,10 @@ CREATE TABLE machine_config_rollouts (
     )
 );
 
-CREATE INDEX ix_machine_config_rollouts_org_created ON machine_config_rollouts (organization_id, created_at DESC);
-
-CREATE INDEX ix_machine_config_rollouts_org_status ON machine_config_rollouts (organization_id, status);
-
 COMMENT ON TABLE machine_config_rollouts IS 'Staged rollout of machine_config_versions with optional canary and rollback lineage.';
 
 CREATE TABLE incidents (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     status text NOT NULL DEFAULT 'open' CHECK (
         status IN ('open', 'acknowledged', 'in_progress', 'resolved', 'closed', 'cancelled')
@@ -2319,8 +2016,6 @@ CREATE TABLE incidents (
 
 CREATE INDEX ix_incidents_machine_updated ON incidents (machine_id, updated_at DESC);
 
-CREATE INDEX ix_incidents_org_opened ON incidents (organization_id, opened_at DESC);
-
 CREATE INDEX ix_incidents_operator_session ON incidents (operator_session_id)
 WHERE
     operator_session_id IS NOT NULL;
@@ -2330,7 +2025,6 @@ COMMENT ON TABLE incidents IS 'Machine-side incidents; operator_session_id for o
 CREATE VIEW v_machine_current_operator AS
 SELECT
     m.id AS machine_id,
-    m.organization_id,
     s.id AS operator_session_id,
     s.actor_type,
     s.technician_id,
@@ -2348,7 +2042,6 @@ COMMENT ON VIEW v_machine_current_operator IS 'Convenience join for UI: one row 
 
 CREATE TABLE platform_auth_accounts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     email text NOT NULL,
     password_hash text NOT NULL,
     roles text[] NOT NULL DEFAULT '{}'::text[],
@@ -2360,10 +2053,6 @@ CREATE TABLE platform_auth_accounts (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
-
-CREATE UNIQUE INDEX ux_platform_auth_accounts_org_email ON platform_auth_accounts (organization_id, lower(email));
-
-CREATE INDEX ix_platform_auth_accounts_organization_id ON platform_auth_accounts (organization_id);
 
 CREATE TABLE auth_refresh_tokens (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2383,7 +2072,6 @@ WHERE revoked_at IS NULL;
 
 CREATE TABLE admin_mfa_factors (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
     factor_type text NOT NULL CHECK (factor_type = 'totp'),
     secret_ciphertext bytea NOT NULL,
@@ -2394,11 +2082,8 @@ CREATE TABLE admin_mfa_factors (
     CONSTRAINT ux_admin_mfa_factors_user_factor UNIQUE (user_id, factor_type)
 );
 
-CREATE INDEX ix_admin_mfa_factors_org ON admin_mfa_factors (organization_id);
-
 CREATE TABLE admin_sessions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
     refresh_token_id uuid NOT NULL UNIQUE REFERENCES auth_refresh_tokens (id) ON DELETE CASCADE,
     refresh_token_hash bytea NOT NULL,
@@ -2411,11 +2096,8 @@ CREATE TABLE admin_sessions (
     revoked_at timestamptz
 );
 
-CREATE INDEX ix_admin_sessions_org_user ON admin_sessions (organization_id, user_id);
-
 CREATE TABLE admin_login_attempts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid REFERENCES organizations (id) ON DELETE SET NULL,
     email_normalized text NOT NULL,
     user_id uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL,
     ip_address text,
@@ -2430,7 +2112,6 @@ CREATE INDEX ix_admin_login_attempts_occurred ON admin_login_attempts (occurred_
 CREATE TABLE password_reset_tokens (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     token_hash bytea NOT NULL,
     expires_at timestamptz NOT NULL,
     used_at timestamptz,
@@ -2466,7 +2147,6 @@ CREATE INDEX ix_machine_cabinets_machine_sort ON machine_cabinets (machine_id, s
 
 CREATE TABLE assortments (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     name text NOT NULL,
     status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
     description text NOT NULL DEFAULT '',
@@ -2476,22 +2156,13 @@ CREATE TABLE assortments (
     CONSTRAINT ck_assortments_name_nonempty CHECK (btrim(name) <> '')
 );
 
-CREATE UNIQUE INDEX ux_assortments_org_id ON assortments (organization_id, id);
-
-CREATE UNIQUE INDEX ux_assortments_org_name_lower ON assortments (organization_id, lower(name));
-
-CREATE INDEX ix_assortments_organization_id ON assortments (organization_id);
-
 CREATE TABLE assortment_items (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     assortment_id uuid NOT NULL REFERENCES assortments (id) ON DELETE CASCADE,
     product_id uuid NOT NULL,
     sort_order int NOT NULL DEFAULT 0,
     notes jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT fk_assortment_items_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_assortment_items_org_assortment FOREIGN KEY (organization_id, assortment_id) REFERENCES assortments (organization_id, id) ON DELETE CASCADE,
     CONSTRAINT ux_assortment_items_assortment_product UNIQUE (assortment_id, product_id)
 );
 
@@ -2501,15 +2172,12 @@ CREATE INDEX ix_assortment_items_product_id ON assortment_items (product_id);
 
 CREATE TABLE machine_assortment_bindings (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     assortment_id uuid NOT NULL REFERENCES assortments (id) ON DELETE RESTRICT,
     is_primary boolean NOT NULL DEFAULT false,
     valid_from timestamptz NOT NULL DEFAULT now(),
     valid_to timestamptz,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT fk_machine_assortment_bindings_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_machine_assortment_bindings_org_assortment FOREIGN KEY (organization_id, assortment_id) REFERENCES assortments (organization_id, id) ON DELETE RESTRICT
+    created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE UNIQUE INDEX ux_machine_assortment_bindings_one_active_primary ON machine_assortment_bindings (machine_id)
@@ -2523,24 +2191,19 @@ CREATE INDEX ix_machine_assortment_bindings_assortment ON machine_assortment_bin
 
 CREATE TABLE inventory_count_sessions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     operator_session_id uuid REFERENCES machine_operator_sessions (id) ON DELETE SET NULL,
     status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed', 'cancelled')),
     started_at timestamptz NOT NULL DEFAULT now(),
     ended_at timestamptz,
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT fk_inventory_count_sessions_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE
+    created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX ix_inventory_count_sessions_machine_started ON inventory_count_sessions (machine_id, started_at DESC);
 
-CREATE INDEX ix_inventory_count_sessions_org_started ON inventory_count_sessions (organization_id, started_at DESC);
-
 CREATE TABLE inventory_events (
     id bigserial PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     machine_cabinet_id uuid REFERENCES machine_cabinets (id) ON DELETE SET NULL,
     cabinet_code text,
@@ -2575,15 +2238,11 @@ CREATE TABLE inventory_events (
     occurred_at timestamptz NOT NULL DEFAULT now(),
     recorded_at timestamptz NOT NULL DEFAULT now(),
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-    CONSTRAINT fk_inventory_events_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_inventory_events_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE SET NULL,
     CONSTRAINT ck_inventory_events_slot_code_nonempty CHECK (slot_code IS NULL OR btrim(slot_code) <> ''),
     CONSTRAINT ck_inventory_events_cabinet_code_nonempty CHECK (cabinet_code IS NULL OR btrim(cabinet_code) <> '')
 );
 
 CREATE INDEX ix_inventory_events_machine_occurred ON inventory_events (machine_id, occurred_at DESC);
-
-CREATE INDEX ix_inventory_events_org_occurred ON inventory_events (organization_id, occurred_at DESC);
 
 CREATE INDEX ix_inventory_events_machine_slot_occurred ON inventory_events (machine_id, slot_code, occurred_at DESC)
 WHERE
@@ -2616,7 +2275,6 @@ COMMENT ON TABLE inventory_count_sessions IS 'Optional physical count visit cont
 -- Slot layouts and configs (migrations/00016_machine_slot_layouts_configs.sql).
 CREATE TABLE machine_slot_layouts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     machine_cabinet_id uuid NOT NULL REFERENCES machine_cabinets (id) ON DELETE CASCADE,
     layout_key text NOT NULL,
@@ -2626,7 +2284,6 @@ CREATE TABLE machine_slot_layouts (
     created_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ck_machine_slot_layouts_layout_key_nonempty CHECK (btrim(layout_key) <> ''),
     CONSTRAINT ck_machine_slot_layouts_revision_positive CHECK (revision >= 1),
-    CONSTRAINT fk_machine_slot_layouts_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
     CONSTRAINT fk_machine_slot_layouts_machine_cabinet FOREIGN KEY (machine_cabinet_id) REFERENCES machine_cabinets (id) ON DELETE CASCADE
 );
 
@@ -2634,11 +2291,8 @@ CREATE UNIQUE INDEX ux_machine_slot_layouts_machine_cabinet_key_revision ON mach
 
 CREATE INDEX ix_machine_slot_layouts_machine_cabinet ON machine_slot_layouts (machine_id, machine_cabinet_id, created_at DESC);
 
-CREATE INDEX ix_machine_slot_layouts_org ON machine_slot_layouts (organization_id, created_at DESC);
-
 CREATE TABLE machine_slot_configs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     machine_cabinet_id uuid NOT NULL REFERENCES machine_cabinets (id) ON DELETE CASCADE,
     machine_slot_layout_id uuid NOT NULL REFERENCES machine_slot_layouts (id) ON DELETE RESTRICT,
@@ -2657,9 +2311,7 @@ CREATE TABLE machine_slot_configs (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ck_machine_slot_configs_slot_code_nonempty CHECK (btrim(slot_code) <> ''),
-    CONSTRAINT fk_machine_slot_configs_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_machine_slot_configs_machine_cabinet FOREIGN KEY (machine_cabinet_id) REFERENCES machine_cabinets (id) ON DELETE CASCADE,
-    CONSTRAINT fk_machine_slot_configs_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE SET NULL
+    CONSTRAINT fk_machine_slot_configs_machine_cabinet FOREIGN KEY (machine_cabinet_id) REFERENCES machine_cabinets (id) ON DELETE CASCADE
 );
 
 CREATE UNIQUE INDEX ux_machine_slot_configs_current_machine_slot ON machine_slot_configs (machine_id, slot_code)
@@ -2685,7 +2337,6 @@ COMMENT ON INDEX ux_machine_slot_configs_current_machine_slot IS 'Partial unique
 -- Enterprise planogram versioning (migrations/00054_enterprise_planogram_versioning.sql).
 CREATE TABLE planogram_templates (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     name text NOT NULL,
     description text NOT NULL DEFAULT '',
     snapshot jsonb NOT NULL,
@@ -2693,34 +2344,28 @@ CREATE TABLE planogram_templates (
     updated_at timestamptz NOT NULL DEFAULT now ()
 );
 
-CREATE INDEX ix_planogram_templates_org ON planogram_templates (organization_id, created_at DESC);
-
 CREATE TABLE machine_planogram_drafts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     status text NOT NULL CHECK (
         status IN ('editing', 'validated')
     ),
     snapshot jsonb NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now (),
-    updated_at timestamptz NOT NULL DEFAULT now (),
-    CONSTRAINT fk_machine_planogram_drafts_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE
+    updated_at timestamptz NOT NULL DEFAULT now ()
 );
 
 CREATE INDEX ix_machine_planogram_drafts_machine ON machine_planogram_drafts (machine_id, updated_at DESC);
 
 CREATE TABLE machine_planogram_versions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     version_no int NOT NULL,
     snapshot jsonb NOT NULL,
     source_draft_id uuid REFERENCES machine_planogram_drafts (id) ON DELETE SET NULL,
     published_at timestamptz NOT NULL DEFAULT now (),
     published_by uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL,
-    CONSTRAINT ux_machine_planogram_versions_machine_version UNIQUE (machine_id, version_no),
-    CONSTRAINT fk_machine_planogram_versions_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE
+    CONSTRAINT ux_machine_planogram_versions_machine_version UNIQUE (machine_id, version_no)
 );
 
 CREATE INDEX ix_machine_planogram_versions_machine_published ON machine_planogram_versions (machine_id, published_at DESC);
@@ -2751,7 +2396,6 @@ ADD COLUMN last_acknowledged_planogram_version_id UUID NULL;
 
 CREATE TABLE finance_daily_closes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     close_date date NOT NULL,
     timezone text NOT NULL,
     site_id uuid REFERENCES sites (id) ON DELETE SET NULL,
@@ -2765,25 +2409,20 @@ CREATE TABLE finance_daily_closes (
     qr_wallet_minor bigint NOT NULL DEFAULT 0 CHECK (qr_wallet_minor >= 0),
     failed_minor bigint NOT NULL DEFAULT 0 CHECK (failed_minor >= 0),
     pending_minor bigint NOT NULL DEFAULT 0 CHECK (pending_minor >= 0),
-    created_at timestamptz NOT NULL DEFAULT now (),
-    CONSTRAINT ux_finance_daily_closes_org_idem UNIQUE (organization_id, idempotency_key)
+    created_at timestamptz NOT NULL DEFAULT now ()
 );
 
 CREATE UNIQUE INDEX ux_finance_daily_closes_scope ON finance_daily_closes (
-    organization_id,
     close_date,
     timezone,
     COALESCE(site_id, '00000000-0000-0000-0000-000000000000'::uuid),
     COALESCE(machine_id, '00000000-0000-0000-0000-000000000000'::uuid)
 );
 
-CREATE INDEX ix_finance_daily_closes_org_date ON finance_daily_closes (organization_id, close_date DESC);
-
-COMMENT ON TABLE finance_daily_closes IS 'Immutable org/day/timezone (optional site/machine scope) snapshot; corrections via finance_daily_close_adjustments.';
+COMMENT ON TABLE finance_daily_closes IS 'Immutable day/timezone (optional site/machine scope) snapshot; corrections via finance_daily_close_adjustments.';
 
 CREATE TABLE finance_daily_close_adjustments (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     daily_close_id uuid NOT NULL REFERENCES finance_daily_closes (id) ON DELETE CASCADE,
     reason text NOT NULL,
     delta_net_minor bigint NOT NULL DEFAULT 0,
@@ -2797,7 +2436,6 @@ COMMENT ON TABLE finance_daily_close_adjustments IS 'Post-close corrections; imm
 
 CREATE TABLE inventory_anomalies (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     anomaly_type text NOT NULL CHECK (
         anomaly_type IN (
@@ -2829,15 +2467,12 @@ CREATE TABLE inventory_anomalies (
     resolved_by uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL,
     resolution_note text,
     created_at timestamptz NOT NULL DEFAULT now (),
-    updated_at timestamptz NOT NULL DEFAULT now (),
-    CONSTRAINT fk_inventory_anomalies_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE
+    updated_at timestamptz NOT NULL DEFAULT now ()
 );
 
 CREATE UNIQUE INDEX ux_inventory_anomalies_machine_fp_open ON inventory_anomalies (machine_id, fingerprint)
 WHERE
     status = 'open';
-
-CREATE INDEX ix_inventory_anomalies_org_status ON inventory_anomalies (organization_id, status);
 
 CREATE INDEX ix_inventory_anomalies_machine_detected ON inventory_anomalies (machine_id, detected_at DESC);
 
@@ -2847,7 +2482,6 @@ COMMENT ON TABLE inventory_anomalies IS 'Operator-visible machine anomalies (inv
 
 CREATE TABLE machine_provisioning_batches (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     site_id uuid NOT NULL REFERENCES sites (id) ON DELETE RESTRICT,
     hardware_profile_id uuid REFERENCES machine_hardware_profiles (id) ON DELETE SET NULL,
     cabinet_type text NOT NULL DEFAULT '',
@@ -2861,12 +2495,9 @@ CREATE TABLE machine_provisioning_batches (
     updated_at timestamptz NOT NULL DEFAULT now ()
 );
 
-CREATE INDEX ix_machine_provisioning_batches_org_created ON machine_provisioning_batches (organization_id, created_at DESC);
-
 CREATE TABLE machine_provisioning_batch_machines (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     batch_id uuid NOT NULL REFERENCES machine_provisioning_batches (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     serial_number text NOT NULL DEFAULT '',
     activation_code_id uuid REFERENCES machine_activation_codes (id) ON DELETE SET NULL,
@@ -2879,7 +2510,6 @@ CREATE INDEX ix_prov_batch_machines_batch ON machine_provisioning_batch_machines
 
 CREATE TABLE rollout_campaigns (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     rollout_type text NOT NULL CHECK (
         rollout_type IN (
             'config_version',
@@ -2910,13 +2540,8 @@ CREATE TABLE rollout_campaigns (
     cancelled_at timestamptz
 );
 
-CREATE INDEX ix_rollout_campaigns_org_created ON rollout_campaigns (organization_id, created_at DESC);
-
-CREATE INDEX ix_rollout_campaigns_org_status ON rollout_campaigns (organization_id, status);
-
 CREATE TABLE rollout_targets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
     campaign_id uuid NOT NULL REFERENCES rollout_campaigns (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     status text NOT NULL DEFAULT 'pending' CHECK (
@@ -2940,3 +2565,22 @@ CREATE TABLE rollout_targets (
 CREATE INDEX ix_rollout_targets_campaign ON rollout_targets (campaign_id);
 
 CREATE INDEX ix_rollout_targets_machine ON rollout_targets (machine_id);
+
+-- Single-company uniqueness replacements after removing company scoping.
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_regions_code_lower ON regions (lower(code));
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_sites_code_lower ON sites (lower(code)) WHERE btrim(code) <> '';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_machines_serial_lower ON machines (lower(trim(serial_number))) WHERE btrim(serial_number) <> '';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_machines_code_lower ON machines (lower(code)) WHERE btrim(code) <> '';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_technicians_email_lower ON technicians (lower(email)) WHERE email IS NOT NULL AND btrim(email) <> '';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_categories_slug_lower ON categories (lower(slug));
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_brands_slug_lower ON brands (lower(slug));
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_products_sku ON products (sku);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_products_barcode_lower ON products (lower(trim(barcode))) WHERE barcode IS NOT NULL AND btrim(barcode) <> '';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_tags_slug_lower ON tags (lower(slug));
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_books_name_effective ON price_books (lower(name), effective_from) WHERE scope_type = 'global';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_books_site_name_effective ON price_books (site_id, lower(name), effective_from) WHERE scope_type = 'site';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_books_machine_name_effective ON price_books (machine_id, lower(name), effective_from) WHERE scope_type = 'machine';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_book_items_book_product ON price_book_items (price_book_id, product_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_planograms_name_revision ON planograms (name, revision);
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_orders_idempotency ON orders (idempotency_key) WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) <> '';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_feature_flags_key ON feature_flags (flag_key);

@@ -24,7 +24,6 @@ func mountAdminAuthUserRoutes(r chi.Router, app *api.HTTPApplication, writeRL fu
 	}
 	registerAdminAuthUserRoutes(r, app.Auth, writeRL, "/auth/users", "accountId")
 	registerAdminAuthUserRoutes(r, app.Auth, writeRL, "/users", "userId")
-	registerAdminAuthUserRoutes(r, app.Auth, writeRL, "/organizations/{organizationId}/users", "userId")
 }
 
 func registerAdminAuthUserRoutes(r chi.Router, svc *appauth.Service, writeRL func(http.Handler) http.Handler, base, idParam string) {
@@ -62,17 +61,13 @@ func registerAdminAuthUserRoutes(r chi.Router, svc *appauth.Service, writeRL fun
 
 func getAdminAuthUsers(svc *appauth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		limit, offset, err := parseAdminLimitOffset(r)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", err.Error())
 			return
 		}
-		out, err := svc.AdminListUsers(r.Context(), orgID, limit, offset)
+		out, err := svc.AdminListUsers(r.Context(), scopeID, limit, offset)
 		if err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
@@ -83,11 +78,7 @@ func getAdminAuthUsers(svc *appauth.Service) http.HandlerFunc {
 
 func postAdminAuthUsersCreate(svc *appauth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -103,7 +94,7 @@ func postAdminAuthUsersCreate(svc *appauth.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 			return
 		}
-		out, err := svc.AdminCreateUser(r.Context(), actorID, orgID, appauth.AdminCreateUserRequest{
+		out, err := svc.AdminCreateUser(r.Context(), actorID, scopeID, appauth.AdminCreateUserRequest{
 			Email:    body.Email,
 			Password: body.Password,
 			Roles:    body.Roles,
@@ -119,17 +110,13 @@ func postAdminAuthUsersCreate(svc *appauth.Service) http.HandlerFunc {
 
 func getAdminAuthUserByID(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		id, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, idParam)))
 		if err != nil || id == uuid.Nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_account_id", "invalid user id")
 			return
 		}
-		out, err := svc.AdminGetUser(r.Context(), orgID, id)
+		out, err := svc.AdminGetUser(r.Context(), scopeID, id)
 		if err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
@@ -140,11 +127,7 @@ func getAdminAuthUserByID(svc *appauth.Service, idParam string) http.HandlerFunc
 
 func patchAdminAuthUser(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -167,7 +150,7 @@ func patchAdminAuthUser(svc *appauth.Service, idParam string) http.HandlerFunc {
 				return
 			}
 		}
-		out, err := svc.AdminPatchUser(r.Context(), actorID, orgID, id, body)
+		out, err := svc.AdminPatchUser(r.Context(), actorID, scopeID, id, body)
 		if err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
@@ -178,11 +161,7 @@ func patchAdminAuthUser(svc *appauth.Service, idParam string) http.HandlerFunc {
 
 func patchAdminAuthUserStatus(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -201,7 +180,7 @@ func patchAdminAuthUserStatus(svc *appauth.Service, idParam string) http.Handler
 			return
 		}
 		st := strings.TrimSpace(body.Status)
-		out, err := svc.AdminPatchUser(r.Context(), actorID, orgID, id, appauth.AdminPatchUserRequest{Status: &st})
+		out, err := svc.AdminPatchUser(r.Context(), actorID, scopeID, id, appauth.AdminPatchUserRequest{Status: &st})
 		if err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
@@ -212,11 +191,7 @@ func patchAdminAuthUserStatus(svc *appauth.Service, idParam string) http.Handler
 
 func putAdminAuthUserRoles(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -234,7 +209,7 @@ func putAdminAuthUserRoles(svc *appauth.Service, idParam string) http.HandlerFun
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 			return
 		}
-		out, err := svc.AdminReplaceUserRoles(r.Context(), actorID, orgID, id, body.Roles)
+		out, err := svc.AdminReplaceUserRoles(r.Context(), actorID, scopeID, id, body.Roles)
 		if err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
@@ -245,11 +220,7 @@ func putAdminAuthUserRoles(svc *appauth.Service, idParam string) http.HandlerFun
 
 func deleteAdminAuthUserRole(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -266,7 +237,7 @@ func deleteAdminAuthUserRole(svc *appauth.Service, idParam string) http.HandlerF
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_role", "invalid role")
 			return
 		}
-		out, err := svc.AdminRemoveUserRole(r.Context(), actorID, orgID, id, role)
+		out, err := svc.AdminRemoveUserRole(r.Context(), actorID, scopeID, id, role)
 		if err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
@@ -277,11 +248,7 @@ func deleteAdminAuthUserRole(svc *appauth.Service, idParam string) http.HandlerF
 
 func postAdminAuthUserActivate(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -292,7 +259,7 @@ func postAdminAuthUserActivate(svc *appauth.Service, idParam string) http.Handle
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_account_id", "invalid user id")
 			return
 		}
-		out, err := svc.AdminActivateUser(r.Context(), actorID, orgID, id)
+		out, err := svc.AdminActivateUser(r.Context(), actorID, scopeID, id)
 		if err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
@@ -303,11 +270,7 @@ func postAdminAuthUserActivate(svc *appauth.Service, idParam string) http.Handle
 
 func postAdminAuthUserDeactivate(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -318,7 +281,7 @@ func postAdminAuthUserDeactivate(svc *appauth.Service, idParam string) http.Hand
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_account_id", "invalid user id")
 			return
 		}
-		out, err := svc.AdminDeactivateUser(r.Context(), actorID, orgID, id)
+		out, err := svc.AdminDeactivateUser(r.Context(), actorID, scopeID, id)
 		if err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
@@ -329,11 +292,7 @@ func postAdminAuthUserDeactivate(svc *appauth.Service, idParam string) http.Hand
 
 func postAdminAuthUserResetPassword(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -349,7 +308,7 @@ func postAdminAuthUserResetPassword(svc *appauth.Service, idParam string) http.H
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 			return
 		}
-		out, err := svc.AdminResetPassword(r.Context(), actorID, orgID, id, body)
+		out, err := svc.AdminResetPassword(r.Context(), actorID, scopeID, id, body)
 		if err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
@@ -360,11 +319,7 @@ func postAdminAuthUserResetPassword(svc *appauth.Service, idParam string) http.H
 
 func postAdminAuthUserRevokeSessions(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -375,7 +330,7 @@ func postAdminAuthUserRevokeSessions(svc *appauth.Service, idParam string) http.
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_account_id", "invalid user id")
 			return
 		}
-		if err := svc.AdminRevokeUserSessions(r.Context(), actorID, orgID, id); err != nil {
+		if err := svc.AdminRevokeUserSessions(r.Context(), actorID, scopeID, id); err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
 		}
@@ -385,41 +340,19 @@ func postAdminAuthUserRevokeSessions(svc *appauth.Service, idParam string) http.
 
 func getAdminAuthUserSessions(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminAuthOrganizationID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
-			return
-		}
+		scopeID := uuid.Nil
 		uid, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, idParam)))
 		if err != nil || uid == uuid.Nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_account_id", "invalid user id")
 			return
 		}
-		out, err := svc.AdminListUserSessions(r.Context(), orgID, uid)
+		out, err := svc.AdminListUserSessions(r.Context(), scopeID, uid)
 		if err != nil {
 			writeAuthAdminMutationError(w, r.Context(), err)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"sessions": out})
 	}
-}
-
-func adminAuthOrganizationID(r *http.Request) (uuid.UUID, error) {
-	if raw := strings.TrimSpace(chi.URLParam(r, "organizationId")); raw != "" {
-		id, err := uuid.Parse(raw)
-		if err != nil || id == uuid.Nil {
-			return uuid.Nil, errors.New("invalid organization id")
-		}
-		p, ok := auth.PrincipalFromContext(r.Context())
-		if !ok {
-			return uuid.Nil, errors.New("missing principal")
-		}
-		if !auth.CanAccessOrganizationAdminData(p, id) {
-			return uuid.Nil, errors.New("organization scope mismatch")
-		}
-		return id, nil
-	}
-	return adminCatalogOrganizationID(r)
 }
 
 func principalAccountID(r *http.Request) (uuid.UUID, bool) {
@@ -500,7 +433,7 @@ func writeAuthAdminMutationError(w http.ResponseWriter, ctx context.Context, err
 	case errors.Is(err, appauth.ErrConflictDuplicateEmail):
 		writeAPIError(w, ctx, http.StatusConflict, "duplicate_email", err.Error())
 	case errors.Is(err, appauth.ErrForbiddenLastOrgAdmin):
-		writeAPIError(w, ctx, http.StatusForbidden, "last_org_admin", err.Error())
+		writeAPIError(w, ctx, http.StatusForbidden, "last_admin", err.Error())
 	default:
 		writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
 	}

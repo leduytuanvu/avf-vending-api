@@ -42,18 +42,17 @@ func (s *Service) recordCatalogWriteAudit(ctx context.Context, org uuid.UUID, ac
 		aidPtr = &actorID
 	}
 	_ = s.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: org,
-		ActorType:      actorType,
-		ActorID:        aidPtr,
-		Action:         action,
-		ResourceType:   resourceType,
-		ResourceID:     &rid,
-		RequestID:      strPtrAudit(meta.RequestID),
-		TraceID:        strPtrAudit(meta.TraceID),
-		IPAddress:      strPtrAudit(meta.IP),
-		UserAgent:      strPtrAudit(meta.UserAgent),
-		AfterJSON:      afterB,
-		Outcome:        compliance.OutcomeSuccess,
+		ActorType:    actorType,
+		ActorID:      aidPtr,
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   &rid,
+		RequestID:    strPtrAudit(meta.RequestID),
+		TraceID:      strPtrAudit(meta.TraceID),
+		IPAddress:    strPtrAudit(meta.IP),
+		UserAgent:    strPtrAudit(meta.UserAgent),
+		AfterJSON:    afterB,
+		Outcome:      compliance.OutcomeSuccess,
 	})
 }
 

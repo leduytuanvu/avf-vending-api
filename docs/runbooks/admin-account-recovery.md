@@ -9,7 +9,7 @@
 ## Lost TOTP
 
 1. Require identity verification out-of-band per org policy.
-2. **platform_admin** or **org_admin** may use **POST .../reset-password** after audit approval.
+2. **platform_admin** or **admin** may use **POST .../reset-password** after audit approval.
 3. After reset, user should re-enroll MFA (**POST /v1/auth/mfa/totp/enroll**) before next production login if `ADMIN_MFA_REQUIRED_IN_PRODUCTION=true`.
 
 ## Password reset email (self-service)

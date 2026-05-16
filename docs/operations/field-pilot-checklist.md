@@ -8,7 +8,7 @@ Expand from lab/staging to a **small field pilot** (tens of machines typically) 
 
 | Tag | Means |
 |-----|--------|
-| **P0** | Blocker — do not pilot if failing (safety/data/tenant). |
+| **P0** | Blocker — do not pilot if failing (safety/data/company). |
 | **P1** | Required for pilot completion (this checklist). |
 | **P2** | Fleet-scale inputs — finalize field matrix rows **[`../testing/field-test-cases.md`](../testing/field-test-cases.md)** and attach **[`production-release-readiness.md`](../runbooks/production-release-readiness.md)** scale tier artifact if claiming > pilot. |
 

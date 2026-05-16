@@ -24,7 +24,7 @@ Internal query RPCs require a **dedicated service bearer JWT**, not admin user J
 - **Type (`typ`)**: `service`
 - **Role**: `service` (same role string as other platform service principals)
 
-Issue tokens with [`IssueInternalServiceAccessJWT`](../../internal/platform/auth/internal_grpc_token.go) (or an equivalent operator process) using `INTERNAL_GRPC_SERVICE_TOKEN_SECRET`. Handlers additionally enforce tenant scope: a service token with `org_id` may only read data for that organization (platform-wide tokens omit `org_id`).
+Issue tokens with [`IssueInternalServiceAccessJWT`](../../internal/platform/auth/internal_grpc_token.go) (or an equivalent operator process) using `INTERNAL_GRPC_SERVICE_TOKEN_SECRET`. Handlers additionally enforce role scope: a service token with `company_id` may only read data for that company (platform-wide tokens omit `company_id`).
 
 ### mTLS (future)
 

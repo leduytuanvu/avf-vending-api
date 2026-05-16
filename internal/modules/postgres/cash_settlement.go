@@ -31,7 +31,6 @@ type MachineCashboxSummary struct {
 
 // StartMachineCashCollectionInput begins an open collection session on the machine.
 type StartMachineCashCollectionInput struct {
-	OrganizationID      uuid.UUID
 	MachineID           uuid.UUID
 	OperatorSessionID   *uuid.UUID
 	Currency            string
@@ -43,7 +42,6 @@ type StartMachineCashCollectionInput struct {
 
 // CloseMachineCashCollectionInput closes an open session with a physical count (idempotent on payload hash).
 type CloseMachineCashCollectionInput struct {
-	OrganizationID          uuid.UUID
 	MachineID               uuid.UUID
 	CollectionID            uuid.UUID
 	OperatorSessionID       *uuid.UUID
@@ -143,7 +141,7 @@ func abs64(n int64) int64 {
 }
 
 // GetMachineCashboxSummary returns expected vault cash from commerce since the last closed collection.
-func (s *Store) GetMachineCashboxSummary(ctx context.Context, organizationID, machineID uuid.UUID, currency string, varianceReviewThresholdMinor int64) (MachineCashboxSummary, error) {
+func (s *Store) GetMachineCashboxSummary(ctx context.Context, companyID, machineID uuid.UUID, currency string, varianceReviewThresholdMinor int64) (MachineCashboxSummary, error) {
 	if s == nil || s.pool == nil {
 		return MachineCashboxSummary{}, errors.New("postgres: nil store")
 	}
@@ -155,28 +153,24 @@ func (s *Store) GetMachineCashboxSummary(ctx context.Context, organizationID, ma
 		varianceReviewThresholdMinor = 500
 	}
 	q := db.New(s.pool)
-	m, err := q.GetMachineByID(ctx, machineID)
+	_, err := q.GetMachineByID(ctx, machineID)
 	if err != nil {
 		if isNoRows(err) {
 			return MachineCashboxSummary{}, fmt.Errorf("cash settlement summary: %w", pgx.ErrNoRows)
 		}
 		return MachineCashboxSummary{}, err
 	}
-	if m.OrganizationID != organizationID {
-		return MachineCashboxSummary{}, ErrMachineOrganizationMismatch
+	if uuid.Nil != companyID {
+		return MachineCashboxSummary{}, ErrMachineScopeMismatch
 	}
 	exp, err := q.CashSettlementNetExpectedMinor(ctx, db.CashSettlementNetExpectedMinorParams{
-		MachineID:      machineID,
-		OrganizationID: organizationID,
-		Currency:       cur,
+		MachineID: machineID,
+		Currency:  cur,
 	})
 	if err != nil {
 		return MachineCashboxSummary{}, err
 	}
-	last, err := q.CashSettlementLastClosedAt(ctx, db.CashSettlementLastClosedAtParams{
-		MachineID:      machineID,
-		OrganizationID: organizationID,
-	})
+	last, err := q.CashSettlementLastClosedAt(ctx, machineID)
 	if err != nil {
 		return MachineCashboxSummary{}, err
 	}
@@ -186,10 +180,7 @@ func (s *Store) GetMachineCashboxSummary(ctx context.Context, organizationID, ma
 		lastPtr = &t
 	}
 	var openID *uuid.UUID
-	openRow, err := q.GetOpenCashCollectionByMachine(ctx, db.GetOpenCashCollectionByMachineParams{
-		MachineID:      machineID,
-		OrganizationID: organizationID,
-	})
+	openRow, err := q.GetOpenCashCollectionByMachine(ctx, machineID)
 	if err == nil {
 		id := openRow.ID
 		openID = &id
@@ -232,21 +223,17 @@ func (s *Store) StartMachineCashCollection(ctx context.Context, in StartMachineC
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := db.New(tx)
 
-	machineRow, err := q.GetMachineByIDForUpdate(ctx, in.MachineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, in.MachineID)
 	if err != nil {
 		if isNoRows(err) {
 			return db.CashCollection{}, fmt.Errorf("cash collection start: %w", pgx.ErrNoRows)
 		}
 		return db.CashCollection{}, err
 	}
-	if machineRow.OrganizationID != in.OrganizationID {
-		return db.CashCollection{}, ErrMachineOrganizationMismatch
-	}
 
 	replay, err := q.FindCashCollectionOpenByStartIdempotencyKey(ctx, db.FindCashCollectionOpenByStartIdempotencyKeyParams{
-		Column1:        idem,
-		MachineID:      in.MachineID,
-		OrganizationID: in.OrganizationID,
+		Column1:   idem,
+		MachineID: in.MachineID,
 	})
 	if err == nil {
 		if err := tx.Commit(ctx); err != nil {
@@ -258,10 +245,7 @@ func (s *Store) StartMachineCashCollection(ctx context.Context, in StartMachineC
 		return db.CashCollection{}, err
 	}
 
-	_, err = q.GetOpenCashCollectionByMachine(ctx, db.GetOpenCashCollectionByMachineParams{
-		MachineID:      in.MachineID,
-		OrganizationID: in.OrganizationID,
-	})
+	_, err = q.GetOpenCashCollectionByMachine(ctx, in.MachineID)
 	if err == nil {
 		return db.CashCollection{}, cashdomain.ErrOpenCollectionExists
 	}
@@ -281,7 +265,6 @@ func (s *Store) StartMachineCashCollection(ctx context.Context, in StartMachineC
 	}
 
 	row, err := q.InsertCashCollection(ctx, db.InsertCashCollectionParams{
-		OrganizationID:      in.OrganizationID,
 		MachineID:           in.MachineID,
 		CollectedAt:         opened,
 		OpenedAt:            opened,
@@ -305,7 +288,6 @@ func (s *Store) StartMachineCashCollection(ctx context.Context, in StartMachineC
 
 	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 		MachineID:         in.MachineID,
-		OrganizationID:    in.OrganizationID,
 		OperatorSessionID: in.OperatorSessionID,
 		ActionDomain:      "cash",
 		ActionType:        "cash.collection.open",
@@ -349,9 +331,8 @@ func (s *Store) CloseMachineCashCollection(ctx context.Context, in CloseMachineC
 	q := db.New(tx)
 
 	existing, err := q.GetCashCollectionByIDForOrgMachine(ctx, db.GetCashCollectionByIDForOrgMachineParams{
-		ID:             in.CollectionID,
-		OrganizationID: in.OrganizationID,
-		MachineID:      in.MachineID,
+		ID:        in.CollectionID,
+		MachineID: in.MachineID,
 	})
 	if err != nil {
 		if isNoRows(err) {
@@ -391,9 +372,8 @@ func (s *Store) CloseMachineCashCollection(ctx context.Context, in CloseMachineC
 	}
 
 	expected, err := q.CashSettlementNetExpectedMinor(ctx, db.CashSettlementNetExpectedMinorParams{
-		MachineID:      in.MachineID,
-		OrganizationID: in.OrganizationID,
-		Currency:       strings.TrimSpace(existing.Currency),
+		MachineID: in.MachineID,
+		Currency:  strings.TrimSpace(existing.Currency),
 	})
 	if err != nil {
 		return db.CashCollection{}, err
@@ -451,17 +431,16 @@ func (s *Store) CloseMachineCashCollection(ctx context.Context, in CloseMachineC
 		return db.CashCollection{}, err
 	}
 
-	closed, err := q.CloseCashCollection(ctx, db.CloseCashCollectionParams{
-		ID:                   in.CollectionID,
-		OrganizationID:       in.OrganizationID,
-		MachineID:            in.MachineID,
-		AmountMinor:          in.CountedAmountMinor,
+	closed, err := q.CloseCashCollection(ctx, db.CloseCashCollectionParams{AmountMinor: in.CountedAmountMinor,
 		ExpectedAmountMinor:  expected,
 		VarianceAmountMinor:  variance,
 		RequiresReview:       needsReview,
 		CloseRequestHash:     hash,
 		ReconciliationStatus: collRecon,
 		Metadata:             metaBytes,
+
+		ID:        in.CollectionID,
+		MachineID: in.MachineID,
 	})
 	if err != nil {
 		if isNoRows(err) {
@@ -490,7 +469,6 @@ func (s *Store) CloseMachineCashCollection(ctx context.Context, in CloseMachineC
 	now := time.Now().UTC()
 	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 		MachineID:         in.MachineID,
-		OrganizationID:    in.OrganizationID,
 		OperatorSessionID: in.OperatorSessionID,
 		ActionDomain:      "cash",
 		ActionType:        "cash.collection.close",
@@ -508,8 +486,8 @@ func (s *Store) CloseMachineCashCollection(ctx context.Context, in CloseMachineC
 	return closed, nil
 }
 
-// ListMachineCashCollections returns recent cash collection rows for the machine (tenant-scoped).
-func (s *Store) ListMachineCashCollections(ctx context.Context, organizationID, machineID uuid.UUID, limit, offset int32) ([]db.CashCollection, error) {
+// ListMachineCashCollections returns recent cash collection rows for the machine (single-company).
+func (s *Store) ListMachineCashCollections(ctx context.Context, companyID, machineID uuid.UUID, limit, offset int32) ([]db.CashCollection, error) {
 	if s == nil || s.pool == nil {
 		return nil, errors.New("postgres: nil store")
 	}
@@ -524,23 +502,21 @@ func (s *Store) ListMachineCashCollections(ctx context.Context, organizationID, 
 	}
 	q := db.New(s.pool)
 	return q.ListCashCollectionsForMachine(ctx, db.ListCashCollectionsForMachineParams{
-		MachineID:      machineID,
-		OrganizationID: organizationID,
-		Limit:          limit,
-		Offset:         offset,
+		MachineID: machineID,
+		Limit:     limit,
+		Offset:    offset,
 	})
 }
 
 // GetMachineCashCollection returns one collection if it belongs to the org and machine.
-func (s *Store) GetMachineCashCollection(ctx context.Context, organizationID, machineID, collectionID uuid.UUID) (db.CashCollection, error) {
+func (s *Store) GetMachineCashCollection(ctx context.Context, companyID, machineID, collectionID uuid.UUID) (db.CashCollection, error) {
 	if s == nil || s.pool == nil {
 		return db.CashCollection{}, errors.New("postgres: nil store")
 	}
 	q := db.New(s.pool)
 	return q.GetCashCollectionByIDForOrgMachine(ctx, db.GetCashCollectionByIDForOrgMachineParams{
-		ID:             collectionID,
-		OrganizationID: organizationID,
-		MachineID:      machineID,
+		ID:        collectionID,
+		MachineID: machineID,
 	})
 }
 

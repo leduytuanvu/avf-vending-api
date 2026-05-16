@@ -17,7 +17,7 @@ The repository implements a **single promotion chain** for releasable artifacts:
 
 **Overall enterprise readiness: 9 / 10** — one point reserved for **manual** GitHub configuration (branch protection rules, environment approvers, and protected storage for credentials and other sensitive values in **Settings**) that cannot be fully proven from the repo without an authenticated governance run.
 
-**Code cannot fully enforce GitHub UI settings by itself** — this repository can define workflows (for example `environment: production` on the **Deploy Production** job), run offline contract verifiers, and run **read-only** governance checks with `tools/verify_github_governance.py`, but **only a repo or org admin** can lock down **Settings → Branches** and **Settings → Environments** in GitHub. See [docs/runbooks/github-governance.md](docs/runbooks/github-governance.md) and the “Remaining manual” / “Limitations” sections below.
+**Code cannot fully enforce GitHub UI settings by itself** — this repository can define workflows (for example `environment: production` on the **Deploy Production** job), run offline contract verifiers, and run **read-only** governance checks with `tools/verify_github_governance.py`, but **only a repo or admin** can lock down **Settings → Branches** and **Settings → Environments** in GitHub. See [docs/runbooks/github-governance.md](docs/runbooks/github-governance.md) and the “Remaining manual” / “Limitations” sections below.
 
 ---
 

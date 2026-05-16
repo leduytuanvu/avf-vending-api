@@ -6,20 +6,18 @@ import (
 
 // SaleLineSelector identifies one vendable slot line (same semantics as commerce.ResolveSaleLineInput).
 type SaleLineSelector struct {
-	OrganizationID uuid.UUID
-	MachineID      uuid.UUID
-	ProductID      uuid.UUID
-	SlotID         *uuid.UUID
-	CabinetCode    string
-	SlotCode       string
-	SlotIndex      *int32
+	MachineID   uuid.UUID
+	ProductID   uuid.UUID
+	SlotID      *uuid.UUID
+	CabinetCode string
+	SlotCode    string
+	SlotIndex   *int32
 }
 
 // PriceLineInput is one catalog/order line at evaluation time.
 type PriceLineInput struct {
-	OrganizationID uuid.UUID
-	MachineID      uuid.UUID
-	ProductID      uuid.UUID
+	MachineID uuid.UUID
+	ProductID uuid.UUID
 	// SlotListUnitMinor is the planogram / slot-config list price before machine_price_overrides.
 	SlotListUnitMinor int64
 	SlotConfigID      uuid.UUID

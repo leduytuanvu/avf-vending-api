@@ -32,22 +32,21 @@ func TestInternalQueryServices_RejectMissingBearerToken(t *testing.T) {
 	}
 }
 
-func TestInternalQueryServices_RejectOrganizationScopeMismatch(t *testing.T) {
+func TestInternalQueryServices_RejectScopeScopeMismatch(t *testing.T) {
+	t.Skip("single-company internal gRPC no longer rejects scope mismatch")
 	t.Parallel()
 
 	cfg, conn := startInternalQueryTestServer(t)
-	requestOrgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
-	tokenOrgID := uuid.MustParse("aaaaaaaa-1111-1111-1111-111111111111")
+	tokenCompanyScope := uuid.MustParse("aaaaaaaa-1111-1111-1111-111111111111")
 	orderID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 
-	token := issueTestInternalServiceToken(t, cfg.HTTPAuth.JWTSecret, tokenOrgID)
+	token := issueTestInternalServiceToken(t, cfg.HTTPAuth.JWTSecret, tokenCompanyScope)
 	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
 
 	client := internalv1.NewInternalCommerceQueryServiceClient(conn)
 	_, err := client.GetOrderPaymentVendState(ctx, &internalv1.GetOrderPaymentVendStateRequest{
-		OrganizationId: requestOrgID.String(),
-		OrderId:        orderID.String(),
-		SlotIndex:      1,
+		OrderId:   orderID.String(),
+		SlotIndex: 1,
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("code=%v err=%v", status.Code(err), err)
@@ -58,10 +57,9 @@ func TestInternalQueryServices_RejectUserAccessJWT(t *testing.T) {
 	t.Parallel()
 
 	cfg, conn := startInternalQueryTestServer(t)
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	machineID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 
-	token := issueTestAccessToken(t, cfg, orgID, []string{platformauth.RoleOrgAdmin})
+	token := issueTestAccessToken(t, cfg, uuid.Nil, []string{platformauth.RoleOrgAdmin})
 	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
 
 	client := internalv1.NewInternalMachineQueryServiceClient(conn)
@@ -75,7 +73,6 @@ func TestInternalQueryServices_RejectMachineAccessJWT(t *testing.T) {
 	t.Parallel()
 
 	cfg, conn := startInternalQueryTestServer(t)
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	machineID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 
@@ -83,7 +80,7 @@ func TestInternalQueryServices_RejectMachineAccessJWT(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	token, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,14 +117,12 @@ func startInternalQueryTestServer(t *testing.T) (*config.Config, *grpc.ClientCon
 			ServiceTokenSecret:  nil, // dev fallback to HTTPAuth.JWTSecret
 		},
 	}
-
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	services := InternalQueryServices{
 		Machine:   stubMachineQueries{},
 		Telemetry: stubTelemetryQueries{},
 		Commerce:  stubCommerceQueries{out: appcommerce.CheckoutStatusView{}},
 		Payment:   stubPaymentQueries{},
-		Catalog:   stubInternalQuerySaleCatalog{orgID: orgID},
+		Catalog:   stubInternalQuerySaleCatalog{scopeID: uuid.Nil},
 		Inventory: appapi.NewInternalInventoryQueryService(stubMachineQueries{}),
 		Reporting: stubReportingForInternal{},
 	}
@@ -159,9 +154,9 @@ func startInternalQueryTestServer(t *testing.T) (*config.Config, *grpc.ClientCon
 	return cfg, conn
 }
 
-func issueTestInternalServiceToken(t *testing.T, secret []byte, orgID uuid.UUID) string {
+func issueTestInternalServiceToken(t *testing.T, secret []byte, scopeID uuid.UUID) string {
 	t.Helper()
-	token, _, err := platformauth.IssueInternalServiceAccessJWT(secret, "grpcserver-test", orgID, time.Minute, "test")
+	token, _, err := platformauth.IssueInternalServiceAccessJWT(secret, "grpcserver-test", scopeID, time.Minute, "test")
 	if err != nil {
 		t.Fatal(err)
 	}

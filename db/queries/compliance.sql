@@ -1,6 +1,5 @@
 -- name: InsertAuditLog :one
 INSERT INTO audit_logs (
-    organization_id,
     actor_type,
     actor_id,
     action,
@@ -9,13 +8,20 @@ INSERT INTO audit_logs (
     payload,
     ip
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7
+)
 RETURNING *;
 
--- name: ListAuditLogsForOrganization :many
+-- name: ListAuditLogsForCompany :many
 SELECT
     id,
-    organization_id,
     actor_type,
     actor_id,
     action,
@@ -25,16 +31,13 @@ SELECT
     ip,
     created_at
 FROM audit_logs
-WHERE
-    organization_id = $1
 ORDER BY
     created_at DESC
-LIMIT $2;
+LIMIT $1;
 
--- name: ListAuditLogsForActorInOrganization :many
+-- name: ListAuditLogsForActorInCompany :many
 SELECT
     id,
-    organization_id,
     actor_type,
     actor_id,
     action,
@@ -45,9 +48,8 @@ SELECT
     created_at
 FROM audit_logs
 WHERE
-    organization_id = $1
-    AND actor_type = $2
-    AND actor_id = $3
+    actor_type = $1
+    AND actor_id = $2
 ORDER BY
     created_at DESC
-LIMIT $4;
+LIMIT $3;

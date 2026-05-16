@@ -68,7 +68,7 @@
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-login.request.json",
       "response_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-login.response.json",
       "body_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-login.body.json",
-      "response_snippet": "{\"accountId\":\"77777777-7777-7777-7777-777777777777\",\"organizationId\":\"11111111-1111-1111-1111-111111111111\",\"email\":\"e2e-local-admin@invalid.local\",\"roles\":[\"org_admin\"],\"tokens\":{\"accessToken\":\"***REDACTED***\",\"accessExpiresAt\":\"2026-05-11T16:40:01.2637518Z\",\"refreshToken\":\"***REDACTED***\",\"refreshExpiresAt\":\"2026-06-10T14:40:01.2700432Z\",\"tokenType\":\"Bearer\"}}\n",
+      "response_snippet": "{\"accountId\":\"77777777-7777-7777-7777-777777777777\",\"scopeId\":\"11111111-1111-1111-1111-111111111111\",\"email\":\"e2e-local-admin@invalid.local\",\"roles\":[\"admin\"],\"tokens\":{\"accessToken\":\"***REDACTED***\",\"accessExpiresAt\":\"2026-05-11T16:40:01.2637518Z\",\"refreshToken\":\"***REDACTED***\",\"refreshExpiresAt\":\"2026-06-10T14:40:01.2700432Z\",\"tokenType\":\"Bearer\"}}\n",
       "notes": ""
     },
     {
@@ -83,7 +83,7 @@
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-operator-login.request.json",
       "response_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-operator-login.response.json",
       "body_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-operator-login.body.json",
-      "response_snippet": "{\"session\":{\"actor_type\":\"USER\",\"client_metadata\":{\"http_correlation\":\"88b0d513-08a1-4dbf-bb2c-f33824bb54d5\"},\"created_at\":\"2026-05-11T14:40:17.539345Z\",\"id\":\"3459e511-67d4-4680-bcc3-19d5f1241466\",\"last_activity_at\":\"2026-05-11T14:40:17.539345Z\",\"machine_id\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"organization_id\":\"11111111-1111-1111-1111-111111111111\",\"started_at\":\"2026-05-11T14:40:17.539345Z\",\"status\":\"ACTIVE\",\"updated_at\":\"2026-05-11T14:40:17.539345Z\",\"user_principal\":\"77777777-7777-7777-7777-777777777777\"}}\n",
+      "response_snippet": "{\"session\":{\"actor_type\":\"USER\",\"client_metadata\":{\"http_correlation\":\"88b0d513-08a1-4dbf-bb2c-f33824bb54d5\"},\"created_at\":\"2026-05-11T14:40:17.539345Z\",\"id\":\"3459e511-67d4-4680-bcc3-19d5f1241466\",\"last_activity_at\":\"2026-05-11T14:40:17.539345Z\",\"machine_id\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"scope_id\":\"11111111-1111-1111-1111-111111111111\",\"started_at\":\"2026-05-11T14:40:17.539345Z\",\"status\":\"ACTIVE\",\"updated_at\":\"2026-05-11T14:40:17.539345Z\",\"user_principal\":\"77777777-7777-7777-7777-777777777777\"}}\n",
       "notes": ""
     },
     {
@@ -92,13 +92,13 @@
       "step": "wa-site-create",
       "auth_role": "admin",
       "method": "POST",
-      "path": "/v1/admin/organizations/11111111-1111-1111-1111-111111111111/sites",
+      "path": "/v1/admin/companies/11111111-1111-1111-1111-111111111111/sites",
       "status": 201,
       "result": "pass",
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-site-create.request.json",
       "response_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-site-create.response.json",
       "body_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-site-create.body.json",
-      "response_snippet": "{\"address\":{\"line1\":\"E2E 1778510399-13767\"},\"code\":\"E1778510399-\",\"created_at\":\"2026-05-11T14:40:03.281215Z\",\"id\":\"43b0bdd5-5371-49e4-9cd1-24430e6b19dc\",\"name\":\"Example Site Alpha 1778510399-13767\",\"organization_id\":\"11111111-1111-1111-1111-111111111111\",\"status\":\"active\",\"timezone\":\"Asia/Ho_Chi_Minh\",\"updated_at\":\"2026-05-11T14:40:03.281215Z\"}\n",
+      "response_snippet": "{\"address\":{\"line1\":\"E2E 1778510399-13767\"},\"code\":\"E1778510399-\",\"created_at\":\"2026-05-11T14:40:03.281215Z\",\"id\":\"43b0bdd5-5371-49e4-9cd1-24430e6b19dc\",\"name\":\"Example Site Alpha 1778510399-13767\",\"scope_id\":\"11111111-1111-1111-1111-111111111111\",\"status\":\"active\",\"timezone\":\"Asia/Ho_Chi_Minh\",\"updated_at\":\"2026-05-11T14:40:03.281215Z\"}\n",
       "notes": ""
     },
     {
@@ -107,13 +107,13 @@
       "step": "wa-machine-create",
       "auth_role": "admin",
       "method": "POST",
-      "path": "/v1/admin/organizations/11111111-1111-1111-1111-111111111111/machines",
+      "path": "/v1/admin/companies/11111111-1111-1111-1111-111111111111/machines",
       "status": 201,
       "result": "pass",
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-machine-create.request.json",
       "response_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-machine-create.response.json",
       "body_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-machine-create.body.json",
-      "response_snippet": "{\"cabinet_type\":\"ambient\",\"code\":\"m-1778510399-13767\",\"command_sequence\":0,\"created_at\":\"2026-05-11T14:40:05.204483Z\",\"credential_version\":0,\"id\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"model\":\"AVF-Test-Cabinet\",\"name\":\"E2E Machine 1778510399-13767\",\"organization_id\":\"11111111-1111-1111-1111-111111111111\",\"serial_number\":\"E2E-SN-1778510399-13767\",\"site_id\":\"43b0bdd5-5371-49e4-9cd1-24430e6b19dc\",\"status\":\"draft\",\"timezone\":\"UTC\",\"updated_at\":\"2026-05-11T14:40:05.204483Z\"}\n",
+      "response_snippet": "{\"cabinet_type\":\"ambient\",\"code\":\"m-1778510399-13767\",\"command_sequence\":0,\"created_at\":\"2026-05-11T14:40:05.204483Z\",\"credential_version\":0,\"id\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"model\":\"AVF-Test-Cabinet\",\"name\":\"E2E Machine 1778510399-13767\",\"scope_id\":\"11111111-1111-1111-1111-111111111111\",\"serial_number\":\"E2E-SN-1778510399-13767\",\"site_id\":\"43b0bdd5-5371-49e4-9cd1-24430e6b19dc\",\"status\":\"draft\",\"timezone\":\"UTC\",\"updated_at\":\"2026-05-11T14:40:05.204483Z\"}\n",
       "notes": ""
     },
     {
@@ -128,7 +128,7 @@
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-product-create.request.json",
       "response_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-product-create.response.json",
       "body_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\wa-product-create.body.json",
-      "response_snippet": "{\"id\":\"81077df8-b7ec-4440-beee-0196a2653b5d\",\"organizationId\":\"11111111-1111-1111-1111-111111111111\",\"sku\":\"E2E-SKU-1778510399-13767\",\"name\":\"E2E Product 1778510399-13767\",\"description\":\"E2E catalog seed\",\"attrs\":{},\"active\":true,\"categoryId\":\"3c22e96a-7e26-4823-9439-e1f47c925f19\",\"brandId\":\"5ec7e467-8caf-4683-b632-2604a5763a03\",\"ageRestricted\":false,\"allergenCodes\":null,\"createdAt\":\"2026-05-11T14:40:13.782443Z\",\"updatedAt\":\"2026-05-11T14:40:13.782443Z\"}\n",
+      "response_snippet": "{\"id\":\"81077df8-b7ec-4440-beee-0196a2653b5d\",\"scopeId\":\"11111111-1111-1111-1111-111111111111\",\"sku\":\"E2E-SKU-1778510399-13767\",\"name\":\"E2E Product 1778510399-13767\",\"description\":\"E2E catalog seed\",\"attrs\":{},\"active\":true,\"categoryId\":\"3c22e96a-7e26-4823-9439-e1f47c925f19\",\"brandId\":\"5ec7e467-8caf-4683-b632-2604a5763a03\",\"ageRestricted\":false,\"allergenCodes\":null,\"createdAt\":\"2026-05-11T14:40:13.782443Z\",\"updatedAt\":\"2026-05-11T14:40:13.782443Z\"}\n",
       "notes": ""
     },
     {
@@ -188,7 +188,7 @@
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\vm-claim.request.json",
       "response_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\vm-claim.response.json",
       "body_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\vm-claim.body.json",
-      "response_snippet": "{\"bootstrapRequired\":true,\"bootstrapUrl\":\"/v1/setup/machines/c0d8ee42-4367-49de-a9c6-4f3ad99426ce/bootstrap\",\"machineId\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"machineName\":\"E2E Machine 1778510399-13767\",\"machineToken\":\"***REDACTED***\",\"mqtt\":{\"brokerUrl\":\"tcp://127.0.0.1:1883\",\"topicPrefix\":\"avf/devices\"},\"organizationId\":\"11111111-1111-1111-1111-111111111111\",\"refreshToken\":\"***REDACTED***\",\"refreshTokenExpiresAt\":\"2026-06-10T14:41:09Z\",\"siteId\":\"43b0bdd5-5371-49e4-9cd1-24430e6b19dc\",\"tokenExpiresAt\":\"2026-05-11T16:41:09Z\"}\n",
+      "response_snippet": "{\"bootstrapRequired\":true,\"bootstrapUrl\":\"/v1/setup/machines/c0d8ee42-4367-49de-a9c6-4f3ad99426ce/bootstrap\",\"machineId\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"machineName\":\"E2E Machine 1778510399-13767\",\"machineToken\":\"***REDACTED***\",\"mqtt\":{\"brokerUrl\":\"tcp://127.0.0.1:1883\",\"topicPrefix\":\"avf/devices\"},\"scopeId\":\"11111111-1111-1111-1111-111111111111\",\"refreshToken\":\"***REDACTED***\",\"refreshTokenExpiresAt\":\"2026-06-10T14:41:09Z\",\"siteId\":\"43b0bdd5-5371-49e4-9cd1-24430e6b19dc\",\"tokenExpiresAt\":\"2026-05-11T16:41:09Z\"}\n",
       "notes": ""
     },
     {
@@ -203,7 +203,7 @@
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\vm-bootstrap.request.json",
       "response_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\vm-bootstrap.response.json",
       "body_evidence": "",
-      "response_snippet": "{\"machine\":{\"machineId\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"organizationId\":\"11111111-1111-1111-1111-111111111111\",\"siteId\":\"43b0bdd5-5371-49e4-9cd1-24430e6b19dc\",\"serialNumber\":\"E2E-SN-1778510399-13767\",\"name\":\"E2E Machine 1778510399-13767\",\"status\":\"active\",\"commandSequence\":1,\"createdAt\":\"2026-05-11T14:40:05.204483Z\",\"updatedAt\":\"2026-05-11T14:40:21.904176Z\"},\"topology\":{\"cabinets\":[{\"id\":\"b0562c8a-d902-4b83-9e0e-a3d7a376d386\",\"code\":\"A\",\"title\":\"Cabinet A\",\"sortOrder\":1,\"metadata\":{},\"slots\":[{\"configId\":\"affbc7e9-80bc-4afb-9a6b-93727d7589ba\",\"slotCode\":\"A1\",\"slotIndex\":1,\"productId\":\"81077df8-b7ec-4440-beee-0196a2653b5d\",\"productSku\":\"E2E-SKU-1778510399-13767\",\"productName\":\"E2E Product 1778510399-13767\",\"maxQuantity\":8,\"priceMinor\":15000,\"effectiveFrom\":\"2026-05-11T14:40:21.860799Z\",\"isCurrent\":true,\"machineSlotLayoutId\":\"f4a1f3a6-024c-44c6-b1f0-d339d3f7e662\",\"metadata\":{}}]}]},\"catalog\":{\"products\":[{\"productId\":\"81077df8-b7ec-4440-beee-0196a2653b5d\",\"sku\":\"E2E-SKU-177851039",
+      "response_snippet": "{\"machine\":{\"machineId\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"scopeId\":\"11111111-1111-1111-1111-111111111111\",\"siteId\":\"43b0bdd5-5371-49e4-9cd1-24430e6b19dc\",\"serialNumber\":\"E2E-SN-1778510399-13767\",\"name\":\"E2E Machine 1778510399-13767\",\"status\":\"active\",\"commandSequence\":1,\"createdAt\":\"2026-05-11T14:40:05.204483Z\",\"updatedAt\":\"2026-05-11T14:40:21.904176Z\"},\"topology\":{\"cabinets\":[{\"id\":\"b0562c8a-d902-4b83-9e0e-a3d7a376d386\",\"code\":\"A\",\"title\":\"Cabinet A\",\"sortOrder\":1,\"metadata\":{},\"slots\":[{\"configId\":\"affbc7e9-80bc-4afb-9a6b-93727d7589ba\",\"slotCode\":\"A1\",\"slotIndex\":1,\"productId\":\"81077df8-b7ec-4440-beee-0196a2653b5d\",\"productSku\":\"E2E-SKU-1778510399-13767\",\"productName\":\"E2E Product 1778510399-13767\",\"maxQuantity\":8,\"priceMinor\":15000,\"effectiveFrom\":\"2026-05-11T14:40:21.860799Z\",\"isCurrent\":true,\"machineSlotLayoutId\":\"f4a1f3a6-024c-44c6-b1f0-d339d3f7e662\",\"metadata\":{}}]}]},\"catalog\":{\"products\":[{\"productId\":\"81077df8-b7ec-4440-beee-0196a2653b5d\",\"sku\":\"E2E-SKU-177851039",
       "notes": ""
     },
     {
@@ -218,7 +218,7 @@
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\vm-sale-catalog.request.json",
       "response_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\vm-sale-catalog.response.json",
       "body_evidence": "",
-      "response_snippet": "{\"catalogVersion\":\"6f8c5fd5b09418641c77cb61016b3a54deef955616592353a78e2db7e6e9ce8b\",\"configVersion\":1,\"currency\":\"USD\",\"generatedAt\":\"2026-05-11T14:43:03Z\",\"items\":[{\"availableQuantity\":5,\"cabinetCode\":\"A\",\"image\":{\"deleted\":true},\"isAvailable\":false,\"maxQuantity\":8,\"name\":\"E2E Product 1778510399-13767\",\"priceMinor\":15000,\"productId\":\"81077df8-b7ec-4440-beee-0196a2653b5d\",\"shortName\":\"E2E Product 1778510399-1\",\"sku\":\"E2E-SKU-1778510399-13767\",\"slotCode\":\"A1\",\"slotIndex\":1,\"sortOrder\":0,\"unavailableReason\":\"product_inactive\"}],\"machineId\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"organizationId\":\"11111111-1111-1111-1111-111111111111\",\"siteId\":\"43b0bdd5-5371-49e4-9cd1-24430e6b19dc\"}\n",
+      "response_snippet": "{\"catalogVersion\":\"6f8c5fd5b09418641c77cb61016b3a54deef955616592353a78e2db7e6e9ce8b\",\"configVersion\":1,\"currency\":\"USD\",\"generatedAt\":\"2026-05-11T14:43:03Z\",\"items\":[{\"availableQuantity\":5,\"cabinetCode\":\"A\",\"image\":{\"deleted\":true},\"isAvailable\":false,\"maxQuantity\":8,\"name\":\"E2E Product 1778510399-13767\",\"priceMinor\":15000,\"productId\":\"81077df8-b7ec-4440-beee-0196a2653b5d\",\"shortName\":\"E2E Product 1778510399-1\",\"sku\":\"E2E-SKU-1778510399-13767\",\"slotCode\":\"A1\",\"slotIndex\":1,\"sortOrder\":0,\"unavailableReason\":\"product_inactive\"}],\"machineId\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"scopeId\":\"11111111-1111-1111-1111-111111111111\",\"siteId\":\"43b0bdd5-5371-49e4-9cd1-24430e6b19dc\"}\n",
       "notes": ""
     },
     {
@@ -392,7 +392,7 @@
       "step": "p8-40-machine-health",
       "auth_role": "admin",
       "method": "GET",
-      "path": "/v1/admin/organizations/11111111-1111-1111-1111-111111111111/machines/c0d8ee42-4367-49de-a9c6-4f3ad99426ce/health",
+      "path": "/v1/admin/companies/11111111-1111-1111-1111-111111111111/machines/c0d8ee42-4367-49de-a9c6-4f3ad99426ce/health",
       "status": 200,
       "result": "pass",
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\p8-40-machine-health.request.json",
@@ -413,7 +413,7 @@
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\rpt-audit-events.request.json",
       "response_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\rpt-audit-events.response.json",
       "body_evidence": "",
-      "response_snippet": "{\"items\":[{\"id\":\"d0c5c40c-f075-4107-9eca-7404dae3a8a7\",\"organizationId\":\"11111111-1111-1111-1111-111111111111\",\"actorType\":\"user\",\"actorId\":\"77777777-7777-7777-7777-777777777777\",\"action\":\"machine.inventory.adjustment\",\"resourceType\":\"fleet.machine\",\"resourceId\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"requestId\":\"1bb95a77-7ffb-410f-a343-8599a2befbd5\",\"traceId\":\"1bb95a77-7ffb-410f-a343-8599a2befbd5\",\"ipAddress\":\"127.0.0.1\",\"userAgent\":\"curl/8.19.0\",\"beforeJson\":{},\"afterJson\":{},\"metadata\":{\"reason\":\"restock\",\"replay\":false,\"event_ids\":[10],\"item_count\":1,\"idempotency\":\"e2e-inv-stock2-1778510647\"},\"outcome\":\"success\",\"occurredAt\":\"2026-05-11T14:44:07.880012Z\",\"createdAt\":\"2026-05-11T14:44:07.880012Z\"},{\"id\":\"c51537a5-900c-459c-af84-e1612ed5ae29\",\"organizationId\":\"11111111-1111-1111-1111-111111111111\",\"actorType\":\"user\",\"actorId\":\"77777777-7777-7777-7777-777777777777\",\"action\":\"machine.inventory.adjustment\",\"resourceType\":\"fleet.machine\",\"resourceId\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce",
+      "response_snippet": "{\"items\":[{\"id\":\"d0c5c40c-f075-4107-9eca-7404dae3a8a7\",\"scopeId\":\"11111111-1111-1111-1111-111111111111\",\"actorType\":\"user\",\"actorId\":\"77777777-7777-7777-7777-777777777777\",\"action\":\"machine.inventory.adjustment\",\"resourceType\":\"fleet.machine\",\"resourceId\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce\",\"requestId\":\"1bb95a77-7ffb-410f-a343-8599a2befbd5\",\"traceId\":\"1bb95a77-7ffb-410f-a343-8599a2befbd5\",\"ipAddress\":\"127.0.0.1\",\"userAgent\":\"curl/8.19.0\",\"beforeJson\":{},\"afterJson\":{},\"metadata\":{\"reason\":\"restock\",\"replay\":false,\"event_ids\":[10],\"item_count\":1,\"idempotency\":\"e2e-inv-stock2-1778510647\"},\"outcome\":\"success\",\"occurredAt\":\"2026-05-11T14:44:07.880012Z\",\"createdAt\":\"2026-05-11T14:44:07.880012Z\"},{\"id\":\"c51537a5-900c-459c-af84-e1612ed5ae29\",\"scopeId\":\"11111111-1111-1111-1111-111111111111\",\"actorType\":\"user\",\"actorId\":\"77777777-7777-7777-7777-777777777777\",\"action\":\"machine.inventory.adjustment\",\"resourceType\":\"fleet.machine\",\"resourceId\":\"c0d8ee42-4367-49de-a9c6-4f3ad99426ce",
       "notes": ""
     },
     {
@@ -437,7 +437,7 @@
       "step": "rpt-artifacts-list",
       "auth_role": "admin",
       "method": "GET",
-      "path": "/v1/admin/organizations/11111111-1111-1111-1111-111111111111/artifacts",
+      "path": "/v1/admin/companies/11111111-1111-1111-1111-111111111111/artifacts",
       "status": 404,
       "result": "partial",
       "request_evidence": "D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\.e2e-runs\\run-20260511T143948Z-409-30449\\rest\\rpt-artifacts-list.request.json",

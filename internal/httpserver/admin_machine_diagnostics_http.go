@@ -53,15 +53,16 @@ func serveAdminMachineDiagnosticRequest(app *api.HTTPApplication) http.HandlerFu
 		if !ok {
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
 		if app.AdminMachines != nil {
-			if _, err := app.AdminMachines.GetMachine(r.Context(), orgID, machineID); err != nil {
+			if _, err := app.AdminMachines.GetMachine(r.Context(), scopeID, machineID); err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
-					writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found or not in organization")
+					writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found or not in company")
 					return
 				}
 				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
@@ -102,7 +103,7 @@ func serveAdminMachineDiagnosticRequest(app *api.HTTPApplication) http.HandlerFu
 			writeAPIError(w, r.Context(), http.StatusBadGateway, "diagnostic_command_dispatch_failed", err.Error())
 			return
 		}
-		recordDiagnosticAudit(r, app, orgID, machineID, res.CommandID, requestID)
+		recordDiagnosticAudit(r, app, scopeID, machineID, res.CommandID, requestID)
 		writeJSON(w, http.StatusAccepted, map[string]any{
 			"requestId":     requestID.String(),
 			"machineId":     machineID.String(),
@@ -120,7 +121,8 @@ func serveAdminMachineDiagnosticBundlesList(app *api.HTTPApplication) http.Handl
 		if !ok {
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -135,10 +137,9 @@ func serveAdminMachineDiagnosticBundlesList(app *api.HTTPApplication) http.Handl
 			return
 		}
 		rows, err := db.New(app.TelemetryStore.Pool()).DeviceListDiagnosticBundleManifests(r.Context(), db.DeviceListDiagnosticBundleManifestsParams{
-			OrganizationID: pgUUID(orgID),
-			MachineID:      machineID,
-			Limit:          limit,
-			Offset:         offset,
+			MachineID: machineID,
+			Limit:     limit,
+			Offset:    offset,
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
@@ -185,9 +186,6 @@ func mapDiagnosticManifest(row db.DiagnosticBundleManifest) map[string]any {
 		"status":          row.Status,
 		"createdAt":       row.CreatedAt.UTC().Format(time.RFC3339Nano),
 	}
-	if row.OrganizationID.Valid {
-		out["organizationId"] = uuid.UUID(row.OrganizationID.Bytes).String()
-	}
 	if row.RequestID.Valid {
 		out["requestId"] = uuid.UUID(row.RequestID.Bytes).String()
 	}
@@ -209,7 +207,7 @@ func mapDiagnosticManifest(row db.DiagnosticBundleManifest) map[string]any {
 	return out
 }
 
-func recordDiagnosticAudit(r *http.Request, app *api.HTTPApplication, orgID, machineID, commandID, requestID uuid.UUID) {
+func recordDiagnosticAudit(r *http.Request, app *api.HTTPApplication, scopeID, machineID, commandID, requestID uuid.UUID) {
 	if app == nil || app.EnterpriseAudit == nil {
 		return
 	}
@@ -222,12 +220,11 @@ func recordDiagnosticAudit(r *http.Request, app *api.HTTPApplication, orgID, mac
 		"command_type": diagnosticBundleCommandType,
 	})
 	_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-		OrganizationID: orgID,
-		ActorType:      compliance.ActorUser,
-		ActorID:        &aid,
-		Action:         "machine.diagnostic.requested",
-		ResourceType:   "command_ledger",
-		ResourceID:     &rid,
-		Metadata:       meta,
+		ActorType:    compliance.ActorUser,
+		ActorID:      &aid,
+		Action:       "machine.diagnostic.requested",
+		ResourceType: "command_ledger",
+		ResourceID:   &rid,
+		Metadata:     meta,
 	})
 }

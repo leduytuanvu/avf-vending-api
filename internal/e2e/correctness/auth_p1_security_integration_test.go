@@ -11,7 +11,6 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
-	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/pquerna/otp/totp"
 	"github.com/stretchr/testify/require"
@@ -21,7 +20,6 @@ import (
 func TestP01_AdminAuth_MFAInteractiveEnrollAndLoginChallenge(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
 	queries := db.New(pool)
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(config.HTTPAuthConfig{
 		JWTSecret:        bytes.Repeat([]byte("p"), 32),
@@ -54,19 +52,18 @@ func TestP01_AdminAuth_MFAInteractiveEnrollAndLoginChallenge(t *testing.T) {
 	hash, err := bcrypt.GenerateFromPassword([]byte("password12345"), bcrypt.MinCost)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO platform_auth_accounts (id, organization_id, email, password_hash, roles, status)
-VALUES ($1,$2,$3,$4,$5,'active')`, id, org, email, string(hash), []string{plauth.RoleOrgAdmin})
+INSERT INTO platform_auth_accounts (id, email, password_hash, roles, status)
+VALUES ($1,$2,$3,$4,'active')`, id, email, string(hash), []string{plauth.RoleOrgAdmin})
 	require.NoError(t, err)
 
-	login1, err := svc.Login(ctx, appauth.LoginRequest{OrganizationID: org, Email: email, Password: "password12345"})
+	login1, err := svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "password12345"})
 	require.NoError(t, err)
 	require.NotEmpty(t, login1.Tokens.AccessToken)
 
 	interact := plauth.Principal{
-		Subject:        id.String(),
-		OrganizationID: org,
-		Roles:          []string{plauth.RoleOrgAdmin},
-		TokenUse:       plauth.TokenUseInteractiveAccess,
+		Subject:  id.String(),
+		Roles:    []string{plauth.RoleOrgAdmin},
+		TokenUse: plauth.TokenUseInteractiveAccess,
 	}
 	enroll, err := svc.MFATOTPEnrollBegin(ctx, interact)
 	require.NoError(t, err)
@@ -78,18 +75,17 @@ VALUES ($1,$2,$3,$4,$5,'active')`, id, org, email, string(hash), []string{plauth
 	require.NoError(t, err)
 	require.NotEmpty(t, loginPost.Tokens.RefreshToken)
 
-	challengeLogin, err := svc.Login(ctx, appauth.LoginRequest{OrganizationID: org, Email: email, Password: "password12345"})
+	challengeLogin, err := svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "password12345"})
 	require.NoError(t, err)
 	require.True(t, challengeLogin.MFARequired)
 	require.NotEmpty(t, challengeLogin.MFAChallengeToken)
 	claims, err := issuer.ParseMFAPendingJWT(challengeLogin.MFAChallengeToken, plauth.DefaultClockLeeway)
 	require.NoError(t, err)
 	chalPrincipal := plauth.Principal{
-		Subject:        claims.AccountID.String(),
-		OrganizationID: claims.OrganizationID,
-		TokenUse:       plauth.TokenUseMFAPending,
-		MFAEnrollment:  false,
-		Roles:          interact.Roles,
+		Subject:       claims.AccountID.String(),
+		TokenUse:      plauth.TokenUseMFAPending,
+		MFAEnrollment: false,
+		Roles:         interact.Roles,
 	}
 	_, err = svc.MFATOTPVerify(ctx, chalPrincipal, appauth.MFATOTPVerifyRequest{Code: "000000"})
 	require.ErrorIs(t, err, appauth.ErrInvalidCredentials)
@@ -112,7 +108,6 @@ VALUES ($1,$2,$3,$4,$5,'active')`, id, org, email, string(hash), []string{plauth
 func TestP01_AdminAuth_PasswordResetOneTime(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
 	queries := db.New(pool)
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(config.HTTPAuthConfig{
 		JWTSecret:        bytes.Repeat([]byte("z"), 32),
@@ -141,11 +136,11 @@ func TestP01_AdminAuth_PasswordResetOneTime(t *testing.T) {
 	hash, err := bcrypt.GenerateFromPassword([]byte("password12345"), bcrypt.MinCost)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO platform_auth_accounts (id, organization_id, email, password_hash, roles, status)
-VALUES ($1,$2,$3,$4,$5,'active')`, id, org, email, string(hash), []string{"viewer"})
+INSERT INTO platform_auth_accounts (id, email, password_hash, roles, status)
+VALUES ($1,$2,$3,$4,'active')`, id, email, string(hash), []string{"viewer"})
 	require.NoError(t, err)
 
-	out, err := svc.RequestPasswordReset(ctx, appauth.PasswordResetRequest{OrganizationID: org, Email: email})
+	out, err := svc.RequestPasswordReset(ctx, appauth.PasswordResetRequest{Email: email})
 	require.NoError(t, err)
 	require.True(t, out.Accepted)
 	require.NotEmpty(t, out.ResetToken)
@@ -157,7 +152,6 @@ VALUES ($1,$2,$3,$4,$5,'active')`, id, org, email, string(hash), []string{"viewe
 func TestP01_AdminAuth_LoginLockoutRedis(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
 	queries := db.New(pool)
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(config.HTTPAuthConfig{
 		JWTSecret:        bytes.Repeat([]byte("l"), 32),
@@ -190,14 +184,14 @@ func TestP01_AdminAuth_LoginLockoutRedis(t *testing.T) {
 	hash, err := bcrypt.GenerateFromPassword([]byte("rightpass123"), bcrypt.MinCost)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO platform_auth_accounts (id, organization_id, email, password_hash, roles, status)
-VALUES ($1,$2,$3,$4,$5,'active')`, id, org, email, string(hash), []string{"viewer"})
+INSERT INTO platform_auth_accounts (id, email, password_hash, roles, status)
+VALUES ($1,$2,$3,$4,'active')`, id, email, string(hash), []string{"viewer"})
 	require.NoError(t, err)
 
-	_, err = svc.Login(ctx, appauth.LoginRequest{OrganizationID: org, Email: email, Password: "wrong"})
+	_, err = svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "wrong"})
 	require.ErrorIs(t, err, appauth.ErrInvalidCredentials)
-	_, err = svc.Login(ctx, appauth.LoginRequest{OrganizationID: org, Email: email, Password: "wrong"})
+	_, err = svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "wrong"})
 	require.ErrorIs(t, err, appauth.ErrInvalidCredentials)
-	_, err = svc.Login(ctx, appauth.LoginRequest{OrganizationID: org, Email: email, Password: "rightpass123"})
+	_, err = svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "rightpass123"})
 	require.ErrorIs(t, err, appauth.ErrInvalidCredentials)
 }

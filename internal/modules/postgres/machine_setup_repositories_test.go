@@ -82,22 +82,20 @@ func TestAssortmentRepository_BindMachineAssortment(t *testing.T) {
 	q := db.New(pool)
 
 	assRow, err := q.FleetAdminInsertAssortment(ctx, db.FleetAdminInsertAssortmentParams{
-		OrganizationID: testfixtures.DevOrganizationID,
-		Name:           "test-assort-" + uuid.NewString(),
-		Status:         "published",
-		Description:    "",
-		Meta:           []byte(`{}`),
+		Name:        "test-assort-" + uuid.NewString(),
+		Status:      "published",
+		Description: "",
+		Meta:        []byte(`{}`),
 	})
 	require.NoError(t, err)
 	assortmentID := assRow.ID
 	defer cleanupMachineSetupArtifacts(ctx, t, pool, testfixtures.DevMachineID, assortmentID)
 
 	_, err = q.FleetAdminUpsertAssortmentItem(ctx, db.FleetAdminUpsertAssortmentItemParams{
-		OrganizationID: testfixtures.DevOrganizationID,
-		AssortmentID:   assortmentID,
-		ProductID:      testfixtures.DevProductCola,
-		SortOrder:      1,
-		Notes:          []byte(`{}`),
+		AssortmentID: assortmentID,
+		ProductID:    testfixtures.DevProductCola,
+		SortOrder:    1,
+		Notes:        []byte(`{}`),
 	})
 	require.NoError(t, err)
 
@@ -135,7 +133,6 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch(t *testing.T) {
 
 	op := postgres.NewOperatorRepository(pool)
 	sess, err := op.StartOperatorSession(ctx, operator.StartOperatorSessionParams{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ActorType:      operator.ActorTypeTechnician,
 		TechnicianID:   ptrUUID(testfixtures.DevTechnicianID),
@@ -154,7 +151,6 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch(t *testing.T) {
 	idem := "adj-test-" + uuid.NewString()
 	inv := postgres.NewInventoryRepository(pool)
 	res, err := inv.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		OperatorSessionID: &sess.ID,
 		CorrelationID:     &corr,
@@ -199,7 +195,6 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch(t *testing.T) {
 	require.Equal(t, origQty-1, qty)
 
 	res2, err := inv.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		OperatorSessionID: &sess.ID,
 		CorrelationID:     &corr,
@@ -273,18 +268,14 @@ func TestSetupRepository_publishCurrentSyncsCommerceAssortment(t *testing.T) {
 	}))
 
 	q := db.New(pool)
-	ok, err := q.CommerceIsProductInMachinePublishedAssortment(ctx, db.CommerceIsProductInMachinePublishedAssortmentParams{
-		ID:             testfixtures.DevMachineID,
-		OrganizationID: testfixtures.DevOrganizationID,
-		ProductID:      prod,
+	ok, err := q.CommerceIsProductInMachinePublishedAssortment(ctx, db.CommerceIsProductInMachinePublishedAssortmentParams{ProductID: prod,
+
+		ID: testfixtures.DevMachineID,
 	})
 	require.NoError(t, err)
 	require.True(t, ok)
 
-	arows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, db.FleetAdminListAssortmentProductsByMachineParams{
-		ID:             testfixtures.DevMachineID,
-		OrganizationID: testfixtures.DevOrganizationID,
-	})
+	arows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, testfixtures.DevMachineID)
 	require.NoError(t, err)
 	require.NotEmpty(t, arows)
 	assID := arows[0].AssortmentID

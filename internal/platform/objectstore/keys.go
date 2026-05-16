@@ -9,17 +9,17 @@ import (
 )
 
 // ValidateCanonicalMediaAssetKey rejects keys that are not the exact deterministic path for the
-// organization + media asset (prevents path traversal / cross-tenant reads when a caller supplies a key).
-func ValidateCanonicalMediaAssetKey(organizationID, mediaAssetID uuid.UUID, actualKey, role string) error {
+// company + media asset (prevents path traversal / cross-company reads when a caller supplies a key).
+func ValidateCanonicalMediaAssetKey(companyID, mediaAssetID uuid.UUID, actualKey, role string) error {
 	want := strings.Trim(strings.TrimSpace(actualKey), "/")
 	var exp string
 	switch strings.ToLower(strings.TrimSpace(role)) {
 	case "original":
-		exp = strings.Trim(MediaAssetOriginalKey(organizationID, mediaAssetID), "/")
+		exp = strings.Trim(MediaAssetOriginalKey(companyID, mediaAssetID), "/")
 	case "thumb", "thumb.webp":
-		exp = strings.Trim(MediaAssetThumbWebpKey(organizationID, mediaAssetID), "/")
+		exp = strings.Trim(MediaAssetThumbWebpKey(companyID, mediaAssetID), "/")
 	case "display", "display.webp":
-		exp = strings.Trim(MediaAssetDisplayWebpKey(organizationID, mediaAssetID), "/")
+		exp = strings.Trim(MediaAssetDisplayWebpKey(companyID, mediaAssetID), "/")
 	default:
 		return fmt.Errorf("objectstore: invalid media asset key role %q", role)
 	}
@@ -33,20 +33,20 @@ func joinS3Key(parts ...string) string {
 	return strings.Join(parts, "/")
 }
 
-// BackendArtifactOrgPrefix is the list prefix for all backend-managed artifacts in an organization.
-func BackendArtifactOrgPrefix(organizationID uuid.UUID) string {
-	return joinS3Key("artifacts", "backend", organizationID.String()) + "/"
+// BackendArtifactOrgPrefix is the list prefix for all backend-managed artifacts in an company.
+func BackendArtifactOrgPrefix(companyID uuid.UUID) string {
+	return joinS3Key("artifacts", "backend", companyID.String()) + "/"
 }
 
 // BackendArtifactObjectKey returns the canonical object key for a single backend artifact payload.
 // One object per artifact_id (OTA-ready: campaigns reference stable artifact UUIDs without inventing a second key space).
-func BackendArtifactObjectKey(organizationID, artifactID uuid.UUID) string {
-	return joinS3Key("artifacts", "backend", organizationID.String(), artifactID.String(), "payload")
+func BackendArtifactObjectKey(companyID, artifactID uuid.UUID) string {
+	return joinS3Key("artifacts", "backend", companyID.String(), artifactID.String(), "payload")
 }
 
-// ParseBackendArtifactKey extracts organization and artifact UUIDs from a full object key.
+// ParseBackendArtifactKey extracts company and artifact UUIDs from a full object key.
 // Returns false if the key is not exactly the canonical backend artifact payload path.
-func ParseBackendArtifactKey(fullKey string) (orgID uuid.UUID, artifactID uuid.UUID, ok bool) {
+func ParseBackendArtifactKey(fullKey string) (scopeID uuid.UUID, artifactID uuid.UUID, ok bool) {
 	parts := strings.Split(strings.Trim(fullKey, "/"), "/")
 	if len(parts) != 5 {
 		return uuid.Nil, uuid.Nil, false
@@ -66,27 +66,27 @@ func ParseBackendArtifactKey(fullKey string) (orgID uuid.UUID, artifactID uuid.U
 }
 
 // OTAObjectKey returns the object key for an OTA artifact blob.
-func OTAObjectKey(organizationID, artifactID uuid.UUID, filename string) string {
+func OTAObjectKey(companyID, artifactID uuid.UUID, filename string) string {
 	fn := strings.TrimSpace(path.Base(filename))
 	if fn == "" || fn == "." {
 		fn = "artifact.bin"
 	}
-	return joinS3Key("ota", organizationID.String(), artifactID.String(), fn)
+	return joinS3Key("ota", companyID.String(), artifactID.String(), fn)
 }
 
 // ProductMediaDisplayWebpKey is the canonical display image object key for catalog production deployments.
-// Format: org/{organizationID}/products/{productID}/display.webp
-func ProductMediaDisplayWebpKey(organizationID, productID uuid.UUID) string {
-	return joinS3Key("org", organizationID.String(), "products", productID.String(), "display.webp")
+// Format: org/{companyID}/products/{productID}/display.webp
+func ProductMediaDisplayWebpKey(companyID, productID uuid.UUID) string {
+	return joinS3Key("org", companyID.String(), "products", productID.String(), "display.webp")
 }
 
 // ProductMediaThumbWebpKey is the canonical thumbnail object key paired with ProductMediaDisplayWebpKey.
-func ProductMediaThumbWebpKey(organizationID, productID uuid.UUID) string {
-	return joinS3Key("org", organizationID.String(), "products", productID.String(), "thumb.webp")
+func ProductMediaThumbWebpKey(companyID, productID uuid.UUID) string {
+	return joinS3Key("org", companyID.String(), "products", productID.String(), "thumb.webp")
 }
 
-// ParseProductMediaDisplayKey extracts organization and product UUIDs from a deterministic display.webp key.
-func ParseProductMediaDisplayKey(fullKey string) (organizationID, productID uuid.UUID, ok bool) {
+// ParseProductMediaDisplayKey extracts company and product UUIDs from a deterministic display.webp key.
+func ParseProductMediaDisplayKey(fullKey string) (companyID, productID uuid.UUID, ok bool) {
 	parts := strings.Split(strings.Trim(fullKey, "/"), "/")
 	if len(parts) != 5 {
 		return uuid.Nil, uuid.Nil, false
@@ -106,34 +106,34 @@ func ParseProductMediaDisplayKey(fullKey string) (organizationID, productID uuid
 }
 
 // MediaAssetPrefix is the list prefix for one logical media asset (original + variants).
-func MediaAssetPrefix(organizationID, mediaAssetID uuid.UUID) string {
-	return joinS3Key("media", organizationID.String(), mediaAssetID.String()) + "/"
+func MediaAssetPrefix(companyID, mediaAssetID uuid.UUID) string {
+	return joinS3Key("media", companyID.String(), mediaAssetID.String()) + "/"
 }
 
 // MediaAssetOriginalKey is the uploaded source object (any image MIME; not necessarily WebP).
-func MediaAssetOriginalKey(organizationID, mediaAssetID uuid.UUID) string {
-	return joinS3Key("media", organizationID.String(), mediaAssetID.String(), "original")
+func MediaAssetOriginalKey(companyID, mediaAssetID uuid.UUID) string {
+	return joinS3Key("media", companyID.String(), mediaAssetID.String(), "original")
 }
 
 // MediaAssetThumbWebpKey is the canonical thumbnail variant (WebP target once processing is wired).
-func MediaAssetThumbWebpKey(organizationID, mediaAssetID uuid.UUID) string {
-	return joinS3Key("media", organizationID.String(), mediaAssetID.String(), "thumb.webp")
+func MediaAssetThumbWebpKey(companyID, mediaAssetID uuid.UUID) string {
+	return joinS3Key("media", companyID.String(), mediaAssetID.String(), "thumb.webp")
 }
 
 // MediaAssetDisplayWebpKey is the canonical display variant (WebP target once processing is wired).
-func MediaAssetDisplayWebpKey(organizationID, mediaAssetID uuid.UUID) string {
-	return joinS3Key("media", organizationID.String(), mediaAssetID.String(), "display.webp")
+func MediaAssetDisplayWebpKey(companyID, mediaAssetID uuid.UUID) string {
+	return joinS3Key("media", companyID.String(), mediaAssetID.String(), "display.webp")
 }
 
-// ProductMediaObjectKey returns a deterministic, tenant-scoped key for a product-bound media object.
+// ProductMediaObjectKey returns a deterministic, role-scoped key for a product-bound media object.
 // The hash is normalized to hex and included so app cache keys change when content changes.
-func ProductMediaObjectKey(organizationID, productID, mediaID uuid.UUID, contentHash, variant, extension string) string {
+func ProductMediaObjectKey(companyID, productID, mediaID uuid.UUID, contentHash, variant, extension string) string {
 	v := sanitizeKeyPart(variant, "original")
 	ext := sanitizeKeyPart(strings.TrimPrefix(extension, "."), "bin")
 	hash := strings.ToLower(strings.TrimSpace(contentHash))
 	hash = strings.TrimPrefix(hash, "sha256:")
 	hash = sanitizeKeyPart(hash, "unhashed")
-	return joinS3Key("org", organizationID.String(), "products", productID.String(), "media", mediaID.String(), hash, v+"."+ext)
+	return joinS3Key("org", companyID.String(), "products", productID.String(), "media", mediaID.String(), hash, v+"."+ext)
 }
 
 func sanitizeKeyPart(raw, fallback string) string {
@@ -162,10 +162,10 @@ func sanitizeKeyPart(raw, fallback string) string {
 }
 
 // DiagnosticBundleKey returns the object key for a machine diagnostic / log bundle.
-func DiagnosticBundleKey(organizationID, machineID uuid.UUID, bundleID string) string {
+func DiagnosticBundleKey(companyID, machineID uuid.UUID, bundleID string) string {
 	b := strings.TrimSpace(bundleID)
 	if b == "" {
 		b = "bundle"
 	}
-	return joinS3Key("diagnostics", organizationID.String(), machineID.String(), fmt.Sprintf("%s.tgz", b))
+	return joinS3Key("diagnostics", companyID.String(), machineID.String(), fmt.Sprintf("%s.tgz", b))
 }

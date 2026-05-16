@@ -1,6 +1,5 @@
 -- name: InsertOrder :one
 INSERT INTO orders (
-    organization_id,
     machine_id,
     status,
     currency,
@@ -9,7 +8,15 @@ INSERT INTO orders (
     total_minor,
     idempotency_key
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7
+)
 RETURNING *;
 
 -- name: InsertVendSession :one
@@ -20,7 +27,13 @@ INSERT INTO vend_sessions (
     product_id,
     state
 )
-VALUES ($1, $2, $3, $4, $5)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5
+)
 RETURNING
     id,
     order_id,
@@ -44,7 +57,14 @@ INSERT INTO payments (
     currency,
     idempotency_key
 )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+)
 RETURNING
     id,
     order_id,
@@ -78,10 +98,9 @@ WHERE
     order_id = $1
     AND idempotency_key = $2;
 
--- name: GetOrderByOrgIdempotency :one
+-- name: GetOrderByScopeIdempotency :one
 SELECT
     id,
-    organization_id,
     machine_id,
     status,
     currency,
@@ -93,13 +112,11 @@ SELECT
     updated_at
 FROM orders
 WHERE
-    organization_id = $1
-    AND idempotency_key = $2;
+    idempotency_key = $1;
 
 -- name: GetOrderByID :one
 SELECT
     id,
-    organization_id,
     machine_id,
     status,
     currency,
@@ -116,7 +133,6 @@ WHERE
 -- name: LockOrderByIDAndOrgForUpdate :one
 SELECT
     id,
-    organization_id,
     machine_id,
     status,
     currency,
@@ -129,7 +145,7 @@ SELECT
 FROM orders
 WHERE
     id = $1
-    AND organization_id = $2
+    AND TRUE
 FOR UPDATE;
 
 -- name: LockVendSessionByOrderAndSlotForUpdate :one
@@ -217,7 +233,6 @@ LIMIT $2;
 -- name: ListOrdersWithUnresolvedPayment :many
 SELECT DISTINCT
     ON (o.id) o.id,
-    o.organization_id,
     o.machine_id,
     o.status,
     o.currency,
@@ -251,7 +266,6 @@ SELECT
     v.completed_at,
     v.final_command_attempt_id,
     v.created_at,
-    o.organization_id,
     o.status AS order_status
 FROM vend_sessions v
 INNER JOIN orders o ON o.id = v.order_id
@@ -321,7 +335,6 @@ LIMIT $2;
 -- name: ListPaidOrdersWithoutVendStart :many
 SELECT
     o.id AS order_id,
-    o.organization_id,
     o.machine_id,
     p.id AS payment_id,
     p.provider,
@@ -344,7 +357,6 @@ LIMIT $2;
 -- name: ListPaidVendFailuresForReview :many
 SELECT
     o.id AS order_id,
-    o.organization_id,
     o.machine_id,
     p.id AS payment_id,
     p.provider,
@@ -369,7 +381,6 @@ SELECT
     r.id AS refund_id,
     r.payment_id,
     r.order_id,
-    o.organization_id,
     p.provider,
     r.state AS refund_state,
     r.amount_minor,
@@ -414,14 +425,13 @@ LIMIT $2;
 -- name: UpdateOrderStatusByOrg :one
 UPDATE orders
 SET
-    status = $3,
+    status = $1,
     updated_at = now()
 WHERE
-    id = $1
-    AND organization_id = $2
+    id = $2
+    AND TRUE
 RETURNING
     id,
-    organization_id,
     machine_id,
     status,
     currency,
@@ -435,20 +445,20 @@ RETURNING
 -- name: UpdateVendSessionStateByOrderSlot :one
 UPDATE vend_sessions
 SET
-    state = $3,
-    failure_reason = $4,
+    state = $1,
+    failure_reason = $2,
     completed_at = CASE
-        WHEN $3 IN ('success', 'failed') THEN now()
+        WHEN $1 IN ('success', 'failed') THEN now()
         ELSE completed_at
     END,
     started_at = CASE
-        WHEN $3 = 'in_progress'
+        WHEN $1 = 'in_progress'
         AND started_at IS NULL THEN now()
         ELSE started_at
     END
 WHERE
-    order_id = $1
-    AND slot_index = $2
+    order_id = $3
+    AND slot_index = $4
 RETURNING
     id,
     order_id,
@@ -525,10 +535,10 @@ RETURNING
 -- name: UpdatePaymentStateForReconciliation :one
 UPDATE payments
 SET
-    state = $2,
+    state = $1,
     updated_at = now()
 WHERE
-    id = $1
+    id = $2
     AND state IN ('created', 'authorized')
 RETURNING
     id,
@@ -547,10 +557,10 @@ RETURNING
 -- name: UpdatePaymentState :one
 UPDATE payments
 SET
-    state = $2,
+    state = $1,
     updated_at = now()
 WHERE
-    id = $1
+    id = $2
 RETURNING
     id,
     order_id,
@@ -569,7 +579,6 @@ RETURNING
 SELECT
     id,
     payment_id,
-    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
@@ -594,7 +603,6 @@ WHERE
 SELECT
     id,
     payment_id,
-    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
@@ -618,7 +626,6 @@ WHERE
 -- name: InsertPaymentProviderEvent :one
 INSERT INTO payment_provider_events (
     payment_id,
-    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
@@ -646,13 +653,11 @@ INSERT INTO payment_provider_events (
     $11,
     $12,
     $13,
-    $14,
-    $15
+    $14
 )
 RETURNING
     id,
     payment_id,
-    organization_id,
     provider,
     provider_ref,
     webhook_event_id,
@@ -682,7 +687,6 @@ WHERE
     AND published_at IS NULL
 RETURNING
     id,
-    organization_id,
     topic,
     event_type,
     payload,
@@ -710,18 +714,18 @@ SELECT
         FROM
             machines m
             INNER JOIN machine_assortment_bindings b ON b.machine_id = m.id
-            AND b.organization_id = m.organization_id
+            AND TRUE
             AND b.is_primary
             AND b.valid_to IS NULL
             INNER JOIN assortments a ON a.id = b.assortment_id
-            AND a.organization_id = m.organization_id
+            AND TRUE
             AND a.status = 'published'
             INNER JOIN assortment_items ai ON ai.assortment_id = a.id
-            AND ai.organization_id = m.organization_id
-            AND ai.product_id = $3
+            AND TRUE
+            AND ai.product_id = $1
         WHERE
-            m.id = $1
-            AND m.organization_id = $2
+            m.id = $2
+            AND TRUE
     ) AS ok;
 
 -- name: InsertRefundRow :one

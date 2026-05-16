@@ -106,24 +106,23 @@ type PublishResult struct {
 	PlanogramRevision           int32     `json:"planogramRevision"`
 }
 
-func (s *Service) auditRecord(ctx context.Context, orgID uuid.UUID, action string, machineID uuid.UUID, meta map[string]any) {
+func (s *Service) auditRecord(ctx context.Context, scopeID uuid.UUID, action string, machineID uuid.UUID, meta map[string]any) {
 	if s.audit == nil {
 		return
 	}
 	md, _ := json.Marshal(meta)
 	rid := machineID.String()
 	_ = s.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: orgID,
-		ActorType:      compliance.ActorUser,
-		Action:         action,
-		ResourceType:   "machine_planogram",
-		ResourceID:     &rid,
-		Metadata:       md,
+		ActorType:    compliance.ActorUser,
+		Action:       action,
+		ResourceType: "machine_planogram",
+		ResourceID:   &rid,
+		Metadata:     md,
 	})
 }
 
 // GetSummary returns published pointer (if any) and drafts for the machine.
-func (s *Service) GetSummary(ctx context.Context, orgID, machineID uuid.UUID) (*Summary, error) {
+func (s *Service) GetSummary(ctx context.Context, scopeID, machineID uuid.UUID) (*Summary, error) {
 	q := db.New(s.pool)
 	meta, err := q.PlanogramGetPublishedMetaForMachine(ctx, machineID)
 	if err != nil {
@@ -132,9 +131,8 @@ func (s *Service) GetSummary(ctx context.Context, orgID, machineID uuid.UUID) (*
 	var pub *PublishedInfo
 	if meta.PublishedPlanogramVersionID.Valid {
 		vrow, err := q.PlanogramGetVersionByIDForMachine(ctx, db.PlanogramGetVersionByIDForMachineParams{
-			ID:             uuid.UUID(meta.PublishedPlanogramVersionID.Bytes),
-			OrganizationID: orgID,
-			MachineID:      machineID,
+			ID:        uuid.UUID(meta.PublishedPlanogramVersionID.Bytes),
+			MachineID: machineID,
 		})
 		if err == nil {
 			pub = &PublishedInfo{
@@ -145,10 +143,7 @@ func (s *Service) GetSummary(ctx context.Context, orgID, machineID uuid.UUID) (*
 		}
 	}
 
-	drafts, err := q.PlanogramListDraftsForMachine(ctx, db.PlanogramListDraftsForMachineParams{
-		OrganizationID: orgID,
-		MachineID:      machineID,
-	})
+	drafts, err := q.PlanogramListDraftsForMachine(ctx, machineID)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +161,7 @@ func (s *Service) GetSummary(ctx context.Context, orgID, machineID uuid.UUID) (*
 }
 
 // CreateDraft inserts a draft row (does not change runtime slot configs).
-func (s *Service) CreateDraft(ctx context.Context, orgID, machineID uuid.UUID, snapshot json.RawMessage) (uuid.UUID, error) {
+func (s *Service) CreateDraft(ctx context.Context, scopeID, machineID uuid.UUID, snapshot json.RawMessage) (uuid.UUID, error) {
 	if len(snapshot) == 0 || !json.Valid(snapshot) {
 		return uuid.Nil, fmt.Errorf("%w: snapshot JSON required", ErrInvalidSnapshot)
 	}
@@ -174,10 +169,9 @@ func (s *Service) CreateDraft(ctx context.Context, orgID, machineID uuid.UUID, s
 		return uuid.Nil, err
 	}
 	row, err := db.New(s.pool).PlanogramInsertDraft(ctx, db.PlanogramInsertDraftParams{
-		OrganizationID: orgID,
-		MachineID:      machineID,
-		Status:         draftStatusEditing,
-		Snapshot:       []byte(snapshot),
+		MachineID: machineID,
+		Status:    draftStatusEditing,
+		Snapshot:  []byte(snapshot),
 	})
 	if err != nil {
 		return uuid.Nil, err
@@ -186,12 +180,11 @@ func (s *Service) CreateDraft(ctx context.Context, orgID, machineID uuid.UUID, s
 }
 
 // PatchDraft replaces draft snapshot and optionally status.
-func (s *Service) PatchDraft(ctx context.Context, orgID, machineID, draftID uuid.UUID, snapshot json.RawMessage, status *string) error {
+func (s *Service) PatchDraft(ctx context.Context, scopeID, machineID, draftID uuid.UUID, snapshot json.RawMessage, status *string) error {
 	q := db.New(s.pool)
 	prev, err := q.PlanogramGetMachineDraftByID(ctx, db.PlanogramGetMachineDraftByIDParams{
-		ID:             draftID,
-		OrganizationID: orgID,
-		MachineID:      machineID,
+		ID:        draftID,
+		MachineID: machineID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -216,23 +209,21 @@ func (s *Service) PatchDraft(ctx context.Context, orgID, machineID, draftID uuid
 			return fmt.Errorf("%w: invalid status", ErrInvalidSnapshot)
 		}
 	}
-	_, err = q.PlanogramPatchDraftSnapshot(ctx, db.PlanogramPatchDraftSnapshotParams{
-		ID:             draftID,
-		OrganizationID: orgID,
-		MachineID:      machineID,
-		Snapshot:       nextSnap,
-		Status:         st,
+	_, err = q.PlanogramPatchDraftSnapshot(ctx, db.PlanogramPatchDraftSnapshotParams{Snapshot: nextSnap,
+		Status: st,
+
+		ID:        draftID,
+		MachineID: machineID,
 	})
 	return err
 }
 
 // ValidateDraft runs validation rules and marks the draft validated.
-func (s *Service) ValidateDraft(ctx context.Context, orgID, machineID, draftID uuid.UUID) error {
+func (s *Service) ValidateDraft(ctx context.Context, scopeID, machineID, draftID uuid.UUID) error {
 	q := db.New(s.pool)
 	dr, err := q.PlanogramGetMachineDraftByID(ctx, db.PlanogramGetMachineDraftByIDParams{
-		ID:             draftID,
-		OrganizationID: orgID,
-		MachineID:      machineID,
+		ID:        draftID,
+		MachineID: machineID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -244,27 +235,23 @@ func (s *Service) ValidateDraft(ctx context.Context, orgID, machineID, draftID u
 	if err != nil {
 		return err
 	}
-	if err := validatePublishSnapshot(ctx, q, orgID, machineID, save); err != nil {
+	if err := validatePublishSnapshot(ctx, q, scopeID, machineID, save); err != nil {
 		return err
 	}
-	_, err = q.PlanogramPatchDraftSnapshot(ctx, db.PlanogramPatchDraftSnapshotParams{
-		ID:             draftID,
-		OrganizationID: orgID,
-		MachineID:      machineID,
-		Snapshot:       dr.Snapshot,
-		Status:         draftStatusValidated,
+	_, err = q.PlanogramPatchDraftSnapshot(ctx, db.PlanogramPatchDraftSnapshotParams{Snapshot: dr.Snapshot,
+		Status: draftStatusValidated,
+
+		ID:        draftID,
+		MachineID: machineID,
 	})
 	return err
 }
 
-func validatePublishSnapshot(ctx context.Context, q *db.Queries, orgID, machineID uuid.UUID, save setupapp.SlotConfigSaveInput) error {
+func validatePublishSnapshot(ctx context.Context, q *db.Queries, scopeID, machineID uuid.UUID, save setupapp.SlotConfigSaveInput) error {
 	if len(save.Items) == 0 {
 		return fmt.Errorf("%w: at least one slot item is required to publish", ErrValidation)
 	}
-	assort, err := q.FleetAdminListAssortmentProductsByMachine(ctx, db.FleetAdminListAssortmentProductsByMachineParams{
-		ID:             machineID,
-		OrganizationID: orgID,
-	})
+	assort, err := q.FleetAdminListAssortmentProductsByMachine(ctx, machineID)
 	if err != nil {
 		return err
 	}
@@ -320,12 +307,11 @@ func validatePublishSnapshot(ctx context.Context, q *db.Queries, orgID, machineI
 }
 
 // PublishDraft validates, writes an immutable version, applies runtime configs, snapshots machine_configs, and dispatches MQTT.
-func (s *Service) PublishDraft(ctx context.Context, orgID, machineID, draftID uuid.UUID, idempotencyKey string, actorAccountID *uuid.UUID) (PublishResult, error) {
+func (s *Service) PublishDraft(ctx context.Context, scopeID, machineID, draftID uuid.UUID, idempotencyKey string, actorAccountID *uuid.UUID) (PublishResult, error) {
 	q := db.New(s.pool)
 	dr, err := q.PlanogramGetMachineDraftByID(ctx, db.PlanogramGetMachineDraftByIDParams{
-		ID:             draftID,
-		OrganizationID: orgID,
-		MachineID:      machineID,
+		ID:        draftID,
+		MachineID: machineID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -340,7 +326,7 @@ func (s *Service) PublishDraft(ctx context.Context, orgID, machineID, draftID uu
 	if err != nil {
 		return PublishResult{}, err
 	}
-	if err := validatePublishSnapshot(ctx, q, orgID, machineID, save); err != nil {
+	if err := validatePublishSnapshot(ctx, q, scopeID, machineID, save); err != nil {
 		return PublishResult{}, err
 	}
 
@@ -363,12 +349,11 @@ func (s *Service) PublishDraft(ctx context.Context, orgID, machineID, draftID uu
 	}
 
 	vRow, err := qtx.PlanogramInsertVersion(ctx, db.PlanogramInsertVersionParams{
-		OrganizationID: orgID,
-		MachineID:      machineID,
-		VersionNo:      nextNo,
-		Snapshot:       dr.Snapshot,
-		SourceDraftID:  pgtype.UUID{Bytes: draftID, Valid: true},
-		PublishedBy:    pubBy,
+		MachineID:     machineID,
+		VersionNo:     nextNo,
+		Snapshot:      dr.Snapshot,
+		SourceDraftID: pgtype.UUID{Bytes: draftID, Valid: true},
+		PublishedBy:   pubBy,
 	})
 	if err != nil {
 		return PublishResult{}, err
@@ -378,10 +363,9 @@ func (s *Service) PublishDraft(ctx context.Context, orgID, machineID, draftID uu
 		return PublishResult{}, err
 	}
 
-	if err := qtx.PlanogramSetMachinePublishedVersion(ctx, db.PlanogramSetMachinePublishedVersionParams{
-		ID:                          machineID,
-		PublishedPlanogramVersionID: pgtype.UUID{Bytes: vRow.ID, Valid: true},
-		OrganizationID:              orgID,
+	if err := qtx.PlanogramSetMachinePublishedVersion(ctx, db.PlanogramSetMachinePublishedVersionParams{PublishedPlanogramVersionID: pgtype.UUID{Bytes: vRow.ID, Valid: true},
+
+		ID: machineID,
 	}); err != nil {
 		return PublishResult{}, err
 	}
@@ -391,7 +375,7 @@ func (s *Service) PublishDraft(ctx context.Context, orgID, machineID, draftID uu
 	}
 
 	pgStr := save.PlanogramID.String()
-	mc, cfgRev, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, orgID, machineID, pgtype.UUID{}, pgStr, save.PlanogramRevision, &vRow.ID)
+	mc, cfgRev, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, scopeID, machineID, pgtype.UUID{}, pgStr, save.PlanogramRevision, &vRow.ID)
 	if err != nil {
 		return PublishResult{}, err
 	}
@@ -410,7 +394,7 @@ func (s *Service) PublishDraft(ctx context.Context, orgID, machineID, draftID uu
 		PlanogramRevision:           save.PlanogramRevision,
 	}
 
-	s.auditRecord(ctx, orgID, auditActionPublish, machineID, map[string]any{
+	s.auditRecord(ctx, scopeID, auditActionPublish, machineID, map[string]any{
 		"draftId":                     draftID.String(),
 		"publishedPlanogramVersionId": vRow.ID.String(),
 		"versionNo":                   vRow.VersionNo,
@@ -456,11 +440,8 @@ func insertVersionSlots(ctx context.Context, q *db.Queries, versionID uuid.UUID,
 }
 
 // ListVersions returns immutable versions newest first.
-func (s *Service) ListVersions(ctx context.Context, orgID, machineID uuid.UUID) ([]VersionListItem, error) {
-	rows, err := db.New(s.pool).PlanogramListVersionsForMachine(ctx, db.PlanogramListVersionsForMachineParams{
-		OrganizationID: orgID,
-		MachineID:      machineID,
-	})
+func (s *Service) ListVersions(ctx context.Context, scopeID, machineID uuid.UUID) ([]VersionListItem, error) {
+	rows, err := db.New(s.pool).PlanogramListVersionsForMachine(ctx, machineID)
 	if err != nil {
 		return nil, err
 	}
@@ -483,12 +464,11 @@ func (s *Service) ListVersions(ctx context.Context, orgID, machineID uuid.UUID) 
 }
 
 // Rollback repoints the published pointer to a prior immutable version and reapplies runtime configs.
-func (s *Service) Rollback(ctx context.Context, orgID, machineID, versionID uuid.UUID, idempotencyKey string) (PublishResult, error) {
+func (s *Service) Rollback(ctx context.Context, scopeID, machineID, versionID uuid.UUID, idempotencyKey string) (PublishResult, error) {
 	q := db.New(s.pool)
 	vrow, err := q.PlanogramGetVersionByIDForMachine(ctx, db.PlanogramGetVersionByIDForMachineParams{
-		ID:             versionID,
-		OrganizationID: orgID,
-		MachineID:      machineID,
+		ID:        versionID,
+		MachineID: machineID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -501,7 +481,7 @@ func (s *Service) Rollback(ctx context.Context, orgID, machineID, versionID uuid
 	if err != nil {
 		return PublishResult{}, err
 	}
-	if err := validatePublishSnapshot(ctx, q, orgID, machineID, save); err != nil {
+	if err := validatePublishSnapshot(ctx, q, scopeID, machineID, save); err != nil {
 		return PublishResult{}, err
 	}
 
@@ -512,17 +492,16 @@ func (s *Service) Rollback(ctx context.Context, orgID, machineID, versionID uuid
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	qtx := db.New(tx)
-	if err := qtx.PlanogramSetMachinePublishedVersion(ctx, db.PlanogramSetMachinePublishedVersionParams{
-		ID:                          machineID,
-		PublishedPlanogramVersionID: pgtype.UUID{Bytes: vrow.ID, Valid: true},
-		OrganizationID:              orgID,
+	if err := qtx.PlanogramSetMachinePublishedVersion(ctx, db.PlanogramSetMachinePublishedVersionParams{PublishedPlanogramVersionID: pgtype.UUID{Bytes: vrow.ID, Valid: true},
+
+		ID: machineID,
 	}); err != nil {
 		return PublishResult{}, err
 	}
 	if err := s.setup.ApplyPublishedSlotConfigsInTx(ctx, tx, machineID, save); err != nil {
 		return PublishResult{}, err
 	}
-	mc, cfgRev, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, orgID, machineID, pgtype.UUID{}, save.PlanogramID.String(), save.PlanogramRevision, &vrow.ID)
+	mc, cfgRev, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, scopeID, machineID, pgtype.UUID{}, save.PlanogramID.String(), save.PlanogramRevision, &vrow.ID)
 	if err != nil {
 		return PublishResult{}, err
 	}
@@ -539,7 +518,7 @@ func (s *Service) Rollback(ctx context.Context, orgID, machineID, versionID uuid
 		PlanogramRevision:           save.PlanogramRevision,
 	}
 
-	s.auditRecord(ctx, orgID, auditActionRollback, machineID, map[string]any{
+	s.auditRecord(ctx, scopeID, auditActionRollback, machineID, map[string]any{
 		"publishedPlanogramVersionId": vrow.ID.String(),
 		"versionNo":                   vrow.VersionNo,
 		"desiredConfigVersion":        cfgRev,

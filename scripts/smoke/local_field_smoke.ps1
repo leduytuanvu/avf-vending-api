@@ -1,6 +1,6 @@
 param(
     [string]$BaseUrl = $env:BASE_URL,
-    [string]$OrgId = $env:ORG_ID,
+    [string]$ScopeId = $env:SCOPE_ID,
     [string]$AdminEmail = $env:ADMIN_EMAIL,
     [string]$AdminPassword = $env:ADMIN_PASSWORD,
     [string]$MachineId = $env:MACHINE_ID,
@@ -19,7 +19,7 @@ if ([string]::IsNullOrWhiteSpace($python)) {
 
 $argsList = @("tools/smoke_test.py", "local")
 if (-not [string]::IsNullOrWhiteSpace($BaseUrl)) { $argsList += @("--base-url", $BaseUrl) }
-if (-not [string]::IsNullOrWhiteSpace($OrgId)) { $argsList += @("--org-id", $OrgId) }
+if (-not [string]::IsNullOrWhiteSpace($ScopeId)) { $argsList += @("--scope-id", $ScopeId) }
 if (-not [string]::IsNullOrWhiteSpace($AdminEmail)) { $argsList += @("--admin-email", $AdminEmail) }
 if (-not [string]::IsNullOrWhiteSpace($AdminPassword)) { $argsList += @("--admin-password", $AdminPassword) }
 if (-not [string]::IsNullOrWhiteSpace($MachineId)) { $argsList += @("--machine-id", $MachineId) }

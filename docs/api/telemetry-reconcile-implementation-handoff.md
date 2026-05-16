@@ -13,7 +13,7 @@
 
 | Method | Path | Auth |
 |--------|------|------|
-| POST | `/v1/device/machines/{machineId}/events/reconcile` | Machine JWT for same machine, or user JWT with machine access (align with device bridge policy — today [`device_http.go`](../../internal/httpserver/device_http.go) may still be admin-only; **P0** includes allowing machine token on device paths per activation/tenant plan). |
+| POST | `/v1/device/machines/{machineId}/events/reconcile` | Machine JWT for same machine, or user JWT with machine access (align with device bridge policy — today [`device_http.go`](../../internal/httpserver/device_http.go) may still be admin-only; **P0** includes allowing machine token on device paths per activation/company plan). |
 | GET | `/v1/device/machines/{machineId}/events/{idempotencyKey}/status` | Same |
 
 **Path encoding:** `idempotencyKey` may contain `:`. Use **URL-escaped** path segments on clients; server **`PathUnescape`** before lookup. If friction is high, add alternate **`GET .../events/status?idempotency_key=`** (document both; OpenAPI can show query variant as primary).
@@ -47,7 +47,7 @@ Map internal storage to **`eventType`** when known (e.g. `events.vend`); else `n
 ## Security
 
 - Resolve principal → must **only** return data for **`machineId` in the URL** matching token scope.
-- If a key exists **only** on another machine: return **`not_found`** for that item (no cross-tenant / cross-machine leak). Optionally increment `telemetry_reconcile_forbidden_total` when the raw key “looks” bound to a different machine **only if** that can be done without oracle; otherwise rely on machine-scoped queries only.
+- If a key exists **only** on another machine: return **`not_found`** for that item (no cross-company / cross-machine leak). Optionally increment `telemetry_reconcile_forbidden_total` when the raw key “looks” bound to a different machine **only if** that can be done without oracle; otherwise rely on machine-scoped queries only.
 - Invalid JWT → **401**; wrong machine scope → **403**.
 
 ## Storage strategy
@@ -67,7 +67,7 @@ Derive status only from existing OLTP tables (no migration):
 
 Add migration **`machine_event_statuses`**:
 
-- `id` (uuid), `organization_id`, `machine_id`, `idempotency_key` (text), `event_type` (text, nullable)
+- `id` (uuid), `company_id`, `machine_id`, `idempotency_key` (text), `event_type` (text, nullable)
 - `status` (text CHECK), `accepted_at`, `processed_at`, `failure_reason` (text), `created_at`, `updated_at`
 - **UNIQUE (`machine_id`, `idempotency_key`)**
 

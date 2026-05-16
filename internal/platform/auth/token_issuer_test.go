@@ -32,7 +32,6 @@ func TestSessionIssuer_IssueAndValidate(t *testing.T) {
 	p, err := v.ValidateAccessToken(t.Context(), tok)
 	require.NoError(t, err)
 	require.Equal(t, acct.String(), p.Subject)
-	require.Equal(t, org, p.OrganizationID)
 	require.True(t, p.HasRole(RoleOrgAdmin))
 	require.NotEmpty(t, p.JTI)
 }

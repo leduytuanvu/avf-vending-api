@@ -144,23 +144,22 @@ func (s *Service) buildInsertParams(ctx context.Context, in compliance.Enterpris
 		occurred = pgtype.Timestamptz{Time: t, Valid: true}
 	}
 	return db.EnterpriseAuditInsertEventParams{
-		OrganizationID: in.OrganizationID,
-		ActorType:      in.ActorType,
-		ActorID:        optionalStringPtrToPgText(in.ActorID),
-		Action:         in.Action,
-		ResourceType:   in.ResourceType,
-		ResourceID:     optionalStringPtrToPgText(in.ResourceID),
-		MachineID:      optionalUUIDPtrToPg(in.MachineID),
-		SiteID:         optionalUUIDPtrToPg(in.SiteID),
-		RequestID:      optionalStringPtrToPgText(in.RequestID),
-		TraceID:        optionalStringPtrToPgText(in.TraceID),
-		IpAddress:      optionalStringPtrToPgText(in.IPAddress),
-		UserAgent:      optionalStringPtrToPgText(in.UserAgent),
-		BeforeJson:     beforePtr,
-		AfterJson:      afterPtr,
-		Metadata:       md,
-		Outcome:        outcome,
-		OccurredAt:     occurred,
+		ActorType:    in.ActorType,
+		ActorID:      optionalStringPtrToPgText(in.ActorID),
+		Action:       in.Action,
+		ResourceType: in.ResourceType,
+		ResourceID:   optionalStringPtrToPgText(in.ResourceID),
+		MachineID:    optionalUUIDPtrToPg(in.MachineID),
+		SiteID:       optionalUUIDPtrToPg(in.SiteID),
+		RequestID:    optionalStringPtrToPgText(in.RequestID),
+		TraceID:      optionalStringPtrToPgText(in.TraceID),
+		IpAddress:    optionalStringPtrToPgText(in.IPAddress),
+		UserAgent:    optionalStringPtrToPgText(in.UserAgent),
+		BeforeJson:   beforePtr,
+		AfterJson:    afterPtr,
+		Metadata:     md,
+		Outcome:      outcome,
+		OccurredAt:   occurred,
 	}, nil
 }
 
@@ -260,41 +259,39 @@ func optionalStringPtrToPgText(s *string) pgtype.Text {
 
 // EventListParams filters GET /v1/admin/audit/events.
 type EventListParams struct {
-	OrganizationID uuid.UUID
-	Action         string
-	ActorID        string
-	ActorType      string
-	Outcome        string
-	ResourceType   string
-	ResourceID     string
-	MachineID      string
-	From           *time.Time
-	To             *time.Time
-	Limit          int32
-	Offset         int32
+	Action       string
+	ActorID      string
+	ActorType    string
+	Outcome      string
+	ResourceType string
+	ResourceID   string
+	MachineID    string
+	From         *time.Time
+	To           *time.Time
+	Limit        int32
+	Offset       int32
 }
 
 // EventListItem is one audit_events row for APIs.
 type EventListItem struct {
-	ID             string          `json:"id"`
-	OrganizationID string          `json:"organizationId"`
-	ActorType      string          `json:"actorType"`
-	ActorID        *string         `json:"actorId,omitempty"`
-	Action         string          `json:"action"`
-	ResourceType   string          `json:"resourceType"`
-	ResourceID     *string         `json:"resourceId,omitempty"`
-	MachineID      *string         `json:"machineId,omitempty"`
-	SiteID         *string         `json:"siteId,omitempty"`
-	RequestID      *string         `json:"requestId,omitempty"`
-	TraceID        *string         `json:"traceId,omitempty"`
-	IPAddress      *string         `json:"ipAddress,omitempty"`
-	UserAgent      *string         `json:"userAgent,omitempty"`
-	BeforeJSON     json.RawMessage `json:"beforeJson,omitempty"`
-	AfterJSON      json.RawMessage `json:"afterJson,omitempty"`
-	Metadata       json.RawMessage `json:"metadata"`
-	Outcome        string          `json:"outcome"`
-	OccurredAt     time.Time       `json:"occurredAt"`
-	CreatedAt      time.Time       `json:"createdAt"`
+	ID           string          `json:"id"`
+	ActorType    string          `json:"actorType"`
+	ActorID      *string         `json:"actorId,omitempty"`
+	Action       string          `json:"action"`
+	ResourceType string          `json:"resourceType"`
+	ResourceID   *string         `json:"resourceId,omitempty"`
+	MachineID    *string         `json:"machineId,omitempty"`
+	SiteID       *string         `json:"siteId,omitempty"`
+	RequestID    *string         `json:"requestId,omitempty"`
+	TraceID      *string         `json:"traceId,omitempty"`
+	IPAddress    *string         `json:"ipAddress,omitempty"`
+	UserAgent    *string         `json:"userAgent,omitempty"`
+	BeforeJSON   json.RawMessage `json:"beforeJson,omitempty"`
+	AfterJSON    json.RawMessage `json:"afterJson,omitempty"`
+	Metadata     json.RawMessage `json:"metadata"`
+	Outcome      string          `json:"outcome"`
+	OccurredAt   time.Time       `json:"occurredAt"`
+	CreatedAt    time.Time       `json:"createdAt"`
 }
 
 // EventListResponse is paginated audit events.
@@ -313,43 +310,38 @@ func timeRangeStrings(from, to *time.Time) (fromS, toS string) {
 	return fromS, toS
 }
 
-// ListEvents returns tenant-scoped audit rows with filters.
+// ListEvents returns single-company audit rows with filters.
 func (s *Service) ListEvents(ctx context.Context, p EventListParams) (*EventListResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, nil
 	}
-	if p.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrAdminOrganizationRequired
-	}
 	fromS, toS := timeRangeStrings(p.From, p.To)
 	cnt, err := s.q.EnterpriseAuditCountEvents(ctx, db.EnterpriseAuditCountEventsParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        p.Action,
-		Column3:        p.ActorID,
-		Column4:        p.ActorType,
-		Column5:        p.Outcome,
-		Column6:        p.ResourceType,
-		Column7:        p.ResourceID,
-		Column8:        fromS,
-		Column9:        toS,
-		Column10:       p.MachineID,
+		Column1: p.Action,
+		Column2: p.ActorID,
+		Column3: p.ActorType,
+		Column4: p.Outcome,
+		Column5: p.ResourceType,
+		Column6: p.ResourceID,
+		Column7: fromS,
+		Column8: toS,
+		Column9: p.MachineID,
 	})
 	if err != nil {
 		return nil, err
 	}
 	rows, err := s.q.EnterpriseAuditListEvents(ctx, db.EnterpriseAuditListEventsParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        p.Action,
-		Column3:        p.ActorID,
-		Column4:        p.ActorType,
-		Column5:        p.Outcome,
-		Column6:        p.ResourceType,
-		Column7:        p.ResourceID,
-		Column8:        fromS,
-		Column9:        toS,
-		Column10:       p.MachineID,
-		Limit:          p.Limit,
-		Offset:         p.Offset,
+		Column1: p.Action,
+		Column2: p.ActorID,
+		Column3: p.ActorType,
+		Column4: p.Outcome,
+		Column5: p.ResourceType,
+		Column6: p.ResourceID,
+		Column7: fromS,
+		Column8: toS,
+		Column9: p.MachineID,
+		Limit:   p.Limit,
+		Offset:  p.Offset,
 	})
 	if err != nil {
 		return nil, err
@@ -369,18 +361,15 @@ func (s *Service) ListEvents(ctx context.Context, p EventListParams) (*EventList
 	}, nil
 }
 
-// GetEventForOrg returns one audit row scoped to organization_id.
-func (s *Service) GetEventForOrg(ctx context.Context, orgID, eventID uuid.UUID) (*EventListItem, error) {
+// GetEvent returns one audit row.
+func (s *Service) GetEvent(ctx context.Context, eventID uuid.UUID) (*EventListItem, error) {
 	if s == nil || s.q == nil {
 		return nil, nil
 	}
-	if orgID == uuid.Nil || eventID == uuid.Nil {
-		return nil, listscope.ErrAdminOrganizationRequired
+	if eventID == uuid.Nil {
+		return nil, listscope.ErrInvalidListQuery
 	}
-	row, err := s.q.EnterpriseAuditGetEventForOrg(ctx, db.EnterpriseAuditGetEventForOrgParams{
-		ID:             eventID,
-		OrganizationID: orgID,
-	})
+	row, err := s.q.EnterpriseAuditGetEvent(ctx, eventID)
 	if err != nil {
 		return nil, err
 	}
@@ -390,15 +379,14 @@ func (s *Service) GetEventForOrg(ctx context.Context, orgID, eventID uuid.UUID) 
 
 func mapAuditEventRow(r db.AuditEvent) EventListItem {
 	it := EventListItem{
-		ID:             r.ID.String(),
-		OrganizationID: r.OrganizationID.String(),
-		ActorType:      r.ActorType,
-		Action:         r.Action,
-		ResourceType:   r.ResourceType,
-		Metadata:       json.RawMessage(r.Metadata),
-		Outcome:        r.Outcome,
-		OccurredAt:     r.OccurredAt.UTC(),
-		CreatedAt:      r.CreatedAt.UTC(),
+		ID:           r.ID.String(),
+		ActorType:    r.ActorType,
+		Action:       r.Action,
+		ResourceType: r.ResourceType,
+		Metadata:     json.RawMessage(r.Metadata),
+		Outcome:      r.Outcome,
+		OccurredAt:   r.OccurredAt.UTC(),
+		CreatedAt:    r.CreatedAt.UTC(),
 	}
 	it.ActorID = pgTextToStrPtr(r.ActorID)
 	it.ResourceID = pgTextToStrPtr(r.ResourceID)

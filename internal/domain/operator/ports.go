@@ -22,6 +22,6 @@ type Repository interface {
 	ListAuthEventsByMachineID(ctx context.Context, machineID uuid.UUID, limit int32) ([]AuthEvent, error)
 	ListActionAttributionsByMachineID(ctx context.Context, machineID uuid.UUID, limit int32) ([]ActionAttribution, error)
 	ListActionAttributionsByMachineAndResource(ctx context.Context, machineID uuid.UUID, resourceType, resourceID string, limit int32) ([]ActionAttribution, error)
-	ListActionAttributionsForTechnician(ctx context.Context, organizationID, technicianID uuid.UUID, limit int32) ([]ActionAttribution, error)
-	ListActionAttributionsForUserPrincipal(ctx context.Context, organizationID uuid.UUID, userPrincipal string, limit int32) ([]ActionAttribution, error)
+	ListActionAttributionsForTechnician(ctx context.Context, companyID, technicianID uuid.UUID, limit int32) ([]ActionAttribution, error)
+	ListActionAttributionsForUserPrincipal(ctx context.Context, companyID uuid.UUID, userPrincipal string, limit int32) ([]ActionAttribution, error)
 }

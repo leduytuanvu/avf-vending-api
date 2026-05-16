@@ -123,7 +123,7 @@ If **newman** is not installed, **`run-newman.sh` exits 0** and appends remediat
 
 ### Generate Postman environment from `test-data.json`
 
-Maps capture file + `secrets.private.json` into Postman variables (`base_url`, `admin_token`, `machine_token`, `organization_id`, `site_id`, `machine_id`, `product_id`, `order_id`, `slot_id`, `allow_production_writes`, plus `allow_mutation` / `allow_production_mutation` / `confirm_production_run` for the collection scripts).
+Maps capture file + `secrets.private.json` into Postman variables (`base_url`, `admin_token`, `machine_token`, ``, `site_id`, `machine_id`, `product_id`, `order_id`, `slot_id`, `allow_production_writes`, plus `allow_mutation` / `allow_production_mutation` / `confirm_production_run` for the collection scripts).
 
 ```bash
 export E2E_RUN_DIR=.e2e-runs/run-…

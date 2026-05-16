@@ -41,7 +41,6 @@ type Deps struct {
 // AuthAdminMutationEvent describes an admin API auth user change for optional audit sinks.
 type AuthAdminMutationEvent struct {
 	Action          string
-	OrganizationID  uuid.UUID
 	ActorAccountID  uuid.UUID
 	TargetAccountID uuid.UUID
 	Details         map[string]any
@@ -102,9 +101,8 @@ func NewService(d Deps) (*Service, error) {
 
 // LoginRequest is the JSON body for POST /v1/auth/login.
 type LoginRequest struct {
-	OrganizationID uuid.UUID `json:"organizationId"`
-	Email          string    `json:"email"`
-	Password       string    `json:"password"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // TokenPair is returned on login and refresh.
@@ -118,11 +116,10 @@ type TokenPair struct {
 
 // LoginResponse is returned from POST /v1/auth/login.
 type LoginResponse struct {
-	AccountID      uuid.UUID `json:"accountId"`
-	OrganizationID uuid.UUID `json:"organizationId"`
-	Email          string    `json:"email"`
-	Roles          []string  `json:"roles"`
-	Tokens         TokenPair `json:"tokens"`
+	AccountID uuid.UUID `json:"accountId"`
+	Email     string    `json:"email"`
+	Roles     []string  `json:"roles"`
+	Tokens    TokenPair `json:"tokens"`
 
 	MFARequired           bool       `json:"mfaRequired,omitempty"`
 	MFAEnrollmentRequired bool       `json:"mfaEnrollmentRequired,omitempty"`
@@ -142,10 +139,9 @@ type RefreshResponse struct {
 
 // MeResponse is returned from GET /v1/auth/me.
 type MeResponse struct {
-	AccountID      uuid.UUID `json:"accountId"`
-	OrganizationID uuid.UUID `json:"organizationId"`
-	Email          string    `json:"email"`
-	Roles          []string  `json:"roles"`
+	AccountID uuid.UUID `json:"accountId"`
+	Email     string    `json:"email"`
+	Roles     []string  `json:"roles"`
 }
 
 // LogoutRequest is the JSON body for POST /v1/auth/logout (optional fields).
@@ -160,25 +156,22 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 		return nil, errors.New("auth service: nil")
 	}
 	email := strings.TrimSpace(strings.ToLower(req.Email))
-	if req.OrganizationID == uuid.Nil || email == "" || req.Password == "" {
+	if email == "" || req.Password == "" {
 		return nil, ErrInvalidRequest
 	}
-	acct, err := s.q.AuthLookupAccountByOrgEmailAnyStatus(ctx, db.AuthLookupAccountByOrgEmailAnyStatusParams{
-		OrganizationID: req.OrganizationID,
-		Lower:          email,
-	})
+	acct, err := s.q.AuthLookupAccountByOrgEmailAnyStatus(ctx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			if s.loginFailures != nil {
-				_, _, _ = s.loginFailures.IncrementFailure(ctx, req.OrganizationID, email, s.adminSec.LoginMaxFailedAttempts, s.adminSec.LoginLockoutTTL)
+				_, _, _ = s.loginFailures.IncrementFailure(ctx, uuid.Nil, email, s.adminSec.LoginMaxFailedAttempts, s.adminSec.LoginLockoutTTL)
 			}
-			s.auditLoginFailure(ctx, req.OrganizationID, email, "")
+			s.auditLoginFailure(ctx, uuid.Nil, email, "")
 			return nil, ErrInvalidCredentials
 		}
 		return nil, err
 	}
 	if acct.LockedUntil.Valid && time.Now().UTC().Before(acct.LockedUntil.Time) {
-		s.auditLoginFailure(ctx, req.OrganizationID, email, "account_locked")
+		s.auditLoginFailure(ctx, uuid.Nil, email, "account_locked")
 		return nil, ErrInvalidCredentials
 	}
 	if strings.EqualFold(strings.TrimSpace(acct.Status), "locked") {
@@ -188,29 +181,29 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 		}
 	}
 	if strings.ToLower(strings.TrimSpace(acct.Status)) != "active" {
-		s.auditLoginFailure(ctx, req.OrganizationID, email, "account_disabled")
+		s.auditLoginFailure(ctx, uuid.Nil, email, "account_disabled")
 		return nil, ErrInvalidCredentials
 	}
 	if s.loginFailures != nil {
-		n, err := s.loginFailures.PeekFailureCount(ctx, req.OrganizationID, email)
+		n, err := s.loginFailures.PeekFailureCount(ctx, uuid.Nil, email)
 		if err != nil {
 			return nil, err
 		}
 		if int32(n) >= s.adminSec.LoginMaxFailedAttempts {
-			s.auditLoginFailure(ctx, req.OrganizationID, email, "account_locked")
+			s.auditLoginFailure(ctx, uuid.Nil, email, "account_locked")
 			return nil, ErrInvalidCredentials
 		}
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(acct.PasswordHash), []byte(req.Password)); err != nil {
 		if s.loginFailures != nil {
-			_, _, _ = s.loginFailures.IncrementFailure(ctx, req.OrganizationID, email, s.adminSec.LoginMaxFailedAttempts, s.adminSec.LoginLockoutTTL)
+			_, _, _ = s.loginFailures.IncrementFailure(ctx, uuid.Nil, email, s.adminSec.LoginMaxFailedAttempts, s.adminSec.LoginLockoutTTL)
 		}
-		_ = s.q.AuthRecordLoginFailure(ctx, db.AuthRecordLoginFailureParams{
-			ID:               acct.ID,
+		_ = s.q.AuthRecordLoginFailure(ctx, db.AuthRecordLoginFailureParams{Column2: int64(s.adminSec.LoginLockoutTTL / time.Second),
 			FailedLoginCount: s.adminSec.LoginMaxFailedAttempts,
-			Column3:          int64(s.adminSec.LoginLockoutTTL / time.Second),
+
+			ID: acct.ID,
 		})
-		s.auditLoginFailure(ctx, req.OrganizationID, email, "")
+		s.auditLoginFailure(ctx, uuid.Nil, email, "")
 		return nil, ErrInvalidCredentials
 	}
 
@@ -221,13 +214,12 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 	requireEnrollment := s.appEnv == config.AppEnvProduction && s.adminSec.MFARequiredInProduction && mfaActive == 0
 	if requireEnrollment || mfaActive > 0 {
 		enrollmentJWT := requireEnrollment && mfaActive == 0
-		challenge, exp, err := s.i.IssueMFAPendingJWT(acct.ID, acct.OrganizationID, acct.Roles, acct.Status, enrollmentJWT)
+		challenge, exp, err := s.i.IssueMFAPendingJWT(acct.ID, uuid.Nil, acct.Roles, acct.Status, enrollmentJWT)
 		if err != nil {
 			return nil, err
 		}
 		return &LoginResponse{
 			AccountID:             acct.ID,
-			OrganizationID:        acct.OrganizationID,
 			Email:                 acct.Email,
 			Roles:                 acct.Roles,
 			MFARequired:           true,
@@ -240,7 +232,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 
 	_ = s.q.AuthRecordLoginSuccess(ctx, acct.ID)
 	if s.loginFailures != nil {
-		_ = s.loginFailures.ClearFailures(ctx, req.OrganizationID, email)
+		_ = s.loginFailures.ClearFailures(ctx, uuid.Nil, email)
 	}
 	out, err := s.issueLoginResponse(ctx, acct)
 	if err != nil {
@@ -254,7 +246,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*LoginResponse, 
 }
 
 func (s *Service) issueLoginResponse(ctx context.Context, acct db.PlatformAuthAccount) (*LoginResponse, error) {
-	at, accessExp, err := s.i.IssueAccessJWT(acct.ID, acct.OrganizationID, acct.Roles, acct.Status)
+	at, accessExp, err := s.i.IssueAccessJWT(acct.ID, uuid.Nil, acct.Roles, acct.Status)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +272,6 @@ func (s *Service) issueLoginResponse(ctx context.Context, acct db.PlatformAuthAc
 	sessID := uuid.New()
 	_ = s.q.AuthAdminInsertAdminSession(ctx, db.AuthAdminInsertAdminSessionParams{
 		ID:               sessID,
-		OrganizationID:   acct.OrganizationID,
 		UserID:           acct.ID,
 		RefreshTokenID:   rtID,
 		RefreshTokenHash: rtHash,
@@ -292,10 +283,9 @@ func (s *Service) issueLoginResponse(ctx context.Context, acct db.PlatformAuthAc
 		_ = s.sessionCache.PutRefreshSession(ctx, rtHash, acct.ID, rtExp)
 	}
 	return &LoginResponse{
-		AccountID:      acct.ID,
-		OrganizationID: acct.OrganizationID,
-		Email:          acct.Email,
-		Roles:          acct.Roles,
+		AccountID: acct.ID,
+		Email:     acct.Email,
+		Roles:     acct.Roles,
 		Tokens: TokenPair{
 			AccessToken:      at,
 			AccessExpiresAt:  accessExp,
@@ -335,7 +325,7 @@ func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*RefreshResp
 	if acct.LockedUntil.Valid && time.Now().UTC().Before(acct.LockedUntil.Time) {
 		return nil, ErrInvalidRefreshToken
 	}
-	at, accessExp, err := s.i.IssueAccessJWT(acct.ID, acct.OrganizationID, acct.Roles, acct.Status)
+	at, accessExp, err := s.i.IssueAccessJWT(acct.ID, uuid.Nil, acct.Roles, acct.Status)
 	if err != nil {
 		return nil, err
 	}
@@ -355,12 +345,12 @@ func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*RefreshResp
 	}); err != nil {
 		return nil, err
 	}
-	_ = s.q.AuthAdminRotateSessionRefreshToken(ctx, db.AuthAdminRotateSessionRefreshTokenParams{
-		UserID:           acct.ID,
-		RefreshTokenID:   row.ID,
-		RefreshTokenID_2: rtID,
+	_ = s.q.AuthAdminRotateSessionRefreshToken(ctx, db.AuthAdminRotateSessionRefreshTokenParams{RefreshTokenID: row.ID,
 		RefreshTokenHash: rtHash,
 		ExpiresAt:        rtExp,
+		RefreshTokenID_2: rtID,
+
+		UserID: acct.ID,
 	})
 	if err := s.q.AuthRevokeRefreshToken(ctx, row.ID); err != nil {
 		_ = s.q.AuthRevokeRefreshToken(ctx, rtID)
@@ -400,10 +390,9 @@ func (s *Service) Me(ctx context.Context, accountID uuid.UUID) (*MeResponse, err
 		return nil, err
 	}
 	return &MeResponse{
-		AccountID:      acct.ID,
-		OrganizationID: acct.OrganizationID,
-		Email:          acct.Email,
-		Roles:          acct.Roles,
+		AccountID: acct.ID,
+		Email:     acct.Email,
+		Roles:     acct.Roles,
 	}, nil
 }
 
@@ -416,17 +405,14 @@ func (s *Service) Logout(ctx context.Context, accountID uuid.UUID, accessJTI str
 		return ErrInvalidRequest
 	}
 	if req.RevokeAll {
-		acct, err := s.q.AuthGetAccountByID(ctx, accountID)
+		_, err := s.q.AuthGetAccountByID(ctx, accountID)
 		if err != nil {
 			return err
 		}
 		if err := s.q.AuthRevokeAllRefreshForAccount(ctx, accountID); err != nil {
 			return err
 		}
-		if err := s.q.AuthAdminRevokeAllAdminSessionsForUser(ctx, db.AuthAdminRevokeAllAdminSessionsForUserParams{
-			OrganizationID: acct.OrganizationID,
-			UserID:         accountID,
-		}); err != nil {
+		if err := s.q.AuthAdminRevokeAllAdminSessionsForUser(ctx, accountID); err != nil {
 			return err
 		}
 		if s.sessionCache != nil {

@@ -80,6 +80,15 @@ if [[ "${E2E_ALLOW_WRITES}" != "true" ]]; then
   else
     echo "$(now_utc) WARN: no Public folder in collection — running full collection (read-only mode not folder-scoped)" >>"$LOG"
   fi
+else
+  # Align Postman {{base_url}} with harness BASE_URL (avoid stale localhost:8080 in checked-in env JSON).
+  if [[ -n "${BASE_URL:-}" ]]; then
+    extra_args+=(--env-var "base_url=${BASE_URL}")
+  fi
+  # Canary/admin-write folders gate POST /v1/admin/sites unless explicitly enabled.
+  if [[ "${E2E_TARGET:-}" == "local" ]]; then
+    extra_args+=(--env-var "allow_destructive=true")
+  fi
 fi
 
 set +e
@@ -89,7 +98,7 @@ set +e
   echo "### environment ${ENVF}"
   newman run "$COLL" -e "$ENVF" \
     "${extra_args[@]}" \
-    --reporters cli,json,junit \
+    --reporters cli json junit \
     --reporter-json-export "$JSON_REPORT" \
     --reporter-junit-export "$JUNIT_REPORT" \
     --color off

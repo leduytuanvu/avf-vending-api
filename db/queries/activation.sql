@@ -1,7 +1,6 @@
 -- name: InsertMachineActivationCode :one
 INSERT INTO machine_activation_codes (
     machine_id,
-    organization_id,
     code_hash,
     max_uses,
     uses,
@@ -9,7 +8,15 @@ INSERT INTO machine_activation_codes (
     notes,
     status
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7
+)
 RETURNING *;
 
 -- name: ListMachineActivationCodesForMachine :many
@@ -22,24 +29,20 @@ WHERE
 ORDER BY
     created_at DESC;
 
--- name: ListMachineActivationCodesForOrganization :many
+-- name: ListMachineActivationCodesForScope :many
 SELECT
     *
 FROM
     machine_activation_codes
-WHERE
-    organization_id = $1
 ORDER BY
     created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
--- name: CountMachineActivationCodesForOrganization :one
+-- name: CountMachineActivationCodesForScope :one
 SELECT
     count(*)::bigint AS cnt
 FROM
-    machine_activation_codes
-WHERE
-    organization_id = $1;
+    machine_activation_codes;
 
 -- name: GetMachineActivationCodeByIDForOrg :one
 SELECT
@@ -48,7 +51,7 @@ FROM
     machine_activation_codes
 WHERE
     id = $1
-    AND organization_id = $2;
+    AND TRUE;
 
 -- name: RevokeMachineActivationCode :one
 UPDATE machine_activation_codes
@@ -58,18 +61,18 @@ SET
 WHERE
     id = $1
     AND machine_id = $2
-    AND organization_id = $3
+    AND TRUE
     AND status = 'active'
 RETURNING *;
 
--- name: RevokeMachineActivationCodeForOrganization :one
+-- name: RevokeMachineActivationCodeForScope :one
 UPDATE machine_activation_codes
 SET
     status = 'revoked',
     updated_at = now()
 WHERE
     id = $1
-    AND organization_id = $2
+    AND TRUE
     AND status = 'active'
 RETURNING *;
 
@@ -104,7 +107,6 @@ WHERE
 -- name: InsertMachineActivationClaim :one
 INSERT INTO machine_activation_claims (
     activation_code_id,
-    organization_id,
     machine_id,
     fingerprint_hash,
     ip_address,
@@ -112,7 +114,15 @@ INSERT INTO machine_activation_claims (
     result,
     failure_reason
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7
+)
 RETURNING *;
 
 -- name: RefreshMachineActivationCodeAggregate :one
@@ -141,3 +151,4 @@ WHERE
     mac.id = $1
 RETURNING
     mac.*;
+

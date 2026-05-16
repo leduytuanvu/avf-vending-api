@@ -62,7 +62,7 @@ func mountAdminInventoryRoutes(r chi.Router, app *api.HTTPApplication, writeRL f
 	})
 }
 
-func parseInventoryRefillForecastQuery(r *http.Request, orgID uuid.UUID, machineFromPath *uuid.UUID, lowStockOnly bool) (appinventoryadmin.RefillForecastParams, error) {
+func parseInventoryRefillForecastQuery(r *http.Request, scopeID uuid.UUID, machineFromPath *uuid.UUID, lowStockOnly bool) (appinventoryadmin.RefillForecastParams, error) {
 	var zero appinventoryadmin.RefillForecastParams
 	limit, offset, err := parseAdminLimitOffset(r)
 	if err != nil {
@@ -132,7 +132,6 @@ func parseInventoryRefillForecastQuery(r *http.Request, orgID uuid.UUID, machine
 	}
 
 	return appinventoryadmin.RefillForecastParams{
-		OrganizationID:     orgID,
 		SiteID:             siteID,
 		MachineID:          machineID,
 		ProductID:          productID,
@@ -174,7 +173,6 @@ func mapRefillForecastResponse(in *appinventoryadmin.RefillForecastResponse) V1A
 		}
 	}
 	return V1AdminInventoryRefillForecastResponse{
-		OrganizationID:     in.OrganizationID,
 		VelocityWindowDays: in.VelocityWindowDays,
 		WindowStart:        in.WindowStart,
 		WindowEnd:          in.WindowEnd,
@@ -190,12 +188,13 @@ func mapRefillForecastResponse(in *appinventoryadmin.RefillForecastResponse) V1A
 
 func getAdminInventoryLowStock(svc *appinventoryadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		p, err := parseInventoryRefillForecastQuery(r, orgID, nil, true)
+		p, err := parseInventoryRefillForecastQuery(r, scopeID, nil, true)
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -211,12 +210,13 @@ func getAdminInventoryLowStock(svc *appinventoryadmin.Service) http.HandlerFunc 
 
 func getAdminInventoryRefillSuggestions(svc *appinventoryadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		p, err := parseInventoryRefillForecastQuery(r, orgID, nil, false)
+		p, err := parseInventoryRefillForecastQuery(r, scopeID, nil, false)
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -237,21 +237,22 @@ func getAdminMachineRefillSuggestions(svc *appinventoryadmin.Service) http.Handl
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		head, err := resolveInventoryMachine(r, svc, mid)
+		_, err = resolveInventoryMachine(r, svc, mid)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
 		}
-		if head.OrganizationID != orgID {
-			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "machine does not belong to the requested organization scope")
+		if uuid.Nil != scopeID {
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "machine does not belong to the requested company scope")
 			return
 		}
-		p, err := parseInventoryRefillForecastQuery(r, orgID, &mid, false)
+		p, err := parseInventoryRefillForecastQuery(r, scopeID, &mid, false)
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -361,7 +362,7 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		head, err := resolveInventoryMachine(r, app.InventoryAdmin, machineID)
+		_, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
@@ -446,7 +447,6 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 
 		repo := postgres.NewInventoryRepository(app.TelemetryStore.Pool())
 		res, err := repo.CreateInventoryAdjustmentBatch(r.Context(), inventoryapp.AdjustmentBatchInput{
-			OrganizationID:    head.OrganizationID,
 			MachineID:         machineID,
 			OperatorSessionID: &sid,
 			CorrelationID:     correlationUUIDFromRequest(r.Context()),
@@ -481,14 +481,13 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 				aidPtr = &aid
 			}
 			_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-				OrganizationID: head.OrganizationID,
-				ActorType:      at,
-				ActorID:        aidPtr,
-				Action:         compliance.ActionMachineInventoryAdjust,
-				ResourceType:   "fleet.machine",
-				ResourceID:     &mid,
-				Metadata:       md,
-				Outcome:        compliance.OutcomeSuccess,
+				ActorType:    at,
+				ActorID:      aidPtr,
+				Action:       compliance.ActionMachineInventoryAdjust,
+				ResourceType: "fleet.machine",
+				ResourceID:   &mid,
+				Metadata:     md,
+				Outcome:      compliance.OutcomeSuccess,
 			})
 		}
 		writeJSON(w, http.StatusOK, V1AdminStockAdjustmentsResponse{Replay: res.Replay, EventIds: res.EventIDs})
@@ -629,7 +628,6 @@ func parseOptionalQueryTime(r *http.Request, name string) (time.Time, bool, erro
 func mapInventoryEventRow(row db.InventoryAdminListInventoryEventsByMachineRow) V1AdminInventoryEvent {
 	ev := V1AdminInventoryEvent{
 		ID:             row.ID,
-		OrganizationID: row.OrganizationID.String(),
 		MachineID:      row.MachineID.String(),
 		EventType:      row.EventType,
 		QuantityDelta:  row.QuantityDelta,
@@ -701,7 +699,7 @@ func resolveInventoryMachine(r *http.Request, svc *appinventoryadmin.Service, ma
 	if p.HasRole(auth.RolePlatformAdmin) {
 		return head, nil
 	}
-	if p.HasRole(auth.RoleOrgAdmin) && p.HasOrganization() && head.OrganizationID == p.OrganizationID {
+	if p.HasRole(auth.RoleOrgAdmin) && uuid.Nil == uuid.Nil {
 		return head, nil
 	}
 	return appinventoryadmin.MachineHead{}, appinventoryadmin.ErrForbidden
@@ -831,7 +829,7 @@ func putAdminMachineTopology(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		head, err := resolveInventoryMachine(r, app.InventoryAdmin, machineID)
+		_, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
@@ -886,7 +884,6 @@ func putAdminMachineTopology(app *api.HTTPApplication) http.HandlerFunc {
 			writeSetupMutationError(w, r.Context(), err)
 			return
 		}
-		_ = head // resolved for tenant access; topology is machine-scoped
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -903,7 +900,7 @@ func putAdminMachinePlanogramDraft(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		if _, err := resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
+		if _, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
 		}
@@ -942,7 +939,7 @@ func postAdminMachinePlanogramPublish(app *api.HTTPApplication) http.HandlerFunc
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		head, err := resolveInventoryMachine(r, app.InventoryAdmin, machineID)
+		_, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
@@ -1004,7 +1001,7 @@ func postAdminMachinePlanogramPublish(app *api.HTTPApplication) http.HandlerFunc
 			writeSetupMutationError(w, r.Context(), err)
 			return
 		}
-		_, cfgRev, cerr := insertMachineConfigSnapshot(r.Context(), pool, head.OrganizationID, machineID, sid, in.PlanogramID, in.PlanogramRevision)
+		_, cfgRev, cerr := insertMachineConfigSnapshot(r.Context(), pool, uuid.Nil, machineID, sid, in.PlanogramID, in.PlanogramRevision)
 		if cerr != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", cerr.Error())
 			return
@@ -1060,7 +1057,7 @@ func postAdminMachineSetupSync(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		if _, err := resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
+		if _, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
 		}
@@ -1225,14 +1222,14 @@ func planogramBodyToSaveInput(w http.ResponseWriter, r *http.Request, body plano
 	}, true
 }
 
-func insertMachineConfigSnapshot(ctx context.Context, pool *pgxpool.Pool, orgID, machineID, sessionID uuid.UUID, planogramID string, planogramRevision int32) (db.MachineConfig, int32, error) {
+func insertMachineConfigSnapshot(ctx context.Context, pool *pgxpool.Pool, scopeID, machineID, sessionID uuid.UUID, planogramID string, planogramRevision int32) (db.MachineConfig, int32, error) {
 	tx, err := pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return db.MachineConfig{}, 0, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	row, next, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, orgID, machineID, pgtype.UUID{Bytes: sessionID, Valid: true}, planogramID, planogramRevision, nil)
+	row, next, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, scopeID, machineID, pgtype.UUID{Bytes: sessionID, Valid: true}, planogramID, planogramRevision, nil)
 	if err != nil {
 		return db.MachineConfig{}, 0, err
 	}

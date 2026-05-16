@@ -8,7 +8,7 @@ ALTER TABLE auth_refresh_tokens ADD COLUMN IF NOT EXISTS user_agent text;
 
 CREATE TABLE IF NOT EXISTS admin_mfa_factors (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
     factor_type text NOT NULL CHECK (factor_type = 'totp'),
     secret_ciphertext bytea NOT NULL,
@@ -21,11 +21,11 @@ CREATE TABLE IF NOT EXISTS admin_mfa_factors (
     CONSTRAINT ux_admin_mfa_factors_user_factor UNIQUE (user_id, factor_type)
 );
 
-CREATE INDEX IF NOT EXISTS ix_admin_mfa_factors_org ON admin_mfa_factors (organization_id);
+CREATE INDEX IF NOT EXISTS ix_admin_mfa_factors_org ON admin_mfa_factors (scope_id);
 
 CREATE TABLE IF NOT EXISTS admin_sessions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
     refresh_token_id uuid NOT NULL UNIQUE REFERENCES auth_refresh_tokens (id) ON DELETE CASCADE,
     refresh_token_hash bytea NOT NULL,
@@ -38,11 +38,11 @@ CREATE TABLE IF NOT EXISTS admin_sessions (
     revoked_at timestamptz
 );
 
-CREATE INDEX IF NOT EXISTS ix_admin_sessions_org_user ON admin_sessions (organization_id, user_id);
+CREATE INDEX IF NOT EXISTS ix_admin_sessions_org_user ON admin_sessions (scope_id, user_id);
 
 CREATE TABLE IF NOT EXISTS admin_login_attempts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid REFERENCES organizations (id) ON DELETE SET NULL,
+    scope_id uuid REFERENCES companies (id) ON DELETE SET NULL,
     email_normalized text NOT NULL,
     user_id uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL,
     ip_address text,
@@ -59,18 +59,18 @@ ALTER TABLE auth_password_reset_tokens RENAME TO password_reset_tokens;
 ALTER TABLE password_reset_tokens RENAME COLUMN account_id TO user_id;
 
 ALTER TABLE password_reset_tokens
-ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations (id) ON DELETE CASCADE;
+ADD COLUMN IF NOT EXISTS scope_id uuid REFERENCES companies (id) ON DELETE CASCADE;
 
 UPDATE password_reset_tokens pr
 SET
-    organization_id = a.organization_id
+    scope_id = a.scope_id
 FROM platform_auth_accounts a
 WHERE
     pr.user_id = a.id
-    AND pr.organization_id IS NULL;
+    AND pr.scope_id IS NULL;
 
 ALTER TABLE password_reset_tokens
-ALTER COLUMN organization_id
+ALTER COLUMN scope_id
 SET NOT NULL;
 
 ALTER TABLE password_reset_tokens ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
@@ -126,7 +126,7 @@ ALTER TABLE password_reset_tokens DROP COLUMN IF EXISTS revoked_at;
 
 ALTER TABLE password_reset_tokens DROP COLUMN IF EXISTS status;
 
-ALTER TABLE password_reset_tokens DROP COLUMN IF EXISTS organization_id;
+ALTER TABLE password_reset_tokens DROP COLUMN IF EXISTS scope_id;
 
 ALTER TABLE password_reset_tokens RENAME COLUMN user_id TO account_id;
 

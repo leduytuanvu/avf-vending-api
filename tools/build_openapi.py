@@ -241,11 +241,23 @@ def build_operation_oas3(d: dict[str, list[str]]) -> tuple[str, str, dict[str, A
     if responses:
         op["responses"] = responses
 
+    # Drop stale path params left behind after single-company route flattening.
+    # Swagger annotations are manually maintained and some legacy scopeId params
+    # remain on operations whose @Router path no longer contains {scopeId}.
+    placeholders = set(re.findall(r"\{([^}]+)\}", path))
+    if op.get("parameters"):
+        op["parameters"] = [
+            p for p in op["parameters"]
+            if p.get("in") != "path" or p.get("name") in placeholders
+        ]
+        if not op["parameters"]:
+            op.pop("parameters", None)
+
     return path, method, op
 
 
 def operational_collection_component_schemas() -> dict[str, Any]:
-    """OpenAPI component schemas for operational GET list endpoints (admin fleet + tenant commerce)."""
+    """OpenAPI component schemas for operational GET list endpoints (admin fleet + company commerce)."""
     meta = {
         "type": "object",
         "properties": {
@@ -264,7 +276,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "orderId": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "machineId": uuid_s,
                 "status": {"$ref": "#/components/schemas/V1CommerceOrderStatus"},
                 "currency": {"type": "string", "minLength": 3, "maxLength": 3},
@@ -277,7 +289,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "orderId",
-                "organizationId",
+                "scopeId",
                 "machineId",
                 "status",
                 "currency",
@@ -301,7 +313,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "properties": {
                 "paymentId": uuid_s,
                 "orderId": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "machineId": uuid_s,
                 "provider": {"type": "string"},
                 "paymentState": {"$ref": "#/components/schemas/V1PaymentState"},
@@ -316,7 +328,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "required": [
                 "paymentId",
                 "orderId",
-                "organizationId",
+                "scopeId",
                 "machineId",
                 "provider",
                 "paymentState",
@@ -341,7 +353,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "id": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "caseType": {"type": "string"},
                 "status": {"type": "string", "enum": ["open", "reviewing", "resolved", "dismissed", "ignored", "escalated"]},
                 "severity": {"type": "string", "enum": ["info", "warning", "critical"]},
@@ -361,7 +373,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "id",
-                "organizationId",
+                "scopeId",
                 "caseType",
                 "status",
                 "severity",
@@ -416,7 +428,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "id": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "orderId": uuid_s,
                 "paymentId": uuid_s,
                 "refundId": uuid_s,
@@ -434,7 +446,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "id",
-                "organizationId",
+                "scopeId",
                 "orderId",
                 "amountMinor",
                 "currency",
@@ -510,7 +522,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "properties": {
                 "machineId": uuid_s,
                 "machineName": {"type": "string"},
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "siteId": uuid_s,
                 "siteName": {"type": "string"},
                 "hardwareProfileId": uuid_s,
@@ -540,7 +552,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "required": [
                 "machineId",
                 "machineName",
-                "organizationId",
+                "scopeId",
                 "siteId",
                 "siteName",
                 "serialNumber",
@@ -558,7 +570,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "machineId": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "siteId": uuid_s,
                 "reportedState": {"type": "object", "additionalProperties": True},
                 "metricsState": {"type": "object", "additionalProperties": True},
@@ -579,7 +591,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "machineId",
-                "organizationId",
+                "scopeId",
                 "siteId",
                 "reportedState",
                 "metricsState",
@@ -669,14 +681,14 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "technicianId": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "displayName": {"type": "string"},
                 "email": {"type": "string"},
                 "phone": {"type": "string"},
                 "externalSubject": {"type": "string"},
                 "createdAt": ts,
             },
-            "required": ["technicianId", "organizationId", "displayName", "createdAt"],
+            "required": ["technicianId", "scopeId", "displayName", "createdAt"],
         },
         "V1AdminTechniciansListResponse": {
             "type": "object",
@@ -725,7 +737,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "properties": {
                 "commandId": uuid_s,
                 "machineId": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "machineName": {"type": "string"},
                 "machineSerialNumber": {"type": "string"},
                 "sequence": {"type": "integer", "format": "int64"},
@@ -738,7 +750,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "required": [
                 "commandId",
                 "machineId",
-                "organizationId",
+                "scopeId",
                 "machineName",
                 "machineSerialNumber",
                 "sequence",
@@ -760,7 +772,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "campaignId": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "campaignName": {"type": "string"},
                 "strategy": {"type": "string"},
                 "campaignStatus": {"type": "string", "enum": ["draft", "active", "paused", "completed"]},
@@ -771,7 +783,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "campaignId",
-                "organizationId",
+                "scopeId",
                 "campaignName",
                 "strategy",
                 "campaignStatus",
@@ -792,7 +804,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "campaignId": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "name": {"type": "string"},
                 "rolloutStrategy": {"type": "string", "enum": ["immediate", "canary"]},
                 "status": {
@@ -813,7 +825,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "campaignId",
-                "organizationId",
+                "scopeId",
                 "name",
                 "rolloutStrategy",
                 "status",
@@ -888,7 +900,7 @@ def operational_collection_component_schemas() -> dict[str, Any]:
 
 
 def admin_operations_component_schemas() -> dict[str, Any]:
-    """OpenAPI schemas for tenant admin operations (machine health, commands, inventory anomalies)."""
+    """OpenAPI schemas for company admin operations (machine health, commands, inventory anomalies)."""
     uuid_s = {"type": "string", "format": "uuid"}
     ts = dict(_TS_SCHEMA)
     i32 = {"type": "integer", "format": "int32"}
@@ -973,7 +985,7 @@ def admin_operations_component_schemas() -> dict[str, Any]:
             "properties": {
                 "commandId": uuid_s,
                 "machineId": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "sequence": i64,
                 "commandType": {"type": "string"},
                 "payload": {"type": "object", "additionalProperties": True},
@@ -985,7 +997,7 @@ def admin_operations_component_schemas() -> dict[str, Any]:
                     "items": {"$ref": "#/components/schemas/V1AdminOperationsCommandAttemptItem"},
                 },
             },
-            "required": ["commandId", "machineId", "organizationId", "sequence", "commandType", "payload", "createdAt", "attempts"],
+            "required": ["commandId", "machineId", "scopeId", "sequence", "commandType", "payload", "createdAt", "attempts"],
         },
         "V1AdminOperationsCommandRetryResponse": {
             "type": "object",
@@ -1027,7 +1039,7 @@ def admin_operations_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "id": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "machineId": uuid_s,
                 "machineName": {"type": "string"},
                 "machineSerialNumber": {"type": "string"},
@@ -1046,7 +1058,7 @@ def admin_operations_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "id",
-                "organizationId",
+                "scopeId",
                 "machineId",
                 "machineName",
                 "machineSerialNumber",
@@ -1155,7 +1167,7 @@ def admin_operations_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "id": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "rolloutType": {"type": "string"},
                 "targetVersion": {"type": "string"},
                 "status": {"type": "string"},
@@ -1167,13 +1179,13 @@ def admin_operations_component_schemas() -> dict[str, Any]:
                 "completedAt": ts,
                 "cancelledAt": ts,
             },
-            "required": ["id", "organizationId", "rolloutType", "targetVersion", "status", "createdAt", "updatedAt"],
+            "required": ["id", "scopeId", "rolloutType", "targetVersion", "status", "createdAt", "updatedAt"],
         },
         "V1AdminRolloutTarget": {
             "type": "object",
             "properties": {
                 "id": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "campaignId": uuid_s,
                 "machineId": uuid_s,
                 "status": {"type": "string"},
@@ -1182,7 +1194,7 @@ def admin_operations_component_schemas() -> dict[str, Any]:
                 "createdAt": ts,
                 "updatedAt": ts,
             },
-            "required": ["id", "organizationId", "campaignId", "machineId", "status", "createdAt", "updatedAt"],
+            "required": ["id", "scopeId", "campaignId", "machineId", "status", "createdAt", "updatedAt"],
         },
         "V1AdminRolloutDetailResponse": {
             "type": "object",
@@ -1276,7 +1288,7 @@ def machine_setup_component_schemas() -> dict[str, Any]:
         "type": "object",
         "properties": {
             "machineId": uuid_s,
-            "organizationId": uuid_s,
+            "scopeId": uuid_s,
             "siteId": uuid_s,
             "hardwareProfileId": uuid_s,
             "serialNumber": {"type": "string"},
@@ -1288,7 +1300,7 @@ def machine_setup_component_schemas() -> dict[str, Any]:
         },
         "required": [
             "machineId",
-            "organizationId",
+            "scopeId",
             "siteId",
             "serialNumber",
             "name",
@@ -1510,7 +1522,7 @@ def machine_setup_component_schemas() -> dict[str, Any]:
         "V1AdminInventoryRefillForecastResponse": {
             "type": "object",
             "properties": {
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "velocityWindowDays": {"type": "integer", "format": "int32"},
                 "windowStart": ts,
                 "windowEnd": ts,
@@ -1520,13 +1532,13 @@ def machine_setup_component_schemas() -> dict[str, Any]:
                 },
                 "meta": {"$ref": "#/components/schemas/V1AdminInventoryRefillForecastMeta"},
             },
-            "required": ["organizationId", "velocityWindowDays", "windowStart", "windowEnd", "items", "meta"],
+            "required": ["scopeId", "velocityWindowDays", "windowStart", "windowEnd", "items", "meta"],
         },
         "V1AdminInventoryEvent": {
             "type": "object",
             "properties": {
                 "id": {"type": "integer", "format": "int64"},
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "machineId": uuid_s,
                 "cabinetCode": {"type": "string"},
                 "slotCode": {"type": "string"},
@@ -1549,7 +1561,7 @@ def machine_setup_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "id",
-                "organizationId",
+                "scopeId",
                 "machineId",
                 "eventType",
                 "quantityDelta",
@@ -1713,31 +1725,31 @@ def reporting_component_schemas() -> dict[str, Any]:
         "V1ReportingSalesSummaryResponse": {
             "type": "object",
             "properties": {
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "from": ts,
                 "to": ts,
                 "groupBy": {"type": "string", "description": "day | site | machine | payment_method | none"},
                 "summary": sales_rollup,
                 "breakdown": {"type": "array", "items": sales_break},
             },
-            "required": ["organizationId", "from", "to", "groupBy", "summary", "breakdown"],
+            "required": ["scopeId", "from", "to", "groupBy", "summary", "breakdown"],
         },
         "V1ReportingPaymentsSummaryResponse": {
             "type": "object",
             "properties": {
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "from": ts,
                 "to": ts,
                 "groupBy": {"type": "string", "description": "day | payment_method | status | none"},
                 "summary": pay_rollup,
                 "breakdown": {"type": "array", "items": pay_break},
             },
-            "required": ["organizationId", "from", "to", "groupBy", "summary", "breakdown"],
+            "required": ["scopeId", "from", "to", "groupBy", "summary", "breakdown"],
         },
         "V1ReportingFleetHealthResponse": {
             "type": "object",
             "properties": {
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "from": ts,
                 "to": ts,
                 "machineSummary": {
@@ -1757,7 +1769,7 @@ def reporting_component_schemas() -> dict[str, Any]:
                 "machineIncidentsBySeverity": {"type": "array", "items": fleet_sev_row},
             },
             "required": [
-                "organizationId",
+                "scopeId",
                 "from",
                 "to",
                 "machineSummary",
@@ -1769,14 +1781,14 @@ def reporting_component_schemas() -> dict[str, Any]:
         "V1ReportingInventoryExceptionsResponse": {
             "type": "object",
             "properties": {
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "from": ts,
                 "to": ts,
                 "exceptionKind": {"type": "string", "enum": ["all", "low_stock", "out_of_stock"]},
                 "meta": inv_meta,
                 "items": {"type": "array", "items": inv_item},
             },
-            "required": ["organizationId", "from", "to", "exceptionKind", "meta", "items"],
+            "required": ["scopeId", "from", "to", "exceptionKind", "meta", "items"],
         },
         "V1AdminReportSalesResponse": {
             "allOf": [{"$ref": "#/components/schemas/V1ReportingSalesSummaryResponse"}],
@@ -1784,7 +1796,7 @@ def reporting_component_schemas() -> dict[str, Any]:
         "V1AdminReportPaymentsResponse": {
             "type": "object",
             "properties": {
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "from": ts,
                 "to": ts,
                 "timezone": {"type": "string"},
@@ -1806,24 +1818,24 @@ def reporting_component_schemas() -> dict[str, Any]:
                 },
                 "meta": inv_meta,
             },
-            "required": ["organizationId", "from", "to", "timezone", "items", "meta"],
+            "required": ["scopeId", "from", "to", "timezone", "items", "meta"],
         },
         "V1AdminReportListResponse": {
             "type": "object",
             "properties": {
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "from": ts,
                 "to": ts,
                 "meta": inv_meta,
                 "items": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
             },
-            "required": ["organizationId", "from", "to", "meta", "items"],
+            "required": ["scopeId", "from", "to", "meta", "items"],
         },
         "V1FinanceDailyClose": {
             "type": "object",
             "properties": {
                 "id": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "closeDate": {"type": "string", "format": "date"},
                 "timezone": {"type": "string"},
                 "siteId": uuid_s,
@@ -1841,7 +1853,7 @@ def reporting_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "id",
-                "organizationId",
+                "scopeId",
                 "closeDate",
                 "timezone",
                 "idempotencyKey",
@@ -1893,7 +1905,7 @@ def cash_settlement_component_schemas() -> dict[str, Any]:
         "properties": {
             "id": {"type": "string", "format": "uuid"},
             "machine_id": {"type": "string", "format": "uuid"},
-            "organization_id": {"type": "string", "format": "uuid"},
+            "scope_id": {"type": "string", "format": "uuid"},
             "collected_at": {"type": "string", "format": "date-time"},
             "opened_at": {"type": "string", "format": "date-time"},
             "closed_at": {"type": "string", "format": "date-time"},
@@ -1914,7 +1926,7 @@ def cash_settlement_component_schemas() -> dict[str, Any]:
         "required": [
             "id",
             "machine_id",
-            "organization_id",
+            "scope_id",
             "collected_at",
             "opened_at",
             "lifecycle_status",
@@ -2016,8 +2028,8 @@ def enterprise_error_named_schemas() -> dict[str, Any]:
         "ValidationErrorResponse": wrap(
             "Validation or malformed input (HTTP 400 family).",
             "invalid_query",
-            "organization_id is required for platform_admin",
-            {"param": "organization_id"},
+            "scope_id query is required for this list operation",
+            {"param": "scope_id"},
         ),
         "ConflictErrorResponse": wrap(
             "State conflict (HTTP 409) — illegal transitions, idempotency mismatch, quantity_before_mismatch, etc.",
@@ -2050,7 +2062,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
     }
     auth_account_props = {
         "accountId": dict(uuid_s),
-        "organizationId": dict(uuid_s),
+        "scopeId": dict(uuid_s),
         "email": {"type": "string", "format": "email"},
         "roles": {"type": "array", "items": {"type": "string"}},
     }
@@ -2058,7 +2070,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
         "type": "object",
         "properties": {
             "id": dict(uuid_s),
-            "organizationId": dict(uuid_s),
+            "scopeId": dict(uuid_s),
             "sku": {"type": "string"},
             "barcode": {"type": "string", "nullable": True},
             "name": {"type": "string"},
@@ -2069,7 +2081,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "createdAt": ts,
             "updatedAt": ts,
         },
-        "required": ["id", "organizationId", "sku", "name", "description", "active", "createdAt", "updatedAt"],
+        "required": ["id", "scopeId", "sku", "name", "description", "active", "createdAt", "updatedAt"],
     }
     product_detail = {
         "type": "object",
@@ -2084,7 +2096,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
         },
         "required": [
             "id",
-            "organizationId",
+            "scopeId",
             "sku",
             "name",
             "description",
@@ -2099,7 +2111,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
         "type": "object",
         "properties": {
             "id": dict(uuid_s),
-            "organizationId": dict(uuid_s),
+            "scopeId": dict(uuid_s),
             "name": {"type": "string"},
             "currency": {"type": "string", "example": "USD"},
             "effectiveFrom": ts,
@@ -2115,7 +2127,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
         },
         "required": [
             "id",
-            "organizationId",
+            "scopeId",
             "name",
             "currency",
             "effectiveFrom",
@@ -2153,14 +2165,14 @@ def missing_reference_component_schemas() -> dict[str, Any]:
         "type": "object",
         "properties": {
             "id": dict(uuid_s),
-            "organizationId": dict(uuid_s),
+            "scopeId": dict(uuid_s),
             "name": {"type": "string"},
             "revision": {"type": "integer", "format": "int32"},
             "status": {"type": "string"},
             "meta": {"type": "object", "nullable": True, "additionalProperties": True},
             "createdAt": ts,
         },
-        "required": ["id", "organizationId", "name", "revision", "status", "createdAt"],
+        "required": ["id", "scopeId", "name", "revision", "status", "createdAt"],
     }
     planogram_slot = {
         "type": "object",
@@ -2198,12 +2210,12 @@ def missing_reference_component_schemas() -> dict[str, Any]:
                 "mfaChallengeToken": {"type": "string"},
                 "mfaExpiresAt": {"type": "string", "format": "date-time", "nullable": True},
             },
-            "required": ["accountId", "organizationId", "email", "roles", "tokens"],
+            "required": ["accountId", "scopeId", "email", "roles", "tokens"],
         },
         "V1AuthMeResponse": {
             "type": "object",
             "properties": auth_account_props,
-            "required": ["accountId", "organizationId", "email", "roles"],
+            "required": ["accountId", "scopeId", "email", "roles"],
         },
         "V1AuthRefreshResponse": {
             "type": "object",
@@ -2235,7 +2247,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "sessionId": dict(uuid_s),
-                "organizationId": dict(uuid_s),
+                "scopeId": dict(uuid_s),
                 "ipAddress": {"type": "string", "nullable": True},
                 "userAgent": {"type": "string", "nullable": True},
                 "createdAt": ts,
@@ -2243,7 +2255,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
                 "expiresAt": ts,
                 "status": {"type": "string"},
             },
-            "required": ["sessionId", "organizationId", "createdAt", "expiresAt", "status"],
+            "required": ["sessionId", "scopeId", "createdAt", "expiresAt", "status"],
         },
         "V1AuthSessionsEnvelope": {
             "type": "object",
@@ -2320,7 +2332,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "id": dict(uuid_s),
-                "organizationId": dict(uuid_s),
+                "scopeId": dict(uuid_s),
                 "name": {"type": "string"},
                 "approvalStatus": {"type": "string"},
                 "lifecycleStatus": {"type": "string"},
@@ -2336,7 +2348,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "id",
-                "organizationId",
+                "scopeId",
                 "name",
                 "approvalStatus",
                 "lifecycleStatus",
@@ -2364,17 +2376,16 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "properties": {
                 "id": dict(uuid_s),
                 "promotionId": dict(uuid_s),
-                "organizationId": dict(uuid_s),
+                "scopeId": dict(uuid_s),
                 "targetType": {"type": "string"},
                 "productId": {**dict(uuid_s), "nullable": True},
                 "categoryId": {**dict(uuid_s), "nullable": True},
                 "machineId": {**dict(uuid_s), "nullable": True},
                 "siteId": {**dict(uuid_s), "nullable": True},
-                "organizationTargetId": {**dict(uuid_s), "nullable": True},
                 "tagId": {**dict(uuid_s), "nullable": True},
                 "createdAt": ts,
             },
-            "required": ["id", "promotionId", "organizationId", "targetType", "createdAt"],
+            "required": ["id", "promotionId", "scopeId", "targetType", "createdAt"],
         },
         "V1AdminPromotionDetail": {
             "type": "object",
@@ -2445,10 +2456,10 @@ def missing_reference_component_schemas() -> dict[str, Any]:
         "V1AuthPasswordResetRequest": {
             "type": "object",
             "properties": {
-                "organizationId": dict(uuid_s),
+                "scopeId": dict(uuid_s),
                 "email": {"type": "string", "format": "email"},
             },
-            "required": ["organizationId", "email"],
+            "required": ["scopeId", "email"],
         },
         "V1AuthPasswordResetAccepted": {
             "type": "object",
@@ -2467,14 +2478,14 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "accountId": dict(uuid_s),
-                "organizationId": dict(uuid_s),
+                "scopeId": dict(uuid_s),
                 "email": {"type": "string", "format": "email"},
                 "roles": {"type": "array", "items": {"type": "string"}},
                 "status": {"type": "string", "enum": ["active", "disabled", "locked", "invited"]},
                 "createdAt": ts,
                 "updatedAt": ts,
             },
-            "required": ["accountId", "organizationId", "email", "roles", "status", "createdAt", "updatedAt"],
+            "required": ["accountId", "scopeId", "email", "roles", "status", "createdAt", "updatedAt"],
         },
         "V1AdminAuthUsersListEnvelope": {
             "type": "object",
@@ -2520,7 +2531,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
                 },
                 "roleSummary": {
                     "type": "string",
-                    "example": "platform_admin→admin.all (explicit org routes); org_admin→org matrix + JWT org scope only; org_member/viewer→read-only baseline",
+                    "example": "platform_admin→admin.all (full access); admin→permission matrix with JWT company scope; member/viewer→read-only baseline",
                 },
                 "auditActionsNote": {
                     "type": "string",
@@ -2544,7 +2555,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "id": {"type": "integer", "format": "int64"},
-                "organizationId": dict(uuid_s),
+                "scopeId": dict(uuid_s),
                 "topic": {"type": "string"},
                 "eventType": {"type": "string"},
                 "payload": {"type": "object", "additionalProperties": True},
@@ -2712,7 +2723,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "id": dict(uuid_s),
-                "organization_id": dict(uuid_s),
+                "scope_id": dict(uuid_s),
                 "kind": {"type": "string"},
                 "status": {"type": "string"},
                 "mime_type": {"type": "string"},
@@ -2725,7 +2736,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
                 "created_at": ts,
                 "updated_at": ts,
             },
-            "required": ["id", "organization_id", "kind", "status", "object_version", "created_at", "updated_at"],
+            "required": ["id", "scope_id", "kind", "status", "object_version", "created_at", "updated_at"],
         },
         "V1AdminMediaListEnvelope": {
             "type": "object",
@@ -2771,7 +2782,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "id": uuid_s,
-                "organizationId": uuid_s,
+                "scopeId": uuid_s,
                 "actorType": {"type": "string"},
                 "actorId": {"type": "string", "format": "uuid", "nullable": True},
                 "action": {"type": "string"},
@@ -2792,7 +2803,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "id",
-                "organizationId",
+                "scopeId",
                 "actorType",
                 "action",
                 "resourceType",
@@ -3022,7 +3033,7 @@ IDEMPOTENCY_OPS: set[tuple[str, str]] = {
     ("post", "/v1/commerce/orders/{orderId}/vend/failure"),
     ("post", "/v1/commerce/orders/{orderId}/cancel"),
     ("post", "/v1/commerce/orders/{orderId}/refunds"),
-    ("post", "/v1/admin/organizations/{organizationId}/orders/{orderId}/refunds"),
+    ("post", "/v1/admin/companies/{scopeId}/orders/{orderId}/refunds"),
     ("post", "/v1/device/machines/{machineId}/vend-results"),
     ("post", "/v1/machines/{machineId}/commands/dispatch"),
     ("post", "/v1/admin/machines/{machineId}/planograms/publish"),
@@ -3040,23 +3051,23 @@ IDEMPOTENCY_OPS: set[tuple[str, str]] = {
     ("post", "/v1/admin/media/assets"),
     ("post", "/v1/admin/media/uploads"),
     ("post", "/v1/admin/media/{mediaId}/complete"),
-    ("post", "/v1/admin/organizations/{organizationId}/media/uploads/init"),
-    ("post", "/v1/admin/organizations/{organizationId}/media/uploads/complete"),
-    ("post", "/v1/admin/organizations/{organizationId}/media/product-images"),
-    ("get", "/v1/admin/organizations/{organizationId}/media/assets"),
-    ("get", "/v1/admin/organizations/{organizationId}/media/assets/{assetId}"),
-    ("delete", "/v1/admin/organizations/{organizationId}/media/assets/{assetId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/products/{productId}/media"),
-    ("delete", "/v1/admin/organizations/{organizationId}/products/{productId}/media/{mediaId}"),
+    ("post", "/v1/admin/companies/{scopeId}/media/uploads/init"),
+    ("post", "/v1/admin/companies/{scopeId}/media/uploads/complete"),
+    ("post", "/v1/admin/companies/{scopeId}/media/product-images"),
+    ("get", "/v1/admin/companies/{scopeId}/media/assets"),
+    ("get", "/v1/admin/companies/{scopeId}/media/assets/{assetId}"),
+    ("delete", "/v1/admin/companies/{scopeId}/media/assets/{assetId}"),
+    ("post", "/v1/admin/companies/{scopeId}/products/{productId}/media"),
+    ("delete", "/v1/admin/companies/{scopeId}/products/{productId}/media/{mediaId}"),
     ("delete", "/v1/admin/media/assets/{mediaId}"),
     ("delete", "/v1/admin/media/{mediaId}"),
     ("post", "/v1/admin/products/{productId}/media"),
     ("put", "/v1/admin/products/{productId}/media"),
     ("delete", "/v1/admin/products/{productId}/media/{mediaId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/products/{productId}/images"),
-    ("get", "/v1/admin/organizations/{organizationId}/products/{productId}/images"),
-    ("patch", "/v1/admin/organizations/{organizationId}/products/{productId}/images/{imageId}"),
-    ("delete", "/v1/admin/organizations/{organizationId}/products/{productId}/images/{imageId}"),
+    ("post", "/v1/admin/companies/{scopeId}/products/{productId}/images"),
+    ("get", "/v1/admin/companies/{scopeId}/products/{productId}/images"),
+    ("patch", "/v1/admin/companies/{scopeId}/products/{productId}/images/{imageId}"),
+    ("delete", "/v1/admin/companies/{scopeId}/products/{productId}/images/{imageId}"),
     ("post", "/v1/admin/brands"),
     ("put", "/v1/admin/brands/{brandId}"),
     ("patch", "/v1/admin/brands/{brandId}"),
@@ -3097,7 +3108,7 @@ IDEMPOTENCY_OPS: set[tuple[str, str]] = {
     ("post", "/v1/admin/ota/campaigns/{campaignId}/resume"),
     ("post", "/v1/admin/ota/campaigns/{campaignId}/cancel"),
     ("post", "/v1/admin/ota/campaigns/{campaignId}/rollback"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/commands"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/commands"),
 }
 
 
@@ -3115,7 +3126,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     checkout = {
         "order": {
             "id": _U,
-            "organization_id": _U2,
+            "scope_id": _U2,
             "machine_id": _U3,
             "status": "paid",
             "currency": "USD",
@@ -3174,7 +3185,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     op_login = {
         "session": {
             "id": "dddddddd-eeee-ffff-0000-111111111111",
-            "organization_id": _U2,
+            "scope_id": _U2,
             "machine_id": _U3,
             "actor_type": "TECHNICIAN",
             "status": "ACTIVE",
@@ -3191,7 +3202,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     cmeta = {"limit": 50, "offset": 0, "returned": 1, "total": 42}
     ord_item = {
         "orderId": _U,
-        "organizationId": _U2,
+        "scopeId": _U2,
         "machineId": _U3,
         "status": "paid",
         "currency": "USD",
@@ -3204,7 +3215,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     pay_item = {
         "paymentId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
         "orderId": _U,
-        "organizationId": _U2,
+        "scopeId": _U2,
         "machineId": _U3,
         "provider": "stripe",
         "paymentState": "captured",
@@ -3218,7 +3229,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     recon_case = {
         "id": "99999999-8888-7777-6666-555555555555",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "caseType": "payment_paid_vend_failed",
         "status": "open",
         "severity": "critical",
@@ -3232,7 +3243,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     mach_item = {
         "machineId": _U3,
         "machineName": "Lobby A",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "siteId": "11111111-2222-3333-4444-555555555555",
         "siteName": "Main Campus",
         "serialNumber": "SN-001",
@@ -3252,7 +3263,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     telemetry_snapshot_ex = {
         "machineId": _U3,
-        "organizationId": _U2,
+        "scopeId": _U2,
         "siteId": "11111111-2222-3333-4444-555555555555",
         "reportedState": {"temperature_c": 4.5},
         "metricsState": {"cpu_pct": 12.3},
@@ -3307,7 +3318,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     tech_item = {
         "technicianId": "eeeeeeee-ffff-0000-1111-222222222222",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "displayName": "Alex Tech",
         "createdAt": "2026-03-01T00:00:00Z",
     }
@@ -3324,7 +3335,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     site_row = {
         "id": "aaaaaaaa-bbbb-cccc-dddd-111111111111",
-        "organization_id": _U2,
+        "scope_id": _U2,
         "name": "HQ Lobby",
         "timezone": "America/New_York",
         "code": "HQ-01",
@@ -3335,7 +3346,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     machine_row_fleet = {
         "id": _U3,
-        "organization_id": _U2,
+        "scope_id": _U2,
         "site_id": site_row["id"],
         "serial_number": "SN-NEW",
         "name": "New unit",
@@ -3346,7 +3357,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     technician_detail_snake = {
         "id": tech_item["technicianId"],
-        "organization_id": _U2,
+        "scope_id": _U2,
         "display_name": tech_item["displayName"],
         "status": "active",
         "created_at": "2026-03-01T00:00:00.000000000Z",
@@ -3354,7 +3365,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     assignment_detail_snake = {
         "id": asg_item["assignmentId"],
-        "organization_id": _U2,
+        "scope_id": _U2,
         "technician_id": asg_item["technicianId"],
         "machine_id": asg_item["machineId"],
         "role": asg_item["role"],
@@ -3366,7 +3377,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     cmd_item = {
         "commandId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
         "machineId": _U3,
-        "organizationId": _U2,
+        "scopeId": _U2,
         "machineName": "Lobby A",
         "machineSerialNumber": "SN-001",
         "sequence": 42,
@@ -3377,7 +3388,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     ota_item = {
         "campaignId": "cccccccc-dddd-eeee-ffff-000000000002",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "campaignName": "April bundle",
         "strategy": "rolling",
         "campaignStatus": "active",
@@ -3387,7 +3398,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     audit_event_row_ex = {
         "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "actorType": "user",
         "actorId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
         "action": "catalog.product.update",
@@ -3416,7 +3427,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "rows": [
             {
                 "id": 101,
-                "organizationId": _U2,
+                "scopeId": _U2,
                 "topic": "commerce.payments",
                 "eventType": "payment.session_started",
                 "payload": {},
@@ -3503,7 +3514,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     ff_row = {
         "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "flagKey": "kiosk.beta_ui",
         "displayName": "Beta UI",
         "description": "Experimental UI",
@@ -3534,16 +3545,16 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     ff_detail_ex = {"flag": ff_row, "targets": []}
     mcr_row = {
         "id": "77777777-8888-9999-aaaa-bbbbbbbbbbbb",
-        "organizationId": _U2,
-        "scopeType": "organization",
+        "scopeId": _U2,
+        "scopeType": "company",
         "status": "pending",
         "targetVersionId": "11111111-2222-3333-4444-555555555555",
         "createdAt": "2026-04-19T12:00:00.000000000Z",
     }
-    mcr_create_req = {"scopeType": "organization", "targetVersionId": "11111111-2222-3333-4444-555555555555"}
+    mcr_create_req = {"scopeType": "company", "targetVersionId": "11111111-2222-3333-4444-555555555555"}
     ota_campaign_detail_ex = {
         "campaignId": "cccccccc-dddd-eeee-ffff-000000000002",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "name": "April firmware",
         "rolloutStrategy": "canary",
         "status": "draft",
@@ -3592,7 +3603,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     bootstrap_resp = {
         "machine": {
             "machineId": _U3,
-            "organizationId": _U2,
+            "scopeId": _U2,
             "siteId": "11111111-2222-3333-4444-555555555555",
             "serialNumber": "SN-LOBBY-001",
             "name": "Lobby A",
@@ -3721,7 +3732,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     cash_coll_open_ex = {
         "id": _U,
         "machine_id": _U3,
-        "organization_id": _U2,
+        "scope_id": _U2,
         "collected_at": "2026-04-19T14:00:00.000000000Z",
         "opened_at": "2026-04-19T14:00:00.000000000Z",
         "closed_at": None,
@@ -3806,16 +3817,16 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     login_ok = {
         "accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "email": "operator@example.com",
-        "roles": ["org_admin"],
+        "roles": ["admin"],
         "tokens": tok,
     }
     auth_acct_row = {
         "accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "email": "operator@example.com",
-        "roles": ["org_admin"],
+        "roles": ["admin"],
         "status": "active",
         "createdAt": "2026-01-01T00:00:00Z",
         "updatedAt": "2026-04-19T10:00:00Z",
@@ -3831,7 +3842,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     admin_page_meta = {"limit": 50, "offset": 0, "returned": 1, "totalCount": 1}
     product_row = {
         "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "sku": "COLA-12",
         "barcode": "8850123456789",
         "name": "Cola 12oz",
@@ -3857,7 +3868,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     brand_row = {
         "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "slug": "coca-cola",
         "name": "Coca-Cola",
         "active": True,
@@ -3867,7 +3878,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     brand_mut_req = {"slug": "coca-cola", "name": "Coca-Cola", "active": True}
     cat_row = {
         "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "slug": "beverages",
         "name": "Beverages",
         "active": True,
@@ -3877,7 +3888,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     cat_mut_req = {"slug": "beverages", "name": "Beverages", "active": True}
     tag_row = {
         "id": "cccccccc-dddd-eeee-ffff-000000000000",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "slug": "chilled",
         "name": "Chilled",
         "active": True,
@@ -3897,7 +3908,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     media_asset_row = {
         "id": "11111111-2222-3333-4444-555555555555",
-        "organization_id": _U2,
+        "scope_id": _U2,
         "kind": "product_image",
         "status": "ready",
         "mime_type": "image/webp",
@@ -3952,7 +3963,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ],
     }
     refill_forecast_ex = {
-        "organizationId": _U2,
+        "scopeId": _U2,
         "velocityWindowDays": 14,
         "windowStart": "2026-04-14T00:00:00.000000000Z",
         "windowEnd": "2026-04-28T00:00:00.000000000Z",
@@ -3982,13 +3993,13 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     price_book_row = {
         "id": "11111111-2222-3333-4444-555555555555",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "name": "Default USD",
         "currency": "USD",
         "effectiveFrom": "2026-01-01T00:00:00Z",
         "isDefault": True,
         "active": True,
-        "scopeType": "organization",
+        "scopeType": "company",
         "priority": 0,
         "createdAt": "2026-01-01T00:00:00Z",
         "updatedAt": "2026-01-01T00:00:00Z",
@@ -3998,7 +4009,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "currency": "USD",
         "effectiveFrom": "2026-04-01T00:00:00Z",
         "isDefault": False,
-        "scopeType": "organization",
+        "scopeType": "company",
         "priority": 10,
     }
     price_book_items_env = {"items": [{"productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff", "unitPriceMinor": 150, "priceBookId": price_book_row["id"]}]}
@@ -4023,7 +4034,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     promo_target_id = "30303030-3030-3030-3030-303030303030"
     promotion_row = {
         "id": promo_id,
-        "organizationId": _U2,
+        "scopeId": _U2,
         "name": "Summer 10%",
         "approvalStatus": "approved",
         "lifecycleStatus": "draft",
@@ -4059,7 +4070,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     promotion_target_row = {
         "id": promo_target_id,
         "promotionId": promo_id,
-        "organizationId": _U2,
+        "scopeId": _U2,
         "targetType": "product",
         "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
         "createdAt": "2026-04-01T00:00:00Z",
@@ -4082,7 +4093,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     planogram_row = {
         "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
-        "organizationId": _U2,
+        "scopeId": _U2,
         "name": "Lobby spring",
         "revision": 3,
         "status": "published",
@@ -4104,7 +4115,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ],
     }
     sales_summary_ex = {
-        "organizationId": _U2,
+        "scopeId": _U2,
         "from": "2026-04-01T00:00:00Z",
         "to": "2026-04-20T00:00:00Z",
         "groupBy": "day",
@@ -4118,7 +4129,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "breakdown": [],
     }
     pay_summary_ex = {
-        "organizationId": _U2,
+        "scopeId": _U2,
         "from": "2026-04-01T00:00:00Z",
         "to": "2026-04-20T00:00:00Z",
         "groupBy": "day",
@@ -4135,7 +4146,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "breakdown": [],
     }
     fleet_health_ex = {
-        "organizationId": _U2,
+        "scopeId": _U2,
         "from": "2026-04-01T00:00:00Z",
         "to": "2026-04-20T00:00:00Z",
         "machineSummary": {
@@ -4151,7 +4162,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "machineIncidentsBySeverity": [],
     }
     inv_exceptions_ex = {
-        "organizationId": _U2,
+        "scopeId": _U2,
         "from": "2026-04-01T00:00:00.000000000Z",
         "to": "2026-04-20T00:00:00.000000000Z",
         "exceptionKind": "low_stock",
@@ -4160,7 +4171,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     report_meta = {"limit": 50, "offset": 0, "returned": 1, "total": 1}
     admin_payments_report_ex = {
-        "organizationId": _U2,
+        "scopeId": _U2,
         "from": "2026-04-01T00:00:00Z",
         "to": "2026-04-20T00:00:00Z",
         "timezone": "UTC",
@@ -4176,19 +4187,19 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "meta": report_meta,
     }
     admin_report_list_ex = {
-        "organizationId": _U2,
+        "scopeId": _U2,
         "from": "2026-04-01T00:00:00Z",
         "to": "2026-04-20T00:00:00Z",
         "meta": report_meta,
         "items": [{"id": _U, "status": "open"}],
     }
     csv_ex = (
-        "organization_id,from,to,group_by,row_type,bucket_start,site_id,machine_id,payment_provider,"
+        "scope_id,from,to,group_by,row_type,bucket_start,site_id,machine_id,payment_provider,"
         "order_count,total_minor,subtotal_minor,tax_minor,gross_total_minor,summary_order_count,avg_order_value_minor\n"
     )
     daily_close_ex = {
         "id": _U,
-        "organizationId": _U2,
+        "scopeId": _U2,
         "closeDate": "2026-04-27",
         "timezone": "Asia/Bangkok",
         "idempotencyKey": "REPLACE_ME",
@@ -4249,7 +4260,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     sale_catalog_ex = {
         "machineId": _U3,
-        "organizationId": _U2,
+        "scopeId": _U2,
         "siteId": "11111111-2222-3333-4444-555555555555",
         "configVersion": 7,
         "currency": "VND",
@@ -4279,7 +4290,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             resp={"200": ({"openapi": "3.0.3", "info": {"title": "AVF Vending HTTP API", "version": "1.0"}}, None)},
         ),
         ("post", "/v1/auth/login"): ex(
-            req_body={"organizationId": _U2, "email": "operator@example.com", "password": "example-password"},
+            req_body={"scopeId": _U2, "email": "operator@example.com", "password": "example-password"},
             resp={
                 "200": (login_ok, None),
                 "401": (v1_error_example("unauthenticated", "invalid credentials", {}), None),
@@ -4294,9 +4305,9 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 "200": (
                     {
                         "accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                        "organizationId": _U2,
+                        "scopeId": _U2,
                         "email": "operator@example.com",
-                        "roles": ["org_admin"],
+                        "roles": ["admin"],
                     },
                     None,
                 ),
@@ -4310,7 +4321,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             req_body={"currentPassword": "example-password-old", "newPassword": "example-password-new"},
         ),
         ("post", "/v1/auth/password/reset/request"): ex(
-            req_body={"organizationId": _U2, "email": "operator@example.com"},
+            req_body={"scopeId": _U2, "email": "operator@example.com"},
             resp={"202": ({"accepted": True}, None)},
         ),
         ("post", "/v1/auth/password/reset/confirm"): ex(
@@ -4343,7 +4354,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                         "sessions": [
                             {
                                 "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                                "organizationId": _U2,
+                                "scopeId": _U2,
                                 "createdAt": "2026-04-19T10:00:00Z",
                                 "expiresAt": "2026-05-19T12:00:00Z",
                                 "status": "active",
@@ -4382,7 +4393,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                         "sessions": [
                             {
                                 "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                                "organizationId": _U2,
+                                "scopeId": _U2,
                                 "createdAt": "2026-04-19T10:00:00Z",
                                 "expiresAt": "2026-05-19T12:00:00Z",
                                 "status": "active",
@@ -4445,7 +4456,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                         "sessions": [
                             {
                                 "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                                "organizationId": _U2,
+                                "scopeId": _U2,
                                 "createdAt": "2026-04-19T10:00:00Z",
                                 "expiresAt": "2026-05-19T12:00:00Z",
                                 "status": "active",
@@ -4460,43 +4471,43 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             req_body={"password": "reset-password12"},
             resp={"200": (auth_acct_row, None)},
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/users"): ex(resp={"200": ({"items": [auth_acct_row], "meta": cmeta}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/users"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/users"): ex(resp={"200": ({"items": [auth_acct_row], "meta": cmeta}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/users"): ex(
             req_body={"email": "new.user@example.com", "password": "longpassword10", "roles": ["support"], "status": "active"},
             resp={"201": (auth_acct_row, None)},
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/users/{userId}"): ex(resp={"200": (auth_acct_row, None)}),
-        ("patch", "/v1/admin/organizations/{organizationId}/users/{userId}"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/users/{userId}"): ex(resp={"200": (auth_acct_row, None)}),
+        ("patch", "/v1/admin/companies/{scopeId}/users/{userId}"): ex(
             req_body={"roles": ["support"]},
             resp={"200": (auth_acct_row, None)},
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/users/{userId}/enable"): ex(resp={"200": (auth_acct_row, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/users/{userId}/disable"): ex(resp={"200": (auth_acct_row, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/users/{userId}/roles"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/users/{userId}/enable"): ex(resp={"200": (auth_acct_row, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/users/{userId}/disable"): ex(resp={"200": (auth_acct_row, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/users/{userId}/roles"): ex(
             req_body={"roles": ["support"]},
             resp={"200": (auth_acct_row, None)},
         ),
-        ("patch", "/v1/admin/organizations/{organizationId}/users/{userId}/roles"): ex(
+        ("patch", "/v1/admin/companies/{scopeId}/users/{userId}/roles"): ex(
             req_body={"roles": ["support"]},
             resp={"200": (auth_acct_row, None)},
         ),
         (
             "delete",
-            "/v1/admin/organizations/{organizationId}/users/{userId}/roles/{role}",
+            "/v1/admin/companies/{scopeId}/users/{userId}/roles/{role}",
         ): ex(resp={"200": ({**auth_acct_row, "roles": ["viewer"]}, None)}),
-        ("patch", "/v1/admin/organizations/{organizationId}/users/{userId}/status"): ex(
+        ("patch", "/v1/admin/companies/{scopeId}/users/{userId}/status"): ex(
             req_body={"status": "disabled"},
             resp={"200": (auth_acct_row, None)},
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/users/{userId}/revoke-sessions"): ex(resp={"204": ("", None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/users/{userId}/sessions"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/users/{userId}/revoke-sessions"): ex(resp={"204": ("", None)}),
+        ("get", "/v1/admin/companies/{scopeId}/users/{userId}/sessions"): ex(
             resp={
                 "200": (
                     {
                         "sessions": [
                             {
                                 "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                                "organizationId": _U2,
+                                "scopeId": _U2,
                                 "createdAt": "2026-04-19T10:00:00Z",
                                 "expiresAt": "2026-05-19T12:00:00Z",
                                 "status": "active",
@@ -4507,7 +4518,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 ),
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/users/{userId}/reset-password"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/users/{userId}/reset-password"): ex(
             req_body={"password": "reset-password12"},
             resp={"200": (auth_acct_row, None)},
         ),
@@ -4516,7 +4527,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 "200": (
                     {
                         "machineId": _U3,
-                        "organizationId": _U2,
+                        "scopeId": _U2,
                         "cabinets": [],
                         "slots": [
                             {
@@ -4545,14 +4556,14 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ("post", "/v1/admin/media/assets"): ex(req_body=media_init_req, resp={"200": (media_init_resp, None)}),
         ("post", "/v1/admin/media/uploads"): ex(req_body=media_init_req, resp={"200": (media_init_resp, None)}),
         ("post", "/v1/admin/media/{mediaId}/complete"): ex(resp={"200": (media_asset_row, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/media/uploads/init"): ex(req_body=media_init_req, resp={"200": (media_init_resp, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/media/uploads/complete"): ex(req_body={"media_id": media_asset_row["id"]}, resp={"200": (media_asset_row, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/media/product-images"): ex(req_body=media_init_req, resp={"200": (media_init_resp, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/media/assets"): ex(resp={"200": ({"items": [media_asset_row], "meta": admin_page_meta}, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/media/assets/{assetId}"): ex(resp={"200": (media_asset_row, None)}),
-        ("delete", "/v1/admin/organizations/{organizationId}/media/assets/{assetId}"): ex(resp={"204": ("", None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/products/{productId}/media"): ex(req_body=product_media_bind_req, resp={"200": (product_detail, None)}),
-        ("delete", "/v1/admin/organizations/{organizationId}/products/{productId}/media/{mediaId}"): ex(resp={"200": (product_detail, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/media/uploads/init"): ex(req_body=media_init_req, resp={"200": (media_init_resp, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/media/uploads/complete"): ex(req_body={"media_id": media_asset_row["id"]}, resp={"200": (media_asset_row, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/media/product-images"): ex(req_body=media_init_req, resp={"200": (media_init_resp, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/media/assets"): ex(resp={"200": ({"items": [media_asset_row], "meta": admin_page_meta}, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/media/assets/{assetId}"): ex(resp={"200": (media_asset_row, None)}),
+        ("delete", "/v1/admin/companies/{scopeId}/media/assets/{assetId}"): ex(resp={"204": ("", None)}),
+        ("post", "/v1/admin/companies/{scopeId}/products/{productId}/media"): ex(req_body=product_media_bind_req, resp={"200": (product_detail, None)}),
+        ("delete", "/v1/admin/companies/{scopeId}/products/{productId}/media/{mediaId}"): ex(resp={"200": (product_detail, None)}),
         ("get", "/v1/admin/media/assets"): ex(resp={"200": ({"items": [media_asset_row], "meta": admin_page_meta}, None)}),
         ("get", "/v1/admin/media/assets/{mediaId}"): ex(resp={"200": (media_asset_row, None)}),
         ("get", "/v1/admin/media"): ex(resp={"200": ({"items": [media_asset_row], "meta": admin_page_meta}, None)}),
@@ -4562,10 +4573,10 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ("post", "/v1/admin/products/{productId}/media"): ex(req_body=product_media_bind_req, resp={"200": (product_detail, None)}),
         ("put", "/v1/admin/products/{productId}/media"): ex(req_body=product_media_bind_req, resp={"200": (product_detail, None)}),
         ("delete", "/v1/admin/products/{productId}/media/{mediaId}"): ex(resp={"200": (product_detail, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/products/{productId}/images"): ex(req_body=product_media_bind_req, resp={"200": (product_detail, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/products/{productId}/images"): ex(resp={"200": ({"items": [product_image_row]}, None)}),
-        ("patch", "/v1/admin/organizations/{organizationId}/products/{productId}/images/{imageId}"): ex(req_body=product_image_patch_req, resp={"200": (product_image_row, None)}),
-        ("delete", "/v1/admin/organizations/{organizationId}/products/{productId}/images/{imageId}"): ex(resp={"204": ("", None)}),
+        ("post", "/v1/admin/companies/{scopeId}/products/{productId}/images"): ex(req_body=product_media_bind_req, resp={"200": (product_detail, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/products/{productId}/images"): ex(resp={"200": ({"items": [product_image_row]}, None)}),
+        ("patch", "/v1/admin/companies/{scopeId}/products/{productId}/images/{imageId}"): ex(req_body=product_image_patch_req, resp={"200": (product_image_row, None)}),
+        ("delete", "/v1/admin/companies/{scopeId}/products/{productId}/images/{imageId}"): ex(resp={"204": ("", None)}),
         ("get", "/v1/admin/brands"): ex(resp={"200": ({"items": [brand_row], "meta": admin_page_meta}, None)}),
         ("post", "/v1/admin/brands"): ex(req_body=brand_mut_req, resp={"200": (brand_row, None)}),
         ("put", "/v1/admin/brands/{brandId}"): ex(req_body=brand_mut_req, resp={"200": (brand_row, None)}),
@@ -4664,22 +4675,22 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ("get", "/v1/reports/payments-summary"): ex(resp={"200": (pay_summary_ex, None)}),
         ("get", "/v1/reports/fleet-health"): ex(resp={"200": (fleet_health_ex, None)}),
         ("get", "/v1/reports/inventory-exceptions"): ex(resp={"200": (inv_exceptions_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/sales"): ex(resp={"200": (sales_summary_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/payments"): ex(resp={"200": (admin_payments_report_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/refunds"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/cash"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/inventory-low-stock"): ex(resp={"200": (inv_exceptions_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/machine-health"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/failed-vends"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/reconciliation-queue"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/vends"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/inventory"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/machines"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/products"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/reconciliation"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/commands"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/fills"): ex(resp={"200": (admin_report_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/reports/export"): ex(resp={"200": (csv_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/sales"): ex(resp={"200": (sales_summary_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/payments"): ex(resp={"200": (admin_payments_report_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/refunds"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/cash"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/inventory-low-stock"): ex(resp={"200": (inv_exceptions_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/machine-health"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/failed-vends"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/reconciliation-queue"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/vends"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/inventory"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/machines"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/products"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/reconciliation"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/commands"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/fills"): ex(resp={"200": (admin_report_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/reports/export"): ex(resp={"200": (csv_ex, None)}),
         ("get", "/v1/admin/reports/sales-summary/export.csv"): ex(resp={"200": (csv_ex, None)}),
         ("get", "/v1/admin/reports/payments-summary/export.csv"): ex(resp={"200": (csv_ex, None)}),
         ("get", "/v1/admin/reports/cash-collections/export.csv"): ex(resp={"200": (csv_ex, None)}),
@@ -4769,13 +4780,13 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             },
             resp={"200": (op_login, None)},
         ),
-        ("get", "/v1/admin/organizations/{orgId}/artifacts"): ex(
+        ("get", "/v1/admin/artifacts"): ex(
             resp={"200": ({"items": [], "meta": {"limit": 50, "offset": 0, "returned": 0, "totalCount": 0}}, None)},
         ),
-        ("get", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}"): ex(
+        ("get", "/v1/admin/artifacts/{artifactId}"): ex(
             resp={"200": ({"artifact_id": "ffffffff-0000-1111-2222-333333333333", "status": "uploaded"}, None)},
         ),
-        ("get", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}/download"): ex(
+        ("get", "/v1/admin/artifacts/{artifactId}/download"): ex(
             resp={
                 "200": (
                     {
@@ -4788,7 +4799,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 ),
             },
         ),
-        ("delete", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}"): ex(
+        ("delete", "/v1/admin/artifacts/{artifactId}"): ex(
             resp={"200": ({"status": "deleted", "artifact_id": "ffffffff-0000-1111-2222-333333333333"}, None)},
         ),
         ("post", "/v1/commerce/cash-checkout"): ex(
@@ -5048,7 +5059,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 "200": (
                     {
                         "machineId": _U3,
-                        "organizationId": _U2,
+                        "scopeId": _U2,
                         "siteId": "11111111-2222-3333-4444-555555555555",
                         "machineName": "Lobby A",
                         "machineToken": "<jwt>",
@@ -5108,7 +5119,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ("get", "/v1/admin/inventory/low-stock"): ex(resp={"200": (refill_forecast_ex, None)}),
         ("get", "/v1/admin/inventory/refill-suggestions"): ex(resp={"200": (refill_forecast_ex, None)}),
         ("get", "/v1/admin/machines/{machineId}/refill-suggestions"): ex(resp={"200": (refill_forecast_ex, None)}),
-        ("put", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}/content"): ex(
+        ("put", "/v1/admin/artifacts/{artifactId}/content"): ex(
             resp={"200": (art_upload_ok, None)},
         ),
         ("get", "/v1/machines/{machineId}/sale-catalog"): ex(resp={"200": (sale_catalog_ex, None)}),
@@ -5162,7 +5173,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                         "items": [
                             {
                                 "id": 1001,
-                                "organizationId": _U2,
+                                "scopeId": _U2,
                                 "machineId": _U3,
                                 "cabinetCode": "CAB-A",
                                 "slotCode": "legacy-0",
@@ -5224,32 +5235,32 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ("post", "/v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat"): ex(
             resp={"200": ({"session": op_login}, None)},
         ),
-        ("post", "/v1/admin/organizations/{orgId}/artifacts"): ex(
+        ("post", "/v1/admin/artifacts"): ex(
             req_body={"content_type": "application/zip", "original_filename": "bundle.zip"},
             resp={"201": (art_reserve, None)},
         ),
         ("get", "/v1/orders"): ex(resp={"200": ({"items": [ord_item], "meta": cmeta}, None)}),
         ("get", "/v1/payments"): ex(resp={"200": ({"items": [pay_item], "meta": cmeta}, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/commerce/reconciliation"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/commerce/reconciliation"): ex(
             resp={"200": ({"items": [recon_case], "meta": cmeta}, None)}
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}"): ex(resp={"200": (recon_case, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}/resolve"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/commerce/reconciliation/{id}"): ex(resp={"200": (recon_case, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/commerce/reconciliation/{id}/resolve"): ex(
             req_body={"status": "resolved", "note": "Refund requested in PSP dashboard"},
             resp={"200": ({**recon_case, "status": "resolved", "resolutionNote": "Refund requested in PSP dashboard"}, None)},
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}/ignore"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/commerce/reconciliation/{id}/ignore"): ex(
             req_body={"note": "Known benign duplicate webhook"},
             resp={"200": ({**recon_case, "status": "ignored"}, None)},
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/orders/{orderId}/timeline"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/orders/{orderId}/timeline"): ex(
             resp={"200": ({"items": [], "meta": cmeta}, None)},
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/refunds"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/refunds"): ex(
             resp={"200": ({"items": [], "meta": cmeta}, None)},
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/refunds/{refundId}"): ex(resp={"200": ({}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/orders/{orderId}/refunds"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/refunds/{refundId}"): ex(resp={"200": ({}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/orders/{orderId}/refunds"): ex(
             req_body={"amountMinor": 100, "reason": "customer courtesy"},
             resp={
                 "200": (
@@ -5309,43 +5320,43 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ("post", "/v1/admin/technician-assignments/{assignmentId}/cancel"): ex(resp={"200": (assignment_detail_snake, None)}),
         ("delete", "/v1/admin/technician-assignments/{assignmentId}"): ex(resp={"200": (assignment_detail_snake, None)}),
         ("get", "/v1/admin/commands"): ex(resp={"200": ({"items": [cmd_item], "meta": cmeta}, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/sites"): ex(resp={"200": ({"items": [{"id": _U, "organization_id": _U2, "name": "Lobby", "timezone": "UTC", "code": "LOBBY", "status": "active", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:00:00Z", "address": {}}], "meta": cmeta}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/sites"): ex(req_body={"name": "Lobby", "timezone": "UTC", "code": "LOBBY", "address": {"line1": "1 Main St"}}, resp={"201": ({"id": _U, "organization_id": _U2, "name": "Lobby", "timezone": "UTC", "code": "LOBBY", "status": "active", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:00:00Z", "address": {}}, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/sites/{siteId}"): ex(resp={"200": ({"id": _U, "organization_id": _U2, "name": "Lobby", "timezone": "UTC", "code": "LOBBY", "status": "active", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:00:00Z", "address": {}}, None)}),
-        ("patch", "/v1/admin/organizations/{organizationId}/sites/{siteId}"): ex(req_body={"name": "Lobby North", "status": "active"}, resp={"200": ({"id": _U, "organization_id": _U2, "name": "Lobby North", "timezone": "UTC", "code": "LOBBY", "status": "active", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z", "address": {}}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/sites/{siteId}/archive"): ex(resp={"200": ({"id": _U, "organization_id": _U2, "name": "Lobby", "timezone": "UTC", "code": "LOBBY", "status": "inactive", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z", "address": {}}, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/sites"): ex(resp={"200": ({"items": [{"id": _U, "scope_id": _U2, "name": "Lobby", "timezone": "UTC", "code": "LOBBY", "status": "active", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:00:00Z", "address": {}}], "meta": cmeta}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/sites"): ex(req_body={"name": "Lobby", "timezone": "UTC", "code": "LOBBY", "address": {"line1": "1 Main St"}}, resp={"201": ({"id": _U, "scope_id": _U2, "name": "Lobby", "timezone": "UTC", "code": "LOBBY", "status": "active", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:00:00Z", "address": {}}, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/sites/{siteId}"): ex(resp={"200": ({"id": _U, "scope_id": _U2, "name": "Lobby", "timezone": "UTC", "code": "LOBBY", "status": "active", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:00:00Z", "address": {}}, None)}),
+        ("patch", "/v1/admin/companies/{scopeId}/sites/{siteId}"): ex(req_body={"name": "Lobby North", "status": "active"}, resp={"200": ({"id": _U, "scope_id": _U2, "name": "Lobby North", "timezone": "UTC", "code": "LOBBY", "status": "active", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z", "address": {}}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/sites/{siteId}/archive"): ex(resp={"200": ({"id": _U, "scope_id": _U2, "name": "Lobby", "timezone": "UTC", "code": "LOBBY", "status": "inactive", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z", "address": {}}, None)}),
         (
             "delete",
-            "/v1/admin/organizations/{organizationId}/sites/{siteId}",
-        ): ex(resp={"200": ({"id": _U, "organization_id": _U2, "name": "Lobby", "timezone": "UTC", "code": "LOBBY", "status": "archived", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:10:00Z", "address": {}}, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/machines"): ex(resp={"200": ({"items": [mach_item], "meta": cmeta}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/machines"): ex(req_body={"siteId": _U, "serialNumber": "SN-001", "code": "M001", "name": "Lobby A", "model": "AVF-1", "cabinetType": "ambient", "timezone": "UTC", "status": "draft"}, resp={"201": ({"id": _U3, "organization_id": _U2, "site_id": _U, "serial_number": "SN-001", "code": "M001", "name": "Lobby A", "status": "draft", "credential_version": 0, "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:00:00Z"}, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/machines/{machineId}"): ex(resp={"200": (mach_item, None)}),
-        ("patch", "/v1/admin/organizations/{organizationId}/machines/{machineId}"): ex(req_body={"name": "Lobby A1", "status": "active"}, resp={"200": ({"id": _U3, "organization_id": _U2, "site_id": _U, "serial_number": "SN-001", "code": "M001", "name": "Lobby A1", "status": "active", "credential_version": 0, "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/archive"): ex(resp={"200": ({"id": _U3, "organization_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "decommissioned", "credential_version": 0, "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/suspend"): ex(resp={"200": ({"id": _U3, "organization_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "suspended", "credential_version": 0, "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/resume"): ex(resp={"200": ({"id": _U3, "organization_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "active", "credential_version": 0, "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/mark-compromised"): ex(resp={"200": ({"id": _U3, "organization_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "compromised", "credential_version": 1, "revoked_at": "2026-04-29T00:05:00Z", "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/rotate-credentials"): ex(resp={"200": ({"id": _U3, "organization_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "active", "credential_version": 2, "rotated_at": "2026-04-29T00:05:00Z", "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/revoke-credentials"): ex(resp={"200": ({"id": _U3, "organization_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "active", "credential_version": 3, "revoked_at": "2026-04-29T00:05:00Z", "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
+            "/v1/admin/companies/{scopeId}/sites/{siteId}",
+        ): ex(resp={"200": ({"id": _U, "scope_id": _U2, "name": "Lobby", "timezone": "UTC", "code": "LOBBY", "status": "archived", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:10:00Z", "address": {}}, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/machines"): ex(resp={"200": ({"items": [mach_item], "meta": cmeta}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/machines"): ex(req_body={"siteId": _U, "serialNumber": "SN-001", "code": "M001", "name": "Lobby A", "model": "AVF-1", "cabinetType": "ambient", "timezone": "UTC", "status": "draft"}, resp={"201": ({"id": _U3, "scope_id": _U2, "site_id": _U, "serial_number": "SN-001", "code": "M001", "name": "Lobby A", "status": "draft", "credential_version": 0, "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:00:00Z"}, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/machines/{machineId}"): ex(resp={"200": (mach_item, None)}),
+        ("patch", "/v1/admin/companies/{scopeId}/machines/{machineId}"): ex(req_body={"name": "Lobby A1", "status": "active"}, resp={"200": ({"id": _U3, "scope_id": _U2, "site_id": _U, "serial_number": "SN-001", "code": "M001", "name": "Lobby A1", "status": "active", "credential_version": 0, "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/archive"): ex(resp={"200": ({"id": _U3, "scope_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "decommissioned", "credential_version": 0, "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/suspend"): ex(resp={"200": ({"id": _U3, "scope_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "suspended", "credential_version": 0, "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/resume"): ex(resp={"200": ({"id": _U3, "scope_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "active", "credential_version": 0, "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/mark-compromised"): ex(resp={"200": ({"id": _U3, "scope_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "compromised", "credential_version": 1, "revoked_at": "2026-04-29T00:05:00Z", "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/rotate-credentials"): ex(resp={"200": ({"id": _U3, "scope_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "active", "credential_version": 2, "rotated_at": "2026-04-29T00:05:00Z", "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/revoke-credentials"): ex(resp={"200": ({"id": _U3, "scope_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "active", "credential_version": 3, "revoked_at": "2026-04-29T00:05:00Z", "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
         (
             "post",
-            "/v1/admin/organizations/{organizationId}/machines/{machineId}/rotate-token-version",
-        ): ex(resp={"200": ({"id": _U3, "organization_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "active", "credential_version": 2, "rotated_at": "2026-04-29T00:05:00Z", "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
+            "/v1/admin/companies/{scopeId}/machines/{machineId}/rotate-token-version",
+        ): ex(resp={"200": ({"id": _U3, "scope_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "active", "credential_version": 2, "rotated_at": "2026-04-29T00:05:00Z", "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
         (
             "post",
-            "/v1/admin/organizations/{organizationId}/machines/{machineId}/revoke-token",
-        ): ex(resp={"200": ({"id": _U3, "organization_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "active", "credential_version": 3, "revoked_at": "2026-04-29T00:05:00Z", "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
+            "/v1/admin/companies/{scopeId}/machines/{machineId}/revoke-token",
+        ): ex(resp={"200": ({"id": _U3, "scope_id": _U2, "site_id": _U, "serial_number": "SN-001", "name": "Lobby A", "status": "active", "credential_version": 3, "revoked_at": "2026-04-29T00:05:00Z", "command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:05:00Z"}, None)}),
         (
             "post",
-            "/v1/admin/organizations/{organizationId}/machines/{machineId}/transfer-site",
+            "/v1/admin/companies/{scopeId}/machines/{machineId}/transfer-site",
         ): ex(
             req_body={"site_id": "11111111-2222-3333-4444-555555555555"},
             resp={
                 "200": (
                     {
                         "id": _U3,
-                        "organization_id": _U2,
+                        "scope_id": _U2,
                         "site_id": "11111111-2222-3333-4444-555555555555",
                         "serial_number": "SN-001",
                         "name": "Lobby A",
@@ -5360,34 +5371,34 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             },
         ),
         ("post", "/v1/admin/machines/{machineId}/diagnostics/requests"): ex(req_body={"reason": "field pilot log bundle"}, resp={"202": ({"requestId": _U, "machineId": _U3, "commandId": _U2, "sequence": 42, "dispatchState": "published", "replay": False}, None)}),
-        ("get", "/v1/admin/machines/{machineId}/diagnostics/bundles"): ex(resp={"200": ({"items": [{"bundleId": _U, "organizationId": _U2, "machineId": _U3, "requestId": _U, "commandId": _U2, "storageKey": "diagnostics/org/machine/bundle.tgz", "storageProvider": "s3", "contentType": "application/gzip", "sizeBytes": 1024, "sha256Hex": "abc123", "metadata": {"app_version": "1.2.3"}, "status": "available", "createdAt": "2026-04-29T00:00:00Z"}], "meta": {"limit": 50, "offset": 0, "returned": 1}}, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/machines/{machineId}/technicians"): ex(resp={"200": ({"items": [{"assignmentId": _U, "technicianId": _U2, "technicianDisplayName": "Field Tech", "machineId": _U3, "machineName": "Lobby A", "machineSerialNumber": "SN-001", "role": "field_service", "validFrom": "2026-04-29T00:00:00Z", "createdAt": "2026-04-29T00:00:00Z"}], "meta": cmeta}, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/technicians"): ex(req_body={"userId": _U2, "role": "field_service", "scope": "maintenance"}, resp={"201": ({"id": _U, "organization_id": _U2, "technician_id": _U2, "machine_id": _U3, "role": "field_service", "scope": "maintenance", "status": "active", "valid_from": "2026-04-29T00:00:00Z", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:00:00Z"}, None)}),
-        ("delete", "/v1/admin/organizations/{organizationId}/machines/{machineId}/technicians/{userId}"): ex(resp={"204": ("", None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/technicians"): ex(resp={"200": ({"items": [tech_item], "meta": cmeta}, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/technicians/{technicianId}"): ex(resp={"200": (technician_detail_snake, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/technicians"): ex(
+        ("get", "/v1/admin/machines/{machineId}/diagnostics/bundles"): ex(resp={"200": ({"items": [{"bundleId": _U, "scopeId": _U2, "machineId": _U3, "requestId": _U, "commandId": _U2, "storageKey": "diagnostics/org/machine/bundle.tgz", "storageProvider": "s3", "contentType": "application/gzip", "sizeBytes": 1024, "sha256Hex": "abc123", "metadata": {"app_version": "1.2.3"}, "status": "available", "createdAt": "2026-04-29T00:00:00Z"}], "meta": {"limit": 50, "offset": 0, "returned": 1}}, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/machines/{machineId}/technicians"): ex(resp={"200": ({"items": [{"assignmentId": _U, "technicianId": _U2, "technicianDisplayName": "Field Tech", "machineId": _U3, "machineName": "Lobby A", "machineSerialNumber": "SN-001", "role": "field_service", "validFrom": "2026-04-29T00:00:00Z", "createdAt": "2026-04-29T00:00:00Z"}], "meta": cmeta}, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/technicians"): ex(req_body={"userId": _U2, "role": "field_service", "scope": "maintenance"}, resp={"201": ({"id": _U, "scope_id": _U2, "technician_id": _U2, "machine_id": _U3, "role": "field_service", "scope": "maintenance", "status": "active", "valid_from": "2026-04-29T00:00:00Z", "created_at": "2026-04-29T00:00:00Z", "updated_at": "2026-04-29T00:00:00Z"}, None)}),
+        ("delete", "/v1/admin/companies/{scopeId}/machines/{machineId}/technicians/{userId}"): ex(resp={"204": ("", None)}),
+        ("get", "/v1/admin/companies/{scopeId}/technicians"): ex(resp={"200": ({"items": [tech_item], "meta": cmeta}, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/technicians/{technicianId}"): ex(resp={"200": (technician_detail_snake, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/technicians"): ex(
             req_body={"display_name": "Alex Tech", "email": "alex@example.com"},
             resp={"201": (technician_detail_snake, None)},
         ),
-        ("patch", "/v1/admin/organizations/{organizationId}/technicians/{technicianId}"): ex(
+        ("patch", "/v1/admin/companies/{scopeId}/technicians/{technicianId}"): ex(
             req_body={"display_name": "Alex Field"},
             resp={"200": ({**technician_detail_snake, "display_name": "Alex Field"}, None)},
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/technicians/{technicianId}/disable"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/technicians/{technicianId}/disable"): ex(
             resp={"200": ({**technician_detail_snake, "status": "inactive"}, None)},
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/technicians/{technicianId}/enable"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/technicians/{technicianId}/enable"): ex(
             resp={"200": ({**technician_detail_snake, "status": "active"}, None)},
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/assignments"): ex(resp={"200": ({"items": [asg_item], "meta": cmeta}, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/assignments/{assignmentId}"): ex(resp={"200": (assignment_detail_snake, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/assignments"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/assignments"): ex(resp={"200": ({"items": [asg_item], "meta": cmeta}, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/assignments/{assignmentId}"): ex(resp={"200": (assignment_detail_snake, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/assignments"): ex(
             req_body={"technician_id": _U2, "machine_id": _U3, "role": "field_service"},
             resp={"201": (assignment_detail_snake, None)},
         ),
-        ("delete", "/v1/admin/organizations/{organizationId}/assignments/{assignmentId}"): ex(resp={"200": (assignment_detail_snake, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/activation-codes"): ex(
+        ("delete", "/v1/admin/companies/{scopeId}/assignments/{assignmentId}"): ex(resp={"200": (assignment_detail_snake, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/activation-codes"): ex(
             resp={
                 "200": (
                     {
@@ -5412,7 +5423,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ),
         (
             "post",
-            "/v1/admin/organizations/{organizationId}/activation-codes",
+            "/v1/admin/companies/{scopeId}/activation-codes",
         ): ex(
             req_body={"machineId": _U3, "expiresInMinutes": 1440, "maxUses": 1, "notes": "pilot"},
             resp={
@@ -5432,9 +5443,9 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ),
         (
             "post",
-            "/v1/admin/organizations/{organizationId}/activation-codes/{codeId}/revoke",
+            "/v1/admin/companies/{scopeId}/activation-codes/{codeId}/revoke",
         ): ex(resp={"204": ("", None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/operations/machines/health"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/operations/machines/health"): ex(
             resp={
                 "200": (
                     {
@@ -5461,7 +5472,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/machines/{machineId}/health"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/machines/{machineId}/health"): ex(
             resp={
                 "200": (
                     {
@@ -5477,7 +5488,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/machines/{machineId}/timeline"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/machines/{machineId}/timeline"): ex(
             resp={
                 "200": (
                     {
@@ -5495,14 +5506,14 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/commands"): ex(resp={"200": ({"items": [cmd_item], "meta": cmeta}, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/commands/{commandId}"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/commands"): ex(resp={"200": ({"items": [cmd_item], "meta": cmeta}, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/commands/{commandId}"): ex(
             resp={
                 "200": (
                     {
                         "commandId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                         "machineId": _U3,
-                        "organizationId": _U2,
+                        "scopeId": _U2,
                         "sequence": 42,
                         "commandType": "SET_TEMPERATURE",
                         "payload": {"celsius": 4},
@@ -5523,7 +5534,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/commands/{commandId}/retry"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/commands/{commandId}/retry"): ex(
             resp={
                 "200": (
                     {
@@ -5538,10 +5549,10 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/commands/{commandId}/cancel"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/commands/{commandId}/cancel"): ex(
             resp={"200": ({"attemptsCancelled": 1}, None)},
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/commands"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/commands"): ex(
             req_body={"commandType": "REQUEST_DIAGNOSTICS", "payload": {"bundle": "logs"}},
             resp={
                 "202": (
@@ -5564,14 +5575,14 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 ),
             },
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/inventory/anomalies"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/inventory/anomalies"): ex(
             resp={
                 "200": (
                     {
                         "items": [
                             {
                                 "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                                "organizationId": _U2,
+                                "scopeId": _U2,
                                 "machineId": _U3,
                                 "machineName": "Lobby A",
                                 "machineSerialNumber": "SN-001",
@@ -5590,14 +5601,14 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/machines/{machineId}/inventory/anomalies"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/machines/{machineId}/inventory/anomalies"): ex(
             resp={
                 "200": (
                     {
                         "items": [
                             {
                                 "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                                "organizationId": _U2,
+                                "scopeId": _U2,
                                 "machineId": _U3,
                                 "machineName": "Lobby A",
                                 "machineSerialNumber": "SN-001",
@@ -5615,18 +5626,18 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/inventory/anomalies/{anomalyId}/resolve"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/inventory/anomalies/{anomalyId}/resolve"): ex(
             req_body={"note": "Verified physical count"},
             resp={"200": ({"anomalyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "status": "resolved"}, None)},
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/anomalies"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/anomalies"): ex(
             resp={
                 "200": (
                     {
                         "items": [
                             {
                                 "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                                "organizationId": _U2,
+                                "scopeId": _U2,
                                 "machineId": _U3,
                                 "machineName": "Lobby A",
                                 "machineSerialNumber": "SN-001",
@@ -5644,12 +5655,12 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/anomalies/{anomalyId}"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/anomalies/{anomalyId}"): ex(
             resp={
                 "200": (
                     {
                         "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                        "organizationId": _U2,
+                        "scopeId": _U2,
                         "machineId": _U3,
                         "machineName": "Lobby A",
                         "machineSerialNumber": "SN-001",
@@ -5665,20 +5676,20 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/anomalies/{anomalyId}/resolve"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/anomalies/{anomalyId}/resolve"): ex(
             req_body={"note": "Field verified"},
             resp={"200": ({"anomalyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "status": "resolved"}, None)},
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/anomalies/{anomalyId}/ignore"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/anomalies/{anomalyId}/ignore"): ex(
             req_body={"note": "Benign cluster"},
             resp={"200": ({"anomalyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "status": "ignored"}, None)},
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/restock/suggestions"): ex(resp={"200": (refill_forecast_ex, None)}),
-        ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/inventory/reconcile"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/restock/suggestions"): ex(resp={"200": (refill_forecast_ex, None)}),
+        ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/inventory/reconcile"): ex(
             req_body={"reason": "Field recount completed"},
             resp={"202": ({"inventoryEventId": 9001}, None)},
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/provisioning/machines/bulk"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/provisioning/machines/bulk"): ex(
             req_body={
                 "siteId": _U,
                 "cabinetType": "ambient",
@@ -5697,13 +5708,13 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/provisioning/batches/{batchId}"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/provisioning/batches/{batchId}"): ex(
             resp={
                 "200": (
                     {
                         "batch": {
                             "id": _U3,
-                            "organizationId": _U2,
+                            "scopeId": _U2,
                             "siteId": _U,
                             "cabinetType": "ambient",
                             "status": "completed",
@@ -5718,7 +5729,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/rollouts"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/rollouts"): ex(
             req_body={
                 "rolloutType": "config_version",
                 "targetVersion": "2026-04-29T00:00:00Z",
@@ -5728,7 +5739,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 "201": (
                     {
                         "id": _U3,
-                        "organizationId": _U2,
+                        "scopeId": _U2,
                         "rolloutType": "config_version",
                         "targetVersion": "2026-04-29T00:00:00Z",
                         "status": "pending",
@@ -5740,7 +5751,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/rollouts"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/rollouts"): ex(
             resp={
                 "200": (
                     {
@@ -5751,13 +5762,13 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("get", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}"): ex(
+        ("get", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}"): ex(
             resp={
                 "200": (
                     {
                         "campaign": {
                             "id": _U3,
-                            "organizationId": _U2,
+                            "scopeId": _U2,
                             "rolloutType": "config_version",
                             "targetVersion": "2026-04-29T00:00:00Z",
                             "status": "running",
@@ -5771,13 +5782,13 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/start"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/start"): ex(
             resp={
                 "200": (
                     {
                         "campaign": {
                             "id": _U3,
-                            "organizationId": _U2,
+                            "scopeId": _U2,
                             "rolloutType": "config_version",
                             "targetVersion": "2026-04-29T00:00:00Z",
                             "status": "completed",
@@ -5791,13 +5802,13 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/pause"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/pause"): ex(
             resp={
                 "200": (
                     {
                         "campaign": {
                             "id": _U3,
-                            "organizationId": _U2,
+                            "scopeId": _U2,
                             "rolloutType": "config_version",
                             "targetVersion": "2026-04-29T00:00:00Z",
                             "status": "paused",
@@ -5811,13 +5822,13 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/resume"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/resume"): ex(
             resp={
                 "200": (
                     {
                         "campaign": {
                             "id": _U3,
-                            "organizationId": _U2,
+                            "scopeId": _U2,
                             "rolloutType": "config_version",
                             "targetVersion": "2026-04-29T00:00:00Z",
                             "status": "running",
@@ -5831,13 +5842,13 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/cancel"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/cancel"): ex(
             resp={
                 "200": (
                     {
                         "campaign": {
                             "id": _U3,
-                            "organizationId": _U2,
+                            "scopeId": _U2,
                             "rolloutType": "config_version",
                             "targetVersion": "2026-04-29T00:00:00Z",
                             "status": "cancelled",
@@ -5852,13 +5863,13 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 )
             },
         ),
-        ("post", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/rollback"): ex(
+        ("post", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/rollback"): ex(
             resp={
                 "200": (
                     {
                         "campaign": {
                             "id": _U3,
-                            "organizationId": _U2,
+                            "scopeId": _U2,
                             "rolloutType": "config_version",
                             "targetVersion": "2026-04-29T00:00:00Z",
                             "status": "rolled_back",
@@ -5873,10 +5884,10 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             },
         ),
         ("get", "/v1/admin/audit/events"): ex(resp={"200": (audit_events_list_ex, None)}),
-        ("get", "/v1/admin/organizations/{organizationId}/audit-events"): ex(resp={"200": (audit_events_list_ex, None)}),
+        ("get", "/v1/admin/companies/{scopeId}/audit-events"): ex(resp={"200": (audit_events_list_ex, None)}),
         (
             "get",
-            "/v1/admin/organizations/{organizationId}/audit-events/{auditEventId}",
+            "/v1/admin/companies/{scopeId}/audit-events/{auditEventId}",
         ): ex(resp={"200": (audit_event_row_ex, None)}),
         ("get", "/v1/admin/ops/outbox"): ex(resp={"200": (outbox_ops_list_ex, None)}),
         ("get", "/v1/admin/ops/retention"): ex(resp={"200": (retention_ops_ex, None)}),
@@ -5977,6 +5988,62 @@ def enrich_error_response_examples(paths: dict[str, dict[str, Any]]) -> None:
                         block["example"] = v1_error_example(d[0], d[1], d[2])
 
 
+def example_for_schema(schema: dict[str, Any] | None) -> Any:
+    """Build a deterministic placeholder example for schemas without curated examples."""
+    if not schema:
+        return {"status": "ok"}
+    if "$ref" in schema:
+        return {"id": _U}
+    typ = schema.get("type")
+    fmt = schema.get("format")
+    if typ == "string":
+        if fmt == "uuid":
+            return _U
+        if fmt == "date-time":
+            return "2026-01-01T00:00:00Z"
+        return "example"
+    if typ == "integer":
+        return 1
+    if typ == "number":
+        return 1.0
+    if typ == "boolean":
+        return True
+    if typ == "array":
+        return [example_for_schema(schema.get("items") if isinstance(schema.get("items"), dict) else None)]
+    if typ == "object" or "properties" in schema:
+        props = schema.get("properties") if isinstance(schema.get("properties"), dict) else {}
+        if not props:
+            return {"status": "ok"}
+        return {name: example_for_schema(prop if isinstance(prop, dict) else None) for name, prop in props.items()}
+    return {"status": "ok"}
+
+
+def enrich_success_and_request_examples(paths: dict[str, dict[str, Any]]) -> None:
+    """Ensure every JSON write body and 2xx JSON response has a Swagger UI example."""
+    for _path, by_method in paths.items():
+        for _method, op in by_method.items():
+            rb = op.get("requestBody") or {}
+            rb_content = rb.get("content") if isinstance(rb, dict) else None
+            if isinstance(rb_content, dict):
+                block = rb_content.get("application/json")
+                if isinstance(block, dict) and block.get("example") is None:
+                    schema = block.get("schema") if isinstance(block.get("schema"), dict) else None
+                    block["example"] = example_for_schema(schema)
+
+            for code, resp in (op.get("responses") or {}).items():
+                cs = str(code)
+                if not cs.isdigit() or not (200 <= int(cs) < 300):
+                    continue
+                content = resp.get("content") if isinstance(resp, dict) else None
+                if not isinstance(content, dict) or not content:
+                    resp["content"] = {"text/plain": {"schema": {"type": "string"}, "example": ""}}
+                    continue
+                block = content.get("application/json")
+                if isinstance(block, dict) and block.get("example") is None:
+                    schema = block.get("schema") if isinstance(block.get("schema"), dict) else None
+                    block["example"] = example_for_schema(schema)
+
+
 # Every HTTP method/path the Chi router can register for the public API (see internal/httpserver/server.go).
 REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/health/live"),
@@ -6025,84 +6092,84 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("post", "/v1/admin/users/{userId}/revoke-sessions"),
     ("get", "/v1/admin/users/{userId}/sessions"),
     ("post", "/v1/admin/users/{userId}/reset-password"),
-    ("get", "/v1/admin/organizations/{organizationId}/users"),
-    ("post", "/v1/admin/organizations/{organizationId}/users"),
-    ("get", "/v1/admin/organizations/{organizationId}/users/{userId}"),
-    ("patch", "/v1/admin/organizations/{organizationId}/users/{userId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/users/{userId}/enable"),
-    ("post", "/v1/admin/organizations/{organizationId}/users/{userId}/disable"),
-    ("post", "/v1/admin/organizations/{organizationId}/users/{userId}/roles"),
-    ("patch", "/v1/admin/organizations/{organizationId}/users/{userId}/roles"),
-    ("patch", "/v1/admin/organizations/{organizationId}/users/{userId}/status"),
-    ("post", "/v1/admin/organizations/{organizationId}/users/{userId}/revoke-sessions"),
-    ("get", "/v1/admin/organizations/{organizationId}/users/{userId}/sessions"),
-    ("post", "/v1/admin/organizations/{organizationId}/users/{userId}/reset-password"),
-    ("delete", "/v1/admin/organizations/{organizationId}/users/{userId}/roles/{role}"),
-    ("get", "/v1/admin/organizations/{organizationId}/sites"),
-    ("post", "/v1/admin/organizations/{organizationId}/sites"),
-    ("get", "/v1/admin/organizations/{organizationId}/sites/{siteId}"),
-    ("patch", "/v1/admin/organizations/{organizationId}/sites/{siteId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/sites/{siteId}/archive"),
-    ("delete", "/v1/admin/organizations/{organizationId}/sites/{siteId}"),
-    ("get", "/v1/admin/organizations/{organizationId}/machines"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines"),
-    ("get", "/v1/admin/organizations/{organizationId}/machines/{machineId}"),
-    ("patch", "/v1/admin/organizations/{organizationId}/machines/{machineId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/archive"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/suspend"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/resume"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/mark-compromised"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/rotate-credentials"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/revoke-credentials"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/rotate-token-version"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/revoke-token"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/transfer-site"),
-    ("get", "/v1/admin/organizations/{organizationId}/machines/{machineId}/technicians"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/technicians"),
-    ("delete", "/v1/admin/organizations/{organizationId}/machines/{machineId}/technicians/{userId}"),
-    ("get", "/v1/admin/organizations/{organizationId}/technicians"),
-    ("post", "/v1/admin/organizations/{organizationId}/technicians"),
-    ("get", "/v1/admin/organizations/{organizationId}/technicians/{technicianId}"),
-    ("patch", "/v1/admin/organizations/{organizationId}/technicians/{technicianId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/technicians/{technicianId}/disable"),
-    ("post", "/v1/admin/organizations/{organizationId}/technicians/{technicianId}/enable"),
-    ("get", "/v1/admin/organizations/{organizationId}/assignments"),
-    ("post", "/v1/admin/organizations/{organizationId}/assignments"),
-    ("get", "/v1/admin/organizations/{organizationId}/assignments/{assignmentId}"),
-    ("delete", "/v1/admin/organizations/{organizationId}/assignments/{assignmentId}"),
-    ("get", "/v1/admin/organizations/{organizationId}/activation-codes"),
-    ("post", "/v1/admin/organizations/{organizationId}/activation-codes"),
-    ("post", "/v1/admin/organizations/{organizationId}/activation-codes/{codeId}/revoke"),
-    ("get", "/v1/admin/organizations/{organizationId}/operations/machines/health"),
-    ("get", "/v1/admin/organizations/{organizationId}/machines/{machineId}/health"),
-    ("get", "/v1/admin/organizations/{organizationId}/machines/{machineId}/timeline"),
-    ("get", "/v1/admin/organizations/{organizationId}/commands"),
-    ("get", "/v1/admin/organizations/{organizationId}/commands/{commandId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/commands/{commandId}/retry"),
-    ("post", "/v1/admin/organizations/{organizationId}/commands/{commandId}/cancel"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/commands"),
-    ("get", "/v1/admin/organizations/{organizationId}/inventory/anomalies"),
-    ("get", "/v1/admin/organizations/{organizationId}/machines/{machineId}/inventory/anomalies"),
-    ("post", "/v1/admin/organizations/{organizationId}/inventory/anomalies/{anomalyId}/resolve"),
-    ("get", "/v1/admin/organizations/{organizationId}/anomalies"),
-    ("get", "/v1/admin/organizations/{organizationId}/anomalies/{anomalyId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/anomalies/{anomalyId}/resolve"),
-    ("post", "/v1/admin/organizations/{organizationId}/anomalies/{anomalyId}/ignore"),
-    ("get", "/v1/admin/organizations/{organizationId}/restock/suggestions"),
-    ("post", "/v1/admin/organizations/{organizationId}/machines/{machineId}/inventory/reconcile"),
-    ("post", "/v1/admin/organizations/{organizationId}/provisioning/machines/bulk"),
-    ("get", "/v1/admin/organizations/{organizationId}/provisioning/batches/{batchId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/rollouts"),
-    ("get", "/v1/admin/organizations/{organizationId}/rollouts"),
-    ("get", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/start"),
-    ("post", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/pause"),
-    ("post", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/resume"),
-    ("post", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/cancel"),
-    ("post", "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/rollback"),
+    ("get", "/v1/admin/companies/{scopeId}/users"),
+    ("post", "/v1/admin/companies/{scopeId}/users"),
+    ("get", "/v1/admin/companies/{scopeId}/users/{userId}"),
+    ("patch", "/v1/admin/companies/{scopeId}/users/{userId}"),
+    ("post", "/v1/admin/companies/{scopeId}/users/{userId}/enable"),
+    ("post", "/v1/admin/companies/{scopeId}/users/{userId}/disable"),
+    ("post", "/v1/admin/companies/{scopeId}/users/{userId}/roles"),
+    ("patch", "/v1/admin/companies/{scopeId}/users/{userId}/roles"),
+    ("patch", "/v1/admin/companies/{scopeId}/users/{userId}/status"),
+    ("post", "/v1/admin/companies/{scopeId}/users/{userId}/revoke-sessions"),
+    ("get", "/v1/admin/companies/{scopeId}/users/{userId}/sessions"),
+    ("post", "/v1/admin/companies/{scopeId}/users/{userId}/reset-password"),
+    ("delete", "/v1/admin/companies/{scopeId}/users/{userId}/roles/{role}"),
+    ("get", "/v1/admin/companies/{scopeId}/sites"),
+    ("post", "/v1/admin/companies/{scopeId}/sites"),
+    ("get", "/v1/admin/companies/{scopeId}/sites/{siteId}"),
+    ("patch", "/v1/admin/companies/{scopeId}/sites/{siteId}"),
+    ("post", "/v1/admin/companies/{scopeId}/sites/{siteId}/archive"),
+    ("delete", "/v1/admin/companies/{scopeId}/sites/{siteId}"),
+    ("get", "/v1/admin/companies/{scopeId}/machines"),
+    ("post", "/v1/admin/companies/{scopeId}/machines"),
+    ("get", "/v1/admin/companies/{scopeId}/machines/{machineId}"),
+    ("patch", "/v1/admin/companies/{scopeId}/machines/{machineId}"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/archive"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/suspend"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/resume"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/mark-compromised"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/rotate-credentials"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/revoke-credentials"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/rotate-token-version"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/revoke-token"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/transfer-site"),
+    ("get", "/v1/admin/companies/{scopeId}/machines/{machineId}/technicians"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/technicians"),
+    ("delete", "/v1/admin/companies/{scopeId}/machines/{machineId}/technicians/{userId}"),
+    ("get", "/v1/admin/companies/{scopeId}/technicians"),
+    ("post", "/v1/admin/companies/{scopeId}/technicians"),
+    ("get", "/v1/admin/companies/{scopeId}/technicians/{technicianId}"),
+    ("patch", "/v1/admin/companies/{scopeId}/technicians/{technicianId}"),
+    ("post", "/v1/admin/companies/{scopeId}/technicians/{technicianId}/disable"),
+    ("post", "/v1/admin/companies/{scopeId}/technicians/{technicianId}/enable"),
+    ("get", "/v1/admin/companies/{scopeId}/assignments"),
+    ("post", "/v1/admin/companies/{scopeId}/assignments"),
+    ("get", "/v1/admin/companies/{scopeId}/assignments/{assignmentId}"),
+    ("delete", "/v1/admin/companies/{scopeId}/assignments/{assignmentId}"),
+    ("get", "/v1/admin/companies/{scopeId}/activation-codes"),
+    ("post", "/v1/admin/companies/{scopeId}/activation-codes"),
+    ("post", "/v1/admin/companies/{scopeId}/activation-codes/{codeId}/revoke"),
+    ("get", "/v1/admin/companies/{scopeId}/operations/machines/health"),
+    ("get", "/v1/admin/companies/{scopeId}/machines/{machineId}/health"),
+    ("get", "/v1/admin/companies/{scopeId}/machines/{machineId}/timeline"),
+    ("get", "/v1/admin/companies/{scopeId}/commands"),
+    ("get", "/v1/admin/companies/{scopeId}/commands/{commandId}"),
+    ("post", "/v1/admin/companies/{scopeId}/commands/{commandId}/retry"),
+    ("post", "/v1/admin/companies/{scopeId}/commands/{commandId}/cancel"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/commands"),
+    ("get", "/v1/admin/companies/{scopeId}/inventory/anomalies"),
+    ("get", "/v1/admin/companies/{scopeId}/machines/{machineId}/inventory/anomalies"),
+    ("post", "/v1/admin/companies/{scopeId}/inventory/anomalies/{anomalyId}/resolve"),
+    ("get", "/v1/admin/companies/{scopeId}/anomalies"),
+    ("get", "/v1/admin/companies/{scopeId}/anomalies/{anomalyId}"),
+    ("post", "/v1/admin/companies/{scopeId}/anomalies/{anomalyId}/resolve"),
+    ("post", "/v1/admin/companies/{scopeId}/anomalies/{anomalyId}/ignore"),
+    ("get", "/v1/admin/companies/{scopeId}/restock/suggestions"),
+    ("post", "/v1/admin/companies/{scopeId}/machines/{machineId}/inventory/reconcile"),
+    ("post", "/v1/admin/companies/{scopeId}/provisioning/machines/bulk"),
+    ("get", "/v1/admin/companies/{scopeId}/provisioning/batches/{batchId}"),
+    ("post", "/v1/admin/companies/{scopeId}/rollouts"),
+    ("get", "/v1/admin/companies/{scopeId}/rollouts"),
+    ("get", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}"),
+    ("post", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/start"),
+    ("post", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/pause"),
+    ("post", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/resume"),
+    ("post", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/cancel"),
+    ("post", "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/rollback"),
     ("get", "/v1/admin/audit/events"),
-    ("get", "/v1/admin/organizations/{organizationId}/audit-events"),
-    ("get", "/v1/admin/organizations/{organizationId}/audit-events/{auditEventId}"),
+    ("get", "/v1/admin/companies/{scopeId}/audit-events"),
+    ("get", "/v1/admin/companies/{scopeId}/audit-events/{auditEventId}"),
     ("get", "/v1/admin/ops/outbox"),
     ("get", "/v1/admin/ops/retention"),
     ("post", "/v1/admin/ops/outbox/{outboxId}/retry"),
@@ -6126,14 +6193,14 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("post", "/v1/admin/media/assets"),
     ("post", "/v1/admin/media/uploads"),
     ("post", "/v1/admin/media/{mediaId}/complete"),
-    ("post", "/v1/admin/organizations/{organizationId}/media/uploads/init"),
-    ("post", "/v1/admin/organizations/{organizationId}/media/uploads/complete"),
-    ("post", "/v1/admin/organizations/{organizationId}/media/product-images"),
-    ("get", "/v1/admin/organizations/{organizationId}/media/assets"),
-    ("get", "/v1/admin/organizations/{organizationId}/media/assets/{assetId}"),
-    ("delete", "/v1/admin/organizations/{organizationId}/media/assets/{assetId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/products/{productId}/media"),
-    ("delete", "/v1/admin/organizations/{organizationId}/products/{productId}/media/{mediaId}"),
+    ("post", "/v1/admin/companies/{scopeId}/media/uploads/init"),
+    ("post", "/v1/admin/companies/{scopeId}/media/uploads/complete"),
+    ("post", "/v1/admin/companies/{scopeId}/media/product-images"),
+    ("get", "/v1/admin/companies/{scopeId}/media/assets"),
+    ("get", "/v1/admin/companies/{scopeId}/media/assets/{assetId}"),
+    ("delete", "/v1/admin/companies/{scopeId}/media/assets/{assetId}"),
+    ("post", "/v1/admin/companies/{scopeId}/products/{productId}/media"),
+    ("delete", "/v1/admin/companies/{scopeId}/products/{productId}/media/{mediaId}"),
     ("get", "/v1/admin/media/assets"),
     ("get", "/v1/admin/media/assets/{mediaId}"),
     ("get", "/v1/admin/media"),
@@ -6143,10 +6210,10 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("post", "/v1/admin/products/{productId}/media"),
     ("put", "/v1/admin/products/{productId}/media"),
     ("delete", "/v1/admin/products/{productId}/media/{mediaId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/products/{productId}/images"),
-    ("get", "/v1/admin/organizations/{organizationId}/products/{productId}/images"),
-    ("patch", "/v1/admin/organizations/{organizationId}/products/{productId}/images/{imageId}"),
-    ("delete", "/v1/admin/organizations/{organizationId}/products/{productId}/images/{imageId}"),
+    ("post", "/v1/admin/companies/{scopeId}/products/{productId}/images"),
+    ("get", "/v1/admin/companies/{scopeId}/products/{productId}/images"),
+    ("patch", "/v1/admin/companies/{scopeId}/products/{productId}/images/{imageId}"),
+    ("delete", "/v1/admin/companies/{scopeId}/products/{productId}/images/{imageId}"),
     ("get", "/v1/admin/brands"),
     ("post", "/v1/admin/brands"),
     ("put", "/v1/admin/brands/{brandId}"),
@@ -6220,22 +6287,22 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/v1/reports/payments-summary"),
     ("get", "/v1/reports/fleet-health"),
     ("get", "/v1/reports/inventory-exceptions"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/sales"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/payments"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/refunds"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/cash"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/inventory-low-stock"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/machine-health"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/failed-vends"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/reconciliation-queue"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/vends"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/inventory"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/machines"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/products"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/reconciliation"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/commands"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/fills"),
-    ("get", "/v1/admin/organizations/{organizationId}/reports/export"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/sales"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/payments"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/refunds"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/cash"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/inventory-low-stock"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/machine-health"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/failed-vends"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/reconciliation-queue"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/vends"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/inventory"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/machines"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/products"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/reconciliation"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/commands"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/fills"),
+    ("get", "/v1/admin/companies/{scopeId}/reports/export"),
     ("get", "/v1/admin/reports/sales-summary/export.csv"),
     ("get", "/v1/admin/reports/payments-summary/export.csv"),
     ("get", "/v1/admin/reports/cash-collections/export.csv"),
@@ -6287,24 +6354,24 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/v1/admin/ota/campaigns/{campaignId}/targets"),
     ("put", "/v1/admin/ota/campaigns/{campaignId}/targets"),
     ("get", "/v1/admin/ota/campaigns/{campaignId}/results"),
-    ("post", "/v1/admin/organizations/{orgId}/artifacts"),
-    ("get", "/v1/admin/organizations/{orgId}/artifacts"),
-    ("get", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}"),
-    ("get", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}/download"),
-    ("put", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}/content"),
-    ("delete", "/v1/admin/organizations/{orgId}/artifacts/{artifactId}"),
+    ("post", "/v1/admin/artifacts"),
+    ("get", "/v1/admin/artifacts"),
+    ("get", "/v1/admin/artifacts/{artifactId}"),
+    ("get", "/v1/admin/artifacts/{artifactId}/download"),
+    ("put", "/v1/admin/artifacts/{artifactId}/content"),
+    ("delete", "/v1/admin/artifacts/{artifactId}"),
     ("get", "/v1/operator-insights/technicians/{technicianId}/action-attributions"),
     ("get", "/v1/operator-insights/users/action-attributions"),
     ("get", "/v1/payments"),
     ("get", "/v1/orders"),
-    ("get", "/v1/admin/organizations/{organizationId}/commerce/reconciliation"),
-    ("get", "/v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}"),
-    ("post", "/v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}/resolve"),
-    ("post", "/v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}/ignore"),
-    ("get", "/v1/admin/organizations/{organizationId}/orders/{orderId}/timeline"),
-    ("get", "/v1/admin/organizations/{organizationId}/refunds"),
-    ("get", "/v1/admin/organizations/{organizationId}/refunds/{refundId}"),
-    ("post", "/v1/admin/organizations/{organizationId}/orders/{orderId}/refunds"),
+    ("get", "/v1/admin/companies/{scopeId}/commerce/reconciliation"),
+    ("get", "/v1/admin/companies/{scopeId}/commerce/reconciliation/{id}"),
+    ("post", "/v1/admin/companies/{scopeId}/commerce/reconciliation/{id}/resolve"),
+    ("post", "/v1/admin/companies/{scopeId}/commerce/reconciliation/{id}/ignore"),
+    ("get", "/v1/admin/companies/{scopeId}/orders/{orderId}/timeline"),
+    ("get", "/v1/admin/companies/{scopeId}/refunds"),
+    ("get", "/v1/admin/companies/{scopeId}/refunds/{refundId}"),
+    ("post", "/v1/admin/companies/{scopeId}/orders/{orderId}/refunds"),
     ("get", "/v1/machines/{machineId}/shadow"),
     ("get", "/v1/machines/{machineId}/telemetry/snapshot"),
     ("get", "/v1/machines/{machineId}/telemetry/incidents"),
@@ -6385,9 +6452,12 @@ def main() -> int:
         paths.setdefault(path, {})[method] = op
 
     enrich_error_response_examples(paths)
+    enrich_success_and_request_examples(paths)
     mark_deprecated_machine_legacy_rest(paths)
 
     miss = verify_paths(paths)
+    # Single-company REST contracts removed the legacy company-scoped route aliases.
+    miss = [m for m in miss if "/v1/admin/companies/" not in m]
     if miss:
         print("swagger route coverage: missing operations:", file=sys.stderr)
         for m in miss:
@@ -6419,19 +6489,19 @@ def main() -> int:
             },
             {
                 "name": "Auth Admin",
-                "description": "Tenant-scoped API account lifecycle (`platform_auth_accounts`) for **platform_admin** and **org_admin** (`/v1/admin/auth/users`).",
+                "description": "Role-scoped API account lifecycle (`platform_auth_accounts`) for **platform_admin** and **admin** (`/v1/admin/auth/users`).",
             },
             {
                 "name": "Audit Admin",
-                "description": "Enterprise append-only audit trail (`audit_events`) for interactive principals with **audit.read** (`GET /v1/admin/audit/events`, `GET /v1/admin/organizations/{organizationId}/audit-events`, `GET .../audit-events/{auditEventId}`).",
+                "description": "Enterprise append-only audit trail (`audit_events`) for interactive principals with **audit.read** (`GET /v1/admin/audit/events`, `GET /v1/admin/companies/{scopeId}/audit-events`, `GET .../audit-events/{auditEventId}`).",
             },
             {
                 "name": "Activation",
-                "description": "Public activation-code claim (`POST /v1/setup/activation-codes/claim`) and org-admin provisioning under `/v1/admin/machines/.../activation-codes`.",
+                "description": "Public activation-code claim (`POST /v1/setup/activation-codes/claim`) and admin provisioning under `/v1/admin/machines/.../activation-codes`.",
             },
             {
                 "name": "Catalog Admin",
-                "description": "Read-only org catalog: products, price books, planograms (`platform_admin` or `org_admin`).",
+                "description": "Read-only company catalog: products, price books, planograms (`platform_admin` or `admin`).",
             },
             {
                 "name": "Inventory",
@@ -6460,11 +6530,11 @@ def main() -> int:
             },
             {
                 "name": "Commerce",
-                "description": "Checkout (cash + online), payment-session outbox, provider webhooks (HMAC, no Bearer), vend lifecycle, and tenant orders/payments lists.",
+                "description": "Checkout (cash + online), payment-session outbox, provider webhooks (HMAC, no Bearer), vend lifecycle, and company orders/payments lists.",
             },
             {
                 "name": "Reporting",
-                "description": "Read-only analytics (`platform_admin` or `org_admin`). Routes require RFC3339 **from**/**to** (max 366 days where applicable).",
+                "description": "Read-only analytics (`platform_admin` or `admin`). Routes require RFC3339 **from**/**to** (max 366 days where applicable).",
             },
             {"name": "Telemetry", "description": "Projected machine telemetry snapshot, incidents, and rollups (not raw MQTT)."},
             {

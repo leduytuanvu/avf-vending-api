@@ -4,7 +4,7 @@
 
 CREATE TABLE machine_provisioning_batches (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     site_id uuid NOT NULL REFERENCES sites (id) ON DELETE RESTRICT,
     hardware_profile_id uuid REFERENCES machine_hardware_profiles (id) ON DELETE SET NULL,
     cabinet_type text NOT NULL DEFAULT '',
@@ -18,14 +18,14 @@ CREATE TABLE machine_provisioning_batches (
     updated_at timestamptz NOT NULL DEFAULT now ()
 );
 
-CREATE INDEX ix_machine_provisioning_batches_org_created ON machine_provisioning_batches (organization_id, created_at DESC);
+CREATE INDEX ix_machine_provisioning_batches_org_created ON machine_provisioning_batches (scope_id, created_at DESC);
 
 COMMENT ON TABLE machine_provisioning_batches IS 'Admin bulk machine creation with optional activation code fan-out.';
 
 CREATE TABLE machine_provisioning_batch_machines (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     batch_id uuid NOT NULL REFERENCES machine_provisioning_batches (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     serial_number text NOT NULL DEFAULT '',
     activation_code_id uuid REFERENCES machine_activation_codes (id) ON DELETE SET NULL,
@@ -40,7 +40,7 @@ COMMENT ON TABLE machine_provisioning_batch_machines IS 'Machines created in a p
 
 CREATE TABLE rollout_campaigns (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     rollout_type text NOT NULL CHECK (
         rollout_type IN (
             'config_version',
@@ -70,15 +70,15 @@ CREATE TABLE rollout_campaigns (
     cancelled_at timestamptz
 );
 
-CREATE INDEX ix_rollout_campaigns_org_created ON rollout_campaigns (organization_id, created_at DESC);
+CREATE INDEX ix_rollout_campaigns_org_created ON rollout_campaigns (scope_id, created_at DESC);
 
-CREATE INDEX ix_rollout_campaigns_org_status ON rollout_campaigns (organization_id, status);
+CREATE INDEX ix_rollout_campaigns_org_status ON rollout_campaigns (scope_id, status);
 
 COMMENT ON TABLE rollout_campaigns IS 'Fleet rollout driving MQTT command ledger (target_version + strategy JSON filters / canary).';
 
 CREATE TABLE rollout_targets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     campaign_id uuid NOT NULL REFERENCES rollout_campaigns (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     status text NOT NULL DEFAULT 'pending' CHECK (

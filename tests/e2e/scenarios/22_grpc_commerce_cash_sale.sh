@@ -17,8 +17,6 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_grpc.sh"
 
 FLOW_ID="GRPC-22"
 ec=0
-
-ORG="$(get_data organizationId)"
 MID="$(get_data machineId)"
 MT="$(get_secret machineToken 2>/dev/null || true)"
 PRODUCT="$(get_data productId)"
@@ -41,8 +39,8 @@ mkdir -p "${E2E_RUN_DIR}/rest"
 e2e_http_apply_sale_catalog_currency "$MID" "g22-sale-cat" CUR
 unset ADMIN_TOKEN
 
-META="$(jq -nc --arg o "$ORG" --arg m "$MID" --arg rid "g22-$(date +%s)" \
-  '{organizationId:$o, machineId:$m, requestId:$rid}')"
+META="$(jq -nc --arg m "$MID" --arg rid "g22-$(date +%s)" \
+  '{ machineId:$m, requestId:$rid}')"
 
 grpc_contract_skip "$FLOW_ID" "create-payment-session-psp" MachineCommerceService CreatePaymentSession \
   "skipped_in_favor_of_confirm_cash_payment_for_contract_run"

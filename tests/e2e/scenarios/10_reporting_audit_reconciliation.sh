@@ -54,20 +54,13 @@ if [[ -z "${ADMIN_TOKEN:-}" ]]; then
   log_error "WA-RPT-10: ADMIN_TOKEN or secrets.adminAccessToken required"
   exit 2
 fi
-
-ORG_ID="$(get_data organizationId)"
 MACHINE_ID="$(get_data machineId)"
-if [[ -z "$ORG_ID" ]] || [[ "$ORG_ID" == "null" ]]; then
-  log_error "WA-RPT-10: organizationId missing in test-data.json"
-  exit 2
-fi
-Q_ORG="organization_id=$(printf '%s' "$ORG_ID" | jq -sRr @uri)"
 
 ANY_FAIL=0
 http_server_error() { [[ "$1" =~ ^5 ]] || [[ "$1" == "0" ]]; }
 
 # --- Finance daily close list ---
-path="/v1/admin/finance/daily-close?${Q_ORG}&limit=5"
+path="/v1/admin/finance/daily-close?limit=5"
 code="$(e2e_http_get "rpt-finance-close-list" "$path")"
 if [[ "$code" == "200" ]] && jq -e '(.items|type=="array") and (.meta|type=="object")' "${E2E_RUN_DIR}/rest/rpt-finance-close-list.response.json" >/dev/null 2>&1; then
   wa4_record "finance-daily-close-list" "GET /v1/admin/finance/daily-close" "pass" "$code" "200 + items[] + meta" "ok" "" "rpt-finance-close-list"
@@ -81,7 +74,7 @@ else
 fi
 
 # --- Commerce reconciliation ---
-path="/v1/admin/organizations/${ORG_ID}/commerce/reconciliation?limit=5"
+path="/v1/admin/commerce/reconciliation?limit=5"
 code="$(e2e_http_get "rpt-commerce-recon" "$path")"
 if [[ "$code" == "200" ]] && jq -e '(.items|type=="array")' "${E2E_RUN_DIR}/rest/rpt-commerce-recon.response.json" >/dev/null 2>&1; then
   wa4_record "commerce-reconciliation-list" "GET .../commerce/reconciliation" "pass" "$code" "200 + items" "ok" "" "rpt-commerce-recon"
@@ -95,7 +88,7 @@ else
 fi
 
 # --- Audit events ---
-path="/v1/admin/audit/events?${Q_ORG}&limit=10"
+path="/v1/admin/audit/events?limit=10"
 code="$(e2e_http_get "rpt-audit-events" "$path")"
 if [[ "$code" == "200" ]] && jq -e '(.items|type=="array")' "${E2E_RUN_DIR}/rest/rpt-audit-events.response.json" >/dev/null 2>&1; then
   wa4_record "audit-events-list" "GET /v1/admin/audit/events" "pass" "$code" "200 + items" "ok" "" "rpt-audit-events"
@@ -109,7 +102,7 @@ else
 fi
 
 # --- Artifacts list ---
-path="/v1/admin/organizations/${ORG_ID}/artifacts?limit=5"
+path="/v1/admin/artifacts?limit=5"
 code="$(e2e_http_get "rpt-artifacts-list" "$path")"
 if [[ "$code" == "200" ]] && jq -e '(.items|type=="array")' "${E2E_RUN_DIR}/rest/rpt-artifacts-list.response.json" >/dev/null 2>&1; then
   wa4_record "artifacts-list" "GET .../artifacts" "pass" "$code" "200 + items" "ok" "" "rpt-artifacts-list"
@@ -126,7 +119,7 @@ fi
 
 # --- Cash collections (list only) ---
 if [[ -n "$MACHINE_ID" ]] && [[ "$MACHINE_ID" != "null" ]]; then
-  path="/v1/admin/machines/${MACHINE_ID}/cash-collections?${Q_ORG}&limit=10"
+  path="/v1/admin/machines/${MACHINE_ID}/cash-collections?limit=10"
   code="$(e2e_http_get "rpt-cash-collections" "$path")"
   if [[ "$code" == "200" ]] && jq -e '(.items|type=="array")' "${E2E_RUN_DIR}/rest/rpt-cash-collections.response.json" >/dev/null 2>&1; then
     wa4_record "cash-collections-list" "GET .../cash-collections" "pass" "$code" "200 + items" "ok" "" "rpt-cash-collections"

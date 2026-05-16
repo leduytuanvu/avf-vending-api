@@ -22,11 +22,11 @@ ALTER TABLE audit_events
 ALTER TABLE audit_events
     ADD COLUMN IF NOT EXISTS site_id uuid REFERENCES sites (id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS ix_audit_events_org_machine_created ON audit_events (organization_id, machine_id, created_at DESC)
+CREATE INDEX IF NOT EXISTS ix_audit_events_org_machine_created ON audit_events (scope_id, machine_id, created_at DESC)
 WHERE
     machine_id IS NOT NULL;
 
-CREATE INDEX IF NOT EXISTS ix_audit_events_org_site_created ON audit_events (organization_id, site_id, created_at DESC)
+CREATE INDEX IF NOT EXISTS ix_audit_events_org_site_created ON audit_events (scope_id, site_id, created_at DESC)
 WHERE
     site_id IS NOT NULL;
 

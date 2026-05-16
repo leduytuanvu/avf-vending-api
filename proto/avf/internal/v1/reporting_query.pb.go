@@ -22,10 +22,9 @@ const (
 )
 
 type GetSalesSummaryRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
-	FromRfc3339    string                 `protobuf:"bytes,2,opt,name=from_rfc3339,json=fromRfc3339,proto3" json:"from_rfc3339,omitempty"`
-	ToRfc3339      string                 `protobuf:"bytes,3,opt,name=to_rfc3339,json=toRfc3339,proto3" json:"to_rfc3339,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	FromRfc3339 string                 `protobuf:"bytes,2,opt,name=from_rfc3339,json=fromRfc3339,proto3" json:"from_rfc3339,omitempty"`
+	ToRfc3339   string                 `protobuf:"bytes,3,opt,name=to_rfc3339,json=toRfc3339,proto3" json:"to_rfc3339,omitempty"`
 	// day | site | machine | payment_provider (matches listscope reporting).
 	GroupBy       string `protobuf:"bytes,4,opt,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -60,13 +59,6 @@ func (x *GetSalesSummaryRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetSalesSummaryRequest.ProtoReflect.Descriptor instead.
 func (*GetSalesSummaryRequest) Descriptor() ([]byte, []int) {
 	return file_avf_internal_v1_reporting_query_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *GetSalesSummaryRequest) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
-	}
-	return ""
 }
 
 func (x *GetSalesSummaryRequest) GetFromRfc3339() string {
@@ -138,9 +130,8 @@ var File_avf_internal_v1_reporting_query_proto protoreflect.FileDescriptor
 
 const file_avf_internal_v1_reporting_query_proto_rawDesc = "" +
 	"\n" +
-	"%avf/internal/v1/reporting_query.proto\x12\x0favf.internal.v1\"\x9e\x01\n" +
-	"\x16GetSalesSummaryRequest\x12'\n" +
-	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12!\n" +
+	"%avf/internal/v1/reporting_query.proto\x12\x0favf.internal.v1\"u\n" +
+	"\x16GetSalesSummaryRequest\x12!\n" +
 	"\ffrom_rfc3339\x18\x02 \x01(\tR\vfromRfc3339\x12\x1d\n" +
 	"\n" +
 	"to_rfc3339\x18\x03 \x01(\tR\ttoRfc3339\x12\x19\n" +

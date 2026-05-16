@@ -6,10 +6,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// AdminFleet carries resolved organization and filters for GET /v1/admin/* collection routes.
+// AdminFleet carries resolved company and filters for GET /v1/admin/* collection routes.
 type AdminFleet struct {
 	IsPlatformAdmin bool
-	OrganizationID  uuid.UUID
 	SiteID          *uuid.UUID
 	MachineID       *uuid.UUID
 	TechnicianID    *uuid.UUID
@@ -21,10 +20,9 @@ type AdminFleet struct {
 	Offset          int32
 }
 
-// TenantCommerce carries resolved organization and filters for GET /v1/orders and /v1/payments.
-type TenantCommerce struct {
+// CompanyCommerce carries resolved company and filters for GET /v1/orders and /v1/payments.
+type CompanyCommerce struct {
 	IsPlatformAdmin bool
-	OrganizationID  uuid.UUID
 	Limit           int32
 	Offset          int32
 	Status          string

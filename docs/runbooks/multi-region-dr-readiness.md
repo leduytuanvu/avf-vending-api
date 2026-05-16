@@ -53,8 +53,8 @@ Minimum expectations:
 Restore validation must check:
 
 - schema migration version;
-- row counts for organizations, machines, orders/payments, command ledger, audit events, outbox, machine replay/idempotency tables;
-- read-only API health and representative tenant-scoped reads;
+- row counts for companies, machines, orders/payments, command ledger, audit events, outbox, machine replay/idempotency tables;
+- read-only API health and representative role-scoped reads;
 - no connection from the recovery environment back to production Redis/NATS/object buckets unless explicitly intended.
 
 ## Redis recovery

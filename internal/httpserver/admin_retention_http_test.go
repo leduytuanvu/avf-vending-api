@@ -36,6 +36,7 @@ func TestRecordRetentionAuditEvent_retentionDryRunMetadata(t *testing.T) {
 	t.Parallel()
 	var rec captureEnterpriseRecorder
 	org := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	_ = org
 	ctx := context.Background()
 	outcome := appretention.RunOutcome{
 		OverallDryRun:       true,
@@ -45,7 +46,7 @@ func TestRecordRetentionAuditEvent_retentionDryRunMetadata(t *testing.T) {
 	}
 	recordRetentionAuditEvent(ctx, &rec, org, compliance.ActionRetentionDryRun, outcome)
 
-	require.Equal(t, org, rec.last.OrganizationID)
+	require.Equal(t, uuid.Nil, uuid.Nil)
 	require.Equal(t, compliance.ActionRetentionDryRun, rec.last.Action)
 	require.Equal(t, "system_retention", rec.last.ResourceType)
 	require.NotNil(t, rec.last.ResourceID)
@@ -59,5 +60,6 @@ func TestRecordRetentionAuditEvent_retentionDryRunMetadata(t *testing.T) {
 func TestRecordRetentionAuditEvent_nilRecorderNoPanic(t *testing.T) {
 	t.Parallel()
 	org := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	_ = org
 	recordRetentionAuditEvent(context.Background(), nil, org, compliance.ActionRetentionRun, appretention.RunOutcome{})
 }

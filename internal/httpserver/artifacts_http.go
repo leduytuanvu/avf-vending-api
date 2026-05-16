@@ -15,14 +15,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// mountArtifactAdminRoutes registers S3-backed artifact APIs under /v1/admin/organizations/{orgId}/artifacts/...
+// mountArtifactAdminRoutes registers S3-backed artifact APIs under /v1/admin/artifacts/...
 // when app.Artifacts is configured. Mutating routes use writeRL when rate limiting is enabled.
 func mountArtifactAdminRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
 	if app == nil || app.Artifacts == nil {
 		return
 	}
 	svc := app.Artifacts
-	r.Route("/organizations/{orgId}/artifacts", func(r chi.Router) {
+	r.Route("/artifacts", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireAnyPermission(auth.PermCatalogRead))
 			r.Get("/", artifactListHandler(svc))
@@ -38,31 +38,22 @@ func mountArtifactAdminRoutes(r chi.Router, app *api.HTTPApplication, writeRL fu
 	})
 }
 
-func parseOrgArtifactIDs(r *http.Request) (orgID uuid.UUID, artifactID uuid.UUID, ok bool) {
-	orgRaw := strings.TrimSpace(chi.URLParam(r, "orgId"))
-	o, err := uuid.Parse(orgRaw)
-	if err != nil {
-		return uuid.Nil, uuid.Nil, false
-	}
+func parseArtifactIDs(r *http.Request) (scopeID uuid.UUID, artifactID uuid.UUID, ok bool) {
+	scopeID = uuid.Nil
 	artRaw := strings.TrimSpace(chi.URLParam(r, "artifactId"))
 	if artRaw == "" {
-		return o, uuid.Nil, true
+		return scopeID, uuid.Nil, true
 	}
 	a, err := uuid.Parse(artRaw)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, false
 	}
-	return o, a, true
+	return scopeID, a, true
 }
 
-func artifactOrgAllowed(p auth.Principal, orgID uuid.UUID) bool {
-	if p.HasRole(auth.RolePlatformAdmin) {
-		return true
-	}
-	if !p.HasOrganization() || p.OrganizationID != orgID {
-		return false
-	}
-	return auth.HasPermission(p, auth.PermCatalogRead) || auth.HasPermission(p, auth.PermCatalogWrite)
+func artifactScopeAllowed(p auth.Principal, scopeID uuid.UUID) bool {
+	_ = scopeID
+	return p.HasRole(auth.RolePlatformAdmin) || auth.HasPermission(p, auth.PermCatalogRead) || auth.HasPermission(p, auth.PermCatalogWrite)
 }
 
 func artifactReserveHandler(svc *artifacts.Service) http.HandlerFunc {
@@ -72,12 +63,12 @@ func artifactReserveHandler(svc *artifacts.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, _, ok := parseOrgArtifactIDs(r)
+		scopeID, _, ok := parseArtifactIDs(r)
 		if !ok {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_organization_id", "invalid orgId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope_id", "invalid artifact route context")
 			return
 		}
-		if !artifactOrgAllowed(p, orgID) {
+		if !artifactScopeAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -88,7 +79,7 @@ func artifactReserveHandler(svc *artifacts.Service) http.HandlerFunc {
 		}
 		writeJSON(w, http.StatusCreated, map[string]any{
 			"artifact_id": id.String(),
-			"upload_path": "/v1/admin/organizations/" + orgID.String() + "/artifacts/" + id.String() + "/content",
+			"upload_path": "/v1/admin/artifacts/" + id.String() + "/content",
 		})
 	}
 }
@@ -100,16 +91,16 @@ func artifactListHandler(svc *artifacts.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, _, ok := parseOrgArtifactIDs(r)
+		scopeID, _, ok := parseArtifactIDs(r)
 		if !ok {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_organization_id", "invalid orgId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope_id", "invalid artifact route context")
 			return
 		}
-		if !artifactOrgAllowed(p, orgID) {
+		if !artifactScopeAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
-		items, err := svc.ListArtifacts(r.Context(), orgID)
+		items, err := svc.ListArtifacts(r.Context(), scopeID)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -129,16 +120,16 @@ func artifactGetHandler(svc *artifacts.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, artID, ok := parseOrgArtifactIDs(r)
+		scopeID, artID, ok := parseArtifactIDs(r)
 		if !ok || artID == uuid.Nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_ids", "invalid orgId or artifactId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_ids", "invalid artifactId")
 			return
 		}
-		if !artifactOrgAllowed(p, orgID) {
+		if !artifactScopeAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
-		info, err := svc.GetInfo(r.Context(), orgID, artID)
+		info, err := svc.GetInfo(r.Context(), scopeID, artID)
 		if err != nil {
 			writeArtifactAPIError(w, r.Context(), err)
 			return
@@ -154,16 +145,16 @@ func artifactDownloadURLHandler(svc *artifacts.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, artID, ok := parseOrgArtifactIDs(r)
+		scopeID, artID, ok := parseArtifactIDs(r)
 		if !ok || artID == uuid.Nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_ids", "invalid orgId or artifactId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_ids", "invalid artifactId")
 			return
 		}
-		if !artifactOrgAllowed(p, orgID) {
+		if !artifactScopeAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
-		signed, exp, err := svc.PresignDownload(r.Context(), orgID, artID)
+		signed, exp, err := svc.PresignDownload(r.Context(), scopeID, artID)
 		if err != nil {
 			writeArtifactAPIError(w, r.Context(), err)
 			return
@@ -184,12 +175,12 @@ func artifactPutContentHandler(svc *artifacts.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, artID, ok := parseOrgArtifactIDs(r)
+		scopeID, artID, ok := parseArtifactIDs(r)
 		if !ok || artID == uuid.Nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_ids", "invalid orgId or artifactId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_ids", "invalid artifactId")
 			return
 		}
-		if !artifactOrgAllowed(p, orgID) {
+		if !artifactScopeAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -206,7 +197,7 @@ func artifactPutContentHandler(svc *artifacts.Service) http.HandlerFunc {
 		sha := strings.TrimSpace(r.Header.Get("X-Artifact-SHA256"))
 		ct := strings.TrimSpace(r.Header.Get("Content-Type"))
 		fn := strings.TrimSpace(r.Header.Get("X-Artifact-Filename"))
-		if err := svc.PutContent(r.Context(), orgID, artID, r.Body, size, ct, sha, fn); err != nil {
+		if err := svc.PutContent(r.Context(), scopeID, artID, r.Body, size, ct, sha, fn); err != nil {
 			writeArtifactAPIError(w, r.Context(), err)
 			return
 		}
@@ -221,16 +212,16 @@ func artifactDeleteHandler(svc *artifacts.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, artID, ok := parseOrgArtifactIDs(r)
+		scopeID, artID, ok := parseArtifactIDs(r)
 		if !ok || artID == uuid.Nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_ids", "invalid orgId or artifactId")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_ids", "invalid artifactId")
 			return
 		}
-		if !artifactOrgAllowed(p, orgID) {
+		if !artifactScopeAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
-		if err := svc.DeleteArtifact(r.Context(), orgID, artID); err != nil {
+		if err := svc.DeleteArtifact(r.Context(), scopeID, artID); err != nil {
 			writeArtifactAPIError(w, r.Context(), err)
 			return
 		}
@@ -240,12 +231,11 @@ func artifactDeleteHandler(svc *artifacts.Service) http.HandlerFunc {
 
 func artifactInfoView(it artifacts.ArtifactInfo) map[string]any {
 	m := map[string]any{
-		"organization_id": it.OrganizationID.String(),
-		"artifact_id":     it.ArtifactID.String(),
-		"size_bytes":      it.Size,
-		"content_type":    it.ContentType,
-		"etag":            it.ETag,
-		"object_key":      it.ObjectKey,
+		"artifact_id":  it.ArtifactID.String(),
+		"size_bytes":   it.Size,
+		"content_type": it.ContentType,
+		"etag":         it.ETag,
+		"object_key":   it.ObjectKey,
 	}
 	if !it.LastModifiedUTC.IsZero() {
 		m["updated_at"] = it.LastModifiedUTC.Format(time.RFC3339Nano)

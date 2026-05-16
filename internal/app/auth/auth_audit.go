@@ -41,7 +41,7 @@ func maskEmailForAudit(email string) string {
 	return string(local[0]) + "***@" + domain
 }
 
-func (s *Service) auditLoginFailure(ctx context.Context, organizationID uuid.UUID, email string, reason string) {
+func (s *Service) auditLoginFailure(ctx context.Context, companyID uuid.UUID, email string, reason string) {
 	if s == nil || s.enterpriseAudit == nil {
 		return
 	}
@@ -53,16 +53,15 @@ func (s *Service) auditLoginFailure(ctx context.Context, organizationID uuid.UUI
 	md, _ := json.Marshal(payload)
 	md = compliance.SanitizeJSONBytes(md)
 	_ = s.enterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: organizationID,
-		ActorType:      compliance.ActorUser,
-		Action:         compliance.ActionAuthLoginFailed,
-		ResourceType:   "auth.login",
-		RequestID:      strPtrNonEmpty(meta.RequestID),
-		TraceID:        strPtrNonEmpty(meta.TraceID),
-		IPAddress:      strPtrNonEmpty(meta.IP),
-		UserAgent:      strPtrNonEmpty(meta.UserAgent),
-		Metadata:       md,
-		Outcome:        compliance.OutcomeFailure,
+		ActorType:    compliance.ActorUser,
+		Action:       compliance.ActionAuthLoginFailed,
+		ResourceType: "auth.login",
+		RequestID:    strPtrNonEmpty(meta.RequestID),
+		TraceID:      strPtrNonEmpty(meta.TraceID),
+		IPAddress:    strPtrNonEmpty(meta.IP),
+		UserAgent:    strPtrNonEmpty(meta.UserAgent),
+		Metadata:     md,
+		Outcome:      compliance.OutcomeFailure,
 	})
 }
 
@@ -77,18 +76,17 @@ func (s *Service) auditLoginSuccess(ctx context.Context, acct db.PlatformAuthAcc
 		return err
 	}
 	return s.enterpriseAudit.RecordCritical(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: acct.OrganizationID,
-		ActorType:      compliance.ActorUser,
-		ActorID:        &sub,
-		Action:         compliance.ActionAuthLoginSuccess,
-		ResourceType:   "auth.account",
-		ResourceID:     &sub,
-		RequestID:      strPtrNonEmpty(meta.RequestID),
-		TraceID:        strPtrNonEmpty(meta.TraceID),
-		IPAddress:      strPtrNonEmpty(meta.IP),
-		UserAgent:      strPtrNonEmpty(meta.UserAgent),
-		Metadata:       md,
-		Outcome:        compliance.OutcomeSuccess,
+		ActorType:    compliance.ActorUser,
+		ActorID:      &sub,
+		Action:       compliance.ActionAuthLoginSuccess,
+		ResourceType: "auth.account",
+		ResourceID:   &sub,
+		RequestID:    strPtrNonEmpty(meta.RequestID),
+		TraceID:      strPtrNonEmpty(meta.TraceID),
+		IPAddress:    strPtrNonEmpty(meta.IP),
+		UserAgent:    strPtrNonEmpty(meta.UserAgent),
+		Metadata:     md,
+		Outcome:      compliance.OutcomeSuccess,
 	})
 }
 
@@ -107,18 +105,17 @@ func (s *Service) auditLogout(ctx context.Context, accountID uuid.UUID) error {
 	}
 	meta := compliance.TransportMetaFromContext(ctx)
 	return s.enterpriseAudit.RecordCritical(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: acct.OrganizationID,
-		ActorType:      compliance.ActorUser,
-		ActorID:        &sub,
-		Action:         compliance.ActionAuthLogout,
-		ResourceType:   "auth.session",
-		ResourceID:     &sub,
-		RequestID:      strPtrNonEmpty(meta.RequestID),
-		TraceID:        strPtrNonEmpty(meta.TraceID),
-		IPAddress:      strPtrNonEmpty(meta.IP),
-		UserAgent:      strPtrNonEmpty(meta.UserAgent),
-		Metadata:       md,
-		Outcome:        compliance.OutcomeSuccess,
+		ActorType:    compliance.ActorUser,
+		ActorID:      &sub,
+		Action:       compliance.ActionAuthLogout,
+		ResourceType: "auth.session",
+		ResourceID:   &sub,
+		RequestID:    strPtrNonEmpty(meta.RequestID),
+		TraceID:      strPtrNonEmpty(meta.TraceID),
+		IPAddress:    strPtrNonEmpty(meta.IP),
+		UserAgent:    strPtrNonEmpty(meta.UserAgent),
+		Metadata:     md,
+		Outcome:      compliance.OutcomeSuccess,
 	})
 }
 
@@ -133,22 +130,21 @@ func (s *Service) auditRefreshSuccess(ctx context.Context, acct db.PlatformAuthA
 		return err
 	}
 	return s.enterpriseAudit.RecordCritical(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: acct.OrganizationID,
-		ActorType:      compliance.ActorUser,
-		ActorID:        &sub,
-		Action:         compliance.ActionAuthRefresh,
-		ResourceType:   "auth.session",
-		ResourceID:     &sub,
-		RequestID:      strPtrNonEmpty(meta.RequestID),
-		TraceID:        strPtrNonEmpty(meta.TraceID),
-		IPAddress:      strPtrNonEmpty(meta.IP),
-		UserAgent:      strPtrNonEmpty(meta.UserAgent),
-		Metadata:       md,
-		Outcome:        compliance.OutcomeSuccess,
+		ActorType:    compliance.ActorUser,
+		ActorID:      &sub,
+		Action:       compliance.ActionAuthRefresh,
+		ResourceType: "auth.session",
+		ResourceID:   &sub,
+		RequestID:    strPtrNonEmpty(meta.RequestID),
+		TraceID:      strPtrNonEmpty(meta.TraceID),
+		IPAddress:    strPtrNonEmpty(meta.IP),
+		UserAgent:    strPtrNonEmpty(meta.UserAgent),
+		Metadata:     md,
+		Outcome:      compliance.OutcomeSuccess,
 	})
 }
 
-func (s *Service) auditMFASecurity(ctx context.Context, action string, orgID, actorID uuid.UUID, metadata map[string]any, outcome string) error {
+func (s *Service) auditMFASecurity(ctx context.Context, action string, scopeID, actorID uuid.UUID, metadata map[string]any, outcome string) error {
 	if s == nil || s.enterpriseAudit == nil {
 		return nil
 	}
@@ -160,18 +156,17 @@ func (s *Service) auditMFASecurity(ctx context.Context, action string, orgID, ac
 	}
 	md = compliance.SanitizeJSONBytes(md)
 	return s.enterpriseAudit.RecordCritical(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: orgID,
-		ActorType:      compliance.ActorUser,
-		ActorID:        &sub,
-		Action:         action,
-		ResourceType:   "auth.mfa",
-		ResourceID:     &sub,
-		RequestID:      strPtrNonEmpty(meta.RequestID),
-		TraceID:        strPtrNonEmpty(meta.TraceID),
-		IPAddress:      strPtrNonEmpty(meta.IP),
-		UserAgent:      strPtrNonEmpty(meta.UserAgent),
-		Metadata:       md,
-		Outcome:        outcome,
+		ActorType:    compliance.ActorUser,
+		ActorID:      &sub,
+		Action:       action,
+		ResourceType: "auth.mfa",
+		ResourceID:   &sub,
+		RequestID:    strPtrNonEmpty(meta.RequestID),
+		TraceID:      strPtrNonEmpty(meta.TraceID),
+		IPAddress:    strPtrNonEmpty(meta.IP),
+		UserAgent:    strPtrNonEmpty(meta.UserAgent),
+		Metadata:     md,
+		Outcome:      outcome,
 	})
 }
 
@@ -184,17 +179,16 @@ func (s *Service) auditMFATOTPFailure(ctx context.Context, acct db.PlatformAuthA
 	md, _ := json.Marshal(map[string]any{"email": maskEmailForAudit(acct.Email), "reason": reason})
 	md = compliance.SanitizeJSONBytes(md)
 	_ = s.enterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: acct.OrganizationID,
-		ActorType:      compliance.ActorUser,
-		ActorID:        &sub,
-		Action:         compliance.ActionAuthLoginFailed,
-		ResourceType:   "auth.mfa",
-		ResourceID:     &sub,
-		RequestID:      strPtrNonEmpty(meta.RequestID),
-		TraceID:        strPtrNonEmpty(meta.TraceID),
-		IPAddress:      strPtrNonEmpty(meta.IP),
-		UserAgent:      strPtrNonEmpty(meta.UserAgent),
-		Metadata:       md,
-		Outcome:        compliance.OutcomeFailure,
+		ActorType:    compliance.ActorUser,
+		ActorID:      &sub,
+		Action:       compliance.ActionAuthLoginFailed,
+		ResourceType: "auth.mfa",
+		ResourceID:   &sub,
+		RequestID:    strPtrNonEmpty(meta.RequestID),
+		TraceID:      strPtrNonEmpty(meta.TraceID),
+		IPAddress:    strPtrNonEmpty(meta.IP),
+		UserAgent:    strPtrNonEmpty(meta.UserAgent),
+		Metadata:     md,
+		Outcome:      compliance.OutcomeFailure,
 	})
 }

@@ -76,13 +76,11 @@ else
   fi
   MID="$(e2e_jq_resp vm-claim -r '.machineId // empty')"
   MT="$(e2e_jq_resp vm-claim -r '.machineToken // empty')"
-  OID="$(e2e_jq_resp vm-claim -r '.organizationId // empty')"
   SID="$(e2e_jq_resp vm-claim -r '.siteId // empty')"
   [[ -n "$MID" ]] || { log_error "VM-REST-02: no machineId in claim response"; exit 2; }
   [[ -n "$MT" ]] || { log_error "VM-REST-02: no machineToken in claim response"; exit 2; }
   save_token machineToken "$MT"
   e2e_set_data machineId "$MID"
-  [[ -n "$OID" ]] && e2e_set_data organizationId "$OID"
   [[ -n "$SID" ]] && e2e_set_data siteId "$SID"
   export ADMIN_TOKEN="$MT"
   va_record "activation-claim" "POST /v1/setup/activation-codes/claim" "pass" "$code" "machineId=$MID"

@@ -19,7 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// OrgRepository implements org.OrganizationRepository using sqlc queries.
+// OrgRepository implements org.CompanyRepository using sqlc queries.
 type OrgRepository struct {
 	pool *pgxpool.Pool
 }
@@ -28,15 +28,11 @@ func NewOrgRepository(pool *pgxpool.Pool) *OrgRepository {
 	return &OrgRepository{pool: pool}
 }
 
-func (r *OrgRepository) GetByID(ctx context.Context, id uuid.UUID) (org.Organization, error) {
-	row, err := db.New(r.pool).GetOrganizationByID(ctx, id)
-	if err != nil {
-		return org.Organization{}, err
-	}
-	return mapOrganization(row), nil
+func (r *OrgRepository) GetByID(ctx context.Context, id uuid.UUID) (org.Company, error) {
+	return org.Company{ID: id, Status: "active"}, nil
 }
 
-var _ org.OrganizationRepository = (*OrgRepository)(nil)
+var _ org.CompanyRepository = (*OrgRepository)(nil)
 
 // SiteRepository implements org.SiteRepository using sqlc queries.
 type SiteRepository struct {
@@ -143,14 +139,13 @@ func NewAuditRepository(pool *pgxpool.Pool) *AuditRepository {
 
 func (r *AuditRepository) Record(ctx context.Context, in compliance.AuditRecord) (compliance.AuditLog, error) {
 	row, err := db.New(r.pool).InsertAuditLog(ctx, db.InsertAuditLogParams{
-		OrganizationID: in.OrganizationID,
-		ActorType:      in.ActorType,
-		ActorID:        in.ActorID,
-		Action:         in.Action,
-		ResourceType:   in.ResourceType,
-		ResourceID:     optionalUUIDToPg(in.ResourceID),
-		Payload:        in.Payload,
-		Ip:             optionalStringPtrToPgText(in.IP),
+		ActorType:    in.ActorType,
+		ActorID:      in.ActorID,
+		Action:       in.Action,
+		ResourceType: in.ResourceType,
+		ResourceID:   optionalUUIDToPg(in.ResourceID),
+		Payload:      in.Payload,
+		Ip:           optionalStringPtrToPgText(in.IP),
 	})
 	if err != nil {
 		return compliance.AuditLog{}, err
@@ -229,11 +224,11 @@ func truncateOutboxPublishErrMsg(s string) string {
 // RecordOutboxPublishFailure increments attempts and schedules the next try or dead-letters the row.
 func (r *OutboxRepository) RecordOutboxPublishFailure(ctx context.Context, rec reliability.OutboxPublishFailureRecord) error {
 	msg := truncateOutboxPublishErrMsg(rec.ErrorMessage)
-	return db.New(r.pool).RecordOutboxPublishFailure(ctx, db.RecordOutboxPublishFailureParams{
-		ID:               rec.EventID,
-		LastPublishError: pgtype.Text{String: msg, Valid: true},
-		NextPublishAfter: optionalTimeToPgTimestamptz(rec.NextPublishAfter),
+	return db.New(r.pool).RecordOutboxPublishFailure(ctx, db.RecordOutboxPublishFailureParams{LastPublishError: pgtype.Text{String: msg, Valid: true},
 		DeadLettered:     rec.DeadLettered,
+		NextPublishAfter: optionalTimeToPgTimestamptz(rec.NextPublishAfter),
+
+		ID: rec.EventID,
 	})
 }
 

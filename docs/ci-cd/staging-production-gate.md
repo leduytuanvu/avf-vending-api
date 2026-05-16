@@ -7,7 +7,7 @@
 
 **Deploy Production** (`.github/workflows/deploy-prod.yml`) defaults to a **strict** staging gate in `action_mode: deploy`: operators pass **`staging_evidence_id`** (the GitHub Actions run id of a successful *Staging Deployment Contract* run). The workflow downloads the `staging-release-evidence` artifact, checks `meets_production_staging_gate`, requires `deployment_mode: "real_staging"`, and matches **app/goose image digests** to the production image inputs (develop vs main build id may differ; digests are authoritative).
 
-A temporary organizational bypass exists: **`allow_missing_staging_evidence: true`** with a non-empty **`missing_staging_evidence_reason`**. The run emits warnings and records the bypass in the job summary and `production-deployment-manifest.json`.
+A temporary companyal bypass exists: **`allow_missing_staging_evidence: true`** with a non-empty **`missing_staging_evidence_reason`**. The run emits warnings and records the bypass in the job summary and `production-deployment-manifest.json`.
 
 **Offline contract checks** (run in PR CI): `bash scripts/ci/verify_workflow_contracts.sh` and `python tools/verify_github_workflow_cicd_contract.py` assert the staging artifact, deploy-prod inputs, and in-workflow validation logic remain present.
 

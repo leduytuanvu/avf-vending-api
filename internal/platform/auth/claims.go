@@ -12,7 +12,6 @@ import (
 type RawJWTClaims struct {
 	Sub            string          `json:"sub"`
 	Roles          []string        `json:"roles"`
-	OrgID          string          `json:"org_id"`
 	SiteID         string          `json:"site_id"`
 	MachineIDs     []string        `json:"machine_ids"`
 	MachineID      string          `json:"machine_id"`
@@ -71,10 +70,6 @@ func PrincipalFromJWTPayloadJSON(payloadJSON []byte, leeway time.Duration) (Prin
 	}
 	if p.Subject == "" {
 		return Principal{}, ErrUnauthenticated
-	}
-
-	if id, err := uuid.Parse(strings.TrimSpace(rc.OrgID)); err == nil {
-		p.OrganizationID = id
 	}
 	if id, err := uuid.Parse(strings.TrimSpace(rc.SiteID)); err == nil {
 		p.SiteID = id

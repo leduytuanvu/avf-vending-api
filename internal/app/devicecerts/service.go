@@ -32,7 +32,7 @@ func (s *Service) WithAudit(rec compliance.EnterpriseRecorder) *Service {
 }
 
 // Register inserts active certificate metadata for a machine (call after CA issued cert to device).
-func (s *Service) Register(ctx context.Context, organizationID, machineID uuid.UUID, cert *x509.Certificate, serial string) (db.MachineDeviceCertificate, error) {
+func (s *Service) Register(ctx context.Context, companyID, machineID uuid.UUID, cert *x509.Certificate, serial string) (db.MachineDeviceCertificate, error) {
 	if s == nil || s.q == nil || cert == nil {
 		return db.MachineDeviceCertificate{}, fmt.Errorf("devicecerts: invalid args")
 	}
@@ -43,7 +43,6 @@ func (s *Service) Register(ctx context.Context, organizationID, machineID uuid.U
 		issuer = pgtype.Text{String: cert.Issuer.String(), Valid: true}
 	}
 	row, err := s.q.DeviceCertificateInsert(ctx, db.DeviceCertificateInsertParams{
-		OrganizationID:    organizationID,
 		MachineID:         machineID,
 		FingerprintSha256: fp[:],
 		SerialNumber:      serial,
@@ -58,7 +57,7 @@ func (s *Service) Register(ctx context.Context, organizationID, machineID uuid.U
 	if err != nil {
 		return db.MachineDeviceCertificate{}, err
 	}
-	_ = s.recordAudit(ctx, organizationID, row.ID, compliance.ActionMachineDeviceCertRegistered, map[string]any{
+	_ = s.recordAudit(ctx, companyID, row.ID, compliance.ActionMachineDeviceCertRegistered, map[string]any{
 		"machine_id": machineID.String(),
 		"serial":     serial,
 		"not_after":  cert.NotAfter.UTC().Format("2006-01-02T15:04:05Z07:00"),
@@ -67,20 +66,19 @@ func (s *Service) Register(ctx context.Context, organizationID, machineID uuid.U
 }
 
 // Revoke marks a certificate inactive by fingerprint.
-func (s *Service) Revoke(ctx context.Context, organizationID uuid.UUID, cert *x509.Certificate, reason string) (int64, error) {
+func (s *Service) Revoke(ctx context.Context, companyID uuid.UUID, cert *x509.Certificate, reason string) (int64, error) {
 	if s == nil || s.q == nil || cert == nil {
 		return 0, fmt.Errorf("devicecerts: invalid args")
 	}
 	fp := sha256.Sum256(cert.Raw)
-	rows, err := s.q.DeviceCertificateRevokeByFingerprint(ctx, db.DeviceCertificateRevokeByFingerprintParams{
-		OrganizationID:    organizationID,
+	rows, err := s.q.DeviceCertificateRevokeByFingerprint(ctx, db.DeviceCertificateRevokeByFingerprintParams{RevokeReason: pgtype.Text{String: reason, Valid: reason != ""},
+
 		FingerprintSha256: fp[:],
-		RevokeReason:      pgtype.Text{String: reason, Valid: reason != ""},
 	})
 	if err != nil {
 		return 0, err
 	}
-	_ = s.recordAudit(ctx, organizationID, uuid.Nil, compliance.ActionMachineDeviceCertRevoked, map[string]any{
+	_ = s.recordAudit(ctx, companyID, uuid.Nil, compliance.ActionMachineDeviceCertRevoked, map[string]any{
 		"fingerprint_sha256": fmt.Sprintf("%x", fp[:]),
 		"reason":             reason,
 		"rows":               rows,
@@ -89,22 +87,21 @@ func (s *Service) Revoke(ctx context.Context, organizationID uuid.UUID, cert *x5
 }
 
 // Rotate registers a new active certificate and supersedes the previous row (by old cert id).
-func (s *Service) Rotate(ctx context.Context, organizationID, machineID, oldCertID uuid.UUID, oldCert, newCert *x509.Certificate, newSerial string) (db.MachineDeviceCertificate, error) {
+func (s *Service) Rotate(ctx context.Context, companyID, machineID, oldCertID uuid.UUID, oldCert, newCert *x509.Certificate, newSerial string) (db.MachineDeviceCertificate, error) {
 	if s == nil || s.q == nil || oldCert == nil || newCert == nil {
 		return db.MachineDeviceCertificate{}, fmt.Errorf("devicecerts: invalid args")
 	}
-	row, err := s.Register(ctx, organizationID, machineID, newCert, newSerial)
+	row, err := s.Register(ctx, companyID, machineID, newCert, newSerial)
 	if err != nil {
 		return db.MachineDeviceCertificate{}, err
 	}
-	if err := s.q.DeviceCertificateSupersede(ctx, db.DeviceCertificateSupersedeParams{
-		ID:             oldCertID,
-		OrganizationID: organizationID,
-		SupersededBy:   pgtype.UUID{Bytes: row.ID, Valid: true},
+	if err := s.q.DeviceCertificateSupersede(ctx, db.DeviceCertificateSupersedeParams{SupersededBy: pgtype.UUID{Bytes: row.ID, Valid: true},
+
+		ID: oldCertID,
 	}); err != nil {
 		return db.MachineDeviceCertificate{}, err
 	}
-	_ = s.recordAudit(ctx, organizationID, row.ID, compliance.ActionMachineDeviceCertRotated, map[string]any{
+	_ = s.recordAudit(ctx, companyID, row.ID, compliance.ActionMachineDeviceCertRotated, map[string]any{
 		"machine_id":      machineID.String(),
 		"old_cert_id":     oldCertID.String(),
 		"new_cert_id":     row.ID.String(),
@@ -130,7 +127,7 @@ func sanSummary(cert *x509.Certificate) []string {
 	return out
 }
 
-func (s *Service) recordAudit(ctx context.Context, organizationID, certID uuid.UUID, action string, metadata map[string]any) error {
+func (s *Service) recordAudit(ctx context.Context, companyID, certID uuid.UUID, action string, metadata map[string]any) error {
 	if s == nil || s.audit == nil {
 		return nil
 	}
@@ -141,13 +138,12 @@ func (s *Service) recordAudit(ctx context.Context, organizationID, certID uuid.U
 		resourceID = &v
 	}
 	return s.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: organizationID,
-		ActorType:      compliance.ActorService,
-		Action:         action,
-		ResourceType:   "machine_device_certificate",
-		ResourceID:     resourceID,
-		Metadata:       md,
-		Outcome:        compliance.OutcomeSuccess,
+		ActorType:    compliance.ActorService,
+		Action:       action,
+		ResourceType: "machine_device_certificate",
+		ResourceID:   resourceID,
+		Metadata:     md,
+		Outcome:      compliance.OutcomeSuccess,
 	})
 }
 

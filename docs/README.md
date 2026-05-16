@@ -45,7 +45,7 @@ Runtime-oriented package docs (see each `doc.go`): `internal/platform/mqtt`, `na
 - [CI/CD enterprise contract](operations/ci-cd-enterprise-contract.md) — what is enterprise-ready, what stays manual, evidence, and limitations.
 - [Load test harness](testing/load-test.md) — optional k6/grpcurl/MQTT scripts for 100/500/1000-machine readiness.
 - [Field readiness test cases](testing/field-test-cases.md) — manual rollout cases for Admin REST, machine gRPC, MQTT, telemetry, payments, and outbox.
-- [API surface security](runbooks/api-surface-security.md) — RBAC, tenant binding for machine URLs, metrics/Swagger exposure, device HTTP fallback vs MQTT.
+- [API surface security](runbooks/api-surface-security.md) — RBAC, company binding for machine URLs, metrics/Swagger exposure, device HTTP fallback vs MQTT.
 - [Enterprise API / backend / CI-CD audit report](runbooks/enterprise-api-backend-audit-report.md) — strict readiness verdicts (pilot vs 1000 machines), gaps, risks, release commands.
 - [Incident runbook](../ops/RUNBOOK.md) — operator sessions, outbox, NATS, reconciler, MQTT ingest; log fields and SQL.
 - [Metrics / signals](../ops/METRICS.md) — what Prometheus scrapes today vs log-based alerting.

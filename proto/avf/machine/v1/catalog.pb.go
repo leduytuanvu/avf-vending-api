@@ -217,7 +217,6 @@ func (x *GetCatalogSnapshotResponse) GetMeta() *MachineResponseMeta {
 type CatalogSnapshot struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	MachineId      string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId string                 `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	SiteId         string                 `protobuf:"bytes,3,opt,name=site_id,json=siteId,proto3" json:"site_id,omitempty"`
 	ConfigVersion  int64                  `protobuf:"varint,4,opt,name=config_version,json=configVersion,proto3" json:"config_version,omitempty"`
 	CatalogVersion string                 `protobuf:"bytes,5,opt,name=catalog_version,json=catalogVersion,proto3" json:"catalog_version,omitempty"`
@@ -261,13 +260,6 @@ func (*CatalogSnapshot) Descriptor() ([]byte, []int) {
 func (x *CatalogSnapshot) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *CatalogSnapshot) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -1201,11 +1193,10 @@ const file_avf_machine_v1_catalog_proto_rawDesc = "" +
 	"\x1aGetCatalogSnapshotResponse\x12!\n" +
 	"\fnot_modified\x18\x01 \x01(\bR\vnotModified\x12;\n" +
 	"\bsnapshot\x18\x02 \x01(\v2\x1f.avf.machine.v1.CatalogSnapshotR\bsnapshot\x127\n" +
-	"\x04meta\x18\x03 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\"\xd4\x02\n" +
+	"\x04meta\x18\x03 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\"\xab\x02\n" +
 	"\x0fCatalogSnapshot\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x17\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\asite_id\x18\x03 \x01(\tR\x06siteId\x12%\n" +
 	"\x0econfig_version\x18\x04 \x01(\x03R\rconfigVersion\x12'\n" +
 	"\x0fcatalog_version\x18\x05 \x01(\tR\x0ecatalogVersion\x12\x1a\n" +

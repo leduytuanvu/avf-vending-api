@@ -178,7 +178,7 @@ sequenceDiagram
 
   MA->>API: Machine JWT or HTTP machine scope
   API->>APP: bootstrap request
-  APP->>PG: load machine + org context
+  APP->>PG: load machine + company context
   APP-->>API: bootstrap DTO
   API-->>MA: bootstrap + next steps
 ```

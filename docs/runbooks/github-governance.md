@@ -6,7 +6,7 @@
 
 This runbook describes how to configure **Repository rulesets** (primary in this repo), **classic branch protection** (fallback), and **GitHub Environments** for the AVF vending backend so enterprise CI/CD matches repository contracts (`deploy-prod.yml`, `deploy-develop.yml`, `security-release.yml`, etc.).
 
-**Reality check:** `tools/verify_github_governance.py` can only **read** what the GitHub REST API exposes. It **lists active branch rulesets** via `GET /repos/.../rulesets` and verifies `main` and `develop` when an **active** ruleset’s `ref_name` conditions include those branches; if no such ruleset exists, it **falls back** to classic `GET /repos/.../branches/{branch}/protection`. The **repo owner (or org admin)** must use the **Settings** UI to apply the policies. When the token cannot read a surface, the API **404**s, or the payload omits fields, follow the checklists in this file and the manual block printed by the verifier.
+**Reality check:** `tools/verify_github_governance.py` can only **read** what the GitHub REST API exposes. It **lists active branch rulesets** via `GET /repos/.../rulesets` and verifies `main` and `develop` when an **active** ruleset’s `ref_name` conditions include those branches; if no such ruleset exists, it **falls back** to classic `GET /repos/.../branches/{branch}/protection`. The **repo owner (or admin)** must use the **Settings** UI to apply the policies. When the token cannot read a surface, the API **404**s, or the payload omits fields, follow the checklists in this file and the manual block printed by the verifier.
 
 **Run the verifier (same as CI wrapper):** `make verify-governance` or `bash scripts/ci/verify_github_governance.sh`
 

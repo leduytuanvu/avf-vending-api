@@ -52,17 +52,15 @@ e2e_append_test_event "$FLOW_ID" "publish-heartbeat" "MQTT" "${E2E_MQTT_TOPIC_TE
 mqtt_contract_record "$FLOW_ID" "verify-rest" "—" "skip" "partial_no_per_event_mqtt_read_api_documented"
 e2e_append_test_event "$FLOW_ID" "verify-ingest" "MQTT" "${E2E_MQTT_TOPIC_TELEMETRY}" "skipped" "partial_projection_async" "{}"
 log_observability_issue "P2" "$FLOW_ID" "31_mqtt_telemetry_publish.sh" "telemetry-verify" "MQTT" "${E2E_MQTT_TOPIC_TELEMETRY}" "Telemetry published but no documented admin/REST query for the same event_id in harness" "Cannot prove broker→backend path in automation" "Expose telemetry projection or tracing API keyed by dedupe_key/event_id" "${E2E_RUN_DIR}/mqtt/telemetry.publish.json"
-
-ORG="$(get_data organizationId)"
-if [[ -n "${ADMIN_TOKEN:-}" ]] && [[ -n "${ORG:-}" ]] && [[ "$ORG" != "null" ]]; then
-  code_h="$(e2e_http_request_json "GET" "mqtt-hint-health" "/v1/admin/organizations/${ORG}/machines/${MID}/health" "")"
+if [[ -n "${ADMIN_TOKEN:-}" ]]; then
+  code_h="$(e2e_http_request_json "GET" "mqtt-hint-health" "/v1/admin/machines/${MID}/health" "")"
   if [[ "$code_h" == "200" ]]; then
     mqtt_contract_record "$FLOW_ID" "hint-machine-health" "GET .../machines/{id}/health" "pass" "optional_freshness_signal"
   else
     mqtt_contract_record "$FLOW_ID" "hint-machine-health" "GET .../machines/{id}/health" "skip" "http_${code_h}"
   fi
 else
-  mqtt_contract_record "$FLOW_ID" "hint-machine-health" "—" "skip" "no_ADMIN_TOKEN_or_organizationId"
+  mqtt_contract_record "$FLOW_ID" "hint-machine-health" "—" "skip" "no_ADMIN_TOKEN"
 fi
 
 e2e_flow_review_scenario_complete "$FLOW_ID" "31_mqtt_telemetry_publish.sh" "flow-review-complete" "mqtt_telemetry_publish_reviewed"

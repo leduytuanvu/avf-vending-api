@@ -1,11 +1,11 @@
 # API surface security (enterprise checklist)
 
-Operational checklist for **auth**, **tenant isolation**, and **client-appropriate** use of HTTP endpoints. Pair with [API client classification](../api/api-client-classification.md).
+Operational checklist for **auth**, **company isolation**, and **client-appropriate** use of HTTP endpoints. Pair with [API client classification](../api/api-client-classification.md).
 
 ## 1. Intended clients vs routes
 
 - **Kiosk runtime** should use **`avf.machine.v1` gRPC** + Machine JWT for vend/commerce/telemetry/offline sync. **Do not** rely on `/v1/machines/{machineId}/*` HTTP in production (`ENABLE_LEGACY_MACHINE_HTTP` defaults **off** when `APP_ENV=production`).
-- **Admin portal** uses `platform_admin` / `org_admin` for `/v1/admin/*`, `/v1/reports/*`, and **fleet command dispatch** (`POST /v1/machines/{machineId}/commands/dispatch` — MQTT-backed; not gated as legacy vending HTTP).
+- **Admin portal** uses `platform_admin` / `admin` for `/v1/admin/*`, `/v1/reports/*`, and **fleet command dispatch** (`POST /v1/machines/{machineId}/commands/dispatch` — MQTT-backed; not gated as legacy vending HTTP).
 - **Technician setup** historically used HTTP bootstrap; production should align with gRPC + admin flows. Legacy HTTP setup/catalog/device bridge registers only when **`ENABLE_LEGACY_MACHINE_HTTP=true`**.
 - **Payment providers** use **only** the HMAC-verified webhook route (no Bearer JWT).
 
@@ -15,23 +15,23 @@ Registration lives primarily in `internal/httpserver/server.go`:
 
 - **`/v1/admin/*`** — interactive **User JWT** (`auth.BearerAccessTokenMiddlewareWithValidator`), `RequireInteractiveAccountActive`, `RequireDenyMachinePrincipal`, mutation rate limits, then **per-namespace** middleware such as **`auth.RequireAnyPermission(...)`**, occasionally **`RequireAnyRole(RolePlatformAdmin)`** for platform-only tooling (system outbox, retention).
 - **`/v1/reports/*`** — `RequireDenyMachinePrincipal`, then `RequireAnyPermission(auth.PermReportsRead)`, plus bounded report windows.
-- `/v1/commerce/*` (except public webhook) — Bearer JWT + `RequireOrganizationScope`.
-- `/v1/device/machines/{machineId}/*` — Bearer JWT + `RequireMachineURLAccess` + **`RequireAnyRole(platform_admin, org_admin)`** today (`internal/httpserver/device_http.go`). **Hardening:** add `CanAccessHTTPDeviceBridge`-style policy so machine-scoped JWTs with `machine_ids` may call the bridge without org-admin role, still subject to tenant binding middleware in §3.
+- `/v1/commerce/*` (except public webhook) — Bearer JWT + `RequireCompanyScope`.
+- `/v1/device/machines/{machineId}/*` — Bearer JWT + `RequireMachineURLAccess` + **`RequireAnyRole(platform_admin, admin)`** today (`internal/httpserver/device_http.go`). **Hardening:** add `CanAccessHTTPDeviceBridge`-style policy so machine-scoped JWTs with `machine_ids` may call the bridge without org-admin role, still subject to company binding middleware in §3.
 - `/metrics` on the **main** HTTP server — in **production** usually **not mounted** (404) when metrics are **ops-only**; optional **`METRICS_EXPOSE_ON_PUBLIC_HTTP`** with token + operator allow flags. Prefer **`HTTP_OPS_ADDR/metrics`** (see `internal/observability/ops_http.go`).
 - `/swagger/*` — OpenAPI JSON (`/swagger/doc.json`) and Swagger UI mount only when their respective env flags (and production allow flags) enable them; defaults are fail-closed in production. `/v1/*` still requires Bearer JWT except explicitly public routes (e.g. commerce webhook).
 
-## 3. Tenant isolation for machine URLs
+## 3. Company isolation for machine URLs
 
-**Issue (historical):** `CanAccessMachineRead` allowed any `org_admin` with an org claim to pass the **HTTP** machine-URL check for **arbitrary** `machineId` UUIDs before the handler ran; some read handlers (e.g. machine shadow) did not re-check `machines.organization_id`.
+**Issue (historical):** `CanAccessMachineRead` allowed any `admin` with an org claim to pass the **HTTP** machine-URL check for **arbitrary** `machineId` UUIDs before the handler ran; some read handlers (e.g. machine shadow) did not re-check `machines.company_id`.
 
-**Hardening (recommended in code):** after Bearer auth, resolve `machines.organization_id` for the path `machineId` and enforce `AuthorizePrincipalForMachineRow` (see `internal/platform/auth/machine_access.go` when implemented) on:
+**Hardening (recommended in code):** after Bearer auth, resolve `machines.company_id` for the path `machineId` and enforce `AuthorizePrincipalForMachineRow` (see `internal/platform/auth/machine_access.go` when implemented) on:
 
 - `GET /v1/machines/{machineId}/shadow`
 - Telemetry GETs under `/v1/machines/{machineId}/telemetry/*`
 - Operator-session routes and setup bootstrap
 - Machine runtime POSTs
 
-**Implementation sketch:** middleware in `internal/httpserver` using `app.TelemetryStore.Pool()` + `GetMachineByID` (sqlc). When `TelemetryStore` is nil (incomplete test doubles), decide explicitly: fail closed for org-scoped principals or skip only in tests.
+**Implementation sketch:** middleware in `internal/httpserver` using `app.TelemetryStore.Pool()` + `GetMachineByID` (sqlc). When `TelemetryStore` is nil (incomplete test doubles), decide explicitly: fail closed for role-scoped principals or skip only in tests.
 
 ## 4. Device HTTP fallback (legacy)
 
@@ -63,7 +63,7 @@ Registration lives primarily in `internal/httpserver/server.go`:
 
 The following are **not** fully implemented as code in the same pass as the markdown docs; apply in the repo when edits are permitted:
 
-1. **Tenant-bound machine middleware** — After `RequireMachineURLAccess`, resolve `machines.organization_id` and call `AuthorizePrincipalForMachineRow` for shadow, telemetry, setup bootstrap, operator-session groups, and machine runtime POSTs.
-2. **Device bridge actor** — Replace `RequireAnyRole(platform_admin, org_admin)`-only policy on `/v1/device/...` with `RequireHTTPDeviceBridgeAccess` (admins **or** `machine_ids` allow-list for the path machine).
+1. **Company-bound machine middleware** — After `RequireMachineURLAccess`, resolve `machines.company_id` and call `AuthorizePrincipalForMachineRow` for shadow, telemetry, setup bootstrap, operator-session groups, and machine runtime POSTs.
+2. **Device bridge actor** — Replace `RequireAnyRole(platform_admin, admin)`-only policy on `/v1/device/...` with `RequireHTTPDeviceBridgeAccess` (admins **or** `machine_ids` allow-list for the path machine).
 3. **OpenAPI** — Enrich `DocOp*` descriptions for `commands/poll` (HTTP fallback, MQTT primary) and telemetry routes (projection only, not MQTT firehose). Optionally extend `tools/build_openapi.py` tag blurbs for **Admin** vs **Fleet** vs **Device**.
 4. **Tests** (`internal/httpserver/*_test.go`) — Configurable JWT stub validator returning principals: machine-scoped token → `GET /v1/admin/machines` → **403**; org A admin → `GET /v1/machines/{orgB_machine}/shadow` → **403** (with DB middleware); webhook unsigned → **401** (existing); Swagger enabled → `GET /swagger/index.html` **200**; no `Authorization` on `/v1/machines/.../shadow` → **401**.

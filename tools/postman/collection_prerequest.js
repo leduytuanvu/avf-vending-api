@@ -71,6 +71,28 @@ if (isWrite && isProd) {
     );
   }
 }
+const isLocalDev =
+  appEnv === "development" ||
+  /localhost/.test(base) ||
+  /127\.0\.0\.1/.test(base);
+if (isWrite && isLocalDev && method === "POST") {
+  let urlStr = "";
+  try {
+    urlStr = pm.request.url.toString();
+  } catch (e) {
+    urlStr = String(pm.request.url || "");
+  }
+  const u = urlStr.replace(/\\/g, "/").toLowerCase();
+  if (u.includes("/v1/admin/sites") && !/\/v1\/admin\/sites\//.test(u)) {
+    const ad = pm.environment.get("allow_destructive");
+    const cm = pm.environment.get("canaryMode");
+    if (ad !== "true" && cm !== "true") {
+      throw new Error(
+        "postman-avf: local POST /v1/admin/sites requires allow_destructive=true or canaryMode=true",
+      );
+    }
+  }
+}
 const mode = (
   pm.environment.get("auth_type") ||
   pm.collectionVariables.get("auth_type") ||

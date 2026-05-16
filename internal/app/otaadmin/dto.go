@@ -9,18 +9,16 @@ import (
 
 // CampaignListParams filters GET /v1/admin/ota/campaigns.
 type CampaignListParams struct {
-	OrganizationID uuid.UUID
-	Limit          int32
-	Offset         int32
-	Status         string
-	From           *time.Time
-	To             *time.Time
+	Limit  int32
+	Offset int32
+	Status string
+	From   *time.Time
+	To     *time.Time
 }
 
 // CampaignListItem is one campaign row for list APIs.
 type CampaignListItem struct {
 	CampaignID         string     `json:"campaignId"`
-	OrganizationID     string     `json:"organizationId"`
 	Name               string     `json:"name"`
 	RolloutStrategy    string     `json:"rolloutStrategy"`
 	Status             string     `json:"status"`
@@ -45,7 +43,6 @@ type CampaignListResponse struct {
 
 // CreateCampaignInput binds POST /v1/admin/ota/campaigns.
 type CreateCampaignInput struct {
-	OrganizationID     uuid.UUID
 	Name               string
 	ArtifactID         uuid.UUID
 	ArtifactVersion    *string
@@ -68,9 +65,8 @@ type PatchCampaignInput struct {
 
 // PutTargetsInput replaces all targets (draft/approved only).
 type PutTargetsInput struct {
-	OrganizationID uuid.UUID
-	CampaignID     uuid.UUID
-	MachineIDs     []uuid.UUID
+	CampaignID uuid.UUID
+	MachineIDs []uuid.UUID
 }
 
 // CampaignDetail is the full campaign payload for GET / PATCH / lifecycle mutations.

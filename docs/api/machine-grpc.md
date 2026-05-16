@@ -56,11 +56,11 @@ Machine JWT validation runs in the unary interceptor before handlers: signature,
 
 Postgres gates enforce **`machines.credential_version`** plus operational **`machines.status`**. Rows in **`suspended`**, **`compromised`**, **`retired`**, **`decommissioned`**, or **`maintenance`** (and related lifecycle states not in the allow-list) fail closed so kiosk authentication cannot succeed until admins resume/repair the machine through fleet APIs. Pre-service states such as **`draft`**, **`provisioned`**, **`provisioning`**, **`online`**, and **`offline`** are accepted by the credential gate when not combined with a blocking condition above.
 
-Access tokens include **`credential_version`** (alias **`token_version`** for backward compatibility), **`session_id`** when issued after activation or refresh, **`jti`**, `iss`, `aud`, `organization_id`, `machine_id`, and role **`machine`**. When **`session_id`** is present, the credential checker validates the **`machine_sessions`** row (active, unexpired, matching credential and machine state). Tokens without **`session_id`** use the legacy gate until clients roll forward.
+Access tokens include **`credential_version`** (alias **`token_version`** for backward compatibility), **`session_id`** when issued after activation or refresh, **`jti`**, `iss`, `aud`, `company_id`, `machine_id`, and role **`machine`**. When **`session_id`** is present, the credential checker validates the **`machine_sessions`** row (active, unexpired, matching credential and machine state). Tokens without **`session_id`** use the legacy gate until clients roll forward.
 
 Admin JWTs must not be accepted as Machine JWTs (`token_use`, `typ`, audience, and role checks).
 
-Request `machine_id` / `organization_id` fields (including nested `MachineRequestMeta`) must match the token or the call returns **`PermissionDenied`**.
+Request `machine_id` / `company_id` fields (including nested `MachineRequestMeta`) must match the token or the call returns **`PermissionDenied`**.
 
 ## Backend-owned card / QR payment sessions (`CreatePaymentSession`)
 
@@ -68,7 +68,7 @@ Request `machine_id` / `organization_id` fields (including nested `MachineReques
 
 ## Common envelopes
 
-- **`MachineRequestMeta`**: `organization_id`, `machine_id`, `request_id`, `idempotency_key`, `occurred_at`, `client_sequence`, `offline_sequence`, `app_version`, `config_version`, `catalog_version`, `client_event_id`.
+- **`MachineRequestMeta`**: `company_id`, `machine_id`, `request_id`, `idempotency_key`, `occurred_at`, `client_sequence`, `offline_sequence`, `app_version`, `config_version`, `catalog_version`, `client_event_id`.
 - **`IdempotencyContext`** (mutations): `idempotency_key`, `client_event_id`, `client_created_at`, optional `operator_session_id`.
 - **`MachineResponseMeta`**: `server_time`, `trace_id`, `request_id`, `status`, **`retryable`**, **`error_code`** (set where applicable).
 

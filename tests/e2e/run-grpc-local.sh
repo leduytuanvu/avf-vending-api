@@ -63,6 +63,28 @@ if [[ "${E2E_IN_PARENT:-0}" != "1" ]]; then
   fi
 fi
 
+# ClaimActivation (scenario 20) needs an activation code in secrets/test-data unless MACHINE_TOKEN is already present.
+if [[ "${E2E_IN_PARENT:-0}" != "1" ]]; then
+  _grpc_mt="$(get_secret machineToken 2>/dev/null || true)"
+  _grpc_ac="$(get_secret activationCodePlain 2>/dev/null || true)"
+  [[ "${_grpc_ac}" == "null" ]] && _grpc_ac=""
+  if [[ -z "${_grpc_mt:-}" ]] && [[ -z "${_grpc_ac}" ]] && [[ -z "${E2E_ACTIVATION_CODE:-}" ]]; then
+    log_info "grpc-local: machine token + activation code unset; running scenarios/01_web_admin_setup.sh"
+    if ! bash "${SCRIPT_DIR}/scenarios/01_web_admin_setup.sh"; then
+      log_error "grpc-local: web admin setup failed (needed for machine gRPC auth)"
+      start_step "grpc-local-suite"
+      end_step failed "gRPC prerequisites (activation / machine)"
+      ec=1
+      # shellcheck source=lib/e2e_report.sh
+      source "${SCRIPT_DIR}/lib/e2e_report.sh"
+      e2e_finalize_reports "${ec}"
+      fr=$?
+      [[ "${fr}" -ne 0 ]] && ec="${fr}"
+      exit "${ec}"
+    fi
+  fi
+fi
+
 [[ "${E2E_IN_PARENT:-0}" == "1" ]] || cleanup_trap_register
 
 start_step "grpc-local-suite"

@@ -51,7 +51,6 @@ func NewService(pool *pgxpool.Pool, issuer *plauth.SessionIssuer, pepper []byte,
 // CreateInput is an admin create request.
 type CreateInput struct {
 	MachineID        uuid.UUID
-	OrganizationID   uuid.UUID
 	ExpiresInMinutes int32
 	MaxUses          int32
 	Notes            string
@@ -70,8 +69,8 @@ type CreateResult struct {
 
 // CreateCode generates and stores a hashed activation code.
 func (s *Service) CreateCode(ctx context.Context, in CreateInput) (CreateResult, error) {
-	if in.MachineID == uuid.Nil || in.OrganizationID == uuid.Nil {
-		return CreateResult{}, fmt.Errorf("activation: machine and organization required")
+	if in.MachineID == uuid.Nil {
+		return CreateResult{}, fmt.Errorf("activation: machine required")
 	}
 	if in.ExpiresInMinutes <= 0 {
 		in.ExpiresInMinutes = 1440
@@ -90,14 +89,13 @@ func (s *Service) CreateCode(ctx context.Context, in CreateInput) (CreateResult,
 		notes = pgtype.Text{String: strings.TrimSpace(in.Notes), Valid: true}
 	}
 	row, err := db.New(s.pool).InsertMachineActivationCode(ctx, db.InsertMachineActivationCodeParams{
-		MachineID:      in.MachineID,
-		OrganizationID: in.OrganizationID,
-		CodeHash:       hash,
-		MaxUses:        in.MaxUses,
-		Uses:           0,
-		ExpiresAt:      exp,
-		Notes:          notes,
-		Status:         "active",
+		MachineID: in.MachineID,
+		CodeHash:  hash,
+		MaxUses:   in.MaxUses,
+		Uses:      0,
+		ExpiresAt: exp,
+		Notes:     notes,
+		Status:    "active",
 	})
 	if err != nil {
 		return CreateResult{}, err
@@ -126,17 +124,14 @@ type ListRow struct {
 	CreatedAt     time.Time
 }
 
-// ListCodes returns activation rows for a machine (admin; org must match).
-func (s *Service) ListCodes(ctx context.Context, machineID, organizationID uuid.UUID) ([]ListRow, error) {
-	mOrg, err := db.New(s.pool).GetMachineOrganizationID(ctx, machineID)
+// ListCodes returns activation rows for a machine.
+func (s *Service) ListCodes(ctx context.Context, machineID uuid.UUID) ([]ListRow, error) {
+	_, err := db.New(s.pool).GetMachineByID(ctx, machineID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ErrNotFound
 		}
 		return nil, err
-	}
-	if mOrg != organizationID {
-		return nil, ErrUnauthorized
 	}
 	rows, err := db.New(s.pool).ListMachineActivationCodesForMachine(ctx, machineID)
 	if err != nil {
@@ -172,11 +167,10 @@ func (s *Service) ListCodes(ctx context.Context, machineID, organizationID uuid.
 }
 
 // RevokeCode marks a code revoked.
-func (s *Service) RevokeCode(ctx context.Context, machineID, organizationID, codeID uuid.UUID) error {
+func (s *Service) RevokeCode(ctx context.Context, machineID, codeID uuid.UUID) error {
 	_, err := db.New(s.pool).RevokeMachineActivationCode(ctx, db.RevokeMachineActivationCodeParams{
-		ID:             codeID,
-		MachineID:      machineID,
-		OrganizationID: organizationID,
+		ID:        codeID,
+		MachineID: machineID,
 	})
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -187,11 +181,8 @@ func (s *Service) RevokeCode(ctx context.Context, machineID, organizationID, cod
 	return nil
 }
 
-// ListCodesForOrganization returns activation rows for an organization (admin list).
-func (s *Service) ListCodesForOrganization(ctx context.Context, organizationID uuid.UUID, limit, offset int32) ([]ListRow, int64, error) {
-	if organizationID == uuid.Nil {
-		return nil, 0, fmt.Errorf("activation: organization required")
-	}
+// ListAllCodes returns activation rows for the single-company admin list.
+func (s *Service) ListAllCodes(ctx context.Context, limit, offset int32) ([]ListRow, int64, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -202,14 +193,13 @@ func (s *Service) ListCodesForOrganization(ctx context.Context, organizationID u
 		offset = 0
 	}
 	q := db.New(s.pool)
-	total, err := q.CountMachineActivationCodesForOrganization(ctx, organizationID)
+	total, err := q.CountMachineActivationCodesForScope(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := q.ListMachineActivationCodesForOrganization(ctx, db.ListMachineActivationCodesForOrganizationParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-		Offset:         offset,
+	rows, err := q.ListMachineActivationCodesForScope(ctx, db.ListMachineActivationCodesForScopeParams{
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -243,12 +233,9 @@ func (s *Service) ListCodesForOrganization(ctx context.Context, organizationID u
 	return out, total, nil
 }
 
-// RevokeCodeForOrganization revokes a code by id scoped to organization (no machine id in path).
-func (s *Service) RevokeCodeForOrganization(ctx context.Context, organizationID, codeID uuid.UUID) error {
-	_, err := db.New(s.pool).RevokeMachineActivationCodeForOrganization(ctx, db.RevokeMachineActivationCodeForOrganizationParams{
-		ID:             codeID,
-		OrganizationID: organizationID,
-	})
+// RevokeCodeByID revokes a code by id.
+func (s *Service) RevokeCodeByID(ctx context.Context, codeID uuid.UUID) error {
+	_, err := db.New(s.pool).RevokeMachineActivationCodeForScope(ctx, codeID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return ErrNotFound
@@ -281,7 +268,6 @@ type ClaimInput struct {
 // ClaimResult is returned on successful claim (and idempotent replay).
 type ClaimResult struct {
 	MachineID         uuid.UUID
-	OrganizationID    uuid.UUID
 	SiteID            uuid.UUID
 	MachineName       string
 	MachineToken      string
@@ -323,7 +309,7 @@ func machineEligibleForClaim(m db.Machine) bool {
 	return true
 }
 
-func (s *Service) ensureActiveMachineCredential(ctx context.Context, q *db.Queries, orgID, machineID uuid.UUID, ver int64) (db.MachineCredential, error) {
+func (s *Service) ensureActiveMachineCredential(ctx context.Context, q *db.Queries, scopeID, machineID uuid.UUID, ver int64) (db.MachineCredential, error) {
 	row, err := q.GetMachineCredentialByMachineAndVersion(ctx, db.GetMachineCredentialByMachineAndVersionParams{
 		MachineID:         machineID,
 		CredentialVersion: ver,
@@ -340,7 +326,6 @@ func (s *Service) ensureActiveMachineCredential(ctx context.Context, q *db.Queri
 		return db.MachineCredential{}, err
 	}
 	return q.InsertMachineCredential(ctx, db.InsertMachineCredentialParams{
-		OrganizationID:    orgID,
 		MachineID:         machineID,
 		CredentialVersion: ver,
 		SecretHash:        nil,
@@ -349,7 +334,7 @@ func (s *Service) ensureActiveMachineCredential(ctx context.Context, q *db.Queri
 }
 
 // provisionMachineRefreshSession ensures there is an active refresh session; returns plaintext refresh (empty on idempotent replay when a session already exists), expiry, and session id for JWT binding.
-func (s *Service) provisionMachineRefreshSession(ctx context.Context, q *db.Queries, machineID, orgID uuid.UUID, m db.Machine, cred db.MachineCredential) (plainRefresh string, refreshExp time.Time, sessionID uuid.UUID, err error) {
+func (s *Service) provisionMachineRefreshSession(ctx context.Context, q *db.Queries, machineID, scopeID uuid.UUID, m db.Machine, cred db.MachineCredential) (plainRefresh string, refreshExp time.Time, sessionID uuid.UUID, err error) {
 	has, err := q.HasActiveMachineSession(ctx, machineID)
 	if err != nil {
 		return "", time.Time{}, uuid.Nil, err
@@ -368,7 +353,6 @@ func (s *Service) provisionMachineRefreshSession(ctx context.Context, q *db.Quer
 	refreshJTI := uuid.NewString()
 	exp := time.Now().UTC().Add(s.refreshTTL())
 	sess, err := q.InsertMachineSession(ctx, db.InsertMachineSessionParams{
-		OrganizationID:    orgID,
 		MachineID:         machineID,
 		CredentialID:      cred.ID,
 		RefreshTokenHash:  hash,
@@ -386,8 +370,8 @@ func (s *Service) provisionMachineRefreshSession(ctx context.Context, q *db.Quer
 	return raw, exp, sess.ID, nil
 }
 
-func (s *Service) recordActivationRejectedAudit(ctx context.Context, orgID, machineID uuid.UUID, meta map[string]any) {
-	if s == nil || s.audit == nil || orgID == uuid.Nil {
+func (s *Service) recordActivationRejectedAudit(ctx context.Context, scopeID, machineID uuid.UUID, meta map[string]any) {
+	if s == nil || s.audit == nil || scopeID == uuid.Nil {
 		return
 	}
 	md, _ := json.Marshal(meta)
@@ -396,18 +380,17 @@ func (s *Service) recordActivationRejectedAudit(ctx context.Context, orgID, mach
 	}
 	mid := machineID.String()
 	_ = s.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: orgID,
-		ActorType:      compliance.ActorMachine,
-		ActorID:        &mid,
-		Action:         compliance.ActionMachineActivationRejected,
-		ResourceType:   "machine_activation_code",
-		ResourceID:     &mid,
-		Metadata:       md,
+		ActorType:    compliance.ActorMachine,
+		ActorID:      &mid,
+		Action:       compliance.ActionMachineActivationRejected,
+		ResourceType: "machine_activation_code",
+		ResourceID:   &mid,
+		Metadata:     md,
 	})
 }
 
-func (s *Service) recordRefreshFailureAudit(ctx context.Context, orgID uuid.UUID, machineID uuid.UUID, reason string) {
-	if s == nil || s.audit == nil || orgID == uuid.Nil {
+func (s *Service) recordRefreshFailureAudit(ctx context.Context, scopeID uuid.UUID, machineID uuid.UUID, reason string) {
+	if s == nil || s.audit == nil || scopeID == uuid.Nil {
 		return
 	}
 	var actorID *string
@@ -419,13 +402,12 @@ func (s *Service) recordRefreshFailureAudit(ctx context.Context, orgID uuid.UUID
 	}
 	md, _ := json.Marshal(map[string]any{"reason": reason})
 	_ = s.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: orgID,
-		ActorType:      compliance.ActorMachine,
-		ActorID:        actorID,
-		Action:         compliance.ActionMachineAuthFailed,
-		ResourceType:   "machine",
-		ResourceID:     resourceID,
-		Metadata:       md,
+		ActorType:    compliance.ActorMachine,
+		ActorID:      actorID,
+		Action:       compliance.ActionMachineAuthFailed,
+		ResourceType: "machine",
+		ResourceID:   resourceID,
+		Metadata:     md,
 	})
 }
 
@@ -438,15 +420,15 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 	if !machineEligibleForClaim(m) {
 		return ClaimResult{}, ErrMachineNotEligible
 	}
-	cred, err := s.ensureActiveMachineCredential(ctx, qtx, row.OrganizationID, row.MachineID, m.CredentialVersion)
+	cred, err := s.ensureActiveMachineCredential(ctx, qtx, uuid.Nil, row.MachineID, m.CredentialVersion)
 	if err != nil {
 		return ClaimResult{}, err
 	}
-	plainRefresh, refreshExp, sessionID, err := s.provisionMachineRefreshSession(ctx, qtx, row.MachineID, row.OrganizationID, m, cred)
+	plainRefresh, refreshExp, sessionID, err := s.provisionMachineRefreshSession(ctx, qtx, row.MachineID, uuid.Nil, m, cred)
 	if err != nil {
 		return ClaimResult{}, err
 	}
-	tok, exp, err := s.issuer.IssueMachineAccessJWT(row.MachineID, row.OrganizationID, m.SiteID, m.CredentialVersion, sessionID)
+	tok, exp, err := s.issuer.IssueMachineAccessJWT(row.MachineID, m.SiteID, m.CredentialVersion, sessionID)
 	if err != nil {
 		return ClaimResult{}, err
 	}
@@ -469,15 +451,14 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 	}
 	if s.audit != nil {
 		if err := s.audit.RecordCriticalTx(ctx, tx, compliance.EnterpriseAuditRecord{
-			OrganizationID: row.OrganizationID,
-			ActorType:      compliance.ActorMachine,
-			ActorID:        &actorStr,
-			Action:         compliance.ActionMachineActivationClaimed,
-			ResourceType:   "machine",
-			ResourceID:     &actorStr,
-			MachineID:      &mid,
-			SiteID:         sitePtr,
-			Metadata:       md,
+			ActorType:    compliance.ActorMachine,
+			ActorID:      &actorStr,
+			Action:       compliance.ActionMachineActivationClaimed,
+			ResourceType: "machine",
+			ResourceID:   &actorStr,
+			MachineID:    &mid,
+			SiteID:       sitePtr,
+			Metadata:     md,
 		}); err != nil {
 			return ClaimResult{}, err
 		}
@@ -487,7 +468,6 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 	}
 	return ClaimResult{
 		MachineID:         row.MachineID,
-		OrganizationID:    row.OrganizationID,
 		SiteID:            m.SiteID,
 		MachineName:       m.Name,
 		MachineToken:      tok,
@@ -559,7 +539,6 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 	if nSucc >= int64(row.MaxUses) {
 		if _, ierr := qtx.InsertMachineActivationClaim(ctx, db.InsertMachineActivationClaimParams{
 			ActivationCodeID: row.ID,
-			OrganizationID:   row.OrganizationID,
 			MachineID:        row.MachineID,
 			FingerprintHash:  fpHash[:],
 			IpAddress:        ip,
@@ -572,7 +551,7 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 		if err := tx.Commit(ctx); err != nil {
 			return ClaimResult{}, err
 		}
-		s.recordActivationRejectedAudit(ctx, row.OrganizationID, row.MachineID, map[string]any{
+		s.recordActivationRejectedAudit(ctx, uuid.Nil, row.MachineID, map[string]any{
 			"reason":                "max_uses_exhausted",
 			"activation_code_id":    row.ID.String(),
 			"succeeded_claim_count": nSucc,
@@ -588,7 +567,6 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 	if !machineEligibleForClaim(m) {
 		if _, ierr := qtx.InsertMachineActivationClaim(ctx, db.InsertMachineActivationClaimParams{
 			ActivationCodeID: row.ID,
-			OrganizationID:   row.OrganizationID,
 			MachineID:        row.MachineID,
 			FingerprintHash:  fpHash[:],
 			IpAddress:        ip,
@@ -601,7 +579,7 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 		if err := tx.Commit(ctx); err != nil {
 			return ClaimResult{}, err
 		}
-		s.recordActivationRejectedAudit(ctx, row.OrganizationID, row.MachineID, map[string]any{
+		s.recordActivationRejectedAudit(ctx, uuid.Nil, row.MachineID, map[string]any{
 			"reason":             "machine_not_eligible",
 			"activation_code_id": row.ID.String(),
 		})
@@ -610,7 +588,6 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 
 	if _, err := qtx.InsertMachineActivationClaim(ctx, db.InsertMachineActivationClaimParams{
 		ActivationCodeID: row.ID,
-		OrganizationID:   row.OrganizationID,
 		MachineID:        row.MachineID,
 		FingerprintHash:  fpHash[:],
 		IpAddress:        ip,
@@ -661,12 +638,12 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 		return ClaimResult{}, err
 	}
 	if sess.Status != "active" || sess.RevokedAt.Valid {
-		s.recordRefreshFailureAudit(ctx, sess.OrganizationID, sess.MachineID, "session_revoked")
+		s.recordRefreshFailureAudit(ctx, uuid.Nil, sess.MachineID, "session_revoked")
 		return ClaimResult{}, ErrRefreshInvalid
 	}
 	now := time.Now().UTC()
 	if !sess.ExpiresAt.After(now) {
-		s.recordRefreshFailureAudit(ctx, sess.OrganizationID, sess.MachineID, "session_expired")
+		s.recordRefreshFailureAudit(ctx, uuid.Nil, sess.MachineID, "session_expired")
 		return ClaimResult{}, ErrRefreshInvalid
 	}
 	if err := qtx.MarkMachineSessionUsedByID(ctx, sess.ID); err != nil {
@@ -675,21 +652,21 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 	m, err := qtx.GetMachineByIDForUpdate(ctx, sess.MachineID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			s.recordRefreshFailureAudit(ctx, sess.OrganizationID, sess.MachineID, "machine_missing")
+			s.recordRefreshFailureAudit(ctx, uuid.Nil, sess.MachineID, "machine_missing")
 			return ClaimResult{}, ErrRefreshInvalid
 		}
 		return ClaimResult{}, err
 	}
-	if m.OrganizationID != sess.OrganizationID {
-		s.recordRefreshFailureAudit(ctx, sess.OrganizationID, sess.MachineID, "organization_mismatch")
+	if uuid.Nil != uuid.Nil {
+		s.recordRefreshFailureAudit(ctx, uuid.Nil, sess.MachineID, "scope_mismatch")
 		return ClaimResult{}, ErrRefreshInvalid
 	}
 	if !machineEligibleForClaim(m) {
-		s.recordRefreshFailureAudit(ctx, m.OrganizationID, m.ID, "machine_ineligible")
+		s.recordRefreshFailureAudit(ctx, uuid.Nil, m.ID, "machine_ineligible")
 		return ClaimResult{}, ErrMachineNotEligible
 	}
 	if m.CredentialVersion != sess.CredentialVersion {
-		s.recordRefreshFailureAudit(ctx, m.OrganizationID, m.ID, "credential_version_stale")
+		s.recordRefreshFailureAudit(ctx, uuid.Nil, m.ID, "credential_version_stale")
 		return ClaimResult{}, ErrRefreshInvalid
 	}
 	cred, err := qtx.GetMachineCredentialByMachineAndVersion(ctx, db.GetMachineCredentialByMachineAndVersionParams{
@@ -698,17 +675,17 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 	})
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			s.recordRefreshFailureAudit(ctx, m.OrganizationID, m.ID, "credential_missing")
+			s.recordRefreshFailureAudit(ctx, uuid.Nil, m.ID, "credential_missing")
 			return ClaimResult{}, ErrRefreshInvalid
 		}
 		return ClaimResult{}, err
 	}
 	if strings.ToLower(strings.TrimSpace(cred.Status)) != "active" {
-		s.recordRefreshFailureAudit(ctx, m.OrganizationID, m.ID, "credential_inactive")
+		s.recordRefreshFailureAudit(ctx, uuid.Nil, m.ID, "credential_inactive")
 		return ClaimResult{}, ErrRefreshInvalid
 	}
 	if cred.ID != sess.CredentialID {
-		s.recordRefreshFailureAudit(ctx, m.OrganizationID, m.ID, "credential_id_mismatch")
+		s.recordRefreshFailureAudit(ctx, uuid.Nil, m.ID, "credential_id_mismatch")
 		return ClaimResult{}, ErrRefreshInvalid
 	}
 	if err := qtx.RevokeMachineSessionByID(ctx, sess.ID); err != nil {
@@ -720,7 +697,6 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 	}
 	rexp := time.Now().UTC().Add(s.refreshTTL())
 	newSess, err := qtx.InsertMachineSession(ctx, db.InsertMachineSessionParams{
-		OrganizationID:    m.OrganizationID,
 		MachineID:         m.ID,
 		CredentialID:      cred.ID,
 		RefreshTokenHash:  newHash,
@@ -735,7 +711,7 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 	if err != nil {
 		return ClaimResult{}, err
 	}
-	tok, exp, err := s.issuer.IssueMachineAccessJWT(m.ID, m.OrganizationID, m.SiteID, m.CredentialVersion, newSess.ID)
+	tok, exp, err := s.issuer.IssueMachineAccessJWT(m.ID, m.SiteID, m.CredentialVersion, newSess.ID)
 	if err != nil {
 		return ClaimResult{}, err
 	}
@@ -753,15 +729,14 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 			sitePtr = &sid
 		}
 		if err := s.audit.RecordCriticalTx(ctx, tx, compliance.EnterpriseAuditRecord{
-			OrganizationID: m.OrganizationID,
-			ActorType:      compliance.ActorMachine,
-			ActorID:        &actorStr,
-			Action:         compliance.ActionMachineTokenRefreshed,
-			ResourceType:   "machine",
-			ResourceID:     &actorStr,
-			MachineID:      &mid,
-			SiteID:         sitePtr,
-			Metadata:       md,
+			ActorType:    compliance.ActorMachine,
+			ActorID:      &actorStr,
+			Action:       compliance.ActionMachineTokenRefreshed,
+			ResourceType: "machine",
+			ResourceID:   &actorStr,
+			MachineID:    &mid,
+			SiteID:       sitePtr,
+			Metadata:     md,
 		}); err != nil {
 			return ClaimResult{}, err
 		}
@@ -771,7 +746,6 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 	}
 	return ClaimResult{
 		MachineID:         m.ID,
-		OrganizationID:    m.OrganizationID,
 		SiteID:            m.SiteID,
 		MachineName:       m.Name,
 		MachineToken:      tok,

@@ -55,21 +55,14 @@ if [[ -z "${ADMIN_TOKEN:-}" ]]; then
   log_error "WA-CAT-12: ADMIN_TOKEN required"
   exit 2
 fi
-
-ORG_ID="$(get_data organizationId)"
 MACHINE_ID="$(get_data machineId)"
 PRODUCT_ID="$(get_data productId)"
 
-if [[ -z "$ORG_ID" || "$ORG_ID" == "null" ]]; then
-  log_error "WA-CAT-12: organizationId required"
-  exit 2
-fi
-Q_ORG="organization_id=$(printf '%s' "$ORG_ID" | jq -sRr @uri)"
 
 ANY_FAIL=0
 
 # --- List products ---
-path="/v1/admin/products?${Q_ORG}&limit=50"
+path="/v1/admin/products?limit=50"
 code="$(e2e_http_get "cat-products-list" "$path")"
 found=""
 if [[ "$code" == "200" ]]; then
@@ -88,7 +81,7 @@ fi
 
 # --- Get product ---
 if [[ -n "$PRODUCT_ID" && "$PRODUCT_ID" != "null" ]]; then
-  path="/v1/admin/products/${PRODUCT_ID}?${Q_ORG}"
+  path="/v1/admin/products/${PRODUCT_ID}"
   code="$(e2e_http_get "cat-product-get" "$path")"
   if [[ "$code" == "200" ]]; then
     wa4_record "product-get" "GET /v1/admin/products/{id}" "pass" "$code" "200" "ok" "" "cat-product-get"
@@ -103,7 +96,7 @@ if [[ -n "$PRODUCT_ID" && "$PRODUCT_ID" != "null" ]]; then
     [[ -z "$attrs_json" ]] && attrs_json='{}'
     meta_ts="$(date +%s)"
     PPATCH="$(jq -nc --argjson a "$attrs_json" --arg ts "$meta_ts" '{attrs: ($a + {e2eAutomation: ("phase4-"+$ts)})}')"
-    path="/v1/admin/products/${PRODUCT_ID}?${Q_ORG}"
+    path="/v1/admin/products/${PRODUCT_ID}"
     pcode="$(e2e_http_patch_json_idem "cat-product-patch" "$path" "$PPATCH" "e2e-cat-p-${meta_ts}")"
     if [[ "$pcode" == "200" ]]; then
       wa4_record "product-patch-metadata" "PATCH /v1/admin/products/{id}" "pass" "$pcode" "200" "attrs merged" "" "cat-product-patch"
@@ -120,9 +113,9 @@ fi
 
 # --- Categories / tags / brands ---
 for tuple in \
-  "categories|/v1/admin/categories?${Q_ORG}&limit=20|cat-categories" \
-  "tags|/v1/admin/tags?${Q_ORG}&limit=20|cat-tags" \
-  "brands|/v1/admin/brands?${Q_ORG}&limit=20|cat-brands"; do
+  "categories|/v1/admin/categories?limit=20|cat-categories" \
+  "tags|/v1/admin/tags?limit=20|cat-tags" \
+  "brands|/v1/admin/brands?limit=20|cat-brands"; do
   IFS='|' read -r label pfx stepn <<<"$tuple"
   code="$(e2e_http_get "$stepn" "$pfx")"
   if [[ "$code" == "200" ]]; then
@@ -136,7 +129,7 @@ done
 
 # --- Price book: list + patch item + verify ---
 PB_ID=""
-path="/v1/admin/price-books?${Q_ORG}&limit=20"
+path="/v1/admin/price-books?limit=20"
 code="$(e2e_http_get "cat-pricebooks-list" "$path")"
 if [[ "$code" == "200" ]]; then
   PB_ID="$(jq -r '(.items // [])[] | select(.isDefault==true) | .id // empty' "${E2E_RUN_DIR}/rest/cat-pricebooks-list.response.json" | head -n1)"
@@ -147,16 +140,16 @@ else
 fi
 
 if [[ -n "$PB_ID" && -n "$PRODUCT_ID" && "$PRODUCT_ID" != "null" ]] && [[ "${E2E_ALLOW_WRITES:-}" == "true" ]]; then
-  path="/v1/admin/price-books/${PB_ID}/items?${Q_ORG}"
+  path="/v1/admin/price-books/${PB_ID}/items"
   e2e_http_get "cat-pb-items" "$path" >/dev/null
   curp="$(jq -r --arg pr "$PRODUCT_ID" '(.items // [])[] | select(.productId==$pr) | .unitPriceMinor // empty' "${E2E_RUN_DIR}/rest/cat-pb-items.response.json" | head -n1)"
   [[ -z "$curp" ]] && curp="1000"
   newp=$((curp + 1))
   PP="$(jq -nc --argjson up "$newp" '{unitPriceMinor:$up}')"
-  path="/v1/admin/price-books/${PB_ID}/items/${PRODUCT_ID}?${Q_ORG}"
+  path="/v1/admin/price-books/${PB_ID}/items/${PRODUCT_ID}"
   pcode="$(e2e_http_patch_json_idem "cat-pb-patch" "$path" "$PP" "e2e-pb-${PRODUCT_ID}-$(date +%s)")"
   if [[ "$pcode" == "200" ]]; then
-    e2e_http_get "cat-pb-items2" "/v1/admin/price-books/${PB_ID}/items?${Q_ORG}" >/dev/null
+    e2e_http_get "cat-pb-items2" "/v1/admin/price-books/${PB_ID}/items" >/dev/null
     v="$(jq -r --arg pr "$PRODUCT_ID" '(.items // [])[] | select(.productId==$pr) | .unitPriceMinor // empty' "${E2E_RUN_DIR}/rest/cat-pb-items2.response.json" | head -n1)"
     if [[ "$v" == "$newp" ]]; then
       wa4_record "price-book-item-patch" "PATCH .../items/{productId}" "pass" "$pcode" "unitPriceMinor=$newp" "verified" "" "cat-pb-patch"

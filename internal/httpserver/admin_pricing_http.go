@@ -52,18 +52,17 @@ func pgUUIDPtrFromOptionalString(s *string) (pgtype.UUID, error) {
 
 func mergePriceBookPatch(cur db.PriceBook, body V1AdminPriceBookPatchRequest) (db.CatalogWriteUpdatePriceBookParams, error) {
 	p := db.CatalogWriteUpdatePriceBookParams{
-		OrganizationID: cur.OrganizationID,
-		ID:             cur.ID,
-		Name:           cur.Name,
-		Currency:       cur.Currency,
-		EffectiveFrom:  cur.EffectiveFrom,
-		EffectiveTo:    cur.EffectiveTo,
-		IsDefault:      cur.IsDefault,
-		Active:         cur.Active,
-		ScopeType:      cur.ScopeType,
-		SiteID:         cur.SiteID,
-		MachineID:      cur.MachineID,
-		Priority:       cur.Priority,
+		ID:            cur.ID,
+		Name:          cur.Name,
+		Currency:      cur.Currency,
+		EffectiveFrom: cur.EffectiveFrom,
+		EffectiveTo:   cur.EffectiveTo,
+		IsDefault:     cur.IsDefault,
+		Active:        cur.Active,
+		ScopeType:     cur.ScopeType,
+		SiteID:        cur.SiteID,
+		MachineID:     cur.MachineID,
+		Priority:      cur.Priority,
 	}
 	if body.Name != nil {
 		p.Name = strings.TrimSpace(*body.Name)
@@ -100,7 +99,7 @@ func mergePriceBookPatch(cur db.PriceBook, body V1AdminPriceBookPatchRequest) (d
 		sc := strings.TrimSpace(strings.ToLower(*body.ScopeType))
 		p.ScopeType = sc
 		switch sc {
-		case "organization":
+		case "company":
 			p.SiteID = pgtype.UUID{}
 			p.MachineID = pgtype.UUID{}
 		case "site":
@@ -139,7 +138,8 @@ func postAdminPriceBookCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -174,16 +174,15 @@ func postAdminPriceBookCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		row, err := svc.CreatePriceBook(r.Context(), appcatalogadmin.CreatePriceBookInput{
-			OrganizationID: orgID,
-			Name:           body.Name,
-			Currency:       body.Currency,
-			EffectiveFrom:  effFrom,
-			EffectiveTo:    effTo,
-			IsDefault:      body.IsDefault,
-			ScopeType:      body.ScopeType,
-			SiteID:         siteID,
-			MachineID:      machineID,
-			Priority:       body.Priority,
+			Name:          body.Name,
+			Currency:      body.Currency,
+			EffectiveFrom: effFrom,
+			EffectiveTo:   effTo,
+			IsDefault:     body.IsDefault,
+			ScopeType:     body.ScopeType,
+			SiteID:        siteID,
+			MachineID:     machineID,
+			Priority:      body.Priority,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
@@ -195,7 +194,8 @@ func postAdminPriceBookCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func getAdminPriceBookDetail(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -205,7 +205,7 @@ func getAdminPriceBookDetail(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_price_book_id", "invalid priceBookId")
 			return
 		}
-		row, err := svc.GetPriceBook(r.Context(), orgID, bid)
+		row, err := svc.GetPriceBook(r.Context(), scopeID, bid)
 		if err != nil {
 			if errors.Is(err, appcatalogadmin.ErrNotFound) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "price book not found")
@@ -224,7 +224,8 @@ func patchAdminPriceBook(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -234,7 +235,7 @@ func patchAdminPriceBook(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_price_book_id", "invalid priceBookId")
 			return
 		}
-		cur, err := svc.GetPriceBook(r.Context(), orgID, bid)
+		cur, err := svc.GetPriceBook(r.Context(), scopeID, bid)
 		if err != nil {
 			if errors.Is(err, appcatalogadmin.ErrNotFound) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "price book not found")
@@ -268,7 +269,8 @@ func postAdminPriceBookDeactivate(svc *appcatalogadmin.Service, app *api.HTTPApp
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -278,7 +280,7 @@ func postAdminPriceBookDeactivate(svc *appcatalogadmin.Service, app *api.HTTPApp
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_price_book_id", "invalid priceBookId")
 			return
 		}
-		row, err := svc.DeactivatePriceBook(r.Context(), orgID, bid)
+		row, err := svc.DeactivatePriceBook(r.Context(), scopeID, bid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -291,14 +293,13 @@ func postAdminPriceBookDeactivate(svc *appcatalogadmin.Service, app *api.HTTPApp
 				at, aid = p.Actor()
 			}
 			_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-				OrganizationID: orgID,
-				ActorType:      at,
-				ActorID:        stringPtrOrNil(aid),
-				Action:         compliance.ActionPriceBookDeactivated,
-				ResourceType:   "catalog.price_book",
-				ResourceID:     &bs,
-				Metadata:       md,
-				Outcome:        compliance.OutcomeSuccess,
+				ActorType:    at,
+				ActorID:      stringPtrOrNil(aid),
+				Action:       compliance.ActionPriceBookDeactivated,
+				ResourceType: "catalog.price_book",
+				ResourceID:   &bs,
+				Metadata:     md,
+				Outcome:      compliance.OutcomeSuccess,
 			})
 		}
 		writeJSON(w, http.StatusOK, mapPriceBook(row))
@@ -311,7 +312,8 @@ func postAdminPriceBookActivate(svc *appcatalogadmin.Service, app *api.HTTPAppli
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -321,7 +323,7 @@ func postAdminPriceBookActivate(svc *appcatalogadmin.Service, app *api.HTTPAppli
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_price_book_id", "invalid priceBookId")
 			return
 		}
-		row, err := svc.ActivatePriceBook(r.Context(), orgID, bid)
+		row, err := svc.ActivatePriceBook(r.Context(), scopeID, bid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -334,14 +336,13 @@ func postAdminPriceBookActivate(svc *appcatalogadmin.Service, app *api.HTTPAppli
 				at, aid = p.Actor()
 			}
 			_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-				OrganizationID: orgID,
-				ActorType:      at,
-				ActorID:        stringPtrOrNil(aid),
-				Action:         compliance.ActionPriceBookActivated,
-				ResourceType:   "catalog.price_book",
-				ResourceID:     &bs,
-				Metadata:       md,
-				Outcome:        compliance.OutcomeSuccess,
+				ActorType:    at,
+				ActorID:      stringPtrOrNil(aid),
+				Action:       compliance.ActionPriceBookActivated,
+				ResourceType: "catalog.price_book",
+				ResourceID:   &bs,
+				Metadata:     md,
+				Outcome:      compliance.OutcomeSuccess,
 			})
 		}
 		writeJSON(w, http.StatusOK, mapPriceBook(row))
@@ -354,7 +355,8 @@ func postAdminPriceBookArchive(svc *appcatalogadmin.Service, app *api.HTTPApplic
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -364,7 +366,7 @@ func postAdminPriceBookArchive(svc *appcatalogadmin.Service, app *api.HTTPApplic
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_price_book_id", "invalid priceBookId")
 			return
 		}
-		row, err := svc.DeactivatePriceBook(r.Context(), orgID, bid)
+		row, err := svc.DeactivatePriceBook(r.Context(), scopeID, bid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -377,14 +379,13 @@ func postAdminPriceBookArchive(svc *appcatalogadmin.Service, app *api.HTTPApplic
 				at, aid = p.Actor()
 			}
 			_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-				OrganizationID: orgID,
-				ActorType:      at,
-				ActorID:        stringPtrOrNil(aid),
-				Action:         compliance.ActionPriceBookArchived,
-				ResourceType:   "catalog.price_book",
-				ResourceID:     &bs,
-				Metadata:       md,
-				Outcome:        compliance.OutcomeSuccess,
+				ActorType:    at,
+				ActorID:      stringPtrOrNil(aid),
+				Action:       compliance.ActionPriceBookArchived,
+				ResourceType: "catalog.price_book",
+				ResourceID:   &bs,
+				Metadata:     md,
+				Outcome:      compliance.OutcomeSuccess,
 			})
 		}
 		writeJSON(w, http.StatusOK, mapPriceBook(row))
@@ -398,7 +399,8 @@ func getAdminPriceBookItems(svc *appcatalogadmin.Service) http.HandlerFunc {
 		PriceBookID    string `json:"priceBookId"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -408,7 +410,7 @@ func getAdminPriceBookItems(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_price_book_id", "invalid priceBookId")
 			return
 		}
-		items, err := svc.ListPriceBookItems(r.Context(), orgID, bid)
+		items, err := svc.ListPriceBookItems(r.Context(), scopeID, bid)
 		if err != nil {
 			if errors.Is(err, appcatalogadmin.ErrNotFound) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "price book not found")
@@ -435,7 +437,8 @@ func putAdminPriceBookItems(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -462,7 +465,7 @@ func putAdminPriceBookItems(svc *appcatalogadmin.Service) http.HandlerFunc {
 				UnitPriceMinor: it.UnitPriceMinor,
 			})
 		}
-		if err := svc.ReplacePriceBookItems(r.Context(), orgID, bid, items); err != nil {
+		if err := svc.ReplacePriceBookItems(r.Context(), scopeID, bid, items); err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
@@ -476,7 +479,8 @@ func patchAdminPriceBookItem(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -498,7 +502,7 @@ func patchAdminPriceBookItem(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "invalid JSON body")
 			return
 		}
-		row, err := svc.UpsertPriceBookItem(r.Context(), orgID, bid, pid, body.UnitPriceMinor)
+		row, err := svc.UpsertPriceBookItem(r.Context(), scopeID, bid, pid, body.UnitPriceMinor)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -517,7 +521,8 @@ func deleteAdminPriceBookItem(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -532,7 +537,7 @@ func deleteAdminPriceBookItem(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_product_id", "invalid productId")
 			return
 		}
-		if err := svc.DeletePriceBookItem(r.Context(), orgID, bid, pid); err != nil {
+		if err := svc.DeletePriceBookItem(r.Context(), scopeID, bid, pid); err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
@@ -546,7 +551,8 @@ func postAdminPriceBookAssignTarget(svc *appcatalogadmin.Service) http.HandlerFu
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -580,10 +586,9 @@ func postAdminPriceBookAssignTarget(svc *appcatalogadmin.Service) http.HandlerFu
 			machineID = &u
 		}
 		row, err := svc.AssignPriceBookTarget(r.Context(), appcatalogadmin.AssignPriceBookTargetInput{
-			OrganizationID: orgID,
-			PriceBookID:    bid,
-			SiteID:         siteID,
-			MachineID:      machineID,
+			PriceBookID: bid,
+			SiteID:      siteID,
+			MachineID:   machineID,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
@@ -605,7 +610,8 @@ func deleteAdminPriceBookTarget(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -620,7 +626,7 @@ func deleteAdminPriceBookTarget(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_target_id", "invalid targetId")
 			return
 		}
-		if err := svc.DeletePriceBookTarget(r.Context(), orgID, bid, tid); err != nil {
+		if err := svc.DeletePriceBookTarget(r.Context(), scopeID, bid, tid); err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
@@ -630,7 +636,8 @@ func deleteAdminPriceBookTarget(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func postAdminPricingPreview(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -680,11 +687,10 @@ func postAdminPricingPreview(svc *appcatalogadmin.Service) http.HandlerFunc {
 			}
 		}
 		res, err := svc.PreviewPricing(r.Context(), appcatalogadmin.PricingPreviewParams{
-			OrganizationID: orgID,
-			MachineID:      mid,
-			SiteID:         sid,
-			ProductIDs:     pids,
-			At:             at,
+			MachineID:  mid,
+			SiteID:     sid,
+			ProductIDs: pids,
+			At:         at,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)

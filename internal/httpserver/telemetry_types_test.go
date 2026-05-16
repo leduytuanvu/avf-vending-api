@@ -10,7 +10,6 @@ func TestV1MachineTelemetrySnapshotResponse_JSON_keys(t *testing.T) {
 	t.Parallel()
 	ex := V1MachineTelemetrySnapshotResponse{
 		MachineID:         "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-		OrganizationID:    "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
 		SiteID:            "7c9e6679-7425-40de-944b-e07fc1f90ae7",
 		ReportedState:     []byte(`{}`),
 		MetricsState:      []byte(`{}`),

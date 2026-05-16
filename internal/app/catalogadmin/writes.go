@@ -38,7 +38,6 @@ func productUniqueViolationKind(err error, hasBarcode bool) error {
 
 // CreateProductInput inserts a new product row.
 type CreateProductInput struct {
-	OrganizationID  uuid.UUID
 	Sku             string
 	Barcode         *string
 	Name            string
@@ -57,9 +56,6 @@ type CreateProductInput struct {
 func (s *Service) CreateProduct(ctx context.Context, in CreateProductInput) (db.Product, error) {
 	if s == nil {
 		return db.Product{}, errors.New("catalogadmin: nil service")
-	}
-	if in.OrganizationID == uuid.Nil {
-		return db.Product{}, ErrOrganizationRequired
 	}
 	sku := strings.TrimSpace(in.Sku)
 	name := strings.TrimSpace(in.Name)
@@ -104,7 +100,6 @@ func (s *Service) CreateProduct(ctx context.Context, in CreateProductInput) (db.
 		allergen = []string{}
 	}
 	row, err := s.q.CatalogWriteInsertProduct(ctx, db.CatalogWriteInsertProductParams{
-		OrganizationID:  in.OrganizationID,
 		Sku:             sku,
 		Barcode:         barcode,
 		Name:            name,
@@ -124,14 +119,13 @@ func (s *Service) CreateProduct(ctx context.Context, in CreateProductInput) (db.
 		}
 		return db.Product{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionProductCreated, "catalog.product", row.ID, productAuditSnapshot(row))
-	s.bumpCatalogCache(ctx, in.OrganizationID)
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionProductCreated, "catalog.product", row.ID, productAuditSnapshot(row))
+	s.bumpCatalogCache(ctx, uuid.Nil)
 	return row, nil
 }
 
 // UpdateProductInput replaces mutable product fields.
 type UpdateProductInput struct {
-	OrganizationID  uuid.UUID
 	ProductID       uuid.UUID
 	Sku             string
 	Barcode         *string
@@ -152,8 +146,8 @@ func (s *Service) UpdateProduct(ctx context.Context, in UpdateProductInput) (db.
 	if s == nil {
 		return db.Product{}, errors.New("catalogadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil || in.ProductID == uuid.Nil {
-		return db.Product{}, ErrOrganizationRequired
+	if in.ProductID == uuid.Nil {
+		return db.Product{}, ErrCompanyRequired
 	}
 	sku := strings.TrimSpace(in.Sku)
 	name := strings.TrimSpace(in.Name)
@@ -197,10 +191,7 @@ func (s *Service) UpdateProduct(ctx context.Context, in UpdateProductInput) (db.
 	if allergen == nil {
 		allergen = []string{}
 	}
-	row, err := s.q.CatalogWriteUpdateProduct(ctx, db.CatalogWriteUpdateProductParams{
-		OrganizationID:  in.OrganizationID,
-		ID:              in.ProductID,
-		Sku:             sku,
+	row, err := s.q.CatalogWriteUpdateProduct(ctx, db.CatalogWriteUpdateProductParams{Sku: sku,
 		Barcode:         barcode,
 		Name:            name,
 		Description:     strings.TrimSpace(in.Description),
@@ -212,6 +203,7 @@ func (s *Service) UpdateProduct(ctx context.Context, in UpdateProductInput) (db.
 		AgeRestricted:   in.AgeRestricted,
 		AllergenCodes:   allergen,
 		NutritionalNote: nut,
+		ID:              in.ProductID,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -222,41 +214,36 @@ func (s *Service) UpdateProduct(ctx context.Context, in UpdateProductInput) (db.
 		}
 		return db.Product{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionProductUpdated, "catalog.product", row.ID, productAuditSnapshot(row))
-	s.bumpCatalogCache(ctx, in.OrganizationID)
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionProductUpdated, "catalog.product", row.ID, productAuditSnapshot(row))
+	s.bumpCatalogCache(ctx, uuid.Nil)
 	return row, nil
 }
 
 // DeactivateProduct sets active=false (never hard-deletes; safe when referenced).
-func (s *Service) DeactivateProduct(ctx context.Context, organizationID, productID uuid.UUID) (db.Product, error) {
+func (s *Service) DeactivateProduct(ctx context.Context, companyID, productID uuid.UUID) (db.Product, error) {
 	if s == nil {
 		return db.Product{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || productID == uuid.Nil {
-		return db.Product{}, ErrOrganizationRequired
+	if productID == uuid.Nil {
+		return db.Product{}, ErrCompanyRequired
 	}
-	row, err := s.q.CatalogWriteSetProductActive(ctx, db.CatalogWriteSetProductActiveParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-		Active:         false,
-	})
+	row, err := s.q.CatalogWriteSetProductActive(ctx, db.CatalogWriteSetProductActiveParams{Active: false, ID: productID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Product{}, ErrNotFound
 		}
 		return db.Product{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, organizationID, compliance.ActionProductDeactivated, "catalog.product", row.ID, productAuditSnapshot(row))
-	s.bumpCatalogCache(ctx, organizationID)
+	s.recordCatalogWriteAudit(ctx, companyID, compliance.ActionProductDeactivated, "catalog.product", row.ID, productAuditSnapshot(row))
+	s.bumpCatalogCache(ctx, companyID)
 	return row, nil
 }
 
 // CreateBrandInput creates a brand.
 type CreateBrandInput struct {
-	OrganizationID uuid.UUID
-	Slug           string
-	Name           string
-	Active         bool
+	Slug   string
+	Name   string
+	Active bool
 }
 
 // CreateBrand inserts a brand.
@@ -264,19 +251,15 @@ func (s *Service) CreateBrand(ctx context.Context, in CreateBrandInput) (db.Bran
 	if s == nil {
 		return db.Brand{}, errors.New("catalogadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil {
-		return db.Brand{}, ErrOrganizationRequired
-	}
 	slug := strings.TrimSpace(in.Slug)
 	name := strings.TrimSpace(in.Name)
 	if slug == "" || name == "" {
 		return db.Brand{}, fmt.Errorf("%w: slug and name required", ErrInvalidArgument)
 	}
 	row, err := s.q.CatalogWriteInsertBrand(ctx, db.CatalogWriteInsertBrandParams{
-		OrganizationID: in.OrganizationID,
-		Slug:           slug,
-		Name:           name,
-		Active:         in.Active,
+		Slug:   slug,
+		Name:   name,
+		Active: in.Active,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -284,17 +267,16 @@ func (s *Service) CreateBrand(ctx context.Context, in CreateBrandInput) (db.Bran
 		}
 		return db.Brand{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionBrandCreated, "catalog.brand", row.ID, brandAuditSnapshot(row))
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionBrandCreated, "catalog.brand", row.ID, brandAuditSnapshot(row))
 	return row, nil
 }
 
 // UpdateBrandInput updates brand fields.
 type UpdateBrandInput struct {
-	OrganizationID uuid.UUID
-	BrandID        uuid.UUID
-	Slug           string
-	Name           string
-	Active         bool
+	BrandID uuid.UUID
+	Slug    string
+	Name    string
+	Active  bool
 }
 
 // UpdateBrand updates a brand.
@@ -302,20 +284,18 @@ func (s *Service) UpdateBrand(ctx context.Context, in UpdateBrandInput) (db.Bran
 	if s == nil {
 		return db.Brand{}, errors.New("catalogadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil || in.BrandID == uuid.Nil {
-		return db.Brand{}, ErrOrganizationRequired
+	if in.BrandID == uuid.Nil {
+		return db.Brand{}, ErrCompanyRequired
 	}
 	slug := strings.TrimSpace(in.Slug)
 	name := strings.TrimSpace(in.Name)
 	if slug == "" || name == "" {
 		return db.Brand{}, fmt.Errorf("%w: slug and name required", ErrInvalidArgument)
 	}
-	row, err := s.q.CatalogWriteUpdateBrand(ctx, db.CatalogWriteUpdateBrandParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.BrandID,
-		Slug:           slug,
-		Name:           name,
-		Active:         in.Active,
+	row, err := s.q.CatalogWriteUpdateBrand(ctx, db.CatalogWriteUpdateBrandParams{Slug: slug,
+		Name:   name,
+		Active: in.Active,
+		ID:     in.BrandID,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -326,19 +306,16 @@ func (s *Service) UpdateBrand(ctx context.Context, in UpdateBrandInput) (db.Bran
 		}
 		return db.Brand{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionBrandUpdated, "catalog.brand", row.ID, brandAuditSnapshot(row))
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionBrandUpdated, "catalog.brand", row.ID, brandAuditSnapshot(row))
 	return row, nil
 }
 
 // DeactivateBrand sets active=false.
-func (s *Service) DeactivateBrand(ctx context.Context, organizationID, brandID uuid.UUID) (db.Brand, error) {
+func (s *Service) DeactivateBrand(ctx context.Context, companyID, brandID uuid.UUID) (db.Brand, error) {
 	if s == nil {
 		return db.Brand{}, errors.New("catalogadmin: nil service")
 	}
-	b, err := s.q.CatalogAdminGetBrand(ctx, db.CatalogAdminGetBrandParams{
-		OrganizationID: organizationID,
-		ID:             brandID,
-	})
+	b, err := s.q.CatalogAdminGetBrand(ctx, brandID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Brand{}, ErrNotFound
@@ -346,30 +323,25 @@ func (s *Service) DeactivateBrand(ctx context.Context, organizationID, brandID u
 		return db.Brand{}, err
 	}
 	return s.UpdateBrand(ctx, UpdateBrandInput{
-		OrganizationID: organizationID,
-		BrandID:        brandID,
-		Slug:           b.Slug,
-		Name:           b.Name,
-		Active:         false,
+		BrandID: brandID,
+		Slug:    b.Slug,
+		Name:    b.Name,
+		Active:  false,
 	})
 }
 
 // CreateCategoryInput creates a category.
 type CreateCategoryInput struct {
-	OrganizationID uuid.UUID
-	Slug           string
-	Name           string
-	ParentID       *uuid.UUID
-	Active         bool
+	Slug     string
+	Name     string
+	ParentID *uuid.UUID
+	Active   bool
 }
 
 // CreateCategory inserts a category.
 func (s *Service) CreateCategory(ctx context.Context, in CreateCategoryInput) (db.Category, error) {
 	if s == nil {
 		return db.Category{}, errors.New("catalogadmin: nil service")
-	}
-	if in.OrganizationID == uuid.Nil {
-		return db.Category{}, ErrOrganizationRequired
 	}
 	slug := strings.TrimSpace(in.Slug)
 	name := strings.TrimSpace(in.Name)
@@ -381,11 +353,10 @@ func (s *Service) CreateCategory(ctx context.Context, in CreateCategoryInput) (d
 		parent = pgtype.UUID{Bytes: *in.ParentID, Valid: true}
 	}
 	row, err := s.q.CatalogWriteInsertCategory(ctx, db.CatalogWriteInsertCategoryParams{
-		OrganizationID: in.OrganizationID,
-		Slug:           slug,
-		Name:           name,
-		ParentID:       parent,
-		Active:         in.Active,
+		Slug:     slug,
+		Name:     name,
+		ParentID: parent,
+		Active:   in.Active,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -393,18 +364,17 @@ func (s *Service) CreateCategory(ctx context.Context, in CreateCategoryInput) (d
 		}
 		return db.Category{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionCategoryCreated, "catalog.category", row.ID, categoryAuditSnapshot(row))
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionCategoryCreated, "catalog.category", row.ID, categoryAuditSnapshot(row))
 	return row, nil
 }
 
 // UpdateCategoryInput updates category fields.
 type UpdateCategoryInput struct {
-	OrganizationID uuid.UUID
-	CategoryID     uuid.UUID
-	Slug           string
-	Name           string
-	ParentID       *uuid.UUID
-	Active         bool
+	CategoryID uuid.UUID
+	Slug       string
+	Name       string
+	ParentID   *uuid.UUID
+	Active     bool
 }
 
 // UpdateCategory updates a category.
@@ -412,8 +382,8 @@ func (s *Service) UpdateCategory(ctx context.Context, in UpdateCategoryInput) (d
 	if s == nil {
 		return db.Category{}, errors.New("catalogadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil || in.CategoryID == uuid.Nil {
-		return db.Category{}, ErrOrganizationRequired
+	if in.CategoryID == uuid.Nil {
+		return db.Category{}, ErrCompanyRequired
 	}
 	slug := strings.TrimSpace(in.Slug)
 	name := strings.TrimSpace(in.Name)
@@ -424,13 +394,11 @@ func (s *Service) UpdateCategory(ctx context.Context, in UpdateCategoryInput) (d
 	if in.ParentID != nil && *in.ParentID != uuid.Nil {
 		parent = pgtype.UUID{Bytes: *in.ParentID, Valid: true}
 	}
-	row, err := s.q.CatalogWriteUpdateCategory(ctx, db.CatalogWriteUpdateCategoryParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.CategoryID,
-		Slug:           slug,
-		Name:           name,
-		ParentID:       parent,
-		Active:         in.Active,
+	row, err := s.q.CatalogWriteUpdateCategory(ctx, db.CatalogWriteUpdateCategoryParams{Slug: slug,
+		Name:     name,
+		ParentID: parent,
+		Active:   in.Active,
+		ID:       in.CategoryID,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -441,19 +409,16 @@ func (s *Service) UpdateCategory(ctx context.Context, in UpdateCategoryInput) (d
 		}
 		return db.Category{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionCategoryUpdated, "catalog.category", row.ID, categoryAuditSnapshot(row))
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionCategoryUpdated, "catalog.category", row.ID, categoryAuditSnapshot(row))
 	return row, nil
 }
 
 // DeactivateCategory sets active=false.
-func (s *Service) DeactivateCategory(ctx context.Context, organizationID, categoryID uuid.UUID) (db.Category, error) {
+func (s *Service) DeactivateCategory(ctx context.Context, companyID, categoryID uuid.UUID) (db.Category, error) {
 	if s == nil {
 		return db.Category{}, errors.New("catalogadmin: nil service")
 	}
-	c, err := s.q.CatalogAdminGetCategory(ctx, db.CatalogAdminGetCategoryParams{
-		OrganizationID: organizationID,
-		ID:             categoryID,
-	})
+	c, err := s.q.CatalogAdminGetCategory(ctx, categoryID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Category{}, ErrNotFound
@@ -466,21 +431,19 @@ func (s *Service) DeactivateCategory(ctx context.Context, organizationID, catego
 		parent = &pid
 	}
 	return s.UpdateCategory(ctx, UpdateCategoryInput{
-		OrganizationID: organizationID,
-		CategoryID:     categoryID,
-		Slug:           c.Slug,
-		Name:           c.Name,
-		ParentID:       parent,
-		Active:         false,
+		CategoryID: categoryID,
+		Slug:       c.Slug,
+		Name:       c.Name,
+		ParentID:   parent,
+		Active:     false,
 	})
 }
 
 // CreateTagInput creates a tag.
 type CreateTagInput struct {
-	OrganizationID uuid.UUID
-	Slug           string
-	Name           string
-	Active         bool
+	Slug   string
+	Name   string
+	Active bool
 }
 
 // CreateTag inserts a tag.
@@ -488,19 +451,15 @@ func (s *Service) CreateTag(ctx context.Context, in CreateTagInput) (db.Tag, err
 	if s == nil {
 		return db.Tag{}, errors.New("catalogadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil {
-		return db.Tag{}, ErrOrganizationRequired
-	}
 	slug := strings.TrimSpace(in.Slug)
 	name := strings.TrimSpace(in.Name)
 	if slug == "" || name == "" {
 		return db.Tag{}, fmt.Errorf("%w: slug and name required", ErrInvalidArgument)
 	}
 	row, err := s.q.CatalogWriteInsertTag(ctx, db.CatalogWriteInsertTagParams{
-		OrganizationID: in.OrganizationID,
-		Slug:           slug,
-		Name:           name,
-		Active:         in.Active,
+		Slug:   slug,
+		Name:   name,
+		Active: in.Active,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -513,11 +472,10 @@ func (s *Service) CreateTag(ctx context.Context, in CreateTagInput) (db.Tag, err
 
 // UpdateTagInput updates tag fields.
 type UpdateTagInput struct {
-	OrganizationID uuid.UUID
-	TagID          uuid.UUID
-	Slug           string
-	Name           string
-	Active         bool
+	TagID  uuid.UUID
+	Slug   string
+	Name   string
+	Active bool
 }
 
 // UpdateTag updates a tag.
@@ -525,20 +483,18 @@ func (s *Service) UpdateTag(ctx context.Context, in UpdateTagInput) (db.Tag, err
 	if s == nil {
 		return db.Tag{}, errors.New("catalogadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil || in.TagID == uuid.Nil {
-		return db.Tag{}, ErrOrganizationRequired
+	if in.TagID == uuid.Nil {
+		return db.Tag{}, ErrCompanyRequired
 	}
 	slug := strings.TrimSpace(in.Slug)
 	name := strings.TrimSpace(in.Name)
 	if slug == "" || name == "" {
 		return db.Tag{}, fmt.Errorf("%w: slug and name required", ErrInvalidArgument)
 	}
-	row, err := s.q.CatalogWriteUpdateTag(ctx, db.CatalogWriteUpdateTagParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.TagID,
-		Slug:           slug,
-		Name:           name,
-		Active:         in.Active,
+	row, err := s.q.CatalogWriteUpdateTag(ctx, db.CatalogWriteUpdateTagParams{Slug: slug,
+		Name:   name,
+		Active: in.Active,
+		ID:     in.TagID,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -549,19 +505,16 @@ func (s *Service) UpdateTag(ctx context.Context, in UpdateTagInput) (db.Tag, err
 		}
 		return db.Tag{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionTagUpdated, "catalog.tag", row.ID, tagAuditSnapshot(row))
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionTagUpdated, "catalog.tag", row.ID, tagAuditSnapshot(row))
 	return row, nil
 }
 
 // DeactivateTag sets active=false.
-func (s *Service) DeactivateTag(ctx context.Context, organizationID, tagID uuid.UUID) (db.Tag, error) {
+func (s *Service) DeactivateTag(ctx context.Context, companyID, tagID uuid.UUID) (db.Tag, error) {
 	if s == nil {
 		return db.Tag{}, errors.New("catalogadmin: nil service")
 	}
-	tg, err := s.q.CatalogAdminGetTag(ctx, db.CatalogAdminGetTagParams{
-		OrganizationID: organizationID,
-		ID:             tagID,
-	})
+	tg, err := s.q.CatalogAdminGetTag(ctx, tagID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Tag{}, ErrNotFound
@@ -569,78 +522,70 @@ func (s *Service) DeactivateTag(ctx context.Context, organizationID, tagID uuid.
 		return db.Tag{}, err
 	}
 	return s.UpdateTag(ctx, UpdateTagInput{
-		OrganizationID: organizationID,
-		TagID:          tagID,
-		Slug:           tg.Slug,
-		Name:           tg.Name,
-		Active:         false,
+		TagID:  tagID,
+		Slug:   tg.Slug,
+		Name:   tg.Name,
+		Active: false,
 	})
 }
 
 // BindProductImageInput sets the primary product image (storage key derived from artifact id).
 type BindProductImageInput struct {
-	OrganizationID uuid.UUID
-	ProductID      uuid.UUID
-	ArtifactID     uuid.UUID
-	ThumbURL       string
-	DisplayURL     string
-	ContentHash    string
-	Width          int32
-	Height         int32
-	MimeType       string
+	ProductID   uuid.UUID
+	ArtifactID  uuid.UUID
+	ThumbURL    string
+	DisplayURL  string
+	ContentHash string
+	Width       int32
+	Height      int32
+	MimeType    string
 }
 
 // UpdateProductImageInput patches product-image presentation metadata.
 type UpdateProductImageInput struct {
-	OrganizationID uuid.UUID
-	ProductID      uuid.UUID
-	ImageID        uuid.UUID
-	SortOrder      *int32
-	IsPrimary      *bool
-	AltText        *string
+	ProductID uuid.UUID
+	ImageID   uuid.UUID
+	SortOrder *int32
+	IsPrimary *bool
+	AltText   *string
 }
 
 // ListProductImages returns active product images unless includeArchived is true.
-func (s *Service) ListProductImages(ctx context.Context, organizationID, productID uuid.UUID, includeArchived bool) ([]db.ProductImage, error) {
+func (s *Service) ListProductImages(ctx context.Context, companyID, productID uuid.UUID, includeArchived bool) ([]db.ProductImage, error) {
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || productID == uuid.Nil {
-		return nil, ErrOrganizationRequired
+	if productID == uuid.Nil {
+		return nil, ErrCompanyRequired
 	}
-	return s.q.CatalogAdminListProductImagesForOrg(ctx, db.CatalogAdminListProductImagesForOrgParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-		Column3:        includeArchived,
+	return s.q.CatalogAdminListProductImagesForOrg(ctx, db.CatalogAdminListProductImagesForOrgParams{Column2: includeArchived,
+
+		ID: productID,
 	})
 }
 
 // ListProductMediumRowsForProduct returns projection rows for object-storage media (parallel to product_images ids).
-func (s *Service) ListProductMediumRowsForProduct(ctx context.Context, organizationID, productID uuid.UUID) ([]db.ProductMedium, error) {
+func (s *Service) ListProductMediumRowsForProduct(ctx context.Context, companyID, productID uuid.UUID) ([]db.ProductMedium, error) {
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || productID == uuid.Nil {
-		return nil, ErrOrganizationRequired
+	if productID == uuid.Nil {
+		return nil, ErrCompanyRequired
 	}
-	return s.q.CatalogAdminListProductMediumRowsForProduct(ctx, db.CatalogAdminListProductMediumRowsForProductParams{
-		OrganizationID: organizationID,
-		ProductID:      productID,
-	})
+	return s.q.CatalogAdminListProductMediumRowsForProduct(ctx, productID)
 }
 
 // GetProductMediumForOrgProductImage returns the product_media row for an image id when present.
-func (s *Service) GetProductMediumForOrgProductImage(ctx context.Context, organizationID, productID, imageID uuid.UUID) (db.ProductMedium, error) {
+func (s *Service) GetProductMediumForOrgProductImage(ctx context.Context, companyID, productID, imageID uuid.UUID) (db.ProductMedium, error) {
 	if s == nil {
 		return db.ProductMedium{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || productID == uuid.Nil || imageID == uuid.Nil {
-		return db.ProductMedium{}, ErrOrganizationRequired
+	if productID == uuid.Nil || imageID == uuid.Nil {
+		return db.ProductMedium{}, ErrCompanyRequired
 	}
 	return s.q.CatalogAdminGetProductMediumForOrgProductImage(ctx, db.CatalogAdminGetProductMediumForOrgProductImageParams{
-		OrganizationID: organizationID,
-		ProductID:      productID,
-		ID:             imageID,
+		ProductID: productID,
+		ID:        imageID,
 	})
 }
 
@@ -649,8 +594,8 @@ func (s *Service) UpdateProductImage(ctx context.Context, in UpdateProductImageI
 	if s == nil {
 		return db.ProductImage{}, errors.New("catalogadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil || in.ProductID == uuid.Nil || in.ImageID == uuid.Nil {
-		return db.ProductImage{}, ErrOrganizationRequired
+	if in.ProductID == uuid.Nil || in.ImageID == uuid.Nil {
+		return db.ProductImage{}, ErrCompanyRequired
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -659,10 +604,7 @@ func (s *Service) UpdateProductImage(ctx context.Context, in UpdateProductImageI
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
 	if in.IsPrimary != nil && *in.IsPrimary {
-		if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
-			OrganizationID: in.OrganizationID,
-			ID:             in.ProductID,
-		}); err != nil {
+		if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, in.ProductID); err != nil {
 			return db.ProductImage{}, err
 		}
 	}
@@ -679,12 +621,11 @@ func (s *Service) UpdateProductImage(ctx context.Context, in UpdateProductImageI
 		alt = pgtype.Text{String: strings.TrimSpace(*in.AltText), Valid: true}
 	}
 	img, err := qtx.CatalogWriteUpdateProductImageMetadata(ctx, db.CatalogWriteUpdateProductImageMetadataParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.ProductID,
-		ID_2:           in.ImageID,
-		SortOrder:      sort,
-		IsPrimary:      primary,
-		AltText:        alt,
+		ID:        in.ProductID,
+		ID_2:      in.ImageID,
+		SortOrder: sort,
+		IsPrimary: primary,
+		AltText:   alt,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -694,9 +635,8 @@ func (s *Service) UpdateProductImage(ctx context.Context, in UpdateProductImageI
 	}
 	if in.IsPrimary != nil && *in.IsPrimary {
 		if _, err := qtx.CatalogWriteSetProductPrimaryImage(ctx, db.CatalogWriteSetProductPrimaryImageParams{
-			OrganizationID: in.OrganizationID,
-			ID:             in.ProductID,
 			PrimaryImageID: pgtype.UUID{Bytes: img.ID, Valid: true},
+			ID:             in.ProductID,
 		}); err != nil {
 			return db.ProductImage{}, err
 		}
@@ -704,21 +644,21 @@ func (s *Service) UpdateProductImage(ctx context.Context, in UpdateProductImageI
 	if err := tx.Commit(ctx); err != nil {
 		return db.ProductImage{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionProductUpdated, "catalog.product", in.ProductID, map[string]any{
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionProductUpdated, "catalog.product", in.ProductID, map[string]any{
 		"productImageId": img.ID.String(),
 		"mediaVersion":   img.MediaVersion,
 	})
-	s.bumpCatalogCache(ctx, in.OrganizationID)
+	s.bumpCatalogCache(ctx, uuid.Nil)
 	return img, nil
 }
 
 // ArchiveProductImage hides an image from admin active lists and runtime catalogs.
-func (s *Service) ArchiveProductImage(ctx context.Context, organizationID, productID, imageID uuid.UUID) (db.ProductImage, error) {
+func (s *Service) ArchiveProductImage(ctx context.Context, companyID, productID, imageID uuid.UUID) (db.ProductImage, error) {
 	if s == nil {
 		return db.ProductImage{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || productID == uuid.Nil || imageID == uuid.Nil {
-		return db.ProductImage{}, ErrOrganizationRequired
+	if productID == uuid.Nil || imageID == uuid.Nil {
+		return db.ProductImage{}, ErrCompanyRequired
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -727,9 +667,8 @@ func (s *Service) ArchiveProductImage(ctx context.Context, organizationID, produ
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
 	cur, err := qtx.CatalogAdminGetProductImageForOrg(ctx, db.CatalogAdminGetProductImageForOrgParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-		ID_2:           imageID,
+		ID:   productID,
+		ID_2: imageID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -738,17 +677,13 @@ func (s *Service) ArchiveProductImage(ctx context.Context, organizationID, produ
 		return db.ProductImage{}, err
 	}
 	if cur.IsPrimary {
-		if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
-			OrganizationID: organizationID,
-			ID:             productID,
-		}); err != nil {
+		if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, productID); err != nil {
 			return db.ProductImage{}, err
 		}
 	}
 	img, err := qtx.CatalogWriteArchiveProductImage(ctx, db.CatalogWriteArchiveProductImageParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-		ID_2:           imageID,
+		ID:   productID,
+		ID_2: imageID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -759,12 +694,12 @@ func (s *Service) ArchiveProductImage(ctx context.Context, organizationID, produ
 	if err := tx.Commit(ctx); err != nil {
 		return db.ProductImage{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, organizationID, compliance.ActionProductUpdated, "catalog.product", productID, map[string]any{
+	s.recordCatalogWriteAudit(ctx, companyID, compliance.ActionProductUpdated, "catalog.product", productID, map[string]any{
 		"productImageId": img.ID.String(),
 		"imageArchived":  true,
 		"mediaVersion":   img.MediaVersion,
 	})
-	s.bumpCatalogCache(ctx, organizationID)
+	s.bumpCatalogCache(ctx, companyID)
 	return img, nil
 }
 
@@ -773,8 +708,8 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 	if s == nil {
 		return db.Product{}, errors.New("catalogadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil || in.ProductID == uuid.Nil || in.ArtifactID == uuid.Nil {
-		return db.Product{}, ErrOrganizationRequired
+	if in.ProductID == uuid.Nil || in.ArtifactID == uuid.Nil {
+		return db.Product{}, ErrCompanyRequired
 	}
 
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
@@ -784,10 +719,7 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
 
-	if _, err := qtx.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.ProductID,
-	}); err != nil {
+	if _, err := qtx.CatalogAdminGetProduct(ctx, in.ProductID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Product{}, ErrNotFound
 		}
@@ -799,7 +731,7 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 	var mime pgtype.Text
 
 	if s.media.Store != nil {
-		displayURL, thumbURL, dKey, artifactMIME, err := copyArtifactIntoProductDeterministicKeys(ctx, s.media.Store, in.OrganizationID, in.ArtifactID, in.ProductID, s.mediaMaxBytes(), s.media.PresignTTL)
+		displayURL, thumbURL, dKey, artifactMIME, err := copyArtifactIntoProductDeterministicKeys(ctx, s.media.Store, uuid.Nil, in.ArtifactID, in.ProductID, s.mediaMaxBytes(), s.media.PresignTTL)
 		if err != nil {
 			return db.Product{}, err
 		}
@@ -827,16 +759,10 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 		thumbPg = pgtype.Text{String: thumb, Valid: true}
 	}
 
-	if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.ProductID,
-	}); err != nil {
+	if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, in.ProductID); err != nil {
 		return db.Product{}, err
 	}
-	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, db.CatalogWriteArchiveAllProductImagesForProductParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.ProductID,
-	}); err != nil {
+	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, in.ProductID); err != nil {
 		return db.Product{}, err
 	}
 
@@ -871,9 +797,8 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 	}
 
 	prod, err := qtx.CatalogWriteSetProductPrimaryImage(ctx, db.CatalogWriteSetProductPrimaryImageParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.ProductID,
 		PrimaryImageID: pgtype.UUID{Bytes: img.ID, Valid: true},
+		ID:             in.ProductID,
 	})
 	if err != nil {
 		return db.Product{}, err
@@ -884,18 +809,18 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 	after := productAuditSnapshot(prod)
 	after["artifactId"] = in.ArtifactID.String()
 	after["primaryImageBound"] = true
-	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionProductUpdated, "catalog.product", prod.ID, after)
-	s.bumpCatalogCache(ctx, in.OrganizationID)
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionProductUpdated, "catalog.product", prod.ID, after)
+	s.bumpCatalogCache(ctx, uuid.Nil)
 	return prod, nil
 }
 
 // ClearProductPrimaryImage removes the bound primary image row and clears the FK.
-func (s *Service) ClearProductPrimaryImage(ctx context.Context, organizationID, productID uuid.UUID) (db.Product, error) {
+func (s *Service) ClearProductPrimaryImage(ctx context.Context, companyID, productID uuid.UUID) (db.Product, error) {
 	if s == nil {
 		return db.Product{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || productID == uuid.Nil {
-		return db.Product{}, ErrOrganizationRequired
+	if productID == uuid.Nil {
+		return db.Product{}, ErrCompanyRequired
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -904,20 +829,14 @@ func (s *Service) ClearProductPrimaryImage(ctx context.Context, organizationID, 
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
 
-	if _, err := qtx.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	}); err != nil {
+	if _, err := qtx.CatalogAdminGetProduct(ctx, productID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Product{}, ErrNotFound
 		}
 		return db.Product{}, err
 	}
 
-	prev, ierr := qtx.CatalogAdminGetPrimaryProductImageForOrg(ctx, db.CatalogAdminGetPrimaryProductImageForOrgParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	})
+	prev, ierr := qtx.CatalogAdminGetPrimaryProductImageForOrg(ctx, productID)
 	prevKey := ""
 	if ierr == nil {
 		prevKey = strings.TrimSpace(prev.StorageKey)
@@ -925,33 +844,24 @@ func (s *Service) ClearProductPrimaryImage(ctx context.Context, organizationID, 
 		return db.Product{}, ierr
 	}
 
-	if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	}); err != nil {
+	if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, productID); err != nil {
 		return db.Product{}, err
 	}
-	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, db.CatalogWriteArchiveAllProductImagesForProductParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	}); err != nil {
+	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, productID); err != nil {
 		return db.Product{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.Product{}, err
 	}
 
-	bestEffortDeleteDeterministicProductMedia(ctx, s.media.Store, prevKey, organizationID, productID)
+	bestEffortDeleteDeterministicProductMedia(ctx, s.media.Store, prevKey, companyID, productID)
 
-	row, gerr := s.q.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	})
+	row, gerr := s.q.CatalogAdminGetProduct(ctx, productID)
 	if gerr != nil {
 		return db.Product{}, gerr
 	}
-	s.recordCatalogWriteAudit(ctx, organizationID, compliance.ActionProductUpdated, "catalog.product", productID,
+	s.recordCatalogWriteAudit(ctx, companyID, compliance.ActionProductUpdated, "catalog.product", productID,
 		map[string]any{"productId": productID.String(), "primaryImageCleared": true})
-	s.bumpCatalogCache(ctx, organizationID)
+	s.bumpCatalogCache(ctx, companyID)
 	return row, nil
 }

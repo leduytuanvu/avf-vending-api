@@ -64,22 +64,21 @@ func TestRequestObservabilityMiddleware_PropagatesHeaderAndTraceFields(t *testin
 func TestAuthObservabilityMiddleware_PropagatesPrincipalFields(t *testing.T) {
 	t.Parallel()
 
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	scopeID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	_ = scopeID
 	techID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 
 	r := chi.NewRouter()
 	r.With(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := auth.WithPrincipal(r.Context(), auth.Principal{
-				OrganizationID: orgID,
-				TechnicianID:   techID,
+				TechnicianID: techID,
 			})
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}, authObservabilityMiddleware(zap.NewNop())).Get("/", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{
-			"organization_id": observability.OrganizationIDFromContext(r.Context()),
-			"operator_id":     observability.OperatorIDFromContext(r.Context()),
+			"operator_id": observability.OperatorIDFromContext(r.Context()),
 		})
 	})
 
@@ -91,9 +90,6 @@ func TestAuthObservabilityMiddleware_PropagatesPrincipalFields(t *testing.T) {
 	var got map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
-	}
-	if got["organization_id"] != orgID.String() {
-		t.Fatalf("organization_id=%v", got["organization_id"])
 	}
 	if got["operator_id"] != techID.String() {
 		t.Fatalf("operator_id=%v", got["operator_id"])

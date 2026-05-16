@@ -19,7 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// AdminService backs org-scoped payment operations APIs (webhooks audit, settlements, disputes, finance export).
+// AdminService backs role-scoped payment operations APIs (webhooks audit, settlements, disputes, finance export).
 type AdminService struct {
 	q     *db.Queries
 	pool  *pgxpool.Pool
@@ -125,11 +125,10 @@ type DisputesListResponse struct {
 }
 
 type ResolveDisputeInput struct {
-	OrganizationID uuid.UUID
-	DisputeID      uuid.UUID
-	Status         string
-	Note           string
-	ResolvedBy     uuid.UUID
+	DisputeID  uuid.UUID
+	Status     string
+	Note       string
+	ResolvedBy uuid.UUID
 }
 
 // ReconciliationStalePaidOrderRow is an order stuck in paid/vending with a captured PSP row past SLA.
@@ -187,22 +186,18 @@ type ReconciliationDriftReport struct {
 	AppliedWebhookVsPaymentAmountMismatch []ReconciliationWebhookAmountMismatchRow `json:"appliedWebhookVsPaymentAmountMismatch"`
 }
 
-// ListWebhookEvents returns org-scoped webhook ingress rows (includes join via payments when organization_id denorm is null).
-func (s *AdminService) ListWebhookEvents(ctx context.Context, organizationID uuid.UUID, limit, offset int32) (*WebhookEventsListResponse, error) {
+// ListWebhookEvents returns role-scoped webhook ingress rows (includes join via payments when scope_id denorm is null).
+func (s *AdminService) ListWebhookEvents(ctx context.Context, companyID uuid.UUID, limit, offset int32) (*WebhookEventsListResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("payments: nil service")
 	}
-	if organizationID == uuid.Nil {
-		return nil, errors.New("payments: organization required")
-	}
-	total, err := s.q.CountPaymentProviderEventsForOrgAdmin(ctx, organizationID)
+	total, err := s.q.CountPaymentProviderEventsForOrgAdmin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	rows, err := s.q.ListPaymentProviderEventsForOrgAdmin(ctx, db.ListPaymentProviderEventsForOrgAdminParams{
-		Limit:          limit,
-		Offset:         offset,
-		OrganizationID: organizationID,
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, err
@@ -243,22 +238,18 @@ func textPtr(t pgtype.Text) *string {
 	return &s
 }
 
-// ListSettlements lists imported PSP settlement rows for an organization.
-func (s *AdminService) ListSettlements(ctx context.Context, organizationID uuid.UUID, limit, offset int32) (*SettlementsListResponse, error) {
+// ListSettlements lists imported PSP settlement rows for an company.
+func (s *AdminService) ListSettlements(ctx context.Context, companyID uuid.UUID, limit, offset int32) (*SettlementsListResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("payments: nil service")
 	}
-	if organizationID == uuid.Nil {
-		return nil, errors.New("payments: organization required")
-	}
-	total, err := s.q.CountPaymentProviderSettlementsForOrg(ctx, organizationID)
+	total, err := s.q.CountPaymentProviderSettlementsForOrg(ctx)
 	if err != nil {
 		return nil, err
 	}
 	rows, err := s.q.ListPaymentProviderSettlementsForOrg(ctx, db.ListPaymentProviderSettlementsForOrgParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-		Offset:         offset,
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, err
@@ -283,12 +274,9 @@ func (s *AdminService) ListSettlements(ctx context.Context, organizationID uuid.
 }
 
 // ImportSettlements upserts settlement rows and opens reconciliation cases when referenced payment totals disagree with gross_amount_minor.
-func (s *AdminService) ImportSettlements(ctx context.Context, organizationID uuid.UUID, provider string, items []SettlementImportItem) (*SettlementImportResponse, error) {
+func (s *AdminService) ImportSettlements(ctx context.Context, companyID uuid.UUID, provider string, items []SettlementImportItem) (*SettlementImportResponse, error) {
 	if s == nil || s.q == nil || s.pool == nil {
 		return nil, errors.New("payments: nil service")
-	}
-	if organizationID == uuid.Nil {
-		return nil, errors.New("payments: organization required")
 	}
 	prov := strings.TrimSpace(provider)
 	if prov == "" {
@@ -329,7 +317,6 @@ func (s *AdminService) ImportSettlements(ctx context.Context, organizationID uui
 		qtx := db.New(tx)
 
 		row, err := qtx.UpsertPaymentProviderSettlement(ctx, db.UpsertPaymentProviderSettlementParams{
-			OrganizationID:       organizationID,
 			Provider:             prov,
 			ProviderSettlementID: sid,
 			GrossAmountMinor:     it.GrossAmountMinor,
@@ -347,10 +334,9 @@ func (s *AdminService) ImportSettlements(ctx context.Context, organizationID uui
 
 		matched := true
 		if len(refs) > 0 {
-			tot, err := qtx.SettlementReferencedPaymentsTotalForOrg(ctx, db.SettlementReferencedPaymentsTotalForOrgParams{
-				OrganizationID: organizationID,
-				Lower:          prov,
-				Column3:        refs,
+			tot, err := qtx.SettlementReferencedPaymentsTotalForOrg(ctx, db.SettlementReferencedPaymentsTotalForOrgParams{Column2: refs,
+
+				Lower: prov,
 			})
 			if err != nil {
 				return nil, err
@@ -367,7 +353,6 @@ func (s *AdminService) ImportSettlements(ctx context.Context, organizationID uui
 				})
 				md := compliance.SanitizeJSONBytes(meta)
 				_, err = qtx.UpsertCommerceReconciliationCase(ctx, db.UpsertCommerceReconciliationCaseParams{
-					OrganizationID: organizationID,
 					CaseType:       "settlement_amount_mismatch",
 					Severity:       "critical",
 					Reason:         "settlement gross amount does not match referenced internal payments",
@@ -377,10 +362,9 @@ func (s *AdminService) ImportSettlements(ctx context.Context, organizationID uui
 				if err != nil {
 					return nil, err
 				}
-				row, err = qtx.UpdatePaymentProviderSettlementStatusForOrg(ctx, db.UpdatePaymentProviderSettlementStatusForOrgParams{
-					ID:             row.ID,
-					OrganizationID: organizationID,
-					Status:         "mismatch_flagged",
+				row, err = qtx.UpdatePaymentProviderSettlementStatusForOrg(ctx, db.UpdatePaymentProviderSettlementStatusForOrgParams{Status: "mismatch_flagged",
+
+					ID: row.ID,
 				})
 				if err != nil {
 					return nil, err
@@ -397,7 +381,6 @@ func (s *AdminService) ImportSettlements(ctx context.Context, organizationID uui
 			})
 			md := compliance.SanitizeJSONBytes(meta)
 			_, err = qtx.UpsertCommerceReconciliationCase(ctx, db.UpsertCommerceReconciliationCaseParams{
-				OrganizationID: organizationID,
 				CaseType:       "settlement_amount_mismatch",
 				Severity:       "warning",
 				Reason:         "settlement import missing transaction references for non-zero gross amount",
@@ -407,10 +390,9 @@ func (s *AdminService) ImportSettlements(ctx context.Context, organizationID uui
 			if err != nil {
 				return nil, err
 			}
-			row, err = qtx.UpdatePaymentProviderSettlementStatusForOrg(ctx, db.UpdatePaymentProviderSettlementStatusForOrgParams{
-				ID:             row.ID,
-				OrganizationID: organizationID,
-				Status:         "mismatch_flagged",
+			row, err = qtx.UpdatePaymentProviderSettlementStatusForOrg(ctx, db.UpdatePaymentProviderSettlementStatusForOrgParams{Status: "mismatch_flagged",
+
+				ID: row.ID,
 			})
 			if err != nil {
 				return nil, err
@@ -418,10 +400,9 @@ func (s *AdminService) ImportSettlements(ctx context.Context, organizationID uui
 		}
 
 		if matched && row.Status != "mismatch_flagged" {
-			row, err = qtx.UpdatePaymentProviderSettlementStatusForOrg(ctx, db.UpdatePaymentProviderSettlementStatusForOrgParams{
-				ID:             row.ID,
-				OrganizationID: organizationID,
-				Status:         "reconciled",
+			row, err = qtx.UpdatePaymentProviderSettlementStatusForOrg(ctx, db.UpdatePaymentProviderSettlementStatusForOrgParams{Status: "reconciled",
+
+				ID: row.ID,
 			})
 			if err != nil {
 				return nil, err
@@ -452,22 +433,18 @@ func (s *AdminService) ImportSettlements(ctx context.Context, organizationID uui
 	return out, nil
 }
 
-// ListDisputes lists payment disputes for an organization.
-func (s *AdminService) ListDisputes(ctx context.Context, organizationID uuid.UUID, limit, offset int32) (*DisputesListResponse, error) {
+// ListDisputes lists payment disputes for an company.
+func (s *AdminService) ListDisputes(ctx context.Context, companyID uuid.UUID, limit, offset int32) (*DisputesListResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("payments: nil service")
 	}
-	if organizationID == uuid.Nil {
-		return nil, errors.New("payments: organization required")
-	}
-	total, err := s.q.CountPaymentDisputesForOrg(ctx, organizationID)
+	total, err := s.q.CountPaymentDisputesForOrg(ctx)
 	if err != nil {
 		return nil, err
 	}
 	rows, err := s.q.ListPaymentDisputesForOrg(ctx, db.ListPaymentDisputesForOrgParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-		Offset:         offset,
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, err
@@ -516,12 +493,11 @@ func (s *AdminService) ResolveDispute(ctx context.Context, in ResolveDisputeInpu
 		return DisputeListItem{}, errors.New("payments: status must be won, lost, or closed")
 	}
 	note := strings.TrimSpace(in.Note)
-	row, err := s.q.ResolvePaymentDisputeForOrg(ctx, db.ResolvePaymentDisputeForOrgParams{
-		ID:             in.DisputeID,
-		OrganizationID: in.OrganizationID,
-		Status:         st,
+	row, err := s.q.ResolvePaymentDisputeForOrg(ctx, db.ResolvePaymentDisputeForOrgParams{Status: st,
 		ResolutionNote: pgtype.Text{String: note, Valid: note != ""},
 		ResolvedBy:     pgtype.UUID{Bytes: in.ResolvedBy, Valid: in.ResolvedBy != uuid.Nil},
+
+		ID: in.DisputeID,
 	})
 	if err != nil {
 		return DisputeListItem{}, err
@@ -547,20 +523,16 @@ func (s *AdminService) ResolveDispute(ctx context.Context, in ResolveDisputeInpu
 }
 
 // WriteFinanceExportCSV streams payment rows for finance (date bounds inclusive on created_at).
-func (s *AdminService) WriteFinanceExportCSV(ctx context.Context, w io.Writer, organizationID uuid.UUID, from, to time.Time) error {
+func (s *AdminService) WriteFinanceExportCSV(ctx context.Context, w io.Writer, companyID uuid.UUID, from, to time.Time) error {
 	if s == nil || s.q == nil {
 		return errors.New("payments: nil service")
-	}
-	if organizationID == uuid.Nil {
-		return errors.New("payments: organization required")
 	}
 	if !from.Before(to) && !from.Equal(to) {
 		return errors.New("payments: from must be <= to")
 	}
 	rows, err := s.q.ListPaymentsFinanceExportForOrg(ctx, db.ListPaymentsFinanceExportForOrgParams{
-		OrganizationID: organizationID,
-		CreatedAt:      from,
-		CreatedAt_2:    to,
+		CreatedAt:   from,
+		CreatedAt_2: to,
 	})
 	if err != nil {
 		return err
@@ -590,12 +562,9 @@ func (s *AdminService) WriteFinanceExportCSV(ctx context.Context, w io.Writer, o
 }
 
 // ListPaymentReconciliationDrift returns read-only drift probes (no mutations).
-func (s *AdminService) ListPaymentReconciliationDrift(ctx context.Context, organizationID uuid.UUID, staleAfterSeconds int64, limit int32) (*ReconciliationDriftReport, error) {
+func (s *AdminService) ListPaymentReconciliationDrift(ctx context.Context, companyID uuid.UUID, staleAfterSeconds int64, limit int32) (*ReconciliationDriftReport, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("payments: nil service")
-	}
-	if organizationID == uuid.Nil {
-		return nil, errors.New("payments: organization required")
 	}
 	if staleAfterSeconds <= 0 {
 		staleAfterSeconds = int64(2 * time.Hour / time.Second)
@@ -607,31 +576,21 @@ func (s *AdminService) ListPaymentReconciliationDrift(ctx context.Context, organ
 		limit = 500
 	}
 	staleRows, err := s.q.ListReconciliationStalePaidOrdersNotCompleted(ctx, db.ListReconciliationStalePaidOrdersNotCompletedParams{
-		OrganizationID: organizationID,
-		Column2:        staleAfterSeconds,
-		Limit:          limit,
+		Column1: staleAfterSeconds,
+		Limit:   limit,
 	})
 	if err != nil {
 		return nil, err
 	}
-	provRows, err := s.q.ListReconciliationProviderCapturedLocalPending(ctx, db.ListReconciliationProviderCapturedLocalPendingParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-	})
+	provRows, err := s.q.ListReconciliationProviderCapturedLocalPending(ctx, limit)
 	if err != nil {
 		return nil, err
 	}
-	missRows, err := s.q.ListReconciliationLocalCapturedWithoutProviderEvidence(ctx, db.ListReconciliationLocalCapturedWithoutProviderEvidenceParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-	})
+	missRows, err := s.q.ListReconciliationLocalCapturedWithoutProviderEvidence(ctx, limit)
 	if err != nil {
 		return nil, err
 	}
-	mismatchRows, err := s.q.ListReconciliationAppliedWebhookAmountMismatch(ctx, db.ListReconciliationAppliedWebhookAmountMismatchParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-	})
+	mismatchRows, err := s.q.ListReconciliationAppliedWebhookAmountMismatch(ctx, limit)
 	if err != nil {
 		return nil, err
 	}

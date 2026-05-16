@@ -1,7 +1,7 @@
 -- Admin inventory reconcile marker (append-only ledger row).
+
 -- name: AdminInventoryInsertReconcileMarker :one
 INSERT INTO inventory_events (
-    organization_id,
     machine_id,
     event_type,
     reason_code,
@@ -12,9 +12,8 @@ INSERT INTO inventory_events (
 )
 VALUES (
     $1,
-    $2,
     'reconcile',
-    $3,
+    $2,
     0,
     now (),
     now (),

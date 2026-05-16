@@ -69,7 +69,6 @@ func (x *RefreshMachineTokenRequest) GetRefreshToken() string {
 type RefreshMachineTokenResponse struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	MachineId             string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId        string                 `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	SiteId                string                 `protobuf:"bytes,3,opt,name=site_id,json=siteId,proto3" json:"site_id,omitempty"`
 	MachineName           string                 `protobuf:"bytes,4,opt,name=machine_name,json=machineName,proto3" json:"machine_name,omitempty"`
 	AccessToken           string                 `protobuf:"bytes,5,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
@@ -116,13 +115,6 @@ func (*RefreshMachineTokenResponse) Descriptor() ([]byte, []int) {
 func (x *RefreshMachineTokenResponse) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *RefreshMachineTokenResponse) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -196,11 +188,10 @@ const file_avf_machine_v1_machine_token_proto_rawDesc = "" +
 	"\n" +
 	"\"avf/machine/v1/machine_token.proto\x12\x0eavf.machine.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"A\n" +
 	"\x1aRefreshMachineTokenRequest\x12#\n" +
-	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"\x95\x04\n" +
+	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"\xec\x03\n" +
 	"\x1bRefreshMachineTokenResponse\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x17\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\asite_id\x18\x03 \x01(\tR\x06siteId\x12!\n" +
 	"\fmachine_name\x18\x04 \x01(\tR\vmachineName\x12!\n" +
 	"\faccess_token\x18\x05 \x01(\tR\vaccessToken\x12Q\n" +

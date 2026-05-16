@@ -31,34 +31,22 @@ func mountAdminMediaRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(
 		r.Use(auth.RequireAnyPermission(auth.PermMediaRead, auth.PermCatalogRead))
 		r.Get("/media", listAdminMedia(svc))
 		r.Get("/media/assets", listAdminMedia(svc))
-		r.Get("/organizations/{organizationId}/media/assets", listAdminMedia(svc))
 		r.Get("/media/{mediaId}", getAdminMedia(svc))
 		r.Get("/media/assets/{mediaId}", getAdminMedia(svc))
-		r.Get("/organizations/{organizationId}/media/assets/{assetId}", getAdminMedia(svc))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite))
 		r.With(writeRL).Post("/media/assets", postAdminMediaUploadInit(svc))
 		r.With(writeRL).Post("/media/uploads", postAdminMediaUploadInit(svc))
-		r.With(writeRL).Post("/organizations/{organizationId}/media/product-images", postAdminMediaUploadInit(svc))
 		r.With(writeRL).Post("/media/{mediaId}/complete", postAdminMediaUploadComplete(svc))
 		r.With(writeRL).Delete("/media/{mediaId}", deleteAdminMedia(svc))
 		r.With(writeRL).Delete("/media/assets/{mediaId}", deleteAdminMedia(svc))
-		r.With(writeRL).Delete("/organizations/{organizationId}/media/assets/{assetId}", deleteAdminMedia(svc))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaRead, auth.PermCatalogRead))
-		r.Get("/organizations/{organizationId}/products/{productId}/images", listAdminProductImages(app))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite))
-		r.With(writeRL).Post("/organizations/{organizationId}/media/uploads/init", postAdminMediaUploadInit(svc))
-		r.With(writeRL).Post("/organizations/{organizationId}/media/uploads/complete", postAdminMediaUploadCompleteByBody(svc))
-		r.With(writeRL).Post("/organizations/{organizationId}/products/{productId}/media", bindAdminProductMedia(app))
-		r.With(writeRL).Delete("/organizations/{organizationId}/products/{productId}/media/{mediaId}", deleteAdminProductMedia(app))
-		r.With(writeRL).Post("/organizations/{organizationId}/products/{productId}/images", bindAdminProductMedia(app))
-		r.With(writeRL).Patch("/organizations/{organizationId}/products/{productId}/images/{imageId}", patchAdminProductImage(app))
-		r.With(writeRL).Delete("/organizations/{organizationId}/products/{productId}/images/{imageId}", deleteAdminProductImageByID(app))
 	})
 }
 
@@ -75,11 +63,11 @@ func parseAdminOptionalMediaRouteID(r *http.Request) (uuid.UUID, error) {
 	return uuid.Nil, fmt.Errorf("missing media id")
 }
 
-func adminMediaOrgAllowed(p auth.Principal, orgID uuid.UUID) bool {
+func adminMediaOrgAllowed(p auth.Principal, scopeID uuid.UUID) bool {
 	if p.HasRole(auth.RolePlatformAdmin) {
 		return true
 	}
-	if !p.HasOrganization() || p.OrganizationID != orgID {
+	if uuid.Nil != scopeID {
 		return false
 	}
 	return auth.HasPermission(p, auth.PermMediaRead) || auth.HasPermission(p, auth.PermCatalogRead) ||
@@ -108,12 +96,13 @@ func postAdminMediaUploadInit(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "tenant_scope_required", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return
 		}
-		if !adminMediaOrgAllowed(p, orgID) {
+		if !adminMediaOrgAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -124,7 +113,7 @@ func postAdminMediaUploadInit(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "invalid json body")
 			return
 		}
-		out, err := svc.InitUpload(r.Context(), orgID, body.ContentType)
+		out, err := svc.InitUpload(r.Context(), scopeID, body.ContentType)
 		if err != nil {
 			writeMediaAdminError(w, r.Context(), err)
 			return
@@ -147,12 +136,13 @@ func postAdminMediaUploadComplete(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "tenant_scope_required", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return
 		}
-		if !adminMediaOrgAllowed(p, orgID) {
+		if !adminMediaOrgAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -161,7 +151,7 @@ func postAdminMediaUploadComplete(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_media_id", err.Error())
 			return
 		}
-		row, err := svc.CompleteUpload(r.Context(), orgID, mediaID)
+		row, err := svc.CompleteUpload(r.Context(), scopeID, mediaID)
 		if err != nil {
 			writeMediaAdminError(w, r.Context(), err)
 			return
@@ -200,12 +190,13 @@ func listAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "tenant_scope_required", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return
 		}
-		if !adminMediaOrgAllowed(p, orgID) {
+		if !adminMediaOrgAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -227,7 +218,7 @@ func listAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 			}
 			offset = int32(n)
 		}
-		rows, total, err := svc.ListAssetsPage(r.Context(), orgID, limit, offset)
+		rows, total, err := svc.ListAssetsPage(r.Context(), scopeID, limit, offset)
 		if err != nil {
 			writeMediaAdminError(w, r.Context(), err)
 			return
@@ -255,12 +246,13 @@ func getAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "tenant_scope_required", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return
 		}
-		if !adminMediaOrgAllowed(p, orgID) {
+		if !adminMediaOrgAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -269,7 +261,7 @@ func getAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_media_id", err.Error())
 			return
 		}
-		row, err := svc.GetAsset(r.Context(), orgID, mediaID)
+		row, err := svc.GetAsset(r.Context(), scopeID, mediaID)
 		if err != nil {
 			writeMediaAdminError(w, r.Context(), err)
 			return
@@ -285,12 +277,13 @@ func deleteAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "tenant_scope_required", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return
 		}
-		if !adminMediaOrgAllowed(p, orgID) {
+		if !adminMediaOrgAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -299,7 +292,7 @@ func deleteAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_media_id", err.Error())
 			return
 		}
-		if err := svc.DeleteAsset(r.Context(), orgID, mediaID); err != nil {
+		if err := svc.DeleteAsset(r.Context(), scopeID, mediaID); err != nil {
 			writeMediaAdminError(w, r.Context(), err)
 			return
 		}
@@ -309,13 +302,12 @@ func deleteAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 
 func mapAdminMediaAssetJSON(a db.MediaAsset) map[string]any {
 	out := map[string]any{
-		"id":              a.ID.String(),
-		"organization_id": a.OrganizationID.String(),
-		"kind":            a.Kind,
-		"status":          a.Status,
-		"object_version":  a.ObjectVersion,
-		"created_at":      formatAPITimeRFC3339Nano(a.CreatedAt),
-		"updated_at":      formatAPITimeRFC3339Nano(a.UpdatedAt),
+		"id":             a.ID.String(),
+		"kind":           a.Kind,
+		"status":         a.Status,
+		"object_version": a.ObjectVersion,
+		"created_at":     formatAPITimeRFC3339Nano(a.CreatedAt),
+		"updated_at":     formatAPITimeRFC3339Nano(a.UpdatedAt),
 	}
 	if a.MimeType.Valid {
 		out["mime_type"] = a.MimeType.String
@@ -351,12 +343,13 @@ func bindAdminProductMedia(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "tenant_scope_required", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return
 		}
-		if !adminMediaOrgAllowed(p, orgID) {
+		if !adminMediaOrgAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -382,12 +375,12 @@ func bindAdminProductMedia(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_media_id", "media_id required")
 			return
 		}
-		prod, err := app.MediaAdmin.BindProductPrimaryMedia(r.Context(), orgID, productID, mediaID)
+		prod, err := app.MediaAdmin.BindProductPrimaryMedia(r.Context(), scopeID, productID, mediaID)
 		if err != nil {
 			writeMediaAdminError(w, r.Context(), err)
 			return
 		}
-		img, _ := app.CatalogAdmin.PrimaryProductImageOrNil(r.Context(), orgID, prod.ID)
+		img, _ := app.CatalogAdmin.PrimaryProductImageOrNil(r.Context(), scopeID, prod.ID)
 		writeJSON(w, http.StatusOK, mapAdminProduct(*prod, img))
 	}
 }
@@ -403,12 +396,13 @@ func deleteAdminProductMedia(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "tenant_scope_required", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return
 		}
-		if !adminMediaOrgAllowed(p, orgID) {
+		if !adminMediaOrgAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -422,12 +416,12 @@ func deleteAdminProductMedia(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_media_id", "invalid mediaId")
 			return
 		}
-		prod, err := app.MediaAdmin.UnbindProductMedia(r.Context(), orgID, productID, mediaID)
+		prod, err := app.MediaAdmin.UnbindProductMedia(r.Context(), scopeID, productID, mediaID)
 		if err != nil {
 			writeMediaAdminError(w, r.Context(), err)
 			return
 		}
-		img, _ := app.CatalogAdmin.PrimaryProductImageOrNil(r.Context(), orgID, prod.ID)
+		img, _ := app.CatalogAdmin.PrimaryProductImageOrNil(r.Context(), scopeID, prod.ID)
 		writeJSON(w, http.StatusOK, mapAdminProduct(*prod, img))
 	}
 }
@@ -443,12 +437,13 @@ func listAdminProductImages(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "tenant_scope_required", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return
 		}
-		if !adminMediaOrgAllowed(p, orgID) {
+		if !adminMediaOrgAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -458,12 +453,12 @@ func listAdminProductImages(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		includeArchived := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("include_archived")), "true")
-		rows, err := app.CatalogAdmin.ListProductImages(r.Context(), orgID, productID, includeArchived)
+		rows, err := app.CatalogAdmin.ListProductImages(r.Context(), scopeID, productID, includeArchived)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		pmRows, err := app.CatalogAdmin.ListProductMediumRowsForProduct(r.Context(), orgID, productID)
+		pmRows, err := app.CatalogAdmin.ListProductMediumRowsForProduct(r.Context(), scopeID, productID)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -496,12 +491,13 @@ func patchAdminProductImage(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "tenant_scope_required", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return
 		}
-		if !adminMediaOrgAllowed(p, orgID) {
+		if !adminMediaOrgAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -519,18 +515,17 @@ func patchAdminProductImage(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		img, err := app.CatalogAdmin.UpdateProductImage(r.Context(), appcatalogadmin.UpdateProductImageInput{
-			OrganizationID: orgID,
-			ProductID:      productID,
-			ImageID:        imageID,
-			SortOrder:      body.SortOrder,
-			IsPrimary:      body.IsPrimary,
-			AltText:        body.AltText,
+			ProductID: productID,
+			ImageID:   imageID,
+			SortOrder: body.SortOrder,
+			IsPrimary: body.IsPrimary,
+			AltText:   body.AltText,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		pmRow, pmErr := app.CatalogAdmin.GetProductMediumForOrgProductImage(r.Context(), orgID, productID, imageID)
+		pmRow, pmErr := app.CatalogAdmin.GetProductMediumForOrgProductImage(r.Context(), scopeID, productID, imageID)
 		var pm *db.ProductMedium
 		if pmErr == nil {
 			pm = &pmRow
@@ -553,12 +548,13 @@ func deleteAdminProductImageByID(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "tenant_scope_required", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return
 		}
-		if !adminMediaOrgAllowed(p, orgID) {
+		if !adminMediaOrgAllowed(p, scopeID) {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
@@ -566,7 +562,7 @@ func deleteAdminProductImageByID(app *api.HTTPApplication) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if _, err := app.CatalogAdmin.ArchiveProductImage(r.Context(), orgID, productID, imageID); err != nil {
+		if _, err := app.CatalogAdmin.ArchiveProductImage(r.Context(), scopeID, productID, imageID); err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
 		}

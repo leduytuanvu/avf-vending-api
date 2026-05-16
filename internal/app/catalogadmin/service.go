@@ -24,7 +24,7 @@ type Service struct {
 }
 
 type CatalogCacheInvalidator interface {
-	BumpOrganizationMedia(ctx context.Context, organizationID uuid.UUID)
+	BumpCompanyMedia(ctx context.Context, companyID uuid.UUID)
 }
 
 // NewService constructs a catalog admin service (reads and writes).
@@ -55,11 +55,11 @@ func (s *Service) SetCatalogCacheInvalidator(cache CatalogCacheInvalidator) {
 	}
 }
 
-func (s *Service) bumpCatalogCache(ctx context.Context, organizationID uuid.UUID) {
-	if s == nil || s.cache == nil || organizationID == uuid.Nil {
+func (s *Service) bumpCatalogCache(ctx context.Context, companyID uuid.UUID) {
+	if s == nil || s.cache == nil || companyID == uuid.Nil {
 		return
 	}
-	s.cache.BumpOrganizationMedia(ctx, organizationID)
+	s.cache.BumpCompanyMedia(ctx, companyID)
 }
 
 func (s *Service) mediaMaxBytes() int64 {
@@ -77,23 +77,20 @@ func (s *Service) UsesDeterministicProductMedia() bool {
 	return s != nil && s.media.Store != nil
 }
 
-// GetPrimaryProductImageForOrg returns the primary image row for a product within an organization (ErrNoRows if none).
-func (s *Service) GetPrimaryProductImageForOrg(ctx context.Context, organizationID, productID uuid.UUID) (db.ProductImage, error) {
+// GetPrimaryProductImageForOrg returns the primary image row for a product within an company (ErrNoRows if none).
+func (s *Service) GetPrimaryProductImageForOrg(ctx context.Context, companyID, productID uuid.UUID) (db.ProductImage, error) {
 	if s == nil {
 		return db.ProductImage{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || productID == uuid.Nil {
-		return db.ProductImage{}, ErrOrganizationRequired
+	if productID == uuid.Nil {
+		return db.ProductImage{}, ErrCompanyRequired
 	}
-	return s.q.CatalogAdminGetPrimaryProductImageForOrg(ctx, db.CatalogAdminGetPrimaryProductImageForOrgParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	})
+	return s.q.CatalogAdminGetPrimaryProductImageForOrg(ctx, productID)
 }
 
 // PrimaryProductImageOrNil loads the primary image when present; returns (nil, nil) when no primary image exists.
-func (s *Service) PrimaryProductImageOrNil(ctx context.Context, organizationID, productID uuid.UUID) (*db.ProductImage, error) {
-	img, err := s.GetPrimaryProductImageForOrg(ctx, organizationID, productID)
+func (s *Service) PrimaryProductImageOrNil(ctx context.Context, companyID, productID uuid.UUID) (*db.ProductImage, error) {
+	img, err := s.GetPrimaryProductImageForOrg(ctx, companyID, productID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -103,13 +100,12 @@ func (s *Service) PrimaryProductImageOrNil(ctx context.Context, organizationID, 
 	return &img, nil
 }
 
-// ListProductsParams filters and pages products for an organization.
+// ListProductsParams filters and pages products for an company.
 type ListProductsParams struct {
-	OrganizationID uuid.UUID
-	Limit          int32
-	Offset         int32
-	Search         string
-	ActiveOnly     bool
+	Limit      int32
+	Offset     int32
+	Search     string
+	ActiveOnly bool
 }
 
 // ListProductsResult is a paged product list.
@@ -118,29 +114,24 @@ type ListProductsResult struct {
 	TotalCount int64
 }
 
-// ListProducts returns products visible within the organization.
+// ListProducts returns products visible within the company.
 func (s *Service) ListProducts(ctx context.Context, p ListProductsParams) (*ListProductsResult, error) {
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
 	}
-	if p.OrganizationID == uuid.Nil {
-		return nil, ErrOrganizationRequired
-	}
 	search := p.Search
 	cnt, err := s.q.CatalogAdminCountProducts(ctx, db.CatalogAdminCountProductsParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        search,
-		Column3:        p.ActiveOnly,
+		Column1: search,
+		Column2: p.ActiveOnly,
 	})
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.q.CatalogAdminListProducts(ctx, db.CatalogAdminListProductsParams{
-		OrganizationID: p.OrganizationID,
-		Limit:          p.Limit,
-		Offset:         p.Offset,
-		Column4:        search,
-		Column5:        p.ActiveOnly,
+	rows, err := s.q.CatalogAdminListProducts(ctx, db.CatalogAdminListProductsParams{Column1: search,
+		Column2: p.ActiveOnly,
+
+		Limit:  p.Limit,
+		Offset: p.Offset,
 	})
 	if err != nil {
 		return nil, err
@@ -148,18 +139,15 @@ func (s *Service) ListProducts(ctx context.Context, p ListProductsParams) (*List
 	return &ListProductsResult{Items: rows, TotalCount: cnt}, nil
 }
 
-// GetProduct returns a single product within the organization.
-func (s *Service) GetProduct(ctx context.Context, organizationID, productID uuid.UUID) (db.Product, error) {
+// GetProduct returns a single product within the company.
+func (s *Service) GetProduct(ctx context.Context, companyID, productID uuid.UUID) (db.Product, error) {
 	if s == nil {
 		return db.Product{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || productID == uuid.Nil {
-		return db.Product{}, ErrOrganizationRequired
+	if productID == uuid.Nil {
+		return db.Product{}, ErrCompanyRequired
 	}
-	row, err := s.q.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	})
+	row, err := s.q.CatalogAdminGetProduct(ctx, productID)
 	if err != nil {
 		return db.Product{}, err
 	}
@@ -168,32 +156,24 @@ func (s *Service) GetProduct(ctx context.Context, organizationID, productID uuid
 
 // ListPriceBooksParams filters price books for pagination.
 type ListPriceBooksParams struct {
-	OrganizationID  uuid.UUID
 	Limit           int32
 	Offset          int32
 	IncludeInactive bool
 }
 
-// ListPriceBooks returns price books for the organization (active only unless IncludeInactive).
+// ListPriceBooks returns price books for the company (active only unless IncludeInactive).
 func (s *Service) ListPriceBooks(ctx context.Context, p ListPriceBooksParams) ([]db.PriceBook, int64, error) {
 	if s == nil {
 		return nil, 0, errors.New("catalogadmin: nil service")
 	}
-	if p.OrganizationID == uuid.Nil {
-		return nil, 0, ErrOrganizationRequired
-	}
-	cnt, err := s.q.CatalogAdminCountPriceBooks(ctx, db.CatalogAdminCountPriceBooksParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        p.IncludeInactive,
-	})
+	cnt, err := s.q.CatalogAdminCountPriceBooks(ctx, p.IncludeInactive)
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := s.q.CatalogAdminListPriceBooks(ctx, db.CatalogAdminListPriceBooksParams{
-		OrganizationID: p.OrganizationID,
-		Limit:          p.Limit,
-		Offset:         p.Offset,
-		Column4:        p.IncludeInactive,
+	rows, err := s.q.CatalogAdminListPriceBooks(ctx, db.CatalogAdminListPriceBooksParams{Column1: p.IncludeInactive,
+
+		Limit:  p.Limit,
+		Offset: p.Offset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -201,22 +181,18 @@ func (s *Service) ListPriceBooks(ctx context.Context, p ListPriceBooksParams) ([
 	return rows, cnt, nil
 }
 
-// ListPlanograms returns planograms for the organization.
-func (s *Service) ListPlanograms(ctx context.Context, organizationID uuid.UUID, limit, offset int32) ([]db.Planogram, int64, error) {
+// ListPlanograms returns planograms for the company.
+func (s *Service) ListPlanograms(ctx context.Context, companyID uuid.UUID, limit, offset int32) ([]db.Planogram, int64, error) {
 	if s == nil {
 		return nil, 0, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil {
-		return nil, 0, ErrOrganizationRequired
-	}
-	cnt, err := s.q.CatalogAdminCountPlanograms(ctx, organizationID)
+	cnt, err := s.q.CatalogAdminCountPlanograms(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 	rows, err := s.q.CatalogAdminListPlanograms(ctx, db.CatalogAdminListPlanogramsParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-		Offset:         offset,
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -224,64 +200,53 @@ func (s *Service) ListPlanograms(ctx context.Context, organizationID uuid.UUID, 
 	return rows, cnt, nil
 }
 
-// GetPlanogram returns a planogram in the organization.
-func (s *Service) GetPlanogram(ctx context.Context, organizationID, planogramID uuid.UUID) (db.Planogram, error) {
+// GetPlanogram returns a planogram in the company.
+func (s *Service) GetPlanogram(ctx context.Context, companyID, planogramID uuid.UUID) (db.Planogram, error) {
 	if s == nil {
 		return db.Planogram{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || planogramID == uuid.Nil {
-		return db.Planogram{}, ErrOrganizationRequired
+	if planogramID == uuid.Nil {
+		return db.Planogram{}, ErrCompanyRequired
 	}
-	row, err := s.q.CatalogAdminGetPlanogram(ctx, db.CatalogAdminGetPlanogramParams{
-		OrganizationID: organizationID,
-		ID:             planogramID,
-	})
+	row, err := s.q.CatalogAdminGetPlanogram(ctx, planogramID)
 	if err != nil {
 		return db.Planogram{}, err
 	}
 	return row, nil
 }
 
-// ListPlanogramSlots returns slot rows for a planogram (must belong to organization — enforced by query).
-func (s *Service) ListPlanogramSlots(ctx context.Context, organizationID, planogramID uuid.UUID) ([]db.CatalogAdminListSlotsByPlanogramRow, error) {
+// ListPlanogramSlots returns slot rows for a planogram (must belong to company — enforced by query).
+func (s *Service) ListPlanogramSlots(ctx context.Context, companyID, planogramID uuid.UUID) ([]db.CatalogAdminListSlotsByPlanogramRow, error) {
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || planogramID == uuid.Nil {
-		return nil, ErrOrganizationRequired
+	if planogramID == uuid.Nil {
+		return nil, ErrCompanyRequired
 	}
-	if _, err := s.q.CatalogAdminGetPlanogram(ctx, db.CatalogAdminGetPlanogramParams{
-		OrganizationID: organizationID,
-		ID:             planogramID,
-	}); err != nil {
+	if _, err := s.q.CatalogAdminGetPlanogram(ctx, planogramID); err != nil {
 		return nil, err
 	}
 	return s.q.CatalogAdminListSlotsByPlanogram(ctx, planogramID)
 }
 
-// ListBrandsParams pages brands for an organization.
+// ListBrandsParams pages brands for an company.
 type ListBrandsParams struct {
-	OrganizationID uuid.UUID
-	Limit          int32
-	Offset         int32
+	Limit  int32
+	Offset int32
 }
 
-// ListBrands returns brands for the organization.
+// ListBrands returns brands for the company.
 func (s *Service) ListBrands(ctx context.Context, p ListBrandsParams) ([]db.Brand, int64, error) {
 	if s == nil {
 		return nil, 0, errors.New("catalogadmin: nil service")
 	}
-	if p.OrganizationID == uuid.Nil {
-		return nil, 0, ErrOrganizationRequired
-	}
-	cnt, err := s.q.CatalogAdminCountBrands(ctx, p.OrganizationID)
+	cnt, err := s.q.CatalogAdminCountBrands(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 	rows, err := s.q.CatalogAdminListBrands(ctx, db.CatalogAdminListBrandsParams{
-		OrganizationID: p.OrganizationID,
-		Limit:          p.Limit,
-		Offset:         p.Offset,
+		Limit:  p.Limit,
+		Offset: p.Offset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -289,43 +254,35 @@ func (s *Service) ListBrands(ctx context.Context, p ListBrandsParams) ([]db.Bran
 	return rows, cnt, nil
 }
 
-// GetBrand returns a brand in the organization.
-func (s *Service) GetBrand(ctx context.Context, organizationID, brandID uuid.UUID) (db.Brand, error) {
+// GetBrand returns a brand in the company.
+func (s *Service) GetBrand(ctx context.Context, companyID, brandID uuid.UUID) (db.Brand, error) {
 	if s == nil {
 		return db.Brand{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || brandID == uuid.Nil {
-		return db.Brand{}, ErrOrganizationRequired
+	if brandID == uuid.Nil {
+		return db.Brand{}, ErrCompanyRequired
 	}
-	return s.q.CatalogAdminGetBrand(ctx, db.CatalogAdminGetBrandParams{
-		OrganizationID: organizationID,
-		ID:             brandID,
-	})
+	return s.q.CatalogAdminGetBrand(ctx, brandID)
 }
 
 // ListCategoriesParams pages categories.
 type ListCategoriesParams struct {
-	OrganizationID uuid.UUID
-	Limit          int32
-	Offset         int32
+	Limit  int32
+	Offset int32
 }
 
-// ListCategories returns categories for the organization.
+// ListCategories returns categories for the company.
 func (s *Service) ListCategories(ctx context.Context, p ListCategoriesParams) ([]db.Category, int64, error) {
 	if s == nil {
 		return nil, 0, errors.New("catalogadmin: nil service")
 	}
-	if p.OrganizationID == uuid.Nil {
-		return nil, 0, ErrOrganizationRequired
-	}
-	cnt, err := s.q.CatalogAdminCountCategories(ctx, p.OrganizationID)
+	cnt, err := s.q.CatalogAdminCountCategories(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 	rows, err := s.q.CatalogAdminListCategories(ctx, db.CatalogAdminListCategoriesParams{
-		OrganizationID: p.OrganizationID,
-		Limit:          p.Limit,
-		Offset:         p.Offset,
+		Limit:  p.Limit,
+		Offset: p.Offset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -333,43 +290,35 @@ func (s *Service) ListCategories(ctx context.Context, p ListCategoriesParams) ([
 	return rows, cnt, nil
 }
 
-// GetCategory returns a category in the organization.
-func (s *Service) GetCategory(ctx context.Context, organizationID, categoryID uuid.UUID) (db.Category, error) {
+// GetCategory returns a category in the company.
+func (s *Service) GetCategory(ctx context.Context, companyID, categoryID uuid.UUID) (db.Category, error) {
 	if s == nil {
 		return db.Category{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || categoryID == uuid.Nil {
-		return db.Category{}, ErrOrganizationRequired
+	if categoryID == uuid.Nil {
+		return db.Category{}, ErrCompanyRequired
 	}
-	return s.q.CatalogAdminGetCategory(ctx, db.CatalogAdminGetCategoryParams{
-		OrganizationID: organizationID,
-		ID:             categoryID,
-	})
+	return s.q.CatalogAdminGetCategory(ctx, categoryID)
 }
 
 // ListTagsParams pages tags.
 type ListTagsParams struct {
-	OrganizationID uuid.UUID
-	Limit          int32
-	Offset         int32
+	Limit  int32
+	Offset int32
 }
 
-// ListTags returns tags for the organization.
+// ListTags returns tags for the company.
 func (s *Service) ListTags(ctx context.Context, p ListTagsParams) ([]db.Tag, int64, error) {
 	if s == nil {
 		return nil, 0, errors.New("catalogadmin: nil service")
 	}
-	if p.OrganizationID == uuid.Nil {
-		return nil, 0, ErrOrganizationRequired
-	}
-	cnt, err := s.q.CatalogAdminCountTags(ctx, p.OrganizationID)
+	cnt, err := s.q.CatalogAdminCountTags(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 	rows, err := s.q.CatalogAdminListTags(ctx, db.CatalogAdminListTagsParams{
-		OrganizationID: p.OrganizationID,
-		Limit:          p.Limit,
-		Offset:         p.Offset,
+		Limit:  p.Limit,
+		Offset: p.Offset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -377,16 +326,13 @@ func (s *Service) ListTags(ctx context.Context, p ListTagsParams) ([]db.Tag, int
 	return rows, cnt, nil
 }
 
-// GetTag returns a tag in the organization.
-func (s *Service) GetTag(ctx context.Context, organizationID, tagID uuid.UUID) (db.Tag, error) {
+// GetTag returns a tag in the company.
+func (s *Service) GetTag(ctx context.Context, companyID, tagID uuid.UUID) (db.Tag, error) {
 	if s == nil {
 		return db.Tag{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || tagID == uuid.Nil {
-		return db.Tag{}, ErrOrganizationRequired
+	if tagID == uuid.Nil {
+		return db.Tag{}, ErrCompanyRequired
 	}
-	return s.q.CatalogAdminGetTag(ctx, db.CatalogAdminGetTagParams{
-		OrganizationID: organizationID,
-		ID:             tagID,
-	})
+	return s.q.CatalogAdminGetTag(ctx, tagID)
 }

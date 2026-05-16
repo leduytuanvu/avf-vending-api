@@ -371,15 +371,12 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 }
 
 // AdminRetryLedgerCommand replays MQTT dispatch for an existing command_ledger row (admin troubleshooting).
-func (d *MQTTCommandDispatcher) AdminRetryLedgerCommand(ctx context.Context, organizationID, commandID uuid.UUID) (RemoteCommandDispatchResult, error) {
+func (d *MQTTCommandDispatcher) AdminRetryLedgerCommand(ctx context.Context, companyID, commandID uuid.UUID) (RemoteCommandDispatchResult, error) {
 	if d == nil || d.store == nil || d.wf == nil {
 		return RemoteCommandDispatchResult{}, errors.New("device: nil MQTT command dispatcher")
 	}
 	q := db.New(d.store.Pool())
-	ledger, err := q.AdminOpsGetCommandLedgerForOrg(ctx, db.AdminOpsGetCommandLedgerForOrgParams{
-		ID:             commandID,
-		OrganizationID: organizationID,
-	})
+	ledger, err := q.AdminOpsGetCommandLedgerForOrg(ctx, commandID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return RemoteCommandDispatchResult{}, ErrNotFound

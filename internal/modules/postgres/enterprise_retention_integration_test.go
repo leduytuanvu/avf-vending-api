@@ -15,12 +15,12 @@ import (
 func TestRunEnterpriseRetention_dryRunDoesNotDeletePublishedOutbox(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 	topic := "retention-dry-" + uuid.New().String()
 
 	_, err := pool.Exec(ctx, `
 INSERT INTO outbox_events (
-  organization_id, topic, event_type, payload, aggregate_type, aggregate_id,
+  scope_id, topic, event_type, payload, aggregate_type, aggregate_id,
   status, published_at, created_at, updated_at
 )
 VALUES (

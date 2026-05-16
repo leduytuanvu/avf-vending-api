@@ -54,11 +54,11 @@ func (s *Service) ListSlotInventoryView(ctx context.Context, machineID uuid.UUID
 	if err != nil {
 		return nil, err
 	}
-	head, err := s.q.InventoryAdminGetMachineOrg(ctx, machineID)
+	_, err = s.q.InventoryAdminGetMachineOrg(ctx, machineID)
 	if err != nil {
 		return nil, err
 	}
-	currency, err := s.q.InventoryAdminGetOrgDefaultCurrency(ctx, head.OrganizationID)
+	currency, err := s.q.InventoryAdminGetOrgDefaultCurrency(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -19,7 +19,6 @@ func TestCashCheckout_storeFlow_orderPaid_cashProviderCaptured(t *testing.T) {
 
 	orderIDem := "cash-order-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -36,7 +35,6 @@ func TestCashCheckout_storeFlow_orderPaid_cashProviderCaptured(t *testing.T) {
 	payIDem := orderIDem + ":cash:payment"
 	outIDem := orderIDem + ":cash:payment:outbox:" + orderRes.Order.ID.String()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "cash",
 		PaymentState:         "captured",
@@ -52,7 +50,7 @@ func TestCashCheckout_storeFlow_orderPaid_cashProviderCaptured(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ord, err := store.UpdateOrderStatus(ctx, orderRes.Order.ID, testfixtures.DevOrganizationID, "paid")
+	ord, err := store.UpdateOrderStatus(ctx, orderRes.Order.ID, testfixtures.DevScopeID, "paid")
 	require.NoError(t, err)
 	require.Equal(t, "paid", ord.Status)
 

@@ -5,7 +5,7 @@
 All **vending sale amounts** visible on the runtime catalog, carried into **orders**, sent to **PSP payment sessions**, and validated on **payment webhooks** flow through **`internal/app/pricingengine`**.
 
 1. **Slot list price** — `machine_slot_configs.price_minor` for the selected slot (planogram list price on the machine).
-2. **`machine_price_overrides`** — if an override row is active for `(organization_id, machine_id, product_id)` at evaluation time, it **replaces** the slot list price as the register base (currency must match org default currency or evaluation fails).
+2. **`machine_price_overrides`** — if an override row is active for `(company_id, machine_id, product_id)` at evaluation time, it **replaces** the slot list price as the register base (currency must match org default currency or evaluation fails).
 3. **Promotions** — only rows returned by `PromotionAdminListPromotionsForPreview` apply (`lifecycle_status = active`, `approval_status = approved`, `starts_at <= at < ends_at`). Inactive, draft, or expired windows do not apply.
 
 ## Outputs

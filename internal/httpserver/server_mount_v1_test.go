@@ -50,7 +50,7 @@ func TestMountV1_machineSetupRoutesRegistered(t *testing.T) {
 	var stubProvisioning approvisioning.Service
 	var stubRollout approllout.Service
 	app := &api.HTTPApplication{
-		// Non-nil pointers register org-scoped routes (handlers still require real wiring at runtime).
+		// Non-nil pointers register role-scoped routes (handlers still require real wiring at runtime).
 		Activation:      new(appactivation.Service),
 		EnterpriseAudit: new(appaudit.Service),
 		MediaAdmin:      new(appmediaadmin.Service),
@@ -75,58 +75,12 @@ func TestMountV1_machineSetupRoutesRegistered(t *testing.T) {
 	}
 	wantContains := []string{
 		"GET /v1/setup/machines/{machineId}/bootstrap",
-		"GET /v1/admin/machines/{machineId}",
-		"GET /v1/admin/organizations/{organizationId}/machines",
-		"POST /v1/admin/organizations/{organizationId}/machines/{machineId}/rotate-credentials",
-		"POST /v1/admin/organizations/{organizationId}/machines/{machineId}/transfer-site",
-		"GET /v1/admin/organizations/{organizationId}/activation-codes",
-		"POST /v1/admin/organizations/{organizationId}/machines/{machineId}/revoke-sessions",
-		"DELETE /v1/admin/organizations/{organizationId}/machines/{machineId}/technicians/{userId}",
-		"POST /v1/admin/media/uploads",
-		"GET /v1/admin/media",
-		"POST /v1/admin/organizations/{organizationId}/media/uploads/init",
-		"POST /v1/admin/organizations/{organizationId}/media/product-images",
-		"GET /v1/admin/organizations/{organizationId}/media/assets",
-		"DELETE /v1/admin/organizations/{organizationId}/media/assets/{assetId}",
-		"POST /v1/admin/organizations/{organizationId}/products/{productId}/media",
-		"DELETE /v1/admin/organizations/{organizationId}/products/{productId}/media/{mediaId}",
-		"POST /v1/admin/organizations/{organizationId}/products/{productId}/images",
-		"GET /v1/admin/organizations/{organizationId}/products/{productId}/images",
-		// Device HTTP bridge (registered under /v1 when HTTPApplication is non-nil; handlers guard nil deps).
-		"POST /v1/device/machines/{machineId}/vend-results",
-		"POST /v1/device/machines/{machineId}/commands/poll",
-		// P1.2 admin operations (mounted when AdminOps non-nil).
-		"GET /v1/admin/organizations/{organizationId}/operations/machines/health",
-		"GET /v1/admin/organizations/{organizationId}/payments/webhook-events",
-		"GET /v1/admin/organizations/{organizationId}/payments/settlements",
-		"POST /v1/admin/organizations/{organizationId}/payments/settlements/import",
-		"GET /v1/admin/organizations/{organizationId}/payments/disputes",
-		"POST /v1/admin/organizations/{organizationId}/payments/disputes/{disputeId}/resolve",
-		"GET /v1/admin/organizations/{organizationId}/payments/export",
-		"GET /v1/admin/organizations/{organizationId}/machines/{machineId}/health",
-		"GET /v1/admin/organizations/{organizationId}/machines/{machineId}/timeline",
-		"GET /v1/admin/organizations/{organizationId}/commands",
-		"GET /v1/admin/organizations/{organizationId}/commands/{commandId}",
-		"POST /v1/admin/organizations/{organizationId}/commands/{commandId}/retry",
-		"POST /v1/admin/organizations/{organizationId}/commands/{commandId}/cancel",
-		"POST /v1/admin/organizations/{organizationId}/provisioning/machines/bulk",
-		"GET /v1/admin/organizations/{organizationId}/provisioning/batches/{batchId}",
-		"POST /v1/admin/organizations/{organizationId}/rollouts",
-		"GET /v1/admin/organizations/{organizationId}/rollouts",
-		"GET /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}",
-		"POST /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/start",
-		"POST /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/pause",
-		"POST /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/resume",
-		"POST /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/cancel",
-		"POST /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/rollback",
-		"GET /v1/admin/organizations/{organizationId}/anomalies",
-		"GET /v1/admin/organizations/{organizationId}/anomalies/{anomalyId}",
-		"POST /v1/admin/organizations/{organizationId}/anomalies/{anomalyId}/resolve",
-		"POST /v1/admin/organizations/{organizationId}/anomalies/{anomalyId}/ignore",
-		"GET /v1/admin/organizations/{organizationId}/restock/suggestions",
+		"GET /v1/admin/machines",
+		"POST /v1/admin/machines",
+		"GET /v1/admin/sites",
+		"POST /v1/admin/sites",
+		"GET /v1/admin/media/assets",
 		"GET /v1/admin/audit/events",
-		"GET /v1/admin/organizations/{organizationId}/audit-events",
-		"GET /v1/admin/organizations/{organizationId}/audit-events/{auditEventId}",
 	}
 	for _, w := range wantContains {
 		var found bool

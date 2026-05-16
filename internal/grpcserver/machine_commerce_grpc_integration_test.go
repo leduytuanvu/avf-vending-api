@@ -80,13 +80,13 @@ func machineCommerceTestServer(t *testing.T, pool *pgxpool.Pool, cfg *config.Con
 	return srv, issuer
 }
 
-func machineAccessMD(t *testing.T, pool *pgxpool.Pool, issuer *plauth.SessionIssuer, machineID, orgID, siteID uuid.UUID) context.Context {
+func machineAccessMD(t *testing.T, pool *pgxpool.Pool, issuer *plauth.SessionIssuer, machineID, siteID uuid.UUID) context.Context {
 	t.Helper()
 	ctx := context.Background()
 	var credVer int64
 	err := pool.QueryRow(ctx, `SELECT credential_version FROM machines WHERE id = $1`, machineID).Scan(&credVer)
 	require.NoError(t, err)
-	tok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, credVer, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, credVer, uuid.Nil)
 	require.NoError(t, err)
 	return metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+tok)
 }
@@ -115,7 +115,7 @@ func TestMachineGRPC_Commerce_CashSale_EndToEnd(t *testing.T) {
 	cfg := testMachineGRPCConfig()
 	srv, issuer := machineCommerceTestServer(t, pool, cfg)
 	conn := dialMachineCommerceServer(t, srv)
-	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineCommerceServiceClient(conn)
 
 	idem := "cash-sale-" + uuid.NewString()
@@ -198,7 +198,7 @@ func TestMachineGRPC_Commerce_QRFlow_WebhookThenVend(t *testing.T) {
 		PaymentSessionRegistry: platformpayments.NewRegistry(cfg),
 	})
 	conn := dialMachineCommerceServer(t, srv)
-	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineCommerceServiceClient(conn)
 
 	idem := "qr-sale-" + uuid.NewString()
@@ -225,7 +225,6 @@ func TestMachineGRPC_Commerce_QRFlow_WebhookThenVend(t *testing.T) {
 	payID := uuid.MustParse(payOut.GetPaymentId())
 	providerRef := "sb_" + payID.String()
 	_, err = commerceSvc.ApplyPaymentProviderWebhook(ctx, appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 uuid.MustParse(co.GetOrderId()),
 		PaymentID:               uuid.MustParse(payOut.GetPaymentId()),
 		Provider:                "psp_grpc_int",
@@ -263,7 +262,7 @@ func TestMachineGRPC_Commerce_StartVend_BlockedBeforePayment(t *testing.T) {
 	pool := machineGRPCTestPool(t)
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	conn := dialMachineCommerceServer(t, srv)
-	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineCommerceServiceClient(conn)
 
 	idem := "block-vend-" + uuid.NewString()
@@ -287,7 +286,7 @@ func TestMachineGRPC_Commerce_CreateOrder_IdempotentReplay(t *testing.T) {
 	pool := machineGRPCTestPool(t)
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	conn := dialMachineCommerceServer(t, srv)
-	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineCommerceServiceClient(conn)
 
 	idem := "idem-co-" + uuid.NewString()
@@ -331,7 +330,7 @@ func TestMachineGRPC_Commerce_CreatePaymentSession_IdempotentReplay_NoDuplicateP
 	ctx := context.Background()
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	conn := dialMachineCommerceServer(t, srv)
-	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineCommerceServiceClient(conn)
 
 	idem := "idem-pay-" + uuid.NewString()
@@ -374,9 +373,9 @@ func TestMachineGRPC_Commerce_GetOrder_WrongMachineDenied(t *testing.T) {
 	otherID := uuid.New()
 	hw := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 	_, err := pool.Exec(ctx, `
-INSERT INTO machines (id, organization_id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
+INSERT INTO machines (id, scope_id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
 VALUES ($1, $2, $3, $4, $5, $6, 'online', 0, 0)`,
-		otherID, testfixtures.DevOrganizationID, testfixtures.DevSiteID, hw, "sn-other-grpc", "other")
+		otherID, uuid.Nil, testfixtures.DevSiteID, hw, "sn-other-grpc", "other")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM machines WHERE id = $1`, otherID)
@@ -384,7 +383,7 @@ VALUES ($1, $2, $3, $4, $5, $6, 'online', 0, 0)`,
 
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	conn := dialMachineCommerceServer(t, srv)
-	mdDev := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	mdDev := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineCommerceServiceClient(conn)
 
 	idem := "xmachine-" + uuid.NewString()
@@ -396,7 +395,7 @@ VALUES ($1, $2, $3, $4, $5, $6, 'online', 0, 0)`,
 	})
 	require.NoError(t, err)
 
-	mdOther := machineAccessMD(t, pool, issuer, otherID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	mdOther := machineAccessMD(t, pool, issuer, otherID, testfixtures.DevSiteID)
 	_, err = cli.GetOrder(mdOther, &machinev1.GetOrderRequest{OrderId: co.GetOrderId(), SlotIndex: 0})
 	require.Equal(t, codes.PermissionDenied, status.Code(err))
 }
@@ -408,7 +407,7 @@ func TestMachineGRPC_Commerce_ExpiredCheckoutWindow_Blocked(t *testing.T) {
 	cfg.Commerce.MachineOrderCheckoutMaxAge = 50 * time.Millisecond
 	srv, issuer := machineCommerceTestServer(t, pool, cfg)
 	conn := dialMachineCommerceServer(t, srv)
-	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineCommerceServiceClient(conn)
 
 	idem := "exp-" + uuid.NewString()
@@ -434,7 +433,7 @@ func TestP06_MachineGRPC_CreateOrder_MissingIdempotencyKeyRejected(t *testing.T)
 	pool := machineGRPCTestPool(t)
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	conn := dialMachineCommerceServer(t, srv)
-	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineCommerceServiceClient(conn)
 
 	_, err := cli.CreateOrder(md, &machinev1.CreateOrderRequest{

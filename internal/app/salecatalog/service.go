@@ -46,10 +46,9 @@ type Options struct {
 
 // Snapshot is the structured sale catalog (no JSON).
 type Snapshot struct {
-	MachineID      uuid.UUID
-	OrganizationID uuid.UUID
-	SiteID         uuid.UUID
-	ConfigVersion  int64
+	MachineID     uuid.UUID
+	SiteID        uuid.UUID
+	ConfigVersion int64
 
 	// CatalogVersion is the composite runtime sale-catalog digest (canonical **catalog fingerprint**).
 	// It is exposed on gRPC/HTTP as `catalog_version`; pair with `generated_at` for snapshot freshness
@@ -158,7 +157,7 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 		cfgVersion = ver
 	}
 
-	cur, err := q.InventoryAdminGetOrgDefaultCurrency(ctx, bootstrap.Machine.OrganizationID)
+	cur, err := q.InventoryAdminGetOrgDefaultCurrency(ctx)
 	if err != nil {
 		return out, err
 	}
@@ -172,7 +171,6 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 		}
 		return Snapshot{
 			MachineID:      machineID,
-			OrganizationID: bootstrap.Machine.OrganizationID,
 			SiteID:         bootstrap.Machine.SiteID,
 			ConfigVersion:  cfgVersion,
 			CatalogVersion: RuntimeSaleCatalogFingerprint(bootstrap, notLoaded, opts),
@@ -190,10 +188,7 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 	}
 	prodByID := make(map[uuid.UUID]db.RuntimeGetProductsByIDsRow)
 	if len(productIDs) > 0 {
-		prodRows, err := q.RuntimeGetProductsByIDs(ctx, db.RuntimeGetProductsByIDsParams{
-			OrganizationID: bootstrap.Machine.OrganizationID,
-			Column2:        productIDs,
-		})
+		prodRows, err := q.RuntimeGetProductsByIDs(ctx, productIDs)
 		if err != nil {
 			return out, err
 		}
@@ -215,7 +210,7 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 
 	items := make([]Item, 0)
 	genAt := time.Now().UTC()
-	priceBatch, batchErr := pricingengine.New(s.pool).NewBatch(ctx, bootstrap.Machine.OrganizationID, machineID, genAt)
+	priceBatch, batchErr := pricingengine.New(s.pool).NewBatch(ctx, uuid.Nil, machineID, genAt)
 	if batchErr != nil {
 		return out, batchErr
 	}
@@ -271,7 +266,6 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 		var pfp string
 		if price > 0 {
 			pl, perr := priceBatch.PriceLine(ctx, pricingengine.PriceLineInput{
-				OrganizationID:    bootstrap.Machine.OrganizationID,
 				MachineID:         machineID,
 				ProductID:         pid,
 				SlotListUnitMinor: price,
@@ -384,7 +378,6 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 	}
 	return Snapshot{
 		MachineID:      machineID,
-		OrganizationID: bootstrap.Machine.OrganizationID,
 		SiteID:         bootstrap.Machine.SiteID,
 		ConfigVersion:  cfgVersion,
 		CatalogVersion: RuntimeSaleCatalogFingerprint(bootstrap, partial, opts),

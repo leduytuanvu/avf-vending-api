@@ -3,14 +3,14 @@ package catalogadmin
 import "errors"
 
 var (
-	// ErrOrganizationRequired is returned when a tenant scope is missing.
-	ErrOrganizationRequired = errors.New("catalogadmin: organization id required")
-	// ErrDuplicateSKU is returned on unique (organization_id, sku) violations.
-	ErrDuplicateSKU = errors.New("catalogadmin: duplicate sku in organization")
+	// ErrCompanyRequired is returned when a company scope is missing.
+	ErrCompanyRequired = errors.New("catalogadmin: company id required")
+	// ErrDuplicateSKU is returned on unique (scope_id, sku) violations.
+	ErrDuplicateSKU = errors.New("catalogadmin: duplicate sku in company")
 	// ErrDuplicateBarcode is returned on unique barcode violations within the org.
-	ErrDuplicateBarcode = errors.New("catalogadmin: duplicate barcode in organization")
+	ErrDuplicateBarcode = errors.New("catalogadmin: duplicate barcode in company")
 	// ErrDuplicateSlug is returned for brands/categories/tags slug collisions.
-	ErrDuplicateSlug = errors.New("catalogadmin: duplicate slug in organization")
+	ErrDuplicateSlug = errors.New("catalogadmin: duplicate slug in company")
 	// ErrNotFound is returned when a catalog row is missing for the org.
 	ErrNotFound = errors.New("catalogadmin: not found")
 	// ErrInvalidArgument is returned for bad input.

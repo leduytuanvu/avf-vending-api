@@ -9,7 +9,7 @@ Example batch:
 ```json
 {
   "meta": {
-    "organizationId": "00000000-0000-0000-0000-000000000001",
+    "companyId": "00000000-0000-0000-0000-000000000001",
     "machineId": "00000000-0000-0000-0000-000000000002",
     "requestId": "sync-2026-04-29-001",
     "idempotencyKey": "sync-2026-04-29-001"

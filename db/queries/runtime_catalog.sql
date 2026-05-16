@@ -80,5 +80,4 @@ SELECT
 FROM
     products
 WHERE
-    organization_id = $1
-    AND id = ANY ($2::uuid[]);
+    id = ANY ($1::uuid[]);

@@ -18,12 +18,12 @@ import (
 
 func mountDeviceCommandRoutes(r chi.Router, app *api.HTTPApplication, abuse *AbuseProtection) {
 	// Register static paths before /commands/{sequence}/… so "receipts" is not parsed as a sequence.
-	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyPermission(auth.PermFleetRead)).
+	r.With(RequireMachineCompanyAccess(app, "machineId"), auth.RequireAnyPermission(auth.PermFleetRead)).
 		Get("/machines/{machineId}/commands/receipts", listMachineCommandReceipts(app))
-	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyPermission(auth.PermFleetRead)).
+	r.With(RequireMachineCompanyAccess(app, "machineId"), auth.RequireAnyPermission(auth.PermFleetRead)).
 		Get("/machines/{machineId}/commands/{sequence}/status", getMachineCommandDispatchStatus(app))
 	dispatchMW := []func(http.Handler) http.Handler{
-		RequireMachineTenantAccess(app, "machineId"),
+		RequireMachineCompanyAccess(app, "machineId"),
 		auth.RequireAnyPermission(auth.PermDeviceCommandsWrite),
 	}
 	if abuse != nil {
@@ -38,7 +38,7 @@ func mountDeviceBridgeRoutes(r chi.Router, app *api.HTTPApplication) {
 		return
 	}
 	r.Route("/device/machines/{machineId}", func(r chi.Router) {
-		r.Use(RequireMachineTenantAccess(app, "machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin, auth.RoleMachine))
+		r.Use(RequireMachineCompanyAccess(app, "machineId"), auth.RequireAnyRole(auth.RolePlatformAdmin, auth.RoleOrgAdmin, auth.RoleMachine))
 		r.Post("/vend-results", postDeviceVendResults(app))
 		r.Post("/commands/poll", postDeviceCommandsPoll(app))
 		registerDeviceTelemetryReconcileRoutes(r, app)
@@ -239,17 +239,16 @@ func postDeviceVendResults(app *api.HTTPApplication) http.HandlerFunc {
 		if body.CorrelationID != nil && *body.CorrelationID != uuid.Nil {
 			_ = app.TelemetryStore.TouchVendSessionCorrelation(ctx, body.OrderID, body.SlotIndex, *body.CorrelationID)
 		}
-		if _, err := app.Commerce.GetCheckoutStatus(ctx, order.OrganizationID, body.OrderID, body.SlotIndex); err != nil {
+		if _, err := app.Commerce.GetCheckoutStatus(ctx, uuid.Nil, body.OrderID, body.SlotIndex); err != nil {
 			writeCommerceServiceError(w, ctx, err)
 			return
 		}
-		if err := app.Commerce.EnsureVendInProgressForPaidOrder(ctx, order.OrganizationID, body.OrderID, body.SlotIndex); err != nil {
+		if err := app.Commerce.EnsureVendInProgressForPaidOrder(ctx, uuid.Nil, body.OrderID, body.SlotIndex); err != nil {
 			writeCommerceServiceError(w, ctx, err)
 			return
 		}
 		if outcome == "success" {
 			fout, err := app.Commerce.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
-				OrganizationID:            order.OrganizationID,
 				OrderID:                   body.OrderID,
 				SlotIndex:                 body.SlotIndex,
 				TerminalVendState:         "success",
@@ -271,7 +270,6 @@ func postDeviceVendResults(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		fout, err := app.Commerce.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
-			OrganizationID:    order.OrganizationID,
 			OrderID:           body.OrderID,
 			SlotIndex:         body.SlotIndex,
 			TerminalVendState: "failed",
@@ -281,7 +279,7 @@ func postDeviceVendResults(app *api.HTTPApplication) http.HandlerFunc {
 			writeCommerceServiceError(w, ctx, err)
 			return
 		}
-		st2, _ := app.Commerce.GetCheckoutStatus(ctx, order.OrganizationID, body.OrderID, body.SlotIndex)
+		st2, _ := app.Commerce.GetCheckoutStatus(ctx, uuid.Nil, body.OrderID, body.SlotIndex)
 		resp := map[string]any{
 			"order_id":     fout.Order.ID.String(),
 			"order_status": fout.Order.Status,

@@ -1,15 +1,18 @@
--- Feature flags (tenant-scoped).
+-- Feature flags (single-company-scoped).
 
 -- name: FeatureFlagsInsert :one
 INSERT INTO feature_flags (
-    organization_id,
     flag_key,
     display_name,
     description,
     enabled,
     metadata
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1,
+    $2,
+    $3,
+    $4,
+    $5
 )
 RETURNING *;
 
@@ -18,53 +21,47 @@ SELECT *
 FROM feature_flags
 WHERE
     id = $1
-    AND organization_id = $2;
+    AND TRUE;
 
 -- name: FeatureFlagsGetByKey :one
 SELECT *
 FROM feature_flags
 WHERE
-    organization_id = $1
-    AND flag_key = $2;
+    flag_key = $1;
 
 -- name: FeatureFlagsUpdate :one
 UPDATE feature_flags
 SET
-    display_name = $3,
-    description = $4,
-    enabled = $5,
-    metadata = $6,
+    display_name = $1,
+    description = $2,
+    enabled = $3,
+    metadata = $4,
     updated_at = now()
 WHERE
-    id = $1
-    AND organization_id = $2
+    id = $5
+    AND TRUE
 RETURNING *;
 
--- name: FeatureFlagsListByOrganization :many
+-- name: FeatureFlagsListAll :many
 SELECT *
 FROM feature_flags
-WHERE
-    organization_id = $1
 ORDER BY
     flag_key ASC
-LIMIT $2
-OFFSET $3;
+LIMIT $1
+OFFSET $2;
 
--- name: FeatureFlagsCountByOrganization :one
+-- name: FeatureFlagsCountAll :one
 SELECT count(*)::bigint
-FROM feature_flags
-WHERE
-    organization_id = $1;
+FROM feature_flags;
 
 -- name: FeatureFlagTargetsDeleteByFlag :exec
 DELETE FROM feature_flag_targets
 WHERE
     feature_flag_id = $1
-    AND organization_id = $2;
+    AND TRUE;
 
 -- name: FeatureFlagTargetsInsert :one
 INSERT INTO feature_flag_targets (
-    organization_id,
     feature_flag_id,
     target_type,
     site_id,
@@ -75,7 +72,15 @@ INSERT INTO feature_flag_targets (
     enabled,
     metadata
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9
 )
 RETURNING *;
 
@@ -88,16 +93,13 @@ ORDER BY
     priority DESC,
     created_at ASC;
 
--- name: FeatureFlagTargetsByOrganization :many
+-- name: FeatureFlagTargetsAll :many
 SELECT *
-FROM feature_flag_targets
-WHERE
-    organization_id = $1;
+FROM feature_flag_targets;
 
 -- name: FeatureFlagsResolveMachineContext :one
 SELECT
     m.id AS machine_id,
-    m.organization_id,
     m.site_id,
     m.hardware_profile_id
 FROM machines m
@@ -115,12 +117,13 @@ WHERE
 
 -- name: MachineConfigVersionsInsert :one
 INSERT INTO machine_config_versions (
-    organization_id,
     version_label,
     config_payload,
     parent_version_id
 ) VALUES (
-    $1, $2, $3, $4
+    $1,
+    $2,
+    $3
 )
 RETURNING *;
 
@@ -129,11 +132,10 @@ SELECT *
 FROM machine_config_versions
 WHERE
     id = $1
-    AND organization_id = $2;
+    AND TRUE;
 
 -- name: MachineConfigRolloutsInsert :one
 INSERT INTO machine_config_rollouts (
-    organization_id,
     target_version_id,
     previous_version_id,
     status,
@@ -144,42 +146,46 @@ INSERT INTO machine_config_rollouts (
     hardware_profile_id,
     metadata
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9
 )
 RETURNING *;
 
 -- name: MachineConfigRolloutsUpdateStatus :one
 UPDATE machine_config_rollouts
 SET
-    status = $3,
+    status = $1,
     updated_at = now()
 WHERE
-    id = $1
-    AND organization_id = $2
+    id = $2
+    AND TRUE
 RETURNING *;
 
--- name: MachineConfigRolloutsListByOrganization :many
+-- name: MachineConfigRolloutsListAll :many
 SELECT *
 FROM machine_config_rollouts
-WHERE
-    organization_id = $1
 ORDER BY
     created_at DESC
-LIMIT $2
-OFFSET $3;
+LIMIT $1
+OFFSET $2;
 
--- name: MachineConfigRolloutsCountByOrganization :one
+-- name: MachineConfigRolloutsCountAll :one
 SELECT count(*)::bigint
-FROM machine_config_rollouts
-WHERE
-    organization_id = $1;
+FROM machine_config_rollouts;
 
 -- name: MachineConfigRolloutsGetByID :one
 SELECT *
 FROM machine_config_rollouts
 WHERE
     id = $1
-    AND organization_id = $2;
+    AND TRUE;
 
 -- name: MachineConfigRolloutsPendingForMachine :many
 SELECT
@@ -187,13 +193,12 @@ SELECT
 FROM
     machine_config_rollouts r
     INNER JOIN machines m ON m.id = $1
-        AND m.organization_id = r.organization_id
+        AND TRUE
 WHERE
-    r.organization_id = m.organization_id
-    AND r.status IN ('pending', 'in_progress')
+    r.status IN ('pending', 'in_progress')
     AND (
         (
-            r.scope_type = 'organization'
+            r.scope_type = 'global'
         )
         OR (
             r.scope_type = 'site'

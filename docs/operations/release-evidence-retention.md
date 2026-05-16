@@ -29,7 +29,7 @@ GitHub Actions uploads **named artifacts** (not Git LFS): each workflow run stor
 | `production-deploy-evidence` (full tree) | **90** | Full `deployment-evidence/` from **Deploy Production** |
 | Raw SBOM / build metadata in build job | **180** | Older pin; longer retention for raw CycloneDX / manifests |
 
-**GitHub limits:** For **public** repositories, artifact retention can be set per artifact up to **400 days** (GitHub documentation). **Enterprise Cloud** and **organization/repository** policies may cap retention **below** that (for example 30 or 90 days). If your org enforces a maximum, the workflow value is silently clamped to that maximum. This is not visible in YAML; check **Settings → Actions → General → Artifact and log retention** (org or repo).
+**GitHub limits:** For **public** repositories, artifact retention can be set per artifact up to **400 days** (GitHub documentation). **Enterprise Cloud** and **company/repository** policies may cap retention **below** that (for example 30 or 90 days). If your org enforces a maximum, the workflow value is silently clamped to that maximum. This is not visible in YAML; check **Settings → Actions → General → Artifact and log retention** (org or repo).
 
 **Implication for immutability:** Artifacts are **immutable for a given run id** until expiry. They are not a legal hold archive. For years-long traceability, export packages (see below).
 

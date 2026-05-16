@@ -215,8 +215,7 @@ func testMachineGRPCAdminUserJWTRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
-	userTok, _, err := issuer.IssueAccessJWT(uuid.New(), orgID, []string{plauth.RoleOrgAdmin}, "active")
+	userTok, _, err := issuer.IssueAccessJWT(uuid.New(), uuid.Nil, []string{plauth.RoleOrgAdmin}, "active")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,9 +267,8 @@ func TestMachineGRPC_GetBootstrap_MachineJWTAccepted(t *testing.T) {
 		t.Fatal(err)
 	}
 	machineID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	mTok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	mTok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,9 +317,8 @@ func TestMachineGRPC_RequestMachineScopeMismatchRejected(t *testing.T) {
 	}
 	machineID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	otherMachineID := uuid.MustParse("44444444-4444-4444-4444-444444444444")
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	mTok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	mTok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +326,7 @@ func TestMachineGRPC_RequestMachineScopeMismatchRejected(t *testing.T) {
 	mdCtx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+mTok)
 	client := machinev1.NewMachineBootstrapServiceClient(conn)
 	_, err = client.GetBootstrap(mdCtx, &machinev1.GetBootstrapRequest{
-		Meta: &machinev1.MachineRequestMeta{MachineId: otherMachineID.String(), OrganizationId: orgID.String()},
+		Meta: &machinev1.MachineRequestMeta{MachineId: otherMachineID.String()},
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected PermissionDenied, got %v: %v", status.Code(err), err)
@@ -382,7 +379,6 @@ func TestMachineGRPC_RevokedMachineRejected(t *testing.T) {
 	}
 	token, _, err := issuer.IssueMachineAccessJWT(
 		uuid.MustParse("33333333-3333-3333-3333-333333333333"),
-		uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 		1,
 		uuid.Nil,
@@ -405,23 +401,21 @@ func TestMachineGRPC_RevokedMachineRejected(t *testing.T) {
 func signMachineGRPCTestJWT(t *testing.T, cfg *config.Config, audience string, expiresAt time.Time) string {
 	t.Helper()
 	machineID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	now := time.Now().UTC()
 	raw, err := plauth.SignHS256JWT(cfg.HTTPAuth.JWTSecret, map[string]any{
-		"sub":             "machine:" + machineID.String(),
-		"typ":             plauth.JWTClaimTypeMachine,
-		"iss":             "",
-		"aud":             audience,
-		"roles":           []string{plauth.RoleMachine},
-		"organization_id": orgID.String(),
-		"machine_id":      machineID.String(),
-		"token_version":   1,
-		"scopes":          plauth.DefaultMachineAccessScopes,
-		"iat":             now.Unix(),
-		"nbf":             now.Unix(),
-		"exp":             expiresAt.Unix(),
-		"token_use":       plauth.TokenUseMachineAccess,
-		"jti":             uuid.NewString(),
+		"sub":           "machine:" + machineID.String(),
+		"typ":           plauth.JWTClaimTypeMachine,
+		"iss":           "",
+		"aud":           audience,
+		"roles":         []string{plauth.RoleMachine},
+		"machine_id":    machineID.String(),
+		"token_version": 1,
+		"scopes":        plauth.DefaultMachineAccessScopes,
+		"iat":           now.Unix(),
+		"nbf":           now.Unix(),
+		"exp":           expiresAt.Unix(),
+		"token_use":     plauth.TokenUseMachineAccess,
+		"jti":           uuid.NewString(),
 	})
 	if err != nil {
 		t.Fatal(err)

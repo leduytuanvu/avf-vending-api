@@ -30,9 +30,8 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch_quantityBeforeMismat
 
 	inv := postgres.NewInventoryRepository(pool)
 	_, err = inv.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		Reason:         "restock",
+		MachineID: testfixtures.DevMachineID,
+		Reason:    "restock",
 		Items: []inventoryapp.AdjustmentItem{{
 			PlanogramID:    testfixtures.DevPlanogramID,
 			SlotIndex:      0,
@@ -49,9 +48,8 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch_invalidReason(t *tes
 	ctx := context.Background()
 	inv := postgres.NewInventoryRepository(pool)
 	_, err := inv.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		Reason:         "not_a_valid_reason",
+		MachineID: testfixtures.DevMachineID,
+		Reason:    "not_a_valid_reason",
 		Items: []inventoryapp.AdjustmentItem{{
 			PlanogramID:    testfixtures.DevPlanogramID,
 			SlotIndex:      0,
@@ -83,9 +81,8 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch_writesLedgerQuantiti
 	newQty := origQty + 2
 	repo := postgres.NewInventoryRepository(pool)
 	_, err = repo.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		Reason:         "manual_adjustment",
+		MachineID: testfixtures.DevMachineID,
+		Reason:    "manual_adjustment",
 		Items: []inventoryapp.AdjustmentItem{{
 			PlanogramID:    testfixtures.DevPlanogramID,
 			SlotIndex:      0,
@@ -139,7 +136,6 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch_idempotentReplay(t *
 	key := "grpc-idem-replay-test"
 	repo := postgres.NewInventoryRepository(pool)
 	in := inventoryapp.AdjustmentBatchInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		Reason:         "manual_adjustment",
 		IdempotencyKey: key,
@@ -187,7 +183,6 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch_idempotencyKeyConfli
 	key := "grpc-idem-conflict-test"
 	repo := postgres.NewInventoryRepository(pool)
 	_, err = repo.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		Reason:         "manual_adjustment",
 		IdempotencyKey: key,
@@ -203,7 +198,6 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch_idempotencyKeyConfli
 	require.NoError(t, err)
 
 	_, err = repo.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		Reason:         "manual_adjustment",
 		IdempotencyKey: key,
@@ -224,9 +218,8 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch_unknownSlot(t *testi
 	ctx := context.Background()
 	inv := postgres.NewInventoryRepository(pool)
 	_, err := inv.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		Reason:         "restock",
+		MachineID: testfixtures.DevMachineID,
+		Reason:    "restock",
 		Items: []inventoryapp.AdjustmentItem{{
 			PlanogramID:    testfixtures.DevPlanogramID,
 			SlotIndex:      99999,

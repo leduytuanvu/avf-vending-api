@@ -10,6 +10,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -88,7 +89,6 @@ func baseItemFromFleetListRow(m db.FleetAdminListMachinesRow) AdminMachineListIt
 	return AdminMachineListItem{
 		MachineID:           m.ID.String(),
 		MachineName:         m.Name,
-		OrganizationID:      m.OrganizationID.String(),
 		SiteID:              m.SiteID.String(),
 		SiteName:            m.SiteName,
 		HardwareProfileID:   pgUUIDStringPtr(m.HardwareProfileID),
@@ -115,7 +115,6 @@ func baseItemFromFleetDetailRow(m db.FleetAdminGetMachineDetailRow) AdminMachine
 	return AdminMachineListItem{
 		MachineID:           m.ID.String(),
 		MachineName:         m.Name,
-		OrganizationID:      m.OrganizationID.String(),
 		SiteID:              m.SiteID.String(),
 		SiteName:            m.SiteName,
 		HardwareProfileID:   pgUUIDStringPtr(m.HardwareProfileID),
@@ -154,7 +153,23 @@ func (s *Service) applyMachineEnrichment(
 	item.InventorySummary = inv[machineID]
 }
 
-func (s *Service) loadFleetEnrichment(ctx context.Context, orgID uuid.UUID, machineIDs []uuid.UUID) (
+func operatorViewMissing(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pe *pgconn.PgError
+	if errors.As(err, &pe) && pe.Code == "42P01" && strings.Contains(pe.Message, "v_machine_current_operator") {
+		return true
+	}
+	msg := err.Error()
+	// Match pgx/sql error text even when SQLSTATE is omitted from err.Error().
+	if strings.Contains(msg, "v_machine_current_operator") && strings.Contains(msg, "does not exist") {
+		return true
+	}
+	return strings.Contains(msg, "v_machine_current_operator") && strings.Contains(msg, "42P01")
+}
+
+func (s *Service) loadFleetEnrichment(ctx context.Context, scopeID uuid.UUID, machineIDs []uuid.UUID) (
 	map[uuid.UUID][]AdminAssignedTechnician,
 	map[uuid.UUID]*AdminCurrentOperator,
 	map[uuid.UUID]AdminMachineInventorySummary,
@@ -170,10 +185,7 @@ func (s *Service) loadFleetEnrichment(ctx context.Context, orgID uuid.UUID, mach
 		return techByMachine, opByMachine, invByMachine, nil
 	}
 
-	aRows, err := s.q.FleetAdminListActiveTechnicianAssignmentsForMachines(ctx, db.FleetAdminListActiveTechnicianAssignmentsForMachinesParams{
-		OrganizationID: orgID,
-		Column2:        machineIDs,
-	})
+	aRows, err := s.q.FleetAdminListActiveTechnicianAssignmentsForMachines(ctx, machineIDs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -187,12 +199,13 @@ func (s *Service) loadFleetEnrichment(ctx context.Context, orgID uuid.UUID, mach
 		})
 	}
 
-	oRows, err := s.q.FleetAdminListViewOperatorsForMachines(ctx, db.FleetAdminListViewOperatorsForMachinesParams{
-		OrganizationID: orgID,
-		Column2:        machineIDs,
-	})
+	oRows, err := s.q.FleetAdminListViewOperatorsForMachines(ctx, machineIDs)
 	if err != nil {
-		return nil, nil, nil, err
+		if operatorViewMissing(err) {
+			oRows = nil
+		} else {
+			return nil, nil, nil, err
+		}
 	}
 	for _, r := range oRows {
 		if !r.OperatorSessionID.Valid {
@@ -232,15 +245,15 @@ func (s *Service) loadFleetEnrichment(ctx context.Context, orgID uuid.UUID, mach
 	return techByMachine, opByMachine, invByMachine, nil
 }
 
-func (s *Service) assertSiteInOrganization(ctx context.Context, orgID, siteID uuid.UUID) error {
-	site, err := s.q.GetSiteByID(ctx, siteID)
+func (s *Service) assertSiteInCompany(ctx context.Context, scopeID, siteID uuid.UUID) error {
+	_, err := s.q.GetSiteByID(ctx, siteID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return listscope.ErrInvalidListQuery
 		}
 		return err
 	}
-	if site.OrganizationID != orgID {
+	if uuid.Nil != scopeID {
 		return listscope.ErrInvalidListQuery
 	}
 	return nil
@@ -251,11 +264,8 @@ func (s *Service) ListMachines(ctx context.Context, scope listscope.AdminFleet) 
 	if s == nil || s.q == nil {
 		return nil, errors.New("fleetadmin: nil service")
 	}
-	if scope.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrAdminOrganizationRequired
-	}
 	if scope.SiteID != nil {
-		if err := s.assertSiteInOrganization(ctx, scope.OrganizationID, *scope.SiteID); err != nil {
+		if err := s.assertSiteInCompany(ctx, uuid.Nil, *scope.SiteID); err != nil {
 			return nil, err
 		}
 	}
@@ -273,28 +283,26 @@ func (s *Service) ListMachines(ctx context.Context, scope listscope.AdminFleet) 
 	filterStatus := strings.TrimSpace(scope.Status) != ""
 
 	listArg := db.FleetAdminListMachinesParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterSite,
-		Column3:        sid,
-		Column4:        filterMachine,
-		Column5:        mid,
-		Column6:        filterStatus,
-		Column7:        strings.TrimSpace(scope.Status),
-		Column8:        st,
-		Column9:        en,
-		Limit:          scope.Limit,
-		Offset:         scope.Offset,
+		Column1: filterSite,
+		Column2: sid,
+		Column3: filterMachine,
+		Column4: mid,
+		Column5: filterStatus,
+		Column6: strings.TrimSpace(scope.Status),
+		Column7: st,
+		Column8: en,
+		Limit:   scope.Limit,
+		Offset:  scope.Offset,
 	}
 	countArg := db.FleetAdminCountMachinesParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterSite,
-		Column3:        sid,
-		Column4:        filterMachine,
-		Column5:        mid,
-		Column6:        filterStatus,
-		Column7:        strings.TrimSpace(scope.Status),
-		Column8:        st,
-		Column9:        en,
+		Column1: filterSite,
+		Column2: sid,
+		Column3: filterMachine,
+		Column4: mid,
+		Column5: filterStatus,
+		Column6: strings.TrimSpace(scope.Status),
+		Column7: st,
+		Column8: en,
 	}
 	rows, err := s.q.FleetAdminListMachines(ctx, listArg)
 	if err != nil {
@@ -308,7 +316,7 @@ func (s *Service) ListMachines(ctx context.Context, scope listscope.AdminFleet) 
 	for _, m := range rows {
 		machineIDs = append(machineIDs, m.ID)
 	}
-	tech, op, inv, err := s.loadFleetEnrichment(ctx, scope.OrganizationID, machineIDs)
+	tech, op, inv, err := s.loadFleetEnrichment(ctx, uuid.Nil, machineIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -330,17 +338,11 @@ func (s *Service) ListMachines(ctx context.Context, scope listscope.AdminFleet) 
 }
 
 // GetMachine returns one fully enriched machine for GET /v1/admin/machines/{machineId}.
-func (s *Service) GetMachine(ctx context.Context, organizationID, machineID uuid.UUID) (*AdminMachineListItem, error) {
+func (s *Service) GetMachine(ctx context.Context, companyID, machineID uuid.UUID) (*AdminMachineListItem, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("fleetadmin: nil service")
 	}
-	if organizationID == uuid.Nil {
-		return nil, listscope.ErrAdminOrganizationRequired
-	}
-	row, err := s.q.FleetAdminGetMachineDetail(ctx, db.FleetAdminGetMachineDetailParams{
-		ID:             machineID,
-		OrganizationID: organizationID,
-	})
+	row, err := s.q.FleetAdminGetMachineDetail(ctx, machineID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, err
@@ -348,7 +350,7 @@ func (s *Service) GetMachine(ctx context.Context, organizationID, machineID uuid
 		return nil, err
 	}
 	item := baseItemFromFleetDetailRow(row)
-	tech, op, inv, err := s.loadFleetEnrichment(ctx, organizationID, []uuid.UUID{machineID})
+	tech, op, inv, err := s.loadFleetEnrichment(ctx, companyID, []uuid.UUID{machineID})
 	if err != nil {
 		return nil, err
 	}
@@ -361,9 +363,6 @@ func (s *Service) ListTechnicians(ctx context.Context, scope listscope.AdminFlee
 	if s == nil || s.q == nil {
 		return nil, errors.New("fleetadmin: nil service")
 	}
-	if scope.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrAdminOrganizationRequired
-	}
 	st, en := timeRangeOrAll(scope.From, scope.To)
 	filterTech := scope.TechnicianID != nil && *scope.TechnicianID != uuid.Nil
 	tid := uuid.Nil
@@ -374,24 +373,22 @@ func (s *Service) ListTechnicians(ctx context.Context, scope listscope.AdminFlee
 	filterSearch := search != "" // technicians list: display_name / email contains
 
 	listArg := db.FleetAdminListTechniciansParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterTech,
-		Column3:        tid,
-		Column4:        filterSearch,
-		Column5:        search,
-		Column6:        st,
-		Column7:        en,
-		Limit:          scope.Limit,
-		Offset:         scope.Offset,
+		Column1: filterTech,
+		Column2: tid,
+		Column3: filterSearch,
+		Column4: search,
+		Column5: st,
+		Column6: en,
+		Limit:   scope.Limit,
+		Offset:  scope.Offset,
 	}
 	countArg := db.FleetAdminCountTechniciansParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterTech,
-		Column3:        tid,
-		Column4:        filterSearch,
-		Column5:        search,
-		Column6:        st,
-		Column7:        en,
+		Column1: filterTech,
+		Column2: tid,
+		Column3: filterSearch,
+		Column4: search,
+		Column5: st,
+		Column6: en,
 	}
 	rows, err := s.q.FleetAdminListTechnicians(ctx, listArg)
 	if err != nil {
@@ -405,7 +402,6 @@ func (s *Service) ListTechnicians(ctx context.Context, scope listscope.AdminFlee
 	for _, t := range rows {
 		items = append(items, AdminTechnicianListItem{
 			TechnicianID:    t.ID.String(),
-			OrganizationID:  t.OrganizationID.String(),
 			DisplayName:     t.DisplayName,
 			Email:           pgTextStringPtr(t.Email),
 			Phone:           pgTextStringPtr(t.Phone),
@@ -430,9 +426,6 @@ func (s *Service) ListAssignments(ctx context.Context, scope listscope.AdminFlee
 	if s == nil || s.q == nil {
 		return nil, errors.New("fleetadmin: nil service")
 	}
-	if scope.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrAdminOrganizationRequired
-	}
 	st, en := timeRangeOrAll(scope.From, scope.To)
 	filterTech := scope.TechnicianID != nil && *scope.TechnicianID != uuid.Nil
 	tid := uuid.Nil
@@ -445,24 +438,22 @@ func (s *Service) ListAssignments(ctx context.Context, scope listscope.AdminFlee
 		mid = *scope.MachineID
 	}
 	listArg := db.FleetAdminListAssignmentsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterTech,
-		Column3:        tid,
-		Column4:        filterMachine,
-		Column5:        mid,
-		Column6:        st,
-		Column7:        en,
-		Limit:          scope.Limit,
-		Offset:         scope.Offset,
+		Column1: filterTech,
+		Column2: tid,
+		Column3: filterMachine,
+		Column4: mid,
+		Column5: st,
+		Column6: en,
+		Limit:   scope.Limit,
+		Offset:  scope.Offset,
 	}
 	countArg := db.FleetAdminCountAssignmentsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterTech,
-		Column3:        tid,
-		Column4:        filterMachine,
-		Column5:        mid,
-		Column6:        st,
-		Column7:        en,
+		Column1: filterTech,
+		Column2: tid,
+		Column3: filterMachine,
+		Column4: mid,
+		Column5: st,
+		Column6: en,
 	}
 	rows, err := s.q.FleetAdminListAssignments(ctx, listArg)
 	if err != nil {
@@ -503,9 +494,6 @@ func (s *Service) ListCommands(ctx context.Context, scope listscope.AdminFleet) 
 	if s == nil || s.q == nil {
 		return nil, errors.New("fleetadmin: nil service")
 	}
-	if scope.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrAdminOrganizationRequired
-	}
 	st, en := timeRangeOrAll(scope.From, scope.To)
 	filterMachine := scope.MachineID != nil && *scope.MachineID != uuid.Nil
 	mid := uuid.Nil
@@ -515,24 +503,22 @@ func (s *Service) ListCommands(ctx context.Context, scope listscope.AdminFleet) 
 	filterStatus := strings.TrimSpace(scope.Status) != ""
 
 	listArg := db.FleetAdminListCommandsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterMachine,
-		Column3:        mid,
-		Column4:        filterStatus,
-		Column5:        strings.TrimSpace(scope.Status),
-		Column6:        st,
-		Column7:        en,
-		Limit:          scope.Limit,
-		Offset:         scope.Offset,
+		Column1: filterMachine,
+		Column2: mid,
+		Column3: filterStatus,
+		Column4: strings.TrimSpace(scope.Status),
+		Column5: st,
+		Column6: en,
+		Limit:   scope.Limit,
+		Offset:  scope.Offset,
 	}
 	countArg := db.FleetAdminCountCommandsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterMachine,
-		Column3:        mid,
-		Column4:        filterStatus,
-		Column5:        strings.TrimSpace(scope.Status),
-		Column6:        st,
-		Column7:        en,
+		Column1: filterMachine,
+		Column2: mid,
+		Column3: filterStatus,
+		Column4: strings.TrimSpace(scope.Status),
+		Column5: st,
+		Column6: en,
 	}
 	rows, err := s.q.FleetAdminListCommands(ctx, listArg)
 	if err != nil {
@@ -548,7 +534,6 @@ func (s *Service) ListCommands(ctx context.Context, scope listscope.AdminFleet) 
 		items = append(items, AdminCommandListItem{
 			CommandID:           r.CommandID.String(),
 			MachineID:           r.MachineID.String(),
-			OrganizationID:      r.OrganizationID.String(),
 			MachineName:         r.MachineName,
 			MachineSerialNumber: r.MachineSerialNumber,
 			Sequence:            r.Sequence,

@@ -40,7 +40,6 @@ var _ FleetWorkflows = (*Service)(nil)
 
 // CreateMachineInput describes provisioning inputs supplied by an authenticated admin context.
 type CreateMachineInput struct {
-	OrganizationID    uuid.UUID
 	SiteID            uuid.UUID
 	HardwareProfileID *uuid.UUID
 	SerialNumber      string
@@ -54,7 +53,6 @@ type CreateMachineInput struct {
 
 // UpdateMachineMetadataInput updates human-facing metadata for an existing machine within org scope.
 type UpdateMachineMetadataInput struct {
-	OrganizationID    uuid.UUID
 	MachineID         uuid.UUID
 	Name              *string
 	Status            *string
@@ -69,21 +67,17 @@ type UpdateMachineMetadataInput struct {
 
 // AssignTechnicianInput binds a technician to a machine with a role label.
 type AssignTechnicianInput struct {
-	OrganizationID uuid.UUID
-	MachineID      uuid.UUID
-	TechnicianID   uuid.UUID
-	Role           string
-	Scope          string
-	CreatedBy      *uuid.UUID
+	MachineID    uuid.UUID
+	TechnicianID uuid.UUID
+	Role         string
+	Scope        string
+	CreatedBy    *uuid.UUID
 	// ActorTechnicianID is the caller's technician identity from JWT (if any). When it matches TechnicianID, assignment is rejected.
 	ActorTechnicianID uuid.UUID
 }
 
 // CreateMachine validates scope and inserts a machine row.
 func (s *Service) CreateMachine(ctx context.Context, in CreateMachineInput) (domainfleet.Machine, error) {
-	if err := validateNonZero("organization_id", in.OrganizationID); err != nil {
-		return domainfleet.Machine{}, err
-	}
 	serial := strings.TrimSpace(in.SerialNumber)
 	if serial == "" {
 		return domainfleet.Machine{}, errors.Join(ErrInvalidArgument, errors.New("serial_number is required"))
@@ -97,11 +91,10 @@ func (s *Service) CreateMachine(ctx context.Context, in CreateMachineInput) (dom
 	if err := validateNonZero("site_id", in.SiteID); err != nil {
 		return domainfleet.Machine{}, err
 	}
-	if err := s.repo.AssertSiteInOrganization(ctx, in.OrganizationID, in.SiteID); err != nil {
+	if err := s.repo.AssertSiteInCompany(ctx, uuid.Nil, in.SiteID); err != nil {
 		return domainfleet.Machine{}, err
 	}
 	return s.repo.InsertMachine(ctx, InsertMachineParams{
-		OrganizationID:    in.OrganizationID,
 		SiteID:            in.SiteID,
 		HardwareProfileID: in.HardwareProfileID,
 		SerialNumber:      serial,
@@ -114,11 +107,8 @@ func (s *Service) CreateMachine(ctx context.Context, in CreateMachineInput) (dom
 	})
 }
 
-// UpdateMachineMetadata loads the machine, enforces organization scope, and applies a partial update.
+// UpdateMachineMetadata loads the machine, enforces company scope, and applies a partial update.
 func (s *Service) UpdateMachineMetadata(ctx context.Context, in UpdateMachineMetadataInput) (domainfleet.Machine, error) {
-	if err := validateNonZero("organization_id", in.OrganizationID); err != nil {
-		return domainfleet.Machine{}, err
-	}
 	if err := validateNonZero("machine_id", in.MachineID); err != nil {
 		return domainfleet.Machine{}, err
 	}
@@ -130,20 +120,16 @@ func (s *Service) UpdateMachineMetadata(ctx context.Context, in UpdateMachineMet
 			return domainfleet.Machine{}, err
 		}
 	}
-	current, err := s.repo.GetMachine(ctx, in.MachineID)
+	_, err := s.repo.GetMachine(ctx, in.MachineID)
 	if err != nil {
 		return domainfleet.Machine{}, err
 	}
-	if current.OrganizationID != in.OrganizationID {
-		return domainfleet.Machine{}, ErrOrgMismatch
-	}
 	if in.SiteID != nil {
-		if err := s.repo.AssertSiteInOrganization(ctx, in.OrganizationID, *in.SiteID); err != nil {
+		if err := s.repo.AssertSiteInCompany(ctx, uuid.Nil, *in.SiteID); err != nil {
 			return domainfleet.Machine{}, err
 		}
 	}
 	return s.repo.UpdateMachineMetadata(ctx, UpdateMachineMetadataParams{
-		OrganizationID:    in.OrganizationID,
 		MachineID:         in.MachineID,
 		Name:              trimStringPtr(in.Name),
 		Status:            in.Status,
@@ -157,11 +143,8 @@ func (s *Service) UpdateMachineMetadata(ctx context.Context, in UpdateMachineMet
 	})
 }
 
-// AssignTechnicianToMachine verifies both aggregates belong to the organization and creates an assignment.
+// AssignTechnicianToMachine verifies both aggregates belong to the company and creates an assignment.
 func (s *Service) AssignTechnicianToMachine(ctx context.Context, in AssignTechnicianInput) (domainfleet.TechnicianMachineAssignment, error) {
-	if err := validateNonZero("organization_id", in.OrganizationID); err != nil {
-		return domainfleet.TechnicianMachineAssignment{}, err
-	}
 	if err := validateNonZero("machine_id", in.MachineID); err != nil {
 		return domainfleet.TechnicianMachineAssignment{}, err
 	}
@@ -175,37 +158,30 @@ func (s *Service) AssignTechnicianToMachine(ctx context.Context, in AssignTechni
 	if in.ActorTechnicianID != uuid.Nil && in.ActorTechnicianID == in.TechnicianID {
 		return domainfleet.TechnicianMachineAssignment{}, ErrForbiddenTechnicianSelfAssignment
 	}
-	machine, err := s.repo.GetMachine(ctx, in.MachineID)
+	_, err := s.repo.GetMachine(ctx, in.MachineID)
 	if err != nil {
 		return domainfleet.TechnicianMachineAssignment{}, err
 	}
-	technician, err := s.repo.GetTechnician(ctx, in.TechnicianID)
+	_, err = s.repo.GetTechnician(ctx, in.TechnicianID)
 	if err != nil {
 		return domainfleet.TechnicianMachineAssignment{}, err
-	}
-	if machine.OrganizationID != in.OrganizationID || technician.OrganizationID != in.OrganizationID {
-		return domainfleet.TechnicianMachineAssignment{}, ErrOrgMismatch
 	}
 	return s.repo.InsertTechnicianMachineAssignment(ctx, InsertAssignmentParams{
-		OrganizationID: in.OrganizationID,
-		TechnicianID:   in.TechnicianID,
-		MachineID:      in.MachineID,
-		Role:           role,
-		Scope:          strings.TrimSpace(in.Scope),
-		CreatedBy:      in.CreatedBy,
+		TechnicianID: in.TechnicianID,
+		MachineID:    in.MachineID,
+		Role:         role,
+		Scope:        strings.TrimSpace(in.Scope),
+		CreatedBy:    in.CreatedBy,
 	})
 }
 
-// ListMachinesInScope returns machines for an organization, optionally filtered to a single site.
+// ListMachinesInScope returns machines for an company, optionally filtered to a single site.
 func (s *Service) ListMachinesInScope(ctx context.Context, scope ListMachinesScope) ([]domainfleet.Machine, error) {
-	if err := validateNonZero("organization_id", scope.OrganizationID); err != nil {
-		return nil, err
-	}
 	if scope.SiteID != nil {
 		if err := validateNonZero("site_id", *scope.SiteID); err != nil {
 			return nil, err
 		}
-		if err := s.repo.AssertSiteInOrganization(ctx, scope.OrganizationID, *scope.SiteID); err != nil {
+		if err := s.repo.AssertSiteInCompany(ctx, uuid.Nil, *scope.SiteID); err != nil {
 			return nil, err
 		}
 	}

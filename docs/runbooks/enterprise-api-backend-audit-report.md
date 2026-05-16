@@ -12,7 +12,7 @@
 
 | Gate | Verdict |
 | --- | --- |
-| **READY_FOR_PILOT** | **Conditional yes** — only if pilot accepts: manual provisioning/JWT issuance, no dedicated runtime sale-catalog HTTP, manual refunds/settlement, MQTT-first telemetry with **no** application-level reconcile API, and org-admin **cross-tenant machine UUID** risk at HTTP edge until DB-bound middleware lands. |
+| **READY_FOR_PILOT** | **Conditional yes** — only if pilot accepts: manual provisioning/JWT issuance, no dedicated runtime sale-catalog HTTP, manual refunds/settlement, MQTT-first telemetry with **no** application-level reconcile API, and org-admin **cross-company machine UUID** risk at HTTP edge until DB-bound middleware lands. |
 | **READY_FOR_100_MACHINES** | **No** (or **high-risk yes** with same mitigations and ops bandwidth). |
 | **READY_FOR_500_MACHINES** | **No.** |
 | **READY_FOR_1000_MACHINES** | **No.** |
@@ -22,8 +22,8 @@
 
 1. **Missing HTTP APIs** for activation/provisioning, runtime **sale catalog**, **cashbox/settlement** sessions, **refund/cancel** CRUD, **catalog write** CRUD, and **device-scoped telemetry reconcile/ACK** — not in Chi router / OpenAPI required set.
 2. **P0 product gap** acknowledged in code: `internal/app/telemetryapp/critical_telemetry_ack_doc_test.go` — no device-scoped HTTP/MQTT reconcile proving critical rows persisted; PUBACK ≠ business ACK.
-3. **Tenant isolation:** `internal/platform/auth/principal.go` `CanAccessMachineRead` allows **any** `org_admin` with org claim through HTTP for **any** `machineId` before DB check; `internal/app/api/shadow_sql.go` `GetShadow` does not assert principal org vs `machines.organization_id`.
-4. **Device bridge:** `internal/httpserver/device_http.go` requires **platform_admin/org_admin**, not machine token — kiosk cannot use `/v1/device/...` without admin JWT unless product intentionally uses commerce HTTP only.
+3. **Company isolation:** `internal/platform/auth/principal.go` `CanAccessMachineRead` allows **any** `admin` with org claim through HTTP for **any** `machineId` before DB check; `internal/app/api/shadow_sql.go` `GetShadow` does not assert principal org vs `machines.company_id`.
+4. **Device bridge:** `internal/httpserver/device_http.go` requires **platform_admin/admin**, not machine token — kiosk cannot use `/v1/device/...` without admin JWT unless product intentionally uses commerce HTTP only.
 5. **Commerce refunds:** `EvaluateRefundEligibility` exists (`internal/app/commerce/service.go`); **no** dedicated refund HTTP routes found in httpserver; vend failure path exists; duplicate refund prevention not fully audited without refund API tests.
 6. **Storm / scale:** Staging workflow `.github/workflows/telemetry-storm-staging.yml` supports **100x100, 500x200, 1000x500** scenarios; production deploy `.github/workflows/deploy-prod.yml` has **fleet_scale_target** and evidence inputs — **PASS** still depends on running suite and attaching artifacts; not a substitute for missing business APIs.
 7. **Catalog:** `internal/httpserver/admin_catalog_http.go` is **read-only** (no POST/PUT for product CRUD in grep); runtime sale catalog route **absent**.
@@ -79,7 +79,7 @@
 | **Critical telemetry **application** ACK / reconcile** | **MISSING** | Explicit P0 gap in `critical_telemetry_ack_doc_test.go` |
 | **Cashbox / recycler settlement** | **MISSING** (HTTP) | DB tables may exist; **no** admin cashbox/collection routes in server |
 | **`/v1/device/*` for machine JWT** | **PARTIAL** | Requires **admin** role today (`device_http.go` L33–36) |
-| **Cross-tenant machine read hardening** | **PARTIAL** | `CanAccessMachineRead` + handlers like `shadow_sql.go` without org join |
+| **Cross-company machine read hardening** | **PARTIAL** | `CanAccessMachineRead` + handlers like `shadow_sql.go` without org join |
 | **Activation rate limit** | **MISSING** | No activation endpoint to rate-limit |
 
 ---
@@ -105,7 +105,7 @@
 | `GET .../telemetry/*` vs MQTT firehose | Overlap in **observability**; HTTP is projection | **document** (MQTT primary) | Clients misuse HTTP for volume |
 | `POST .../commands/poll` vs MQTT dispatch | **Fallback** | **document / mark** in OpenAPI extensions | Ops treats poll as primary |
 | `GET .../bootstrap` vs future **sale-catalog** | Will **overlap** catalog data | **merge** conceptual model when sale-catalog ships | Conflicting cache sources |
-| `GET .../shadow` | Broad machine read + weak org edge | **restrict** + DB tenant middleware | Cross-tenant read |
+| `GET .../shadow` | Broad machine read + weak org edge | **restrict** + DB company middleware | Cross-company read |
 | Commerce **GET** lists `/v1/orders`, `/v1/payments` | Broad admin back-office | **keep**; kiosk should not call | Accidental data exposure if token wrong |
 | **Swagger** public | Intentional when enabled | **document** | Fingerprinting |
 | **/metrics** unauthenticated | Default when enabled | **restrict** network | Scraping / DoS |
@@ -117,7 +117,7 @@
 | P | Risk | Flow | Files | Mitigation |
 | --- | --- | --- | --- | --- |
 | **P0** | No **application-level** critical ACK | Offline replay / storm reconnect | `critical_telemetry_ack_doc_test.go`, `mqtt-contract.md` | Ship reconcile API + device outbox policy |
-| **P0** | **org_admin** + guessed **machineId** | Shadow / telemetry HTTP reads | `principal.go`, `shadow_sql.go`, `server.go` | DB-bound `machines.organization_id` middleware |
+| **P0** | **admin** + guessed **machineId** | Shadow / telemetry HTTP reads | `principal.go`, `shadow_sql.go`, `server.go` | DB-bound `machines.company_id` middleware |
 | **P0** | **Refund** path incomplete at HTTP | Vend failure + PSP | `commerce/service.go`, httpserver gap | Refund idempotent API + tests |
 | **P1** | **Device bridge** admin-only | HTTP vend-results / poll | `device_http.go` | Machine-scoped policy or document admin-only proxy |
 | **P1** | **EMQX reconnect storm** | 1000 machines online | `docs/runbooks/*`, ops | Broker sizing, client jitter docs (checklist exists) |
@@ -129,11 +129,11 @@
 
 ## G. Historical action list (superseded — verify current tree)
 
-**Note:** This table captured gaps at audit time. The items below are now **implemented** in-repo (tenant middleware, commerce refund/cancel, reconcile HTTP, sale catalog, catalog CRUD, cash settlement, OpenAPI alignment). Use [api-surface-audit.md](../api/api-surface-audit.md) and `make verify-enterprise-release` as the source of truth.
+**Note:** This table captured gaps at audit time. The items below are now **implemented** in-repo (company middleware, commerce refund/cancel, reconcile HTTP, sale catalog, catalog CRUD, cash settlement, OpenAPI alignment). Use [api-surface-audit.md](../api/api-surface-audit.md) and `make verify-enterprise-release` as the source of truth.
 
 | P | File | Change (was) | Test |
 | --- | --- | --- | --- |
-| P0 | `internal/httpserver/*` | Tenant-bound middleware for machine-scoped routes | `httpserver` + integration |
+| P0 | `internal/httpserver/*` | Company-bound middleware for machine-scoped routes | `httpserver` + integration |
 | P0 | `internal/httpserver/commerce_http.go` | Refund/cancel routes | Commerce integration |
 | P0 | Telemetry reconcile handlers | Machine-scoped POST + status | telemetry integration |
 | P1 | `internal/httpserver/admin_catalog_http.go` | CRUD + image | catalog tests |
@@ -180,7 +180,7 @@ make verify-enterprise-release
 
 ## J. Final recommendation
 
-**Do not** claim **enterprise production release** for **1000 machines** with **full** feature parity until: **(1)** runtime sale catalog, **(2)** activation, **(3)** refund/cancel HTTP, **(4)** cash settlement (if cash-heavy market), **(5)** **telemetry application reconcile**, **(6)** tenant-bound machine middleware, and **(7)** **passing** storm evidence for the **target** tier are all **implemented, tested, and in Swagger**.
+**Do not** claim **enterprise production release** for **1000 machines** with **full** feature parity until: **(1)** runtime sale catalog, **(2)** activation, **(3)** refund/cancel HTTP, **(4)** cash settlement (if cash-heavy market), **(5)** **telemetry application reconcile**, **(6)** company-bound machine middleware, and **(7)** **passing** storm evidence for the **target** tier are all **implemented, tested, and in Swagger**.
 
 **Can deploy now?** **Pilot-only**, with written acceptance of gaps above and MQTT-first operations.
 

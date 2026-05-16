@@ -13,7 +13,7 @@
 | Flow | Ready? | Reason |
 |------|--------|--------|
 | Production read-only (health/version) | **Yes** | `/health/live`, `/health/ready`, `/version` returned **200** at audit time. |
-| Web Admin full destructive | **No** | No `ADMIN_TOKEN`; email/password path incomplete (`ADMIN_EMAIL`/`ADMIN_PASSWORD` empty) and **`E2E_ORGANIZATION_ID` absent** from local env. |
+| Web Admin full destructive | **No** | No `ADMIN_TOKEN`; email/password path incomplete (`ADMIN_EMAIL`/`ADMIN_PASSWORD` empty) and **`E2E_SCOPE_ID` absent** from local env. |
 | Vending REST-equivalent | **No** | Depends on admin setup data; `MACHINE_ID` / `MACHINE_TOKEN` / `E2E_ACTIVATION_CODE` not ready. |
 | gRPC machine | **No** | Machine auth inputs missing; **`GRPC_PROTO_ROOT`** empty; harness uses **grpcurl `-plaintext`** only — **TLS on `:443`** likely incompatible until addressed. |
 | MQTT | **No** | **`MQTT_HOST` empty** in `.local` (example suggests `mqtt.ldtv.dev`); credentials empty. |
@@ -55,7 +55,7 @@ From `tests/e2e/.env.production.destructive.local`:
 | `ADMIN_TOKEN` | Web Admin REST, Phase 4 | **empty** | IdP / prior session / admin UI | No | N/A — secret |
 | `ADMIN_EMAIL` | Optional login path | **empty** | Operator | No | — |
 | `ADMIN_PASSWORD` | Optional login path | **empty** | Operator | No | — |
-| `E2E_ORGANIZATION_ID` | `POST /v1/auth/login` body (email path); token path if org not in data | **absent** in `.local` | Org UUID from DB/admin | No | Must add to env or `test-data.json` |
+| `E2E_SCOPE_ID` | `POST /v1/auth/login` body (email path); token path if org not in data | **absent** in `.local` | Operator-provided ID from DB/admin | No | Must add to env or `test-data.json` |
 | `MACHINE_ID` | Machine REST, gRPC meta, MQTT topics | **empty** | After admin setup or reuse | Yes **after** admin run | — |
 | `MACHINE_TOKEN` | Authenticated machine REST/gRPC | **empty** | `secrets.private.json` reuse or activation | Yes **if** `E2E_ACTIVATION_CODE` set | — |
 | `E2E_ACTIVATION_CODE` | Claim path (scenarios 02 / 20) | **absent** in `.local` | Operator-issued code | No | Optional if token reused |
@@ -73,14 +73,14 @@ From `tests/e2e/.env.production.destructive.local`:
 - **Admin login path:** `POST /v1/auth/login` (JSON body per OpenAPI / setup scenario).
 - **Production MQTT hostname:** `mqtt.ldtv.dev` per `docs/runbooks/production-2-vps.md` (still need credentials).
 - **Machine token:** from **`E2E_ACTIVATION_CODE`** + claim flows once code exists.
-- **`machineId` / `organizationId`:** from **`01_web_admin_setup.sh`** once admin auth works.
+- **`machineId` / `scopeId`:** from **`01_web_admin_setup.sh`** once admin auth works.
 
 ---
 
 ## Values operator must provide (names only)
 
-- `ADMIN_TOKEN` **or** `ADMIN_EMAIL` + `ADMIN_PASSWORD` + `E2E_ORGANIZATION_ID`
-- `E2E_ORGANIZATION_ID` (if using password login or token without org in reuse data)
+- `ADMIN_TOKEN` **or** `ADMIN_EMAIL` + `ADMIN_PASSWORD` + `E2E_SCOPE_ID`
+- `E2E_SCOPE_ID` (if using password login or token without org in reuse data)
 - `MACHINE_TOKEN` **or** `E2E_ACTIVATION_CODE` (+ device fingerprint envs if applicable)
 - MQTT **username/password** (and optional client TLS material)
 - **`COMMERCE_PAYMENT_WEBHOOK_SECRET`** (or legacy HMAC alias) in shell env if running **signed** webhook E2E against prod
@@ -96,8 +96,8 @@ Until `E2E_ALLOW_REAL_MACHINE_COMMANDS` / `E2E_ALLOW_REAL_DISPENSE` are intentio
 
 ## Exact next steps for operator
 
-1. Merge updates from **`tests/e2e/.env.production.destructive.example`** into **`tests/e2e/.env.production.destructive.local`** (add `E2E_ORGANIZATION_ID`, `E2E_ACTIVATION_CODE`, `MQTT_HOST`, etc. — keep secrets local-only).
-2. Fill **admin** credentials (`ADMIN_TOKEN` or email/password + org UUID).
+1. Merge updates from **`tests/e2e/.env.production.destructive.example`** into **`tests/e2e/.env.production.destructive.local`** (add `E2E_SCOPE_ID`, `E2E_ACTIVATION_CODE`, `MQTT_HOST`, etc. — keep secrets local-only).
+2. Fill **admin** credentials (`ADMIN_TOKEN` or email/password + company UUID).
 3. Fill **machine** identity (`MACHINE_ID`, `MACHINE_TOKEN` or activation code).
 4. Set **`GRPC_PROTO_ROOT`** to your checkout’s `proto` folder; resolve **TLS vs plaintext** for prod gRPC before relying on results.
 5. Set **`MQTT_HOST`** (e.g. `mqtt.ldtv.dev`) and broker credentials.

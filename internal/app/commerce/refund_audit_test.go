@@ -113,7 +113,6 @@ func (s *refundLifecycleStub) FulfillFailedVendAtomically(context.Context, Fulfi
 
 func TestCreateRefund_recordsEnterpriseAudit(t *testing.T) {
 	t.Parallel()
-	org := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	orderID := uuid.New()
 	payID := uuid.New()
 	refundID := uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc")
@@ -123,13 +122,12 @@ func TestCreateRefund_recordsEnterpriseAudit(t *testing.T) {
 		PaymentOutbox: nil,
 		Lifecycle: &refundLifecycleStub{
 			order: domaincommerce.Order{
-				ID:             orderID,
-				OrganizationID: org,
-				Status:         "completed",
-				MachineID:      uuid.New(),
-				Currency:       "USD",
-				CreatedAt:      time.Now().UTC(),
-				UpdatedAt:      time.Now().UTC(),
+				ID:        orderID,
+				Status:    "completed",
+				MachineID: uuid.New(),
+				Currency:  "USD",
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
 			},
 			payment: domaincommerce.Payment{
 				ID:          payID,
@@ -150,7 +148,6 @@ func TestCreateRefund_recordsEnterpriseAudit(t *testing.T) {
 
 	ctx := context.Background()
 	row, err := svc.CreateRefund(ctx, CreateRefundInput{
-		OrganizationID: org,
 		OrderID:        orderID,
 		AmountMinor:    100,
 		Currency:       "USD",

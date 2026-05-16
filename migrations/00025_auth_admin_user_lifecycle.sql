@@ -1,8 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
--- Org-scoped email uniqueness: enforced since migration 00014 via ux_platform_auth_accounts_org_email.
+-- Role-scoped email uniqueness: enforced since migration 00014 via ux_platform_auth_accounts_org_email.
 -- This migration is idempotent for databases that already applied 00014.
-CREATE UNIQUE INDEX IF NOT EXISTS ux_platform_auth_accounts_org_email ON platform_auth_accounts (organization_id, lower(email));
+CREATE UNIQUE INDEX IF NOT EXISTS ux_platform_auth_accounts_org_email ON platform_auth_accounts (scope_id, lower(email));
 -- +goose StatementEnd
 
 -- +goose Down

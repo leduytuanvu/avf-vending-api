@@ -101,7 +101,7 @@ def classify(path: str, method: str) -> list[str]:
     if path == "/v1/setup/machines/{machineId}/bootstrap":
         client = "kiosk runtime app; technician setup app"
         auth = "Bearer JWT"
-        scope = "machine tenant"
+        scope = "machine company"
         idem = "n/a"
         offline = "yes"
         return [path, method, client, auth, scope, idem, offline, status, risk]
@@ -109,7 +109,7 @@ def classify(path: str, method: str) -> list[str]:
     if path == "/v1/machines/{machineId}/sale-catalog":
         client = "kiosk runtime app"
         auth = "Bearer JWT"
-        scope = "machine tenant"
+        scope = "machine company"
         idem = "n/a"
         offline = "yes"
         risk = "low; not for admin bulk export"
@@ -118,7 +118,7 @@ def classify(path: str, method: str) -> list[str]:
     if path.startswith("/v1/reports/"):
         client = "admin portal (not kiosk runtime)"
         auth = "Bearer JWT"
-        scope = "org_admin or platform_admin"
+        scope = "admin or platform_admin"
         idem = "n/a"
         offline = "yes"
         risk = "low"
@@ -195,7 +195,7 @@ def classify(path: str, method: str) -> list[str]:
     if path.startswith("/v1/machines/") and "/telemetry/" in path:
         client = "kiosk runtime app; admin portal"
         auth = "Bearer JWT"
-        scope = "machine tenant"
+        scope = "machine company"
         idem = "n/a"
         offline = "yes"
         risk = (
@@ -220,7 +220,7 @@ def classify(path: str, method: str) -> list[str]:
     ):
         client = "kiosk runtime app"
         auth = "Bearer JWT"
-        scope = "machine tenant"
+        scope = "machine company"
         idem = "no"
         offline = "caution"
         risk = "med"
@@ -229,7 +229,7 @@ def classify(path: str, method: str) -> list[str]:
     if path.startswith("/v1/machines/") and "/commands/" in path:
         client = "admin portal; kiosk (dispatch receipts)"
         auth = "Bearer JWT"
-        scope = "admin roles / machine tenant (see route)"
+        scope = "admin roles / machine company (see route)"
         if method == "POST" and path.endswith("/dispatch"):
             idem = "yes"
             offline = "yes w/ key"
@@ -243,7 +243,7 @@ def classify(path: str, method: str) -> list[str]:
     if path.endswith("/shadow"):
         client = "kiosk runtime app; admin portal"
         auth = "Bearer JWT"
-        scope = "machine tenant"
+        scope = "machine company"
         idem = "n/a"
         offline = "yes"
         return [path, method, client, auth, scope, idem, offline, status, risk]
@@ -253,7 +253,7 @@ def classify(path: str, method: str) -> list[str]:
     ):
         client = "technician setup app; admin portal"
         auth = "Bearer JWT"
-        scope = "org_admin or platform_admin"
+        scope = "admin or platform_admin"
         idem = "no"
         offline = "caution"
         risk = "med"
@@ -262,7 +262,7 @@ def classify(path: str, method: str) -> list[str]:
     if path.startswith("/v1/admin/machines/") and "/activation-codes" in path:
         client = "admin portal (provisioning; not kiosk runtime)"
         auth = "Bearer JWT"
-        scope = "org_admin or platform_admin"
+        scope = "admin or platform_admin"
         if method == "GET":
             idem = "n/a"
             offline = "yes"
@@ -275,7 +275,7 @@ def classify(path: str, method: str) -> list[str]:
     if path.startswith("/v1/admin/machines/") and "/stock-adjustments" in path:
         client = "technician setup app; admin portal"
         auth = "Bearer JWT"
-        scope = "org_admin or platform_admin plus operator session"
+        scope = "admin or platform_admin plus operator session"
         idem = "yes"
         offline = "yes w/ key"
         risk = "med: inventory truth"
@@ -284,7 +284,7 @@ def classify(path: str, method: str) -> list[str]:
     if path.startswith("/v1/admin/machines/") and "/planograms/publish" in path:
         client = "technician setup app"
         auth = "Bearer JWT"
-        scope = "org_admin or platform_admin"
+        scope = "admin or platform_admin"
         idem = "yes"
         offline = "yes w/ key"
         risk = "med"
@@ -293,7 +293,7 @@ def classify(path: str, method: str) -> list[str]:
     if path.startswith("/v1/admin/machines/") and "/sync" in path:
         client = "technician setup app"
         auth = "Bearer JWT"
-        scope = "org_admin or platform_admin"
+        scope = "admin or platform_admin"
         idem = "yes"
         offline = "yes w/ key"
         return [path, method, client, auth, scope, idem, offline, status, risk]
@@ -314,7 +314,7 @@ def classify(path: str, method: str) -> list[str]:
         risk = "high: cash settlement"
         return [path, method, client, auth, scope, idem, offline, status, risk]
 
-    if path.startswith("/v1/admin/organizations/") and "/artifacts" in path:
+    if path.startswith("/v1/admin/companies/") and "/artifacts" in path:
         client = "admin portal"
         auth = "Bearer JWT"
         scope = "org or platform (artifact storage route)"
@@ -331,7 +331,7 @@ def classify(path: str, method: str) -> list[str]:
     if path.startswith("/v1/admin/"):
         client = "admin portal; technician setup app (where machine-scoped)"
         auth = "Bearer JWT"
-        scope = "org_admin or platform_admin"
+        scope = "admin or platform_admin"
         if method in ("POST", "PUT", "PATCH", "DELETE"):
             idem = "yes"
             offline = "yes w/ key"
@@ -345,7 +345,7 @@ def classify(path: str, method: str) -> list[str]:
     if path.startswith("/v1/operator-insights/"):
         client = "admin portal"
         auth = "Bearer JWT"
-        scope = "platform, org_admin, or org_member"
+        scope = "platform, admin, or org_member"
         idem = "n/a"
         offline = "yes"
         return [path, method, client, auth, scope, idem, offline, status, risk]
@@ -353,7 +353,7 @@ def classify(path: str, method: str) -> list[str]:
     if path in ("/v1/orders", "/v1/payments"):
         client = "admin portal (not kiosk runtime)"
         auth = "Bearer JWT"
-        scope = "org-scoped lists"
+        scope = "role-scoped lists"
         idem = "n/a"
         offline = "yes"
         return [path, method, client, auth, scope, idem, offline, status, risk]

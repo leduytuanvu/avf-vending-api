@@ -1,7 +1,6 @@
 -- name: ListOutboxOpsRows :many
 SELECT
     id,
-    organization_id,
     topic,
     event_type,
     payload,

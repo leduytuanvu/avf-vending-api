@@ -28,7 +28,7 @@ ALTER TABLE commerce_reconciliation_cases ADD CONSTRAINT commerce_reconciliation
 DROP INDEX IF EXISTS ux_commerce_reconciliation_cases_open_identity;
 CREATE UNIQUE INDEX ux_commerce_reconciliation_cases_open_identity
     ON commerce_reconciliation_cases (
-        organization_id,
+        scope_id,
         case_type,
         COALESCE(order_id, '00000000-0000-0000-0000-000000000000'::uuid),
         COALESCE(payment_id, '00000000-0000-0000-0000-000000000000'::uuid),
@@ -49,7 +49,7 @@ DROP INDEX IF EXISTS ux_commerce_reconciliation_cases_open_identity;
 
 CREATE UNIQUE INDEX ux_commerce_reconciliation_cases_open_identity
     ON commerce_reconciliation_cases (
-        organization_id,
+        scope_id,
         case_type,
         COALESCE(order_id, '00000000-0000-0000-0000-000000000000'::uuid),
         COALESCE(payment_id, '00000000-0000-0000-0000-000000000000'::uuid),

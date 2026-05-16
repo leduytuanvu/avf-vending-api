@@ -255,7 +255,6 @@ func (x *GetMachineIncidentSummaryRequest) GetLimit() int32 {
 type MachineSummary struct {
 	state             protoimpl.MessageState  `protogen:"open.v1"`
 	MachineId         string                  `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId    string                  `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	SiteId            string                  `protobuf:"bytes,3,opt,name=site_id,json=siteId,proto3" json:"site_id,omitempty"`
 	HardwareProfileId *wrapperspb.StringValue `protobuf:"bytes,4,opt,name=hardware_profile_id,json=hardwareProfileId,proto3" json:"hardware_profile_id,omitempty"`
 	SerialNumber      string                  `protobuf:"bytes,5,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
@@ -301,13 +300,6 @@ func (*MachineSummary) Descriptor() ([]byte, []int) {
 func (x *MachineSummary) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *MachineSummary) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -439,7 +431,6 @@ func (x *MachineShadowState) GetVersion() int64 {
 type MachineTelemetrySnapshot struct {
 	state             protoimpl.MessageState  `protogen:"open.v1"`
 	MachineId         string                  `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId    string                  `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	SiteId            string                  `protobuf:"bytes,3,opt,name=site_id,json=siteId,proto3" json:"site_id,omitempty"`
 	ReportedState     *structpb.Struct        `protobuf:"bytes,4,opt,name=reported_state,json=reportedState,proto3" json:"reported_state,omitempty"`
 	MetricsState      *structpb.Struct        `protobuf:"bytes,5,opt,name=metrics_state,json=metricsState,proto3" json:"metrics_state,omitempty"`
@@ -491,13 +482,6 @@ func (*MachineTelemetrySnapshot) Descriptor() ([]byte, []int) {
 func (x *MachineTelemetrySnapshot) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *MachineTelemetrySnapshot) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -1444,11 +1428,10 @@ const file_avf_internal_v1_machine_query_proto_rawDesc = "" +
 	" GetMachineIncidentSummaryRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\xb1\x03\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\x88\x03\n" +
 	"\x0eMachineSummary\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x17\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\asite_id\x18\x03 \x01(\tR\x06siteId\x12L\n" +
 	"\x13hardware_profile_id\x18\x04 \x01(\v2\x1c.google.protobuf.StringValueR\x11hardwareProfileId\x12#\n" +
 	"\rserial_number\x18\x05 \x01(\tR\fserialNumber\x12\x12\n" +
@@ -1465,11 +1448,10 @@ const file_avf_internal_v1_machine_query_proto_rawDesc = "" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12<\n" +
 	"\rdesired_state\x18\x02 \x01(\v2\x17.google.protobuf.StructR\fdesiredState\x12>\n" +
 	"\x0ereported_state\x18\x03 \x01(\v2\x17.google.protobuf.StructR\rreportedState\x12\x18\n" +
-	"\aversion\x18\x04 \x01(\x03R\aversion\"\xac\a\n" +
+	"\aversion\x18\x04 \x01(\x03R\aversion\"\x83\a\n" +
 	"\x18MachineTelemetrySnapshot\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x17\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\asite_id\x18\x03 \x01(\tR\x06siteId\x12>\n" +
 	"\x0ereported_state\x18\x04 \x01(\v2\x17.google.protobuf.StructR\rreportedState\x12<\n" +
 	"\rmetrics_state\x18\x05 \x01(\v2\x17.google.protobuf.StructR\fmetricsState\x12F\n" +

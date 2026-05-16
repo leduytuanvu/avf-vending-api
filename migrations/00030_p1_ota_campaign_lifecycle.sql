@@ -65,7 +65,7 @@ CREATE INDEX IF NOT EXISTS ix_ota_campaign_targets_campaign_id ON ota_campaign_t
 
 CREATE TABLE ota_campaign_events (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     campaign_id uuid NOT NULL REFERENCES ota_campaigns (id) ON DELETE CASCADE,
     event_type text NOT NULL,
     payload jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -77,7 +77,7 @@ CREATE INDEX ix_ota_campaign_events_campaign ON ota_campaign_events (campaign_id
 
 CREATE TABLE ota_machine_results (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     campaign_id uuid NOT NULL REFERENCES ota_campaigns (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     wave text NOT NULL DEFAULT 'forward' CHECK (wave IN ('forward', 'rollback')),

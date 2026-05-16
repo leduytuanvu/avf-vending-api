@@ -331,13 +331,12 @@ func (s *machineTelemetryServer) recordTelemetryAudit(ctx context.Context, claim
 	md, _ := json.Marshal(meta)
 	mid := claims.MachineID.String()
 	_ = s.deps.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: claims.OrganizationID,
-		ActorType:      compliance.ActorMachine,
-		ActorID:        &mid,
-		Action:         action,
-		ResourceType:   "machine",
-		ResourceID:     &mid,
-		Metadata:       md,
+		ActorType:    compliance.ActorMachine,
+		ActorID:      &mid,
+		Action:       action,
+		ResourceType: "machine",
+		ResourceID:   &mid,
+		Metadata:     md,
 	})
 }
 

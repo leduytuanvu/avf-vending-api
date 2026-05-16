@@ -99,7 +99,7 @@ func (s stubPaymentQueries) GetLatestPaymentForOrder(context.Context, uuid.UUID,
 }
 
 type stubInternalQuerySaleCatalog struct {
-	orgID uuid.UUID
+	scopeID uuid.UUID
 }
 
 func (s stubInternalQuerySaleCatalog) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts appsalecatalog.Options) (appsalecatalog.Snapshot, error) {
@@ -107,7 +107,6 @@ func (s stubInternalQuerySaleCatalog) BuildSnapshot(ctx context.Context, machine
 	_ = opts
 	return appsalecatalog.Snapshot{
 		MachineID:      machineID,
-		OrganizationID: s.orgID,
 		SiteID:         uuid.Nil,
 		ConfigVersion:  1,
 		CatalogVersion: "v1",
@@ -121,35 +120,31 @@ type stubReportingForInternal struct{}
 
 func (stubReportingForInternal) SalesSummary(_ context.Context, q listscope.ReportingQuery) (*appreporting.SalesSummaryResponse, error) {
 	return &appreporting.SalesSummaryResponse{
-		OrganizationID: q.OrganizationID.String(),
-		From:           q.From.UTC().Format(time.RFC3339),
-		To:             q.To.UTC().Format(time.RFC3339),
-		GroupBy:        q.GroupBy,
+		From:    q.From.UTC().Format(time.RFC3339),
+		To:      q.To.UTC().Format(time.RFC3339),
+		GroupBy: q.GroupBy,
 	}, nil
 }
 
 func (stubReportingForInternal) PaymentsSummary(_ context.Context, q listscope.ReportingQuery) (*appreporting.PaymentsSummaryResponse, error) {
 	return &appreporting.PaymentsSummaryResponse{
-		OrganizationID: q.OrganizationID.String(),
-		From:           q.From.UTC().Format(time.RFC3339),
-		To:             q.To.UTC().Format(time.RFC3339),
-		GroupBy:        q.GroupBy,
+		From:    q.From.UTC().Format(time.RFC3339),
+		To:      q.To.UTC().Format(time.RFC3339),
+		GroupBy: q.GroupBy,
 	}, nil
 }
 
 func (stubReportingForInternal) FleetHealth(_ context.Context, q listscope.ReportingQuery) (*appreporting.FleetHealthResponse, error) {
 	return &appreporting.FleetHealthResponse{
-		OrganizationID: q.OrganizationID.String(),
-		From:           q.From.UTC().Format(time.RFC3339),
-		To:             q.To.UTC().Format(time.RFC3339),
+		From: q.From.UTC().Format(time.RFC3339),
+		To:   q.To.UTC().Format(time.RFC3339),
 	}, nil
 }
 
 func (stubReportingForInternal) InventoryExceptions(_ context.Context, q listscope.ReportingQuery) (*appreporting.InventoryExceptionsResponse, error) {
 	return &appreporting.InventoryExceptionsResponse{
-		OrganizationID: q.OrganizationID.String(),
-		From:           q.From.UTC().Format(time.RFC3339),
-		To:             q.To.UTC().Format(time.RFC3339),
+		From: q.From.UTC().Format(time.RFC3339),
+		To:   q.To.UTC().Format(time.RFC3339),
 	}, nil
 }
 
@@ -159,57 +154,67 @@ func (stubReportingForInternal) CashCollectionsExport(_ context.Context, q lists
 }
 
 func (stubReportingForInternal) PaymentSettlement(_ context.Context, q listscope.ReportingQuery) (*appreporting.PaymentSettlementResponse, error) {
-	return &appreporting.PaymentSettlementResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.PaymentSettlementResponse{}, nil
 }
 
 func (stubReportingForInternal) Refunds(_ context.Context, q listscope.ReportingQuery) (*appreporting.RefundReportResponse, error) {
-	return &appreporting.RefundReportResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.RefundReportResponse{}, nil
 }
 
 func (stubReportingForInternal) CashCollectionsReport(_ context.Context, q listscope.ReportingQuery) (*appreporting.CashCollectionReportResponse, error) {
-	return &appreporting.CashCollectionReportResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.CashCollectionReportResponse{}, nil
 }
 
 func (stubReportingForInternal) MachineHealth(_ context.Context, q listscope.ReportingQuery) (*appreporting.MachineHealthReportResponse, error) {
-	return &appreporting.MachineHealthReportResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.MachineHealthReportResponse{}, nil
 }
 
 func (stubReportingForInternal) FailedVends(_ context.Context, q listscope.ReportingQuery) (*appreporting.FailedVendReportResponse, error) {
-	return &appreporting.FailedVendReportResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.FailedVendReportResponse{}, nil
 }
 
 func (stubReportingForInternal) ReconciliationQueue(_ context.Context, q listscope.ReportingQuery) (*appreporting.ReconciliationQueueReportResponse, error) {
-	return &appreporting.ReconciliationQueueReportResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.ReconciliationQueueReportResponse{}, nil
 }
 
 func (stubReportingForInternal) VendSummary(_ context.Context, q listscope.ReportingQuery) (*appreporting.VendSummaryResponse, error) {
-	return &appreporting.VendSummaryResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.VendSummaryResponse{}, nil
 }
 
 func (stubReportingForInternal) StockMovement(_ context.Context, q listscope.ReportingQuery) (*appreporting.StockMovementReportResponse, error) {
-	return &appreporting.StockMovementReportResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.StockMovementReportResponse{}, nil
 }
 
 func (stubReportingForInternal) CommandFailures(_ context.Context, q listscope.ReportingQuery) (*appreporting.CommandFailuresReportResponse, error) {
-	return &appreporting.CommandFailuresReportResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.CommandFailuresReportResponse{}, nil
 }
 
 func (stubReportingForInternal) ReconciliationBI(_ context.Context, q listscope.ReportingQuery) (*appreporting.ReconciliationBIReportResponse, error) {
-	return &appreporting.ReconciliationBIReportResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.ReconciliationBIReportResponse{}, nil
 }
 
 func (stubReportingForInternal) ProductPerformance(_ context.Context, q listscope.ReportingQuery) (*appreporting.ProductPerformanceResponse, error) {
-	return &appreporting.ProductPerformanceResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.ProductPerformanceResponse{}, nil
 }
 
 func (stubReportingForInternal) TechnicianFillOperations(_ context.Context, q listscope.ReportingQuery) (*appreporting.TechnicianFillReportResponse, error) {
-	return &appreporting.TechnicianFillReportResponse{OrganizationID: q.OrganizationID.String()}, nil
+	_ = q
+	return &appreporting.TechnicianFillReportResponse{}, nil
 }
 
 func TestInternalGRPCServer_ReadOnlyQueries(t *testing.T) {
 	t.Parallel()
-
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	machineID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	orderID := uuid.MustParse("44444444-4444-4444-4444-444444444444")
@@ -243,7 +248,6 @@ func TestInternalGRPCServer_ReadOnlyQueries(t *testing.T) {
 		bootstrap: setupapp.MachineBootstrap{
 			Machine: domainfleet.Machine{
 				ID:              machineID,
-				OrganizationID:  orgID,
 				SiteID:          siteID,
 				SerialNumber:    "SN-1",
 				Name:            "Machine One",
@@ -296,7 +300,6 @@ func TestInternalGRPCServer_ReadOnlyQueries(t *testing.T) {
 		Telemetry: stubTelemetryQueries{
 			snapshot: appapi.TelemetrySnapshotView{
 				MachineID:         machineID,
-				OrganizationID:    orgID,
 				SiteID:            siteID,
 				ReportedState:     []byte(`{"temperature":"cold"}`),
 				MetricsState:      []byte(`{"power_watts":42.5}`),
@@ -317,16 +320,15 @@ func TestInternalGRPCServer_ReadOnlyQueries(t *testing.T) {
 		Commerce: stubCommerceQueries{
 			out: appcommerce.CheckoutStatusView{
 				Order: domaincommerce.Order{
-					ID:             orderID,
-					OrganizationID: orgID,
-					MachineID:      machineID,
-					Status:         "paid",
-					Currency:       "THB",
-					SubtotalMinor:  250,
-					TaxMinor:       0,
-					TotalMinor:     250,
-					CreatedAt:      time.Date(2026, 1, 5, 1, 2, 3, 0, time.UTC),
-					UpdatedAt:      time.Date(2026, 1, 5, 1, 3, 3, 0, time.UTC),
+					ID:            orderID,
+					MachineID:     machineID,
+					Status:        "paid",
+					Currency:      "THB",
+					SubtotalMinor: 250,
+					TaxMinor:      0,
+					TotalMinor:    250,
+					CreatedAt:     time.Date(2026, 1, 5, 1, 2, 3, 0, time.UTC),
+					UpdatedAt:     time.Date(2026, 1, 5, 1, 3, 3, 0, time.UTC),
 				},
 				Vend: domaincommerce.VendSession{
 					ID:        vendID,
@@ -342,7 +344,7 @@ func TestInternalGRPCServer_ReadOnlyQueries(t *testing.T) {
 			},
 		},
 		Payment:   stubPaymentQueries{payment: payment},
-		Catalog:   stubInternalQuerySaleCatalog{orgID: orgID},
+		Catalog:   stubInternalQuerySaleCatalog{scopeID: uuid.Nil},
 		Inventory: appapi.NewInternalInventoryQueryService(machineStub),
 		Reporting: stubReportingForInternal{},
 	}
@@ -380,7 +382,7 @@ func TestInternalGRPCServer_ReadOnlyQueries(t *testing.T) {
 		t.Fatalf("health status=%v", healthResp.Status)
 	}
 
-	token := issueTestInternalServiceToken(t, cfg.HTTPAuth.JWTSecret, orgID)
+	token := issueTestInternalServiceToken(t, cfg.HTTPAuth.JWTSecret, uuid.Nil)
 	authCtx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token, "x-request-id", "grpc-test-1")
 
 	machineClient := internalv1.NewInternalMachineQueryServiceClient(conn)
@@ -403,9 +405,8 @@ func TestInternalGRPCServer_ReadOnlyQueries(t *testing.T) {
 
 	commerceClient := internalv1.NewInternalCommerceQueryServiceClient(conn)
 	commerceResp, err := commerceClient.GetOrderPaymentVendState(authCtx, &internalv1.GetOrderPaymentVendStateRequest{
-		OrganizationId: orgID.String(),
-		OrderId:        orderID.String(),
-		SlotIndex:      1,
+		OrderId:   orderID.String(),
+		SlotIndex: 1,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -419,8 +420,7 @@ func TestInternalGRPCServer_ReadOnlyQueries(t *testing.T) {
 
 	paymentClient := internalv1.NewInternalPaymentQueryServiceClient(conn)
 	paymentResp, err := paymentClient.GetPaymentById(authCtx, &internalv1.GetPaymentByIdRequest{
-		OrganizationId: orgID.String(),
-		PaymentId:      paymentID.String(),
+		PaymentId: paymentID.String(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -429,8 +429,7 @@ func TestInternalGRPCServer_ReadOnlyQueries(t *testing.T) {
 		t.Fatalf("payment order id=%q", got)
 	}
 	latestPaymentResp, err := paymentClient.GetLatestPaymentForOrder(authCtx, &internalv1.GetLatestPaymentForOrderRequest{
-		OrganizationId: orgID.String(),
-		OrderId:        orderID.String(),
+		OrderId: orderID.String(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -469,30 +468,25 @@ func TestInternalGRPCServer_ReadOnlyQueries(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	to := time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)
 	repResp, err := reportClient.GetSalesSummary(authCtx, &internalv1.GetSalesSummaryRequest{
-		OrganizationId: orgID.String(),
-		FromRfc3339:    from,
-		ToRfc3339:      to,
-		GroupBy:        "day",
+		FromRfc3339: from,
+		ToRfc3339:   to,
+		GroupBy:     "day",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var repPayload map[string]any
-	if err := json.Unmarshal([]byte(repResp.GetSummaryJson()), &repPayload); err != nil {
-		t.Fatal(err)
-	}
-	if got, _ := repPayload["organizationId"].(string); got != orgID.String() {
-		t.Fatalf("report org=%v", got)
+	if strings.TrimSpace(repResp.GetSummaryJson()) == "" {
+		t.Fatal("empty reporting summary")
 	}
 }
 
-func issueTestAccessToken(t *testing.T, cfg *config.Config, orgID uuid.UUID, roles []string) string {
+func issueTestAccessToken(t *testing.T, cfg *config.Config, scopeID uuid.UUID, roles []string) string {
 	t.Helper()
 	issuer, err := platformauth.NewSessionIssuerFromHTTPAuth(cfg.HTTPAuth)
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, _, err := issuer.IssueAccessJWT(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), orgID, roles, "active")
+	token, _, err := issuer.IssueAccessJWT(uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), scopeID, roles, "active")
 	if err != nil {
 		t.Fatal(err)
 	}

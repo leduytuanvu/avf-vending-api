@@ -15,9 +15,6 @@ func machineCredentialGate(ctx context.Context, q *db.Queries, claims plauth.Mac
 	if err != nil {
 		return status.Errorf(codes.NotFound, "machine not found")
 	}
-	if row.OrganizationID != claims.OrganizationID {
-		return status.Errorf(codes.PermissionDenied, "machine organization mismatch")
-	}
 	if row.CredentialRevokedAt.Valid {
 		return status.Errorf(codes.Unauthenticated, "machine credentials revoked")
 	}
@@ -48,9 +45,6 @@ func machineRuntimeInventoryGate(ctx context.Context, q *db.Queries, claims plau
 	row, err := q.GetMachineCredentialGate(ctx, claims.MachineID)
 	if err != nil {
 		return status.Errorf(codes.NotFound, "machine not found")
-	}
-	if row.OrganizationID != claims.OrganizationID {
-		return status.Errorf(codes.PermissionDenied, "machine organization mismatch")
 	}
 	if row.CredentialRevokedAt.Valid {
 		return status.Errorf(codes.Unauthenticated, "machine credentials revoked")

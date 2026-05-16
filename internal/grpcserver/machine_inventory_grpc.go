@@ -38,11 +38,10 @@ func (s *machineInventoryServer) GetInventorySnapshot(ctx context.Context, req *
 		rid = req.GetMeta().GetRequestId()
 	}
 	return &machinev1.GetInventorySnapshotResponse{
-		MachineId:      claims.MachineID.String(),
-		OrganizationId: claims.OrganizationID.String(),
-		ServerTime:     timestamppb.New(time.Now().UTC()),
-		Slots:          slots,
-		Meta:           responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		MachineId:  claims.MachineID.String(),
+		ServerTime: timestamppb.New(time.Now().UTC()),
+		Slots:      slots,
+		Meta:       responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
 	}, nil
 }
 
@@ -57,10 +56,9 @@ func (s *machineInventoryServer) GetPlanogram(ctx context.Context, req *machinev
 		}
 	}
 	return &machinev1.GetPlanogramResponse{
-		MachineId:      claims.MachineID.String(),
-		OrganizationId: claims.OrganizationID.String(),
-		ServerTime:     timestamppb.New(time.Now().UTC()),
-		Slots:          slots,
+		MachineId:  claims.MachineID.String(),
+		ServerTime: timestamppb.New(time.Now().UTC()),
+		Slots:      slots,
 	}, nil
 }
 
@@ -219,7 +217,6 @@ func (s *machineInventoryServer) submitInventoryMutation(ctx context.Context, wc
 
 	occurredAt := wctx.ClientCreatedAt
 	res, err := s.deps.InventoryLedger.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{
-		OrganizationID:    claims.OrganizationID,
 		MachineID:         claims.MachineID,
 		OperatorSessionID: wctx.OperatorSessionID,
 		Reason:            reason,
@@ -253,13 +250,12 @@ func (s *machineInventoryServer) submitInventoryMutation(ctx context.Context, wc
 		})
 		machineIDStr := claims.MachineID.String()
 		_ = s.deps.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-			OrganizationID: claims.OrganizationID,
-			ActorType:      compliance.ActorMachine,
-			ActorID:        &machineIDStr,
-			Action:         auditAction,
-			ResourceType:   "machine",
-			ResourceID:     &machineIDStr,
-			Metadata:       meta,
+			ActorType:    compliance.ActorMachine,
+			ActorID:      &machineIDStr,
+			Action:       auditAction,
+			ResourceType: "machine",
+			ResourceID:   &machineIDStr,
+			Metadata:     meta,
 		})
 	}
 
@@ -278,8 +274,8 @@ func mapMachineInventoryLedgerError(err error) error {
 		return status.Error(codes.InvalidArgument, "invalid reason")
 	case errors.Is(err, inventoryapp.ErrIdempotencyKeyConflict):
 		return status.Error(codes.Aborted, "idempotency key conflict")
-	case errors.Is(err, postgres.ErrMachineOrganizationMismatch):
-		return status.Error(codes.PermissionDenied, "organization mismatch")
+	case errors.Is(err, postgres.ErrMachineScopeMismatch):
+		return status.Error(codes.PermissionDenied, "scope mismatch")
 	default:
 		return status.Error(codes.Internal, "inventory write failed")
 	}
@@ -377,13 +373,12 @@ func (s *machineInventoryServer) AckInventorySync(ctx context.Context, req *mach
 			meta = []byte("{}")
 		}
 		_ = s.deps.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-			OrganizationID: claims.OrganizationID,
-			ActorType:      compliance.ActorMachine,
-			ActorID:        &actorID,
-			Action:         "machine.inventory.sync_acknowledged",
-			ResourceType:   "machine",
-			ResourceID:     &actorID,
-			Metadata:       meta,
+			ActorType:    compliance.ActorMachine,
+			ActorID:      &actorID,
+			Action:       "machine.inventory.sync_acknowledged",
+			ResourceType: "machine",
+			ResourceID:   &actorID,
+			Metadata:     meta,
 		})
 	}
 	return &machinev1.AckInventorySyncResponse{

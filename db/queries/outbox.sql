@@ -1,7 +1,6 @@
 -- name: AdminGetOutboxEventByID :one
 SELECT
     id,
-    organization_id,
     topic,
     event_type,
     payload,
@@ -45,7 +44,6 @@ WHERE
 -- Lists unpublished, non-terminal outbox rows in a created_at window for operator triage (read-only).
 SELECT
     id,
-    organization_id,
     topic,
     event_type,
     payload,

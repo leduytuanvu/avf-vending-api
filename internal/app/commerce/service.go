@@ -85,30 +85,28 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (CreateO
 	if err := validateCreateOrder(in); err != nil {
 		return CreateOrderResult{}, err
 	}
-	if replay, ok, err := s.orders.TryReplayCreateOrderWithVend(ctx, in.OrganizationID, strings.TrimSpace(in.IdempotencyKey)); err != nil {
+	if replay, ok, err := s.orders.TryReplayCreateOrderWithVend(ctx, uuid.Nil, strings.TrimSpace(in.IdempotencyKey)); err != nil {
 		return CreateOrderResult{}, err
 	} else if ok {
 		line := saleLineFromReplay(replay)
-		if disp, derr := s.saleLines.LookupSlotDisplay(ctx, in.OrganizationID, replay.Order.MachineID, replay.Vend.ProductID, replay.Vend.SlotIndex); derr == nil {
+		if disp, derr := s.saleLines.LookupSlotDisplay(ctx, uuid.Nil, replay.Order.MachineID, replay.Vend.ProductID, replay.Vend.SlotIndex); derr == nil {
 			line = disp
 		}
 		return CreateOrderResult{CreateOrderVendResult: replay, SaleLine: line}, nil
 	}
 
 	line, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
-		OrganizationID: in.OrganizationID,
-		MachineID:      in.MachineID,
-		ProductID:      in.ProductID,
-		SlotID:         in.SlotID,
-		CabinetCode:    in.CabinetCode,
-		SlotCode:       in.SlotCode,
-		SlotIndex:      in.SlotIndex,
+		MachineID:   in.MachineID,
+		ProductID:   in.ProductID,
+		SlotID:      in.SlotID,
+		CabinetCode: in.CabinetCode,
+		SlotCode:    in.SlotCode,
+		SlotIndex:   in.SlotIndex,
 	})
 	if err != nil {
 		return CreateOrderResult{}, err
 	}
 	base, err := s.orders.CreateOrderWithVendSession(ctx, domaincommerce.CreateOrderVendInput{
-		OrganizationID: in.OrganizationID,
 		MachineID:      in.MachineID,
 		ProductID:      in.ProductID,
 		SlotIndex:      line.SlotIndex,
@@ -148,16 +146,12 @@ func (s *Service) StartPaymentWithOutbox(ctx context.Context, in StartPaymentInp
 		return domaincommerce.PaymentOutboxResult{}, err
 	}
 	if s.life != nil {
-		o, err := s.life.GetOrderByID(ctx, in.OrderID)
+		_, err := s.life.GetOrderByID(ctx, in.OrderID)
 		if err != nil {
 			return domaincommerce.PaymentOutboxResult{}, err
 		}
-		if o.OrganizationID != in.OrganizationID {
-			return domaincommerce.PaymentOutboxResult{}, ErrOrgMismatch
-		}
 	}
 	return s.payments.CreatePaymentWithOutbox(ctx, domaincommerce.PaymentOutboxInput{
-		OrganizationID:       in.OrganizationID,
 		OrderID:              in.OrderID,
 		Provider:             strings.TrimSpace(in.Provider),
 		PaymentState:         in.PaymentState,
@@ -188,18 +182,18 @@ func (s *Service) BindPaymentAttempt(ctx context.Context, in InsertPaymentAttemp
 }
 
 // MarkOrderPaidAfterPaymentCapture moves the order to "paid" when the latest payment is captured.
-func (s *Service) MarkOrderPaidAfterPaymentCapture(ctx context.Context, organizationID, orderID uuid.UUID) (domaincommerce.Order, error) {
+func (s *Service) MarkOrderPaidAfterPaymentCapture(ctx context.Context, companyID, orderID uuid.UUID) (domaincommerce.Order, error) {
 	if s.life == nil {
 		return domaincommerce.Order{}, ErrNotConfigured
 	}
-	if organizationID == uuid.Nil || orderID == uuid.Nil {
-		return domaincommerce.Order{}, errors.Join(ErrInvalidArgument, errors.New("organization_id and order_id must be set"))
+	if orderID == uuid.Nil {
+		return domaincommerce.Order{}, errors.Join(ErrInvalidArgument, errors.New("order_id must be set"))
 	}
 	o, err := s.life.GetOrderByID(ctx, orderID)
 	if err != nil {
 		return domaincommerce.Order{}, err
 	}
-	if o.OrganizationID != organizationID {
+	if uuid.Nil != companyID {
 		return domaincommerce.Order{}, ErrOrgMismatch
 	}
 	pay, err := s.life.GetLatestPaymentForOrder(ctx, orderID)
@@ -215,7 +209,7 @@ func (s *Service) MarkOrderPaidAfterPaymentCapture(ctx context.Context, organiza
 	if o.Status != "created" && o.Status != "quoted" {
 		return domaincommerce.Order{}, errors.Join(ErrIllegalTransition, errors.New("order cannot move to paid from current status"))
 	}
-	return s.life.UpdateOrderStatus(ctx, orderID, organizationID, "paid")
+	return s.life.UpdateOrderStatus(ctx, orderID, companyID, "paid")
 }
 
 // AdvanceVend validates and persists a non-terminal vend transition; may move order to "vending" when appropriate.
@@ -229,9 +223,6 @@ func (s *Service) AdvanceVend(ctx context.Context, in AdvanceVendInput) (domainc
 	o, err := s.life.GetOrderByID(ctx, in.OrderID)
 	if err != nil {
 		return domaincommerce.VendSession{}, err
-	}
-	if o.OrganizationID != in.OrganizationID {
-		return domaincommerce.VendSession{}, ErrOrgMismatch
 	}
 	v, err := s.life.GetVendSessionByOrderAndSlot(ctx, in.OrderID, in.SlotIndex)
 	if err != nil {
@@ -266,7 +257,7 @@ func (s *Service) AdvanceVend(ctx context.Context, in AdvanceVendInput) (domainc
 		return domaincommerce.VendSession{}, err
 	}
 	if in.ToState == "in_progress" && o.Status == "paid" {
-		if _, err := s.life.UpdateOrderStatus(ctx, in.OrderID, in.OrganizationID, "vending"); err != nil {
+		if _, err := s.life.UpdateOrderStatus(ctx, in.OrderID, uuid.Nil, "vending"); err != nil {
 			return domaincommerce.VendSession{}, err
 		}
 	}
@@ -278,18 +269,15 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 	if s.life == nil {
 		return FinalizeOutcome{}, ErrNotConfigured
 	}
-	if in.OrganizationID == uuid.Nil || in.OrderID == uuid.Nil {
-		return FinalizeOutcome{}, errors.Join(ErrInvalidArgument, errors.New("organization_id and order_id must be set"))
+	if in.OrderID == uuid.Nil {
+		return FinalizeOutcome{}, errors.Join(ErrInvalidArgument, errors.New("order_id must be set"))
 	}
 	if in.TerminalVendState != "success" && in.TerminalVendState != "failed" {
 		return FinalizeOutcome{}, errors.Join(ErrInvalidArgument, errors.New("terminal vend state must be success or failed"))
 	}
-	o, err := s.life.GetOrderByID(ctx, in.OrderID)
+	_, err := s.life.GetOrderByID(ctx, in.OrderID)
 	if err != nil {
 		return FinalizeOutcome{}, err
-	}
-	if o.OrganizationID != in.OrganizationID {
-		return FinalizeOutcome{}, ErrOrgMismatch
 	}
 	v, err := s.life.GetVendSessionByOrderAndSlot(ctx, in.OrderID, in.SlotIndex)
 	if err != nil {
@@ -302,11 +290,10 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 			if cw := strings.TrimSpace(in.ClientWriteIdempotencyKey); cw != "" {
 				dedupe = cw + ":vend_sale_inventory"
 			} else {
-				dedupe = fmt.Sprintf("commerce_vend_sale:%s|%s|%d", in.OrganizationID.String(), in.OrderID.String(), in.SlotIndex)
+				dedupe = fmt.Sprintf("commerce_vend_sale:%s|%s|%d", uuid.Nil.String(), in.OrderID.String(), in.SlotIndex)
 			}
 		}
 		res, err := s.life.FulfillSuccessfulVendAtomically(ctx, FulfillSuccessfulVendInput{
-			OrganizationID:     in.OrganizationID,
 			OrderID:            in.OrderID,
 			SlotIndex:          in.SlotIndex,
 			InventoryDedupeKey: dedupe,
@@ -338,10 +325,9 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 	}
 
 	fr, err := s.life.FulfillFailedVendAtomically(ctx, FulfillFailedVendInput{
-		OrganizationID: in.OrganizationID,
-		OrderID:        in.OrderID,
-		SlotIndex:      in.SlotIndex,
-		FailureReason:  in.FailureReason,
+		OrderID:       in.OrderID,
+		SlotIndex:     in.SlotIndex,
+		FailureReason: in.FailureReason,
 	})
 	if err != nil {
 		return FinalizeOutcome{}, err
@@ -354,13 +340,12 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 
 	if !fr.Replay && pErr == nil && (pay.State == "captured" || pay.State == "partially_refunded") && s.scheduleVendFailureFollowUp && s.workflow != nil && s.workflow.Enabled() {
 		if err := s.workflow.Start(ctx, workfloworch.StartVendFailureAfterPaymentSuccess(workfloworch.VendFailureAfterPaymentSuccessInput{
-			OrganizationID: in.OrganizationID,
-			OrderID:        in.OrderID,
-			PaymentID:      pay.ID,
-			VendID:         fr.Vend.ID,
-			SlotIndex:      in.SlotIndex,
-			FailureReason:  strings.TrimSpace(derefString(in.FailureReason)),
-			ObservedAt:     time.Now().UTC(),
+			OrderID:       in.OrderID,
+			PaymentID:     pay.ID,
+			VendID:        fr.Vend.ID,
+			SlotIndex:     in.SlotIndex,
+			FailureReason: strings.TrimSpace(derefString(in.FailureReason)),
+			ObservedAt:    time.Now().UTC(),
 		})); err != nil {
 			observability.LoggerFromContext(ctx, zap.NewNop()).Warn("vend failure workflow enqueue failed",
 				zap.Error(err),
@@ -380,20 +365,19 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 
 // EnsureVendInProgressForPaidOrder moves vend_session from pending to in_progress when the order is paid or vending,
 // matching the device HTTP vend-result precondition. Safe to call multiple times.
-func (s *Service) EnsureVendInProgressForPaidOrder(ctx context.Context, organizationID, orderID uuid.UUID, slotIndex int32) error {
+func (s *Service) EnsureVendInProgressForPaidOrder(ctx context.Context, companyID, orderID uuid.UUID, slotIndex int32) error {
 	if s.life == nil {
 		return ErrNotConfigured
 	}
-	st, err := s.GetCheckoutStatus(ctx, organizationID, orderID, slotIndex)
+	st, err := s.GetCheckoutStatus(ctx, companyID, orderID, slotIndex)
 	if err != nil {
 		return err
 	}
 	if st.Vend.State == "pending" && (st.Order.Status == "paid" || st.Order.Status == "vending") {
 		if _, err := s.AdvanceVend(ctx, AdvanceVendInput{
-			OrganizationID: organizationID,
-			OrderID:        orderID,
-			SlotIndex:      slotIndex,
-			ToState:        "in_progress",
+			OrderID:   orderID,
+			SlotIndex: slotIndex,
+			ToState:   "in_progress",
 		}); err != nil && !errors.Is(err, ErrIllegalTransition) {
 			return err
 		}
@@ -472,9 +456,9 @@ func (s *Service) EvaluateRefundEligibility(ctx context.Context, orderID uuid.UU
 	return out, nil
 }
 
-// EnsureCommerceCallerOrderAccess verifies tenant scope and machine token binding for order mutations.
-func (s *Service) EnsureCommerceCallerOrderAccess(ctx context.Context, organizationID, orderID uuid.UUID, p plauth.Principal) error {
-	if err := s.EnsureOrderOrganization(ctx, organizationID, orderID); err != nil {
+// EnsureCommerceCallerOrderAccess verifies company scope and machine token binding for order mutations.
+func (s *Service) EnsureCommerceCallerOrderAccess(ctx context.Context, companyID, orderID uuid.UUID, p plauth.Principal) error {
+	if err := s.EnsureOrderCompany(ctx, companyID, orderID); err != nil {
 		return err
 	}
 	if !p.HasRole(plauth.RoleMachine) {
@@ -490,34 +474,34 @@ func (s *Service) EnsureCommerceCallerOrderAccess(ctx context.Context, organizat
 	return nil
 }
 
-// EnsureOrderOrganization verifies the order belongs to the caller organization.
-func (s *Service) EnsureOrderOrganization(ctx context.Context, organizationID, orderID uuid.UUID) error {
+// EnsureOrderCompany verifies the order belongs to the caller company.
+func (s *Service) EnsureOrderCompany(ctx context.Context, companyID, orderID uuid.UUID) error {
 	if s.life == nil {
 		return ErrNotConfigured
 	}
-	o, err := s.life.GetOrderByID(ctx, orderID)
+	_, err := s.life.GetOrderByID(ctx, orderID)
 	if err != nil {
 		return err
 	}
-	if o.OrganizationID != organizationID {
+	if uuid.Nil != companyID {
 		return ErrOrgMismatch
 	}
 	return nil
 }
 
 // CancelOrder cancels an unpaid order (created/quoted without captured payment).
-func (s *Service) CancelOrder(ctx context.Context, organizationID, orderID uuid.UUID, reason string) (domaincommerce.Order, error) {
+func (s *Service) CancelOrder(ctx context.Context, companyID, orderID uuid.UUID, reason string) (domaincommerce.Order, error) {
 	if s.life == nil {
 		return domaincommerce.Order{}, ErrNotConfigured
 	}
-	if organizationID == uuid.Nil || orderID == uuid.Nil {
-		return domaincommerce.Order{}, errors.Join(ErrInvalidArgument, errors.New("organization_id and order_id must be set"))
+	if orderID == uuid.Nil {
+		return domaincommerce.Order{}, errors.Join(ErrInvalidArgument, errors.New("order_id must be set"))
 	}
 	o, err := s.life.GetOrderByID(ctx, orderID)
 	if err != nil {
 		return domaincommerce.Order{}, err
 	}
-	if o.OrganizationID != organizationID {
+	if uuid.Nil != companyID {
 		return domaincommerce.Order{}, ErrOrgMismatch
 	}
 	if o.Status != "created" && o.Status != "quoted" {
@@ -531,7 +515,7 @@ func (s *Service) CancelOrder(ctx context.Context, organizationID, orderID uuid.
 		return domaincommerce.Order{}, pErr
 	}
 	_ = reason
-	return s.life.UpdateOrderStatus(ctx, orderID, organizationID, "cancelled")
+	return s.life.UpdateOrderStatus(ctx, orderID, companyID, "cancelled")
 }
 
 // CreateRefund records a refund request against the latest captured payment.
@@ -539,8 +523,8 @@ func (s *Service) CreateRefund(ctx context.Context, in CreateRefundInput) (Refun
 	if s.life == nil {
 		return RefundRowView{}, ErrNotConfigured
 	}
-	if in.OrganizationID == uuid.Nil || in.OrderID == uuid.Nil {
-		return RefundRowView{}, errors.Join(ErrInvalidArgument, errors.New("organization_id and order_id must be set"))
+	if in.OrderID == uuid.Nil {
+		return RefundRowView{}, errors.Join(ErrInvalidArgument, errors.New("order_id must be set"))
 	}
 	if in.AmountMinor <= 0 {
 		return RefundRowView{}, errors.Join(ErrInvalidArgument, errors.New("amount_minor must be positive"))
@@ -552,12 +536,9 @@ func (s *Service) CreateRefund(ctx context.Context, in CreateRefundInput) (Refun
 	if len(cur) != 3 {
 		return RefundRowView{}, errors.Join(ErrInvalidArgument, errors.New("currency must be a 3-letter ISO code"))
 	}
-	o, err := s.life.GetOrderByID(ctx, in.OrderID)
+	_, err := s.life.GetOrderByID(ctx, in.OrderID)
 	if err != nil {
 		return RefundRowView{}, err
-	}
-	if o.OrganizationID != in.OrganizationID {
-		return RefundRowView{}, ErrOrgMismatch
 	}
 	pay, err := s.life.GetLatestPaymentForOrder(ctx, in.OrderID)
 	if err != nil {
@@ -619,34 +600,33 @@ func (s *Service) CreateRefund(ctx context.Context, in CreateRefundInput) (Refun
 		}
 		md = compliance.SanitizeJSONBytes(md)
 		_ = s.enterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-			OrganizationID: in.OrganizationID,
-			ActorType:      compliance.ActorSystem,
-			Action:         compliance.ActionRefundRequested,
-			ResourceType:   "commerce.refund",
-			ResourceID:     &rid,
-			Metadata:       md,
+			ActorType:    compliance.ActorSystem,
+			Action:       compliance.ActionRefundRequested,
+			ResourceType: "commerce.refund",
+			ResourceID:   &rid,
+			Metadata:     md,
 		})
 	}
 	return row, nil
 }
 
-// ListRefundsForOrder returns refund rows for an order in the tenant.
-func (s *Service) ListRefundsForOrder(ctx context.Context, organizationID, orderID uuid.UUID) ([]RefundRowView, error) {
+// ListRefundsForOrder returns refund rows for an order in the company.
+func (s *Service) ListRefundsForOrder(ctx context.Context, companyID, orderID uuid.UUID) ([]RefundRowView, error) {
 	if s.life == nil {
 		return nil, ErrNotConfigured
 	}
-	if err := s.EnsureOrderOrganization(ctx, organizationID, orderID); err != nil {
+	if err := s.EnsureOrderCompany(ctx, companyID, orderID); err != nil {
 		return nil, err
 	}
 	return s.life.ListRefundsForOrder(ctx, orderID)
 }
 
-// GetRefundForOrder returns one refund row when it belongs to the order and tenant.
-func (s *Service) GetRefundForOrder(ctx context.Context, organizationID, orderID, refundID uuid.UUID) (RefundRowView, error) {
+// GetRefundForOrder returns one refund row when it belongs to the order and company.
+func (s *Service) GetRefundForOrder(ctx context.Context, companyID, orderID, refundID uuid.UUID) (RefundRowView, error) {
 	if s.life == nil {
 		return RefundRowView{}, ErrNotConfigured
 	}
-	if err := s.EnsureOrderOrganization(ctx, organizationID, orderID); err != nil {
+	if err := s.EnsureOrderCompany(ctx, companyID, orderID); err != nil {
 		return RefundRowView{}, err
 	}
 	return s.life.GetRefundByIDForOrder(ctx, orderID, refundID)
@@ -657,8 +637,8 @@ func isPGUniqueViolation(err error) bool {
 	return errors.As(err, &pe) && pe.Code == "23505"
 }
 
-// GetCheckoutStatus returns authoritative order, vend, and latest payment state for an organization-scoped read.
-func (s *Service) GetCheckoutStatus(ctx context.Context, organizationID, orderID uuid.UUID, slotIndex int32) (CheckoutStatusView, error) {
+// GetCheckoutStatus returns authoritative order, vend, and latest payment state for an company-scoped read.
+func (s *Service) GetCheckoutStatus(ctx context.Context, companyID, orderID uuid.UUID, slotIndex int32) (CheckoutStatusView, error) {
 	if s.life == nil {
 		return CheckoutStatusView{}, ErrNotConfigured
 	}
@@ -666,7 +646,7 @@ func (s *Service) GetCheckoutStatus(ctx context.Context, organizationID, orderID
 	if err != nil {
 		return CheckoutStatusView{}, err
 	}
-	if o.OrganizationID != organizationID {
+	if uuid.Nil != companyID {
 		return CheckoutStatusView{}, ErrOrgMismatch
 	}
 	v, err := s.life.GetVendSessionByOrderAndSlot(ctx, orderID, slotIndex)
@@ -740,7 +720,6 @@ func (s *Service) ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPayme
 	}
 
 	in2 := ApplyPaymentProviderWebhookInput{
-		OrganizationID:          in.OrganizationID,
 		OrderID:                 in.OrderID,
 		PaymentID:               in.PaymentID,
 		Provider:                strings.TrimSpace(in.Provider),
@@ -766,7 +745,6 @@ func (s *Service) ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPayme
 	}
 	if s.webhookAppliedHook != nil {
 		s.webhookAppliedHook(ctx, PaymentWebhookAppliedEvent{
-			OrganizationID: in2.OrganizationID,
 			OrderID:        in2.OrderID,
 			PaymentID:      in2.PaymentID,
 			Replay:         res.Replay,
@@ -779,8 +757,8 @@ func (s *Service) ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPayme
 }
 
 func validateCreateOrder(in CreateOrderInput) error {
-	if in.OrganizationID == uuid.Nil || in.MachineID == uuid.Nil || in.ProductID == uuid.Nil {
-		return errors.Join(ErrInvalidArgument, errors.New("organization_id, machine_id, and product_id must be set"))
+	if in.MachineID == uuid.Nil || in.ProductID == uuid.Nil {
+		return errors.Join(ErrInvalidArgument, errors.New("machine_id and product_id must be set"))
 	}
 	if strings.TrimSpace(in.IdempotencyKey) == "" {
 		return errors.Join(ErrInvalidArgument, errors.New("idempotency_key is required"))
@@ -806,8 +784,8 @@ func validateCreateOrder(in CreateOrderInput) error {
 }
 
 func validateStartPayment(in StartPaymentInput) error {
-	if in.OrganizationID == uuid.Nil || in.OrderID == uuid.Nil {
-		return errors.Join(ErrInvalidArgument, errors.New("organization_id and order_id must be set"))
+	if in.OrderID == uuid.Nil {
+		return errors.Join(ErrInvalidArgument, errors.New("order_id must be set"))
 	}
 	if strings.TrimSpace(in.Provider) == "" {
 		return errors.Join(ErrInvalidArgument, errors.New("provider is required"))
@@ -835,8 +813,8 @@ func validateStartPayment(in StartPaymentInput) error {
 }
 
 func validateAdvanceVend(in AdvanceVendInput) error {
-	if in.OrganizationID == uuid.Nil || in.OrderID == uuid.Nil {
-		return errors.Join(ErrInvalidArgument, errors.New("organization_id and order_id must be set"))
+	if in.OrderID == uuid.Nil {
+		return errors.Join(ErrInvalidArgument, errors.New("order_id must be set"))
 	}
 	if in.ToState == "success" || in.ToState == "failed" {
 		return errors.Join(ErrInvalidArgument, errors.New("use FinalizeOrderAfterVend for terminal vend states"))

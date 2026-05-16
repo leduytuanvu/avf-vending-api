@@ -19,7 +19,7 @@
 
 - HTTP: `GET /v1/machines/{machineId}/sale-catalog` (same projection as gRPC snapshot; JSON).
 - gRPC: `avf.machine.v1.MachineCatalogService` (`GetCatalogSnapshot`, `GetCatalogDelta`, `GetMediaManifest`).
-- Auth: **Machine JWT** only on gRPC catalog RPCs; tenant/machine scope is enforced from the token and optional `machine_id` field must match the principal.
+- Auth: **Machine JWT** only on gRPC catalog RPCs; company/machine scope is enforced from the token and optional `machine_id` field must match the principal.
 
 ## Operational notes
 

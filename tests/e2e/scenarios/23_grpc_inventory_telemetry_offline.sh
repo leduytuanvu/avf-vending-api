@@ -15,8 +15,6 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_grpc.sh"
 
 FLOW_ID="GRPC-23"
 ec=0
-
-ORG="$(get_data organizationId)"
 MID="$(get_data machineId)"
 MT="$(get_secret machineToken 2>/dev/null || true)"
 CAB="$(get_data slotCabinetCode)"
@@ -27,8 +25,8 @@ PG="$(get_data planogramId)"
 export MACHINE_TOKEN="$MT"
 export MACHINE_ID="$MID"
 
-META="$(jq -nc --arg o "$ORG" --arg m "$MID" --arg rid "g23-$(date +%s)" \
-  '{organizationId:$o, machineId:$m, requestId:$rid}')"
+META="$(jq -nc --arg m "$MID" --arg rid "g23-$(date +%s)" \
+  '{ machineId:$m, requestId:$rid}')"
 
 TS="$(date +%s)"
 TS_RFC3339="$(date -u +%Y-%m-%dT%H:%M:%SZ)"

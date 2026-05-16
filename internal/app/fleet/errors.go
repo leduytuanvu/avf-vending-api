@@ -7,8 +7,8 @@ var (
 	ErrInvalidArgument = errors.New("fleet: invalid argument")
 	// ErrNotFound indicates the referenced aggregate does not exist in the system of record.
 	ErrNotFound = errors.New("fleet: not found")
-	// ErrOrgMismatch indicates the resource is outside the caller's organization scope.
-	ErrOrgMismatch = errors.New("fleet: organization scope mismatch")
+	// ErrOrgMismatch indicates the resource is outside the caller's company scope.
+	ErrOrgMismatch = errors.New("fleet: company scope mismatch")
 	// ErrConflict indicates a uniqueness or concurrency conflict.
 	ErrConflict = errors.New("fleet: conflict")
 	// ErrSiteHasMachines blocks deactivating a site that still has non-retired machines.

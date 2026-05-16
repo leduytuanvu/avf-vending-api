@@ -1,7 +1,6 @@
 -- name: InsertCommandLedgerEntry :one
 INSERT INTO command_ledger (
     machine_id,
-    organization_id,
     sequence,
     command_type,
     payload,
@@ -9,11 +8,18 @@ INSERT INTO command_ledger (
     idempotency_key,
     operator_session_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7
+)
 RETURNING
     id,
     machine_id,
-    organization_id,
     sequence,
     command_type,
     payload,
@@ -39,7 +45,13 @@ INSERT INTO machine_shadow (
     version,
     updated_at
 )
-VALUES ($1, $2, '{}'::jsonb, 1, now())
+VALUES (
+    $1,
+    $2,
+    '{}'::jsonb,
+    1,
+    now()
+)
 ON CONFLICT (machine_id) DO UPDATE
 SET
     desired_state = excluded.desired_state,
@@ -56,7 +68,6 @@ WHERE machine_id = $1;
 SELECT
     id,
     machine_id,
-    organization_id,
     sequence,
     command_type,
     payload,
@@ -86,7 +97,13 @@ INSERT INTO machine_shadow (
     version,
     updated_at
 )
-VALUES ($1, '{}'::jsonb, $2, 1, now())
+VALUES (
+    $1,
+    '{}'::jsonb,
+    $2,
+    1,
+    now()
+)
 ON CONFLICT (machine_id) DO UPDATE
 SET
     reported_state = excluded.reported_state,
@@ -111,7 +128,12 @@ INSERT INTO device_telemetry_events (
     payload,
     dedupe_key
 )
-VALUES ($1, $2, $3, $4)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
 RETURNING id, machine_id, event_type, payload, dedupe_key, received_at;
 
 -- name: InsertDeviceCommandReceipt :one
@@ -124,7 +146,15 @@ INSERT INTO device_command_receipts (
     dedupe_key,
     command_attempt_id
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7
+)
 RETURNING
     id,
     machine_id,

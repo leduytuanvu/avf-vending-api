@@ -1,7 +1,6 @@
 -- name: TopologyListSlotLayoutsForMachine :many
 SELECT
     id,
-    organization_id,
     machine_id,
     machine_cabinet_id,
     layout_key,

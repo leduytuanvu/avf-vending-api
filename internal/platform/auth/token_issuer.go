@@ -126,8 +126,6 @@ func (s *SessionIssuer) MFAPendingTTL() time.Duration {
 type sessionAccessClaims struct {
 	Sub               string   `json:"sub"`
 	Roles             []string `json:"roles"`
-	OrgID             string   `json:"org_id,omitempty"`
-	OrganizationID    string   `json:"organization_id,omitempty"`
 	SiteID            string   `json:"site_id,omitempty"`
 	MachineIDs        []string `json:"machine_ids,omitempty"`
 	MachineID         string   `json:"machine_id,omitempty"`
@@ -150,16 +148,15 @@ type sessionAccessClaims struct {
 
 // MFAPendingClaims is returned after validating a MFA challenge JWT.
 type MFAPendingClaims struct {
-	AccountID      uuid.UUID
-	OrganizationID uuid.UUID
-	Roles          []string
-	AccountStatus  string
-	MFAEnrollment  bool
+	AccountID     uuid.UUID
+	Roles         []string
+	AccountStatus string
+	MFAEnrollment bool
 }
 
-// IssueAccessJWT returns a signed HS256 JWT string for the given account subject and tenant claims.
+// IssueAccessJWT returns a signed HS256 JWT string for the given account subject and single-company claims.
 // accountStatus should match platform_auth_accounts.status (e.g. active, disabled); empty defaults to active in the JWT.
-func (s *SessionIssuer) IssueAccessJWT(accountID uuid.UUID, organizationID uuid.UUID, roles []string, accountStatus string) (token string, expiresAt time.Time, err error) {
+func (s *SessionIssuer) IssueAccessJWT(accountID uuid.UUID, companyID uuid.UUID, roles []string, accountStatus string) (token string, expiresAt time.Time, err error) {
 	if s == nil {
 		return "", time.Time{}, fmt.Errorf("auth: nil SessionIssuer")
 	}
@@ -175,7 +172,6 @@ func (s *SessionIssuer) IssueAccessJWT(accountID uuid.UUID, organizationID uuid.
 	claims := sessionAccessClaims{
 		Sub:           accountID.String(),
 		Roles:         roles,
-		OrgID:         organizationID.String(),
 		AccountStatus: st,
 		Iss:           s.issuer,
 		Aud:           s.audience,
@@ -193,7 +189,7 @@ func (s *SessionIssuer) IssueAccessJWT(accountID uuid.UUID, organizationID uuid.
 }
 
 // IssueMFAPendingJWT issues a short-lived HS256 JWT after successful password verification when MFA must be satisfied or enrolled.
-func (s *SessionIssuer) IssueMFAPendingJWT(accountID uuid.UUID, organizationID uuid.UUID, roles []string, accountStatus string, mfaEnrollment bool) (token string, expiresAt time.Time, err error) {
+func (s *SessionIssuer) IssueMFAPendingJWT(accountID uuid.UUID, companyID uuid.UUID, roles []string, accountStatus string, mfaEnrollment bool) (token string, expiresAt time.Time, err error) {
 	if s == nil {
 		return "", time.Time{}, fmt.Errorf("auth: nil SessionIssuer")
 	}
@@ -209,7 +205,6 @@ func (s *SessionIssuer) IssueMFAPendingJWT(accountID uuid.UUID, organizationID u
 	claims := sessionAccessClaims{
 		Sub:           accountID.String(),
 		Roles:         roles,
-		OrgID:         organizationID.String(),
 		AccountStatus: st,
 		Iss:           s.issuer,
 		Aud:           s.audience,
@@ -256,28 +251,23 @@ func (s *SessionIssuer) ParseMFAPendingJWT(raw string, leeway time.Duration) (MF
 	if err != nil || aid == uuid.Nil {
 		return MFAPendingClaims{}, ErrUnauthenticated
 	}
-	orgID, err := uuid.Parse(strings.TrimSpace(c.OrgID))
-	if err != nil || orgID == uuid.Nil {
-		return MFAPendingClaims{}, ErrUnauthenticated
-	}
 	return MFAPendingClaims{
-		AccountID:      aid,
-		OrganizationID: orgID,
-		Roles:          append([]string(nil), c.Roles...),
-		AccountStatus:  strings.TrimSpace(c.AccountStatus),
-		MFAEnrollment:  c.MFAEnrollment,
+		AccountID:     aid,
+		Roles:         append([]string(nil), c.Roles...),
+		AccountStatus: strings.TrimSpace(c.AccountStatus),
+		MFAEnrollment: c.MFAEnrollment,
 	}, nil
 }
 
 // IssueMachineAccessJWT issues a runtime JWT scoped to exactly one machine (kiosk / device bridge).
 // credentialVersion must match machines.credential_version at issue time (rotation / revocation).
 // sessionID binds the access token to machine_sessions when non-nil.
-func (s *SessionIssuer) IssueMachineAccessJWT(machineID, organizationID, siteID uuid.UUID, credentialVersion int64, sessionID uuid.UUID) (token string, expiresAt time.Time, err error) {
+func (s *SessionIssuer) IssueMachineAccessJWT(machineID, siteID uuid.UUID, credentialVersion int64, sessionID uuid.UUID) (token string, expiresAt time.Time, err error) {
 	if s == nil {
 		return "", time.Time{}, fmt.Errorf("auth: nil SessionIssuer")
 	}
-	if machineID == uuid.Nil || organizationID == uuid.Nil {
-		return "", time.Time{}, fmt.Errorf("auth: machine and organization ids are required")
+	if machineID == uuid.Nil {
+		return "", time.Time{}, fmt.Errorf("auth: machine id is required")
 	}
 	now := time.Now().UTC()
 	machineAccessTTL := s.machineAccessTTL
@@ -297,8 +287,6 @@ func (s *SessionIssuer) IssueMachineAccessJWT(machineID, organizationID, siteID 
 	claims := sessionAccessClaims{
 		Sub:               fmt.Sprintf("machine:%s", machineID.String()),
 		Roles:             []string{RoleMachine},
-		OrgID:             organizationID.String(),
-		OrganizationID:    organizationID.String(),
 		ActorType:         ActorTypeService,
 		MachineIDs:        []string{machineID.String()},
 		MachineID:         machineID.String(),

@@ -8,7 +8,7 @@
 #   VERIFY_RESULT_PATH          JSON with final_result "pass" (see docs/runbooks/production-release-readiness.md)
 #   DEPLOYMENT_MANIFEST_PATH    production-deployment-manifest.json from a successful deploy
 #   OUTPUT_DIR                  directory to create (must not exist, or use ALLOW_OUTPUT_DIR_OVERWRITE=1)
-#   KNOWN_RISKS_PATH            non-empty markdown file (organization-specific + repo baseline risks)
+#   KNOWN_RISKS_PATH            non-empty markdown file (company-specific + repo baseline risks)
 #
 # Conditionally required when manifest fleet_scale_target is not "pilot":
 #   MONITORING_RESULT_PATH      monitoring-readiness-result.json (final_result must be pass)

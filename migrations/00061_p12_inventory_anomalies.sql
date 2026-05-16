@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE inventory_anomalies (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     anomaly_type text NOT NULL CHECK (
         anomaly_type IN (
@@ -24,14 +24,14 @@ CREATE TABLE inventory_anomalies (
     resolution_note text,
     created_at timestamptz NOT NULL DEFAULT now (),
     updated_at timestamptz NOT NULL DEFAULT now (),
-    CONSTRAINT fk_inventory_anomalies_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE
+    CONSTRAINT fk_inventory_anomalies_org_machine FOREIGN KEY (scope_id, machine_id) REFERENCES machines (scope_id, id) ON DELETE CASCADE
 );
 
 CREATE UNIQUE INDEX ux_inventory_anomalies_machine_fp_open ON inventory_anomalies (machine_id, fingerprint)
 WHERE
     status = 'open';
 
-CREATE INDEX ix_inventory_anomalies_org_status ON inventory_anomalies (organization_id, status);
+CREATE INDEX ix_inventory_anomalies_org_status ON inventory_anomalies (scope_id, status);
 
 CREATE INDEX ix_inventory_anomalies_machine_detected ON inventory_anomalies (machine_id, detected_at DESC);
 

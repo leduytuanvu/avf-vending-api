@@ -38,7 +38,6 @@ func TestProjectionRowFromOutboxEvent_MapsRequiredProjectionTypes(t *testing.T) 
 
 func TestProjectionRowFromOutboxEvent_StablePayloadAndOccurredAt(t *testing.T) {
 	t.Parallel()
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	aggID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	idem := "payment-captured-1"
 	created := time.Date(2026, 4, 29, 1, 2, 3, 0, time.UTC)
@@ -46,7 +45,6 @@ func TestProjectionRowFromOutboxEvent_StablePayloadAndOccurredAt(t *testing.T) {
 	payload := []byte(`{"occurred_at":"2026-04-29T01:01:59Z","amount_minor":1200}`)
 	line, err := projectionRowFromOutboxEvent(domaincommerce.OutboxEvent{
 		ID:             42,
-		OrganizationID: &orgID,
 		Topic:          "commerce.payments",
 		EventType:      "payment.captured",
 		AggregateType:  "payment",
@@ -72,7 +70,7 @@ func TestProjectionRowFromOutboxEvent_StablePayloadAndOccurredAt(t *testing.T) {
 	if row.OccurredAt != "2026-04-29T01:01:59Z" {
 		t.Fatalf("occurred_at=%q", row.OccurredAt)
 	}
-	if row.OrganizationID != orgID.String() || row.AggregateID != aggID.String() || row.IdempotencyKey != idem {
+	if row.ScopeID != "" || row.AggregateID != aggID.String() || row.IdempotencyKey != idem {
 		t.Fatalf("unexpected row: %+v", row)
 	}
 }

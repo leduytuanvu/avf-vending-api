@@ -52,7 +52,6 @@ func TestOperatorRepository_EndWithLogoutIsAtomic(t *testing.T) {
 
 	tid := testfixtures.DevTechnicianID
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -109,7 +108,6 @@ func TestOperatorRepository_EndSecondTimeNotActive(t *testing.T) {
 
 	tid := testfixtures.DevTechnicianID
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -143,7 +141,6 @@ func TestOperatorRepository_ListActionAttributionsByMachineAndResource(t *testin
 
 	tid := testfixtures.DevTechnicianID
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -199,7 +196,6 @@ func TestOperatorRepository_SecondActiveSessionRejected(t *testing.T) {
 
 	tid := testfixtures.DevTechnicianID
 	_, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -208,7 +204,6 @@ func TestOperatorRepository_SecondActiveSessionRejected(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeUser,
 		UserPrincipal:     strPtr("second-login-" + uuid.NewString()),
@@ -237,7 +232,6 @@ func TestOperatorRepository_ConcurrentStartAtMostOneActive(t *testing.T) {
 			defer wg.Done()
 			principal := "conc-user-" + uuid.NewString()
 			_, errs[i] = svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-				OrganizationID:    testfixtures.DevOrganizationID,
 				MachineID:         testfixtures.DevMachineID,
 				ActorType:         domainoperator.ActorTypeUser,
 				UserPrincipal:     &principal,
@@ -274,7 +268,6 @@ func TestOperatorRepository_TimeoutExpiredSessionMarksExpired(t *testing.T) {
 	future := time.Now().UTC().Add(2 * time.Hour)
 	principal := "expiry-user-" + uuid.NewString()
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeUser,
 		UserPrincipal:     &principal,
@@ -287,9 +280,8 @@ func TestOperatorRepository_TimeoutExpiredSessionMarksExpired(t *testing.T) {
 	require.NoError(t, err)
 
 	out, err := svc.TimeoutOperatorSession(ctx, operator.TimeoutOperatorSessionInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		SessionID:      sess.ID,
+		MachineID: testfixtures.DevMachineID,
+		SessionID: sess.ID,
 	})
 	require.NoError(t, err)
 	require.Equal(t, domainoperator.SessionStatusExpired, out.Status)
@@ -316,7 +308,6 @@ func TestOperatorRepository_TimeoutNotApplicable(t *testing.T) {
 	tid := testfixtures.DevTechnicianID
 	future := time.Now().UTC().Add(24 * time.Hour)
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -342,7 +333,6 @@ func TestOperatorRepository_StaleSessionReclaimedByDifferentUser(t *testing.T) {
 	pa := "stale-a-" + uuid.NewString()
 	pb := "stale-b-" + uuid.NewString()
 	sessA, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeUser,
 		UserPrincipal:     &pa,
@@ -354,7 +344,6 @@ func TestOperatorRepository_StaleSessionReclaimedByDifferentUser(t *testing.T) {
 	require.NoError(t, err)
 
 	sessB, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeUser,
 		UserPrincipal:     &pb,
@@ -383,7 +372,6 @@ func TestOperatorRepository_AdminTakeoverRevokesPriorSession(t *testing.T) {
 	pa := "takeover-a-" + uuid.NewString()
 	pb := "takeover-b-" + uuid.NewString()
 	sessA, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeUser,
 		UserPrincipal:     &pa,
@@ -392,7 +380,6 @@ func TestOperatorRepository_AdminTakeoverRevokesPriorSession(t *testing.T) {
 	require.NoError(t, err)
 
 	sessB, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		MachineID:               testfixtures.DevMachineID,
 		ActorType:               domainoperator.ActorTypeUser,
 		UserPrincipal:           &pb,
@@ -424,7 +411,6 @@ func TestOperatorRepository_FreshSessionConflictDifferentUser(t *testing.T) {
 	pa := "fresh-a-" + uuid.NewString()
 	pb := "fresh-b-" + uuid.NewString()
 	_, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeUser,
 		UserPrincipal:     &pa,
@@ -433,7 +419,6 @@ func TestOperatorRepository_FreshSessionConflictDifferentUser(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeUser,
 		UserPrincipal:     &pb,
@@ -456,7 +441,6 @@ func TestOperatorRepository_SameUserResumeRecordsSessionRefresh(t *testing.T) {
 
 	pa := "resume-a-" + uuid.NewString()
 	sess1, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeUser,
 		UserPrincipal:     &pa,
@@ -465,7 +449,6 @@ func TestOperatorRepository_SameUserResumeRecordsSessionRefresh(t *testing.T) {
 	require.NoError(t, err)
 
 	sess2, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeUser,
 		UserPrincipal:     &pa,
@@ -496,7 +479,6 @@ func TestOperatorRepository_EndOperatorSession_revokedForcedClose(t *testing.T) 
 
 	pa := "revoke-a-" + uuid.NewString()
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeUser,
 		UserPrincipal:     &pa,

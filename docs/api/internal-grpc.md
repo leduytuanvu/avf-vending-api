@@ -49,18 +49,18 @@ Set `INTERNAL_TOKEN` to a service token issued with `typ=service` and `aud=avf-i
 ```bash
 grpcurl -plaintext \
   -H "authorization: Bearer ${INTERNAL_TOKEN}" \
-  -d '{"organization_id":"11111111-1111-1111-1111-111111111111","payment_id":"77777777-7777-7777-7777-777777777777"}' \
+  -d '{"company_id":"11111111-1111-1111-1111-111111111111","payment_id":"77777777-7777-7777-7777-777777777777"}' \
   127.0.0.1:9091 avf.internal.v1.InternalPaymentQueryService/GetPaymentById
 
 grpcurl -plaintext \
   -H "authorization: Bearer ${INTERNAL_TOKEN}" \
-  -d '{"organization_id":"11111111-1111-1111-1111-111111111111","order_id":"44444444-4444-4444-4444-444444444444"}' \
+  -d '{"company_id":"11111111-1111-1111-1111-111111111111","order_id":"44444444-4444-4444-4444-444444444444"}' \
   127.0.0.1:9091 avf.internal.v1.InternalPaymentQueryService/GetLatestPaymentForOrder
 ```
 
 ## Notes
 
-- Machine and telemetry RPCs enforce organization access after loading the authoritative machine/snapshot organization.
-- Commerce RPCs require `organization_id`, `order_id`, and `slot_index`, then reuse the existing commerce checkout-state query path.
-- Payment RPCs require `organization_id`, then reuse existing payment/order read paths to enforce tenant ownership.
+- Machine and telemetry RPCs enforce company access after loading the authoritative machine/snapshot company.
+- Commerce RPCs require `company_id`, `order_id`, and `slot_index`, then reuse the existing commerce checkout-state query path.
+- Payment RPCs require `company_id`, then reuse existing payment/order read paths to enforce company ownership.
 - Timestamps are returned as protobuf `Timestamp` values and should be serialized by clients as RFC3339 with timezone offset when rendered into logs or JSON.

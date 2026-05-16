@@ -12,10 +12,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// RequireMachineTenantAccess enforces DB-backed tenant binding for a machine URL parameter.
-// platform_admin bypasses org checks; others must match machines.organization_id or hold an explicit machine allow-list
-// entry that matches the resolved row.
-func RequireMachineTenantAccess(app *api.HTTPApplication, machineParam string) func(http.Handler) http.Handler {
+// RequireMachineCompanyAccess enforces that the machine id exists and applies role/machine-allow rules.
+// platform_admin bypasses access checks; others must hold an explicit machine allow-list entry or a staff role.
+func RequireMachineCompanyAccess(app *api.HTTPApplication, machineParam string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if app == nil || app.TelemetryStore == nil || app.TelemetryStore.Pool() == nil {
@@ -38,7 +37,7 @@ func RequireMachineTenantAccess(app *api.HTTPApplication, machineParam string) f
 				return
 			}
 			q := db.New(app.TelemetryStore.Pool())
-			machineOrg, err := q.GetMachineOrganizationID(r.Context(), machineID)
+			_, err = q.GetMachineByID(r.Context(), machineID)
 			if err != nil {
 				if err == pgx.ErrNoRows {
 					writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
@@ -47,16 +46,11 @@ func RequireMachineTenantAccess(app *api.HTTPApplication, machineParam string) f
 				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 				return
 			}
-			if p.HasOrganization() && p.OrganizationID != machineOrg {
-				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
-				return
-			}
 			if p.AllowsMachine(machineID) {
 				next.ServeHTTP(w, r)
 				return
 			}
-			if p.HasOrganization() && p.OrganizationID == machineOrg &&
-				p.HasAnyRole(auth.RoleOrgAdmin, auth.RoleOrgMember, auth.RoleTechnician) {
+			if p.HasAnyRole(auth.RoleOrgAdmin, auth.RoleOrgMember, auth.RoleTechnician) {
 				next.ServeHTTP(w, r)
 				return
 			}

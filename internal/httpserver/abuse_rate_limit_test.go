@@ -41,7 +41,7 @@ func TestAbuseProtection_LoginPOST_rateLimited429WithRetryAfter(t *testing.T) {
 	}))
 
 	body := func() *strings.Reader {
-		return strings.NewReader(`{"organizationId":"11111111-1111-1111-1111-111111111111","email":"u@test.example.com","password":"x"}`)
+		return strings.NewReader(`{"scopeId":"11111111-1111-1111-1111-111111111111","email":"u@test.example.com","password":"x"}`)
 	}
 	for i := 0; i < 2; i++ {
 		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", body())
@@ -74,7 +74,7 @@ func TestAbuseProtection_LoginPOST_disabledBypasses(t *testing.T) {
 		w.WriteHeader(http.StatusTeapot)
 	}))
 	for i := 0; i < 5; i++ {
-		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"z@test.example.com","password":"p","organizationId":"11111111-1111-1111-1111-111111111111"}`))
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(`{"email":"z@test.example.com","password":"p","scopeId":"11111111-1111-1111-1111-111111111111"}`))
 		req.RemoteAddr = "127.0.0.1:9"
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -91,9 +91,10 @@ func TestAbuseProtection_AdminMutation_GETNotLimited(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	org := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	_ = org
 	for i := 0; i < 10; i++ {
 		req := httptest.NewRequest(http.MethodGet, "/v1/admin/products", nil)
-		req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{Subject: "acc", OrganizationID: org}))
+		req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{Subject: "acc"}))
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Code)
@@ -109,15 +110,16 @@ func TestAbuseProtection_AdminMutation_POSTLimitedByAccountOrg(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	org := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	_ = org
 	for i := 0; i < 2; i++ {
 		req := httptest.NewRequest(http.MethodPost, "/v1/admin/products", nil)
-		req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{Subject: "acc", OrganizationID: org}))
+		req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{Subject: "acc"}))
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 		require.Equal(t, http.StatusOK, rec.Code, "iter %d", i)
 	}
 	req := httptest.NewRequest(http.MethodPost, "/v1/admin/products", nil)
-	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{Subject: "acc", OrganizationID: org}))
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{Subject: "acc"}))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusTooManyRequests, rec.Code)

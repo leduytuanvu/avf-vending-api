@@ -9,10 +9,10 @@ For enterprise release reviews, use this table together with [API surface securi
 | Client | Typical credential | Primary transports | Must not use for |
 | --- | --- | --- | --- |
 | **Kiosk runtime app** | Machine-scoped JWT (`machine_ids` claim) or equivalent | MQTT (telemetry, commands), on-device commerce UX | Bulk admin APIs, reporting, raw fleet lists |
-| **Technician setup app** | User JWT (`org_admin` / `org_member` / `technician`) + operator sessions | HTTPS: bootstrap, planogram, inventory, operator-session APIs | Payment provider webhooks |
-| **Admin portal** | User JWT (`platform_admin` / `org_admin`) | HTTPS: `/v1/admin/*`, `/v1/reports/*`, command dispatch | N/A (full control plane) |
+| **Technician setup app** | User JWT (`admin` / `org_member` / `technician`) + operator sessions | HTTPS: bootstrap, planogram, inventory, operator-session APIs | Payment provider webhooks |
+| **Admin portal** | User JWT (`platform_admin` / `admin`) | HTTPS: `/v1/admin/*`, `/v1/reports/*`, command dispatch | N/A (full control plane) |
 | **Payment provider / webhook** | HMAC (`X-AVF-Webhook-*`) on dedicated callback route | HTTPS POST webhook | Bearer JWT (not used on that route) |
-| **Device HTTP fallback** | **Today:** fleet JWT (`platform_admin` / `org_admin`) with machine URL access. **Target hygiene:** also allow machine-scoped JWT for the path `machineId` (see runbook). | HTTPS: `POST /v1/device/machines/{machineId}/vend-results`, `.../commands/poll` | High-volume telemetry (use MQTT / JetStream) |
+| **Device HTTP fallback** | **Today:** fleet JWT (`platform_admin` / `admin`) with machine URL access. **Target hygiene:** also allow machine-scoped JWT for the path `machineId` (see runbook). | HTTPS: `POST /v1/device/machines/{machineId}/vend-results`, `.../commands/poll` | High-volume telemetry (use MQTT / JetStream) |
 | **DevOps / monitoring** | Network access to ops bind / health | `GET /health/*`, optional `GET /metrics`, ops mux | Business JWT for metrics (see runbook) |
 
 ## Route groups (summary)
@@ -41,15 +41,15 @@ Columns: **Auth** = mechanism at the edge. **Roles** = coarse RBAC after Bearer 
 
 | Path | Intended client | Auth | Roles | Idempotency | Offline retry | Kiosk |
 | --- | --- | --- | --- | --- | --- | --- |
-| Catalog, fleet lists, machine directory, inventory, artifacts, planogram writes | Admin portal (sometimes technician tooling) | Bearer JWT | `platform_admin` **or** `org_admin` | On mutating routes where OpenAPI lists `Idempotency-Key` | Yes when key reused | **No** |
+| Catalog, fleet lists, machine directory, inventory, artifacts, planogram writes | Admin portal (sometimes technician tooling) | Bearer JWT | `platform_admin` **or** `admin` | On mutating routes where OpenAPI lists `Idempotency-Key` | Yes when key reused | **No** |
 
-`platform_admin` often supplies `organization_id` query parameter to pick a tenant.
+`platform_admin` often supplies `company_id` query parameter to pick a company.
 
 ### Reporting (`/v1/reports`)
 
 | Path | Intended client | Auth | Roles | Idempotency | Offline retry | Kiosk |
 | --- | --- | --- | --- | --- | --- | --- |
-| Sales / payments / fleet-health / inventory-exceptions | Admin portal | Bearer JWT | `platform_admin` **or** `org_admin` | — (GET) | Yes | **No** |
+| Sales / payments / fleet-health / inventory-exceptions | Admin portal | Bearer JWT | `platform_admin` **or** `admin` | — (GET) | Yes | **No** |
 
 Machine tokens must **not** be used here; edge RBAC rejects roles outside the allow-list.
 
@@ -57,18 +57,18 @@ Machine tokens must **not** be used here; edge RBAC rejects roles outside the al
 
 | Path | Intended client | Auth | Roles | Idempotency | Offline retry | Kiosk |
 | --- | --- | --- | --- | --- | --- | --- |
-| Cross-machine read-only insights | Admin portal, support | Bearer JWT | `platform_admin`, `org_admin`, **or** `org_member` | — | Yes | **No** |
+| Cross-machine read-only insights | Admin portal, support | Bearer JWT | `platform_admin`, `admin`, **or** `org_member` | — | Yes | **No** |
 
 ### Commerce (`/v1/commerce`)
 
 | Path | Intended client | Auth | Roles / scope | Idempotency | Offline retry | Kiosk |
 | --- | --- | --- | --- | --- | --- | --- |
-| Checkout, orders, payment-session, vend transitions | Kiosk runtime (via app), integrations | Bearer JWT + org scope | `RequireOrganizationScope` (see middleware) | Required on listed POSTs | Yes with same key | Yes (subset) |
+| Checkout, orders, payment-session, vend transitions | Kiosk runtime (via app), integrations | Bearer JWT + org scope | `RequireCompanyScope` (see middleware) | Required on listed POSTs | Yes with same key | Yes (subset) |
 | `POST .../payments/{paymentId}/webhooks` | Payment provider | **HMAC** (no Bearer) | Provider secret | Provider-managed | Provider retries | No |
 
-Tenant isolation is enforced from JWT org scope plus commerce service checks (e.g. slot / assortment resolution against `organization_id` + `machine_id`).
+Company isolation is enforced from JWT org scope plus commerce service checks (e.g. slot / assortment resolution against `company_id` + `machine_id`).
 
-### Tenant lists (`/v1/payments`, `/v1/orders`)
+### Company lists (`/v1/payments`, `/v1/orders`)
 
 | Path | Intended client | Auth | Roles | Idempotency | Offline retry | Kiosk |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -78,9 +78,9 @@ Tenant isolation is enforced from JWT org scope plus commerce service checks (e.
 
 | Path | Intended client | Auth | Roles | Idempotency | Offline retry | Kiosk |
 | --- | --- | --- | --- | --- | --- | --- |
-| `GET .../shadow`, telemetry snapshot/incidents/rollups | Kiosk, technician, admin (debug) | Bearer JWT | Machine URL access + **tenant binding** (see runbook) | — | Yes | Yes (subset) |
+| `GET .../shadow`, telemetry snapshot/incidents/rollups | Kiosk, technician, admin (debug) | Bearer JWT | Machine URL access + **company binding** (see runbook) | — | Yes | Yes (subset) |
 | `POST .../check-ins`, `.../config-applies` | Kiosk runtime | Bearer JWT + machine access | Same | — | Yes (idempotent design) | Yes |
-| `POST .../commands/dispatch`, command status/receipts | Admin portal (ops) | Bearer JWT | Machine access + **`platform_admin` or `org_admin`** | `Idempotency-Key` on dispatch | Yes | Rarely |
+| `POST .../commands/dispatch`, command status/receipts | Admin portal (ops) | Bearer JWT | Machine access + **`platform_admin` or `admin`** | `Idempotency-Key` on dispatch | Yes | Rarely |
 | `.../operator-sessions/*` | Technician setup | Bearer JWT + machine access | Operator flows | Varies | Varies | No (operator UX) |
 
 ### Setup (`/v1/setup/machines/{machineId}/bootstrap`)
@@ -93,7 +93,7 @@ Tenant isolation is enforced from JWT org scope plus commerce service checks (e.
 
 | Path | Intended client | Auth | Roles | Idempotency | Offline retry | Kiosk |
 | --- | --- | --- | --- | --- | --- | --- |
-| `POST .../vend-results` | Device integration / fallback | Bearer JWT | Machine access + **`platform_admin` or `org_admin`** today; machine-scoped bridge is a documented hardening item | Required | Yes | Fallback path |
+| `POST .../vend-results` | Device integration / fallback | Bearer JWT | Machine access + **`platform_admin` or `admin`** today; machine-scoped bridge is a documented hardening item | Required | Yes | Fallback path |
 | `POST .../commands/poll` | Device integration / fallback | Same | Same | — | Yes | **Fallback only** — primary command delivery is MQTT |
 
 High-volume **telemetry** remains on **MQTT → JetStream** (see `docs/api/mqtt-contract.md`); do not push firehose workloads through these HTTP read models.

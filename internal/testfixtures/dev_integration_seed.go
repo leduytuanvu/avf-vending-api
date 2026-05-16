@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// DevAssortmentID is a stable id for integration seed data (dev org only).
+// DevAssortmentID is a stable id for integration seed data.
 var DevAssortmentID = uuid.MustParse("ffffffff-ffff-ffff-ffff-0000000000a1")
 
 // DevMachineCabinetID / DevMachineSlotLayoutID match integration seeds for the dev machine cabinet model.
@@ -88,12 +88,12 @@ func devCommerceSeedWork(t *testing.T, ctx context.Context, tx pgx.Tx) {
 
 	var err error
 	_, err = tx.Exec(ctx, `
-INSERT INTO assortments (id, organization_id, name, status)
-VALUES ($1, $2, 'dev-integration-assortment', 'published')
+INSERT INTO assortments (id, name, status)
+VALUES ($1, 'dev-integration-assortment', 'published')
 ON CONFLICT (id) DO UPDATE SET
 	status = 'published',
 	updated_at = now()
-`, DevAssortmentID, DevOrganizationID)
+`, DevAssortmentID)
 	require.NoError(t, err)
 
 	for _, row := range []struct {
@@ -104,22 +104,22 @@ ON CONFLICT (id) DO UPDATE SET
 		{DevProductWater, 1},
 	} {
 		_, err = tx.Exec(ctx, `
-INSERT INTO assortment_items (organization_id, assortment_id, product_id, sort_order)
-VALUES ($1, $2, $3, $4)
+INSERT INTO assortment_items (assortment_id, product_id, sort_order)
+VALUES ($1, $2, $3)
 ON CONFLICT (assortment_id, product_id) DO UPDATE SET
 	sort_order = EXCLUDED.sort_order
-`, DevOrganizationID, DevAssortmentID, row.productID, row.sortOrder)
+`, DevAssortmentID, row.productID, row.sortOrder)
 		require.NoError(t, err)
 	}
 
 	_, err = tx.Exec(ctx, `
-INSERT INTO machine_assortment_bindings (organization_id, machine_id, assortment_id, is_primary, valid_from, valid_to)
-SELECT $1, $2, $3, true, now(), NULL
+INSERT INTO machine_assortment_bindings (machine_id, assortment_id, is_primary, valid_from, valid_to)
+SELECT $1, $2, true, now(), NULL
 WHERE NOT EXISTS (
 	SELECT 1 FROM machine_assortment_bindings b
-	WHERE b.machine_id = $2 AND b.is_primary AND b.valid_to IS NULL
+	WHERE b.machine_id = $1 AND b.is_primary AND b.valid_to IS NULL
 )
-`, DevOrganizationID, DevMachineID, DevAssortmentID)
+`, DevMachineID, DevAssortmentID)
 	require.NoError(t, err)
 
 	var cabID uuid.UUID
@@ -135,14 +135,13 @@ RETURNING id
 
 	var layoutID uuid.UUID
 	err = tx.QueryRow(ctx, `
-INSERT INTO machine_slot_layouts (id, organization_id, machine_id, machine_cabinet_id, layout_key, revision, status, layout_spec)
-VALUES ($1, $2, $3, $4, 'default', 1, 'published', '{}'::jsonb)
+INSERT INTO machine_slot_layouts (id, machine_id, machine_cabinet_id, layout_key, revision, status, layout_spec)
+VALUES ($1, $2, $3, 'default', 1, 'published', '{}'::jsonb)
 ON CONFLICT (machine_id, machine_cabinet_id, layout_key, revision) DO UPDATE SET
 	status = EXCLUDED.status,
-	organization_id = EXCLUDED.organization_id,
 	layout_spec = EXCLUDED.layout_spec
 RETURNING id
-`, DevMachineSlotLayoutID, DevOrganizationID, DevMachineID, cabID).Scan(&layoutID)
+`, DevMachineSlotLayoutID, DevMachineID, cabID).Scan(&layoutID)
 	require.NoError(t, err)
 
 	_, err = tx.Exec(ctx, `
@@ -153,12 +152,12 @@ WHERE machine_id = $1 AND is_current = true AND slot_code IN ('0', '1')
 
 	_, err = tx.Exec(ctx, `
 INSERT INTO machine_slot_configs (
-	organization_id, machine_id, machine_cabinet_id, machine_slot_layout_id,
+	machine_id, machine_cabinet_id, machine_slot_layout_id,
 	slot_code, slot_index, product_id, max_quantity, price_minor, effective_from, is_current, metadata
 ) VALUES
-	($1, $2, $3, $4, '0', 0, $5, 10, 150, now(), true, '{}'),
-	($1, $2, $3, $4, '1', 1, $6, 10, 120, now(), true, '{}')
-`, DevOrganizationID, DevMachineID, cabID, layoutID, DevProductCola, DevProductWater)
+	($1, $2, $3, '0', 0, $4, 10, 150, now(), true, '{}'),
+	($1, $2, $3, '1', 1, $5, 10, 120, now(), true, '{}')
+`, DevMachineID, cabID, layoutID, DevProductCola, DevProductWater)
 	require.NoError(t, err)
 
 	_, err = tx.Exec(ctx, `

@@ -31,9 +31,9 @@ Một số tính năng chưa cấu hình đủ biến môi trường có thể t
 
 ### 1.4. Vai trò và phạm vi tổ chức
 
-- JWT chứa **organization** (tổ chức) và **roles** (ví dụ `platform_admin`, `org_admin`, `org_member`).
-- **`platform_admin`**: khi gọi API theo tenant (máy, catalog admin, báo cáo, …) thường phải thêm query **`organization_id=<uuid>`** để chọn tổ chức (xem mô tả từng path trong OpenAPI).
-- **`org_admin` / `org_member`**: thường bị giới hạn theo organization trong token; không cần (hoặc không dùng) `organization_id` giống platform admin — cụ thể từng route xem Swagger.
+- JWT chứa **company** (tổ chức) và **roles** (ví dụ `platform_admin`, `admin`, `org_member`).
+- **`platform_admin`**: khi gọi API theo company (máy, catalog admin, báo cáo, …) thường phải thêm query **`company_id=<uuid>`** để chọn tổ chức (xem mô tả từng path trong OpenAPI).
+- **`admin` / `org_member`**: thường bị giới hạn theo company trong token; không cần (hoặc không dùng) `company_id` giống platform admin — cụ thể từng route xem Swagger.
 
 ---
 
@@ -41,7 +41,7 @@ Một số tính năng chưa cấu hình đủ biến môi trường có thể t
 
 Trước khi đi theo luồng dưới đây, cần có:
 
-- Một **tổ chức** (`organizationId`) hợp lệ.
+- Một **tổ chức** (`companyId`) hợp lệ.
 - Tài khoản người dùng (**email / mật khẩu**) đã được gán vào tổ chức đó trong hệ thống.
 - Ít nhất một **máy** (`machineId`) và dữ liệu catalog/planogram phù hợp với môi trường triển khai (việc tạo máy/tài khoản trong DB có thể do quy trình nội bộ hoặc công cụ khác — không nhất thiết qua các route public trong tài liệu này).
 
@@ -57,11 +57,11 @@ Body (JSON):
 
 | Trường | Kiểu | Mô tả |
 |--------|------|--------|
-| `organizationId` | UUID | ID tổ chức |
+| `companyId` | UUID | ID tổ chức |
 | `email` | string | Email đăng nhập |
 | `password` | string | Mật khẩu |
 
-Response (rút gọn): `accessToken`, `refreshToken`, thời hạn, `accountId`, `organizationId`, `roles`, …
+Response (rút gọn): `accessToken`, `refreshToken`, thời hạn, `accountId`, `companyId`, `roles`, …
 
 **Lưu `accessToken`** (và `refreshToken` nếu client cần gia hạn phiên).
 
@@ -69,7 +69,7 @@ Response (rút gọn): `accessToken`, `refreshToken`, thời hạn, `accountId`,
 
 Header: `Authorization: Bearer <accessToken>`
 
-Dùng để xác nhận `accountId`, `organizationId`, `roles` sau khi đăng nhập.
+Dùng để xác nhận `accountId`, `companyId`, `roles` sau khi đăng nhập.
 
 ### 3.3. (Tuỳ chọn) `POST /v1/auth/refresh`
 
@@ -83,11 +83,11 @@ Header: Bearer. Body có thể có `refreshToken` hoặc `revokeAll` — xem sch
 
 ## 4. Bước 2 — (Tuỳ chọn) Tìm và chọn máy
 
-Cần quyền **admin** (thường `org_admin` hoặc `platform_admin`).
+Cần quyền **admin** (thường `admin` hoặc `platform_admin`).
 
 ### 4.1. `GET /v1/admin/machines`
 
-- **platform_admin**: thêm query **`organization_id=<uuid>`** (bắt buộc để chọn tenant).
+- **platform_admin**: thêm query **`company_id=<uuid>`** (bắt buộc để chọn company).
 - Có thể lọc `site_id`, `machine_id`, `status`, cửa sổ thời gian `from`/`to` trên `updated_at`, phân trang `limit`/`offset`.
 
 Từ kết quả, lấy **`machineId`** (UUID) của máy cần cấu hình hoặc bán hàng.
@@ -140,7 +140,7 @@ Tất cả các path dưới đây nằm trong nhóm **admin** và có prefix:
 
 Header: `Authorization: Bearer <accessToken>`
 
-- **platform_admin**: hầu hết request cần query **`organization_id=<uuid>`** của máy (chọn tenant).
+- **platform_admin**: hầu hết request cần query **`company_id=<uuid>`** của máy (chọn company).
 - Các thao tác **ghi** quan trọng cần **`Idempotency-Key`** (giá trị unique mỗi hành động logic).
 
 ### 6.1. Đọc snapshot cài đặt (ứng dụng kỹ thuật / màn hình setup)
@@ -190,7 +190,7 @@ Header: `Authorization: Bearer <accessToken>`
 
 ## 7. Bước 5 — Bán hàng hằng ngày (commerce)
 
-Các route nằm dưới **`/v1/commerce/...`**. JWT phải có **phạm vi organization** (non-platform user thường đã có từ token; platform admin cần cơ chế scope phù hợp — xem hành vi `RequireOrganizationScope` và tài liệu OpenAPI).
+Các route nằm dưới **`/v1/commerce/...`**. JWT phải có **phạm vi company** (non-platform user thường đã có từ token; platform admin cần cơ chế scope phù hợp — xem hành vi `RequireCompanyScope` và tài liệu OpenAPI).
 
 ### 7.1. Tạo đơn
 
@@ -223,7 +223,7 @@ Webhook (nếu dùng):
 - `GET /v1/commerce/orders/{orderId}` — query `slot_index` nếu cần.
 - `GET /v1/commerce/orders/{orderId}/reconciliation` — snapshot đối soát.
 
-**Liệt kê** đơn hàng / thanh toán theo tenant (phạm vi organization trong JWT) dùng các path **ở cấp `/v1`**, không có tiền tố `commerce`:
+**Liệt kê** đơn hàng / thanh toán theo company (phạm vi company trong JWT) dùng các path **ở cấp `/v1`**, không có tiền tố `commerce`:
 
 - `GET /v1/orders` — danh sách đơn (pagination / filter theo OpenAPI).
 - `GET /v1/payments` — danh sách thanh toán.

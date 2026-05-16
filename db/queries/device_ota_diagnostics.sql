@@ -14,7 +14,7 @@ INNER JOIN ota_campaigns c ON c.id = r.campaign_id
 INNER JOIN ota_artifacts a ON a.id = c.artifact_id
 WHERE
     r.machine_id = $1
-    AND c.organization_id = $2
+    AND TRUE
     AND r.wave = 'forward'
     AND r.status IN ('dispatched', 'acked', 'downloaded', 'failed')
     AND c.status IN ('running', 'completed')
@@ -24,18 +24,17 @@ LIMIT 1;
 -- name: DeviceReportOTAResult :one
 UPDATE ota_machine_results r
 SET
-    status = $4,
-    last_error = $5,
+    status = $1,
+    last_error = $2,
     updated_at = now()
 FROM ota_campaigns c
 WHERE
     r.campaign_id = c.id
-    AND r.machine_id = $1
-    AND r.campaign_id = $2
-    AND c.organization_id = $3
+    AND r.machine_id = $3
+    AND r.campaign_id = $4
+    AND TRUE
 RETURNING
     r.id,
-    r.organization_id,
     r.campaign_id,
     r.machine_id,
     r.wave,
@@ -47,7 +46,6 @@ RETURNING
 
 -- name: DeviceInsertDiagnosticBundleManifest :one
 INSERT INTO diagnostic_bundle_manifests (
-    organization_id,
     machine_id,
     request_id,
     command_id,
@@ -60,7 +58,19 @@ INSERT INTO diagnostic_bundle_manifests (
     status,
     expires_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11
+)
 ON CONFLICT ON CONSTRAINT ux_diagnostic_bundle_manifests_machine_request DO UPDATE
 SET
     command_id = COALESCE(EXCLUDED.command_id, diagnostic_bundle_manifests.command_id),
@@ -77,7 +87,6 @@ RETURNING *;
 -- name: DeviceListDiagnosticBundleManifests :many
 SELECT
     d.id,
-    d.organization_id,
     d.machine_id,
     d.request_id,
     d.command_id,
@@ -93,8 +102,7 @@ SELECT
 FROM diagnostic_bundle_manifests d
 INNER JOIN machines m ON m.id = d.machine_id
 WHERE
-    d.organization_id = $1
-    AND d.machine_id = $2
-    AND m.organization_id = $1
+    d.machine_id = $1
+    AND TRUE
 ORDER BY d.created_at DESC
-LIMIT $3 OFFSET $4;
+LIMIT $2 OFFSET $3;

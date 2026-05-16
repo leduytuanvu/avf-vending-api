@@ -6,21 +6,19 @@ SELECT
     COUNT(*)::bigint AS order_count
 FROM orders o
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
-    AND o.created_at < $3::timestamptz;
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz;
 
 -- name: ReportingSalesByDay :many
 SELECT
-    (date_trunc('day', o.created_at AT TIME ZONE $4::text) AT TIME ZONE $4::text)::timestamptz AS bucket_start,
+    (date_trunc('day', o.created_at AT TIME ZONE $1::text) AT TIME ZONE $1::text)::timestamptz AS bucket_start,
     COUNT(*)::bigint AS order_count,
     COALESCE(SUM(o.total_minor), 0)::bigint AS total_minor,
     COALESCE(SUM(o.subtotal_minor), 0)::bigint AS subtotal_minor,
     COALESCE(SUM(o.tax_minor), 0)::bigint AS tax_minor
 FROM orders o
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
+    o.created_at >= $2::timestamptz
     AND o.created_at < $3::timestamptz
 GROUP BY
     1
@@ -37,9 +35,8 @@ SELECT
 FROM orders o
 INNER JOIN machines m ON m.id = o.machine_id
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
-    AND o.created_at < $3::timestamptz
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz
 GROUP BY
     m.site_id
 ORDER BY
@@ -56,9 +53,8 @@ FROM orders o
 INNER JOIN payments p ON p.order_id = o.id
     AND p.state IN ('authorized', 'captured')
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
-    AND o.created_at < $3::timestamptz
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz
 GROUP BY
     p.provider
 ORDER BY
@@ -66,14 +62,13 @@ ORDER BY
 
 -- name: ReportingPaymentsByDay :many
 SELECT
-    (date_trunc('day', p.created_at AT TIME ZONE $4::text) AT TIME ZONE $4::text)::timestamptz AS bucket_start,
+    (date_trunc('day', p.created_at AT TIME ZONE $1::text) AT TIME ZONE $1::text)::timestamptz AS bucket_start,
     COUNT(*)::bigint AS payment_count,
     COALESCE(SUM(p.amount_minor), 0)::bigint AS amount_minor
 FROM payments p
 INNER JOIN orders o ON o.id = p.order_id
 WHERE
-    o.organization_id = $1
-    AND p.created_at >= $2::timestamptz
+    p.created_at >= $2::timestamptz
     AND p.created_at < $3::timestamptz
 GROUP BY
     1
@@ -89,9 +84,8 @@ SELECT
     COALESCE(SUM(o.tax_minor), 0)::bigint AS tax_minor
 FROM orders o
 WHERE
-    o.organization_id = $1
-    AND o.created_at >= $2::timestamptz
-    AND o.created_at < $3::timestamptz
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz
 GROUP BY
     o.machine_id
 ORDER BY
@@ -135,9 +129,8 @@ SELECT
 FROM payments p
 INNER JOIN orders o ON o.id = p.order_id
 WHERE
-    o.organization_id = $1
-    AND p.created_at >= $2::timestamptz
-    AND p.created_at < $3::timestamptz;
+    p.created_at >= $1::timestamptz
+    AND p.created_at < $2::timestamptz;
 
 -- name: ReportingPaymentsByMethodAndState :many
 SELECT
@@ -148,9 +141,8 @@ SELECT
 FROM payments p
 INNER JOIN orders o ON o.id = p.order_id
 WHERE
-    o.organization_id = $1
-    AND p.created_at >= $2::timestamptz
-    AND p.created_at < $3::timestamptz
+    p.created_at >= $1::timestamptz
+    AND p.created_at < $2::timestamptz
 GROUP BY
     p.provider,
     p.state
@@ -162,8 +154,6 @@ SELECT
     m.status,
     COUNT(*)::bigint AS machine_count
 FROM machines m
-WHERE
-    m.organization_id = $1
 GROUP BY
     m.status
 ORDER BY
@@ -175,9 +165,8 @@ SELECT
     COUNT(*)::bigint AS incident_count
 FROM incidents i
 WHERE
-    i.organization_id = $1
-    AND i.opened_at >= $2::timestamptz
-    AND i.opened_at < $3::timestamptz
+    i.opened_at >= $1::timestamptz
+    AND i.opened_at < $2::timestamptz
 GROUP BY
     i.status
 ORDER BY
@@ -190,9 +179,8 @@ SELECT
 FROM machine_incidents mi
 INNER JOIN machines m ON m.id = mi.machine_id
 WHERE
-    m.organization_id = $1
-    AND mi.opened_at >= $2::timestamptz
-    AND mi.opened_at < $3::timestamptz
+    mi.opened_at >= $1::timestamptz
+    AND mi.opened_at < $2::timestamptz
 GROUP BY
     mi.severity
 ORDER BY
@@ -206,14 +194,13 @@ INNER JOIN machines m ON m.id = mss.machine_id
 LEFT JOIN slots s ON s.planogram_id = mss.planogram_id
     AND s.slot_index = mss.slot_index
 WHERE
-    m.organization_id = $1
-    AND (
+    (
         (
-            $2::boolean IS TRUE
+            $1::boolean IS TRUE
             AND mss.current_quantity <= 0
         )
         OR (
-            $3::boolean IS TRUE
+            $2::boolean IS TRUE
             AND COALESCE(s.max_quantity, 0) > 0
             AND mss.current_quantity > 0
             AND mss.current_quantity::float / NULLIF(s.max_quantity, 0)::float < 0.15
@@ -247,14 +234,13 @@ LEFT JOIN slots s ON s.planogram_id = mss.planogram_id
     AND s.slot_index = mss.slot_index
 LEFT JOIN products pr ON pr.id = s.product_id
 WHERE
-    m.organization_id = $1
-    AND (
+    (
         (
-            $2::boolean IS TRUE
+            $1::boolean IS TRUE
             AND mss.current_quantity <= 0
         )
         OR (
-            $3::boolean IS TRUE
+            $2::boolean IS TRUE
             AND COALESCE(s.max_quantity, 0) > 0
             AND mss.current_quantity > 0
             AND mss.current_quantity::float / NULLIF(s.max_quantity, 0)::float < 0.15
@@ -263,12 +249,11 @@ WHERE
 ORDER BY
     m.name ASC,
     mss.slot_index ASC
-LIMIT $4 OFFSET $5;
+LIMIT $3 OFFSET $4;
 
--- name: ReportingCashCollectionsForOrganization :many
+-- name: ReportingCashCollectionsForCompany :many
 SELECT
     cc.id,
-    cc.organization_id,
     cc.machine_id,
     m.site_id,
     m.serial_number AS machine_serial_number,
@@ -286,24 +271,23 @@ SELECT
 FROM
     cash_collections cc
     INNER JOIN machines m ON m.id = cc.machine_id
-        AND m.organization_id = cc.organization_id
+        AND TRUE
     INNER JOIN sites s ON s.id = m.site_id
 WHERE
-    cc.organization_id = $1
-    AND cc.collected_at >= $2::timestamptz
-    AND cc.collected_at < $3::timestamptz
+    cc.collected_at >= $1::timestamptz
+    AND cc.collected_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
-    AND (
-        $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR cc.machine_id = $5::uuid)
+        OR cc.machine_id = $4::uuid)
 ORDER BY
     cc.collected_at DESC;
 
 -- name: ReportingPaymentSettlement :many
 SELECT
-    (date_trunc('day', p.created_at AT TIME ZONE $4::text) AT TIME ZONE $4::text)::timestamptz AS bucket_start,
+    (date_trunc('day', p.created_at AT TIME ZONE $1::text) AT TIME ZONE $1::text)::timestamptz AS bucket_start,
     p.provider,
     p.state,
     p.settlement_status,
@@ -313,8 +297,7 @@ SELECT
 FROM payments p
 INNER JOIN orders o ON o.id = p.order_id
 WHERE
-    o.organization_id = $1
-    AND p.created_at >= $2::timestamptz
+    p.created_at >= $2::timestamptz
     AND p.created_at < $3::timestamptz
 GROUP BY
     1,
@@ -334,9 +317,8 @@ SELECT
 FROM refunds r
 INNER JOIN orders o ON o.id = r.order_id
 WHERE
-    o.organization_id = $1
-    AND r.created_at >= $2::timestamptz
-    AND r.created_at < $3::timestamptz;
+    r.created_at >= $1::timestamptz
+    AND r.created_at < $2::timestamptz;
 
 -- name: ReportingRefunds :many
 SELECT
@@ -354,36 +336,32 @@ SELECT
 FROM refunds r
 INNER JOIN orders o ON o.id = r.order_id
 WHERE
-    o.organization_id = $1
-    AND r.created_at >= $2::timestamptz
-    AND r.created_at < $3::timestamptz
+    r.created_at >= $1::timestamptz
+    AND r.created_at < $2::timestamptz
 ORDER BY
     r.created_at DESC
-LIMIT $4 OFFSET $5;
+LIMIT $3 OFFSET $4;
 
 -- name: ReportingCashCollectionsCount :one
 SELECT
     COUNT(*)::bigint AS cnt
 FROM cash_collections cc
 INNER JOIN machines m ON m.id = cc.machine_id
-    AND m.organization_id = cc.organization_id
+    AND TRUE
 WHERE
-    cc.organization_id = $1
-    AND cc.collected_at >= $2::timestamptz
-    AND cc.collected_at < $3::timestamptz
+    cc.collected_at >= $1::timestamptz
+    AND cc.collected_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4::uuid)
-    AND (
-        $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR cc.machine_id = $5::uuid);
+        OR cc.machine_id = $4::uuid);
 
 -- name: ReportingMachineHealthCount :one
 SELECT
     COUNT(*)::bigint AS cnt
-FROM machines m
-WHERE
-    m.organization_id = $1;
+FROM machines m;
 
 -- name: ReportingMachineHealth :many
 SELECT
@@ -397,18 +375,16 @@ SELECT
     CASE
         WHEN m.status IN ('offline', 'suspended', 'maintenance', 'retired', 'decommissioned', 'compromised') THEN TRUE
         WHEN m.last_seen_at IS NULL THEN TRUE
-        WHEN m.last_seen_at < $2::timestamptz THEN TRUE
+        WHEN m.last_seen_at < $1::timestamptz THEN TRUE
         ELSE FALSE
     END AS offline
 FROM machines m
 INNER JOIN sites s ON s.id = m.site_id
-WHERE
-    m.organization_id = $1
 ORDER BY
     offline DESC,
     m.last_seen_at ASC NULLS FIRST,
     m.name ASC
-LIMIT $3 OFFSET $4;
+LIMIT $2 OFFSET $3;
 
 -- name: ReportingFailedVendsCount :one
 SELECT
@@ -416,10 +392,9 @@ SELECT
 FROM vend_sessions vs
 INNER JOIN orders o ON o.id = vs.order_id
 WHERE
-    o.organization_id = $1
-    AND vs.state = 'failed'
-    AND COALESCE(vs.completed_at, vs.created_at) >= $2::timestamptz
-    AND COALESCE(vs.completed_at, vs.created_at) < $3::timestamptz;
+    vs.state = 'failed'
+    AND COALESCE(vs.completed_at, vs.created_at) >= $1::timestamptz
+    AND COALESCE(vs.completed_at, vs.created_at) < $2::timestamptz;
 
 -- name: ReportingFailedVends :many
 SELECT
@@ -438,22 +413,20 @@ SELECT
 FROM vend_sessions vs
 INNER JOIN orders o ON o.id = vs.order_id
 WHERE
-    o.organization_id = $1
-    AND vs.state = 'failed'
-    AND COALESCE(vs.completed_at, vs.created_at) >= $2::timestamptz
-    AND COALESCE(vs.completed_at, vs.created_at) < $3::timestamptz
+    vs.state = 'failed'
+    AND COALESCE(vs.completed_at, vs.created_at) >= $1::timestamptz
+    AND COALESCE(vs.completed_at, vs.created_at) < $2::timestamptz
 ORDER BY
     COALESCE(vs.completed_at, vs.created_at) DESC
-LIMIT $4 OFFSET $5;
+LIMIT $3 OFFSET $4;
 
 -- name: ReportingReconciliationQueueCount :one
 SELECT
     COUNT(*)::bigint AS cnt
 FROM commerce_reconciliation_cases c
 WHERE
-    c.organization_id = $1
-    AND c.first_detected_at >= $2::timestamptz
-    AND c.first_detected_at < $3::timestamptz
+    c.first_detected_at >= $1::timestamptz
+    AND c.first_detected_at < $2::timestamptz
     AND c.status IN ('open', 'reviewing');
 
 -- name: ReportingReconciliationQueue :many
@@ -472,11 +445,10 @@ SELECT
     c.last_detected_at
 FROM commerce_reconciliation_cases c
 WHERE
-    c.organization_id = $1
-    AND c.first_detected_at >= $2::timestamptz
-    AND c.first_detected_at < $3::timestamptz
+    c.first_detected_at >= $1::timestamptz
+    AND c.first_detected_at < $2::timestamptz
     AND c.status IN ('open', 'reviewing')
 ORDER BY
     c.severity DESC,
     c.last_detected_at DESC
-LIMIT $4 OFFSET $5;
+LIMIT $3 OFFSET $4;

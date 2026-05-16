@@ -34,12 +34,10 @@ func TestWireAuthAdminMutationAudit_roleChangedCanonicalAction(t *testing.T) {
 	t.Parallel()
 	rec := &auditSpy{}
 	hook := WireAuthAdminMutationAudit(rec)
-	org := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	actor := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 	target := uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 	require.NoError(t, hook(context.Background(), nil, appauth.AuthAdminMutationEvent{
 		Action:          authAuditPatchUser,
-		OrganizationID:  org,
 		ActorAccountID:  actor,
 		TargetAccountID: target,
 		Details: map[string]any{
@@ -55,12 +53,10 @@ func TestWireAuthAdminMutationAudit_setRolesCanonicalAction(t *testing.T) {
 	t.Parallel()
 	rec := &auditSpy{}
 	hook := WireAuthAdminMutationAudit(rec)
-	org := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	actor := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 	target := uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 	require.NoError(t, hook(context.Background(), nil, appauth.AuthAdminMutationEvent{
 		Action:          authAuditSetRoles,
-		OrganizationID:  org,
 		ActorAccountID:  actor,
 		TargetAccountID: target,
 		Details: map[string]any{
@@ -74,10 +70,8 @@ func TestWireAuthAdminMutationAudit_setRolesCanonicalAction(t *testing.T) {
 func TestWireAuthAdminMutationAudit_nilRecorderSafe(t *testing.T) {
 	t.Parallel()
 	hook := WireAuthAdminMutationAudit(nil)
-	org := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	require.NoError(t, hook(context.Background(), nil, appauth.AuthAdminMutationEvent{
 		Action:          authAuditPatchUser,
-		OrganizationID:  org,
 		ActorAccountID:  uuid.New(),
 		TargetAccountID: uuid.New(),
 	}))

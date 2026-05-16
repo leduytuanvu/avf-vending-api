@@ -14,8 +14,18 @@ WHERE
     AND status = 'pending';
 
 -- name: AuthAdminMFAInsertPending :one
-INSERT INTO admin_mfa_factors (organization_id, user_id, factor_type, secret_ciphertext, status)
-VALUES ($1, $2, 'totp', $3, 'pending')
+INSERT INTO admin_mfa_factors (
+    user_id,
+    factor_type,
+    secret_ciphertext,
+    status
+)
+VALUES (
+    $1,
+    'totp',
+    $2,
+    'pending'
+)
 RETURNING *;
 
 -- name: AuthAdminMFAActivateFactor :one
@@ -57,7 +67,6 @@ WHERE
 -- name: AuthAdminInsertAdminSession :exec
 INSERT INTO admin_sessions (
     id,
-    organization_id,
     user_id,
     refresh_token_id,
     refresh_token_hash,
@@ -66,12 +75,20 @@ INSERT INTO admin_sessions (
     user_agent,
     expires_at
 )
-VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $8);
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    'active',
+    $5,
+    $6,
+    $7
+);
 
 -- name: AuthAdminListSessionsForAccount :many
 SELECT
     id,
-    organization_id,
     user_id,
     refresh_token_id,
     refresh_token_hash,
@@ -84,14 +101,12 @@ SELECT
     revoked_at
 FROM admin_sessions
 WHERE
-    organization_id = $1
-    AND user_id = $2
+    user_id = $1
 ORDER BY created_at DESC;
 
 -- name: AuthAdminGetAdminSessionByRefreshTokenID :one
 SELECT
     id,
-    organization_id,
     user_id,
     refresh_token_id,
     refresh_token_hash,
@@ -113,7 +128,7 @@ SET
 WHERE
     id = $1
     AND user_id = $2
-    AND organization_id = $3
+    AND TRUE
     AND status = 'active';
 
 -- name: AuthAdminRevokeAllAdminSessionsForUser :exec
@@ -122,8 +137,7 @@ SET
     status = 'revoked',
     revoked_at = now()
 WHERE
-    organization_id = $1
-    AND user_id = $2
+    user_id = $1
     AND status = 'active';
 
 -- name: AuthAdminTouchSessionByRefreshToken :exec
@@ -132,24 +146,37 @@ SET last_used_at = now()
 WHERE refresh_token_id = $1;
 
 -- name: AuthInsertLoginAttempt :exec
-INSERT INTO admin_login_attempts (organization_id, email_normalized, user_id, ip_address, user_agent, success, failure_reason)
-VALUES ($1, $2, $3, $4, $5, $6, $7);
+INSERT INTO admin_login_attempts (
+    email_normalized,
+    user_id,
+    ip_address,
+    user_agent,
+    success,
+    failure_reason
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+);
 
 -- name: AuthAdminRotateSessionRefreshToken :exec
 UPDATE admin_sessions
 SET
-    refresh_token_id = $3,
-    refresh_token_hash = $4,
-    expires_at = $5,
+    refresh_token_id = $1,
+    refresh_token_hash = $2,
+    expires_at = $3,
     last_used_at = now()
-WHERE refresh_token_id = $2
-  AND user_id = $1
+WHERE refresh_token_id = $4
+  AND user_id = $5
   AND status = 'active';
 
 -- name: AuthAdminGetAdminSessionByUserAndID :one
 SELECT
     id,
-    organization_id,
     user_id,
     refresh_token_id,
     refresh_token_hash,
@@ -164,7 +191,7 @@ FROM admin_sessions
 WHERE
     id = $1
     AND user_id = $2
-    AND organization_id = $3
+    AND TRUE
     AND status = 'active';
 
 -- name: AuthAdminRevokeAdminSessionByRefreshTokenID :execrows

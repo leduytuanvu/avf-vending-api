@@ -21,20 +21,18 @@ import (
 
 // CommandWorkflowAudit is optional persistence-side audit metadata (callers supply org + actor context).
 type CommandWorkflowAudit struct {
-	OrganizationID uuid.UUID
-	ActorType      string
-	ActorID        string
-	Action         string
-	ResourceType   string
-	Payload        []byte
-	IP             *string
+	ActorType    string
+	ActorID      string
+	Action       string
+	ResourceType string
+	Payload      []byte
+	IP           *string
 }
 
 // AppendCommandWithOutboxInput binds command ledger + desired shadow + durable outbox emission in one transaction.
 type AppendCommandWithOutboxInput struct {
 	Command device.AppendCommandInput
 
-	OrganizationID       uuid.UUID
 	OutboxTopic          string
 	OutboxEventType      string
 	OutboxPayload        []byte
@@ -76,7 +74,7 @@ type CommandReceiptTransitionResult struct {
 }
 
 // CreateOrderWithVendSession inserts an order and its first vend session in one transaction.
-// It is idempotent on (organization_id, idempotency_key) for orders and will return the existing pair when replayed.
+// It is idempotent on (scope_id, idempotency_key) for orders and will return the existing pair when replayed.
 func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.CreateOrderVendInput) (commerce.CreateOrderVendResult, error) {
 	if in.IdempotencyKey == "" {
 		return commerce.CreateOrderVendResult{}, errors.New("postgres: idempotency_key is required")
@@ -92,17 +90,13 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 
 	var orderRow db.Order
 	var orderInserted bool
-	existingOrder, err := q.GetOrderByOrgIdempotency(ctx, db.GetOrderByOrgIdempotencyParams{
-		OrganizationID: in.OrganizationID,
-		IdempotencyKey: optionalStringToPgText(in.IdempotencyKey),
-	})
+	existingOrder, err := q.GetOrderByScopeIdempotency(ctx, optionalStringToPgText(in.IdempotencyKey))
 	switch {
 	case err == nil:
 		orderRow = existingOrder
 		orderInserted = false
 	case isNoRows(err):
 		orderRow, err = q.InsertOrder(ctx, db.InsertOrderParams{
-			OrganizationID: in.OrganizationID,
 			MachineID:      in.MachineID,
 			Status:         in.OrderStatus,
 			Currency:       in.Currency,
@@ -180,16 +174,13 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 }
 
 // TryReplayCreateOrderWithVend implements commerce.OrderVendWorkflow.
-func (s *Store) TryReplayCreateOrderWithVend(ctx context.Context, organizationID uuid.UUID, idempotencyKey string) (commerce.CreateOrderVendResult, bool, error) {
+func (s *Store) TryReplayCreateOrderWithVend(ctx context.Context, companyID uuid.UUID, idempotencyKey string) (commerce.CreateOrderVendResult, bool, error) {
 	key := strings.TrimSpace(idempotencyKey)
 	if key == "" {
 		return commerce.CreateOrderVendResult{}, false, nil
 	}
 	q := db.New(s.pool)
-	orderRow, err := q.GetOrderByOrgIdempotency(ctx, db.GetOrderByOrgIdempotencyParams{
-		OrganizationID: organizationID,
-		IdempotencyKey: optionalStringToPgText(key),
-	})
+	orderRow, err := q.GetOrderByScopeIdempotency(ctx, optionalStringToPgText(key))
 	if err != nil {
 		if isNoRows(err) {
 			return commerce.CreateOrderVendResult{}, false, nil
@@ -249,7 +240,6 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 		}
 
 		obRow, insErr := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-			OrganizationID: uuidToPg(in.OrganizationID),
 			Topic:          in.OutboxTopic,
 			EventType:      in.OutboxEventType,
 			Payload:        in.OutboxPayload,
@@ -286,7 +276,6 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 	}
 
 	obRow, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-		OrganizationID: uuidToPg(in.OrganizationID),
 		Topic:          in.OutboxTopic,
 		EventType:      in.OutboxEventType,
 		Payload:        in.OutboxPayload,
@@ -367,18 +356,17 @@ func enrichCommandReceiptPayload(raw []byte, occurredAt time.Time) []byte {
 
 // maybeInsertAuditLog appends an audit row when audit metadata is present (best-effort correlation for workflows).
 func maybeInsertAuditLog(ctx context.Context, q *db.Queries, audit *CommandWorkflowAudit, resourceID uuid.UUID) error {
-	if audit == nil || audit.OrganizationID == uuid.Nil || audit.Action == "" {
+	if audit == nil || audit.Action == "" {
 		return nil
 	}
 	_, err := q.InsertAuditLog(ctx, db.InsertAuditLogParams{
-		OrganizationID: audit.OrganizationID,
-		ActorType:      audit.ActorType,
-		ActorID:        audit.ActorID,
-		Action:         audit.Action,
-		ResourceType:   audit.ResourceType,
-		ResourceID:     optionalUUIDToPg(&resourceID),
-		Payload:        auditPayloadBytes(audit.Payload),
-		Ip:             optionalStringPtrToPgText(audit.IP),
+		ActorType:    audit.ActorType,
+		ActorID:      audit.ActorID,
+		Action:       audit.Action,
+		ResourceType: audit.ResourceType,
+		ResourceID:   optionalUUIDToPg(&resourceID),
+		Payload:      auditPayloadBytes(audit.Payload),
+		Ip:           optionalStringPtrToPgText(audit.IP),
 	})
 	return err
 }
@@ -399,7 +387,7 @@ func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendC
 
 	q := db.New(tx)
 
-	m, err := q.GetMachineByIDForUpdate(ctx, in.MachineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, in.MachineID)
 	if err != nil {
 		return device.AppendCommandResult{}, err
 	}
@@ -432,7 +420,6 @@ func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendC
 
 	cmdRow, err := q.InsertCommandLedgerEntry(ctx, db.InsertCommandLedgerEntryParams{
 		MachineID:         in.MachineID,
-		OrganizationID:    m.OrganizationID,
 		Sequence:          seq,
 		CommandType:       in.CommandType,
 		Payload:           in.Payload,
@@ -449,7 +436,6 @@ func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendC
 
 	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 		MachineID:         in.MachineID,
-		OrganizationID:    m.OrganizationID,
 		OperatorSessionID: in.OperatorSessionID,
 		ActionDomain:      "commands",
 		ActionType:        in.CommandType,
@@ -493,7 +479,7 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 
 	q := db.New(tx)
 
-	m, err := q.GetMachineByIDForUpdate(ctx, in.Command.MachineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, in.Command.MachineID)
 	if err != nil {
 		return AppendCommandWithOutboxResult{}, err
 	}
@@ -531,7 +517,6 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 			}, nil
 		case isNoRows(oErr):
 			obRow, insErr := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-				OrganizationID: uuidToPg(in.OrganizationID),
 				Topic:          in.OutboxTopic,
 				EventType:      in.OutboxEventType,
 				Payload:        in.OutboxPayload,
@@ -569,7 +554,6 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 
 	cmdRow, err := q.InsertCommandLedgerEntry(ctx, db.InsertCommandLedgerEntryParams{
 		MachineID:         in.Command.MachineID,
-		OrganizationID:    m.OrganizationID,
 		Sequence:          seq,
 		CommandType:       in.Command.CommandType,
 		Payload:           in.Command.Payload,
@@ -586,7 +570,6 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 
 	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 		MachineID:         in.Command.MachineID,
-		OrganizationID:    m.OrganizationID,
 		OperatorSessionID: in.Command.OperatorSessionID,
 		ActionDomain:      "commands",
 		ActionType:        in.Command.CommandType,
@@ -606,7 +589,6 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 	}
 
 	obRow, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-		OrganizationID: uuidToPg(in.OrganizationID),
 		Topic:          in.OutboxTopic,
 		EventType:      in.OutboxEventType,
 		Payload:        in.OutboxPayload,
@@ -699,26 +681,25 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 			sitePG = pgtype.UUID{Bytes: m.SiteID, Valid: true}
 		}
 		if _, aerr := q.EnterpriseAuditInsertEvent(ctx, db.EnterpriseAuditInsertEventParams{
-			OrganizationID: m.OrganizationID,
-			ActorType:      "machine",
-			ActorID:        pgtype.Text{String: p.MachineID.String(), Valid: true},
-			Action:         "mqtt.command_ack_command_id_mismatch",
-			ResourceType:   "command_ledger",
-			ResourceID:     pgtype.Text{String: cmdRow.ID.String(), Valid: true},
-			MachineID:      machinePG,
-			SiteID:         sitePG,
-			Metadata:       mdMismatch,
-			Outcome:        "failure",
-			OccurredAt:     pgtype.Timestamptz{},
+			ActorType:    "machine",
+			ActorID:      pgtype.Text{String: p.MachineID.String(), Valid: true},
+			Action:       "mqtt.command_ack_command_id_mismatch",
+			ResourceType: "command_ledger",
+			ResourceID:   pgtype.Text{String: cmdRow.ID.String(), Valid: true},
+			MachineID:    machinePG,
+			SiteID:       sitePG,
+			Metadata:     mdMismatch,
+			Outcome:      "failure",
+			OccurredAt:   pgtype.Timestamptz{},
 		}); aerr != nil {
 			return CommandReceiptTransitionResult{}, aerr
 		}
 		mqttprom.RecordCommandAckRejected("command_id_mismatch")
 		return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: command_id mismatch")
 	}
-	if cmdRow.OrganizationID != m.OrganizationID {
-		mqttprom.RecordCommandAckRejected("ledger_organization_mismatch")
-		return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: ledger organization mismatch")
+	if uuid.Nil != uuid.Nil {
+		mqttprom.RecordCommandAckRejected("ledger_company_mismatch")
+		return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: ledger company mismatch")
 	}
 
 	openAtt, openErr := q.GetLatestOpenMachineCommandAttemptForCommand(ctx, cmdRow.ID)
@@ -793,17 +774,16 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 				sitePG = pgtype.UUID{Bytes: m.SiteID, Valid: true}
 			}
 			if _, aerr := q.EnterpriseAuditInsertEvent(ctx, db.EnterpriseAuditInsertEventParams{
-				OrganizationID: m.OrganizationID,
-				ActorType:      "machine",
-				ActorID:        pgtype.Text{String: p.MachineID.String(), Valid: true},
-				Action:         "mqtt.command_ack_conflict",
-				ResourceType:   "command_ledger",
-				ResourceID:     pgtype.Text{String: cmdRow.ID.String(), Valid: true},
-				MachineID:      machinePG,
-				SiteID:         sitePG,
-				Metadata:       md,
-				Outcome:        "success",
-				OccurredAt:     pgtype.Timestamptz{},
+				ActorType:    "machine",
+				ActorID:      pgtype.Text{String: p.MachineID.String(), Valid: true},
+				Action:       "mqtt.command_ack_conflict",
+				ResourceType: "command_ledger",
+				ResourceID:   pgtype.Text{String: cmdRow.ID.String(), Valid: true},
+				MachineID:    machinePG,
+				SiteID:       sitePG,
+				Metadata:     md,
+				Outcome:      "success",
+				OccurredAt:   pgtype.Timestamptz{},
 			}); aerr != nil {
 				return CommandReceiptTransitionResult{}, aerr
 			}
@@ -847,9 +827,9 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 	if hasAttempt {
 		prevAttemptStatus := att.Status
 		if newStatus := mapDeviceReceiptToAttemptStatus(p.Status); newStatus != "" {
-			if uErr := q.UpdateMachineCommandAttemptAfterDeviceReceipt(ctx, db.UpdateMachineCommandAttemptAfterDeviceReceiptParams{
-				ID:     att.ID,
-				Status: newStatus,
+			if uErr := q.UpdateMachineCommandAttemptAfterDeviceReceipt(ctx, db.UpdateMachineCommandAttemptAfterDeviceReceiptParams{Status: newStatus,
+
+				ID: att.ID,
 			}); uErr != nil {
 				return CommandReceiptTransitionResult{}, uErr
 			}
@@ -897,7 +877,7 @@ func (s *Store) IngestTelemetry(ctx context.Context, in platformmqtt.TelemetryIn
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	if _, err := q.GetMachineByIDForUpdate(ctx, in.MachineID); err != nil {
+	if _, err = q.GetMachineByIDForUpdate(ctx, in.MachineID); err != nil {
 		return err
 	}
 	_, err = q.InsertDeviceTelemetryEvent(ctx, db.InsertDeviceTelemetryEventParams{
@@ -933,7 +913,7 @@ func (s *Store) IngestShadowReported(ctx context.Context, in platformmqtt.Shadow
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	if _, err := q.GetMachineByIDForUpdate(ctx, in.MachineID); err != nil {
+	if _, err = q.GetMachineByIDForUpdate(ctx, in.MachineID); err != nil {
 		return err
 	}
 	if _, err := q.UpsertMachineShadowReported(ctx, db.UpsertMachineShadowReportedParams{
@@ -963,7 +943,7 @@ func (s *Store) IngestShadowDesired(ctx context.Context, in platformmqtt.ShadowD
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	if _, err := q.GetMachineByIDForUpdate(ctx, in.MachineID); err != nil {
+	if _, err = q.GetMachineByIDForUpdate(ctx, in.MachineID); err != nil {
 		return err
 	}
 	if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{

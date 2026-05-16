@@ -1,8 +1,7 @@
 -- Order timeline + refund_requests (admin commerce P0.4).
 
--- name: CommerceAdminOrderOrganizationID :one
+-- name: CommerceAdminOrderScopeID :one
 SELECT
-    organization_id
 FROM orders
 WHERE
     id = $1;
@@ -11,12 +10,10 @@ WHERE
 SELECT count(*)::bigint
 FROM order_timelines
 WHERE
-    organization_id = $1
-    AND order_id = $2;
+    order_id = $1;
 
 -- name: InsertOrderTimelineEvent :exec
 INSERT INTO order_timelines (
-    organization_id,
     order_id,
     event_type,
     actor_type,
@@ -24,7 +21,6 @@ INSERT INTO order_timelines (
     payload,
     occurred_at
 ) VALUES (
-    sqlc.arg('organization_id'),
     sqlc.arg('order_id'),
     sqlc.arg('event_type'),
     sqlc.arg('actor_type'),
@@ -36,7 +32,6 @@ INSERT INTO order_timelines (
 -- name: CommerceAdminListOrderTimeline :many
 SELECT
     id,
-    organization_id,
     order_id,
     event_type,
     actor_type,
@@ -46,15 +41,13 @@ SELECT
     created_at
 FROM order_timelines
 WHERE
-    organization_id = $1
-    AND order_id = $2
+    order_id = $1
 ORDER BY
     occurred_at DESC
-LIMIT $3 OFFSET $4;
+LIMIT $2 OFFSET $3;
 
 -- name: CommerceAdminInsertRefundRequest :one
 INSERT INTO refund_requests (
-    organization_id,
     order_id,
     payment_id,
     amount_minor,
@@ -71,49 +64,43 @@ INSERT INTO refund_requests (
     $5,
     $6,
     $7,
-    $8,
-    $9
+    $8
 ) RETURNING *;
 
 -- name: CommerceAdminUpdateRefundRequestLinkedRefund :one
 UPDATE refund_requests
 SET
-    refund_id = $3,
-    status = $4,
+    refund_id = $1,
+    status = $2,
     updated_at = now(),
-    completed_at = CASE WHEN $4 IN ('succeeded', 'failed') THEN now() ELSE completed_at END
+    completed_at = CASE WHEN $2 IN ('succeeded', 'failed') THEN now() ELSE completed_at END
 WHERE
-    organization_id = $1
-    AND id = $2
+    id = $3
 RETURNING *;
 
--- name: CommerceAdminGetRefundRequestByOrgIdempotency :one
+-- name: CommerceAdminGetRefundRequestByScopeIdempotency :one
 SELECT *
 FROM refund_requests
 WHERE
-    organization_id = $1
-    AND idempotency_key = $2;
+    idempotency_key = $1;
 
 -- name: CommerceAdminListRefundRequests :many
 SELECT *
 FROM refund_requests
 WHERE
-    organization_id = $1
-    AND ($2::boolean IS FALSE OR status = $3::text)
+    ($1::boolean IS FALSE OR status = $2::text)
 ORDER BY
     created_at DESC
-LIMIT $4 OFFSET $5;
+LIMIT $3 OFFSET $4;
 
 -- name: CommerceAdminCountRefundRequests :one
 SELECT count(*)::bigint
 FROM refund_requests
 WHERE
-    organization_id = $1
-    AND ($2::boolean IS FALSE OR status = $3::text);
+    ($1::boolean IS FALSE OR status = $2::text);
 
 -- name: CommerceAdminGetRefundRequest :one
 SELECT *
 FROM refund_requests
 WHERE
-    organization_id = $1
-    AND id = $2;
+    id = $1;

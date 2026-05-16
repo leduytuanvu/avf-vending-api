@@ -5,17 +5,16 @@ WITH scoped_orders AS (
     FROM
         orders o
         INNER JOIN machines m ON m.id = o.machine_id
-            AND m.organization_id = o.organization_id
+            AND TRUE
     WHERE
-        o.organization_id = $1
-        AND o.created_at >= $2::timestamptz
-        AND o.created_at < $3::timestamptz
+        o.created_at >= $1::timestamptz
+        AND o.created_at < $2::timestamptz
+        AND (
+            $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+            OR m.site_id = $3)
         AND (
             $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-            OR m.site_id = $4)
-        AND (
-            $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-            OR o.machine_id = $5)
+            OR o.machine_id = $4)
 ),
 scoped_payments AS (
     SELECT
@@ -72,7 +71,6 @@ SELECT
 
 -- name: InsertFinanceDailyClose :one
 INSERT INTO finance_daily_closes (
-    organization_id,
     close_date,
     timezone,
     site_id,
@@ -85,11 +83,25 @@ INSERT INTO finance_daily_closes (
     cash_minor,
     qr_wallet_minor,
     failed_minor,
-    pending_minor)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    pending_minor
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13
+)
 RETURNING
     id,
-    organization_id,
     close_date,
     timezone,
     site_id,
@@ -105,10 +117,9 @@ RETURNING
     pending_minor,
     created_at;
 
--- name: GetFinanceDailyCloseByIDForOrg :one
+-- name: GetFinanceDailyCloseByID :one
 SELECT
     id,
-    organization_id,
     close_date,
     timezone,
     site_id,
@@ -127,12 +138,11 @@ FROM
     finance_daily_closes
 WHERE
     id = $1
-    AND organization_id = $2;
+    AND TRUE;
 
 -- name: GetFinanceDailyCloseByIdempotencyKey :one
 SELECT
     id,
-    organization_id,
     close_date,
     timezone,
     site_id,
@@ -150,8 +160,7 @@ SELECT
 FROM
     finance_daily_closes
 WHERE
-    organization_id = $1
-    AND idempotency_key = $2;
+    idempotency_key = $1;
 
 -- name: FinanceDailyCloseExistsForScope :one
 SELECT
@@ -161,16 +170,14 @@ SELECT
         FROM
             finance_daily_closes
         WHERE
-            organization_id = $1
-            AND close_date = $2
-            AND timezone = $3
-            AND COALESCE(site_id, '00000000-0000-0000-0000-000000000000'::uuid) = COALESCE(NULLIF($4::uuid, '00000000-0000-0000-0000-000000000000'::uuid), '00000000-0000-0000-0000-000000000000'::uuid)
-            AND COALESCE(machine_id, '00000000-0000-0000-0000-000000000000'::uuid) = COALESCE(NULLIF($5::uuid, '00000000-0000-0000-0000-000000000000'::uuid), '00000000-0000-0000-0000-000000000000'::uuid)) AS exists;
+            close_date = $1
+            AND timezone = $2
+            AND COALESCE(site_id, '00000000-0000-0000-0000-000000000000'::uuid) = COALESCE(NULLIF($3::uuid, '00000000-0000-0000-0000-000000000000'::uuid), '00000000-0000-0000-0000-000000000000'::uuid)
+            AND COALESCE(machine_id, '00000000-0000-0000-0000-000000000000'::uuid) = COALESCE(NULLIF($4::uuid, '00000000-0000-0000-0000-000000000000'::uuid), '00000000-0000-0000-0000-000000000000'::uuid)) AS exists;
 
--- name: ListFinanceDailyClosesForOrg :many
+-- name: ListFinanceDailyCloses :many
 SELECT
     id,
-    organization_id,
     close_date,
     timezone,
     site_id,
@@ -187,17 +194,13 @@ SELECT
     created_at
 FROM
     finance_daily_closes
-WHERE
-    organization_id = $1
 ORDER BY
     close_date DESC,
     created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
--- name: CountFinanceDailyClosesForOrg :one
+-- name: CountFinanceDailyCloses :one
 SELECT
     count(*)::bigint AS cnt
 FROM
-    finance_daily_closes
-WHERE
-    organization_id = $1;
+    finance_daily_closes;

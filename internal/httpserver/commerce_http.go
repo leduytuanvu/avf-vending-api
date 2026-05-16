@@ -26,7 +26,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 	svc := app.Commerce
 
 	r.Route("/commerce", func(r chi.Router) {
-		r.Use(auth.RequireOrganizationScope)
+		r.Use(auth.RequireCompanyScope)
 
 		r.With(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)).Post("/orders", func(w http.ResponseWriter, r *http.Request) {
 			idem, err := requireWriteIdempotencyKey(r)
@@ -39,18 +39,12 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
-			org := tenantOrgID(r)
-			if org == uuid.Nil {
-				writeAPIError(w, r.Context(), http.StatusForbidden, "organization_required", "organization scope required")
-				return
-			}
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if ok && p.HasRole(auth.RoleMachine) && !p.AllowsMachine(body.MachineID) {
 				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "machine scope does not match order machine_id")
 				return
 			}
 			in := appcommerce.CreateOrderInput{
-				OrganizationID: org,
 				MachineID:      body.MachineID,
 				ProductID:      body.ProductID,
 				SlotID:         body.SlotID,
@@ -100,11 +94,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
-			org := tenantOrgID(r)
-			if org == uuid.Nil {
-				writeAPIError(w, r.Context(), http.StatusForbidden, "organization_required", "organization scope required")
-				return
-			}
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if ok && p.HasRole(auth.RoleMachine) && !p.AllowsMachine(body.MachineID) {
 				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "machine scope does not match order machine_id")
@@ -118,7 +108,6 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			createOut, err := svc.CreateOrder(r.Context(), appcommerce.CreateOrderInput{
-				OrganizationID: org,
 				MachineID:      body.MachineID,
 				ProductID:      body.ProductID,
 				SlotID:         body.SlotID,
@@ -137,7 +126,6 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			}
 			outboxIdem := idem + ":cash:payment:outbox:" + createOut.Order.ID.String()
 			payRes, err := svc.StartPaymentWithOutbox(r.Context(), appcommerce.StartPaymentInput{
-				OrganizationID:       org,
 				OrderID:              createOut.Order.ID,
 				Provider:             "cash",
 				PaymentState:         "captured",
@@ -191,7 +179,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
-			org := tenantOrgID(r)
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if !ok {
 				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
@@ -218,7 +206,6 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			}
 			outboxIdem := idem + ":outbox:" + orderID.String()
 			in := appcommerce.StartPaymentInput{
-				OrganizationID:       org,
 				OrderID:              orderID,
 				Provider:             body.Provider,
 				PaymentState:         firstNonEmpty(body.PaymentState, "created"),
@@ -254,7 +241,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			slot := int32(parseSlotQuery(r, 0))
-			org := tenantOrgID(r)
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if !ok {
 				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
@@ -279,7 +266,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			slot := int32(parseSlotQuery(r, 0))
-			org := tenantOrgID(r)
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if !ok {
 				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
@@ -317,7 +304,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
-			org := tenantOrgID(r)
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if !ok {
 				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
@@ -328,10 +315,9 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			v, err := svc.AdvanceVend(r.Context(), appcommerce.AdvanceVendInput{
-				OrganizationID: org,
-				OrderID:        orderID,
-				SlotIndex:      body.SlotIndex,
-				ToState:        "in_progress",
+				OrderID:   orderID,
+				SlotIndex: body.SlotIndex,
+				ToState:   "in_progress",
 			})
 			if err != nil {
 				writeCommerceServiceError(w, r.Context(), err)
@@ -356,7 +342,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
-			org := tenantOrgID(r)
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if !ok {
 				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
@@ -367,7 +353,6 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			out, err := svc.FinalizeOrderAfterVend(r.Context(), appcommerce.FinalizeAfterVendInput{
-				OrganizationID:            org,
 				OrderID:                   orderID,
 				SlotIndex:                 body.SlotIndex,
 				TerminalVendState:         "success",
@@ -402,7 +387,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
-			org := tenantOrgID(r)
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if !ok {
 				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
@@ -442,7 +427,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
-			org := tenantOrgID(r)
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if !ok {
 				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
@@ -458,7 +443,6 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 			}
 			metaJSON, _ := json.Marshal(meta)
 			ref, err := svc.CreateRefund(r.Context(), appcommerce.CreateRefundInput{
-				OrganizationID: org,
 				OrderID:        orderID,
 				AmountMinor:    body.AmountMinor,
 				Currency:       body.Currency,
@@ -487,7 +471,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid orderId")
 				return
 			}
-			org := tenantOrgID(r)
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if !ok {
 				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
@@ -528,7 +512,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_refund_id", "invalid refundId")
 				return
 			}
-			org := tenantOrgID(r)
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if !ok {
 				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
@@ -569,7 +553,7 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 				return
 			}
-			org := tenantOrgID(r)
+			org := commerceScopeFromRequest(r)
 			p, ok := auth.PrincipalFromContext(r.Context())
 			if !ok {
 				writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
@@ -580,7 +564,6 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 				return
 			}
 			out, err := svc.FinalizeOrderAfterVend(r.Context(), appcommerce.FinalizeAfterVendInput{
-				OrganizationID:    org,
 				OrderID:           orderID,
 				SlotIndex:         body.SlotIndex,
 				TerminalVendState: "failed",
@@ -606,12 +589,12 @@ func mountCommerceRoutes(r chi.Router, app *api.HTTPApplication, cfg *config.Con
 	})
 }
 
-func tenantOrgID(r *http.Request) uuid.UUID {
-	p, ok := auth.PrincipalFromContext(r.Context())
+func commerceScopeFromRequest(r *http.Request) uuid.UUID {
+	_, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return uuid.Nil
 	}
-	return p.OrganizationID
+	return uuid.Nil
 }
 
 func parseSlotQuery(r *http.Request, def int) int {
@@ -629,16 +612,15 @@ func parseSlotQuery(r *http.Request, def int) int {
 func checkoutStatusToJSON(st appcommerce.CheckoutStatusView) map[string]any {
 	out := map[string]any{
 		"order": map[string]any{
-			"id":              st.Order.ID.String(),
-			"organization_id": st.Order.OrganizationID.String(),
-			"machine_id":      st.Order.MachineID.String(),
-			"status":          st.Order.Status,
-			"currency":        st.Order.Currency,
-			"subtotal_minor":  st.Order.SubtotalMinor,
-			"tax_minor":       st.Order.TaxMinor,
-			"total_minor":     st.Order.TotalMinor,
-			"created_at":      st.Order.CreatedAt,
-			"updated_at":      st.Order.UpdatedAt,
+			"id":             st.Order.ID.String(),
+			"machine_id":     st.Order.MachineID.String(),
+			"status":         st.Order.Status,
+			"currency":       st.Order.Currency,
+			"subtotal_minor": st.Order.SubtotalMinor,
+			"tax_minor":      st.Order.TaxMinor,
+			"total_minor":    st.Order.TotalMinor,
+			"created_at":     st.Order.CreatedAt,
+			"updated_at":     st.Order.UpdatedAt,
 		},
 		"vend": map[string]any{
 			"id":         st.Vend.ID.String(),
@@ -673,7 +655,7 @@ func writeCommerceServiceError(w http.ResponseWriter, ctx context.Context, err e
 	case errors.Is(err, appcommerce.ErrNotFound):
 		writeAPIError(w, ctx, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, appcommerce.ErrOrgMismatch):
-		writeAPIError(w, ctx, http.StatusForbidden, "forbidden", "organization scope does not match this resource")
+		writeAPIError(w, ctx, http.StatusForbidden, "forbidden", "company scope does not match this resource")
 	case errors.Is(err, appcommerce.ErrWebhookAmountCurrencyMismatch):
 		writeAPIError(w, ctx, http.StatusConflict, "webhook_amount_currency_mismatch", err.Error())
 	case errors.Is(err, appcommerce.ErrWebhookAfterTerminalOrder):

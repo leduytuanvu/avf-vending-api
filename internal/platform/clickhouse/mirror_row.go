@@ -15,7 +15,7 @@ type outboxMirrorRow struct {
 	EventType      string `json:"event_type"`
 	AggregateType  string `json:"aggregate_type"`
 	AggregateID    string `json:"aggregate_id"`
-	OrganizationID string `json:"organization_id"`
+	ScopeID        string `json:"scope_id"`
 	PayloadBase64  string `json:"payload_base64"`
 	PublishedAt    string `json:"published_at"`
 	IngestedAt     string `json:"ingested_at"`
@@ -24,9 +24,6 @@ type outboxMirrorRow struct {
 
 func mirrorRowFromOutboxEvent(ev domaincommerce.OutboxEvent) (line []byte, err error) {
 	org := ""
-	if ev.OrganizationID != nil {
-		org = ev.OrganizationID.String()
-	}
 	pub := ""
 	if ev.PublishedAt != nil {
 		pub = ev.PublishedAt.UTC().Format(time.RFC3339Nano)
@@ -41,7 +38,7 @@ func mirrorRowFromOutboxEvent(ev domaincommerce.OutboxEvent) (line []byte, err e
 		EventType:      ev.EventType,
 		AggregateType:  ev.AggregateType,
 		AggregateID:    ev.AggregateID.String(),
-		OrganizationID: org,
+		ScopeID:        org,
 		PayloadBase64:  base64.StdEncoding.EncodeToString(ev.Payload),
 		PublishedAt:    pub,
 		IngestedAt:     time.Now().UTC().Format(time.RFC3339Nano),

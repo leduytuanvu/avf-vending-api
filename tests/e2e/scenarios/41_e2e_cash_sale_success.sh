@@ -33,9 +33,8 @@ SID="E2E-41-cash-sale-success"
 start_step "phase8-${SID}"
 
 MID="$(get_data machineId)"
-ORG="$(get_data organizationId)"
 PRODUCT_ID="$(get_data productId)"
-IDS_JSON="$(jq -nc --arg m "${MID:-}" --arg o "${ORG:-}" --arg p "${PRODUCT_ID:-}" '{machineId:$m,organizationId:$o,productId:$p}')"
+IDS_JSON="$(jq -nc --arg m "${MID:-}" --arg p "${PRODUCT_ID:-}" '{machineId:$m,productId:$p}')"
 APIS_JSON='["POST /v1/commerce/cash-checkout","POST /v1/commerce/orders/{id}/vend/start","POST /v1/commerce/orders/{id}/vend/success","GET /v1/commerce/orders/{id}","GET /v1/machines/{id}/sale-catalog"]'
 EXPECTED="Paid order; vend success; inventory decremented (when catalog exposes qty); optional audit non-5xx."
 EVID_JSON="$(jq -nc \
@@ -53,10 +52,9 @@ fi
 AUDIT_NOTE="audit_skip_no_admin"
 ADM="$(get_secret adminAccessToken 2>/dev/null || true)"
 [[ -z "$ADM" ]] && ADM="${E2E_ADMIN_TOKEN:-}"
-if [[ -n "$ADM" ]] && [[ -n "$ORG" && "$ORG" != "null" ]]; then
+if [[ -n "$ADM" ]]; then
   export ADMIN_TOKEN="$ADM"
-  Q_ORG="organization_id=$(printf '%s' "$ORG" | jq -sRr @uri)"
-  code_a="$(e2e_http_get "p8-41-audit" "/v1/admin/audit/events?${Q_ORG}&limit=5&machineId=${MID}")"
+  code_a="$(e2e_http_get "p8-41-audit" "/v1/admin/audit/events?limit=5&machineId=${MID}")"
   APIS_JSON="$(echo "$APIS_JSON" | jq -c '. + ["GET /v1/admin/audit/events"]')"
   EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg f "${E2E_RUN_DIR}/rest/p8-41-audit.meta.json" '. + [$f]')"
   if [[ "$code_a" =~ ^5 ]] || [[ "$code_a" == "0" ]]; then

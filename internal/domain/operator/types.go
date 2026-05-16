@@ -58,7 +58,6 @@ const (
 // Session is a machine-bound operator login context (human, temporary).
 type Session struct {
 	ID             uuid.UUID
-	OrganizationID uuid.UUID
 	MachineID      uuid.UUID
 	ActorType      string
 	TechnicianID   *uuid.UUID
@@ -109,7 +108,6 @@ type InitialSessionAuth struct {
 
 // StartOperatorSessionParams is the transactional create payload.
 type StartOperatorSessionParams struct {
-	OrganizationID uuid.UUID
 	MachineID      uuid.UUID
 	ActorType      string
 	TechnicianID   *uuid.UUID
@@ -163,15 +161,13 @@ type InsertActionAttributionParams struct {
 
 // ListSessionsParams scopes list-by-user queries.
 type ListSessionsParams struct {
-	OrganizationID uuid.UUID
-	UserPrincipal  string
-	Limit          int32
+	UserPrincipal string
+	Limit         int32
 }
 
 // CurrentOperatorResolution is the service-layer answer for who is operating this machine now.
 type CurrentOperatorResolution struct {
 	MachineID             uuid.UUID
-	OrganizationID        uuid.UUID
 	ActiveSession         *Session
 	TechnicianDisplayName *string
 }

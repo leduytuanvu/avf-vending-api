@@ -22,7 +22,6 @@ func TestCashSettlement_summaryExpectedFromCommerce(t *testing.T) {
 
 	orderIDem := "cash-settle-order-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -39,7 +38,6 @@ func TestCashSettlement_summaryExpectedFromCommerce(t *testing.T) {
 	payIDem := orderIDem + ":cash:payment"
 	outIDem := orderIDem + ":cash:payment:outbox:" + orderRes.Order.ID.String()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "cash",
 		PaymentState:         "captured",
@@ -55,7 +53,7 @@ func TestCashSettlement_summaryExpectedFromCommerce(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sum, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevOrganizationID, testfixtures.DevMachineID, "USD", 500)
+	sum, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, "USD", 500)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, sum.ExpectedAmountMinor, int64(150))
 	require.Equal(t, "USD", sum.Currency)
@@ -68,7 +66,6 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 
 	orderIDem := "cash-settle-flow-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -84,7 +81,6 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	payIDem := orderIDem + ":cash:payment"
 	outIDem := orderIDem + ":cash:payment:outbox:" + orderRes.Order.ID.String()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "cash",
 		PaymentState:         "captured",
@@ -108,7 +104,6 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 
 	tid := testfixtures.DevTechnicianID
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -119,7 +114,6 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 
 	idemKey := "cash-start-" + uuid.NewString()
 	open, err := store.StartMachineCashCollection(ctx, postgres.StartMachineCashCollectionInput{
-		OrganizationID:      testfixtures.DevOrganizationID,
 		MachineID:           testfixtures.DevMachineID,
 		OperatorSessionID:   &sid,
 		Currency:            "USD",
@@ -131,7 +125,6 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.Equal(t, "open", open.LifecycleStatus)
 
 	replayOpen, err := store.StartMachineCashCollection(ctx, postgres.StartMachineCashCollectionInput{
-		OrganizationID:      testfixtures.DevOrganizationID,
 		MachineID:           testfixtures.DevMachineID,
 		OperatorSessionID:   &sid,
 		Currency:            "USD",
@@ -141,11 +134,10 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, open.ID, replayOpen.ID)
 
-	sumBeforeClose, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevOrganizationID, testfixtures.DevMachineID, "USD", 500)
+	sumBeforeClose, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, "USD", 500)
 	require.NoError(t, err)
 
 	closed, err := store.CloseMachineCashCollection(ctx, postgres.CloseMachineCashCollectionInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		MachineID:               testfixtures.DevMachineID,
 		CollectionID:            open.ID,
 		OperatorSessionID:       &sid,
@@ -167,7 +159,6 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.Equal(t, vAbs > thr, closed.RequiresReview)
 
 	sameAgain, err := store.CloseMachineCashCollection(ctx, postgres.CloseMachineCashCollectionInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		MachineID:               testfixtures.DevMachineID,
 		CollectionID:            open.ID,
 		OperatorSessionID:       &sid,
@@ -180,7 +171,6 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.Equal(t, closed.ID, sameAgain.ID)
 
 	_, err = store.CloseMachineCashCollection(ctx, postgres.CloseMachineCashCollectionInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		MachineID:               testfixtures.DevMachineID,
 		CollectionID:            open.ID,
 		OperatorSessionID:       &sid,
@@ -192,7 +182,6 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 
 	idem2 := "cash-start-2-" + uuid.NewString()
 	open2, err := store.StartMachineCashCollection(ctx, postgres.StartMachineCashCollectionInput{
-		OrganizationID:      testfixtures.DevOrganizationID,
 		MachineID:           testfixtures.DevMachineID,
 		OperatorSessionID:   &sid,
 		Currency:            "USD",
@@ -202,7 +191,6 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.NoError(t, err)
 
 	closed2, err := store.CloseMachineCashCollection(ctx, postgres.CloseMachineCashCollectionInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		MachineID:               testfixtures.DevMachineID,
 		CollectionID:            open2.ID,
 		OperatorSessionID:       &sid,
@@ -219,11 +207,10 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.Error(t, err)
 
 	_, err = svc.EndOperatorSession(ctx, operator.EndOperatorSessionInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		SessionID:      sid,
-		FinalStatus:    domainoperator.SessionStatusEnded,
-		EndedReason:    "test_cleanup",
+		MachineID:   testfixtures.DevMachineID,
+		SessionID:   sid,
+		FinalStatus: domainoperator.SessionStatusEnded,
+		EndedReason: "test_cleanup",
 	})
 	require.NoError(t, err)
 }
@@ -235,7 +222,6 @@ func TestCashSettlement_extendedCloseIdempotentAndConflict(t *testing.T) {
 
 	orderIDem := "cash-settle-ext-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -251,7 +237,6 @@ func TestCashSettlement_extendedCloseIdempotentAndConflict(t *testing.T) {
 	payIDem := orderIDem + ":cash:payment"
 	outIDem := orderIDem + ":cash:payment:outbox:" + orderRes.Order.ID.String()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "cash",
 		PaymentState:         "captured",
@@ -274,7 +259,6 @@ func TestCashSettlement_extendedCloseIdempotentAndConflict(t *testing.T) {
 	svc := operator.NewService(repo, machines, tech, assign)
 	tid := testfixtures.DevTechnicianID
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -284,7 +268,6 @@ func TestCashSettlement_extendedCloseIdempotentAndConflict(t *testing.T) {
 	sid := sess.ID
 
 	open, err := store.StartMachineCashCollection(ctx, postgres.StartMachineCashCollectionInput{
-		OrganizationID:      testfixtures.DevOrganizationID,
 		MachineID:           testfixtures.DevMachineID,
 		OperatorSessionID:   &sid,
 		Currency:            "USD",
@@ -295,7 +278,6 @@ func TestCashSettlement_extendedCloseIdempotentAndConflict(t *testing.T) {
 
 	photo := uuid.NewString()
 	in := postgres.CloseMachineCashCollectionInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		MachineID:               testfixtures.DevMachineID,
 		CollectionID:            open.ID,
 		OperatorSessionID:       &sid,
@@ -327,11 +309,10 @@ func TestCashSettlement_extendedCloseIdempotentAndConflict(t *testing.T) {
 	require.ErrorIs(t, err, cashdomain.ErrClosePayloadConflict)
 
 	_, err = svc.EndOperatorSession(ctx, operator.EndOperatorSessionInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		SessionID:      sid,
-		FinalStatus:    domainoperator.SessionStatusEnded,
-		EndedReason:    "test_cleanup",
+		MachineID:   testfixtures.DevMachineID,
+		SessionID:   sid,
+		FinalStatus: domainoperator.SessionStatusEnded,
+		EndedReason: "test_cleanup",
 	})
 	require.NoError(t, err)
 }

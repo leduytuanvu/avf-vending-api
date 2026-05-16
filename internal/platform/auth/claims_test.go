@@ -4,17 +4,13 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 func TestPrincipalFromJWTPayloadJSON_basicUser(t *testing.T) {
-	org := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	payload, err := json.Marshal(map[string]any{
-		"sub":    "user-1",
-		"roles":  []string{"org_member"},
-		"org_id": org.String(),
-		"exp":    time.Now().Add(time.Hour).Unix(),
+		"sub":   "user-1",
+		"roles": []string{"member"},
+		"exp":   time.Now().Add(time.Hour).Unix(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -27,10 +23,7 @@ func TestPrincipalFromJWTPayloadJSON_basicUser(t *testing.T) {
 		t.Fatalf("subject: %q", p.Subject)
 	}
 	if !p.HasRole(RoleOrgMember) {
-		t.Fatal("expected org_member")
-	}
-	if p.OrganizationID != org {
-		t.Fatalf("org: %v", p.OrganizationID)
+		t.Fatal("expected member")
 	}
 }
 

@@ -8,7 +8,6 @@ import (
 // ApplyPaymentProviderWebhookInput records a provider-scoped webhook or callback (no outbound PSP calls).
 // Idempotency is enforced on (provider, provider_reference) and on (provider, webhook_event_id).
 type ApplyPaymentProviderWebhookInput struct {
-	OrganizationID    uuid.UUID
 	OrderID           uuid.UUID
 	PaymentID         uuid.UUID
 	Provider          string
@@ -37,7 +36,6 @@ type ApplyPaymentProviderWebhookInput struct {
 
 // PaymentWebhookAppliedEvent is emitted to WebhookAppliedHook after a successful webhook apply (including idempotent replays).
 type PaymentWebhookAppliedEvent struct {
-	OrganizationID uuid.UUID
 	OrderID        uuid.UUID
 	PaymentID      uuid.UUID
 	Replay         bool

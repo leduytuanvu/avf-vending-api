@@ -217,10 +217,10 @@ func TestRunTelemetryRetention_machineCheckIns_orgScopedMachineOnly(t *testing.T
 	pool := testPool(t)
 	ctx := context.Background()
 	mid := testfixtures.DevMachineID
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 
 	_, err := pool.Exec(ctx, `
-INSERT INTO machine_check_ins (organization_id, machine_id, occurred_at)
+INSERT INTO machine_check_ins (scope_id, machine_id, occurred_at)
 VALUES ($1, $2, now() - interval '400 days')
 `, org, mid)
 	require.NoError(t, err)

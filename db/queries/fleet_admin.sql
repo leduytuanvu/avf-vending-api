@@ -1,7 +1,6 @@
 -- name: FleetAdminListMachines :many
 SELECT
     m.id,
-    m.organization_id,
     m.site_id,
     m.hardware_profile_id,
     m.serial_number,
@@ -20,29 +19,25 @@ SELECT
     COALESCE(
         NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
         s.timezone,
-        o.default_timezone
+        'UTC'
     ) AS effective_timezone
 FROM machines m
 INNER JOIN sites s ON s.id = m.site_id
-    AND s.organization_id = m.organization_id
-INNER JOIN organizations o ON o.id = m.organization_id
 LEFT JOIN machine_current_snapshot snap ON snap.machine_id = m.id
 WHERE
-    m.organization_id = $1
-    AND ($2::boolean IS FALSE OR m.site_id = $3::uuid)
-    AND ($4::boolean IS FALSE OR m.id = $5::uuid)
-    AND ($6::boolean IS FALSE OR m.status = $7::text)
-    AND m.updated_at >= $8::timestamptz
-    AND m.updated_at <= $9::timestamptz
+    ($1::boolean IS FALSE OR m.site_id = $2::uuid)
+    AND ($3::boolean IS FALSE OR m.id = $4::uuid)
+    AND ($5::boolean IS FALSE OR m.status = $6::text)
+    AND m.updated_at >= $7::timestamptz
+    AND m.updated_at <= $8::timestamptz
 ORDER BY
     m.updated_at DESC,
     m.name ASC
-LIMIT $10 OFFSET $11;
+LIMIT $9 OFFSET $10;
 
 -- name: FleetAdminGetMachineDetail :one
 SELECT
     m.id,
-    m.organization_id,
     m.site_id,
     m.hardware_profile_id,
     m.serial_number,
@@ -61,16 +56,13 @@ SELECT
     COALESCE(
         NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
         s.timezone,
-        o.default_timezone
+        'UTC'
     ) AS effective_timezone
 FROM machines m
 INNER JOIN sites s ON s.id = m.site_id
-    AND s.organization_id = m.organization_id
-INNER JOIN organizations o ON o.id = m.organization_id
 LEFT JOIN machine_current_snapshot snap ON snap.machine_id = m.id
 WHERE
-    m.id = $1
-    AND m.organization_id = $2;
+    m.id = $1;
 
 -- name: FleetAdminListViewOperatorsForMachines :many
 SELECT
@@ -85,8 +77,7 @@ SELECT
     v.session_expires_at
 FROM v_machine_current_operator v
 WHERE
-    v.organization_id = $1
-    AND v.machine_id = ANY($2::uuid[]);
+    v.machine_id = ANY($1::uuid[]);
 
 -- name: FleetAdminListActiveTechnicianAssignmentsForMachines :many
 SELECT
@@ -99,8 +90,7 @@ SELECT
 FROM technician_machine_assignments tma
 INNER JOIN technicians t ON t.id = tma.technician_id
 WHERE
-    t.organization_id = $1
-    AND tma.machine_id = ANY($2::uuid[])
+    tma.machine_id = ANY($1::uuid[])
     AND (
         tma.valid_to IS NULL
         OR tma.valid_to > now()
@@ -114,17 +104,15 @@ SELECT
     count(*)::bigint AS cnt
 FROM machines m
 WHERE
-    m.organization_id = $1
-    AND ($2::boolean IS FALSE OR m.site_id = $3::uuid)
-    AND ($4::boolean IS FALSE OR m.id = $5::uuid)
-    AND ($6::boolean IS FALSE OR m.status = $7::text)
-    AND m.updated_at >= $8::timestamptz
-    AND m.updated_at <= $9::timestamptz;
+    ($1::boolean IS FALSE OR m.site_id = $2::uuid)
+    AND ($3::boolean IS FALSE OR m.id = $4::uuid)
+    AND ($5::boolean IS FALSE OR m.status = $6::text)
+    AND m.updated_at >= $7::timestamptz
+    AND m.updated_at <= $8::timestamptz;
 
 -- name: FleetAdminListTechnicians :many
 SELECT
     t.id,
-    t.organization_id,
     t.display_name,
     t.email,
     t.phone,
@@ -134,39 +122,37 @@ SELECT
     t.updated_at
 FROM technicians t
 WHERE
-    t.organization_id = $1
-    AND ($2::boolean IS FALSE OR t.id = $3::uuid)
+    ($1::boolean IS FALSE OR t.id = $2::uuid)
     AND (
-        $4::boolean IS FALSE
-        OR t.display_name ILIKE ('%' || $5::text || '%')
+        $3::boolean IS FALSE
+        OR t.display_name ILIKE ('%' || $4::text || '%')
         OR (
             t.email IS NOT NULL
-            AND t.email::text ILIKE ('%' || $5::text || '%')
+            AND t.email::text ILIKE ('%' || $4::text || '%')
         )
     )
-    AND t.created_at >= $6::timestamptz
-    AND t.created_at <= $7::timestamptz
+    AND t.created_at >= $5::timestamptz
+    AND t.created_at <= $6::timestamptz
 ORDER BY
     t.display_name ASC
-LIMIT $8 OFFSET $9;
+LIMIT $7 OFFSET $8;
 
 -- name: FleetAdminCountTechnicians :one
 SELECT
     count(*)::bigint AS cnt
 FROM technicians t
 WHERE
-    t.organization_id = $1
-    AND ($2::boolean IS FALSE OR t.id = $3::uuid)
+    ($1::boolean IS FALSE OR t.id = $2::uuid)
     AND (
-        $4::boolean IS FALSE
-        OR t.display_name ILIKE ('%' || $5::text || '%')
+        $3::boolean IS FALSE
+        OR t.display_name ILIKE ('%' || $4::text || '%')
         OR (
             t.email IS NOT NULL
-            AND t.email::text ILIKE ('%' || $5::text || '%')
+            AND t.email::text ILIKE ('%' || $4::text || '%')
         )
     )
-    AND t.created_at >= $6::timestamptz
-    AND t.created_at <= $7::timestamptz;
+    AND t.created_at >= $5::timestamptz
+    AND t.created_at <= $6::timestamptz;
 
 -- name: FleetAdminListAssignments :many
 SELECT
@@ -184,14 +170,13 @@ FROM technician_machine_assignments tma
 INNER JOIN technicians t ON t.id = tma.technician_id
 INNER JOIN machines m ON m.id = tma.machine_id
 WHERE
-    t.organization_id = $1
-    AND ($2::boolean IS FALSE OR tma.technician_id = $3::uuid)
-    AND ($4::boolean IS FALSE OR tma.machine_id = $5::uuid)
-    AND tma.created_at >= $6::timestamptz
-    AND tma.created_at <= $7::timestamptz
+    ($1::boolean IS FALSE OR tma.technician_id = $2::uuid)
+    AND ($3::boolean IS FALSE OR tma.machine_id = $4::uuid)
+    AND tma.created_at >= $5::timestamptz
+    AND tma.created_at <= $6::timestamptz
 ORDER BY
     tma.valid_from DESC
-LIMIT $8 OFFSET $9;
+LIMIT $7 OFFSET $8;
 
 -- name: FleetAdminCountAssignments :one
 SELECT
@@ -199,17 +184,15 @@ SELECT
 FROM technician_machine_assignments tma
 INNER JOIN technicians t ON t.id = tma.technician_id
 WHERE
-    t.organization_id = $1
-    AND ($2::boolean IS FALSE OR tma.technician_id = $3::uuid)
-    AND ($4::boolean IS FALSE OR tma.machine_id = $5::uuid)
-    AND tma.created_at >= $6::timestamptz
-    AND tma.created_at <= $7::timestamptz;
+    ($1::boolean IS FALSE OR tma.technician_id = $2::uuid)
+    AND ($3::boolean IS FALSE OR tma.machine_id = $4::uuid)
+    AND tma.created_at >= $5::timestamptz
+    AND tma.created_at <= $6::timestamptz;
 
 -- name: FleetAdminListCommands :many
 SELECT
     cl.id AS command_id,
     cl.machine_id,
-    m.organization_id,
     m.name AS machine_name,
     m.serial_number AS machine_serial_number,
     cl.sequence,
@@ -232,14 +215,13 @@ LEFT JOIN LATERAL (
         1
 ) la ON TRUE
 WHERE
-    m.organization_id = $1
-    AND ($2::boolean IS FALSE OR cl.machine_id = $3::uuid)
-    AND ($4::boolean IS FALSE OR COALESCE(la.status, 'pending') = $5::text)
-    AND cl.created_at >= $6::timestamptz
-    AND cl.created_at <= $7::timestamptz
+    ($1::boolean IS FALSE OR cl.machine_id = $2::uuid)
+    AND ($3::boolean IS FALSE OR COALESCE(la.status, 'pending') = $4::text)
+    AND cl.created_at >= $5::timestamptz
+    AND cl.created_at <= $6::timestamptz
 ORDER BY
     cl.created_at DESC
-LIMIT $8 OFFSET $9;
+LIMIT $7 OFFSET $8;
 
 -- name: FleetAdminCountCommands :one
 SELECT
@@ -258,16 +240,14 @@ LEFT JOIN LATERAL (
         1
 ) la ON TRUE
 WHERE
-    m.organization_id = $1
-    AND ($2::boolean IS FALSE OR cl.machine_id = $3::uuid)
-    AND ($4::boolean IS FALSE OR COALESCE(la.status, 'pending') = $5::text)
-    AND cl.created_at >= $6::timestamptz
-    AND cl.created_at <= $7::timestamptz;
+    ($1::boolean IS FALSE OR cl.machine_id = $2::uuid)
+    AND ($3::boolean IS FALSE OR COALESCE(la.status, 'pending') = $4::text)
+    AND cl.created_at >= $5::timestamptz
+    AND cl.created_at <= $6::timestamptz;
 
 -- name: FleetAdminListOTACampaigns :many
 SELECT
     c.id AS campaign_id,
-    c.organization_id,
     c.name AS campaign_name,
     c.rollout_strategy AS strategy,
     c.status AS campaign_status,
@@ -278,23 +258,21 @@ SELECT
 FROM ota_campaigns c
 INNER JOIN ota_artifacts a ON a.id = c.artifact_id
 WHERE
-    c.organization_id = $1
-    AND ($2::boolean IS FALSE OR c.status = $3::text)
-    AND c.created_at >= $4::timestamptz
-    AND c.created_at <= $5::timestamptz
+    ($1::boolean IS FALSE OR c.status = $2::text)
+    AND c.created_at >= $3::timestamptz
+    AND c.created_at <= $4::timestamptz
 ORDER BY
     c.created_at DESC
-LIMIT $6 OFFSET $7;
+LIMIT $5 OFFSET $6;
 
 -- name: FleetAdminCountOTACampaigns :one
 SELECT
     count(*)::bigint AS cnt
 FROM ota_campaigns c
 WHERE
-    c.organization_id = $1
-    AND ($2::boolean IS FALSE OR c.status = $3::text)
-    AND c.created_at >= $4::timestamptz
-    AND c.created_at <= $5::timestamptz;
+    ($1::boolean IS FALSE OR c.status = $2::text)
+    AND c.created_at >= $3::timestamptz
+    AND c.created_at <= $4::timestamptz;
 
 -- name: FleetAdminUpsertMachineCabinet :one
 INSERT INTO machine_cabinets (
@@ -307,7 +285,16 @@ INSERT INTO machine_cabinets (
     status,
     metadata
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8
+)
 ON CONFLICT (machine_id, cabinet_code) DO UPDATE
 SET
     title = EXCLUDED.title,
@@ -332,7 +319,6 @@ RETURNING
 
 -- name: FleetAdminUpsertMachineSlotLayout :one
 INSERT INTO machine_slot_layouts (
-    organization_id,
     machine_id,
     machine_cabinet_id,
     layout_key,
@@ -340,14 +326,20 @@ INSERT INTO machine_slot_layouts (
     layout_spec,
     status
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+)
 ON CONFLICT (machine_id, machine_cabinet_id, layout_key, revision) DO UPDATE
 SET
     layout_spec = EXCLUDED.layout_spec,
     status = EXCLUDED.status
 RETURNING
     id,
-    organization_id,
     machine_id,
     machine_cabinet_id,
     layout_key,
@@ -404,16 +396,19 @@ ORDER BY
 
 -- name: FleetAdminInsertAssortment :one
 INSERT INTO assortments (
-    organization_id,
     name,
     status,
     description,
     meta
 )
-VALUES ($1, $2, $3, $4, $5)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
 RETURNING
     id,
-    organization_id,
     name,
     status,
     description,
@@ -424,17 +419,16 @@ RETURNING
 -- name: FleetAdminUpdateAssortment :one
 UPDATE assortments
 SET
-    name = $2,
-    status = $3,
-    description = $4,
-    meta = $5,
+    name = $1,
+    status = $2,
+    description = $3,
+    meta = $4,
     updated_at = now()
 WHERE
-    id = $1
-    AND organization_id = $6
+    id = $5
+    AND TRUE
 RETURNING
     id,
-    organization_id,
     name,
     status,
     description,
@@ -444,20 +438,23 @@ RETURNING
 
 -- name: FleetAdminUpsertAssortmentItem :one
 INSERT INTO assortment_items (
-    organization_id,
     assortment_id,
     product_id,
     sort_order,
     notes
 )
-VALUES ($1, $2, $3, $4, $5)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
 ON CONFLICT (assortment_id, product_id) DO UPDATE
 SET
     sort_order = EXCLUDED.sort_order,
     notes = EXCLUDED.notes
 RETURNING
     id,
-    organization_id,
     assortment_id,
     product_id,
     sort_order,
@@ -472,32 +469,30 @@ WITH closed AS (
     FROM
         machines m
     WHERE
-        b.machine_id = $2
+        b.machine_id = $1
         AND m.id = b.machine_id
-        AND m.organization_id = $1
+        AND TRUE
         AND b.is_primary
         AND b.valid_to IS NULL
 )
 INSERT INTO machine_assortment_bindings (
-    organization_id,
     machine_id,
     assortment_id,
     is_primary,
     valid_from
 )
 SELECT
-    m.organization_id,
     m.id,
-    $3,
+    $2,
     TRUE,
     now()
 FROM
     machines m
-    INNER JOIN assortments a ON a.id = $3
-    AND a.organization_id = m.organization_id
+    INNER JOIN assortments a ON a.id = $2
+    AND TRUE
 WHERE
-    m.id = $2
-    AND m.organization_id = $1;
+    m.id = $1
+    AND TRUE;
 
 -- name: FleetAdminListAssortmentProductsByMachine :many
 SELECT
@@ -513,13 +508,13 @@ FROM
     AND b.is_primary
     AND b.valid_to IS NULL
     INNER JOIN assortments a ON a.id = b.assortment_id
-    AND a.organization_id = m.organization_id
+    AND TRUE
     INNER JOIN assortment_items ai ON ai.assortment_id = a.id
     INNER JOIN products p ON p.id = ai.product_id
-    AND p.organization_id = m.organization_id
+    AND TRUE
 WHERE
     m.id = $1
-    AND m.organization_id = $2
+    AND TRUE
 ORDER BY
     ai.sort_order ASC,
     p.name ASC;
@@ -532,12 +527,11 @@ WITH cleared AS (
         effective_to = coalesce(effective_to, now()),
         updated_at = now()
     WHERE
-        machine_id = $2
-        AND slot_code = $5
+        machine_id = $1
+        AND slot_code = $2
         AND is_current
 )
 INSERT INTO machine_slot_configs (
-    organization_id,
     machine_id,
     machine_cabinet_id,
     machine_slot_layout_id,
@@ -552,21 +546,19 @@ INSERT INTO machine_slot_configs (
 )
 VALUES (
     $1,
-    $2,
     $3,
     $4,
+    $2,
     $5,
     $6,
     $7,
     $8,
     $9,
-    $10,
     TRUE,
-    $11
+    $10
 )
 RETURNING
     id,
-    organization_id,
     machine_id,
     machine_cabinet_id,
     machine_slot_layout_id,
@@ -625,7 +617,6 @@ WHERE
 -- name: FleetAdminGetMachineSlotLayoutByKey :one
 SELECT
     id,
-    organization_id,
     machine_id,
     machine_cabinet_id,
     layout_key,
@@ -643,7 +634,6 @@ WHERE
 
 -- name: FleetAdminInsertMachineSlotConfigDraft :one
 INSERT INTO machine_slot_configs (
-    organization_id,
     machine_id,
     machine_cabinet_id,
     machine_slot_layout_id,
@@ -666,13 +656,11 @@ VALUES (
     $7,
     $8,
     $9,
-    $10,
     FALSE,
-    $11
+    $10
 )
 RETURNING
     id,
-    organization_id,
     machine_id,
     machine_cabinet_id,
     machine_slot_layout_id,

@@ -1,6 +1,5 @@
 -- name: DeviceCertificateInsert :one
 INSERT INTO machine_device_certificates (
-    organization_id,
     machine_id,
     fingerprint_sha256,
     serial_number,
@@ -22,15 +21,13 @@ VALUES (
     $7,
     $8,
     $9,
-    $10,
-    $11
+    $10
 )
 RETURNING *;
 
 -- name: DeviceCertificateActiveByFingerprint :one
 SELECT
     id,
-    organization_id,
     machine_id,
     fingerprint_sha256,
     status,
@@ -50,11 +47,10 @@ UPDATE
 SET
     status = 'revoked',
     revoked_at = now(),
-    revoke_reason = $3,
+    revoke_reason = $1,
     updated_at = now()
 WHERE
-    organization_id = $1
-    AND fingerprint_sha256 = $2
+    fingerprint_sha256 = $2
     AND status IN ('registered', 'active');
 
 -- name: DeviceCertificateSupersede :exec
@@ -62,9 +58,9 @@ UPDATE
     machine_device_certificates
 SET
     status = 'superseded',
-    superseded_by = $3,
+    superseded_by = $1,
     updated_at = now()
 WHERE
-    id = $1
-    AND organization_id = $2
+    id = $2
+    AND TRUE
     AND status IN ('registered', 'active');

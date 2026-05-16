@@ -47,7 +47,6 @@ message GetCatalogSnapshotResponse {
 
 message CatalogSnapshot {
   string machine_id = 1;
-  string organization_id = 2;
   string site_id = 3;
   int64 config_version = 4;
   string catalog_version = 5;

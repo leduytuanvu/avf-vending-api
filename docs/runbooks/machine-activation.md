@@ -15,7 +15,7 @@ Machine activation is implemented over REST and issues a machine-scoped JWT plus
 
 ## Operator procedure
 
-1. Confirm the machine exists in the expected organization and is not retired or compromised.
+1. Confirm the machine exists in the expected company and is not retired or compromised.
 2. Create an activation code with a short expiry and minimal `maxUses`.
 3. Deliver the plaintext code through the approved secure field channel. The API only returns plaintext on create.
 4. The device calls `/v1/setup/activation-codes/claim` with its fingerprint.
@@ -27,11 +27,11 @@ Machine activation is implemented over REST and issues a machine-scoped JWT plus
 
 ```bash
 BASE_URL="http://localhost:8080"
-ORG_ID="11111111-1111-1111-1111-111111111111"
+SCOPE_ID="11111111-1111-1111-1111-111111111111"
 MACHINE_ID="55555555-5555-5555-5555-555555555555"
 TOKEN="<admin bearer token>"
 
-curl -sS -X POST "$BASE_URL/v1/admin/machines/$MACHINE_ID/activation-codes?organization_id=$ORG_ID" \
+curl -sS -X POST "$BASE_URL/v1/admin/machines/$MACHINE_ID/activation-codes?company_id=$SCOPE_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: activation-$(date +%s)" \
@@ -42,12 +42,12 @@ curl -sS -X POST "$BASE_URL/v1/admin/machines/$MACHINE_ID/activation-codes?organ
 
 ```powershell
 $BaseUrl = "http://localhost:8080"
-$OrgId = "11111111-1111-1111-1111-111111111111"
+$CompanyId = "11111111-1111-1111-1111-111111111111"
 $MachineId = "55555555-5555-5555-5555-555555555555"
 $Token = "<admin bearer token>"
 
 Invoke-RestMethod -Method Post `
-  -Uri "$BaseUrl/v1/admin/machines/$MachineId/activation-codes?organization_id=$OrgId" `
+  -Uri "$BaseUrl/v1/admin/machines/$MachineId/activation-codes?company_id=$CompanyId" `
   -Headers @{ Authorization = "Bearer $Token"; "Idempotency-Key" = "activation-$(Get-Date -Format yyyyMMddHHmmss)" } `
   -ContentType "application/json" `
   -Body '{"expiresInMinutes":60,"maxUses":1,"notes":"field activation"}'
@@ -56,7 +56,7 @@ Invoke-RestMethod -Method Post `
 ## Failure handling
 
 - `400 activation_invalid`: invalid, expired, exhausted, or revoked code. Do not disclose which condition to the field user.
-- `403/404` on admin create/list: wrong organization scope or missing machine.
+- `403/404` on admin create/list: wrong company scope or missing machine.
 - Bootstrap failure after claim: verify token audience/issuer, machine status, and `machine_id` URL match.
 
 Related: `docs/api/machine-activation-implementation-handoff.md`, `docs/api/setup-machine.md`, `docs/api/machine-grpc.md`.

@@ -8,7 +8,7 @@
 ## Verification
 
 1. Confirm migrations applied: `audit_events` has `machine_id`, `site_id`, and `actor_type` allows `payment_provider`.
-2. List recent events: `GET /v1/admin/organizations/{organizationId}/audit-events?limit=20` (with an operator JWT that has `audit.read`).
+2. List recent events: `GET /v1/admin/audit-events?limit=20` (with an operator JWT that has `audit.read`).
 3. Filter by machine: `?machineId={uuid}`.
 4. Spot-check payment webhook rejections: `action` = `payment.webhook.rejected`, `actorType` = `payment_provider`.
 

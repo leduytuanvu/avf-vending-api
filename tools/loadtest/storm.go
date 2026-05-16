@@ -11,29 +11,29 @@ import (
 
 // StormConfig is the full P1.5 reconnect/load orchestration (sequential phases).
 type StormConfig struct {
-	HTTPBase      string
-	GRPCAddr      string
-	Manifest      []MachineRow
-	Concurrency   int
-	Duration      time.Duration
-	StormWaves    int
-	AdminJWT      string
-	OrgIDStr      string
-	ProductID     string
-	SlotIndex     int32
-	SkipMQTT      bool
-	SkipWebhook   bool
-	MQTTBroker    string
-	MQTTUser      string
-	MQTTPass      string
-	MQTTPrefix    string
-	MQTTLayout    string
-	MQTTAckDL     time.Duration
-	WebhookSecret string
-	WebhookOrder  uuid.UUID
-	WebhookPay    uuid.UUID
-	WebhookBurst  int
-	WebhookDupN   int
+	HTTPBase           string
+	GRPCAddr           string
+	Manifest           []MachineRow
+	Concurrency        int
+	Duration           time.Duration
+	StormWaves         int
+	AdminJWT           string
+	AdminPhaseScopeStr string
+	ProductID          string
+	SlotIndex          int32
+	SkipMQTT           bool
+	SkipWebhook        bool
+	MQTTBroker         string
+	MQTTUser           string
+	MQTTPass           string
+	MQTTPrefix         string
+	MQTTLayout         string
+	MQTTAckDL          time.Duration
+	WebhookSecret      string
+	WebhookOrder       uuid.UUID
+	WebhookPay         uuid.UUID
+	WebhookBurst       int
+	WebhookDupN        int
 }
 
 // StormReports is stdout-friendly phase output (for docs / log capture).
@@ -135,7 +135,7 @@ func RunStorm(ctx context.Context, c StormConfig) (StormReports, error) {
 	}
 
 	// 7) Admin dashboard / list / report reads (duration-bound).
-	org, err := uuid.Parse(strings.TrimSpace(c.OrgIDStr))
+	org, err := uuid.Parse(strings.TrimSpace(c.AdminPhaseScopeStr))
 	if err == nil && strings.TrimSpace(c.AdminJWT) != "" {
 		adm := &LatencyRecorder{}
 		tAdm := time.Now()
@@ -153,7 +153,7 @@ func RunStorm(ctx context.Context, c StormConfig) (StormReports, error) {
 			rep.Admin += fmt.Sprintf(" (last_error=%v)", admErr)
 		}
 	} else {
-		rep.Admin = "admin_read_pressure: skipped (set ADMIN_JWT + LOADTEST_ORGANIZATION_ID)"
+		rep.Admin = "admin_read_pressure: skipped (set ADMIN_JWT + LOADTEST_COMPANY_SCOPE_ID)"
 	}
 
 	return rep, nil

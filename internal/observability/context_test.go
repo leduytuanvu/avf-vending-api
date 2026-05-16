@@ -30,8 +30,7 @@ func TestEnrichLogger_IncludesCorrelationFields(t *testing.T) {
 	ctx = WithPaymentID(ctx, "payment-1")
 	ctx = WithCommandID(ctx, "command-1")
 	ctx = auth.WithPrincipal(ctx, auth.Principal{
-		OrganizationID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
-		TechnicianID:   uuid.MustParse("22222222-2222-2222-2222-222222222222"),
+		TechnicianID: uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 	})
 	ctx = trace.ContextWithSpanContext(ctx, trace.NewSpanContext(trace.SpanContextConfig{
 		TraceID:    trace.TraceID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
@@ -49,9 +48,6 @@ func TestEnrichLogger_IncludesCorrelationFields(t *testing.T) {
 	}
 	if got := fields["machine_id"]; got != "machine-1" {
 		t.Fatalf("machine_id=%v", got)
-	}
-	if got := fields["organization_id"]; got != "11111111-1111-1111-1111-111111111111" {
-		t.Fatalf("organization_id=%v", got)
 	}
 	if got := fields["operator_id"]; got != "22222222-2222-2222-2222-222222222222" {
 		t.Fatalf("operator_id=%v", got)

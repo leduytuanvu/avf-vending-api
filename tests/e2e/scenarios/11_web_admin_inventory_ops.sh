@@ -52,8 +52,6 @@ if [[ -z "${ADMIN_TOKEN:-}" ]]; then
   log_error "WA-INV-11: ADMIN_TOKEN required"
   exit 2
 fi
-
-ORG_ID="$(get_data organizationId)"
 MACHINE_ID="$(get_data machineId)"
 PRODUCT_ID="$(get_data productId)"
 SLOT="$(get_data slotCode)"
@@ -62,11 +60,6 @@ PG_ID="$(get_data planogramId)"
 [[ -z "$CABINET" || "$CABINET" == "null" ]] && CABINET="A"
 [[ -z "$SLOT" || "$SLOT" == "null" ]] && SLOT="A1"
 
-if [[ -z "$ORG_ID" || "$ORG_ID" == "null" ]] || [[ -z "$MACHINE_ID" || "$MACHINE_ID" == "null" ]]; then
-  log_error "WA-INV-11: organizationId and machineId required in test-data.json"
-  exit 2
-fi
-Q_ORG="organization_id=$(printf '%s' "$ORG_ID" | jq -sRr @uri)"
 
 ANY_FAIL=0
 
@@ -88,7 +81,7 @@ wa4_ensure_operator() {
 }
 
 # --- Topology ---
-path="/v1/admin/machines/${MACHINE_ID}/topology?${Q_ORG}"
+path="/v1/admin/machines/${MACHINE_ID}/topology"
 code="$(e2e_http_get "inv-topology" "$path")"
 if [[ "$code" == "200" ]] && jq -e '.' "${E2E_RUN_DIR}/rest/inv-topology.response.json" >/dev/null 2>&1; then
   wa4_record "machine-topology" "GET .../topology" "pass" "$code" "200 JSON object" "ok" "" "inv-topology"
@@ -100,7 +93,7 @@ else
 fi
 
 # --- Slots + A1 product mapping ---
-path="/v1/admin/machines/${MACHINE_ID}/slots?${Q_ORG}"
+path="/v1/admin/machines/${MACHINE_ID}/slots"
 map_pid=""
 code="$(e2e_http_get "inv-slots" "$path")"
 if [[ "$code" != "200" ]]; then
@@ -122,7 +115,7 @@ else
 fi
 
 # --- Inventory snapshot ---
-path="/v1/admin/machines/${MACHINE_ID}/inventory?${Q_ORG}"
+path="/v1/admin/machines/${MACHINE_ID}/inventory"
 code="$(e2e_http_get "inv-snapshot" "$path")"
 if [[ "$code" == "200" ]]; then
   wa4_record "inventory-snapshot" "GET .../inventory" "pass" "$code" "200" "ok" "" "inv-snapshot"
@@ -132,7 +125,7 @@ else
 fi
 
 # --- Inventory events ---
-path="/v1/admin/machines/${MACHINE_ID}/inventory-events?${Q_ORG}&limit=20"
+path="/v1/admin/machines/${MACHINE_ID}/inventory-events?limit=20"
 code="$(e2e_http_get "inv-events" "$path")"
 if [[ "$code" == "200" ]] && jq -e '(.items|type=="array")' "${E2E_RUN_DIR}/rest/inv-events.response.json" >/dev/null 2>&1; then
   wa4_record "inventory-events" "GET .../inventory-events" "pass" "$code" "200 + items[]" "ok" "" "inv-events"
@@ -186,7 +179,7 @@ else
           }]
         }'
     }
-    path="/v1/admin/machines/${MACHINE_ID}/stock-adjustments?${Q_ORG}"
+    path="/v1/admin/machines/${MACHINE_ID}/stock-adjustments"
     B1="$(json_adj "$Q_NOW" "$Q_RESTOCK")"
     code="$(e2e_http_post_json_idem "inv-stock-1" "$path" "$B1" "e2e-inv-stock1-$(date +%s)")"
     if [[ "$code" == "200" ]]; then
@@ -202,7 +195,7 @@ else
         wa4_record "stock-adjust-second" "$path" "fail" "$code2" "200" "HTTP $code2" "quantityBefore mismatch — refresh slots; rest/inv-stock-2.response.json" "inv-stock-2"
       fi
       # refresh slots for verification
-      e2e_http_get "inv-slots-after" "/v1/admin/machines/${MACHINE_ID}/slots?${Q_ORG}" >/dev/null
+      e2e_http_get "inv-slots-after" "/v1/admin/machines/${MACHINE_ID}/slots" >/dev/null
       qfinal="$(jq -r --arg sc "$SLOT" '(.slots // .items // [])[] | select(.slotCode==$sc) | .currentQuantity // empty' "${E2E_RUN_DIR}/rest/inv-slots-after.response.json" | head -n1)"
       if [[ "$qfinal" == "$Q3" ]]; then
         wa4_record "inventory-verify-slots" "GET .../slots" "pass" "200" "currentQuantity=$Q3" "actual=$qfinal" "" "inv-slots-after"
@@ -227,7 +220,7 @@ else
     wa4_record "cash-collection-open" "POST .../cash-collections" "skip" "0" "operator" "none" "" "inv-operator-login"
   else
     CBODY="$(jq -nc --arg sid "$OP_SID" '{operator_session_id:$sid}')"
-    path="/v1/admin/machines/${MACHINE_ID}/cash-collections?${Q_ORG}"
+    path="/v1/admin/machines/${MACHINE_ID}/cash-collections"
     code="$(e2e_http_post_json_idem "inv-cash-open" "$path" "$CBODY" "e2e-cash-open-$(date +%s)")"
     if [[ "$code" == "201" ]] || [[ "$code" == "200" ]]; then
       CID="$(e2e_jq_resp inv-cash-open -r '.id // .collectionId // empty')"

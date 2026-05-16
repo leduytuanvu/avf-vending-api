@@ -27,7 +27,6 @@ message MqttConfigMetadata {
 
 message BootstrapMachine {
   string machine_id = 1;
-  string organization_id = 2;
   string site_id = 3;
   string hardware_profile_id = 4;
   string serial_number = 5;

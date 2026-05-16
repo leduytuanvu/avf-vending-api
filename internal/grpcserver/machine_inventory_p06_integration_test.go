@@ -19,7 +19,7 @@ func TestP06_MachineGRPC_FillReport_AppliesExpectedStock(t *testing.T) {
 	ctx := context.Background()
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	grpcConn := dialMachineCommerceServer(t, srv)
-	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineInventoryServiceClient(grpcConn)
 
 	var qtyBefore int32
@@ -57,7 +57,7 @@ func TestP06_MachineGRPC_StockAdjustment_IsAudited(t *testing.T) {
 	ctx := context.Background()
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	grpcConn := dialMachineCommerceServer(t, srv)
-	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineInventoryServiceClient(grpcConn)
 
 	var qtyBefore int32
@@ -86,8 +86,8 @@ func TestP06_MachineGRPC_StockAdjustment_IsAudited(t *testing.T) {
 	var n int
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT COUNT(*) FROM audit_events
-WHERE organization_id = $1 AND action = $2 AND resource_id = $3`,
-		testfixtures.DevOrganizationID,
+WHERE scope_id = $1 AND action = $2 AND resource_id = $3`,
+		uuid.Nil,
 		compliance.ActionInventoryAdjusted,
 		testfixtures.DevMachineID.String(),
 	).Scan(&n))
@@ -100,7 +100,7 @@ func TestP06_MachineGRPC_StockAdjustment_IdempotentLedgerReplayNoDoubleDelta(t *
 	ctx := context.Background()
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
 	grpcConn := dialMachineCommerceServer(t, srv)
-	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevOrganizationID, testfixtures.DevSiteID)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
 	cli := machinev1.NewMachineInventoryServiceClient(grpcConn)
 
 	var qtyBefore int32

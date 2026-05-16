@@ -110,8 +110,8 @@
 | REST | `DocOpV1AdminOrgAssignmentsCreate` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminOrgAssignmentDelete` | P2 | destructive | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminOrgAssignmentGet` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationAuditEventsList` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationAuditEventGet` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyAuditEventsList` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyAuditEventGet` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminOrgOperationsCommandsList` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminOrgOperationsCommandGet` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminOrgOperationsCommandCancel` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -143,21 +143,21 @@
 | REST | `DocOpV1AdminOrgMachineTechnicianDelete` | P0 | destructive | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminOrgMachineOperationalTimeline` | P1 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminOrgMachineTransferSite` | P0 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationMediaAssetsList` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationMediaAssetsDelete` | P2 | destructive | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationMediaAssetsGet` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationMediaProductImagesPost` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationMediaUploadComplete` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationMediaUploadInit` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyMediaAssetsList` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyMediaAssetsDelete` | P2 | destructive | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyMediaAssetsGet` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyMediaProductImagesPost` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyMediaUploadComplete` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyMediaUploadInit` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminOrgOperationsMachinesHealthList` | P1 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminCommerceOrderRefundPost` | P2 | destructive | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminCommerceOrderTimelineGet` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationProductImagesList` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationProductImagesPost` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationProductImagesDelete` | P2 | destructive | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationProductImagesPatch` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationProductMediaPost` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
-| REST | `DocOpV1AdminOrganizationProductMediaDelete` | P2 | destructive | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyProductImagesList` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyProductImagesPost` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyProductImagesDelete` | P2 | destructive | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyProductImagesPatch` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyProductMediaPost` | P2 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
+| REST | `DocOpV1AdminCompanyProductMediaDelete` | P2 | destructive | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminOrgProvisioningBatchGet` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminOrgProvisioningBulkCreate` | P0 | local-write | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
 | REST | `DocOpV1AdminCommerceRefundRequestsList` | P2 | safe-read | **blocked-missing-seed** | blocked-missing-seed: templated path requires seeded resource IDs |
@@ -473,7 +473,7 @@
 | Business flow | `admin login/logout/session/refresh` | P0 | local-executable | **partial** | Covered by local harness when dependencies are running |
 | Business flow | `invalid token/expired token` | P0 | local-executable | **partial** | Covered by local harness when dependencies are running |
 | Business flow | `RBAC allow/deny` | P0 | local-executable | **partial** | Covered by local harness when dependencies are running |
-| Business flow | `organization/site/user/admin CRUD` | P0 | local-executable | **partial** | Covered by local harness when dependencies are running |
+| Business flow | `company/site/user/admin CRUD` | P0 | local-executable | **partial** | Covered by local harness when dependencies are running |
 | Business flow | `machine create/register/activate/deactivate` | P0 | local-executable | **partial** | Covered by local harness when dependencies are running |
 | Business flow | `machine token/credential lifecycle` | P0 | local-executable | **partial** | Covered by local harness when dependencies are running |
 | Business flow | `config/bootstrap/catalog/media pull` | P0 | local-executable | **partial** | Covered by local harness when dependencies are running |

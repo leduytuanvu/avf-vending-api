@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # gRPC helpers via grpcurl. Requires e2e_common.sh (E2E_REPO_ROOT, now_utc), BASE_URL optional, E2E_RUN_DIR.
+#
+# Windows / Git Bash: do not pass `-d @path` as a single argv token — grpcurl often rejects it.
+# This harness writes JSON to *.request.json and invokes:
+#   grpcurl … -d @ … < "${req}"
+# so the body is fed via stdin redirection (stdout → response file, stderr+meta appended to *.log).
 
 e2e_grpc_log_dir() {
   echo "${E2E_RUN_DIR}/grpc"

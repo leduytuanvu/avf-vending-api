@@ -30,9 +30,6 @@ func defaultJSONB(b []byte) []byte {
 }
 
 func sameOperatorSessionActor(active db.MachineOperatorSession, in domainoperator.StartOperatorSessionParams) bool {
-	if active.OrganizationID != in.OrganizationID {
-		return false
-	}
 	if active.ActorType != in.ActorType {
 		return false
 	}
@@ -71,12 +68,9 @@ func (r *OperatorRepository) StartOperatorSession(ctx context.Context, in domain
 
 	q := db.New(tx)
 
-	machine, err := q.GetMachineByIDForUpdate(ctx, in.MachineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, in.MachineID)
 	if err != nil {
 		return domainoperator.Session{}, err
-	}
-	if machine.OrganizationID != in.OrganizationID {
-		return domainoperator.Session{}, domainoperator.ErrOrganizationMismatch
 	}
 
 	active, err := q.GetActiveOperatorSessionByMachineIDForUpdate(ctx, in.MachineID)
@@ -85,14 +79,13 @@ func (r *OperatorRepository) StartOperatorSession(ctx context.Context, in domain
 	}
 	if err == nil {
 		if sameOperatorSessionActor(active, in) {
-			row, rerr := q.ResumeActiveOperatorSessionForActor(ctx, db.ResumeActiveOperatorSessionForActorParams{
-				MachineID:      in.MachineID,
-				OrganizationID: in.OrganizationID,
-				ActorType:      in.ActorType,
-				TechnicianID:   optionalUUIDToPg(in.TechnicianID),
-				UserPrincipal:  optionalStringPtrToPgText(in.UserPrincipal),
-				ExpiresAt:      optionalTimeToPgTimestamptz(in.ExpiresAt),
+			row, rerr := q.ResumeActiveOperatorSessionForActor(ctx, db.ResumeActiveOperatorSessionForActorParams{ExpiresAt: optionalTimeToPgTimestamptz(in.ExpiresAt),
 				ClientMetadata: defaultJSONB(in.ClientMetadata),
+
+				MachineID:     in.MachineID,
+				ActorType:     in.ActorType,
+				TechnicianID:  optionalUUIDToPg(in.TechnicianID),
+				UserPrincipal: optionalStringPtrToPgText(in.UserPrincipal),
 			})
 			if rerr != nil {
 				if isNoRows(rerr) {
@@ -106,12 +99,12 @@ func (r *OperatorRepository) StartOperatorSession(ctx context.Context, in domain
 				}
 				meta := defaultJSONB(in.InitialAuth.Metadata)
 				sid := row.ID
-				_, err = q.InsertMachineOperatorAuthEvent(ctx, db.InsertMachineOperatorAuthEventParams{
+				_, err = q.InsertMachineOperatorAuthEvent(ctx, db.InsertMachineOperatorAuthEventParams{Column5: ptrTimeOrNow(nil),
+
 					OperatorSessionID: optionalUUIDToPg(&sid),
 					MachineID:         row.MachineID,
 					EventType:         domainoperator.AuthEventSessionRefresh,
 					AuthMethod:        in.InitialAuth.AuthMethod,
-					Column5:           ptrTimeOrNow(nil),
 					CorrelationID:     optionalUUIDToPg(in.InitialAuth.CorrelationID),
 					Metadata:          meta,
 				})
@@ -147,11 +140,11 @@ func (r *OperatorRepository) StartOperatorSession(ctx context.Context, in domain
 		}
 
 		endedAt := time.Now().UTC()
-		_, err = q.EndMachineOperatorSession(ctx, db.EndMachineOperatorSessionParams{
-			ID:          active.ID,
-			Status:      endStatus,
+		_, err = q.EndMachineOperatorSession(ctx, db.EndMachineOperatorSessionParams{Status: endStatus,
 			EndedAt:     pgtype.Timestamptz{Time: endedAt, Valid: true},
 			EndedReason: optionalStringPtrToPgText(endReason),
+
+			ID: active.ID,
 		})
 		if err != nil {
 			if isNoRows(err) {
@@ -162,7 +155,6 @@ func (r *OperatorRepository) StartOperatorSession(ctx context.Context, in domain
 	}
 
 	row, err := q.InsertMachineOperatorSession(ctx, db.InsertMachineOperatorSessionParams{
-		OrganizationID: in.OrganizationID,
 		MachineID:      in.MachineID,
 		ActorType:      in.ActorType,
 		TechnicianID:   optionalUUIDToPg(in.TechnicianID),
@@ -185,12 +177,12 @@ func (r *OperatorRepository) StartOperatorSession(ctx context.Context, in domain
 			eventType = domainoperator.AuthEventLoginSuccess
 		}
 		sid := row.ID
-		_, err = q.InsertMachineOperatorAuthEvent(ctx, db.InsertMachineOperatorAuthEventParams{
+		_, err = q.InsertMachineOperatorAuthEvent(ctx, db.InsertMachineOperatorAuthEventParams{Column5: ptrTimeOrNow(nil),
+
 			OperatorSessionID: optionalUUIDToPg(&sid),
 			MachineID:         row.MachineID,
 			EventType:         eventType,
 			AuthMethod:        in.InitialAuth.AuthMethod,
-			Column5:           ptrTimeOrNow(nil),
 			CorrelationID:     optionalUUIDToPg(in.InitialAuth.CorrelationID),
 			Metadata:          meta,
 		})
@@ -248,11 +240,11 @@ func (r *OperatorRepository) EndOperatorSession(ctx context.Context, in domainop
 		return domainoperator.Session{}, domainoperator.ErrSessionNotActive
 	}
 
-	row, err := q.EndMachineOperatorSession(ctx, db.EndMachineOperatorSessionParams{
-		ID:          in.SessionID,
-		Status:      in.Status,
+	row, err := q.EndMachineOperatorSession(ctx, db.EndMachineOperatorSessionParams{Status: in.Status,
 		EndedAt:     pgtype.Timestamptz{Time: in.EndedAt.UTC(), Valid: true},
 		EndedReason: optionalStringPtrToPgText(in.EndedReason),
+
+		ID: in.SessionID,
 	})
 	if err != nil {
 		if isNoRows(err) {
@@ -266,12 +258,12 @@ func (r *OperatorRepository) EndOperatorSession(ctx context.Context, in domainop
 		sid := row.ID
 		log.OperatorSessionID = &sid
 		log.MachineID = row.MachineID
-		_, err = q.InsertMachineOperatorAuthEvent(ctx, db.InsertMachineOperatorAuthEventParams{
+		_, err = q.InsertMachineOperatorAuthEvent(ctx, db.InsertMachineOperatorAuthEventParams{Column5: ptrTimeOrNow(log.OccurredAt),
+
 			OperatorSessionID: optionalUUIDToPg(log.OperatorSessionID),
 			MachineID:         log.MachineID,
 			EventType:         log.EventType,
 			AuthMethod:        log.AuthMethod,
-			Column5:           ptrTimeOrNow(log.OccurredAt),
 			CorrelationID:     optionalUUIDToPg(log.CorrelationID),
 			Metadata:          defaultJSONB(log.Metadata),
 		})
@@ -357,12 +349,12 @@ func (r *OperatorRepository) TimeoutOperatorSessionIfExpired(ctx context.Context
 }
 
 func (r *OperatorRepository) InsertAuthEvent(ctx context.Context, in domainoperator.InsertAuthEventParams) (domainoperator.AuthEvent, error) {
-	row, err := db.New(r.pool).InsertMachineOperatorAuthEvent(ctx, db.InsertMachineOperatorAuthEventParams{
+	row, err := db.New(r.pool).InsertMachineOperatorAuthEvent(ctx, db.InsertMachineOperatorAuthEventParams{Column5: ptrTimeOrNow(in.OccurredAt),
+
 		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
 		MachineID:         in.MachineID,
 		EventType:         in.EventType,
 		AuthMethod:        in.AuthMethod,
-		Column5:           ptrTimeOrNow(in.OccurredAt),
 		CorrelationID:     optionalUUIDToPg(in.CorrelationID),
 		Metadata:          defaultJSONB(in.Metadata),
 	})
@@ -373,13 +365,13 @@ func (r *OperatorRepository) InsertAuthEvent(ctx context.Context, in domainopera
 }
 
 func (r *OperatorRepository) InsertActionAttribution(ctx context.Context, in domainoperator.InsertActionAttributionParams) (domainoperator.ActionAttribution, error) {
-	row, err := db.New(r.pool).InsertMachineActionAttribution(ctx, db.InsertMachineActionAttributionParams{
+	row, err := db.New(r.pool).InsertMachineActionAttribution(ctx, db.InsertMachineActionAttributionParams{Column6: ptrTimeOrNow(in.OccurredAt),
+
 		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
 		MachineID:         in.MachineID,
 		ActionOriginType:  in.ActionOriginType,
 		ResourceType:      in.ResourceType,
 		ResourceID:        in.ResourceID,
-		Column6:           ptrTimeOrNow(in.OccurredAt),
 		Metadata:          defaultJSONB(in.Metadata),
 		CorrelationID:     optionalUUIDToPg(in.CorrelationID),
 	})
@@ -421,9 +413,8 @@ func (r *OperatorRepository) ListSessionsByTechnicianID(ctx context.Context, tec
 
 func (r *OperatorRepository) ListSessionsByUserPrincipal(ctx context.Context, in domainoperator.ListSessionsParams) ([]domainoperator.Session, error) {
 	rows, err := db.New(r.pool).ListOperatorSessionsByUserPrincipal(ctx, db.ListOperatorSessionsByUserPrincipalParams{
-		OrganizationID: in.OrganizationID,
-		UserPrincipal:  optionalStringToPgText(in.UserPrincipal),
-		Limit:          in.Limit,
+		UserPrincipal: optionalStringToPgText(in.UserPrincipal),
+		Limit:         in.Limit,
 	})
 	if err != nil {
 		return nil, err
@@ -482,11 +473,10 @@ func (r *OperatorRepository) ListActionAttributionsByMachineAndResource(ctx cont
 	return out, nil
 }
 
-func (r *OperatorRepository) ListActionAttributionsForTechnician(ctx context.Context, organizationID, technicianID uuid.UUID, limit int32) ([]domainoperator.ActionAttribution, error) {
+func (r *OperatorRepository) ListActionAttributionsForTechnician(ctx context.Context, companyID, technicianID uuid.UUID, limit int32) ([]domainoperator.ActionAttribution, error) {
 	rows, err := db.New(r.pool).ListMachineActionAttributionsForTechnician(ctx, db.ListMachineActionAttributionsForTechnicianParams{
-		TechnicianID:   uuidToPg(technicianID),
-		OrganizationID: organizationID,
-		Limit:          limit,
+		TechnicianID: uuidToPg(technicianID),
+		Limit:        limit,
 	})
 	if err != nil {
 		return nil, err
@@ -498,11 +488,10 @@ func (r *OperatorRepository) ListActionAttributionsForTechnician(ctx context.Con
 	return out, nil
 }
 
-func (r *OperatorRepository) ListActionAttributionsForUserPrincipal(ctx context.Context, organizationID uuid.UUID, userPrincipal string, limit int32) ([]domainoperator.ActionAttribution, error) {
+func (r *OperatorRepository) ListActionAttributionsForUserPrincipal(ctx context.Context, companyID uuid.UUID, userPrincipal string, limit int32) ([]domainoperator.ActionAttribution, error) {
 	rows, err := db.New(r.pool).ListMachineActionAttributionsForUserPrincipal(ctx, db.ListMachineActionAttributionsForUserPrincipalParams{
-		OrganizationID: organizationID,
-		UserPrincipal:  optionalStringToPgText(userPrincipal),
-		Limit:          limit,
+		UserPrincipal: optionalStringToPgText(userPrincipal),
+		Limit:         limit,
 	})
 	if err != nil {
 		return nil, err
