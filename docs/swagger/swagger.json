@@ -315,10 +315,6 @@
             },
             "type": "array"
           },
-          "scopeId": {
-            "format": "uuid",
-            "type": "string"
-          },
           "status": {
             "enum": [
               "active",
@@ -336,7 +332,6 @@
         },
         "required": [
           "accountId",
-          "scopeId",
           "email",
           "roles",
           "status",
@@ -1475,6 +1470,18 @@
         "required": [
           "items",
           "meta"
+        ],
+        "type": "object"
+      },
+      "V1AdminMediaUploadInitRequest": {
+        "properties": {
+          "content_type": {
+            "example": "image/jpeg",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content_type"
         ],
         "type": "object"
       },
@@ -4212,6 +4219,22 @@
         ],
         "type": "object"
       },
+      "V1AuthLoginRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "type": "object"
+      },
       "V1AuthLoginResponse": {
         "properties": {
           "accountId": {
@@ -4242,21 +4265,27 @@
             },
             "type": "array"
           },
-          "scopeId": {
-            "format": "uuid",
-            "type": "string"
-          },
           "tokens": {
             "$ref": "#/components/schemas/V1AuthTokenPair"
           }
         },
         "required": [
           "accountId",
-          "scopeId",
           "email",
           "roles",
           "tokens"
         ],
+        "type": "object"
+      },
+      "V1AuthLogoutRequest": {
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          },
+          "revokeAll": {
+            "type": "boolean"
+          }
+        },
         "type": "object"
       },
       "V1AuthMFADisableRequest": {
@@ -4315,15 +4344,10 @@
               "type": "string"
             },
             "type": "array"
-          },
-          "scopeId": {
-            "format": "uuid",
-            "type": "string"
           }
         },
         "required": [
           "accountId",
-          "scopeId",
           "email",
           "roles"
         ],
@@ -4361,15 +4385,21 @@
           "email": {
             "format": "email",
             "type": "string"
-          },
-          "scopeId": {
-            "format": "uuid",
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "V1AuthRefreshRequest": {
+        "properties": {
+          "refreshToken": {
             "type": "string"
           }
         },
         "required": [
-          "scopeId",
-          "email"
+          "refreshToken"
         ],
         "type": "object"
       },
@@ -4416,10 +4446,6 @@
             "nullable": true,
             "type": "string"
           },
-          "scopeId": {
-            "format": "uuid",
-            "type": "string"
-          },
           "sessionId": {
             "format": "uuid",
             "type": "string"
@@ -4434,7 +4460,6 @@
         },
         "required": [
           "sessionId",
-          "scopeId",
           "createdAt",
           "expiresAt",
           "status"
@@ -4883,10 +4908,6 @@
           "resourceType": {
             "type": "string"
           },
-          "scopeId": {
-            "format": "uuid",
-            "type": "string"
-          },
           "siteId": {
             "format": "uuid",
             "nullable": true,
@@ -4903,7 +4924,6 @@
         },
         "required": [
           "id",
-          "scopeId",
           "actorType",
           "action",
           "resourceType",
@@ -5725,7 +5745,7 @@
             "type": "array"
           },
           "roleSummary": {
-            "example": "platform_admin\u2192admin.all (full access); admin\u2192permission matrix with JWT company scope; member/viewer\u2192read-only baseline",
+            "example": "platform_admin\u2192admin.all (full access); admin\u2192permission matrix server-side; member/viewer\u2192read-only baseline",
             "type": "string"
           }
         },
@@ -8605,7 +8625,6 @@
                       "outcome": "success",
                       "resourceId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
                       "resourceType": "product",
-                      "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                       "siteId": null
                     }
                   ],
@@ -8913,7 +8932,6 @@
                       "roles": [
                         "admin"
                       ],
-                      "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                       "status": "active",
                       "updatedAt": "2026-04-19T10:00:00Z"
                     }
@@ -9050,7 +9068,7 @@
                 "status": "active"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminAuthUsersCreateRequest"
               }
             }
           },
@@ -9068,7 +9086,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -9245,7 +9262,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -9396,7 +9412,7 @@
                 "status": "disabled"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminAuthUsersPatchRequest"
               }
             }
           },
@@ -9414,7 +9430,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -9609,7 +9624,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -9786,7 +9800,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -9959,7 +9972,7 @@
                 "password": "reset-password12"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminAuthResetPasswordRequest"
               }
             }
           },
@@ -9977,7 +9990,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -10299,7 +10311,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -10380,7 +10391,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -10461,7 +10471,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -10635,7 +10644,6 @@
                     {
                       "createdAt": "2026-04-19T10:00:00Z",
                       "expiresAt": "2026-05-19T12:00:00Z",
-                      "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                       "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
                       "status": "active"
                     }
@@ -10699,7 +10707,7 @@
                 "status": "disabled"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminAuthUsersStatusPatchRequest"
               }
             }
           },
@@ -10717,7 +10725,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -12408,9 +12415,11 @@
         "requestBody": {
           "content": {
             "application/json": {
-              "example": "example",
+              "example": {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+              },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1CommerceReconciliationIgnoreRequest"
               }
             }
           },
@@ -12741,9 +12750,11 @@
         "requestBody": {
           "content": {
             "application/json": {
-              "example": "example",
+              "example": {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+              },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1CommerceReconciliationResolveRequest"
               }
             }
           },
@@ -14083,7 +14094,7 @@
                 "timezone": "Asia/Bangkok"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1FinanceDailyCloseCreateRequest"
               }
             }
           },
@@ -20635,7 +20646,7 @@
                 "reason": "restock"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminStockAdjustmentsRequest"
               }
             }
           },
@@ -21859,7 +21870,7 @@
                 "content_type": "image/jpeg"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminMediaUploadInitRequest"
               }
             }
           },
@@ -22171,7 +22182,7 @@
                 "content_type": "image/jpeg"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminMediaUploadInitRequest"
               }
             }
           },
@@ -23041,9 +23052,11 @@
         "requestBody": {
           "content": {
             "application/json": {
-              "example": "example",
+              "example": {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+              },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminOrderRefundPostRequest"
               }
             }
           },
@@ -39577,7 +39590,6 @@
                       "roles": [
                         "admin"
                       ],
-                      "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                       "status": "active",
                       "updatedAt": "2026-04-19T10:00:00Z"
                     }
@@ -39695,7 +39707,7 @@
                 "status": "active"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminAuthUsersCreateRequest"
               }
             }
           },
@@ -39713,7 +39725,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -39851,7 +39862,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -39929,7 +39939,7 @@
                 "status": "disabled"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminAuthUsersPatchRequest"
               }
             }
           },
@@ -39947,7 +39957,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -40013,7 +40022,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -40079,7 +40087,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -40141,7 +40148,7 @@
                 "password": "reset-password12"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminAuthResetPasswordRequest"
               }
             }
           },
@@ -40159,7 +40166,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -40298,7 +40304,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -40378,7 +40383,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -40458,7 +40462,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -40590,7 +40593,6 @@
                     {
                       "createdAt": "2026-04-19T10:00:00Z",
                       "expiresAt": "2026-05-19T12:00:00Z",
-                      "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                       "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
                       "status": "active"
                     }
@@ -40654,7 +40656,7 @@
                 "status": "disabled"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AdminAuthUsersStatusPatchRequest"
               }
             }
           },
@@ -40672,7 +40674,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "status": "active",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
@@ -40718,7 +40719,7 @@
                 "newPassword": "example-password-new"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AuthChangePasswordRequest"
               }
             }
           },
@@ -40805,7 +40806,7 @@
     },
     "/v1/auth/login": {
       "post": {
-        "description": "Authenticates an **API account** for a specific company. Returns access + refresh tokens and resolved roles. On failure returns **401** with `unauthenticated` or credential-specific codes. Rate limiting may apply when `HTTP_RATE_LIMIT_SENSITIVE_WRITES_ENABLED=true` (sensitive-write bucket).",
+        "description": "Authenticates an **API account** for the deployed tenant (single-company runtime). Returns access + refresh tokens and resolved roles. On failure returns **401** with `unauthenticated` or credential-specific codes. Rate limiting may apply when `HTTP_RATE_LIMIT_SENSITIVE_WRITES_ENABLED=true` (sensitive-write bucket).",
         "operationId": "DocOpV1AuthLogin",
         "parameters": [
           {
@@ -40820,11 +40821,10 @@
             "application/json": {
               "example": {
                 "email": "operator@example.com",
-                "password": "example-password",
-                "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+                "password": "example-password"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AuthLoginRequest"
               }
             }
           },
@@ -40841,7 +40841,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "tokens": {
                     "accessExpiresAt": "2026-04-19T13:00:00Z",
                     "accessToken": "stub-access-token",
@@ -40960,7 +40959,7 @@
                 "revokeAll": false
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AuthLogoutRequest"
               }
             }
           },
@@ -41047,7 +41046,7 @@
     },
     "/v1/auth/me": {
       "get": {
-        "description": "Returns account id, company id (when scoped), email, and roles for the Bearer access token. Requires `Authorization: Bearer` on `/v1/auth/*` bearer group.",
+        "description": "Returns account id, email, and roles for the Bearer access token. Requires `Authorization: Bearer` on `/v1/auth/*` bearer group.",
         "operationId": "DocOpV1AuthMe",
         "parameters": [
           {
@@ -41069,8 +41068,7 @@
                   "email": "operator@example.com",
                   "roles": [
                     "admin"
-                  ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+                  ]
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AuthMeResponse"
@@ -41150,7 +41148,7 @@
                 "totpCode": "123456"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AuthMFADisableRequest"
               }
             }
           },
@@ -41356,7 +41354,7 @@
                 "code": "123456"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AuthMFAVerifyRequest"
               }
             }
           },
@@ -41373,7 +41371,6 @@
                   "roles": [
                     "admin"
                   ],
-                  "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                   "tokens": {
                     "accessExpiresAt": "2026-04-19T13:00:00Z",
                     "accessToken": "stub-access-token",
@@ -41460,7 +41457,7 @@
                 "newPassword": "example-password-new"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AuthChangePasswordRequest"
               }
             }
           },
@@ -41547,7 +41544,7 @@
                 "token": "opaque-reset-token"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AuthPasswordResetConfirmRequest"
               }
             }
           },
@@ -41626,15 +41623,14 @@
           "content": {
             "application/json": {
               "example": {
-                "email": "operator@example.com",
-                "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+                "email": "operator@example.com"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AuthPasswordResetRequest"
               }
             }
           },
-          "description": "Company and email",
+          "description": "Account email",
           "required": true
         },
         "responses": {
@@ -41695,7 +41691,7 @@
                 "refreshToken": "stub-refresh-token"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AuthRefreshRequest"
               }
             }
           },
@@ -41805,7 +41801,7 @@
                 "exceptRefreshToken": "stub-refresh-token"
               },
               "schema": {
-                "type": "string"
+                "$ref": "#/components/schemas/V1AuthRevokeOtherSessionsRequest"
               }
             }
           },
@@ -41858,7 +41854,6 @@
                     {
                       "createdAt": "2026-04-19T10:00:00Z",
                       "expiresAt": "2026-05-19T12:00:00Z",
-                      "scopeId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
                       "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
                       "status": "active"
                     }
