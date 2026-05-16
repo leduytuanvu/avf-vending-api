@@ -59,21 +59,21 @@ func TestMemoryCatalogCacheHitMissInvalidate(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	c := NewMemoryCatalogCache()
-	orgID := uuid.New()
+	scopeID := uuid.New()
 	machineID := uuid.New()
-	if _, ok, err := c.Get(ctx, orgID, machineID, "v1"); err != nil || ok {
+	if _, ok, err := c.Get(ctx, scopeID, machineID, "v1"); err != nil || ok {
 		t.Fatalf("expected miss ok=%v err=%v", ok, err)
 	}
-	if err := c.Set(ctx, orgID, machineID, "v1", []byte(`{"ok":true}`), time.Minute); err != nil {
+	if err := c.Set(ctx, scopeID, machineID, "v1", []byte(`{"ok":true}`), time.Minute); err != nil {
 		t.Fatal(err)
 	}
-	if b, ok, err := c.Get(ctx, orgID, machineID, "v1"); err != nil || !ok || string(b) != `{"ok":true}` {
+	if b, ok, err := c.Get(ctx, scopeID, machineID, "v1"); err != nil || !ok || string(b) != `{"ok":true}` {
 		t.Fatalf("expected hit ok=%v err=%v body=%s", ok, err, string(b))
 	}
-	if err := c.InvalidateMachine(ctx, orgID, machineID); err != nil {
+	if err := c.InvalidateMachine(ctx, scopeID, machineID); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok, err := c.Get(ctx, orgID, machineID, "v1"); err != nil || ok {
+	if _, ok, err := c.Get(ctx, scopeID, machineID, "v1"); err != nil || ok {
 		t.Fatalf("expected miss after invalidate ok=%v err=%v", ok, err)
 	}
 }
@@ -82,22 +82,22 @@ func TestMemoryLoginFailureCounterLocksAtThreshold(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	c := NewMemoryLoginFailureCounter()
-	orgID := uuid.New()
-	locked, n, err := c.IncrementFailure(ctx, orgID, "USER@example.com", 2, time.Minute)
+	scopeID := uuid.New()
+	locked, n, err := c.IncrementFailure(ctx, scopeID, "USER@example.com", 2, time.Minute)
 	if err != nil || locked || n != 1 {
 		t.Fatalf("first failure locked=%v n=%d err=%v", locked, n, err)
 	}
-	locked, n, err = c.IncrementFailure(ctx, orgID, "user@example.com", 2, time.Minute)
+	locked, n, err = c.IncrementFailure(ctx, scopeID, "user@example.com", 2, time.Minute)
 	if err != nil || !locked || n != 2 {
 		t.Fatalf("second failure locked=%v n=%d err=%v", locked, n, err)
 	}
-	if npeek, err := c.PeekFailureCount(ctx, orgID, "user@example.com"); err != nil || npeek != 2 {
+	if npeek, err := c.PeekFailureCount(ctx, scopeID, "user@example.com"); err != nil || npeek != 2 {
 		t.Fatalf("peek n=%d err=%v", npeek, err)
 	}
-	if err := c.ClearFailures(ctx, orgID, "user@example.com"); err != nil {
+	if err := c.ClearFailures(ctx, scopeID, "user@example.com"); err != nil {
 		t.Fatal(err)
 	}
-	locked, n, err = c.IncrementFailure(ctx, orgID, "user@example.com", 2, time.Minute)
+	locked, n, err = c.IncrementFailure(ctx, scopeID, "user@example.com", 2, time.Minute)
 	if err != nil || locked || n != 1 {
 		t.Fatalf("after clear locked=%v n=%d err=%v", locked, n, err)
 	}

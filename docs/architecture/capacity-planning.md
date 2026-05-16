@@ -11,10 +11,10 @@ This document summarizes OLTP guardrails implemented under **P2.3 / P2.5** so op
 
 Migration **`00066_p25_capacity_indexes.sql`** adds **additive** btree/partial indexes for:
 
-- Orders by **organization + machine + time**
+- Orders by **company + machine + time**
 - Payment attempts by **provider_reference** (non-empty)
 - Outbox pending rows by **status + next_publish_after**
-- Audit events by **organization + occurred_at + action**
+- Audit events by **company + occurred_at + action**
 - Command attempts by **machine + status + sent_at**
 - Device telemetry by **machine + event_type + received_at**
 
@@ -23,13 +23,13 @@ Existing indexes on overlapping columns remain; new indexes complement reporting
 Migration **`00071_p23_capacity_cost_indexes.sql`** adds further **additive** indexes for:
 
 - **`payment_provider_events`** by **provider + provider_ref** (partial, non-empty ref)
-- **`audit_logs`** by **organization + created_at + action**
+- **`audit_logs`** by **company + created_at + action**
 - **`command_ledger`** by **machine + created_at + command_type**
 
 ## Redis catalog cache
 
 - Sale catalog snapshots may be cached under **`CACHE_ENABLED`** with **`SALE_CATALOG_CACHE_TTL`**.
-- Cache keys include **machine shadow version**, **per-organization media epoch** (`BumpOrganizationMedia` on catalog/media mutations), and **machine `config_revision`** so planogram/config publishes invalidate cached bootstrap/catalog rows without waiting for TTL expiry.
+- Cache keys include **machine shadow version**, **per-company media epoch** (`BumpCompanyMedia` on catalog/media mutations), and **machine `config_revision`** so planogram/config publishes invalidate cached bootstrap/catalog rows without waiting for TTL expiry.
 - Prometheus: **`avf_sale_catalog_cache_hits_total`** / **`avf_sale_catalog_cache_miss_total`**.
 
 ## Machine ingress (gRPC)
@@ -55,6 +55,6 @@ Configurable via **`CAPACITY_*`** env vars (see `internal/config/capacity.go`):
 
 ## Abuse protection (admin REST)
 
-When **`RATE_LIMIT_ENABLED`** is on, **`RATE_LIMIT_REPORTS_READ_PER_MIN`** bounds **GET** traffic to **`/reports`** paths per authenticated subject + organization.
+When **`RATE_LIMIT_ENABLED`** is on, **`RATE_LIMIT_REPORTS_READ_PER_MIN`** bounds **GET** traffic to **`/reports`** paths per authenticated subject + company.
 
 See also [cost-optimization.md](../runbooks/cost-optimization.md).

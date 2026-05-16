@@ -71,9 +71,6 @@ func (s *Service) MFATOTPEnrollBegin(ctx context.Context, p plauth.Principal) (*
 		}
 		return nil, err
 	}
-	if acct.OrganizationID != p.OrganizationID {
-		return nil, ErrInvalidRequest
-	}
 	active, err := s.q.AuthAdminMFACountActiveForUser(ctx, accountID)
 	if err != nil {
 		return nil, err
@@ -96,13 +93,12 @@ func (s *Service) MFATOTPEnrollBegin(ctx context.Context, p plauth.Principal) (*
 		return nil, err
 	}
 	if _, err := s.q.AuthAdminMFAInsertPending(ctx, db.AuthAdminMFAInsertPendingParams{
-		OrganizationID:   acct.OrganizationID,
 		UserID:           accountID,
 		SecretCiphertext: ct,
 	}); err != nil {
 		return nil, err
 	}
-	if err := s.auditMFASecurity(ctx, auditActionMFATOTPEnrollBegin, acct.OrganizationID, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess); err != nil {
+	if err := s.auditMFASecurity(ctx, auditActionMFATOTPEnrollBegin, uuid.Nil, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess); err != nil {
 		return nil, err
 	}
 	return &MFATOTPEnrollResponse{
@@ -142,11 +138,8 @@ func (s *Service) MFATOTPVerify(ctx context.Context, p plauth.Principal, req MFA
 		}
 		return nil, err
 	}
-	if acct.OrganizationID != p.OrganizationID {
-		return nil, ErrInvalidRequest
-	}
 	if strings.ToLower(strings.TrimSpace(acct.Status)) != "active" {
-		s.auditLoginFailure(ctx, acct.OrganizationID, acct.Email, "account_disabled")
+		s.auditLoginFailure(ctx, uuid.Nil, acct.Email, "account_disabled")
 		return nil, ErrInvalidCredentials
 	}
 
@@ -214,11 +207,11 @@ func (s *Service) MFATOTPVerify(ctx context.Context, p plauth.Principal, req MFA
 		}); err != nil {
 			return nil, err
 		}
-		if err := s.auditMFASecurity(ctx, auditActionMFATOTPActivated, acct.OrganizationID, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess); err != nil {
+		if err := s.auditMFASecurity(ctx, auditActionMFATOTPActivated, uuid.Nil, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := s.auditMFASecurity(ctx, auditActionMFALoginMFACompleted, acct.OrganizationID, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess); err != nil {
+		if err := s.auditMFASecurity(ctx, auditActionMFALoginMFACompleted, uuid.Nil, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess); err != nil {
 			return nil, err
 		}
 	}
@@ -226,7 +219,7 @@ func (s *Service) MFATOTPVerify(ctx context.Context, p plauth.Principal, req MFA
 	_ = s.q.AuthRecordLoginSuccess(ctx, accountID)
 	if s.loginFailures != nil {
 		email := strings.TrimSpace(strings.ToLower(acct.Email))
-		_ = s.loginFailures.ClearFailures(ctx, acct.OrganizationID, email)
+		_ = s.loginFailures.ClearFailures(ctx, uuid.Nil, email)
 	}
 	out, err := s.issueLoginResponse(ctx, acct)
 	if err != nil {
@@ -276,7 +269,7 @@ func (s *Service) MFATOTPDisable(ctx context.Context, accountID uuid.UUID, req M
 		s.auditMFATOTPFailure(ctx, acct, "invalid_totp_disable")
 		return ErrInvalidCredentials
 	}
-	orgID := acct.OrganizationID
+	scopeID := uuid.Nil
 	err = s.runPasswordTxn(ctx, func(tx pgx.Tx, q *db.Queries) error {
 		if _, err := q.AuthAdminMFADisableActiveTOTP(ctx, accountID); err != nil {
 			return err
@@ -284,10 +277,7 @@ func (s *Service) MFATOTPDisable(ctx context.Context, accountID uuid.UUID, req M
 		if err := q.AuthRevokeAllRefreshForAccount(ctx, accountID); err != nil {
 			return err
 		}
-		return q.AuthAdminRevokeAllAdminSessionsForUser(ctx, db.AuthAdminRevokeAllAdminSessionsForUserParams{
-			OrganizationID: orgID,
-			UserID:         accountID,
-		})
+		return q.AuthAdminRevokeAllAdminSessionsForUser(ctx, accountID)
 	})
 	if err != nil {
 		return err
@@ -301,5 +291,5 @@ func (s *Service) MFATOTPDisable(ctx context.Context, accountID uuid.UUID, req M
 			_ = s.accessRevocation.RevokeSubject(ctx, accountID.String(), ttl)
 		}
 	}
-	return s.auditMFASecurity(ctx, auditActionMFATOTPDisabled, orgID, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess)
+	return s.auditMFASecurity(ctx, auditActionMFATOTPDisabled, scopeID, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess)
 }

@@ -48,7 +48,8 @@ type v1AdminRolloutCreateRequest struct {
 
 func serveAdminRolloutCreate(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -66,7 +67,7 @@ func serveAdminRolloutCreate(app *api.HTTPApplication) http.HandlerFunc {
 		if u, ok := parseInteractiveActorUUID(r); ok {
 			cb = pgtype.UUID{Bytes: *u, Valid: true}
 		}
-		row, err := app.Rollout.CreateCampaign(r.Context(), orgID, body.RolloutType, body.TargetVersion, st, cb)
+		row, err := app.Rollout.CreateCampaign(r.Context(), scopeID, body.RolloutType, body.TargetVersion, st, cb)
 		if err != nil {
 			writeRolloutError(w, r.Context(), err)
 			return
@@ -77,7 +78,8 @@ func serveAdminRolloutCreate(app *api.HTTPApplication) http.HandlerFunc {
 
 func serveAdminRolloutList(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -87,7 +89,7 @@ func serveAdminRolloutList(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_query", "limit and offset must be valid integers")
 			return
 		}
-		rows, err := app.Rollout.ListCampaigns(r.Context(), orgID, limit, offset)
+		rows, err := app.Rollout.ListCampaigns(r.Context(), scopeID, limit, offset)
 		if err != nil {
 			writeRolloutError(w, r.Context(), err)
 			return
@@ -109,7 +111,8 @@ func serveAdminRolloutList(app *api.HTTPApplication) http.HandlerFunc {
 
 func serveAdminRolloutGet(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -118,7 +121,7 @@ func serveAdminRolloutGet(app *api.HTTPApplication) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		camp, targets, err := app.Rollout.GetCampaign(r.Context(), orgID, rid)
+		camp, targets, err := app.Rollout.GetCampaign(r.Context(), scopeID, rid)
 		if err != nil {
 			writeRolloutError(w, r.Context(), err)
 			return
@@ -136,7 +139,8 @@ func serveAdminRolloutGet(app *api.HTTPApplication) http.HandlerFunc {
 
 func serveAdminRolloutStart(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -145,11 +149,11 @@ func serveAdminRolloutStart(app *api.HTTPApplication) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		if err := app.Rollout.Start(r.Context(), orgID, rid); err != nil {
+		if err := app.Rollout.Start(r.Context(), scopeID, rid); err != nil {
 			writeRolloutError(w, r.Context(), err)
 			return
 		}
-		camp, targets, err := app.Rollout.GetCampaign(r.Context(), orgID, rid)
+		camp, targets, err := app.Rollout.GetCampaign(r.Context(), scopeID, rid)
 		if err != nil {
 			writeRolloutError(w, r.Context(), err)
 			return
@@ -191,7 +195,8 @@ func serveAdminRolloutRollback(app *api.HTTPApplication) http.HandlerFunc {
 
 func rolloutAction(app *api.HTTPApplication, fn func(context.Context, uuid.UUID, uuid.UUID) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -200,11 +205,11 @@ func rolloutAction(app *api.HTTPApplication, fn func(context.Context, uuid.UUID,
 		if !ok {
 			return
 		}
-		if err := fn(r.Context(), orgID, rid); err != nil {
+		if err := fn(r.Context(), scopeID, rid); err != nil {
 			writeRolloutError(w, r.Context(), err)
 			return
 		}
-		camp, targets, err := app.Rollout.GetCampaign(r.Context(), orgID, rid)
+		camp, targets, err := app.Rollout.GetCampaign(r.Context(), scopeID, rid)
 		if err != nil {
 			writeRolloutError(w, r.Context(), err)
 			return
@@ -222,13 +227,12 @@ func rolloutAction(app *api.HTTPApplication, fn func(context.Context, uuid.UUID,
 
 func encodeRolloutCampaign(b db.RolloutCampaign) map[string]any {
 	out := map[string]any{
-		"id":             b.ID.String(),
-		"organizationId": b.OrganizationID.String(),
-		"rolloutType":    b.RolloutType,
-		"targetVersion":  b.TargetVersion,
-		"status":         b.Status,
-		"createdAt":      formatAPITimeRFC3339Nano(b.CreatedAt),
-		"updatedAt":      formatAPITimeRFC3339Nano(b.UpdatedAt),
+		"id":            b.ID.String(),
+		"rolloutType":   b.RolloutType,
+		"targetVersion": b.TargetVersion,
+		"status":        b.Status,
+		"createdAt":     formatAPITimeRFC3339Nano(b.CreatedAt),
+		"updatedAt":     formatAPITimeRFC3339Nano(b.UpdatedAt),
 	}
 	if len(b.Strategy) > 0 {
 		out["strategy"] = json.RawMessage(b.Strategy)
@@ -252,13 +256,12 @@ func encodeRolloutCampaign(b db.RolloutCampaign) map[string]any {
 
 func encodeRolloutTarget(t db.RolloutTarget) map[string]any {
 	out := map[string]any{
-		"id":             t.ID.String(),
-		"organizationId": t.OrganizationID.String(),
-		"campaignId":     t.CampaignID.String(),
-		"machineId":      t.MachineID.String(),
-		"status":         t.Status,
-		"createdAt":      formatAPITimeRFC3339Nano(t.CreatedAt),
-		"updatedAt":      formatAPITimeRFC3339Nano(t.UpdatedAt),
+		"id":         t.ID.String(),
+		"campaignId": t.CampaignID.String(),
+		"machineId":  t.MachineID.String(),
+		"status":     t.Status,
+		"createdAt":  formatAPITimeRFC3339Nano(t.CreatedAt),
+		"updatedAt":  formatAPITimeRFC3339Nano(t.UpdatedAt),
 	}
 	if t.ErrMessage.Valid {
 		out["error"] = t.ErrMessage.String

@@ -40,60 +40,60 @@ The table lists **every** `paths` entry in `docs/swagger/swagger.json` (one row 
 | /metrics | GET | DevOps/monitoring | none on ops by default; **Bearer** when `METRICS_SCRAPE_TOKEN` set (ops + public); private bind preferred | ops; metrics reader | n/a | yes | internal | high if exposed on public listener without ACL |
 | /swagger/doc.json | GET | DevOps/monitoring; integrators (when enabled) | none (public only when intentionally enabled) | (n/a) | n/a | yes | keep | med: disable on edge or protect if secrets could leak via misconfig |
 | /swagger/index.html | GET | DevOps/monitoring; integrators (when enabled) | none (public only when intentionally enabled) | (n/a) | n/a | yes | keep | med: disable on edge or protect if secrets could leak via misconfig |
-| /v1/admin/assignments | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/brands | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/brands | POST | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/brands/{brandId} | DELETE | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/brands/{brandId} | PATCH | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/brands/{brandId} | PUT | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/categories | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/categories | POST | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/categories/{categoryId} | DELETE | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/categories/{categoryId} | PATCH | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/categories/{categoryId} | PUT | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/commands | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/machines | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/machines/{machineId} | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/machines/{machineId}/activation-codes | GET | admin portal (provisioning; not kiosk runtime) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | med: code issuance abuse |
-| /v1/admin/machines/{machineId}/activation-codes | POST | admin portal (provisioning; not kiosk runtime) | Bearer JWT | org_admin or platform_admin | no | caution | keep | med: code issuance abuse |
-| /v1/admin/machines/{machineId}/activation-codes/{activationCodeId} | DELETE | admin portal (provisioning; not kiosk runtime) | Bearer JWT | org_admin or platform_admin | no | caution | keep | med: code issuance abuse |
+| /v1/admin/assignments | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/brands | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/brands | POST | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/brands/{brandId} | DELETE | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/brands/{brandId} | PATCH | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/brands/{brandId} | PUT | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/categories | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/categories | POST | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/categories/{categoryId} | DELETE | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/categories/{categoryId} | PATCH | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/categories/{categoryId} | PUT | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/commands | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/machines | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/machines/{machineId} | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/machines/{machineId}/activation-codes | GET | admin portal (provisioning; not kiosk runtime) | Bearer JWT | admin or platform_admin | n/a | yes | keep | med: code issuance abuse |
+| /v1/admin/machines/{machineId}/activation-codes | POST | admin portal (provisioning; not kiosk runtime) | Bearer JWT | admin or platform_admin | no | caution | keep | med: code issuance abuse |
+| /v1/admin/machines/{machineId}/activation-codes/{activationCodeId} | DELETE | admin portal (provisioning; not kiosk runtime) | Bearer JWT | admin or platform_admin | no | caution | keep | med: code issuance abuse |
 | /v1/admin/machines/{machineId}/cash-collections | GET | technician setup app; admin portal | Bearer JWT | org scope + operator session (writes) | n/a | yes | keep | high: cash settlement |
 | /v1/admin/machines/{machineId}/cash-collections | POST | technician setup app; admin portal | Bearer JWT | org scope + operator session (writes) | yes | yes w/ key | keep | high: cash settlement |
 | /v1/admin/machines/{machineId}/cash-collections/{collectionId} | GET | technician setup app; admin portal | Bearer JWT | org scope + operator session (writes) | n/a | yes | keep | high: cash settlement |
 | /v1/admin/machines/{machineId}/cash-collections/{collectionId}/close | POST | technician setup app; admin portal | Bearer JWT | org scope + operator session (writes) | yes | yes w/ key | keep | high: cash settlement |
-| /v1/admin/machines/{machineId}/cashbox | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/machines/{machineId}/inventory | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/machines/{machineId}/inventory-events | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/machines/{machineId}/planograms/draft | PUT | technician setup app; admin portal | Bearer JWT | org_admin or platform_admin | no | caution | keep | med |
-| /v1/admin/machines/{machineId}/planograms/publish | POST | technician setup app | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/machines/{machineId}/slots | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/machines/{machineId}/stock-adjustments | POST | technician setup app; admin portal | Bearer JWT | org_admin or platform_admin plus operator session | yes | yes w/ key | keep | med: inventory truth |
-| /v1/admin/machines/{machineId}/sync | POST | technician setup app | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | low |
-| /v1/admin/machines/{machineId}/topology | PUT | technician setup app; admin portal | Bearer JWT | org_admin or platform_admin | no | caution | keep | med |
-| /v1/admin/organizations/{orgId}/artifacts | GET | admin portal | Bearer JWT | org or platform (artifact storage route) | n/a | yes | keep | low |
-| /v1/admin/organizations/{orgId}/artifacts | POST | admin portal | Bearer JWT | org or platform (artifact storage route) | yes | yes w/ key | keep | med |
-| /v1/admin/organizations/{orgId}/artifacts/{artifactId} | DELETE | admin portal | Bearer JWT | org or platform (artifact storage route) | yes | yes w/ key | keep | med |
-| /v1/admin/organizations/{orgId}/artifacts/{artifactId} | GET | admin portal | Bearer JWT | org or platform (artifact storage route) | n/a | yes | keep | low |
-| /v1/admin/organizations/{orgId}/artifacts/{artifactId}/content | PUT | admin portal | Bearer JWT | org or platform (artifact storage route) | yes | yes w/ key | keep | med |
-| /v1/admin/organizations/{orgId}/artifacts/{artifactId}/download | GET | admin portal | Bearer JWT | org or platform (artifact storage route) | n/a | yes | keep | low |
-| /v1/admin/ota | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/planograms | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/planograms/{planogramId} | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/price-books | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/products | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/products | POST | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/products/{productId} | DELETE | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/products/{productId} | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/products/{productId} | PATCH | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/products/{productId} | PUT | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/products/{productId}/image | DELETE | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/products/{productId}/image | PUT | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/tags | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/admin/tags | POST | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/tags/{tagId} | DELETE | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/tags/{tagId} | PATCH | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/tags/{tagId} | PUT | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | yes | yes w/ key | keep | med |
-| /v1/admin/technicians | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/machines/{machineId}/cashbox | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/machines/{machineId}/inventory | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/machines/{machineId}/inventory-events | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/machines/{machineId}/planograms/draft | PUT | technician setup app; admin portal | Bearer JWT | admin or platform_admin | no | caution | keep | med |
+| /v1/admin/machines/{machineId}/planograms/publish | POST | technician setup app | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/machines/{machineId}/slots | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/machines/{machineId}/stock-adjustments | POST | technician setup app; admin portal | Bearer JWT | admin or platform_admin plus operator session | yes | yes w/ key | keep | med: inventory truth |
+| /v1/admin/machines/{machineId}/sync | POST | technician setup app | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | low |
+| /v1/admin/machines/{machineId}/topology | PUT | technician setup app; admin portal | Bearer JWT | admin or platform_admin | no | caution | keep | med |
+| /v1/admin/artifacts | GET | admin portal | Bearer JWT | admin or platform_admin (artifact storage route) | n/a | yes | keep | low |
+| /v1/admin/artifacts | POST | admin portal | Bearer JWT | admin or platform_admin (artifact storage route) | yes | yes w/ key | keep | med |
+| /v1/admin/artifacts/{artifactId} | DELETE | admin portal | Bearer JWT | admin or platform_admin (artifact storage route) | yes | yes w/ key | keep | med |
+| /v1/admin/artifacts/{artifactId} | GET | admin portal | Bearer JWT | admin or platform_admin (artifact storage route) | n/a | yes | keep | low |
+| /v1/admin/artifacts/{artifactId}/content | PUT | admin portal | Bearer JWT | admin or platform_admin (artifact storage route) | yes | yes w/ key | keep | med |
+| /v1/admin/artifacts/{artifactId}/download | GET | admin portal | Bearer JWT | admin or platform_admin (artifact storage route) | n/a | yes | keep | low |
+| /v1/admin/ota | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/planograms | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/planograms/{planogramId} | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/price-books | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/products | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/products | POST | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/products/{productId} | DELETE | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/products/{productId} | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/products/{productId} | PATCH | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/products/{productId} | PUT | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/products/{productId}/image | DELETE | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/products/{productId}/image | PUT | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/tags | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/admin/tags | POST | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/tags/{tagId} | DELETE | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/tags/{tagId} | PATCH | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/tags/{tagId} | PUT | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | yes | yes w/ key | keep | med |
+| /v1/admin/technicians | GET | admin portal; technician setup app (where machine-scoped) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
 | /v1/auth/login | POST | technician setup app; admin portal | none (body credentials / refresh token) | (n/a) | n/a | caution | keep | med: credential handling |
 | /v1/auth/logout | POST | technician setup app; admin portal | Bearer JWT | authenticated principal | n/a | caution | keep | low |
 | /v1/auth/me | GET | technician setup app; admin portal | Bearer JWT | authenticated principal | n/a | yes | keep | low |
@@ -115,11 +115,11 @@ The table lists **every** `paths` entry in `docs/swagger/swagger.json` (one row 
 | /v1/device/machines/{machineId}/events/reconcile | POST | kiosk runtime app; device HTTP fallback | Bearer JWT | machine, org, or platform | no (batch keys inside body; follow contract) | caution | keep | MQTT-first for volume; HTTP batch for critical reconcile only per contract |
 | /v1/device/machines/{machineId}/events/{idempotencyKey}/status | GET | kiosk runtime app | Bearer JWT | machine, org, or platform | n/a | yes | keep | low |
 | /v1/device/machines/{machineId}/vend-results | POST | device HTTP fallback | Bearer JWT | machine / bridge roles | yes | yes w/ key | fallback | med |
-| /v1/machines/{machineId}/check-ins | POST | kiosk runtime app | Bearer JWT | machine tenant | no | caution | keep | med |
-| /v1/machines/{machineId}/commands/dispatch | POST | admin portal; kiosk (dispatch receipts) | Bearer JWT | admin roles / machine tenant (see route) | yes | yes w/ key | keep | med |
-| /v1/machines/{machineId}/commands/receipts | GET | admin portal; kiosk (dispatch receipts) | Bearer JWT | admin roles / machine tenant (see route) | n/a | yes | keep | low |
-| /v1/machines/{machineId}/commands/{sequence}/status | GET | admin portal; kiosk (dispatch receipts) | Bearer JWT | admin roles / machine tenant (see route) | n/a | yes | keep | low |
-| /v1/machines/{machineId}/config-applies | POST | kiosk runtime app | Bearer JWT | machine tenant | no | caution | keep | med |
+| /v1/machines/{machineId}/check-ins | POST | kiosk runtime app | Bearer JWT | machine company | no | caution | keep | med |
+| /v1/machines/{machineId}/commands/dispatch | POST | admin portal; kiosk (dispatch receipts) | Bearer JWT | admin roles / machine company (see route) | yes | yes w/ key | keep | med |
+| /v1/machines/{machineId}/commands/receipts | GET | admin portal; kiosk (dispatch receipts) | Bearer JWT | admin roles / machine company (see route) | n/a | yes | keep | low |
+| /v1/machines/{machineId}/commands/{sequence}/status | GET | admin portal; kiosk (dispatch receipts) | Bearer JWT | admin roles / machine company (see route) | n/a | yes | keep | low |
+| /v1/machines/{machineId}/config-applies | POST | kiosk runtime app | Bearer JWT | machine company | no | caution | keep | med |
 | /v1/machines/{machineId}/operator-sessions/action-attributions | GET | technician setup app | Bearer JWT | machine URL access + operator session | n/a | yes | keep | low |
 | /v1/machines/{machineId}/operator-sessions/auth-events | GET | technician setup app | Bearer JWT | machine URL access + operator session | n/a | yes | keep | low |
 | /v1/machines/{machineId}/operator-sessions/current | GET | technician setup app | Bearer JWT | machine URL access + operator session | n/a | yes | keep | low |
@@ -128,21 +128,21 @@ The table lists **every** `paths` entry in `docs/swagger/swagger.json` (one row 
 | /v1/machines/{machineId}/operator-sessions/logout | POST | technician setup app | Bearer JWT | machine URL access + operator session | no | caution | keep | low |
 | /v1/machines/{machineId}/operator-sessions/timeline | GET | technician setup app | Bearer JWT | machine URL access + operator session | n/a | yes | keep | low |
 | /v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat | POST | technician setup app | Bearer JWT | machine URL access + operator session | no | caution | keep | low |
-| /v1/machines/{machineId}/sale-catalog | GET | kiosk runtime app | Bearer JWT | machine tenant | n/a | yes | keep | low; not for admin bulk export |
-| /v1/machines/{machineId}/shadow | GET | kiosk runtime app; admin portal | Bearer JWT | machine tenant | n/a | yes | keep | low |
-| /v1/machines/{machineId}/telemetry/incidents | GET | kiosk runtime app; admin portal | Bearer JWT | machine tenant | n/a | yes | keep | med: snapshot/rollups are low-rate HTTP; flood telemetry is MQTT-first, not these GETs |
-| /v1/machines/{machineId}/telemetry/rollups | GET | kiosk runtime app; admin portal | Bearer JWT | machine tenant | n/a | yes | keep | med: snapshot/rollups are low-rate HTTP; flood telemetry is MQTT-first, not these GETs |
-| /v1/machines/{machineId}/telemetry/snapshot | GET | kiosk runtime app; admin portal | Bearer JWT | machine tenant | n/a | yes | keep | med: snapshot/rollups are low-rate HTTP; flood telemetry is MQTT-first, not these GETs |
-| /v1/operator-insights/technicians/{technicianId}/action-attributions | GET | admin portal | Bearer JWT | platform, org_admin, or org_member | n/a | yes | keep | low |
-| /v1/operator-insights/users/action-attributions | GET | admin portal | Bearer JWT | platform, org_admin, or org_member | n/a | yes | keep | low |
-| /v1/orders | GET | admin portal (not kiosk runtime) | Bearer JWT | org-scoped lists | n/a | yes | keep | low |
-| /v1/payments | GET | admin portal (not kiosk runtime) | Bearer JWT | org-scoped lists | n/a | yes | keep | low |
-| /v1/reports/fleet-health | GET | admin portal (not kiosk runtime) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/reports/inventory-exceptions | GET | admin portal (not kiosk runtime) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/reports/payments-summary | GET | admin portal (not kiosk runtime) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
-| /v1/reports/sales-summary | GET | admin portal (not kiosk runtime) | Bearer JWT | org_admin or platform_admin | n/a | yes | keep | low |
+| /v1/machines/{machineId}/sale-catalog | GET | kiosk runtime app | Bearer JWT | machine company | n/a | yes | keep | low; not for admin bulk export |
+| /v1/machines/{machineId}/shadow | GET | kiosk runtime app; admin portal | Bearer JWT | machine company | n/a | yes | keep | low |
+| /v1/machines/{machineId}/telemetry/incidents | GET | kiosk runtime app; admin portal | Bearer JWT | machine company | n/a | yes | keep | med: snapshot/rollups are low-rate HTTP; flood telemetry is MQTT-first, not these GETs |
+| /v1/machines/{machineId}/telemetry/rollups | GET | kiosk runtime app; admin portal | Bearer JWT | machine company | n/a | yes | keep | med: snapshot/rollups are low-rate HTTP; flood telemetry is MQTT-first, not these GETs |
+| /v1/machines/{machineId}/telemetry/snapshot | GET | kiosk runtime app; admin portal | Bearer JWT | machine company | n/a | yes | keep | med: snapshot/rollups are low-rate HTTP; flood telemetry is MQTT-first, not these GETs |
+| /v1/operator-insights/technicians/{technicianId}/action-attributions | GET | admin portal | Bearer JWT | platform, admin, or org_member | n/a | yes | keep | low |
+| /v1/operator-insights/users/action-attributions | GET | admin portal | Bearer JWT | platform, admin, or org_member | n/a | yes | keep | low |
+| /v1/orders | GET | admin portal (not kiosk runtime) | Bearer JWT | role-scoped lists | n/a | yes | keep | low |
+| /v1/payments | GET | admin portal (not kiosk runtime) | Bearer JWT | role-scoped lists | n/a | yes | keep | low |
+| /v1/reports/fleet-health | GET | admin portal (not kiosk runtime) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/reports/inventory-exceptions | GET | admin portal (not kiosk runtime) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/reports/payments-summary | GET | admin portal (not kiosk runtime) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
+| /v1/reports/sales-summary | GET | admin portal (not kiosk runtime) | Bearer JWT | admin or platform_admin | n/a | yes | keep | low |
 | /v1/setup/activation-codes/claim | POST | kiosk runtime app (first install) | none (public claim) | activation code + device fingerprint | n/a | no | keep | med: provisioning abuse; rate limits |
-| /v1/setup/machines/{machineId}/bootstrap | GET | kiosk runtime app; technician setup app | Bearer JWT | machine tenant | n/a | yes | keep | low |
+| /v1/setup/machines/{machineId}/bootstrap | GET | kiosk runtime app; technician setup app | Bearer JWT | machine company | n/a | yes | keep | low |
 | /version | GET | DevOps/monitoring | none | (n/a) | n/a | yes | keep | low |
 
 ---

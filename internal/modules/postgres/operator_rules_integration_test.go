@@ -25,7 +25,6 @@ func TestOperatorSession_OneActivePerMachine(t *testing.T) {
 
 	tid := testfixtures.DevTechnicianID
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -34,7 +33,6 @@ func TestOperatorSession_OneActivePerMachine(t *testing.T) {
 	require.NoError(t, err)
 
 	sess2, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -44,10 +42,9 @@ func TestOperatorSession_OneActivePerMachine(t *testing.T) {
 	require.Equal(t, sess.ID, sess2.ID, "same technician login should resume the ACTIVE session")
 
 	_, err = svc.EndOperatorSession(ctx, operator.EndOperatorSessionInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		SessionID:      sess.ID,
-		FinalStatus:    domainoperator.SessionStatusEnded,
+		MachineID:   testfixtures.DevMachineID,
+		SessionID:   sess.ID,
+		FinalStatus: domainoperator.SessionStatusEnded,
 	})
 	require.NoError(t, err)
 }
@@ -63,7 +60,6 @@ func TestOperatorSession_EndTwiceSecondIsConflict(t *testing.T) {
 
 	tid := testfixtures.DevTechnicianID
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -72,7 +68,6 @@ func TestOperatorSession_EndTwiceSecondIsConflict(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.EndOperatorSession(ctx, operator.EndOperatorSessionInput{
-		OrganizationID:   testfixtures.DevOrganizationID,
 		MachineID:        testfixtures.DevMachineID,
 		SessionID:        sess.ID,
 		FinalStatus:      domainoperator.SessionStatusEnded,
@@ -81,7 +76,6 @@ func TestOperatorSession_EndTwiceSecondIsConflict(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.EndOperatorSession(ctx, operator.EndOperatorSessionInput{
-		OrganizationID:   testfixtures.DevOrganizationID,
 		MachineID:        testfixtures.DevMachineID,
 		SessionID:        sess.ID,
 		FinalStatus:      domainoperator.SessionStatusEnded,
@@ -101,7 +95,6 @@ func TestOperatorSession_HeartbeatRejectedAfterEnd(t *testing.T) {
 
 	tid := testfixtures.DevTechnicianID
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -110,7 +103,6 @@ func TestOperatorSession_HeartbeatRejectedAfterEnd(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.EndOperatorSession(ctx, operator.EndOperatorSessionInput{
-		OrganizationID:   testfixtures.DevOrganizationID,
 		MachineID:        testfixtures.DevMachineID,
 		SessionID:        sess.ID,
 		FinalStatus:      domainoperator.SessionStatusEnded,
@@ -118,7 +110,7 @@ func TestOperatorSession_HeartbeatRejectedAfterEnd(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = svc.HeartbeatOperatorSession(ctx, testfixtures.DevOrganizationID, testfixtures.DevMachineID, sess.ID)
+	_, err = svc.HeartbeatOperatorSession(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, sess.ID)
 	require.ErrorIs(t, err, domainoperator.ErrSessionNotActive)
 }
 
@@ -133,7 +125,6 @@ func TestOperatorSession_LoginCreatesAuthEvent_LogoutCreatesAuthEvent(t *testing
 
 	tid := testfixtures.DevTechnicianID
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -149,7 +140,6 @@ func TestOperatorSession_LoginCreatesAuthEvent_LogoutCreatesAuthEvent(t *testing
 	require.GreaterOrEqual(t, loginCnt, 1)
 
 	_, err = svc.EndOperatorSession(ctx, operator.EndOperatorSessionInput{
-		OrganizationID:   testfixtures.DevOrganizationID,
 		MachineID:        testfixtures.DevMachineID,
 		SessionID:        sess.ID,
 		FinalStatus:      domainoperator.SessionStatusEnded,
@@ -177,7 +167,6 @@ func TestOperatorSession_TimeoutWhenExpired(t *testing.T) {
 	tid := testfixtures.DevTechnicianID
 	future := time.Now().UTC().Add(2 * time.Hour)
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -191,9 +180,8 @@ func TestOperatorSession_TimeoutWhenExpired(t *testing.T) {
 	require.NoError(t, err)
 
 	timed, err := svc.TimeoutOperatorSession(ctx, operator.TimeoutOperatorSessionInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		SessionID:      sess.ID,
+		MachineID: testfixtures.DevMachineID,
+		SessionID: sess.ID,
 	})
 	require.NoError(t, err)
 	require.Equal(t, domainoperator.SessionStatusExpired, timed.Status)
@@ -211,7 +199,6 @@ func TestOperatorInsightLists_AttributionsForFlows(t *testing.T) {
 
 	tid := testfixtures.DevTechnicianID
 	sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		ActorType:         domainoperator.ActorTypeTechnician,
 		TechnicianID:      &tid,
@@ -221,7 +208,6 @@ func TestOperatorInsightLists_AttributionsForFlows(t *testing.T) {
 	sid := sess.ID
 
 	_, err = store.CreateRefillSessionWithAttribution(ctx, postgres.CreateRefillSessionWithAttributionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		StartedAt:         time.Now().UTC(),
 		Metadata:          []byte(`{}`),
@@ -230,7 +216,6 @@ func TestOperatorInsightLists_AttributionsForFlows(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.CreateCashCollectionWithAttribution(ctx, postgres.CreateCashCollectionWithAttributionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		CollectedAt:       time.Now().UTC(),
 		AmountMinor:       100,
@@ -241,7 +226,6 @@ func TestOperatorInsightLists_AttributionsForFlows(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.RecordMachineConfigApplicationWithAttribution(ctx, postgres.RecordMachineConfigApplicationWithAttributionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		AppliedAt:         time.Now().UTC(),
 		ConfigRevision:    1,
@@ -262,7 +246,6 @@ func TestOperatorInsightLists_AttributionsForFlows(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.CreateIncidentWithAttribution(ctx, postgres.CreateIncidentWithAttributionInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		MachineID:         testfixtures.DevMachineID,
 		Status:            "open",
 		Title:             "test",
@@ -272,7 +255,7 @@ func TestOperatorInsightLists_AttributionsForFlows(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	attr, err := svc.ListActionAttributionsForMachine(ctx, testfixtures.DevOrganizationID, testfixtures.DevMachineID, 100)
+	attr, err := svc.ListActionAttributionsForMachine(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, 100)
 	require.NoError(t, err)
 
 	found := map[string]bool{}
@@ -288,20 +271,19 @@ func TestOperatorInsightLists_AttributionsForFlows(t *testing.T) {
 	require.True(t, found["command_ledger"], "command attribution")
 	require.True(t, found["incidents"], "incident attribution")
 
-	byTech, err := svc.ListActionAttributionsForTechnician(ctx, testfixtures.DevOrganizationID, tid, 200)
+	byTech, err := svc.ListActionAttributionsForTechnician(ctx, testfixtures.DevScopeID, tid, 200)
 	require.NoError(t, err)
 	require.NotEmpty(t, byTech)
 
-	tl, err := svc.BuildMachineOperatorTimeline(ctx, testfixtures.DevOrganizationID, testfixtures.DevMachineID, 50)
+	tl, err := svc.BuildMachineOperatorTimeline(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, 50)
 	require.NoError(t, err)
 	require.NotEmpty(t, tl)
 
-	authEvents, err := svc.ListAuthEventsForMachine(ctx, testfixtures.DevOrganizationID, testfixtures.DevMachineID, 20)
+	authEvents, err := svc.ListAuthEventsForMachine(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, 20)
 	require.NoError(t, err)
 	require.NotEmpty(t, authEvents)
 
 	_, err = svc.EndOperatorSession(ctx, operator.EndOperatorSessionInput{
-		OrganizationID:   testfixtures.DevOrganizationID,
 		MachineID:        testfixtures.DevMachineID,
 		SessionID:        sid,
 		FinalStatus:      domainoperator.SessionStatusEnded,

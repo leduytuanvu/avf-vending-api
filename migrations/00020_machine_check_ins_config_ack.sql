@@ -3,7 +3,7 @@
 
 CREATE TABLE machine_check_ins (
     id bigserial PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     android_id text,
     sim_serial text,
@@ -20,12 +20,12 @@ CREATE TABLE machine_check_ins (
     occurred_at timestamptz NOT NULL,
     recorded_at timestamptz NOT NULL DEFAULT now(),
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-    CONSTRAINT fk_machine_check_ins_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE
+    CONSTRAINT fk_machine_check_ins_org_machine FOREIGN KEY (scope_id, machine_id) REFERENCES machines (scope_id, id) ON DELETE CASCADE
 );
 
 CREATE INDEX ix_machine_check_ins_machine_occurred ON machine_check_ins (machine_id, occurred_at DESC);
 
-CREATE INDEX ix_machine_check_ins_org_occurred ON machine_check_ins (organization_id, occurred_at DESC);
+CREATE INDEX ix_machine_check_ins_org_occurred ON machine_check_ins (scope_id, occurred_at DESC);
 
 COMMENT ON TABLE machine_check_ins IS 'Append-only Android device boot/runtime check-ins; occurred_at is client business time with timezone.';
 

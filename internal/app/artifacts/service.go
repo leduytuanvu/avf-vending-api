@@ -113,9 +113,9 @@ func (s *Service) ReserveArtifact(_ context.Context) (uuid.UUID, error) {
 }
 
 // PutContent streams exactly size bytes into the canonical artifact key, validating SHA-256 and content type.
-func (s *Service) PutContent(ctx context.Context, organizationID, artifactID uuid.UUID, body io.Reader, size int64, contentType, sha256Hex, originalFilename string) error {
-	if organizationID == uuid.Nil || artifactID == uuid.Nil {
-		return fmt.Errorf("%w: organization_id and artifact_id are required", ErrInvalidArgument)
+func (s *Service) PutContent(ctx context.Context, companyID, artifactID uuid.UUID, body io.Reader, size int64, contentType, sha256Hex, originalFilename string) error {
+	if companyID == uuid.Nil || artifactID == uuid.Nil {
+		return fmt.Errorf("%w: scope_id and artifact_id are required", ErrInvalidArgument)
 	}
 	if size <= 0 {
 		return fmt.Errorf("%w: content length must be > 0", ErrInvalidArgument)
@@ -131,7 +131,7 @@ func (s *Service) PutContent(ctx context.Context, organizationID, artifactID uui
 	if err != nil {
 		return err
 	}
-	key := objectstore.BackendArtifactObjectKey(organizationID, artifactID)
+	key := objectstore.BackendArtifactObjectKey(companyID, artifactID)
 
 	h := sha256.New()
 	limited := io.LimitReader(body, size+1)
@@ -222,7 +222,6 @@ func sanitizeOriginalFilename(s string) string {
 
 // ArtifactInfo is returned for describe and list enrichment.
 type ArtifactInfo struct {
-	OrganizationID   uuid.UUID
 	ArtifactID       uuid.UUID
 	Size             int64
 	ContentType      string
@@ -234,18 +233,17 @@ type ArtifactInfo struct {
 }
 
 // GetInfo returns metadata for an artifact if the object exists.
-func (s *Service) GetInfo(ctx context.Context, organizationID, artifactID uuid.UUID) (ArtifactInfo, error) {
-	key := objectstore.BackendArtifactObjectKey(organizationID, artifactID)
+func (s *Service) GetInfo(ctx context.Context, companyID, artifactID uuid.UUID) (ArtifactInfo, error) {
+	key := objectstore.BackendArtifactObjectKey(companyID, artifactID)
 	meta, err := s.store.Head(ctx, key)
 	if err != nil {
 		return ArtifactInfo{}, mapStoreError(err)
 	}
 	org, art, ok := objectstore.ParseBackendArtifactKey(meta.Key)
-	if !ok || org != organizationID || art != artifactID {
+	if !ok || org != companyID || art != artifactID {
 		return ArtifactInfo{}, ErrNotFound
 	}
 	info := ArtifactInfo{
-		OrganizationID:  organizationID,
 		ArtifactID:      artifactID,
 		Size:            meta.Size,
 		ContentType:     meta.ContentType,
@@ -260,12 +258,12 @@ func (s *Service) GetInfo(ctx context.Context, organizationID, artifactID uuid.U
 	return info, nil
 }
 
-// ListArtifacts lists artifact payload objects for an organization (best-effort Head for metadata).
-func (s *Service) ListArtifacts(ctx context.Context, organizationID uuid.UUID) ([]ArtifactInfo, error) {
-	if organizationID == uuid.Nil {
-		return nil, fmt.Errorf("%w: organization_id is required", ErrInvalidArgument)
+// ListArtifacts lists artifact payload objects for an company (best-effort Head for metadata).
+func (s *Service) ListArtifacts(ctx context.Context, companyID uuid.UUID) ([]ArtifactInfo, error) {
+	if companyID == uuid.Nil {
+		return nil, fmt.Errorf("%w: scope_id is required", ErrInvalidArgument)
 	}
-	prefix := objectstore.BackendArtifactOrgPrefix(organizationID)
+	prefix := objectstore.BackendArtifactOrgPrefix(companyID)
 	rows, err := s.store.ListPrefix(ctx, prefix, s.listMaxKeys)
 	if err != nil {
 		recordObjectStorageFailure("list_artifacts", "store_list")
@@ -274,11 +272,10 @@ func (s *Service) ListArtifacts(ctx context.Context, organizationID uuid.UUID) (
 	out := make([]ArtifactInfo, 0, len(rows))
 	for _, row := range rows {
 		org, art, ok := objectstore.ParseBackendArtifactKey(row.Key)
-		if !ok || org != organizationID {
+		if !ok || org != companyID {
 			continue
 		}
 		info := ArtifactInfo{
-			OrganizationID:  org,
 			ArtifactID:      art,
 			Size:            row.Size,
 			ContentType:     row.ContentType,
@@ -307,8 +304,8 @@ func (s *Service) ListArtifacts(ctx context.Context, organizationID uuid.UUID) (
 }
 
 // DeleteArtifact removes the canonical artifact object.
-func (s *Service) DeleteArtifact(ctx context.Context, organizationID, artifactID uuid.UUID) error {
-	key := objectstore.BackendArtifactObjectKey(organizationID, artifactID)
+func (s *Service) DeleteArtifact(ctx context.Context, companyID, artifactID uuid.UUID) error {
+	key := objectstore.BackendArtifactObjectKey(companyID, artifactID)
 	err := s.store.Delete(ctx, key)
 	if err != nil {
 		recordObjectStorageFailure("delete_artifact", "store_delete")
@@ -318,8 +315,8 @@ func (s *Service) DeleteArtifact(ctx context.Context, organizationID, artifactID
 }
 
 // PresignDownload returns a time-limited GET URL for the artifact payload.
-func (s *Service) PresignDownload(ctx context.Context, organizationID, artifactID uuid.UUID) (objectstore.SignedHTTP, time.Time, error) {
-	key := objectstore.BackendArtifactObjectKey(organizationID, artifactID)
+func (s *Service) PresignDownload(ctx context.Context, companyID, artifactID uuid.UUID) (objectstore.SignedHTTP, time.Time, error) {
+	key := objectstore.BackendArtifactObjectKey(companyID, artifactID)
 	_, err := s.store.Head(ctx, key)
 	if err != nil {
 		recordObjectStorageFailure("presign_download", "store_head")

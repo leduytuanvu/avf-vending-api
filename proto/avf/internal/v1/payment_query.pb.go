@@ -22,11 +22,10 @@ const (
 )
 
 type GetPaymentByIdRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
-	PaymentId      string                 `protobuf:"bytes,2,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PaymentId     string                 `protobuf:"bytes,2,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetPaymentByIdRequest) Reset() {
@@ -57,13 +56,6 @@ func (x *GetPaymentByIdRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetPaymentByIdRequest.ProtoReflect.Descriptor instead.
 func (*GetPaymentByIdRequest) Descriptor() ([]byte, []int) {
 	return file_avf_internal_v1_payment_query_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *GetPaymentByIdRequest) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
-	}
-	return ""
 }
 
 func (x *GetPaymentByIdRequest) GetPaymentId() string {
@@ -118,11 +110,10 @@ func (x *GetPaymentByIdResponse) GetPayment() *CommercePaymentSummary {
 }
 
 type GetLatestPaymentForOrderRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
-	OrderId        string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrderId       string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetLatestPaymentForOrderRequest) Reset() {
@@ -153,13 +144,6 @@ func (x *GetLatestPaymentForOrderRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetLatestPaymentForOrderRequest.ProtoReflect.Descriptor instead.
 func (*GetLatestPaymentForOrderRequest) Descriptor() ([]byte, []int) {
 	return file_avf_internal_v1_payment_query_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *GetLatestPaymentForOrderRequest) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
-	}
-	return ""
 }
 
 func (x *GetLatestPaymentForOrderRequest) GetOrderId() string {
@@ -217,15 +201,13 @@ var File_avf_internal_v1_payment_query_proto protoreflect.FileDescriptor
 
 const file_avf_internal_v1_payment_query_proto_rawDesc = "" +
 	"\n" +
-	"#avf/internal/v1/payment_query.proto\x12\x0favf.internal.v1\x1a$avf/internal/v1/commerce_query.proto\"_\n" +
-	"\x15GetPaymentByIdRequest\x12'\n" +
-	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12\x1d\n" +
+	"#avf/internal/v1/payment_query.proto\x12\x0favf.internal.v1\x1a$avf/internal/v1/commerce_query.proto\"6\n" +
+	"\x15GetPaymentByIdRequest\x12\x1d\n" +
 	"\n" +
 	"payment_id\x18\x02 \x01(\tR\tpaymentId\"[\n" +
 	"\x16GetPaymentByIdResponse\x12A\n" +
-	"\apayment\x18\x01 \x01(\v2'.avf.internal.v1.CommercePaymentSummaryR\apayment\"e\n" +
-	"\x1fGetLatestPaymentForOrderRequest\x12'\n" +
-	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12\x19\n" +
+	"\apayment\x18\x01 \x01(\v2'.avf.internal.v1.CommercePaymentSummaryR\apayment\"<\n" +
+	"\x1fGetLatestPaymentForOrderRequest\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\tR\aorderId\"e\n" +
 	" GetLatestPaymentForOrderResponse\x12A\n" +
 	"\apayment\x18\x01 \x01(\v2'.avf.internal.v1.CommercePaymentSummaryR\apayment2\x81\x02\n" +

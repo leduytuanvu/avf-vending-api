@@ -47,7 +47,7 @@ Audit/event metadata is sanitized before persistence. Keys containing password, 
 - `POST /v1/admin/system/retention/dry-run` — candidate counts without deletes (audited **retention.dry_run**).
 - `POST /v1/admin/system/retention/run` — executes bounded deletes when cleanup toggles are on; returns **403** in development/test unless `RETENTION_ALLOW_DESTRUCTIVE_LOCAL=true` (audited **retention.run**).
 
-Optional query **`organization_id`** scopes enterprise audit attribution when present.
+Optional query **`company_id`** scopes enterprise audit attribution when present.
 
 The cleanup job uses repeated `DELETE ... WHERE id IN (SELECT ... ORDER BY ... LIMIT $batch)` style statements, so one cycle never performs an unbounded table delete. It does not delete pending outbox rows, failed/dead-letter rows, unresolved payment events, active command attempts, or rows under legal hold.
 

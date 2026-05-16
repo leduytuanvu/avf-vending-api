@@ -23,8 +23,8 @@ func mountMachineRuntimeRoutes(r chi.Router, app *api.HTTPApplication, abuse *Ab
 	if abuse == nil {
 		abuse = &AbuseProtection{}
 	}
-	r.With(abuse.MachineScoped(), RequireMachineTenantAccess(app, "machineId")).Post("/machines/{machineId}/check-ins", postMachineCheckIn(app))
-	r.With(abuse.MachineScoped(), RequireMachineTenantAccess(app, "machineId")).Post("/machines/{machineId}/config-applies", postMachineConfigApply(app))
+	r.With(abuse.MachineScoped(), RequireMachineCompanyAccess(app, "machineId")).Post("/machines/{machineId}/check-ins", postMachineCheckIn(app))
+	r.With(abuse.MachineScoped(), RequireMachineCompanyAccess(app, "machineId")).Post("/machines/{machineId}/config-applies", postMachineConfigApply(app))
 }
 
 type machineCheckInRequest struct {
@@ -179,7 +179,7 @@ func postMachineConfigApply(app *api.HTTPApplication) http.HandlerFunc {
 		}
 
 		q := db.New(app.TelemetryStore.Pool())
-		orgID, err := q.GetMachineOrganizationID(r.Context(), machineID)
+		_, err = q.GetMachineByID(r.Context(), machineID)
 		if err != nil {
 			writeCommerceStoreError(w, r, err)
 			return
@@ -210,7 +210,6 @@ func postMachineConfigApply(app *api.HTTPApplication) http.HandlerFunc {
 		}
 
 		row, err := q.InsertMachineConfigApplication(r.Context(), db.InsertMachineConfigApplicationParams{
-			OrganizationID:    orgID,
 			MachineID:         machineID,
 			AppliedAt:         appliedAt.UTC(),
 			ConfigRevision:    body.ConfigVersion,

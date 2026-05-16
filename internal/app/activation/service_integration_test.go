@@ -71,7 +71,7 @@ func TestClaim_IdempotentReplaySameFingerprint(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
+	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
@@ -85,20 +85,15 @@ func TestClaim_IdempotentReplaySameFingerprint(t *testing.T) {
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
-
-	slug := "act-org-" + uuid.NewString()
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act', $2, 'active')`, orgID, slug)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-1-"+uuid.NewString()[:8])
+INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, scopeID, siteID, "sn-act-1-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
 		MachineID:        machineID,
-		OrganizationID:   orgID,
 		ExpiresInMinutes: 60,
 		MaxUses:          2,
 	})
@@ -121,7 +116,7 @@ func TestClaim_DifferentFingerprintRejectedWhenSingleUse(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
+	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
@@ -135,20 +130,15 @@ func TestClaim_DifferentFingerprintRejectedWhenSingleUse(t *testing.T) {
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
-
-	slug := "act2-org-" + uuid.NewString()
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act2', $2, 'active')`, orgID, slug)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-2-"+uuid.NewString()[:8])
+INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, scopeID, siteID, "sn-act-2-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
 		MachineID:        machineID,
-		OrganizationID:   orgID,
 		ExpiresInMinutes: 60,
 		MaxUses:          1,
 	})
@@ -172,7 +162,7 @@ func TestClaim_TwoDistinctFingerprintsWhenMaxUsesTwo(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
+	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
@@ -186,20 +176,15 @@ func TestClaim_TwoDistinctFingerprintsWhenMaxUsesTwo(t *testing.T) {
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
-
-	slug := "act3-org-" + uuid.NewString()
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act3', $2, 'active')`, orgID, slug)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-3-"+uuid.NewString()[:8])
+INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, scopeID, siteID, "sn-act-3-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
 		MachineID:        machineID,
-		OrganizationID:   orgID,
 		ExpiresInMinutes: 60,
 		MaxUses:          2,
 	})
@@ -234,7 +219,7 @@ func TestClaim_ConcurrentClaimsRespectMaxUses(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
+	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
@@ -248,20 +233,15 @@ func TestClaim_ConcurrentClaimsRespectMaxUses(t *testing.T) {
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
-
-	slug := "act4-org-" + uuid.NewString()
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act4', $2, 'active')`, orgID, slug)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-4-"+uuid.NewString()[:8])
+INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, scopeID, siteID, "sn-act-4-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
 		MachineID:        machineID,
-		OrganizationID:   orgID,
 		ExpiresInMinutes: 60,
 		MaxUses:          3,
 	})
@@ -298,7 +278,7 @@ func TestClaim_PersistsSucceededClaimAndAudit(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
+	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
@@ -313,20 +293,15 @@ func TestClaim_PersistsSucceededClaimAndAudit(t *testing.T) {
 	require.NoError(t, err)
 	auditSvc := appaudit.NewService(pool)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), auditSvc)
-
-	slug := "act5-org-" + uuid.NewString()
-	_, err = pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'act5', $2, 'active')`, orgID, slug)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, orgID, siteID, "sn-act-5-"+uuid.NewString()[:8])
+INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, scopeID, siteID, "sn-act-5-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
 		MachineID:        machineID,
-		OrganizationID:   orgID,
 		ExpiresInMinutes: 60,
 		MaxUses:          1,
 	})
@@ -348,6 +323,6 @@ SELECT COUNT(*) FROM machine_activation_claims WHERE activation_code_id = $1 AND
 	var auditCount int
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT COUNT(*) FROM audit_events
-WHERE organization_id = $1 AND action = 'machine.activation.claimed'`, orgID).Scan(&auditCount))
+WHERE scope_id = $1 AND action = 'machine.activation.claimed'`, scopeID).Scan(&auditCount))
 	require.GreaterOrEqual(t, auditCount, 1)
 }

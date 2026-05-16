@@ -8,7 +8,7 @@ ALTER TABLE payment_provider_events ADD CONSTRAINT chk_payment_provider_events_v
 );
 
 ALTER TABLE payment_provider_events
-    ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations (id) ON DELETE SET NULL;
+    ADD COLUMN IF NOT EXISTS scope_id uuid REFERENCES companies (id) ON DELETE SET NULL;
 ALTER TABLE payment_provider_events
     ADD COLUMN IF NOT EXISTS signature_valid boolean NOT NULL DEFAULT true;
 ALTER TABLE payment_provider_events
@@ -22,11 +22,11 @@ ALTER TABLE payment_provider_events
     ADD COLUMN IF NOT EXISTS ingress_error text;
 
 UPDATE payment_provider_events e
-SET organization_id = o.organization_id
+SET scope_id = o.scope_id
 FROM payments p
 JOIN orders o ON o.id = p.order_id
 WHERE e.payment_id = p.id
-    AND e.organization_id IS NULL;
+    AND e.scope_id IS NULL;
 
 UPDATE payment_provider_events
 SET applied_at = received_at
@@ -39,8 +39,8 @@ COMMENT ON COLUMN payment_provider_events.ingress_status IS 'Ingress/processing 
 COMMENT ON COLUMN payment_provider_events.ingress_error IS 'When ingress_status is failed, short operator-safe error text.';
 
 CREATE INDEX IF NOT EXISTS ix_payment_provider_events_org_received
-    ON payment_provider_events (organization_id, received_at DESC)
-    WHERE organization_id IS NOT NULL;
+    ON payment_provider_events (scope_id, received_at DESC)
+    WHERE scope_id IS NOT NULL;
 
 -- Operator queue: allow multiple open cases of the same type when correlation_key differs (e.g. settlement batches).
 ALTER TABLE commerce_reconciliation_cases
@@ -49,7 +49,7 @@ ALTER TABLE commerce_reconciliation_cases
 DROP INDEX IF EXISTS ux_commerce_reconciliation_cases_open_identity;
 CREATE UNIQUE INDEX ux_commerce_reconciliation_cases_open_identity
     ON commerce_reconciliation_cases (
-        organization_id,
+        scope_id,
         case_type,
         COALESCE(order_id, '00000000-0000-0000-0000-000000000000'::uuid),
         COALESCE(payment_id, '00000000-0000-0000-0000-000000000000'::uuid),
@@ -78,7 +78,7 @@ ALTER TABLE commerce_reconciliation_cases ADD CONSTRAINT commerce_reconciliation
 
 CREATE TABLE IF NOT EXISTS payment_provider_settlements (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     provider text NOT NULL,
     provider_settlement_id text NOT NULL,
     gross_amount_minor bigint NOT NULL,
@@ -93,15 +93,15 @@ CREATE TABLE IF NOT EXISTS payment_provider_settlements (
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now (),
     updated_at timestamptz NOT NULL DEFAULT now (),
-    CONSTRAINT ux_payment_provider_settlements_org_provider_ext UNIQUE (organization_id, provider, provider_settlement_id)
+    CONSTRAINT ux_payment_provider_settlements_org_provider_ext UNIQUE (scope_id, provider, provider_settlement_id)
 );
 
 CREATE INDEX IF NOT EXISTS ix_payment_provider_settlements_org_date
-    ON payment_provider_settlements (organization_id, settlement_date DESC, created_at DESC);
+    ON payment_provider_settlements (scope_id, settlement_date DESC, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS payment_disputes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     provider text NOT NULL,
     provider_dispute_id text NOT NULL,
     payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
@@ -119,11 +119,11 @@ CREATE TABLE IF NOT EXISTS payment_disputes (
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now (),
     updated_at timestamptz NOT NULL DEFAULT now (),
-    CONSTRAINT ux_payment_disputes_org_provider_ext UNIQUE (organization_id, provider, provider_dispute_id)
+    CONSTRAINT ux_payment_disputes_org_provider_ext UNIQUE (scope_id, provider, provider_dispute_id)
 );
 
 CREATE INDEX IF NOT EXISTS ix_payment_disputes_org_status
-    ON payment_disputes (organization_id, status, opened_at DESC);
+    ON payment_disputes (scope_id, status, opened_at DESC);
 
 COMMENT ON TABLE payment_provider_settlements IS 'Imported PSP settlement reports for finance reconciliation.';
 COMMENT ON TABLE payment_disputes IS 'Chargeback/dispute foundation; links to internal order/payment when known.';
@@ -133,7 +133,7 @@ DROP VIEW IF EXISTS payment_reconciliation_cases;
 CREATE OR REPLACE VIEW payment_reconciliation_cases AS
 SELECT
     crc.id,
-    crc.organization_id,
+    crc.scope_id,
     crc.machine_id,
     crc.order_id,
     crc.payment_id,
@@ -156,7 +156,7 @@ DROP VIEW IF EXISTS payment_reconciliation_cases;
 CREATE OR REPLACE VIEW payment_reconciliation_cases AS
 SELECT
     crc.id,
-    crc.organization_id,
+    crc.scope_id,
     crc.machine_id,
     crc.order_id,
     crc.payment_id,
@@ -193,7 +193,7 @@ ALTER TABLE commerce_reconciliation_cases ADD CONSTRAINT commerce_reconciliation
 DROP INDEX IF EXISTS ux_commerce_reconciliation_cases_open_identity;
 CREATE UNIQUE INDEX ux_commerce_reconciliation_cases_open_identity
     ON commerce_reconciliation_cases (
-        organization_id,
+        scope_id,
         case_type,
         COALESCE(order_id, '00000000-0000-0000-0000-000000000000'::uuid),
         COALESCE(payment_id, '00000000-0000-0000-0000-000000000000'::uuid),
@@ -210,7 +210,7 @@ ALTER TABLE payment_provider_events DROP COLUMN IF EXISTS ingress_error;
 ALTER TABLE payment_provider_events DROP COLUMN IF EXISTS ingress_status;
 ALTER TABLE payment_provider_events DROP COLUMN IF EXISTS applied_at;
 ALTER TABLE payment_provider_events DROP COLUMN IF EXISTS signature_valid;
-ALTER TABLE payment_provider_events DROP COLUMN IF EXISTS organization_id;
+ALTER TABLE payment_provider_events DROP COLUMN IF EXISTS scope_id;
 
 ALTER TABLE payment_provider_events DROP CONSTRAINT IF EXISTS chk_payment_provider_events_validation_status;
 ALTER TABLE payment_provider_events ADD CONSTRAINT chk_payment_provider_events_validation_status CHECK (

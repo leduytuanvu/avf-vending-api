@@ -3,7 +3,7 @@
 -- +goose Up
 CREATE TABLE media_assets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     kind text NOT NULL DEFAULT 'product_image' CONSTRAINT chk_media_assets_kind CHECK (
         kind IN ('product_image')
     ),
@@ -24,9 +24,9 @@ CREATE TABLE media_assets (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_media_assets_org_created ON media_assets (organization_id, created_at DESC);
+CREATE INDEX ix_media_assets_org_created ON media_assets (scope_id, created_at DESC);
 
-CREATE INDEX ix_media_assets_org_status ON media_assets (organization_id, status);
+CREATE INDEX ix_media_assets_org_status ON media_assets (scope_id, status);
 
 ALTER TABLE product_images
 ADD COLUMN media_asset_id uuid REFERENCES media_assets (id) ON DELETE SET NULL;

@@ -6,7 +6,7 @@
 - **Order timeline:** `order_timelines` — append-only events (`commerce.reconciliation.case_resolved`, `commerce.refund.requested`, …).
 - **Refund review:** `refund_requests` — durable rows for admin-initiated refunds, linked to ledger `refunds.refunds` via `refund_id` after `CreateRefund`.
 
-## Admin APIs (`/v1/admin/organizations/{organizationId}/…`)
+## Admin APIs (`/v1/admin/…`)
 
 | Endpoint | Purpose |
 |----------|---------|
@@ -17,7 +17,7 @@
 | `POST …/commerce/reconciliation/{caseId}/request-refund` | Refund from case (ledger + `refund_requests`) |
 | `GET …/orders/{orderId}/timeline` | Order timeline |
 | `GET …/refunds`, `GET …/refunds/{refundId}` | Refund request registry |
-| `POST …/orders/{orderId}/refunds` | Org-scoped refund + durable row (**Idempotency-Key** required) |
+| `POST …/orders/{orderId}/refunds` | Role-scoped refund + durable row (**Idempotency-Key** required) |
 | `GET …/payments/webhook-events` | Raw PSP webhook / ingress audit rows (P1.2) |
 | `GET …/payments/reconciliation` | Operational drift (stale **`paid`**/**`vending`**, PSP **`captured`** vs local **`created`/`authorized`**, **`captured`** lacking ingress evidence, **applied webhook amount/currency** vs **`payments`** row — **`cash`** excluded). **Read-only SELECT probes** — no automatic correction of `payments` / orders. |
 

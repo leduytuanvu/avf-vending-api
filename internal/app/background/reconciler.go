@@ -75,7 +75,7 @@ type PaymentReconciliationApplier interface {
 
 // OrderPaidAfterCapture promotes orders after capture when reconciliation closes payment state.
 type OrderPaidAfterCapture interface {
-	MarkOrderPaidAfterPaymentCapture(ctx context.Context, organizationID, orderID uuid.UUID) (domaincommerce.Order, error)
+	MarkOrderPaidAfterPaymentCapture(ctx context.Context, companyID, orderID uuid.UUID) (domaincommerce.Order, error)
 }
 
 // ReconcilerTelemetry is optional metrics for reconciler ticks (implemented in internal/observability/reconcilerprom; wired from cmd/reconciler when METRICS_ENABLED).
@@ -163,7 +163,7 @@ func UnresolvedOrdersTick(ctx context.Context, deps ReconcilerDeps) error {
 		if deps.Log != nil {
 			deps.Log.Info("reconcile_unresolved_order_payment",
 				zap.String("order_id", o.ID.String()),
-				zap.String("org_id", o.OrganizationID.String()),
+				zap.String("scope_id", uuid.Nil.String()),
 				zap.String("order_status", o.Status),
 			)
 		}
@@ -199,15 +199,14 @@ func UnresolvedOrdersTick(ctx context.Context, deps ReconcilerDeps) error {
 			mid := row.MachineID
 			provider := strings.TrimSpace(row.Provider)
 			_, cerr := deps.CaseWriter.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
-				OrganizationID: row.OrganizationID,
-				CaseType:       "payment_paid_vend_not_started",
-				Severity:       "critical",
-				OrderID:        &orderID,
-				PaymentID:      &paymentID,
-				VendSessionID:  &vendID,
-				MachineID:      &mid,
-				Provider:       &provider,
-				Reason:         "captured payment has an order still paid while vend session is pending",
+				CaseType:      "payment_paid_vend_not_started",
+				Severity:      "critical",
+				OrderID:       &orderID,
+				PaymentID:     &paymentID,
+				VendSessionID: &vendID,
+				MachineID:     &mid,
+				Provider:      &provider,
+				Reason:        "captured payment has an order still paid while vend session is pending",
 				Metadata: reconciliationCaseMetadata(map[string]any{
 					"payment_state": row.PaymentState,
 					"vend_state":    row.VendState,
@@ -303,13 +302,13 @@ func PaymentProviderReconcileTick(ctx context.Context, deps ReconcilerDeps) erro
 			transitioned++
 		}
 		if !deps.DryRun && toState == "captured" && deps.MarkOrderPaid != nil && deps.OrderRead != nil {
-			o, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
+			_, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
 			if oerr != nil {
 				if deps.Log != nil {
 					deps.Log.Warn("reconcile_mark_paid_order_lookup_failed", zap.Error(oerr), zap.String("order_id", p.OrderID.String()))
 				}
 			} else {
-				if _, merr := deps.MarkOrderPaid.MarkOrderPaidAfterPaymentCapture(ctx, o.OrganizationID, p.OrderID); merr != nil && deps.Log != nil {
+				if _, merr := deps.MarkOrderPaid.MarkOrderPaidAfterPaymentCapture(ctx, uuid.Nil, p.OrderID); merr != nil && deps.Log != nil {
 					deps.Log.Warn("reconcile_mark_order_paid_failed", zap.Error(merr),
 						zap.String("order_id", p.OrderID.String()),
 						zap.String("payment_id", p.ID.String()),
@@ -420,13 +419,12 @@ func VendTimeoutReconcileTick(ctx context.Context, deps ReconcilerDeps) error {
 			orderID, vendID := row.Session.OrderID, row.Session.ID
 			mid := row.Session.MachineID
 			_, cerr := deps.CaseWriter.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
-				OrganizationID: row.OrganizationID,
-				CaseType:       "vend_started_no_terminal_ack",
-				Severity:       "warning",
-				OrderID:        &orderID,
-				VendSessionID:  &vendID,
-				MachineID:      &mid,
-				Reason:         "vend session remains non-terminal after timeout",
+				CaseType:      "vend_started_no_terminal_ack",
+				Severity:      "warning",
+				OrderID:       &orderID,
+				VendSessionID: &vendID,
+				MachineID:     &mid,
+				Reason:        "vend session remains non-terminal after timeout",
 				Metadata: reconciliationCaseMetadata(map[string]any{
 					"vend_state":   row.Session.State,
 					"order_status": row.OrderStatus,
@@ -448,15 +446,14 @@ func VendTimeoutReconcileTick(ctx context.Context, deps ReconcilerDeps) error {
 			mid := row.MachineID
 			provider := strings.TrimSpace(row.Provider)
 			if _, err := deps.CaseWriter.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
-				OrganizationID: row.OrganizationID,
-				CaseType:       "payment_paid_vend_failed",
-				Severity:       "critical",
-				OrderID:        &orderID,
-				PaymentID:      &paymentID,
-				VendSessionID:  &vendID,
-				MachineID:      &mid,
-				Provider:       &provider,
-				Reason:         "captured payment is attached to a failed vend",
+				CaseType:      "payment_paid_vend_failed",
+				Severity:      "critical",
+				OrderID:       &orderID,
+				PaymentID:     &paymentID,
+				VendSessionID: &vendID,
+				MachineID:     &mid,
+				Provider:      &provider,
+				Reason:        "captured payment is attached to a failed vend",
 				Metadata: reconciliationCaseMetadata(map[string]any{
 					"payment_state": row.PaymentState,
 					"vend_state":    row.VendState,
@@ -519,14 +516,13 @@ func DuplicatePaymentRecoveryTick(ctx context.Context, deps ReconcilerDeps) erro
 				mid := o.MachineID
 				provider := strings.TrimSpace(p.Provider)
 				if _, cerr := deps.CaseWriter.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
-					OrganizationID: o.OrganizationID,
-					CaseType:       "duplicate_payment",
-					Severity:       "critical",
-					OrderID:        &orderID,
-					PaymentID:      &paymentID,
-					MachineID:      &mid,
-					Provider:       &provider,
-					Reason:         "multiple payments with matching amount/currency exist for the same order",
+					CaseType:  "duplicate_payment",
+					Severity:  "critical",
+					OrderID:   &orderID,
+					PaymentID: &paymentID,
+					MachineID: &mid,
+					Provider:  &provider,
+					Reason:    "multiple payments with matching amount/currency exist for the same order",
 					Metadata: reconciliationCaseMetadata(map[string]any{
 						"payment_state": p.State,
 						"amount_minor":  p.AmountMinor,
@@ -538,14 +534,13 @@ func DuplicatePaymentRecoveryTick(ctx context.Context, deps ReconcilerDeps) erro
 			}
 		}
 		if deps.ScheduleManualReviewEscalation && !deps.DryRun && deps.OrderRead != nil && deps.WorkflowOrchestration != nil && deps.WorkflowOrchestration.Enabled() {
-			o, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
+			_, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
 			if oerr == nil {
 				err := deps.WorkflowOrchestration.Start(ctx, workfloworch.StartManualReviewEscalation(workfloworch.ManualReviewEscalationInput{
-					OrganizationID: o.OrganizationID,
-					OrderID:        p.OrderID,
-					PaymentID:      p.ID,
-					Reason:         "manual_review:potential_duplicate_payment",
-					RequestedAt:    time.Now().UTC(),
+					OrderID:     p.OrderID,
+					PaymentID:   p.ID,
+					Reason:      "manual_review:potential_duplicate_payment",
+					RequestedAt: time.Now().UTC(),
 				}))
 				if err == nil {
 					scheduled++
@@ -566,7 +561,7 @@ func DuplicatePaymentRecoveryTick(ctx context.Context, deps ReconcilerDeps) erro
 				}
 				continue
 			}
-			o, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
+			_, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
 			if oerr != nil {
 				enqueueFail++
 				if deps.Log != nil {
@@ -575,10 +570,9 @@ func DuplicatePaymentRecoveryTick(ctx context.Context, deps ReconcilerDeps) erro
 				continue
 			}
 			ticket := domaincommerce.RefundReviewTicket{
-				OrganizationID: o.OrganizationID,
-				OrderID:        p.OrderID,
-				PaymentID:      p.ID,
-				Reason:         "potential_duplicate_payment",
+				OrderID:   p.OrderID,
+				PaymentID: p.ID,
+				Reason:    "potential_duplicate_payment",
 			}
 			if err := deps.RefundSink.EnqueueRefundReview(ctx, ticket); err != nil {
 				enqueueFail++
@@ -650,15 +644,14 @@ func RefundReviewDecisionTick(ctx context.Context, deps ReconcilerDeps) error {
 				}
 			}
 			if _, err := deps.CaseWriter.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
-				OrganizationID: row.OrganizationID,
-				CaseType:       "refund_pending_too_long",
-				Severity:       "warning",
-				OrderID:        &orderID,
-				PaymentID:      &paymentID,
-				RefundID:       &refundID,
-				MachineID:      mid,
-				Provider:       &provider,
-				Reason:         "refund remains requested/processing after reconciliation timeout",
+				CaseType:  "refund_pending_too_long",
+				Severity:  "warning",
+				OrderID:   &orderID,
+				PaymentID: &paymentID,
+				RefundID:  &refundID,
+				MachineID: mid,
+				Provider:  &provider,
+				Reason:    "refund remains requested/processing after reconciliation timeout",
 				Metadata: reconciliationCaseMetadata(map[string]any{
 					"refund_state": row.RefundState,
 					"amount_minor": row.AmountMinor,
@@ -672,14 +665,13 @@ func RefundReviewDecisionTick(ctx context.Context, deps ReconcilerDeps) error {
 	}
 	for _, p := range payments {
 		if deps.ScheduleRefundOrchestration && !deps.DryRun && deps.OrderRead != nil && deps.WorkflowOrchestration != nil && deps.WorkflowOrchestration.Enabled() {
-			o, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
+			_, oerr := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
 			if oerr == nil {
 				err := deps.WorkflowOrchestration.Start(ctx, workfloworch.StartRefundOrchestration(workfloworch.RefundOrchestrationInput{
-					OrganizationID: o.OrganizationID,
-					OrderID:        p.OrderID,
-					PaymentID:      p.ID,
-					Reason:         "captured_payment_failed_order",
-					RequestedAt:    time.Now().UTC(),
+					OrderID:     p.OrderID,
+					PaymentID:   p.ID,
+					Reason:      "captured_payment_failed_order",
+					RequestedAt: time.Now().UTC(),
 				}))
 				if err == nil {
 					scheduled++
@@ -713,7 +705,7 @@ func RefundReviewDecisionTick(ctx context.Context, deps ReconcilerDeps) error {
 			}
 			continue
 		}
-		o, err := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
+		_, err := deps.OrderRead.GetOrderByID(ctx, p.OrderID)
 		if err != nil {
 			orderFail++
 			if deps.Log != nil {
@@ -722,10 +714,9 @@ func RefundReviewDecisionTick(ctx context.Context, deps ReconcilerDeps) error {
 			continue
 		}
 		ticket := domaincommerce.RefundReviewTicket{
-			OrganizationID: o.OrganizationID,
-			OrderID:        p.OrderID,
-			PaymentID:      p.ID,
-			Reason:         "captured_payment_failed_order",
+			OrderID:   p.OrderID,
+			PaymentID: p.ID,
+			Reason:    "captured_payment_failed_order",
 		}
 		if err := deps.RefundSink.EnqueueRefundReview(ctx, ticket); err != nil {
 			enqueueFail++

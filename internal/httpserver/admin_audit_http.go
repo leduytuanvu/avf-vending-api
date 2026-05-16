@@ -22,14 +22,14 @@ func mountAdminAuditRoutes(r chi.Router, app *api.HTTPApplication) {
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermAuditRead))
 		r.Get("/audit/events", getAdminAuditEvents(svc))
-		r.Get("/organizations/{organizationId}/audit-events", getAdminAuditEvents(svc))
-		r.Get("/organizations/{organizationId}/audit-events/{auditEventId}", getAdminOrgAuditEventByID(svc))
+		r.Get("/audit/events/{auditEventId}", getAdminOrgAuditEventByID(svc))
 	})
 }
 
 func getAdminAuditEvents(svc *appaudit.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -89,18 +89,17 @@ func getAdminAuditEvents(svc *appaudit.Service) http.HandlerFunc {
 			machineID = strings.TrimSpace(q.Get("machine_id"))
 		}
 		out, err := svc.ListEvents(r.Context(), appaudit.EventListParams{
-			OrganizationID: orgID,
-			Action:         action,
-			ActorID:        actorID,
-			ActorType:      actorType,
-			Outcome:        outcome,
-			ResourceType:   resourceType,
-			ResourceID:     resourceID,
-			MachineID:      machineID,
-			From:           from,
-			To:             to,
-			Limit:          limit,
-			Offset:         offset,
+			Action:       action,
+			ActorID:      actorID,
+			ActorType:    actorType,
+			Outcome:      outcome,
+			ResourceType: resourceType,
+			ResourceID:   resourceID,
+			MachineID:    machineID,
+			From:         from,
+			To:           to,
+			Limit:        limit,
+			Offset:       offset,
 		})
 		writeV1Collection(w, r.Context(), out, err)
 	}
@@ -108,7 +107,8 @@ func getAdminAuditEvents(svc *appaudit.Service) http.HandlerFunc {
 
 func getAdminOrgAuditEventByID(svc *appaudit.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -123,7 +123,7 @@ func getAdminOrgAuditEventByID(svc *appaudit.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_path", "auditEventId must be a UUID")
 			return
 		}
-		out, err := svc.GetEventForOrg(r.Context(), orgID, eventID)
+		out, err := svc.GetEvent(r.Context(), eventID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "audit event not found")

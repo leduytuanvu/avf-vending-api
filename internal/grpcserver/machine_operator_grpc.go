@@ -91,7 +91,7 @@ func (s *machineOperatorServer) HeartbeatOperatorSession(ctx context.Context, re
 		return nil, status.Error(codes.InvalidArgument, "operator_session_id must match session_id")
 	}
 
-	sess, err := s.deps.Operator.HeartbeatOperatorSession(ctx, claims.OrganizationID, claims.MachineID, sessionUUID)
+	sess, err := s.deps.Operator.HeartbeatOperatorSession(ctx, uuid.Nil, claims.MachineID, sessionUUID)
 	if err != nil {
 		return nil, mapOperatorHeartbeatError(err)
 	}
@@ -114,13 +114,12 @@ func (s *machineOperatorServer) HeartbeatOperatorSession(ctx context.Context, re
 		machineIDStr := claims.MachineID.String()
 		sessRID := sess.ID.String()
 		_ = s.deps.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-			OrganizationID: claims.OrganizationID,
-			ActorType:      compliance.ActorMachine,
-			ActorID:        &machineIDStr,
-			Action:         compliance.ActionOperatorSessionHeartbeat,
-			ResourceType:   "operator_session",
-			ResourceID:     &sessRID,
-			Metadata:       meta,
+			ActorType:    compliance.ActorMachine,
+			ActorID:      &machineIDStr,
+			Action:       compliance.ActionOperatorSessionHeartbeat,
+			ResourceType: "operator_session",
+			ResourceID:   &sessRID,
+			Metadata:     meta,
 		})
 	}
 
@@ -135,8 +134,6 @@ func mapOperatorHeartbeatError(err error) error {
 		return status.Error(codes.NotFound, "operator session not found")
 	case errors.Is(err, domainoperator.ErrSessionMachineMismatch):
 		return status.Error(codes.PermissionDenied, "operator session machine mismatch")
-	case errors.Is(err, domainoperator.ErrOrganizationMismatch):
-		return status.Error(codes.PermissionDenied, "organization mismatch")
 	case errors.Is(err, domainoperator.ErrSessionNotActive):
 		return status.Error(codes.FailedPrecondition, "operator session not active")
 	default:

@@ -26,7 +26,6 @@ func TestP06_E2E_VendInventory_successDecrementThenReplayDoesNotDoubleApply(t *t
 	provRef := "prov-ref-p06-vend-" + uuid.NewString()
 	webhookEv := "evt-p06-vend-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -43,7 +42,6 @@ func TestP06_E2E_VendInventory_successDecrementThenReplayDoesNotDoubleApply(t *t
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -60,7 +58,6 @@ func TestP06_E2E_VendInventory_successDecrementThenReplayDoesNotDoubleApply(t *t
 	require.NoError(t, err)
 
 	_, err = store.ApplyPaymentProviderWebhook(ctx, appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
@@ -91,7 +88,7 @@ WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
 		testfixtures.DevMachineID, testfixtures.DevPlanogramID, int32(1)).Scan(&qtyBefore))
 
 	replay1, err := store.ApplyCommerceVendSuccessInventory(ctx,
-		testfixtures.DevOrganizationID,
+		testfixtures.DevScopeID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
 		1,
@@ -103,7 +100,7 @@ WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
 	require.False(t, replay1)
 
 	replay2, err := store.ApplyCommerceVendSuccessInventory(ctx,
-		testfixtures.DevOrganizationID,
+		testfixtures.DevScopeID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
 		1,
@@ -130,7 +127,6 @@ func TestP06_E2E_VendInventory_failVendBlocksInventoryApply(t *testing.T) {
 
 	orderIDem := "p06-vend-fail-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -149,7 +145,7 @@ func TestP06_E2E_VendInventory_failVendBlocksInventoryApply(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.ApplyCommerceVendSuccessInventory(ctx,
-		testfixtures.DevOrganizationID,
+		testfixtures.DevScopeID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
 		1,
@@ -176,7 +172,6 @@ func TestP06_E2E_FinalizeSuccessfulVendReplayTripleDedupesInventory(t *testing.T
 	provRef := "prov-ref-p06-atom-" + uuid.NewString()
 	webhookEv := "evt-p06-atom-vend-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -193,7 +188,6 @@ func TestP06_E2E_FinalizeSuccessfulVendReplayTripleDedupesInventory(t *testing.T
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -210,7 +204,6 @@ func TestP06_E2E_FinalizeSuccessfulVendReplayTripleDedupesInventory(t *testing.T
 	require.NoError(t, err)
 
 	_, err = store.ApplyPaymentProviderWebhook(ctx, appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
@@ -229,10 +222,9 @@ func TestP06_E2E_FinalizeSuccessfulVendReplayTripleDedupesInventory(t *testing.T
 	require.NoError(t, err)
 
 	_, err = commerceSvc.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		OrderID:        orderRes.Order.ID,
-		SlotIndex:      1,
-		ToState:        "in_progress",
+		OrderID:   orderRes.Order.ID,
+		SlotIndex: 1,
+		ToState:   "in_progress",
 	})
 	require.NoError(t, err)
 
@@ -245,7 +237,6 @@ WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
 	dedupe := "replay-3x|" + uuid.NewString()
 	for attempt := range 3 {
 		fout, err := commerceSvc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
-			OrganizationID:     testfixtures.DevOrganizationID,
 			OrderID:            orderRes.Order.ID,
 			SlotIndex:          1,
 			TerminalVendState:  "success",
@@ -288,7 +279,6 @@ func TestP06_E2E_ZerostockFinalizeSuccessRollsBack(t *testing.T) {
 	provRef := "prov-stock0-" + uuid.NewString()
 	webhookEv := "evt-stock0-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -305,7 +295,6 @@ func TestP06_E2E_ZerostockFinalizeSuccessRollsBack(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -322,7 +311,6 @@ func TestP06_E2E_ZerostockFinalizeSuccessRollsBack(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.ApplyPaymentProviderWebhook(ctx, appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
@@ -341,10 +329,9 @@ func TestP06_E2E_ZerostockFinalizeSuccessRollsBack(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = commerceSvc.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		OrderID:        orderRes.Order.ID,
-		SlotIndex:      1,
-		ToState:        "in_progress",
+		OrderID:   orderRes.Order.ID,
+		SlotIndex: 1,
+		ToState:   "in_progress",
 	})
 	require.NoError(t, err)
 
@@ -356,7 +343,6 @@ WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
 	require.NoError(t, err)
 
 	_, err = commerceSvc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
-		OrganizationID:     testfixtures.DevOrganizationID,
 		OrderID:            orderRes.Order.ID,
 		SlotIndex:          1,
 		TerminalVendState:  "success",
@@ -390,7 +376,6 @@ func TestP06_E2E_VendFailsAfterCapturedWritesTimelineRefundHint(t *testing.T) {
 	provRef := "prov-failtl-" + uuid.NewString()
 	webhookEv := "evt-failtl-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -407,7 +392,6 @@ func TestP06_E2E_VendFailsAfterCapturedWritesTimelineRefundHint(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -424,7 +408,6 @@ func TestP06_E2E_VendFailsAfterCapturedWritesTimelineRefundHint(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.ApplyPaymentProviderWebhook(ctx, appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
@@ -443,16 +426,14 @@ func TestP06_E2E_VendFailsAfterCapturedWritesTimelineRefundHint(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = commerceSvc.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		OrderID:        orderRes.Order.ID,
-		SlotIndex:      1,
-		ToState:        "in_progress",
+		OrderID:   orderRes.Order.ID,
+		SlotIndex: 1,
+		ToState:   "in_progress",
 	})
 	require.NoError(t, err)
 
 	fr := "motor stalled"
 	fout, err := commerceSvc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		OrderID:           orderRes.Order.ID,
 		SlotIndex:         1,
 		TerminalVendState: "failed",
@@ -465,7 +446,7 @@ func TestP06_E2E_VendFailsAfterCapturedWritesTimelineRefundHint(t *testing.T) {
 	var n int
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT count(*) FROM order_timelines
-WHERE organization_id = $1 AND order_id = $2 AND event_type = 'commerce_vend_dispense_failed'`,
-		testfixtures.DevOrganizationID, orderRes.Order.ID).Scan(&n))
+WHERE order_id = $1 AND event_type = 'commerce_vend_dispense_failed'`,
+		orderRes.Order.ID).Scan(&n))
 	require.Equal(t, 1, n)
 }

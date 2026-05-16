@@ -29,7 +29,7 @@ type Claims struct {
 	Raw           map[string]any
 }
 
-// Provider is implemented by future enterprise adapters (per-tenant or global).
+// Provider is implemented by future enterprise adapters (per-company or global).
 type Provider interface {
 	// AuthorizationURL returns the IdP authorize endpoint URL including state/nonce parameters.
 	AuthorizationURL(state, nonce, redirectURI string) (string, error)

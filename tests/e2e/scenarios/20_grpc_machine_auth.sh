@@ -29,16 +29,20 @@ if [[ -n "${_mt:-}" ]] && [[ -n "${_mid:-}" ]] && [[ "${_mid}" != "null" ]]; the
     if [[ -n "${_rt:-}" ]]; then
       export MACHINE_ID="$_mid"
       export MACHINE_TOKEN="$_mt"
+      ABODY="$(jq -nc --arg r "$_rt" '{refresh:{refreshToken:$r}}')"
+      grpc_contract_try_unauth "$FLOW_ID" "refresh-auth-wrapped" MachineAuthService RefreshMachineToken "$ABODY" "g20-refresh-auth" "g20-rt-auth" || ec=1
+      _nr2="$(jq -r '.refresh.accessToken // .refresh.access_token // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-auth.response.json" 2>/dev/null)"
+      [[ -n "$_nr2" ]] && e2e_save_token machineToken "$_nr2" && export MACHINE_TOKEN="$_nr2"
+      _rt_wrapped="$(jq -r '.refresh.refreshToken // .refresh.refresh_token // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-auth.response.json" 2>/dev/null)"
+      [[ -n "$_rt_wrapped" ]] && e2e_save_token machineRefreshToken "$_rt_wrapped"
+
+      _rt="$(get_secret machineRefreshToken 2>/dev/null || true)"
       RBODY="$(jq -nc --arg r "$_rt" '{refreshToken:$r}')"
       grpc_contract_try_unauth "$FLOW_ID" "refresh-public" MachineTokenService RefreshMachineToken "$RBODY" "g20-refresh-public" "g20-rt-pub" || ec=1
       _nr="$(jq -r '.accessToken // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-public.response.json" 2>/dev/null)"
       [[ -n "$_nr" ]] && e2e_save_token machineToken "$_nr" && export MACHINE_TOKEN="$_nr"
-      _rt_refresh="$(get_secret machineRefreshToken 2>/dev/null || true)"
-      [[ -n "${_rt_refresh:-}" ]] && _rt="$_rt_refresh"
-      ABODY="$(jq -nc --arg r "$_rt" '{refresh:{refreshToken:$r}}')"
-      grpc_contract_try "$FLOW_ID" "refresh-auth-wrapped" MachineAuthService RefreshMachineToken "$ABODY" "g20-refresh-auth" "g20-rt-auth" || ec=1
-      _nr2="$(jq -r '.refresh.accessToken // .refresh.access_token // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-auth.response.json" 2>/dev/null)"
-      [[ -n "$_nr2" ]] && e2e_save_token machineToken "$_nr2" && export MACHINE_TOKEN="$_nr2"
+      _rt_pub="$(jq -r '.refreshToken // .refresh_token // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-public.response.json" 2>/dev/null)"
+      [[ -n "$_rt_pub" ]] && e2e_save_token machineRefreshToken "$_rt_pub"
     else
       grpc_contract_skip "$FLOW_ID" "refresh-public" MachineTokenService RefreshMachineToken "no_machine_refresh_token_in_secrets"
       grpc_contract_skip "$FLOW_ID" "refresh-auth-wrapped" MachineAuthService RefreshMachineToken "no_machine_refresh_token_in_secrets"
@@ -56,6 +60,7 @@ if [[ -n "${_mt:-}" ]] && [[ -n "${_mid:-}" ]] && [[ "${_mid}" != "null" ]]; the
 fi
 
 AC="${E2E_ACTIVATION_CODE:-}"
+[[ -z "${AC}" || "${AC}" == "null" ]] && AC="$(get_secret activationCodePlain 2>/dev/null || true)"
 [[ -z "${AC}" || "${AC}" == "null" ]] && AC="$(get_data activationCodePlain)"
 if [[ -z "${AC}" || "${AC}" == "null" ]]; then
   grpc_contract_skip "$FLOW_ID" "claim-activation" MachineAuthService ClaimActivation "no_activation_code_set_E2E_ACTIVATION_CODE_or_activationCodePlain"
@@ -74,12 +79,10 @@ if [[ -f "$RESP" ]] && jq -e '.claim' "$RESP" >/dev/null 2>&1; then
   ACCESS="$(jq -r '.claim.accessToken // empty' "$RESP")"
   REFRESH="$(jq -r '.claim.refreshToken // empty' "$RESP")"
   MID="$(jq -r '.claim.machineId // empty' "$RESP")"
-  ORG="$(jq -r '.claim.organizationId // empty' "$RESP")"
   SITE="$(jq -r '.claim.siteId // empty' "$RESP")"
   [[ -n "$ACCESS" ]] && e2e_save_token machineToken "$ACCESS"
   [[ -n "$REFRESH" ]] && e2e_save_token machineRefreshToken "$REFRESH"
   [[ -n "$MID" ]] && e2e_set_data machineId "$MID"
-  [[ -n "$ORG" ]] && e2e_set_data organizationId "$ORG"
   [[ -n "$SITE" ]] && e2e_set_data siteId "$SITE"
   export MACHINE_TOKEN="$ACCESS"
   export MACHINE_ID="$MID"
@@ -89,16 +92,21 @@ _rt="$(get_secret machineRefreshToken 2>/dev/null || true)"
 if [[ -n "${_rt:-}" ]] && [[ "${ec}" -eq 0 ]]; then
   export MACHINE_ID="$(get_data machineId)"
   export MACHINE_TOKEN="$(get_secret machineToken 2>/dev/null || true)"
+  # Exercise MachineAuthService wrapped refresh before MachineTokenService consumes/rotates the refresh token.
+  ABODY="$(jq -nc --arg r "$_rt" '{refresh:{refreshToken:$r}}')"
+  grpc_contract_try_unauth "$FLOW_ID" "refresh-auth-wrapped" MachineAuthService RefreshMachineToken "$ABODY" "g20-refresh-auth" "g20-rt-auth" || ec=1
+  _nr2="$(jq -r '.refresh.accessToken // .refresh.access_token // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-auth.response.json" 2>/dev/null)"
+  [[ -n "$_nr2" ]] && e2e_save_token machineToken "$_nr2" && export MACHINE_TOKEN="$_nr2"
+  _rt_wrapped="$(jq -r '.refresh.refreshToken // .refresh.refresh_token // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-auth.response.json" 2>/dev/null)"
+  [[ -n "$_rt_wrapped" ]] && e2e_save_token machineRefreshToken "$_rt_wrapped"
+
+  _rt="$(get_secret machineRefreshToken 2>/dev/null || true)"
   RBODY="$(jq -nc --arg r "$_rt" '{refreshToken:$r}')"
   grpc_contract_try_unauth "$FLOW_ID" "refresh-public" MachineTokenService RefreshMachineToken "$RBODY" "g20-refresh-public" "g20-rt-pub" || ec=1
   _nr="$(jq -r '.accessToken // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-public.response.json" 2>/dev/null)"
   [[ -n "$_nr" ]] && e2e_save_token machineToken "$_nr" && export MACHINE_TOKEN="$_nr"
-  _rt2="$(get_secret machineRefreshToken 2>/dev/null || true)"
-  [[ -n "${_rt2:-}" ]] && _rt="$_rt2"
-  ABODY="$(jq -nc --arg r "$_rt" '{refresh:{refreshToken:$r}}')"
-  grpc_contract_try "$FLOW_ID" "refresh-auth-wrapped" MachineAuthService RefreshMachineToken "$ABODY" "g20-refresh-auth" "g20-rt-auth" || ec=1
-  _nr2="$(jq -r '.refresh.accessToken // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-auth.response.json" 2>/dev/null)"
-  [[ -n "$_nr2" ]] && e2e_save_token machineToken "$_nr2"
+  _rt_pub="$(jq -r '.refreshToken // .refresh_token // empty' "${E2E_RUN_DIR}/grpc/g20-refresh-public.response.json" 2>/dev/null)"
+  [[ -n "$_rt_pub" ]] && e2e_save_token machineRefreshToken "$_rt_pub"
 fi
 
 if [[ "${GRPC_USE_REFLECTION:-false}" != "true" ]]; then

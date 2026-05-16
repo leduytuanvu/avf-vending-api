@@ -1,6 +1,6 @@
 // Package fleet implements application-layer workflows for deployed machines and technician coverage.
 //
-// Callers pass plain value inputs (organization scope, identifiers, metadata patches); there is no
+// Callers pass plain value inputs (company scope, identifiers, metadata patches); there is no
 // coupling to HTTP or transport types. Persistence is behind FleetRepository; adapters should live
 // in internal/modules/postgres (sqlc-backed queries).
 //

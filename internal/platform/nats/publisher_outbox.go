@@ -87,11 +87,6 @@ func outboxHeaders(ev domaincommerce.OutboxEvent) natssrv.Header {
 	if ev.LastPublishError != nil && strings.TrimSpace(*ev.LastPublishError) != "" {
 		h.Set("X-Outbox-Last-Error", truncateDLQHeaderErr(*ev.LastPublishError))
 	}
-	if ev.OrganizationID != nil {
-		h.Set("X-Organization-Id", ev.OrganizationID.String())
-	} else {
-		h.Set("X-Organization-Id", uuid.Nil.String())
-	}
 	h.Set("X-Correlation-Id", correlationID(ev))
 	h.Set("Nats-Msg-Id", OutboxEventKey(ev))
 	if strings.TrimSpace(ev.Topic) != "" {

@@ -45,7 +45,6 @@ message InventorySlotRow {
 
 message GetInventorySnapshotResponse {
   string machine_id = 1;
-  string organization_id = 2;
   google.protobuf.Timestamp server_time = 3;
   repeated InventorySlotRow slots = 4;
   MachineResponseMeta meta = 5;
@@ -58,7 +57,6 @@ message GetPlanogramRequest {
 
 message GetPlanogramResponse {
   string machine_id = 1;
-  string organization_id = 2;
   google.protobuf.Timestamp server_time = 3;
   repeated InventorySlotRow slots = 4;
 }

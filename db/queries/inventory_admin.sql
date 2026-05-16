@@ -1,5 +1,5 @@
 -- name: InventoryAdminGetMachineOrg :one
-SELECT id, organization_id, name, status
+SELECT id, name, status
 FROM machines
 WHERE id = $1;
 
@@ -8,9 +8,9 @@ SELECT coalesce(
     (
         SELECT trim(both FROM pb.currency::text)
         FROM price_books pb
-        WHERE pb.organization_id = $1
+        WHERE TRUE
             AND pb.is_default = true
-            AND pb.scope_type = 'organization'
+            AND pb.scope_type = 'global'
             AND pb.site_id IS NULL
             AND pb.machine_id IS NULL
             AND (pb.effective_to IS NULL OR pb.effective_to > now())
@@ -157,13 +157,6 @@ LEFT JOIN slots s ON s.planogram_id = mss.planogram_id
     AND s.slot_index = mss.slot_index
 LEFT JOIN products pr
     ON pr.id = COALESCE(msc.product_id, s.product_id)
-        AND pr.organization_id = (
-            SELECT
-                mm.organization_id
-            FROM machines mm
-            WHERE
-                mm.id = mss.machine_id
-        )
 WHERE mss.machine_id = $1
 ORDER BY mss.planogram_id, mss.slot_index;
 
@@ -293,7 +286,6 @@ ORDER BY pr.name;
 -- name: InventoryAdminListCurrentMachineSlotConfigsByMachine :many
 SELECT
     msc.id,
-    msc.organization_id,
     msc.machine_id,
     msc.machine_cabinet_id,
     mc.cabinet_code,
@@ -316,7 +308,7 @@ FROM
     machine_slot_configs msc
     INNER JOIN machine_cabinets mc ON mc.id = msc.machine_cabinet_id
     LEFT JOIN products pr ON pr.id = msc.product_id
-    AND pr.organization_id = msc.organization_id
+    AND TRUE
 WHERE
     msc.machine_id = $1
     AND msc.is_current
@@ -334,7 +326,14 @@ INSERT INTO machine_slot_state (
     price_minor,
     planogram_revision_applied
 )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+)
 ON CONFLICT (machine_id, planogram_id, slot_index) DO UPDATE
 SET
     current_quantity = EXCLUDED.current_quantity,
@@ -353,7 +352,6 @@ RETURNING
 
 -- name: InventoryAdminInsertInventoryEventsBatch :many
 INSERT INTO inventory_events (
-    organization_id,
     machine_id,
     machine_cabinet_id,
     cabinet_code,
@@ -376,7 +374,6 @@ INSERT INTO inventory_events (
     metadata
 )
 SELECT
-    (e->>'organization_id')::uuid AS organization_id,
     (e->>'machine_id')::uuid AS machine_id,
     NULLIF (e->>'machine_cabinet_id', '')::uuid AS machine_cabinet_id,
     NULLIF (btrim(e->>'cabinet_code'), '') AS cabinet_code,
@@ -408,7 +405,6 @@ RETURNING
 -- name: InventoryAdminListInventoryEventsByMachine :many
 SELECT
     ie.id,
-    ie.organization_id,
     ie.machine_id,
     ie.machine_cabinet_id,
     ie.cabinet_code,
@@ -433,7 +429,7 @@ SELECT
 FROM
     inventory_events ie
     LEFT JOIN technicians t ON t.id = ie.technician_id
-    AND t.organization_id = ie.organization_id
+    AND TRUE
 WHERE
     ie.machine_id = $1
     AND ($2::boolean IS FALSE OR ie.occurred_at >= $3::timestamptz)
@@ -465,6 +461,7 @@ ORDER BY
 LIMIT 1;
 
 -- Slot aggregates aligned with InventoryAdminListMachineSlots (machine_slot_state + slots).
+
 -- name: InventoryAdminSummarizeSlotsForMachine :one
 SELECT
     coalesce(count(*), 0)::bigint AS total_slots,
@@ -500,6 +497,7 @@ GROUP BY
 
 -- Refill forecasting: slot inventory joined to vend velocity (successful dispenses) in a lookback window.
 -- Optional filters use uuid nil sentinel '00000000-0000-0000-0000-000000000000'. low_stock_only restricts to empty or <15% fill.
+
 -- name: InventoryAdminRefillForecastSlots :many
 SELECT
     m.id AS machine_id,
@@ -519,12 +517,12 @@ FROM
     machine_slot_state mss
     INNER JOIN machines m ON m.id = mss.machine_id
     INNER JOIN sites st ON st.id = m.site_id
-        AND st.organization_id = m.organization_id
+        AND TRUE
     INNER JOIN planograms pg ON pg.id = mss.planogram_id
     LEFT JOIN slots s ON s.planogram_id = mss.planogram_id
         AND s.slot_index = mss.slot_index
     LEFT JOIN products pr ON pr.id = s.product_id
-        AND pr.organization_id = m.organization_id
+        AND TRUE
     LEFT JOIN (
         SELECT
             vs.machine_id,
@@ -534,29 +532,27 @@ FROM
             vend_sessions vs
             INNER JOIN machines mm ON mm.id = vs.machine_id
         WHERE
-            mm.organization_id = $1
-            AND vs.state = 'success'
-            AND COALESCE(vs.completed_at, vs.created_at) >= $2::timestamptz
-            AND COALESCE(vs.completed_at, vs.created_at) < $3::timestamptz
+            vs.state = 'success'
+            AND COALESCE(vs.completed_at, vs.created_at) >= $1::timestamptz
+            AND COALESCE(vs.completed_at, vs.created_at) < $2::timestamptz
         GROUP BY
             vs.machine_id,
             vs.product_id
     ) vel ON vel.machine_id = mss.machine_id
     AND vel.product_id = s.product_id
 WHERE
-    m.organization_id = $1
-    AND s.product_id IS NOT NULL
+    s.product_id IS NOT NULL
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3)
     AND (
         $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.site_id = $4)
+        OR m.id = $4)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR m.id = $5)
+        OR s.product_id = $5)
     AND (
-        $6::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR s.product_id = $6)
-    AND (
-        $7::boolean IS FALSE
+        $6::boolean IS FALSE
         OR mss.current_quantity <= 0
         OR (
             COALESCE(s.max_quantity, 0) > 0
@@ -566,4 +562,3 @@ ORDER BY
     pr.name ASC,
     mss.slot_index ASC
 LIMIT 10000;
-

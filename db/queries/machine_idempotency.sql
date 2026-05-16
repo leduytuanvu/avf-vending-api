@@ -1,6 +1,5 @@
 -- name: UpsertMachineIdempotencyKey :one
 INSERT INTO machine_idempotency_keys (
-    organization_id,
     machine_id,
     operation,
     idempotency_key,
@@ -8,9 +7,14 @@ INSERT INTO machine_idempotency_keys (
     expires_at,
     trace_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
 )
-ON CONFLICT (organization_id, machine_id, operation, idempotency_key)
+ON CONFLICT (machine_id, operation, idempotency_key)
 DO UPDATE SET
     last_seen_at = now(),
     expires_at = excluded.expires_at,
@@ -20,25 +24,23 @@ RETURNING *, (xmax = 0)::boolean AS inserted;
 -- name: DeleteStaleMachineIdempotencyInProgress :exec
 DELETE FROM machine_idempotency_keys
 WHERE
-    organization_id = $1
-    AND machine_id = $2
-    AND operation = $3
-    AND idempotency_key = $4
+    machine_id = $1
+    AND operation = $2
+    AND idempotency_key = $3
     AND status = 'in_progress'
-    AND last_seen_at < $5;
+    AND last_seen_at < $4;
 
 -- name: MarkMachineIdempotencySucceeded :one
 UPDATE machine_idempotency_keys
 SET
     status = 'succeeded',
-    response_snapshot = $5,
+    response_snapshot = $1,
     last_seen_at = now(),
-    trace_id = $6
+    trace_id = $2
 WHERE
-    organization_id = $1
-    AND machine_id = $2
-    AND operation = $3
-    AND idempotency_key = $4
+    machine_id = $3
+    AND operation = $4
+    AND idempotency_key = $5
 RETURNING *;
 
 -- name: MarkMachineIdempotencyFailed :exec
@@ -46,10 +48,9 @@ UPDATE machine_idempotency_keys
 SET
     status = 'failed',
     last_seen_at = now(),
-    trace_id = $5
+    trace_id = $1
 WHERE
-    organization_id = $1
-    AND machine_id = $2
+    machine_id = $2
     AND operation = $3
     AND idempotency_key = $4
     AND status = 'in_progress';
@@ -60,7 +61,6 @@ SET
     status = 'conflict',
     last_seen_at = now()
 WHERE
-    organization_id = $1
-    AND machine_id = $2
-    AND operation = $3
-    AND idempotency_key = $4;
+    machine_id = $1
+    AND operation = $2
+    AND idempotency_key = $3;

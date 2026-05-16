@@ -1,4 +1,4 @@
-// Package adminops implements P1.2 tenant-scoped operational APIs for fleet command troubleshooting and inventory anomalies.
+// Package adminops implements P1.2 single-company operational APIs for fleet command troubleshooting and inventory anomalies.
 package adminops
 
 import (
@@ -53,21 +53,20 @@ func NewService(d Deps) (*Service, error) {
 }
 
 // SyncInventoryAnomalies inserts detector rows for supported anomaly kinds (idempotent fingerprints).
-func (s *Service) SyncInventoryAnomalies(ctx context.Context, organizationID uuid.UUID) error {
+func (s *Service) SyncInventoryAnomalies(ctx context.Context, companyID uuid.UUID) error {
 	if s == nil || s.q == nil {
 		return errors.New("adminops: nil service")
 	}
-	if _, err := s.q.AdminOpsInsertDetectedNegativeStockAnomalies(ctx, organizationID); err != nil {
+	if _, err := s.q.AdminOpsInsertDetectedNegativeStockAnomalies(ctx); err != nil {
 		return err
 	}
 	if _, err := s.q.AdminOpsInsertDetectedManualAdjustmentAnomalies(ctx, db.AdminOpsInsertDetectedManualAdjustmentAnomaliesParams{
-		OrganizationID:         organizationID,
 		AdjustmentAbsThreshold: s.adjustThreshold,
 		LookbackDays:           s.adjustLookback,
 	}); err != nil {
 		return err
 	}
-	_, err := s.q.AdminOpsInsertStaleInventorySyncAnomalies(ctx, organizationID)
+	_, err := s.q.AdminOpsInsertStaleInventorySyncAnomalies(ctx)
 	return err
 }
 
@@ -153,8 +152,8 @@ func pgTimestamptzPtr(ts pgtype.Timestamptz) *time.Time {
 	return &t
 }
 
-// ListMachineHealth returns operational rows for machines in the tenant (paginated).
-func (s *Service) ListMachineHealth(ctx context.Context, organizationID uuid.UUID, limit, offset int32) ([]MachineHealth, error) {
+// ListMachineHealth returns operational rows for machines in the company (paginated).
+func (s *Service) ListMachineHealth(ctx context.Context, companyID uuid.UUID, limit, offset int32) ([]MachineHealth, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("adminops: nil service")
 	}
@@ -165,9 +164,8 @@ func (s *Service) ListMachineHealth(ctx context.Context, organizationID uuid.UUI
 		offset = 0
 	}
 	rows, err := s.q.AdminOpsListMachineHealth(ctx, db.AdminOpsListMachineHealthParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-		Offset:         offset,
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, err
@@ -179,15 +177,12 @@ func (s *Service) ListMachineHealth(ctx context.Context, organizationID uuid.UUI
 	return out, nil
 }
 
-// GetMachineHealth returns health for one machine scoped by organization.
-func (s *Service) GetMachineHealth(ctx context.Context, organizationID, machineID uuid.UUID) (MachineHealth, error) {
+// GetMachineHealth returns health for one machine scoped by company.
+func (s *Service) GetMachineHealth(ctx context.Context, companyID, machineID uuid.UUID) (MachineHealth, error) {
 	if s == nil || s.q == nil {
 		return MachineHealth{}, errors.New("adminops: nil service")
 	}
-	row, err := s.q.AdminOpsGetMachineHealthByID(ctx, db.AdminOpsGetMachineHealthByIDParams{
-		OrganizationID: organizationID,
-		ID:             machineID,
-	})
+	row, err := s.q.AdminOpsGetMachineHealthByID(ctx, machineID)
 	if err != nil {
 		return MachineHealth{}, err
 	}
@@ -204,7 +199,7 @@ type TimelineEvent struct {
 }
 
 // MachineTimeline merges commands, attempts, commerce timelines, and telemetry check-ins.
-func (s *Service) MachineTimeline(ctx context.Context, organizationID, machineID uuid.UUID, limit, offset int32) ([]TimelineEvent, error) {
+func (s *Service) MachineTimeline(ctx context.Context, companyID, machineID uuid.UUID, limit, offset int32) ([]TimelineEvent, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("adminops: nil service")
 	}
@@ -215,10 +210,9 @@ func (s *Service) MachineTimeline(ctx context.Context, organizationID, machineID
 		offset = 0
 	}
 	rows, err := s.q.AdminOpsMachineTimeline(ctx, db.AdminOpsMachineTimelineParams{
-		MachineID:      machineID,
-		OrganizationID: organizationID,
-		Limit:          limit,
-		Offset:         offset,
+		MachineID: machineID,
+		Limit:     limit,
+		Offset:    offset,
 	})
 	if err != nil {
 		return nil, err
@@ -247,15 +241,12 @@ type CommandDetail struct {
 	Attempts []db.MachineCommandAttempt `json:"attempts"`
 }
 
-// GetCommandDetail loads ledger scoped by organization plus attempts ordered ascending.
-func (s *Service) GetCommandDetail(ctx context.Context, organizationID, commandID uuid.UUID) (CommandDetail, error) {
+// GetCommandDetail loads ledger scoped by company plus attempts ordered ascending.
+func (s *Service) GetCommandDetail(ctx context.Context, companyID, commandID uuid.UUID) (CommandDetail, error) {
 	if s == nil || s.q == nil {
 		return CommandDetail{}, errors.New("adminops: nil service")
 	}
-	ledger, err := s.q.AdminOpsGetCommandLedgerForOrg(ctx, db.AdminOpsGetCommandLedgerForOrgParams{
-		ID:             commandID,
-		OrganizationID: organizationID,
-	})
+	ledger, err := s.q.AdminOpsGetCommandLedgerForOrg(ctx, commandID)
 	if err != nil {
 		return CommandDetail{}, err
 	}
@@ -267,39 +258,33 @@ func (s *Service) GetCommandDetail(ctx context.Context, organizationID, commandI
 }
 
 // RetryCommand triggers MQTT replay/dispatch for retryable ledger rows (requires RemoteCommands).
-func (s *Service) RetryCommand(ctx context.Context, organizationID, commandID uuid.UUID) (appdevice.RemoteCommandDispatchResult, error) {
+func (s *Service) RetryCommand(ctx context.Context, companyID, commandID uuid.UUID) (appdevice.RemoteCommandDispatchResult, error) {
 	if s == nil || s.remote == nil {
 		return appdevice.RemoteCommandDispatchResult{}, appdevice.ErrMQTTCommandPublisherMissing
 	}
-	return s.remote.AdminRetryLedgerCommand(ctx, organizationID, commandID)
+	return s.remote.AdminRetryLedgerCommand(ctx, companyID, commandID)
 }
 
 // CancelCommand marks pending/sent attempts failed with admin_cancelled (best-effort operator halt).
-func (s *Service) CancelCommand(ctx context.Context, organizationID, commandID uuid.UUID) (int64, error) {
+func (s *Service) CancelCommand(ctx context.Context, companyID, commandID uuid.UUID) (int64, error) {
 	if s == nil || s.q == nil {
 		return 0, errors.New("adminops: nil service")
 	}
-	if _, err := s.q.AdminOpsGetCommandLedgerForOrg(ctx, db.AdminOpsGetCommandLedgerForOrgParams{
-		ID:             commandID,
-		OrganizationID: organizationID,
-	}); err != nil {
+	if _, err := s.q.AdminOpsGetCommandLedgerForOrg(ctx, commandID); err != nil {
 		return 0, err
 	}
 	return s.q.AdminOpsCancelOpenAttemptsForCommand(ctx, commandID)
 }
 
 // DispatchMachineCommand issues a new MQTT-backed ledger row when RemoteCommands is wired.
-func (s *Service) DispatchMachineCommand(ctx context.Context, organizationID, machineID uuid.UUID, commandType string, payload json.RawMessage, idempotencyKey string) (appdevice.RemoteCommandDispatchResult, error) {
+func (s *Service) DispatchMachineCommand(ctx context.Context, companyID, machineID uuid.UUID, commandType string, payload json.RawMessage, idempotencyKey string) (appdevice.RemoteCommandDispatchResult, error) {
 	if s == nil || s.remote == nil {
 		return appdevice.RemoteCommandDispatchResult{}, appdevice.ErrMQTTCommandPublisherMissing
 	}
 	if strings.TrimSpace(commandType) == "" || strings.TrimSpace(idempotencyKey) == "" {
 		return appdevice.RemoteCommandDispatchResult{}, appdevice.ErrInvalidArgument
 	}
-	if _, err := s.q.AdminOpsGetMachineHealthByID(ctx, db.AdminOpsGetMachineHealthByIDParams{
-		OrganizationID: organizationID,
-		ID:             machineID,
-	}); err != nil {
+	if _, err := s.q.AdminOpsGetMachineHealthByID(ctx, machineID); err != nil {
 		return appdevice.RemoteCommandDispatchResult{}, err
 	}
 	desired, err := s.q.AdminOpsGetMachineShadowDesiredJSON(ctx, machineID)
@@ -325,12 +310,12 @@ func (s *Service) DispatchMachineCommand(ctx context.Context, organizationID, ma
 }
 
 // ListInventoryAnomalies lists persisted anomalies after optional detector refresh.
-func (s *Service) ListInventoryAnomalies(ctx context.Context, organizationID uuid.UUID, machineID *uuid.UUID, limit, offset int32, refreshDetectors bool) ([]db.AdminOpsListInventoryAnomaliesByOrgRow, error) {
+func (s *Service) ListInventoryAnomalies(ctx context.Context, companyID uuid.UUID, machineID *uuid.UUID, limit, offset int32, refreshDetectors bool) ([]db.AdminOpsListInventoryAnomaliesByOrgRow, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("adminops: nil service")
 	}
 	if refreshDetectors {
-		if err := s.SyncInventoryAnomalies(ctx, organizationID); err != nil {
+		if err := s.SyncInventoryAnomalies(ctx, companyID); err != nil {
 			return nil, err
 		}
 	}
@@ -342,11 +327,10 @@ func (s *Service) ListInventoryAnomalies(ctx context.Context, organizationID uui
 	}
 	filterMachine := machineID != nil && *machineID != uuid.Nil
 	return s.q.AdminOpsListInventoryAnomaliesByOrg(ctx, db.AdminOpsListInventoryAnomaliesByOrgParams{
-		OrganizationID: organizationID,
-		FilterMachine:  filterMachine,
-		MachineID:      derefUUID(machineID),
-		LimitVal:       limit,
-		OffsetVal:      offset,
+		FilterMachine: filterMachine,
+		MachineID:     derefUUID(machineID),
+		OffsetVal:     offset,
+		LimitVal:      limit,
 	})
 }
 
@@ -358,15 +342,14 @@ func derefUUID(p *uuid.UUID) uuid.UUID {
 }
 
 // ResolveInventoryAnomaly closes an open anomaly row (operator acknowledgement).
-func (s *Service) ResolveInventoryAnomaly(ctx context.Context, organizationID, anomalyID, actorAccountID uuid.UUID, note string) error {
+func (s *Service) ResolveInventoryAnomaly(ctx context.Context, companyID, anomalyID, actorAccountID uuid.UUID, note string) error {
 	if s == nil || s.q == nil {
 		return errors.New("adminops: nil service")
 	}
-	_, err := s.q.AdminOpsResolveInventoryAnomaly(ctx, db.AdminOpsResolveInventoryAnomalyParams{
-		ID:             anomalyID,
-		OrganizationID: organizationID,
-		ResolvedBy:     uuidToPgUUID(actorAccountID),
+	_, err := s.q.AdminOpsResolveInventoryAnomaly(ctx, db.AdminOpsResolveInventoryAnomalyParams{ResolvedBy: uuidToPgUUID(actorAccountID),
 		ResolutionNote: pgtype.Text{String: strings.TrimSpace(note), Valid: strings.TrimSpace(note) != ""},
+
+		ID: anomalyID,
 	})
 	return err
 }
@@ -379,7 +362,7 @@ func uuidToPgUUID(u uuid.UUID) pgtype.UUID {
 }
 
 // InsertInventoryReconcileMarker appends a durable inventory_events reconcile marker.
-func (s *Service) InsertInventoryReconcileMarker(ctx context.Context, organizationID, machineID uuid.UUID, reason string, metadata json.RawMessage) (int64, error) {
+func (s *Service) InsertInventoryReconcileMarker(ctx context.Context, companyID, machineID uuid.UUID, reason string, metadata json.RawMessage) (int64, error) {
 	if s == nil || s.q == nil {
 		return 0, errors.New("adminops: nil service")
 	}
@@ -388,9 +371,8 @@ func (s *Service) InsertInventoryReconcileMarker(ctx context.Context, organizati
 		meta = json.RawMessage(`{}`)
 	}
 	return s.q.AdminInventoryInsertReconcileMarker(ctx, db.AdminInventoryInsertReconcileMarkerParams{
-		OrganizationID: organizationID,
-		MachineID:      machineID,
-		ReasonCode:     pgtype.Text{String: strings.TrimSpace(reason), Valid: strings.TrimSpace(reason) != ""},
-		Metadata:       meta,
+		MachineID:  machineID,
+		ReasonCode: pgtype.Text{String: strings.TrimSpace(reason), Valid: strings.TrimSpace(reason) != ""},
+		Metadata:   meta,
 	})
 }

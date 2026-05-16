@@ -19,7 +19,6 @@ func TestApplyCommerceVendSuccessInventory_rejectsNonSuccessVend(t *testing.T) {
 
 	orderIDem := "vend-inv-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -37,7 +36,7 @@ func TestApplyCommerceVendSuccessInventory_rejectsNonSuccessVend(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.ApplyCommerceVendSuccessInventory(ctx,
-		testfixtures.DevOrganizationID,
+		testfixtures.DevScopeID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
 		2,

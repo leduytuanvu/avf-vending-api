@@ -92,10 +92,10 @@ func (s *Store) InsertMQTTDispatchAttemptWithLedgerMeta(ctx context.Context, com
 	if err != nil {
 		return db.MachineCommandAttempt{}, err
 	}
-	if err := q.UpdateCommandLedgerMQTTDispatchMeta(ctx, db.UpdateCommandLedgerMQTTDispatchMetaParams{
-		ID:        commandID,
+	if err := q.UpdateCommandLedgerMQTTDispatchMeta(ctx, db.UpdateCommandLedgerMQTTDispatchMetaParams{Column2: mqttRouteMeta,
 		TimeoutAt: pgtype.Timestamptz{Time: ledgerTimeoutAt, Valid: true},
-		Column3:   mqttRouteMeta,
+
+		ID: commandID,
 	}); err != nil {
 		return db.MachineCommandAttempt{}, err
 	}
@@ -108,9 +108,9 @@ func (s *Store) InsertMQTTDispatchAttemptWithLedgerMeta(ctx context.Context, com
 
 // MarkMQTTDispatchAttemptSent marks a pending attempt as sent and sets the device ack deadline.
 func (s *Store) MarkMQTTDispatchAttemptSent(ctx context.Context, attemptID uuid.UUID, ackDeadline time.Time) error {
-	if err := db.New(s.pool).UpdateMachineCommandAttemptSent(ctx, db.UpdateMachineCommandAttemptSentParams{
-		ID:            attemptID,
-		AckDeadlineAt: pgtype.Timestamptz{Time: ackDeadline, Valid: true},
+	if err := db.New(s.pool).UpdateMachineCommandAttemptSent(ctx, db.UpdateMachineCommandAttemptSentParams{AckDeadlineAt: pgtype.Timestamptz{Time: ackDeadline, Valid: true},
+
+		ID: attemptID,
 	}); err != nil {
 		return err
 	}
@@ -120,9 +120,9 @@ func (s *Store) MarkMQTTDispatchAttemptSent(ctx context.Context, attemptID uuid.
 
 // MarkMQTTDispatchAttemptPublishFailed marks a pending attempt failed after a transport publish error.
 func (s *Store) MarkMQTTDispatchAttemptPublishFailed(ctx context.Context, attemptID uuid.UUID, reason string) error {
-	return db.New(s.pool).UpdateMachineCommandAttemptPublishFailed(ctx, db.UpdateMachineCommandAttemptPublishFailedParams{
-		ID:            attemptID,
-		TimeoutReason: pgtype.Text{String: reason, Valid: true},
+	return db.New(s.pool).UpdateMachineCommandAttemptPublishFailed(ctx, db.UpdateMachineCommandAttemptPublishFailedParams{TimeoutReason: pgtype.Text{String: reason, Valid: true},
+
+		ID: attemptID,
 	})
 }
 

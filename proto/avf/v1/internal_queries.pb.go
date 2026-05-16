@@ -121,12 +121,11 @@ func (x *GetMachineIncidentSummaryRequest) GetLimit() int32 {
 }
 
 type GetOrderPaymentVendStateRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
-	OrderId        string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	SlotIndex      int32                  `protobuf:"varint,3,opt,name=slot_index,json=slotIndex,proto3" json:"slot_index,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrderId       string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	SlotIndex     int32                  `protobuf:"varint,3,opt,name=slot_index,json=slotIndex,proto3" json:"slot_index,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetOrderPaymentVendStateRequest) Reset() {
@@ -159,13 +158,6 @@ func (*GetOrderPaymentVendStateRequest) Descriptor() ([]byte, []int) {
 	return file_avf_v1_internal_queries_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *GetOrderPaymentVendStateRequest) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
-	}
-	return ""
-}
-
 func (x *GetOrderPaymentVendStateRequest) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -183,7 +175,6 @@ func (x *GetOrderPaymentVendStateRequest) GetSlotIndex() int32 {
 type MachineSummary struct {
 	state             protoimpl.MessageState  `protogen:"open.v1"`
 	MachineId         string                  `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId    string                  `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	SiteId            string                  `protobuf:"bytes,3,opt,name=site_id,json=siteId,proto3" json:"site_id,omitempty"`
 	HardwareProfileId *wrapperspb.StringValue `protobuf:"bytes,4,opt,name=hardware_profile_id,json=hardwareProfileId,proto3" json:"hardware_profile_id,omitempty"`
 	SerialNumber      string                  `protobuf:"bytes,5,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
@@ -229,13 +220,6 @@ func (*MachineSummary) Descriptor() ([]byte, []int) {
 func (x *MachineSummary) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *MachineSummary) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -367,7 +351,6 @@ func (x *MachineShadowState) GetVersion() int64 {
 type MachineTelemetrySnapshot struct {
 	state             protoimpl.MessageState  `protogen:"open.v1"`
 	MachineId         string                  `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId    string                  `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	SiteId            string                  `protobuf:"bytes,3,opt,name=site_id,json=siteId,proto3" json:"site_id,omitempty"`
 	ReportedState     *structpb.Struct        `protobuf:"bytes,4,opt,name=reported_state,json=reportedState,proto3" json:"reported_state,omitempty"`
 	MetricsState      *structpb.Struct        `protobuf:"bytes,5,opt,name=metrics_state,json=metricsState,proto3" json:"metrics_state,omitempty"`
@@ -419,13 +402,6 @@ func (*MachineTelemetrySnapshot) Descriptor() ([]byte, []int) {
 func (x *MachineTelemetrySnapshot) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *MachineTelemetrySnapshot) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -1071,7 +1047,6 @@ func (x *MachineIncidentSummary) GetUpdatedAt() *timestamppb.Timestamp {
 type CommerceOrderSummary struct {
 	state          protoimpl.MessageState  `protogen:"open.v1"`
 	Id             string                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	OrganizationId string                  `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	MachineId      string                  `protobuf:"bytes,3,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	Status         string                  `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
 	Currency       string                  `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
@@ -1118,13 +1093,6 @@ func (*CommerceOrderSummary) Descriptor() ([]byte, []int) {
 func (x *CommerceOrderSummary) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *CommerceOrderSummary) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -1779,16 +1747,14 @@ const file_avf_v1_internal_queries_proto_rawDesc = "" +
 	" GetMachineIncidentSummaryRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\x84\x01\n" +
-	"\x1fGetOrderPaymentVendStateRequest\x12'\n" +
-	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12\x19\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"[\n" +
+	"\x1fGetOrderPaymentVendStateRequest\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\tR\aorderId\x12\x1d\n" +
 	"\n" +
-	"slot_index\x18\x03 \x01(\x05R\tslotIndex\"\xb1\x03\n" +
+	"slot_index\x18\x03 \x01(\x05R\tslotIndex\"\x88\x03\n" +
 	"\x0eMachineSummary\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x17\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\asite_id\x18\x03 \x01(\tR\x06siteId\x12L\n" +
 	"\x13hardware_profile_id\x18\x04 \x01(\v2\x1c.google.protobuf.StringValueR\x11hardwareProfileId\x12#\n" +
 	"\rserial_number\x18\x05 \x01(\tR\fserialNumber\x12\x12\n" +
@@ -1805,11 +1771,10 @@ const file_avf_v1_internal_queries_proto_rawDesc = "" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12<\n" +
 	"\rdesired_state\x18\x02 \x01(\v2\x17.google.protobuf.StructR\fdesiredState\x12>\n" +
 	"\x0ereported_state\x18\x03 \x01(\v2\x17.google.protobuf.StructR\rreportedState\x12\x18\n" +
-	"\aversion\x18\x04 \x01(\x03R\aversion\"\xac\a\n" +
+	"\aversion\x18\x04 \x01(\x03R\aversion\"\x83\a\n" +
 	"\x18MachineTelemetrySnapshot\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x17\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\asite_id\x18\x03 \x01(\tR\x06siteId\x12>\n" +
 	"\x0ereported_state\x18\x04 \x01(\v2\x17.google.protobuf.StructR\rreportedState\x12<\n" +
 	"\rmetrics_state\x18\x05 \x01(\v2\x17.google.protobuf.StructR\fmetricsState\x12F\n" +
@@ -1899,10 +1864,9 @@ const file_avf_v1_internal_queries_proto_rawDesc = "" +
 	"dedupe_key\x18\a \x01(\v2\x1c.google.protobuf.StringValueR\tdedupeKey\x127\n" +
 	"\topened_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\bopenedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xc4\x03\n" +
+	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x9b\x03\n" +
 	"\x14CommerceOrderSummary\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x1d\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x03 \x01(\tR\tmachineId\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12\x1a\n" +

@@ -25,13 +25,12 @@ func TestMachineReplayLedger_ReplayAndConflict(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
 
 	ledger := NewMachineReplayLedger(pool, nil)
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	machineIDStr := machineID.String()
 	req := &machinev1.CreateOrderRequest{
 		Context: &machinev1.IdempotencyContext{
@@ -78,13 +77,12 @@ func TestMachineReplayLedger_ConcurrentReplayAfterSuccess(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
 
 	ledger := NewMachineReplayLedger(pool, nil)
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	machineIDStr := machineID.String()
 	req := &machinev1.CreateOrderRequest{
 		Context: &machinev1.IdempotencyContext{
@@ -145,12 +143,11 @@ func TestMachineOfflineSync_OutOfOrderRejected(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
 
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	ctx = plauth.WithMachineAccessClaims(ctx, claims)
 	_, err := (&machineOfflineSyncServer{deps: MachineGRPCServicesDeps{Pool: pool}}).PushOfflineEvents(ctx, &machinev1.SyncOfflineEventsRequest{
 		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: "sync-1", RequestId: "sync-req"},
@@ -162,13 +159,13 @@ func TestMachineOfflineSync_OutOfOrderRejected(t *testing.T) {
 	require.Equal(t, codes.Aborted, status.Code(err))
 }
 
-func insertMachineReplayLedgerFixture(ctx context.Context, pool *pgxpool.Pool, orgID, siteID, machineID uuid.UUID) error {
-	if _, err := pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'replay-ledger', $2, 'active')`, orgID, "replay-ledger-"+orgID.String()); err != nil {
+func insertMachineReplayLedgerFixture(ctx context.Context, pool *pgxpool.Pool, scopeID, siteID, machineID uuid.UUID) error {
+	if _, err := pool.Exec(ctx, `INSERT INTO scopes (id, name, slug, status) VALUES ($1, 'replay-ledger', $2, 'active')`, scopeID, "replay-ledger-"+scopeID.String()); err != nil {
 		return err
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, uuid.Nil); err != nil {
 		return err
 	}
-	_, err := pool.Exec(ctx, `INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version) VALUES ($1, $2, $3, $4, 'online', 1)`, machineID, orgID, siteID, "sn-replay-"+machineID.String())
+	_, err := pool.Exec(ctx, `INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version) VALUES ($1, $2, $3, $4, 'online', 1)`, machineID, uuid.Nil, siteID, "sn-replay-"+machineID.String())
 	return err
 }

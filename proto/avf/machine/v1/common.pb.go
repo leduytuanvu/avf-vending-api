@@ -78,10 +78,8 @@ func (MachineResponseStatus) EnumDescriptor() ([]byte, []int) {
 }
 
 // MachineRequestMeta is the common envelope for machine app RPCs. Machine JWT
-// claims remain authoritative for organization_id and machine_id on protected RPCs.
 type MachineRequestMeta struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	OrganizationId  string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	MachineId       string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	RequestId       string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	IdempotencyKey  string                 `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
@@ -125,13 +123,6 @@ func (x *MachineRequestMeta) ProtoReflect() protoreflect.Message {
 // Deprecated: Use MachineRequestMeta.ProtoReflect.Descriptor instead.
 func (*MachineRequestMeta) Descriptor() ([]byte, []int) {
 	return file_avf_machine_v1_common_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *MachineRequestMeta) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
-	}
-	return ""
 }
 
 func (x *MachineRequestMeta) GetMachineId() string {
@@ -447,12 +438,11 @@ func (x *PageResponse) GetTotalSize() int32 {
 
 // MachineContext carries machine-scoped identity for RPCs (mirrors HTTP path scope).
 type MachineContext struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	MachineId      string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId string                 `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
-	SiteId         string                 `protobuf:"bytes,3,opt,name=site_id,json=siteId,proto3" json:"site_id,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	SiteId        string                 `protobuf:"bytes,3,opt,name=site_id,json=siteId,proto3" json:"site_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *MachineContext) Reset() {
@@ -488,13 +478,6 @@ func (*MachineContext) Descriptor() ([]byte, []int) {
 func (x *MachineContext) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *MachineContext) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -777,9 +760,8 @@ var File_avf_machine_v1_common_proto protoreflect.FileDescriptor
 
 const file_avf_machine_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x1bavf/machine/v1/common.proto\x12\x0eavf.machine.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xce\x03\n" +
-	"\x12MachineRequestMeta\x12'\n" +
-	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12\x1d\n" +
+	"\x1bavf/machine/v1/common.proto\x12\x0eavf.machine.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa5\x03\n" +
+	"\x12MachineRequestMeta\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x02 \x01(\tR\tmachineId\x12\x1d\n" +
 	"\n" +
@@ -816,11 +798,10 @@ const file_avf_machine_v1_common_proto_rawDesc = "" +
 	"\fPageResponse\x12&\n" +
 	"\x0fnext_page_token\x18\x01 \x01(\tR\rnextPageToken\x12\x1d\n" +
 	"\n" +
-	"total_size\x18\x02 \x01(\x05R\ttotalSize\"q\n" +
+	"total_size\x18\x02 \x01(\x05R\ttotalSize\"H\n" +
 	"\x0eMachineContext\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x17\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\asite_id\x18\x03 \x01(\tR\x06siteId\"\xfa\x01\n" +
 	"\x12IdempotencyContext\x12'\n" +
 	"\x0fidempotency_key\x18\x01 \x01(\tR\x0eidempotencyKey\x12&\n" +

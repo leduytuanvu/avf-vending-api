@@ -16,7 +16,7 @@ func (stubOrderVend) CreateOrderWithVendSession(ctx context.Context, in domainco
 	return domaincommerce.CreateOrderVendResult{}, errors.New("not implemented")
 }
 
-func (stubOrderVend) TryReplayCreateOrderWithVend(ctx context.Context, organizationID uuid.UUID, idempotencyKey string) (domaincommerce.CreateOrderVendResult, bool, error) {
+func (stubOrderVend) TryReplayCreateOrderWithVend(ctx context.Context, companyID uuid.UUID, idempotencyKey string) (domaincommerce.CreateOrderVendResult, bool, error) {
 	return domaincommerce.CreateOrderVendResult{}, false, nil
 }
 
@@ -31,7 +31,7 @@ type stubLifecycle struct{}
 func (stubLifecycle) GetOrderByID(ctx context.Context, orderID uuid.UUID) (domaincommerce.Order, error) {
 	return domaincommerce.Order{}, ErrNotFound
 }
-func (stubLifecycle) UpdateOrderStatus(ctx context.Context, orderID, organizationID uuid.UUID, status string) (domaincommerce.Order, error) {
+func (stubLifecycle) UpdateOrderStatus(ctx context.Context, orderID, companyID uuid.UUID, status string) (domaincommerce.Order, error) {
 	return domaincommerce.Order{}, errors.New("not implemented")
 }
 func (stubLifecycle) GetVendSessionByOrderAndSlot(ctx context.Context, orderID uuid.UUID, slotIndex int32) (domaincommerce.VendSession, error) {
@@ -78,7 +78,7 @@ type stubSaleLines struct{}
 func (stubSaleLines) ResolveSaleLine(ctx context.Context, in ResolveSaleLineInput) (ResolvedSaleLine, error) {
 	return ResolvedSaleLine{}, errors.New("not implemented")
 }
-func (stubSaleLines) LookupSlotDisplay(ctx context.Context, organizationID, machineID, productID uuid.UUID, slotIndex int32) (ResolvedSaleLine, error) {
+func (stubSaleLines) LookupSlotDisplay(ctx context.Context, companyID, machineID, productID uuid.UUID, slotIndex int32) (ResolvedSaleLine, error) {
 	return ResolvedSaleLine{}, errors.New("not implemented")
 }
 
@@ -100,7 +100,6 @@ func TestApplyPaymentProviderWebhook_requiresWebhookPersistence(t *testing.T) {
 		saleLines: stubSaleLines{},
 	}
 	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
-		OrganizationID:         uuid.New(),
 		OrderID:                uuid.New(),
 		PaymentID:              uuid.New(),
 		Provider:               "stripe",
@@ -124,7 +123,6 @@ func TestApplyPaymentProviderWebhook_requiresWebhookEventID(t *testing.T) {
 		saleLines: stubSaleLines{},
 	}
 	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
-		OrganizationID:         uuid.New(),
 		OrderID:                uuid.New(),
 		PaymentID:              uuid.New(),
 		Provider:               "stripe",
@@ -151,7 +149,6 @@ func TestApplyPaymentProviderWebhook_webhookEventIDTooLong(t *testing.T) {
 		long[i] = 'a'
 	}
 	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
-		OrganizationID:         uuid.New(),
 		OrderID:                uuid.New(),
 		PaymentID:              uuid.New(),
 		Provider:               "stripe",
@@ -176,7 +173,6 @@ func TestApplyPaymentProviderWebhook_redactsSensitivePaymentPayload(t *testing.T
 		saleLines: stubSaleLines{},
 	}
 	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
-		OrganizationID:         uuid.New(),
 		OrderID:                uuid.New(),
 		PaymentID:              uuid.New(),
 		Provider:               "stripe",

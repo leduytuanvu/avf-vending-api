@@ -4,12 +4,11 @@ SELECT
 FROM rollout_targets
 WHERE
     campaign_id = $1
-    AND organization_id = $2
-    AND status = $3;
+    AND TRUE
+    AND status = $2;
 
 -- name: InsertRolloutCampaign :one
 INSERT INTO rollout_campaigns (
-    organization_id,
     rollout_type,
     target_version,
     status,
@@ -21,8 +20,7 @@ VALUES (
     $2,
     $3,
     $4,
-    $5,
-    $6
+    $5
 )
 RETURNING *;
 
@@ -31,24 +29,22 @@ SELECT *
 FROM rollout_campaigns
 WHERE
     id = $1
-    AND organization_id = $2;
+    AND TRUE;
 
 -- name: ListRolloutCampaigns :many
 SELECT *
 FROM rollout_campaigns
-WHERE
-    organization_id = $1
 ORDER BY created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
 -- name: UpdateRolloutCampaignStatusOnly :one
 UPDATE rollout_campaigns
 SET
-    status = $3,
+    status = $1,
     updated_at = now ()
 WHERE
-    id = $1
-    AND organization_id = $2
+    id = $2
+    AND TRUE
 RETURNING *;
 
 -- name: MarkRolloutCampaignStarted :one
@@ -58,7 +54,7 @@ SET
     updated_at = now ()
 WHERE
     id = $1
-    AND organization_id = $2
+    AND TRUE
 RETURNING *;
 
 -- name: MarkRolloutCampaignCompleted :one
@@ -69,7 +65,7 @@ SET
     updated_at = now ()
 WHERE
     id = $1
-    AND organization_id = $2
+    AND TRUE
 RETURNING *;
 
 -- name: MarkRolloutCampaignCancelled :one
@@ -80,7 +76,7 @@ SET
     updated_at = now ()
 WHERE
     id = $1
-    AND organization_id = $2
+    AND TRUE
 RETURNING *;
 
 -- name: MarkRolloutCampaignRolledBack :one
@@ -91,17 +87,17 @@ SET
     updated_at = now ()
 WHERE
     id = $1
-    AND organization_id = $2
+    AND TRUE
 RETURNING *;
 
 -- name: UpdateRolloutCampaignStrategy :exec
 UPDATE rollout_campaigns
 SET
-    strategy = $3,
+    strategy = $1,
     updated_at = now ()
 WHERE
-    id = $1
-    AND organization_id = $2;
+    id = $2
+    AND TRUE;
 
 -- name: RolloutSkipPendingTargets :exec
 UPDATE rollout_targets
@@ -110,12 +106,11 @@ SET
     updated_at = now ()
 WHERE
     campaign_id = $1
-    AND organization_id = $2
+    AND TRUE
     AND status = 'pending';
 
 -- name: InsertRolloutTargetRow :one
 INSERT INTO rollout_targets (
-    organization_id,
     campaign_id,
     machine_id,
     status
@@ -123,7 +118,6 @@ INSERT INTO rollout_targets (
 VALUES (
     $1,
     $2,
-    $3,
     'pending'
 )
 RETURNING *;
@@ -137,20 +131,20 @@ SET
     updated_at = now ()
 WHERE
     campaign_id = $1
-    AND organization_id = $2
+    AND TRUE
     AND status = 'succeeded';
 
 -- name: UpdateRolloutTargetDispatch :one
 UPDATE rollout_targets
 SET
-    status = $4,
-    command_id = $5,
-    err_message = $6,
+    status = $1,
+    command_id = $2,
+    err_message = $3,
     updated_at = now ()
 WHERE
-    id = $1
-    AND organization_id = $2
-    AND campaign_id = $3
+    id = $4
+    AND TRUE
+    AND campaign_id = $5
 RETURNING *;
 
 -- name: ListRolloutTargetsByCampaign :many
@@ -158,7 +152,7 @@ SELECT *
 FROM rollout_targets
 WHERE
     campaign_id = $1
-    AND organization_id = $2
+    AND TRUE
 ORDER BY created_at ASC;
 
 -- name: ListRolloutPendingTargets :many
@@ -166,10 +160,10 @@ SELECT *
 FROM rollout_targets
 WHERE
     campaign_id = $1
-    AND organization_id = $2
+    AND TRUE
     AND status = 'pending'
 ORDER BY created_at ASC
-LIMIT $3;
+LIMIT $2;
 
 -- name: RolloutRefreshTargetFromLatestAttempt :exec
 UPDATE rollout_targets rt
@@ -211,7 +205,7 @@ FROM (
     ) mca ON rt2.command_id IS NOT NULL
     WHERE
         rt2.campaign_id = $1
-        AND rt2.organization_id = $2
+        AND TRUE
         AND rt2.command_id IS NOT NULL
         AND rt2.status NOT IN ('skipped', 'rolled_back')
 ) AS v
@@ -221,15 +215,14 @@ WHERE
     AND v.new_status IS NOT NULL
     AND v.new_status <> rt.status::text;
 
--- name: RolloutListOrgMachines :many
+-- name: RolloutListMachines :many
 SELECT
     m.id,
     m.site_id,
+    m.hardware_profile_id,
     m.status,
     m.model
 FROM machines m
-WHERE
-    m.organization_id = $1
 ORDER BY
     m.id;
 
@@ -240,17 +233,15 @@ SELECT
 FROM
     tags
 WHERE
-    organization_id = sqlc.arg('organization_id')
-    AND lower(trim(slug)) = ANY (sqlc.arg('slugs')::text[]);
+    lower(trim(slug)) = ANY (sqlc.arg('slugs')::text[]);
 
--- name: RolloutMatchTagIDsForOrg :many
+-- name: RolloutMatchTagIDs :many
 SELECT
     id
 FROM
     tags
 WHERE
-    organization_id = sqlc.arg('organization_id')
-    AND id = ANY (sqlc.arg('tag_ids')::uuid[]);
+    id = ANY (sqlc.arg('tag_ids')::uuid[]);
 
 -- name: RolloutListMachineIDsWithAllTags :many
 SELECT
@@ -258,10 +249,9 @@ SELECT
 FROM
     machines m
     INNER JOIN machine_tag_assignments mta ON mta.machine_id = m.id
-    AND mta.organization_id = m.organization_id
+    AND TRUE
 WHERE
-    m.organization_id = sqlc.arg('organization_id')
-    AND mta.tag_id = ANY (sqlc.arg('tag_ids')::uuid[])
+    mta.tag_id = ANY (sqlc.arg('tag_ids')::uuid[])
 GROUP BY
     m.id
 HAVING

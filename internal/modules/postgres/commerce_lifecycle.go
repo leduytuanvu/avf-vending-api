@@ -25,11 +25,10 @@ func (s *Store) GetOrderByID(ctx context.Context, orderID uuid.UUID) (domaincomm
 	return mapOrder(row), nil
 }
 
-func (s *Store) UpdateOrderStatus(ctx context.Context, orderID, organizationID uuid.UUID, status string) (domaincommerce.Order, error) {
-	row, err := db.New(s.pool).UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{
-		ID:             orderID,
-		OrganizationID: organizationID,
-		Status:         status,
+func (s *Store) UpdateOrderStatus(ctx context.Context, orderID, companyID uuid.UUID, status string) (domaincommerce.Order, error) {
+	row, err := db.New(s.pool).UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: status,
+
+		ID: orderID,
 	})
 	if err != nil {
 		if isNoRows(err) {
@@ -59,11 +58,11 @@ func (s *Store) UpdateVendSessionState(ctx context.Context, p appcommerce.Update
 	if p.FailureReason != nil {
 		fr = pgtype.Text{String: *p.FailureReason, Valid: true}
 	}
-	row, err := db.New(s.pool).UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{
-		OrderID:       p.OrderID,
-		SlotIndex:     p.SlotIndex,
-		State:         p.ToState,
+	row, err := db.New(s.pool).UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{State: p.ToState,
 		FailureReason: fr,
+
+		OrderID:   p.OrderID,
+		SlotIndex: p.SlotIndex,
 	})
 	if err != nil {
 		if isNoRows(err) {

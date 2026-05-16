@@ -1,10 +1,9 @@
--- Admin/finance: PSP webhooks, settlements, disputes, exports (org-scoped).
+-- Admin/finance: PSP webhooks, settlements, disputes, exports (role-scoped).
 
 -- name: ListPaymentProviderEventsForOrgAdmin :many
 SELECT
     e.id,
     e.payment_id,
-    e.organization_id,
     e.provider,
     e.provider_ref,
     e.webhook_event_id,
@@ -23,7 +22,7 @@ SELECT
 FROM payment_provider_events e
 LEFT JOIN payments p ON p.id = e.payment_id
 LEFT JOIN orders o ON o.id = p.order_id
-WHERE (e.organization_id = sqlc.arg('organization_id')::uuid OR o.organization_id = sqlc.arg('organization_id')::uuid)
+WHERE TRUE
 ORDER BY e.received_at DESC
 LIMIT $1 OFFSET $2;
 
@@ -33,12 +32,11 @@ SELECT
 FROM payment_provider_events e
 LEFT JOIN payments p ON p.id = e.payment_id
 LEFT JOIN orders o ON o.id = p.order_id
-WHERE (e.organization_id = sqlc.arg('organization_id')::uuid OR o.organization_id = sqlc.arg('organization_id')::uuid);
+WHERE TRUE;
 
 -- name: ListPaymentProviderSettlementsForOrg :many
 SELECT
     id,
-    organization_id,
     provider,
     provider_settlement_id,
     gross_amount_minor,
@@ -52,19 +50,18 @@ SELECT
     created_at,
     updated_at
 FROM payment_provider_settlements
-WHERE organization_id = $1
+WHERE TRUE
 ORDER BY settlement_date DESC,
     created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
 -- name: CountPaymentProviderSettlementsForOrg :one
 SELECT count(*)::bigint
 FROM payment_provider_settlements
-WHERE organization_id = $1;
+WHERE TRUE;
 
 -- name: UpsertPaymentProviderSettlement :one
 INSERT INTO payment_provider_settlements (
-    organization_id,
     provider,
     provider_settlement_id,
     gross_amount_minor,
@@ -85,10 +82,9 @@ INSERT INTO payment_provider_settlements (
     $7,
     $8,
     $9,
-    $10,
-    $11
+    $10
 )
-ON CONFLICT (organization_id, provider, provider_settlement_id) DO UPDATE SET
+ON CONFLICT (provider, provider_settlement_id) DO UPDATE SET
     gross_amount_minor = EXCLUDED.gross_amount_minor,
     fee_amount_minor = EXCLUDED.fee_amount_minor,
     net_amount_minor = EXCLUDED.net_amount_minor,
@@ -99,7 +95,6 @@ ON CONFLICT (organization_id, provider, provider_settlement_id) DO UPDATE SET
     updated_at = now()
 RETURNING
     id,
-    organization_id,
     provider,
     provider_settlement_id,
     gross_amount_minor,
@@ -116,14 +111,13 @@ RETURNING
 -- name: UpdatePaymentProviderSettlementStatusForOrg :one
 UPDATE payment_provider_settlements
 SET
-    status = $3,
+    status = $1,
     updated_at = now()
 WHERE
-    id = $1
-    AND organization_id = $2
+    id = $2
+    AND TRUE
 RETURNING
     id,
-    organization_id,
     provider,
     provider_settlement_id,
     gross_amount_minor,
@@ -149,9 +143,8 @@ FROM (
     INNER JOIN orders o ON o.id = p.order_id
     INNER JOIN payment_attempts pa ON pa.payment_id = p.id
     WHERE
-        o.organization_id = $1
-        AND lower(p.provider) = lower($2)
-        AND pa.provider_reference = ANY ($3::text[])
+        lower(p.provider) = lower($1)
+        AND pa.provider_reference = ANY ($2::text[])
     ORDER BY
         p.id
 ) AS sub;
@@ -159,7 +152,6 @@ FROM (
 -- name: ListPaymentDisputesForOrg :many
 SELECT
     id,
-    organization_id,
     provider,
     provider_dispute_id,
     payment_id,
@@ -176,19 +168,18 @@ SELECT
     created_at,
     updated_at
 FROM payment_disputes
-WHERE organization_id = $1
+WHERE TRUE
 ORDER BY opened_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
 -- name: CountPaymentDisputesForOrg :one
 SELECT count(*)::bigint
 FROM payment_disputes
-WHERE organization_id = $1;
+WHERE TRUE;
 
 -- name: GetPaymentDisputeForOrg :one
 SELECT
     id,
-    organization_id,
     provider,
     provider_dispute_id,
     payment_id,
@@ -206,23 +197,22 @@ SELECT
     updated_at
 FROM payment_disputes
 WHERE id = $1
-    AND organization_id = $2;
+    AND TRUE;
 
 -- name: ResolvePaymentDisputeForOrg :one
 UPDATE payment_disputes
 SET
-    status = $3,
-    resolution_note = $4,
+    status = $1,
+    resolution_note = $2,
     resolved_at = now(),
-    resolved_by = $5,
+    resolved_by = $3,
     updated_at = now()
 WHERE
-    id = $1
-    AND organization_id = $2
+    id = $4
+    AND TRUE
     AND status NOT IN ('won', 'lost', 'closed')
 RETURNING
     id,
-    organization_id,
     provider,
     provider_dispute_id,
     payment_id,
@@ -241,7 +231,6 @@ RETURNING
 
 -- name: InsertPaymentDispute :one
 INSERT INTO payment_disputes (
-    organization_id,
     provider,
     provider_dispute_id,
     payment_id,
@@ -254,18 +243,16 @@ INSERT INTO payment_disputes (
 ) VALUES (
     $1,
     $2,
-    $3,
     sqlc.narg('payment_id')::uuid,
     sqlc.narg('order_id')::uuid,
+    $3,
     $4,
-    $5,
     sqlc.narg('reason')::text,
     sqlc.narg('status')::text,
-    $6
+    $5
 )
 RETURNING
     id,
-    organization_id,
     provider,
     provider_dispute_id,
     payment_id,
@@ -294,12 +281,10 @@ SELECT
     p.settlement_status,
     p.created_at,
     p.updated_at,
-    o.machine_id,
-    o.organization_id
+    o.machine_id
 FROM payments p
 JOIN orders o ON o.id = p.order_id
 WHERE
-    o.organization_id = $1
-    AND p.created_at >= $2
-    AND p.created_at <= $3
+    p.created_at >= $1
+    AND p.created_at <= $2
 ORDER BY p.created_at ASC;

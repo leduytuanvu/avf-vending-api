@@ -5,7 +5,6 @@ import "github.com/google/uuid"
 // DailyCloseView is the JSON shape for finance daily close resources.
 type DailyCloseView struct {
 	ID               string `json:"id"`
-	OrganizationID   string `json:"organizationId"`
 	CloseDate        string `json:"closeDate"`
 	Timezone         string `json:"timezone"`
 	SiteID           string `json:"siteId,omitempty"`
@@ -38,7 +37,6 @@ type DailyCloseMeta struct {
 
 // CreateDailyCloseInput is validated application input for POST /v1/admin/finance/daily-close.
 type CreateDailyCloseInput struct {
-	OrganizationID uuid.UUID
 	CloseDate      string
 	Timezone       string
 	SiteID         uuid.UUID

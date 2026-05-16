@@ -50,7 +50,8 @@ type v1AdminProvisioningBulkCreateRequest struct {
 
 func serveAdminProvisioningBulkCreate(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -77,7 +78,7 @@ func serveAdminProvisioningBulkCreate(app *api.HTTPApplication) http.HandlerFunc
 		if u, ok := parseInteractiveActorUUID(r); ok {
 			cb = pgtype.UUID{Bytes: *u, Valid: true}
 		}
-		res, err := app.Provisioning.BulkCreateMachines(r.Context(), orgID, approvisioning.BulkCreateInput{
+		res, err := app.Provisioning.BulkCreateMachines(r.Context(), approvisioning.BulkCreateInput{
 			SiteID:                  body.SiteID,
 			HardwareProfileID:       body.HardwareProfileID,
 			CabinetType:             body.CabinetType,
@@ -97,7 +98,8 @@ func serveAdminProvisioningBulkCreate(app *api.HTTPApplication) http.HandlerFunc
 
 func serveAdminProvisioningBatchGet(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -106,7 +108,7 @@ func serveAdminProvisioningBatchGet(app *api.HTTPApplication) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		batch, items, err := app.Provisioning.GetBatchDetail(r.Context(), orgID, batchID)
+		batch, items, err := app.Provisioning.GetBatchDetail(r.Context(), batchID)
 		if err != nil {
 			writeProvisioningError(w, r.Context(), err)
 			return
@@ -121,7 +123,6 @@ func serveAdminProvisioningBatchGet(app *api.HTTPApplication) http.HandlerFunc {
 func encodeProvisioningBatch(b db.MachineProvisioningBatch) map[string]any {
 	out := map[string]any{
 		"id":                b.ID.String(),
-		"organizationId":    b.OrganizationID.String(),
 		"siteId":            b.SiteID.String(),
 		"cabinetType":       b.CabinetType,
 		"status":            b.Status,

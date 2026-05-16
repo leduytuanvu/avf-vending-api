@@ -9,7 +9,6 @@ import (
 // Order is a domain projection of a persisted customer order.
 type Order struct {
 	ID             uuid.UUID
-	OrganizationID uuid.UUID
 	MachineID      uuid.UUID
 	Status         string
 	Currency       string
@@ -51,7 +50,6 @@ type Payment struct {
 // OutboxEvent is a durable async propagation record (Postgres is SoR; Redis is not).
 type OutboxEvent struct {
 	ID             int64
-	OrganizationID *uuid.UUID
 	Topic          string
 	EventType      string
 	Payload        []byte

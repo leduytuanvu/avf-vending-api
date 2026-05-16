@@ -7,8 +7,8 @@
 //   - GET /v1/machines/{machineId}/operator-sessions/action-attributions — domain action rows linked to operators
 //   - GET /v1/machines/{machineId}/operator-sessions/timeline — merged operational view (auth + attributions + session markers)
 //   - POST …/login, …/logout, …/{sessionId}/heartbeat
-//   - GET /v1/operator-insights/technicians/{technicianId}/action-attributions — cross-machine (tenant scoped)
+//   - GET /v1/operator-insights/technicians/{technicianId}/action-attributions — cross-machine (company scoped)
 //   - GET /v1/operator-insights/users/action-attributions?user_principal=… — same for USER actor
 //
-// Platform admins without organization_id on the JWT must pass organization_id as a query parameter on operator-insights routes.
+// Platform admins without scope_id on the JWT must pass scope_id as a query parameter on operator-insights routes.
 package operator

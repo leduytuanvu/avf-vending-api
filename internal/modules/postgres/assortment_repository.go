@@ -5,6 +5,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/assortmentapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -33,7 +34,7 @@ func (r *AssortmentRepository) BindMachineAssortment(ctx context.Context, in ass
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	m, err := q.GetMachineByIDForUpdate(ctx, in.MachineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, in.MachineID)
 	if err != nil {
 		if isNoRows(err) {
 			return assortmentapp.ErrBindFailed
@@ -44,17 +45,17 @@ func (r *AssortmentRepository) BindMachineAssortment(ctx context.Context, in ass
 	if _, err := tx.Exec(ctx, `
 UPDATE machine_assortment_bindings
 SET valid_to = now()
-WHERE organization_id = $1
+WHERE scope_id = $1
   AND machine_id = $2
   AND is_primary
   AND valid_to IS NULL
-`, m.OrganizationID, in.MachineID); err != nil {
+`, uuid.Nil, in.MachineID); err != nil {
 		return err
 	}
 
 	tag, err := tx.Exec(ctx, `
 INSERT INTO machine_assortment_bindings (
-    organization_id,
+    scope_id,
     machine_id,
     assortment_id,
     is_primary,
@@ -68,8 +69,8 @@ SELECT
     now()
 FROM assortments a
 WHERE a.id = $3
-  AND a.organization_id = $1
-`, m.OrganizationID, in.MachineID, in.AssortmentID)
+  AND a.scope_id = $1
+`, uuid.Nil, in.MachineID, in.AssortmentID)
 	if err != nil {
 		return err
 	}
@@ -79,7 +80,6 @@ WHERE a.id = $3
 
 	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 		MachineID:         in.MachineID,
-		OrganizationID:    m.OrganizationID,
 		OperatorSessionID: in.OperatorSessionID,
 		ActionDomain:      "assortment",
 		ActionType:        "machine.bind_primary",

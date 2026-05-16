@@ -8,14 +8,13 @@ import (
 
 // AuditRecord is input for persisting an audit log row.
 type AuditRecord struct {
-	OrganizationID uuid.UUID
-	ActorType      string
-	ActorID        string
-	Action         string
-	ResourceType   string
-	ResourceID     *uuid.UUID
-	Payload        []byte
-	IP             *string
+	ActorType    string
+	ActorID      string
+	Action       string
+	ResourceType string
+	ResourceID   *uuid.UUID
+	Payload      []byte
+	IP           *string
 }
 
 // AuditRepository appends audit records to durable storage.

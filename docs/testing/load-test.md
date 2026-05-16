@@ -62,7 +62,7 @@ JWTs must be **real machine-scoped access tokens** for the target environment—
 4. **gRPC offline replay** — `GetSyncCursor` + `PushOfflineEvents` (`telemetry.batch` envelope).
 5. **MQTT command dispatch + ACK** — `diagnostic.ping` per machine using that machine’s UUID in topics (`MQTT_TOPIC_PREFIX`, `MQTT_TOPIC_LAYOUT`). Skip with `-skip-mqtt` or `LOADTEST_SKIP_MQTT=1`.
 6. **Payment webhook burst + duplicate replay** — signed `POST .../webhooks` (`-webhook-duplicate-every`). Skip with `-skip-webhook`, `LOADTEST_SKIP_WEBHOOK=1`, or unset secret.
-7. **Admin read pressure** — `RunHTTPAdminSequence` (health, machine list, org reports) for **`duration`** (`AVF_LOADTEST_DURATION`). Requires `ADMIN_JWT` + `LOADTEST_ORGANIZATION_ID`.
+7. **Admin read pressure** — `RunHTTPAdminSequence` (health, machine list, scoped admin reports) for **`duration`** (`AVF_LOADTEST_DURATION`). Requires `ADMIN_JWT` + `LOADTEST_COMPANY_SCOPE_ID`.
 
 Individual scenarios (`checkin`, `grpc`, `mqtt`, `webhook`, `admin`) remain available for focused debugging.
 
@@ -91,7 +91,7 @@ Point `-metrics-url` at the **ops** `/metrics` listener (often `HTTP_OPS_ADDR`);
 | `EXECUTE_LOAD_TEST=true` or `-execute` | Enable real requests |
 | `LOADTEST_MACHINE_MANIFEST` | Path to TSV/JSON for fleet scenarios |
 | `LOAD_TEST_ENV` | `staging` / `local` / etc. — see safety below |
-| `ADMIN_JWT`, `LOADTEST_ORGANIZATION_ID` | Admin phase |
+| `ADMIN_JWT`, `LOADTEST_COMPANY_SCOPE_ID` | Admin phase |
 | `COMMERCE_PAYMENT_WEBHOOK_SECRET`, `LOADTEST_WEBHOOK_ORDER_ID`, `LOADTEST_WEBHOOK_PAYMENT_ID` | Webhook phase |
 | `MQTT_BROKER_URL`, `MQTT_TOPIC_PREFIX`, `MQTT_TOPIC_LAYOUT` | MQTT phase (machine UUID comes from the manifest) |
 | `AVF_LOADTEST_METRICS_URL`, `METRICS_SCRAPE_TOKEN` | Post-run Prometheus scrape |

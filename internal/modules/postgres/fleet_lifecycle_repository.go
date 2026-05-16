@@ -29,7 +29,7 @@ func scanSite(row pgx.Row) (db.Site, error) {
 	var s db.Site
 	err := row.Scan(
 		&s.ID,
-		&s.OrganizationID,
+		&uuid.Nil,
 		&s.RegionID,
 		&s.Name,
 		&s.Address,
@@ -47,7 +47,7 @@ func scanMachine(row pgx.Row) (db.Machine, error) {
 	var m db.Machine
 	err := row.Scan(
 		&m.ID,
-		&m.OrganizationID,
+		&uuid.Nil,
 		&m.SiteID,
 		&m.HardwareProfileID,
 		&m.SerialNumber,
@@ -76,7 +76,7 @@ func scanTechnician(row pgx.Row) (db.Technician, error) {
 	var t db.Technician
 	err := row.Scan(
 		&t.ID,
-		&t.OrganizationID,
+		&uuid.Nil,
 		&t.DisplayName,
 		&t.Email,
 		&t.Phone,
@@ -88,14 +88,14 @@ func scanTechnician(row pgx.Row) (db.Technician, error) {
 	return t, err
 }
 
-// InsertSite inserts a new active site; site codes must be unique per organization when non-empty.
-func (r *FleetLifecycleRepository) InsertSite(ctx context.Context, organizationID uuid.UUID, regionID pgtype.UUID, name string, address []byte, timezone string, code string) (db.Site, error) {
+// InsertSite inserts a new active site; site codes must be unique per company when non-empty.
+func (r *FleetLifecycleRepository) InsertSite(ctx context.Context, companyID uuid.UUID, regionID pgtype.UUID, name string, address []byte, timezone string, code string) (db.Site, error) {
 	const sqlInsert = `
-INSERT INTO sites (organization_id, region_id, name, address, timezone, code, status)
+INSERT INTO sites (scope_id, region_id, name, address, timezone, code, status)
 VALUES ($1, $2, $3, $4, $5, $6, 'active')
 RETURNING *
 `
-	row := r.pool.QueryRow(ctx, sqlInsert, organizationID, regionID, name, address, timezone, code)
+	row := r.pool.QueryRow(ctx, sqlInsert, companyID, regionID, name, address, timezone, code)
 	s, err := scanSite(row)
 	if err != nil {
 		return db.Site{}, err
@@ -104,13 +104,13 @@ RETURNING *
 }
 
 // InsertMachine inserts a machine row in provisioning by default when status empty.
-func (r *FleetLifecycleRepository) InsertMachine(ctx context.Context, organizationID, siteID uuid.UUID, hardwareProfileID pgtype.UUID, serialNumber, code string, model pgtype.Text, name string, status string, tz pgtype.Text) (db.Machine, error) {
+func (r *FleetLifecycleRepository) InsertMachine(ctx context.Context, companyID, siteID uuid.UUID, hardwareProfileID pgtype.UUID, serialNumber, code string, model pgtype.Text, name string, status string, tz pgtype.Text) (db.Machine, error) {
 	if status == "" {
 		status = "draft"
 	}
 	const sqlInsert = `
 INSERT INTO machines (
-    organization_id,
+    scope_id,
     site_id,
     hardware_profile_id,
     serial_number,
@@ -124,7 +124,7 @@ INSERT INTO machines (
 RETURNING *
 `
 	row := r.pool.QueryRow(ctx, sqlInsert,
-		organizationID,
+		companyID,
 		siteID,
 		hardwareProfileID,
 		serialNumber,
@@ -139,38 +139,38 @@ RETURNING *
 }
 
 // BumpCredentialVersion increments machine credential_version for credential rotation flows.
-func (r *FleetLifecycleRepository) BumpCredentialVersion(ctx context.Context, organizationID, machineID uuid.UUID) (db.Machine, error) {
+func (r *FleetLifecycleRepository) BumpCredentialVersion(ctx context.Context, companyID, machineID uuid.UUID) (db.Machine, error) {
 	const sqlBump = `
 UPDATE machines
 SET credential_version = credential_version + 1,
     credential_rotated_at = now(),
     credential_revoked_at = NULL,
     updated_at = now()
-WHERE id = $1 AND organization_id = $2
+WHERE id = $1 AND scope_id = $2
 RETURNING *
 `
-	row := r.pool.QueryRow(ctx, sqlBump, machineID, organizationID)
+	row := r.pool.QueryRow(ctx, sqlBump, machineID, companyID)
 	return scanMachine(row)
 }
 
 // RevokeActiveActivationCodesForMachine marks active kiosk activation codes revoked after rotation/deprovision hooks.
-func (r *FleetLifecycleRepository) RevokeActiveActivationCodesForMachine(ctx context.Context, organizationID, machineID uuid.UUID) error {
+func (r *FleetLifecycleRepository) RevokeActiveActivationCodesForMachine(ctx context.Context, companyID, machineID uuid.UUID) error {
 	const sqlRevoke = `
 UPDATE machine_activation_codes
 SET status = 'revoked', updated_at = now()
-WHERE machine_id = $1 AND organization_id = $2 AND status = 'active'
+WHERE machine_id = $1 AND scope_id = $2 AND status = 'active'
 `
-	_, err := r.pool.Exec(ctx, sqlRevoke, machineID, organizationID)
+	_, err := r.pool.Exec(ctx, sqlRevoke, machineID, companyID)
 	return err
 }
 
 // InsertMachineLineage records successor linkage after replacement.
-func (r *FleetLifecycleRepository) InsertMachineLineage(ctx context.Context, organizationID, priorID, successorID uuid.UUID, reason pgtype.Text) error {
+func (r *FleetLifecycleRepository) InsertMachineLineage(ctx context.Context, companyID, priorID, successorID uuid.UUID, reason pgtype.Text) error {
 	const sqlIns = `
-INSERT INTO machine_lineage (organization_id, prior_machine_id, successor_machine_id, reason)
+INSERT INTO machine_lineage (scope_id, prior_machine_id, successor_machine_id, reason)
 VALUES ($1,$2,$3,$4)
 `
-	_, err := r.pool.Exec(ctx, sqlIns, organizationID, priorID, successorID, reason)
+	_, err := r.pool.Exec(ctx, sqlIns, companyID, priorID, successorID, reason)
 	return err
 }
 
@@ -195,12 +195,12 @@ SELECT EXISTS (
 }
 
 // CountNonRetiredMachinesForSite counts machines still attached to a site (excluding retired assets).
-func (r *FleetLifecycleRepository) CountNonRetiredMachinesForSite(ctx context.Context, organizationID, siteID uuid.UUID) (int64, error) {
+func (r *FleetLifecycleRepository) CountNonRetiredMachinesForSite(ctx context.Context, companyID, siteID uuid.UUID) (int64, error) {
 	const q = `
 SELECT count(*)::bigint FROM machines
-WHERE organization_id = $1 AND site_id = $2 AND status NOT IN ('retired', 'decommissioned')
+WHERE scope_id = $1 AND site_id = $2 AND status NOT IN ('retired', 'decommissioned')
 `
-	row := r.pool.QueryRow(ctx, q, organizationID, siteID)
+	row := r.pool.QueryRow(ctx, q, companyID, siteID)
 	var n int64
 	if err := row.Scan(&n); err != nil {
 		return 0, err
@@ -212,8 +212,8 @@ WHERE organization_id = $1 AND site_id = $2 AND status NOT IN ('retired', 'decom
 var ErrSiteBlockedDeactivate = errors.New("fleet lifecycle: site still has non-retired machines")
 
 // DeactivateSite sets site archived when no non-retired machines reference it.
-func (r *FleetLifecycleRepository) DeactivateSite(ctx context.Context, organizationID, siteID uuid.UUID) (db.Site, error) {
-	n, err := r.CountNonRetiredMachinesForSite(ctx, organizationID, siteID)
+func (r *FleetLifecycleRepository) DeactivateSite(ctx context.Context, companyID, siteID uuid.UUID) (db.Site, error) {
+	n, err := r.CountNonRetiredMachinesForSite(ctx, companyID, siteID)
 	if err != nil {
 		return db.Site{}, err
 	}
@@ -222,10 +222,10 @@ func (r *FleetLifecycleRepository) DeactivateSite(ctx context.Context, organizat
 	}
 	const sqlUp = `
 UPDATE sites SET status = 'archived', updated_at = now()
-WHERE id = $1 AND organization_id = $2
+WHERE id = $1 AND scope_id = $2
 RETURNING *
 `
-	row := r.pool.QueryRow(ctx, sqlUp, siteID, organizationID)
+	row := r.pool.QueryRow(ctx, sqlUp, siteID, companyID)
 	s, err := scanSite(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return db.Site{}, pgx.ErrNoRows

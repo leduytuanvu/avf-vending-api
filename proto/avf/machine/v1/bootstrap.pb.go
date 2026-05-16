@@ -122,7 +122,6 @@ func (x *MqttConfigMetadata) GetTopicPrefix() string {
 type BootstrapMachine struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	MachineId         string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId    string                 `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	SiteId            string                 `protobuf:"bytes,3,opt,name=site_id,json=siteId,proto3" json:"site_id,omitempty"`
 	HardwareProfileId string                 `protobuf:"bytes,4,opt,name=hardware_profile_id,json=hardwareProfileId,proto3" json:"hardware_profile_id,omitempty"`
 	SerialNumber      string                 `protobuf:"bytes,5,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
@@ -168,13 +167,6 @@ func (*BootstrapMachine) Descriptor() ([]byte, []int) {
 func (x *BootstrapMachine) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *BootstrapMachine) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -1285,11 +1277,10 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\x12MqttConfigMetadata\x12\x1d\n" +
 	"\n" +
 	"broker_url\x18\x01 \x01(\tR\tbrokerUrl\x12!\n" +
-	"\ftopic_prefix\x18\x02 \x01(\tR\vtopicPrefix\"\x95\x03\n" +
+	"\ftopic_prefix\x18\x02 \x01(\tR\vtopicPrefix\"\xec\x02\n" +
 	"\x10BootstrapMachine\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x17\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\asite_id\x18\x03 \x01(\tR\x06siteId\x12.\n" +
 	"\x13hardware_profile_id\x18\x04 \x01(\tR\x11hardwareProfileId\x12#\n" +
 	"\rserial_number\x18\x05 \x01(\tR\fserialNumber\x12\x12\n" +

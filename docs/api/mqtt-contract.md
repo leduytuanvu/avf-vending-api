@@ -122,7 +122,7 @@ Top-level JSON must include:
 | `dedupe_key` | string | Server-side idempotency |
 | `payload` | JSON object | Optional receipt detail merged into persistence |
 
-The ingest router rejects ACKs with identity mismatches before OLTP; Postgres rejects `command_id` / organization mismatches with audit + metrics.
+The ingest router rejects ACKs with identity mismatches before OLTP; Postgres rejects `command_id` / company mismatches with audit + metrics.
 
 ### OTA and diagnostic command types
 
@@ -336,3 +336,17 @@ When MQTT dispatch is degraded, the mobile app or edge bridge can use Bearer JWT
 - **`POST /v1/device/machines/{machineId}/commands/poll`** — optional body `{"limit":20}` (max 100). Returns pending/sent commands.
 
 OpenAPI: `docs/swagger/swagger.json` (regenerate with `python tools/build_openapi.py` from repo root).
+
+## Phase 7 local smoke: Mosquitto client exit codes (Git Bash / Windows)
+
+The harness under `tests/e2e/` uses **`mosquitto_pub`** / **`mosquitto_sub`** (Eclipse Mosquitto clients). On **Windows + Git Bash**, these binaries sometimes exit with code **`27`** even when the MQTT session behaved like a successful smoke (subscription stayed up, or a QoS 1 publish exchanged with the broker). This is **not** part of the broker protocol — it is client-binary behavior.
+
+**Contract for this repo’s Phase 7 scripts only** (`tests/e2e/lib/e2e_mqtt.sh`, scenarios `30_*`–`32_*`):
+
+| Step | Exit codes treated as success | Still a failure |
+|------|------------------------------|-----------------|
+| Subscribe **connect / idle** probe (`e2e_mqtt_subscribe_accept_connect`, then filtered in `30_mqtt_connect.sh`) | **`0`** from helper; **`27`** normalized to **`0`** by helper; **`5`** left as-is but **`30_mqtt_connect.sh`** treats **`5`** as acceptable (“cannot connect” false positive on some builds — TCP preflight still recommended) | Other non‑zero codes |
+| Publish smoke (`e2e_mqtt_publish`, `mosquitto_pub -q 1`) | **`0`**; **`27`** only if the captured **`*.publish.log`** does **not** indicate a hard failure (see helper: rejects `27` when log matches connection/error patterns) | Non‑zero codes **other than `27`**, or **`27`** with error text in the publish log |
+| Background subscribe + `wait` after expecting **one** message (`mosquitto_sub -C 1`, scenario `32_mqtt_command_ack.sh`) | **`0`**; **`27`** is **not** a blanket success — treat as success **only if** the subscribe log has a **non-empty first line** (payload received despite quirky exit). Empty log + **`27`** ⇒ timeout / failure | Non‑zero codes other than that narrow **`27`+message case** |
+
+Anything outside this table (e.g. broker ACL denials, wrong password, TLS errors) should surface as **non‑zero** exits and **must not** be masked.

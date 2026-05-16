@@ -13,7 +13,6 @@ import (
 // CreateCashCollectionWithAttribution inserts cash_collections and, when operator_session_id is set,
 // machine_action_attributions in one transaction.
 type CreateCashCollectionWithAttributionInput struct {
-	OrganizationID    uuid.UUID
 	MachineID         uuid.UUID
 	CollectedAt       time.Time
 	AmountMinor       int64
@@ -35,16 +34,12 @@ func (s *Store) CreateCashCollectionWithAttribution(ctx context.Context, in Crea
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := db.New(tx)
 
-	m, err := q.GetMachineByIDForUpdate(ctx, in.MachineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, in.MachineID)
 	if err != nil {
 		return db.CashCollection{}, err
 	}
-	if m.OrganizationID != in.OrganizationID {
-		return db.CashCollection{}, ErrMachineOrganizationMismatch
-	}
 
 	row, err := q.InsertCashCollection(ctx, db.InsertCashCollectionParams{
-		OrganizationID:      in.OrganizationID,
 		MachineID:           in.MachineID,
 		CollectedAt:         in.CollectedAt,
 		OpenedAt:            in.CollectedAt,
@@ -65,7 +60,6 @@ func (s *Store) CreateCashCollectionWithAttribution(ctx context.Context, in Crea
 	occ := in.CollectedAt
 	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 		MachineID:         in.MachineID,
-		OrganizationID:    in.OrganizationID,
 		OperatorSessionID: in.OperatorSessionID,
 		ActionDomain:      "cash",
 		ActionType:        "cash.collection",
@@ -84,7 +78,6 @@ func (s *Store) CreateCashCollectionWithAttribution(ctx context.Context, in Crea
 
 // CreateRefillSessionWithAttribution inserts refill_sessions plus optional attribution.
 type CreateRefillSessionWithAttributionInput struct {
-	OrganizationID    uuid.UUID
 	MachineID         uuid.UUID
 	StartedAt         time.Time
 	EndedAt           *time.Time
@@ -105,16 +98,12 @@ func (s *Store) CreateRefillSessionWithAttribution(ctx context.Context, in Creat
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := db.New(tx)
 
-	m, err := q.GetMachineByIDForUpdate(ctx, in.MachineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, in.MachineID)
 	if err != nil {
 		return db.RefillSession{}, err
 	}
-	if m.OrganizationID != in.OrganizationID {
-		return db.RefillSession{}, ErrMachineOrganizationMismatch
-	}
 
 	row, err := q.InsertRefillSession(ctx, db.InsertRefillSessionParams{
-		OrganizationID:    in.OrganizationID,
 		MachineID:         in.MachineID,
 		StartedAt:         in.StartedAt,
 		EndedAt:           optionalTimeToPgTimestamptz(in.EndedAt),
@@ -127,7 +116,6 @@ func (s *Store) CreateRefillSessionWithAttribution(ctx context.Context, in Creat
 	occ := in.StartedAt
 	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 		MachineID:         in.MachineID,
-		OrganizationID:    in.OrganizationID,
 		OperatorSessionID: in.OperatorSessionID,
 		ActionDomain:      "refill",
 		ActionType:        "refill.session.start",
@@ -146,7 +134,6 @@ func (s *Store) CreateRefillSessionWithAttribution(ctx context.Context, in Creat
 
 // RecordMachineConfigApplicationWithAttribution inserts machine_configs plus optional attribution.
 type RecordMachineConfigApplicationWithAttributionInput struct {
-	OrganizationID    uuid.UUID
 	MachineID         uuid.UUID
 	AppliedAt         time.Time
 	ConfigRevision    int32
@@ -172,16 +159,12 @@ func (s *Store) RecordMachineConfigApplicationWithAttribution(ctx context.Contex
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := db.New(tx)
 
-	m, err := q.GetMachineByIDForUpdate(ctx, in.MachineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, in.MachineID)
 	if err != nil {
 		return db.MachineConfig{}, err
 	}
-	if m.OrganizationID != in.OrganizationID {
-		return db.MachineConfig{}, ErrMachineOrganizationMismatch
-	}
 
 	row, err := q.InsertMachineConfigApplication(ctx, db.InsertMachineConfigApplicationParams{
-		OrganizationID:    in.OrganizationID,
 		MachineID:         in.MachineID,
 		AppliedAt:         in.AppliedAt,
 		ConfigRevision:    in.ConfigRevision,
@@ -195,7 +178,6 @@ func (s *Store) RecordMachineConfigApplicationWithAttribution(ctx context.Contex
 	occ := in.AppliedAt
 	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 		MachineID:         in.MachineID,
-		OrganizationID:    in.OrganizationID,
 		OperatorSessionID: in.OperatorSessionID,
 		ActionDomain:      "config",
 		ActionType:        "machine_config.apply",
@@ -214,7 +196,6 @@ func (s *Store) RecordMachineConfigApplicationWithAttribution(ctx context.Contex
 
 // CreateIncidentWithAttribution inserts incidents plus optional attribution.
 type CreateIncidentWithAttributionInput struct {
-	OrganizationID    uuid.UUID
 	MachineID         uuid.UUID
 	Status            string
 	Title             string
@@ -236,17 +217,13 @@ func (s *Store) CreateIncidentWithAttribution(ctx context.Context, in CreateInci
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := db.New(tx)
 
-	m, err := q.GetMachineByIDForUpdate(ctx, in.MachineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, in.MachineID)
 	if err != nil {
 		return db.Incident{}, err
-	}
-	if m.OrganizationID != in.OrganizationID {
-		return db.Incident{}, ErrMachineOrganizationMismatch
 	}
 
 	now := in.OpenedAt
 	row, err := q.InsertIncident(ctx, db.InsertIncidentParams{
-		OrganizationID:    in.OrganizationID,
 		MachineID:         in.MachineID,
 		Status:            in.Status,
 		Title:             in.Title,
@@ -261,7 +238,6 @@ func (s *Store) CreateIncidentWithAttribution(ctx context.Context, in CreateInci
 	occ := in.OpenedAt
 	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 		MachineID:         in.MachineID,
-		OrganizationID:    in.OrganizationID,
 		OperatorSessionID: in.OperatorSessionID,
 		ActionDomain:      "incidents",
 		ActionType:        "incident.open",
@@ -281,7 +257,6 @@ func (s *Store) CreateIncidentWithAttribution(ctx context.Context, in CreateInci
 // UpdateIncidentFromOperatorWithAttribution updates an incident from operator workflow and records attribution.
 type UpdateIncidentFromOperatorWithAttributionInput struct {
 	IncidentID        uuid.UUID
-	OrganizationID    uuid.UUID
 	Status            string
 	Title             string
 	Metadata          []byte
@@ -301,13 +276,12 @@ func (s *Store) UpdateIncidentFromOperatorWithAttribution(ctx context.Context, i
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := db.New(tx)
 
-	row, err := q.UpdateIncidentFromOperator(ctx, db.UpdateIncidentFromOperatorParams{
-		ID:                in.IncidentID,
-		Status:            in.Status,
+	row, err := q.UpdateIncidentFromOperator(ctx, db.UpdateIncidentFromOperatorParams{Status: in.Status,
 		Title:             in.Title,
 		Metadata:          meta,
 		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
-		OrganizationID:    in.OrganizationID,
+
+		ID: in.IncidentID,
 	})
 	if err != nil {
 		return db.Incident{}, err
@@ -316,7 +290,6 @@ func (s *Store) UpdateIncidentFromOperatorWithAttribution(ctx context.Context, i
 	occ := time.Now().UTC()
 	if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 		MachineID:         row.MachineID,
-		OrganizationID:    row.OrganizationID,
 		OperatorSessionID: in.OperatorSessionID,
 		ActionDomain:      "incidents",
 		ActionType:        "incident.update",

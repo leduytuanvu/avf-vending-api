@@ -20,10 +20,10 @@ The API stores current machine status and last-seen timestamps in Postgres. Repo
 ```bash
 BASE_URL="http://localhost:8080"
 TOKEN="<admin bearer token>"
-ORG_ID="11111111-1111-1111-1111-111111111111"
+SCOPE_ID="11111111-1111-1111-1111-111111111111"
 MACHINE_ID="55555555-5555-5555-5555-555555555555"
 
-curl -sS "$BASE_URL/v1/admin/machines/$MACHINE_ID?organization_id=$ORG_ID" \
+curl -sS "$BASE_URL/v1/admin/machines/$MACHINE_ID?company_id=$SCOPE_ID" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -32,11 +32,11 @@ curl -sS "$BASE_URL/v1/admin/machines/$MACHINE_ID?organization_id=$ORG_ID" \
 ```powershell
 $BaseUrl = "http://localhost:8080"
 $Token = "<admin bearer token>"
-$OrgId = "11111111-1111-1111-1111-111111111111"
+$CompanyId = "11111111-1111-1111-1111-111111111111"
 $MachineId = "55555555-5555-5555-5555-555555555555"
 
 Invoke-RestMethod -Method Get `
-  -Uri "$BaseUrl/v1/admin/machines/$MachineId?organization_id=$OrgId" `
+  -Uri "$BaseUrl/v1/admin/machines/$MachineId?company_id=$CompanyId" `
   -Headers @{ Authorization = "Bearer $Token" }
 ```
 

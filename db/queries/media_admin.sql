@@ -1,6 +1,5 @@
 -- name: MediaAdminInsertAsset :one
 INSERT INTO media_assets (
-    organization_id,
     kind,
     original_object_key,
     thumb_object_key,
@@ -20,8 +19,7 @@ VALUES (
     $6,
     $7,
     $8,
-    $9,
-    $10
+    $9
 )
 RETURNING *;
 
@@ -32,7 +30,7 @@ FROM
     media_assets
 WHERE
     id = $1
-    AND organization_id = $2;
+    AND TRUE;
 
 -- name: MediaAdminListAssetsForOrg :many
 SELECT
@@ -40,11 +38,10 @@ SELECT
 FROM
     media_assets
 WHERE
-    organization_id = $1
-    AND status != 'deleted'
+    status != 'deleted'
 ORDER BY
     created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
 -- name: MediaAdminCountAssetsForOrg :one
 SELECT
@@ -52,53 +49,52 @@ SELECT
 FROM
     media_assets
 WHERE
-    organization_id = $1
-    AND status != 'deleted';
+    status != 'deleted';
 
 -- name: MediaAdminMarkAssetFailed :one
 UPDATE media_assets
 SET
     status = 'failed',
-    failed_reason = $3,
+    failed_reason = $1,
     updated_at = now()
 WHERE
-    id = $1
-    AND organization_id = $2
+    id = $2
+    AND TRUE
 RETURNING *;
 
 -- name: MediaAdminDeletePendingAsset :execrows
 DELETE FROM media_assets
 WHERE
     id = $1
-    AND organization_id = $2
+    AND TRUE
     AND status = 'pending';
 
 -- name: MediaAdminUpdateAssetReady :one
 UPDATE media_assets
 SET
-    mime_type = $3,
-    size_bytes = $4,
-    sha256 = $5,
-    width = $6,
-    height = $7,
+    mime_type = $1,
+    size_bytes = $2,
+    sha256 = $3,
+    width = $4,
+    height = $5,
     object_version = object_version + 1,
-    etag = $8,
+    etag = $6,
     status = 'ready',
     updated_at = now()
 WHERE
-    id = $1
-    AND organization_id = $2
+    id = $7
+    AND TRUE
     AND status IN ('pending', 'processing')
 RETURNING *;
 
 -- name: MediaAdminSetAssetStatus :one
 UPDATE media_assets
 SET
-    status = $3,
+    status = $1,
     updated_at = now()
 WHERE
-    id = $1
-    AND organization_id = $2
+    id = $2
+    AND TRUE
 RETURNING *;
 
 -- name: MediaAdminSoftDeleteAsset :one
@@ -108,7 +104,7 @@ SET
     updated_at = now()
 WHERE
     id = $1
-    AND organization_id = $2
+    AND TRUE
     AND status != 'deleted'
 RETURNING *;
 
@@ -142,8 +138,7 @@ WHERE
 SELECT
     pi.id,
     pi.product_id,
-    pi.is_primary,
-    p.organization_id
+    pi.is_primary
 FROM
     product_images pi
     INNER JOIN products p ON p.id = pi.product_id
@@ -157,9 +152,8 @@ FROM
     product_images pi
     INNER JOIN products p ON p.id = pi.product_id
 WHERE
-    p.organization_id = $1
-    AND pi.product_id = $2
-    AND pi.media_asset_id = $3
+    pi.product_id = $1
+    AND pi.media_asset_id = $2
     AND pi.status = 'active'
 LIMIT
     1;

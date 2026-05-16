@@ -95,7 +95,7 @@ def hint_for(msg: str) -> tuple[str, str, str]:
     if "403" in msg or "forbidden" in mlow:
         return (
             "Principal lacks permission for route or org scope.",
-            "Grant role (e.g. audit.read, inventory); align `organizationId`.",
+            "Grant role (e.g. audit.read, inventory); align ``.",
             "yes",
         )
     if "connection refused" in mlow or " http 0" in mlow or "000" in msg:

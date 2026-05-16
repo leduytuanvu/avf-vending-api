@@ -44,7 +44,6 @@ message GetMachineIncidentSummaryRequest {
 
 message MachineSummary {
   string machine_id = 1;
-  string organization_id = 2;
   string site_id = 3;
   google.protobuf.StringValue hardware_profile_id = 4;
   string serial_number = 5;
@@ -64,7 +63,6 @@ message MachineShadowState {
 
 message MachineTelemetrySnapshot {
   string machine_id = 1;
-  string organization_id = 2;
   string site_id = 3;
   google.protobuf.Struct reported_state = 4;
   google.protobuf.Struct metrics_state = 5;

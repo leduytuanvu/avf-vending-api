@@ -30,7 +30,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_product_images_one_primary_per_product
 CREATE OR REPLACE VIEW product_media AS
 SELECT
     pi.id,
-    p.organization_id,
+    p.scope_id,
     pi.product_id,
     'image'::text AS media_type,
     COALESCE(ma.source_type, 'external'::text) AS source_type,

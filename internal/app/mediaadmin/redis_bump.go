@@ -10,7 +10,7 @@ import (
 
 const redisCatalogMediaEpochKeyPrefix = "avf:v1:catalog:media_epoch:"
 
-// RedisCatalogMediaBumper increments a monotonic epoch per organization (optional machine-side cache hint).
+// RedisCatalogMediaBumper increments a monotonic epoch per company (optional machine-side cache hint).
 type RedisCatalogMediaBumper struct {
 	Client *goredis.Client
 }
@@ -23,19 +23,19 @@ func NewRedisCatalogMediaBumper(c *goredis.Client) *RedisCatalogMediaBumper {
 	return &RedisCatalogMediaBumper{Client: c}
 }
 
-func (r *RedisCatalogMediaBumper) BumpOrganizationMedia(ctx context.Context, organizationID uuid.UUID) {
-	if r == nil || r.Client == nil || organizationID == uuid.Nil {
+func (r *RedisCatalogMediaBumper) BumpCompanyMedia(ctx context.Context, companyID uuid.UUID) {
+	if r == nil || r.Client == nil || companyID == uuid.Nil {
 		return
 	}
-	_ = r.Client.Incr(ctx, redisCatalogMediaEpochKeyPrefix+organizationID.String())
+	_ = r.Client.Incr(ctx, redisCatalogMediaEpochKeyPrefix+companyID.String())
 }
 
 // ReadMediaEpoch is a test/debug helper; returns 0 on miss or nil client.
-func ReadMediaEpoch(ctx context.Context, c *goredis.Client, organizationID uuid.UUID) int64 {
-	if c == nil || organizationID == uuid.Nil {
+func ReadMediaEpoch(ctx context.Context, c *goredis.Client, companyID uuid.UUID) int64 {
+	if c == nil || companyID == uuid.Nil {
 		return 0
 	}
-	n, err := c.Get(ctx, redisCatalogMediaEpochKeyPrefix+organizationID.String()).Int64()
+	n, err := c.Get(ctx, redisCatalogMediaEpochKeyPrefix+companyID.String()).Int64()
 	if err != nil {
 		return 0
 	}

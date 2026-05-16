@@ -79,7 +79,8 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 
 func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -93,11 +94,10 @@ func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
 		activeOnly := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("active_only")), "true") ||
 			strings.TrimSpace(r.URL.Query().Get("active_only")) == "1"
 		res, err := svc.ListProducts(r.Context(), appcatalogadmin.ListProductsParams{
-			OrganizationID: orgID,
-			Limit:          limit,
-			Offset:         offset,
-			Search:         search,
-			ActiveOnly:     activeOnly,
+			Limit:      limit,
+			Offset:     offset,
+			Search:     search,
+			ActiveOnly: activeOnly,
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
@@ -106,17 +106,16 @@ func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
 		items := make([]V1AdminProductListItem, 0, len(res.Items))
 		for _, row := range res.Items {
 			items = append(items, V1AdminProductListItem{
-				ID:             row.ID.String(),
-				OrganizationID: row.OrganizationID.String(),
-				Sku:            row.Sku,
-				Barcode:        textFromPgText(row.Barcode),
-				Name:           row.Name,
-				Description:    row.Description,
-				Active:         row.Active,
-				CategoryID:     uuidPtrFromPgUUID(row.CategoryID),
-				BrandID:        uuidPtrFromPgUUID(row.BrandID),
-				CreatedAt:      formatAPITimeRFC3339Nano(row.CreatedAt),
-				UpdatedAt:      formatAPITimeRFC3339Nano(row.UpdatedAt),
+				ID:          row.ID.String(),
+				Sku:         row.Sku,
+				Barcode:     textFromPgText(row.Barcode),
+				Name:        row.Name,
+				Description: row.Description,
+				Active:      row.Active,
+				CategoryID:  uuidPtrFromPgUUID(row.CategoryID),
+				BrandID:     uuidPtrFromPgUUID(row.BrandID),
+				CreatedAt:   formatAPITimeRFC3339Nano(row.CreatedAt),
+				UpdatedAt:   formatAPITimeRFC3339Nano(row.UpdatedAt),
 			})
 		}
 		writeJSON(w, http.StatusOK, V1AdminProductListEnvelope{
@@ -133,7 +132,8 @@ func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func getAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -143,7 +143,7 @@ func getAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_product_id", "invalid productId")
 			return
 		}
-		row, err := svc.GetProduct(r.Context(), orgID, pid)
+		row, err := svc.GetProduct(r.Context(), scopeID, pid)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "product_not_found", "product not found")
@@ -152,13 +152,14 @@ func getAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		writeAdminProductResponse(w, r, svc, orgID, row)
+		writeAdminProductResponse(w, r, svc, scopeID, row)
 	}
 }
 
 func listAdminPriceBooks(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -171,7 +172,6 @@ func listAdminPriceBooks(svc *appcatalogadmin.Service) http.HandlerFunc {
 		includeInactive := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("include_inactive")), "true") ||
 			strings.TrimSpace(r.URL.Query().Get("include_inactive")) == "1"
 		rows, total, err := svc.ListPriceBooks(r.Context(), appcatalogadmin.ListPriceBooksParams{
-			OrganizationID:  orgID,
 			Limit:           limit,
 			Offset:          offset,
 			IncludeInactive: includeInactive,
@@ -198,7 +198,8 @@ func listAdminPriceBooks(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminPlanograms(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -208,7 +209,7 @@ func listAdminPlanograms(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", err.Error())
 			return
 		}
-		rows, total, err := svc.ListPlanograms(r.Context(), orgID, limit, offset)
+		rows, total, err := svc.ListPlanograms(r.Context(), scopeID, limit, offset)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -231,7 +232,8 @@ func listAdminPlanograms(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -241,7 +243,7 @@ func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_planogram_id", "invalid planogramId")
 			return
 		}
-		pg, err := svc.GetPlanogram(r.Context(), orgID, pgid)
+		pg, err := svc.GetPlanogram(r.Context(), scopeID, pgid)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "planogram_not_found", "planogram not found")
@@ -250,7 +252,7 @@ func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		slots, err := svc.ListPlanogramSlots(r.Context(), orgID, pgid)
+		slots, err := svc.ListPlanogramSlots(r.Context(), scopeID, pgid)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -277,7 +279,8 @@ func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminBrands(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -288,9 +291,8 @@ func listAdminBrands(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		rows, total, err := svc.ListBrands(r.Context(), appcatalogadmin.ListBrandsParams{
-			OrganizationID: orgID,
-			Limit:          limit,
-			Offset:         offset,
+			Limit:  limit,
+			Offset: offset,
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
@@ -314,7 +316,8 @@ func listAdminBrands(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminCategories(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -325,9 +328,8 @@ func listAdminCategories(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		rows, total, err := svc.ListCategories(r.Context(), appcatalogadmin.ListCategoriesParams{
-			OrganizationID: orgID,
-			Limit:          limit,
-			Offset:         offset,
+			Limit:  limit,
+			Offset: offset,
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
@@ -351,7 +353,8 @@ func listAdminCategories(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminTags(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -362,9 +365,8 @@ func listAdminTags(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		rows, total, err := svc.ListTags(r.Context(), appcatalogadmin.ListTagsParams{
-			OrganizationID: orgID,
-			Limit:          limit,
-			Offset:         offset,
+			Limit:  limit,
+			Offset: offset,
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
@@ -388,25 +390,23 @@ func listAdminTags(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func mapAdminBrand(b db.Brand) V1AdminBrand {
 	return V1AdminBrand{
-		ID:             b.ID.String(),
-		OrganizationID: b.OrganizationID.String(),
-		Slug:           b.Slug,
-		Name:           b.Name,
-		Active:         b.Active,
-		CreatedAt:      formatAPITimeRFC3339Nano(b.CreatedAt),
-		UpdatedAt:      formatAPITimeRFC3339Nano(b.UpdatedAt),
+		ID:        b.ID.String(),
+		Slug:      b.Slug,
+		Name:      b.Name,
+		Active:    b.Active,
+		CreatedAt: formatAPITimeRFC3339Nano(b.CreatedAt),
+		UpdatedAt: formatAPITimeRFC3339Nano(b.UpdatedAt),
 	}
 }
 
 func mapAdminCategory(c db.Category) V1AdminCategory {
 	out := V1AdminCategory{
-		ID:             c.ID.String(),
-		OrganizationID: c.OrganizationID.String(),
-		Slug:           c.Slug,
-		Name:           c.Name,
-		Active:         c.Active,
-		CreatedAt:      formatAPITimeRFC3339Nano(c.CreatedAt),
-		UpdatedAt:      formatAPITimeRFC3339Nano(c.UpdatedAt),
+		ID:        c.ID.String(),
+		Slug:      c.Slug,
+		Name:      c.Name,
+		Active:    c.Active,
+		CreatedAt: formatAPITimeRFC3339Nano(c.CreatedAt),
+		UpdatedAt: formatAPITimeRFC3339Nano(c.UpdatedAt),
 	}
 	if c.ParentID.Valid {
 		s := uuid.UUID(c.ParentID.Bytes).String()
@@ -417,13 +417,12 @@ func mapAdminCategory(c db.Category) V1AdminCategory {
 
 func mapAdminTag(t db.Tag) V1AdminTag {
 	return V1AdminTag{
-		ID:             t.ID.String(),
-		OrganizationID: t.OrganizationID.String(),
-		Slug:           t.Slug,
-		Name:           t.Name,
-		Active:         t.Active,
-		CreatedAt:      formatAPITimeRFC3339Nano(t.CreatedAt),
-		UpdatedAt:      formatAPITimeRFC3339Nano(t.UpdatedAt),
+		ID:        t.ID.String(),
+		Slug:      t.Slug,
+		Name:      t.Name,
+		Active:    t.Active,
+		CreatedAt: formatAPITimeRFC3339Nano(t.CreatedAt),
+		UpdatedAt: formatAPITimeRFC3339Nano(t.UpdatedAt),
 	}
 }
 
@@ -446,7 +445,6 @@ func textFromPgText(t pgtype.Text) *string {
 func mapAdminProduct(p db.Product, img *db.ProductImage) V1AdminProduct {
 	out := V1AdminProduct{
 		ID:              p.ID.String(),
-		OrganizationID:  p.OrganizationID.String(),
 		Sku:             p.Sku,
 		Barcode:         textFromPgText(p.Barcode),
 		Name:            p.Name,
@@ -485,8 +483,8 @@ func mapAdminProduct(p db.Product, img *db.ProductImage) V1AdminProduct {
 	return out
 }
 
-func writeAdminProductResponse(w http.ResponseWriter, r *http.Request, svc *appcatalogadmin.Service, orgID uuid.UUID, p db.Product) {
-	img, err := svc.PrimaryProductImageOrNil(r.Context(), orgID, p.ID)
+func writeAdminProductResponse(w http.ResponseWriter, r *http.Request, svc *appcatalogadmin.Service, scopeID uuid.UUID, p db.Product) {
+	img, err := svc.PrimaryProductImageOrNil(r.Context(), scopeID, p.ID)
 	if err != nil {
 		writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 		return
@@ -496,31 +494,29 @@ func writeAdminProductResponse(w http.ResponseWriter, r *http.Request, svc *appc
 
 func mapPriceBook(pb db.PriceBook) V1AdminPriceBook {
 	return V1AdminPriceBook{
-		ID:             pb.ID.String(),
-		OrganizationID: pb.OrganizationID.String(),
-		Name:           pb.Name,
-		Currency:       pb.Currency,
-		EffectiveFrom:  formatAPITimeRFC3339Nano(pb.EffectiveFrom),
-		EffectiveTo:    timePtrFromTimestamptz(pb.EffectiveTo),
-		IsDefault:      pb.IsDefault,
-		Active:         pb.Active,
-		ScopeType:      pb.ScopeType,
-		SiteID:         uuidPtrFromPgUUID(pb.SiteID),
-		MachineID:      uuidPtrFromPgUUID(pb.MachineID),
-		Priority:       pb.Priority,
-		CreatedAt:      formatAPITimeRFC3339Nano(pb.CreatedAt),
-		UpdatedAt:      formatAPITimeRFC3339Nano(pb.UpdatedAt),
+		ID:            pb.ID.String(),
+		Name:          pb.Name,
+		Currency:      pb.Currency,
+		EffectiveFrom: formatAPITimeRFC3339Nano(pb.EffectiveFrom),
+		EffectiveTo:   timePtrFromTimestamptz(pb.EffectiveTo),
+		IsDefault:     pb.IsDefault,
+		Active:        pb.Active,
+		ScopeType:     pb.ScopeType,
+		SiteID:        uuidPtrFromPgUUID(pb.SiteID),
+		MachineID:     uuidPtrFromPgUUID(pb.MachineID),
+		Priority:      pb.Priority,
+		CreatedAt:     formatAPITimeRFC3339Nano(pb.CreatedAt),
+		UpdatedAt:     formatAPITimeRFC3339Nano(pb.UpdatedAt),
 	}
 }
 
 func mapPlanogram(pg db.Planogram) V1AdminPlanogram {
 	out := V1AdminPlanogram{
-		ID:             pg.ID.String(),
-		OrganizationID: pg.OrganizationID.String(),
-		Name:           pg.Name,
-		Revision:       pg.Revision,
-		Status:         pg.Status,
-		CreatedAt:      formatAPITimeRFC3339Nano(pg.CreatedAt),
+		ID:        pg.ID.String(),
+		Name:      pg.Name,
+		Revision:  pg.Revision,
+		Status:    pg.Status,
+		CreatedAt: formatAPITimeRFC3339Nano(pg.CreatedAt),
 	}
 	if len(pg.Meta) > 0 && json.Valid(pg.Meta) {
 		out.Meta = json.RawMessage(pg.Meta)

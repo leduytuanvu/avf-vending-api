@@ -9,7 +9,6 @@ import (
 // OutboxEvent is a durable async propagation record.
 type OutboxEvent struct {
 	ID             int64
-	OrganizationID *uuid.UUID
 	Topic          string
 	EventType      string
 	Payload        []byte

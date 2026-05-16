@@ -2,6 +2,8 @@
 
 Go **1.25+** backend for the AVF vending platform: HTTP Admin/control plane (`cmd/api`), **public machine gRPC** (`avf.machine.v1`, Machine JWT, when **`MACHINE_GRPC_ENABLED=true`**), optional **internal** loopback gRPC reads (`avf.internal.v1`, service JWT), background processes, and shared wiring (PostgreSQL, Redis, OpenTelemetry).
 
+**Migration note:** Company-scope model removed; system is now single-company. Admin APIs operate for the single company, with global, site-scoped, machine-scoped, and role-scoped authorization instead of company selection.
+
 **What runs today** (with env and migrations): HTTP `/v1` for admins/operators/webhooks; **native kiosk/runtime** on **`avf.machine.v1`** when machine gRPC is enabled (production requires **`MACHINE_GRPC_ENABLED=true`** explicitly); Postgres-backed commerce/device/fleet flows; legacy OpenAPI machine REST routes remain **`deprecated`** for migration windows only (`MACHINE_REST_LEGACY_ENABLED`). `cmd/worker` runs reliability ticks with **optional** NATS JetStream outbox publish when `NATS_URL` is set, **optional** ClickHouse analytics mirror when `ANALYTICS_*` is enabled (`ops/ANALYTICS_CLICKHOUSE.md`), `cmd/mqtt-ingest` MQTT→Postgres ingest, `cmd/reconciler` commerce reconciliation (list-only by default; **optional** close-the-loop actions when `RECONCILER_ACTIONS_ENABLED=true` with probe URL + NATS—see `internal/config/reconciler.go`). Optional **internal gRPC query services** (`INTERNAL_GRPC_ENABLED`) are loopback read/query only—not the vending app API. Optional **Temporal-backed workflow follow-up** via `cmd/temporal-worker`. **Artifacts** use S3 when `API_ARTIFACTS_ENABLED=true`. **Future scope:** broader internal gRPC mutation APIs and fully unified analytics/event planes—not missing native machine gRPC.
 
 ## Current architecture
@@ -63,11 +65,11 @@ make verify-workflows   # actionlint + workflow contract scripts (Workflow and S
 make ci-full            # ci-gates + all tests (export TEST_DATABASE_URL for postgres integration tests)
 ```
 
-Install **sqlc** for `make sqlc-check` / `make ci-gates`: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0` (pin should match the workflow).
+Install **sqlc** for `make sqlc-check` / `make ci-gates`: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1` (pin must match `SQLC_VERSION` in the `Makefile`; CI runs `make api-contract-check`).
 
 **Swagger / OpenAPI** (embedded in the API process): annotations live in [`cmd/api/main.go`](cmd/api/main.go) (API metadata) and [`internal/httpserver/swagger_operations.go`](internal/httpserver/swagger_operations.go) (per-route docs). Regenerate committed artifacts with `make swagger` (uses Python 3 via `PY=python3` by default; on Windows use `make swagger PY=python` if needed). CI and `make swagger-check` fail when [`docs/swagger`](docs/swagger) is stale. With Swagger enabled (default in non-production; see `HTTP_SWAGGER_UI_ENABLED` in [`.env.example`](.env.example)), the server serves **Swagger UI** at `/swagger/index.html` and raw **OpenAPI 3.0** JSON at `/swagger/doc.json` (multi-environment **Servers** + shared error model).
 
-**Reporting** (Bearer JWT + `reports.read`): read-only JSON under **`/v1/reports/*`** and organization-scoped Admin Web reports under **`/v1/admin/organizations/{organizationId}/reports/*`**. Every report requires **`from`** and **`to`** (RFC3339) with a maximum span of **366 days**; platform admins must pick the tenant explicitly. Supported CSV exports are synchronous (`format=csv` on selected Admin report routes, plus legacy `/v1/admin/reports/*/export.csv`) and audited.
+**Reporting** (Bearer JWT + `reports.read`): read-only JSON under **`/v1/reports/*`** and Admin Web reports under **`/v1/admin/reports/*`**. Every report requires **`from`** and **`to`** (RFC3339) with a maximum span of **366 days**; optional filters narrow by site, machine, product, or role where supported. Supported CSV exports are synchronous (`format=csv` on selected Admin report routes, plus legacy `/v1/admin/reports/*/export.csv`) and audited.
 
 ## Local dependencies (Docker)
 

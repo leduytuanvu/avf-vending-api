@@ -47,7 +47,7 @@ func matchSlotRow(in SaleLineSelector, r db.InventoryAdminListCurrentMachineSlot
 func pickSlotRow(rows []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, org uuid.UUID, in SaleLineSelector) (db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error) {
 	var hits []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow
 	for _, r := range rows {
-		if r.OrganizationID != org {
+		if uuid.Nil != org {
 			continue
 		}
 		if matchSlotRow(in, r) {
@@ -71,10 +71,9 @@ func (e *Engine) EvaluateSaleLine(ctx context.Context, in SaleLineSelector, at t
 		return LinePriceResult{}, zeroR, errors.New("pricingengine: nil engine")
 	}
 	q := db.New(e.pool)
-	ok, err := q.CommerceIsProductInMachinePublishedAssortment(ctx, db.CommerceIsProductInMachinePublishedAssortmentParams{
-		ID:             in.MachineID,
-		OrganizationID: in.OrganizationID,
-		ProductID:      in.ProductID,
+	ok, err := q.CommerceIsProductInMachinePublishedAssortment(ctx, db.CommerceIsProductInMachinePublishedAssortmentParams{ProductID: in.ProductID,
+
+		ID: in.MachineID,
 	})
 	if err != nil {
 		return LinePriceResult{}, zeroR, err
@@ -86,7 +85,7 @@ func (e *Engine) EvaluateSaleLine(ctx context.Context, in SaleLineSelector, at t
 	if err != nil {
 		return LinePriceResult{}, zeroR, err
 	}
-	row, err := pickSlotRow(rows, in.OrganizationID, in)
+	row, err := pickSlotRow(rows, uuid.Nil, in)
 	if err != nil {
 		return LinePriceResult{}, zeroR, err
 	}
@@ -94,12 +93,11 @@ func (e *Engine) EvaluateSaleLine(ctx context.Context, in SaleLineSelector, at t
 	if !ok {
 		return LinePriceResult{}, zeroR, errors.New("pricingengine: slot config has no slot_index")
 	}
-	batch, err := e.newBatch(ctx, in.OrganizationID, in.MachineID, at)
+	batch, err := e.newBatch(ctx, uuid.Nil, in.MachineID, at)
 	if err != nil {
 		return LinePriceResult{}, zeroR, err
 	}
 	res, err := batch.PriceLine(ctx, PriceLineInput{
-		OrganizationID:    in.OrganizationID,
 		MachineID:         in.MachineID,
 		ProductID:         in.ProductID,
 		SlotListUnitMinor: row.PriceMinor,

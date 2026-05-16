@@ -20,13 +20,13 @@ import (
 func TestP21_BulkProvisioning100Machines_NoActivationCodes(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
+	scopeID := uuid.New()
 	siteID := uuid.New()
-	insertAuditOrganization(t, pool, orgID)
+	insertAuditCompany(t, pool, scopeID)
 	_, err := pool.Exec(ctx, `
-INSERT INTO sites (id, organization_id, name, code, status)
+INSERT INTO sites (id, scope_id, name, code, status)
 VALUES ($1, $2, 'Bulk Site', $3, 'active')
-`, siteID, orgID, "bulk-site-"+siteID.String()[:8])
+`, siteID, scopeID, "bulk-site-"+siteID.String()[:8])
 	require.NoError(t, err)
 
 	fleetSvc := appfleet.NewService(postgres.NewFleetRepository(pool))
@@ -42,12 +42,12 @@ VALUES ($1, $2, 'Bulk Site', $3, 'active')
 	rows := make([]approvisioning.BulkMachineRow, 100)
 	for i := range rows {
 		rows[i] = approvisioning.BulkMachineRow{
-			SerialNumber: fmt.Sprintf("%s-P21-%04d", orgID.String()[:8], i),
+			SerialNumber: fmt.Sprintf("%s-P21-%04d", scopeID.String()[:8], i),
 			Name:         fmt.Sprintf("Bulk %d", i),
 			Model:        "AVF-TEST",
 		}
 	}
-	res, err := provSvc.BulkCreateMachines(ctx, orgID, approvisioning.BulkCreateInput{
+	res, err := provSvc.BulkCreateMachines(ctx, approvisioning.BulkCreateInput{
 		SiteID:                  siteID,
 		CabinetType:             "ambient",
 		Machines:                rows,
@@ -59,7 +59,7 @@ VALUES ($1, $2, 'Bulk Site', $3, 'active')
 
 	var n int
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM machines WHERE organization_id = $1 AND status = 'provisioning'`, orgID).Scan(&n))
+		`SELECT count(*) FROM machines WHERE scope_id = $1 AND status = 'provisioning'`, scopeID).Scan(&n))
 	require.Equal(t, 100, n)
 }
 

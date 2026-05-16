@@ -43,15 +43,14 @@ func WireAuthAdminMutationAudit(rec compliance.EnterpriseRecorder) func(context.
 		before, after := patchRoleSnapshots(e)
 
 		recRecord := compliance.EnterpriseAuditRecord{
-			OrganizationID: e.OrganizationID,
-			ActorType:      compliance.ActorUser,
-			ActorID:        &actor,
-			Action:         action,
-			ResourceType:   "auth.account",
-			ResourceID:     &target,
-			BeforeJSON:     before,
-			AfterJSON:      after,
-			Metadata:       md,
+			ActorType:    compliance.ActorUser,
+			ActorID:      &actor,
+			Action:       action,
+			ResourceType: "auth.account",
+			ResourceID:   &target,
+			BeforeJSON:   before,
+			AfterJSON:    after,
+			Metadata:     md,
 		}
 		if tx != nil {
 			return rec.RecordCriticalTx(ctx, tx, recRecord)

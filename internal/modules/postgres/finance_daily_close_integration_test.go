@@ -6,7 +6,6 @@ import (
 
 	appfinance "github.com/avf/avf-vending-api/internal/app/finance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
-	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +20,6 @@ func TestFinanceDailyClose_IdempotentReplayAndDuplicateScope(t *testing.T) {
 	tz := "UTC"
 
 	in := appfinance.CreateDailyCloseInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		CloseDate:      closeDate,
 		Timezone:       tz,
 		IdempotencyKey: "idem-replay-1",
@@ -41,17 +39,16 @@ func TestFinanceDailyClose_IdempotentReplayAndDuplicateScope(t *testing.T) {
 	require.ErrorIs(t, err, appfinance.ErrDuplicateDailyClose)
 }
 
-func TestFinanceDailyClose_TenantIsolation(t *testing.T) {
+func TestFinanceDailyClose_CompanyIsolation(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
 	q := db.New(pool)
 	svc := appfinance.NewService(q, nil)
 
 	in := appfinance.CreateDailyCloseInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		CloseDate:      "2024-07-01",
 		Timezone:       "UTC",
-		IdempotencyKey: "idem-tenant-1",
+		IdempotencyKey: "idem-company-1",
 		ActorType:      "user",
 	}
 	v, err := svc.CreateDailyClose(ctx, in)

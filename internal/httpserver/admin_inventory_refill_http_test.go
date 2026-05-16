@@ -12,6 +12,7 @@ import (
 
 func TestParseInventoryRefillForecastQuery_velocityDaysInvalid(t *testing.T) {
 	org := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	_ = org
 	req := httptest.NewRequest("GET", "/v1/admin/inventory/refill-suggestions?velocity_days=abc", nil)
 	_, err := parseInventoryRefillForecastQuery(req, org, nil, false)
 	require.ErrorIs(t, err, listscope.ErrInvalidListQuery)
@@ -19,6 +20,7 @@ func TestParseInventoryRefillForecastQuery_velocityDaysInvalid(t *testing.T) {
 
 func TestParseInventoryRefillForecastQuery_urgencyInvalid(t *testing.T) {
 	org := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	_ = org
 	req := httptest.NewRequest("GET", "/v1/admin/inventory/refill-suggestions?urgency=nope", nil)
 	_, err := parseInventoryRefillForecastQuery(req, org, nil, false)
 	require.ErrorIs(t, err, listscope.ErrInvalidListQuery)
@@ -26,6 +28,7 @@ func TestParseInventoryRefillForecastQuery_urgencyInvalid(t *testing.T) {
 
 func TestParseInventoryRefillForecastQuery_machinePathMismatch(t *testing.T) {
 	org := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	_ = org
 	pathMid := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	queryMid := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 	req := httptest.NewRequest("GET", "/?machine_id="+queryMid.String(), nil)
@@ -35,6 +38,7 @@ func TestParseInventoryRefillForecastQuery_machinePathMismatch(t *testing.T) {
 
 func TestParseInventoryRefillForecastQuery_machinePathMatchesQuery(t *testing.T) {
 	org := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	_ = org
 	pathMid := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	req := httptest.NewRequest("GET", "/?machine_id="+pathMid.String()+"&velocity_days=30", nil)
 	p, err := parseInventoryRefillForecastQuery(req, org, &pathMid, false)
@@ -47,6 +51,7 @@ func TestParseInventoryRefillForecastQuery_machinePathMatchesQuery(t *testing.T)
 
 func TestParseInventoryRefillForecastQuery_lowStockFlag(t *testing.T) {
 	org := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	_ = org
 	req := httptest.NewRequest("GET", "/", nil)
 	p, err := parseInventoryRefillForecastQuery(req, org, nil, true)
 	require.NoError(t, err)
@@ -55,6 +60,7 @@ func TestParseInventoryRefillForecastQuery_lowStockFlag(t *testing.T) {
 
 func TestParseInventoryRefillForecastQuery_urgencyLowercases(t *testing.T) {
 	org := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	_ = org
 	req := httptest.NewRequest("GET", "/?urgency=HIGH", nil)
 	p, err := parseInventoryRefillForecastQuery(req, org, nil, false)
 	require.NoError(t, err)

@@ -244,11 +244,7 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 	sort.SliceStable(events, func(i, j int) bool {
 		return events[i].GetMeta().GetOfflineSequence() < events[j].GetMeta().GetOfflineSequence()
 	})
-	cursor, err := q.GetMachineSyncCursor(ctx, db.GetMachineSyncCursorParams{
-		OrganizationID: claims.OrganizationID,
-		MachineID:      claims.MachineID,
-		StreamName:     "offline",
-	})
+	cursor, err := q.GetMachineSyncCursor(ctx, db.GetMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: "offline"})
 	if errors.Is(err, pgx.ErrNoRows) {
 		cursor.LastSequence = 0
 	} else if err != nil {
@@ -289,12 +285,7 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 		}
 		cursor.LastSequence = seq
 		expected++
-		if _, err := q.UpsertMachineSyncCursor(ctx, db.UpsertMachineSyncCursorParams{
-			OrganizationID: claims.OrganizationID,
-			MachineID:      claims.MachineID,
-			StreamName:     "offline",
-			LastSequence:   seq,
-		}); err != nil {
+		if _, err := q.UpsertMachineSyncCursor(ctx, db.UpsertMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: "offline", LastSequence: seq}); err != nil {
 			return nil, status.Error(codes.Internal, "offline cursor update failed")
 		}
 	}
@@ -323,9 +314,8 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 
 	if clientEventID != "" {
 		prior, err := q.GetMachineOfflineEventByClientEventID(ctx, db.GetMachineOfflineEventByClientEventIDParams{
-			OrganizationID: claims.OrganizationID,
-			MachineID:      claims.MachineID,
-			ClientEventID:  clientEventID,
+			MachineID:     claims.MachineID,
+			ClientEventID: clientEventID,
 		})
 		switch {
 		case err == nil:
@@ -357,7 +347,6 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 	}
 
 	row, err := q.InsertMachineOfflineEvent(ctx, db.InsertMachineOfflineEventParams{
-		OrganizationID:   claims.OrganizationID,
 		MachineID:        claims.MachineID,
 		OfflineSequence:  seq,
 		EventType:        eventType,
@@ -373,9 +362,8 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 		var pe *pgconn.PgError
 		if errors.As(err, &pe) && pe.Code == "23505" && clientEventID != "" {
 			prior, qerr := q.GetMachineOfflineEventByClientEventID(ctx, db.GetMachineOfflineEventByClientEventIDParams{
-				OrganizationID: claims.OrganizationID,
-				MachineID:      claims.MachineID,
-				ClientEventID:  clientEventID,
+				MachineID:     claims.MachineID,
+				ClientEventID: clientEventID,
 			})
 			if qerr == nil {
 				if prior.OfflineSequence != seq {
@@ -410,7 +398,6 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 			st = "rejected"
 		}
 		_ = q.UpdateMachineOfflineEventStatus(ctx, db.UpdateMachineOfflineEventStatusParams{
-			OrganizationID:   claims.OrganizationID,
 			MachineID:        claims.MachineID,
 			OfflineSequence:  seq,
 			ProcessingStatus: st,
@@ -419,7 +406,6 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 		return &machinev1.OfflineEventResult{OfflineSequence: seq, IdempotencyKey: idem, Status: resultStatus, Reason: err.Error()}
 	}
 	_ = q.UpdateMachineOfflineEventStatus(ctx, db.UpdateMachineOfflineEventStatusParams{
-		OrganizationID:   claims.OrganizationID,
 		MachineID:        claims.MachineID,
 		OfflineSequence:  seq,
 		ProcessingStatus: "processed",
@@ -553,11 +539,7 @@ func (s *machineOfflineSyncServer) GetSyncCursor(ctx context.Context, req *machi
 		return nil, status.Error(codes.Unavailable, "offline sync ledger not configured")
 	}
 	q := db.New(s.deps.Pool)
-	cursor, err := q.GetMachineSyncCursor(ctx, db.GetMachineSyncCursorParams{
-		OrganizationID: claims.OrganizationID,
-		MachineID:      claims.MachineID,
-		StreamName:     "offline",
-	})
+	cursor, err := q.GetMachineSyncCursor(ctx, db.GetMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: "offline"})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return &machinev1.GetSyncCursorResponse{
 			Meta:       responseMetaCtx(ctx, req.GetMeta().GetRequestId(), machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
@@ -597,10 +579,7 @@ func (s *machineCommandServer) GetAssignedUpdate(ctx context.Context, req *machi
 	if err := machineCredentialGate(ctx, q, claims); err != nil {
 		return nil, err
 	}
-	row, err := q.DeviceGetAssignedOTAUpdate(ctx, db.DeviceGetAssignedOTAUpdateParams{
-		MachineID:      claims.MachineID,
-		OrganizationID: claims.OrganizationID,
-	})
+	row, err := q.DeviceGetAssignedOTAUpdate(ctx, claims.MachineID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return &machinev1.GetAssignedUpdateResponse{
 			Meta: responseMetaCtx(ctx, req.GetMeta().GetRequestId(), machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
@@ -645,11 +624,10 @@ func (s *machineCommandServer) ReportUpdateStatus(ctx context.Context, req *mach
 		return nil, err
 	}
 	_, err = q.DeviceReportOTAResult(ctx, db.DeviceReportOTAResultParams{
-		MachineID:      claims.MachineID,
-		CampaignID:     campaignID,
-		OrganizationID: claims.OrganizationID,
-		Status:         st,
-		LastError:      pgText(strings.TrimSpace(req.GetErrorMessage())),
+		MachineID:  claims.MachineID,
+		CampaignID: campaignID,
+		Status:     st,
+		LastError:  pgText(strings.TrimSpace(req.GetErrorMessage())),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, status.Error(codes.PermissionDenied, "ota_result_not_assigned_to_machine")
@@ -695,7 +673,6 @@ func (s *machineCommandServer) ReportDiagnosticBundleResult(ctx context.Context,
 		return nil, err
 	}
 	row, err := q.DeviceInsertDiagnosticBundleManifest(ctx, db.DeviceInsertDiagnosticBundleManifestParams{
-		OrganizationID:  pgtype.UUID{Bytes: claims.OrganizationID, Valid: true},
 		MachineID:       claims.MachineID,
 		RequestID:       pgtype.UUID{Bytes: requestID, Valid: true},
 		CommandID:       pgtype.UUID{},
@@ -732,13 +709,12 @@ func (s *machineCommandServer) recordMachineCommandAudit(ctx context.Context, cl
 		meta = []byte(`{}`)
 	}
 	_ = s.deps.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: claims.OrganizationID,
-		ActorType:      compliance.ActorMachine,
-		ActorID:        &actorID,
-		Action:         action,
-		ResourceType:   resourceType,
-		ResourceID:     &rid,
-		Metadata:       meta,
+		ActorType:    compliance.ActorMachine,
+		ActorID:      &actorID,
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   &rid,
+		Metadata:     meta,
 	})
 }
 

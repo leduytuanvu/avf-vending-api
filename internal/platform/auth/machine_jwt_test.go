@@ -33,9 +33,8 @@ func TestValidateMachineAccessJWT_RoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	machineID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	raw, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 7, uuid.Nil)
+	raw, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 7, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,9 +44,6 @@ func TestValidateMachineAccessJWT_RoundTrip(t *testing.T) {
 	}
 	if claims.MachineID != machineID {
 		t.Fatalf("machine id=%v", claims.MachineID)
-	}
-	if claims.OrganizationID != orgID {
-		t.Fatalf("org id=%v", claims.OrganizationID)
 	}
 	if claims.CredentialVersion != 7 {
 		t.Fatalf("credential version=%d", claims.CredentialVersion)
@@ -71,8 +67,7 @@ func TestValidateMachineAccessJWT_RejectsUserAccessToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
-	userTok, _, err := issuer.IssueAccessJWT(uuid.New(), orgID, []string{RoleOrgAdmin}, "active")
+	userTok, _, err := issuer.IssueAccessJWT(uuid.New(), uuid.Nil, []string{RoleOrgAdmin}, "active")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,8 +90,7 @@ func TestValidateMachineAccessJWTWithConfig_EdDSA(t *testing.T) {
 	}
 	pubPEM := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubDER})
 	machineID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
-	raw := signMachineTestJWT(t, jwt.SigningMethodEdDSA, priv, "", machineID, orgID)
+	raw := signMachineTestJWT(t, jwt.SigningMethodEdDSA, priv, "", machineID)
 
 	claims, err := ValidateMachineAccessJWTWithConfig(context.Background(), raw, config.MachineJWTConfig{
 		Mode:                   HTTPAuthModeEd25519PEM,
@@ -110,8 +104,8 @@ func TestValidateMachineAccessJWTWithConfig_EdDSA(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if claims.MachineID != machineID || claims.OrganizationID != orgID {
-		t.Fatalf("claims machine=%v org=%v", claims.MachineID, claims.OrganizationID)
+	if claims.MachineID != machineID {
+		t.Fatalf("machine id=%v", claims.MachineID)
 	}
 }
 
@@ -128,7 +122,7 @@ func TestValidateMachineAccessJWTWithConfig_JWKSRejectsInvalidKID(t *testing.T) 
 	}))
 	t.Cleanup(srv.Close)
 
-	raw := signMachineTestJWT(t, jwt.SigningMethodEdDSA, priv, "bad", uuid.MustParse("33333333-3333-3333-3333-333333333333"), uuid.MustParse("11111111-1111-1111-1111-111111111111"))
+	raw := signMachineTestJWT(t, jwt.SigningMethodEdDSA, priv, "bad", uuid.MustParse("33333333-3333-3333-3333-333333333333"))
 	_, err = ValidateMachineAccessJWTWithConfig(context.Background(), raw, config.MachineJWTConfig{
 		Mode:             HTTPAuthModeJWTJWKS,
 		JWKSURL:          srv.URL,
@@ -155,10 +149,9 @@ func TestIssueMachineAccessJWT_IncludesCredentialVersionAndSessionID(t *testing.
 		t.Fatal(err)
 	}
 	machineID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	sessID := uuid.MustParse("44444444-4444-4444-4444-444444444444")
-	raw, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 42, sessID)
+	raw, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 42, sessID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,9 +181,8 @@ func TestIssueMachineAccessJWT_LegacyNoSessionID(t *testing.T) {
 		t.Fatal(err)
 	}
 	machineID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	raw, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 3, uuid.Nil)
+	raw, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 3, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,23 +198,21 @@ func TestIssueMachineAccessJWT_LegacyNoSessionID(t *testing.T) {
 	}
 }
 
-func signMachineTestJWT(t *testing.T, method jwt.SigningMethod, key any, kid string, machineID, orgID uuid.UUID) string {
+func signMachineTestJWT(t *testing.T, method jwt.SigningMethod, key any, kid string, machineID uuid.UUID) string {
 	t.Helper()
 	now := time.Now().UTC()
 	tok := jwt.NewWithClaims(method, jwt.MapClaims{
-		"sub":             "machine:" + machineID.String(),
-		"typ":             JWTClaimTypeMachine,
-		"aud":             AudienceMachineGRPC,
-		"roles":           []string{RoleMachine},
-		"org_id":          orgID.String(),
-		"organization_id": orgID.String(),
-		"machine_id":      machineID.String(),
-		"token_version":   float64(7),
-		"scopes":          DefaultMachineAccessScopes,
-		"iat":             now.Unix(),
-		"nbf":             now.Unix(),
-		"exp":             now.Add(10 * time.Minute).Unix(),
-		"token_use":       TokenUseMachineAccess,
+		"sub":           "machine:" + machineID.String(),
+		"typ":           JWTClaimTypeMachine,
+		"aud":           AudienceMachineGRPC,
+		"roles":         []string{RoleMachine},
+		"machine_id":    machineID.String(),
+		"token_version": float64(7),
+		"scopes":        DefaultMachineAccessScopes,
+		"iat":           now.Unix(),
+		"nbf":           now.Unix(),
+		"exp":           now.Add(10 * time.Minute).Unix(),
+		"token_use":     TokenUseMachineAccess,
 	})
 	if kid != "" {
 		tok.Header["kid"] = kid

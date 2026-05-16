@@ -19,10 +19,9 @@ func TestP23_SubmitTelemetryBatch_rejectsOverConfiguredEventCap(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
 
 	cfg := testMachineGRPCConfig()
 	cfg.Capacity.MaxTelemetryGRPCBatchEvents = 2
@@ -31,7 +30,7 @@ func TestP23_SubmitTelemetryBatch_rejectsOverConfiguredEventCap(t *testing.T) {
 	deps.Config = cfg
 	srv := &machineTelemetryServer{deps: deps}
 
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
 	req := &machinev1.SubmitTelemetryBatchRequest{
@@ -59,16 +58,15 @@ func TestP23_PushOfflineEvents_rejectsOverConfiguredBatchCap(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	deps.Config.Capacity.MaxOfflineEventsPerRequest = 2
 	srv := &machineOfflineSyncServer{deps: deps}
 
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
 	req := &machinev1.SyncOfflineEventsRequest{

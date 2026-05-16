@@ -10,7 +10,7 @@ This document retains the **design checklist**, migration reference, and accepta
 
 | Method | Path | Auth |
 |--------|------|------|
-| POST | `/v1/admin/machines/{machineId}/activation-codes` | Bearer, `org_admin` or `platform_admin` |
+| POST | `/v1/admin/machines/{machineId}/activation-codes` | Bearer, `admin` or `platform_admin` |
 | GET | `/v1/admin/machines/{machineId}/activation-codes` | same |
 | DELETE | `/v1/admin/machines/{machineId}/activation-codes/{activationCodeId}` | same |
 | POST | `/v1/setup/activation-codes/claim` | **Public** (no Bearer); rate-limit POST |
@@ -19,9 +19,9 @@ Mount **claim** on `/v1` **outside** the `v1Auth` group (same pattern as commerc
 
 Keep `GET /v1/setup/machines/{machineId}/bootstrap` inside the authenticated group.
 
-**Tenant guard (admin):** reuse [`parseAdminFleetOrganizationScope`](../../internal/httpserver/admin_fleet_http.go) + [`AdminMachines.GetMachine(ctx, orgID, machineID)`](../../internal/app/fleetadmin/service.go). On `pgx.ErrNoRows` → **404** `machine_not_found` (no cross-tenant leak).
+**Company guard (admin):** reuse [`parseAdminFleetCompanyScope`](../../internal/httpserver/admin_fleet_http.go) + [`AdminMachines.GetMachine(ctx, companyID, machineID)`](../../internal/app/fleetadmin/service.go). On `pgx.ErrNoRows` → **404** `machine_not_found` (no cross-company data leak).
 
-**Machine JWT vs admin:** add [`IsMachineRuntimePrincipal`](../../internal/platform/auth/principal.go) (`len(machine_ids) > 0` and not `platform_admin`/`org_admin`) and [`RequireDenyMachineRuntimePrincipal`](../../internal/platform/auth/middleware.go) on `/v1/admin` (after `RequireAnyRole`). Ensures claimed machine tokens cannot hit admin APIs.
+**Machine JWT vs admin:** add [`IsMachineRuntimePrincipal`](../../internal/platform/auth/principal.go) (`len(machine_ids) > 0` and not `platform_admin`/`admin`) and [`RequireDenyMachineRuntimePrincipal`](../../internal/platform/auth/middleware.go) on `/v1/admin` (after `RequireAnyRole`). Ensures claimed machine tokens cannot hit admin APIs.
 
 ## Migration `migrations/00021_machine_activation_codes.sql`
 
@@ -32,7 +32,7 @@ Keep `GET /v1/setup/machines/{machineId}/bootstrap` inside the authenticated gro
 CREATE TABLE activation_codes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    company_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     code_hash bytea NOT NULL,
     expires_at timestamptz NOT NULL,
     max_uses int NOT NULL DEFAULT 1 CHECK (max_uses >= 1),
@@ -43,18 +43,18 @@ CREATE TABLE activation_codes (
     created_at timestamptz NOT NULL DEFAULT now(),
     revoked_at timestamptz,
     last_claimed_at timestamptz,
-    CONSTRAINT fk_activation_codes_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE
+    CONSTRAINT fk_activation_codes_org_machine FOREIGN KEY (company_id, machine_id) REFERENCES machines (company_id, id) ON DELETE CASCADE
 );
 
 CREATE UNIQUE INDEX ux_activation_codes_code_hash ON activation_codes (code_hash);
 CREATE INDEX ix_activation_codes_machine_created ON activation_codes (machine_id, created_at DESC);
-CREATE INDEX ix_activation_codes_org ON activation_codes (organization_id);
+CREATE INDEX ix_activation_codes_org ON activation_codes (company_id);
 
 CREATE TABLE activation_claims (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     activation_code_id uuid NOT NULL REFERENCES activation_codes (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    company_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     fingerprint_hash bytea NOT NULL,
     fingerprint_json jsonb NOT NULL,
     device_binding_id uuid NOT NULL,
@@ -125,7 +125,7 @@ Pass `cfg.Activation`, `cfg.MQTT`, and bootstrap path hints into [`HTTPApplicati
 
 ## Machine JWT ([`internal/platform/auth`](../../internal/platform/auth))
 
-Machine access JWTs are issued separately from admin session semantics. Required claims are `iss`, `aud`, `sub=machine:{machine_id}`, `organization_id`, `machine_id`, `roles=["machine"]`, `typ=machine`, `token_use=machine_access`, `token_version`, `exp`, `iat`, and `nbf`.
+Machine access JWTs are issued separately from admin session semantics. Required claims are `iss`, `aud`, `sub=machine:{machine_id}`, `company_id`, `machine_id`, `roles=["machine"]`, `typ=machine`, `token_use=machine_access`, `token_version`, `exp`, `iat`, and `nbf`.
 
 Runtime gRPC auth validates signature, issuer, audience, `token_use`, role, token version, revocation, and machine lifecycle state. Machine refresh tokens remain opaque random values stored only as SHA-256 hashes in `machine_runtime_refresh_tokens`; refresh rotates the opaque refresh token and bumps `machines.credential_version`, invalidating old machine access JWTs.
 

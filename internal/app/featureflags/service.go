@@ -19,7 +19,7 @@ import (
 
 const listFlagsMax = 10000
 
-// Service manages feature flags and machine config rollouts (tenant-scoped).
+// Service manages feature flags and machine config rollouts (single-company).
 type Service struct {
 	q     *db.Queries
 	pool  *pgxpool.Pool
@@ -37,7 +37,7 @@ func NewService(q *db.Queries, pool *pgxpool.Pool, audit compliance.EnterpriseRe
 	return &Service{q: q, pool: pool, audit: audit}, nil
 }
 
-func (s *Service) auditRec(ctx context.Context, org uuid.UUID, action, resourceType, resourceID string, before, after any, md map[string]any) {
+func (s *Service) auditRec(ctx context.Context, scopeID uuid.UUID, action, resourceType, resourceID string, before, after any, md map[string]any) {
 	if s == nil || s.audit == nil {
 		return
 	}
@@ -50,14 +50,13 @@ func (s *Service) auditRec(ctx context.Context, org uuid.UUID, action, resourceT
 	}
 	meta, _ := json.Marshal(md)
 	_ = s.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: org,
-		ActorType:      "user",
-		Action:         action,
-		ResourceType:   resourceType,
-		ResourceID:     strPtr(resourceID),
-		BeforeJSON:     b,
-		AfterJSON:      a,
-		Metadata:       meta,
+		ActorType:    "user",
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   strPtr(resourceID),
+		BeforeJSON:   b,
+		AfterJSON:    a,
+		Metadata:     meta,
 	})
 }
 
@@ -72,15 +71,14 @@ func strPtr(s string) *string {
 
 // FlagDTO is an API-facing feature flag row.
 type FlagDTO struct {
-	ID             uuid.UUID       `json:"id"`
-	OrganizationID uuid.UUID       `json:"organizationId"`
-	FlagKey        string          `json:"flagKey"`
-	DisplayName    string          `json:"displayName"`
-	Description    string          `json:"description"`
-	Enabled        bool            `json:"enabled"`
-	Metadata       json.RawMessage `json:"metadata"`
-	CreatedAt      time.Time       `json:"createdAt"`
-	UpdatedAt      time.Time       `json:"updatedAt"`
+	ID          uuid.UUID       `json:"id"`
+	FlagKey     string          `json:"flagKey"`
+	DisplayName string          `json:"displayName"`
+	Description string          `json:"description"`
+	Enabled     bool            `json:"enabled"`
+	Metadata    json.RawMessage `json:"metadata"`
+	CreatedAt   time.Time       `json:"createdAt"`
+	UpdatedAt   time.Time       `json:"updatedAt"`
 }
 
 // TargetDTO is a scoped override row.
@@ -104,9 +102,8 @@ type FlagDetail struct {
 }
 
 type ListFlagsParams struct {
-	OrganizationID uuid.UUID
-	Limit          int32
-	Offset         int32
+	Limit  int32
+	Offset int32
 }
 
 type ListFlagsResponse struct {
@@ -120,15 +117,14 @@ func flagDTO(row db.FeatureFlag) FlagDTO {
 		md = json.RawMessage("{}")
 	}
 	return FlagDTO{
-		ID:             row.ID,
-		OrganizationID: row.OrganizationID,
-		FlagKey:        row.FlagKey,
-		DisplayName:    row.DisplayName,
-		Description:    row.Description,
-		Enabled:        row.Enabled,
-		Metadata:       md,
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
+		ID:          row.ID,
+		FlagKey:     row.FlagKey,
+		DisplayName: row.DisplayName,
+		Description: row.Description,
+		Enabled:     row.Enabled,
+		Metadata:    md,
+		CreatedAt:   row.CreatedAt,
+		UpdatedAt:   row.UpdatedAt,
 	}
 }
 
@@ -162,7 +158,7 @@ func targetDTO(t db.FeatureFlagTarget) TargetDTO {
 	return out
 }
 
-// ListFlags paginates flags for an organization.
+// ListFlags paginates feature flags.
 func (s *Service) ListFlags(ctx context.Context, p ListFlagsParams) (*ListFlagsResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("featureflags: nil service")
@@ -178,14 +174,13 @@ func (s *Service) ListFlags(ctx context.Context, p ListFlagsParams) (*ListFlagsR
 	if off < 0 {
 		off = 0
 	}
-	total, err := s.q.FeatureFlagsCountByOrganization(ctx, p.OrganizationID)
+	total, err := s.q.FeatureFlagsCountAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.q.FeatureFlagsListByOrganization(ctx, db.FeatureFlagsListByOrganizationParams{
-		OrganizationID: p.OrganizationID,
-		Limit:          lim,
-		Offset:         off,
+	rows, err := s.q.FeatureFlagsListAll(ctx, db.FeatureFlagsListAllParams{
+		Limit:  lim,
+		Offset: off,
 	})
 	if err != nil {
 		return nil, err
@@ -198,14 +193,11 @@ func (s *Service) ListFlags(ctx context.Context, p ListFlagsParams) (*ListFlagsR
 }
 
 // GetFlag loads one flag and targets.
-func (s *Service) GetFlag(ctx context.Context, orgID, flagID uuid.UUID) (*FlagDetail, error) {
+func (s *Service) GetFlag(ctx context.Context, scopeID, flagID uuid.UUID) (*FlagDetail, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("featureflags: nil service")
 	}
-	row, err := s.q.FeatureFlagsGetByID(ctx, db.FeatureFlagsGetByIDParams{
-		ID:             flagID,
-		OrganizationID: orgID,
-	})
+	row, err := s.q.FeatureFlagsGetByID(ctx, flagID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -224,12 +216,11 @@ func (s *Service) GetFlag(ctx context.Context, orgID, flagID uuid.UUID) (*FlagDe
 }
 
 type CreateFlagParams struct {
-	OrganizationID uuid.UUID
-	FlagKey        string
-	DisplayName    string
-	Description    string
-	Enabled        bool
-	Metadata       json.RawMessage
+	FlagKey     string
+	DisplayName string
+	Description string
+	Enabled     bool
+	Metadata    json.RawMessage
 }
 
 // CreateFlag inserts a flag (unique key per org).
@@ -246,36 +237,31 @@ func (s *Service) CreateFlag(ctx context.Context, p CreateFlagParams) (*FlagDTO,
 		meta = []byte("{}")
 	}
 	row, err := s.q.FeatureFlagsInsert(ctx, db.FeatureFlagsInsertParams{
-		OrganizationID: p.OrganizationID,
-		FlagKey:        key,
-		DisplayName:    strings.TrimSpace(p.DisplayName),
-		Description:    strings.TrimSpace(p.Description),
-		Enabled:        p.Enabled,
-		Metadata:       meta,
+		FlagKey:     key,
+		DisplayName: strings.TrimSpace(p.DisplayName),
+		Description: strings.TrimSpace(p.Description),
+		Enabled:     p.Enabled,
+		Metadata:    meta,
 	})
 	if err != nil {
 		return nil, err
 	}
 	d := flagDTO(row)
-	s.auditRec(ctx, p.OrganizationID, "feature_flag.create", "feature_flag", row.ID.String(), nil, d, nil)
+	s.auditRec(ctx, uuid.Nil, "feature_flag.create", "feature_flag", row.ID.String(), nil, d, nil)
 	return &d, nil
 }
 
 type PatchFlagParams struct {
-	OrganizationID uuid.UUID
-	FlagID         uuid.UUID
-	DisplayName    *string
-	Description    *string
-	Enabled        *bool
-	MetadataJSON   *[]byte
+	FlagID       uuid.UUID
+	DisplayName  *string
+	Description  *string
+	Enabled      *bool
+	MetadataJSON *[]byte
 }
 
 // PatchFlag updates mutable fields.
 func (s *Service) PatchFlag(ctx context.Context, p PatchFlagParams) (*FlagDTO, error) {
-	cur, err := s.q.FeatureFlagsGetByID(ctx, db.FeatureFlagsGetByIDParams{
-		ID:             p.FlagID,
-		OrganizationID: p.OrganizationID,
-	})
+	cur, err := s.q.FeatureFlagsGetByID(ctx, p.FlagID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -303,35 +289,32 @@ func (s *Service) PatchFlag(ctx context.Context, p PatchFlagParams) (*FlagDTO, e
 		}
 		meta = m
 	}
-	row, err := s.q.FeatureFlagsUpdate(ctx, db.FeatureFlagsUpdateParams{
-		ID:             p.FlagID,
-		OrganizationID: p.OrganizationID,
-		DisplayName:    dn,
-		Description:    ds,
-		Enabled:        en,
-		Metadata:       meta,
+	row, err := s.q.FeatureFlagsUpdate(ctx, db.FeatureFlagsUpdateParams{DisplayName: dn,
+		Description: ds,
+		Enabled:     en,
+		Metadata:    meta,
+
+		ID: p.FlagID,
 	})
 	if err != nil {
 		return nil, err
 	}
 	after := flagDTO(row)
-	s.auditRec(ctx, p.OrganizationID, "feature_flag.patch", "feature_flag", row.ID.String(), before, after, nil)
+	s.auditRec(ctx, uuid.Nil, "feature_flag.patch", "feature_flag", row.ID.String(), before, after, nil)
 	return &after, nil
 }
 
 // SetEnabled sets master enabled bit (POST enable/disable shortcuts).
-func (s *Service) SetEnabled(ctx context.Context, orgID, flagID uuid.UUID, enabled bool) (*FlagDTO, error) {
+func (s *Service) SetEnabled(ctx context.Context, scopeID, flagID uuid.UUID, enabled bool) (*FlagDTO, error) {
 	return s.PatchFlag(ctx, PatchFlagParams{
-		OrganizationID: orgID,
-		FlagID:         flagID,
-		Enabled:        &enabled,
+		FlagID:  flagID,
+		Enabled: &enabled,
 	})
 }
 
 type PutTargetsParams struct {
-	OrganizationID uuid.UUID
-	FlagID         uuid.UUID
-	Targets        []TargetInput
+	FlagID  uuid.UUID
+	Targets []TargetInput
 }
 
 // TargetInput is the PUT body row shape.
@@ -351,10 +334,7 @@ func (s *Service) ReplaceTargets(ctx context.Context, p PutTargetsParams) ([]Tar
 	if s == nil || s.pool == nil || s.q == nil {
 		return nil, errors.New("featureflags: nil service")
 	}
-	_, err := s.q.FeatureFlagsGetByID(ctx, db.FeatureFlagsGetByIDParams{
-		ID:             p.FlagID,
-		OrganizationID: p.OrganizationID,
-	})
+	_, err := s.q.FeatureFlagsGetByID(ctx, p.FlagID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -374,10 +354,7 @@ func (s *Service) ReplaceTargets(ctx context.Context, p PutTargetsParams) ([]Tar
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	if err := q.FeatureFlagTargetsDeleteByFlag(ctx, db.FeatureFlagTargetsDeleteByFlagParams{
-		FeatureFlagID:  p.FlagID,
-		OrganizationID: p.OrganizationID,
-	}); err != nil {
+	if err := q.FeatureFlagTargetsDeleteByFlag(ctx, p.FlagID); err != nil {
 		return nil, err
 	}
 	out := make([]TargetDTO, 0, len(p.Targets))
@@ -387,7 +364,6 @@ func (s *Service) ReplaceTargets(ctx context.Context, p PutTargetsParams) ([]Tar
 			meta = []byte("{}")
 		}
 		row, ierr := q.FeatureFlagTargetsInsert(ctx, db.FeatureFlagTargetsInsertParams{
-			OrganizationID:    p.OrganizationID,
 			FeatureFlagID:     p.FlagID,
 			TargetType:        strings.TrimSpace(strings.ToLower(t.TargetType)),
 			SiteID:            uuidPtrPg(t.SiteID),
@@ -406,14 +382,14 @@ func (s *Service) ReplaceTargets(ctx context.Context, p PutTargetsParams) ([]Tar
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	s.auditRec(ctx, p.OrganizationID, "feature_flag.targets_replace", "feature_flag", p.FlagID.String(), nil, out, map[string]any{"count": len(out)})
+	s.auditRec(ctx, uuid.Nil, "feature_flag.targets_replace", "feature_flag", p.FlagID.String(), nil, out, map[string]any{"count": len(out)})
 	return out, nil
 }
 
 func validateTargetInput(t TargetInput) error {
 	tt := strings.TrimSpace(strings.ToLower(t.TargetType))
 	switch tt {
-	case "organization":
+	case "global":
 		if t.SiteID != nil || t.MachineID != nil || t.HardwareProfileID != nil || t.CanaryPercent != nil {
 			return ErrInvalidTarget
 		}
@@ -458,15 +434,14 @@ func (s *Service) ResolveEffectiveFlags(ctx context.Context, machineID uuid.UUID
 		}
 		return nil, err
 	}
-	flags, err := s.q.FeatureFlagsListByOrganization(ctx, db.FeatureFlagsListByOrganizationParams{
-		OrganizationID: ctxRow.OrganizationID,
-		Limit:          listFlagsMax,
-		Offset:         0,
+	flags, err := s.q.FeatureFlagsListAll(ctx, db.FeatureFlagsListAllParams{
+		Limit:  listFlagsMax,
+		Offset: 0,
 	})
 	if err != nil {
 		return nil, err
 	}
-	allTargets, err := s.q.FeatureFlagTargetsByOrganization(ctx, ctxRow.OrganizationID)
+	allTargets, err := s.q.FeatureFlagTargetsAll(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -498,7 +473,7 @@ func (s *Service) ResolveEffectiveFlags(ctx context.Context, machineID uuid.UUID
 
 func targetMatchesMachine(t db.FeatureFlagTarget, mc db.FeatureFlagsResolveMachineContextRow, flagID uuid.UUID, machineID uuid.UUID) bool {
 	switch strings.ToLower(strings.TrimSpace(t.TargetType)) {
-	case "organization":
+	case "global":
 		return true
 	case "site":
 		return t.SiteID.Valid && uuid.UUID(t.SiteID.Bytes) == mc.SiteID
@@ -569,10 +544,7 @@ func (s *Service) RuntimeHintsForMachine(ctx context.Context, machineID uuid.UUI
 	}
 	hints := make([]PendingRolloutHint, 0, len(pending))
 	for _, r := range pending {
-		mc, err := s.q.MachineConfigVersionsGetByID(ctx, db.MachineConfigVersionsGetByIDParams{
-			ID:             r.TargetVersionID,
-			OrganizationID: r.OrganizationID,
-		})
+		mc, err := s.q.MachineConfigVersionsGetByID(ctx, r.TargetVersionID)
 		label := ""
 		if err == nil {
 			label = mc.VersionLabel
@@ -595,7 +567,6 @@ func (s *Service) RuntimeHintsForMachine(ctx context.Context, machineID uuid.UUI
 
 type MachineConfigVersionDTO struct {
 	ID              uuid.UUID       `json:"id"`
-	OrganizationID  uuid.UUID       `json:"organizationId"`
 	VersionLabel    string          `json:"versionLabel"`
 	ConfigPayload   json.RawMessage `json:"configPayload"`
 	ParentVersionID *uuid.UUID      `json:"parentVersionId,omitempty"`
@@ -608,11 +579,10 @@ func versionDTO(v db.MachineConfigVersion) MachineConfigVersionDTO {
 		md = json.RawMessage("{}")
 	}
 	out := MachineConfigVersionDTO{
-		ID:             v.ID,
-		OrganizationID: v.OrganizationID,
-		VersionLabel:   v.VersionLabel,
-		ConfigPayload:  md,
-		CreatedAt:      v.CreatedAt,
+		ID:            v.ID,
+		VersionLabel:  v.VersionLabel,
+		ConfigPayload: md,
+		CreatedAt:     v.CreatedAt,
 	}
 	if v.ParentVersionID.Valid {
 		u := uuid.UUID(v.ParentVersionID.Bytes)
@@ -622,7 +592,6 @@ func versionDTO(v db.MachineConfigVersion) MachineConfigVersionDTO {
 }
 
 type CreateMachineConfigVersionParams struct {
-	OrganizationID  uuid.UUID
 	VersionLabel    string
 	ConfigPayload   json.RawMessage
 	ParentVersionID *uuid.UUID
@@ -639,7 +608,6 @@ func (s *Service) CreateMachineConfigVersion(ctx context.Context, p CreateMachin
 		payload = []byte("{}")
 	}
 	row, err := s.q.MachineConfigVersionsInsert(ctx, db.MachineConfigVersionsInsertParams{
-		OrganizationID:  p.OrganizationID,
 		VersionLabel:    label,
 		ConfigPayload:   payload,
 		ParentVersionID: uuidPtrPg(p.ParentVersionID),
@@ -648,13 +616,12 @@ func (s *Service) CreateMachineConfigVersion(ctx context.Context, p CreateMachin
 		return nil, err
 	}
 	d := versionDTO(row)
-	s.auditRec(ctx, p.OrganizationID, "machine_config_version.create", "machine_config_version", row.ID.String(), nil, d, nil)
+	s.auditRec(ctx, uuid.Nil, "machine_config_version.create", "machine_config_version", row.ID.String(), nil, d, nil)
 	return &d, nil
 }
 
 type MachineConfigRolloutDTO struct {
 	ID                uuid.UUID       `json:"id"`
-	OrganizationID    uuid.UUID       `json:"organizationId"`
 	TargetVersionID   uuid.UUID       `json:"targetVersionId"`
 	PreviousVersionID *uuid.UUID      `json:"previousVersionId,omitempty"`
 	Status            string          `json:"status"`
@@ -675,7 +642,6 @@ func rolloutDTO(r db.MachineConfigRollout) MachineConfigRolloutDTO {
 	}
 	out := MachineConfigRolloutDTO{
 		ID:              r.ID,
-		OrganizationID:  r.OrganizationID,
 		TargetVersionID: r.TargetVersionID,
 		Status:          r.Status,
 		ScopeType:       r.ScopeType,
@@ -706,7 +672,6 @@ func rolloutDTO(r db.MachineConfigRollout) MachineConfigRolloutDTO {
 }
 
 type CreateRolloutParams struct {
-	OrganizationID    uuid.UUID
 	TargetVersionID   uuid.UUID
 	PreviousVersionID *uuid.UUID
 	Status            string
@@ -732,7 +697,6 @@ func (s *Service) CreateRollout(ctx context.Context, p CreateRolloutParams) (*Ma
 		st = "pending"
 	}
 	row, err := s.q.MachineConfigRolloutsInsert(ctx, db.MachineConfigRolloutsInsertParams{
-		OrganizationID:    p.OrganizationID,
 		TargetVersionID:   p.TargetVersionID,
 		PreviousVersionID: uuidPtrPg(p.PreviousVersionID),
 		Status:            st,
@@ -747,14 +711,14 @@ func (s *Service) CreateRollout(ctx context.Context, p CreateRolloutParams) (*Ma
 		return nil, err
 	}
 	d := rolloutDTO(row)
-	s.auditRec(ctx, p.OrganizationID, "machine_config_rollout.create", "machine_config_rollout", row.ID.String(), nil, d, nil)
+	s.auditRec(ctx, uuid.Nil, "machine_config_rollout.create", "machine_config_rollout", row.ID.String(), nil, d, nil)
 	return &d, nil
 }
 
 func validateRolloutScope(scope string, siteID, machineID, hpID *uuid.UUID) error {
 	sc := strings.TrimSpace(strings.ToLower(scope))
 	switch sc {
-	case "organization":
+	case "global":
 		if siteID != nil || machineID != nil || hpID != nil {
 			return ErrInvalidRollout
 		}
@@ -777,9 +741,8 @@ func validateRolloutScope(scope string, siteID, machineID, hpID *uuid.UUID) erro
 }
 
 type ListRolloutsParams struct {
-	OrganizationID uuid.UUID
-	Limit          int32
-	Offset         int32
+	Limit  int32
+	Offset int32
 }
 
 type ListRolloutsResponse struct {
@@ -787,7 +750,7 @@ type ListRolloutsResponse struct {
 	Total int64                     `json:"total"`
 }
 
-// ListRollouts paginates rollouts for an organization.
+// ListRollouts paginates rollouts.
 func (s *Service) ListRollouts(ctx context.Context, p ListRolloutsParams) (*ListRolloutsResponse, error) {
 	lim := p.Limit
 	if lim <= 0 {
@@ -800,14 +763,13 @@ func (s *Service) ListRollouts(ctx context.Context, p ListRolloutsParams) (*List
 	if off < 0 {
 		off = 0
 	}
-	total, err := s.q.MachineConfigRolloutsCountByOrganization(ctx, p.OrganizationID)
+	total, err := s.q.MachineConfigRolloutsCountAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.q.MachineConfigRolloutsListByOrganization(ctx, db.MachineConfigRolloutsListByOrganizationParams{
-		OrganizationID: p.OrganizationID,
-		Limit:          lim,
-		Offset:         off,
+	rows, err := s.q.MachineConfigRolloutsListAll(ctx, db.MachineConfigRolloutsListAllParams{
+		Limit:  lim,
+		Offset: off,
 	})
 	if err != nil {
 		return nil, err
@@ -820,11 +782,8 @@ func (s *Service) ListRollouts(ctx context.Context, p ListRolloutsParams) (*List
 }
 
 // GetRollout returns one rollout.
-func (s *Service) GetRollout(ctx context.Context, orgID, rolloutID uuid.UUID) (*MachineConfigRolloutDTO, error) {
-	row, err := s.q.MachineConfigRolloutsGetByID(ctx, db.MachineConfigRolloutsGetByIDParams{
-		ID:             rolloutID,
-		OrganizationID: orgID,
-	})
+func (s *Service) GetRollout(ctx context.Context, scopeID, rolloutID uuid.UUID) (*MachineConfigRolloutDTO, error) {
+	row, err := s.q.MachineConfigRolloutsGetByID(ctx, rolloutID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -836,11 +795,8 @@ func (s *Service) GetRollout(ctx context.Context, orgID, rolloutID uuid.UUID) (*
 }
 
 // RollbackRollout marks rollout rolled_back and creates a compensating rollout targeting previous_version_id when present.
-func (s *Service) RollbackRollout(ctx context.Context, orgID, rolloutID uuid.UUID) (*MachineConfigRolloutDTO, error) {
-	cur, err := s.q.MachineConfigRolloutsGetByID(ctx, db.MachineConfigRolloutsGetByIDParams{
-		ID:             rolloutID,
-		OrganizationID: orgID,
-	})
+func (s *Service) RollbackRollout(ctx context.Context, scopeID, rolloutID uuid.UUID) (*MachineConfigRolloutDTO, error) {
+	cur, err := s.q.MachineConfigRolloutsGetByID(ctx, rolloutID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
@@ -859,16 +815,14 @@ func (s *Service) RollbackRollout(ctx context.Context, orgID, rolloutID uuid.UUI
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := db.New(tx)
 
-	if _, err := q.MachineConfigRolloutsUpdateStatus(ctx, db.MachineConfigRolloutsUpdateStatusParams{
-		ID:             rolloutID,
-		OrganizationID: orgID,
-		Status:         "rolled_back",
+	if _, err := q.MachineConfigRolloutsUpdateStatus(ctx, db.MachineConfigRolloutsUpdateStatusParams{Status: "rolled_back",
+
+		ID: rolloutID,
 	}); err != nil {
 		return nil, err
 	}
 	meta := []byte(`{"reason":"rollback"}`)
 	row, err := q.MachineConfigRolloutsInsert(ctx, db.MachineConfigRolloutsInsertParams{
-		OrganizationID:    orgID,
 		TargetVersionID:   prev,
 		PreviousVersionID: uuidPtrPg(&cur.TargetVersionID),
 		Status:            "pending",
@@ -886,7 +840,7 @@ func (s *Service) RollbackRollout(ctx context.Context, orgID, rolloutID uuid.UUI
 		return nil, err
 	}
 	d := rolloutDTO(row)
-	s.auditRec(ctx, orgID, "machine_config_rollout.rollback", "machine_config_rollout", row.ID.String(),
+	s.auditRec(ctx, scopeID, "machine_config_rollout.rollback", "machine_config_rollout", row.ID.String(),
 		map[string]string{"fromRolloutId": rolloutID.String()}, d, nil)
 	return &d, nil
 }

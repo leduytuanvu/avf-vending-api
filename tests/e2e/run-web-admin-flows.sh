@@ -19,11 +19,11 @@ Usage: ./tests/e2e/run-web-admin-flows.sh [options]
     --fresh-data              Empty run test-data.json before setup
     --reuse-data PATH         Copy captured JSON (e.g. Phase 3 test-data.json) into this run
 
-  Phase 4 expects organizationId, machineId, productId (and optional slot/planogram fields)
+  Phase 4 expects machineId, productId (and optional slot/planogram fields)
   from test-data.json — typically produced by setup in the same run or via --reuse-data.
 
   Environment: tests/e2e/.env (see .env.example)
-    E2E_ALLOW_WRITES, BASE_URL, ADMIN_TOKEN or login + E2E_ORGANIZATION_ID, E2E_TARGET, etc.
+    E2E_ALLOW_WRITES, BASE_URL, ADMIN_TOKEN or ADMIN_EMAIL+ADMIN_PASSWORD, E2E_TARGET, etc.
 
   Artifacts: .e2e-runs/run-*/rest/*.request.json|*.response.json|*.meta.json,
     test-events.jsonl, reports/wa-module-results.jsonl (Phase 4 detail),
@@ -49,7 +49,7 @@ e2e_restore_inherited_data_flags_if_needed
 
 export BASE_URL GRPC_ADDR E2E_TARGET E2E_ALLOW_WRITES E2E_PRODUCTION_WRITE_CONFIRMATION
 export E2E_REUSE_DATA E2E_DATA_FILE E2E_CLI_FRESH_DATA
-export ADMIN_TOKEN ADMIN_EMAIL ADMIN_PASSWORD E2E_ORGANIZATION_ID
+export ADMIN_TOKEN ADMIN_EMAIL ADMIN_PASSWORD
 export E2E_SEED_FILE E2E_WEB_ADMIN_SKIP_BRAND E2E_WEB_ADMIN_SKIP_TAG
 
 require_cmd jq curl

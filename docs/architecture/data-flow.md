@@ -12,7 +12,7 @@ sequenceDiagram
   participant API as cmd/api HTTP
   participant Auth as app/auth + Postgres
 
-  Admin->>API: POST /v1/auth/login (organizationId, email, password)
+  Admin->>API: POST /v1/auth/login (companyId, email, password)
   API->>Auth: validate credentials / MFA policy
   Auth-->>API: access + refresh tokens
   API-->>Admin: 200 JSON tokens

@@ -61,10 +61,9 @@ func TestActivities_ResolvePaymentPendingTimeout(t *testing.T) {
 	t.Parallel()
 	orderID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	paymentID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	orgID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	acts, err := NewActivities(ActivityDeps{
 		Lifecycle: stubLifecycleStore{
-			order: domaincommerce.Order{ID: orderID, OrganizationID: orgID},
+			order: domaincommerce.Order{ID: orderID},
 			payment: domaincommerce.Payment{
 				ID:      paymentID,
 				OrderID: orderID,
@@ -84,7 +83,7 @@ func TestActivities_ResolvePaymentPendingTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !got.ShouldEscalate || got.OrganizationID != orgID || got.CurrentState != "authorized" {
+	if !got.ShouldEscalate || got.CurrentState != "authorized" {
 		t.Fatalf("unexpected decision: %+v", got)
 	}
 }
@@ -93,10 +92,9 @@ func TestActivities_AssessVendFailureAfterPaymentSuccess(t *testing.T) {
 	t.Parallel()
 	orderID := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 	paymentID := uuid.MustParse("55555555-5555-5555-5555-555555555555")
-	orgID := uuid.MustParse("66666666-6666-6666-6666-666666666666")
 	acts, err := NewActivities(ActivityDeps{
 		Lifecycle: stubLifecycleStore{
-			order:   domaincommerce.Order{ID: orderID, OrganizationID: orgID, Status: "failed"},
+			order:   domaincommerce.Order{ID: orderID, Status: "failed"},
 			payment: domaincommerce.Payment{ID: paymentID, OrderID: orderID, State: "captured"},
 			vend:    domaincommerce.VendSession{OrderID: orderID, State: "failed"},
 		},
@@ -106,16 +104,15 @@ func TestActivities_AssessVendFailureAfterPaymentSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := acts.AssessVendFailureAfterPaymentSuccess(context.Background(), VendFailureAfterPaymentSuccessInput{
-		OrganizationID: orgID,
-		OrderID:        orderID,
-		PaymentID:      paymentID,
-		SlotIndex:      1,
-		ObservedAt:     time.Now().UTC(),
+		OrderID:    orderID,
+		PaymentID:  paymentID,
+		SlotIndex:  1,
+		ObservedAt: time.Now().UTC(),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !got.QueueRefundReview || got.OrganizationID != orgID {
+	if !got.QueueRefundReview {
 		t.Fatalf("unexpected decision: %+v", got)
 	}
 }
@@ -124,10 +121,9 @@ func TestActivities_EvaluatePaymentToVendTimeoutEscalatesReview(t *testing.T) {
 	t.Parallel()
 	orderID := uuid.MustParse("77777777-7777-7777-7777-777777777777")
 	paymentID := uuid.MustParse("88888888-8888-8888-8888-888888888888")
-	orgID := uuid.MustParse("99999999-9999-9999-9999-999999999999")
 	acts, err := NewActivities(ActivityDeps{
 		Lifecycle: stubLifecycleStore{
-			order:   domaincommerce.Order{ID: orderID, OrganizationID: orgID, Status: "paid"},
+			order:   domaincommerce.Order{ID: orderID, Status: "paid"},
 			payment: domaincommerce.Payment{ID: paymentID, OrderID: orderID, State: "captured"},
 			vend:    domaincommerce.VendSession{OrderID: orderID, State: "in_progress"},
 		},
@@ -137,10 +133,9 @@ func TestActivities_EvaluatePaymentToVendTimeoutEscalatesReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := acts.EvaluatePaymentToVend(context.Background(), PaymentToVendInput{
-		OrganizationID: orgID,
-		OrderID:        orderID,
-		PaymentID:      paymentID,
-		SlotIndex:      1,
+		OrderID:   orderID,
+		PaymentID: paymentID,
+		SlotIndex: 1,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +157,6 @@ func TestActivities_RequestProviderRefundUsesIdempotencyKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	in := RefundWorkflowInput{
-		OrganizationID: uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
 		OrderID:        uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
 		PaymentID:      uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
 		RefundID:       uuid.MustParse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
@@ -200,10 +194,9 @@ func TestActivities_AssessCommandAckTimeoutEscalatesReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := acts.AssessCommandAck(context.Background(), CommandAckWorkflowInput{
-		OrganizationID: uuid.MustParse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
-		MachineID:      uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-		CommandID:      uuid.MustParse("12121212-1212-1212-1212-121212121212"),
-		Sequence:       12,
+		MachineID: uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+		CommandID: uuid.MustParse("12121212-1212-1212-1212-121212121212"),
+		Sequence:  12,
 	})
 	if err != nil {
 		t.Fatal(err)

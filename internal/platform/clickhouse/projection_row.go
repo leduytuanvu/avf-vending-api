@@ -29,7 +29,7 @@ type ProjectionRow struct {
 	EventType      string `json:"event_type"`
 	AggregateType  string `json:"aggregate_type"`
 	AggregateID    string `json:"aggregate_id"`
-	OrganizationID string `json:"organization_id"`
+	ScopeID        string `json:"scope_id"`
 	OccurredAt     string `json:"occurred_at"`
 	PublishedAt    string `json:"published_at"`
 	IngestedAt     string `json:"ingested_at"`
@@ -55,9 +55,6 @@ func projectionRowFromOutboxEvent(ev domaincommerce.OutboxEvent, projectionType 
 		return nil, fmt.Errorf("clickhouse: projection type is required")
 	}
 	org := ""
-	if ev.OrganizationID != nil {
-		org = ev.OrganizationID.String()
-	}
 	pub := ""
 	if ev.PublishedAt != nil {
 		pub = ev.PublishedAt.UTC().Format(time.RFC3339Nano)
@@ -79,7 +76,7 @@ func projectionRowFromOutboxEvent(ev domaincommerce.OutboxEvent, projectionType 
 		EventType:      ev.EventType,
 		AggregateType:  ev.AggregateType,
 		AggregateID:    ev.AggregateID.String(),
-		OrganizationID: org,
+		ScopeID:        org,
 		OccurredAt:     occurredAt,
 		PublishedAt:    pub,
 		IngestedAt:     time.Now().UTC().Format(time.RFC3339Nano),

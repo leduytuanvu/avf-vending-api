@@ -23,11 +23,10 @@ type SkippedPromotionRule = pricingengine.SkippedPromotionRule
 
 // PromotionPreviewParams is POST /v1/admin/promotions/preview.
 type PromotionPreviewParams struct {
-	OrganizationID uuid.UUID
-	MachineID      *uuid.UUID
-	SiteID         *uuid.UUID
-	ProductIDs     []uuid.UUID
-	At             time.Time
+	MachineID  *uuid.UUID
+	SiteID     *uuid.UUID
+	ProductIDs []uuid.UUID
+	At         time.Time
 }
 
 // PromotionPreviewLine is one product row after promotions.
@@ -48,9 +47,9 @@ type PromotionPreviewResult struct {
 	Lines []PromotionPreviewLine `json:"lines"`
 }
 
-func firstSlotRowForProduct(orgID, machineID, productID uuid.UUID, rows []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow) (db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, bool) {
+func firstSlotRowForProduct(scopeID, machineID, productID uuid.UUID, rows []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow) (db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, bool) {
 	for _, r := range rows {
-		if r.OrganizationID != orgID {
+		if uuid.Nil != scopeID {
 			continue
 		}
 		if !r.ProductID.Valid {
@@ -70,9 +69,6 @@ func (s *Service) PreviewPromotions(ctx context.Context, p PromotionPreviewParam
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
 	}
-	if p.OrganizationID == uuid.Nil {
-		return nil, ErrOrganizationRequired
-	}
 	if len(p.ProductIDs) == 0 {
 		return nil, fmt.Errorf("%w: product_ids required", ErrInvalidArgument)
 	}
@@ -89,13 +85,13 @@ func (s *Service) PreviewPromotions(ctx context.Context, p PromotionPreviewParam
 		if err != nil {
 			return nil, err
 		}
-		batch, err := eng.NewBatch(ctx, p.OrganizationID, *p.MachineID, at)
+		batch, err := eng.NewBatch(ctx, uuid.Nil, *p.MachineID, at)
 		if err != nil {
 			return nil, err
 		}
 		out := &PromotionPreviewResult{At: at}
 		for _, pid := range p.ProductIDs {
-			row, ok := firstSlotRowForProduct(p.OrganizationID, *p.MachineID, pid, rows)
+			row, ok := firstSlotRowForProduct(uuid.Nil, *p.MachineID, pid, rows)
 			if !ok {
 				continue
 			}
@@ -103,7 +99,6 @@ func (s *Service) PreviewPromotions(ctx context.Context, p PromotionPreviewParam
 				continue
 			}
 			pl, err := batch.PriceLine(ctx, pricingengine.PriceLineInput{
-				OrganizationID:    p.OrganizationID,
 				MachineID:         *p.MachineID,
 				ProductID:         pid,
 				SlotListUnitMinor: row.PriceMinor,
@@ -129,20 +124,16 @@ func (s *Service) PreviewPromotions(ctx context.Context, p PromotionPreviewParam
 	}
 
 	pricePrev, err := s.PreviewPricing(ctx, PricingPreviewParams{
-		OrganizationID: p.OrganizationID,
-		MachineID:      p.MachineID,
-		SiteID:         p.SiteID,
-		ProductIDs:     p.ProductIDs,
-		At:             at,
+		MachineID:  p.MachineID,
+		SiteID:     p.SiteID,
+		ProductIDs: p.ProductIDs,
+		At:         at,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	promos, err := s.q.PromotionAdminListPromotionsForPreview(ctx, db.PromotionAdminListPromotionsForPreviewParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        at,
-	})
+	promos, err := s.q.PromotionAdminListPromotionsForPreview(ctx, at)
 	if err != nil {
 		return nil, err
 	}
@@ -166,10 +157,7 @@ func (s *Service) PreviewPromotions(ctx context.Context, p PromotionPreviewParam
 		if err != nil {
 			return nil, err
 		}
-		tgtRows, err = s.q.PromotionAdminListTargetsForOrgPromotions(ctx, db.PromotionAdminListTargetsForOrgPromotionsParams{
-			OrganizationID: p.OrganizationID,
-			Column2:        ids,
-		})
+		tgtRows, err = s.q.PromotionAdminListTargetsForOrgPromotions(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -186,23 +174,17 @@ func (s *Service) PreviewPromotions(ctx context.Context, p PromotionPreviewParam
 		}
 		base := pln.EffectiveMinor
 
-		cat, err := s.q.PromotionAdminGetProductCategory(ctx, db.PromotionAdminGetProductCategoryParams{
-			OrganizationID: p.OrganizationID,
-			ID:             pid,
-		})
+		cat, err := s.q.PromotionAdminGetProductCategory(ctx)
 		if err != nil {
 			return nil, err
 		}
-		tagRows, err := s.q.PromotionAdminListProductTagIDs(ctx, db.PromotionAdminListProductTagIDsParams{
-			OrganizationID: p.OrganizationID,
-			ProductID:      pid,
-		})
+		tagRows, err := s.q.PromotionAdminListProductTagIDs(ctx)
 		if err != nil {
 			return nil, err
 		}
 		tags := append([]uuid.UUID(nil), tagRows...)
 
-		eCtx := pricingengine.NewPromoEvalCtx(p.OrganizationID, p.MachineID, p.SiteID, pid, cat, tags)
+		eCtx := pricingengine.NewPromoEvalCtx(uuid.Nil, p.MachineID, p.SiteID, pid, cat, tags)
 
 		var disc int64
 		var appIDs []uuid.UUID

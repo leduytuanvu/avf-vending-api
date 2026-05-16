@@ -10,12 +10,11 @@ import (
 
 // EnterpriseAuditRecord is a normalized append-only audit_events row input.
 type EnterpriseAuditRecord struct {
-	OrganizationID uuid.UUID
-	ActorType      string
-	ActorID        *string
-	Action         string
-	ResourceType   string
-	ResourceID     *string
+	ActorType    string
+	ActorID      *string
+	Action       string
+	ResourceType string
+	ResourceID   *string
 	// MachineID optionally scopes the event to a machine (inventory, commands, device flows).
 	MachineID *uuid.UUID
 	// SiteID optionally scopes the event to a site (fleet transfers, site-scoped operations).

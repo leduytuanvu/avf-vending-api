@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS machine_slot_layouts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     machine_cabinet_id uuid NOT NULL REFERENCES machine_cabinets (id) ON DELETE CASCADE,
     layout_key text NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS machine_slot_layouts (
     created_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ck_machine_slot_layouts_layout_key_nonempty CHECK (btrim(layout_key) <> ''),
     CONSTRAINT ck_machine_slot_layouts_revision_positive CHECK (revision >= 1),
-    CONSTRAINT fk_machine_slot_layouts_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_machine_slot_layouts_org_machine FOREIGN KEY (scope_id, machine_id) REFERENCES machines (scope_id, id) ON DELETE CASCADE,
     CONSTRAINT fk_machine_slot_layouts_machine_cabinet FOREIGN KEY (machine_cabinet_id) REFERENCES machine_cabinets (id) ON DELETE CASCADE
 );
 
@@ -23,11 +23,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_machine_slot_layouts_machine_cabinet_key_re
 
 CREATE INDEX IF NOT EXISTS ix_machine_slot_layouts_machine_cabinet ON machine_slot_layouts (machine_id, machine_cabinet_id, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS ix_machine_slot_layouts_org ON machine_slot_layouts (organization_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_machine_slot_layouts_org ON machine_slot_layouts (scope_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS machine_slot_configs (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     machine_cabinet_id uuid NOT NULL REFERENCES machine_cabinets (id) ON DELETE CASCADE,
     machine_slot_layout_id uuid NOT NULL REFERENCES machine_slot_layouts (id) ON DELETE RESTRICT,
@@ -46,9 +46,9 @@ CREATE TABLE IF NOT EXISTS machine_slot_configs (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ck_machine_slot_configs_slot_code_nonempty CHECK (btrim(slot_code) <> ''),
-    CONSTRAINT fk_machine_slot_configs_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_machine_slot_configs_org_machine FOREIGN KEY (scope_id, machine_id) REFERENCES machines (scope_id, id) ON DELETE CASCADE,
     CONSTRAINT fk_machine_slot_configs_machine_cabinet FOREIGN KEY (machine_cabinet_id) REFERENCES machine_cabinets (id) ON DELETE CASCADE,
-    CONSTRAINT fk_machine_slot_configs_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE SET NULL
+    CONSTRAINT fk_machine_slot_configs_org_product FOREIGN KEY (scope_id, product_id) REFERENCES products (scope_id, id) ON DELETE SET NULL
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_machine_slot_configs_current_machine_slot ON machine_slot_configs (machine_id, slot_code)

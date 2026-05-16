@@ -14,7 +14,6 @@ OUT_MD="${REPORT_DIR}/production-canary-e2e.md"
 required=(
   ALLOW_PROD_WRITES
   PROD_WRITE_CONFIRMATION
-  CANARY_ORGANIZATION_ID
   CANARY_MACHINE_ID
   CANARY_MACHINE_TOKEN
   CANARY_SITE_ID
@@ -72,7 +71,6 @@ fi
 export E2E_TARGET=production
 export MACHINE_TOKEN="${CANARY_MACHINE_TOKEN}"
 export MACHINE_ID="${CANARY_MACHINE_ID}"
-export E2E_ORGANIZATION_ID="${CANARY_ORGANIZATION_ID}"
 
 set +e
 bash "${ROOT}/tests/e2e/run-all-local.sh" --reuse-data "${E2E_DATA_FILE:-/dev/null}"

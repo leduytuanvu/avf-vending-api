@@ -140,8 +140,25 @@ require_env() {
 }
 
 # Prefer Windows `py -3` when `python3` is missing or is a non-functional Store stub.
+# On Git Bash, `py -3` uses native Windows Python which cannot open MSYS paths like `/d/foo`;
+# translate existing script paths with cygpath when available.
 e2e_python() {
+  local _os=""
+  _os="$(uname -s 2>/dev/null || true)"
   if command -v py >/dev/null 2>&1 && py -3 -c "import sys" >/dev/null 2>&1; then
+    if [[ "${_os}" == MINGW* || "${_os}" == MSYS* || "${_os}" == CYGWIN* ]] && command -v cygpath >/dev/null 2>&1; then
+      local _args=()
+      local _a
+      for _a in "$@"; do
+        if [[ -f "${_a}" && "${_a}" == /* ]]; then
+          _args+=("$(cygpath -w "${_a}")")
+        else
+          _args+=("${_a}")
+        fi
+      done
+      py -3 "${_args[@]}"
+      return $?
+    fi
     py -3 "$@"
     return $?
   fi

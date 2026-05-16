@@ -10,6 +10,7 @@ import (
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -33,10 +34,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 
 	q := db.New(tx)
 
-	ordRow, err := q.LockOrderByIDAndOrgForUpdate(ctx, db.LockOrderByIDAndOrgForUpdateParams{
-		ID:             in.OrderID,
-		OrganizationID: in.OrganizationID,
-	})
+	ordRow, err := q.LockOrderByIDAndOrgForUpdate(ctx, in.OrderID)
 	if err != nil {
 		if isNoRows(err) {
 			return appcommerce.FulfillSuccessfulVendResult{}, appcommerce.ErrNotFound
@@ -89,21 +87,20 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		if payRow.State != "captured" {
 			return appcommerce.FulfillSuccessfulVendResult{}, appcommerce.ErrPaymentNotSettled
 		}
-		nv, err := q.UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{
-			OrderID:       in.OrderID,
-			SlotIndex:     in.SlotIndex,
-			State:         "success",
+		nv, err := q.UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{State: "success",
 			FailureReason: pgtype.Text{},
+
+			OrderID:   in.OrderID,
+			SlotIndex: in.SlotIndex,
 		})
 		if err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
 		}
 		finalV = nv
 
-		or2, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{
-			ID:             in.OrderID,
-			OrganizationID: in.OrganizationID,
-			Status:         "completed",
+		or2, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "completed",
+
+			ID: in.OrderID,
 		})
 		if err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
@@ -113,10 +110,9 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		if payRow.State != "captured" {
 			return appcommerce.FulfillSuccessfulVendResult{}, appcommerce.ErrPaymentNotSettled
 		}
-		or2, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{
-			ID:             in.OrderID,
-			OrganizationID: in.OrganizationID,
-			Status:         "completed",
+		or2, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "completed",
+
+			ID: in.OrderID,
 		})
 		if err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
@@ -124,7 +120,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		finalOrd = or2
 	}
 
-	invReplay, err := applyCommerceVendSuccessInventoryTx(ctx, q, in.OrganizationID, machineID, in.OrderID, in.SlotIndex, prodID, key, in.CorrelationID)
+	invReplay, err := applyCommerceVendSuccessInventoryTx(ctx, q, uuid.Nil, machineID, in.OrderID, in.SlotIndex, prodID, key, in.CorrelationID)
 	if err != nil {
 		return appcommerce.FulfillSuccessfulVendResult{}, err
 	}
@@ -143,13 +139,12 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 			return appcommerce.FulfillSuccessfulVendResult{}, err
 		}
 		if err := q.InsertOrderTimelineEvent(ctx, db.InsertOrderTimelineEventParams{
-			OrganizationID: in.OrganizationID,
-			OrderID:        in.OrderID,
-			EventType:      "commerce_vend_dispense_succeeded",
-			ActorType:      "system",
-			ActorID:        pgtype.Text{},
-			Payload:        payload,
-			OccurredAt:     time.Now().UTC(),
+			OrderID:    in.OrderID,
+			EventType:  "commerce_vend_dispense_succeeded",
+			ActorType:  "system",
+			ActorID:    pgtype.Text{},
+			Payload:    payload,
+			OccurredAt: time.Now().UTC(),
 		}); err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
 		}
@@ -186,10 +181,7 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := db.New(tx)
 
-	ordRow, err := q.LockOrderByIDAndOrgForUpdate(ctx, db.LockOrderByIDAndOrgForUpdateParams{
-		ID:             in.OrderID,
-		OrganizationID: in.OrganizationID,
-	})
+	ordRow, err := q.LockOrderByIDAndOrgForUpdate(ctx, in.OrderID)
 	if err != nil {
 		if isNoRows(err) {
 			return appcommerce.FulfillFailedVendResult{}, appcommerce.ErrNotFound
@@ -234,20 +226,19 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 		fr = pgtype.Text{String: strings.TrimSpace(*in.FailureReason), Valid: true}
 	}
 
-	finalV, err := q.UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{
-		OrderID:       in.OrderID,
-		SlotIndex:     in.SlotIndex,
-		State:         "failed",
+	finalV, err := q.UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{State: "failed",
 		FailureReason: fr,
+
+		OrderID:   in.OrderID,
+		SlotIndex: in.SlotIndex,
 	})
 	if err != nil {
 		return appcommerce.FulfillFailedVendResult{}, err
 	}
 
-	finalOrd, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{
-		ID:             in.OrderID,
-		OrganizationID: in.OrganizationID,
-		Status:         "failed",
+	finalOrd, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "failed",
+
+		ID: in.OrderID,
 	})
 	if err != nil {
 		return appcommerce.FulfillFailedVendResult{}, err
@@ -273,13 +264,12 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 		return appcommerce.FulfillFailedVendResult{}, err
 	}
 	if err := q.InsertOrderTimelineEvent(ctx, db.InsertOrderTimelineEventParams{
-		OrganizationID: in.OrganizationID,
-		OrderID:        in.OrderID,
-		EventType:      "commerce_vend_dispense_failed",
-		ActorType:      "system",
-		ActorID:        pgtype.Text{},
-		Payload:        timelinePayload,
-		OccurredAt:     time.Now().UTC(),
+		OrderID:    in.OrderID,
+		EventType:  "commerce_vend_dispense_failed",
+		ActorType:  "system",
+		ActorID:    pgtype.Text{},
+		Payload:    timelinePayload,
+		OccurredAt: time.Now().UTC(),
 	}); err != nil {
 		return appcommerce.FulfillFailedVendResult{}, err
 	}

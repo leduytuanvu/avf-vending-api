@@ -31,8 +31,7 @@ SID="E2E-47-reporting-audit"
 start_step "phase8-${SID}"
 
 MID="$(get_data machineId)"
-ORG="$(get_data organizationId)"
-IDS_JSON="$(jq -nc --arg m "${MID:-}" --arg o "${ORG:-}" '{machineId:$m,organizationId:$o}')"
+IDS_JSON="$(jq -nc --arg m "${MID:-}" '{machineId:$m}')"
 APIS_JSON='["GET /v1/admin/finance/daily-close","GET .../commerce/reconciliation","GET /v1/admin/audit/events","GET .../artifacts"]'
 EXPECTED="Reporting routes non-5xx or explicit skip on 403; finance/audit lists return JSON when permitted."
 EVID_JSON="$(jq -nc --arg f "${E2E_RUN_DIR}/reports/wa-module-results.jsonl" '[$f]')"

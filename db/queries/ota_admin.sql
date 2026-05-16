@@ -2,20 +2,17 @@
 SELECT *
 FROM ota_artifacts
 WHERE
-    organization_id = $1
-    AND id = $2;
+    id = $1;
 
 -- name: OtaAdminGetCampaign :one
 SELECT
     c.*
 FROM ota_campaigns c
 WHERE
-    c.organization_id = $1
-    AND c.id = $2;
+    c.id = $1;
 
 -- name: OtaAdminInsertCampaign :one
 INSERT INTO ota_campaigns (
-    organization_id,
     name,
     artifact_id,
     artifact_version,
@@ -35,44 +32,40 @@ VALUES (
     $6,
     $7,
     $8,
-    $9,
-    $10
+    $9
 )
 RETURNING *;
 
 -- name: OtaAdminUpdateCampaignPatch :one
 UPDATE ota_campaigns c
 SET
-    name = $3,
-    artifact_version = $4,
-    campaign_type = $5,
-    rollout_strategy = $6,
-    canary_percent = $7,
-    rollback_artifact_id = $8,
+    name = $1,
+    artifact_version = $2,
+    campaign_type = $3,
+    rollout_strategy = $4,
+    canary_percent = $5,
+    rollback_artifact_id = $6,
     updated_at = now()
 WHERE
-    c.organization_id = $1
-    AND c.id = $2
+    c.id = $7
 RETURNING *;
 
 -- name: OtaAdminUpdateCampaignStatusFields :one
 UPDATE ota_campaigns c
 SET
-    status = $3,
-    approved_by = $4,
-    approved_at = $5,
-    rollout_next_offset = $6,
-    paused_at = $7,
+    status = $1,
+    approved_by = $2,
+    approved_at = $3,
+    rollout_next_offset = $4,
+    paused_at = $5,
     updated_at = now()
 WHERE
-    c.organization_id = $1
-    AND c.id = $2
+    c.id = $6
 RETURNING *;
 
 -- name: OtaAdminListCampaigns :many
 SELECT
     c.id AS campaign_id,
-    c.organization_id,
     c.name AS campaign_name,
     c.rollout_strategy,
     c.status AS campaign_status,
@@ -90,23 +83,21 @@ SELECT
 FROM ota_campaigns c
 INNER JOIN ota_artifacts a ON a.id = c.artifact_id
 WHERE
-    c.organization_id = $1
-    AND ($2::boolean IS FALSE OR c.status = $3::text)
-    AND c.created_at >= $4::timestamptz
-    AND c.created_at <= $5::timestamptz
+    ($1::boolean IS FALSE OR c.status = $2::text)
+    AND c.created_at >= $3::timestamptz
+    AND c.created_at <= $4::timestamptz
 ORDER BY
     c.created_at DESC
-LIMIT $6 OFFSET $7;
+LIMIT $5 OFFSET $6;
 
 -- name: OtaAdminCountCampaigns :one
 SELECT
     count(*)::bigint AS cnt
 FROM ota_campaigns c
 WHERE
-    c.organization_id = $1
-    AND ($2::boolean IS FALSE OR c.status = $3::text)
-    AND c.created_at >= $4::timestamptz
-    AND c.created_at <= $5::timestamptz;
+    ($1::boolean IS FALSE OR c.status = $2::text)
+    AND c.created_at >= $3::timestamptz
+    AND c.created_at <= $4::timestamptz;
 
 -- name: OtaAdminDeleteTargetsForCampaign :exec
 DELETE FROM ota_campaign_targets t
@@ -114,8 +105,16 @@ WHERE
     t.campaign_id = $1;
 
 -- name: OtaAdminInsertCampaignTarget :one
-INSERT INTO ota_campaign_targets (campaign_id, machine_id, state)
-VALUES ($1, $2, 'pending')
+INSERT INTO ota_campaign_targets (
+    campaign_id,
+    machine_id,
+    state
+)
+VALUES (
+    $1,
+    $2,
+    'pending'
+)
 RETURNING *;
 
 -- name: OtaAdminListCampaignTargetsSorted :many
@@ -133,19 +132,34 @@ ORDER BY
     t.machine_id ASC;
 
 -- name: OtaAdminInsertCampaignEvent :execrows
-INSERT INTO ota_campaign_events (organization_id, campaign_id, event_type, payload, actor_id)
-VALUES ($1, $2, $3, $4, $5);
+INSERT INTO ota_campaign_events (
+    campaign_id,
+    event_type,
+    payload,
+    actor_id
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+);
 
 -- name: OtaAdminUpsertMachineResult :one
 INSERT INTO ota_machine_results (
-    organization_id,
     campaign_id,
     machine_id,
     wave,
     command_id,
     status
 )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5
+)
 ON CONFLICT ON CONSTRAINT ux_ota_machine_results_campaign_machine_wave DO UPDATE
 SET
     command_id = EXCLUDED.command_id,
@@ -156,7 +170,6 @@ RETURNING *;
 -- name: OtaAdminListMachineResultsForCampaign :many
 SELECT
     id,
-    organization_id,
     campaign_id,
     machine_id,
     wave,
@@ -167,8 +180,7 @@ SELECT
     created_at
 FROM ota_machine_results
 WHERE
-    organization_id = $1
-    AND campaign_id = $2
+    campaign_id = $1
 ORDER BY
     machine_id ASC,
     wave ASC;
@@ -178,5 +190,4 @@ SELECT
     m.id
 FROM machines m
 WHERE
-    m.organization_id = $1
-    AND m.id = ANY ($2::uuid[]);
+    m.id = ANY ($1::uuid[]);

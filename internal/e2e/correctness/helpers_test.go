@@ -60,25 +60,22 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-func insertOrganizationAndSite(t *testing.T, ctx context.Context, pool *pgxpool.Pool, orgID, siteID uuid.UUID) {
+func insertSite(t *testing.T, ctx context.Context, pool *pgxpool.Pool, siteID uuid.UUID) {
 	t.Helper()
-	_, err := pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, $2, $3, 'active')`,
-		orgID, "p06-e2e-"+orgID.String()[:8], "p06-"+orgID.String())
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 'site', '', 'active')`, siteID, orgID)
+	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 'site', '', 'active')`, siteID)
 	require.NoError(t, err)
 }
 
-func insertMachine(t *testing.T, ctx context.Context, pool *pgxpool.Pool, orgID, siteID, machineID uuid.UUID, machineStatus string, credentialVersion int64) {
+func insertMachine(t *testing.T, ctx context.Context, pool *pgxpool.Pool, siteID, machineID uuid.UUID, machineStatus string, credentialVersion int64) {
 	t.Helper()
 	_, err := pool.Exec(ctx, `
-INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, $5, $6)`, machineID, orgID, siteID, "sn-p06-"+machineID.String(), machineStatus, credentialVersion)
+INSERT INTO machines (id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, $4, $5)`, machineID, siteID, "sn-p06-"+machineID.String(), machineStatus, credentialVersion)
 	require.NoError(t, err)
 }
 
-func insertOrganizationSiteMachine(t *testing.T, ctx context.Context, pool *pgxpool.Pool, orgID, siteID, machineID uuid.UUID, machineStatus string, credentialVersion int64) {
+func insertSiteMachine(t *testing.T, ctx context.Context, pool *pgxpool.Pool, siteID, machineID uuid.UUID, machineStatus string, credentialVersion int64) {
 	t.Helper()
-	insertOrganizationAndSite(t, ctx, pool, orgID, siteID)
-	insertMachine(t, ctx, pool, orgID, siteID, machineID, machineStatus, credentialVersion)
+	insertSite(t, ctx, pool, siteID)
+	insertMachine(t, ctx, pool, siteID, machineID, machineStatus, credentialVersion)
 }

@@ -102,18 +102,17 @@ func TestMachineGRPC_GetBootstrap_RetiredMachineRejected(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
-	slug := "grpc-int-org-" + uuid.NewString()
-	_, err := pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'grpc-int', $2, 'active')`, orgID, slug)
+	slug := "grpc-int-scope-" + uuid.NewString()
+	_, err := pool.Exec(ctx, `INSERT INTO scopes (id, name, slug, status) VALUES ($1, 'grpc-int', $2, 'active')`, uuid.Nil, slug)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, uuid.Nil)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'retired', 1)`, machineID, orgID, siteID, "sn-retired-grpc-"+uuid.NewString()[:8])
+INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, $4, 'retired', 1)`, machineID, uuid.Nil, siteID, "sn-retired-grpc-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	cfg := testMachineGRPCConfig()
@@ -166,7 +165,7 @@ VALUES ($1, $2, $3, $4, 'retired', 1)`, machineID, orgID, siteID, "sn-retired-gr
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = conn.Close() })
 
-	tok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	require.NoError(t, err)
 	mdCtx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+tok)
 
@@ -180,18 +179,17 @@ func TestMachineGRPC_GetInventorySnapshot_MaintenanceMachineRejected(t *testing.
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
-	slugInv := "grpc-inv-org-" + uuid.NewString()
-	_, err := pool.Exec(ctx, `INSERT INTO organizations (id, name, slug, status) VALUES ($1, 'grpc-inv', $2, 'active')`, orgID, slugInv)
+	slugInv := "grpc-inv-scope-" + uuid.NewString()
+	_, err := pool.Exec(ctx, `INSERT INTO scopes (id, name, slug, status) VALUES ($1, 'grpc-inv', $2, 'active')`, uuid.Nil, slugInv)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, organization_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, orgID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, uuid.Nil)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, organization_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'maintenance', 1)`, machineID, orgID, siteID, "sn-maint-grpc-"+uuid.NewString()[:8])
+INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, $4, 'maintenance', 1)`, machineID, uuid.Nil, siteID, "sn-maint-grpc-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	cfg := testMachineGRPCConfig()
@@ -244,7 +242,7 @@ VALUES ($1, $2, $3, $4, 'maintenance', 1)`, machineID, orgID, siteID, "sn-maint-
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = conn.Close() })
 
-	tok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	require.NoError(t, err)
 	mdCtx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+tok)
 

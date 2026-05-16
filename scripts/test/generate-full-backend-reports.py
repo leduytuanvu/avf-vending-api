@@ -25,7 +25,7 @@ BUSINESS_FLOWS = [
     ("admin login/logout/session/refresh", "tests/e2e/scenarios/01_web_admin_setup.sh", "P0"),
     ("invalid token/expired token", "internal/platform/auth/*_test.go", "P0"),
     ("RBAC allow/deny", "tests/e2e/scenarios/13_web_admin_support_ops.sh", "P0"),
-    ("organization/site/user/admin CRUD", "tests/e2e/scenarios/01_web_admin_setup.sh", "P0"),
+    ("company/site/user/admin CRUD", "tests/e2e/scenarios/01_web_admin_setup.sh", "P0"),
     ("machine create/register/activate/deactivate", "tests/e2e/scenarios/02_machine_activation_bootstrap_rest.sh", "P0"),
     ("machine token/credential lifecycle", "tests/e2e/scenarios/20_grpc_machine_auth.sh", "P0"),
     ("config/bootstrap/catalog/media pull", "tests/e2e/scenarios/21_grpc_bootstrap_catalog_media.sh", "P0"),

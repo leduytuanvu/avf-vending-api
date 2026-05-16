@@ -43,13 +43,12 @@ function Invoke-E2EIdempotentHarnessAuthSeed {
         return
     }
     $sql = @'
-INSERT INTO platform_auth_accounts (id, organization_id, email, password_hash, roles, status)
+INSERT INTO platform_auth_accounts (id, email, password_hash, roles, status)
 VALUES (
     '77777777-7777-7777-7777-777777777777'::uuid,
-    '11111111-1111-1111-1111-111111111111'::uuid,
     'e2e-local-admin@invalid.local',
     '$2a$10$sHkBPyzFBWrVnUJBzzjEKOSKP55F6XjgTizrIoZuBHoo7Yred4ReK',
-    ARRAY['org_admin']::text[],
+    ARRAY['admin']::text[],
     'active'
 )
 ON CONFLICT (id) DO UPDATE SET
@@ -85,16 +84,14 @@ function Invoke-E2EBashStep {
 
     $GrpcAddr = $env:E2E_LOCAL_GRPC_ADDR
     if ([string]::IsNullOrWhiteSpace($GrpcAddr)) { $GrpcAddr = '127.0.0.1:9090' }
-    # Deterministic harness user (Docker seed org 11111111-...) — bcrypt for password E2E_LocalDev_9c3a! (Invoke-E2EIdempotentHarnessAuthSeed).
-    $OrgId = $env:E2E_LOCAL_ORGANIZATION_ID
-    if ([string]::IsNullOrWhiteSpace($OrgId)) { $OrgId = '11111111-1111-1111-1111-111111111111' }
+    # Deterministic harness user; bcrypt for password E2E_LocalDev_9c3a! (Invoke-E2EIdempotentHarnessAuthSeed).
     $AdminMail = $env:E2E_LOCAL_ADMIN_EMAIL
     if ([string]::IsNullOrWhiteSpace($AdminMail)) { $AdminMail = 'e2e-local-admin@invalid.local' }
     $AdminPass = $env:E2E_LOCAL_ADMIN_PASSWORD
     if ([string]::IsNullOrWhiteSpace($AdminPass)) { $AdminPass = 'E2E_LocalDev_9c3a!' }
 
     # Single bash invocation (same chaining as upstream scripts). BashRoot/BaseUrl avoid embedded single-quotes today.
-    $fullCmd = "set -euo pipefail; cd '$BashRoot' && export E2E_TARGET=local && export BASE_URL='$BaseUrl' && export GRPC_ADDR='$GrpcAddr' && export GRPC_USE_REFLECTION=true && export MQTT_HOST='127.0.0.1' && export MQTT_PORT='1883' && export E2E_ORGANIZATION_ID='$OrgId' && export ADMIN_EMAIL='$AdminMail' && export ADMIN_PASSWORD='$AdminPass' && export E2E_ENABLE_FLOW_REVIEW=true && $BashSnippet"
+    $fullCmd = "set -euo pipefail; cd '$BashRoot' && export E2E_TARGET=local && export BASE_URL='$BaseUrl' && export GRPC_ADDR='$GrpcAddr' && export GRPC_USE_REFLECTION=true && export MQTT_HOST='127.0.0.1' && export MQTT_PORT='1883' && export ADMIN_EMAIL='$AdminMail' && export ADMIN_PASSWORD='$AdminPass' && export E2E_ENABLE_FLOW_REVIEW=true && $BashSnippet"
 
     Write-Host ('[{0}] {1}' -f $StepName, $BashSnippet) -ForegroundColor DarkGray
 

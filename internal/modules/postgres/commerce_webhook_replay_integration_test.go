@@ -21,7 +21,6 @@ func TestApplyPaymentProviderWebhook_replayByProviderRef(t *testing.T) {
 
 	orderIDem := "wh-order-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -38,7 +37,6 @@ func TestApplyPaymentProviderWebhook_replayByProviderRef(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -59,7 +57,6 @@ func TestApplyPaymentProviderWebhook_replayByProviderRef(t *testing.T) {
 	provRef := "prov-ref-" + uuid.NewString()
 	evPrimary := "evt-" + uuid.NewString()
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
@@ -116,7 +113,6 @@ func TestApplyPaymentProviderWebhook_webhookEventIdConflict(t *testing.T) {
 
 	orderIDem := "wh-order2-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -133,7 +129,6 @@ func TestApplyPaymentProviderWebhook_webhookEventIdConflict(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -152,7 +147,6 @@ func TestApplyPaymentProviderWebhook_webhookEventIdConflict(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{"seq": 1})
 	sharedEvt := "shared-evt-" + uuid.NewString()
 	in1 := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
@@ -179,7 +173,6 @@ func TestApplyReconciledPaymentTransition_insertsOutboxInSameTransaction(t *test
 
 	orderIDem := "reconcile-order-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -196,7 +189,6 @@ func TestApplyReconciledPaymentTransition_insertsOutboxInSameTransaction(t *test
 	payIDem := orderIDem + ":pay"
 	sessionOutboxIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",

@@ -10,8 +10,8 @@ import (
 // Well-known role names for coarse route checks (maps to JWT "roles" array).
 const (
 	RolePlatformAdmin = "platform_admin"
-	RoleOrgAdmin      = "org_admin"
-	RoleOrgMember     = "org_member"
+	RoleOrgAdmin      = "admin"
+	RoleOrgMember     = "member"
 	RoleTechnician    = "technician"
 	RoleService       = "service"
 	// RoleMachine is issued to kiosk/device principals after activation; token must include machine_ids.
@@ -26,14 +26,13 @@ const (
 
 // Principal is the authenticated subject after token validation.
 type Principal struct {
-	Subject        string
-	ActorType      string
-	Roles          []string
-	OrganizationID uuid.UUID
-	SiteID         uuid.UUID
-	MachineIDs     []uuid.UUID
-	TechnicianID   uuid.UUID
-	ExpiresAt      time.Time
+	Subject      string
+	ActorType    string
+	Roles        []string
+	SiteID       uuid.UUID
+	MachineIDs   []uuid.UUID
+	TechnicianID uuid.UUID
+	ExpiresAt    time.Time
 	// AccountStatus comes from JWT claim account_status when present (e.g. interactive login JWTs). Empty means unknown/legacy and is treated as active for routing.
 	AccountStatus string
 	// JWTAudience is the raw JWT "aud" claim when a single audience was present (best-effort).
@@ -82,11 +81,6 @@ func (p Principal) HasAnyRole(want ...string) bool {
 	return false
 }
 
-// HasOrganization reports whether an organization scope is present.
-func (p Principal) HasOrganization() bool {
-	return p.OrganizationID != uuid.Nil
-}
-
 // HasSite reports whether a site scope is present.
 func (p Principal) HasSite() bool {
 	return p.SiteID != uuid.Nil
@@ -110,8 +104,8 @@ func (p Principal) IsMachinePrincipal() bool {
 	return p.HasRole(RoleMachine)
 }
 
-// CanAccessMachineRead is a coarse JWT claim check only; it does not prove tenant ownership.
-// Prefer httpserver.RequireMachineTenantAccess for /v1 routes keyed by machineId (DB-backed org match).
+// CanAccessMachineRead is a coarse JWT claim check only; it does not prove single-company ownership.
+// Prefer httpserver.RequireMachineCompanyAccess for /v1 routes keyed by machineId (DB-backed org match).
 func (p Principal) CanAccessMachineRead(machineID uuid.UUID) bool {
 	if machineID == uuid.Nil {
 		return false

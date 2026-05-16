@@ -34,7 +34,6 @@ var DefaultMachineAccessScopes = []string{
 // MachineAccessClaims is the validated machine runtime JWT view (gRPC + HTTP HS256 path).
 type MachineAccessClaims struct {
 	MachineID         uuid.UUID
-	OrganizationID    uuid.UUID
 	SiteID            uuid.UUID
 	SessionID         uuid.UUID
 	CredentialVersion int64
@@ -170,7 +169,7 @@ func jwtHeaderKid(t *jwt.Token) string {
 }
 
 // ParseMachineAccessClaimsFromPayload validates issuer, typ, aud, token_use,
-// role=machine, organization_id, and machine_id binding.
+// role=machine, scope_id, and machine_id binding.
 func ParseMachineAccessClaimsFromPayload(payloadJSON []byte, leeway time.Duration, wantAudience, wantIssuer string, requireAudience bool) (MachineAccessClaims, error) {
 	if wantAudience == "" {
 		wantAudience = AudienceMachineGRPC
@@ -181,8 +180,6 @@ func ParseMachineAccessClaimsFromPayload(payloadJSON []byte, leeway time.Duratio
 		Iss               string   `json:"iss"`
 		Aud               any      `json:"aud"`
 		Roles             []string `json:"roles"`
-		OrgID             string   `json:"org_id"`
-		OrganizationID    string   `json:"organization_id"`
 		SiteID            string   `json:"site_id"`
 		SessionID         string   `json:"session_id"`
 		MachineIDs        []string `json:"machine_ids"`
@@ -244,14 +241,6 @@ func ParseMachineAccessClaimsFromPayload(payloadJSON []byte, leeway time.Duratio
 	if err != nil {
 		return MachineAccessClaims{}, ErrUnauthenticated
 	}
-	orgRaw := strings.TrimSpace(m.OrganizationID)
-	if orgRaw == "" {
-		orgRaw = strings.TrimSpace(m.OrgID)
-	}
-	orgID, err := uuid.Parse(orgRaw)
-	if err != nil || orgID == uuid.Nil {
-		return MachineAccessClaims{}, ErrUnauthenticated
-	}
 	var siteID uuid.UUID
 	if sid := strings.TrimSpace(m.SiteID); sid != "" {
 		siteID, _ = uuid.Parse(sid)
@@ -266,7 +255,6 @@ func ParseMachineAccessClaimsFromPayload(payloadJSON []byte, leeway time.Duratio
 	}
 	return MachineAccessClaims{
 		MachineID:         machineID,
-		OrganizationID:    orgID,
 		SiteID:            siteID,
 		SessionID:         sessID,
 		CredentialVersion: credVer,

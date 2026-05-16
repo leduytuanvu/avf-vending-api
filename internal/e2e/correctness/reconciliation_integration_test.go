@@ -17,7 +17,6 @@ func TestP06_E2E_Reconciliation_paidVendFailedCaseIsIdempotent(t *testing.T) {
 	store := postgres.NewStore(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -34,12 +33,11 @@ func TestP06_E2E_Reconciliation_paidVendFailedCaseIsIdempotent(t *testing.T) {
 
 	repo := postgres.NewCommerceReconcileRepository(pool)
 	in := commerce.ReconciliationCaseInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		CaseType:       "payment_paid_vend_failed",
-		Severity:       "critical",
-		OrderID:        &orderID,
-		Reason:         "p06 e2e: payment terminal + vend failure",
-		Metadata:       []byte(`{"source":"p06_e2e"}`),
+		CaseType: "payment_paid_vend_failed",
+		Severity: "critical",
+		OrderID:  &orderID,
+		Reason:   "p06 e2e: payment terminal + vend failure",
+		Metadata: []byte(`{"source":"p06_e2e"}`),
 	}
 
 	r1, err := repo.UpsertReconciliationCase(ctx, in)

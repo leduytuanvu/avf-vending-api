@@ -56,11 +56,10 @@ func PaymentToVendWorkflow(ctx workflow.Context, in PaymentToVendInput) (Workflo
 			externalDispatchActivityContext(ctx),
 			ActivityNameEnqueueRefundReview,
 			RefundOrchestrationInput{
-				OrganizationID: decision.OrganizationID,
-				OrderID:        in.OrderID,
-				PaymentID:      in.PaymentID,
-				Reason:         decision.Reason,
-				RequestedAt:    workflow.Now(ctx),
+				OrderID:     in.OrderID,
+				PaymentID:   in.PaymentID,
+				Reason:      decision.Reason,
+				RequestedAt: workflow.Now(ctx),
 			},
 		).Get(ctx, &queued)
 		if err != nil {
@@ -74,11 +73,10 @@ func PaymentToVendWorkflow(ctx workflow.Context, in PaymentToVendInput) (Workflo
 			externalDispatchActivityContext(ctx),
 			ActivityNameEnqueueManualReview,
 			ManualReviewEscalationInput{
-				OrganizationID: decision.OrganizationID,
-				OrderID:        in.OrderID,
-				PaymentID:      in.PaymentID,
-				Reason:         decision.Reason,
-				RequestedAt:    workflow.Now(ctx),
+				OrderID:     in.OrderID,
+				PaymentID:   in.PaymentID,
+				Reason:      decision.Reason,
+				RequestedAt: workflow.Now(ctx),
 			},
 		).Get(ctx, &queued)
 		if err != nil {
@@ -108,11 +106,10 @@ func RefundWorkflow(ctx workflow.Context, in RefundWorkflowInput) (WorkflowOutco
 			externalDispatchActivityContext(ctx),
 			ActivityNameEnqueueRefundReview,
 			RefundOrchestrationInput{
-				OrganizationID: in.OrganizationID,
-				OrderID:        in.OrderID,
-				PaymentID:      in.PaymentID,
-				Reason:         decision.Reason,
-				RequestedAt:    in.RequestedAt,
+				OrderID:     in.OrderID,
+				PaymentID:   in.PaymentID,
+				Reason:      decision.Reason,
+				RequestedAt: in.RequestedAt,
 			},
 		).Get(ctx, &queued)
 		if err != nil {
@@ -140,9 +137,8 @@ func CommandAckWorkflow(ctx workflow.Context, in CommandAckWorkflowInput) (Workf
 			externalDispatchActivityContext(ctx),
 			ActivityNameEnqueueManualReview,
 			ManualReviewEscalationInput{
-				OrganizationID: in.OrganizationID,
-				Reason:         decision.Reason,
-				RequestedAt:    workflow.Now(ctx),
+				Reason:      decision.Reason,
+				RequestedAt: workflow.Now(ctx),
 			},
 		).Get(ctx, &queued)
 		if err != nil {
@@ -170,11 +166,10 @@ func PaymentPendingTimeoutFollowUpWorkflow(ctx workflow.Context, in PaymentPendi
 		externalDispatchActivityContext(ctx),
 		ActivityNameEnqueueManualReview,
 		ManualReviewEscalationInput{
-			OrganizationID: decision.OrganizationID,
-			OrderID:        in.OrderID,
-			PaymentID:      in.PaymentID,
-			Reason:         "manual_review:payment_pending_timeout",
-			RequestedAt:    in.ObservedAt,
+			OrderID:     in.OrderID,
+			PaymentID:   in.PaymentID,
+			Reason:      "manual_review:payment_pending_timeout",
+			RequestedAt: in.ObservedAt,
 		},
 	).Get(ctx, &queued)
 	if err != nil {
@@ -199,11 +194,10 @@ func VendFailureAfterPaymentSuccessWorkflow(ctx workflow.Context, in VendFailure
 			externalDispatchActivityContext(ctx),
 			ActivityNameEnqueueRefundReview,
 			RefundOrchestrationInput{
-				OrganizationID: decision.OrganizationID,
-				OrderID:        in.OrderID,
-				PaymentID:      in.PaymentID,
-				Reason:         "captured_payment_failed_order",
-				RequestedAt:    in.ObservedAt,
+				OrderID:     in.OrderID,
+				PaymentID:   in.PaymentID,
+				Reason:      "captured_payment_failed_order",
+				RequestedAt: in.ObservedAt,
 			},
 		).Get(ctx, &queued)
 		if err != nil {
@@ -220,11 +214,10 @@ func VendFailureAfterPaymentSuccessWorkflow(ctx workflow.Context, in VendFailure
 			externalDispatchActivityContext(ctx),
 			ActivityNameEnqueueManualReview,
 			ManualReviewEscalationInput{
-				OrganizationID: decision.OrganizationID,
-				OrderID:        in.OrderID,
-				PaymentID:      in.PaymentID,
-				Reason:         "manual_review:vend_failed_after_payment_success",
-				RequestedAt:    in.ObservedAt,
+				OrderID:     in.OrderID,
+				PaymentID:   in.PaymentID,
+				Reason:      "manual_review:vend_failed_after_payment_success",
+				RequestedAt: in.ObservedAt,
 			},
 		).Get(ctx, &queued)
 		if err != nil {

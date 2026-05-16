@@ -1,8 +1,16 @@
 -- name: InsertMachineRuntimeRefreshToken :one
 INSERT INTO
-    machine_runtime_refresh_tokens (machine_id, organization_id, token_hash, expires_at)
+    machine_runtime_refresh_tokens (
+    machine_id,
+    token_hash,
+    expires_at
+)
 VALUES
-    ($1, $2, $3, $4)
+    (
+    $1,
+    $2,
+    $3
+)
 RETURNING
     *;
 

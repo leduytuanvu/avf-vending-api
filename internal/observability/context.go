@@ -15,13 +15,13 @@ type loggerCtxKey struct{}
 type stringCtxKey string
 
 const (
-	ctxMachineID      stringCtxKey = "machine_id"
-	ctxOrganizationID stringCtxKey = "organization_id"
-	ctxOperatorID     stringCtxKey = "operator_id"
-	ctxOrderID        stringCtxKey = "order_id"
-	ctxPaymentID      stringCtxKey = "payment_id"
-	ctxVendID         stringCtxKey = "vend_id"
-	ctxCommandID      stringCtxKey = "command_id"
+	ctxMachineID  stringCtxKey = "machine_id"
+	ctxScopeID    stringCtxKey = "scope_id"
+	ctxOperatorID stringCtxKey = "operator_id"
+	ctxOrderID    stringCtxKey = "order_id"
+	ctxPaymentID  stringCtxKey = "payment_id"
+	ctxVendID     stringCtxKey = "vend_id"
+	ctxCommandID  stringCtxKey = "command_id"
 )
 
 func withStringValue(ctx context.Context, key stringCtxKey, value string) context.Context {
@@ -71,16 +71,13 @@ func MachineIDFromContext(ctx context.Context) string {
 	return ""
 }
 
-func WithOrganizationID(ctx context.Context, organizationID string) context.Context {
-	return withStringValue(ctx, ctxOrganizationID, organizationID)
+func WithScopeID(ctx context.Context, companyID string) context.Context {
+	return withStringValue(ctx, ctxScopeID, companyID)
 }
 
-func OrganizationIDFromContext(ctx context.Context) string {
-	if v := stringValueFromContext(ctx, ctxOrganizationID); v != "" {
+func ScopeIDFromContext(ctx context.Context) string {
+	if v := stringValueFromContext(ctx, ctxScopeID); v != "" {
 		return v
-	}
-	if p, ok := auth.PrincipalFromContext(ctx); ok && p.OrganizationID != uuid.Nil {
-		return p.OrganizationID.String()
 	}
 	return ""
 }
@@ -146,8 +143,8 @@ func ContextFields(ctx context.Context) []zap.Field {
 	if v := MachineIDFromContext(ctx); v != "" {
 		fields = append(fields, zap.String("machine_id", v))
 	}
-	if v := OrganizationIDFromContext(ctx); v != "" {
-		fields = append(fields, zap.String("organization_id", v))
+	if v := ScopeIDFromContext(ctx); v != "" {
+		fields = append(fields, zap.String("scope_id", v))
 	}
 	if v := OperatorIDFromContext(ctx); v != "" {
 		fields = append(fields, zap.String("operator_id", v))

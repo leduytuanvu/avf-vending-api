@@ -48,9 +48,6 @@ fi
 
 admin_dispatch_ok() {
   [[ -n "${ADMIN_TOKEN:-}" ]] || return 1
-  local o=""
-  o="$(get_data organizationId)"
-  [[ -n "$o" && "$o" != "null" ]] || return 1
   return 0
 }
 
@@ -64,7 +61,6 @@ launch_subscriber() {
 
 CMD_IN="${E2E_MQTT_TOPIC_COMMAND_IN}"
 CMD_ACK="${E2E_MQTT_TOPIC_COMMAND_ACK}"
-ORG="$(get_data organizationId)"
 read_command_line() {
   local f="$1"
   [[ -f "$f" ]] || { echo ""; return 1; }
@@ -108,7 +104,7 @@ if admin_dispatch_ok; then
   sleep 1
   BODY='{"commandType":"noop","payload":{}}'
   IDK="e2e-mqtt-dispatch-${RANDOM}-$(date +%s)"
-  code="$(e2e_http_post_json_idem "mqtt-admin-dispatch" "/v1/admin/organizations/${ORG}/machines/${MID}/commands" "$BODY" "$IDK")"
+  code="$(e2e_http_post_json_idem "mqtt-admin-dispatch" "/v1/admin/machines/${MID}/commands" "$BODY" "$IDK")"
   if [[ "$code" == "202" ]]; then
     HTTP_CID="$(jq -r '.commandId // .command_id // empty' "${E2E_RUN_DIR}/rest/mqtt-admin-dispatch.response.json" 2>/dev/null)"
   fi
@@ -116,7 +112,7 @@ if admin_dispatch_ok; then
   sub_ec=$?
   SPID=""
   RECV="$(read_command_line "$SUB_LOG")"
-  if [[ "$code" == "202" ]] && [[ "$sub_ec" -eq 0 ]] && [[ -n "$RECV" ]]; then
+  if [[ "$code" == "202" ]] && e2e_mqtt_sub_join_payload_ok "$sub_ec" "$SUB_LOG" && [[ -n "$RECV" ]]; then
     mqtt_contract_record "$FLOW_ID" "admin-dispatch" "${CMD_IN}" "pass" "http_202 commandId=${HTTP_CID}"
     e2e_append_test_event "$FLOW_ID" "admin-dispatch" "REST+MQTT" "/v1/admin/.../commands" "pass" "ok" "{}"
     ADMIN_DISPATCH_PASS="yes"
@@ -126,7 +122,7 @@ if admin_dispatch_ok; then
     HTTP_CID=""
   fi
 else
-  mqtt_contract_record "$FLOW_ID" "admin-dispatch" "—" "skip" "no_ADMIN_TOKEN_or_organizationId"
+  mqtt_contract_record "$FLOW_ID" "admin-dispatch" "—" "skip" "no_ADMIN_TOKEN"
 fi
 
 if [[ -z "$RECV" ]]; then
@@ -145,7 +141,7 @@ if [[ -z "$RECV" ]]; then
   sub_ec=$?
   SPID=""
   RECV="$(read_command_line "$SUB_LOG")"
-  if [[ "$pub_s" -ne 0 ]] || [[ "$sub_ec" -ne 0 ]] || [[ -z "$RECV" ]]; then
+  if [[ "$pub_s" -ne 0 ]] || [[ -z "$RECV" ]] || ! e2e_mqtt_sub_join_payload_ok "$sub_ec" "$SUB_LOG"; then
     trap - EXIT
     mqtt_contract_record "$FLOW_ID" "synthetic-command" "$CMD_IN" "fail" "pub=${pub_s} sub=${sub_ec}"
     e2e_append_test_event "$FLOW_ID" "command-receive" "MQTT" "$CMD_IN" "fail" "synthetic_failed" "{}"
@@ -180,7 +176,7 @@ e2e_append_test_event "$FLOW_ID" "publish-ack" "MQTT" "$CMD_ACK" "pass" "ok" "{}
 
 if [[ "$ADMIN_DISPATCH_PASS" == "yes" ]] && [[ -n "$HTTP_CID" ]]; then
   sleep 2
-  code_get="$(e2e_http_request_json "GET" "mqtt-cmd-status" "/v1/admin/organizations/${ORG}/commands/${HTTP_CID}" "")"
+  code_get="$(e2e_http_request_json "GET" "mqtt-cmd-status" "/v1/admin/commands/${HTTP_CID}" "")"
   if [[ "$code_get" == "200" ]]; then
     ST="$(jq -r '.attempts[-1].status // .attempts[-1].dispatchState // empty' "${E2E_RUN_DIR}/rest/mqtt-cmd-status.response.json" 2>/dev/null)"
     mqtt_contract_record "$FLOW_ID" "verify-command-get" "GET .../commands/{id}" "pass" "last_attempt=${ST:-unknown}"

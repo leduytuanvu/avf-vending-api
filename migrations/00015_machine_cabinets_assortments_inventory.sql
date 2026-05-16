@@ -22,7 +22,7 @@ CREATE INDEX IF NOT EXISTS ix_machine_cabinets_machine_sort ON machine_cabinets 
 
 CREATE TABLE IF NOT EXISTS assortments (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     name text NOT NULL,
     status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
     description text NOT NULL DEFAULT '',
@@ -32,22 +32,22 @@ CREATE TABLE IF NOT EXISTS assortments (
     CONSTRAINT ck_assortments_name_nonempty CHECK (btrim(name) <> '')
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_assortments_org_id ON assortments (organization_id, id);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_assortments_scope_pk ON assortments (scope_id, id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_assortments_org_name_lower ON assortments (organization_id, lower(name));
+CREATE UNIQUE INDEX IF NOT EXISTS ux_assortments_org_name_lower ON assortments (scope_id, lower(name));
 
-CREATE INDEX IF NOT EXISTS ix_assortments_organization_id ON assortments (organization_id);
+CREATE INDEX IF NOT EXISTS ix_assortments_scope_id ON assortments (scope_id);
 
 CREATE TABLE IF NOT EXISTS assortment_items (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     assortment_id uuid NOT NULL REFERENCES assortments (id) ON DELETE CASCADE,
     product_id uuid NOT NULL,
     sort_order int NOT NULL DEFAULT 0,
     notes jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT fk_assortment_items_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_assortment_items_org_assortment FOREIGN KEY (organization_id, assortment_id) REFERENCES assortments (organization_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_assortment_items_org_product FOREIGN KEY (scope_id, product_id) REFERENCES products (scope_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_assortment_items_org_assortment FOREIGN KEY (scope_id, assortment_id) REFERENCES assortments (scope_id, id) ON DELETE CASCADE,
     CONSTRAINT ux_assortment_items_assortment_product UNIQUE (assortment_id, product_id)
 );
 
@@ -57,15 +57,15 @@ CREATE INDEX IF NOT EXISTS ix_assortment_items_product_id ON assortment_items (p
 
 CREATE TABLE IF NOT EXISTS machine_assortment_bindings (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     assortment_id uuid NOT NULL REFERENCES assortments (id) ON DELETE RESTRICT,
     is_primary boolean NOT NULL DEFAULT false,
     valid_from timestamptz NOT NULL DEFAULT now(),
     valid_to timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT fk_machine_assortment_bindings_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_machine_assortment_bindings_org_assortment FOREIGN KEY (organization_id, assortment_id) REFERENCES assortments (organization_id, id) ON DELETE RESTRICT
+    CONSTRAINT fk_machine_assortment_bindings_org_machine FOREIGN KEY (scope_id, machine_id) REFERENCES machines (scope_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_machine_assortment_bindings_org_assortment FOREIGN KEY (scope_id, assortment_id) REFERENCES assortments (scope_id, id) ON DELETE RESTRICT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_machine_assortment_bindings_one_active_primary ON machine_assortment_bindings (machine_id)
@@ -79,7 +79,7 @@ CREATE INDEX IF NOT EXISTS ix_machine_assortment_bindings_assortment ON machine_
 
 CREATE TABLE IF NOT EXISTS inventory_count_sessions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     operator_session_id uuid REFERENCES machine_operator_sessions (id) ON DELETE SET NULL,
     status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed', 'cancelled')),
@@ -87,16 +87,16 @@ CREATE TABLE IF NOT EXISTS inventory_count_sessions (
     ended_at timestamptz,
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT fk_inventory_count_sessions_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE
+    CONSTRAINT fk_inventory_count_sessions_org_machine FOREIGN KEY (scope_id, machine_id) REFERENCES machines (scope_id, id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS ix_inventory_count_sessions_machine_started ON inventory_count_sessions (machine_id, started_at DESC);
 
-CREATE INDEX IF NOT EXISTS ix_inventory_count_sessions_org_started ON inventory_count_sessions (organization_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS ix_inventory_count_sessions_org_started ON inventory_count_sessions (scope_id, started_at DESC);
 
 CREATE TABLE IF NOT EXISTS inventory_events (
     id bigserial PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     machine_cabinet_id uuid REFERENCES machine_cabinets (id) ON DELETE SET NULL,
     slot_code text,
@@ -124,14 +124,14 @@ CREATE TABLE IF NOT EXISTS inventory_events (
     inventory_count_session_id uuid REFERENCES inventory_count_sessions (id) ON DELETE SET NULL,
     occurred_at timestamptz NOT NULL DEFAULT now(),
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-    CONSTRAINT fk_inventory_events_org_machine FOREIGN KEY (organization_id, machine_id) REFERENCES machines (organization_id, id) ON DELETE CASCADE,
-    CONSTRAINT fk_inventory_events_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE SET NULL,
+    CONSTRAINT fk_inventory_events_org_machine FOREIGN KEY (scope_id, machine_id) REFERENCES machines (scope_id, id) ON DELETE CASCADE,
+    CONSTRAINT fk_inventory_events_org_product FOREIGN KEY (scope_id, product_id) REFERENCES products (scope_id, id) ON DELETE SET NULL,
     CONSTRAINT ck_inventory_events_slot_code_nonempty CHECK (slot_code IS NULL OR btrim(slot_code) <> '')
 );
 
 CREATE INDEX IF NOT EXISTS ix_inventory_events_machine_occurred ON inventory_events (machine_id, occurred_at DESC);
 
-CREATE INDEX IF NOT EXISTS ix_inventory_events_org_occurred ON inventory_events (organization_id, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS ix_inventory_events_org_occurred ON inventory_events (scope_id, occurred_at DESC);
 
 CREATE INDEX IF NOT EXISTS ix_inventory_events_machine_slot_occurred ON inventory_events (machine_id, slot_code, occurred_at DESC)
 WHERE

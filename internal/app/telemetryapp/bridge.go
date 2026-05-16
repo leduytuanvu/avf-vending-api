@@ -13,6 +13,7 @@ import (
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
 	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
+	"github.com/google/uuid"
 	natssrv "github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 )
@@ -50,7 +51,7 @@ func (b *NATSBridge) IngestTelemetry(ctx context.Context, in platformmqtt.Teleme
 		SchemaVersion:     sv,
 		Class:             cls,
 		MachineID:         in.MachineID,
-		TenantID:          &loc.OrganizationID,
+		CompanyID:         &uuid.Nil,
 		SiteID:            &loc.SiteID,
 		ReceivedAt:        now,
 		SourceEvent:       in.EventType,
@@ -141,7 +142,7 @@ func (b *NATSBridge) IngestShadowReported(ctx context.Context, in platformmqtt.S
 		SchemaVersion: tel.DefaultSchemaVersion,
 		Class:         tel.ClassState,
 		MachineID:     in.MachineID,
-		TenantID:      &loc.OrganizationID,
+		CompanyID:     &uuid.Nil,
 		SiteID:        &loc.SiteID,
 		ReceivedAt:    now,
 		SourceEvent:   "shadow.reported",
@@ -179,7 +180,7 @@ func (b *NATSBridge) IngestShadowDesired(ctx context.Context, in platformmqtt.Sh
 		SchemaVersion: tel.DefaultSchemaVersion,
 		Class:         tel.ClassState,
 		MachineID:     in.MachineID,
-		TenantID:      &loc.OrganizationID,
+		CompanyID:     &uuid.Nil,
 		SiteID:        &loc.SiteID,
 		ReceivedAt:    now,
 		SourceEvent:   "shadow.desired",
@@ -232,7 +233,7 @@ func (b *NATSBridge) IngestCommandReceipt(ctx context.Context, in platformmqtt.C
 		SchemaVersion: tel.DefaultSchemaVersion,
 		Class:         tel.ClassCommandReceipt,
 		MachineID:     in.MachineID,
-		TenantID:      &loc.OrganizationID,
+		CompanyID:     &uuid.Nil,
 		SiteID:        &loc.SiteID,
 		ReceivedAt:    now,
 		SourceEvent:   "commands.receipt",

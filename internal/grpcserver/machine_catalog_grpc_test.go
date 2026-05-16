@@ -48,7 +48,6 @@ func TestMachineCatalog_GetCatalogSnapshot_CrossMachineDenied(t *testing.T) {
 
 	stub := stubSaleCatalog{
 		snap: salecatalog.Snapshot{
-			OrganizationID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 			SiteID:         uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 			ConfigVersion:  3,
 			CatalogVersion: "abc",
@@ -97,9 +96,8 @@ func TestMachineCatalog_GetCatalogSnapshot_CrossMachineDenied(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	tok, _, err := issuer.IssueMachineAccessJWT(machineA, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineA, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +118,6 @@ func TestMachineCatalog_GetCatalogSnapshot_ReturnsURLsNotBinary(t *testing.T) {
 
 	stub := stubSaleCatalog{
 		snap: salecatalog.Snapshot{
-			OrganizationID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 			SiteID:         uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 			ConfigVersion:  1,
 			CatalogVersion: "ver",
@@ -171,9 +168,8 @@ func TestMachineCatalog_GetCatalogSnapshot_ReturnsURLsNotBinary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	tok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,11 +215,10 @@ func TestMachineCatalog_GetCatalogSnapshot_IncludeUnavailablePassesThrough(t *te
 		fn: func(ctx context.Context, id uuid.UUID, opts salecatalog.Options) (salecatalog.Snapshot, error) {
 			got = opts
 			return salecatalog.Snapshot{
-				MachineID:      id,
-				OrganizationID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
-				SiteID:         uuid.MustParse("22222222-2222-2222-2222-222222222222"),
-				Items:          nil,
-				Bootstrap:      &setupapp.MachineBootstrap{},
+				MachineID: id,
+				SiteID:    uuid.MustParse("22222222-2222-2222-2222-222222222222"),
+				Items:     nil,
+				Bootstrap: &setupapp.MachineBootstrap{},
 			}, nil
 		},
 	}
@@ -256,9 +251,8 @@ func TestMachineCatalog_GetCatalogSnapshot_IncludeUnavailablePassesThrough(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	tok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +291,6 @@ func TestMachineCatalog_GetMediaManifest_ResourceExhausted(t *testing.T) {
 
 	stub := stubSaleCatalog{
 		snap: salecatalog.Snapshot{
-			OrganizationID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 			SiteID:         uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 			ConfigVersion:  1,
 			CatalogVersion: "fp",
@@ -335,9 +328,8 @@ func TestMachineCatalog_GetMediaManifest_ResourceExhausted(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	tok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,7 +351,6 @@ func TestMachineCatalog_GetMediaManifest_IncludesChecksumAndMediaID(t *testing.T
 
 	stub := stubSaleCatalog{
 		snap: salecatalog.Snapshot{
-			OrganizationID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 			SiteID:         uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 			ConfigVersion:  1,
 			CatalogVersion: "ver",
@@ -418,9 +409,8 @@ func TestMachineCatalog_GetMediaManifest_IncludesChecksumAndMediaID(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	tok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -488,9 +478,8 @@ func TestMachineCatalog_GetCatalogDelta_BasisMatches(t *testing.T) {
 		t.Fatal(err)
 	}
 	mid := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	tok, _, err := issuer.IssueMachineAccessJWT(mid, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(mid, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -516,7 +505,6 @@ func TestMachineMedia_GetMediaManifestAndDelta(t *testing.T) {
 	pid := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	stub := stubSaleCatalog{
 		snap: salecatalog.Snapshot{
-			OrganizationID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 			SiteID:         uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 			ConfigVersion:  1,
 			CatalogVersion: "ver",
@@ -561,9 +549,8 @@ func TestMachineMedia_GetMediaManifestAndDelta(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	tok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -608,7 +595,6 @@ func TestMachineMedia_GetMediaManifest_DeletedTombstone(t *testing.T) {
 	pid := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	stub := stubSaleCatalog{
 		snap: salecatalog.Snapshot{
-			OrganizationID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 			SiteID:         uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 			ConfigVersion:  1,
 			CatalogVersion: "ver",
@@ -649,9 +635,8 @@ func TestMachineMedia_GetMediaManifest_DeletedTombstone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	tok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -681,7 +666,6 @@ func TestMachineCatalog_GetMediaManifest_MediaVariantsChecksumAndExpires(t *test
 
 	stub := stubSaleCatalog{
 		snap: salecatalog.Snapshot{
-			OrganizationID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 			SiteID:         uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 			ConfigVersion:  1,
 			CatalogVersion: "ver",
@@ -735,9 +719,8 @@ func TestMachineCatalog_GetMediaManifest_MediaVariantsChecksumAndExpires(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	tok, _, err := issuer.IssueMachineAccessJWT(machineID, orgID, siteID, 1, uuid.Nil)
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}

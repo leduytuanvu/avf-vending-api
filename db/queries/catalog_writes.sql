@@ -1,90 +1,137 @@
 -- name: CatalogWriteInsertProduct :one
 INSERT INTO products (
-    organization_id, sku, barcode, name, description, attrs, active,
-    category_id, brand_id, country_of_origin, age_restricted, allergen_codes, nutritional_note
+    sku,
+    barcode,
+    name,
+    description,
+    attrs,
+    active,
+    category_id,
+    brand_id,
+    country_of_origin,
+    age_restricted,
+    allergen_codes,
+    nutritional_note
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12
 )
 RETURNING *;
 
 -- name: CatalogWriteUpdateProduct :one
 UPDATE products p
 SET
-    sku = $3,
-    barcode = $4,
-    name = $5,
-    description = $6,
-    attrs = $7,
-    active = $8,
-    category_id = $9,
-    brand_id = $10,
-    country_of_origin = $11,
-    age_restricted = $12,
-    allergen_codes = $13,
-    nutritional_note = $14,
+    sku = $1,
+    barcode = $2,
+    name = $3,
+    description = $4,
+    attrs = $5,
+    active = $6,
+    category_id = $7,
+    brand_id = $8,
+    country_of_origin = $9,
+    age_restricted = $10,
+    allergen_codes = $11,
+    nutritional_note = $12,
     updated_at = now()
-WHERE p.organization_id = $1 AND p.id = $2
+WHERE p.id = $13
 RETURNING *;
 
 -- name: CatalogWriteSetProductActive :one
 UPDATE products p
-SET active = $3, updated_at = now()
-WHERE p.organization_id = $1 AND p.id = $2
+SET active = $1, updated_at = now()
+WHERE p.id = $2
 RETURNING *;
 
 -- name: CatalogWriteProductInCurrentSlot :one
 SELECT EXISTS (
     SELECT 1
     FROM machine_slot_configs msc
-    WHERE msc.organization_id = $1
-      AND msc.product_id = $2
+    WHERE TRUE
+      AND msc.product_id = $1
       AND msc.is_current = true
 ) AS v;
 
 -- name: CatalogWriteInsertBrand :one
-INSERT INTO brands (organization_id, slug, name, active)
-VALUES ($1, $2, $3, $4)
+INSERT INTO brands (
+    slug,
+    name,
+    active
+)
+VALUES (
+    $1,
+    $2,
+    $3
+)
 RETURNING *;
 
 -- name: CatalogWriteUpdateBrand :one
 UPDATE brands b
 SET
-    slug = $3,
-    name = $4,
-    active = $5,
+    slug = $1,
+    name = $2,
+    active = $3,
     updated_at = now()
-WHERE b.organization_id = $1 AND b.id = $2
+WHERE b.id = $4
 RETURNING *;
 
 -- name: CatalogWriteInsertCategory :one
-INSERT INTO categories (organization_id, slug, name, parent_id, active)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO categories (
+    slug,
+    name,
+    parent_id,
+    active
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
 RETURNING *;
 
 -- name: CatalogWriteUpdateCategory :one
 UPDATE categories c
 SET
-    slug = $3,
-    name = $4,
-    parent_id = $5,
-    active = $6,
+    slug = $1,
+    name = $2,
+    parent_id = $3,
+    active = $4,
     updated_at = now()
-WHERE c.organization_id = $1 AND c.id = $2
+WHERE c.id = $5
 RETURNING *;
 
 -- name: CatalogWriteInsertTag :one
-INSERT INTO tags (organization_id, slug, name, active)
-VALUES ($1, $2, $3, $4)
+INSERT INTO tags (
+    slug,
+    name,
+    active
+)
+VALUES (
+    $1,
+    $2,
+    $3
+)
 RETURNING *;
 
 -- name: CatalogWriteUpdateTag :one
 UPDATE tags t
 SET
-    slug = $3,
-    name = $4,
-    active = $5,
+    slug = $1,
+    name = $2,
+    active = $3,
     updated_at = now()
-WHERE t.organization_id = $1 AND t.id = $2
+WHERE t.id = $4
 RETURNING *;
 
 -- name: CatalogWriteUnsetPrimaryImagesForProduct :exec
@@ -92,27 +139,48 @@ UPDATE product_images pi
 SET is_primary = false
 FROM products p
 WHERE pi.product_id = p.id
-  AND p.organization_id = $1
-  AND p.id = $2
+  AND TRUE
+  AND p.id = $1
   AND pi.status = 'active';
 
 -- name: CatalogWriteInsertProductImage :one
 INSERT INTO product_images (
-    product_id, storage_key, cdn_url, thumb_cdn_url, content_hash,
-    width, height, mime_type, alt_text, sort_order, is_primary
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    product_id,
+    storage_key,
+    cdn_url,
+    thumb_cdn_url,
+    content_hash,
+    width,
+    height,
+    mime_type,
+    alt_text,
+    sort_order,
+    is_primary
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11
+)
 RETURNING *;
 
 -- name: CatalogWriteSetProductPrimaryImage :one
 UPDATE products p
-SET primary_image_id = $3, updated_at = now()
-WHERE p.organization_id = $1 AND p.id = $2
+SET primary_image_id = $1, updated_at = now()
+WHERE p.id = $2
 RETURNING *;
 
 -- name: CatalogWriteClearProductPrimaryImage :one
 UPDATE products p
 SET primary_image_id = NULL, updated_at = now()
-WHERE p.organization_id = $1 AND p.id = $2
+WHERE p.id = $1
 RETURNING *;
 
 -- name: CatalogWriteGetPrimaryProductImage :one
@@ -129,9 +197,9 @@ SET
     media_version = media_version + 1,
     updated_at = now()
 FROM products p
-WHERE pi.id = $3
+WHERE pi.id = $1
   AND pi.product_id = p.id
-  AND p.organization_id = $1
+  AND TRUE
   AND p.id = $2
   AND pi.status = 'active'
 RETURNING pi.*;
@@ -145,9 +213,9 @@ SET
     media_version = media_version + 1,
     updated_at = now()
 FROM products p
-WHERE pi.id = $3
+WHERE pi.id = $1
   AND pi.product_id = p.id
-  AND p.organization_id = $1
+  AND TRUE
   AND p.id = $2
   AND pi.status = 'active'
 RETURNING pi.*;
@@ -161,8 +229,8 @@ SET
     updated_at = now()
 FROM products p
 WHERE pi.product_id = p.id
-  AND p.organization_id = $1
-  AND p.id = $2
+  AND TRUE
+  AND p.id = $1
   AND pi.status = 'active';
 
 -- name: CatalogWriteProductReferencedPublishedPlanogram :one
@@ -170,8 +238,8 @@ SELECT EXISTS (
     SELECT 1
     FROM slots s
     JOIN planograms pg ON pg.id = s.planogram_id
-    WHERE pg.organization_id = $1
-      AND s.product_id = $2
+    WHERE TRUE
+      AND s.product_id = $1
       AND pg.status = 'published'
 ) AS v;
 
@@ -180,14 +248,13 @@ SELECT EXISTS (
     SELECT 1
     FROM vend_sessions vs
     JOIN orders o ON o.id = vs.order_id
-    WHERE o.organization_id = $1
-      AND vs.product_id = $2
+    WHERE TRUE
+      AND vs.product_id = $1
       AND o.status IN ('created', 'quoted', 'paid', 'vending')
 ) AS v;
 
 -- name: CatalogWriteInsertPriceBook :one
 INSERT INTO price_books (
-    organization_id,
     name,
     currency,
     effective_from,
@@ -199,25 +266,34 @@ INSERT INTO price_books (
     machine_id,
     priority
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10
 )
 RETURNING *;
 
 -- name: CatalogWriteUpdatePriceBook :one
 UPDATE price_books pb
 SET
-    name = $3,
-    currency = $4,
-    effective_from = $5,
-    effective_to = $6,
-    is_default = $7,
-    active = $8,
-    scope_type = $9,
-    site_id = $10,
-    machine_id = $11,
-    priority = $12,
+    name = $1,
+    currency = $2,
+    effective_from = $3,
+    effective_to = $4,
+    is_default = $5,
+    active = $6,
+    scope_type = $7,
+    site_id = $8,
+    machine_id = $9,
+    priority = $10,
     updated_at = now()
-WHERE pb.organization_id = $1 AND pb.id = $2
+WHERE pb.id = $11
 RETURNING *;
 
 -- name: CatalogWriteDeactivatePriceBook :one
@@ -225,41 +301,44 @@ UPDATE price_books pb
 SET
     active = false,
     updated_at = now()
-WHERE pb.organization_id = $1 AND pb.id = $2
+WHERE pb.id = $1
 RETURNING *;
 
 -- name: CatalogWriteUpsertPriceBookItem :one
 INSERT INTO price_book_items (
-    organization_id,
     price_book_id,
     product_id,
     unit_price_minor
 ) VALUES (
-    $1, $2, $3, $4
+    $1,
+    $2,
+    $3
 )
-ON CONFLICT (organization_id, price_book_id, product_id)
+ON CONFLICT (price_book_id, product_id)
 DO UPDATE SET unit_price_minor = EXCLUDED.unit_price_minor
 RETURNING *;
 
 -- name: CatalogWriteDeletePriceBookItem :execrows
 DELETE FROM price_book_items pbi
-WHERE pbi.organization_id = $1 AND pbi.price_book_id = $2 AND pbi.product_id = $3;
+WHERE pbi.price_book_id = $1
+  AND pbi.product_id = $2;
 
 -- name: CatalogWriteDeleteAllPriceBookItems :exec
 DELETE FROM price_book_items pbi
-WHERE pbi.organization_id = $1 AND pbi.price_book_id = $2;
+WHERE pbi.price_book_id = $1;
 
 -- name: CatalogWriteInsertPriceBookTarget :one
 INSERT INTO price_book_targets (
-    organization_id,
     price_book_id,
     site_id,
     machine_id
 ) VALUES (
-    $1, $2, $3, $4
+    $1,
+    $2,
+    $3
 )
 RETURNING *;
 
 -- name: CatalogWriteDeletePriceBookTarget :execrows
 DELETE FROM price_book_targets pbt
-WHERE pbt.organization_id = $1 AND pbt.id = $2;
+WHERE pbt.id = $1;

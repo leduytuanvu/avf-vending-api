@@ -21,9 +21,8 @@ func TestPriceBook_preview_orgWidePrice(t *testing.T) {
 
 	at := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
 	out, err := svc.PreviewPricing(ctx, appcatalogadmin.PricingPreviewParams{
-		OrganizationID: testfixtures.DevOrganizationID,
-		ProductIDs:     []uuid.UUID{testfixtures.DevProductWater},
-		At:             at,
+		ProductIDs: []uuid.UUID{testfixtures.DevProductWater},
+		At:         at,
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, out.Lines)

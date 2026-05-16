@@ -93,8 +93,8 @@ func commerceOrderMachinePtr(ord db.Order) *uuid.UUID {
 	return &mid
 }
 
-func auditPaymentWebhookRejected(ctx context.Context, rec compliance.EnterpriseRecorder, orgID uuid.UUID, paymentID uuid.UUID, machineID *uuid.UUID, meta map[string]any) error {
-	if rec == nil || orgID == uuid.Nil {
+func auditPaymentWebhookRejected(ctx context.Context, rec compliance.EnterpriseRecorder, scopeID uuid.UUID, paymentID uuid.UUID, machineID *uuid.UUID, meta map[string]any) error {
+	if rec == nil || scopeID == uuid.Nil {
 		return nil
 	}
 	pid := paymentID.String()
@@ -104,19 +104,18 @@ func auditPaymentWebhookRejected(ctx context.Context, rec compliance.EnterpriseR
 	}
 	md = compliance.SanitizeJSONBytes(md)
 	return rec.RecordCritical(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: orgID,
-		ActorType:      compliance.ActorPaymentProvider,
-		Action:         compliance.ActionPaymentWebhookRejected,
-		ResourceType:   "commerce.payment",
-		ResourceID:     &pid,
-		MachineID:      machineID,
-		Metadata:       md,
-		Outcome:        compliance.OutcomeFailure,
+		ActorType:    compliance.ActorPaymentProvider,
+		Action:       compliance.ActionPaymentWebhookRejected,
+		ResourceType: "commerce.payment",
+		ResourceID:   &pid,
+		MachineID:    machineID,
+		Metadata:     md,
+		Outcome:      compliance.OutcomeFailure,
 	})
 }
 
-func auditPaymentWebhookIdempotencyConflict(ctx context.Context, rec compliance.EnterpriseRecorder, orgID uuid.UUID, paymentID uuid.UUID, machineID *uuid.UUID, meta map[string]any) error {
-	if rec == nil || orgID == uuid.Nil {
+func auditPaymentWebhookIdempotencyConflict(ctx context.Context, rec compliance.EnterpriseRecorder, scopeID uuid.UUID, paymentID uuid.UUID, machineID *uuid.UUID, meta map[string]any) error {
+	if rec == nil || scopeID == uuid.Nil {
 		return nil
 	}
 	pid := paymentID.String()
@@ -126,19 +125,18 @@ func auditPaymentWebhookIdempotencyConflict(ctx context.Context, rec compliance.
 	}
 	md = compliance.SanitizeJSONBytes(md)
 	return rec.RecordCritical(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: orgID,
-		ActorType:      compliance.ActorPaymentProvider,
-		Action:         compliance.ActionPaymentWebhookIdempotencyConflict,
-		ResourceType:   "commerce.payment",
-		ResourceID:     &pid,
-		MachineID:      machineID,
-		Metadata:       md,
-		Outcome:        compliance.OutcomeFailure,
+		ActorType:    compliance.ActorPaymentProvider,
+		Action:       compliance.ActionPaymentWebhookIdempotencyConflict,
+		ResourceType: "commerce.payment",
+		ResourceID:   &pid,
+		MachineID:    machineID,
+		Metadata:     md,
+		Outcome:      compliance.OutcomeFailure,
 	})
 }
 
-func upsertWebhookReconciliationCase(ctx context.Context, q *db.Queries, audit compliance.EnterpriseRecorder, orgID uuid.UUID, ord db.Order, paymentID uuid.UUID, provider string, providerEventID int64, caseType, severity, reason string, meta map[string]any) error {
-	if q == nil || orgID == uuid.Nil {
+func upsertWebhookReconciliationCase(ctx context.Context, q *db.Queries, audit compliance.EnterpriseRecorder, scopeID uuid.UUID, ord db.Order, paymentID uuid.UUID, provider string, providerEventID int64, caseType, severity, reason string, meta map[string]any) error {
+	if q == nil || scopeID == uuid.Nil {
 		return errors.New("webhook reconciliation case: persistence unavailable")
 	}
 	md, err := json.Marshal(meta)
@@ -167,7 +165,6 @@ func upsertWebhookReconciliationCase(ctx context.Context, q *db.Queries, audit c
 		sev = "warning"
 	}
 	if _, err := q.UpsertCommerceReconciliationCase(ctx, db.UpsertCommerceReconciliationCaseParams{
-		OrganizationID:  orgID,
 		CaseType:        caseType,
 		Severity:        sev,
 		Reason:          reason,
@@ -190,14 +187,13 @@ func upsertWebhookReconciliationCase(ctx context.Context, q *db.Queries, audit c
 		metaAudit = compliance.SanitizeJSONBytes(metaAudit)
 		mach := commerceOrderMachinePtr(ord)
 		if err := audit.RecordCritical(ctx, compliance.EnterpriseAuditRecord{
-			OrganizationID: orgID,
-			ActorType:      compliance.ActorPaymentProvider,
-			Action:         compliance.ActionCommerceReconciliationCaseCreated,
-			ResourceType:   "commerce.payment",
-			ResourceID:     &rid,
-			MachineID:      mach,
-			Metadata:       metaAudit,
-			Outcome:        compliance.OutcomeSuccess,
+			ActorType:    compliance.ActorPaymentProvider,
+			Action:       compliance.ActionCommerceReconciliationCaseCreated,
+			ResourceType: "commerce.payment",
+			ResourceID:   &rid,
+			MachineID:    mach,
+			Metadata:     metaAudit,
+			Outcome:      compliance.OutcomeSuccess,
 		}); err != nil {
 			return err
 		}
@@ -322,7 +318,7 @@ func commercePublicPaymentWebhookHandler(app *api.HTTPApplication, cfg *config.C
 			writeCommerceStoreError(w, r, err)
 			return
 		}
-		auditOrg := ord.OrganizationID
+		auditOrg := uuid.Nil
 
 		var wh commerceWebhookRequest
 		if err := json.Unmarshal(body, &wh); err != nil {
@@ -351,7 +347,6 @@ func commercePublicPaymentWebhookHandler(app *api.HTTPApplication, cfg *config.C
 		}
 		unsignedDev := validationStatus == "unsigned_development"
 		in := appcommerce.ApplyPaymentProviderWebhookInput{
-			OrganizationID:          ord.OrganizationID,
 			OrderID:                 orderID,
 			PaymentID:               paymentID,
 			Provider:                wh.Provider,

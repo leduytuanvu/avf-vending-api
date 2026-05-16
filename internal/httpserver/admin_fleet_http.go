@@ -1,6 +1,6 @@
 package httpserver
 
-// rbac:handlers-only: tenant scope parsing helpers consumed by fleet mounts; RBAC is declared in admin_fleet_write_http.go and server.go.
+// rbac:handlers-only: single-company scope helpers consumed by fleet mounts; RBAC is declared in admin_fleet_write_http.go and server.go.
 
 import (
 	"errors"
@@ -16,44 +16,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// parseAdminFleetOrganizationScope resolves the tenant organization for org_admin vs platform_admin (organization_id query).
-func parseAdminFleetOrganizationScope(r *http.Request) (uuid.UUID, error) {
-	p, ok := auth.PrincipalFromContext(r.Context())
-	if !ok {
+// parseAdminFleetCompanyScope returns the single-company scope placeholder.
+func parseAdminFleetCompanyScope(r *http.Request) (uuid.UUID, error) {
+	if _, ok := auth.PrincipalFromContext(r.Context()); !ok {
 		return uuid.Nil, listscope.ErrInvalidListQuery
 	}
-	q := r.URL.Query()
-	var orgID uuid.UUID
-	if rawPathOrg := strings.TrimSpace(chi.URLParam(r, "organizationId")); rawPathOrg != "" {
-		pathOrg, perr := uuid.Parse(rawPathOrg)
-		if perr != nil || pathOrg == uuid.Nil {
-			return uuid.Nil, listscope.ErrInvalidListQuery
-		}
-		if p.HasRole(auth.RolePlatformAdmin) || p.OrganizationID == pathOrg {
-			return pathOrg, nil
-		}
-		return uuid.Nil, listscope.ErrInvalidListQuery
-	}
-	if p.HasRole(auth.RolePlatformAdmin) {
-		raw := strings.TrimSpace(q.Get("organization_id"))
-		id, perr := uuid.Parse(raw)
-		if perr != nil || id == uuid.Nil {
-			return uuid.Nil, api.ErrAdminTenantScopeRequired
-		}
-		orgID = id
-	} else {
-		if !p.HasOrganization() {
-			return uuid.Nil, api.ErrAdminTenantScopeRequired
-		}
-		orgID = p.OrganizationID
-		if raw := strings.TrimSpace(q.Get("organization_id")); raw != "" {
-			qid, perr := uuid.Parse(raw)
-			if perr != nil || qid != orgID {
-				return uuid.Nil, listscope.ErrInvalidListQuery
-			}
-		}
-	}
-	return orgID, nil
+	return uuid.Nil, nil
 }
 
 func parseAdminFleetListScope(r *http.Request) (listscope.AdminFleet, error) {
@@ -65,7 +33,8 @@ func parseAdminFleetListScope(r *http.Request) (listscope.AdminFleet, error) {
 	if err != nil {
 		return listscope.AdminFleet{}, listscope.ErrInvalidListQuery
 	}
-	orgID, err := parseAdminFleetOrganizationScope(r)
+	scopeID, err := parseAdminFleetCompanyScope(r)
+	_ = scopeID
 	if err != nil {
 		return listscope.AdminFleet{}, err
 	}
@@ -120,7 +89,6 @@ func parseAdminFleetListScope(r *http.Request) (listscope.AdminFleet, error) {
 	}
 	return listscope.AdminFleet{
 		IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin),
-		OrganizationID:  orgID,
 		SiteID:          siteID,
 		MachineID:       machineID,
 		TechnicianID:    technicianID,
@@ -144,15 +112,16 @@ func serveAdminMachineGet(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		out, err := app.AdminMachines.GetMachine(r.Context(), orgID, machineID)
+		out, err := app.AdminMachines.GetMachine(r.Context(), scopeID, machineID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found or not in organization")
+				writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found or not in company")
 				return
 			}
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())

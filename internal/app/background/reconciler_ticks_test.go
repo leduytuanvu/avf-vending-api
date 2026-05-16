@@ -132,16 +132,13 @@ func (a *stubPaymentApplier) ApplyReconciledPaymentTransition(ctx context.Contex
 	return out, nil
 }
 
-type stubOrderReader struct {
-	org uuid.UUID
-}
+type stubOrderReader struct{}
 
 func (o stubOrderReader) GetOrderByID(ctx context.Context, id uuid.UUID) (domaincommerce.Order, error) {
 	_ = ctx
 	return domaincommerce.Order{
-		ID:             id,
-		OrganizationID: o.org,
-		Status:         "failed",
+		ID:     id,
+		Status: "failed",
 	}, nil
 }
 
@@ -162,7 +159,7 @@ type stubCaseWriter struct {
 func (s *stubCaseWriter) UpsertReconciliationCase(ctx context.Context, in domaincommerce.ReconciliationCaseInput) (domaincommerce.ReconciliationCase, error) {
 	_ = ctx
 	s.cases = append(s.cases, in)
-	return domaincommerce.ReconciliationCase{ID: uuid.New(), OrganizationID: in.OrganizationID, CaseType: in.CaseType}, nil
+	return domaincommerce.ReconciliationCase{ID: uuid.New(), CaseType: in.CaseType}, nil
 }
 
 func TestPaymentProviderReconcileTick_settledAfterProbe(t *testing.T) {
@@ -268,7 +265,6 @@ func TestRefundReviewDecisionTick_routesToSink(t *testing.T) {
 	t.Parallel()
 	pid := uuid.MustParse("12121212-1212-1212-1212-121212121212")
 	oid := uuid.MustParse("34343434-3434-3434-3434-343434343434")
-	org := uuid.MustParse("56565656-5656-5656-5656-565656565656")
 	reader := &stubReconReader{
 		refundReview: []domaincommerce.Payment{{
 			ID: pid, OrderID: oid, Provider: "psp", State: "captured",
@@ -278,7 +274,7 @@ func TestRefundReviewDecisionTick_routesToSink(t *testing.T) {
 	ctx := context.Background()
 	deps := ReconcilerDeps{
 		Reader:         reader,
-		OrderRead:      stubOrderReader{org: org},
+		OrderRead:      stubOrderReader{},
 		RefundSink:     sink,
 		ActionsEnabled: true,
 		DryRun:         false,
@@ -292,7 +288,7 @@ func TestRefundReviewDecisionTick_routesToSink(t *testing.T) {
 		t.Fatalf("tickets: %+v", sink.tickets)
 	}
 	tk := sink.tickets[0]
-	if tk.PaymentID != pid || tk.OrderID != oid || tk.OrganizationID != org || tk.Reason != "captured_payment_failed_order" {
+	if tk.PaymentID != pid || tk.OrderID != oid || tk.Reason != "captured_payment_failed_order" {
 		t.Fatalf("unexpected ticket: %+v", tk)
 	}
 }
@@ -301,7 +297,6 @@ func TestDuplicatePaymentRecoveryTick_routesToSink(t *testing.T) {
 	t.Parallel()
 	pid := uuid.MustParse("abababab-abab-abab-abab-abababababab")
 	oid := uuid.MustParse("cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd")
-	org := uuid.MustParse("efefefef-efef-efef-efef-efefefefefef")
 	reader := &stubReconReader{
 		duplicates: []domaincommerce.Payment{{
 			ID: pid, OrderID: oid, Provider: "psp", State: "captured",
@@ -311,7 +306,7 @@ func TestDuplicatePaymentRecoveryTick_routesToSink(t *testing.T) {
 	ctx := context.Background()
 	deps := ReconcilerDeps{
 		Reader:         reader,
-		OrderRead:      stubOrderReader{org: org},
+		OrderRead:      stubOrderReader{},
 		RefundSink:     sink,
 		ActionsEnabled: true,
 		DryRun:         false,
@@ -330,9 +325,9 @@ type stubMarkOrderPaid struct {
 	calls int
 }
 
-func (s *stubMarkOrderPaid) MarkOrderPaidAfterPaymentCapture(ctx context.Context, organizationID, orderID uuid.UUID) (domaincommerce.Order, error) {
+func (s *stubMarkOrderPaid) MarkOrderPaidAfterPaymentCapture(ctx context.Context, companyID, orderID uuid.UUID) (domaincommerce.Order, error) {
 	_ = ctx
-	_ = organizationID
+	_ = companyID
 	_ = orderID
 	s.calls++
 	return domaincommerce.Order{}, nil
@@ -342,7 +337,6 @@ func TestPaymentProviderReconcileTick_captureCallsMarkOrderPaid(t *testing.T) {
 	t.Parallel()
 	pid := uuid.MustParse("13131313-1313-1313-1313-131313131313")
 	oid := uuid.MustParse("24242424-2424-2424-2424-242424242424")
-	org := uuid.MustParse("35353535-3535-3535-3535-353535353535")
 	reader := &stubReconReader{
 		pendingTimeout: []domaincommerce.Payment{{
 			ID: pid, OrderID: oid, Provider: "psp", State: "created",
@@ -357,7 +351,7 @@ func TestPaymentProviderReconcileTick_captureCallsMarkOrderPaid(t *testing.T) {
 		Gateway:        gw,
 		PaymentApplier: ap,
 		MarkOrderPaid:  mp,
-		OrderRead:      stubOrderReader{org: org},
+		OrderRead:      stubOrderReader{},
 		ActionsEnabled: true,
 		DryRun:         false,
 		StableAge:      time.Minute,
@@ -379,7 +373,7 @@ func TestRefundReviewDecisionTick_actionsEnabledMissingSinkErrors(t *testing.T) 
 	ctx := context.Background()
 	deps := ReconcilerDeps{
 		Reader:         reader,
-		OrderRead:      stubOrderReader{org: uuid.New()},
+		OrderRead:      stubOrderReader{},
 		RefundSink:     nil,
 		ActionsEnabled: true,
 		StableAge:      time.Minute,
@@ -394,14 +388,13 @@ func TestRefundReviewDecisionTick_schedulesWorkflowWhenEnabled(t *testing.T) {
 	t.Parallel()
 	pid := uuid.MustParse("91919191-9191-9191-9191-919191919191")
 	oid := uuid.MustParse("92929292-9292-9292-9292-929292929292")
-	org := uuid.MustParse("93939393-9393-9393-9393-939393939393")
 	reader := &stubReconReader{
 		refundReview: []domaincommerce.Payment{{ID: pid, OrderID: oid, State: "captured"}},
 	}
 	wf := &stubWorkflowBoundary{}
 	err := RefundReviewDecisionTick(context.Background(), ReconcilerDeps{
 		Reader:                      reader,
-		OrderRead:                   stubOrderReader{org: org},
+		OrderRead:                   stubOrderReader{},
 		WorkflowOrchestration:       wf,
 		ScheduleRefundOrchestration: true,
 		StableAge:                   time.Minute,
@@ -419,14 +412,13 @@ func TestDuplicatePaymentRecoveryTick_schedulesWorkflowWhenEnabled(t *testing.T)
 	t.Parallel()
 	pid := uuid.MustParse("94949494-9494-9494-9494-949494949494")
 	oid := uuid.MustParse("95959595-9595-9595-9595-959595959595")
-	org := uuid.MustParse("96969696-9696-9696-9696-969696969696")
 	reader := &stubReconReader{
 		duplicates: []domaincommerce.Payment{{ID: pid, OrderID: oid, State: "captured"}},
 	}
 	wf := &stubWorkflowBoundary{}
 	err := DuplicatePaymentRecoveryTick(context.Background(), ReconcilerDeps{
 		Reader:                         reader,
-		OrderRead:                      stubOrderReader{org: org},
+		OrderRead:                      stubOrderReader{},
 		WorkflowOrchestration:          wf,
 		ScheduleManualReviewEscalation: true,
 		StableAge:                      time.Minute,
@@ -442,21 +434,19 @@ func TestDuplicatePaymentRecoveryTick_schedulesWorkflowWhenEnabled(t *testing.T)
 
 func TestUnresolvedOrdersTick_paidNoVendStartCreatesCase(t *testing.T) {
 	t.Parallel()
-	org := uuid.New()
 	orderID := uuid.New()
 	paymentID := uuid.New()
 	vendID := uuid.New()
 	cases := &stubCaseWriter{}
 	reader := &stubReconReader{
 		paidNoVend: []domaincommerce.PaidOrderVendStartCandidate{{
-			OrderID:        orderID,
-			OrganizationID: org,
-			PaymentID:      paymentID,
-			VendSessionID:  vendID,
-			Provider:       "psp",
-			PaymentState:   "captured",
-			VendState:      "pending",
-			MachineID:      uuid.New(),
+			OrderID:       orderID,
+			PaymentID:     paymentID,
+			VendSessionID: vendID,
+			Provider:      "psp",
+			PaymentState:  "captured",
+			VendState:     "pending",
+			MachineID:     uuid.New(),
 		}},
 	}
 	if err := UnresolvedOrdersTick(context.Background(), ReconcilerDeps{Reader: reader, CaseWriter: cases, StableAge: time.Minute, Limits: 10}); err != nil {
@@ -469,18 +459,16 @@ func TestUnresolvedOrdersTick_paidNoVendStartCreatesCase(t *testing.T) {
 
 func TestP06_Reconciler_VendTimeoutPaidVendFailedCreatesReviewCase(t *testing.T) {
 	t.Parallel()
-	org := uuid.New()
 	cases := &stubCaseWriter{}
 	reader := &stubReconReader{
 		paidFailures: []domaincommerce.PaidVendFailureCandidate{{
-			OrderID:        uuid.New(),
-			OrganizationID: org,
-			PaymentID:      uuid.New(),
-			VendSessionID:  uuid.New(),
-			Provider:       "psp",
-			PaymentState:   "captured",
-			VendState:      "failed",
-			MachineID:      uuid.New(),
+			OrderID:       uuid.New(),
+			PaymentID:     uuid.New(),
+			VendSessionID: uuid.New(),
+			Provider:      "psp",
+			PaymentState:  "captured",
+			VendState:     "failed",
+			MachineID:     uuid.New(),
 		}},
 	}
 	if err := VendTimeoutReconcileTick(context.Background(), ReconcilerDeps{Reader: reader, CaseWriter: cases, StableAge: time.Minute, Limits: 10}); err != nil {
@@ -493,18 +481,16 @@ func TestP06_Reconciler_VendTimeoutPaidVendFailedCreatesReviewCase(t *testing.T)
 
 func TestRefundReviewDecisionTick_pendingRefundCreatesCase(t *testing.T) {
 	t.Parallel()
-	org := uuid.New()
 	cases := &stubCaseWriter{}
 	reader := &stubReconReader{
 		pendingRefunds: []domaincommerce.RefundPendingCandidate{{
-			RefundID:       uuid.New(),
-			PaymentID:      uuid.New(),
-			OrderID:        uuid.New(),
-			OrganizationID: org,
-			Provider:       "psp",
-			RefundState:    "processing",
-			AmountMinor:    100,
-			Currency:       "USD",
+			RefundID:    uuid.New(),
+			PaymentID:   uuid.New(),
+			OrderID:     uuid.New(),
+			Provider:    "psp",
+			RefundState: "processing",
+			AmountMinor: 100,
+			Currency:    "USD",
 		}},
 	}
 	if err := RefundReviewDecisionTick(context.Background(), ReconcilerDeps{Reader: reader, CaseWriter: cases, StableAge: time.Minute, Limits: 10}); err != nil {
@@ -517,13 +503,12 @@ func TestRefundReviewDecisionTick_pendingRefundCreatesCase(t *testing.T) {
 
 func TestDuplicatePaymentRecoveryTick_safeConcurrentCaseUpserts(t *testing.T) {
 	t.Parallel()
-	org := uuid.New()
 	reader := &stubReconReader{duplicates: []domaincommerce.Payment{{ID: uuid.New(), OrderID: uuid.New(), State: "captured", AmountMinor: 100, Currency: "USD"}}}
 	run := func() error {
 		return DuplicatePaymentRecoveryTick(context.Background(), ReconcilerDeps{
 			Reader:     reader,
 			CaseWriter: &stubCaseWriter{},
-			OrderRead:  stubOrderReader{org: org},
+			OrderRead:  stubOrderReader{},
 			StableAge:  time.Minute,
 			Limits:     10,
 		})

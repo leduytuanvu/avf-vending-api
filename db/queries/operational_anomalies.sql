@@ -1,7 +1,7 @@
 -- P2.4 operational detectors (inventory_anomalies rows; dedupe via NOT EXISTS on open fingerprint).
+
 -- name: AnomaliesInsertMachineOfflineTooLong :execrows
 INSERT INTO inventory_anomalies (
-    organization_id,
     machine_id,
     anomaly_type,
     fingerprint,
@@ -9,7 +9,6 @@ INSERT INTO inventory_anomalies (
     detected_at
 )
 SELECT
-    m.organization_id,
     m.id,
     'machine_offline_too_long'::text,
     ('offline_long|'::text || m.id::text),
@@ -23,8 +22,7 @@ SELECT
 FROM
     machines m
 WHERE
-    m.organization_id = $1
-    AND m.last_seen_at IS NOT NULL
+    m.last_seen_at IS NOT NULL
     AND m.last_seen_at < now() - interval '2 hours'
     AND m.status NOT IN ('retired', 'decommissioned', 'draft', 'suspended')
     AND NOT EXISTS (
@@ -41,7 +39,6 @@ WHERE
 
 -- name: AnomaliesInsertRepeatedVendFailure :execrows
 INSERT INTO inventory_anomalies (
-    organization_id,
     machine_id,
     anomaly_type,
     fingerprint,
@@ -49,7 +46,6 @@ INSERT INTO inventory_anomalies (
     detected_at
 )
 SELECT
-    m.organization_id,
     c.machine_id,
     'repeated_vend_failure'::text,
     ('repeated_vend_failure|'::text || c.machine_id::text),
@@ -73,8 +69,7 @@ FROM (
 ) c
     INNER JOIN machines m ON m.id = c.machine_id
 WHERE
-    m.organization_id = $1
-    AND NOT EXISTS (
+    NOT EXISTS (
         SELECT
             1
         FROM
@@ -88,7 +83,6 @@ WHERE
 
 -- name: AnomaliesInsertRepeatedPaymentFailure :execrows
 INSERT INTO inventory_anomalies (
-    organization_id,
     machine_id,
     anomaly_type,
     fingerprint,
@@ -96,7 +90,6 @@ INSERT INTO inventory_anomalies (
     detected_at
 )
 SELECT
-    m.organization_id,
     c.machine_id,
     'repeated_payment_failure'::text,
     ('repeated_payment_failure|'::text || c.machine_id::text),
@@ -120,8 +113,7 @@ FROM (
 ) c
     INNER JOIN machines m ON m.id = c.machine_id
 WHERE
-    m.organization_id = $1
-    AND NOT EXISTS (
+    NOT EXISTS (
         SELECT
             1
         FROM
@@ -135,7 +127,6 @@ WHERE
 
 -- name: AnomaliesInsertStockMismatch :execrows
 INSERT INTO inventory_anomalies (
-    organization_id,
     machine_id,
     anomaly_type,
     fingerprint,
@@ -145,7 +136,6 @@ INSERT INTO inventory_anomalies (
     detected_at
 )
 SELECT
-    m.organization_id,
     mss.machine_id,
     'stock_mismatch'::text,
     (
@@ -166,8 +156,7 @@ FROM
     AND s.slot_index = mss.slot_index
     INNER JOIN machines m ON m.id = mss.machine_id
 WHERE
-    m.organization_id = $1
-    AND s.max_quantity > 0
+    s.max_quantity > 0
     AND mss.current_quantity > s.max_quantity
     AND NOT EXISTS (
         SELECT
@@ -185,7 +174,6 @@ WHERE
 
 -- name: AnomaliesInsertNegativeStockAttempt :execrows
 INSERT INTO inventory_anomalies (
-    organization_id,
     machine_id,
     anomaly_type,
     fingerprint,
@@ -193,7 +181,6 @@ INSERT INTO inventory_anomalies (
     detected_at
 )
 SELECT
-    m.organization_id,
     m.id,
     'negative_stock_attempt'::text,
     ('negative_stock_attempt|'::text || m.id::text),
@@ -202,8 +189,7 @@ SELECT
 FROM
     machines m
 WHERE
-    m.organization_id = $1
-    AND EXISTS (
+    EXISTS (
         SELECT
             1
         FROM
@@ -233,7 +219,6 @@ WHERE
 
 -- name: AnomaliesInsertHighCashVariance :execrows
 INSERT INTO inventory_anomalies (
-    organization_id,
     machine_id,
     anomaly_type,
     fingerprint,
@@ -241,7 +226,6 @@ INSERT INTO inventory_anomalies (
     detected_at
 )
 SELECT
-    cc.organization_id,
     cc.machine_id,
     'high_cash_variance'::text,
     ('high_cash_variance|'::text || cc.id::text),
@@ -257,8 +241,7 @@ SELECT
 FROM
     cash_collections cc
 WHERE
-    cc.organization_id = $1
-    AND cc.lifecycle_status = 'closed'
+    cc.lifecycle_status = 'closed'
     AND abs(cc.variance_amount_minor) >= 50000
     AND cc.collected_at >= now() - interval '90 days'
     AND NOT EXISTS (
@@ -275,7 +258,6 @@ WHERE
 
 -- name: AnomaliesInsertCommandFailureSpike :execrows
 INSERT INTO inventory_anomalies (
-    organization_id,
     machine_id,
     anomaly_type,
     fingerprint,
@@ -283,7 +265,6 @@ INSERT INTO inventory_anomalies (
     detected_at
 )
 SELECT
-    m.organization_id,
     c.machine_id,
     'command_failure_spike'::text,
     ('command_failure_spike|'::text || c.machine_id::text),
@@ -306,8 +287,7 @@ FROM (
 ) c
     INNER JOIN machines m ON m.id = c.machine_id
 WHERE
-    m.organization_id = $1
-    AND NOT EXISTS (
+    NOT EXISTS (
         SELECT
             1
         FROM
@@ -321,7 +301,6 @@ WHERE
 
 -- name: AnomaliesInsertTelemetryMissing :execrows
 INSERT INTO inventory_anomalies (
-    organization_id,
     machine_id,
     anomaly_type,
     fingerprint,
@@ -329,7 +308,6 @@ INSERT INTO inventory_anomalies (
     detected_at
 )
 SELECT
-    m.organization_id,
     m.id,
     'telemetry_missing'::text,
     ('telemetry_missing|'::text || m.id::text),
@@ -344,8 +322,7 @@ FROM
     machines m
     LEFT JOIN machine_current_snapshot mcs ON mcs.machine_id = m.id
 WHERE
-    m.organization_id = $1
-    AND m.status IN ('active', 'online', 'provisioned')
+    m.status IN ('active', 'online', 'provisioned')
     AND (
         mcs.updated_at IS NULL
         OR mcs.updated_at < now() - interval '6 hours'
@@ -364,7 +341,6 @@ WHERE
 
 -- name: AnomaliesInsertLowStockThreshold :execrows
 INSERT INTO inventory_anomalies (
-    organization_id,
     machine_id,
     anomaly_type,
     fingerprint,
@@ -374,7 +350,6 @@ INSERT INTO inventory_anomalies (
     detected_at
 )
 SELECT
-    m.organization_id,
     mss.machine_id,
     'low_stock_threshold'::text,
     (
@@ -397,8 +372,7 @@ FROM
     AND s.slot_index = mss.slot_index
     INNER JOIN machines m ON m.id = mss.machine_id
 WHERE
-    m.organization_id = $1
-    AND s.max_quantity >= 5
+    s.max_quantity >= 5
     AND mss.current_quantity > 0
     AND mss.current_quantity::float <= CEIL(s.max_quantity::float * 0.1)
     AND NOT EXISTS (
@@ -417,7 +391,6 @@ WHERE
 
 -- name: AnomaliesInsertSoldOutSoonEstimate :execrows
 INSERT INTO inventory_anomalies (
-    organization_id,
     machine_id,
     anomaly_type,
     fingerprint,
@@ -427,7 +400,6 @@ INSERT INTO inventory_anomalies (
     detected_at
 )
 SELECT
-    m.organization_id,
     mss.machine_id,
     'product_sold_out_soon_estimate'::text,
     (
@@ -472,8 +444,7 @@ FROM
     AND s.slot_index = mss.slot_index
     INNER JOIN machines m ON m.id = mss.machine_id
 WHERE
-    m.organization_id = $1
-    AND mss.current_quantity > 0
+    mss.current_quantity > 0
     AND v.daily_vel > 0
     AND (mss.current_quantity::float / v.daily_vel) <= 3
     AND NOT EXISTS (
@@ -493,7 +464,6 @@ WHERE
 -- name: AnomaliesGetByOrgAndID :one
 SELECT
     ia.id,
-    ia.organization_id,
     ia.machine_id,
     ia.anomaly_type,
     ia.status,
@@ -513,20 +483,19 @@ FROM
     inventory_anomalies ia
     INNER JOIN machines m ON m.id = ia.machine_id
 WHERE
-    ia.organization_id = sqlc.arg('organization_id')
-    AND ia.id = sqlc.arg('anomaly_id');
+    ia.id = sqlc.arg('anomaly_id');
 
 -- name: AdminOpsIgnoreInventoryAnomaly :one
 UPDATE inventory_anomalies ia
 SET
     status = 'ignored',
     resolved_at = now(),
-    resolved_by = $3,
-    resolution_note = $4,
+    resolved_by = $1,
+    resolution_note = $2,
     updated_at = now()
 WHERE
-    ia.id = $1
-    AND ia.organization_id = $2
+    ia.id = $3
+    AND TRUE
     AND ia.status = 'open'
 RETURNING
     ia.id;

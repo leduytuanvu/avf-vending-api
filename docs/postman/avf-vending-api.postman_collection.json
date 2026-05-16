@@ -94,6 +94,28 @@
           "    );",
           "  }",
           "}",
+          "const isLocalDev =",
+          "  appEnv === \"development\" ||",
+          "  /localhost/.test(base) ||",
+          "  /127\\.0\\.0\\.1/.test(base);",
+          "if (isWrite && isLocalDev && method === \"POST\") {",
+          "  let urlStr = \"\";",
+          "  try {",
+          "    urlStr = pm.request.url.toString();",
+          "  } catch (e) {",
+          "    urlStr = String(pm.request.url || \"\");",
+          "  }",
+          "  const u = urlStr.replace(/\\\\/g, \"/\").toLowerCase();",
+          "  if (u.includes(\"/v1/admin/sites\") && !/\\/v1\\/admin\\/sites\\//.test(u)) {",
+          "    const ad = pm.environment.get(\"allow_destructive\");",
+          "    const cm = pm.environment.get(\"canaryMode\");",
+          "    if (ad !== \"true\" && cm !== \"true\") {",
+          "      throw new Error(",
+          "        \"postman-avf: local POST /v1/admin/sites requires allow_destructive=true or canaryMode=true\",",
+          "      );",
+          "    }",
+          "  }",
+          "}",
           "const mode = (",
           "  pm.environment.get(\"auth_type\") ||",
           "  pm.collectionVariables.get(\"auth_type\") ||",
@@ -173,8 +195,8 @@
           "if (j.machineId) {",
           "  save(j.machineId, \"machine_id\");",
           "}",
-          "if (j.organizationId) {",
-          "  save(j.organizationId, \"organization_id\");",
+          "if (j.scopeId) {",
+          "  save(j.scopeId, \"scope_id\");",
           "}",
           "if (j.siteId) {",
           "  save(j.siteId, \"site_id\");",
@@ -272,7 +294,7 @@
       "value": ""
     },
     {
-      "key": "organization_id",
+      "key": "scope_id",
       "value": ""
     },
     {
@@ -354,6 +376,43 @@
             "header": [],
             "url": "{{base_url}}/swagger/doc.json",
             "description": "OpenAPI 3.0 JSON"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin sites (read)",
+      "item": [
+        {
+          "name": "GET /v1/admin/sites",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/v1/admin/sites",
+            "description": "List company sites. Set auth_type=admin and a valid admin_token on the environment."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Canary admin writes",
+      "item": [
+        {
+          "name": "POST /v1/admin/sites",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Canary Site\",\n  \"code\": \"PM-{{$timestamp}}\",\n  \"timezone\": \"UTC\",\n  \"address\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v1/admin/sites",
+            "description": "Create company site. Local/dev POST is gated: set allow_destructive=true or canaryMode=true. Request URL is exactly {{base_url}}/v1/admin/sites with no query parameters. Requires auth_type=admin and admin_token."
           }
         }
       ]

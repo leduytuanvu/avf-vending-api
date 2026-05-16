@@ -15,8 +15,6 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_grpc.sh"
 
 FLOW_ID="GRPC-21"
 ec=0
-
-ORG="$(get_data organizationId)"
 MID="$(get_data machineId)"
 MT="$(get_secret machineToken 2>/dev/null || true)"
 [[ -z "${MT:-}" ]] && { log_error "GRPC-21: machine token required"; exit 2; }
@@ -29,8 +27,8 @@ IK_CHECKIN="g21-checkin-${RID}"
 IK_ACKCFG="g21-ackcfg-${RID}"
 IK_ACKCAT="g21-ac-${RID}"
 IK_ACKMED="g21-am-${RID}"
-META_BASE="$(jq -nc --arg o "$ORG" --arg m "$MID" --arg rid "$RID" --arg ts "$TS_RFC3339" \
-  '{organizationId:$o, machineId:$m, requestId:$rid, occurredAt:$ts}')"
+META_BASE="$(jq -nc --arg m "$MID" --arg rid "$RID" --arg ts "$TS_RFC3339" \
+  '{ machineId:$m, requestId:$rid, occurredAt:$ts}')"
 BOOT_BODY="$(jq -nc --argjson meta "$META_BASE" '{meta:$meta}')"
 
 grpc_contract_try "$FLOW_ID" "get-bootstrap" MachineBootstrapService GetBootstrap "$BOOT_BODY" "g21-bootstrap" "" || ec=1

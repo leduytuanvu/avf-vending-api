@@ -494,7 +494,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     ap = argparse.ArgumentParser(description="Local end-to-end smoke (mutating; dev API + seeded DB).")
     ap.add_argument("--base-url", default=os.environ.get("BASE_URL", "http://localhost:8080"))
-    ap.add_argument("--org-id", default=os.environ.get("ORG_ID", "11111111-1111-1111-1111-111111111111"))
+    ap.add_argument("--scope-id", default=os.environ.get("SCOPE_ID", "11111111-1111-1111-1111-111111111111"))
     ap.add_argument("--admin-email", default=os.environ.get("ADMIN_EMAIL", "admin@local.test"))
     ap.add_argument("--admin-password", default=os.environ.get("ADMIN_PASSWORD", "password123"))
     ap.add_argument("--machine-id", default=os.environ.get("MACHINE_ID", "55555555-5555-5555-5555-555555555555"))
@@ -506,13 +506,13 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     base = args.base_url.strip().rstrip("/")
-    org_id = args.org_id.strip()
+    scope_id_val = args.scope_id.strip()
     machine_id = args.machine_id.strip()
     timeout = args.timeout
     evidence: dict[str, Any] = {
         "schema_version": "smoke-local-e2e-v1",
         "base_url": base,
-        "organization_id": org_id,
+        "scope_id": scope_id_val,
         "steps": [],
     }
     ok_all = True
@@ -553,7 +553,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
         log_ok("GET /swagger/doc.json (OpenAPI $ref check)")
 
         # Auth
-        login_body = {"organizationId": org_id, "email": args.admin_email, "password": args.admin_password}
+        login_body = {"scopeId": scope_id_val, "email": args.admin_email, "password": args.admin_password}
         login_url = urljoin(base + "/", "v1/auth/login")
         try:
             st_l, login_out = _http_json("POST", login_url, headers={}, json_body=login_body, timeout=timeout)
@@ -579,7 +579,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
             raise RuntimeError("unexpected /auth/me body")
         log_ok("GET /v1/auth/me")
 
-        q_org = f"?organization_id={org_id}"
+        q_scope = f"?scope_id={scope_id_val}"
         idem = lambda suffix: f"smoke-{uuid.uuid4().hex[:12]}-{suffix}"
 
         # Catalog mutations (idempotent keys unique per run)
@@ -587,7 +587,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
         br = _http_expect_ok(
             "POST /v1/admin/brands",
             "POST",
-            urljoin(base + "/", "v1/admin/brands") + q_org,
+            urljoin(base + "/", "v1/admin/brands") + q_scope,
             headers={**auth_headers, "Idempotency-Key": idem("brand")},
             json_body={"slug": brand_slug, "name": "Smoke Brand", "active": True},
             timeout=timeout,
@@ -599,7 +599,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
         cat = _http_expect_ok(
             "POST /v1/admin/categories",
             "POST",
-            urljoin(base + "/", "v1/admin/categories") + q_org,
+            urljoin(base + "/", "v1/admin/categories") + q_scope,
             headers={**auth_headers, "Idempotency-Key": idem("cat")},
             json_body={"slug": cat_slug, "name": "Smoke Category", "active": True},
             timeout=timeout,
@@ -611,7 +611,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
         _http_expect_ok(
             "POST /v1/admin/tags",
             "POST",
-            urljoin(base + "/", "v1/admin/tags") + q_org,
+            urljoin(base + "/", "v1/admin/tags") + q_scope,
             headers={**auth_headers, "Idempotency-Key": idem("tag")},
             json_body={"slug": tag_slug, "name": "Smoke Tag", "active": True},
             timeout=timeout,
@@ -631,7 +631,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
         pr = _http_expect_ok(
             "POST /v1/admin/products",
             "POST",
-            urljoin(base + "/", "v1/admin/products") + q_org,
+            urljoin(base + "/", "v1/admin/products") + q_scope,
             headers={**auth_headers, "Idempotency-Key": idem("prod")},
             json_body=prod_body,
             timeout=timeout,
@@ -642,7 +642,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
         plist = _http_expect_ok(
             "GET /v1/admin/products",
             "GET",
-            urljoin(base + "/", "v1/admin/products") + q_org + "&limit=10&offset=0",
+            urljoin(base + "/", "v1/admin/products") + q_scope + "&limit=10&offset=0",
             headers=auth_headers,
             json_body=None,
             timeout=timeout,
@@ -653,7 +653,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
         act = _http_expect_ok(
             "POST activation code",
             "POST",
-            urljoin(base + "/", f"v1/admin/machines/{machine_id}/activation-codes") + q_org,
+            urljoin(base + "/", f"v1/admin/machines/{machine_id}/activation-codes") + q_scope,
             headers={**auth_headers, "Idempotency-Key": idem("act")},
             json_body={"expiresInMinutes": 60, "maxUses": 3, "notes": "smoke_test local"},
             timeout=timeout,
@@ -664,7 +664,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
         lst = _http_expect_ok(
             "GET activation codes list",
             "GET",
-            urljoin(base + "/", f"v1/admin/machines/{machine_id}/activation-codes") + q_org,
+            urljoin(base + "/", f"v1/admin/machines/{machine_id}/activation-codes") + q_scope,
             headers=auth_headers,
             json_body=None,
             timeout=timeout,
@@ -896,7 +896,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
             slots_out = _http_expect_ok(
                 "admin slots",
                 "GET",
-                urljoin(base + "/", f"v1/admin/machines/{machine_id}/slots") + q_org,
+                urljoin(base + "/", f"v1/admin/machines/{machine_id}/slots") + q_scope,
                 headers=auth_headers,
                 json_body=None,
                 timeout=timeout,
@@ -936,7 +936,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
         now = datetime.now(timezone.utc)
         frm = (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
         to = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-        rep_q = q_org + "&from=" + urllib.parse.quote(frm, safe="") + "&to=" + urllib.parse.quote(to, safe="")
+        rep_q = q_scope + "&from=" + urllib.parse.quote(frm, safe="") + "&to=" + urllib.parse.quote(to, safe="")
         for path, label in (
             ("v1/reports/sales-summary", "sales-summary"),
             ("v1/reports/payments-summary", "payments-summary"),

@@ -14,7 +14,7 @@ import (
 
 type Batch struct {
 	q            *db.Queries
-	orgID        uuid.UUID
+	scopeID      uuid.UUID
 	machineID    uuid.UUID
 	siteID       uuid.UUID
 	at           time.Time
@@ -29,17 +29,17 @@ type Batch struct {
 }
 
 // NewBatch loads promotion state and machine price overrides once for many catalog lines.
-func (e *Engine) NewBatch(ctx context.Context, orgID, machineID uuid.UUID, at time.Time) (*Batch, error) {
-	return e.newBatch(ctx, orgID, machineID, at)
+func (e *Engine) NewBatch(ctx context.Context, scopeID, machineID uuid.UUID, at time.Time) (*Batch, error) {
+	return e.newBatch(ctx, scopeID, machineID, at)
 }
 
-func (e *Engine) newBatch(ctx context.Context, orgID, machineID uuid.UUID, at time.Time) (*Batch, error) {
+func (e *Engine) newBatch(ctx context.Context, scopeID, machineID uuid.UUID, at time.Time) (*Batch, error) {
 	if e == nil || e.pool == nil {
 		return nil, fmt.Errorf("pricingengine: nil engine")
 	}
 	at = at.UTC()
 	q := db.New(e.pool)
-	cur, err := q.InventoryAdminGetOrgDefaultCurrency(ctx, orgID)
+	cur, err := q.InventoryAdminGetOrgDefaultCurrency(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -47,17 +47,13 @@ func (e *Engine) newBatch(ctx context.Context, orgID, machineID uuid.UUID, at ti
 	if currency == "" {
 		currency = "USD"
 	}
-	siteID, err := q.CatalogAdminGetMachineSiteForOrg(ctx, db.CatalogAdminGetMachineSiteForOrgParams{
-		OrganizationID: orgID,
-		ID:             machineID,
-	})
+	siteID, err := q.CatalogAdminGetMachineSiteForOrg(ctx, machineID)
 	if err != nil {
 		return nil, err
 	}
 	ovRows, err := q.PricingRuntimeListMachineOverridesAt(ctx, db.PricingRuntimeListMachineOverridesAtParams{
-		OrganizationID: orgID,
-		MachineID:      machineID,
-		EvalAt:         at,
+		MachineID: machineID,
+		EvalAt:    at,
 	})
 	if err != nil {
 		return nil, err
@@ -68,10 +64,7 @@ func (e *Engine) newBatch(ctx context.Context, orgID, machineID uuid.UUID, at ti
 		overridePrice[r.ProductID] = r.UnitPriceMinor
 		overrideCur[r.ProductID] = strings.ToUpper(strings.TrimSpace(r.Currency))
 	}
-	promos, err := q.PromotionAdminListPromotionsForPreview(ctx, db.PromotionAdminListPromotionsForPreviewParams{
-		OrganizationID: orgID,
-		Column2:        at,
-	})
+	promos, err := q.PromotionAdminListPromotionsForPreview(ctx, at)
 	if err != nil {
 		return nil, err
 	}
@@ -87,10 +80,7 @@ func (e *Engine) newBatch(ctx context.Context, orgID, machineID uuid.UUID, at ti
 		if err != nil {
 			return nil, err
 		}
-		tgtRows, err = q.PromotionAdminListTargetsForOrgPromotions(ctx, db.PromotionAdminListTargetsForOrgPromotionsParams{
-			OrganizationID: orgID,
-			Column2:        ids,
-		})
+		tgtRows, err = q.PromotionAdminListTargetsForOrgPromotions(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +91,7 @@ func (e *Engine) newBatch(ctx context.Context, orgID, machineID uuid.UUID, at ti
 	}
 	return &Batch{
 		q:             q,
-		orgID:         orgID,
+		scopeID:       scopeID,
 		machineID:     machineID,
 		siteID:        siteID,
 		at:            at,
@@ -121,7 +111,7 @@ func (b *Batch) PriceLine(ctx context.Context, in PriceLineInput) (LinePriceResu
 	if b == nil {
 		return out, fmt.Errorf("pricingengine: nil batch")
 	}
-	if in.OrganizationID != b.orgID || in.MachineID != b.machineID {
+	if uuid.Nil != b.scopeID || in.MachineID != b.machineID {
 		return out, fmt.Errorf("pricingengine: batch org/machine mismatch")
 	}
 	qty := in.Quantity
@@ -142,22 +132,16 @@ func (b *Batch) PriceLine(ctx context.Context, in PriceLineInput) (LinePriceResu
 	}
 	machPtr := &b.machineID
 	sitePtr := &b.siteID
-	cat, err := b.q.PromotionAdminGetProductCategory(ctx, db.PromotionAdminGetProductCategoryParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.ProductID,
-	})
+	cat, err := b.q.PromotionAdminGetProductCategory(ctx)
 	if err != nil {
 		return out, err
 	}
-	tagRows, err := b.q.PromotionAdminListProductTagIDs(ctx, db.PromotionAdminListProductTagIDsParams{
-		OrganizationID: in.OrganizationID,
-		ProductID:      in.ProductID,
-	})
+	tagRows, err := b.q.PromotionAdminListProductTagIDs(ctx)
 	if err != nil {
 		return out, err
 	}
 	tags := append([]uuid.UUID(nil), tagRows...)
-	eCtx := NewPromoEvalCtx(in.OrganizationID, machPtr, sitePtr, in.ProductID, cat, tags)
+	eCtx := NewPromoEvalCtx(uuid.Nil, machPtr, sitePtr, in.ProductID, cat, tags)
 	var disc int64
 	var applied []uuid.UUID
 	var appliedRules []string
@@ -177,7 +161,7 @@ func (b *Batch) PriceLine(ctx context.Context, in PriceLineInput) (LinePriceResu
 			label = n
 		}
 	}
-	fp := LinePricingFingerprint(in.OrganizationID, in.MachineID, in.SlotConfigID, in.SlotIndex, in.ProductID, slotList, register, eff, applied)
+	fp := LinePricingFingerprint(uuid.Nil, in.MachineID, in.SlotConfigID, in.SlotIndex, in.ProductID, slotList, register, eff, applied)
 	out = LinePriceResult{
 		SlotListUnitMinor:   slotList,
 		RegisterUnitMinor:   register,
@@ -196,9 +180,9 @@ func (b *Batch) PriceLine(ctx context.Context, in PriceLineInput) (LinePriceResu
 }
 
 // LinePricingFingerprint hashes inputs that affect the charged unit for this line.
-func LinePricingFingerprint(orgID, machineID, slotCfg uuid.UUID, slotIdx int32, productID uuid.UUID, slotList, register, eff int64, promoIDs []uuid.UUID) string {
+func LinePricingFingerprint(scopeID, machineID, slotCfg uuid.UUID, slotIdx int32, productID uuid.UUID, slotList, register, eff int64, promoIDs []uuid.UUID) string {
 	parts := []string{
-		"org:" + orgID.String(),
+		"org:" + scopeID.String(),
 		"mach:" + machineID.String(),
 		"slot_cfg:" + slotCfg.String(),
 		"idx:" + strconv.FormatInt(int64(slotIdx), 10),

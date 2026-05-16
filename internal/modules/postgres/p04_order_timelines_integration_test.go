@@ -23,7 +23,6 @@ func TestOrderTimeline_insertAndList(t *testing.T) {
 
 	idem := "tl-order-" + uuid.NewString()
 	or, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -40,21 +39,19 @@ func TestOrderTimeline_insertAndList(t *testing.T) {
 	orderID := or.Order.ID
 	payload, _ := json.Marshal(map[string]any{"test": true})
 	err = q.InsertOrderTimelineEvent(ctx, db.InsertOrderTimelineEventParams{
-		OrganizationID: testfixtures.DevOrganizationID,
-		OrderID:        orderID,
-		EventType:      "test.event",
-		ActorType:      "system",
-		ActorID:        pgtype.Text{},
-		Payload:        payload,
-		OccurredAt:     time.Now().UTC(),
+		OrderID:    orderID,
+		EventType:  "test.event",
+		ActorType:  "system",
+		ActorID:    pgtype.Text{},
+		Payload:    payload,
+		OccurredAt: time.Now().UTC(),
 	})
 	require.NoError(t, err)
 
 	rows, err := q.CommerceAdminListOrderTimeline(ctx, db.CommerceAdminListOrderTimelineParams{
-		OrganizationID: testfixtures.DevOrganizationID,
-		OrderID:        orderID,
-		Limit:          50,
-		Offset:         0,
+		OrderID: orderID,
+		Limit:   50,
+		Offset:  0,
 	})
 	require.NoError(t, err)
 	require.Len(t, rows, 1)
@@ -69,7 +66,6 @@ func TestRefundRequests_insertAndList(t *testing.T) {
 
 	idem := "rr-order-" + uuid.NewString()
 	or, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -86,7 +82,6 @@ func TestRefundRequests_insertAndList(t *testing.T) {
 	payIDem := idem + ":pay"
 	outIDem := idem + ":out:" + or.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              or.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "captured",
@@ -103,7 +98,6 @@ func TestRefundRequests_insertAndList(t *testing.T) {
 	require.NoError(t, err)
 
 	reqRow, err := q.CommerceAdminInsertRefundRequest(ctx, db.CommerceAdminInsertRefundRequestParams{
-		OrganizationID: testfixtures.DevOrganizationID,
 		OrderID:        or.Order.ID,
 		PaymentID:      pgtype.UUID{Bytes: payRes.Payment.ID, Valid: true},
 		AmountMinor:    150,
@@ -116,11 +110,10 @@ func TestRefundRequests_insertAndList(t *testing.T) {
 	require.NoError(t, err)
 
 	list, err := q.CommerceAdminListRefundRequests(ctx, db.CommerceAdminListRefundRequestsParams{
-		OrganizationID: testfixtures.DevOrganizationID,
-		Column2:        false,
-		Column3:        "",
-		Limit:          50,
-		Offset:         0,
+		Column1: false,
+		Column2: "",
+		Limit:   50,
+		Offset:  0,
 	})
 	require.NoError(t, err)
 	found := false

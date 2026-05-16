@@ -127,13 +127,12 @@ func (s *machineMediaServer) AckMediaVersion(ctx context.Context, req *machinev1
 			meta = []byte("{}")
 		}
 		_ = s.deps.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-			OrganizationID: claims.OrganizationID,
-			ActorType:      compliance.ActorMachine,
-			ActorID:        &actorID,
-			Action:         "machine.media.version_acknowledged",
-			ResourceType:   "machine",
-			ResourceID:     &actorID,
-			Metadata:       meta,
+			ActorType:    compliance.ActorMachine,
+			ActorID:      &actorID,
+			Action:       "machine.media.version_acknowledged",
+			ResourceType: "machine",
+			ResourceID:   &actorID,
+			Metadata:     meta,
 		})
 	}
 	return &machinev1.AckMediaVersionResponse{
@@ -284,13 +283,12 @@ func (s *machineCatalogServer) AckCatalogVersion(ctx context.Context, req *machi
 			meta = []byte("{}")
 		}
 		_ = s.deps.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-			OrganizationID: claims.OrganizationID,
-			ActorType:      compliance.ActorMachine,
-			ActorID:        &actorID,
-			Action:         "machine.catalog.version_acknowledged",
-			ResourceType:   "machine",
-			ResourceID:     &actorID,
-			Metadata:       meta,
+			ActorType:    compliance.ActorMachine,
+			ActorID:      &actorID,
+			Action:       "machine.catalog.version_acknowledged",
+			ResourceType: "machine",
+			ResourceID:   &actorID,
+			Metadata:     meta,
 		})
 	}
 	return &machinev1.AckCatalogVersionResponse{
@@ -425,7 +423,6 @@ func snapshotProtoFromSale(s salecatalog.Snapshot) *machinev1.CatalogSnapshot {
 	}
 	return &machinev1.CatalogSnapshot{
 		MachineId:      s.MachineID.String(),
-		OrganizationId: s.OrganizationID.String(),
 		SiteId:         s.SiteID.String(),
 		ConfigVersion:  s.ConfigVersion,
 		CatalogVersion: s.CatalogVersion,

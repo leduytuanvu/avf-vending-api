@@ -74,9 +74,8 @@ func (r *CommerceReconcileRepository) ListVendSessionsStuckForReconciliation(ctx
 	out := make([]domaincommerce.VendReconciliationCandidate, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, domaincommerce.VendReconciliationCandidate{
-			Session:        mapVendFromStuckReconcileRow(row),
-			OrganizationID: row.OrganizationID,
-			OrderStatus:    row.OrderStatus,
+			Session:     mapVendFromStuckReconcileRow(row),
+			OrderStatus: row.OrderStatus,
 		})
 	}
 	return out, nil
@@ -144,15 +143,14 @@ func (r *CommerceReconcileRepository) ListPaidOrdersWithoutVendStart(ctx context
 	out := make([]domaincommerce.PaidOrderVendStartCandidate, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, domaincommerce.PaidOrderVendStartCandidate{
-			OrderID:        row.OrderID,
-			OrganizationID: row.OrganizationID,
-			MachineID:      row.MachineID,
-			PaymentID:      row.PaymentID,
-			Provider:       row.Provider,
-			PaymentState:   row.PaymentState,
-			VendSessionID:  row.VendSessionID,
-			VendState:      row.VendState,
-			UpdatedAt:      row.UpdatedAt,
+			OrderID:       row.OrderID,
+			MachineID:     row.MachineID,
+			PaymentID:     row.PaymentID,
+			Provider:      row.Provider,
+			PaymentState:  row.PaymentState,
+			VendSessionID: row.VendSessionID,
+			VendState:     row.VendState,
+			UpdatedAt:     row.UpdatedAt,
 		})
 	}
 	return out, nil
@@ -169,15 +167,14 @@ func (r *CommerceReconcileRepository) ListPaidVendFailuresForReview(ctx context.
 	out := make([]domaincommerce.PaidVendFailureCandidate, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, domaincommerce.PaidVendFailureCandidate{
-			OrderID:        row.OrderID,
-			OrganizationID: row.OrganizationID,
-			MachineID:      row.MachineID,
-			PaymentID:      row.PaymentID,
-			Provider:       row.Provider,
-			PaymentState:   row.PaymentState,
-			VendSessionID:  row.VendSessionID,
-			VendState:      row.VendState,
-			CompletedAt:    row.CompletedAt.Time,
+			OrderID:       row.OrderID,
+			MachineID:     row.MachineID,
+			PaymentID:     row.PaymentID,
+			Provider:      row.Provider,
+			PaymentState:  row.PaymentState,
+			VendSessionID: row.VendSessionID,
+			VendState:     row.VendState,
+			CompletedAt:   row.CompletedAt.Time,
 		})
 	}
 	return out, nil
@@ -194,15 +191,14 @@ func (r *CommerceReconcileRepository) ListRefundsPendingTooLong(ctx context.Cont
 	out := make([]domaincommerce.RefundPendingCandidate, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, domaincommerce.RefundPendingCandidate{
-			RefundID:       row.RefundID,
-			PaymentID:      row.PaymentID,
-			OrderID:        row.OrderID,
-			OrganizationID: row.OrganizationID,
-			Provider:       row.Provider,
-			RefundState:    row.RefundState,
-			AmountMinor:    row.AmountMinor,
-			Currency:       row.Currency,
-			CreatedAt:      row.CreatedAt,
+			RefundID:    row.RefundID,
+			PaymentID:   row.PaymentID,
+			OrderID:     row.OrderID,
+			Provider:    row.Provider,
+			RefundState: row.RefundState,
+			AmountMinor: row.AmountMinor,
+			Currency:    row.Currency,
+			CreatedAt:   row.CreatedAt,
 		})
 	}
 	return out, nil
@@ -210,7 +206,6 @@ func (r *CommerceReconcileRepository) ListRefundsPendingTooLong(ctx context.Cont
 
 func (r *CommerceReconcileRepository) UpsertReconciliationCase(ctx context.Context, in domaincommerce.ReconciliationCaseInput) (domaincommerce.ReconciliationCase, error) {
 	row, err := db.New(r.pool).UpsertCommerceReconciliationCase(ctx, db.UpsertCommerceReconciliationCaseParams{
-		OrganizationID:  in.OrganizationID,
 		CaseType:        in.CaseType,
 		Severity:        in.Severity,
 		Reason:          in.Reason,
@@ -248,7 +243,6 @@ func pgInt8ToPtr(v pgtype.Int8) *int64 {
 func mapCommerceReconciliationCase(row db.CommerceReconciliationCase) domaincommerce.ReconciliationCase {
 	return domaincommerce.ReconciliationCase{
 		ID:              row.ID,
-		OrganizationID:  row.OrganizationID,
 		CaseType:        row.CaseType,
 		Status:          row.Status,
 		Severity:        row.Severity,

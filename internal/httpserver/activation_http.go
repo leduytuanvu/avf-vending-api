@@ -51,7 +51,8 @@ type adminCreateActivationBody struct {
 
 func postAdminCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -68,7 +69,6 @@ func postAdminCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 		}
 		out, err := app.Activation.CreateCode(r.Context(), activation.CreateInput{
 			MachineID:        machineID,
-			OrganizationID:   orgID,
 			ExpiresInMinutes: body.ExpiresInMinutes,
 			MaxUses:          body.MaxUses,
 			Notes:            body.Notes,
@@ -91,7 +91,8 @@ func postAdminCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 
 func getAdminListActivationCodes(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -101,7 +102,7 @@ func getAdminListActivationCodes(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		rows, err := app.Activation.ListCodes(r.Context(), machineID, orgID)
+		rows, err := app.Activation.ListCodes(r.Context(), machineID)
 		if err != nil {
 			if errors.Is(err, activation.ErrUnauthorized) {
 				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "forbidden")
@@ -134,7 +135,8 @@ func getAdminListActivationCodes(app *api.HTTPApplication) http.HandlerFunc {
 
 func deleteAdminActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -149,7 +151,7 @@ func deleteAdminActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_activation_code_id", "invalid activationCodeId")
 			return
 		}
-		if err := app.Activation.RevokeCode(r.Context(), machineID, orgID, codeID); err != nil {
+		if err := app.Activation.RevokeCode(r.Context(), machineID, codeID); err != nil {
 			if errors.Is(err, activation.ErrNotFound) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "not found")
 				return
@@ -198,7 +200,6 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 		}
 		resp := map[string]any{
 			"machineId":         out.MachineID.String(),
-			"organizationId":    out.OrganizationID.String(),
 			"siteId":            out.SiteID.String(),
 			"machineName":       out.MachineName,
 			"machineToken":      out.MachineToken,
@@ -218,7 +219,7 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 	}
 }
 
-func mountAdminOrganizationScopedActivationRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
+func mountAdminCompanyScopedActivationRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
 	if app == nil || app.Activation == nil {
 		return
 	}
@@ -246,7 +247,8 @@ type adminOrgCreateActivationBody struct {
 
 func getAdminOrgListActivationCodes(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -256,7 +258,7 @@ func getAdminOrgListActivationCodes(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", err.Error())
 			return
 		}
-		rows, total, err := app.Activation.ListCodesForOrganization(r.Context(), orgID, limit, offset)
+		rows, total, err := app.Activation.ListAllCodes(r.Context(), limit, offset)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -289,7 +291,8 @@ func getAdminOrgListActivationCodes(app *api.HTTPApplication) http.HandlerFunc {
 
 func postAdminOrgCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -310,7 +313,6 @@ func postAdminOrgCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc
 		}
 		out, err := app.Activation.CreateCode(r.Context(), activation.CreateInput{
 			MachineID:        machineID,
-			OrganizationID:   orgID,
 			ExpiresInMinutes: body.ExpiresInMinutes,
 			MaxUses:          body.MaxUses,
 			Notes:            body.Notes,
@@ -333,7 +335,8 @@ func postAdminOrgCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc
 
 func postAdminOrgRevokeActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -343,7 +346,7 @@ func postAdminOrgRevokeActivationCode(app *api.HTTPApplication) http.HandlerFunc
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_activation_code_id", "invalid codeId")
 			return
 		}
-		if err := app.Activation.RevokeCodeForOrganization(r.Context(), orgID, codeID); err != nil {
+		if err := app.Activation.RevokeCodeByID(r.Context(), codeID); err != nil {
 			if errors.Is(err, activation.ErrNotFound) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "not found")
 				return
@@ -352,7 +355,7 @@ func postAdminOrgRevokeActivationCode(app *api.HTTPApplication) http.HandlerFunc
 			return
 		}
 		cid := codeID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineActivationCodeRevoked, "fleet.activation_code", &cid, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineActivationCodeRevoked, "fleet.activation_code", &cid, nil)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

@@ -60,9 +60,10 @@ func getOrgMachinePlanogram(app *api.HTTPApplication) http.HandlerFunc {
 			writeCapabilityNotConfigured(w, r.Context(), "planogram", "planogram service not configured")
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_organization", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_company", err.Error())
 			return
 		}
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
@@ -70,7 +71,7 @@ func getOrgMachinePlanogram(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		out, err := app.Planogram.GetSummary(r.Context(), orgID, machineID)
+		out, err := app.Planogram.GetSummary(r.Context(), scopeID, machineID)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -85,9 +86,10 @@ type planogramDraftCreateBody struct {
 
 func postOrgMachinePlanogramDraft(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_organization", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_company", err.Error())
 			return
 		}
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
@@ -99,7 +101,7 @@ func postOrgMachinePlanogramDraft(app *api.HTTPApplication) http.HandlerFunc {
 		if !decodeStrictJSON(w, r, &body) {
 			return
 		}
-		id, err := app.Planogram.CreateDraft(r.Context(), orgID, machineID, body.Snapshot)
+		id, err := app.Planogram.CreateDraft(r.Context(), scopeID, machineID, body.Snapshot)
 		if err != nil {
 			writePlanogramError(w, r.Context(), err)
 			return
@@ -115,9 +117,10 @@ type planogramDraftPatchBody struct {
 
 func patchOrgMachinePlanogramDraft(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_organization", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_company", err.Error())
 			return
 		}
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
@@ -134,7 +137,7 @@ func patchOrgMachinePlanogramDraft(app *api.HTTPApplication) http.HandlerFunc {
 		if !decodeStrictJSON(w, r, &body) {
 			return
 		}
-		err = app.Planogram.PatchDraft(r.Context(), orgID, machineID, draftID, body.Snapshot, body.Status)
+		err = app.Planogram.PatchDraft(r.Context(), scopeID, machineID, draftID, body.Snapshot, body.Status)
 		if err != nil {
 			writePlanogramError(w, r.Context(), err)
 			return
@@ -145,9 +148,10 @@ func patchOrgMachinePlanogramDraft(app *api.HTTPApplication) http.HandlerFunc {
 
 func postOrgMachinePlanogramDraftValidate(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_organization", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_company", err.Error())
 			return
 		}
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
@@ -160,7 +164,7 @@ func postOrgMachinePlanogramDraftValidate(app *api.HTTPApplication) http.Handler
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_draft_id", "invalid draftId")
 			return
 		}
-		if err := app.Planogram.ValidateDraft(r.Context(), orgID, machineID, draftID); err != nil {
+		if err := app.Planogram.ValidateDraft(r.Context(), scopeID, machineID, draftID); err != nil {
 			writePlanogramError(w, r.Context(), err)
 			return
 		}
@@ -170,9 +174,10 @@ func postOrgMachinePlanogramDraftValidate(app *api.HTTPApplication) http.Handler
 
 func postOrgMachinePlanogramDraftPublish(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_organization", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_company", err.Error())
 			return
 		}
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
@@ -190,7 +195,7 @@ func postOrgMachinePlanogramDraftPublish(app *api.HTTPApplication) http.HandlerF
 		if u, ok := parseInteractiveActorUUID(r); ok {
 			actor = u
 		}
-		out, err := app.Planogram.PublishDraft(r.Context(), orgID, machineID, draftID, idem, actor)
+		out, err := app.Planogram.PublishDraft(r.Context(), scopeID, machineID, draftID, idem, actor)
 		if err != nil {
 			writePlanogramError(w, r.Context(), err)
 			return
@@ -205,9 +210,10 @@ func getOrgMachinePlanogramVersions(app *api.HTTPApplication) http.HandlerFunc {
 			writeCapabilityNotConfigured(w, r.Context(), "planogram", "planogram service not configured")
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_organization", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_company", err.Error())
 			return
 		}
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
@@ -215,7 +221,7 @@ func getOrgMachinePlanogramVersions(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		items, err := app.Planogram.ListVersions(r.Context(), orgID, machineID)
+		items, err := app.Planogram.ListVersions(r.Context(), scopeID, machineID)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -226,9 +232,10 @@ func getOrgMachinePlanogramVersions(app *api.HTTPApplication) http.HandlerFunc {
 
 func postOrgMachinePlanogramVersionRollback(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_organization", err.Error())
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_company", err.Error())
 			return
 		}
 		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
@@ -242,7 +249,7 @@ func postOrgMachinePlanogramVersionRollback(app *api.HTTPApplication) http.Handl
 			return
 		}
 		idem := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
-		out, err := app.Planogram.Rollback(r.Context(), orgID, machineID, versionID, idem)
+		out, err := app.Planogram.Rollback(r.Context(), scopeID, machineID, versionID, idem)
 		if err != nil {
 			writePlanogramError(w, r.Context(), err)
 			return

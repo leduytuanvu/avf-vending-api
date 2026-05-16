@@ -61,7 +61,6 @@ func (l *Ledger) BeginMutation(ctx context.Context, claims plauth.MachineAccessC
 	var err error
 	for attempt := 0; attempt < 2; attempt++ {
 		row, err = l.q.UpsertMachineIdempotencyKey(ctx, db.UpsertMachineIdempotencyKeyParams{
-			OrganizationID: claims.OrganizationID,
 			MachineID:      claims.MachineID,
 			Operation:      operation,
 			IdempotencyKey: key,
@@ -79,7 +78,6 @@ func (l *Ledger) BeginMutation(ctx context.Context, claims plauth.MachineAccessC
 		cutoff := now.Add(-staleAge)
 		if strings.EqualFold(strings.TrimSpace(row.Status), "in_progress") && !row.Inserted && row.LastSeenAt.Before(cutoff) {
 			_ = l.q.DeleteStaleMachineIdempotencyInProgress(ctx, db.DeleteStaleMachineIdempotencyInProgressParams{
-				OrganizationID: claims.OrganizationID,
 				MachineID:      claims.MachineID,
 				Operation:      operation,
 				IdempotencyKey: key,
@@ -95,7 +93,6 @@ func (l *Ledger) BeginMutation(ctx context.Context, claims plauth.MachineAccessC
 	}
 	if !bytes.Equal(row.RequestHash, requestHash) {
 		_ = l.q.MarkMachineIdempotencyConflict(ctx, db.MarkMachineIdempotencyConflictParams{
-			OrganizationID: claims.OrganizationID,
 			MachineID:      claims.MachineID,
 			Operation:      operation,
 			IdempotencyKey: key,
@@ -151,13 +148,12 @@ func (l *Ledger) MarkSucceeded(ctx context.Context, claims plauth.MachineAccessC
 		return status.Error(codes.Internal, "machine idempotency response encode failed")
 	}
 	key = strings.TrimSpace(key)
-	if _, err := l.q.MarkMachineIdempotencySucceeded(ctx, db.MarkMachineIdempotencySucceededParams{
-		OrganizationID:   claims.OrganizationID,
-		MachineID:        claims.MachineID,
-		Operation:        operation,
-		IdempotencyKey:   key,
-		ResponseSnapshot: snap,
-		TraceID:          traceID,
+	if _, err := l.q.MarkMachineIdempotencySucceeded(ctx, db.MarkMachineIdempotencySucceededParams{ResponseSnapshot: snap,
+		TraceID: traceID,
+
+		MachineID:      claims.MachineID,
+		Operation:      operation,
+		IdempotencyKey: key,
 	}); err != nil {
 		return status.Error(codes.Internal, "machine idempotency response store failed")
 	}
@@ -169,12 +165,11 @@ func (l *Ledger) MarkFailed(ctx context.Context, claims plauth.MachineAccessClai
 	if l == nil || l.q == nil {
 		return nil
 	}
-	return l.q.MarkMachineIdempotencyFailed(ctx, db.MarkMachineIdempotencyFailedParams{
-		OrganizationID: claims.OrganizationID,
+	return l.q.MarkMachineIdempotencyFailed(ctx, db.MarkMachineIdempotencyFailedParams{TraceID: traceID,
+
 		MachineID:      claims.MachineID,
 		Operation:      operation,
 		IdempotencyKey: strings.TrimSpace(key),
-		TraceID:        traceID,
 	})
 }
 
@@ -190,12 +185,11 @@ func (l *Ledger) recordAudit(ctx context.Context, claims plauth.MachineAccessCla
 	md, _ := json.Marshal(meta)
 	mid := claims.MachineID.String()
 	_ = l.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: claims.OrganizationID,
-		ActorType:      compliance.ActorMachine,
-		ActorID:        &mid,
-		Action:         action,
-		ResourceType:   "machine_idempotency_key",
-		ResourceID:     &mid,
-		Metadata:       md,
+		ActorType:    compliance.ActorMachine,
+		ActorID:      &mid,
+		Action:       action,
+		ResourceType: "machine_idempotency_key",
+		ResourceID:   &mid,
+		Metadata:     md,
 	})
 }

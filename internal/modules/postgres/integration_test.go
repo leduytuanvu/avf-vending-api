@@ -70,7 +70,7 @@ func TestSchemaCriticalIndexes(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
 	names := []string{
-		"ux_orders_org_idempotency",
+		"uniq_orders_idempotency",
 		"ux_outbox_topic_idempotency",
 		"ux_command_ledger_machine_idempotency",
 		"ix_outbox_unpublished",
@@ -84,12 +84,12 @@ func TestSchemaCriticalIndexes(t *testing.T) {
 	}
 }
 
-func TestOrgSiteProductRepos_ReadSeed(t *testing.T) {
+func TestDevFixtureSiteProductRepos_ReadSeed(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
 
 	orgRepo := postgres.NewOrgRepository(pool)
-	o, err := orgRepo.GetByID(ctx, testfixtures.DevOrganizationID)
+	o, err := orgRepo.GetByID(ctx, testfixtures.DevScopeID)
 	require.NoError(t, err)
 	require.Equal(t, "Local Dev Org", o.Name)
 
@@ -111,7 +111,6 @@ func TestCreateOrderWithVendSession_AndReplay(t *testing.T) {
 
 	idem := "order-" + uuid.NewString()
 	in := commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductCola,
 		SlotIndex:      1,
@@ -143,7 +142,6 @@ func TestCreateOrderWithVendSession_RollbackOnInvalidMachine(t *testing.T) {
 	idem := "rollback-" + uuid.NewString()
 	badMachine := uuid.New()
 	_, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      badMachine,
 		ProductID:      testfixtures.DevProductCola,
 		SlotIndex:      1,
@@ -159,8 +157,8 @@ func TestCreateOrderWithVendSession_RollbackOnInvalidMachine(t *testing.T) {
 
 	var cnt int
 	qerr := pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM orders WHERE organization_id = $1 AND idempotency_key = $2`,
-		testfixtures.DevOrganizationID, idem,
+		`SELECT COUNT(*) FROM orders WHERE scope_id = $1 AND idempotency_key = $2`,
+		testfixtures.DevScopeID, idem,
 	).Scan(&cnt)
 	require.NoError(t, qerr)
 	require.Zero(t, cnt)
@@ -173,7 +171,6 @@ func TestCreatePaymentWithOutbox_UnpublishedOutbox(t *testing.T) {
 
 	orderIDem := "pay-order-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -190,7 +187,6 @@ func TestCreatePaymentWithOutbox_UnpublishedOutbox(t *testing.T) {
 	payIDem := "pay-" + uuid.NewString()
 	outIDem := "obx-" + uuid.NewString()
 	in := commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",
@@ -289,7 +285,6 @@ func TestAppendCommandUpdateShadowAndOutbox_CommandAndOutboxAtomic(t *testing.T)
 			IdempotencyKey: cmdIDem,
 			DesiredState:   []byte(`{"cmd":1}`),
 		},
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OutboxTopic:          topic,
 		OutboxEventType:      "command.issued",
 		OutboxPayload:        []byte(`{"issued":true}`),
@@ -331,7 +326,6 @@ func TestAppendCommandUpdateShadowAndOutbox_RepairsMissingOutboxInSameTransactio
 			IdempotencyKey: cmdIDem,
 			DesiredState:   []byte(`{"repair":1}`),
 		},
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OutboxTopic:          topic,
 		OutboxEventType:      "command.issued",
 		OutboxPayload:        []byte(`{"repair":true}`),
@@ -369,7 +363,6 @@ func TestCreatePaymentWithOutbox_RepairsMissingOutboxWhenPaymentExists(t *testin
 	store := postgres.NewStore(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductCola,
 		SlotIndex:      1,
@@ -387,7 +380,6 @@ func TestCreatePaymentWithOutbox_RepairsMissingOutboxWhenPaymentExists(t *testin
 	outTopic := "payments.repair." + uuid.NewString()
 	outIDem := "obx-pay-repair-" + uuid.NewString()
 	in := commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",
@@ -435,7 +427,6 @@ func TestOutboxRepository_ListUnpublished_IncludesNewCommerceOutbox(t *testing.T
 	repo := postgres.NewOutboxRepository(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -452,7 +443,6 @@ func TestOutboxRepository_ListUnpublished_IncludesNewCommerceOutbox(t *testing.T
 	outTopic := "payments.list." + uuid.NewString()
 	outIDem := "obx-list-" + uuid.NewString()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",
@@ -487,7 +477,6 @@ func TestOutboxRepository_BackoffHidesRowUntilDue(t *testing.T) {
 	repo := postgres.NewOutboxRepository(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      3,
@@ -504,7 +493,6 @@ func TestOutboxRepository_BackoffHidesRowUntilDue(t *testing.T) {
 	outTopic := "payments.bo." + uuid.NewString()
 	outIDem := "obx-bo-" + uuid.NewString()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",
@@ -557,7 +545,6 @@ func TestOutboxRepository_RecordFailureIncrementsAttemptCount(t *testing.T) {
 	repo := postgres.NewOutboxRepository(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      4,
@@ -574,7 +561,6 @@ func TestOutboxRepository_RecordFailureIncrementsAttemptCount(t *testing.T) {
 	outTopic := "payments.attempt." + uuid.NewString()
 	outIDem := "obx-attempt-" + uuid.NewString()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",
@@ -805,18 +791,18 @@ func TestApplyCommandReceiptTransition_ConflictingAckIsAudited(t *testing.T) {
 
 	var n int64
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM audit_events WHERE organization_id = $1 AND action = $2`,
-		testfixtures.DevOrganizationID, "mqtt.command_ack_conflict",
+		`SELECT count(*) FROM audit_events WHERE scope_id = $1 AND action = $2`,
+		testfixtures.DevScopeID, "mqtt.command_ack_conflict",
 	).Scan(&n))
 	require.GreaterOrEqual(t, n, int64(1))
 }
 
-func TestFleetQueries_OrganizationAndSiteScope(t *testing.T) {
+func TestFleetQueries_CompanyAndSiteScope(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
 	q := db.New(pool)
 
-	byOrg, err := q.ListMachinesByOrganizationID(ctx, testfixtures.DevOrganizationID)
+	byOrg, err := q.ListMachinesByScopeID(ctx)
 	require.NoError(t, err)
 	var orgMachineIDs []uuid.UUID
 	for _, m := range byOrg {
@@ -825,21 +811,15 @@ func TestFleetQueries_OrganizationAndSiteScope(t *testing.T) {
 	require.NotEmpty(t, orgMachineIDs)
 	require.Contains(t, orgMachineIDs, testfixtures.DevMachineID)
 
-	emptyOrg, err := q.ListMachinesByOrganizationID(ctx, uuid.New())
+	emptyOrg, err := q.ListMachinesByScopeID(ctx)
 	require.NoError(t, err)
 	require.Empty(t, emptyOrg)
 
-	bySite, err := q.ListMachinesBySiteAndOrganization(ctx, db.ListMachinesBySiteAndOrganizationParams{
-		SiteID:         testfixtures.DevSiteID,
-		OrganizationID: testfixtures.DevOrganizationID,
-	})
+	bySite, err := q.ListMachinesBySiteAndCompany(ctx, testfixtures.DevSiteID)
 	require.NoError(t, err)
 	require.Len(t, bySite, 1)
 
-	wrongSite, err := q.ListMachinesBySiteAndOrganization(ctx, db.ListMachinesBySiteAndOrganizationParams{
-		SiteID:         uuid.New(),
-		OrganizationID: testfixtures.DevOrganizationID,
-	})
+	wrongSite, err := q.ListMachinesBySiteAndCompany(ctx, uuid.New())
 	require.NoError(t, err)
 	require.Empty(t, wrongSite)
 }
@@ -881,7 +861,6 @@ func TestOutboxRepository_LeaseOutboxForPublish_SetsPublishing(t *testing.T) {
 	repo := postgres.NewOutboxRepository(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      5,
@@ -898,7 +877,6 @@ func TestOutboxRepository_LeaseOutboxForPublish_SetsPublishing(t *testing.T) {
 	outTopic := "payments.lease." + uuid.NewString()
 	outIDem := "obx-lease-" + uuid.NewString()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",

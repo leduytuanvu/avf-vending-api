@@ -47,7 +47,7 @@ func (r *SetupRepository) UpsertMachineTopology(ctx context.Context, machineID u
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	m, err := q.GetMachineByIDForUpdate(ctx, machineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, machineID)
 	if err != nil {
 		if isNoRows(err) {
 			return setupapp.ErrNotFound
@@ -91,7 +91,6 @@ func (r *SetupRepository) UpsertMachineTopology(ctx context.Context, machineID u
 			return err
 		}
 		_, err = q.FleetAdminUpsertMachineSlotLayout(ctx, db.FleetAdminUpsertMachineSlotLayoutParams{
-			OrganizationID:   m.OrganizationID,
 			MachineID:        machineID,
 			MachineCabinetID: cabRow.ID,
 			LayoutKey:        strings.TrimSpace(lay.LayoutKey),
@@ -110,7 +109,7 @@ func (r *SetupRepository) UpsertMachineTopology(ctx context.Context, machineID u
 // syncPrimaryAssortmentFromPublishedSlots ensures CommerceIsProductInMachinePublishedAssortment matches
 // products on current slot configs after a publish: planogram routes write cabinet slots but checkout/pricing
 // also require assortment_items under the machine primary binding.
-func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, orgID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
+func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, scopeID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
 	q := db.New(tx)
 
 	pidSeen := map[uuid.UUID]struct{}{}
@@ -129,10 +128,7 @@ func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, mac
 	}
 	sort.Slice(pids, func(i, j int) bool { return pids[i].String() < pids[j].String() })
 
-	rows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, db.FleetAdminListAssortmentProductsByMachineParams{
-		ID:             machineID,
-		OrganizationID: orgID,
-	})
+	rows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, machineID)
 	if err != nil {
 		return err
 	}
@@ -140,20 +136,18 @@ func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, mac
 	var assortmentID uuid.UUID
 	if len(rows) == 0 {
 		asm, err := q.FleetAdminInsertAssortment(ctx, db.FleetAdminInsertAssortmentParams{
-			OrganizationID: orgID,
-			Name:           fmt.Sprintf("Published slots — machine %s", machineID.String()),
-			Status:         "published",
-			Description:    "Auto-created when admin publishes machine slot configs so commerce can resolve primary assortment.",
-			Meta:           []byte(`{}`),
+			Name:        fmt.Sprintf("Published slots — machine %s", machineID.String()),
+			Status:      "published",
+			Description: "Auto-created when admin publishes machine slot configs so commerce can resolve primary assortment.",
+			Meta:        []byte(`{}`),
 		})
 		if err != nil {
 			return err
 		}
 		assortmentID = asm.ID
 		n, err := q.FleetAdminBindMachinePrimaryAssortment(ctx, db.FleetAdminBindMachinePrimaryAssortmentParams{
-			OrganizationID: orgID,
-			ID:             machineID,
-			AssortmentID:   assortmentID,
+			ID:           machineID,
+			AssortmentID: assortmentID,
 		})
 		if err != nil {
 			return err
@@ -167,11 +161,10 @@ func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, mac
 
 	for i, pid := range pids {
 		if _, err := q.FleetAdminUpsertAssortmentItem(ctx, db.FleetAdminUpsertAssortmentItemParams{
-			OrganizationID: orgID,
-			AssortmentID:   assortmentID,
-			ProductID:      pid,
-			SortOrder:      int32(i),
-			Notes:          []byte(`{}`),
+			AssortmentID: assortmentID,
+			ProductID:    pid,
+			SortOrder:    int32(i),
+			Notes:        []byte(`{}`),
 		}); err != nil {
 			return err
 		}
@@ -181,7 +174,7 @@ func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, mac
 
 func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
 	q := db.New(tx)
-	m, err := q.GetMachineByIDForUpdate(ctx, machineID)
+	_, err := q.GetMachineByIDForUpdate(ctx, machineID)
 	if err != nil {
 		if isNoRows(err) {
 			return setupapp.ErrNotFound
@@ -228,11 +221,10 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 
 		if in.PublishAsCurrent {
 			_, err = q.FleetAdminApplyMachineSlotConfigCurrent(ctx, db.FleetAdminApplyMachineSlotConfigCurrentParams{
-				OrganizationID:      m.OrganizationID,
 				MachineID:           machineID,
+				SlotCode:            strings.TrimSpace(it.SlotCode),
 				MachineCabinetID:    cabRow.ID,
 				MachineSlotLayoutID: layoutRow.ID,
-				SlotCode:            strings.TrimSpace(it.SlotCode),
 				SlotIndex:           optionalInt32ToPgInt4(it.LegacySlotIndex),
 				ProductID:           optionalUUIDToPg(it.ProductID),
 				MaxQuantity:         it.MaxQuantity,
@@ -242,7 +234,6 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 			})
 		} else {
 			_, err = q.FleetAdminInsertMachineSlotConfigDraft(ctx, db.FleetAdminInsertMachineSlotConfigDraftParams{
-				OrganizationID:      m.OrganizationID,
 				MachineID:           machineID,
 				MachineCabinetID:    cabRow.ID,
 				MachineSlotLayoutID: layoutRow.ID,
@@ -287,7 +278,7 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 	}
 
 	if in.PublishAsCurrent {
-		if err := syncPrimaryAssortmentFromPublishedSlots(ctx, tx, machineID, m.OrganizationID, in); err != nil {
+		if err := syncPrimaryAssortmentFromPublishedSlots(ctx, tx, machineID, uuid.Nil, in); err != nil {
 			return err
 		}
 	}
@@ -341,10 +332,7 @@ func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uui
 		return setupapp.MachineBootstrap{}, err
 	}
 
-	assortRows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, db.FleetAdminListAssortmentProductsByMachineParams{
-		ID:             machineID,
-		OrganizationID: m.OrganizationID,
-	})
+	assortRows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, machineID)
 	if err != nil {
 		return setupapp.MachineBootstrap{}, err
 	}

@@ -40,7 +40,7 @@ func insertAuthAccount(t *testing.T, pool *pgxpool.Pool, id uuid.UUID, org uuid.
 	require.NoError(t, err)
 	ctx := context.Background()
 	_, err = pool.Exec(ctx, `
-INSERT INTO platform_auth_accounts (id, organization_id, email, password_hash, roles, status)
+INSERT INTO platform_auth_accounts (id, scope_id, email, password_hash, roles, status)
 VALUES ($1,$2,$3,$4,$5,$6)
 `, id, org, email, string(hash), roles, status)
 	require.NoError(t, err)
@@ -50,7 +50,7 @@ func TestAuthAdmin_CreateUserAndDuplicateEmail(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-create-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -78,7 +78,7 @@ func TestAuthAdmin_InvalidRole(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-badrole-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -96,7 +96,7 @@ func TestAuthAdmin_MachineRoleRejected(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-machine-role-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -115,7 +115,7 @@ func TestAuthAdmin_ActivateDeactivateAndLastOrgAdmin(t *testing.T) {
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := uuid.New()
-	insertAuditOrganization(t, pool, org)
+	insertAuditCompany(t, pool, org)
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "solo-admin-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -152,7 +152,7 @@ func TestAuthAdmin_ResetPasswordAndLoginAndDisabledNoLogin(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-login-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -172,9 +172,8 @@ func TestAuthAdmin_ResetPasswordAndLoginAndDisabledNoLogin(t *testing.T) {
 	require.NoError(t, err)
 
 	login, err := svc.Login(ctx, appauth.LoginRequest{
-		OrganizationID: org,
-		Email:          email,
-		Password:       "newpassword12",
+		Email:    email,
+		Password: "newpassword12",
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, login.Tokens.AccessToken)
@@ -183,9 +182,8 @@ func TestAuthAdmin_ResetPasswordAndLoginAndDisabledNoLogin(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.Login(ctx, appauth.LoginRequest{
-		OrganizationID: org,
-		Email:          email,
-		Password:       "newpassword12",
+		Email:    email,
+		Password: "newpassword12",
 	})
 	require.ErrorIs(t, err, appauth.ErrInvalidCredentials)
 }
@@ -195,7 +193,7 @@ func TestAuthAdmin_PatchRemovesLastOrgAdminForbidden(t *testing.T) {
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := uuid.New()
-	insertAuditOrganization(t, pool, org)
+	insertAuditCompany(t, pool, org)
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "patch-last-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -209,7 +207,7 @@ func TestAuthAdmin_ChangePassword(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 
 	id := uuid.New()
 	email := "self-" + id.String()[:8] + "@test.example.com"
@@ -222,9 +220,8 @@ func TestAuthAdmin_ChangePassword(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.Login(ctx, appauth.LoginRequest{
-		OrganizationID: org,
-		Email:          email,
-		Password:       "newpassword12",
+		Email:    email,
+		Password: "newpassword12",
 	})
 	require.NoError(t, err)
 }
@@ -233,7 +230,7 @@ func TestAuthAdmin_ReplaceUserRoles(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-roles-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -247,16 +244,16 @@ func TestAuthAdmin_ReplaceUserRoles(t *testing.T) {
 	require.Contains(t, out.Roles, "viewer")
 }
 
-func TestAuthAdmin_CrossTenantGetUserDenied(t *testing.T) {
+func TestAuthAdmin_CrossCompanyGetUserDenied(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	orgA := testfixtures.DevOrganizationID
+	orgA := testfixtures.DevScopeID
 	orgB := uuid.New()
-	insertAuditOrganization(t, pool, orgB)
+	insertAuditCompany(t, pool, orgB)
 
 	target := uuid.New()
-	insertAuthAccount(t, pool, target, orgA, "tenant-a-"+target.String()[:8]+"@test.example.com", "password12345", []string{"viewer"}, "active")
+	insertAuthAccount(t, pool, target, orgA, "company-a-"+target.String()[:8]+"@test.example.com", "password12345", []string{"viewer"}, "active")
 
 	_, err := svc.AdminGetUser(ctx, orgB, target)
 	require.ErrorIs(t, err, appauth.ErrAccountNotFound)
@@ -266,16 +263,15 @@ func TestAuthAdmin_DisabledUserCannotLogin(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 
 	id := uuid.New()
 	email := "disabled-" + id.String()[:8] + "@test.example.com"
 	insertAuthAccount(t, pool, id, org, email, "password12345", []string{"viewer"}, "disabled")
 
 	_, err := svc.Login(ctx, appauth.LoginRequest{
-		OrganizationID: org,
-		Email:          email,
-		Password:       "password12345",
+		Email:    email,
+		Password: "password12345",
 	})
 	require.ErrorIs(t, err, appauth.ErrInvalidCredentials)
 }
@@ -284,7 +280,7 @@ func TestAuthAdmin_RevokeSessionsInvalidatesRefreshToken(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-revoke-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -293,7 +289,7 @@ func TestAuthAdmin_RevokeSessionsInvalidatesRefreshToken(t *testing.T) {
 	email := "target-revoke-" + target.String()[:8] + "@test.example.com"
 	insertAuthAccount(t, pool, target, org, email, "password12345", []string{"viewer"}, "active")
 
-	login, err := svc.Login(ctx, appauth.LoginRequest{OrganizationID: org, Email: email, Password: "password12345"})
+	login, err := svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "password12345"})
 	require.NoError(t, err)
 	require.NotEmpty(t, login.Tokens.RefreshToken)
 
@@ -307,13 +303,13 @@ func TestAuthAdmin_PasswordResetTokenOneTime(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevOrganizationID
+	org := testfixtures.DevScopeID
 
 	id := uuid.New()
 	email := "reset-" + id.String()[:8] + "@test.example.com"
 	insertAuthAccount(t, pool, id, org, email, "password12345", []string{"viewer"}, "active")
 
-	issued, err := svc.RequestPasswordReset(ctx, appauth.PasswordResetRequest{OrganizationID: org, Email: email})
+	issued, err := svc.RequestPasswordReset(ctx, appauth.PasswordResetRequest{Email: email})
 	require.NoError(t, err)
 	require.True(t, issued.Accepted)
 	require.NotEmpty(t, issued.ResetToken)
@@ -327,6 +323,6 @@ func TestAuthAdmin_PasswordResetTokenOneTime(t *testing.T) {
 		NewPassword: "anotherpass12",
 	}), appauth.ErrInvalidResetToken)
 
-	_, err = svc.Login(ctx, appauth.LoginRequest{OrganizationID: org, Email: email, Password: "newpassword12"})
+	_, err = svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "newpassword12"})
 	require.NoError(t, err)
 }

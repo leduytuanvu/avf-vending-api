@@ -43,7 +43,7 @@ func (m *mpayLife) GetOrderByID(ctx context.Context, orderID uuid.UUID) (domainc
 	return m.order, nil
 }
 
-func (m *mpayLife) UpdateOrderStatus(ctx context.Context, orderID, organizationID uuid.UUID, status string) (domaincommerce.Order, error) {
+func (m *mpayLife) UpdateOrderStatus(ctx context.Context, orderID, companyID uuid.UUID, status string) (domaincommerce.Order, error) {
 	return domaincommerce.Order{}, errMachinePayNotImpl
 }
 
@@ -123,18 +123,16 @@ func (c *captureProvider) CreatePaymentSession(ctx context.Context, in platformp
 func TestCreateMachinePaymentSession_rejectsClientAmountMismatchVsOrder(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	org := uuid.New()
 	mid := uuid.New()
 	oid := uuid.New()
 	payID := uuid.New()
 
 	life := &mpayLife{order: domaincommerce.Order{
-		ID:             oid,
-		OrganizationID: org,
-		MachineID:      mid,
-		TotalMinor:     500,
-		Currency:       "USD",
-		Status:         "created",
+		ID:         oid,
+		MachineID:  mid,
+		TotalMinor: 500,
+		Currency:   "USD",
+		Status:     "created",
 	}}
 	outbox := &mpayOutbox{t: t, pay: domaincommerce.Payment{
 		ID:          payID,
@@ -153,7 +151,6 @@ func TestCreateMachinePaymentSession_rejectsClientAmountMismatchVsOrder(t *testi
 	})
 
 	_, err := svc.CreateMachinePaymentSession(ctx, CreateMachinePaymentSessionInput{
-		OrganizationID:  org,
 		OrderID:         oid,
 		MachineID:       mid,
 		IdempotencyKey:  "ik-1",
@@ -171,7 +168,6 @@ func TestCreateMachinePaymentSession_rejectsClientAmountMismatchVsOrder(t *testi
 func TestCreateMachinePaymentSession_adapterUsesServerOrderTotalsAndBindsProviderReference(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	org := uuid.New()
 	mid := uuid.New()
 	oid := uuid.New()
 	payID := uuid.New()
@@ -179,12 +175,11 @@ func TestCreateMachinePaymentSession_adapterUsesServerOrderTotalsAndBindsProvide
 	var attempt InsertPaymentAttemptParams
 	life := &mpayLife{
 		order: domaincommerce.Order{
-			ID:             oid,
-			OrganizationID: org,
-			MachineID:      mid,
-			TotalMinor:     500,
-			Currency:       "USD",
-			Status:         "created",
+			ID:         oid,
+			MachineID:  mid,
+			TotalMinor: 500,
+			Currency:   "USD",
+			Status:     "created",
 		},
 		lastAttempt: &attempt,
 	}
@@ -205,7 +200,6 @@ func TestCreateMachinePaymentSession_adapterUsesServerOrderTotalsAndBindsProvide
 	})
 
 	res, err := svc.CreateMachinePaymentSession(ctx, CreateMachinePaymentSessionInput{
-		OrganizationID:  org,
 		OrderID:         oid,
 		MachineID:       mid,
 		IdempotencyKey:  "ik-ps-1",

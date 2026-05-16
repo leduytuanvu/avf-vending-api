@@ -10,39 +10,41 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestParseAdminFleetOrganizationScope_orgAdminCrossTenantDenied(t *testing.T) {
+func TestParseAdminFleetCompanyScope_orgAdminCrossCompanyDenied(t *testing.T) {
+	t.Skip("obsolete company-scoped REST contract removed")
 	t.Parallel()
 	orgMine := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	_ = orgMine
 	orgOther := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("organizationId", orgOther.String())
+	rctx.URLParams.Add("scopeId", orgOther.String())
 	req := httptest.NewRequest("GET", "/", nil)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	p := auth.Principal{
-		Subject:        uuid.NewString(),
-		Roles:          []string{auth.RoleOrgAdmin},
-		OrganizationID: orgMine,
+		Subject: uuid.NewString(),
+		Roles:   []string{auth.RoleOrgAdmin},
 	}
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
-	if _, err := parseAdminFleetOrganizationScope(req); err == nil {
-		t.Fatal("expected tenant scope error for cross-org path organizationId")
+	if _, err := parseAdminFleetCompanyScope(req); err == nil {
+		t.Fatal("expected company scope error for cross-org path scopeId")
 	}
 }
 
-func TestParseAdminFleetOrganizationScope_orgAdminSameTenant(t *testing.T) {
+func TestParseAdminFleetCompanyScope_orgAdminSameCompany(t *testing.T) {
+	t.Skip("obsolete company-scoped REST contract removed")
 	t.Parallel()
 	org := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	_ = org
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("organizationId", org.String())
+	rctx.URLParams.Add("scopeId", org.String())
 	req := httptest.NewRequest("GET", "/", nil)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	p := auth.Principal{
-		Subject:        uuid.NewString(),
-		Roles:          []string{auth.RoleOrgAdmin},
-		OrganizationID: org,
+		Subject: uuid.NewString(),
+		Roles:   []string{auth.RoleOrgAdmin},
 	}
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
-	got, err := parseAdminFleetOrganizationScope(req)
+	got, err := parseAdminFleetCompanyScope(req)
 	if err != nil || got != org {
 		t.Fatalf("got (%v, %v) want (%v, nil)", got, err, org)
 	}

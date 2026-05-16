@@ -50,15 +50,15 @@ func (r *fleetRepository) GetTechnician(ctx context.Context, technicianID uuid.U
 	return mapTechnician(row), nil
 }
 
-func (r *fleetRepository) AssertSiteInOrganization(ctx context.Context, organizationID, siteID uuid.UUID) error {
-	site, err := db.New(r.pool).GetSiteByID(ctx, siteID)
+func (r *fleetRepository) AssertSiteInCompany(ctx context.Context, companyID, siteID uuid.UUID) error {
+	_, err := db.New(r.pool).GetSiteByID(ctx, siteID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return appfleet.ErrNotFound
 		}
 		return err
 	}
-	if site.OrganizationID != organizationID {
+	if uuid.Nil != companyID {
 		return appfleet.ErrOrgMismatch
 	}
 	return nil
@@ -66,7 +66,6 @@ func (r *fleetRepository) AssertSiteInOrganization(ctx context.Context, organiza
 
 func (r *fleetRepository) InsertMachine(ctx context.Context, p appfleet.InsertMachineParams) (domainfleet.Machine, error) {
 	row, err := db.New(r.pool).InsertMachine(ctx, db.InsertMachineParams{
-		OrganizationID:    p.OrganizationID,
 		SiteID:            p.SiteID,
 		HardwareProfileID: optionalUUIDToPg(p.HardwareProfileID),
 		SerialNumber:      p.SerialNumber,
@@ -87,9 +86,6 @@ func (r *fleetRepository) UpdateMachineMetadata(ctx context.Context, p appfleet.
 	cur, err := r.GetMachine(ctx, p.MachineID)
 	if err != nil {
 		return domainfleet.Machine{}, err
-	}
-	if cur.OrganizationID != p.OrganizationID {
-		return domainfleet.Machine{}, appfleet.ErrOrgMismatch
 	}
 
 	name := cur.Name
@@ -131,10 +127,7 @@ func (r *fleetRepository) UpdateMachineMetadata(ctx context.Context, p appfleet.
 		hw = optionalUUIDToPg(cur.HardwareProfileID)
 	}
 
-	row, err := db.New(r.pool).UpdateMachineMetadataRow(ctx, db.UpdateMachineMetadataRowParams{
-		ID:                p.MachineID,
-		OrganizationID:    p.OrganizationID,
-		Name:              name,
+	row, err := db.New(r.pool).UpdateMachineMetadataRow(ctx, db.UpdateMachineMetadataRowParams{Name: name,
 		Status:            status,
 		HardwareProfileID: hw,
 		SiteID:            siteID,
@@ -143,6 +136,8 @@ func (r *fleetRepository) UpdateMachineMetadata(ctx context.Context, p appfleet.
 		Model:             model,
 		CabinetType:       cabinetType,
 		TimezoneOverride:  tz,
+
+		ID: p.MachineID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -158,12 +153,9 @@ func (r *fleetRepository) ListMachinesInScope(ctx context.Context, filter appfle
 	var rows []db.Machine
 	var err error
 	if filter.SiteID != nil {
-		rows, err = q.ListMachinesBySiteAndOrganization(ctx, db.ListMachinesBySiteAndOrganizationParams{
-			SiteID:         *filter.SiteID,
-			OrganizationID: filter.OrganizationID,
-		})
+		rows, err = q.ListMachinesBySiteAndCompany(ctx, *filter.SiteID)
 	} else {
-		rows, err = q.ListMachinesByOrganizationID(ctx, filter.OrganizationID)
+		rows, err = q.ListMachinesByScopeID(ctx)
 	}
 	if err != nil {
 		return nil, err
@@ -175,21 +167,17 @@ func (r *fleetRepository) ListMachinesInScope(ctx context.Context, filter appfle
 	return out, nil
 }
 
-func (r *fleetRepository) RevokeMachineCredentials(ctx context.Context, organizationID, machineID uuid.UUID) (int64, error) {
-	return db.New(r.pool).RevokeMachineCredentials(ctx, db.RevokeMachineCredentialsParams{
-		ID:             machineID,
-		OrganizationID: organizationID,
-	})
+func (r *fleetRepository) RevokeMachineCredentials(ctx context.Context, companyID, machineID uuid.UUID) (int64, error) {
+	return db.New(r.pool).RevokeMachineCredentials(ctx, machineID)
 }
 
 func (r *fleetRepository) InsertTechnicianMachineAssignment(ctx context.Context, p appfleet.InsertAssignmentParams) (domainfleet.TechnicianMachineAssignment, error) {
 	row, err := db.New(r.pool).InsertTechnicianMachineAssignment(ctx, db.InsertTechnicianMachineAssignmentParams{
-		OrganizationID: p.OrganizationID,
-		TechnicianID:   p.TechnicianID,
-		MachineID:      p.MachineID,
-		Role:           p.Role,
-		Scope:          p.Scope,
-		CreatedBy:      optionalUUIDToPg(p.CreatedBy),
+		TechnicianID: p.TechnicianID,
+		MachineID:    p.MachineID,
+		Role:         p.Role,
+		Scope:        p.Scope,
+		CreatedBy:    optionalUUIDToPg(p.CreatedBy),
 	})
 	if err != nil {
 		return domainfleet.TechnicianMachineAssignment{}, err
@@ -197,11 +185,10 @@ func (r *fleetRepository) InsertTechnicianMachineAssignment(ctx context.Context,
 	return mapTechnicianMachineAssignment(row), nil
 }
 
-func (r *fleetRepository) ReleaseTechnicianAssignmentForMachineUser(ctx context.Context, organizationID, machineID, technicianID uuid.UUID) (domainfleet.TechnicianMachineAssignment, error) {
+func (r *fleetRepository) ReleaseTechnicianAssignmentForMachineUser(ctx context.Context, companyID, machineID, technicianID uuid.UUID) (domainfleet.TechnicianMachineAssignment, error) {
 	row, err := db.New(r.pool).AdminReleaseTechnicianAssignmentForMachineUser(ctx, db.AdminReleaseTechnicianAssignmentForMachineUserParams{
-		OrganizationID: organizationID,
-		MachineID:      machineID,
-		TechnicianID:   technicianID,
+		MachineID:    machineID,
+		TechnicianID: technicianID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -214,17 +201,16 @@ func (r *fleetRepository) ReleaseTechnicianAssignmentForMachineUser(ctx context.
 
 func mapTechnicianMachineAssignment(row db.TechnicianMachineAssignment) domainfleet.TechnicianMachineAssignment {
 	return domainfleet.TechnicianMachineAssignment{
-		ID:             row.ID,
-		OrganizationID: row.OrganizationID,
-		TechnicianID:   row.TechnicianID,
-		MachineID:      row.MachineID,
-		Role:           row.Role,
-		Scope:          row.Scope,
-		Status:         row.Status,
-		ValidFrom:      row.ValidFrom,
-		ValidTo:        pgTimestamptzToTimePtr(row.ValidTo),
-		CreatedBy:      pgUUIDToPtr(row.CreatedBy),
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
+		ID:           row.ID,
+		TechnicianID: row.TechnicianID,
+		MachineID:    row.MachineID,
+		Role:         row.Role,
+		Scope:        row.Scope,
+		Status:       row.Status,
+		ValidFrom:    row.ValidFrom,
+		ValidTo:      pgTimestamptzToTimePtr(row.ValidTo),
+		CreatedBy:    pgUUIDToPtr(row.CreatedBy),
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
 	}
 }

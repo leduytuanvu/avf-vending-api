@@ -24,9 +24,9 @@ func mountMachineTelemetryRoutes(r chi.Router, app *api.HTTPApplication, abuse *
 		abuse = &AbuseProtection{}
 	}
 	st := app.TelemetryStore
-	r.With(abuse.MachineScoped(), RequireMachineTenantAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/snapshot", telemetrySnapshotHandler(st))
-	r.With(abuse.MachineScoped(), RequireMachineTenantAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/incidents", telemetryIncidentsHandler(st))
-	r.With(abuse.MachineScoped(), RequireMachineTenantAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/rollups", telemetryRollupsHandler(st))
+	r.With(abuse.MachineScoped(), RequireMachineCompanyAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/snapshot", telemetrySnapshotHandler(st))
+	r.With(abuse.MachineScoped(), RequireMachineCompanyAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/incidents", telemetryIncidentsHandler(st))
+	r.With(abuse.MachineScoped(), RequireMachineCompanyAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/rollups", telemetryRollupsHandler(st))
 }
 
 func telemetrySnapshotHandler(st *postgres.Store) http.HandlerFunc {
@@ -47,7 +47,6 @@ func telemetrySnapshotHandler(st *postgres.Store) http.HandlerFunc {
 		}
 		resp := V1MachineTelemetrySnapshotResponse{
 			MachineID:         row.MachineID.String(),
-			OrganizationID:    row.OrganizationID.String(),
 			SiteID:            row.SiteID.String(),
 			ReportedState:     json.RawMessage(row.ReportedState),
 			MetricsState:      json.RawMessage(row.MetricsState),

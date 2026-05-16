@@ -11,7 +11,7 @@ import (
 // CreatePaymentSessionInput is passed to outbound PSP session creators after the payment row exists.
 // AmountMinor and Currency are always server-authoritative (never copied from the vending client).
 type CreatePaymentSessionInput struct {
-	OrganizationID uuid.UUID
+	ScopeID        uuid.UUID
 	OrderID        uuid.UUID
 	PaymentID      uuid.UUID
 	AmountMinor    int64
@@ -33,7 +33,7 @@ type CreatePaymentSessionResult struct {
 
 // CancelPaymentInput cancels or voids an in-flight authorization when supported by the PSP adapter.
 type CancelPaymentInput struct {
-	OrganizationID    uuid.UUID
+	ScopeID           uuid.UUID
 	PaymentID         uuid.UUID
 	ProviderReference string
 	IdempotencyKey    string
@@ -41,7 +41,7 @@ type CancelPaymentInput struct {
 
 // RefundPaymentInput requests money movement on the PSP (distinct from internal refund ledger rows).
 type RefundPaymentInput struct {
-	OrganizationID    uuid.UUID
+	ScopeID           uuid.UUID
 	PaymentID         uuid.UUID
 	ProviderReference string
 	AmountMinor       int64

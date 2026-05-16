@@ -3,7 +3,7 @@
 -- +goose Up
 CREATE TABLE finance_daily_closes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     close_date date NOT NULL,
     timezone text NOT NULL,
     site_id uuid REFERENCES sites (id) ON DELETE SET NULL,
@@ -18,24 +18,24 @@ CREATE TABLE finance_daily_closes (
     failed_minor bigint NOT NULL DEFAULT 0 CHECK (failed_minor >= 0),
     pending_minor bigint NOT NULL DEFAULT 0 CHECK (pending_minor >= 0),
     created_at timestamptz NOT NULL DEFAULT now (),
-    CONSTRAINT ux_finance_daily_closes_org_idem UNIQUE (organization_id, idempotency_key)
+    CONSTRAINT ux_finance_daily_closes_scope_idem UNIQUE (scope_id, idempotency_key)
 );
 
 CREATE UNIQUE INDEX ux_finance_daily_closes_scope ON finance_daily_closes (
-    organization_id,
+    scope_id,
     close_date,
     timezone,
     COALESCE(site_id, '00000000-0000-0000-0000-000000000000'::uuid),
     COALESCE(machine_id, '00000000-0000-0000-0000-000000000000'::uuid)
 );
 
-CREATE INDEX ix_finance_daily_closes_org_date ON finance_daily_closes (organization_id, close_date DESC);
+CREATE INDEX ix_finance_daily_closes_org_date ON finance_daily_closes (scope_id, close_date DESC);
 
 COMMENT ON TABLE finance_daily_closes IS 'Immutable org/day/timezone (optional site/machine scope) snapshot; corrections via finance_daily_close_adjustments.';
 
 CREATE TABLE finance_daily_close_adjustments (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     daily_close_id uuid NOT NULL REFERENCES finance_daily_closes (id) ON DELETE CASCADE,
     reason text NOT NULL,
     delta_net_minor bigint NOT NULL DEFAULT 0,

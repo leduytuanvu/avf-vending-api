@@ -28,7 +28,6 @@ func TestOutbox_CreatePaymentWithOutbox_TransactionallyLinked(t *testing.T) {
 
 	idemOrder := "obx-txn-order-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      5,
@@ -45,7 +44,6 @@ func TestOutbox_CreatePaymentWithOutbox_TransactionallyLinked(t *testing.T) {
 	outTopic := "payments.txn." + uuid.NewString()
 	outIDem := "obx-txn-" + uuid.NewString()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",
@@ -76,7 +74,6 @@ func TestOutbox_PublishFailuresDeadLetterThenAdminReplay(t *testing.T) {
 	queries := db.New(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      3,
@@ -92,7 +89,6 @@ func TestOutbox_PublishFailuresDeadLetterThenAdminReplay(t *testing.T) {
 	outTopic := "payments.dlq." + uuid.NewString()
 	outIDem := "obx-dlq-" + uuid.NewString()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",
@@ -158,7 +154,6 @@ func TestOutbox_AdminReplayDeadLetter_AuditedInSameTransaction(t *testing.T) {
 	repo := postgres.NewOutboxRepository(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      3,
@@ -174,7 +169,6 @@ func TestOutbox_AdminReplayDeadLetter_AuditedInSameTransaction(t *testing.T) {
 	outTopic := "payments.audit." + uuid.NewString()
 	outIDem := "obx-audit-" + uuid.NewString()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",
@@ -223,21 +217,20 @@ func TestOutbox_AdminReplayDeadLetter_AuditedInSameTransaction(t *testing.T) {
 
 	var prior int
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM audit_events WHERE organization_id = $1 AND action = $2 AND resource_type = 'outbox_events' AND resource_id = $3`,
-		testfixtures.DevOrganizationID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
+		`SELECT count(*) FROM audit_events WHERE scope_id = $1 AND action = $2 AND resource_type = 'outbox_events' AND resource_id = $3`,
+		testfixtures.DevScopeID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
 	).Scan(&prior))
 	require.Equal(t, 0, prior)
 
 	rid := uuid.NewString()
 	resID := strconv.FormatInt(obID, 10)
 	rec := compliance.EnterpriseAuditRecord{
-		OrganizationID: testfixtures.DevOrganizationID,
-		ActorType:      compliance.ActorUser,
-		ActorID:        &rid,
-		Action:         compliance.ActionAdminPlatformOutboxReplay,
-		ResourceType:   "outbox_events",
-		ResourceID:     &resID,
-		Metadata:       []byte(`{}`),
+		ActorType:    compliance.ActorUser,
+		ActorID:      &rid,
+		Action:       compliance.ActionAdminPlatformOutboxReplay,
+		ResourceType: "outbox_events",
+		ResourceID:   &resID,
+		Metadata:     []byte(`{}`),
 	}
 
 	adminSvc := appoutbox.NewAdminService(pool)
@@ -248,8 +241,8 @@ func TestOutbox_AdminReplayDeadLetter_AuditedInSameTransaction(t *testing.T) {
 
 	var auditCount int
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM audit_events WHERE organization_id = $1 AND action = $2 AND resource_id = $3`,
-		testfixtures.DevOrganizationID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
+		`SELECT count(*) FROM audit_events WHERE scope_id = $1 AND action = $2 AND resource_id = $3`,
+		testfixtures.DevScopeID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
 	).Scan(&auditCount))
 	require.Equal(t, 1, auditCount)
 
@@ -262,8 +255,8 @@ func TestOutbox_AdminReplayDeadLetter_AuditedInSameTransaction(t *testing.T) {
 	require.EqualValues(t, 0, n)
 
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM audit_events WHERE organization_id = $1 AND action = $2 AND resource_id = $3`,
-		testfixtures.DevOrganizationID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
+		`SELECT count(*) FROM audit_events WHERE scope_id = $1 AND action = $2 AND resource_id = $3`,
+		testfixtures.DevScopeID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
 	).Scan(&auditCount))
 	require.Equal(t, 1, auditCount)
 }
@@ -275,7 +268,6 @@ func TestOutbox_ConcurrentLeaseOutbox_NoDoubleClaim(t *testing.T) {
 	repo := postgres.NewOutboxRepository(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -292,7 +284,6 @@ func TestOutbox_ConcurrentLeaseOutbox_NoDoubleClaim(t *testing.T) {
 	outTopic := "payments.cc." + uuid.NewString()
 	outIDem := "obx-cc-" + uuid.NewString()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",
@@ -347,7 +338,6 @@ func TestOutbox_ManualMarkDeadLetter(t *testing.T) {
 	queries := db.New(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -363,7 +353,6 @@ func TestOutbox_ManualMarkDeadLetter(t *testing.T) {
 	outTopic := "payments.md." + uuid.NewString()
 	outIDem := "obx-md-" + uuid.NewString()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",
@@ -385,9 +374,9 @@ func TestOutbox_ManualMarkDeadLetter(t *testing.T) {
 		outTopic, outIDem,
 	).Scan(&obID))
 
-	n, err := queries.AdminMarkOutboxManualDeadLetter(ctx, db.AdminMarkOutboxManualDeadLetterParams{
-		ID:   obID,
-		Note: "operator quarantine integration",
+	n, err := queries.AdminMarkOutboxManualDeadLetter(ctx, db.AdminMarkOutboxManualDeadLetterParams{Note: "operator quarantine integration",
+
+		ID: obID,
 	})
 	require.NoError(t, err)
 	require.EqualValues(t, 1, n)
@@ -404,7 +393,6 @@ func TestOutbox_MarkPublished_IdempotentNoop(t *testing.T) {
 	repo := postgres.NewOutboxRepository(pool)
 
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      7,
@@ -420,7 +408,6 @@ func TestOutbox_MarkPublished_IdempotentNoop(t *testing.T) {
 	outTopic := "payments.pub." + uuid.NewString()
 	outIDem := "obx-mp-" + uuid.NewString()
 	_, err = store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "test",
 		PaymentState:         "created",

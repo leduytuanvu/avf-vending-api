@@ -1,7 +1,6 @@
 -- name: GetOperatorSessionByID :one
 SELECT
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -22,7 +21,6 @@ WHERE
 -- name: GetOperatorSessionByIDForUpdate :one
 SELECT
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -44,7 +42,6 @@ FOR UPDATE;
 -- name: GetActiveOperatorSessionByMachineID :one
 SELECT
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -68,7 +65,6 @@ LIMIT
 -- name: GetActiveOperatorSessionByMachineIDForUpdate :one
 SELECT
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -95,18 +91,17 @@ UPDATE machine_operator_sessions
 SET
     updated_at = now(),
     last_activity_at = now(),
-    expires_at = COALESCE($6, expires_at),
-    client_metadata = $7
+    expires_at = COALESCE($1, expires_at),
+    client_metadata = $2
 WHERE
-    machine_id = $1
-    AND organization_id = $2
+    machine_id = $3
+    AND TRUE
     AND status = 'ACTIVE'
-    AND actor_type = $3
-    AND technician_id IS NOT DISTINCT FROM $4
-    AND user_principal IS NOT DISTINCT FROM $5
+    AND actor_type = $4
+    AND technician_id IS NOT DISTINCT FROM $5
+    AND user_principal IS NOT DISTINCT FROM $6
 RETURNING
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -123,7 +118,6 @@ RETURNING
 
 -- name: InsertMachineOperatorSession :one
 INSERT INTO machine_operator_sessions (
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -138,12 +132,10 @@ INSERT INTO machine_operator_sessions (
     $4,
     $5,
     $6,
-    $7,
-    $8
+    $7
 )
 RETURNING
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -161,16 +153,15 @@ RETURNING
 -- name: EndMachineOperatorSession :one
 UPDATE machine_operator_sessions
 SET
-    status = $2,
-    ended_at = $3,
-    updated_at = $3,
-    ended_reason = $4
+    status = $1,
+    ended_at = $2,
+    updated_at = $2,
+    ended_reason = $3
 WHERE
-    id = $1
+    id = $4
     AND status = 'ACTIVE'
 RETURNING
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -195,7 +186,6 @@ WHERE
     AND status = 'ACTIVE'
 RETURNING
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -224,7 +214,6 @@ WHERE
     AND expires_at <= now()
 RETURNING
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -301,7 +290,6 @@ RETURNING
 -- name: ListOperatorSessionsByMachineID :many
 SELECT
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -324,7 +312,6 @@ LIMIT $2;
 -- name: ListOperatorSessionsByTechnicianID :many
 SELECT
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -347,7 +334,6 @@ LIMIT $2;
 -- name: ListOperatorSessionsByUserPrincipal :many
 SELECT
     id,
-    organization_id,
     machine_id,
     actor_type,
     technician_id,
@@ -363,11 +349,10 @@ SELECT
     updated_at
 FROM machine_operator_sessions
 WHERE
-    organization_id = $1
-    AND actor_type = 'USER'
-    AND user_principal = $2
+    actor_type = 'USER'
+    AND user_principal = $1
 ORDER BY started_at DESC
-LIMIT $3;
+LIMIT $2;
 
 -- name: ListMachineOperatorAuthEventsByMachineID :many
 SELECT
@@ -436,10 +421,10 @@ FROM machine_action_attributions a
 INNER JOIN machine_operator_sessions s ON s.id = a.operator_session_id
 WHERE
     s.technician_id = $1
-    AND s.organization_id = $2
+    AND TRUE
 ORDER BY
     a.occurred_at DESC
-LIMIT $3;
+LIMIT $2;
 
 -- name: ListMachineActionAttributionsForUserPrincipal :many
 SELECT
@@ -455,9 +440,8 @@ SELECT
 FROM machine_action_attributions a
 INNER JOIN machine_operator_sessions s ON s.id = a.operator_session_id
 WHERE
-    s.organization_id = $1
-    AND s.actor_type = 'USER'
-    AND s.user_principal = $2
+    s.actor_type = 'USER'
+    AND s.user_principal = $1
 ORDER BY
     a.occurred_at DESC
-LIMIT $3;
+LIMIT $2;

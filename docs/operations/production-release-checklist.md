@@ -1,6 +1,6 @@
 # Production release checklist (operator)
 
-Use this list **before** clicking **Run workflow** on **Deploy Production** (`deploy-prod.yml` on `main`). It does not replace GitHub environment approvals or your organization’s change-management policy.
+Use this list **before** clicking **Run workflow** on **Deploy Production** (`deploy-prod.yml` on `main`). It does not replace GitHub environment approvals or your company’s change-management policy.
 
 **Production deployment is manual only** (`workflow_dispatch` on `main`). A green merge or a green **Security Release** alone does not deploy to production.
 

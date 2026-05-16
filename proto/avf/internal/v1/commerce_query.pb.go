@@ -24,12 +24,11 @@ const (
 )
 
 type GetOrderPaymentVendStateRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	OrganizationId string                 `protobuf:"bytes,1,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
-	OrderId        string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	SlotIndex      int32                  `protobuf:"varint,3,opt,name=slot_index,json=slotIndex,proto3" json:"slot_index,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OrderId       string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	SlotIndex     int32                  `protobuf:"varint,3,opt,name=slot_index,json=slotIndex,proto3" json:"slot_index,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetOrderPaymentVendStateRequest) Reset() {
@@ -62,13 +61,6 @@ func (*GetOrderPaymentVendStateRequest) Descriptor() ([]byte, []int) {
 	return file_avf_internal_v1_commerce_query_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GetOrderPaymentVendStateRequest) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
-	}
-	return ""
-}
-
 func (x *GetOrderPaymentVendStateRequest) GetOrderId() string {
 	if x != nil {
 		return x.OrderId
@@ -86,7 +78,6 @@ func (x *GetOrderPaymentVendStateRequest) GetSlotIndex() int32 {
 type CommerceOrderSummary struct {
 	state          protoimpl.MessageState  `protogen:"open.v1"`
 	Id             string                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	OrganizationId string                  `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	MachineId      string                  `protobuf:"bytes,3,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	Status         string                  `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
 	Currency       string                  `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
@@ -133,13 +124,6 @@ func (*CommerceOrderSummary) Descriptor() ([]byte, []int) {
 func (x *CommerceOrderSummary) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *CommerceOrderSummary) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -503,15 +487,13 @@ var File_avf_internal_v1_commerce_query_proto protoreflect.FileDescriptor
 
 const file_avf_internal_v1_commerce_query_proto_rawDesc = "" +
 	"\n" +
-	"$avf/internal/v1/commerce_query.proto\x12\x0favf.internal.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"\x84\x01\n" +
-	"\x1fGetOrderPaymentVendStateRequest\x12'\n" +
-	"\x0forganization_id\x18\x01 \x01(\tR\x0eorganizationId\x12\x19\n" +
+	"$avf/internal/v1/commerce_query.proto\x12\x0favf.internal.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1egoogle/protobuf/wrappers.proto\"[\n" +
+	"\x1fGetOrderPaymentVendStateRequest\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\tR\aorderId\x12\x1d\n" +
 	"\n" +
-	"slot_index\x18\x03 \x01(\x05R\tslotIndex\"\xc4\x03\n" +
+	"slot_index\x18\x03 \x01(\x05R\tslotIndex\"\x9b\x03\n" +
 	"\x14CommerceOrderSummary\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x1d\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x03 \x01(\tR\tmachineId\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12\x1a\n" +

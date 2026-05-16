@@ -61,7 +61,8 @@ func mountAdminOperationsRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 
 func serveAdminOperationsMachineHealthList(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -71,7 +72,7 @@ func serveAdminOperationsMachineHealthList(app *api.HTTPApplication) http.Handle
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		rows, err := app.AdminOps.ListMachineHealth(r.Context(), orgID, int32(limit), int32(offset))
+		rows, err := app.AdminOps.ListMachineHealth(r.Context(), scopeID, int32(limit), int32(offset))
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -86,7 +87,8 @@ func serveAdminOperationsMachineHealthList(app *api.HTTPApplication) http.Handle
 
 func serveAdminOperationsMachineHealthGet(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -95,7 +97,7 @@ func serveAdminOperationsMachineHealthGet(app *api.HTTPApplication) http.Handler
 		if !ok {
 			return
 		}
-		row, err := app.AdminOps.GetMachineHealth(r.Context(), orgID, machineID)
+		row, err := app.AdminOps.GetMachineHealth(r.Context(), scopeID, machineID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "machine health not found")
@@ -110,7 +112,8 @@ func serveAdminOperationsMachineHealthGet(app *api.HTTPApplication) http.Handler
 
 func serveAdminOperationsMachineTimeline(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -124,7 +127,7 @@ func serveAdminOperationsMachineTimeline(app *api.HTTPApplication) http.HandlerF
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		events, err := app.AdminOps.MachineTimeline(r.Context(), orgID, machineID, int32(limit), int32(offset))
+		events, err := app.AdminOps.MachineTimeline(r.Context(), scopeID, machineID, int32(limit), int32(offset))
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -157,7 +160,8 @@ func serveAdminOperationsCommandsList(app *api.HTTPApplication) http.HandlerFunc
 
 func serveAdminOperationsCommandGet(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -166,7 +170,7 @@ func serveAdminOperationsCommandGet(app *api.HTTPApplication) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		detail, err := app.AdminOps.GetCommandDetail(r.Context(), orgID, commandID)
+		detail, err := app.AdminOps.GetCommandDetail(r.Context(), scopeID, commandID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "command not found")
@@ -181,7 +185,8 @@ func serveAdminOperationsCommandGet(app *api.HTTPApplication) http.HandlerFunc {
 
 func serveAdminOperationsCommandRetry(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -190,10 +195,10 @@ func serveAdminOperationsCommandRetry(app *api.HTTPApplication) http.HandlerFunc
 		if !ok {
 			return
 		}
-		res, err := app.AdminOps.RetryCommand(r.Context(), orgID, commandID)
+		res, err := app.AdminOps.RetryCommand(r.Context(), scopeID, commandID)
 		switch {
 		case err == nil:
-			fleetAudit(r.Context(), app, orgID, "admin.command.retry", "command_ledger", stringPtrOrNil(commandID.String()), map[string]any{
+			fleetAudit(r.Context(), app, scopeID, "admin.command.retry", "command_ledger", stringPtrOrNil(commandID.String()), map[string]any{
 				"dispatchState": res.DispatchState,
 				"replay":        res.Replay,
 			})
@@ -227,7 +232,8 @@ func serveAdminOperationsCommandRetry(app *api.HTTPApplication) http.HandlerFunc
 
 func serveAdminOperationsCommandCancel(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -236,7 +242,7 @@ func serveAdminOperationsCommandCancel(app *api.HTTPApplication) http.HandlerFun
 		if !ok {
 			return
 		}
-		n, err := app.AdminOps.CancelCommand(r.Context(), orgID, commandID)
+		n, err := app.AdminOps.CancelCommand(r.Context(), scopeID, commandID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "command not found")
@@ -249,7 +255,7 @@ func serveAdminOperationsCommandCancel(app *api.HTTPApplication) http.HandlerFun
 			writeAPIError(w, r.Context(), http.StatusConflict, "nothing_to_cancel", "no pending or sent attempts to cancel")
 			return
 		}
-		fleetAudit(r.Context(), app, orgID, "admin.command.cancel", "command_ledger", stringPtrOrNil(commandID.String()), map[string]any{"attemptsCancelled": n})
+		fleetAudit(r.Context(), app, scopeID, "admin.command.cancel", "command_ledger", stringPtrOrNil(commandID.String()), map[string]any{"attemptsCancelled": n})
 		writeJSON(w, http.StatusOK, map[string]any{"attemptsCancelled": n})
 	}
 }
@@ -261,7 +267,8 @@ type adminMachineCommandBody struct {
 
 func serveAdminOperationsMachineCommandDispatch(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -279,10 +286,10 @@ func serveAdminOperationsMachineCommandDispatch(app *api.HTTPApplication) http.H
 		if r.Body != nil {
 			_ = json.NewDecoder(r.Body).Decode(&body)
 		}
-		res, err := app.AdminOps.DispatchMachineCommand(r.Context(), orgID, machineID, strings.TrimSpace(body.CommandType), body.Payload, idem)
+		res, err := app.AdminOps.DispatchMachineCommand(r.Context(), scopeID, machineID, strings.TrimSpace(body.CommandType), body.Payload, idem)
 		switch {
 		case err == nil:
-			fleetAudit(r.Context(), app, orgID, "admin.command.dispatch", "command_ledger", stringPtrOrNil(res.CommandID.String()), map[string]any{
+			fleetAudit(r.Context(), app, scopeID, "admin.command.dispatch", "command_ledger", stringPtrOrNil(res.CommandID.String()), map[string]any{
 				"machineId":     machineID.String(),
 				"commandType":   body.CommandType,
 				"dispatchState": res.DispatchState,
@@ -307,7 +314,8 @@ func serveAdminOperationsMachineCommandDispatch(app *api.HTTPApplication) http.H
 
 func serveAdminOperationsInventoryAnomaliesList(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -318,7 +326,7 @@ func serveAdminOperationsInventoryAnomaliesList(app *api.HTTPApplication) http.H
 			return
 		}
 		refresh := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("refresh")), "true")
-		rows, err := app.AdminOps.ListInventoryAnomalies(r.Context(), orgID, nil, int32(limit), int32(offset), refresh)
+		rows, err := app.AdminOps.ListInventoryAnomalies(r.Context(), scopeID, nil, int32(limit), int32(offset), refresh)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -333,7 +341,8 @@ func serveAdminOperationsInventoryAnomaliesList(app *api.HTTPApplication) http.H
 
 func serveAdminOperationsInventoryAnomaliesForMachine(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -348,7 +357,7 @@ func serveAdminOperationsInventoryAnomaliesForMachine(app *api.HTTPApplication) 
 			return
 		}
 		refresh := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("refresh")), "true")
-		rows, err := app.AdminOps.ListInventoryAnomalies(r.Context(), orgID, &machineID, int32(limit), int32(offset), refresh)
+		rows, err := app.AdminOps.ListInventoryAnomalies(r.Context(), scopeID, &machineID, int32(limit), int32(offset), refresh)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -367,7 +376,8 @@ type resolveAnomalyBody struct {
 
 func serveAdminOperationsInventoryAnomalyResolve(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -386,7 +396,7 @@ func serveAdminOperationsInventoryAnomalyResolve(app *api.HTTPApplication) http.
 				actor = aid
 			}
 		}
-		err = app.AdminOps.ResolveInventoryAnomaly(r.Context(), orgID, anomalyID, actor, body.Note)
+		err = app.AdminOps.ResolveInventoryAnomaly(r.Context(), scopeID, anomalyID, actor, body.Note)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "anomaly not found or already resolved")
@@ -395,7 +405,7 @@ func serveAdminOperationsInventoryAnomalyResolve(app *api.HTTPApplication) http.
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		fleetAudit(r.Context(), app, orgID, "admin.inventory.anomaly.resolve", "inventory_anomalies", stringPtrOrNil(anomalyID.String()), map[string]any{"note": body.Note})
+		fleetAudit(r.Context(), app, scopeID, "admin.inventory.anomaly.resolve", "inventory_anomalies", stringPtrOrNil(anomalyID.String()), map[string]any{"note": body.Note})
 		writeJSON(w, http.StatusOK, map[string]any{"anomalyId": anomalyID.String(), "status": "resolved"})
 	}
 }
@@ -406,7 +416,8 @@ type inventoryReconcileBody struct {
 
 func serveAdminOperationsInventoryReconcile(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -415,7 +426,7 @@ func serveAdminOperationsInventoryReconcile(app *api.HTTPApplication) http.Handl
 		if !ok {
 			return
 		}
-		if _, err := app.AdminOps.GetMachineHealth(r.Context(), orgID, machineID); err != nil {
+		if _, err := app.AdminOps.GetMachineHealth(r.Context(), scopeID, machineID); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found")
 				return
@@ -431,12 +442,12 @@ func serveAdminOperationsInventoryReconcile(app *api.HTTPApplication) http.Handl
 			"reason": strings.TrimSpace(body.Reason),
 			"source": "admin_api",
 		})
-		id, err := app.AdminOps.InsertInventoryReconcileMarker(r.Context(), orgID, machineID, strings.TrimSpace(body.Reason), meta)
+		id, err := app.AdminOps.InsertInventoryReconcileMarker(r.Context(), scopeID, machineID, strings.TrimSpace(body.Reason), meta)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		fleetAudit(r.Context(), app, orgID, "admin.inventory.reconcile_marker", "inventory_events", nil, map[string]any{
+		fleetAudit(r.Context(), app, scopeID, "admin.inventory.reconcile_marker", "inventory_events", nil, map[string]any{
 			"machineId":           machineID.String(),
 			"inventoryEventSeqId": strconv.FormatInt(id, 10),
 		})
@@ -495,13 +506,12 @@ func machineHealthJSON(h adminops.MachineHealth) map[string]any {
 func commandDetailJSON(d adminops.CommandDetail) map[string]any {
 	ld := d.Ledger
 	out := map[string]any{
-		"commandId":      ld.ID.String(),
-		"machineId":      ld.MachineID.String(),
-		"organizationId": ld.OrganizationID.String(),
-		"sequence":       ld.Sequence,
-		"commandType":    ld.CommandType,
-		"payload":        json.RawMessage(ld.Payload),
-		"createdAt":      ld.CreatedAt.UTC().Format(time.RFC3339Nano),
+		"commandId":   ld.ID.String(),
+		"machineId":   ld.MachineID.String(),
+		"sequence":    ld.Sequence,
+		"commandType": ld.CommandType,
+		"payload":     json.RawMessage(ld.Payload),
+		"createdAt":   ld.CreatedAt.UTC().Format(time.RFC3339Nano),
 	}
 	if ld.CorrelationID.Valid {
 		x := uuid.UUID(ld.CorrelationID.Bytes)
@@ -537,7 +547,6 @@ func commandDetailJSON(d adminops.CommandDetail) map[string]any {
 func inventoryAnomalyJSON(row db.AdminOpsListInventoryAnomaliesByOrgRow) map[string]any {
 	out := map[string]any{
 		"id":                  row.ID.String(),
-		"organizationId":      row.OrganizationID.String(),
 		"machineId":           row.MachineID.String(),
 		"machineName":         row.MachineName,
 		"machineSerialNumber": row.MachineSerialNumber,

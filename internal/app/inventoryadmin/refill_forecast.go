@@ -23,12 +23,11 @@ const (
 	UrgencyLow      = "low"
 )
 
-// RefillForecastParams drives refill / low-stock list endpoints (tenant-scoped by OrganizationID).
+// RefillForecastParams drives refill / low-stock list endpoints (single-company by ScopeID).
 type RefillForecastParams struct {
-	OrganizationID uuid.UUID
-	SiteID         *uuid.UUID
-	MachineID      *uuid.UUID
-	ProductID      *uuid.UUID
+	SiteID    *uuid.UUID
+	MachineID *uuid.UUID
+	ProductID *uuid.UUID
 
 	VelocityWindowDays int
 	LowStockOnly       bool
@@ -42,7 +41,6 @@ type RefillForecastParams struct {
 
 // RefillForecastResponse is GET /v1/admin/inventory/refill-suggestions (and low-stock).
 type RefillForecastResponse struct {
-	OrganizationID     string               `json:"organizationId"`
 	VelocityWindowDays int                  `json:"velocityWindowDays"`
 	WindowStart        string               `json:"windowStart"`
 	WindowEnd          string               `json:"windowEnd"`
@@ -113,13 +111,12 @@ func (s *Service) ListRefillForecast(ctx context.Context, p RefillForecastParams
 	}
 
 	rows, err := s.q.InventoryAdminRefillForecastSlots(ctx, db.InventoryAdminRefillForecastSlotsParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        windowStart,
-		Column3:        windowEnd,
-		Column4:        site,
-		Column5:        machine,
-		Column6:        product,
-		Column7:        p.LowStockOnly,
+		Column1: windowStart,
+		Column2: windowEnd,
+		Column3: site,
+		Column4: machine,
+		Column5: product,
+		Column6: p.LowStockOnly,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("inventoryadmin refill forecast query: %w", err)
@@ -175,7 +172,6 @@ func (s *Service) ListRefillForecast(ctx context.Context, p RefillForecastParams
 	page := items[start:end]
 
 	return &RefillForecastResponse{
-		OrganizationID:     p.OrganizationID.String(),
 		VelocityWindowDays: wd,
 		WindowStart:        windowStart.UTC().Format(time.RFC3339Nano),
 		WindowEnd:          windowEnd.UTC().Format(time.RFC3339Nano),

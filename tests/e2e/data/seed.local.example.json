@@ -4,12 +4,11 @@
   "api_base": "http://localhost:8080",
   "grpc_host": "localhost:9090",
   "grpc_tls": false,
-  "organization": {
-    "name": "Example Vending Org (TEST)",
+  "company": {
+    "name": "Example Vending Company (TEST)",
     "code": "EXV-TEST",
     "timezone": "Asia/Ho_Chi_Minh",
-    "organizationId_example": "00000000-0000-4000-8000-000000000000",
-    "note": "Web admin setup does not create an org; set E2E_ORGANIZATION_ID (or reuse test-data with organizationId). Use a real UUID from your local seed."
+    "note": "Web admin setup uses the single-company admin context and does not require a company id."
   },
   "site": {
     "name": "Example Site Alpha",
@@ -17,7 +16,7 @@
   },
   "admin_user": {
     "email": "admin.example+e2e@invalid.local",
-    "role_hint": "org_admin"
+    "role_hint": "admin"
   },
   "machine": {
     "serial": "SN-E2E-0001",

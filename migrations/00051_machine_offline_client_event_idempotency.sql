@@ -16,7 +16,7 @@ ALTER TABLE machine_offline_events ADD CONSTRAINT machine_offline_events_process
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_machine_offline_client_event_id ON machine_offline_events (
-    organization_id,
+    scope_id,
     machine_id,
     client_event_id
 )

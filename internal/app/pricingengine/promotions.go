@@ -56,8 +56,6 @@ func SortPromotions(ps []db.Promotion) []db.Promotion {
 
 func targetMatches(ctx PromoEvalCtx, t db.PromotionTarget) bool {
 	switch t.TargetType {
-	case "organization":
-		return t.OrganizationTargetID.Valid && uuid.UUID(t.OrganizationTargetID.Bytes) == ctx.Org
 	case "site":
 		return ctx.SiteID != nil && t.SiteID.Valid && uuid.UUID(t.SiteID.Bytes) == *ctx.SiteID
 	case "machine":

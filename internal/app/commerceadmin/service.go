@@ -12,7 +12,6 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -102,12 +101,9 @@ func pgTimePtr(t pgtype.Timestamptz) *time.Time {
 }
 
 // ListOrders implements api.OrdersService.
-func (s *Service) ListOrders(ctx context.Context, scope listscope.TenantCommerce) (*OrdersListResponse, error) {
+func (s *Service) ListOrders(ctx context.Context, scope listscope.CompanyCommerce) (*OrdersListResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("commerceadmin: nil service")
-	}
-	if scope.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrCommerceOrganizationQueryRequired
 	}
 	st, en := timeRangeOrAll(scope.From, scope.To)
 	filterStatus := strings.TrimSpace(scope.Status) != ""
@@ -120,28 +116,26 @@ func (s *Service) ListOrders(ctx context.Context, scope listscope.TenantCommerce
 	filterSearch := search != ""
 
 	listArg := db.CommerceAdminListOrdersParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterStatus,
-		Column3:        strings.TrimSpace(scope.Status),
-		Column4:        filterMachine,
-		Column5:        mid,
-		Column6:        st,
-		Column7:        en,
-		Column8:        filterSearch,
-		Column9:        search,
-		Limit:          scope.Limit,
-		Offset:         scope.Offset,
+		Column1: filterStatus,
+		Column2: strings.TrimSpace(scope.Status),
+		Column3: filterMachine,
+		Column4: mid,
+		Column5: st,
+		Column6: en,
+		Column7: filterSearch,
+		Column8: search,
+		Limit:   scope.Limit,
+		Offset:  scope.Offset,
 	}
 	countArg := db.CommerceAdminCountOrdersParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterStatus,
-		Column3:        strings.TrimSpace(scope.Status),
-		Column4:        filterMachine,
-		Column5:        mid,
-		Column6:        st,
-		Column7:        en,
-		Column8:        filterSearch,
-		Column9:        search,
+		Column1: filterStatus,
+		Column2: strings.TrimSpace(scope.Status),
+		Column3: filterMachine,
+		Column4: mid,
+		Column5: st,
+		Column6: en,
+		Column7: filterSearch,
+		Column8: search,
 	}
 	rows, err := s.q.CommerceAdminListOrders(ctx, listArg)
 	if err != nil {
@@ -155,7 +149,6 @@ func (s *Service) ListOrders(ctx context.Context, scope listscope.TenantCommerce
 	for _, o := range rows {
 		items = append(items, OrderListItem{
 			OrderID:        o.ID.String(),
-			OrganizationID: o.OrganizationID.String(),
 			MachineID:      o.MachineID.String(),
 			Status:         o.Status,
 			Currency:       o.Currency,
@@ -179,12 +172,9 @@ func (s *Service) ListOrders(ctx context.Context, scope listscope.TenantCommerce
 }
 
 // ListPayments implements api.PaymentsService.
-func (s *Service) ListPayments(ctx context.Context, scope listscope.TenantCommerce) (*PaymentsListResponse, error) {
+func (s *Service) ListPayments(ctx context.Context, scope listscope.CompanyCommerce) (*PaymentsListResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("commerceadmin: nil service")
-	}
-	if scope.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrCommerceOrganizationQueryRequired
 	}
 	st, en := timeRangeOrAll(scope.From, scope.To)
 	filterState := strings.TrimSpace(scope.Status) != ""
@@ -198,32 +188,30 @@ func (s *Service) ListPayments(ctx context.Context, scope listscope.TenantCommer
 	filterSearch := search != ""
 
 	listArg := db.CommerceAdminListPaymentsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterState,
-		Column3:        strings.TrimSpace(scope.Status),
-		Column4:        filterProvider,
-		Column5:        strings.TrimSpace(scope.PaymentMethod),
-		Column6:        filterMachine,
-		Column7:        mid,
-		Column8:        st,
-		Column9:        en,
-		Column10:       filterSearch,
-		Column11:       search,
-		Limit:          scope.Limit,
-		Offset:         scope.Offset,
+		Column1:  filterState,
+		Column2:  strings.TrimSpace(scope.Status),
+		Column3:  filterProvider,
+		Column4:  strings.TrimSpace(scope.PaymentMethod),
+		Column5:  filterMachine,
+		Column6:  mid,
+		Column7:  st,
+		Column8:  en,
+		Column9:  filterSearch,
+		Column10: search,
+		Limit:    scope.Limit,
+		Offset:   scope.Offset,
 	}
 	countArg := db.CommerceAdminCountPaymentsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterState,
-		Column3:        strings.TrimSpace(scope.Status),
-		Column4:        filterProvider,
-		Column5:        strings.TrimSpace(scope.PaymentMethod),
-		Column6:        filterMachine,
-		Column7:        mid,
-		Column8:        st,
-		Column9:        en,
-		Column10:       filterSearch,
-		Column11:       search,
+		Column1:  filterState,
+		Column2:  strings.TrimSpace(scope.Status),
+		Column3:  filterProvider,
+		Column4:  strings.TrimSpace(scope.PaymentMethod),
+		Column5:  filterMachine,
+		Column6:  mid,
+		Column7:  st,
+		Column8:  en,
+		Column9:  filterSearch,
+		Column10: search,
 	}
 	rows, err := s.q.CommerceAdminListPayments(ctx, listArg)
 	if err != nil {
@@ -238,7 +226,6 @@ func (s *Service) ListPayments(ctx context.Context, scope listscope.TenantCommer
 		items = append(items, PaymentListItem{
 			PaymentID:            p.PaymentID.String(),
 			OrderID:              p.OrderID.String(),
-			OrganizationID:       p.OrganizationID.String(),
 			MachineID:            p.MachineID.String(),
 			Provider:             p.Provider,
 			PaymentState:         p.PaymentState,
@@ -262,33 +249,28 @@ func (s *Service) ListPayments(ctx context.Context, scope listscope.TenantCommer
 	}, nil
 }
 
-func (s *Service) ListReconciliationCases(ctx context.Context, scope listscope.TenantCommerce) (*ReconciliationListResponse, error) {
+func (s *Service) ListReconciliationCases(ctx context.Context, scope listscope.CompanyCommerce) (*ReconciliationListResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("commerceadmin: nil service")
-	}
-	if scope.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrCommerceOrganizationQueryRequired
 	}
 	status := strings.TrimSpace(scope.Status)
 	caseType := strings.TrimSpace(scope.CaseType)
 	rows, err := s.q.CommerceAdminListReconciliationCases(ctx, db.CommerceAdminListReconciliationCasesParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        status != "",
-		Column3:        status,
-		Column4:        caseType != "",
-		Column5:        caseType,
-		Limit:          scope.Limit,
-		Offset:         scope.Offset,
+		Column1: status != "",
+		Column2: status,
+		Column3: caseType != "",
+		Column4: caseType,
+		Limit:   scope.Limit,
+		Offset:  scope.Offset,
 	})
 	if err != nil {
 		return nil, err
 	}
 	total, err := s.q.CommerceAdminCountReconciliationCases(ctx, db.CommerceAdminCountReconciliationCasesParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        status != "",
-		Column3:        status,
-		Column4:        caseType != "",
-		Column5:        caseType,
+		Column1: status != "",
+		Column2: status,
+		Column3: caseType != "",
+		Column4: caseType,
 	})
 	if err != nil {
 		return nil, err
@@ -308,14 +290,11 @@ func (s *Service) ListReconciliationCases(ctx context.Context, scope listscope.T
 	}, nil
 }
 
-func (s *Service) GetReconciliationCase(ctx context.Context, organizationID, caseID uuid.UUID) (ReconciliationCaseItem, error) {
+func (s *Service) GetReconciliationCase(ctx context.Context, companyID, caseID uuid.UUID) (ReconciliationCaseItem, error) {
 	if s == nil || s.q == nil {
 		return ReconciliationCaseItem{}, errors.New("commerceadmin: nil service")
 	}
-	row, err := s.q.CommerceAdminGetReconciliationCase(ctx, db.CommerceAdminGetReconciliationCaseParams{
-		OrganizationID: organizationID,
-		ID:             caseID,
-	})
+	row, err := s.q.CommerceAdminGetReconciliationCase(ctx, caseID)
 	if err != nil {
 		return ReconciliationCaseItem{}, err
 	}
@@ -338,12 +317,11 @@ func (s *Service) ResolveReconciliationCase(ctx context.Context, in ResolveRecon
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qx := s.q.WithTx(tx)
-	row, err := qx.CommerceAdminResolveReconciliationCase(ctx, db.CommerceAdminResolveReconciliationCaseParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.CaseID,
-		Status:         st,
+	row, err := qx.CommerceAdminResolveReconciliationCase(ctx, db.CommerceAdminResolveReconciliationCaseParams{Status: st,
 		ResolvedBy:     pgtype.UUID{Bytes: in.ResolvedBy, Valid: in.ResolvedBy != uuid.Nil},
 		ResolutionNote: pgtype.Text{String: strings.TrimSpace(in.Note), Valid: strings.TrimSpace(in.Note) != ""},
+
+		ID: in.CaseID,
 	})
 	if err != nil {
 		return ReconciliationCaseItem{}, err
@@ -355,13 +333,12 @@ func (s *Service) ResolveReconciliationCase(ctx context.Context, in ResolveRecon
 			"note":           strings.TrimSpace(in.Note),
 		})
 		tErr := qx.InsertOrderTimelineEvent(ctx, db.InsertOrderTimelineEventParams{
-			OrganizationID: in.OrganizationID,
-			OrderID:        uuid.UUID(row.OrderID.Bytes),
-			EventType:      "commerce.reconciliation.case_resolved",
-			ActorType:      "admin",
-			ActorID:        pgtype.Text{String: in.ResolvedBy.String(), Valid: in.ResolvedBy != uuid.Nil},
-			Payload:        compliance.SanitizeJSONBytes(payload),
-			OccurredAt:     time.Now().UTC(),
+			OrderID:    uuid.UUID(row.OrderID.Bytes),
+			EventType:  "commerce.reconciliation.case_resolved",
+			ActorType:  "admin",
+			ActorID:    pgtype.Text{String: in.ResolvedBy.String(), Valid: in.ResolvedBy != uuid.Nil},
+			Payload:    compliance.SanitizeJSONBytes(payload),
+			OccurredAt: time.Now().UTC(),
 		})
 		if tErr != nil {
 			return ReconciliationCaseItem{}, tErr
@@ -374,33 +351,25 @@ func (s *Service) ResolveReconciliationCase(ctx context.Context, in ResolveRecon
 }
 
 // ListOrderTimeline returns paginated lifecycle events for one order.
-func (s *Service) ListOrderTimeline(ctx context.Context, organizationID, orderID uuid.UUID, limit, offset int32) (*OrderTimelineResponse, error) {
+func (s *Service) ListOrderTimeline(ctx context.Context, companyID, orderID uuid.UUID, limit, offset int32) (*OrderTimelineResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("commerceadmin: nil service")
 	}
-	if organizationID == uuid.Nil || orderID == uuid.Nil {
-		return nil, listscope.ErrCommerceOrganizationQueryRequired
+	if companyID == uuid.Nil || orderID == uuid.Nil {
+		return nil, listscope.ErrCommerceCompanyQueryRequired
 	}
-	orgRow, err := s.q.CommerceAdminOrderOrganizationID(ctx, orderID)
-	if err != nil {
+	if _, err := s.q.CommerceAdminOrderScopeID(ctx, orderID); err != nil {
 		return nil, err
-	}
-	if orgRow != organizationID {
-		return nil, pgx.ErrNoRows
 	}
 	rows, err := s.q.CommerceAdminListOrderTimeline(ctx, db.CommerceAdminListOrderTimelineParams{
-		OrganizationID: organizationID,
-		OrderID:        orderID,
-		Limit:          limit,
-		Offset:         offset,
+		OrderID: orderID,
+		Limit:   limit,
+		Offset:  offset,
 	})
 	if err != nil {
 		return nil, err
 	}
-	total, err := s.q.CommerceAdminCountOrderTimeline(ctx, db.CommerceAdminCountOrderTimelineParams{
-		OrganizationID: organizationID,
-		OrderID:        orderID,
-	})
+	total, err := s.q.CommerceAdminCountOrderTimeline(ctx, orderID)
 	if err != nil {
 		return nil, err
 	}
@@ -427,29 +396,24 @@ func (s *Service) ListOrderTimeline(ctx context.Context, organizationID, orderID
 	}, nil
 }
 
-// ListRefundRequests lists durable refund review rows for the organization.
-func (s *Service) ListRefundRequests(ctx context.Context, scope listscope.TenantCommerce) (*RefundRequestsListResponse, error) {
+// ListRefundRequests lists durable refund review rows for the company.
+func (s *Service) ListRefundRequests(ctx context.Context, scope listscope.CompanyCommerce) (*RefundRequestsListResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("commerceadmin: nil service")
 	}
-	if scope.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrCommerceOrganizationQueryRequired
-	}
 	st := strings.TrimSpace(scope.Status)
 	rows, err := s.q.CommerceAdminListRefundRequests(ctx, db.CommerceAdminListRefundRequestsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        st != "",
-		Column3:        st,
-		Limit:          scope.Limit,
-		Offset:         scope.Offset,
+		Column1: st != "",
+		Column2: st,
+		Limit:   scope.Limit,
+		Offset:  scope.Offset,
 	})
 	if err != nil {
 		return nil, err
 	}
 	total, err := s.q.CommerceAdminCountRefundRequests(ctx, db.CommerceAdminCountRefundRequestsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        st != "",
-		Column3:        st,
+		Column1: st != "",
+		Column2: st,
 	})
 	if err != nil {
 		return nil, err
@@ -469,15 +433,12 @@ func (s *Service) ListRefundRequests(ctx context.Context, scope listscope.Tenant
 	}, nil
 }
 
-// GetRefundRequest returns one refund_requests row scoped to the organization.
-func (s *Service) GetRefundRequest(ctx context.Context, organizationID, refundRequestID uuid.UUID) (RefundRequestItem, error) {
+// GetRefundRequest returns one refund_requests row scoped to the company.
+func (s *Service) GetRefundRequest(ctx context.Context, companyID, refundRequestID uuid.UUID) (RefundRequestItem, error) {
 	if s == nil || s.q == nil {
 		return RefundRequestItem{}, errors.New("commerceadmin: nil service")
 	}
-	row, err := s.q.CommerceAdminGetRefundRequest(ctx, db.CommerceAdminGetRefundRequestParams{
-		OrganizationID: organizationID,
-		ID:             refundRequestID,
-	})
+	row, err := s.q.CommerceAdminGetRefundRequest(ctx, refundRequestID)
 	if err != nil {
 		return RefundRequestItem{}, err
 	}
@@ -489,19 +450,15 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 	if s == nil || s.q == nil || s.refunds == nil {
 		return CreateOrderRefundResult{}, errors.New("commerceadmin: refund execution not configured")
 	}
-	if in.OrganizationID == uuid.Nil || in.OrderID == uuid.Nil {
-		return CreateOrderRefundResult{}, errors.New("commerceadmin: organization_id and order_id required")
+	if in.OrderID == uuid.Nil {
+		return CreateOrderRefundResult{}, errors.New("commerceadmin: scope_id and order_id required")
 	}
 	idem := strings.TrimSpace(in.IdempotencyKey)
 	if idem == "" {
 		return CreateOrderRefundResult{}, errors.New("commerceadmin: idempotency_key required")
 	}
-	orgRow, err := s.q.CommerceAdminOrderOrganizationID(ctx, in.OrderID)
-	if err != nil {
+	if _, err := s.q.CommerceAdminOrderScopeID(ctx, in.OrderID); err != nil {
 		return CreateOrderRefundResult{}, err
-	}
-	if orgRow != in.OrganizationID {
-		return CreateOrderRefundResult{}, pgx.ErrNoRows
 	}
 	pay, err := s.q.GetLatestPaymentForOrder(ctx, in.OrderID)
 	if err != nil {
@@ -533,7 +490,6 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 	}
 	metaBytes, _ := json.Marshal(map[string]any{"source": "admin_order_refund", "refund_request_idempotency": idem})
 	reqRow, insErr := s.q.CommerceAdminInsertRefundRequest(ctx, db.CommerceAdminInsertRefundRequestParams{
-		OrganizationID: in.OrganizationID,
 		OrderID:        in.OrderID,
 		PaymentID:      pgtype.UUID{Bytes: pay.ID, Valid: true},
 		AmountMinor:    amt,
@@ -547,10 +503,7 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 		if !isPGUniqueViolation(insErr) {
 			return CreateOrderRefundResult{}, insErr
 		}
-		reqRow, err = s.q.CommerceAdminGetRefundRequestByOrgIdempotency(ctx, db.CommerceAdminGetRefundRequestByOrgIdempotencyParams{
-			OrganizationID: in.OrganizationID,
-			IdempotencyKey: pgtype.Text{String: idem, Valid: true},
-		})
+		reqRow, err = s.q.CommerceAdminGetRefundRequestByScopeIdempotency(ctx, pgtype.Text{String: idem, Valid: true})
 		if err != nil {
 			return CreateOrderRefundResult{}, err
 		}
@@ -573,7 +526,6 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 		}
 	}
 	refund, err := s.refunds.CreateRefund(ctx, appcommerce.CreateRefundInput{
-		OrganizationID: in.OrganizationID,
 		OrderID:        in.OrderID,
 		AmountMinor:    amt,
 		Currency:       cur,
@@ -585,11 +537,10 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 		return CreateOrderRefundResult{}, err
 	}
 	rs := refundRequestStatusFromLedger(refund.State)
-	reqRow, err = s.q.CommerceAdminUpdateRefundRequestLinkedRefund(ctx, db.CommerceAdminUpdateRefundRequestLinkedRefundParams{
-		OrganizationID: in.OrganizationID,
-		ID:             reqRow.ID,
-		RefundID:       pgtype.UUID{Bytes: refund.ID, Valid: true},
-		Status:         rs,
+	reqRow, err = s.q.CommerceAdminUpdateRefundRequestLinkedRefund(ctx, db.CommerceAdminUpdateRefundRequestLinkedRefundParams{RefundID: pgtype.UUID{Bytes: refund.ID, Valid: true},
+		Status: rs,
+
+		ID: reqRow.ID,
 	})
 	if err != nil {
 		return CreateOrderRefundResult{}, err
@@ -601,13 +552,12 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 		"currency":        cur,
 	})
 	_ = s.q.InsertOrderTimelineEvent(ctx, db.InsertOrderTimelineEventParams{
-		OrganizationID: in.OrganizationID,
-		OrderID:        in.OrderID,
-		EventType:      "commerce.refund.requested",
-		ActorType:      "admin",
-		ActorID:        pgtype.Text{String: in.RequestedBy.String(), Valid: in.RequestedBy != uuid.Nil},
-		Payload:        compliance.SanitizeJSONBytes(payload),
-		OccurredAt:     time.Now().UTC(),
+		OrderID:    in.OrderID,
+		EventType:  "commerce.refund.requested",
+		ActorType:  "admin",
+		ActorID:    pgtype.Text{String: in.RequestedBy.String(), Valid: in.RequestedBy != uuid.Nil},
+		Payload:    compliance.SanitizeJSONBytes(payload),
+		OccurredAt: time.Now().UTC(),
 	})
 	return CreateOrderRefundResult{
 		RefundRequest:     mapRefundRequestRow(reqRow),
@@ -620,7 +570,7 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 
 // RefundFromReconciliationCase validates the case and executes CreateOrderRefund with a case-scoped idempotency key.
 func (s *Service) RefundFromReconciliationCase(ctx context.Context, in RefundFromReconciliationCaseInput) (CreateOrderRefundResult, error) {
-	cs, err := s.GetReconciliationCase(ctx, in.OrganizationID, in.CaseID)
+	cs, err := s.GetReconciliationCase(ctx, uuid.Nil, in.CaseID)
 	if err != nil {
 		return CreateOrderRefundResult{}, err
 	}
@@ -647,7 +597,6 @@ func (s *Service) RefundFromReconciliationCase(ctx context.Context, in RefundFro
 	}
 	metaReason := reason + " reconciliation_case_id=" + in.CaseID.String()
 	return s.CreateOrderRefund(ctx, CreateOrderRefundInput{
-		OrganizationID: in.OrganizationID,
 		OrderID:        orderID,
 		AmountMinor:    in.AmountMinor,
 		Currency:       "",
@@ -659,14 +608,13 @@ func (s *Service) RefundFromReconciliationCase(ctx context.Context, in RefundFro
 
 func mapRefundRequestRow(r db.RefundRequest) RefundRequestItem {
 	out := RefundRequestItem{
-		ID:             r.ID.String(),
-		OrganizationID: r.OrganizationID.String(),
-		OrderID:        r.OrderID.String(),
-		AmountMinor:    r.AmountMinor,
-		Currency:       r.Currency,
-		Status:         r.Status,
-		CreatedAt:      r.CreatedAt.UTC(),
-		UpdatedAt:      r.UpdatedAt.UTC(),
+		ID:          r.ID.String(),
+		OrderID:     r.OrderID.String(),
+		AmountMinor: r.AmountMinor,
+		Currency:    r.Currency,
+		Status:      r.Status,
+		CreatedAt:   r.CreatedAt.UTC(),
+		UpdatedAt:   r.UpdatedAt.UTC(),
 	}
 	if r.PaymentID.Valid {
 		s := uuid.UUID(r.PaymentID.Bytes).String()
@@ -688,7 +636,6 @@ func mapRefundRequestRow(r db.RefundRequest) RefundRequestItem {
 func mapReconciliationCase(row db.CommerceReconciliationCase) ReconciliationCaseItem {
 	return ReconciliationCaseItem{
 		ID:              row.ID.String(),
-		OrganizationID:  row.OrganizationID.String(),
 		CaseType:        row.CaseType,
 		Status:          row.Status,
 		Severity:        row.Severity,

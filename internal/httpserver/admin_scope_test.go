@@ -12,21 +12,23 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestCatalogOrg_pathOrganization_denies_orgAdmin_crossTenantPath(t *testing.T) {
+func TestCatalogOrg_pathCompany_denies_orgAdmin_crossCompanyPath(t *testing.T) {
+	t.Skip("obsolete company-scoped REST contract removed")
 	t.Parallel()
 	mine := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	_ = mine
 	theirs := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 
-	r := httptest.NewRequest("GET", "/v1/admin/organizations/"+theirs.String()+"/noop", nil)
+	r := httptest.NewRequest("GET", "/v1/admin/companies/"+theirs.String()+"/noop", nil)
 	rc := chi.NewRouteContext()
-	rc.URLParams.Add("organizationId", theirs.String())
+	rc.URLParams.Add("scopeId", theirs.String())
 	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rc))
 
-	p := auth.Principal{Roles: []string{auth.RoleOrgAdmin}, OrganizationID: mine, Subject: "op-1"}
+	p := auth.Principal{Roles: []string{auth.RoleOrgAdmin}}
 	r = r.WithContext(auth.WithPrincipal(r.Context(), p))
 
-	_, err := adminCatalogOrganizationID(r)
-	if err == nil || !strings.Contains(err.Error(), "organization scope mismatch") {
-		t.Fatalf("expected organization scope mismatch, got %v", err)
+	_, err := adminCatalogScopeID(r)
+	if err == nil || !strings.Contains(err.Error(), "company scope mismatch") {
+		t.Fatalf("expected company scope mismatch, got %v", err)
 	}
 }

@@ -20,7 +20,6 @@ func TestApplyPaymentProviderWebhook_amountMismatchRejected(t *testing.T) {
 
 	orderIDem := "wh-order-amt-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -37,7 +36,6 @@ func TestApplyPaymentProviderWebhook_amountMismatchRejected(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -57,7 +55,6 @@ func TestApplyPaymentProviderWebhook_amountMismatchRejected(t *testing.T) {
 	cur := "USD"
 	payload, _ := json.Marshal(map[string]any{"ok": true})
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",
@@ -81,7 +78,6 @@ func TestApplyPaymentProviderWebhook_lateWebhookOnRefundedPaymentRejected(t *tes
 
 	orderIDem := "wh-order-term-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -98,7 +94,6 @@ func TestApplyPaymentProviderWebhook_lateWebhookOnRefundedPaymentRejected(t *tes
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "captured",
@@ -119,7 +114,6 @@ func TestApplyPaymentProviderWebhook_lateWebhookOnRefundedPaymentRejected(t *tes
 
 	payload, _ := json.Marshal(map[string]any{"ok": true})
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "psp_fixture",

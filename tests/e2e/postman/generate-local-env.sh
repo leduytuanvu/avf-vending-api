@@ -18,7 +18,7 @@ Usage: ./tests/e2e/postman/generate-local-env.sh [--out path] [RUN_DIR]
   Reads test-data.json + secrets.private.json from RUN_DIR or \$E2E_RUN_DIR.
 
   Variables set (Postman env format):
-    base_url, admin_token, machine_token, organization_id, site_id, machine_id,
+    base_url, admin_token, machine_token, site_id, machine_id,
     product_id, order_id, slot_id (from slotCode), allow_production_writes,
     plus allow_mutation / allow_production_mutation / confirm_production_run for collection prerequest scripts.
 
@@ -51,7 +51,6 @@ SEC="${root}/secrets.private.json"
 jq_get() { jq -r --arg k "$1" '.[$k] // empty' "$TD"; }
 sec_get() { jq -r --arg k "$1" '.[$k] // empty' "$SEC"; }
 
-org="$(jq_get organizationId)"
 site="$(jq_get siteId)"
 mid="$(jq_get machineId)"
 pid="$(jq_get productId)"
@@ -83,7 +82,6 @@ body="$(jq -nc \
   --arg base "${BASE_URL}" \
   --arg adm "$admin_env" \
   --arg mt "$mt" \
-  --arg org "$org" \
   --arg site "$site" \
   --arg mid "$mid" \
   --arg pid "$pid" \
@@ -111,7 +109,6 @@ body="$(jq -nc \
       {key:"allow_production_writes", value:$apw, type:"default", enabled:true},
       {key:"admin_token", value:$adm, type:"secret", enabled:true},
       {key:"machine_token", value:$mt, type:"secret", enabled:true},
-      {key:"organization_id", value:$org, type:"default", enabled:true},
       {key:"site_id", value:$site, type:"default", enabled:true},
       {key:"machine_id", value:$mid, type:"default", enabled:true},
       {key:"product_id", value:$pid, type:"default", enabled:true},

@@ -1,74 +1,40 @@
 -- Upsert commerce reconciliation cases (payment/vend/refund operator queue).
 
--- Fixed positional params must precede sqlc.narg expansion ($4/$5 before nargs become $6+).
+-- Fixed positional params must precede sqlc.narg expansion ($1/$2 before nargs become $3+).
 
 -- name: UpsertCommerceReconciliationCase :one
 
 INSERT INTO commerce_reconciliation_cases (
-
-    organization_id,
-
     case_type,
-
     status,
-
     severity,
-
     reason,
-
     metadata,
-
     order_id,
-
     payment_id,
-
     vend_session_id,
-
     refund_id,
-
     machine_id,
-
     provider,
-
     provider_event_id,
-
     correlation_key
-
 ) VALUES (
-
     $1,
-
-    $2,
-
     'open',
-
+    $2,
     $3,
-
     $4,
-
-    $5,
-
     sqlc.narg('order_id')::uuid,
-
     sqlc.narg('payment_id')::uuid,
-
     sqlc.narg('vend_session_id')::uuid,
-
     sqlc.narg('refund_id')::uuid,
-
     sqlc.narg('machine_id')::uuid,
-
     sqlc.narg('provider')::text,
-
     sqlc.narg('provider_event_id')::bigint,
-
     COALESCE(sqlc.narg('correlation_key')::text, '')
-
 )
 
 ON CONFLICT (
-
-    organization_id,
 
     case_type,
 
@@ -108,8 +74,6 @@ SELECT
 
     o.id AS order_id,
 
-    o.organization_id,
-
     o.machine_id,
 
     o.status AS order_status,
@@ -136,18 +100,17 @@ FROM
 
 WHERE
 
-    o.organization_id = $1
 
-    AND o.status IN ('paid', 'vending')
+    o.status IN ('paid', 'vending')
 
     AND o.updated_at < (
-        now() - ($2::bigint * interval '1 second'))
+        now() - ($1::bigint * interval '1 second'))
 
 ORDER BY
 
     o.updated_at ASC
 
-LIMIT $3;
+LIMIT $2;
 
 -- Provider-visible capture while local PSP payment rows stay pre-terminal.
 
@@ -177,9 +140,8 @@ FROM
 
 WHERE
 
-    o.organization_id = $1
 
-    AND trim(lower(coalesce(e.payload ->> 'normalized_payment_state', ''))) = 'captured'
+    trim(lower(coalesce(e.payload ->> 'normalized_payment_state', ''))) = 'captured'
 
     AND p.state IN ('created', 'authorized')
 
@@ -189,7 +151,7 @@ ORDER BY
 
     e.received_at DESC
 
-LIMIT $2;
+LIMIT $1;
 
 -- Captured PSP rows without webhook evidence rows.
 
@@ -219,9 +181,8 @@ FROM
 
 WHERE
 
-    o.organization_id = $1
 
-    AND p.state = 'captured'
+    p.state = 'captured'
 
     AND lower(trim(p.provider)) NOT IN ('cash')
 
@@ -249,7 +210,7 @@ ORDER BY
 
     p.updated_at DESC
 
-LIMIT $2;
+LIMIT $1;
 
 -- Applied webhook rows where persisted provider_amount_minor / currency disagrees with the payment ledger row
 -- (operations drift: manual fixes, provider bugs, or historical ingest). Excludes cash.
@@ -284,9 +245,8 @@ FROM
 
 WHERE
 
-    o.organization_id = $1
 
-    AND e.ingress_status = 'applied'
+    e.ingress_status = 'applied'
 
     AND lower(trim(p.provider)) <> 'cash'
 
@@ -316,5 +276,4 @@ ORDER BY
 
     e.received_at DESC
 
-LIMIT $2;
-
+LIMIT $1;

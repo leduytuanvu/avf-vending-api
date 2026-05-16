@@ -207,14 +207,13 @@ func (x *InventorySlotRow) GetIsEmpty() bool {
 }
 
 type GetInventorySnapshotResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	MachineId      string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId string                 `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
-	ServerTime     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=server_time,json=serverTime,proto3" json:"server_time,omitempty"`
-	Slots          []*InventorySlotRow    `protobuf:"bytes,4,rep,name=slots,proto3" json:"slots,omitempty"`
-	Meta           *MachineResponseMeta   `protobuf:"bytes,5,opt,name=meta,proto3" json:"meta,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	ServerTime    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=server_time,json=serverTime,proto3" json:"server_time,omitempty"`
+	Slots         []*InventorySlotRow    `protobuf:"bytes,4,rep,name=slots,proto3" json:"slots,omitempty"`
+	Meta          *MachineResponseMeta   `protobuf:"bytes,5,opt,name=meta,proto3" json:"meta,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetInventorySnapshotResponse) Reset() {
@@ -250,13 +249,6 @@ func (*GetInventorySnapshotResponse) Descriptor() ([]byte, []int) {
 func (x *GetInventorySnapshotResponse) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *GetInventorySnapshotResponse) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -328,13 +320,12 @@ func (x *GetPlanogramRequest) GetMachineId() string {
 }
 
 type GetPlanogramResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	MachineId      string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId string                 `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
-	ServerTime     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=server_time,json=serverTime,proto3" json:"server_time,omitempty"`
-	Slots          []*InventorySlotRow    `protobuf:"bytes,4,rep,name=slots,proto3" json:"slots,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	ServerTime    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=server_time,json=serverTime,proto3" json:"server_time,omitempty"`
+	Slots         []*InventorySlotRow    `protobuf:"bytes,4,rep,name=slots,proto3" json:"slots,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetPlanogramResponse) Reset() {
@@ -370,13 +361,6 @@ func (*GetPlanogramResponse) Descriptor() ([]byte, []int) {
 func (x *GetPlanogramResponse) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *GetPlanogramResponse) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -1261,22 +1245,20 @@ const file_avf_machine_v1_inventory_proto_rawDesc = "" +
 	"\vproduct_sku\x18\v \x01(\tR\n" +
 	"productSku\x12!\n" +
 	"\fproduct_name\x18\f \x01(\tR\vproductName\x12\x19\n" +
-	"\bis_empty\x18\r \x01(\bR\aisEmpty\"\x94\x02\n" +
+	"\bis_empty\x18\r \x01(\bR\aisEmpty\"\xeb\x01\n" +
 	"\x1cGetInventorySnapshotResponse\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12;\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12;\n" +
 	"\vserver_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"serverTime\x126\n" +
 	"\x05slots\x18\x04 \x03(\v2 .avf.machine.v1.InventorySlotRowR\x05slots\x127\n" +
 	"\x04meta\x18\x05 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\"4\n" +
 	"\x13GetPlanogramRequest\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\"\xd3\x01\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\"\xaa\x01\n" +
 	"\x14GetPlanogramResponse\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12;\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12;\n" +
 	"\vserver_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"serverTime\x126\n" +
 	"\x05slots\x18\x04 \x03(\v2 .avf.machine.v1.InventorySlotRowR\x05slots\"\x92\x02\n" +

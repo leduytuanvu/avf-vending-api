@@ -1,11 +1,3 @@
--- name: GetMachineOrganizationID :one
-SELECT
-    organization_id
-FROM
-    machines
-WHERE
-    id = $1;
-
 -- name: GetMachineShadowVersion :one
 SELECT
     version
@@ -16,7 +8,6 @@ WHERE
 
 -- name: InsertMachineCheckIn :one
 INSERT INTO machine_check_ins (
-    organization_id,
     machine_id,
     android_id,
     sim_serial,
@@ -34,8 +25,8 @@ INSERT INTO machine_check_ins (
     metadata
 )
 SELECT
-    m.organization_id,
     m.id,
+    $1,
     $2,
     $3,
     $4,
@@ -48,15 +39,13 @@ SELECT
     $11,
     $12,
     $13,
-    $14,
-    $15
+    $14
 FROM
     machines m
 WHERE
-    m.id = $1
+    m.id = $15
 RETURNING
     id,
-    organization_id,
     machine_id,
     android_id,
     sim_serial,
@@ -77,7 +66,7 @@ RETURNING
 -- name: UpdateMachineCurrentSnapshotLastCheckIn :exec
 UPDATE machine_current_snapshot
 SET
-    last_check_in_at = $2,
+    last_check_in_at = $1,
     updated_at = now()
 WHERE
-    machine_id = $1;
+    machine_id = $2;

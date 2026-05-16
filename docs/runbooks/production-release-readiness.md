@@ -206,7 +206,7 @@ Document **which** path the org uses on the release ticket.
 | Risk | Pilot impact | Scale impact | Mitigation |
 | --- | --- | --- | --- |
 | Planned-only HTTP surfaces documented but not mounted | Confusion if conflated with prod | Wrong client assumptions | [roadmap.md](../api/roadmap.md) only; OpenAPI must not advertise unmounted routes |
-| Machine-scoped JWT scope | Wrong token → 403 / data isolation depends on middleware | Same at volume | Tenant-bound machine auth hardening; see [api-surface-security.md](./api-surface-security.md) |
+| Machine-scoped JWT scope | Wrong token → 403 / data isolation depends on middleware | Same at volume | Company-bound machine auth hardening; see [api-surface-security.md](./api-surface-security.md) |
 | MQTT / JetStream lag | Pilot may hide backlog | Fleet outage risk | Metrics + storm evidence; [telemetry-jetstream-resilience.md](./telemetry-jetstream-resilience.md) |
 | Commerce / webhook HMAC | Misconfig → payment errors | Financial + support load | Secret rotation, clock skew limits |
 | Postgres pool exhaustion | Low pilot concurrency | Worker/API brownouts | Pool sizing; [production-2-vps.md](./production-2-vps.md) |

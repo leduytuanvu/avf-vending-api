@@ -35,6 +35,7 @@ func mountAdminFleetWriteRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 		r.Get("/technicians/{technicianId}", serveAdminTechnicianGet(app, f))
 		r.Get("/technician-assignments", serveAdminTechnicianAssignmentsList(app))
 		r.Get("/technician-assignments/{assignmentId}", serveAdminAssignmentGet(app, f))
+		r.Get("/assignments/{assignmentId}", serveAdminAssignmentGet(app, f))
 	})
 
 	r.Group(func(r chi.Router) {
@@ -42,6 +43,7 @@ func mountAdminFleetWriteRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 		r.With(writeRL).Post("/sites", serveAdminSiteCreate(app, f))
 		r.With(writeRL).Patch("/sites/{siteId}", serveAdminSitePatch(app, f))
 		r.With(writeRL).Post("/sites/{siteId}/disable", serveAdminSiteDisable(app, f))
+		r.With(writeRL).Post("/sites/{siteId}/archive", serveAdminSiteDisable(app, f))
 		r.With(writeRL).Delete("/sites/{siteId}", serveAdminSiteDeactivate(app, f))
 
 		r.With(writeRL).Post("/machines", serveAdminMachineCreate(app, f))
@@ -58,9 +60,22 @@ func mountAdminFleetWriteRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 			r.With(writeRL).Post("/machines/{machineId}/mark-compromised", serveAdminMachineCompromised(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/rotate-credential", serveAdminMachineRotateCredential(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/rotate-credentials", serveAdminMachineRotateCredential(app, f))
+			r.With(writeRL).Post("/machines/{machineId}/rotate-token-version", serveAdminMachineRotateCredential(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/revoke-credentials", serveAdminMachineRevokeCredential(app, f))
+			r.With(writeRL).Post("/machines/{machineId}/revoke-token", serveAdminMachineRevokeCredential(app, f))
+			r.With(writeRL).Post("/machines/{machineId}/transfer-site", serveAdminMachineTransferSite(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/revoke-sessions", serveAdminMachineRevokeSessions(app, f))
 		})
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAnyPermission(auth.PermFleetRead, auth.PermTechnicianRead))
+		r.Get("/machines/{machineId}/technicians", serveAdminMachineTechniciansList(app))
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(auth.RequireAnyPermission(auth.PermTechnicianWrite, auth.PermFleetWrite))
+		r.With(writeRL).Post("/machines/{machineId}/technicians", serveAdminMachineTechnicianAssign(app, f))
+		r.With(writeRL).Delete("/machines/{machineId}/technicians/{userId}", serveAdminMachineTechnicianRemove(app, f))
 	})
 
 	r.Group(func(r chi.Router) {
@@ -74,13 +89,14 @@ func mountAdminFleetWriteRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 		r.With(writeRL).Patch("/technician-assignments/{assignmentId}", serveAdminAssignmentPatch(app, f))
 		r.With(writeRL).Post("/technician-assignments/{assignmentId}/cancel", serveAdminAssignmentCancel(app, f))
 		r.With(writeRL).Delete("/technician-assignments/{assignmentId}", serveAdminAssignmentRelease(app, f))
+		r.With(writeRL).Post("/assignments", serveAdminAssignmentCreate(app, f))
+		r.With(writeRL).Delete("/assignments/{assignmentId}", serveAdminAssignmentRelease(app, f))
 	})
 
-	mountAdminOrganizationFleetRoutes(r, app, f, writeRL)
 }
 
-func mountAdminOrganizationFleetRoutes(r chi.Router, app *api.HTTPApplication, f *appfleet.Service, writeRL func(http.Handler) http.Handler) {
-	r.Route("/organizations/{organizationId}", func(r chi.Router) {
+func mountAdminCompanyFleetRoutes(r chi.Router, app *api.HTTPApplication, f *appfleet.Service, writeRL func(http.Handler) http.Handler) {
+	r.Route("/", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireAnyPermission(auth.PermSiteRead, auth.PermFleetRead, auth.PermTechnicianRead))
 			r.Get("/sites", serveAdminSitesList(app, f))
@@ -132,7 +148,7 @@ func mountAdminOrganizationFleetRoutes(r chi.Router, app *api.HTTPApplication, f
 			r.With(writeRL).Post("/assignments", serveAdminAssignmentCreate(app, f))
 			r.With(writeRL).Delete("/assignments/{assignmentId}", serveAdminAssignmentRelease(app, f))
 		})
-		mountAdminOrganizationScopedActivationRoutes(r, app, writeRL)
+		mountAdminCompanyScopedActivationRoutes(r, app, writeRL)
 		mountAdminPlanogramRoutes(r, app, writeRL)
 		mountAdminOperationsRoutes(r, app, writeRL)
 		mountAdminAnomalyRoutes(r, app, writeRL)
@@ -151,13 +167,12 @@ func fleetAudit(ctx context.Context, app *api.HTTPApplication, org uuid.UUID, ac
 		at, aid = p.Actor()
 	}
 	_ = app.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: org,
-		ActorType:      at,
-		ActorID:        stringPtrOrNil(aid),
-		Action:         action,
-		ResourceType:   resourceType,
-		ResourceID:     resourceID,
-		Metadata:       md,
+		ActorType:    at,
+		ActorID:      stringPtrOrNil(aid),
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   resourceID,
+		Metadata:     md,
 	})
 }
 
@@ -221,14 +236,13 @@ func writeFleetAppError(w http.ResponseWriter, ctx context.Context, err error) {
 
 func siteJSON(s domainfleet.Site) map[string]any {
 	out := map[string]any{
-		"id":              s.ID.String(),
-		"organization_id": s.OrganizationID.String(),
-		"name":            s.Name,
-		"timezone":        s.Timezone,
-		"code":            s.Code,
-		"status":          s.Status,
-		"created_at":      s.CreatedAt.UTC().Format(time.RFC3339Nano),
-		"updated_at":      s.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		"id":         s.ID.String(),
+		"name":       s.Name,
+		"timezone":   s.Timezone,
+		"code":       s.Code,
+		"status":     s.Status,
+		"created_at": s.CreatedAt.UTC().Format(time.RFC3339Nano),
+		"updated_at": s.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	}
 	if s.RegionID != nil {
 		out["region_id"] = s.RegionID.String()
@@ -248,12 +262,11 @@ func siteJSON(s domainfleet.Site) map[string]any {
 
 func technicianJSON(t domainfleet.Technician) map[string]any {
 	out := map[string]any{
-		"id":              t.ID.String(),
-		"organization_id": t.OrganizationID.String(),
-		"display_name":    t.DisplayName,
-		"status":          t.Status,
-		"created_at":      t.CreatedAt.UTC().Format(time.RFC3339Nano),
-		"updated_at":      t.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		"id":           t.ID.String(),
+		"display_name": t.DisplayName,
+		"status":       t.Status,
+		"created_at":   t.CreatedAt.UTC().Format(time.RFC3339Nano),
+		"updated_at":   t.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	}
 	if t.Email != nil {
 		out["email"] = *t.Email
@@ -269,16 +282,15 @@ func technicianJSON(t domainfleet.Technician) map[string]any {
 
 func assignmentJSON(a domainfleet.TechnicianMachineAssignment) map[string]any {
 	out := map[string]any{
-		"id":              a.ID.String(),
-		"organization_id": a.OrganizationID.String(),
-		"technician_id":   a.TechnicianID.String(),
-		"machine_id":      a.MachineID.String(),
-		"role":            a.Role,
-		"scope":           a.Scope,
-		"status":          a.Status,
-		"valid_from":      a.ValidFrom.UTC().Format(time.RFC3339Nano),
-		"created_at":      a.CreatedAt.UTC().Format(time.RFC3339Nano),
-		"updated_at":      a.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		"id":            a.ID.String(),
+		"technician_id": a.TechnicianID.String(),
+		"machine_id":    a.MachineID.String(),
+		"role":          a.Role,
+		"scope":         a.Scope,
+		"status":        a.Status,
+		"valid_from":    a.ValidFrom.UTC().Format(time.RFC3339Nano),
+		"created_at":    a.CreatedAt.UTC().Format(time.RFC3339Nano),
+		"updated_at":    a.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	}
 	if a.CreatedBy != nil {
 		out["created_by"] = a.CreatedBy.String()
@@ -292,7 +304,6 @@ func assignmentJSON(a domainfleet.TechnicianMachineAssignment) map[string]any {
 func machineJSON(m domainfleet.Machine) map[string]any {
 	out := map[string]any{
 		"id":                 m.ID.String(),
-		"organization_id":    m.OrganizationID.String(),
 		"site_id":            m.SiteID.String(),
 		"serial_number":      m.SerialNumber,
 		"code":               m.Code,
@@ -326,7 +337,8 @@ func machineJSON(m domainfleet.Machine) map[string]any {
 
 func serveAdminSitesList(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -341,10 +353,9 @@ func serveAdminSitesList(app *api.HTTPApplication, f *appfleet.Service) http.Han
 			st = &raw
 		}
 		items, total, err := f.ListSites(r.Context(), appfleet.ListSitesInput{
-			OrganizationID: orgID,
-			Status:         st,
-			Limit:          int32(limit),
-			Offset:         int32(offset),
+			Status: st,
+			Limit:  int32(limit),
+			Offset: int32(offset),
 		})
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
@@ -368,7 +379,8 @@ func serveAdminSitesList(app *api.HTTPApplication, f *appfleet.Service) http.Han
 
 func serveAdminSiteGet(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -378,7 +390,7 @@ func serveAdminSiteGet(app *api.HTTPApplication, f *appfleet.Service) http.Handl
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_site_id", "invalid siteId")
 			return
 		}
-		s, err := f.GetSite(r.Context(), orgID, sid)
+		s, err := f.GetSite(r.Context(), scopeID, sid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
@@ -397,7 +409,8 @@ type v1AdminSiteWriteRequest struct {
 
 func serveAdminSiteCreate(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -421,19 +434,18 @@ func serveAdminSiteCreate(app *api.HTTPApplication, f *appfleet.Service) http.Ha
 			addr = []byte("{}")
 		}
 		s, err := f.CreateSite(r.Context(), appfleet.CreateSiteInput{
-			OrganizationID: orgID,
-			RegionID:       region,
-			Name:           body.Name,
-			Address:        addr,
-			Timezone:       body.Timezone,
-			Code:           body.Code,
+			RegionID: region,
+			Name:     body.Name,
+			Address:  addr,
+			Timezone: body.Timezone,
+			Code:     body.Code,
 		})
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		rid := s.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionSiteCreated, "fleet.site", &rid, map[string]any{"code": s.Code})
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionSiteCreated, "fleet.site", &rid, map[string]any{"code": s.Code})
 		writeJSON(w, http.StatusCreated, siteJSON(s))
 	}
 }
@@ -449,7 +461,8 @@ type v1AdminSitePatchRequest struct {
 
 func serveAdminSitePatch(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -478,13 +491,12 @@ func serveAdminSitePatch(app *api.HTTPApplication, f *appfleet.Service) http.Han
 			}
 		}
 		in := appfleet.UpdateSiteInput{
-			OrganizationID: orgID,
-			SiteID:         sid,
-			RegionID:       region,
-			Name:           body.Name,
-			Timezone:       body.Timezone,
-			Code:           body.Code,
-			Status:         body.Status,
+			SiteID:   sid,
+			RegionID: region,
+			Name:     body.Name,
+			Timezone: body.Timezone,
+			Code:     body.Code,
+			Status:   body.Status,
 		}
 		if body.Address != nil {
 			in.Address = body.Address
@@ -495,14 +507,15 @@ func serveAdminSitePatch(app *api.HTTPApplication, f *appfleet.Service) http.Han
 			return
 		}
 		rid := s.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionSiteUpdated, "fleet.site", &rid, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionSiteUpdated, "fleet.site", &rid, nil)
 		writeJSON(w, http.StatusOK, siteJSON(s))
 	}
 }
 
 func serveAdminSiteDeactivate(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -512,20 +525,21 @@ func serveAdminSiteDeactivate(app *api.HTTPApplication, f *appfleet.Service) htt
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_site_id", "invalid siteId")
 			return
 		}
-		s, err := f.DeactivateSite(r.Context(), orgID, sid)
+		s, err := f.DeactivateSite(r.Context(), scopeID, sid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		rid := s.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionSiteDeactivated, "fleet.site", &rid, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionSiteDeactivated, "fleet.site", &rid, nil)
 		writeJSON(w, http.StatusOK, siteJSON(s))
 	}
 }
 
 func serveAdminSiteDisable(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -535,13 +549,13 @@ func serveAdminSiteDisable(app *api.HTTPApplication, f *appfleet.Service) http.H
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_site_id", "invalid siteId")
 			return
 		}
-		s, err := f.DeactivateSite(r.Context(), orgID, sid)
+		s, err := f.DeactivateSite(r.Context(), scopeID, sid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		rid := s.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionSiteDisabled, "fleet.site", &rid, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionSiteDisabled, "fleet.site", &rid, nil)
 		writeJSON(w, http.StatusOK, siteJSON(s))
 	}
 }
@@ -563,7 +577,8 @@ type v1AdminMachineCreateRequest struct {
 
 func serveAdminMachineCreate(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -604,7 +619,6 @@ func serveAdminMachineCreate(app *api.HTTPApplication, f *appfleet.Service) http
 			cabinetType = body.CabinetTypeCamel
 		}
 		m, err := f.CreateMachine(r.Context(), appfleet.CreateMachineInput{
-			OrganizationID:    orgID,
 			SiteID:            siteID,
 			HardwareProfileID: hw,
 			SerialNumber:      serial,
@@ -620,7 +634,7 @@ func serveAdminMachineCreate(app *api.HTTPApplication, f *appfleet.Service) http
 			return
 		}
 		mid := m.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineCreated, "fleet.machine", &mid, map[string]any{"serial": m.SerialNumber})
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineCreated, "fleet.machine", &mid, map[string]any{"serial": m.SerialNumber})
 		writeJSON(w, http.StatusCreated, machineJSON(m))
 	}
 }
@@ -642,7 +656,8 @@ type v1AdminMachinePatchRequest struct {
 
 func serveAdminMachinePatch(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -688,7 +703,6 @@ func serveAdminMachinePatch(app *api.HTTPApplication, f *appfleet.Service) http.
 			cabinetType = body.CabinetTypeCamel
 		}
 		m, err := f.UpdateMachineMetadata(r.Context(), appfleet.UpdateMachineMetadataInput{
-			OrganizationID:    orgID,
 			MachineID:         mid,
 			Name:              body.Name,
 			Status:            body.Status,
@@ -705,14 +719,15 @@ func serveAdminMachinePatch(app *api.HTTPApplication, f *appfleet.Service) http.
 			return
 		}
 		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineUpdated, "fleet.machine", &midStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineUpdated, "fleet.machine", &midStr, nil)
 		writeJSON(w, http.StatusOK, machineJSON(m))
 	}
 }
 
 func serveAdminMachineDisable(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -722,20 +737,21 @@ func serveAdminMachineDisable(app *api.HTTPApplication, f *appfleet.Service) htt
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.DisableMachine(r.Context(), orgID, mid)
+		m, err := f.DisableMachine(r.Context(), scopeID, mid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineDisabled, "fleet.machine", &midStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineDisabled, "fleet.machine", &midStr, nil)
 		writeJSON(w, http.StatusOK, machineJSON(m))
 	}
 }
 
 func serveAdminMachineEnable(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -745,20 +761,21 @@ func serveAdminMachineEnable(app *api.HTTPApplication, f *appfleet.Service) http
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.EnableMachine(r.Context(), orgID, mid)
+		m, err := f.EnableMachine(r.Context(), scopeID, mid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineEnabled, "fleet.machine", &midStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineEnabled, "fleet.machine", &midStr, nil)
 		writeJSON(w, http.StatusOK, machineJSON(m))
 	}
 }
 
 func serveAdminMachineRetire(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -768,20 +785,21 @@ func serveAdminMachineRetire(app *api.HTTPApplication, f *appfleet.Service) http
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.RetireMachine(r.Context(), orgID, mid)
+		m, err := f.RetireMachine(r.Context(), scopeID, mid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineRetired, "fleet.machine", &midStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineRetired, "fleet.machine", &midStr, nil)
 		writeJSON(w, http.StatusOK, machineJSON(m))
 	}
 }
 
 func serveAdminMachineCompromised(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -791,20 +809,21 @@ func serveAdminMachineCompromised(app *api.HTTPApplication, f *appfleet.Service)
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.MarkMachineCompromised(r.Context(), orgID, mid)
+		m, err := f.MarkMachineCompromised(r.Context(), scopeID, mid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineCompromised, "fleet.machine", &midStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineCompromised, "fleet.machine", &midStr, nil)
 		writeJSON(w, http.StatusOK, machineJSON(m))
 	}
 }
 
 func serveAdminMachineRotateCredential(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -814,13 +833,13 @@ func serveAdminMachineRotateCredential(app *api.HTTPApplication, f *appfleet.Ser
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.RotateMachineCredential(r.Context(), orgID, mid)
+		m, err := f.RotateMachineCredential(r.Context(), scopeID, mid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineCredRotated, "fleet.machine", &midStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineCredRotated, "fleet.machine", &midStr, nil)
 		writeJSON(w, http.StatusOK, machineJSON(m))
 	}
 }
@@ -836,7 +855,8 @@ func serveAdminMachineTransferSite(app *api.HTTPApplication, f *appfleet.Service
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "application not configured")
 			return
 		}
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -846,7 +866,7 @@ func serveAdminMachineTransferSite(app *api.HTTPApplication, f *appfleet.Service
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		beforeDTO, err := app.AdminMachines.GetMachine(r.Context(), orgID, mid)
+		beforeDTO, err := app.AdminMachines.GetMachine(r.Context(), scopeID, mid)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "machine not found")
@@ -872,16 +892,15 @@ func serveAdminMachineTransferSite(app *api.HTTPApplication, f *appfleet.Service
 		}
 		sid := newSiteID
 		m, err := f.UpdateMachineMetadata(r.Context(), appfleet.UpdateMachineMetadataInput{
-			OrganizationID: orgID,
-			MachineID:      mid,
-			SiteID:         &sid,
+			MachineID: mid,
+			SiteID:    &sid,
 		})
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineSiteTransferred, "fleet.machine", &midStr, map[string]any{
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineSiteTransferred, "fleet.machine", &midStr, map[string]any{
 			"from_site_id": fromSite,
 			"to_site_id":   m.SiteID.String(),
 		})
@@ -891,7 +910,8 @@ func serveAdminMachineTransferSite(app *api.HTTPApplication, f *appfleet.Service
 
 func serveAdminMachineRevokeSessions(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -901,19 +921,20 @@ func serveAdminMachineRevokeSessions(app *api.HTTPApplication, f *appfleet.Servi
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		if err := f.RevokeMachineSessions(r.Context(), orgID, mid); err != nil {
+		if err := f.RevokeMachineSessions(r.Context(), scopeID, mid); err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		midStr := mid.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineSessionsRevoked, "fleet.machine", &midStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineSessionsRevoked, "fleet.machine", &midStr, nil)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
 func serveAdminMachineRevokeCredential(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -923,13 +944,13 @@ func serveAdminMachineRevokeCredential(app *api.HTTPApplication, f *appfleet.Ser
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.RevokeMachineCredential(r.Context(), orgID, mid)
+		m, err := f.RevokeMachineCredential(r.Context(), scopeID, mid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionMachineCredentialRevoked, "fleet.machine", &midStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineCredentialRevoked, "fleet.machine", &midStr, nil)
 		writeJSON(w, http.StatusOK, machineJSON(m))
 	}
 }
@@ -943,7 +964,8 @@ type v1AdminTechnicianCreateRequest struct {
 
 func serveAdminTechnicianCreate(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -954,7 +976,6 @@ func serveAdminTechnicianCreate(app *api.HTTPApplication, f *appfleet.Service) h
 			return
 		}
 		t, err := f.CreateTechnician(r.Context(), appfleet.CreateTechnicianInput{
-			OrganizationID:  orgID,
 			DisplayName:     body.DisplayName,
 			Email:           body.Email,
 			Phone:           body.Phone,
@@ -965,14 +986,15 @@ func serveAdminTechnicianCreate(app *api.HTTPApplication, f *appfleet.Service) h
 			return
 		}
 		tid := t.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionTechnicianCreated, "fleet.technician", &tid, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionTechnicianCreated, "fleet.technician", &tid, nil)
 		writeJSON(w, http.StatusCreated, technicianJSON(t))
 	}
 }
 
 func serveAdminTechnicianGet(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -982,7 +1004,7 @@ func serveAdminTechnicianGet(app *api.HTTPApplication, f *appfleet.Service) http
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_technician_id", "invalid technicianId")
 			return
 		}
-		t, err := f.GetTechnician(r.Context(), orgID, tid)
+		t, err := f.GetTechnician(r.Context(), scopeID, tid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
@@ -1000,7 +1022,8 @@ type v1AdminTechnicianPatchRequest struct {
 
 func serveAdminTechnicianPatch(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -1016,7 +1039,6 @@ func serveAdminTechnicianPatch(app *api.HTTPApplication, f *appfleet.Service) ht
 			return
 		}
 		t, err := f.UpdateTechnician(r.Context(), appfleet.UpdateTechnicianInput{
-			OrganizationID:  orgID,
 			TechnicianID:    tid,
 			DisplayName:     body.DisplayName,
 			Email:           body.Email,
@@ -1028,14 +1050,15 @@ func serveAdminTechnicianPatch(app *api.HTTPApplication, f *appfleet.Service) ht
 			return
 		}
 		tidStr := t.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionTechnicianUpdated, "fleet.technician", &tidStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionTechnicianUpdated, "fleet.technician", &tidStr, nil)
 		writeJSON(w, http.StatusOK, technicianJSON(t))
 	}
 }
 
 func serveAdminTechnicianDisable(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -1045,20 +1068,21 @@ func serveAdminTechnicianDisable(app *api.HTTPApplication, f *appfleet.Service) 
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_technician_id", "invalid technicianId")
 			return
 		}
-		t, err := f.DisableTechnician(r.Context(), orgID, tid)
+		t, err := f.DisableTechnician(r.Context(), scopeID, tid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		tidStr := t.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionTechnicianDisabled, "fleet.technician", &tidStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionTechnicianDisabled, "fleet.technician", &tidStr, nil)
 		writeJSON(w, http.StatusOK, technicianJSON(t))
 	}
 }
 
 func serveAdminTechnicianEnable(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -1068,13 +1092,13 @@ func serveAdminTechnicianEnable(app *api.HTTPApplication, f *appfleet.Service) h
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_technician_id", "invalid technicianId")
 			return
 		}
-		t, err := f.EnableTechnician(r.Context(), orgID, tid)
+		t, err := f.EnableTechnician(r.Context(), scopeID, tid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		tidStr := t.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionTechnicianEnabled, "fleet.technician", &tidStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionTechnicianEnabled, "fleet.technician", &tidStr, nil)
 		writeJSON(w, http.StatusOK, technicianJSON(t))
 	}
 }
@@ -1087,7 +1111,8 @@ type v1AdminAssignmentCreateRequest struct {
 
 func serveAdminAssignmentCreate(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -1112,7 +1137,6 @@ func serveAdminAssignmentCreate(app *api.HTTPApplication, f *appfleet.Service) h
 			actorTech = p.TechnicianID
 		}
 		a, err := f.AssignTechnicianToMachine(r.Context(), appfleet.AssignTechnicianInput{
-			OrganizationID:    orgID,
 			TechnicianID:      tid,
 			MachineID:         mid,
 			Role:              body.Role,
@@ -1123,7 +1147,7 @@ func serveAdminAssignmentCreate(app *api.HTTPApplication, f *appfleet.Service) h
 			return
 		}
 		aid := a.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionTechnicianAssignmentCreated, "fleet.technician_assignment", &aid, map[string]any{
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionTechnicianAssignmentCreated, "fleet.technician_assignment", &aid, map[string]any{
 			"technician_id": tid.String(),
 			"machine_id":    mid.String(),
 		})
@@ -1162,7 +1186,8 @@ type v1AdminMachineTechnicianAssignRequest struct {
 
 func serveAdminMachineTechnicianAssign(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -1192,7 +1217,6 @@ func serveAdminMachineTechnicianAssign(app *api.HTTPApplication, f *appfleet.Ser
 			actorTech = p.TechnicianID
 		}
 		a, err := f.AssignTechnicianToMachine(r.Context(), appfleet.AssignTechnicianInput{
-			OrganizationID:    orgID,
 			TechnicianID:      uid,
 			MachineID:         mid,
 			Role:              body.Role,
@@ -1205,7 +1229,7 @@ func serveAdminMachineTechnicianAssign(app *api.HTTPApplication, f *appfleet.Ser
 			return
 		}
 		aid := a.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionTechnicianAssignmentCreated, "fleet.technician_assignment", &aid, map[string]any{
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionTechnicianAssignmentCreated, "fleet.technician_assignment", &aid, map[string]any{
 			"user_id":    uid.String(),
 			"machine_id": mid.String(),
 		})
@@ -1222,7 +1246,8 @@ func stringPtrUUID(id uuid.UUID) *uuid.UUID {
 
 func serveAdminMachineTechnicianRemove(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -1237,13 +1262,13 @@ func serveAdminMachineTechnicianRemove(app *api.HTTPApplication, f *appfleet.Ser
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_user_id", "invalid userId")
 			return
 		}
-		a, err := f.ReleaseTechnicianAssignmentForMachineUser(r.Context(), orgID, mid, uid)
+		a, err := f.ReleaseTechnicianAssignmentForMachineUser(r.Context(), scopeID, mid, uid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		aid := a.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionTechnicianAssignmentReleased, "fleet.technician_assignment", &aid, map[string]any{
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionTechnicianAssignmentReleased, "fleet.technician_assignment", &aid, map[string]any{
 			"user_id":    uid.String(),
 			"machine_id": mid.String(),
 		})
@@ -1269,7 +1294,8 @@ func serveAdminTechnicianAssignmentsList(app *api.HTTPApplication) http.HandlerF
 
 func serveAdminAssignmentGet(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -1279,7 +1305,7 @@ func serveAdminAssignmentGet(app *api.HTTPApplication, f *appfleet.Service) http
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_assignment_id", "invalid assignmentId")
 			return
 		}
-		a, err := f.GetTechnicianAssignment(r.Context(), orgID, aid)
+		a, err := f.GetTechnicianAssignment(r.Context(), scopeID, aid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
@@ -1296,7 +1322,8 @@ type v1AdminAssignmentPatchRequest struct {
 
 func serveAdminAssignmentPatch(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -1325,25 +1352,25 @@ func serveAdminAssignmentPatch(app *api.HTTPApplication, f *appfleet.Service) ht
 			vto = &utc
 		}
 		a, err := f.UpdateTechnicianAssignment(r.Context(), appfleet.UpdateAssignmentHTTPInput{
-			OrganizationID: orgID,
-			AssignmentID:   aid,
-			Role:           body.Role,
-			ValidTo:        vto,
-			Status:         body.Status,
+			AssignmentID: aid,
+			Role:         body.Role,
+			ValidTo:      vto,
+			Status:       body.Status,
 		})
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		aidStr := a.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionTechnicianAssignmentUpdated, "fleet.technician_assignment", &aidStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionTechnicianAssignmentUpdated, "fleet.technician_assignment", &aidStr, nil)
 		writeJSON(w, http.StatusOK, assignmentJSON(a))
 	}
 }
 
 func serveAdminAssignmentRelease(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -1353,20 +1380,21 @@ func serveAdminAssignmentRelease(app *api.HTTPApplication, f *appfleet.Service) 
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_assignment_id", "invalid assignmentId")
 			return
 		}
-		a, err := f.ReleaseTechnicianAssignment(r.Context(), orgID, aid)
+		a, err := f.ReleaseTechnicianAssignment(r.Context(), scopeID, aid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		aidStr := a.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionTechnicianAssignmentReleased, "fleet.technician_assignment", &aidStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionTechnicianAssignmentReleased, "fleet.technician_assignment", &aidStr, nil)
 		writeJSON(w, http.StatusOK, assignmentJSON(a))
 	}
 }
 
 func serveAdminAssignmentCancel(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminFleetOrganizationScope(r)
+		scopeID, err := parseAdminFleetCompanyScope(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -1376,13 +1404,13 @@ func serveAdminAssignmentCancel(app *api.HTTPApplication, f *appfleet.Service) h
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_assignment_id", "invalid assignmentId")
 			return
 		}
-		a, err := f.ReleaseTechnicianAssignment(r.Context(), orgID, aid)
+		a, err := f.ReleaseTechnicianAssignment(r.Context(), scopeID, aid)
 		if err != nil {
 			writeFleetAppError(w, r.Context(), err)
 			return
 		}
 		aidStr := a.ID.String()
-		fleetAudit(r.Context(), app, orgID, compliance.ActionTechnicianAssignmentCanceled, "fleet.technician_assignment", &aidStr, nil)
+		fleetAudit(r.Context(), app, scopeID, compliance.ActionTechnicianAssignmentCanceled, "fleet.technician_assignment", &aidStr, nil)
 		writeJSON(w, http.StatusOK, assignmentJSON(a))
 	}
 }

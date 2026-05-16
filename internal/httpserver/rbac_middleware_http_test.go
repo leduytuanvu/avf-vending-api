@@ -9,16 +9,16 @@ import (
 	"github.com/google/uuid"
 )
 
-func testOrgID() uuid.UUID {
+func testFixtureScopeID() uuid.UUID {
 	return uuid.MustParse("11111111-1111-1111-1111-111111111111")
 }
 
 func TestRBAC_viewerBlockedAuditRead(t *testing.T) {
-	org := testOrgID()
+	org := testFixtureScopeID()
+	_ = org
 	p := auth.Principal{
-		Subject:        "550e8400-e29b-41d4-a716-446655440099",
-		Roles:          []string{"viewer"},
-		OrganizationID: org,
+		Subject: "550e8400-e29b-41d4-a716-446655440099",
+		Roles:   []string{"viewer"},
 	}
 	req := httptest.NewRequest(http.MethodGet, "/v1/admin/audit/events", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
@@ -31,11 +31,11 @@ func TestRBAC_viewerBlockedAuditRead(t *testing.T) {
 }
 
 func TestRBAC_viewerAllowedCatalogRead_blockedCatalogWrite(t *testing.T) {
-	org := testOrgID()
+	org := testFixtureScopeID()
+	_ = org
 	p := auth.Principal{
-		Subject:        "550e8400-e29b-41d4-a716-446655440000",
-		Roles:          []string{"viewer"},
-		OrganizationID: org,
+		Subject: "550e8400-e29b-41d4-a716-446655440000",
+		Roles:   []string{"viewer"},
 	}
 	h := auth.RequireAnyPermission(auth.PermCatalogRead)(okHandler())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -55,8 +55,9 @@ func TestRBAC_viewerAllowedCatalogRead_blockedCatalogWrite(t *testing.T) {
 }
 
 func TestRBAC_catalogManager_canCatalogWrite_notRefunds(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Subject: "550e8400-e29b-41d4-a716-446655440001", Roles: []string{"catalog_manager"}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Subject: "550e8400-e29b-41d4-a716-446655440001", Roles: []string{"catalog_manager"}}
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 
@@ -76,8 +77,9 @@ func TestRBAC_catalogManager_canCatalogWrite_notRefunds(t *testing.T) {
 }
 
 func TestRBAC_financeAdmin_canRefund(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{"finance_admin"}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{"finance_admin"}}
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireAnyPermission(auth.PermRefundsWrite)(okHandler())
@@ -89,8 +91,9 @@ func TestRBAC_financeAdmin_canRefund(t *testing.T) {
 }
 
 func TestRBAC_financeAdmin_cannotCatalogWrite(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{"finance_admin"}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{"finance_admin"}}
 	req := httptest.NewRequest(http.MethodPatch, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireAnyPermission(auth.PermCatalogWrite)(okHandler())
@@ -102,9 +105,10 @@ func TestRBAC_financeAdmin_cannotCatalogWrite(t *testing.T) {
 }
 
 func TestRBAC_fleetLifecycle_fleetManagerAllowed_technicianManagerBlocked(t *testing.T) {
-	org := testOrgID()
+	org := testFixtureScopeID()
+	_ = org
 	reqBase := func(roles ...string) *http.Request {
-		p := auth.Principal{Roles: roles, OrganizationID: org}
+		p := auth.Principal{Roles: roles}
 		req := httptest.NewRequest(http.MethodPost, "/", nil)
 		return req.WithContext(auth.WithPrincipal(req.Context(), p))
 	}
@@ -126,13 +130,14 @@ func TestRBAC_fleetLifecycle_fleetManagerAllowed_technicianManagerBlocked(t *tes
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, reqBase(auth.RoleOrgAdmin))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("org_admin: %d", rec.Code)
+		t.Fatalf("admin: %d", rec.Code)
 	}
 }
 
 func TestRBAC_technician_cannotCatalogWrite(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{auth.RoleTechnician}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{auth.RoleTechnician}}
 	req := httptest.NewRequest(http.MethodPut, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireAnyPermission(auth.PermCatalogWrite)(okHandler())
@@ -144,8 +149,9 @@ func TestRBAC_technician_cannotCatalogWrite(t *testing.T) {
 }
 
 func TestRBAC_technician_cannotTriggerOTAWrite(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{auth.RoleTechnician}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{auth.RoleTechnician}}
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireAnyPermission(auth.PermOTAWrite)(okHandler())
@@ -157,8 +163,9 @@ func TestRBAC_technician_cannotTriggerOTAWrite(t *testing.T) {
 }
 
 func TestRBAC_orgAdmin_passesCatalogAndRefunds(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{auth.RoleOrgAdmin}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{auth.RoleOrgAdmin}}
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	for _, perm := range []string{auth.PermCatalogWrite, auth.PermRefundsWrite, auth.PermFleetWrite} {
@@ -173,8 +180,9 @@ func TestRBAC_orgAdmin_passesCatalogAndRefunds(t *testing.T) {
 
 func TestRBAC_machinePrincipal_bypassesInteractiveCommercePermission(t *testing.T) {
 	mid := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{auth.RoleMachine}, MachineIDs: []uuid.UUID{mid}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{auth.RoleMachine}, MachineIDs: []uuid.UUID{mid}}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead)(okHandler())
@@ -186,8 +194,9 @@ func TestRBAC_machinePrincipal_bypassesInteractiveCommercePermission(t *testing.
 }
 
 func TestRBAC_interactiveAccountDisabled_rejected(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{"viewer"}, OrganizationID: org, AccountStatus: "disabled"}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{"viewer"}, AccountStatus: "disabled"}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireInteractiveAccountActive(okHandler())
@@ -199,8 +208,9 @@ func TestRBAC_interactiveAccountDisabled_rejected(t *testing.T) {
 }
 
 func TestRBAC_technician_cannotUserRead(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{auth.RoleTechnician}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{auth.RoleTechnician}}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireAnyPermission(auth.PermUserRead)(okHandler())
@@ -212,8 +222,9 @@ func TestRBAC_technician_cannotUserRead(t *testing.T) {
 }
 
 func TestRBAC_support_cannotUserRead(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{"support"}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{"support"}}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireAnyPermission(auth.PermUserRead)(okHandler())
@@ -225,27 +236,29 @@ func TestRBAC_support_cannotUserRead(t *testing.T) {
 }
 
 func TestRBAC_orgAdmin_canUserReadAndSessionsRevoke(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{auth.RoleOrgAdmin}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{auth.RoleOrgAdmin}}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireAnyPermission(auth.PermUserRead)(okHandler())
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("org_admin user read: %d", rec.Code)
+		t.Fatalf("admin user read: %d", rec.Code)
 	}
 	h = auth.RequireAnyPermission(auth.PermUserSessionsRevoke)(okHandler())
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("org_admin sessions revoke: %d", rec.Code)
+		t.Fatalf("admin sessions revoke: %d", rec.Code)
 	}
 }
 
 func TestRBAC_technician_cannotFleetSiteWrite(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{auth.RoleTechnician}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{auth.RoleTechnician}}
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireAnyPermission(auth.PermSiteWrite, auth.PermFleetWrite)(okHandler())
@@ -257,8 +270,9 @@ func TestRBAC_technician_cannotFleetSiteWrite(t *testing.T) {
 }
 
 func TestRBAC_support_fleetReadOnly(t *testing.T) {
-	org := testOrgID()
-	p := auth.Principal{Roles: []string{"support"}, OrganizationID: org}
+	org := testFixtureScopeID()
+	_ = org
+	p := auth.Principal{Roles: []string{"support"}}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	h := auth.RequireAnyPermission(auth.PermFleetRead)(okHandler())

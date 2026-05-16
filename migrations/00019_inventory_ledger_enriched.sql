@@ -64,7 +64,7 @@ COMMENT ON COLUMN inventory_events.recorded_at IS 'When the row was appended (in
 CREATE TABLE refill_session_lines (
     id bigserial PRIMARY KEY,
     refill_session_id uuid NOT NULL REFERENCES refill_sessions (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     cabinet_code text NOT NULL,
     slot_code text NOT NULL,
     product_id uuid,
@@ -80,7 +80,7 @@ CREATE TABLE refill_session_lines (
         before_quantity >= 0
         AND after_quantity >= 0
     ),
-    CONSTRAINT fk_refill_session_lines_org_product FOREIGN KEY (organization_id, product_id) REFERENCES products (organization_id, id) ON DELETE SET NULL
+    CONSTRAINT fk_refill_session_lines_org_product FOREIGN KEY (scope_id, product_id) REFERENCES products (scope_id, id) ON DELETE SET NULL
 );
 
 CREATE INDEX ix_refill_session_lines_session ON refill_session_lines (refill_session_id, created_at DESC);

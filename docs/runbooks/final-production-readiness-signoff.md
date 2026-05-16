@@ -31,7 +31,7 @@ of what CI cannot prove (field hardware, live PSP, org approvals).
 | **Compile** | `go build -o NUL ./...` (Windows) / `go build ./...` | **PASS** |
 | **Unit / integration tests** | `go test ./... -count=1` | **PASS** |
 | **Go formatting** | `gofmt -l` then `gofmt -w` on drift files | **PASS** after write — see [Files changed summary](#files-changed-summary) |
-| **sqlc** | `go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0 generate` (pin matches `Makefile`) | **PASS**; **commit** `internal/gen/db/` |
+| **sqlc** | `go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate` (pin matches `Makefile` `SQLC_VERSION`) | **PASS**; **commit** `internal/gen/db/` |
 | **OpenAPI / Swagger** | `python tools/build_openapi.py` then `python tools/openapi_verify_release.py` | **PASS**; **commit** `docs/swagger/swagger.json`, `docs/swagger/docs.go` |
 | **Workflow YAML syntax** | `python` + `yaml.safe_load` on `.github/workflows/*.yml` | **PASS** — **17** files |
 | **Workflow policy lint** | `actionlint` / `make verify-workflows` | **Not run locally** — rely on CI or install `actionlint` |
@@ -43,7 +43,7 @@ of what CI cannot prove (field hardware, live PSP, org approvals).
 
 | # | Topic | Satisfied by (architecture / runbooks / code pointers) |
 |---|--------|----------------------------------------------------------|
-| 1 | **Admin web:** REST / OpenAPI / User JWT / RBAC; tenant scope; audit on admin mutations | [`../api/admin-rest.md`](../api/admin-rest.md), [`api-surface-security.md`](api-surface-security.md), [`audit.md`](audit.md), [`../api/swagger-openapi-appendix.md`](../api/swagger-openapi-appendix.md) |
+| 1 | **Admin web:** REST / OpenAPI / User JWT / RBAC; role scope; audit on admin mutations | [`../api/admin-rest.md`](../api/admin-rest.md), [`api-surface-security.md`](api-surface-security.md), [`audit.md`](audit.md), [`../api/swagger-openapi-appendix.md`](../api/swagger-openapi-appendix.md) |
 | 2 | **Machine app:** native gRPC; Machine JWT; idempotency; offline replay; **no production legacy REST dependency** | [`../architecture/production-final-contract.md`](../architecture/production-final-contract.md), [`../api/machine-grpc.md`](../api/machine-grpc.md), [`../../internal/grpcserver/machine_replay_ledger.go`](../../internal/grpcserver/machine_replay_ledger.go), [`../api/kiosk-app-flow.md`](../api/kiosk-app-flow.md) |
 | 3 | **Payment:** backend-owned provider session; **do not trust** client `providerReference` / payment URL / QR from client; webhook HMAC; idempotency; amount validation; reconciliation | [`../api/payment.md`](../api/payment.md), [`../api/payment-webhook-security.md`](../api/payment-webhook-security.md), [`payment-reconciliation.md`](payment-reconciliation.md), [`payment-webhook-debug.md`](payment-webhook-debug.md) |
 | 4 | **Pricing:** catalog / order / payment share pricing engine; promotion consistency | Commerce + catalog docs; [`runtime-sale-catalog` handoff](../api/runtime-sale-catalog-implementation-handoff.md); code paths exercised by tests |
@@ -80,7 +80,7 @@ gofmt -w internal/app/commerce/machine_payment_session.go `
   internal/grpcserver/machine_offline_p06_integration_test.go `
   internal/observability/observability_artifacts_test.go
 
-go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0 generate
+go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
 go test ./... -count=1
 go build -o NUL ./...
 

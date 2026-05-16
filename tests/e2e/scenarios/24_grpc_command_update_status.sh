@@ -15,8 +15,6 @@ source "${E2E_SCENARIO_DIR}/../lib/e2e_grpc.sh"
 
 FLOW_ID="GRPC-24"
 ec=0
-
-ORG="$(get_data organizationId)"
 MID="$(get_data machineId)"
 MT="$(get_secret machineToken 2>/dev/null || true)"
 [[ -z "${MT:-}" ]] && { log_error "GRPC-24: machine token required"; exit 2; }
@@ -25,8 +23,8 @@ export MACHINE_ID="$MID"
 
 TS_RFC3339="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 RID="g24-$(date +%s)"
-META="$(jq -nc --arg o "$ORG" --arg m "$MID" --arg rid "$RID" --arg ts "$TS_RFC3339" --arg ik "${RID}-meta" \
-  '{organizationId:$o, machineId:$m, requestId:$rid, occurredAt:$ts, idempotencyKey:$ik}')"
+META="$(jq -nc --arg m "$MID" --arg rid "$RID" --arg ts "$TS_RFC3339" --arg ik "${RID}-meta" \
+  '{ machineId:$m, requestId:$rid, occurredAt:$ts, idempotencyKey:$ik}')"
 
 GU_BODY="$(jq -nc --argjson meta "$META" '{meta:$meta}')"
 grpc_contract_try "$FLOW_ID" "get-assigned-update" MachineCommandService GetAssignedUpdate "$GU_BODY" "g24-assigned" "" || ec=1

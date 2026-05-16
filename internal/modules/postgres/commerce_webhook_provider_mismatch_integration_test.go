@@ -20,7 +20,6 @@ func TestApplyPaymentProviderWebhook_providerMismatchRejected(t *testing.T) {
 
 	orderIDem := "wh-order-prov-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -37,7 +36,6 @@ func TestApplyPaymentProviderWebhook_providerMismatchRejected(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -55,7 +53,6 @@ func TestApplyPaymentProviderWebhook_providerMismatchRejected(t *testing.T) {
 
 	payload, _ := json.Marshal(map[string]any{"ok": true})
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:         testfixtures.DevOrganizationID,
 		OrderID:                orderRes.Order.ID,
 		PaymentID:              payRes.Payment.ID,
 		Provider:               "other_psp",

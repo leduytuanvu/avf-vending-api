@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-CREATE TABLE organizations (
+CREATE TABLE companies (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name text NOT NULL,
     slug text NOT NULL,
@@ -10,44 +10,44 @@ CREATE TABLE organizations (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_organizations_slug_lower ON organizations (lower(slug));
+CREATE UNIQUE INDEX ux_companies_slug_lower ON companies (lower(slug));
 
 CREATE TABLE regions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     name text NOT NULL,
     code text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_regions_org_code ON regions (organization_id, lower(code));
-CREATE INDEX ix_regions_organization_id ON regions (organization_id);
+CREATE UNIQUE INDEX ux_regions_org_code ON regions (scope_id, lower(code));
+CREATE INDEX ix_regions_scope_id ON regions (scope_id);
 
 CREATE TABLE sites (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     region_id uuid REFERENCES regions (id) ON DELETE SET NULL,
     name text NOT NULL,
     address jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_sites_organization_id ON sites (organization_id);
+CREATE INDEX ix_sites_scope_id ON sites (scope_id);
 CREATE INDEX ix_sites_region_id ON sites (region_id);
 
 CREATE TABLE machine_hardware_profiles (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid REFERENCES companies (id) ON DELETE CASCADE,
     name text NOT NULL,
     spec jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_machine_hardware_profiles_organization_id ON machine_hardware_profiles (organization_id);
+CREATE INDEX ix_machine_hardware_profiles_scope_id ON machine_hardware_profiles (scope_id);
 
 CREATE TABLE machines (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     site_id uuid NOT NULL REFERENCES sites (id) ON DELETE RESTRICT,
     hardware_profile_id uuid REFERENCES machine_hardware_profiles (id) ON DELETE SET NULL,
     serial_number text NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE machines (
     command_sequence bigint NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT ux_machines_org_serial UNIQUE (organization_id, serial_number)
+    CONSTRAINT ux_machines_org_serial UNIQUE (scope_id, serial_number)
 );
 
 CREATE INDEX ix_machines_site_id ON machines (site_id);
@@ -64,7 +64,7 @@ CREATE INDEX ix_machines_hardware_profile_id ON machines (hardware_profile_id);
 
 CREATE TABLE technicians (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     display_name text NOT NULL,
     email text,
     phone text,
@@ -72,10 +72,10 @@ CREATE TABLE technicians (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_technicians_org_email_lower ON technicians (organization_id, lower(email))
+CREATE UNIQUE INDEX ux_technicians_org_email_lower ON technicians (scope_id, lower(email))
     WHERE email IS NOT NULL AND btrim(email) <> '';
 
-CREATE INDEX ix_technicians_organization_id ON technicians (organization_id);
+CREATE INDEX ix_technicians_scope_id ON technicians (scope_id);
 
 CREATE TABLE technician_machine_assignments (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -92,7 +92,7 @@ CREATE INDEX ix_tma_machine_id ON technician_machine_assignments (machine_id);
 
 CREATE TABLE products (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     sku text NOT NULL,
     name text NOT NULL,
     description text NOT NULL DEFAULT '',
@@ -100,14 +100,14 @@ CREATE TABLE products (
     active boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT ux_products_org_sku UNIQUE (organization_id, sku)
+    CONSTRAINT ux_products_org_sku UNIQUE (scope_id, sku)
 );
 
-CREATE INDEX ix_products_organization_id ON products (organization_id);
+CREATE INDEX ix_products_scope_id ON products (scope_id);
 
 CREATE TABLE price_books (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     name text NOT NULL,
     currency char(3) NOT NULL,
     effective_from timestamptz NOT NULL,
@@ -116,7 +116,7 @@ CREATE TABLE price_books (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_price_books_organization_id ON price_books (organization_id);
+CREATE INDEX ix_price_books_scope_id ON price_books (scope_id);
 
 CREATE TABLE price_book_items (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -131,16 +131,16 @@ CREATE INDEX ix_price_book_items_product_id ON price_book_items (product_id);
 
 CREATE TABLE planograms (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     name text NOT NULL,
     revision int NOT NULL DEFAULT 1,
     status text NOT NULL CHECK (status IN ('draft', 'published', 'archived')),
     meta jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT ux_planograms_org_name_revision UNIQUE (organization_id, name, revision)
+    CONSTRAINT ux_planograms_org_name_revision UNIQUE (scope_id, name, revision)
 );
 
-CREATE INDEX ix_planograms_organization_id ON planograms (organization_id);
+CREATE INDEX ix_planograms_scope_id ON planograms (scope_id);
 
 CREATE TABLE slots (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -170,7 +170,7 @@ CREATE INDEX ix_machine_slot_state_planogram_id ON machine_slot_state (planogram
 
 CREATE TABLE orders (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
     status text NOT NULL CHECK (status IN ('created', 'quoted', 'paid', 'vending', 'completed', 'failed', 'cancelled')),
     currency char(3) NOT NULL,
@@ -182,7 +182,7 @@ CREATE TABLE orders (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_orders_org_idempotency ON orders (organization_id, idempotency_key)
+CREATE UNIQUE INDEX ux_orders_scope_idempotency ON orders (scope_id, idempotency_key)
     WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) <> '';
 
 CREATE INDEX ix_orders_machine_id ON orders (machine_id);
@@ -272,7 +272,7 @@ CREATE TABLE machine_shadow (
 
 CREATE TABLE outbox_events (
     id bigserial PRIMARY KEY,
-    organization_id uuid REFERENCES organizations (id) ON DELETE SET NULL,
+    scope_id uuid REFERENCES companies (id) ON DELETE SET NULL,
     topic text NOT NULL,
     event_type text NOT NULL,
     payload jsonb NOT NULL,
@@ -291,7 +291,7 @@ CREATE INDEX ix_outbox_unpublished ON outbox_events (created_at)
 
 CREATE TABLE audit_logs (
     id bigserial PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     actor_type text NOT NULL,
     actor_id text NOT NULL DEFAULT '',
     action text NOT NULL,
@@ -302,11 +302,11 @@ CREATE TABLE audit_logs (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_audit_logs_organization_id ON audit_logs (organization_id);
+CREATE INDEX ix_audit_logs_scope_id ON audit_logs (scope_id);
 
 CREATE TABLE ota_artifacts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     storage_key text NOT NULL,
     sha256 text,
     size_bytes bigint CHECK (size_bytes IS NULL OR size_bytes >= 0),
@@ -314,11 +314,11 @@ CREATE TABLE ota_artifacts (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_ota_artifacts_organization_id ON ota_artifacts (organization_id);
+CREATE INDEX ix_ota_artifacts_scope_id ON ota_artifacts (scope_id);
 
 CREATE TABLE ota_campaigns (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     name text NOT NULL,
     artifact_id uuid NOT NULL REFERENCES ota_artifacts (id) ON DELETE RESTRICT,
     strategy text NOT NULL DEFAULT 'rolling',
@@ -326,7 +326,7 @@ CREATE TABLE ota_campaigns (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_ota_campaigns_organization_id ON ota_campaigns (organization_id);
+CREATE INDEX ix_ota_campaigns_scope_id ON ota_campaigns (scope_id);
 
 CREATE TABLE ota_targets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -367,6 +367,6 @@ DROP TABLE IF EXISTS machines CASCADE;
 DROP TABLE IF EXISTS machine_hardware_profiles CASCADE;
 DROP TABLE IF EXISTS sites CASCADE;
 DROP TABLE IF EXISTS regions CASCADE;
-DROP TABLE IF EXISTS organizations CASCADE;
+DROP TABLE IF EXISTS companies CASCADE;
 
 -- +goose StatementEnd

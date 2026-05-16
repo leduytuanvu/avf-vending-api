@@ -15,8 +15,8 @@ import (
 )
 
 // PauseCampaign freezes rollout (no further commands until resume).
-func (s *Service) PauseCampaign(ctx context.Context, orgID, campaignID uuid.UUID) (CampaignDetail, error) {
-	cur, err := s.getCampaign(ctx, orgID, campaignID)
+func (s *Service) PauseCampaign(ctx context.Context, scopeID, campaignID uuid.UUID) (CampaignDetail, error) {
+	cur, err := s.getCampaign(ctx, scopeID, campaignID)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
@@ -24,25 +24,24 @@ func (s *Service) PauseCampaign(ctx context.Context, orgID, campaignID uuid.UUID
 		return CampaignDetail{}, ErrRolloutNotActive
 	}
 	now := time.Now().UTC()
-	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{
-		OrganizationID:    orgID,
-		ID:                campaignID,
-		Status:            statusPaused,
+	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{Status: statusPaused,
 		ApprovedBy:        cur.ApprovedBy,
 		ApprovedAt:        cur.ApprovedAt,
 		RolloutNextOffset: cur.RolloutNextOffset,
 		PausedAt:          pgtype.Timestamptz{Time: now, Valid: true},
+
+		ID: campaignID,
 	})
 	if err != nil {
 		return CampaignDetail{}, err
 	}
-	s.emitEvent(ctx, s.q, orgID, campaignID, "campaign_paused", map[string]any{}, pgtype.UUID{})
-	return s.campaignDetail(ctx, orgID, row)
+	s.emitEvent(ctx, s.q, scopeID, campaignID, "campaign_paused", map[string]any{}, pgtype.UUID{})
+	return s.campaignDetail(ctx, scopeID, row)
 }
 
 // ResumeCampaign continues the next deterministic wave after canary (or completes if nothing remains).
-func (s *Service) ResumeCampaign(ctx context.Context, orgID, campaignID uuid.UUID) (CampaignDetail, error) {
-	cur, err := s.getCampaign(ctx, orgID, campaignID)
+func (s *Service) ResumeCampaign(ctx context.Context, scopeID, campaignID uuid.UUID) (CampaignDetail, error) {
+	cur, err := s.getCampaign(ctx, scopeID, campaignID)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
@@ -62,36 +61,32 @@ func (s *Service) ResumeCampaign(ctx context.Context, orgID, campaignID uuid.UUI
 	if off >= n {
 		return CampaignDetail{}, ErrNothingLeftToRollout
 	}
-	primary, err := s.q.OtaAdminGetArtifactForOrg(ctx, db.OtaAdminGetArtifactForOrgParams{
-		OrganizationID: orgID,
-		ID:             cur.ArtifactID,
-	})
+	primary, err := s.q.OtaAdminGetArtifactForOrg(ctx, cur.ArtifactID)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
 	wave := mids[off:n]
-	if err := s.dispatchOTACommands(ctx, orgID, cur, primary, wave, waveForward, "full"); err != nil {
+	if err := s.dispatchOTACommands(ctx, scopeID, cur, primary, wave, waveForward, "full"); err != nil {
 		return CampaignDetail{}, err
 	}
-	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{
-		OrganizationID:    orgID,
-		ID:                campaignID,
-		Status:            statusCompleted,
+	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{Status: statusCompleted,
 		ApprovedBy:        cur.ApprovedBy,
 		ApprovedAt:        cur.ApprovedAt,
 		RolloutNextOffset: int32(n),
 		PausedAt:          pgtype.Timestamptz{},
+
+		ID: campaignID,
 	})
 	if err != nil {
 		return CampaignDetail{}, err
 	}
-	s.emitEvent(ctx, s.q, orgID, campaignID, "campaign_resumed", map[string]any{"wave_size": len(wave)}, pgtype.UUID{})
-	return s.campaignDetail(ctx, orgID, row)
+	s.emitEvent(ctx, s.q, scopeID, campaignID, "campaign_resumed", map[string]any{"wave_size": len(wave)}, pgtype.UUID{})
+	return s.campaignDetail(ctx, scopeID, row)
 }
 
 // CancelCampaign stops the campaign without deploying further waves.
-func (s *Service) CancelCampaign(ctx context.Context, orgID, campaignID uuid.UUID) (CampaignDetail, error) {
-	cur, err := s.getCampaign(ctx, orgID, campaignID)
+func (s *Service) CancelCampaign(ctx context.Context, scopeID, campaignID uuid.UUID) (CampaignDetail, error) {
+	cur, err := s.getCampaign(ctx, scopeID, campaignID)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
@@ -100,25 +95,24 @@ func (s *Service) CancelCampaign(ctx context.Context, orgID, campaignID uuid.UUI
 	default:
 		return CampaignDetail{}, ErrInvalidTransition
 	}
-	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{
-		OrganizationID:    orgID,
-		ID:                campaignID,
-		Status:            statusCancelled,
+	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{Status: statusCancelled,
 		ApprovedBy:        cur.ApprovedBy,
 		ApprovedAt:        cur.ApprovedAt,
 		RolloutNextOffset: cur.RolloutNextOffset,
 		PausedAt:          cur.PausedAt,
+
+		ID: campaignID,
 	})
 	if err != nil {
 		return CampaignDetail{}, err
 	}
-	s.emitEvent(ctx, s.q, orgID, campaignID, "campaign_cancelled", map[string]any{}, pgtype.UUID{})
-	return s.campaignDetail(ctx, orgID, row)
+	s.emitEvent(ctx, s.q, scopeID, campaignID, "campaign_cancelled", map[string]any{}, pgtype.UUID{})
+	return s.campaignDetail(ctx, scopeID, row)
 }
 
 // RollbackCampaign issues rollback commands using rollback_artifact_id (campaign field or override).
-func (s *Service) RollbackCampaign(ctx context.Context, orgID, campaignID uuid.UUID, rollbackArtifactID *uuid.UUID) (CampaignDetail, error) {
-	cur, err := s.getCampaign(ctx, orgID, campaignID)
+func (s *Service) RollbackCampaign(ctx context.Context, scopeID, campaignID uuid.UUID, rollbackArtifactID *uuid.UUID) (CampaignDetail, error) {
+	cur, err := s.getCampaign(ctx, scopeID, campaignID)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
@@ -136,10 +130,7 @@ func (s *Service) RollbackCampaign(ctx context.Context, orgID, campaignID uuid.U
 	if rid == uuid.Nil {
 		return CampaignDetail{}, ErrRollbackArtifact
 	}
-	rbArt, err := s.q.OtaAdminGetArtifactForOrg(ctx, db.OtaAdminGetArtifactForOrgParams{
-		OrganizationID: orgID,
-		ID:             rid,
-	})
+	rbArt, err := s.q.OtaAdminGetArtifactForOrg(ctx, rid)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return CampaignDetail{}, ErrNotFound
@@ -157,26 +148,25 @@ func (s *Service) RollbackCampaign(ctx context.Context, orgID, campaignID uuid.U
 	if len(mids) == 0 {
 		return CampaignDetail{}, ErrNoTargets
 	}
-	if err := s.dispatchRollbackCommands(ctx, orgID, cur, rbArt, mids); err != nil {
+	if err := s.dispatchRollbackCommands(ctx, scopeID, cur, rbArt, mids); err != nil {
 		return CampaignDetail{}, err
 	}
-	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{
-		OrganizationID:    orgID,
-		ID:                campaignID,
-		Status:            statusRolledBack,
+	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{Status: statusRolledBack,
 		ApprovedBy:        cur.ApprovedBy,
 		ApprovedAt:        cur.ApprovedAt,
 		RolloutNextOffset: cur.RolloutNextOffset,
 		PausedAt:          pgtype.Timestamptz{},
+
+		ID: campaignID,
 	})
 	if err != nil {
 		return CampaignDetail{}, err
 	}
-	s.emitEvent(ctx, s.q, orgID, campaignID, "campaign_rollback", map[string]any{"rollback_artifact_id": rid.String()}, pgtype.UUID{})
-	return s.campaignDetail(ctx, orgID, row)
+	s.emitEvent(ctx, s.q, scopeID, campaignID, "campaign_rollback", map[string]any{"rollback_artifact_id": rid.String()}, pgtype.UUID{})
+	return s.campaignDetail(ctx, scopeID, row)
 }
 
-func (s *Service) dispatchRollbackCommands(ctx context.Context, orgID uuid.UUID, camp db.OtaCampaign, art db.OtaArtifact, machines []uuid.UUID) error {
+func (s *Service) dispatchRollbackCommands(ctx context.Context, scopeID uuid.UUID, camp db.OtaCampaign, art db.OtaArtifact, machines []uuid.UUID) error {
 	semver := ""
 	if art.Semver.Valid {
 		semver = art.Semver.String
@@ -206,12 +196,11 @@ func (s *Service) dispatchRollbackCommands(ctx context.Context, orgID uuid.UUID,
 			return err
 		}
 		_, err = s.q.OtaAdminUpsertMachineResult(ctx, db.OtaAdminUpsertMachineResultParams{
-			OrganizationID: orgID,
-			CampaignID:     camp.ID,
-			MachineID:      mid,
-			Wave:           waveRollback,
-			CommandID:      uuidPg(res.CommandID),
-			Status:         resDispatched,
+			CampaignID: camp.ID,
+			MachineID:  mid,
+			Wave:       waveRollback,
+			CommandID:  uuidPg(res.CommandID),
+			Status:     resDispatched,
 		})
 		if err != nil {
 			return err

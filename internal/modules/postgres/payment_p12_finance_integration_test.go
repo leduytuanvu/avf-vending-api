@@ -25,7 +25,6 @@ func TestPaymentP12_webhookStoresIngressAndOrg(t *testing.T) {
 
 	orderIDem := "p12-wh-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -42,7 +41,6 @@ func TestPaymentP12_webhookStoresIngressAndOrg(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -61,7 +59,6 @@ func TestPaymentP12_webhookStoresIngressAndOrg(t *testing.T) {
 	evID := "evt-p12-" + uuid.NewString()
 	provRef := "prov-p12-" + uuid.NewString()
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
@@ -81,8 +78,6 @@ func TestPaymentP12_webhookStoresIngressAndOrg(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.True(t, row.SignatureValid)
-	require.True(t, row.OrganizationID.Valid)
-	require.Equal(t, testfixtures.DevOrganizationID, uuid.UUID(row.OrganizationID.Bytes))
 	require.Equal(t, "applied", row.IngressStatus)
 	require.True(t, row.AppliedAt.Valid)
 	require.NotContains(t, string(row.Payload), "4242424242424242")
@@ -98,7 +93,6 @@ func TestPaymentP12_settlementImport_idempotentAndMismatch(t *testing.T) {
 
 	orderIDem := "p12-settle-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -114,7 +108,6 @@ func TestPaymentP12_settlementImport_idempotentAndMismatch(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -131,7 +124,6 @@ func TestPaymentP12_settlementImport_idempotentAndMismatch(t *testing.T) {
 	require.NoError(t, err)
 	settleTxRef := "pi-settle-" + uuid.NewString()
 	wIn := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
@@ -155,31 +147,31 @@ func TestPaymentP12_settlementImport_idempotentAndMismatch(t *testing.T) {
 		SettlementDate:       time.Now().UTC().Format("2006-01-02"),
 		TransactionRefs:      []string{settleTxRef},
 	}
-	r1, err := adm.ImportSettlements(ctx, testfixtures.DevOrganizationID, "psp_fixture", []apppayments.SettlementImportItem{item})
+	r1, err := adm.ImportSettlements(ctx, testfixtures.DevScopeID, "psp_fixture", []apppayments.SettlementImportItem{item})
 	require.NoError(t, err)
 	require.Len(t, r1.Results, 1)
 	require.True(t, r1.Results[0].Matched)
 	require.Equal(t, "reconciled", r1.Results[0].Settlement.Status)
 
-	r2, err := adm.ImportSettlements(ctx, testfixtures.DevOrganizationID, "psp_fixture", []apppayments.SettlementImportItem{item})
+	r2, err := adm.ImportSettlements(ctx, testfixtures.DevScopeID, "psp_fixture", []apppayments.SettlementImportItem{item})
 	require.NoError(t, err)
 	require.Len(t, r2.Results, 1)
 	var cnt int64
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM payment_provider_settlements WHERE organization_id = $1 AND provider_settlement_id = $2`,
-		testfixtures.DevOrganizationID, settleID).Scan(&cnt))
+		`SELECT count(*) FROM payment_provider_settlements WHERE scope_id = $1 AND provider_settlement_id = $2`,
+		testfixtures.DevScopeID, settleID).Scan(&cnt))
 	require.EqualValues(t, 1, cnt)
 	require.Equal(t, r1.Results[0].Settlement.ID, r2.Results[0].Settlement.ID)
 
 	bad := item
 	bad.GrossAmountMinor = 1
 	bad.ProviderSettlementID = "set_bad_" + uuid.NewString()
-	_, err = adm.ImportSettlements(ctx, testfixtures.DevOrganizationID, "psp_fixture", []apppayments.SettlementImportItem{bad})
+	_, err = adm.ImportSettlements(ctx, testfixtures.DevScopeID, "psp_fixture", []apppayments.SettlementImportItem{bad})
 	require.NoError(t, err)
 	var caseCnt int64
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM commerce_reconciliation_cases WHERE organization_id = $1 AND case_type = 'settlement_amount_mismatch' AND correlation_key = $2`,
-		testfixtures.DevOrganizationID, "settlement:psp_fixture:"+bad.ProviderSettlementID).Scan(&caseCnt))
+		`SELECT count(*) FROM commerce_reconciliation_cases WHERE scope_id = $1 AND case_type = 'settlement_amount_mismatch' AND correlation_key = $2`,
+		testfixtures.DevScopeID, "settlement:psp_fixture:"+bad.ProviderSettlementID).Scan(&caseCnt))
 	require.EqualValues(t, 1, caseCnt)
 }
 
@@ -196,9 +188,8 @@ func TestPaymentP12_financeExportOtherOrgEmpty(t *testing.T) {
 	require.NoError(t, adm.WriteFinanceExportCSV(ctx, &buf, otherOrg, from, to))
 	require.Contains(t, buf.String(), "payment_id")
 	n, err := q.ListPaymentsFinanceExportForOrg(ctx, db.ListPaymentsFinanceExportForOrgParams{
-		OrganizationID: otherOrg,
-		CreatedAt:      from,
-		CreatedAt_2:    to,
+		CreatedAt:   from,
+		CreatedAt_2: to,
 	})
 	require.NoError(t, err)
 	require.Empty(t, n)
@@ -214,7 +205,6 @@ func TestPaymentP12_disputeResolve(t *testing.T) {
 	orderIDem := "p12-disp-" + uuid.NewString()
 	store := postgres.NewStore(pool)
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      2,
@@ -228,7 +218,6 @@ func TestPaymentP12_disputeResolve(t *testing.T) {
 	})
 	require.NoError(t, err)
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -246,7 +235,6 @@ func TestPaymentP12_disputeResolve(t *testing.T) {
 
 	ext := "dp_" + uuid.NewString()
 	_, err = q.InsertPaymentDispute(ctx, db.InsertPaymentDisputeParams{
-		OrganizationID:    testfixtures.DevOrganizationID,
 		Provider:          "psp_fixture",
 		ProviderDisputeID: ext,
 		AmountMinor:       100,
@@ -259,16 +247,15 @@ func TestPaymentP12_disputeResolve(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	list, err := adm.ListDisputes(ctx, testfixtures.DevOrganizationID, 20, 0)
+	list, err := adm.ListDisputes(ctx, testfixtures.DevScopeID, 20, 0)
 	require.NoError(t, err)
 	require.NotEmpty(t, list.Items)
 	did := uuid.MustParse(list.Items[0].ID)
 	out, err := adm.ResolveDispute(ctx, apppayments.ResolveDisputeInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		DisputeID:      did,
-		Status:         "lost",
-		Note:           "unit test",
-		ResolvedBy:     uuid.Nil,
+		DisputeID:  did,
+		Status:     "lost",
+		Note:       "unit test",
+		ResolvedBy: uuid.Nil,
 	})
 	require.NoError(t, err)
 	require.Equal(t, "lost", out.Status)

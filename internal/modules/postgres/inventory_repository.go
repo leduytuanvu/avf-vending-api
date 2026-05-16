@@ -80,31 +80,28 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	m, err := q.GetMachineByIDForUpdate(ctx, in.MachineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, in.MachineID)
 	if err != nil {
 		if isNoRows(err) {
 			return inventoryapp.AdjustmentBatchResult{}, errors.New("postgres: machine not found")
 		}
 		return inventoryapp.AdjustmentBatchResult{}, err
 	}
-	if m.OrganizationID != in.OrganizationID {
-		return inventoryapp.AdjustmentBatchResult{}, ErrMachineOrganizationMismatch
-	}
 
 	key := strings.TrimSpace(in.IdempotencyKey)
 	payloadHash := inventoryapp.ComputeAdjustmentPayloadSHA256(in)
 	if key != "" {
-		cnt, err := q.InventoryAdminCountInventoryEventsByIdempotencyKey(ctx, db.InventoryAdminCountInventoryEventsByIdempotencyKeyParams{
+		cnt, err := q.InventoryAdminCountInventoryEventsByIdempotencyKey(ctx, db.InventoryAdminCountInventoryEventsByIdempotencyKeyParams{Column2: key,
+
 			MachineID: in.MachineID,
-			Column2:   key,
 		})
 		if err != nil {
 			return inventoryapp.AdjustmentBatchResult{}, err
 		}
 		if cnt > 0 {
-			stored, err := q.InventoryAdminGetInventoryIdempotencyPayloadHash(ctx, db.InventoryAdminGetInventoryIdempotencyPayloadHashParams{
+			stored, err := q.InventoryAdminGetInventoryIdempotencyPayloadHash(ctx, db.InventoryAdminGetInventoryIdempotencyPayloadHashParams{Column2: key,
+
 				MachineID: in.MachineID,
-				Column2:   key,
 			})
 			if err != nil {
 				return inventoryapp.AdjustmentBatchResult{}, err
@@ -130,7 +127,7 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		return inventoryapp.AdjustmentBatchResult{}, err
 	}
 
-	currency, err := q.InventoryAdminGetOrgDefaultCurrency(ctx, m.OrganizationID)
+	currency, err := q.InventoryAdminGetOrgDefaultCurrency(ctx)
 	if err != nil {
 		return inventoryapp.AdjustmentBatchResult{}, err
 	}
@@ -206,7 +203,7 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		price := legacyPriceForSlot(legacySnapshot, it.PlanogramID, it.SlotIndex)
 
 		row := map[string]any{
-			"organization_id":  in.OrganizationID.String(),
+			"scope_id":         uuid.Nil.String(),
 			"machine_id":       in.MachineID.String(),
 			"event_type":       eventType,
 			"reason_code":      strings.TrimSpace(in.Reason),
@@ -282,7 +279,6 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		occ := occurredAt
 		if err := insertOperatorSessionAttribution(ctx, q, operatorAttributionSpec{
 			MachineID:         in.MachineID,
-			OrganizationID:    in.OrganizationID,
 			OperatorSessionID: in.OperatorSessionID,
 			ActionDomain:      "inventory",
 			ActionType:        "inventory.adjustment_batch",

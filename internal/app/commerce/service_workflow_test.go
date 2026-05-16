@@ -102,12 +102,11 @@ func (stubSaleLineResolver) LookupSlotDisplay(context.Context, uuid.UUID, uuid.U
 
 func TestFinalizeOrderAfterVend_SchedulesVendFailureWorkflow(t *testing.T) {
 	t.Parallel()
-	orgID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	orderID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	vendID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	paymentID := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 	life := &stubLifecycleForWorkflow{
-		order: domaincommerce.Order{ID: orderID, OrganizationID: orgID, Status: "vending"},
+		order: domaincommerce.Order{ID: orderID, Status: "vending"},
 		vend: domaincommerce.VendSession{
 			ID:        vendID,
 			OrderID:   orderID,
@@ -129,7 +128,6 @@ func TestFinalizeOrderAfterVend_SchedulesVendFailureWorkflow(t *testing.T) {
 		ScheduleVendFailureFollowUp: true,
 	})
 	_, err := svc.FinalizeOrderAfterVend(context.Background(), FinalizeAfterVendInput{
-		OrganizationID:    orgID,
 		OrderID:           orderID,
 		SlotIndex:         1,
 		TerminalVendState: "failed",

@@ -27,33 +27,33 @@ func mountAdminFinanceDailyCloseRoutes(r chi.Router, app *api.HTTPApplication) {
 	r.Get("/finance/daily-close/{closeId}", getAdminFinanceDailyCloseByID(fsvc))
 }
 
-func parseAdminTenantOrganization(r *http.Request) (uuid.UUID, error) {
+func parseAdminCompanyCompany(r *http.Request) (uuid.UUID, error) {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return uuid.Nil, listscope.ErrInvalidListQuery
 	}
 	qv := r.URL.Query()
-	var orgID uuid.UUID
+	var scopeID uuid.UUID
 	if p.HasRole(auth.RolePlatformAdmin) {
-		raw := strings.TrimSpace(qv.Get("organization_id"))
+		raw := strings.TrimSpace(qv.Get("scope_id"))
 		id, perr := uuid.Parse(raw)
 		if perr != nil || id == uuid.Nil {
-			return uuid.Nil, api.ErrCommerceOrganizationQueryRequired
+			return uuid.Nil, api.ErrCommerceCompanyQueryRequired
 		}
-		orgID = id
+		scopeID = id
 	} else {
-		if !p.HasOrganization() {
-			return uuid.Nil, api.ErrCommerceOrganizationQueryRequired
+		if !true {
+			return uuid.Nil, api.ErrCommerceCompanyQueryRequired
 		}
-		orgID = p.OrganizationID
-		if raw := strings.TrimSpace(qv.Get("organization_id")); raw != "" {
+		scopeID = uuid.Nil
+		if raw := strings.TrimSpace(qv.Get("scope_id")); raw != "" {
 			qid, perr := uuid.Parse(raw)
-			if perr != nil || qid != orgID {
+			if perr != nil || qid != scopeID {
 				return uuid.Nil, listscope.ErrInvalidListQuery
 			}
 		}
 	}
-	return orgID, nil
+	return scopeID, nil
 }
 
 func postAdminFinanceDailyClose(svc api.FinanceService) http.HandlerFunc {
@@ -63,7 +63,8 @@ func postAdminFinanceDailyClose(svc api.FinanceService) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "idempotency_required", err.Error())
 			return
 		}
-		orgID, err := parseAdminTenantOrganization(r)
+		scopeID, err := parseAdminCompanyCompany(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -79,7 +80,6 @@ func postAdminFinanceDailyClose(svc api.FinanceService) http.HandlerFunc {
 			return
 		}
 		in := appfinance.CreateDailyCloseInput{
-			OrganizationID: orgID,
 			CloseDate:      body.CloseDate,
 			Timezone:       body.Timezone,
 			IdempotencyKey: idem,
@@ -118,7 +118,8 @@ func postAdminFinanceDailyClose(svc api.FinanceService) http.HandlerFunc {
 
 func getAdminFinanceDailyCloseList(svc api.FinanceService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminTenantOrganization(r)
+		scopeID, err := parseAdminCompanyCompany(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -129,9 +130,8 @@ func getAdminFinanceDailyCloseList(svc api.FinanceService) http.HandlerFunc {
 			return
 		}
 		out, err := svc.ListDailyClose(r.Context(), appfinance.ListDailyCloseParams{
-			OrganizationID: orgID,
-			Limit:          limit,
-			Offset:         offset,
+			Limit:  limit,
+			Offset: offset,
 		})
 		writeV1Collection(w, r.Context(), out, err)
 	}
@@ -139,7 +139,8 @@ func getAdminFinanceDailyCloseList(svc api.FinanceService) http.HandlerFunc {
 
 func getAdminFinanceDailyCloseByID(svc api.FinanceService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminTenantOrganization(r)
+		scopeID, err := parseAdminCompanyCompany(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -150,7 +151,7 @@ func getAdminFinanceDailyCloseByID(svc api.FinanceService) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_close_id", "invalid closeId")
 			return
 		}
-		out, err := svc.GetDailyClose(r.Context(), orgID, id)
+		out, err := svc.GetDailyClose(r.Context(), scopeID, id)
 		if err != nil {
 			writeFinanceDailyCloseError(w, r.Context(), err)
 			return

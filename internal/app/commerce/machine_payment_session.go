@@ -16,7 +16,6 @@ import (
 // CreateMachinePaymentSessionInput is the app-layer contract for vending gRPC payment sessions.
 // Untrusted vending fields (QR URLs, provider references, outbox JSON) must never be passed here.
 type CreateMachinePaymentSessionInput struct {
-	OrganizationID  uuid.UUID
 	OrderID         uuid.UUID
 	MachineID       uuid.UUID
 	IdempotencyKey  string
@@ -51,8 +50,8 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 	if s.paymentSessionReg == nil {
 		return out, ErrNotConfigured
 	}
-	if in.OrganizationID == uuid.Nil || in.OrderID == uuid.Nil || in.MachineID == uuid.Nil {
-		return out, errors.Join(ErrInvalidArgument, errors.New("organization_id, order_id, and machine_id are required"))
+	if in.OrderID == uuid.Nil || in.MachineID == uuid.Nil {
+		return out, errors.Join(ErrInvalidArgument, errors.New("order_id and machine_id are required"))
 	}
 	key := strings.TrimSpace(in.IdempotencyKey)
 	if key == "" {
@@ -65,9 +64,6 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 	o, err := s.life.GetOrderByID(ctx, in.OrderID)
 	if err != nil {
 		return out, err
-	}
-	if o.OrganizationID != in.OrganizationID {
-		return out, ErrOrgMismatch
 	}
 	if o.MachineID != in.MachineID {
 		return out, errors.Join(ErrInvalidArgument, errors.New("order machine mismatch"))
@@ -96,7 +92,6 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 	})
 	outboxIdem := key + ":outbox:" + in.OrderID.String()
 	payRes, err := s.StartPaymentWithOutbox(ctx, StartPaymentInput{
-		OrganizationID:       in.OrganizationID,
 		OrderID:              in.OrderID,
 		Provider:             pkey,
 		PaymentState:         "created",
@@ -129,7 +124,6 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		}
 	}
 	sess, err := prov.CreatePaymentSession(ctx, platformpayments.CreatePaymentSessionInput{
-		OrganizationID: in.OrganizationID,
 		OrderID:        in.OrderID,
 		PaymentID:      payRes.Payment.ID,
 		AmountMinor:    o.TotalMinor,

@@ -13,7 +13,7 @@ Routes are under `/v1/admin` and require the appropriate fleet/technician permis
 - `POST /v1/admin/technician-assignments`
 - `GET /v1/admin/technician-assignments`
 - `DELETE /v1/admin/technician-assignments/{assignmentId}`
-- Organization-scoped alternates also exist under `/v1/admin/organizations/{organizationId}/machines/{machineId}/technicians`.
+- Company-scoped alternates also exist under `/v1/admin/machines/{machineId}/technicians`.
 
 ## Field operator session
 
@@ -31,9 +31,9 @@ Inventory and cash workflows require an active operator session ID where the rou
 ```bash
 BASE_URL="http://localhost:8080"
 TOKEN="<admin bearer token>"
-ORG_ID="11111111-1111-1111-1111-111111111111"
+SCOPE_ID="11111111-1111-1111-1111-111111111111"
 
-curl -sS "$BASE_URL/v1/admin/technicians?organization_id=$ORG_ID&limit=10" \
+curl -sS "$BASE_URL/v1/admin/technicians?company_id=$SCOPE_ID&limit=10" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -42,17 +42,17 @@ curl -sS "$BASE_URL/v1/admin/technicians?organization_id=$ORG_ID&limit=10" \
 ```powershell
 $BaseUrl = "http://localhost:8080"
 $Token = "<admin bearer token>"
-$OrgId = "11111111-1111-1111-1111-111111111111"
+$CompanyId = "11111111-1111-1111-1111-111111111111"
 
 Invoke-RestMethod -Method Get `
-  -Uri "$BaseUrl/v1/admin/technicians?organization_id=$OrgId&limit=10" `
+  -Uri "$BaseUrl/v1/admin/technicians?company_id=$CompanyId&limit=10" `
   -Headers @{ Authorization = "Bearer $Token" }
 ```
 
 ## Troubleshooting
 
 - `403`: the account lacks fleet/technician permissions, or a machine principal tried to call admin routes.
-- `404` on assignment: machine or technician is outside the caller organization.
+- `404` on assignment: machine or technician is outside the caller company.
 - Field mutation rejected for missing operator session: create/login an operator session on the same machine and retry with the returned session ID.
 
 Audit records are written for technician and assignment mutations. Do not bypass assignment APIs with direct SQL except in an approved incident procedure.

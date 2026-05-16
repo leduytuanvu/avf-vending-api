@@ -204,7 +204,7 @@ func RequireAnyPermission(perms ...string) func(http.Handler) http.Handler {
 }
 
 // RequireFleetMachineLifecycle enforces disable/retire/credential-rotation: fleet.machine.write plus
-// platform_admin, org_admin, or fleet_manager (see CanFleetMachineLifecycle).
+// platform_admin, admin, or fleet_manager (see CanFleetMachineLifecycle).
 func RequireFleetMachineLifecycle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p, ok := PrincipalFromContext(r.Context())
@@ -243,21 +243,12 @@ func RequireInteractivePermissionOrMachinePrincipal(perms ...string) func(http.H
 	}
 }
 
-// RequireOrganizationScope requires a non-nil organization on the principal (tenant-scoped APIs).
-// platform_admin may omit org_id; handlers and stores must still apply tenant filters when persisting.
-func RequireOrganizationScope(next http.Handler) http.Handler {
+// RequireCompanyScope is a legacy compatibility wrapper. In single-company
+// mode authentication is role/permission based and no company claim is required.
+func RequireCompanyScope(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p, ok := PrincipalFromContext(r.Context())
-		if !ok {
+		if _, ok := PrincipalFromContext(r.Context()); !ok {
 			writeAuthError(w, r, http.StatusUnauthorized, "unauthenticated", ErrUnauthenticated.Error())
-			return
-		}
-		if p.HasRole(RolePlatformAdmin) {
-			next.ServeHTTP(w, r)
-			return
-		}
-		if !p.HasOrganization() {
-			writeAuthError(w, r, http.StatusForbidden, "organization_scope_required", "organization scope required")
 			return
 		}
 		next.ServeHTTP(w, r)

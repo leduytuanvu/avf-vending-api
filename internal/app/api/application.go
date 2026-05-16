@@ -72,15 +72,15 @@ type HTTPApplication struct {
 	// ReportingExportMaxSpan caps CSV / export report downloads (typically wider than sync JSON).
 	ReportingExportMaxSpan time.Duration
 	Finance                FinanceService
-	// FeatureFlags manages tenant feature flags and staged machine config rollouts (optional).
+	// FeatureFlags manages company feature flags and staged machine config rollouts (optional).
 	FeatureFlags *appfeatureflags.Service
 	// MediaAdmin manages enterprise media_assets + presigned uploads when object storage is enabled (nil when Artifacts is nil).
 	MediaAdmin *appmediaadmin.Service
 	// Planogram manages enterprise draft/publish/version planogram APIs when wired from api.NewHTTPApplication.
 	Planogram *appplanogram.Service
-	// AdminOps exposes tenant operational troubleshooting APIs (machine health, commands, inventory anomalies).
+	// AdminOps exposes company operational troubleshooting APIs (machine health, commands, inventory anomalies).
 	AdminOps *appadminops.Service
-	// Anomalies runs P2.4 operational detectors and unified tenant anomaly + restock suggestion APIs.
+	// Anomalies runs P2.4 operational detectors and unified company anomaly + restock suggestion APIs.
 	Anomalies *appanomalies.Service
 	// Provisioning creates machines in bulk (optional; nil hides routes).
 	Provisioning *approvisioning.Service

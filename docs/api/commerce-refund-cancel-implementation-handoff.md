@@ -23,10 +23,10 @@
 
 Add to [`tools/build_openapi.py`](../../tools/build_openapi.py) **`REQUIRED_OPERATIONS`** and `DocOp*` stubs in [`swagger_operations.go`](../../internal/httpserver/swagger_operations.go).
 
-## Auth / tenant
+## Auth / company
 
-- Reuse commerce group middleware: Bearer + org resolution ([`commerce_http.go`](../../internal/httpserver/commerce_http.go) `RequireOrganizationScope` + `tenantOrgID`).
-- **Machine token:** when tenant-bound commerce lands, require order’s `machine_id` ∈ token `machine_ids` (see commerce access handoffs). Until then, document org-scoped JWT only or align with activation machine tokens for kiosk.
+- Reuse commerce group middleware: Bearer + company scope resolution ([`commerce_http.go`](../../internal/httpserver/commerce_http.go) `RequireCompanyScope` + `commerceScopeFromRequest`).
+- **Machine token:** when company-bound commerce lands, require order’s `machine_id` ∈ token `machine_ids` (see commerce access handoffs). Until then, document role-scoped JWT only or align with activation machine tokens for kiosk.
 
 ## API ↔ persistence mapping
 
@@ -74,7 +74,7 @@ Target product enum:
 
 ### List / get refunds
 
-- sqlc queries: `ListRefundsByOrder`, `GetRefundByOrderAndID` scoped by `organization_id` join on `orders`.
+- sqlc queries: `ListRefundsByOrder`, `GetRefundByOrderAndID` scoped by `company_id` join on `orders`.
 
 ## Vend failure (`POST .../vend/failure`)
 
@@ -116,7 +116,7 @@ Add **`docs/api/commerce-order-lifecycle.md`** (short) or extend [`docs/api/mach
 
 - `internal/app/commerce` — unit tests for cancel/refund validation, idempotency, amount caps, duplicate vend failure single refund.
 - `internal/httpserver` — httptest with stub validator + postgres integration when `TEST_DATABASE_URL` set.
-- Cover **cross-tenant** `EnsureOrderOrganization` / org mismatch **403**.
+- Cover **cross-company** `EnsureOrderCompany` / org mismatch **403**.
 
 ## Acceptance
 
@@ -131,7 +131,7 @@ go test ./...
 Shipped artifacts:
 
 - Tables: `order_timelines`, `refund_requests`; view `payment_reconciliation_cases` (see migrations + [`db/schema/01_platform.sql`](../../db/schema/01_platform.sql)).
-- Admin routes under `/v1/admin/organizations/{organizationId}/`: reconciliation list/detail/**resolve**/**ignore**, **request-refund**, **orders/{orderId}/timeline**, **refunds** list/get, **orders/{orderId}/refunds** (requires **Idempotency-Key**).
+- Admin routes under `/v1/admin/`: reconciliation list/detail/**resolve**/**ignore**, **request-refund**, **orders/{orderId}/timeline**, **refunds** list/get, **orders/{orderId}/refunds** (requires **Idempotency-Key**).
 - [`internal/app/commerceadmin/service.go`](../../internal/app/commerceadmin/service.go) — transactional resolve + timeline append; refund orchestration creates/links `refund_requests`.
 
 Runbook: [`docs/runbooks/payment-reconciliation.md`](../runbooks/payment-reconciliation.md).

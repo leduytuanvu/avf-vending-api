@@ -3,7 +3,7 @@
 
 CREATE TABLE platform_auth_accounts (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     email text NOT NULL,
     password_hash text NOT NULL,
     roles text[] NOT NULL DEFAULT '{}'::text[],
@@ -12,9 +12,9 @@ CREATE TABLE platform_auth_accounts (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX ux_platform_auth_accounts_org_email ON platform_auth_accounts (organization_id, lower(email));
+CREATE UNIQUE INDEX ux_platform_auth_accounts_org_email ON platform_auth_accounts (scope_id, lower(email));
 
-CREATE INDEX ix_platform_auth_accounts_organization_id ON platform_auth_accounts (organization_id);
+CREATE INDEX ix_platform_auth_accounts_scope_id ON platform_auth_accounts (scope_id);
 
 CREATE TABLE auth_refresh_tokens (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

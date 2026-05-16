@@ -19,7 +19,7 @@ const (
 	defaultAdjustmentLookbackDays       = 365
 )
 
-// Service runs detectors and serves unified anomaly + org-scoped restock suggestions.
+// Service runs detectors and serves unified anomaly + role-scoped restock suggestions.
 type Service struct {
 	q               *db.Queries
 	pool            *pgxpool.Pool
@@ -46,61 +46,60 @@ func NewService(pool *pgxpool.Pool, inv *inventoryadmin.Service) (*Service, erro
 }
 
 // Sync runs legacy inventory detectors plus P2.4 operational detectors (idempotent / deduped).
-func (s *Service) Sync(ctx context.Context, organizationID uuid.UUID) error {
+func (s *Service) Sync(ctx context.Context, companyID uuid.UUID) error {
 	if s == nil || s.q == nil {
 		return errors.New("anomalies: nil service")
 	}
-	if _, err := s.q.AdminOpsInsertDetectedNegativeStockAnomalies(ctx, organizationID); err != nil {
+	if _, err := s.q.AdminOpsInsertDetectedNegativeStockAnomalies(ctx); err != nil {
 		return err
 	}
 	if _, err := s.q.AdminOpsInsertDetectedManualAdjustmentAnomalies(ctx, db.AdminOpsInsertDetectedManualAdjustmentAnomaliesParams{
-		OrganizationID:         organizationID,
 		AdjustmentAbsThreshold: s.adjustThreshold,
 		LookbackDays:           s.adjustLookback,
 	}); err != nil {
 		return err
 	}
-	if _, err := s.q.AdminOpsInsertStaleInventorySyncAnomalies(ctx, organizationID); err != nil {
+	if _, err := s.q.AdminOpsInsertStaleInventorySyncAnomalies(ctx); err != nil {
 		return err
 	}
-	if _, err := s.q.AnomaliesInsertMachineOfflineTooLong(ctx, organizationID); err != nil {
+	if _, err := s.q.AnomaliesInsertMachineOfflineTooLong(ctx); err != nil {
 		return err
 	}
-	if _, err := s.q.AnomaliesInsertRepeatedVendFailure(ctx, organizationID); err != nil {
+	if _, err := s.q.AnomaliesInsertRepeatedVendFailure(ctx); err != nil {
 		return err
 	}
-	if _, err := s.q.AnomaliesInsertRepeatedPaymentFailure(ctx, organizationID); err != nil {
+	if _, err := s.q.AnomaliesInsertRepeatedPaymentFailure(ctx); err != nil {
 		return err
 	}
-	if _, err := s.q.AnomaliesInsertStockMismatch(ctx, organizationID); err != nil {
+	if _, err := s.q.AnomaliesInsertStockMismatch(ctx); err != nil {
 		return err
 	}
-	if _, err := s.q.AnomaliesInsertNegativeStockAttempt(ctx, organizationID); err != nil {
+	if _, err := s.q.AnomaliesInsertNegativeStockAttempt(ctx); err != nil {
 		return err
 	}
-	if _, err := s.q.AnomaliesInsertHighCashVariance(ctx, organizationID); err != nil {
+	if _, err := s.q.AnomaliesInsertHighCashVariance(ctx); err != nil {
 		return err
 	}
-	if _, err := s.q.AnomaliesInsertCommandFailureSpike(ctx, organizationID); err != nil {
+	if _, err := s.q.AnomaliesInsertCommandFailureSpike(ctx); err != nil {
 		return err
 	}
-	if _, err := s.q.AnomaliesInsertTelemetryMissing(ctx, organizationID); err != nil {
+	if _, err := s.q.AnomaliesInsertTelemetryMissing(ctx); err != nil {
 		return err
 	}
-	if _, err := s.q.AnomaliesInsertLowStockThreshold(ctx, organizationID); err != nil {
+	if _, err := s.q.AnomaliesInsertLowStockThreshold(ctx); err != nil {
 		return err
 	}
-	_, err := s.q.AnomaliesInsertSoldOutSoonEstimate(ctx, organizationID)
+	_, err := s.q.AnomaliesInsertSoldOutSoonEstimate(ctx)
 	return err
 }
 
-// List returns open and historical anomaly rows for the tenant (newest first).
-func (s *Service) List(ctx context.Context, organizationID uuid.UUID, machineID *uuid.UUID, limit, offset int32, refreshDetectors bool) ([]db.AdminOpsListInventoryAnomaliesByOrgRow, error) {
+// List returns open and historical anomaly rows for the company (newest first).
+func (s *Service) List(ctx context.Context, companyID uuid.UUID, machineID *uuid.UUID, limit, offset int32, refreshDetectors bool) ([]db.AdminOpsListInventoryAnomaliesByOrgRow, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("anomalies: nil service")
 	}
 	if refreshDetectors {
-		if err := s.Sync(ctx, organizationID); err != nil {
+		if err := s.Sync(ctx, companyID); err != nil {
 			return nil, err
 		}
 	}
@@ -112,54 +111,48 @@ func (s *Service) List(ctx context.Context, organizationID uuid.UUID, machineID 
 	}
 	filterMachine := machineID != nil && *machineID != uuid.Nil
 	return s.q.AdminOpsListInventoryAnomaliesByOrg(ctx, db.AdminOpsListInventoryAnomaliesByOrgParams{
-		OrganizationID: organizationID,
-		FilterMachine:  filterMachine,
-		MachineID:      derefUUID(machineID),
-		LimitVal:       limit,
-		OffsetVal:      offset,
+		FilterMachine: filterMachine,
+		MachineID:     derefUUID(machineID),
+		OffsetVal:     offset,
+		LimitVal:      limit,
 	})
 }
 
 // Get returns one anomaly row with machine labels.
-func (s *Service) Get(ctx context.Context, organizationID, anomalyID uuid.UUID) (db.AnomaliesGetByOrgAndIDRow, error) {
+func (s *Service) Get(ctx context.Context, companyID, anomalyID uuid.UUID) (db.AnomaliesGetByOrgAndIDRow, error) {
 	if s == nil || s.q == nil {
 		return db.AnomaliesGetByOrgAndIDRow{}, errors.New("anomalies: nil service")
 	}
-	return s.q.AnomaliesGetByOrgAndID(ctx, db.AnomaliesGetByOrgAndIDParams{
-		OrganizationID: organizationID,
-		AnomalyID:      anomalyID,
-	})
+	return s.q.AnomaliesGetByOrgAndID(ctx, anomalyID)
 }
 
 // Resolve closes an open anomaly (operator acknowledgement).
-func (s *Service) Resolve(ctx context.Context, organizationID, anomalyID, actorAccountID uuid.UUID, note string) error {
+func (s *Service) Resolve(ctx context.Context, companyID, anomalyID, actorAccountID uuid.UUID, note string) error {
 	if s == nil || s.q == nil {
 		return errors.New("anomalies: nil service")
 	}
-	_, err := s.q.AdminOpsResolveInventoryAnomaly(ctx, db.AdminOpsResolveInventoryAnomalyParams{
-		ID:             anomalyID,
-		OrganizationID: organizationID,
-		ResolvedBy:     uuidToPgUUID(actorAccountID),
+	_, err := s.q.AdminOpsResolveInventoryAnomaly(ctx, db.AdminOpsResolveInventoryAnomalyParams{ResolvedBy: uuidToPgUUID(actorAccountID),
 		ResolutionNote: pgtype.Text{String: strings.TrimSpace(note), Valid: strings.TrimSpace(note) != ""},
+
+		ID: anomalyID,
 	})
 	return MapIgnoreError(err)
 }
 
 // Ignore marks an open anomaly as ignored (still audited at the HTTP boundary).
-func (s *Service) Ignore(ctx context.Context, organizationID, anomalyID, actorAccountID uuid.UUID, note string) error {
+func (s *Service) Ignore(ctx context.Context, companyID, anomalyID, actorAccountID uuid.UUID, note string) error {
 	if s == nil || s.q == nil {
 		return errors.New("anomalies: nil service")
 	}
-	_, err := s.q.AdminOpsIgnoreInventoryAnomaly(ctx, db.AdminOpsIgnoreInventoryAnomalyParams{
-		ID:             anomalyID,
-		OrganizationID: organizationID,
-		ResolvedBy:     uuidToPgUUID(actorAccountID),
+	_, err := s.q.AdminOpsIgnoreInventoryAnomaly(ctx, db.AdminOpsIgnoreInventoryAnomalyParams{ResolvedBy: uuidToPgUUID(actorAccountID),
 		ResolutionNote: pgtype.Text{String: strings.TrimSpace(note), Valid: strings.TrimSpace(note) != ""},
+
+		ID: anomalyID,
 	})
 	return MapIgnoreError(err)
 }
 
-// RestockSuggestions returns explainable refill rows (current stock, velocity, thresholds) for the organization.
+// RestockSuggestions returns explainable refill rows (current stock, velocity, thresholds) for the company.
 func (s *Service) RestockSuggestions(ctx context.Context, p inventoryadmin.RefillForecastParams) (*inventoryadmin.RefillForecastResponse, error) {
 	if s == nil || s.inventory == nil {
 		return nil, errors.New("anomalies: nil service")

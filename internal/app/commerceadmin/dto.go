@@ -11,7 +11,6 @@ import (
 // OrderListItem is a normalized order row for operations dashboards.
 type OrderListItem struct {
 	OrderID        string    `json:"orderId"`
-	OrganizationID string    `json:"organizationId"`
 	MachineID      string    `json:"machineId"`
 	Status         string    `json:"status"`
 	Currency       string    `json:"currency"`
@@ -33,7 +32,6 @@ type OrdersListResponse struct {
 type PaymentListItem struct {
 	PaymentID            string    `json:"paymentId"`
 	OrderID              string    `json:"orderId"`
-	OrganizationID       string    `json:"organizationId"`
 	MachineID            string    `json:"machineId"`
 	Provider             string    `json:"provider"`
 	PaymentState         string    `json:"paymentState"`
@@ -54,7 +52,6 @@ type PaymentsListResponse struct {
 
 type ReconciliationCaseItem struct {
 	ID              string     `json:"id"`
-	OrganizationID  string     `json:"organizationId"`
 	CaseType        string     `json:"caseType"`
 	Status          string     `json:"status"`
 	Severity        string     `json:"severity"`
@@ -81,11 +78,10 @@ type ReconciliationListResponse struct {
 }
 
 type ResolveReconciliationInput struct {
-	OrganizationID uuid.UUID
-	CaseID         uuid.UUID
-	ResolvedBy     uuid.UUID
-	Status         string
-	Note           string
+	CaseID     uuid.UUID
+	ResolvedBy uuid.UUID
+	Status     string
+	Note       string
 }
 
 // OrderTimelineEventItem is one append-only commerce order lifecycle row.
@@ -108,7 +104,6 @@ type OrderTimelineResponse struct {
 // RefundRequestItem is the durable refund review record (links to refunds.refunds).
 type RefundRequestItem struct {
 	ID               string     `json:"id"`
-	OrganizationID   string     `json:"organizationId"`
 	OrderID          string     `json:"orderId"`
 	PaymentID        *string    `json:"paymentId,omitempty"`
 	RefundID         *string    `json:"refundId,omitempty"`
@@ -133,7 +128,6 @@ type RefundRequestsListResponse struct {
 
 // CreateOrderRefundInput is POST .../orders/{orderId}/refunds.
 type CreateOrderRefundInput struct {
-	OrganizationID uuid.UUID
 	OrderID        uuid.UUID
 	AmountMinor    *int64
 	Currency       string
@@ -153,9 +147,8 @@ type CreateOrderRefundResult struct {
 
 // RefundFromReconciliationCaseInput drives POST .../reconciliation/{caseId}/request-refund.
 type RefundFromReconciliationCaseInput struct {
-	OrganizationID uuid.UUID
-	CaseID         uuid.UUID
-	AmountMinor    *int64
-	Reason         string
-	RequestedBy    uuid.UUID
+	CaseID      uuid.UUID
+	AmountMinor *int64
+	Reason      string
+	RequestedBy uuid.UUID
 }

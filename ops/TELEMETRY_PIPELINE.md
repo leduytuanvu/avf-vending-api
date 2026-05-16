@@ -56,4 +56,4 @@ Mounted under `/v1/machines/{machineId}/telemetry/*` with `RequireMachineURLAcce
 
 - **Coarse (`1h`) rollup materialization** from `1m` is **not** implemented yet; only the schema and read path accept `granularity=1h`.
 - **Object storage HEAD verification** for diagnostic manifests is **not** wired; manifests assume the device/uploader already placed bytes at `storage_key`.
-- **MQTT TLS** and **per-tenant NATS accounts** remain deployment concerns outside this document.
+- **MQTT TLS** and **per-company NATS accounts** remain deployment concerns outside this document.

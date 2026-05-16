@@ -20,13 +20,13 @@ Replay and manual DLQ emit **`audit_events`** in the **same PostgreSQL transacti
 
 Minimal operations: [outbox-replay.md](./outbox-replay.md) (`cmd/outbox-replay`). Use only when admin HTTP is unavailable; dead-letter replay still requires explicit confirmation flags.
 
-Audit rows require a valid **`organization_id`** FK. Resolution order for the audit event:
+Audit rows require a valid **`company_id`** FK. Resolution order for the audit event:
 
-1. `outbox_events.organization_id` when present
-2. otherwise the interactive principal's `organization_id` JWT scope
-3. otherwise **`PLATFORM_AUDIT_ORGANIZATION_ID`** (env) for platform-scoped rows
+1. `outbox_events.company_id` when present
+2. otherwise the interactive principal's `company_id` JWT scope
+3. otherwise **`PLATFORM_AUDIT_SCOPE_ID`** (env) for platform-scoped rows
 
-Without a resolvable organization, replay/DLQ returns **`503`** with `platform_audit_org_unresolved`.
+Without a resolvable company, replay/DLQ returns **`503`** with `platform_audit_scope_unresolved`.
 
 Legacy endpoints **`GET /v1/admin/ops/outbox`** and **`POST /v1/admin/ops/outbox/{outboxId}/retry`** remain supported.
 
