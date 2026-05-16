@@ -52,14 +52,14 @@ ALTER TABLE technician_machine_assignments
     ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_tma_one_active_machine_technician
-    ON technician_machine_assignments (organization_id, machine_id, technician_id)
+    ON technician_machine_assignments (scope_id, machine_id, technician_id)
     WHERE status = 'active' AND valid_to IS NULL;
 
 -- Compatibility view for the P0.5 contract wording; writes still use technician_machine_assignments.
 CREATE OR REPLACE VIEW machine_technician_assignments AS
 SELECT
     id,
-    organization_id,
+    scope_id,
     machine_id,
     technician_id AS user_id,
     role,

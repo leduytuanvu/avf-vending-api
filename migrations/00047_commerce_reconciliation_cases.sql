@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS commerce_reconciliation_cases (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     case_type text NOT NULL CHECK (
         case_type IN (
             'payment_paid_vend_not_started',
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS commerce_reconciliation_cases (
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_commerce_reconciliation_cases_open_identity
     ON commerce_reconciliation_cases (
-        organization_id,
+        scope_id,
         case_type,
         COALESCE(order_id, '00000000-0000-0000-0000-000000000000'::uuid),
         COALESCE(payment_id, '00000000-0000-0000-0000-000000000000'::uuid),
@@ -43,7 +43,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_commerce_reconciliation_cases_open_identity
     WHERE status IN ('open', 'reviewing');
 
 CREATE INDEX IF NOT EXISTS ix_commerce_reconciliation_cases_org_status
-    ON commerce_reconciliation_cases (organization_id, status, last_detected_at DESC);
+    ON commerce_reconciliation_cases (scope_id, status, last_detected_at DESC);
 
 CREATE INDEX IF NOT EXISTS ix_commerce_reconciliation_cases_payment
     ON commerce_reconciliation_cases (payment_id, last_detected_at DESC)

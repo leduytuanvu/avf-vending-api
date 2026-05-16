@@ -32,11 +32,9 @@ phase8_record() {
 
 SID="E2E-44-offline-replay"
 start_step "phase8-${SID}"
-
-ORG="$(get_data organizationId)"
 MID="$(get_data machineId)"
 MT="$(get_secret machineToken 2>/dev/null || true)"
-IDS_JSON="$(jq -nc --arg o "${ORG:-}" --arg m "${MID:-}" '{organizationId:$o,machineId:$m}')"
+IDS_JSON="$(jq -nc --arg m "${MID:-}" '{machineId:$m}')"
 APIS_JSON='["gRPC MachineOfflineSyncService/PushOfflineEvents"]'
 EXPECTED="First PushOfflineEvents accepts bundle; second duplicate push returns safe replay / not modified (idempotent)."
 EVID_JSON="$(jq -nc --arg a "${E2E_RUN_DIR}/grpc/p8-off-a.meta.json" --arg b "${E2E_RUN_DIR}/grpc/p8-off-b.meta.json" '[$a,$b]')"
@@ -68,7 +66,6 @@ IDEM_EVT="e2e-p8-offline-event-fixed-1"
 OCC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 OFF_BODY="$(jq -nc \
-  --arg oid "$ORG" \
   --arg mid "$MID" \
   --arg rid "$REQ_ID" \
   --arg ik "$IDEM_BUNDLE" \
@@ -77,15 +74,13 @@ OFF_BODY="$(jq -nc \
   --arg occ "$OCC" \
   '{
     meta:{
-      organizationId:$oid,
       machineId:$mid,
       requestId:$rid,
       idempotencyKey:$ik
     },
     events:[{
       meta:{
-        organizationId:$oid,
-        machineId:$mid,
+          machineId:$mid,
         requestId:$rid,
         clientEventId:$ceid,
         offlineSequence:1,

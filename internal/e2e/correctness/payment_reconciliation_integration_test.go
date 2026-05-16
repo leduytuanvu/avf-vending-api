@@ -25,7 +25,6 @@ func TestP06_PaymentReconciliation_providerCapturedLocalPendingVisible(t *testin
 
 	orderIDem := "p06-rec-pend-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -42,7 +41,6 @@ func TestP06_PaymentReconciliation_providerCapturedLocalPendingVisible(t *testin
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -62,7 +60,6 @@ func TestP06_PaymentReconciliation_providerCapturedLocalPendingVisible(t *testin
 	webhookEv := "evt-rec-a-" + uuid.NewString()
 	whIDem := orderIDem + ":webhook:captured"
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
@@ -85,7 +82,7 @@ func TestP06_PaymentReconciliation_providerCapturedLocalPendingVisible(t *testin
 	_, err = pool.Exec(ctx, `UPDATE payments SET state = 'authorized', updated_at = now() WHERE id = $1`, payRes.Payment.ID)
 	require.NoError(t, err)
 
-	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevOrganizationID, 3600, 100)
+	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevScopeID, 3600, 100)
 	require.NoError(t, err)
 	found := false
 	for _, r := range rep.ProviderCapturedVsLocalPending {
@@ -107,7 +104,6 @@ func TestP06_PaymentReconciliation_localCapturedMissingProviderEvidenceVisible(t
 
 	orderIDem := "p06-rec-evid-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -124,7 +120,6 @@ func TestP06_PaymentReconciliation_localCapturedMissingProviderEvidenceVisible(t
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -144,7 +139,6 @@ func TestP06_PaymentReconciliation_localCapturedMissingProviderEvidenceVisible(t
 	webhookEv := "evt-rec-b-" + uuid.NewString()
 	whIDem := orderIDem + ":webhook:captured"
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
@@ -167,7 +161,7 @@ func TestP06_PaymentReconciliation_localCapturedMissingProviderEvidenceVisible(t
 	_, err = pool.Exec(ctx, `DELETE FROM payment_provider_events WHERE payment_id = $1`, payRes.Payment.ID)
 	require.NoError(t, err)
 
-	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevOrganizationID, 3600, 100)
+	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevScopeID, 3600, 100)
 	require.NoError(t, err)
 	found := false
 	for _, r := range rep.LocalCapturedMissingProviderAudit {
@@ -189,7 +183,6 @@ func TestP06_PaymentReconciliation_appliedWebhookAmountMismatchVisible(t *testin
 
 	orderIDem := "p06-rec-mm-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -206,7 +199,6 @@ func TestP06_PaymentReconciliation_appliedWebhookAmountMismatchVisible(t *testin
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -226,7 +218,6 @@ func TestP06_PaymentReconciliation_appliedWebhookAmountMismatchVisible(t *testin
 	webhookEv := "evt-rec-mm-" + uuid.NewString()
 	whIDem := orderIDem + ":webhook:captured"
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
@@ -256,7 +247,7 @@ func TestP06_PaymentReconciliation_appliedWebhookAmountMismatchVisible(t *testin
 	_, err = pool.Exec(ctx, `UPDATE payment_provider_events SET provider_amount_minor = 999 WHERE id = $1`, evID)
 	require.NoError(t, err)
 
-	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevOrganizationID, 3600, 100)
+	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevScopeID, 3600, 100)
 	require.NoError(t, err)
 	found := false
 	for _, r := range rep.AppliedWebhookVsPaymentAmountMismatch {

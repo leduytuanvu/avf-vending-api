@@ -63,7 +63,7 @@ Treat as **missing** until present in **`docs/swagger/swagger.json`** **and** mo
 - **Public Swagger** when `HTTP_SWAGGER_UI_ENABLED=true` without edge ACL.
 - **Metrics** on public bind without scrape auth, or **ops** `/metrics` accidentally scraped without bearer when `METRICS_SCRAPE_TOKEN` is set.
 - **Webhook HMAC** misconfiguration, clock skew, or **provider** mismatch vs stored payment.
-- **Machine JWT** scope bugs → cross-tenant data exposure (mitigated by middleware; verify per release).
+- **Machine JWT** scope bugs → cross-company data exposure (mitigated by middleware; verify per release).
 
 ---
 

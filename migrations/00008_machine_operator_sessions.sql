@@ -20,7 +20,7 @@
 -- ---------------------------------------------------------------------------
 CREATE TABLE machine_operator_sessions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     actor_type text NOT NULL CHECK (actor_type IN ('TECHNICIAN', 'USER')),
     technician_id uuid REFERENCES technicians (id) ON DELETE SET NULL,
@@ -47,13 +47,13 @@ CREATE UNIQUE INDEX ux_machine_operator_sessions_one_active ON machine_operator_
     WHERE status = 'ACTIVE';
 
 CREATE INDEX ix_machine_operator_sessions_machine_started ON machine_operator_sessions (machine_id, started_at DESC);
-CREATE INDEX ix_machine_operator_sessions_org_started ON machine_operator_sessions (organization_id, started_at DESC);
+CREATE INDEX ix_machine_operator_sessions_org_started ON machine_operator_sessions (scope_id, started_at DESC);
 CREATE INDEX ix_machine_operator_sessions_technician ON machine_operator_sessions (technician_id, started_at DESC)
     WHERE technician_id IS NOT NULL;
-CREATE INDEX ix_machine_operator_sessions_user_principal ON machine_operator_sessions (organization_id, user_principal, started_at DESC)
+CREATE INDEX ix_machine_operator_sessions_user_principal ON machine_operator_sessions (scope_id, user_principal, started_at DESC)
     WHERE actor_type = 'USER' AND user_principal IS NOT NULL;
-CREATE INDEX ix_machine_operator_sessions_org_machine_started ON machine_operator_sessions (organization_id, machine_id, started_at DESC);
-CREATE INDEX ix_machine_operator_sessions_org_active_started ON machine_operator_sessions (organization_id, started_at DESC)
+CREATE INDEX ix_machine_operator_sessions_org_machine_started ON machine_operator_sessions (scope_id, machine_id, started_at DESC);
+CREATE INDEX ix_machine_operator_sessions_org_active_started ON machine_operator_sessions (scope_id, started_at DESC)
     WHERE status = 'ACTIVE';
 
 COMMENT ON TABLE machine_operator_sessions IS 'Machine-side operator login context; machine identity stays on machines, technician identity on technicians, USER uses opaque user_principal (IdP sub / admin id).';
@@ -183,7 +183,7 @@ $do$;
 CREATE VIEW v_machine_current_operator AS
 SELECT
     m.id AS machine_id,
-    m.organization_id,
+    m.scope_id,
     s.id AS operator_session_id,
     s.actor_type,
     s.technician_id,

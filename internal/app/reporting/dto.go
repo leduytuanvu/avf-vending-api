@@ -2,12 +2,11 @@ package reporting
 
 // SalesSummaryResponse is GET /v1/reports/sales-summary.
 type SalesSummaryResponse struct {
-	OrganizationID string              `json:"organizationId"`
-	From           string              `json:"from"`
-	To             string              `json:"to"`
-	GroupBy        string              `json:"groupBy"`
-	Summary        SalesSummaryRollup  `json:"summary"`
-	Breakdown      []SalesBreakdownRow `json:"breakdown"`
+	From      string              `json:"from"`
+	To        string              `json:"to"`
+	GroupBy   string              `json:"groupBy"`
+	Summary   SalesSummaryRollup  `json:"summary"`
+	Breakdown []SalesBreakdownRow `json:"breakdown"`
 }
 
 // SalesSummaryRollup aggregates orders in the reporting window.
@@ -38,12 +37,11 @@ type SalesBreakdownRow struct {
 
 // PaymentsSummaryResponse is GET /v1/reports/payments-summary.
 type PaymentsSummaryResponse struct {
-	OrganizationID string                 `json:"organizationId"`
-	From           string                 `json:"from"`
-	To             string                 `json:"to"`
-	GroupBy        string                 `json:"groupBy"`
-	Summary        PaymentsSummaryRollup  `json:"summary"`
-	Breakdown      []PaymentsBreakdownRow `json:"breakdown"`
+	From      string                 `json:"from"`
+	To        string                 `json:"to"`
+	GroupBy   string                 `json:"groupBy"`
+	Summary   PaymentsSummaryRollup  `json:"summary"`
+	Breakdown []PaymentsBreakdownRow `json:"breakdown"`
 }
 
 // PaymentsSummaryRollup aggregates payment rows joined to orders in the window.
@@ -69,7 +67,6 @@ type PaymentsBreakdownRow struct {
 
 // FleetHealthResponse is GET /v1/reports/fleet-health.
 type FleetHealthResponse struct {
-	OrganizationID             string                    `json:"organizationId"`
 	From                       string                    `json:"from"`
 	To                         string                    `json:"to"`
 	MachineSummary             FleetMachineHealthSummary `json:"machineSummary"`
@@ -102,12 +99,11 @@ type FleetSeverityCountRow struct {
 
 // InventoryExceptionsResponse is GET /v1/reports/inventory-exceptions.
 type InventoryExceptionsResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	ExceptionKind  string                      `json:"exceptionKind"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
-	Items          []InventoryExceptionItem    `json:"items"`
+	From          string                      `json:"from"`
+	To            string                      `json:"to"`
+	ExceptionKind string                      `json:"exceptionKind"`
+	Meta          InventoryExceptionsListMeta `json:"meta"`
+	Items         []InventoryExceptionItem    `json:"items"`
 }
 
 // InventoryExceptionsListMeta paginates exception rows (cap enforced server-side).
@@ -139,12 +135,11 @@ type InventoryExceptionItem struct {
 
 // PaymentSettlementResponse groups provider settlement state by business date.
 type PaymentSettlementResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	Timezone       string                      `json:"timezone"`
-	Items          []PaymentSettlementRow      `json:"items"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
+	From     string                      `json:"from"`
+	To       string                      `json:"to"`
+	Timezone string                      `json:"timezone"`
+	Items    []PaymentSettlementRow      `json:"items"`
+	Meta     InventoryExceptionsListMeta `json:"meta"`
 }
 
 type PaymentSettlementRow struct {
@@ -158,11 +153,10 @@ type PaymentSettlementRow struct {
 }
 
 type RefundReportResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
-	Items          []RefundReportItem          `json:"items"`
+	From  string                      `json:"from"`
+	To    string                      `json:"to"`
+	Meta  InventoryExceptionsListMeta `json:"meta"`
+	Items []RefundReportItem          `json:"items"`
 }
 
 type RefundReportItem struct {
@@ -180,19 +174,17 @@ type RefundReportItem struct {
 }
 
 type CashCollectionReportResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
-	Items          []CashCollectionExportRow   `json:"items"`
+	From  string                      `json:"from"`
+	To    string                      `json:"to"`
+	Meta  InventoryExceptionsListMeta `json:"meta"`
+	Items []CashCollectionExportRow   `json:"items"`
 }
 
 type MachineHealthReportResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
-	Items          []MachineHealthReportItem   `json:"items"`
+	From  string                      `json:"from"`
+	To    string                      `json:"to"`
+	Meta  InventoryExceptionsListMeta `json:"meta"`
+	Items []MachineHealthReportItem   `json:"items"`
 }
 
 type MachineHealthReportItem struct {
@@ -207,11 +199,10 @@ type MachineHealthReportItem struct {
 }
 
 type FailedVendReportResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
-	Items          []FailedVendReportItem      `json:"items"`
+	From  string                      `json:"from"`
+	To    string                      `json:"to"`
+	Meta  InventoryExceptionsListMeta `json:"meta"`
+	Items []FailedVendReportItem      `json:"items"`
 }
 
 type FailedVendReportItem struct {
@@ -230,20 +221,18 @@ type FailedVendReportItem struct {
 }
 
 type ReconciliationQueueReportResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
-	Items          []ReconciliationQueueItem   `json:"items"`
+	From  string                      `json:"from"`
+	To    string                      `json:"to"`
+	Meta  InventoryExceptionsListMeta `json:"meta"`
+	Items []ReconciliationQueueItem   `json:"items"`
 }
 
 // VendSummaryResponse aggregates vend lifecycle counts plus paginated failed vend rows (same window/filters).
 type VendSummaryResponse struct {
-	OrganizationID string                   `json:"organizationId"`
-	From           string                   `json:"from"`
-	To             string                   `json:"to"`
-	Summary        VendCountsSummary        `json:"summary"`
-	FailedVends    VendFailedVendsSubreport `json:"failedVends"`
+	From        string                   `json:"from"`
+	To          string                   `json:"to"`
+	Summary     VendCountsSummary        `json:"summary"`
+	FailedVends VendFailedVendsSubreport `json:"failedVends"`
 }
 
 type VendCountsSummary struct {
@@ -260,11 +249,10 @@ type VendFailedVendsSubreport struct {
 
 // StockMovementReportResponse lists inventory_events rows for BI movement tracing.
 type StockMovementReportResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
-	Items          []StockMovementRow          `json:"items"`
+	From  string                      `json:"from"`
+	To    string                      `json:"to"`
+	Meta  InventoryExceptionsListMeta `json:"meta"`
+	Items []StockMovementRow          `json:"items"`
 }
 
 type StockMovementRow struct {
@@ -284,11 +272,10 @@ type StockMovementRow struct {
 
 // TechnicianFillReportResponse lists technician / refill / operator-attributed inventory operations (no payment data).
 type TechnicianFillReportResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
-	Items          []TechnicianFillOpRow       `json:"items"`
+	From  string                      `json:"from"`
+	To    string                      `json:"to"`
+	Meta  InventoryExceptionsListMeta `json:"meta"`
+	Items []TechnicianFillOpRow       `json:"items"`
 }
 
 // TechnicianFillOpRow is one inventory_events row for operational fill / restock reporting.
@@ -313,11 +300,10 @@ type TechnicianFillOpRow struct {
 
 // CommandFailuresReportResponse lists terminal unsuccessful machine command attempts (no raw payloads).
 type CommandFailuresReportResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
-	Items          []CommandFailureRow         `json:"items"`
+	From  string                      `json:"from"`
+	To    string                      `json:"to"`
+	Meta  InventoryExceptionsListMeta `json:"meta"`
+	Items []CommandFailureRow         `json:"items"`
 }
 
 type CommandFailureRow struct {
@@ -333,13 +319,12 @@ type CommandFailureRow struct {
 
 // ReconciliationBIReportResponse is admin reconciliation BI (open + closed summaries + scoped cases).
 type ReconciliationBIReportResponse struct {
-	OrganizationID string                      `json:"organizationId"`
-	From           string                      `json:"from"`
-	To             string                      `json:"to"`
-	Scope          string                      `json:"scope"`
-	Summary        ReconciliationBISummary     `json:"summary"`
-	Meta           InventoryExceptionsListMeta `json:"meta"`
-	Items          []ReconciliationBIItem      `json:"items"`
+	From    string                      `json:"from"`
+	To      string                      `json:"to"`
+	Scope   string                      `json:"scope"`
+	Summary ReconciliationBISummary     `json:"summary"`
+	Meta    InventoryExceptionsListMeta `json:"meta"`
+	Items   []ReconciliationBIItem      `json:"items"`
 }
 
 type ReconciliationBISummary struct {
@@ -365,10 +350,9 @@ type ReconciliationBIItem struct {
 
 // ProductPerformanceResponse is vend and revenue attribution by product (admin /reports/products).
 type ProductPerformanceResponse struct {
-	OrganizationID string                  `json:"organizationId"`
-	From           string                  `json:"from"`
-	To             string                  `json:"to"`
-	Items          []ProductPerformanceRow `json:"items"`
+	From  string                  `json:"from"`
+	To    string                  `json:"to"`
+	Items []ProductPerformanceRow `json:"items"`
 }
 
 type ProductPerformanceRow struct {

@@ -33,7 +33,7 @@ func (s *Store) ApplyReconciledPaymentTransition(ctx context.Context, in domainc
 	if err != nil {
 		return domaincommerce.Payment{}, err
 	}
-	ord, err := q.GetOrderByID(ctx, cur.OrderID)
+	_, err = q.GetOrderByID(ctx, cur.OrderID)
 	if err != nil {
 		return domaincommerce.Payment{}, err
 	}
@@ -54,9 +54,9 @@ func (s *Store) ApplyReconciledPaymentTransition(ctx context.Context, in domainc
 
 	qtx := db.New(tx)
 
-	updated, err := qtx.UpdatePaymentStateForReconciliation(ctx, db.UpdatePaymentStateForReconciliationParams{
-		ID:    in.PaymentID,
-		State: to,
+	updated, err := qtx.UpdatePaymentStateForReconciliation(ctx, db.UpdatePaymentStateForReconciliationParams{State: to,
+
+		ID: in.PaymentID,
 	})
 	if err != nil {
 		if isNoRows(err) {
@@ -87,7 +87,6 @@ func (s *Store) ApplyReconciledPaymentTransition(ctx context.Context, in domainc
 	}
 	if shouldInsertReconciledPaymentOutbox(in) {
 		if _, err := qtx.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-			OrganizationID: optionalUUIDToPg(&ord.OrganizationID),
 			Topic:          strings.TrimSpace(in.OutboxTopic),
 			EventType:      strings.TrimSpace(in.OutboxEventType),
 			Payload:        reconciledPaymentOutboxPayload(in, cur),

@@ -34,7 +34,8 @@ func registerAdminPromotionWriteRoutes(r chi.Router, svc *appcatalogadmin.Servic
 
 func listAdminPromotions(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -47,7 +48,6 @@ func listAdminPromotions(svc *appcatalogadmin.Service) http.HandlerFunc {
 		incDeact := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("include_deactivated")), "true") ||
 			strings.TrimSpace(r.URL.Query().Get("include_deactivated")) == "1"
 		rows, total, err := svc.ListPromotions(r.Context(), appcatalogadmin.ListPromotionsParams{
-			OrganizationID:     orgID,
 			Limit:              limit,
 			Offset:             offset,
 			IncludeDeactivated: incDeact,
@@ -74,7 +74,8 @@ func listAdminPromotions(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func getAdminPromotionDetail(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -84,7 +85,7 @@ func getAdminPromotionDetail(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_promotion_id", "invalid promotionId")
 			return
 		}
-		row, err := svc.GetPromotion(r.Context(), orgID, pid)
+		row, err := svc.GetPromotion(r.Context(), scopeID, pid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -94,7 +95,7 @@ func getAdminPromotionDetail(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		targets, err := svc.ListPromotionTargets(r.Context(), orgID, pid)
+		targets, err := svc.ListPromotionTargets(r.Context(), scopeID, pid)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -117,7 +118,8 @@ func getAdminPromotionDetail(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func postAdminPromotionCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -150,7 +152,6 @@ func postAdminPromotionCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			})
 		}
 		row, err := svc.CreatePromotion(r.Context(), appcatalogadmin.CreatePromotionInput{
-			OrganizationID:   orgID,
 			Name:             body.Name,
 			StartsAt:         startsAt,
 			EndsAt:           endsAt,
@@ -171,7 +172,8 @@ func postAdminPromotionCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func patchAdminPromotion(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -225,7 +227,7 @@ func patchAdminPromotion(svc *appcatalogadmin.Service) http.HandlerFunc {
 			}
 			patch.Rules = &rules
 		}
-		row, err := svc.PatchPromotion(r.Context(), orgID, pid, patch)
+		row, err := svc.PatchPromotion(r.Context(), scopeID, pid, patch)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -236,7 +238,8 @@ func patchAdminPromotion(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func postAdminPromotionActivate(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -246,7 +249,7 @@ func postAdminPromotionActivate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_promotion_id", "invalid promotionId")
 			return
 		}
-		row, err := svc.ActivatePromotion(r.Context(), orgID, pid)
+		row, err := svc.ActivatePromotion(r.Context(), scopeID, pid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -257,7 +260,8 @@ func postAdminPromotionActivate(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func postAdminPromotionPause(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -267,7 +271,7 @@ func postAdminPromotionPause(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_promotion_id", "invalid promotionId")
 			return
 		}
-		row, err := svc.PausePromotion(r.Context(), orgID, pid)
+		row, err := svc.PausePromotion(r.Context(), scopeID, pid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -278,7 +282,8 @@ func postAdminPromotionPause(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func postAdminPromotionDeactivate(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -288,7 +293,7 @@ func postAdminPromotionDeactivate(svc *appcatalogadmin.Service) http.HandlerFunc
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_promotion_id", "invalid promotionId")
 			return
 		}
-		row, err := svc.DeactivatePromotion(r.Context(), orgID, pid)
+		row, err := svc.DeactivatePromotion(r.Context(), scopeID, pid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -299,7 +304,8 @@ func postAdminPromotionDeactivate(svc *appcatalogadmin.Service) http.HandlerFunc
 
 func postAdminPromotionArchive(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -309,7 +315,7 @@ func postAdminPromotionArchive(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_promotion_id", "invalid promotionId")
 			return
 		}
-		row, err := svc.DeactivatePromotion(r.Context(), orgID, pid)
+		row, err := svc.DeactivatePromotion(r.Context(), scopeID, pid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -320,7 +326,8 @@ func postAdminPromotionArchive(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func postAdminPromotionAssignTarget(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -355,26 +362,19 @@ func postAdminPromotionAssignTarget(svc *appcatalogadmin.Service) http.HandlerFu
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_site_id", "invalid siteId")
 			return
 		}
-		orgTargetID, err := uuidFromOptionalString(body.OrganizationTargetID)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_organization_target_id", "invalid organizationTargetId")
-			return
-		}
 		tagID, err := uuidFromOptionalString(body.TagID)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_tag_id", "invalid tagId")
 			return
 		}
 		row, err := svc.AssignPromotionTarget(r.Context(), appcatalogadmin.AssignPromotionTargetInput{
-			OrganizationID: orgID,
-			PromotionID:    pid,
-			TargetType:     body.TargetType,
-			ProductID:      productID,
-			CategoryID:     categoryID,
-			MachineID:      machineID,
-			SiteID:         siteID,
-			OrgTargetID:    orgTargetID,
-			TagID:          tagID,
+			PromotionID: pid,
+			TargetType:  body.TargetType,
+			ProductID:   productID,
+			CategoryID:  categoryID,
+			MachineID:   machineID,
+			SiteID:      siteID,
+			TagID:       tagID,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
@@ -386,7 +386,8 @@ func postAdminPromotionAssignTarget(svc *appcatalogadmin.Service) http.HandlerFu
 
 func deleteAdminPromotionTarget(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -401,7 +402,7 @@ func deleteAdminPromotionTarget(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_target_id", "invalid targetId")
 			return
 		}
-		if err := svc.DeletePromotionTarget(r.Context(), orgID, pid, tid); err != nil {
+		if err := svc.DeletePromotionTarget(r.Context(), scopeID, pid, tid); err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
@@ -411,7 +412,8 @@ func deleteAdminPromotionTarget(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func postAdminPromotionPreview(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -461,11 +463,10 @@ func postAdminPromotionPreview(svc *appcatalogadmin.Service) http.HandlerFunc {
 			}
 		}
 		res, err := svc.PreviewPromotions(r.Context(), appcatalogadmin.PromotionPreviewParams{
-			OrganizationID: orgID,
-			MachineID:      mid,
-			SiteID:         sid,
-			ProductIDs:     pids,
-			At:             at,
+			MachineID:  mid,
+			SiteID:     sid,
+			ProductIDs: pids,
+			At:         at,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
@@ -510,7 +511,6 @@ func postAdminPromotionPreview(svc *appcatalogadmin.Service) http.HandlerFunc {
 func mapAdminPromotion(p db.Promotion) V1AdminPromotion {
 	out := V1AdminPromotion{
 		ID:              p.ID.String(),
-		OrganizationID:  p.OrganizationID.String(),
 		Name:            p.Name,
 		ApprovalStatus:  p.ApprovalStatus,
 		LifecycleStatus: p.LifecycleStatus,
@@ -552,11 +552,10 @@ func mapAdminPromotionRule(r db.PromotionRule) V1AdminPromotionRule {
 
 func mapAdminPromotionTarget(t db.PromotionTarget) V1AdminPromotionTarget {
 	out := V1AdminPromotionTarget{
-		ID:             t.ID.String(),
-		PromotionID:    t.PromotionID.String(),
-		OrganizationID: t.OrganizationID.String(),
-		TargetType:     t.TargetType,
-		CreatedAt:      formatAPITimeRFC3339Nano(t.CreatedAt),
+		ID:          t.ID.String(),
+		PromotionID: t.PromotionID.String(),
+		TargetType:  t.TargetType,
+		CreatedAt:   formatAPITimeRFC3339Nano(t.CreatedAt),
 	}
 	if t.ProductID.Valid {
 		s := uuid.UUID(t.ProductID.Bytes).String()
@@ -573,10 +572,6 @@ func mapAdminPromotionTarget(t db.PromotionTarget) V1AdminPromotionTarget {
 	if t.SiteID.Valid {
 		s := uuid.UUID(t.SiteID.Bytes).String()
 		out.SiteID = &s
-	}
-	if t.OrganizationTargetID.Valid {
-		s := uuid.UUID(t.OrganizationTargetID.Bytes).String()
-		out.OrganizationTargetID = &s
 	}
 	if t.TagID.Valid {
 		s := uuid.UUID(t.TagID.Bytes).String()

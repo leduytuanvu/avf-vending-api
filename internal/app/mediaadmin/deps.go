@@ -12,7 +12,7 @@ import (
 
 // CatalogMediaCacheBumper optional hook when Redis (or similar) caches machine catalog / media manifest hints.
 type CatalogMediaCacheBumper interface {
-	BumpOrganizationMedia(ctx context.Context, organizationID uuid.UUID)
+	BumpCompanyMedia(ctx context.Context, companyID uuid.UUID)
 }
 
 // Deps wires Postgres, object storage, and optional audit / cache hooks.

@@ -2,11 +2,11 @@ package api
 
 import "github.com/avf/avf-vending-api/internal/app/listscope"
 
-// ErrAdminTenantScopeRequired is returned when a tenant-scoped admin list is called without an organization on the principal.
-var ErrAdminTenantScopeRequired = listscope.ErrAdminOrganizationRequired
+// ErrAdminCompanyScopeRequired is returned when a single-company admin list is called without an company on the principal.
+var ErrAdminCompanyScopeRequired = listscope.ErrAdminCompanyRequired
 
-// ErrCommerceOrganizationQueryRequired is returned when a platform administrator omits organization_id on commerce list routes.
-var ErrCommerceOrganizationQueryRequired = listscope.ErrCommerceOrganizationQueryRequired
+// ErrCommerceCompanyQueryRequired is returned when a platform administrator omits scope_id on commerce list routes.
+var ErrCommerceCompanyQueryRequired = listscope.ErrCommerceCompanyQueryRequired
 
 // ErrInvalidListQuery is returned when list query parameters (pagination, UUIDs, times) fail validation.
 var ErrInvalidListQuery = listscope.ErrInvalidListQuery

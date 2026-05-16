@@ -26,7 +26,6 @@ type ReconciledPaymentTransitionInput struct {
 }
 
 type ReconciliationCaseInput struct {
-	OrganizationID  uuid.UUID
 	CaseType        string
 	Severity        string
 	OrderID         *uuid.UUID
@@ -43,7 +42,6 @@ type ReconciliationCaseInput struct {
 
 type ReconciliationCase struct {
 	ID              uuid.UUID
-	OrganizationID  uuid.UUID
 	CaseType        string
 	Status          string
 	Severity        string
@@ -65,37 +63,34 @@ type ReconciliationCase struct {
 }
 
 type PaidOrderVendStartCandidate struct {
-	OrderID        uuid.UUID
-	OrganizationID uuid.UUID
-	MachineID      uuid.UUID
-	PaymentID      uuid.UUID
-	Provider       string
-	PaymentState   string
-	VendSessionID  uuid.UUID
-	VendState      string
-	UpdatedAt      time.Time
+	OrderID       uuid.UUID
+	MachineID     uuid.UUID
+	PaymentID     uuid.UUID
+	Provider      string
+	PaymentState  string
+	VendSessionID uuid.UUID
+	VendState     string
+	UpdatedAt     time.Time
 }
 
 type PaidVendFailureCandidate struct {
-	OrderID        uuid.UUID
-	OrganizationID uuid.UUID
-	MachineID      uuid.UUID
-	PaymentID      uuid.UUID
-	Provider       string
-	PaymentState   string
-	VendSessionID  uuid.UUID
-	VendState      string
-	CompletedAt    time.Time
+	OrderID       uuid.UUID
+	MachineID     uuid.UUID
+	PaymentID     uuid.UUID
+	Provider      string
+	PaymentState  string
+	VendSessionID uuid.UUID
+	VendState     string
+	CompletedAt   time.Time
 }
 
 type RefundPendingCandidate struct {
-	RefundID       uuid.UUID
-	PaymentID      uuid.UUID
-	OrderID        uuid.UUID
-	OrganizationID uuid.UUID
-	Provider       string
-	RefundState    string
-	AmountMinor    int64
-	Currency       string
-	CreatedAt      time.Time
+	RefundID    uuid.UUID
+	PaymentID   uuid.UUID
+	OrderID     uuid.UUID
+	Provider    string
+	RefundState string
+	AmountMinor int64
+	Currency    string
+	CreatedAt   time.Time
 }

@@ -17,7 +17,6 @@ message RefreshMachineTokenRequest {
 
 message RefreshMachineTokenResponse {
   string machine_id = 1;
-  string organization_id = 2;
   string site_id = 3;
   string machine_name = 4;
   string access_token = 5;

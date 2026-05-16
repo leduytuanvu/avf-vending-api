@@ -4,7 +4,7 @@
 -- Current machine snapshot (projected from state stream; not raw MQTT history).
 CREATE TABLE machine_current_snapshot (
     machine_id uuid PRIMARY KEY REFERENCES machines (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     site_id uuid NOT NULL REFERENCES sites (id) ON DELETE CASCADE,
     reported_fingerprint text,
     metrics_fingerprint text,
@@ -16,7 +16,7 @@ CREATE TABLE machine_current_snapshot (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_machine_current_snapshot_org ON machine_current_snapshot (organization_id);
+CREATE INDEX ix_machine_current_snapshot_org ON machine_current_snapshot (scope_id);
 
 COMMENT ON TABLE machine_current_snapshot IS 'Single current row per machine; updated by telemetry state/metrics workers — not a raw ingest log.';
 

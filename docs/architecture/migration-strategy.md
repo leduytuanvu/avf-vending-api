@@ -73,7 +73,7 @@ The following is **descriptive of the codebase**, not a promise that every optio
 | **Postgres** | goose migrations under `migrations/`; sqlc under `db/schema/`, `db/queries/`, generated `internal/gen/db/`. |
 | **Postgres OLTP patterns** | `internal/modules/postgres` implements durable **database** patterns (order + vend, payment + outbox, command + shadow ± outbox, receipts, MQTT ingest persistence) with idempotency aligned to schema — **not** Temporal workflow orchestration. |
 | **Application layer** | `internal/app/*` owns commerce, device, fleet, reliability, and HTTP app composition; handlers in `internal/httpserver` stay thin. |
-| **HTTP API** | `/health/*`, optional `/metrics`, JWT **`/v1`** admin lists, org-scoped lists, machine shadow access—see `internal/httpserver` and `internal/app/api`. |
+| **HTTP API** | `/health/*`, optional `/metrics`, JWT **`/v1`** admin lists, role-scoped lists, machine shadow access—see `internal/httpserver` and `internal/app/api`. |
 | **NATS** | JetStream client, streams, outbox **publisher** in `internal/platform/nats`; **worker** enables it when `NATS_URL` is set. `cmd/worker` also runs telemetry JetStream consumers. There is still **no** in-repo consumer for worker outbox subjects. |
 | **MQTT** | Subscriber/router in `internal/platform/mqtt`; **mqtt-ingest** publishes classified envelopes to **NATS JetStream** when `NATS_URL` is set (`telemetryapp` bridge), else legacy direct `postgres.Store`. **Worker** consumes telemetry streams and writes rollups/snapshots/incidents. See `ops/TELEMETRY_PIPELINE.md`. |
 | **Object storage** | S3-compatible storage is **implemented for API artifacts** when `API_ARTIFACTS_ENABLED=true`; broader OTA/diagnostic usage is still follow-on work. |

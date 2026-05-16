@@ -7,7 +7,7 @@ Use this when product images, media manifests, or kiosk sale-catalog images are 
 - Admin media/product-image writes are HTTP REST APIs under `/v1/admin`.
 - When object storage is enabled, media flows use artifact/object storage and HTTPS URLs.
 - Machine/catalog responses carry metadata such as `configVersion`, `catalogVersion`, media URLs, checksums, per-rendition **`media_variants`**, `expires_at` when URLs are presigned, and fingerprints. Image bytes are not sent over gRPC.
-- Redis-backed sale-catalog/media cache is optional. When enabled, admin media changes bump organization media cache state so kiosks can detect updates.
+- Redis-backed sale-catalog/media cache is optional. When enabled, admin media changes bump company media cache state so kiosks can detect updates.
 - Runtime catalog lists only **active** `product_media` and **active** `product_images` with **ready** bound assets.
 
 ## App cache invalidation (exact client behavior)

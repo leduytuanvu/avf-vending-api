@@ -26,29 +26,29 @@ type V1ReportMeta struct {
 }
 
 type V1AdminReportSalesResponse struct {
-	OrganizationID string         `json:"organizationId"`
-	From           string         `json:"from"`
-	To             string         `json:"to"`
-	GroupBy        string         `json:"groupBy"`
-	Summary        map[string]any `json:"summary"`
-	Breakdown      []any          `json:"breakdown"`
+	ScopeID   string         `json:"scopeId"`
+	From      string         `json:"from"`
+	To        string         `json:"to"`
+	GroupBy   string         `json:"groupBy"`
+	Summary   map[string]any `json:"summary"`
+	Breakdown []any          `json:"breakdown"`
 }
 
 type V1AdminReportPaymentsResponse struct {
-	OrganizationID string       `json:"organizationId"`
-	From           string       `json:"from"`
-	To             string       `json:"to"`
-	Timezone       string       `json:"timezone"`
-	Items          []any        `json:"items"`
-	Meta           V1ReportMeta `json:"meta"`
+	ScopeID  string       `json:"scopeId"`
+	From     string       `json:"from"`
+	To       string       `json:"to"`
+	Timezone string       `json:"timezone"`
+	Items    []any        `json:"items"`
+	Meta     V1ReportMeta `json:"meta"`
 }
 
 type V1AdminReportListResponse struct {
-	OrganizationID string       `json:"organizationId"`
-	From           string       `json:"from"`
-	To             string       `json:"to"`
-	Meta           V1ReportMeta `json:"meta"`
-	Items          []any        `json:"items"`
+	ScopeID string       `json:"scopeId"`
+	From    string       `json:"from"`
+	To      string       `json:"to"`
+	Meta    V1ReportMeta `json:"meta"`
+	Items   []any        `json:"items"`
 }
 
 // V1NotImplementedError is HTTP **501**; error.details carries capability + implemented.
@@ -111,7 +111,7 @@ type V1CommerceCashCheckoutResponse struct {
 	Replay        bool   `json:"replay"`
 }
 
-// V1ListViewEnvelope is the success shape for admin and tenant list endpoints.
+// V1ListViewEnvelope is the success shape for admin and company list endpoints.
 type V1ListViewEnvelope struct {
 	Items []any `json:"items"`
 	Meta  any   `json:"meta,omitempty"`
@@ -125,11 +125,11 @@ type V1ListMeta struct {
 
 // --- Auth session (POST /v1/auth/login, /v1/auth/refresh; GET /v1/auth/me; POST /v1/auth/logout) ---
 
-// V1AuthLoginRequest is documented in tools/build_openapi.py (example organizationId + email + password).
+// V1AuthLoginRequest is documented in tools/build_openapi.py (example scopeId + email + password).
 type V1AuthLoginRequest struct {
-	OrganizationID string `json:"organizationId" example:"11111111-1111-1111-1111-111111111111"`
-	Email          string `json:"email" example:"admin@example.com"`
-	Password       string `json:"password" example:"••••••••"`
+	ScopeID  string `json:"scopeId" example:"11111111-1111-1111-1111-111111111111"`
+	Email    string `json:"email" example:"admin@example.com"`
+	Password string `json:"password" example:"••••••••"`
 }
 
 // V1AuthTokenPair is nested under login/refresh responses.
@@ -144,7 +144,7 @@ type V1AuthTokenPair struct {
 // V1AuthLoginResponse documents POST /v1/auth/login success.
 type V1AuthLoginResponse struct {
 	AccountID             string          `json:"accountId"`
-	OrganizationID        string          `json:"organizationId"`
+	ScopeID               string          `json:"scopeId"`
 	Email                 string          `json:"email"`
 	Roles                 []string        `json:"roles"`
 	Tokens                V1AuthTokenPair `json:"tokens"`
@@ -156,10 +156,10 @@ type V1AuthLoginResponse struct {
 
 // V1AuthMeResponse documents GET /v1/auth/me success.
 type V1AuthMeResponse struct {
-	AccountID      string   `json:"accountId"`
-	OrganizationID string   `json:"organizationId"`
-	Email          string   `json:"email"`
-	Roles          []string `json:"roles"`
+	AccountID string   `json:"accountId"`
+	ScopeID   string   `json:"scopeId"`
+	Email     string   `json:"email"`
+	Roles     []string `json:"roles"`
 }
 
 // V1AuthRefreshRequest is the refresh body.
@@ -185,8 +185,8 @@ type V1AuthChangePasswordRequest struct {
 }
 
 type V1AuthPasswordResetRequest struct {
-	OrganizationID string `json:"organizationId"`
-	Email          string `json:"email"`
+	ScopeID string `json:"scopeId"`
+	Email   string `json:"email"`
 }
 
 type V1AuthPasswordResetAccepted struct {
@@ -222,14 +222,14 @@ type V1AuthSessionsEnvelope struct {
 
 // V1AuthSessionItem is one admin console session row (no refresh material).
 type V1AuthSessionItem struct {
-	SessionID      string  `json:"sessionId"`
-	OrganizationID string  `json:"organizationId"`
-	IPAddress      *string `json:"ipAddress,omitempty"`
-	UserAgent      *string `json:"userAgent,omitempty"`
-	CreatedAt      string  `json:"createdAt"`
-	LastUsedAt     *string `json:"lastUsedAt,omitempty"`
-	ExpiresAt      string  `json:"expiresAt"`
-	Status         string  `json:"status"`
+	SessionID  string  `json:"sessionId"`
+	ScopeID    string  `json:"scopeId"`
+	IPAddress  *string `json:"ipAddress,omitempty"`
+	UserAgent  *string `json:"userAgent,omitempty"`
+	CreatedAt  string  `json:"createdAt"`
+	LastUsedAt *string `json:"lastUsedAt,omitempty"`
+	ExpiresAt  string  `json:"expiresAt"`
+	Status     string  `json:"status"`
 }
 
 // V1AuthRevokeOtherSessionsRequest documents DELETE /v1/auth/sessions.
@@ -244,13 +244,13 @@ type V1AdminAuthSessionsEnvelope struct {
 
 // V1AdminAuthAccount is one row under GET/PATCH /v1/admin/auth/users (no password fields).
 type V1AdminAuthAccount struct {
-	AccountID      string   `json:"accountId"`
-	OrganizationID string   `json:"organizationId"`
-	Email          string   `json:"email"`
-	Roles          []string `json:"roles"`
-	Status         string   `json:"status"`
-	CreatedAt      string   `json:"createdAt"`
-	UpdatedAt      string   `json:"updatedAt"`
+	AccountID string   `json:"accountId"`
+	ScopeID   string   `json:"scopeId"`
+	Email     string   `json:"email"`
+	Roles     []string `json:"roles"`
+	Status    string   `json:"status"`
+	CreatedAt string   `json:"createdAt"`
+	UpdatedAt string   `json:"updatedAt"`
 }
 
 // V1AdminAuthUsersListEnvelope is GET /v1/admin/auth/users success.
@@ -286,10 +286,10 @@ type V1AdminAuthResetPasswordRequest struct {
 	Password string `json:"password"`
 }
 
-// V1RBACPermissionMatrixDoc is documentation-only metadata for OpenAPI (no HTTP route). Authoritative mapping lives in internal/platform/auth/permissions.go and internal/platform/auth/admin_rbac.go (tenant scoping).
+// V1RBACPermissionMatrixDoc is documentation-only metadata for OpenAPI (no HTTP route). Authoritative mapping lives in internal/platform/auth/permissions.go and internal/platform/auth/admin_rbac.go (company scoping).
 type V1RBACPermissionMatrixDoc struct {
 	PermissionExamples []string `json:"permissionExamples" example:"user:read,user:write,user:roles,user:sessions:revoke,catalog:read,fleet:read,payment:read,payment:refund,report:read,audit:read,machine:command,setup:machine,technician:operate"`
-	RoleSummary        string   `json:"roleSummary" example:"platform_admin→admin.all (any org via explicit organizationId in URL or org query); org_admin→org matrix only for JWT org_id; org_member/viewer→read-only baseline"`
+	RoleSummary        string   `json:"roleSummary" example:"platform_admin→admin.all (explicit scopeId in URL or scope query); admin→permission matrix limited to JWT scope_id; member/viewer→read-only baseline"`
 	AuditActionsNote   string   `json:"auditActionsNote" example:"User admin mutations emit auth.user.* and role.changed; auth.login.success/failed; MFA TOTP emits auth.mfa.*; session revoke emits auth.session.* and user.sessions.revoked"`
 }
 
@@ -297,25 +297,25 @@ type V1RBACPermissionMatrixDoc struct {
 
 // V1EnterpriseAuditEvent is one append-only row from GET /v1/admin/audit/events.
 type V1EnterpriseAuditEvent struct {
-	ID             string          `json:"id"`
-	OrganizationID string          `json:"organizationId"`
-	ActorType      string          `json:"actorType"`
-	ActorID        *string         `json:"actorId,omitempty"`
-	Action         string          `json:"action"`
-	ResourceType   string          `json:"resourceType"`
-	ResourceID     *string         `json:"resourceId,omitempty"`
-	MachineID      *string         `json:"machineId,omitempty"`
-	SiteID         *string         `json:"siteId,omitempty"`
-	RequestID      *string         `json:"requestId,omitempty"`
-	TraceID        *string         `json:"traceId,omitempty"`
-	IPAddress      *string         `json:"ipAddress,omitempty"`
-	UserAgent      *string         `json:"userAgent,omitempty"`
-	BeforeJSON     json.RawMessage `json:"beforeJson,omitempty"`
-	AfterJSON      json.RawMessage `json:"afterJson,omitempty"`
-	Metadata       json.RawMessage `json:"metadata"`
-	Outcome        string          `json:"outcome"`
-	OccurredAt     string          `json:"occurredAt"`
-	CreatedAt      string          `json:"createdAt"`
+	ID           string          `json:"id"`
+	ScopeID      string          `json:"scopeId"`
+	ActorType    string          `json:"actorType"`
+	ActorID      *string         `json:"actorId,omitempty"`
+	Action       string          `json:"action"`
+	ResourceType string          `json:"resourceType"`
+	ResourceID   *string         `json:"resourceId,omitempty"`
+	MachineID    *string         `json:"machineId,omitempty"`
+	SiteID       *string         `json:"siteId,omitempty"`
+	RequestID    *string         `json:"requestId,omitempty"`
+	TraceID      *string         `json:"traceId,omitempty"`
+	IPAddress    *string         `json:"ipAddress,omitempty"`
+	UserAgent    *string         `json:"userAgent,omitempty"`
+	BeforeJSON   json.RawMessage `json:"beforeJson,omitempty"`
+	AfterJSON    json.RawMessage `json:"afterJson,omitempty"`
+	Metadata     json.RawMessage `json:"metadata"`
+	Outcome      string          `json:"outcome"`
+	OccurredAt   string          `json:"occurredAt"`
+	CreatedAt    string          `json:"createdAt"`
 }
 
 // V1EnterpriseAuditEventsListEnvelope is GET /v1/admin/audit/events success.
@@ -337,7 +337,7 @@ type V1AdminOutboxPipelineStats struct {
 // V1AdminOutboxRow is one row from GET /v1/admin/ops/outbox or GET /v1/admin/system/outbox.
 type V1AdminOutboxRow struct {
 	ID                   int64           `json:"id"`
-	OrganizationID       *string         `json:"organizationId,omitempty"`
+	ScopeID              *string         `json:"scopeId,omitempty"`
 	Topic                string          `json:"topic"`
 	EventType            string          `json:"eventType"`
 	Payload              json.RawMessage `json:"payload"`
@@ -467,17 +467,17 @@ type V1AdminPageMeta struct {
 
 // V1AdminProductListItem is a row in GET /v1/admin/products.
 type V1AdminProductListItem struct {
-	ID             string  `json:"id"`
-	OrganizationID string  `json:"organizationId"`
-	Sku            string  `json:"sku"`
-	Barcode        *string `json:"barcode,omitempty"`
-	Name           string  `json:"name"`
-	Description    string  `json:"description"`
-	Active         bool    `json:"active"`
-	CategoryID     *string `json:"categoryId,omitempty"`
-	BrandID        *string `json:"brandId,omitempty"`
-	CreatedAt      string  `json:"createdAt"`
-	UpdatedAt      string  `json:"updatedAt"`
+	ID          string  `json:"id"`
+	ScopeID     string  `json:"scopeId,omitempty"`
+	Sku         string  `json:"sku"`
+	Barcode     *string `json:"barcode,omitempty"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Active      bool    `json:"active"`
+	CategoryID  *string `json:"categoryId,omitempty"`
+	BrandID     *string `json:"brandId,omitempty"`
+	CreatedAt   string  `json:"createdAt"`
+	UpdatedAt   string  `json:"updatedAt"`
 }
 
 // V1AdminProductListEnvelope matches listAdminProducts success JSON.
@@ -489,7 +489,7 @@ type V1AdminProductListEnvelope struct {
 // V1AdminProduct is GET /v1/admin/products/{productId} success.
 type V1AdminProduct struct {
 	ID             string          `json:"id"`
-	OrganizationID string          `json:"organizationId"`
+	ScopeID        string          `json:"scopeId,omitempty"`
 	Sku            string          `json:"sku"`
 	Barcode        *string         `json:"barcode,omitempty"`
 	Name           string          `json:"name"`
@@ -529,13 +529,13 @@ type V1AdminProductMutationRequest struct {
 
 // V1AdminBrand is a brand row.
 type V1AdminBrand struct {
-	ID             string `json:"id"`
-	OrganizationID string `json:"organizationId"`
-	Slug           string `json:"slug"`
-	Name           string `json:"name"`
-	Active         bool   `json:"active"`
-	CreatedAt      string `json:"createdAt"`
-	UpdatedAt      string `json:"updatedAt"`
+	ID        string `json:"id"`
+	ScopeID   string `json:"scopeId"`
+	Slug      string `json:"slug"`
+	Name      string `json:"name"`
+	Active    bool   `json:"active"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 // V1AdminBrandListEnvelope is GET /v1/admin/brands.
@@ -553,14 +553,14 @@ type V1AdminBrandMutationRequest struct {
 
 // V1AdminCategory is a category row.
 type V1AdminCategory struct {
-	ID             string  `json:"id"`
-	OrganizationID string  `json:"organizationId"`
-	Slug           string  `json:"slug"`
-	Name           string  `json:"name"`
-	ParentID       *string `json:"parentId,omitempty"`
-	Active         bool    `json:"active"`
-	CreatedAt      string  `json:"createdAt"`
-	UpdatedAt      string  `json:"updatedAt"`
+	ID        string  `json:"id"`
+	ScopeID   string  `json:"scopeId"`
+	Slug      string  `json:"slug"`
+	Name      string  `json:"name"`
+	ParentID  *string `json:"parentId,omitempty"`
+	Active    bool    `json:"active"`
+	CreatedAt string  `json:"createdAt"`
+	UpdatedAt string  `json:"updatedAt"`
 }
 
 // V1AdminCategoryListEnvelope is GET /v1/admin/categories.
@@ -579,13 +579,13 @@ type V1AdminCategoryMutationRequest struct {
 
 // V1AdminTag is a tag row.
 type V1AdminTag struct {
-	ID             string `json:"id"`
-	OrganizationID string `json:"organizationId"`
-	Slug           string `json:"slug"`
-	Name           string `json:"name"`
-	Active         bool   `json:"active"`
-	CreatedAt      string `json:"createdAt"`
-	UpdatedAt      string `json:"updatedAt"`
+	ID        string `json:"id"`
+	ScopeID   string `json:"scopeId"`
+	Slug      string `json:"slug"`
+	Name      string `json:"name"`
+	Active    bool   `json:"active"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 // V1AdminTagListEnvelope is GET /v1/admin/tags.
@@ -627,26 +627,26 @@ type V1AdminMediaUploadInitResponse struct {
 	CompletePath  string              `json:"complete_path"`
 }
 
-// V1AdminMediaUploadCompleteRequest finalizes an organization-scoped upload.
+// V1AdminMediaUploadCompleteRequest finalizes an company-scoped upload.
 type V1AdminMediaUploadCompleteRequest struct {
 	MediaID string `json:"media_id"`
 }
 
 // V1AdminMediaAsset is a row in GET /v1/admin/media (no raw object keys).
 type V1AdminMediaAsset struct {
-	ID             string `json:"id"`
-	OrganizationID string `json:"organization_id"`
-	Kind           string `json:"kind"`
-	Status         string `json:"status"`
-	MimeType       string `json:"mime_type,omitempty"`
-	SizeBytes      int64  `json:"size_bytes,omitempty"`
-	Sha256         string `json:"sha256,omitempty"`
-	Width          int32  `json:"width,omitempty"`
-	Height         int32  `json:"height,omitempty"`
-	ObjectVersion  int32  `json:"object_version"`
-	Etag           string `json:"etag,omitempty"`
-	CreatedAt      string `json:"created_at"`
-	UpdatedAt      string `json:"updated_at"`
+	ID            string `json:"id"`
+	ScopeID       string `json:"scope_id"`
+	Kind          string `json:"kind"`
+	Status        string `json:"status"`
+	MimeType      string `json:"mime_type,omitempty"`
+	SizeBytes     int64  `json:"size_bytes,omitempty"`
+	Sha256        string `json:"sha256,omitempty"`
+	Width         int32  `json:"width,omitempty"`
+	Height        int32  `json:"height,omitempty"`
+	ObjectVersion int32  `json:"object_version"`
+	Etag          string `json:"etag,omitempty"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
 }
 
 // V1AdminMediaListEnvelope is GET /v1/admin/media.
@@ -669,20 +669,20 @@ type V1AdminProductImagePatchRequest struct {
 
 // V1AdminPriceBook is a row in GET /v1/admin/price-books.
 type V1AdminPriceBook struct {
-	ID             string  `json:"id"`
-	OrganizationID string  `json:"organizationId"`
-	Name           string  `json:"name"`
-	Currency       string  `json:"currency"`
-	EffectiveFrom  string  `json:"effectiveFrom"`
-	EffectiveTo    *string `json:"effectiveTo,omitempty"`
-	IsDefault      bool    `json:"isDefault"`
-	Active         bool    `json:"active"`
-	ScopeType      string  `json:"scopeType"`
-	SiteID         *string `json:"siteId,omitempty"`
-	MachineID      *string `json:"machineId,omitempty"`
-	Priority       int32   `json:"priority"`
-	CreatedAt      string  `json:"createdAt"`
-	UpdatedAt      string  `json:"updatedAt"`
+	ID            string  `json:"id"`
+	ScopeID       string  `json:"scopeId"`
+	Name          string  `json:"name"`
+	Currency      string  `json:"currency"`
+	EffectiveFrom string  `json:"effectiveFrom"`
+	EffectiveTo   *string `json:"effectiveTo,omitempty"`
+	IsDefault     bool    `json:"isDefault"`
+	Active        bool    `json:"active"`
+	ScopeType     string  `json:"scopeType"`
+	SiteID        *string `json:"siteId,omitempty"`
+	MachineID     *string `json:"machineId,omitempty"`
+	Priority      int32   `json:"priority"`
+	CreatedAt     string  `json:"createdAt"`
+	UpdatedAt     string  `json:"updatedAt"`
 }
 
 // V1AdminPriceBookWriteRequest is POST /v1/admin/price-books.
@@ -761,7 +761,7 @@ type V1AdminPricingPreviewResponse struct {
 // V1AdminPromotion is a promotion header row.
 type V1AdminPromotion struct {
 	ID               string  `json:"id"`
-	OrganizationID   string  `json:"organizationId"`
+	ScopeID          string  `json:"scopeId"`
 	Name             string  `json:"name"`
 	ApprovalStatus   string  `json:"approvalStatus"`
 	LifecycleStatus  string  `json:"lifecycleStatus"`
@@ -787,17 +787,16 @@ type V1AdminPromotionRule struct {
 
 // V1AdminPromotionTarget scopes a promotion (exactly one FK set per row matches target_type).
 type V1AdminPromotionTarget struct {
-	ID                   string  `json:"id"`
-	PromotionID          string  `json:"promotionId"`
-	OrganizationID       string  `json:"organizationId"`
-	TargetType           string  `json:"targetType"`
-	ProductID            *string `json:"productId,omitempty"`
-	CategoryID           *string `json:"categoryId,omitempty"`
-	MachineID            *string `json:"machineId,omitempty"`
-	SiteID               *string `json:"siteId,omitempty"`
-	OrganizationTargetID *string `json:"organizationTargetId,omitempty"`
-	TagID                *string `json:"tagId,omitempty"`
-	CreatedAt            string  `json:"createdAt"`
+	ID          string  `json:"id"`
+	PromotionID string  `json:"promotionId"`
+	ScopeID     string  `json:"scopeId"`
+	TargetType  string  `json:"targetType"`
+	ProductID   *string `json:"productId,omitempty"`
+	CategoryID  *string `json:"categoryId,omitempty"`
+	MachineID   *string `json:"machineId,omitempty"`
+	SiteID      *string `json:"siteId,omitempty"`
+	TagID       *string `json:"tagId,omitempty"`
+	CreatedAt   string  `json:"createdAt"`
 }
 
 // V1AdminPromotionDetail is GET /v1/admin/promotions/{promotionId}.
@@ -849,13 +848,12 @@ type V1AdminPromotionPatchRequest struct {
 
 // V1AdminPromotionAssignTargetRequest is POST .../assign-target.
 type V1AdminPromotionAssignTargetRequest struct {
-	TargetType           string  `json:"targetType"`
-	ProductID            *string `json:"productId,omitempty"`
-	CategoryID           *string `json:"categoryId,omitempty"`
-	MachineID            *string `json:"machineId,omitempty"`
-	SiteID               *string `json:"siteId,omitempty"`
-	OrganizationTargetID *string `json:"organizationTargetId,omitempty"`
-	TagID                *string `json:"tagId,omitempty"`
+	TargetType string  `json:"targetType"`
+	ProductID  *string `json:"productId,omitempty"`
+	CategoryID *string `json:"categoryId,omitempty"`
+	MachineID  *string `json:"machineId,omitempty"`
+	SiteID     *string `json:"siteId,omitempty"`
+	TagID      *string `json:"tagId,omitempty"`
 }
 
 // V1AdminPromotionPreviewRequest is POST /v1/admin/promotions/preview.
@@ -900,13 +898,13 @@ type V1AdminPriceBookListEnvelope struct {
 
 // V1AdminPlanogram is a planogram summary row.
 type V1AdminPlanogram struct {
-	ID             string          `json:"id"`
-	OrganizationID string          `json:"organizationId"`
-	Name           string          `json:"name"`
-	Revision       int32           `json:"revision"`
-	Status         string          `json:"status"`
-	Meta           json.RawMessage `json:"meta,omitempty"`
-	CreatedAt      string          `json:"createdAt"`
+	ID        string          `json:"id"`
+	ScopeID   string          `json:"scopeId"`
+	Name      string          `json:"name"`
+	Revision  int32           `json:"revision"`
+	Status    string          `json:"status"`
+	Meta      json.RawMessage `json:"meta,omitempty"`
+	CreatedAt string          `json:"createdAt"`
 }
 
 // V1AdminPlanogramListEnvelope matches GET /v1/admin/planograms.
@@ -993,7 +991,7 @@ type V1AdminStockAdjustmentsResponse struct {
 // V1AdminInventoryEvent is one append-only inventory_events row (audit / refill / future vend).
 type V1AdminInventoryEvent struct {
 	ID                      int64   `json:"id"`
-	OrganizationID          string  `json:"organizationId"`
+	ScopeID                 string  `json:"scopeId"`
 	MachineID               string  `json:"machineId"`
 	CabinetCode             *string `json:"cabinetCode,omitempty"`
 	SlotCode                *string `json:"slotCode,omitempty"`
@@ -1079,7 +1077,7 @@ type V1AdminInventoryRefillForecastItem struct {
 // V1AdminInventoryRefillForecastResponse is GET /v1/admin/inventory/low-stock,
 // GET /v1/admin/inventory/refill-suggestions, and GET /v1/admin/machines/{machineId}/refill-suggestions.
 type V1AdminInventoryRefillForecastResponse struct {
-	OrganizationID     string                               `json:"organizationId"`
+	ScopeID            string                               `json:"scopeId"`
 	VelocityWindowDays int                                  `json:"velocityWindowDays"`
 	WindowStart        string                               `json:"windowStart"`
 	WindowEnd          string                               `json:"windowEnd"`
@@ -1122,7 +1120,7 @@ type V1PendingMachineConfigRolloutHint struct {
 // V1SetupMachineSummary is machine identity for setup clients.
 type V1SetupMachineSummary struct {
 	MachineID         string  `json:"machineId"`
-	OrganizationID    string  `json:"organizationId"`
+	ScopeID           string  `json:"scopeId"`
 	SiteID            string  `json:"siteId"`
 	HardwareProfileID *string `json:"hardwareProfileId,omitempty"`
 	SerialNumber      string  `json:"serialNumber"`
@@ -1213,7 +1211,7 @@ type V1CollectionListMeta struct {
 // V1OrderListItem is one row in GET /v1/orders.
 type V1OrderListItem struct {
 	OrderID        string  `json:"orderId"`
-	OrganizationID string  `json:"organizationId"`
+	ScopeID        string  `json:"scopeId"`
 	MachineID      string  `json:"machineId"`
 	Status         string  `json:"status"`
 	Currency       string  `json:"currency"`
@@ -1235,7 +1233,7 @@ type V1OrdersListResponse struct {
 type V1PaymentListItem struct {
 	PaymentID            string `json:"paymentId"`
 	OrderID              string `json:"orderId"`
-	OrganizationID       string `json:"organizationId"`
+	ScopeID              string `json:"scopeId"`
 	MachineID            string `json:"machineId"`
 	Provider             string `json:"provider"`
 	PaymentState         string `json:"paymentState"`
@@ -1257,7 +1255,7 @@ type V1PaymentsListResponse struct {
 // V1CommerceReconciliationCase is an operator-visible payment/vend/refund review row.
 type V1CommerceReconciliationCase struct {
 	ID              string         `json:"id"`
-	OrganizationID  string         `json:"organizationId"`
+	ScopeID         string         `json:"scopeId"`
 	CaseType        string         `json:"caseType"`
 	Status          string         `json:"status"`
 	Severity        string         `json:"severity"`
@@ -1309,7 +1307,7 @@ type V1OrderTimelineListResponse struct {
 
 type V1RefundRequestRow struct {
 	ID             string  `json:"id"`
-	OrganizationID string  `json:"organizationId"`
+	ScopeID        string  `json:"scopeId"`
 	OrderID        string  `json:"orderId"`
 	PaymentID      *string `json:"paymentId,omitempty"`
 	RefundID       *string `json:"refundId,omitempty"`
@@ -1376,7 +1374,7 @@ type V1AdminCurrentOperator struct {
 type V1AdminMachineListItem struct {
 	MachineID           string                         `json:"machineId"`
 	MachineName         string                         `json:"machineName"`
-	OrganizationID      string                         `json:"organizationId"`
+	ScopeID             string                         `json:"scopeId"`
 	SiteID              string                         `json:"siteId"`
 	SiteName            string                         `json:"siteName"`
 	HardwareProfileID   *string                        `json:"hardwareProfileId,omitempty"`
@@ -1402,7 +1400,7 @@ type V1AdminMachineListItem struct {
 // All timestamps are RFC3339Nano strings with explicit timezone offset (responses use UTC, "Z").
 type V1MachineTelemetrySnapshotResponse struct {
 	MachineID         string          `json:"machineId"`
-	OrganizationID    string          `json:"organizationId"`
+	ScopeID           string          `json:"scopeId"`
 	SiteID            string          `json:"siteId"`
 	ReportedState     json.RawMessage `json:"reportedState"`
 	MetricsState      json.RawMessage `json:"metricsState"`
@@ -1480,7 +1478,7 @@ type V1AdminMachinesListResponse struct {
 // V1AdminTechnicianListItem is one technician in GET /v1/admin/technicians.
 type V1AdminTechnicianListItem struct {
 	TechnicianID    string  `json:"technicianId"`
-	OrganizationID  string  `json:"organizationId"`
+	ScopeID         string  `json:"scopeId"`
 	DisplayName     string  `json:"displayName"`
 	Email           *string `json:"email,omitempty"`
 	Phone           *string `json:"phone,omitempty"`
@@ -1518,7 +1516,7 @@ type V1AdminAssignmentsListResponse struct {
 type V1AdminCommandListItem struct {
 	CommandID           string  `json:"commandId"`
 	MachineID           string  `json:"machineId"`
-	OrganizationID      string  `json:"organizationId"`
+	ScopeID             string  `json:"scopeId"`
 	MachineName         string  `json:"machineName"`
 	MachineSerialNumber string  `json:"machineSerialNumber"`
 	Sequence            int64   `json:"sequence"`
@@ -1538,7 +1536,7 @@ type V1AdminCommandsListResponse struct {
 // V1AdminOTAListItem is one OTA campaign in GET /v1/admin/ota.
 type V1AdminOTAListItem struct {
 	CampaignID         string  `json:"campaignId"`
-	OrganizationID     string  `json:"organizationId"`
+	ScopeID            string  `json:"scopeId"`
 	CampaignName       string  `json:"campaignName"`
 	Strategy           string  `json:"strategy"`
 	CampaignStatus     string  `json:"campaignStatus"`
@@ -1557,7 +1555,7 @@ type V1AdminOTAListResponse struct {
 // V1AdminOTACampaignListItem is one row in GET /v1/admin/ota/campaigns.
 type V1AdminOTACampaignListItem struct {
 	CampaignID         string  `json:"campaignId"`
-	OrganizationID     string  `json:"organizationId"`
+	ScopeID            string  `json:"scopeId"`
 	Name               string  `json:"name"`
 	RolloutStrategy    string  `json:"rolloutStrategy"`
 	Status             string  `json:"status"`
@@ -1642,7 +1640,7 @@ type V1AdminMachineCashboxResponse struct {
 type V1AdminCashCollection struct {
 	ID                       string  `json:"id"`
 	MachineID                string  `json:"machine_id"`
-	OrganizationID           string  `json:"organization_id"`
+	ScopeID                  string  `json:"scope_id"`
 	CollectedAt              string  `json:"collected_at"`
 	OpenedAt                 string  `json:"opened_at"`
 	ClosedAt                 *string `json:"closed_at,omitempty"`
@@ -1667,7 +1665,7 @@ type V1AdminCashCollectionListResponse struct {
 	Meta  V1CollectionListMeta    `json:"meta"`
 }
 
-// --- Admin operations (P1.2): tenant-scoped machine health, commands, inventory anomalies ---
+// --- Admin operations (P1.2): single-company machine health, commands, inventory anomalies ---
 
 // V1AdminOperationsMachineHealthItem is a row from GET .../operations/machines/health or GET .../machines/{machineId}/health.
 type V1AdminOperationsMachineHealthItem struct {
@@ -1722,7 +1720,7 @@ type V1AdminOperationsCommandAttemptItem struct {
 type V1AdminOperationsCommandDetailResponse struct {
 	CommandID      string                                `json:"commandId"`
 	MachineID      string                                `json:"machineId"`
-	OrganizationID string                                `json:"organizationId"`
+	ScopeID        string                                `json:"scopeId"`
 	Sequence       int64                                 `json:"sequence"`
 	CommandType    string                                `json:"commandType"`
 	Payload        json.RawMessage                       `json:"payload"`
@@ -1765,7 +1763,7 @@ type V1AdminOperationsMachineCommandDispatchResponse struct {
 // V1AdminOperationsInventoryAnomalyItem is one inventory anomaly row.
 type V1AdminOperationsInventoryAnomalyItem struct {
 	ID                  string          `json:"id"`
-	OrganizationID      string          `json:"organizationId"`
+	ScopeID             string          `json:"scopeId"`
 	MachineID           string          `json:"machineId"`
 	MachineName         string          `json:"machineName"`
 	MachineSerialNumber string          `json:"machineSerialNumber"`
@@ -1860,31 +1858,31 @@ type V1AdminRolloutCreateRequest struct {
 
 // V1AdminRolloutCampaign describes rollout_campaigns rows for OpenAPI.
 type V1AdminRolloutCampaign struct {
-	ID             string          `json:"id"`
-	OrganizationID string          `json:"organizationId"`
-	RolloutType    string          `json:"rolloutType"`
-	TargetVersion  string          `json:"targetVersion"`
-	Status         string          `json:"status"`
-	Strategy       json.RawMessage `json:"strategy,omitempty"`
-	CreatedBy      *string         `json:"createdBy,omitempty"`
-	CreatedAt      string          `json:"createdAt"`
-	UpdatedAt      string          `json:"updatedAt"`
-	StartedAt      *string         `json:"startedAt,omitempty"`
-	CompletedAt    *string         `json:"completedAt,omitempty"`
-	CancelledAt    *string         `json:"cancelledAt,omitempty"`
+	ID            string          `json:"id"`
+	ScopeID       string          `json:"scopeId"`
+	RolloutType   string          `json:"rolloutType"`
+	TargetVersion string          `json:"targetVersion"`
+	Status        string          `json:"status"`
+	Strategy      json.RawMessage `json:"strategy,omitempty"`
+	CreatedBy     *string         `json:"createdBy,omitempty"`
+	CreatedAt     string          `json:"createdAt"`
+	UpdatedAt     string          `json:"updatedAt"`
+	StartedAt     *string         `json:"startedAt,omitempty"`
+	CompletedAt   *string         `json:"completedAt,omitempty"`
+	CancelledAt   *string         `json:"cancelledAt,omitempty"`
 }
 
 // V1AdminRolloutTarget is one rollout_targets row.
 type V1AdminRolloutTarget struct {
-	ID             string  `json:"id"`
-	OrganizationID string  `json:"organizationId"`
-	CampaignID     string  `json:"campaignId"`
-	MachineID      string  `json:"machineId"`
-	Status         string  `json:"status"`
-	Error          *string `json:"error,omitempty"`
-	CommandID      *string `json:"commandId,omitempty"`
-	CreatedAt      string  `json:"createdAt"`
-	UpdatedAt      string  `json:"updatedAt"`
+	ID         string  `json:"id"`
+	ScopeID    string  `json:"scopeId"`
+	CampaignID string  `json:"campaignId"`
+	MachineID  string  `json:"machineId"`
+	Status     string  `json:"status"`
+	Error      *string `json:"error,omitempty"`
+	CommandID  *string `json:"commandId,omitempty"`
+	CreatedAt  string  `json:"createdAt"`
+	UpdatedAt  string  `json:"updatedAt"`
 }
 
 // V1AdminRolloutDetailResponse is GET .../rollouts/{rolloutId} (and lifecycle POST bodies echo campaign + targets).

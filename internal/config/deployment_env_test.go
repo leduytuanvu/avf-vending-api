@@ -8,6 +8,10 @@ import (
 
 func minimalStaging(t *testing.T) {
 	t.Helper()
+	// Avoid leaking REDIS_* from the outer shell into staging fixtures (e.g. REDIS_ENABLED=true without addr).
+	t.Setenv("REDIS_ENABLED", "")
+	t.Setenv("REDIS_ADDR", "")
+	t.Setenv("REDIS_URL", "")
 	t.Setenv("LOG_LEVEL", "info")
 	t.Setenv("LOG_FORMAT", "json")
 	t.Setenv("HTTP_ADDR", ":0")
@@ -212,8 +216,9 @@ func TestLoad_Production_RequiresCommercePaymentProvider(t *testing.T) {
 
 func TestLoad_Production_RejectsMissingRedis(t *testing.T) {
 	setMinimalProductionLoadEnv(t)
-	_ = os.Unsetenv("REDIS_ADDR")
-	_ = os.Unsetenv("REDIS_URL")
+	t.Setenv("REDIS_ADDR", "")
+	t.Setenv("REDIS_URL", "")
+	t.Setenv("REDIS_ENABLED", "")
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error")
@@ -225,8 +230,9 @@ func TestLoad_Production_RejectsMissingRedis(t *testing.T) {
 
 func TestLoad_Production_AllowsMissingRedisWithDocumentedOverride(t *testing.T) {
 	setMinimalProductionLoadEnv(t)
-	_ = os.Unsetenv("REDIS_ADDR")
-	_ = os.Unsetenv("REDIS_URL")
+	t.Setenv("REDIS_ADDR", "")
+	t.Setenv("REDIS_URL", "")
+	t.Setenv("REDIS_ENABLED", "")
 	t.Setenv("PRODUCTION_ALLOW_MISSING_REDIS", "true")
 	_, err := Load()
 	if err != nil {

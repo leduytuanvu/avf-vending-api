@@ -9,6 +9,10 @@ import (
 
 func setMinimalValidLoadEnv(t *testing.T) {
 	t.Helper()
+	// Isolate from developer/CI shell leakage (e.g. REDIS_ENABLED=true without REDIS_ADDR).
+	t.Setenv("REDIS_ENABLED", "")
+	t.Setenv("REDIS_ADDR", "")
+	t.Setenv("REDIS_URL", "")
 	t.Setenv("APP_ENV", "development")
 	t.Setenv("LOG_LEVEL", "info")
 	t.Setenv("LOG_FORMAT", "json")
@@ -388,14 +392,14 @@ func TestLoad_AuditCriticalFailOpenForbiddenOutsideDevTest(t *testing.T) {
 	}
 }
 
-func TestLoad_InvalidPlatformAuditOrganizationID(t *testing.T) {
+func TestLoad_InvalidPlatformAuditScopeID(t *testing.T) {
 	setMinimalValidLoadEnv(t)
-	t.Setenv("PLATFORM_AUDIT_ORGANIZATION_ID", "not-a-uuid")
+	t.Setenv("PLATFORM_AUDIT_SCOPE_ID", "not-a-uuid")
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if !strings.Contains(err.Error(), "PLATFORM_AUDIT_ORGANIZATION_ID") {
+	if !strings.Contains(err.Error(), "PLATFORM_AUDIT_SCOPE_ID") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

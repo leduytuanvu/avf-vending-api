@@ -7,6 +7,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/app/reporting"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 // rbac:inherited-mount: mounted under JWT + ReportsRead scopes from server.go (same subtree as CSV rate limits).
@@ -35,7 +36,7 @@ func getAdminSalesSummaryExportCSV(app *api.HTTPApplication, svc api.ReportingSe
 		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", `attachment; filename="sales-summary.csv"`)
-		recordReportExportAudit(r, app, q.OrganizationID, "sales-summary")
+		recordReportExportAudit(r, app, uuid.Nil, "sales-summary")
 		if err := reporting.WriteSalesSummaryCSV(w, out); err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -57,7 +58,7 @@ func getAdminPaymentsSummaryExportCSV(app *api.HTTPApplication, svc api.Reportin
 		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", `attachment; filename="payments-summary.csv"`)
-		recordReportExportAudit(r, app, q.OrganizationID, "payments-summary")
+		recordReportExportAudit(r, app, uuid.Nil, "payments-summary")
 		if err := reporting.WritePaymentsSummaryCSV(w, out); err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -79,8 +80,8 @@ func getAdminCashCollectionsExportCSV(app *api.HTTPApplication, svc api.Reportin
 		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", `attachment; filename="cash-collections.csv"`)
-		recordReportExportAudit(r, app, q.OrganizationID, "cash-collections")
-		orgStr := q.OrganizationID.String()
+		recordReportExportAudit(r, app, uuid.Nil, "cash-collections")
+		orgStr := uuid.Nil.String()
 		from := q.From.UTC().Format(time.RFC3339Nano)
 		to := q.To.UTC().Format(time.RFC3339Nano)
 		if err := reporting.WriteCashCollectionsCSV(w, orgStr, from, to, rows); err != nil {

@@ -18,41 +18,21 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func parseTenantCommerceListScope(r *http.Request) (listscope.TenantCommerce, error) {
+func parseCompanyCommerceListScope(r *http.Request) (listscope.CompanyCommerce, error) {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
-		return listscope.TenantCommerce{}, listscope.ErrInvalidListQuery
+		return listscope.CompanyCommerce{}, listscope.ErrInvalidListQuery
 	}
 	limit, offset, err := parseAdminLimitOffset(r)
 	if err != nil {
-		return listscope.TenantCommerce{}, listscope.ErrInvalidListQuery
+		return listscope.CompanyCommerce{}, listscope.ErrInvalidListQuery
 	}
 	q := r.URL.Query()
-	var orgID uuid.UUID
-	if p.HasRole(auth.RolePlatformAdmin) {
-		raw := strings.TrimSpace(q.Get("organization_id"))
-		id, perr := uuid.Parse(raw)
-		if perr != nil || id == uuid.Nil {
-			return listscope.TenantCommerce{}, api.ErrCommerceOrganizationQueryRequired
-		}
-		orgID = id
-	} else {
-		if !p.HasOrganization() {
-			return listscope.TenantCommerce{}, api.ErrCommerceOrganizationQueryRequired
-		}
-		orgID = p.OrganizationID
-		if raw := strings.TrimSpace(q.Get("organization_id")); raw != "" {
-			qid, perr := uuid.Parse(raw)
-			if perr != nil || qid != orgID {
-				return listscope.TenantCommerce{}, listscope.ErrInvalidListQuery
-			}
-		}
-	}
 	var machineID *uuid.UUID
 	if raw := strings.TrimSpace(q.Get("machine_id")); raw != "" {
 		mid, perr := uuid.Parse(raw)
 		if perr != nil || mid == uuid.Nil {
-			return listscope.TenantCommerce{}, listscope.ErrInvalidListQuery
+			return listscope.CompanyCommerce{}, listscope.ErrInvalidListQuery
 		}
 		machineID = &mid
 	}
@@ -63,10 +43,10 @@ func parseTenantCommerceListScope(r *http.Request) (listscope.TenantCommerce, er
 			t, perr = time.Parse(time.RFC3339, raw)
 		}
 		if perr != nil {
-			return listscope.TenantCommerce{}, listscope.ErrInvalidListQuery
+			return listscope.CompanyCommerce{}, listscope.ErrInvalidListQuery
 		}
-		utc := t.UTC()
-		from = &utc
+		u := t.UTC()
+		from = &u
 	}
 	var to *time.Time
 	if raw := strings.TrimSpace(q.Get("to")); raw != "" {
@@ -75,23 +55,12 @@ func parseTenantCommerceListScope(r *http.Request) (listscope.TenantCommerce, er
 			t, perr = time.Parse(time.RFC3339, raw)
 		}
 		if perr != nil {
-			return listscope.TenantCommerce{}, listscope.ErrInvalidListQuery
+			return listscope.CompanyCommerce{}, listscope.ErrInvalidListQuery
 		}
-		utc := t.UTC()
-		to = &utc
+		u := t.UTC()
+		to = &u
 	}
-	return listscope.TenantCommerce{
-		IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin),
-		OrganizationID:  orgID,
-		Limit:           limit,
-		Offset:          offset,
-		Status:          strings.TrimSpace(q.Get("status")),
-		MachineID:       machineID,
-		PaymentMethod:   strings.TrimSpace(q.Get("payment_method")),
-		Search:          strings.TrimSpace(q.Get("search")),
-		From:            from,
-		To:              to,
-	}, nil
+	return listscope.CompanyCommerce{IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin), Limit: limit, Offset: offset, Status: strings.TrimSpace(q.Get("status")), MachineID: machineID, PaymentMethod: strings.TrimSpace(q.Get("payment_method")), Search: strings.TrimSpace(q.Get("search")), From: from, To: to}, nil
 }
 
 func mountAdminCommerceRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
@@ -103,81 +72,70 @@ func mountAdminCommerceRoutes(r chi.Router, app *api.HTTPApplication, writeRL fu
 	}
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermCommerceRead))
-		r.Get("/organizations/{organizationId}/commerce/reconciliation", listAdminCommerceReconciliation(app))
-		r.Get("/organizations/{organizationId}/commerce/reconciliation/{caseId}", getAdminCommerceReconciliation(app))
+		r.Get("/commerce/reconciliation", listAdminCommerceReconciliation(app))
+		r.Get("/commerce/reconciliation/{caseId}", getAdminCommerceReconciliation(app))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermCommerceRead, auth.PermPaymentRead))
-		r.Get("/organizations/{organizationId}/orders/{orderId}/timeline", listAdminCommerceOrderTimeline(app))
-		r.Get("/organizations/{organizationId}/refunds", listAdminCommerceRefundRequests(app))
-		r.Get("/organizations/{organizationId}/refunds/{refundId}", getAdminCommerceRefundRequest(app))
+		r.Get("/orders/{orderId}/timeline", listAdminCommerceOrderTimeline(app))
+		r.Get("/refunds", listAdminCommerceRefundRequests(app))
+		r.Get("/refunds/{refundId}", getAdminCommerceRefundRequest(app))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermRefundsWrite))
-		r.With(writeRL).Post("/organizations/{organizationId}/commerce/reconciliation/{caseId}/resolve", resolveAdminCommerceReconciliation(app))
-		r.With(writeRL).Post("/organizations/{organizationId}/commerce/reconciliation/{caseId}/ignore", ignoreAdminCommerceReconciliation(app))
-		r.With(writeRL).Post("/organizations/{organizationId}/commerce/reconciliation/{caseId}/request-refund", requestRefundAdminCommerceReconciliation(app))
-		r.With(writeRL).Post("/organizations/{organizationId}/orders/{orderId}/refunds", createAdminCommerceOrderRefund(app))
+		r.With(writeRL).Post("/commerce/reconciliation/{caseId}/resolve", resolveAdminCommerceReconciliation(app))
+		r.With(writeRL).Post("/commerce/reconciliation/{caseId}/ignore", ignoreAdminCommerceReconciliation(app))
+		r.With(writeRL).Post("/commerce/reconciliation/{caseId}/request-refund", requestRefundAdminCommerceReconciliation(app))
+		r.With(writeRL).Post("/orders/{orderId}/refunds", createAdminCommerceOrderRefund(app))
 	})
 }
 
-func parseAdminCommerceOrganizationID(r *http.Request) (uuid.UUID, error) {
-	p, ok := auth.PrincipalFromContext(r.Context())
-	if !ok {
+func parseAdminCommerceScopeID(r *http.Request) (uuid.UUID, error) {
+	if _, ok := auth.PrincipalFromContext(r.Context()); !ok {
 		return uuid.Nil, listscope.ErrInvalidListQuery
 	}
-	id, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "organizationId")))
-	if err != nil || id == uuid.Nil {
-		return uuid.Nil, listscope.ErrInvalidListQuery
-	}
-	if p.HasRole(auth.RolePlatformAdmin) {
-		return id, nil
-	}
-	if !p.HasOrganization() || p.OrganizationID != id {
-		return uuid.Nil, listscope.ErrInvalidListQuery
-	}
-	return id, nil
+	return uuid.Nil, nil
 }
 
-func parseAdminCommerceReconciliationScope(r *http.Request) (listscope.TenantCommerce, error) {
-	orgID, err := parseAdminCommerceOrganizationID(r)
+func parseAdminCommerceReconciliationScope(r *http.Request) (listscope.CompanyCommerce, error) {
+	scopeID, err := parseAdminCommerceScopeID(r)
+	_ = scopeID
 	if err != nil {
-		return listscope.TenantCommerce{}, err
+		return listscope.CompanyCommerce{}, err
 	}
 	limit, offset, err := parseAdminLimitOffset(r)
 	if err != nil {
-		return listscope.TenantCommerce{}, listscope.ErrInvalidListQuery
+		return listscope.CompanyCommerce{}, listscope.ErrInvalidListQuery
 	}
 	q := r.URL.Query()
-	return listscope.TenantCommerce{
-		OrganizationID: orgID,
-		Limit:          limit,
-		Offset:         offset,
-		Status:         strings.TrimSpace(q.Get("status")),
-		CaseType:       strings.TrimSpace(q.Get("case_type")),
+	return listscope.CompanyCommerce{
+		Limit:    limit,
+		Offset:   offset,
+		Status:   strings.TrimSpace(q.Get("status")),
+		CaseType: strings.TrimSpace(q.Get("case_type")),
 	}, nil
 }
 
-func parseAdminRefundListScope(r *http.Request) (listscope.TenantCommerce, error) {
-	orgID, err := parseAdminCommerceOrganizationID(r)
+func parseAdminRefundListScope(r *http.Request) (listscope.CompanyCommerce, error) {
+	scopeID, err := parseAdminCommerceScopeID(r)
+	_ = scopeID
 	if err != nil {
-		return listscope.TenantCommerce{}, err
+		return listscope.CompanyCommerce{}, err
 	}
 	limit, offset, err := parseAdminLimitOffset(r)
 	if err != nil {
-		return listscope.TenantCommerce{}, listscope.ErrInvalidListQuery
+		return listscope.CompanyCommerce{}, listscope.ErrInvalidListQuery
 	}
 	q := r.URL.Query()
-	return listscope.TenantCommerce{
-		OrganizationID: orgID,
-		Limit:          limit,
-		Offset:         offset,
-		Status:         strings.TrimSpace(q.Get("status")),
+	return listscope.CompanyCommerce{
+		Limit:  limit,
+		Offset: offset,
+		Status: strings.TrimSpace(q.Get("status")),
 	}, nil
 }
 
-func parseAdminOrderTimelineScope(r *http.Request) (orgID uuid.UUID, orderID uuid.UUID, limit int32, offset int32, err error) {
-	orgID, err = parseAdminCommerceOrganizationID(r)
+func parseAdminOrderTimelineScope(r *http.Request) (scopeID uuid.UUID, orderID uuid.UUID, limit int32, offset int32, err error) {
+	scopeID, err = parseAdminCommerceScopeID(r)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, 0, 0, err
 	}
@@ -189,7 +147,7 @@ func parseAdminOrderTimelineScope(r *http.Request) (orgID uuid.UUID, orderID uui
 	if err != nil {
 		return uuid.Nil, uuid.Nil, 0, 0, listscope.ErrInvalidListQuery
 	}
-	return orgID, orderID, limit, offset, nil
+	return scopeID, orderID, limit, offset, nil
 }
 
 func listAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
@@ -206,7 +164,8 @@ func listAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc 
 
 func getAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminCommerceOrganizationID(r)
+		scopeID, err := parseAdminCommerceScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -216,7 +175,7 @@ func getAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_case_id", "invalid reconciliation case id")
 			return
 		}
-		out, err := app.Reconciliation.GetReconciliationCase(r.Context(), orgID, caseID)
+		out, err := app.Reconciliation.GetReconciliationCase(r.Context(), scopeID, caseID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "reconciliation case not found")
 			return
@@ -231,14 +190,14 @@ func getAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 
 func listAdminCommerceOrderTimeline(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, orderID, limit, offset, err := parseAdminOrderTimelineScope(r)
+		scopeID, orderID, limit, offset, err := parseAdminOrderTimelineScope(r)
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		out, err := app.Reconciliation.ListOrderTimeline(r.Context(), orgID, orderID, limit, offset)
+		out, err := app.Reconciliation.ListOrderTimeline(r.Context(), scopeID, orderID, limit, offset)
 		if errors.Is(err, pgx.ErrNoRows) {
-			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "order not found for organization")
+			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "order not found for company")
 			return
 		}
 		if err != nil {
@@ -263,7 +222,8 @@ func listAdminCommerceRefundRequests(app *api.HTTPApplication) http.HandlerFunc 
 
 func getAdminCommerceRefundRequest(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminCommerceOrganizationID(r)
+		scopeID, err := parseAdminCommerceScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -273,7 +233,7 @@ func getAdminCommerceRefundRequest(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_refund_id", "invalid refund request id")
 			return
 		}
-		out, err := app.Reconciliation.GetRefundRequest(r.Context(), orgID, refundRequestID)
+		out, err := app.Reconciliation.GetRefundRequest(r.Context(), scopeID, refundRequestID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "refund request not found")
 			return
@@ -288,7 +248,8 @@ func getAdminCommerceRefundRequest(app *api.HTTPApplication) http.HandlerFunc {
 
 func resolveAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminCommerceOrganizationID(r)
+		scopeID, err := parseAdminCommerceScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -313,11 +274,10 @@ func resolveAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFu
 		}
 		actorID, _ := uuid.Parse(strings.TrimSpace(p.Subject))
 		out, err := app.Reconciliation.ResolveReconciliationCase(r.Context(), appcommerceadmin.ResolveReconciliationInput{
-			OrganizationID: orgID,
-			CaseID:         caseID,
-			ResolvedBy:     actorID,
-			Status:         body.Status,
-			Note:           body.Note,
+			CaseID:     caseID,
+			ResolvedBy: actorID,
+			Status:     body.Status,
+			Note:       body.Note,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "open reconciliation case not found")
@@ -330,13 +290,12 @@ func resolveAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFu
 		if app.EnterpriseAudit != nil {
 			cid := caseID.String()
 			_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-				OrganizationID: orgID,
-				ActorType:      compliance.ActorUser,
-				ActorID:        &p.Subject,
-				Action:         compliance.ActionCommerceReconciliationCaseResolved,
-				ResourceType:   "commerce.reconciliation_case",
-				ResourceID:     &cid,
-				Metadata:       compliance.SanitizeJSONBytes([]byte(`{"source":"admin_commerce_reconciliation_resolve"}`)),
+				ActorType:    compliance.ActorUser,
+				ActorID:      &p.Subject,
+				Action:       compliance.ActionCommerceReconciliationCaseResolved,
+				ResourceType: "commerce.reconciliation_case",
+				ResourceID:   &cid,
+				Metadata:     compliance.SanitizeJSONBytes([]byte(`{"source":"admin_commerce_reconciliation_resolve"}`)),
 			})
 		}
 		writeJSON(w, http.StatusOK, out)
@@ -345,7 +304,8 @@ func resolveAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFu
 
 func ignoreAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, err := parseAdminCommerceOrganizationID(r)
+		scopeID, err := parseAdminCommerceScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -369,11 +329,10 @@ func ignoreAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFun
 		}
 		actorID, _ := uuid.Parse(strings.TrimSpace(p.Subject))
 		out, err := app.Reconciliation.ResolveReconciliationCase(r.Context(), appcommerceadmin.ResolveReconciliationInput{
-			OrganizationID: orgID,
-			CaseID:         caseID,
-			ResolvedBy:     actorID,
-			Status:         "ignored",
-			Note:           body.Note,
+			CaseID:     caseID,
+			ResolvedBy: actorID,
+			Status:     "ignored",
+			Note:       body.Note,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "open reconciliation case not found")
@@ -386,13 +345,12 @@ func ignoreAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFun
 		if app.EnterpriseAudit != nil {
 			cid := caseID.String()
 			_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-				OrganizationID: orgID,
-				ActorType:      compliance.ActorUser,
-				ActorID:        &p.Subject,
-				Action:         compliance.ActionCommerceReconciliationCaseResolved,
-				ResourceType:   "commerce.reconciliation_case",
-				ResourceID:     &cid,
-				Metadata:       compliance.SanitizeJSONBytes([]byte(`{"source":"admin_commerce_reconciliation_ignore","resolution_kind":"ignored"}`)),
+				ActorType:    compliance.ActorUser,
+				ActorID:      &p.Subject,
+				Action:       compliance.ActionCommerceReconciliationCaseResolved,
+				ResourceType: "commerce.reconciliation_case",
+				ResourceID:   &cid,
+				Metadata:     compliance.SanitizeJSONBytes([]byte(`{"source":"admin_commerce_reconciliation_ignore","resolution_kind":"ignored"}`)),
 			})
 		}
 		writeJSON(w, http.StatusOK, out)
@@ -405,7 +363,8 @@ func requestRefundAdminCommerceReconciliation(app *api.HTTPApplication) http.Han
 			writeCapabilityNotConfigured(w, r.Context(), "commerce.refund", "commerce service is required")
 			return
 		}
-		orgID, err := parseAdminCommerceOrganizationID(r)
+		scopeID, err := parseAdminCommerceScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -430,11 +389,10 @@ func requestRefundAdminCommerceReconciliation(app *api.HTTPApplication) http.Han
 		}
 		actorID, _ := uuid.Parse(strings.TrimSpace(p.Subject))
 		out, err := app.Reconciliation.RefundFromReconciliationCase(r.Context(), appcommerceadmin.RefundFromReconciliationCaseInput{
-			OrganizationID: orgID,
-			CaseID:         caseID,
-			AmountMinor:    body.AmountMinor,
-			Reason:         body.Reason,
-			RequestedBy:    actorID,
+			CaseID:      caseID,
+			AmountMinor: body.AmountMinor,
+			Reason:      body.Reason,
+			RequestedBy: actorID,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "reconciliation case or order not found")
@@ -449,13 +407,12 @@ func requestRefundAdminCommerceReconciliation(app *api.HTTPApplication) http.Han
 			mdBytes, _ := json.Marshal(map[string]any{"source": "admin_commerce_request_refund", "refund_request_id": out.RefundRequest.ID})
 			md := compliance.SanitizeJSONBytes(mdBytes)
 			_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-				OrganizationID: orgID,
-				ActorType:      compliance.ActorUser,
-				ActorID:        &p.Subject,
-				Action:         compliance.ActionCommerceReconciliationRefundRequested,
-				ResourceType:   "commerce.reconciliation_case",
-				ResourceID:     &cid,
-				Metadata:       md,
+				ActorType:    compliance.ActorUser,
+				ActorID:      &p.Subject,
+				Action:       compliance.ActionCommerceReconciliationRefundRequested,
+				ResourceType: "commerce.reconciliation_case",
+				ResourceID:   &cid,
+				Metadata:     md,
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -480,7 +437,8 @@ func createAdminCommerceOrderRefund(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := parseAdminCommerceOrganizationID(r)
+		scopeID, err := parseAdminCommerceScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -506,7 +464,6 @@ func createAdminCommerceOrderRefund(app *api.HTTPApplication) http.HandlerFunc {
 		}
 		actorID, _ := uuid.Parse(strings.TrimSpace(p.Subject))
 		out, err := app.Reconciliation.CreateOrderRefund(r.Context(), appcommerceadmin.CreateOrderRefundInput{
-			OrganizationID: orgID,
 			OrderID:        orderID,
 			AmountMinor:    body.AmountMinor,
 			Currency:       body.Currency,
@@ -515,7 +472,7 @@ func createAdminCommerceOrderRefund(app *api.HTTPApplication) http.HandlerFunc {
 			IdempotencyKey: idem,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
-			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "order not found for organization")
+			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "order not found for company")
 			return
 		}
 		if err != nil {
@@ -527,13 +484,12 @@ func createAdminCommerceOrderRefund(app *api.HTTPApplication) http.HandlerFunc {
 			mdBytes, _ := json.Marshal(map[string]any{"source": "admin_order_refund", "ledger_refund_id": out.LedgerRefundID})
 			md := compliance.SanitizeJSONBytes(mdBytes)
 			_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-				OrganizationID: orgID,
-				ActorType:      compliance.ActorUser,
-				ActorID:        &p.Subject,
-				Action:         compliance.ActionRefundRequested,
-				ResourceType:   "commerce.refund_request",
-				ResourceID:     &rid,
-				Metadata:       md,
+				ActorType:    compliance.ActorUser,
+				ActorID:      &p.Subject,
+				Action:       compliance.ActionRefundRequested,
+				ResourceType: "commerce.refund_request",
+				ResourceID:   &rid,
+				Metadata:     md,
 			})
 		}
 		writeJSON(w, http.StatusOK, out)

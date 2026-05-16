@@ -2,13 +2,10 @@ package auth
 
 import (
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestHasPermission_adminAllBypass(t *testing.T) {
-	org := uuid.MustParse("11111111-1111-1111-1111-111111111111")
-	p := Principal{Subject: "a", Roles: []string{RolePlatformAdmin}, OrganizationID: org}
+	p := Principal{Subject: "a", Roles: []string{RolePlatformAdmin}}
 	if !HasPermission(p, PermCatalogWrite) || !HasPermission(p, PermAuditRead) {
 		t.Fatal("platform_admin must satisfy any permission via admin.all")
 	}
@@ -28,7 +25,7 @@ func TestHasPermission_orgAdminBroad(t *testing.T) {
 		PermUserRoles, PermCatalogDelete, PermMediaWrite, PermUserSessionsRevoke,
 	} {
 		if !HasPermission(p, perm) {
-			t.Fatalf("org_admin should have %s", perm)
+			t.Fatalf("admin should have %s", perm)
 		}
 	}
 }

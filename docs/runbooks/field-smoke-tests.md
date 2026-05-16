@@ -28,7 +28,7 @@ Git Bash:
 
 ```bash
 export BASE_URL="http://localhost:8080"
-export ORG_ID="11111111-1111-1111-1111-111111111111"
+export SCOPE_ID="11111111-1111-1111-1111-111111111111"
 export ADMIN_EMAIL="admin@local.test"
 export ADMIN_PASSWORD="password123"
 export MACHINE_ID="55555555-5555-5555-5555-555555555555"
@@ -40,7 +40,7 @@ PowerShell:
 
 ```powershell
 $env:BASE_URL = "http://localhost:8080"
-$env:ORG_ID = "11111111-1111-1111-1111-111111111111"
+$env:SCOPE_ID = "11111111-1111-1111-1111-111111111111"
 $env:ADMIN_EMAIL = "admin@local.test"
 $env:ADMIN_PASSWORD = "password123"
 $env:MACHINE_ID = "55555555-5555-5555-5555-555555555555"

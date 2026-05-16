@@ -33,7 +33,7 @@ Use this checklist before any production schema or data migration. It complement
 ## Post-migration validation
 
 - Verify schema version.
-- Verify representative tenant reads and writes.
+- Verify representative company reads and writes.
 - Verify outbox publishing is not silently stalled.
 - Verify payment webhook idempotency still replays safely.
 - Verify machine offline replay with a duplicate key does not double-apply.

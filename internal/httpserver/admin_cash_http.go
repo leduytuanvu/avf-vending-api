@@ -61,13 +61,13 @@ func getAdminMachineCashbox(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		head, err := resolveInventoryMachine(r, app.InventoryAdmin, machineID)
+		_, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
 		}
 		cur := strings.TrimSpace(r.URL.Query().Get("currency"))
-		summary, err := app.TelemetryStore.GetMachineCashboxSummary(r.Context(), head.OrganizationID, machineID, cur, cashVarianceThreshold(app))
+		summary, err := app.TelemetryStore.GetMachineCashboxSummary(r.Context(), uuid.Nil, machineID, cur, cashVarianceThreshold(app))
 		if err != nil {
 			writeCashSettlementError(w, r, err)
 			return
@@ -116,7 +116,7 @@ func postAdminMachineCashCollectionStart(app *api.HTTPApplication) http.HandlerF
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		head, err := resolveInventoryMachine(r, app.InventoryAdmin, machineID)
+		_, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
@@ -154,7 +154,6 @@ func postAdminMachineCashCollectionStart(app *api.HTTPApplication) http.HandlerF
 			cur = "USD"
 		}
 		row, err := app.TelemetryStore.StartMachineCashCollection(r.Context(), postgres.StartMachineCashCollectionInput{
-			OrganizationID:      head.OrganizationID,
 			MachineID:           machineID,
 			OperatorSessionID:   &sid,
 			Currency:            cur,
@@ -167,7 +166,7 @@ func postAdminMachineCashCollectionStart(app *api.HTTPApplication) http.HandlerF
 			writeCashSettlementError(w, r, err)
 			return
 		}
-		recordCashCollectionAudit(r.Context(), app, row.OrganizationID, "cash.collection.started", row.ID, map[string]any{
+		recordCashCollectionAudit(r.Context(), app, uuid.Nil, "cash.collection.started", row.ID, map[string]any{
 			"machine_id":       machineID.String(),
 			"collection_id":    row.ID.String(),
 			"idempotency_key":  idem,
@@ -193,7 +192,7 @@ func listAdminMachineCashCollections(app *api.HTTPApplication) http.HandlerFunc 
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		head, err := resolveInventoryMachine(r, app.InventoryAdmin, machineID)
+		_, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
@@ -203,7 +202,7 @@ func listAdminMachineCashCollections(app *api.HTTPApplication) http.HandlerFunc 
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", perr.Error())
 			return
 		}
-		rows, err := app.TelemetryStore.ListMachineCashCollections(r.Context(), head.OrganizationID, machineID, limit, offset)
+		rows, err := app.TelemetryStore.ListMachineCashCollections(r.Context(), uuid.Nil, machineID, limit, offset)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -239,12 +238,12 @@ func getAdminMachineCashCollection(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_collection_id", "invalid collectionId")
 			return
 		}
-		head, err := resolveInventoryMachine(r, app.InventoryAdmin, machineID)
+		_, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
 		}
-		row, err := app.TelemetryStore.GetMachineCashCollection(r.Context(), head.OrganizationID, machineID, collectionID)
+		row, err := app.TelemetryStore.GetMachineCashCollection(r.Context(), uuid.Nil, machineID, collectionID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "collection_not_found", "collection not found")
@@ -291,7 +290,7 @@ func postAdminMachineCashCollectionClose(app *api.HTTPApplication) http.HandlerF
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_collection_id", "invalid collectionId")
 			return
 		}
-		head, err := resolveInventoryMachine(r, app.InventoryAdmin, machineID)
+		_, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
@@ -353,7 +352,6 @@ func postAdminMachineCashCollectionClose(app *api.HTTPApplication) http.HandlerF
 			closedAtStr = strings.TrimSpace(*body.ClosedAt)
 		}
 		row, err := app.TelemetryStore.CloseMachineCashCollection(r.Context(), postgres.CloseMachineCashCollectionInput{
-			OrganizationID:          head.OrganizationID,
 			MachineID:               machineID,
 			CollectionID:            collectionID,
 			OperatorSessionID:       &sid,
@@ -374,7 +372,7 @@ func postAdminMachineCashCollectionClose(app *api.HTTPApplication) http.HandlerF
 			writeCashSettlementError(w, r, err)
 			return
 		}
-		recordCashCollectionAudit(r.Context(), app, row.OrganizationID, compliance.ActionCashCollectionClosed, row.ID, map[string]any{
+		recordCashCollectionAudit(r.Context(), app, uuid.Nil, compliance.ActionCashCollectionClosed, row.ID, map[string]any{
 			"machine_id":                   machineID.String(),
 			"collection_id":                row.ID.String(),
 			"currency":                     curClose,
@@ -394,7 +392,7 @@ func postAdminMachineCashCollectionClose(app *api.HTTPApplication) http.HandlerF
 	}
 }
 
-func recordCashCollectionAudit(ctx context.Context, app *api.HTTPApplication, orgID uuid.UUID, action string, collectionID uuid.UUID, meta map[string]any) {
+func recordCashCollectionAudit(ctx context.Context, app *api.HTTPApplication, scopeID uuid.UUID, action string, collectionID uuid.UUID, meta map[string]any) {
 	if app == nil || app.EnterpriseAudit == nil {
 		return
 	}
@@ -405,13 +403,12 @@ func recordCashCollectionAudit(ctx context.Context, app *api.HTTPApplication, or
 	md, _ := json.Marshal(meta)
 	rid := collectionID.String()
 	_ = app.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: orgID,
-		ActorType:      at,
-		ActorID:        stringPtrOrNil(aid),
-		Action:         action,
-		ResourceType:   "cash.collection",
-		ResourceID:     &rid,
-		Metadata:       md,
+		ActorType:    at,
+		ActorID:      stringPtrOrNil(aid),
+		Action:       action,
+		ResourceType: "cash.collection",
+		ResourceID:   &rid,
+		Metadata:     md,
 	})
 }
 
@@ -419,7 +416,7 @@ func writeCashSettlementError(w http.ResponseWriter, r *http.Request, err error)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found")
-	case errors.Is(err, postgres.ErrMachineOrganizationMismatch), errors.Is(err, appinventoryadmin.ErrMachineNotFound):
+	case errors.Is(err, postgres.ErrMachineScopeMismatch), errors.Is(err, appinventoryadmin.ErrMachineNotFound):
 		writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found")
 	case errors.Is(err, appinventoryadmin.ErrForbidden):
 		writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "forbidden")
@@ -484,7 +481,6 @@ func v1CashCollectionFromDB(row db.CashCollection) V1AdminCashCollection {
 	return V1AdminCashCollection{
 		ID:                       row.ID.String(),
 		MachineID:                row.MachineID.String(),
-		OrganizationID:           row.OrganizationID.String(),
 		CollectedAt:              formatAPITimeRFC3339Nano(row.CollectedAt),
 		OpenedAt:                 formatAPITimeRFC3339Nano(row.OpenedAt),
 		ClosedAt:                 closedAt,

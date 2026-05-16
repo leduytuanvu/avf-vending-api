@@ -84,7 +84,7 @@ func (s *machineQueryServer) GetMachineSummary(ctx context.Context, req *interna
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeInternalQueryRead(ctx, bootstrap.Machine.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, uuid.Nil); err != nil {
 		return nil, err
 	}
 	return &internalv1.GetMachineSummaryResponse{Machine: mapMachineSummary(bootstrap.Machine)}, nil
@@ -99,7 +99,7 @@ func (s *machineQueryServer) GetMachineState(ctx context.Context, req *internalv
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeInternalQueryRead(ctx, snapshot.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, uuid.Nil); err != nil {
 		return nil, err
 	}
 	shadow, err := s.machine.GetShadow(ctx, machineID)
@@ -121,7 +121,7 @@ func (s *machineQueryServer) GetMachineCabinetSlotSummary(ctx context.Context, r
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeInternalQueryRead(ctx, bootstrap.Machine.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, uuid.Nil); err != nil {
 		return nil, err
 	}
 	slotView, err := s.machine.GetMachineSlotView(ctx, machineID)
@@ -164,7 +164,7 @@ func (s *telemetryQueryServer) GetLatestMachineTelemetry(ctx context.Context, re
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeInternalQueryRead(ctx, snapshot.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, uuid.Nil); err != nil {
 		return nil, err
 	}
 	return &internalv1.GetLatestMachineTelemetryResponse{Snapshot: mapTelemetrySnapshot(snapshot)}, nil
@@ -175,11 +175,11 @@ func (s *telemetryQueryServer) GetMachineIncidentSummary(ctx context.Context, re
 	if err != nil {
 		return nil, err
 	}
-	snapshot, err := s.telemetry.GetTelemetrySnapshot(ctx, machineID)
+	_, err = s.telemetry.GetTelemetrySnapshot(ctx, machineID)
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeInternalQueryRead(ctx, snapshot.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, uuid.Nil); err != nil {
 		return nil, err
 	}
 	limit := req.GetLimit()
@@ -208,10 +208,7 @@ type commerceQueryServer struct {
 }
 
 func (s *commerceQueryServer) GetOrderPaymentVendState(ctx context.Context, req *internalv1.GetOrderPaymentVendStateRequest) (*internalv1.GetOrderPaymentVendStateResponse, error) {
-	organizationID, err := requireUUID(req.GetOrganizationId(), "organization_id")
-	if err != nil {
-		return nil, err
-	}
+	scopeID := uuid.Nil
 	orderID, err := requireUUID(req.GetOrderId(), "order_id")
 	if err != nil {
 		return nil, err
@@ -219,10 +216,10 @@ func (s *commerceQueryServer) GetOrderPaymentVendState(ctx context.Context, req 
 	if req.GetSlotIndex() < 0 {
 		return nil, status.Error(codes.InvalidArgument, "slot_index must be non-negative")
 	}
-	if err := authorizeInternalQueryRead(ctx, organizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, scopeID); err != nil {
 		return nil, err
 	}
-	out, err := s.commerce.GetCheckoutStatus(ctx, organizationID, orderID, req.GetSlotIndex())
+	out, err := s.commerce.GetCheckoutStatus(ctx, scopeID, orderID, req.GetSlotIndex())
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -243,18 +240,15 @@ type paymentQueryServer struct {
 }
 
 func (s *paymentQueryServer) GetPaymentById(ctx context.Context, req *internalv1.GetPaymentByIdRequest) (*internalv1.GetPaymentByIdResponse, error) {
-	organizationID, err := requireUUID(req.GetOrganizationId(), "organization_id")
-	if err != nil {
-		return nil, err
-	}
+	scopeID := uuid.Nil
 	paymentID, err := requireUUID(req.GetPaymentId(), "payment_id")
 	if err != nil {
 		return nil, err
 	}
-	if err := authorizeInternalQueryRead(ctx, organizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, scopeID); err != nil {
 		return nil, err
 	}
-	pay, err := s.payment.GetPaymentByID(ctx, organizationID, paymentID)
+	pay, err := s.payment.GetPaymentByID(ctx, scopeID, paymentID)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -262,18 +256,15 @@ func (s *paymentQueryServer) GetPaymentById(ctx context.Context, req *internalv1
 }
 
 func (s *paymentQueryServer) GetLatestPaymentForOrder(ctx context.Context, req *internalv1.GetLatestPaymentForOrderRequest) (*internalv1.GetLatestPaymentForOrderResponse, error) {
-	organizationID, err := requireUUID(req.GetOrganizationId(), "organization_id")
-	if err != nil {
-		return nil, err
-	}
+	scopeID := uuid.Nil
 	orderID, err := requireUUID(req.GetOrderId(), "order_id")
 	if err != nil {
 		return nil, err
 	}
-	if err := authorizeInternalQueryRead(ctx, organizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, scopeID); err != nil {
 		return nil, err
 	}
-	pay, err := s.payment.GetLatestPaymentForOrder(ctx, organizationID, orderID)
+	pay, err := s.payment.GetLatestPaymentForOrder(ctx, scopeID, orderID)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -302,7 +293,7 @@ func (s *catalogQueryServer) GetSaleCatalogSnapshot(ctx context.Context, req *in
 	if err != nil {
 		return nil, mapError(err)
 	}
-	if err := authorizeInternalQueryRead(ctx, snap.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, uuid.Nil); err != nil {
 		return nil, err
 	}
 	if snap.NotModified {
@@ -326,11 +317,7 @@ func (s *inventoryQueryServer) GetMachineSlotInventory(ctx context.Context, req 
 	if err != nil {
 		return nil, err
 	}
-	bootstrap, err := s.machine.GetMachineBootstrap(ctx, machineID)
-	if err != nil {
-		return nil, mapError(err)
-	}
-	if err := authorizeInternalQueryRead(ctx, bootstrap.Machine.OrganizationID); err != nil {
+	if err := authorizeInternalQueryRead(ctx, uuid.Nil); err != nil {
 		return nil, err
 	}
 	slotView, err := s.inv.GetMachineSlotView(ctx, machineID)
@@ -353,11 +340,8 @@ type reportingQueryServer struct {
 }
 
 func (s *reportingQueryServer) GetSalesSummary(ctx context.Context, req *internalv1.GetSalesSummaryRequest) (*internalv1.GetSalesSummaryResponse, error) {
-	organizationID, err := requireUUID(req.GetOrganizationId(), "organization_id")
-	if err != nil {
-		return nil, err
-	}
-	if err := authorizeInternalQueryRead(ctx, organizationID); err != nil {
+	scopeID := uuid.Nil
+	if err := authorizeInternalQueryRead(ctx, scopeID); err != nil {
 		return nil, err
 	}
 	from, err := time.Parse(time.RFC3339, strings.TrimSpace(req.GetFromRfc3339()))
@@ -369,7 +353,6 @@ func (s *reportingQueryServer) GetSalesSummary(ctx context.Context, req *interna
 		return nil, status.Error(codes.InvalidArgument, "to_rfc3339 must be RFC3339")
 	}
 	q := listscope.ReportingQuery{
-		OrganizationID:  organizationID,
 		From:            from,
 		To:              to,
 		GroupBy:         strings.TrimSpace(req.GetGroupBy()),
@@ -394,7 +377,7 @@ func requireUUID(raw string, field string) (uuid.UUID, error) {
 	return id, nil
 }
 
-func authorizeInternalQueryRead(ctx context.Context, organizationID uuid.UUID) error {
+func authorizeInternalQueryRead(ctx context.Context, scopeID uuid.UUID) error {
 	principal, ok := auth.PrincipalFromContext(ctx)
 	if !ok {
 		return status.Error(codes.Unauthenticated, "missing principal")
@@ -407,17 +390,10 @@ func authorizeInternalQueryRead(ctx context.Context, organizationID uuid.UUID) e
 		return status.Error(codes.PermissionDenied, "principal is not allowed to use internal gRPC queries")
 	}
 	if principal.HasRole(auth.RoleService) {
-		if principal.HasOrganization() && principal.OrganizationID != uuid.Nil && organizationID != uuid.Nil &&
-			principal.OrganizationID != organizationID {
-			return status.Error(codes.PermissionDenied, "organization scope mismatch")
-		}
 		return nil
 	}
 	if principal.HasRole(auth.RolePlatformAdmin) {
 		return nil
-	}
-	if !principal.HasOrganization() || principal.OrganizationID != organizationID {
-		return status.Error(codes.PermissionDenied, "organization scope mismatch")
 	}
 	return nil
 }
@@ -429,7 +405,6 @@ func mapMachineSummary(m domainfleet.Machine) *internalv1.MachineSummary {
 	}
 	return &internalv1.MachineSummary{
 		MachineId:         m.ID.String(),
-		OrganizationId:    m.OrganizationID.String(),
 		SiteId:            m.SiteID.String(),
 		HardwareProfileId: hardwareProfileID,
 		SerialNumber:      m.SerialNumber,
@@ -456,7 +431,6 @@ func mapShadowState(v *appapi.ShadowView) *internalv1.MachineShadowState {
 func mapTelemetrySnapshot(v appapi.TelemetrySnapshotView) *internalv1.MachineTelemetrySnapshot {
 	return &internalv1.MachineTelemetrySnapshot{
 		MachineId:         v.MachineID.String(),
-		OrganizationId:    v.OrganizationID.String(),
 		SiteId:            v.SiteID.String(),
 		ReportedState:     structFromJSON(v.ReportedState),
 		MetricsState:      structFromJSON(v.MetricsState),
@@ -578,7 +552,6 @@ func mapIncidentSummary(v appapi.MachineIncidentView) *internalv1.MachineInciden
 func mapCommerceOrder(v domaincommerce.Order) *internalv1.CommerceOrderSummary {
 	return &internalv1.CommerceOrderSummary{
 		Id:             v.ID.String(),
-		OrganizationId: v.OrganizationID.String(),
 		MachineId:      v.MachineID.String(),
 		Status:         v.Status,
 		Currency:       v.Currency,

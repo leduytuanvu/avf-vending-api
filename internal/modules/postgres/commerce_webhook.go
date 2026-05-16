@@ -114,13 +114,12 @@ func (s *Store) auditPaymentWebhookTx(ctx context.Context, tx pgx.Tx, in appcomm
 	}
 	pid := in.PaymentID.String()
 	return s.enterpriseAudit.RecordCriticalTx(ctx, tx, compliance.EnterpriseAuditRecord{
-		OrganizationID: in.OrganizationID,
-		ActorType:      compliance.ActorPaymentProvider,
-		Action:         action,
-		ResourceType:   "commerce.payment",
-		ResourceID:     &pid,
-		MachineID:      machineID,
-		Metadata:       md,
+		ActorType:    compliance.ActorPaymentProvider,
+		Action:       action,
+		ResourceType: "commerce.payment",
+		ResourceID:   &pid,
+		MachineID:    machineID,
+		Metadata:     md,
 	})
 }
 
@@ -191,9 +190,6 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 	if err != nil {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 	}
-	if ord.OrganizationID != in.OrganizationID {
-		return appcommerce.ApplyPaymentProviderWebhookResult{}, appcommerce.ErrOrgMismatch
-	}
 
 	if err := webhookAmountCurrencyMatches(pay, ord, in); err != nil {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
@@ -240,7 +236,6 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 
 	ev, err := q.InsertPaymentProviderEvent(ctx, db.InsertPaymentProviderEventParams{
 		PaymentID:           pgtype.UUID{Bytes: in.PaymentID, Valid: true},
-		OrganizationID:      pgtype.UUID{Bytes: in.OrganizationID, Valid: true},
 		Provider:            in.Provider,
 		ProviderRef:         pgtype.Text{String: in.ProviderReference, Valid: true},
 		WebhookEventID:      webhookEv,
@@ -274,10 +269,9 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 	}
 
 	if target == "captured" && (ord.Status == "created" || ord.Status == "quoted") {
-		ord, err = q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{
-			ID:             ord.ID,
-			OrganizationID: ord.OrganizationID,
-			Status:         "paid",
+		ord, err = q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "paid",
+
+			ID: ord.ID,
 		})
 		if err != nil {
 			return appcommerce.ApplyPaymentProviderWebhookResult{}, err
@@ -285,7 +279,6 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 	}
 	if shouldInsertWebhookOutbox(in) {
 		if _, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-			OrganizationID: optionalUUIDToPg(&in.OrganizationID),
 			Topic:          in.OutboxTopic,
 			EventType:      in.OutboxEventType,
 			Payload:        webhookOutboxPayload(in),

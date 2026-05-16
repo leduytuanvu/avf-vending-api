@@ -90,7 +90,7 @@ func clampListLimit(limit int32) int32 {
 	}
 }
 
-// StartOperatorSession validates actor and organization context, then creates one ACTIVE session.
+// StartOperatorSession validates actor and company context, then creates one ACTIVE session.
 // Caller-supplied actor fields must match the authenticated principal at the transport edge; HTTP
 // handlers derive actor_type/technician_id/user_principal from JWT only.
 func (s *Service) StartOperatorSession(ctx context.Context, in StartOperatorSessionInput) (domainoperator.Session, error) {
@@ -105,20 +105,14 @@ func (s *Service) StartOperatorSession(ctx context.Context, in StartOperatorSess
 	if err := domainoperator.ValidateSessionExpiryBounds(in.ExpiresAt, time.Now().UTC(), domainoperator.MaxOperatorSessionTTL); err != nil {
 		return domainoperator.Session{}, err
 	}
-	machine, err := s.machines.GetByID(ctx, in.MachineID)
+	_, err := s.machines.GetByID(ctx, in.MachineID)
 	if err != nil {
 		return domainoperator.Session{}, err
 	}
-	if machine.OrganizationID != in.OrganizationID {
-		return domainoperator.Session{}, domainoperator.ErrOrganizationMismatch
-	}
 	if in.ActorType == domainoperator.ActorTypeTechnician && in.TechnicianID != nil {
-		tech, err := s.technicians.GetByID(ctx, *in.TechnicianID)
+		_, err := s.technicians.GetByID(ctx, *in.TechnicianID)
 		if err != nil {
 			return domainoperator.Session{}, err
-		}
-		if tech.OrganizationID != in.OrganizationID {
-			return domainoperator.Session{}, domainoperator.ErrOrganizationMismatch
 		}
 		if s.assignments == nil {
 			return domainoperator.Session{}, domainoperator.ErrTechnicianAssignmentCheckerRequired
@@ -150,7 +144,6 @@ func (s *Service) StartOperatorSession(ctx context.Context, in StartOperatorSess
 	}
 
 	return s.sessions.StartOperatorSession(ctx, domainoperator.StartOperatorSessionParams{
-		OrganizationID:          in.OrganizationID,
 		MachineID:               in.MachineID,
 		ActorType:               in.ActorType,
 		TechnicianID:            in.TechnicianID,
@@ -164,7 +157,7 @@ func (s *Service) StartOperatorSession(ctx context.Context, in StartOperatorSess
 	})
 }
 
-// EndOperatorSession ends an ACTIVE session if it belongs to the organization and machine.
+// EndOperatorSession ends an ACTIVE session if it belongs to the company and machine.
 func (s *Service) EndOperatorSession(ctx context.Context, in EndOperatorSessionInput) (domainoperator.Session, error) {
 	switch in.FinalStatus {
 	case domainoperator.SessionStatusEnded, domainoperator.SessionStatusRevoked:
@@ -188,9 +181,6 @@ func (s *Service) EndOperatorSession(ctx context.Context, in EndOperatorSessionI
 	}
 	if sess.MachineID != in.MachineID {
 		return domainoperator.Session{}, domainoperator.ErrSessionMachineMismatch
-	}
-	if sess.OrganizationID != in.OrganizationID {
-		return domainoperator.Session{}, domainoperator.ErrOrganizationMismatch
 	}
 	if sess.Status != domainoperator.SessionStatusActive {
 		return domainoperator.Session{}, domainoperator.ErrSessionNotActive
@@ -222,7 +212,7 @@ func (s *Service) EndOperatorSession(ctx context.Context, in EndOperatorSessionI
 	return ended, nil
 }
 
-// TimeoutOperatorSession marks EXPIRED when expires_at is due; organization and machine must match.
+// TimeoutOperatorSession marks EXPIRED when expires_at is due; company and machine must match.
 func (s *Service) TimeoutOperatorSession(ctx context.Context, in TimeoutOperatorSessionInput) (domainoperator.Session, error) {
 	if in.MachineID == uuid.Nil {
 		return domainoperator.Session{}, domainoperator.ErrMachineContextRequired
@@ -237,9 +227,6 @@ func (s *Service) TimeoutOperatorSession(ctx context.Context, in TimeoutOperator
 	if sess.MachineID != in.MachineID {
 		return domainoperator.Session{}, domainoperator.ErrSessionMachineMismatch
 	}
-	if sess.OrganizationID != in.OrganizationID {
-		return domainoperator.Session{}, domainoperator.ErrOrganizationMismatch
-	}
 	row, err := s.sessions.TimeoutOperatorSessionIfExpired(ctx, in.SessionID)
 	if err != nil {
 		if errors.Is(err, domainoperator.ErrTimeoutNotApplicable) {
@@ -251,8 +238,8 @@ func (s *Service) TimeoutOperatorSession(ctx context.Context, in TimeoutOperator
 }
 
 // HeartbeatOperatorSession bumps last activity and expires the session when past expires_at.
-func (s *Service) HeartbeatOperatorSession(ctx context.Context, organizationID, machineID, sessionID uuid.UUID) (domainoperator.Session, error) {
-	sess, err := s.TouchOperatorSessionActivity(ctx, organizationID, machineID, sessionID)
+func (s *Service) HeartbeatOperatorSession(ctx context.Context, companyID, machineID, sessionID uuid.UUID) (domainoperator.Session, error) {
+	sess, err := s.TouchOperatorSessionActivity(ctx, companyID, machineID, sessionID)
 	if err != nil {
 		return domainoperator.Session{}, err
 	}
@@ -266,21 +253,20 @@ func (s *Service) HeartbeatOperatorSession(ctx context.Context, organizationID, 
 	return domainoperator.Session{}, err
 }
 
-// ResolveCurrentOperatorForMachine returns the active session for a machine, scoped to an organization.
-func (s *Service) ResolveCurrentOperatorForMachine(ctx context.Context, organizationID, machineID uuid.UUID) (domainoperator.CurrentOperatorResolution, error) {
-	machine, err := s.machines.GetByID(ctx, machineID)
+// ResolveCurrentOperatorForMachine returns the active session for a machine, scoped to an company.
+func (s *Service) ResolveCurrentOperatorForMachine(ctx context.Context, companyID, machineID uuid.UUID) (domainoperator.CurrentOperatorResolution, error) {
+	_, err := s.machines.GetByID(ctx, machineID)
 	if err != nil {
 		return domainoperator.CurrentOperatorResolution{}, err
 	}
-	if machine.OrganizationID != organizationID {
-		return domainoperator.CurrentOperatorResolution{}, domainoperator.ErrOrganizationMismatch
+	if uuid.Nil != companyID {
+		return domainoperator.CurrentOperatorResolution{}, domainoperator.ErrCompanyMismatch
 	}
 	sess, err := s.sessions.GetActiveSessionByMachineID(ctx, machineID)
 	if err != nil {
 		if errors.Is(err, domainoperator.ErrNoActiveSession) {
 			return domainoperator.CurrentOperatorResolution{
 				MachineID:             machineID,
-				OrganizationID:        organizationID,
 				ActiveSession:         nil,
 				TechnicianDisplayName: nil,
 			}, nil
@@ -288,9 +274,8 @@ func (s *Service) ResolveCurrentOperatorForMachine(ctx context.Context, organiza
 		return domainoperator.CurrentOperatorResolution{}, err
 	}
 	out := domainoperator.CurrentOperatorResolution{
-		MachineID:      machineID,
-		OrganizationID: organizationID,
-		ActiveSession:  ptrSession(sess),
+		MachineID:     machineID,
+		ActiveSession: ptrSession(sess),
 	}
 	if sess.ActorType == domainoperator.ActorTypeTechnician && sess.TechnicianID != nil {
 		tech, err := s.technicians.GetByID(ctx, *sess.TechnicianID)
@@ -307,8 +292,8 @@ func ptrSession(s domainoperator.Session) *domainoperator.Session {
 	return &cp
 }
 
-// TouchOperatorSessionActivity bumps updated_at for an ACTIVE session in the caller organization and machine.
-func (s *Service) TouchOperatorSessionActivity(ctx context.Context, organizationID, machineID, sessionID uuid.UUID) (domainoperator.Session, error) {
+// TouchOperatorSessionActivity bumps updated_at for an ACTIVE session in the caller company and machine.
+func (s *Service) TouchOperatorSessionActivity(ctx context.Context, companyID, machineID, sessionID uuid.UUID) (domainoperator.Session, error) {
 	if machineID == uuid.Nil {
 		return domainoperator.Session{}, domainoperator.ErrMachineContextRequired
 	}
@@ -322,8 +307,8 @@ func (s *Service) TouchOperatorSessionActivity(ctx context.Context, organization
 	if sess.MachineID != machineID {
 		return domainoperator.Session{}, domainoperator.ErrSessionMachineMismatch
 	}
-	if sess.OrganizationID != organizationID {
-		return domainoperator.Session{}, domainoperator.ErrOrganizationMismatch
+	if uuid.Nil != companyID {
+		return domainoperator.Session{}, domainoperator.ErrCompanyMismatch
 	}
 	if sess.Status != domainoperator.SessionStatusActive {
 		return domainoperator.Session{}, domainoperator.ErrSessionNotActive
@@ -332,39 +317,38 @@ func (s *Service) TouchOperatorSessionActivity(ctx context.Context, organization
 }
 
 // ListSessionsByMachine lists historical sessions for a machine (newest first).
-func (s *Service) ListSessionsByMachine(ctx context.Context, organizationID, machineID uuid.UUID, limit int32) ([]domainoperator.Session, error) {
-	machine, err := s.machines.GetByID(ctx, machineID)
+func (s *Service) ListSessionsByMachine(ctx context.Context, companyID, machineID uuid.UUID, limit int32) ([]domainoperator.Session, error) {
+	_, err := s.machines.GetByID(ctx, machineID)
 	if err != nil {
 		return nil, err
 	}
-	if machine.OrganizationID != organizationID {
-		return nil, domainoperator.ErrOrganizationMismatch
+	if uuid.Nil != companyID {
+		return nil, domainoperator.ErrCompanyMismatch
 	}
 	return s.sessions.ListSessionsByMachineID(ctx, machineID, clampListLimit(limit))
 }
 
 // ListSessionsByTechnician lists sessions attributed to a technician identity.
-func (s *Service) ListSessionsByTechnician(ctx context.Context, organizationID, technicianID uuid.UUID, limit int32) ([]domainoperator.Session, error) {
-	tech, err := s.technicians.GetByID(ctx, technicianID)
+func (s *Service) ListSessionsByTechnician(ctx context.Context, companyID, technicianID uuid.UUID, limit int32) ([]domainoperator.Session, error) {
+	_, err := s.technicians.GetByID(ctx, technicianID)
 	if err != nil {
 		return nil, err
 	}
-	if tech.OrganizationID != organizationID {
-		return nil, domainoperator.ErrOrganizationMismatch
+	if uuid.Nil != companyID {
+		return nil, domainoperator.ErrCompanyMismatch
 	}
 	return s.sessions.ListSessionsByTechnicianID(ctx, technicianID, clampListLimit(limit))
 }
 
-// ListSessionsByUser lists USER actor sessions for a principal within an organization.
-func (s *Service) ListSessionsByUser(ctx context.Context, organizationID uuid.UUID, userPrincipal string, limit int32) ([]domainoperator.Session, error) {
+// ListSessionsByUser lists USER actor sessions for a principal within an company.
+func (s *Service) ListSessionsByUser(ctx context.Context, companyID uuid.UUID, userPrincipal string, limit int32) ([]domainoperator.Session, error) {
 	principal := strings.TrimSpace(userPrincipal)
 	if principal == "" {
 		return nil, domainoperator.ErrInvalidActor
 	}
 	return s.sessions.ListSessionsByUserPrincipal(ctx, domainoperator.ListSessionsParams{
-		OrganizationID: organizationID,
-		UserPrincipal:  principal,
-		Limit:          clampListLimit(limit),
+		UserPrincipal: principal,
+		Limit:         clampListLimit(limit),
 	})
 }
 
@@ -381,16 +365,13 @@ func (s *Service) RecordAuthEvent(ctx context.Context, in RecordAuthEventInput) 
 			}
 			return domainoperator.AuthEvent{}, err
 		}
-		if sess.OrganizationID != in.OrganizationID || sess.MachineID != in.MachineID {
-			return domainoperator.AuthEvent{}, domainoperator.ErrOrganizationMismatch
+		if uuid.Nil != uuid.Nil || sess.MachineID != in.MachineID {
+			return domainoperator.AuthEvent{}, domainoperator.ErrCompanyMismatch
 		}
 	} else {
-		machine, err := s.machines.GetByID(ctx, in.MachineID)
+		_, err := s.machines.GetByID(ctx, in.MachineID)
 		if err != nil {
 			return domainoperator.AuthEvent{}, err
-		}
-		if machine.OrganizationID != in.OrganizationID {
-			return domainoperator.AuthEvent{}, domainoperator.ErrOrganizationMismatch
 		}
 	}
 	return s.sessions.InsertAuthEvent(ctx, domainoperator.InsertAuthEventParams{
@@ -411,12 +392,9 @@ func (s *Service) RecordActionAttribution(ctx context.Context, in RecordActionAt
 	if err := domainoperator.ValidateActionAttributionSemantics(in.ActionOriginType); err != nil {
 		return domainoperator.ActionAttribution{}, err
 	}
-	machine, err := s.machines.GetByID(ctx, in.MachineID)
+	_, err := s.machines.GetByID(ctx, in.MachineID)
 	if err != nil {
 		return domainoperator.ActionAttribution{}, err
-	}
-	if machine.OrganizationID != in.OrganizationID {
-		return domainoperator.ActionAttribution{}, domainoperator.ErrOrganizationMismatch
 	}
 	if in.OperatorSessionID != nil {
 		sess, err := s.sessions.GetOperatorSessionByID(ctx, *in.OperatorSessionID)
@@ -426,8 +404,8 @@ func (s *Service) RecordActionAttribution(ctx context.Context, in RecordActionAt
 			}
 			return domainoperator.ActionAttribution{}, err
 		}
-		if sess.OrganizationID != in.OrganizationID || sess.MachineID != in.MachineID {
-			return domainoperator.ActionAttribution{}, domainoperator.ErrOrganizationMismatch
+		if uuid.Nil != uuid.Nil || sess.MachineID != in.MachineID {
+			return domainoperator.ActionAttribution{}, domainoperator.ErrCompanyMismatch
 		}
 	}
 	return s.sessions.InsertActionAttribution(ctx, domainoperator.InsertActionAttributionParams{

@@ -2,7 +2,6 @@
 SELECT
     id,
     machine_id,
-    organization_id,
     sequence,
     command_type,
     payload,
@@ -28,7 +27,6 @@ WHERE
 SELECT
     id,
     machine_id,
-    organization_id,
     sequence,
     command_type,
     payload,
@@ -156,37 +154,37 @@ RETURNING
 UPDATE command_ledger
 SET
     protocol_type = COALESCE(protocol_type, 'mqtt'),
-    timeout_at = $2,
+    timeout_at = $1,
     attempt_count = attempt_count + 1,
     last_attempt_at = now(),
     route_key = CASE
-        WHEN $3::text IS NOT NULL
-        AND btrim($3::text) <> '' THEN $3::text
+        WHEN $2::text IS NOT NULL
+        AND btrim($2::text) <> '' THEN $2::text
         ELSE route_key
     END
 WHERE
-    id = $1;
+    id = $3;
 
 -- name: UpdateMachineCommandAttemptAfterDeviceReceipt :exec
 UPDATE machine_command_attempts
 SET
-    status = $2,
+    status = $1,
     result_received_at = now(),
     acked_at = CASE
-        WHEN $2 = 'completed' THEN now()
+        WHEN $1 = 'completed' THEN now()
         ELSE acked_at
     END
 WHERE
-    id = $1
+    id = $2
     AND status IN ('pending', 'sent');
 
 -- name: UpdateMachineCommandAttemptSent :exec
 UPDATE machine_command_attempts
 SET
     status = 'sent',
-    ack_deadline_at = $2
+    ack_deadline_at = $1
 WHERE
-    id = $1
+    id = $2
     AND status = 'pending';
 
 -- name: UpdateMachineCommandAttemptPublishFailed :exec
@@ -194,9 +192,9 @@ UPDATE machine_command_attempts
 SET
     status = 'failed',
     result_received_at = now(),
-    timeout_reason = $2
+    timeout_reason = $1
 WHERE
-    id = $1
+    id = $2
     AND status = 'pending';
 
 -- name: ApplyMachineCommandAckTimeouts :execrows
@@ -305,7 +303,6 @@ WHERE
 SELECT
     cl.id,
     cl.machine_id,
-    cl.organization_id,
     cl.sequence,
     cl.command_type,
     cl.payload,
@@ -326,4 +323,4 @@ FROM command_ledger AS cl
 INNER JOIN machines AS m ON m.id = cl.machine_id
 WHERE
     cl.id = $1
-    AND m.organization_id = $2;
+    AND TRUE;

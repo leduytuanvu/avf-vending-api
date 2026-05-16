@@ -4,7 +4,11 @@ INSERT INTO messaging_consumer_dedupe (
     broker_subject,
     broker_msg_id
 )
-VALUES ($1, $2, $3)
+VALUES (
+    $1,
+    $2,
+    $3
+)
 RETURNING
     id,
     consumer_name,

@@ -2,7 +2,7 @@
 
 Enterprise BI endpoints live under authenticated admin routes:
 
-`GET /v1/admin/organizations/{organizationId}/reports/*`
+`GET /v1/admin/reports/*`
 
 All responses honor **[from, to)** on RFC3339 timestamps (required). Optional filters narrow rows:
 

@@ -33,9 +33,8 @@ SID="E2E-40-first-boot"
 start_step "phase8-${SID}"
 
 MID="$(get_data machineId)"
-ORG="$(get_data organizationId)"
 PID="$(get_data productId)"
-IDS_JSON="$(jq -nc --arg m "${MID:-}" --arg o "${ORG:-}" --arg p "${PID:-}" '{machineId:$m,organizationId:$o,productId:$p}')"
+IDS_JSON="$(jq -nc --arg m "${MID:-}" --arg p "${PID:-}" '{machineId:$m,productId:$p}')"
 APIS_JSON='[]'
 EVID_JSON='[]'
 EXPECTED="Machine registered; sale-catalog reachable; MQTT heartbeat published; optional admin /health."
@@ -116,10 +115,10 @@ fi
 # --- Admin machine health (optional) ---
 ADM="$(get_secret adminAccessToken 2>/dev/null || true)"
 [[ -z "$ADM" ]] && ADM="${E2E_ADMIN_TOKEN:-}"
-if [[ -n "$ADM" ]] && [[ -n "$ORG" && "$ORG" != "null" ]]; then
+if [[ -n "$ADM" ]]; then
   export ADMIN_TOKEN="$ADM"
-  code_h="$(e2e_http_request_json "GET" "p8-40-machine-health" "/v1/admin/organizations/${ORG}/machines/${MID}/health" "")"
-  APIS_JSON="$(echo "$APIS_JSON" | jq -c '. + ["GET /v1/admin/organizations/{org}/machines/{id}/health"]')"
+  code_h="$(e2e_http_request_json "GET" "p8-40-machine-health" "/v1/admin/machines/${MID}/health" "")"
+  APIS_JSON="$(echo "$APIS_JSON" | jq -c '. + ["GET /v1/admin/machines/{id}/health"]')"
   if [[ "$code_h" == "200" ]]; then
     ADMIN_NOTE="admin_health_http_200"
     EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg f "${E2E_RUN_DIR}/rest/p8-40-machine-health.meta.json" '. + [$f]')"
@@ -128,7 +127,7 @@ if [[ -n "$ADM" ]] && [[ -n "$ORG" && "$ORG" != "null" ]]; then
     EVID_JSON="$(echo "$EVID_JSON" | jq -c --arg f "${E2E_RUN_DIR}/rest/p8-40-machine-health.meta.json" '. + [$f]')"
   fi
 else
-  ADMIN_NOTE="no_admin_token_org_skip_health"
+  ADMIN_NOTE="no_admin_token_skip_health"
 fi
 
 ACTUAL="activation_ok catalog_ok ${MQTT_NOTE} ${ADMIN_NOTE}"

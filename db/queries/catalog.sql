@@ -3,8 +3,8 @@ SELECT *
 FROM products
 WHERE id = $1;
 
--- name: ListProductsByOrganization :many
+-- name: ListProductsByCompany :many
 SELECT *
 FROM products
-WHERE organization_id = $1
+WHERE TRUE
 ORDER BY sku;

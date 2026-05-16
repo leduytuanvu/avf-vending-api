@@ -10,7 +10,6 @@ service InternalReportingQueryService {
 }
 
 message GetSalesSummaryRequest {
-  string organization_id = 1;
   string from_rfc3339 = 2;
   string to_rfc3339 = 3;
   // day | site | machine | payment_provider (matches listscope reporting).

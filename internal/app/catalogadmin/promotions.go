@@ -14,9 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// ListPromotionsParams pages promotions for an organization.
+// ListPromotionsParams pages promotions.
 type ListPromotionsParams struct {
-	OrganizationID     uuid.UUID
 	Limit              int32
 	Offset             int32
 	IncludeDeactivated bool
@@ -31,7 +30,6 @@ type PromotionRuleInput struct {
 
 // CreatePromotionInput inserts promotion headers + optional rules.
 type CreatePromotionInput struct {
-	OrganizationID   uuid.UUID
 	Name             string
 	StartsAt         time.Time
 	EndsAt           time.Time
@@ -59,15 +57,13 @@ type PatchPromotionInput struct {
 
 // AssignPromotionTargetInput binds one promotion target row.
 type AssignPromotionTargetInput struct {
-	OrganizationID uuid.UUID
-	PromotionID    uuid.UUID
-	TargetType     string
-	ProductID      *uuid.UUID
-	CategoryID     *uuid.UUID
-	MachineID      *uuid.UUID
-	SiteID         *uuid.UUID
-	OrgTargetID    *uuid.UUID
-	TagID          *uuid.UUID
+	PromotionID uuid.UUID
+	TargetType  string
+	ProductID   *uuid.UUID
+	CategoryID  *uuid.UUID
+	MachineID   *uuid.UUID
+	SiteID      *uuid.UUID
+	TagID       *uuid.UUID
 }
 
 func validatePromotionWindow(startsAt, endsAt time.Time) error {
@@ -131,26 +127,19 @@ func pgTextPtr(v *string) pgtype.Text {
 	return pgtype.Text{String: s, Valid: true}
 }
 
-// ListPromotions returns promotions for the tenant.
+// ListPromotions returns promotions for the company.
 func (s *Service) ListPromotions(ctx context.Context, p ListPromotionsParams) ([]db.Promotion, int64, error) {
 	if s == nil {
 		return nil, 0, errors.New("catalogadmin: nil service")
 	}
-	if p.OrganizationID == uuid.Nil {
-		return nil, 0, ErrOrganizationRequired
-	}
-	cnt, err := s.q.PromotionAdminCountPromotions(ctx, db.PromotionAdminCountPromotionsParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        p.IncludeDeactivated,
-	})
+	cnt, err := s.q.PromotionAdminCountPromotions(ctx, p.IncludeDeactivated)
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := s.q.PromotionAdminListPromotions(ctx, db.PromotionAdminListPromotionsParams{
-		OrganizationID: p.OrganizationID,
-		Limit:          p.Limit,
-		Offset:         p.Offset,
-		Column4:        p.IncludeDeactivated,
+	rows, err := s.q.PromotionAdminListPromotions(ctx, db.PromotionAdminListPromotionsParams{Column1: p.IncludeDeactivated,
+
+		Limit:  p.Limit,
+		Offset: p.Offset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -159,17 +148,14 @@ func (s *Service) ListPromotions(ctx context.Context, p ListPromotionsParams) ([
 }
 
 // GetPromotion returns a promotion row.
-func (s *Service) GetPromotion(ctx context.Context, organizationID, promotionID uuid.UUID) (db.Promotion, error) {
+func (s *Service) GetPromotion(ctx context.Context, scopeID, promotionID uuid.UUID) (db.Promotion, error) {
 	if s == nil {
 		return db.Promotion{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || promotionID == uuid.Nil {
-		return db.Promotion{}, ErrOrganizationRequired
+	if promotionID == uuid.Nil {
+		return db.Promotion{}, ErrInvalidArgument
 	}
-	row, err := s.q.PromotionAdminGetPromotion(ctx, db.PromotionAdminGetPromotionParams{
-		OrganizationID: organizationID,
-		ID:             promotionID,
-	})
+	row, err := s.q.PromotionAdminGetPromotion(ctx)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Promotion{}, ErrNotFound
@@ -185,7 +171,7 @@ func (s *Service) ListPromotionRules(ctx context.Context, promotionID uuid.UUID)
 		return nil, errors.New("catalogadmin: nil service")
 	}
 	if promotionID == uuid.Nil {
-		return nil, ErrOrganizationRequired
+		return nil, ErrInvalidArgument
 	}
 	return s.q.PromotionAdminListRulesForPromotion(ctx, promotionID)
 }
@@ -194,9 +180,6 @@ func (s *Service) ListPromotionRules(ctx context.Context, promotionID uuid.UUID)
 func (s *Service) CreatePromotion(ctx context.Context, in CreatePromotionInput) (db.Promotion, error) {
 	if s == nil {
 		return db.Promotion{}, errors.New("catalogadmin: nil service")
-	}
-	if in.OrganizationID == uuid.Nil {
-		return db.Promotion{}, ErrOrganizationRequired
 	}
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
@@ -219,7 +202,6 @@ func (s *Service) CreatePromotion(ctx context.Context, in CreatePromotionInput) 
 	qtx := s.q.WithTx(tx)
 
 	row, err := qtx.PromotionAdminInsertPromotion(ctx, db.PromotionAdminInsertPromotionParams{
-		OrganizationID:   in.OrganizationID,
 		Name:             name,
 		ApprovalStatus:   "approved",
 		LifecycleStatus:  "draft",
@@ -253,22 +235,19 @@ func (s *Service) CreatePromotion(ctx context.Context, in CreatePromotionInput) 
 	if err := tx.Commit(ctx); err != nil {
 		return db.Promotion{}, err
 	}
-	s.emitPromotionAudit(ctx, PromotionAuditEvent{OrganizationID: in.OrganizationID, PromotionID: row.ID, Action: "create"})
+	s.emitPromotionAudit(ctx, PromotionAuditEvent{PromotionID: row.ID, Action: "create"})
 	return row, nil
 }
 
 // PatchPromotion updates mutable fields and optionally replaces rules.
-func (s *Service) PatchPromotion(ctx context.Context, organizationID, promotionID uuid.UUID, patch PatchPromotionInput) (db.Promotion, error) {
+func (s *Service) PatchPromotion(ctx context.Context, scopeID, promotionID uuid.UUID, patch PatchPromotionInput) (db.Promotion, error) {
 	if s == nil {
 		return db.Promotion{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || promotionID == uuid.Nil {
-		return db.Promotion{}, ErrOrganizationRequired
+	if promotionID == uuid.Nil {
+		return db.Promotion{}, ErrInvalidArgument
 	}
-	cur, err := s.q.PromotionAdminGetPromotion(ctx, db.PromotionAdminGetPromotionParams{
-		OrganizationID: organizationID,
-		ID:             promotionID,
-	})
+	cur, err := s.q.PromotionAdminGetPromotion(ctx)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Promotion{}, ErrNotFound
@@ -336,10 +315,7 @@ func (s *Service) PatchPromotion(ctx context.Context, organizationID, promotionI
 	defer tx.Rollback(ctx)
 	qtx := s.q.WithTx(tx)
 
-	row, err := qtx.PromotionAdminUpdatePromotion(ctx, db.PromotionAdminUpdatePromotionParams{
-		OrganizationID:   organizationID,
-		ID:               promotionID,
-		Name:             name,
+	row, err := qtx.PromotionAdminUpdatePromotion(ctx, db.PromotionAdminUpdatePromotionParams{Name: name,
 		ApprovalStatus:   appr,
 		LifecycleStatus:  life,
 		Priority:         prio,
@@ -377,48 +353,44 @@ func (s *Service) PatchPromotion(ctx context.Context, organizationID, promotionI
 	if err := tx.Commit(ctx); err != nil {
 		return db.Promotion{}, err
 	}
-	s.emitPromotionAudit(ctx, PromotionAuditEvent{OrganizationID: organizationID, PromotionID: promotionID, Action: "update"})
+	s.emitPromotionAudit(ctx, PromotionAuditEvent{PromotionID: promotionID, Action: "update"})
 	return row, nil
 }
 
-func (s *Service) setLifecycle(ctx context.Context, organizationID, promotionID uuid.UUID, next string, auditAction string) (db.Promotion, error) {
-	row, err := s.q.PromotionAdminSetLifecycle(ctx, db.PromotionAdminSetLifecycleParams{
-		OrganizationID:  organizationID,
-		ID:              promotionID,
-		LifecycleStatus: next,
-	})
+func (s *Service) setLifecycle(ctx context.Context, scopeID, promotionID uuid.UUID, next string, auditAction string) (db.Promotion, error) {
+	row, err := s.q.PromotionAdminSetLifecycle(ctx, next)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Promotion{}, ErrNotFound
 		}
 		return db.Promotion{}, err
 	}
-	s.emitPromotionAudit(ctx, PromotionAuditEvent{OrganizationID: organizationID, PromotionID: promotionID, Action: auditAction, Detail: next})
+	s.emitPromotionAudit(ctx, PromotionAuditEvent{PromotionID: promotionID, Action: auditAction, Detail: next})
 	return row, nil
 }
 
 // ActivatePromotion sets lifecycle active.
-func (s *Service) ActivatePromotion(ctx context.Context, organizationID, promotionID uuid.UUID) (db.Promotion, error) {
+func (s *Service) ActivatePromotion(ctx context.Context, scopeID, promotionID uuid.UUID) (db.Promotion, error) {
 	if s == nil {
 		return db.Promotion{}, errors.New("catalogadmin: nil service")
 	}
-	return s.setLifecycle(ctx, organizationID, promotionID, "active", "activate")
+	return s.setLifecycle(ctx, scopeID, promotionID, "active", "activate")
 }
 
 // PausePromotion sets lifecycle paused.
-func (s *Service) PausePromotion(ctx context.Context, organizationID, promotionID uuid.UUID) (db.Promotion, error) {
+func (s *Service) PausePromotion(ctx context.Context, scopeID, promotionID uuid.UUID) (db.Promotion, error) {
 	if s == nil {
 		return db.Promotion{}, errors.New("catalogadmin: nil service")
 	}
-	return s.setLifecycle(ctx, organizationID, promotionID, "paused", "pause")
+	return s.setLifecycle(ctx, scopeID, promotionID, "paused", "pause")
 }
 
 // DeactivatePromotion sets lifecycle deactivated.
-func (s *Service) DeactivatePromotion(ctx context.Context, organizationID, promotionID uuid.UUID) (db.Promotion, error) {
+func (s *Service) DeactivatePromotion(ctx context.Context, scopeID, promotionID uuid.UUID) (db.Promotion, error) {
 	if s == nil {
 		return db.Promotion{}, errors.New("catalogadmin: nil service")
 	}
-	return s.setLifecycle(ctx, organizationID, promotionID, "deactivated", "deactivate")
+	return s.setLifecycle(ctx, scopeID, promotionID, "deactivated", "deactivate")
 }
 
 func uuidPg(u *uuid.UUID) pgtype.UUID {
@@ -433,43 +405,38 @@ func (s *Service) AssignPromotionTarget(ctx context.Context, in AssignPromotionT
 	if s == nil {
 		return db.PromotionTarget{}, errors.New("catalogadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil || in.PromotionID == uuid.Nil {
-		return db.PromotionTarget{}, ErrOrganizationRequired
+	if in.PromotionID == uuid.Nil {
+		return db.PromotionTarget{}, ErrInvalidArgument
 	}
 	tt := strings.TrimSpace(strings.ToLower(in.TargetType))
 	if tt == "" {
 		return db.PromotionTarget{}, fmt.Errorf("%w: target_type required", ErrInvalidArgument)
 	}
 	row, err := s.q.PromotionAdminInsertPromotionTarget(ctx, db.PromotionAdminInsertPromotionTargetParams{
-		PromotionID:          in.PromotionID,
-		OrganizationID:       in.OrganizationID,
-		TargetType:           tt,
-		ProductID:            uuidPg(in.ProductID),
-		CategoryID:           uuidPg(in.CategoryID),
-		MachineID:            uuidPg(in.MachineID),
-		SiteID:               uuidPg(in.SiteID),
-		OrganizationTargetID: uuidPg(in.OrgTargetID),
-		TagID:                uuidPg(in.TagID),
+		PromotionID: in.PromotionID,
+		TargetType:  tt,
+		ProductID:   uuidPg(in.ProductID),
+		CategoryID:  uuidPg(in.CategoryID),
+		MachineID:   uuidPg(in.MachineID),
+		SiteID:      uuidPg(in.SiteID),
+		TagID:       uuidPg(in.TagID),
 	})
 	if err != nil {
 		return db.PromotionTarget{}, err
 	}
-	s.emitPromotionAudit(ctx, PromotionAuditEvent{OrganizationID: in.OrganizationID, PromotionID: in.PromotionID, Action: "assign_target", Detail: row.ID.String()})
+	s.emitPromotionAudit(ctx, PromotionAuditEvent{PromotionID: in.PromotionID, Action: "assign_target", Detail: row.ID.String()})
 	return row, nil
 }
 
 // DeletePromotionTarget removes a target assignment.
-func (s *Service) DeletePromotionTarget(ctx context.Context, organizationID, promotionID, targetID uuid.UUID) error {
+func (s *Service) DeletePromotionTarget(ctx context.Context, scopeID, promotionID, targetID uuid.UUID) error {
 	if s == nil {
 		return errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || promotionID == uuid.Nil || targetID == uuid.Nil {
-		return ErrOrganizationRequired
+	if promotionID == uuid.Nil || targetID == uuid.Nil {
+		return ErrInvalidArgument
 	}
-	tgt, err := s.q.PromotionAdminGetPromotionTarget(ctx, db.PromotionAdminGetPromotionTargetParams{
-		OrganizationID: organizationID,
-		ID:             targetID,
-	})
+	tgt, err := s.q.PromotionAdminGetPromotionTarget(ctx)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
@@ -479,30 +446,24 @@ func (s *Service) DeletePromotionTarget(ctx context.Context, organizationID, pro
 	if tgt.PromotionID != promotionID {
 		return ErrNotFound
 	}
-	n, err := s.q.PromotionAdminDeletePromotionTarget(ctx, db.PromotionAdminDeletePromotionTargetParams{
-		OrganizationID: organizationID,
-		ID:             targetID,
-	})
+	n, err := s.q.PromotionAdminDeletePromotionTarget(ctx)
 	if err != nil {
 		return err
 	}
 	if n == 0 {
 		return ErrNotFound
 	}
-	s.emitPromotionAudit(ctx, PromotionAuditEvent{OrganizationID: organizationID, PromotionID: promotionID, Action: "delete_target", Detail: targetID.String()})
+	s.emitPromotionAudit(ctx, PromotionAuditEvent{PromotionID: promotionID, Action: "delete_target", Detail: targetID.String()})
 	return nil
 }
 
 // ListPromotionTargets lists targets for a promotion.
-func (s *Service) ListPromotionTargets(ctx context.Context, organizationID, promotionID uuid.UUID) ([]db.PromotionTarget, error) {
+func (s *Service) ListPromotionTargets(ctx context.Context, scopeID, promotionID uuid.UUID) ([]db.PromotionTarget, error) {
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || promotionID == uuid.Nil {
-		return nil, ErrOrganizationRequired
+	if promotionID == uuid.Nil {
+		return nil, ErrInvalidArgument
 	}
-	return s.q.PromotionAdminListTargetsForPromotion(ctx, db.PromotionAdminListTargetsForPromotionParams{
-		OrganizationID: organizationID,
-		PromotionID:    promotionID,
-	})
+	return s.q.PromotionAdminListTargetsForPromotion(ctx)
 }

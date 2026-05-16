@@ -8,7 +8,7 @@
 //   - Not live in this repo: no cmd/* process runs a JetStream consumer loop against these subjects
 //     yet—consumer helpers exist for external services or future wiring.
 //
-// Subject layout (single tenant segment, then logical topic):
+// Subject layout (single company segment, then logical topic):
 //
 //	avf.internal.outbox.<logical_topic>   — durable outbox fan-out (stream AVF_INTERNAL_OUTBOX)
 //	avf.internal.dlq.<reason_slug>        — poison / manual replay sink (stream AVF_INTERNAL_DLQ)

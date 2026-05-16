@@ -21,8 +21,8 @@ type RefreshSessionCache interface {
 // LoginFailureCounter is a fast Redis-backed account lockout signal.
 // PostgreSQL remains the source of truth for audit and durable account state.
 type LoginFailureCounter interface {
-	IncrementFailure(ctx context.Context, organizationID uuid.UUID, email string, threshold int32, ttl time.Duration) (locked bool, count int64, err error)
+	IncrementFailure(ctx context.Context, companyID uuid.UUID, email string, threshold int32, ttl time.Duration) (locked bool, count int64, err error)
 	// PeekFailureCount returns the current failure count when the sliding counter is still active.
-	PeekFailureCount(ctx context.Context, organizationID uuid.UUID, email string) (count int64, err error)
-	ClearFailures(ctx context.Context, organizationID uuid.UUID, email string) error
+	PeekFailureCount(ctx context.Context, companyID uuid.UUID, email string) (count int64, err error)
+	ClearFailures(ctx context.Context, companyID uuid.UUID, email string) error
 }

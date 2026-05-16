@@ -22,7 +22,7 @@ SET
 WHERE
     code = '';
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_sites_org_code_lower ON sites (organization_id, lower(code))
+CREATE UNIQUE INDEX IF NOT EXISTS ux_sites_org_code_lower ON sites (scope_id, lower(code))
 WHERE
     btrim(code) <> '';
 
@@ -45,7 +45,7 @@ SET
 WHERE
     code = '';
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_machines_org_code_lower ON machines (organization_id, lower(code))
+CREATE UNIQUE INDEX IF NOT EXISTS ux_machines_org_code_lower ON machines (scope_id, lower(code))
 WHERE
     btrim(code) <> '';
 
@@ -65,20 +65,20 @@ ALTER TABLE technicians DROP CONSTRAINT IF EXISTS technicians_status_check;
 ALTER TABLE technicians
 ADD CONSTRAINT technicians_status_check CHECK (status IN ('active', 'inactive'));
 
--- Technician assignments: tenant column + lifecycle status (existing rows use valid_to window).
+-- Technician assignments: company column + lifecycle status (existing rows use valid_to window).
 ALTER TABLE technician_machine_assignments
-ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES organizations (id) ON DELETE CASCADE;
+ADD COLUMN IF NOT EXISTS scope_id uuid REFERENCES companies (id) ON DELETE CASCADE;
 
 UPDATE technician_machine_assignments tma
 SET
-    organization_id = t.organization_id
+    scope_id = t.scope_id
 FROM
     technicians t
 WHERE
     t.id = tma.technician_id
-    AND tma.organization_id IS NULL;
+    AND tma.scope_id IS NULL;
 
-ALTER TABLE technician_machine_assignments ALTER COLUMN organization_id SET NOT NULL;
+ALTER TABLE technician_machine_assignments ALTER COLUMN scope_id SET NOT NULL;
 
 ALTER TABLE technician_machine_assignments
 ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
@@ -91,12 +91,12 @@ ALTER TABLE technician_machine_assignments DROP CONSTRAINT IF EXISTS technician_
 ALTER TABLE technician_machine_assignments
 ADD CONSTRAINT technician_machine_assignments_status_check CHECK (status IN ('active', 'released'));
 
-CREATE INDEX IF NOT EXISTS ix_tma_organization_id ON technician_machine_assignments (organization_id);
+CREATE INDEX IF NOT EXISTS ix_tma_scope_id ON technician_machine_assignments (scope_id);
 
 -- Replacement audit linkage (one successor per retired asset).
 CREATE TABLE machine_lineage (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     prior_machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
     successor_machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
     reason text,
@@ -106,7 +106,7 @@ CREATE TABLE machine_lineage (
     CONSTRAINT ck_machine_lineage_distinct CHECK (prior_machine_id <> successor_machine_id)
 );
 
-CREATE INDEX ix_machine_lineage_org ON machine_lineage (organization_id);
+CREATE INDEX ix_machine_lineage_org ON machine_lineage (scope_id);
 
 COMMENT ON TABLE machine_lineage IS 'Audit trail when a machine asset is replaced; prior is retired, successor continues operations.';
 
@@ -117,13 +117,13 @@ COMMENT ON TABLE machine_lineage IS 'Audit trail when a machine asset is replace
 
 DROP TABLE IF EXISTS machine_lineage;
 
-DROP INDEX IF EXISTS ix_tma_organization_id;
+DROP INDEX IF EXISTS ix_tma_scope_id;
 
 ALTER TABLE technician_machine_assignments DROP COLUMN IF EXISTS updated_at;
 
 ALTER TABLE technician_machine_assignments DROP COLUMN IF EXISTS status;
 
-ALTER TABLE technician_machine_assignments DROP COLUMN IF EXISTS organization_id;
+ALTER TABLE technician_machine_assignments DROP COLUMN IF EXISTS scope_id;
 
 ALTER TABLE technicians DROP COLUMN IF EXISTS updated_at;
 

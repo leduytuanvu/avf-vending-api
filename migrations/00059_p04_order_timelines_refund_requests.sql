@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS order_timelines (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
     event_type text NOT NULL,
     actor_type text NOT NULL CHECK (
@@ -15,13 +15,13 @@ CREATE TABLE IF NOT EXISTS order_timelines (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS ix_order_timelines_org_order_occurred ON order_timelines (organization_id, order_id, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS ix_order_timelines_org_order_occurred ON order_timelines (scope_id, order_id, occurred_at DESC);
 
 COMMENT ON TABLE order_timelines IS 'Append-only commerce order lifecycle events (reconciliation actions, refunds, operator visibility).';
 
 CREATE TABLE IF NOT EXISTS refund_requests (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
     payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
     refund_id uuid REFERENCES refunds (id) ON DELETE SET NULL,
@@ -40,21 +40,21 @@ CREATE TABLE IF NOT EXISTS refund_requests (
     completed_at timestamptz
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_refund_requests_org_idempotency ON refund_requests (organization_id, idempotency_key)
+CREATE UNIQUE INDEX IF NOT EXISTS ux_refund_requests_scope_idempotency ON refund_requests (scope_id, idempotency_key)
 WHERE
     idempotency_key IS NOT NULL
     AND btrim(idempotency_key) <> '';
 
-CREATE INDEX IF NOT EXISTS ix_refund_requests_org_created ON refund_requests (organization_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_refund_requests_org_created ON refund_requests (scope_id, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS ix_refund_requests_org_order ON refund_requests (organization_id, order_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS ix_refund_requests_org_order ON refund_requests (scope_id, order_id, created_at DESC);
 
 COMMENT ON TABLE refund_requests IS 'Human-initiated refund review rows linked to ledger refunds.refunds after PSP processing.';
 
 CREATE OR REPLACE VIEW payment_reconciliation_cases AS
 SELECT
     crc.id,
-    crc.organization_id,
+    crc.scope_id,
     crc.machine_id,
     crc.order_id,
     crc.payment_id,

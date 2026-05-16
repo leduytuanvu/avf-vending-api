@@ -30,6 +30,24 @@ def req_item(name: str, method: str, path: str, desc: str) -> dict:
     }
 
 
+def req_item_post_json(name: str, path: str, desc: str, raw_body: str) -> dict:
+    url = path if path.startswith("{{") else "{{base_url}}" + path
+    return {
+        "name": name,
+        "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+                "mode": "raw",
+                "raw": raw_body,
+                "options": {"raw": {"language": "json"}},
+            },
+            "url": url,
+            "description": desc,
+        },
+    }
+
+
 def main() -> None:
     POSTMAN_DIR.mkdir(parents=True, exist_ok=True)
     pre = load_exec("collection_prerequest.js")
@@ -69,7 +87,7 @@ def main() -> None:
             {"key": "event_time", "value": ""},
             {"key": "now_iso", "value": ""},
             {"key": "activation_code", "value": ""},
-            {"key": "organization_id", "value": ""},
+            {"key": "scope_id", "value": ""},
             {"key": "site_id", "value": ""},
             {"key": "machine_id", "value": ""},
             {"key": "cabinet_id", "value": ""},
@@ -91,11 +109,39 @@ def main() -> None:
                     req_item("GET /swagger/doc.json", "GET", "/swagger/doc.json", "OpenAPI 3.0 JSON"),
                 ],
             },
+            {
+                "name": "Admin sites (read)",
+                "item": [
+                    req_item(
+                        "GET /v1/admin/sites",
+                        "GET",
+                        "/v1/admin/sites",
+                        "List company sites. Set auth_type=admin and a valid admin_token on the environment.",
+                    ),
+                ],
+            },
+            {
+                "name": "Canary admin writes",
+                "item": [
+                    req_item_post_json(
+                        "POST /v1/admin/sites",
+                        "/v1/admin/sites",
+                        "Create company site. Local/dev POST is gated: set allow_destructive=true "
+                        "or canaryMode=true. Request URL is exactly {{base_url}}/v1/admin/sites with no "
+                        "query parameters. Requires auth_type=admin and admin_token.",
+                        '{\n  "name": "Postman Canary Site",\n  "code": "PM-{{$timestamp}}",\n'
+                        '  "timezone": "UTC",\n  "address": {}\n}',
+                    ),
+                ],
+            },
         ],
     }
     out = POSTMAN_DIR / "avf-vending-api.postman_collection.json"
     out.write_text(json.dumps(collection, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"Wrote {out}")
+    fn_path = POSTMAN_DIR / "avf-vending-api-function-path.postman_collection.json"
+    fn_path.write_text(out.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
+    print(f"Wrote {fn_path}")
 
     def env_file(
         name: str,
@@ -135,10 +181,12 @@ def main() -> None:
             ("allow_mutation", "true", True),
             ("allow_production_mutation", "false", True),
             ("confirm_production_run", "", True),
+            ("allow_destructive", "false", True),
+            ("canaryMode", "false", True),
             ("admin_token", "", True),
             ("machine_token", "", True),
             ("activation_code", "", True),
-            ("organization_id", "", True),
+            ("scope_id", "", True),
             ("site_id", "", True),
             ("machine_id", "", True),
             ("cabinet_id", "", True),
@@ -167,10 +215,12 @@ def main() -> None:
             ("allow_mutation", "true", True),
             ("allow_production_mutation", "false", True),
             ("confirm_production_run", "", True),
+            ("allow_destructive", "false", True),
+            ("canaryMode", "false", True),
             ("admin_token", "", True),
             ("machine_token", "", True),
             ("activation_code", "", True),
-            ("organization_id", "", True),
+            ("scope_id", "", True),
             ("site_id", "", True),
             ("machine_id", "", True),
             ("cabinet_id", "", True),
@@ -199,10 +249,12 @@ def main() -> None:
             ("allow_mutation", "false", True),
             ("allow_production_mutation", "false", True),
             ("confirm_production_run", "", True),
+            ("allow_destructive", "false", True),
+            ("canaryMode", "false", True),
             ("admin_token", "", True),
             ("machine_token", "", True),
             ("activation_code", "", True),
-            ("organization_id", "", True),
+            ("scope_id", "", True),
             ("site_id", "", True),
             ("machine_id", "", True),
             ("cabinet_id", "", True),

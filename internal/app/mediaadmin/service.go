@@ -62,7 +62,7 @@ func (s *Service) bumpCache(ctx context.Context, org uuid.UUID) {
 	if s == nil || s.cache == nil || org == uuid.Nil {
 		return
 	}
-	s.cache.BumpOrganizationMedia(ctx, org)
+	s.cache.BumpCompanyMedia(ctx, org)
 }
 
 func strPtrTrim(s string) *string {
@@ -95,48 +95,46 @@ func (s *Service) auditRecord(ctx context.Context, org uuid.UUID, action, resTyp
 		aidPtr = &actorID
 	}
 	_ = s.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: org,
-		ActorType:      actorType,
-		ActorID:        aidPtr,
-		Action:         action,
-		ResourceType:   resType,
-		ResourceID:     resID,
-		RequestID:      strPtrTrim(meta.RequestID),
-		TraceID:        strPtrTrim(meta.TraceID),
-		IPAddress:      strPtrTrim(meta.IP),
-		UserAgent:      strPtrTrim(meta.UserAgent),
-		Metadata:       mdBytes,
-		Outcome:        compliance.OutcomeSuccess,
+		ActorType:    actorType,
+		ActorID:      aidPtr,
+		Action:       action,
+		ResourceType: resType,
+		ResourceID:   resID,
+		RequestID:    strPtrTrim(meta.RequestID),
+		TraceID:      strPtrTrim(meta.TraceID),
+		IPAddress:    strPtrTrim(meta.IP),
+		UserAgent:    strPtrTrim(meta.UserAgent),
+		Metadata:     mdBytes,
+		Outcome:      compliance.OutcomeSuccess,
 	})
 }
 
 // InitUploadResult is returned from POST /v1/admin/media/uploads.
 type InitUploadResult struct {
-	MediaID        uuid.UUID
-	UploadURL      string
-	UploadMethod   string
-	UploadHeaders  map[string][]string
-	ExpiresAt      time.Time
-	CompletePath   string
-	OriginalKey    string
-	ThumbKey       string
-	DisplayKey     string
-	OrganizationID uuid.UUID
+	MediaID       uuid.UUID
+	UploadURL     string
+	UploadMethod  string
+	UploadHeaders map[string][]string
+	ExpiresAt     time.Time
+	CompletePath  string
+	OriginalKey   string
+	ThumbKey      string
+	DisplayKey    string
 }
 
 // InitUpload creates a pending media_assets row and a presigned PUT for the original object.
-func (s *Service) InitUpload(ctx context.Context, organizationID uuid.UUID, contentType string) (*InitUploadResult, error) {
+func (s *Service) InitUpload(ctx context.Context, companyID uuid.UUID, contentType string) (*InitUploadResult, error) {
 	if s == nil {
 		return nil, ErrNotConfigured
 	}
-	organizationID, ct, err := validateImageContentType(organizationID, contentType)
+	companyID, ct, err := validateImageContentType(companyID, contentType)
 	if err != nil {
 		return nil, err
 	}
 	mediaID := uuid.New()
-	ok := objectstore.MediaAssetOriginalKey(organizationID, mediaID)
-	tk := objectstore.MediaAssetThumbWebpKey(organizationID, mediaID)
-	dk := objectstore.MediaAssetDisplayWebpKey(organizationID, mediaID)
+	ok := objectstore.MediaAssetOriginalKey(companyID, mediaID)
+	tk := objectstore.MediaAssetThumbWebpKey(companyID, mediaID)
+	dk := objectstore.MediaAssetDisplayWebpKey(companyID, mediaID)
 	q := db.New(s.pool)
 	createdBy := pgtype.UUID{}
 	if p, ok := plauth.PrincipalFromContext(ctx); ok {
@@ -145,7 +143,6 @@ func (s *Service) InitUpload(ctx context.Context, organizationID uuid.UUID, cont
 		}
 	}
 	row, err := q.MediaAdminInsertAsset(ctx, db.MediaAdminInsertAssetParams{
-		OrganizationID:    organizationID,
 		Kind:              "product_image",
 		OriginalObjectKey: ok,
 		ThumbObjectKey:    tk,
@@ -161,16 +158,13 @@ func (s *Service) InitUpload(ctx context.Context, organizationID uuid.UUID, cont
 	}
 	signed, err := s.store.PresignPut(ctx, ok, ct, s.putTTL)
 	if err != nil {
-		if _, derr := q.MediaAdminDeletePendingAsset(ctx, db.MediaAdminDeletePendingAssetParams{
-			ID:             row.ID,
-			OrganizationID: organizationID,
-		}); derr != nil {
+		if _, derr := q.MediaAdminDeletePendingAsset(ctx, row.ID); derr != nil {
 			return nil, fmt.Errorf("presign put failed: %w (cleanup pending asset failed: %v)", err, derr)
 		}
 		return nil, fmt.Errorf("presign put: %w", err)
 	}
 	mid := row.ID.String()
-	s.auditRecord(ctx, organizationID, compliance.ActionMediaCreated, "media.asset", &mid, map[string]any{
+	s.auditRecord(ctx, companyID, compliance.ActionMediaCreated, "media.asset", &mid, map[string]any{
 		"phase":     "init_upload",
 		"kind":      "product_image",
 		"status":    "pending",
@@ -178,22 +172,21 @@ func (s *Service) InitUpload(ctx context.Context, organizationID uuid.UUID, cont
 	})
 	exp := time.Now().UTC().Add(s.putTTL)
 	return &InitUploadResult{
-		MediaID:        row.ID,
-		UploadURL:      signed.URL,
-		UploadMethod:   signed.Method,
-		UploadHeaders:  signed.Headers,
-		ExpiresAt:      exp,
-		CompletePath:   "/v1/admin/media/" + row.ID.String() + "/complete",
-		OriginalKey:    ok,
-		ThumbKey:       tk,
-		DisplayKey:     dk,
-		OrganizationID: organizationID,
+		MediaID:       row.ID,
+		UploadURL:     signed.URL,
+		UploadMethod:  signed.Method,
+		UploadHeaders: signed.Headers,
+		ExpiresAt:     exp,
+		CompletePath:  "/v1/admin/media/" + row.ID.String() + "/complete",
+		OriginalKey:   ok,
+		ThumbKey:      tk,
+		DisplayKey:    dk,
 	}, nil
 }
 
-func validateImageContentType(organizationID uuid.UUID, contentType string) (uuid.UUID, string, error) {
-	if organizationID == uuid.Nil {
-		return uuid.Nil, "", fmt.Errorf("%w: organization_id", ErrInvalidArgument)
+func validateImageContentType(companyID uuid.UUID, contentType string) (uuid.UUID, string, error) {
+	if companyID == uuid.Nil {
+		return uuid.Nil, "", fmt.Errorf("%w: scope_id", ErrInvalidArgument)
 	}
 	ct := normalizeMIMEHeader(contentType)
 	if ct == "" {
@@ -202,7 +195,7 @@ func validateImageContentType(organizationID uuid.UUID, contentType string) (uui
 	if err := validateRasterUploadMIME(ct); err != nil {
 		return uuid.Nil, "", err
 	}
-	return organizationID, ct, nil
+	return companyID, ct, nil
 }
 
 func normalizeMIMEHeader(mt string) string {
@@ -223,18 +216,15 @@ func validateRasterUploadMIME(ct string) error {
 }
 
 // CompleteUpload finalizes a pending asset: generates variants, records SHA256/size, marks ready.
-func (s *Service) CompleteUpload(ctx context.Context, organizationID, mediaID uuid.UUID) (*db.MediaAsset, error) {
+func (s *Service) CompleteUpload(ctx context.Context, companyID, mediaID uuid.UUID) (*db.MediaAsset, error) {
 	if s == nil {
 		return nil, ErrNotConfigured
 	}
-	if organizationID == uuid.Nil || mediaID == uuid.Nil {
+	if companyID == uuid.Nil || mediaID == uuid.Nil {
 		return nil, ErrInvalidArgument
 	}
 	q := db.New(s.pool)
-	asset, err := q.MediaAdminGetAssetForOrg(ctx, db.MediaAdminGetAssetForOrgParams{
-		ID:             mediaID,
-		OrganizationID: organizationID,
-	})
+	asset, err := q.MediaAdminGetAssetForOrg(ctx, mediaID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ErrNotFound
@@ -259,15 +249,14 @@ func (s *Service) CompleteUpload(ctx context.Context, organizationID, mediaID uu
 			return nil, err
 		}
 	}
-	va, err := s.variants.GenerateWebPVariants(ctx, s.store, organizationID, mediaID, asset.OriginalObjectKey, s.maxBytes)
+	va, err := s.variants.GenerateWebPVariants(ctx, s.store, companyID, mediaID, asset.OriginalObjectKey, s.maxBytes)
 	if err != nil {
-		_, _ = q.MediaAdminMarkAssetFailed(ctx, db.MediaAdminMarkAssetFailedParams{
-			ID:             mediaID,
-			OrganizationID: organizationID,
-			FailedReason:   pgtype.Text{String: err.Error(), Valid: true},
+		_, _ = q.MediaAdminMarkAssetFailed(ctx, db.MediaAdminMarkAssetFailedParams{FailedReason: pgtype.Text{String: err.Error(), Valid: true},
+
+			ID: mediaID,
 		})
 		mid := mediaID.String()
-		s.auditRecord(ctx, organizationID, compliance.ActionMediaProcessingFailed, "media.asset", &mid, map[string]any{
+		s.auditRecord(ctx, companyID, compliance.ActionMediaProcessingFailed, "media.asset", &mid, map[string]any{
 			"phase": "complete_upload",
 			"error": err.Error(),
 		})
@@ -287,22 +276,21 @@ func (s *Service) CompleteUpload(ctx context.Context, organizationID, mediaID uu
 	} else if e := strings.TrimSpace(dhead.ETag); e != "" {
 		etag = `W/"` + strings.Trim(e, `"`) + `"`
 	}
-	updated, err := q.MediaAdminUpdateAssetReady(ctx, db.MediaAdminUpdateAssetReadyParams{
-		ID:             mediaID,
-		OrganizationID: organizationID,
-		MimeType:       pgtype.Text{String: webpContentType, Valid: true},
-		SizeBytes:      pgtype.Int8{Int64: va.DisplayBytes, Valid: true},
-		Sha256:         pgtype.Text{String: sha, Valid: sha != ""},
-		Width:          pgtype.Int4{Int32: int32(va.DisplayWidth), Valid: va.DisplayWidth > 0},
-		Height:         pgtype.Int4{Int32: int32(va.DisplayHeight), Valid: va.DisplayHeight > 0},
-		Etag:           pgtype.Text{String: etag, Valid: etag != ""},
+	updated, err := q.MediaAdminUpdateAssetReady(ctx, db.MediaAdminUpdateAssetReadyParams{MimeType: pgtype.Text{String: webpContentType, Valid: true},
+		SizeBytes: pgtype.Int8{Int64: va.DisplayBytes, Valid: true},
+		Sha256:    pgtype.Text{String: sha, Valid: sha != ""},
+		Width:     pgtype.Int4{Int32: int32(va.DisplayWidth), Valid: va.DisplayWidth > 0},
+		Height:    pgtype.Int4{Int32: int32(va.DisplayHeight), Valid: va.DisplayHeight > 0},
+		Etag:      pgtype.Text{String: etag, Valid: etag != ""},
+
+		ID: mediaID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	s.bumpCache(ctx, organizationID)
+	s.bumpCache(ctx, companyID)
 	mid := mediaID.String()
-	s.auditRecord(ctx, organizationID, compliance.ActionMediaVariantGenerated, "media.asset", &mid, map[string]any{
+	s.auditRecord(ctx, companyID, compliance.ActionMediaVariantGenerated, "media.asset", &mid, map[string]any{
 		"phase":          "complete_upload",
 		"variants":       []string{"original", "thumb", "display"},
 		"thumb_mime":     webpContentType,
@@ -314,20 +302,17 @@ func (s *Service) CompleteUpload(ctx context.Context, organizationID, mediaID uu
 		"display_width":  va.DisplayWidth,
 		"display_height": va.DisplayHeight,
 	})
-	s.auditRecord(ctx, organizationID, compliance.ActionMediaUploaded, "media.asset", &mid, map[string]any{"phase": "complete", "size_bytes": va.DisplayBytes})
+	s.auditRecord(ctx, companyID, compliance.ActionMediaUploaded, "media.asset", &mid, map[string]any{"phase": "complete", "size_bytes": va.DisplayBytes})
 	return &updated, nil
 }
 
-// GetAsset returns one media asset for the tenant.
-func (s *Service) GetAsset(ctx context.Context, organizationID, mediaID uuid.UUID) (db.MediaAsset, error) {
+// GetAsset returns one media asset for the company.
+func (s *Service) GetAsset(ctx context.Context, companyID, mediaID uuid.UUID) (db.MediaAsset, error) {
 	if s == nil {
 		return db.MediaAsset{}, ErrNotConfigured
 	}
 	q := db.New(s.pool)
-	a, err := q.MediaAdminGetAssetForOrg(ctx, db.MediaAdminGetAssetForOrgParams{
-		ID:             mediaID,
-		OrganizationID: organizationID,
-	})
+	a, err := q.MediaAdminGetAssetForOrg(ctx, mediaID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return db.MediaAsset{}, ErrNotFound
@@ -341,7 +326,7 @@ func (s *Service) GetAsset(ctx context.Context, organizationID, mediaID uuid.UUI
 }
 
 // ListAssetsPage returns a page of non-deleted assets.
-func (s *Service) ListAssetsPage(ctx context.Context, organizationID uuid.UUID, limit, offset int32) ([]db.MediaAsset, int64, error) {
+func (s *Service) ListAssetsPage(ctx context.Context, companyID uuid.UUID, limit, offset int32) ([]db.MediaAsset, int64, error) {
 	if s == nil {
 		return nil, 0, ErrNotConfigured
 	}
@@ -352,14 +337,13 @@ func (s *Service) ListAssetsPage(ctx context.Context, organizationID uuid.UUID, 
 		limit = 500
 	}
 	q := db.New(s.pool)
-	total, err := q.MediaAdminCountAssetsForOrg(ctx, organizationID)
+	total, err := q.MediaAdminCountAssetsForOrg(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 	rows, err := q.MediaAdminListAssetsForOrg(ctx, db.MediaAdminListAssetsForOrgParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-		Offset:         offset,
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -368,15 +352,12 @@ func (s *Service) ListAssetsPage(ctx context.Context, organizationID uuid.UUID, 
 }
 
 // DeleteAsset soft-deletes the asset, removes product_image bindings, and deletes objects best-effort.
-func (s *Service) DeleteAsset(ctx context.Context, organizationID, mediaID uuid.UUID) error {
+func (s *Service) DeleteAsset(ctx context.Context, companyID, mediaID uuid.UUID) error {
 	if s == nil {
 		return ErrNotConfigured
 	}
 	q := db.New(s.pool)
-	asset, err := q.MediaAdminGetAssetForOrg(ctx, db.MediaAdminGetAssetForOrgParams{
-		ID:             mediaID,
-		OrganizationID: organizationID,
-	})
+	asset, err := q.MediaAdminGetAssetForOrg(ctx, mediaID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return ErrNotFound
@@ -398,10 +379,7 @@ func (s *Service) DeleteAsset(ctx context.Context, organizationID, mediaID uuid.
 	}
 	for _, b := range binds {
 		if b.IsPrimary {
-			if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
-				OrganizationID: b.OrganizationID,
-				ID:             b.ProductID,
-			}); err != nil {
+			if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, b.ProductID); err != nil {
 				return err
 			}
 		}
@@ -409,10 +387,7 @@ func (s *Service) DeleteAsset(ctx context.Context, organizationID, mediaID uuid.
 	if err := qtx.MediaAdminArchiveProductImagesForMediaAsset(ctx, pgtype.UUID{Bytes: mediaID, Valid: true}); err != nil {
 		return err
 	}
-	if _, err := qtx.MediaAdminSoftDeleteAsset(ctx, db.MediaAdminSoftDeleteAssetParams{
-		ID:             mediaID,
-		OrganizationID: organizationID,
-	}); err != nil {
+	if _, err := qtx.MediaAdminSoftDeleteAsset(ctx, mediaID); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -421,18 +396,18 @@ func (s *Service) DeleteAsset(ctx context.Context, organizationID, mediaID uuid.
 	_ = s.store.Delete(ctx, asset.OriginalObjectKey)
 	_ = s.store.Delete(ctx, asset.ThumbObjectKey)
 	_ = s.store.Delete(ctx, asset.DisplayObjectKey)
-	s.bumpCache(ctx, organizationID)
+	s.bumpCache(ctx, companyID)
 	mid := mediaID.String()
-	s.auditRecord(ctx, organizationID, compliance.ActionMediaDeleted, "media.asset", &mid, map[string]any{"media_id": mid})
+	s.auditRecord(ctx, companyID, compliance.ActionMediaDeleted, "media.asset", &mid, map[string]any{"media_id": mid})
 	return nil
 }
 
 // BindProductPrimaryMedia binds a ready asset as the sole primary image for a product.
-func (s *Service) BindProductPrimaryMedia(ctx context.Context, organizationID, productID, mediaID uuid.UUID) (*db.Product, error) {
+func (s *Service) BindProductPrimaryMedia(ctx context.Context, companyID, productID, mediaID uuid.UUID) (*db.Product, error) {
 	if s == nil {
 		return nil, ErrNotConfigured
 	}
-	asset, err := s.GetAsset(ctx, organizationID, mediaID)
+	asset, err := s.GetAsset(ctx, companyID, mediaID)
 	if err != nil {
 		return nil, err
 	}
@@ -440,10 +415,7 @@ func (s *Service) BindProductPrimaryMedia(ctx context.Context, organizationID, p
 		return nil, fmt.Errorf("%w: media not ready", ErrConflict)
 	}
 	q := db.New(s.pool)
-	if _, err := q.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	}); err != nil {
+	if _, err := q.CatalogAdminGetProduct(ctx, productID); err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ErrNotFound
 		}
@@ -470,16 +442,10 @@ func (s *Service) BindProductPrimaryMedia(ctx context.Context, organizationID, p
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
-	if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	}); err != nil {
+	if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, productID); err != nil {
 		return nil, err
 	}
-	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, db.CatalogWriteArchiveAllProductImagesForProductParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	}); err != nil {
+	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, productID); err != nil {
 		return nil, err
 	}
 	img, err := qtx.CatalogWriteInsertProductImageWithMedia(ctx, db.CatalogWriteInsertProductImageWithMediaParams{
@@ -500,9 +466,8 @@ func (s *Service) BindProductPrimaryMedia(ctx context.Context, organizationID, p
 		return nil, err
 	}
 	prod, err := qtx.CatalogWriteSetProductPrimaryImage(ctx, db.CatalogWriteSetProductPrimaryImageParams{
-		OrganizationID: organizationID,
-		ID:             productID,
 		PrimaryImageID: pgtype.UUID{Bytes: img.ID, Valid: true},
+		ID:             productID,
 	})
 	if err != nil {
 		return nil, err
@@ -510,24 +475,23 @@ func (s *Service) BindProductPrimaryMedia(ctx context.Context, organizationID, p
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	s.bumpCache(ctx, organizationID)
+	s.bumpCache(ctx, companyID)
 	pid := productID.String()
 	mid := mediaID.String()
-	s.auditRecord(ctx, organizationID, compliance.ActionMediaBoundToProduct, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
-	s.auditRecord(ctx, organizationID, compliance.ActionMediaBound, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
+	s.auditRecord(ctx, companyID, compliance.ActionMediaBoundToProduct, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
+	s.auditRecord(ctx, companyID, compliance.ActionMediaBound, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
 	return &prod, nil
 }
 
 // UnbindProductMedia removes a product_image row bound to mediaID for the product.
-func (s *Service) UnbindProductMedia(ctx context.Context, organizationID, productID, mediaID uuid.UUID) (*db.Product, error) {
+func (s *Service) UnbindProductMedia(ctx context.Context, companyID, productID, mediaID uuid.UUID) (*db.Product, error) {
 	if s == nil {
 		return nil, ErrNotConfigured
 	}
 	q := db.New(s.pool)
 	imgID, err := q.MediaAdminFindProductImageBinding(ctx, db.MediaAdminFindProductImageBindingParams{
-		OrganizationID: organizationID,
-		ProductID:      productID,
-		MediaAssetID:   pgtype.UUID{Bytes: mediaID, Valid: true},
+		ProductID:    productID,
+		MediaAssetID: pgtype.UUID{Bytes: mediaID, Valid: true},
 	})
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -541,43 +505,33 @@ func (s *Service) UnbindProductMedia(ctx context.Context, organizationID, produc
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
-	pimg, err := qtx.CatalogAdminGetPrimaryProductImageForOrg(ctx, db.CatalogAdminGetPrimaryProductImageForOrgParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	})
+	pimg, err := qtx.CatalogAdminGetPrimaryProductImageForOrg(ctx, productID)
 	clearPrimary := err == nil && pimg.ID == imgID
 	if err != nil && err != pgx.ErrNoRows {
 		return nil, err
 	}
 	if clearPrimary {
-		if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, db.CatalogWriteClearProductPrimaryImageParams{
-			OrganizationID: organizationID,
-			ID:             productID,
-		}); err != nil {
+		if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, productID); err != nil {
 			return nil, err
 		}
 	}
 	if _, err := qtx.CatalogWriteArchiveProductImage(ctx, db.CatalogWriteArchiveProductImageParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-		ID_2:           imgID,
+		ID:   productID,
+		ID_2: imgID,
 	}); err != nil {
 		return nil, err
 	}
-	prod, err := qtx.CatalogAdminGetProduct(ctx, db.CatalogAdminGetProductParams{
-		OrganizationID: organizationID,
-		ID:             productID,
-	})
+	prod, err := qtx.CatalogAdminGetProduct(ctx, productID)
 	if err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	s.bumpCache(ctx, organizationID)
+	s.bumpCache(ctx, companyID)
 	pid := productID.String()
 	mid := mediaID.String()
-	s.auditRecord(ctx, organizationID, compliance.ActionMediaUnboundFromProduct, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
-	s.auditRecord(ctx, organizationID, compliance.ActionMediaUnbound, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
+	s.auditRecord(ctx, companyID, compliance.ActionMediaUnboundFromProduct, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
+	s.auditRecord(ctx, companyID, compliance.ActionMediaUnbound, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
 	return &prod, nil
 }

@@ -243,13 +243,17 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 					r.Use(auth.RequireAnyPermission(auth.PermReportsRead))
 					r.Use(abuse.ReportsReadGET())
 					mountAdminReportingCSVExports(r, app)
-					mountAdminOrganizationReportingRoutes(r, app)
+					mountAdminCompanyReportingRoutes(r, app)
 				})
 				r.Group(func(r chi.Router) {
 					r.Use(auth.RequireAnyPermission(auth.PermCashWrite))
 					mountAdminFinanceDailyCloseRoutes(r, app)
 				})
 				mountAdminFleetWriteRoutes(r, app, writeRL)
+				mountAdminOperationsRoutes(r, app, writeRL)
+				mountAdminAnomalyRoutes(r, app, writeRL)
+				mountAdminProvisioningRoutes(r, app, writeRL)
+				mountAdminRolloutRoutes(r, app, writeRL)
 				mountAdminMachineDiagnosticsRoutes(r, app, writeRL)
 				r.Group(func(r chi.Router) {
 					r.Use(auth.RequireAnyPermission(auth.PermFleetRead, auth.PermSiteRead, auth.PermTechnicianRead))
@@ -298,6 +302,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 				mountAdminOTACampaignRoutes(r, app, writeRL)
 				mountArtifactAdminRoutes(r, app, writeRL)
 				mountAdminActivationRoutes(r, app, writeRL)
+				mountAdminCompanyScopedActivationRoutes(r, app, writeRL)
 				mountAdminPaymentProviderRoutes(r, app)
 			})
 
@@ -316,10 +321,10 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 			})
 
 			r.Group(func(r chi.Router) {
-				r.Use(auth.RequireOrganizationScope)
+				r.Use(auth.RequireCompanyScope)
 				r.Use(auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCommerceRead))
 				r.Get("/payments", func(w http.ResponseWriter, r *http.Request) {
-					scope, err := parseTenantCommerceListScope(r)
+					scope, err := parseCompanyCommerceListScope(r)
 					if err != nil {
 						writeV1ListError(w, r.Context(), err)
 						return
@@ -328,7 +333,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 					writeV1Collection(w, r.Context(), out, err)
 				})
 				r.Get("/orders", func(w http.ResponseWriter, r *http.Request) {
-					scope, err := parseTenantCommerceListScope(r)
+					scope, err := parseCompanyCommerceListScope(r)
 					if err != nil {
 						writeV1ListError(w, r.Context(), err)
 						return
@@ -344,7 +349,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 					r.Use(machineLegacyRESTGuard(cfg))
 					mountSetupBootstrapRoutes(r, app)
 					mountSaleCatalogRoute(r, app)
-					r.With(RequireMachineTenantAccess(app, "machineId")).Get("/machines/{machineId}/shadow", machineShadowGet(app.MachineShadow))
+					r.With(RequireMachineCompanyAccess(app, "machineId")).Get("/machines/{machineId}/shadow", machineShadowGet(app.MachineShadow))
 					mountMachineTelemetryRoutes(r, app, abuse)
 				})
 			}

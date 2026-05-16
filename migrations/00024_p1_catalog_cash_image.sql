@@ -6,7 +6,7 @@ ALTER TABLE products
     ADD COLUMN IF NOT EXISTS barcode text;
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_products_org_barcode_lower
-    ON products (organization_id, lower(trim(barcode)))
+    ON products (scope_id, lower(trim(barcode)))
     WHERE barcode IS NOT NULL AND length(trim(barcode)) > 0;
 
 ALTER TABLE brands
@@ -17,7 +17,7 @@ ALTER TABLE categories
 
 CREATE TABLE IF NOT EXISTS tags (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     slug text NOT NULL,
     name text NOT NULL,
     active boolean NOT NULL DEFAULT true,
@@ -25,18 +25,18 @@ CREATE TABLE IF NOT EXISTS tags (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_tags_org_slug_lower ON tags (organization_id, lower(slug));
+CREATE UNIQUE INDEX IF NOT EXISTS ux_tags_org_slug_lower ON tags (scope_id, lower(slug));
 
-CREATE INDEX IF NOT EXISTS ix_tags_organization_id ON tags (organization_id);
+CREATE INDEX IF NOT EXISTS ix_tags_scope_id ON tags (scope_id);
 
 CREATE TABLE IF NOT EXISTS product_tags (
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     product_id uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
     tag_id uuid NOT NULL REFERENCES tags (id) ON DELETE CASCADE,
     PRIMARY KEY (product_id, tag_id)
 );
 
-CREATE INDEX IF NOT EXISTS ix_product_tags_org ON product_tags (organization_id);
+CREATE INDEX IF NOT EXISTS ix_product_tags_org ON product_tags (scope_id);
 
 ALTER TABLE product_images
     ADD COLUMN IF NOT EXISTS thumb_cdn_url text,

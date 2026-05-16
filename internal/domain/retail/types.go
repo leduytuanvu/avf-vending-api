@@ -6,37 +6,34 @@ import (
 	"github.com/google/uuid"
 )
 
-// Product is a vendable SKU scoped to an organization.
+// Product is a vendable SKU scoped to an company.
 type Product struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	Sku            string
-	Name           string
-	Description    string
-	Active         bool
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID          uuid.UUID
+	Sku         string
+	Name        string
+	Description string
+	Active      bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 // PriceBook groups prices for a currency and effective window.
 type PriceBook struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	Name           string
-	Currency       string
-	EffectiveFrom  time.Time
-	IsDefault      bool
-	CreatedAt      time.Time
+	ID            uuid.UUID
+	Name          string
+	Currency      string
+	EffectiveFrom time.Time
+	IsDefault     bool
+	CreatedAt     time.Time
 }
 
-// Planogram is a slot layout revision for an organization.
+// Planogram is a slot layout revision for an company.
 type Planogram struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	Name           string
-	Revision       int32
-	Status         string
-	CreatedAt      time.Time
+	ID        uuid.UUID
+	Name      string
+	Revision  int32
+	Status    string
+	CreatedAt time.Time
 }
 
 // Slot is one position in a planogram.

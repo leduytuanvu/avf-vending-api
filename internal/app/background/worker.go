@@ -84,7 +84,6 @@ func DefaultWorkerTickSchedule() (outbox, payment, command, retention time.Durat
 func commerceOutboxFromReliability(ev domainreliability.OutboxEvent) domaincommerce.OutboxEvent {
 	return domaincommerce.OutboxEvent{
 		ID:                   ev.ID,
-		OrganizationID:       ev.OrganizationID,
 		Topic:                ev.Topic,
 		EventType:            ev.EventType,
 		Payload:              ev.Payload,

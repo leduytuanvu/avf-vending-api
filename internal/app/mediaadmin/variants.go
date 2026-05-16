@@ -40,7 +40,7 @@ type VariantArtifacts struct {
 
 // VariantGenerator produces thumb.webp and display.webp objects from the uploaded original.
 type VariantGenerator interface {
-	GenerateWebPVariants(ctx context.Context, store objectstore.Store, organizationID, mediaAssetID uuid.UUID, originalObjectKey string, maxOriginalBytes int64) (VariantArtifacts, error)
+	GenerateWebPVariants(ctx context.Context, store objectstore.Store, companyID, mediaAssetID uuid.UUID, originalObjectKey string, maxOriginalBytes int64) (VariantArtifacts, error)
 }
 
 // WebPVariantGenerator resizes and encodes lossy WebP variants bounded by configured max edge lengths.
@@ -60,12 +60,12 @@ func (g WebPVariantGenerator) limits() (thumbMax, displayMax int) {
 	return thumbMax, displayMax
 }
 
-func (g WebPVariantGenerator) GenerateWebPVariants(ctx context.Context, store objectstore.Store, organizationID, mediaAssetID uuid.UUID, originalObjectKey string, maxOriginalBytes int64) (VariantArtifacts, error) {
+func (g WebPVariantGenerator) GenerateWebPVariants(ctx context.Context, store objectstore.Store, companyID, mediaAssetID uuid.UUID, originalObjectKey string, maxOriginalBytes int64) (VariantArtifacts, error) {
 	var out VariantArtifacts
 	if store == nil {
 		return out, fmt.Errorf("variant: nil store")
 	}
-	if err := objectstore.ValidateCanonicalMediaAssetKey(organizationID, mediaAssetID, originalObjectKey, "original"); err != nil {
+	if err := objectstore.ValidateCanonicalMediaAssetKey(companyID, mediaAssetID, originalObjectKey, "original"); err != nil {
 		return out, fmt.Errorf("variant: %w", err)
 	}
 	if maxOriginalBytes <= 0 {
@@ -113,8 +113,8 @@ func (g WebPVariantGenerator) GenerateWebPVariants(ctx context.Context, store ob
 		return out, fmt.Errorf("variant: encode display webp: %w", err)
 	}
 
-	tk := objectstore.MediaAssetThumbWebpKey(organizationID, mediaAssetID)
-	dk := objectstore.MediaAssetDisplayWebpKey(organizationID, mediaAssetID)
+	tk := objectstore.MediaAssetThumbWebpKey(companyID, mediaAssetID)
+	dk := objectstore.MediaAssetDisplayWebpKey(companyID, mediaAssetID)
 	thash := sha256.Sum256(tbuf.Bytes())
 	dhash := sha256.Sum256(dbuf.Bytes())
 	out.ThumbSHA256Hex = hex.EncodeToString(thash[:])
@@ -169,12 +169,12 @@ func resizeRGBA(src image.Image, w, h int) *image.RGBA {
 // PassthroughVariantGenerator stores thumb/display using the original bytes and MIME type (tests / fallback).
 type PassthroughVariantGenerator struct{}
 
-func (PassthroughVariantGenerator) GenerateWebPVariants(ctx context.Context, store objectstore.Store, organizationID, mediaAssetID uuid.UUID, originalObjectKey string, maxOriginalBytes int64) (VariantArtifacts, error) {
+func (PassthroughVariantGenerator) GenerateWebPVariants(ctx context.Context, store objectstore.Store, companyID, mediaAssetID uuid.UUID, originalObjectKey string, maxOriginalBytes int64) (VariantArtifacts, error) {
 	var out VariantArtifacts
 	if store == nil {
 		return out, fmt.Errorf("variant: nil store")
 	}
-	if err := objectstore.ValidateCanonicalMediaAssetKey(organizationID, mediaAssetID, originalObjectKey, "original"); err != nil {
+	if err := objectstore.ValidateCanonicalMediaAssetKey(companyID, mediaAssetID, originalObjectKey, "original"); err != nil {
 		return out, fmt.Errorf("variant: %w", err)
 	}
 	if maxOriginalBytes <= 0 {
@@ -205,8 +205,8 @@ func (PassthroughVariantGenerator) GenerateWebPVariants(ctx context.Context, sto
 		out.ThumbWidth = out.DisplayWidth
 		out.ThumbHeight = out.DisplayHeight
 	}
-	tk := objectstore.MediaAssetThumbWebpKey(organizationID, mediaAssetID)
-	dk := objectstore.MediaAssetDisplayWebpKey(organizationID, mediaAssetID)
+	tk := objectstore.MediaAssetThumbWebpKey(companyID, mediaAssetID)
+	dk := objectstore.MediaAssetDisplayWebpKey(companyID, mediaAssetID)
 	ct := strings.TrimSpace(strings.ToLower(contentType))
 	if ct == "" {
 		ct = "application/octet-stream"

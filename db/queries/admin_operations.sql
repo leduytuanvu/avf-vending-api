@@ -1,4 +1,5 @@
 -- Machine operational health (fleet-wide).
+
 -- name: AdminOpsListMachineHealth :many
 SELECT
     m.id AS machine_id,
@@ -101,12 +102,10 @@ SELECT
 FROM
     machines m
     LEFT JOIN machine_current_snapshot mcs ON mcs.machine_id = m.id
-WHERE
-    m.organization_id = $1
 ORDER BY
     m.updated_at DESC
 LIMIT
-    $2 OFFSET $3;
+    $1 OFFSET $2;
 
 -- name: AdminOpsGetMachineHealthByID :one
 SELECT
@@ -211,8 +210,7 @@ FROM
     machines m
     LEFT JOIN machine_current_snapshot mcs ON mcs.machine_id = m.id
 WHERE
-    m.organization_id = $1
-    AND m.id = $2;
+    m.id = $1;
 
 -- name: AdminOpsGetMachineShadowDesiredJSON :one
 SELECT
@@ -223,6 +221,7 @@ WHERE
     machine_id = $1;
 
 -- Unified timeline for operator troubleshooting.
+
 -- name: AdminOpsMachineTimeline :many
 SELECT
     occurred_at,
@@ -249,7 +248,7 @@ FROM
             command_ledger cl
         WHERE
             cl.machine_id = $1
-            AND cl.organization_id = $2
+            AND TRUE
         UNION ALL
         SELECT
             mca.sent_at AS occurred_at,
@@ -269,7 +268,7 @@ FROM
             INNER JOIN machines mm ON mm.id = mca.machine_id
         WHERE
             mca.machine_id = $1
-            AND mm.organization_id = $2
+            AND TRUE
         UNION ALL
         SELECT
             ot.occurred_at AS occurred_at,
@@ -282,7 +281,7 @@ FROM
             INNER JOIN orders o ON o.id = ot.order_id
         WHERE
             o.machine_id = $1
-            AND o.organization_id = $2
+            AND TRUE
         UNION ALL
         SELECT
             ci.recorded_at AS occurred_at,
@@ -299,17 +298,16 @@ FROM
             machine_check_ins ci
         WHERE
             ci.machine_id = $1
-            AND ci.organization_id = $2
+            AND TRUE
     ) u
 ORDER BY
     occurred_at DESC
 LIMIT
-    $3 OFFSET $4;
+    $2 OFFSET $3;
 
 -- name: AdminOpsInsertDetectedNegativeStockAnomalies :execrows
 INSERT INTO
     inventory_anomalies (
-        organization_id,
         machine_id,
         anomaly_type,
         fingerprint,
@@ -318,7 +316,6 @@ INSERT INTO
         detected_at
     )
 SELECT
-    m.organization_id,
     mss.machine_id,
     'negative_stock'::text,
     (
@@ -331,8 +328,7 @@ FROM
     machine_slot_state mss
     INNER JOIN machines m ON m.id = mss.machine_id
 WHERE
-    m.organization_id = $1
-    AND mss.current_quantity < 0
+    mss.current_quantity < 0
     AND NOT EXISTS (
         SELECT
             1
@@ -350,7 +346,6 @@ WHERE
 -- name: AdminOpsInsertDetectedManualAdjustmentAnomalies :execrows
 INSERT INTO
     inventory_anomalies (
-        organization_id,
         machine_id,
         anomaly_type,
         fingerprint,
@@ -359,7 +354,6 @@ INSERT INTO
         detected_at
     )
 SELECT
-    ie.organization_id,
     ie.machine_id,
     'manual_adjustment_above_threshold'::text,
     (
@@ -378,8 +372,7 @@ SELECT
 FROM
     inventory_events ie
 WHERE
-    ie.organization_id = sqlc.arg('organization_id')
-    AND ie.event_type = 'adjustment'
+    ie.event_type = 'adjustment'
     AND abs(ie.quantity_delta) >= sqlc.arg('adjustment_abs_threshold')::int
     AND ie.occurred_at >= now() - (sqlc.arg('lookback_days')::bigint * interval '1 day')
     AND NOT EXISTS (
@@ -397,7 +390,6 @@ WHERE
 -- name: AdminOpsInsertStaleInventorySyncAnomalies :execrows
 INSERT INTO
     inventory_anomalies (
-        organization_id,
         machine_id,
         anomaly_type,
         fingerprint,
@@ -405,7 +397,6 @@ INSERT INTO
         detected_at
     )
 SELECT
-    m.organization_id,
     m.id,
     'stale_inventory_sync'::text,
     ('stale_sync|'::text || m.id::text),
@@ -420,8 +411,7 @@ FROM
     machines m
     INNER JOIN machine_current_snapshot snap ON snap.machine_id = m.id
 WHERE
-    m.organization_id = $1
-    AND m.published_planogram_version_id IS NOT NULL
+    m.published_planogram_version_id IS NOT NULL
     AND snap.last_acknowledged_planogram_version_id IS NOT NULL
     AND m.published_planogram_version_id <> snap.last_acknowledged_planogram_version_id
     AND NOT EXISTS (
@@ -439,7 +429,6 @@ WHERE
 -- name: AdminOpsListInventoryAnomaliesByOrg :many
 SELECT
     ia.id,
-    ia.organization_id,
     ia.machine_id,
     ia.anomaly_type,
     ia.status,
@@ -459,8 +448,7 @@ FROM
     inventory_anomalies ia
     INNER JOIN machines m ON m.id = ia.machine_id
 WHERE
-    ia.organization_id = sqlc.arg('organization_id')
-    AND (
+    (
         NOT sqlc.arg('filter_machine')
         OR ia.machine_id = sqlc.arg('machine_id')
     )
@@ -474,7 +462,6 @@ OFFSET
 -- name: AdminOpsGetInventoryAnomalyByID :one
 SELECT
     ia.id,
-    ia.organization_id,
     ia.machine_id,
     ia.anomaly_type,
     ia.status,
@@ -492,19 +479,19 @@ FROM
     inventory_anomalies ia
 WHERE
     ia.id = $1
-    AND ia.organization_id = $2;
+    AND TRUE;
 
 -- name: AdminOpsResolveInventoryAnomaly :one
 UPDATE inventory_anomalies ia
 SET
     status = 'resolved',
     resolved_at = now (),
-    resolved_by = $3,
-    resolution_note = $4,
+    resolved_by = $1,
+    resolution_note = $2,
     updated_at = now ()
 WHERE
-    ia.id = $1
-    AND ia.organization_id = $2
+    ia.id = $3
+    AND TRUE
     AND ia.status = 'open'
 RETURNING
     ia.id;

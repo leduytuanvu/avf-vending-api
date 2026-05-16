@@ -8,7 +8,7 @@ Tài liệu này tóm tắt dữ liệu **cố định** do migration [`migratio
 
 | Thực thể | UUID | Ghi chú |
 |----------|------|---------|
-| Organization “Local Dev Org”, slug `local-dev` | `11111111-1111-1111-1111-111111111111` | `status`: active |
+| Company “Local Dev Org”, slug `local-dev` | `11111111-1111-1111-1111-111111111111` | `status`: active |
 | Region “HQ”, code `hq` | `22222222-2222-2222-2222-222222222222` | |
 | Site “Main DC” | `33333333-3333-3333-3333-333333333333` | `address`: `{"city": "DevCity"}` |
 
@@ -74,7 +74,7 @@ Migration seed **không** tạo dòng trong `platform_auth_accounts`. Đăng nh�
 
 1. **Chuỗi “bcrypt” phải là hash thật** (60 ký tự, dạng `$2a$` / `$2b$` / `$2y$`). Các chuỗi kiểu `...8K8K8K...` hoặc hash “giả lập” **không hợp lệ** — Go sẽ không verify được và trả sai mật khẩu (401).
 2. **API và DB phải cùng một nơi**: bạn gọi `https://api.ldtv.dev` thì tài khoản phải tồn tại trong **PostgreSQL mà server đó đang dùng**. Chỉ chạy `INSERT` trên máy local / DBeaver trỏ nhầm instance vẫn sẽ 401 trên host public.
-3. **Tổ chức `11111111-...` phải có trong DB đó**: nếu môi trường deploy **chưa** chạy migration seed `00003`, `INSERT` có thể lỗi FK hoặc bạn đang dùng sai `organization_id` so với dữ liệu thật. Kiểm tra: `SELECT id, slug FROM organizations;`
+3. **Tổ chức `11111111-...` phải có trong DB đó**: nếu môi trường deploy **chưa** chạy migration seed `00003`, `INSERT` có thể lỗi FK hoặc bạn đang dùng sai `company_id` so với dữ liệu thật. Kiểm tra: `SELECT id, slug FROM companies;`
 
 ### Cặp dev mẫu (chỉ local / lab — không dùng production)
 
@@ -89,12 +89,12 @@ Go `golang.org/x/crypto/bcrypt` chấp nhận tiền tố `$2b$` giống `$2a$`.
 **SQL** (nếu đã có dòng trùng org + email, xóa trước hoặc đổi email):
 
 ```sql
-INSERT INTO platform_auth_accounts (organization_id, email, password_hash, roles, status)
+INSERT INTO platform_auth_accounts (company_id, email, password_hash, roles, status)
 VALUES (
   '11111111-1111-1111-1111-111111111111',
   'admin@local.test',
   '$2b$10$0oWtyzdsMgQ.BGN/KTludOb0XdHh/Q0i2XLzEj9WVCBs1y0M07ne2',
-  ARRAY['org_admin']::text[],
+  ARRAY['admin']::text[],
   'active'
 );
 ```
@@ -103,7 +103,7 @@ VALUES (
 
 ```json
 {
-  "organizationId": "11111111-1111-1111-1111-111111111111",
+  "companyId": "11111111-1111-1111-1111-111111111111",
   "email": "admin@local.test",
   "password": "password123"
 }
@@ -115,10 +115,10 @@ VALUES (
 - Hoặc Python: `py -3 -m pip install bcrypt` rồi  
   `py -3 -c "import bcrypt; print(bcrypt.hashpw(b'mat_khau_cua_ban', bcrypt.gensalt(10)).decode())"`
 
-Role hợp lệ gồm `platform_admin`, `org_admin`, `org_member` (xem `internal/platform/auth/principal.go`).
+Role hợp lệ gồm `platform_admin`, `admin`, `org_member` (xem `internal/platform/auth/principal.go`).
 
 ---
 
 ## Gỡ seed (goose Down)
 
-Migration `00003` có `Down`: xóa theo thứ tự FK (OTA → shadow → slots → … → organization). Chỉ chạy khi bạn chủ động rollback migration tương ứng.
+Migration `00003` có `Down`: xóa theo thứ tự FK (OTA → shadow → slots → … → company). Chỉ chạy khi bạn chủ động rollback migration tương ứng.

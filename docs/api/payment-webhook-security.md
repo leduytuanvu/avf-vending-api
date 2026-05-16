@@ -53,10 +53,10 @@ Duplicate deliveries are also surfaced operationally: replayed provider events c
 
 Admin queue (reads require **`commerce:read`**; mutations require **`refunds:write`**):
 
-- `GET /v1/admin/organizations/{organizationId}/commerce/reconciliation` — filter **`case_type`** via query param **`case_type`**.
-- `GET /v1/admin/organizations/{organizationId}/commerce/reconciliation/{caseId}`
-- `POST /v1/admin/organizations/{organizationId}/commerce/reconciliation/{caseId}/resolve` — terminal statuses include **`resolved`**, **`dismissed`**, **`ignored`**, **`escalated`**.
-- `POST /v1/admin/organizations/{organizationId}/commerce/reconciliation/{caseId}/request-refund` — enqueues a **`refunds`** row via **`CreateRefund`** (idempotency `reconciliation_case_refund:{caseId}`); audit **`commerce.reconciliation.refund_requested`**.
+- `GET /v1/admin/commerce/reconciliation` — filter **`case_type`** via query param **`case_type`**.
+- `GET /v1/admin/commerce/reconciliation/{caseId}`
+- `POST /v1/admin/commerce/reconciliation/{caseId}/resolve` — terminal statuses include **`resolved`**, **`dismissed`**, **`ignored`**, **`escalated`**.
+- `POST /v1/admin/commerce/reconciliation/{caseId}/request-refund` — enqueues a **`refunds`** row via **`CreateRefund`** (idempotency `reconciliation_case_refund:{caseId}`); audit **`commerce.reconciliation.refund_requested`**.
 
 ## Further reading
 

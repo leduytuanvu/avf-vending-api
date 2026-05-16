@@ -15,9 +15,7 @@ enum MachineResponseStatus {
 }
 
 // MachineRequestMeta is the common envelope for machine app RPCs. Machine JWT
-// claims remain authoritative for organization_id and machine_id on protected RPCs.
 message MachineRequestMeta {
-  string organization_id = 1;
   string machine_id = 2;
   string request_id = 3;
   string idempotency_key = 4;
@@ -59,7 +57,6 @@ message PageResponse {
 // MachineContext carries machine-scoped identity for RPCs (mirrors HTTP path scope).
 message MachineContext {
   string machine_id = 1;
-  string organization_id = 2;
   string site_id = 3;
 }
 

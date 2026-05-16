@@ -13,9 +13,8 @@ func baseBootstrap(pid uuid.UUID, priceMinor int64) setupapp.MachineBootstrap {
 	cid := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 	return setupapp.MachineBootstrap{
 		Machine: domainfleet.Machine{
-			ID:             uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-			OrganizationID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
-			SiteID:         uuid.MustParse("22222222-2222-2222-2222-222222222222"),
+			ID:     uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+			SiteID: uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 		},
 		AssortmentProducts: []setupapp.AssortmentProductView{
 			{ProductID: pid, SortOrder: 1, SKU: "SKU"},

@@ -21,11 +21,11 @@ func writeAdminCatalogError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, appcatalogadmin.ErrNotFound):
 		writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "resource not found")
 	case errors.Is(err, appcatalogadmin.ErrDuplicateSKU):
-		writeAPIError(w, r.Context(), http.StatusConflict, "duplicate_sku", "sku already exists in this organization")
+		writeAPIError(w, r.Context(), http.StatusConflict, "duplicate_sku", "sku already exists in this company")
 	case errors.Is(err, appcatalogadmin.ErrDuplicateBarcode):
-		writeAPIError(w, r.Context(), http.StatusConflict, "duplicate_barcode", "barcode already exists in this organization")
+		writeAPIError(w, r.Context(), http.StatusConflict, "duplicate_barcode", "barcode already exists in this company")
 	case errors.Is(err, appcatalogadmin.ErrDuplicateSlug):
-		writeAPIError(w, r.Context(), http.StatusConflict, "duplicate_slug", "slug already exists in this organization")
+		writeAPIError(w, r.Context(), http.StatusConflict, "duplicate_slug", "slug already exists in this company")
 	case errors.Is(err, appcatalogadmin.ErrInvalidArgument):
 		writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_argument", err.Error())
 	case errors.Is(err, appcatalogadmin.ErrConflict):
@@ -123,7 +123,6 @@ func mergeProductMutation(cur db.Product, body V1AdminProductMutationRequest) (a
 		allergen = append([]string(nil), body.AllergenCodes...)
 	}
 	return appcatalogadmin.UpdateProductInput{
-		OrganizationID:  cur.OrganizationID,
 		ProductID:       cur.ID,
 		Sku:             sku,
 		Barcode:         bc,
@@ -146,7 +145,8 @@ func postAdminProductCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -166,7 +166,6 @@ func postAdminProductCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		row, err := svc.CreateProduct(r.Context(), appcatalogadmin.CreateProductInput{
-			OrganizationID:  orgID,
 			Sku:             body.Sku,
 			Barcode:         body.Barcode,
 			Name:            body.Name,
@@ -184,7 +183,7 @@ func postAdminProductCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		writeAdminProductResponse(w, r, svc, orgID, row)
+		writeAdminProductResponse(w, r, svc, scopeID, row)
 	}
 }
 
@@ -194,7 +193,8 @@ func putAdminProductUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -204,7 +204,7 @@ func putAdminProductUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_product_id", "invalid productId")
 			return
 		}
-		cur, err := svc.GetProduct(r.Context(), orgID, pid)
+		cur, err := svc.GetProduct(r.Context(), scopeID, pid)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "product_not_found", "product not found")
@@ -227,7 +227,7 @@ func putAdminProductUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		writeAdminProductResponse(w, r, svc, orgID, row)
+		writeAdminProductResponse(w, r, svc, scopeID, row)
 	}
 }
 
@@ -237,7 +237,8 @@ func deleteAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -247,12 +248,12 @@ func deleteAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_product_id", "invalid productId")
 			return
 		}
-		row, err := svc.DeactivateProduct(r.Context(), orgID, pid)
+		row, err := svc.DeactivateProduct(r.Context(), scopeID, pid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		writeAdminProductResponse(w, r, svc, orgID, row)
+		writeAdminProductResponse(w, r, svc, scopeID, row)
 	}
 }
 
@@ -262,7 +263,8 @@ func bindAdminProductImage(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -295,21 +297,20 @@ func bindAdminProductImage(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		row, err := svc.BindProductPrimaryImage(r.Context(), appcatalogadmin.BindProductImageInput{
-			OrganizationID: orgID,
-			ProductID:      pid,
-			ArtifactID:     aid,
-			ThumbURL:       body.ThumbURL,
-			DisplayURL:     body.DisplayURL,
-			ContentHash:    body.ContentHash,
-			Width:          body.Width,
-			Height:         body.Height,
-			MimeType:       body.MimeType,
+			ProductID:   pid,
+			ArtifactID:  aid,
+			ThumbURL:    body.ThumbURL,
+			DisplayURL:  body.DisplayURL,
+			ContentHash: body.ContentHash,
+			Width:       body.Width,
+			Height:      body.Height,
+			MimeType:    body.MimeType,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		writeAdminProductResponse(w, r, svc, orgID, row)
+		writeAdminProductResponse(w, r, svc, scopeID, row)
 	}
 }
 
@@ -319,7 +320,8 @@ func deleteAdminProductImage(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -329,12 +331,12 @@ func deleteAdminProductImage(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_product_id", "invalid productId")
 			return
 		}
-		row, err := svc.ClearProductPrimaryImage(r.Context(), orgID, pid)
+		row, err := svc.ClearProductPrimaryImage(r.Context(), scopeID, pid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
 		}
-		writeAdminProductResponse(w, r, svc, orgID, row)
+		writeAdminProductResponse(w, r, svc, scopeID, row)
 	}
 }
 
@@ -344,7 +346,8 @@ func postAdminBrandCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -354,10 +357,9 @@ func postAdminBrandCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		row, err := svc.CreateBrand(r.Context(), appcatalogadmin.CreateBrandInput{
-			OrganizationID: orgID,
-			Slug:           body.Slug,
-			Name:           body.Name,
-			Active:         body.Active,
+			Slug:   body.Slug,
+			Name:   body.Name,
+			Active: body.Active,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
@@ -373,7 +375,8 @@ func putAdminBrandUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -388,11 +391,10 @@ func putAdminBrandUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		row, err := svc.UpdateBrand(r.Context(), appcatalogadmin.UpdateBrandInput{
-			OrganizationID: orgID,
-			BrandID:        bid,
-			Slug:           body.Slug,
-			Name:           body.Name,
-			Active:         body.Active,
+			BrandID: bid,
+			Slug:    body.Slug,
+			Name:    body.Name,
+			Active:  body.Active,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
@@ -408,7 +410,8 @@ func deleteAdminBrand(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -418,7 +421,7 @@ func deleteAdminBrand(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_brand_id", "invalid brandId")
 			return
 		}
-		row, err := svc.DeactivateBrand(r.Context(), orgID, bid)
+		row, err := svc.DeactivateBrand(r.Context(), scopeID, bid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -433,7 +436,8 @@ func postAdminCategoryCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -448,11 +452,10 @@ func postAdminCategoryCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		row, err := svc.CreateCategory(r.Context(), appcatalogadmin.CreateCategoryInput{
-			OrganizationID: orgID,
-			Slug:           body.Slug,
-			Name:           body.Name,
-			ParentID:       parent,
-			Active:         body.Active,
+			Slug:     body.Slug,
+			Name:     body.Name,
+			ParentID: parent,
+			Active:   body.Active,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
@@ -468,7 +471,8 @@ func putAdminCategoryUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -488,12 +492,11 @@ func putAdminCategoryUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		row, err := svc.UpdateCategory(r.Context(), appcatalogadmin.UpdateCategoryInput{
-			OrganizationID: orgID,
-			CategoryID:     cid,
-			Slug:           body.Slug,
-			Name:           body.Name,
-			ParentID:       parent,
-			Active:         body.Active,
+			CategoryID: cid,
+			Slug:       body.Slug,
+			Name:       body.Name,
+			ParentID:   parent,
+			Active:     body.Active,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
@@ -509,7 +512,8 @@ func deleteAdminCategory(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -519,7 +523,7 @@ func deleteAdminCategory(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_category_id", "invalid categoryId")
 			return
 		}
-		row, err := svc.DeactivateCategory(r.Context(), orgID, cid)
+		row, err := svc.DeactivateCategory(r.Context(), scopeID, cid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -534,7 +538,8 @@ func postAdminTagCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -544,10 +549,9 @@ func postAdminTagCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		row, err := svc.CreateTag(r.Context(), appcatalogadmin.CreateTagInput{
-			OrganizationID: orgID,
-			Slug:           body.Slug,
-			Name:           body.Name,
-			Active:         body.Active,
+			Slug:   body.Slug,
+			Name:   body.Name,
+			Active: body.Active,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
@@ -563,7 +567,8 @@ func putAdminTagUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -578,11 +583,10 @@ func putAdminTagUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		row, err := svc.UpdateTag(r.Context(), appcatalogadmin.UpdateTagInput{
-			OrganizationID: orgID,
-			TagID:          tid,
-			Slug:           body.Slug,
-			Name:           body.Name,
-			Active:         body.Active,
+			TagID:  tid,
+			Slug:   body.Slug,
+			Name:   body.Name,
+			Active: body.Active,
 		})
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
@@ -598,7 +602,8 @@ func deleteAdminTag(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		orgID, err := adminCatalogOrganizationID(r)
+		scopeID, err := adminCatalogScopeID(r)
+		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
 			return
@@ -608,7 +613,7 @@ func deleteAdminTag(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_tag_id", "invalid tagId")
 			return
 		}
-		row, err := svc.DeactivateTag(r.Context(), orgID, tid)
+		row, err := svc.DeactivateTag(r.Context(), scopeID, tid)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return

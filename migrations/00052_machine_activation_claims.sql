@@ -3,7 +3,7 @@
 CREATE TABLE machine_activation_claims (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     activation_code_id uuid NOT NULL REFERENCES machine_activation_codes (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     fingerprint_hash bytea NOT NULL,
     claimed_at timestamptz NOT NULL DEFAULT now(),
@@ -24,7 +24,7 @@ CREATE INDEX ix_machine_activation_claims_code ON machine_activation_claims (
     claimed_at DESC
 );
 
-CREATE INDEX ix_machine_activation_claims_org_machine ON machine_activation_claims (organization_id, machine_id);
+CREATE INDEX ix_machine_activation_claims_org_machine ON machine_activation_claims (scope_id, machine_id);
 
 CREATE UNIQUE INDEX ux_machine_activation_claim_code_fp_succeeded ON machine_activation_claims (
     activation_code_id,
@@ -38,7 +38,7 @@ COMMENT ON TABLE machine_activation_claims IS 'Audit trail and idempotency for a
 -- Backfill one succeeded row per legacy activation code that had a recorded fingerprint claim.
 INSERT INTO machine_activation_claims (
     activation_code_id,
-    organization_id,
+    scope_id,
     machine_id,
     fingerprint_hash,
     claimed_at,
@@ -49,7 +49,7 @@ INSERT INTO machine_activation_claims (
 )
 SELECT
     mac.id,
-    mac.organization_id,
+    mac.scope_id,
     mac.machine_id,
     mac.claimed_fingerprint_hash,
     COALESCE(mac.updated_at, mac.created_at),

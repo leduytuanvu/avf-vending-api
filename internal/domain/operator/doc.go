@@ -22,6 +22,6 @@
 // the business row when the schema supports it, and insert one machine_action_attributions row in the
 // same transaction (see internal/modules/postgres/operator_attribution.go). Use resource_type/resource_id
 // as stable pointers back to the business table; put cross-cutting fields (action_domain, actor_type,
-// organization_id, etc.) in metadata JSON for inspection APIs without widening the attributions table
+// scope_id, etc.) in metadata JSON for inspection APIs without widening the attributions table
 // for every new workflow.
 package operator

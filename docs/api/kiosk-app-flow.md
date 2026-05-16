@@ -53,7 +53,7 @@ Install APK, permissions, secure storage provisioning. No HTTP until activation.
 | Request ref | OpenAPI example (activationCode, deviceFingerprint) |
 | Response ref | OpenAPI 200 (machineToken, bootstrap hints) |
 | Idempotency | not via header; treat as one-shot provisioning |
-| Retry / online | Invalid codes return `400` without leaking tenant existence; do not brute-force |
+| Retry / online | Invalid codes return `400` without leaking company existence; do not brute-force |
 
 Admin pre-step: `POST /v1/admin/machines/{machineId}/activation-codes` (Bearer; not kiosk).
 
@@ -79,7 +79,7 @@ Admin pre-step: `POST /v1/admin/machines/{machineId}/activation-codes` (Bearer; 
 | --- | --- |
 | Endpoint | `/v1/setup/machines/{machineId}/bootstrap` |
 | Method | `GET` |
-| Auth | Bearer (machine tenant) |
+| Auth | Bearer (machine company) |
 | Request ref | OpenAPI parameters |
 | Response ref | OpenAPI 200 (topology + catalog snapshot) |
 | Idempotency | n/a (GET) |
@@ -93,7 +93,7 @@ Admin pre-step: `POST /v1/admin/machines/{machineId}/activation-codes` (Bearer; 
 | --- | --- |
 | Endpoint | **`GET /v1/machines/{machineId}/sale-catalog`** or **`avf.machine.v1.MachineCatalogService/GetCatalogSnapshot`** (aliases **`GetSaleCatalog`**, **`SyncSaleCatalog`**) |
 | Method | `GET` or gRPC |
-| Auth | Bearer (machine tenant) |
+| Auth | Bearer (machine company) |
 | Request ref | OpenAPI (`include_images`, `if_none_match_config_version`, …); gRPC `GetCatalogSnapshotRequest` mirrors flags |
 | Response ref | OpenAPI **200** / conditional body; protobuf **`CatalogSnapshot`** with **`catalog_version`** (canonical **composite catalog fingerprint**) + **`generated_at`** + **`config_version`**; responses wrap **`MachineResponseMeta.server_time`** |
 | Idempotency | n/a |
@@ -196,7 +196,7 @@ Admin pre-step: `POST /v1/admin/machines/{machineId}/activation-codes` (Bearer; 
 | --- | --- |
 | Endpoints | `POST /v1/commerce/cash-checkout` (and/or `POST /v1/commerce/orders` flow) |
 | Method | `POST` |
-| Auth | Bearer (org-scoped) |
+| Auth | Bearer (role-scoped) |
 | Request ref | OpenAPI |
 | Response ref | OpenAPI |
 | Idempotency | **Required** |

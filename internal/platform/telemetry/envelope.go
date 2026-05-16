@@ -14,7 +14,7 @@ type Envelope struct {
 	SchemaVersion     int             `json:"schema_version"`
 	Class             Class           `json:"class"`
 	MachineID         uuid.UUID       `json:"machine_id"`
-	TenantID          *uuid.UUID      `json:"tenant_id,omitempty"`
+	CompanyID         *uuid.UUID      `json:"company_id,omitempty"`
 	SiteID            *uuid.UUID      `json:"site_id,omitempty"`
 	AppVersion        string          `json:"app_version,omitempty"`
 	FirmwareVer       string          `json:"firmware_version,omitempty"`

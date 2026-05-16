@@ -9,12 +9,11 @@ import (
 
 // CreateOrderInput is the checkout surface for provisioning an order and its first vend session.
 type CreateOrderInput struct {
-	OrganizationID uuid.UUID
-	MachineID      uuid.UUID
-	ProductID      uuid.UUID
-	SlotID         *uuid.UUID
-	CabinetCode    string
-	SlotCode       string
+	MachineID   uuid.UUID
+	ProductID   uuid.UUID
+	SlotID      *uuid.UUID
+	CabinetCode string
+	SlotCode    string
 	// SlotIndex is deprecated; prefer SlotID or CabinetCode+SlotCode.
 	SlotIndex *int32
 	Currency  string
@@ -27,7 +26,6 @@ type CreateOrderInput struct {
 
 // StartPaymentInput binds a payment row and optional outbox fan-out; provider is an opaque label from the caller.
 type StartPaymentInput struct {
-	OrganizationID uuid.UUID
 	OrderID        uuid.UUID
 	Provider       string
 	PaymentState   string
@@ -45,16 +43,14 @@ type StartPaymentInput struct {
 
 // AdvanceVendInput requests a vend_session state change for one slot on an order.
 type AdvanceVendInput struct {
-	OrganizationID uuid.UUID
-	OrderID        uuid.UUID
-	SlotIndex      int32
-	ToState        string
-	FailureReason  *string
+	OrderID       uuid.UUID
+	SlotIndex     int32
+	ToState       string
+	FailureReason *string
 }
 
 // FinalizeAfterVendInput applies a terminal vend outcome and reconciles order status with payment reality.
 type FinalizeAfterVendInput struct {
-	OrganizationID    uuid.UUID
 	OrderID           uuid.UUID
 	SlotIndex         int32
 	TerminalVendState string
@@ -70,7 +66,6 @@ type FinalizeAfterVendInput struct {
 
 // FulfillSuccessfulVendInput binds one atomic DB transaction that completes the order after a successful vend and applies deduplicated inventory.
 type FulfillSuccessfulVendInput struct {
-	OrganizationID     uuid.UUID
 	OrderID            uuid.UUID
 	SlotIndex          int32
 	InventoryDedupeKey string
@@ -87,10 +82,9 @@ type FulfillSuccessfulVendResult struct {
 
 // FulfillFailedVendInput binds one atomic DB transaction that records a failed vend alongside a failed order.
 type FulfillFailedVendInput struct {
-	OrganizationID uuid.UUID
-	OrderID        uuid.UUID
-	SlotIndex      int32
-	FailureReason  *string
+	OrderID       uuid.UUID
+	SlotIndex     int32
+	FailureReason *string
 }
 
 // FulfillFailedVendResult is the outcome of FulfillFailedVendAtomically.
@@ -156,7 +150,6 @@ type InsertRefundRowInput struct {
 
 // CreateRefundInput requests a new refund against the latest captured payment.
 type CreateRefundInput struct {
-	OrganizationID uuid.UUID
 	OrderID        uuid.UUID
 	AmountMinor    int64
 	Currency       string

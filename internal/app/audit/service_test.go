@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,10 +42,9 @@ func TestWithTransportMetaDefaultsFillsMissingAuditFields(t *testing.T) {
 		UserAgent: "audit-test",
 	})
 	in := compliance.EnterpriseAuditRecord{
-		OrganizationID: uuid.New(),
-		ActorType:      compliance.ActorUser,
-		Action:         compliance.ActionAuthLogout,
-		ResourceType:   "auth.session",
+		ActorType:    compliance.ActorUser,
+		Action:       compliance.ActionAuthLogout,
+		ResourceType: "auth.session",
 	}
 
 	got := withTransportMetaDefaults(ctx, in)

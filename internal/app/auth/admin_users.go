@@ -76,13 +76,12 @@ type AdminPatchUserRequest struct {
 
 // AdminAccountView is a safe projection without credential material.
 type AdminAccountView struct {
-	AccountID      string   `json:"accountId"`
-	OrganizationID string   `json:"organizationId"`
-	Email          string   `json:"email"`
-	Roles          []string `json:"roles"`
-	Status         string   `json:"status"`
-	CreatedAt      string   `json:"createdAt"`
-	UpdatedAt      string   `json:"updatedAt"`
+	AccountID string   `json:"accountId"`
+	Email     string   `json:"email"`
+	Roles     []string `json:"roles"`
+	Status    string   `json:"status"`
+	CreatedAt string   `json:"createdAt"`
+	UpdatedAt string   `json:"updatedAt"`
 }
 
 // AdminUsersListResponse is returned by GET /v1/admin/auth/users.
@@ -104,8 +103,7 @@ type ChangePasswordRequest struct {
 
 // PasswordResetRequest starts password reset without leaking whether the email exists.
 type PasswordResetRequest struct {
-	OrganizationID uuid.UUID `json:"organizationId"`
-	Email          string    `json:"email"`
+	Email string `json:"email"`
 }
 
 // PasswordResetIssueResult is returned by the application service. HTTP handlers intentionally omit ResetToken.
@@ -125,13 +123,12 @@ func mapAcctPublic(a db.PlatformAuthAccount) AdminAccountView {
 	roles := append([]string(nil), a.Roles...)
 	sort.Strings(roles)
 	return AdminAccountView{
-		AccountID:      a.ID.String(),
-		OrganizationID: a.OrganizationID.String(),
-		Email:          a.Email,
-		Roles:          roles,
-		Status:         a.Status,
-		CreatedAt:      a.CreatedAt.UTC().Format(time.RFC3339Nano),
-		UpdatedAt:      a.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		AccountID: a.ID.String(),
+		Email:     a.Email,
+		Roles:     roles,
+		Status:    a.Status,
+		CreatedAt: a.CreatedAt.UTC().Format(time.RFC3339Nano),
+		UpdatedAt: a.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	}
 }
 
@@ -220,14 +217,11 @@ func (s *Service) runPasswordTxn(ctx context.Context, fn func(tx pgx.Tx, q *db.Q
 	return tx.Commit(ctx)
 }
 
-func (s *Service) guardRemoveFinalOrgAdmin(ctx context.Context, orgID uuid.UUID, excludeAccountID uuid.UUID, beforeContrib, afterContrib bool) error {
+func (s *Service) guardRemoveFinalOrgAdmin(ctx context.Context, scopeID uuid.UUID, excludeAccountID uuid.UUID, beforeContrib, afterContrib bool) error {
 	if !beforeContrib || afterContrib {
 		return nil
 	}
-	others, err := s.q.AuthAdminCountActiveOrgAdminsExcluding(ctx, db.AuthAdminCountActiveOrgAdminsExcludingParams{
-		OrganizationID: orgID,
-		ID:             excludeAccountID,
-	})
+	others, err := s.q.AuthAdminCountActiveOrgAdminsExcluding(ctx, excludeAccountID)
 	if err != nil {
 		return err
 	}
@@ -237,22 +231,21 @@ func (s *Service) guardRemoveFinalOrgAdmin(ctx context.Context, orgID uuid.UUID,
 	return nil
 }
 
-// AdminListUsers returns paginated auth accounts for an organization.
-func (s *Service) AdminListUsers(ctx context.Context, organizationID uuid.UUID, limit, offset int32) (*AdminUsersListResponse, error) {
+// AdminListUsers returns paginated auth accounts for an company.
+func (s *Service) AdminListUsers(ctx context.Context, companyID uuid.UUID, limit, offset int32) (*AdminUsersListResponse, error) {
 	if s == nil {
 		return nil, errors.New("auth service: nil")
 	}
-	if organizationID == uuid.Nil {
+	if companyID == uuid.Nil {
 		return nil, ErrInvalidRequest
 	}
-	total, err := s.q.AuthAdminCountAccounts(ctx, organizationID)
+	total, err := s.q.AuthAdminCountAccounts(ctx)
 	if err != nil {
 		return nil, err
 	}
 	rows, err := s.q.AuthAdminListAccounts(ctx, db.AuthAdminListAccountsParams{
-		OrganizationID: organizationID,
-		Limit:          limit,
-		Offset:         offset,
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return nil, err
@@ -272,12 +265,12 @@ func (s *Service) AdminListUsers(ctx context.Context, organizationID uuid.UUID, 
 	}, nil
 }
 
-// AdminCreateUser creates an auth account for an organization.
-func (s *Service) AdminCreateUser(ctx context.Context, actorAccountID uuid.UUID, organizationID uuid.UUID, req AdminCreateUserRequest) (*AdminAccountView, error) {
+// AdminCreateUser creates an auth account for an company.
+func (s *Service) AdminCreateUser(ctx context.Context, actorAccountID uuid.UUID, companyID uuid.UUID, req AdminCreateUserRequest) (*AdminAccountView, error) {
 	if s == nil {
 		return nil, errors.New("auth service: nil")
 	}
-	if organizationID == uuid.Nil || actorAccountID == uuid.Nil {
+	if companyID == uuid.Nil || actorAccountID == uuid.Nil {
 		return nil, ErrInvalidRequest
 	}
 	if err := s.validatePassword(req.Password); err != nil {
@@ -312,11 +305,10 @@ func (s *Service) AdminCreateUser(ctx context.Context, actorAccountID uuid.UUID,
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
 	row, err := qtx.AuthAdminInsertAccount(ctx, db.AuthAdminInsertAccountParams{
-		OrganizationID: organizationID,
-		Email:          email,
-		PasswordHash:   string(hashBytes),
-		Roles:          roles,
-		Status:         status,
+		Email:        email,
+		PasswordHash: string(hashBytes),
+		Roles:        roles,
+		Status:       status,
 	})
 	if err != nil {
 		var pe *pgconn.PgError
@@ -327,7 +319,6 @@ func (s *Service) AdminCreateUser(ctx context.Context, actorAccountID uuid.UUID,
 	}
 	if err := s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 		Action:          authAuditCreateUser,
-		OrganizationID:  organizationID,
 		ActorAccountID:  actorAccountID,
 		TargetAccountID: row.ID,
 		Details:         map[string]any{"email": row.Email},
@@ -342,14 +333,11 @@ func (s *Service) AdminCreateUser(ctx context.Context, actorAccountID uuid.UUID,
 }
 
 // AdminReplaceUserRoles is PUT /v1/admin/users/{id}/roles — replaces the role list only.
-func (s *Service) AdminReplaceUserRoles(ctx context.Context, actorAccountID uuid.UUID, organizationID uuid.UUID, accountID uuid.UUID, roles []string) (*AdminAccountView, error) {
+func (s *Service) AdminReplaceUserRoles(ctx context.Context, actorAccountID uuid.UUID, companyID uuid.UUID, accountID uuid.UUID, roles []string) (*AdminAccountView, error) {
 	if s == nil {
 		return nil, errors.New("auth service: nil")
 	}
-	cur, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, db.AuthAdminGetAccountByOrgAndIDParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-	})
+	cur, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, accountID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAccountNotFound
@@ -362,7 +350,7 @@ func (s *Service) AdminReplaceUserRoles(ctx context.Context, actorAccountID uuid
 		return nil, err
 	}
 	after := accountContributesOrgAdmin(cur.Status, newRoles)
-	if err := s.guardRemoveFinalOrgAdmin(ctx, organizationID, accountID, before, after); err != nil {
+	if err := s.guardRemoveFinalOrgAdmin(ctx, companyID, accountID, before, after); err != nil {
 		return nil, err
 	}
 	if s.pool == nil {
@@ -374,12 +362,11 @@ func (s *Service) AdminReplaceUserRoles(ctx context.Context, actorAccountID uuid
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
-	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-		Email:          cur.Email,
-		Roles:          newRoles,
-		Status:         cur.Status,
+	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{Email: cur.Email,
+		Roles:  newRoles,
+		Status: cur.Status,
+
+		ID: accountID,
 	})
 	if err != nil {
 		return nil, err
@@ -389,7 +376,6 @@ func (s *Service) AdminReplaceUserRoles(ctx context.Context, actorAccountID uuid
 	}
 	if err := s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 		Action:          authAuditSetRoles,
-		OrganizationID:  organizationID,
 		ActorAccountID:  actorAccountID,
 		TargetAccountID: accountID,
 		Details: map[string]any{
@@ -413,7 +399,7 @@ func (s *Service) AdminReplaceUserRoles(ctx context.Context, actorAccountID uuid
 }
 
 // AdminRemoveUserRole removes a single role (DELETE .../roles/{role}). At least one role must remain.
-func (s *Service) AdminRemoveUserRole(ctx context.Context, actorAccountID uuid.UUID, organizationID uuid.UUID, accountID uuid.UUID, role string) (*AdminAccountView, error) {
+func (s *Service) AdminRemoveUserRole(ctx context.Context, actorAccountID uuid.UUID, companyID uuid.UUID, accountID uuid.UUID, role string) (*AdminAccountView, error) {
 	if s == nil {
 		return nil, errors.New("auth service: nil")
 	}
@@ -427,10 +413,7 @@ func (s *Service) AdminRemoveUserRole(ctx context.Context, actorAccountID uuid.U
 	if _, ok := allowedRoleSet[role]; !ok {
 		return nil, fmt.Errorf("%w: %s", ErrInvalidRole, role)
 	}
-	cur, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, db.AuthAdminGetAccountByOrgAndIDParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-	})
+	cur, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, accountID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAccountNotFound
@@ -456,7 +439,7 @@ func (s *Service) AdminRemoveUserRole(ctx context.Context, actorAccountID uuid.U
 	}
 	sort.Strings(newRoles)
 	after := accountContributesOrgAdmin(cur.Status, newRoles)
-	if err := s.guardRemoveFinalOrgAdmin(ctx, organizationID, accountID, before, after); err != nil {
+	if err := s.guardRemoveFinalOrgAdmin(ctx, companyID, accountID, before, after); err != nil {
 		return nil, err
 	}
 	if s.pool == nil {
@@ -468,12 +451,11 @@ func (s *Service) AdminRemoveUserRole(ctx context.Context, actorAccountID uuid.U
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
-	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-		Email:          cur.Email,
-		Roles:          newRoles,
-		Status:         cur.Status,
+	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{Email: cur.Email,
+		Roles:  newRoles,
+		Status: cur.Status,
+
+		ID: accountID,
 	})
 	if err != nil {
 		return nil, err
@@ -483,7 +465,6 @@ func (s *Service) AdminRemoveUserRole(ctx context.Context, actorAccountID uuid.U
 	}
 	if err := s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 		Action:          authAuditRemoveRole,
-		OrganizationID:  organizationID,
 		ActorAccountID:  actorAccountID,
 		TargetAccountID: accountID,
 		Details: map[string]any{
@@ -507,15 +488,12 @@ func (s *Service) AdminRemoveUserRole(ctx context.Context, actorAccountID uuid.U
 	return &out, nil
 }
 
-// AdminGetUser returns one account scoped by organization.
-func (s *Service) AdminGetUser(ctx context.Context, organizationID uuid.UUID, accountID uuid.UUID) (*AdminAccountView, error) {
+// AdminGetUser returns one account scoped by company.
+func (s *Service) AdminGetUser(ctx context.Context, companyID uuid.UUID, accountID uuid.UUID) (*AdminAccountView, error) {
 	if s == nil {
 		return nil, errors.New("auth service: nil")
 	}
-	row, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, db.AuthAdminGetAccountByOrgAndIDParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-	})
+	row, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, accountID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAccountNotFound
@@ -527,14 +505,11 @@ func (s *Service) AdminGetUser(ctx context.Context, organizationID uuid.UUID, ac
 }
 
 // AdminPatchUser applies partial updates.
-func (s *Service) AdminPatchUser(ctx context.Context, actorAccountID uuid.UUID, organizationID uuid.UUID, accountID uuid.UUID, req AdminPatchUserRequest) (*AdminAccountView, error) {
+func (s *Service) AdminPatchUser(ctx context.Context, actorAccountID uuid.UUID, companyID uuid.UUID, accountID uuid.UUID, req AdminPatchUserRequest) (*AdminAccountView, error) {
 	if s == nil {
 		return nil, errors.New("auth service: nil")
 	}
-	cur, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, db.AuthAdminGetAccountByOrgAndIDParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-	})
+	cur, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, accountID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAccountNotFound
@@ -566,7 +541,7 @@ func (s *Service) AdminPatchUser(ctx context.Context, actorAccountID uuid.UUID, 
 	}
 
 	after := accountContributesOrgAdmin(status, roles)
-	if err := s.guardRemoveFinalOrgAdmin(ctx, organizationID, accountID, before, after); err != nil {
+	if err := s.guardRemoveFinalOrgAdmin(ctx, companyID, accountID, before, after); err != nil {
 		return nil, err
 	}
 
@@ -579,12 +554,11 @@ func (s *Service) AdminPatchUser(ctx context.Context, actorAccountID uuid.UUID, 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
-	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-		Email:          email,
-		Roles:          roles,
-		Status:         status,
+	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{Email: email,
+		Roles:  roles,
+		Status: status,
+
+		ID: accountID,
 	})
 	if err != nil {
 		var pe *pgconn.PgError
@@ -600,7 +574,6 @@ func (s *Service) AdminPatchUser(ctx context.Context, actorAccountID uuid.UUID, 
 	}
 	if err := s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 		Action:          authAuditPatchUser,
-		OrganizationID:  organizationID,
 		ActorAccountID:  actorAccountID,
 		TargetAccountID: accountID,
 		Details: map[string]any{
@@ -624,14 +597,11 @@ func (s *Service) AdminPatchUser(ctx context.Context, actorAccountID uuid.UUID, 
 }
 
 // AdminActivate sets status to active.
-func (s *Service) AdminActivateUser(ctx context.Context, actorAccountID uuid.UUID, organizationID uuid.UUID, accountID uuid.UUID) (*AdminAccountView, error) {
+func (s *Service) AdminActivateUser(ctx context.Context, actorAccountID uuid.UUID, companyID uuid.UUID, accountID uuid.UUID) (*AdminAccountView, error) {
 	if s == nil {
 		return nil, errors.New("auth service: nil")
 	}
-	cur, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, db.AuthAdminGetAccountByOrgAndIDParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-	})
+	cur, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, accountID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAccountNotFound
@@ -640,7 +610,7 @@ func (s *Service) AdminActivateUser(ctx context.Context, actorAccountID uuid.UUI
 	}
 	before := accountContributesOrgAdmin(cur.Status, cur.Roles)
 	after := accountContributesOrgAdmin("active", cur.Roles)
-	if err := s.guardRemoveFinalOrgAdmin(ctx, organizationID, accountID, before, after); err != nil {
+	if err := s.guardRemoveFinalOrgAdmin(ctx, companyID, accountID, before, after); err != nil {
 		return nil, err
 	}
 	if s.pool == nil {
@@ -652,19 +622,17 @@ func (s *Service) AdminActivateUser(ctx context.Context, actorAccountID uuid.UUI
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
-	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-		Email:          cur.Email,
-		Roles:          append([]string(nil), cur.Roles...),
-		Status:         "active",
+	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{Email: cur.Email,
+		Roles:  append([]string(nil), cur.Roles...),
+		Status: "active",
+
+		ID: accountID,
 	})
 	if err != nil {
 		return nil, err
 	}
 	if err := s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 		Action:          authAuditActivateUser,
-		OrganizationID:  organizationID,
 		ActorAccountID:  actorAccountID,
 		TargetAccountID: accountID,
 	}); err != nil {
@@ -678,14 +646,11 @@ func (s *Service) AdminActivateUser(ctx context.Context, actorAccountID uuid.UUI
 }
 
 // AdminDeactivate sets status to disabled.
-func (s *Service) AdminDeactivateUser(ctx context.Context, actorAccountID uuid.UUID, organizationID uuid.UUID, accountID uuid.UUID) (*AdminAccountView, error) {
+func (s *Service) AdminDeactivateUser(ctx context.Context, actorAccountID uuid.UUID, companyID uuid.UUID, accountID uuid.UUID) (*AdminAccountView, error) {
 	if s == nil {
 		return nil, errors.New("auth service: nil")
 	}
-	cur, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, db.AuthAdminGetAccountByOrgAndIDParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-	})
+	cur, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, accountID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAccountNotFound
@@ -693,7 +658,7 @@ func (s *Service) AdminDeactivateUser(ctx context.Context, actorAccountID uuid.U
 		return nil, err
 	}
 	before := accountContributesOrgAdmin(cur.Status, cur.Roles)
-	if err := s.guardRemoveFinalOrgAdmin(ctx, organizationID, accountID, before, false); err != nil {
+	if err := s.guardRemoveFinalOrgAdmin(ctx, companyID, accountID, before, false); err != nil {
 		return nil, err
 	}
 	if s.pool == nil {
@@ -705,12 +670,11 @@ func (s *Service) AdminDeactivateUser(ctx context.Context, actorAccountID uuid.U
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
-	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-		Email:          cur.Email,
-		Roles:          append([]string(nil), cur.Roles...),
-		Status:         "disabled",
+	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{Email: cur.Email,
+		Roles:  append([]string(nil), cur.Roles...),
+		Status: "disabled",
+
+		ID: accountID,
 	})
 	if err != nil {
 		return nil, err
@@ -720,7 +684,6 @@ func (s *Service) AdminDeactivateUser(ctx context.Context, actorAccountID uuid.U
 	}
 	if err := s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 		Action:          authAuditDeactivateUser,
-		OrganizationID:  organizationID,
 		ActorAccountID:  actorAccountID,
 		TargetAccountID: accountID,
 	}); err != nil {
@@ -740,17 +703,14 @@ func (s *Service) AdminDeactivateUser(ctx context.Context, actorAccountID uuid.U
 }
 
 // AdminResetPassword sets a new bcrypt hash and revokes refresh tokens.
-func (s *Service) AdminResetPassword(ctx context.Context, actorAccountID uuid.UUID, organizationID uuid.UUID, accountID uuid.UUID, req ResetPasswordRequest) (*AdminAccountView, error) {
+func (s *Service) AdminResetPassword(ctx context.Context, actorAccountID uuid.UUID, companyID uuid.UUID, accountID uuid.UUID, req ResetPasswordRequest) (*AdminAccountView, error) {
 	if s == nil {
 		return nil, errors.New("auth service: nil")
 	}
 	if err := s.validatePassword(req.Password); err != nil {
 		return nil, err
 	}
-	if _, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, db.AuthAdminGetAccountByOrgAndIDParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-	}); err != nil {
+	if _, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, accountID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAccountNotFound
 		}
@@ -762,9 +722,9 @@ func (s *Service) AdminResetPassword(ctx context.Context, actorAccountID uuid.UU
 	}
 	hash := string(hashBytes)
 	err = s.runPasswordTxn(ctx, func(tx pgx.Tx, q *db.Queries) error {
-		if err := q.AuthAdminSetPasswordHash(ctx, db.AuthAdminSetPasswordHashParams{
-			ID:           accountID,
-			PasswordHash: hash,
+		if err := q.AuthAdminSetPasswordHash(ctx, db.AuthAdminSetPasswordHashParams{PasswordHash: hash,
+
+			ID: accountID,
 		}); err != nil {
 			return err
 		}
@@ -773,7 +733,6 @@ func (s *Service) AdminResetPassword(ctx context.Context, actorAccountID uuid.UU
 		}
 		return s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 			Action:          authAuditResetPassword,
-			OrganizationID:  organizationID,
 			ActorAccountID:  actorAccountID,
 			TargetAccountID: accountID,
 		})
@@ -781,10 +740,7 @@ func (s *Service) AdminResetPassword(ctx context.Context, actorAccountID uuid.UU
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, db.AuthAdminGetAccountByOrgAndIDParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-	})
+	row, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -793,17 +749,14 @@ func (s *Service) AdminResetPassword(ctx context.Context, actorAccountID uuid.UU
 }
 
 // AdminRevokeUserSessions revokes all refresh tokens for a target account.
-func (s *Service) AdminRevokeUserSessions(ctx context.Context, actorAccountID uuid.UUID, organizationID uuid.UUID, accountID uuid.UUID) error {
+func (s *Service) AdminRevokeUserSessions(ctx context.Context, actorAccountID uuid.UUID, companyID uuid.UUID, accountID uuid.UUID) error {
 	if s == nil {
 		return errors.New("auth service: nil")
 	}
-	if actorAccountID == uuid.Nil || organizationID == uuid.Nil || accountID == uuid.Nil {
+	if actorAccountID == uuid.Nil || companyID == uuid.Nil || accountID == uuid.Nil {
 		return ErrInvalidRequest
 	}
-	if _, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, db.AuthAdminGetAccountByOrgAndIDParams{
-		ID:             accountID,
-		OrganizationID: organizationID,
-	}); err != nil {
+	if _, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, accountID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrAccountNotFound
 		}
@@ -821,15 +774,11 @@ func (s *Service) AdminRevokeUserSessions(ctx context.Context, actorAccountID uu
 	if err := qtx.AuthRevokeAllRefreshForAccount(ctx, accountID); err != nil {
 		return err
 	}
-	if err := qtx.AuthAdminRevokeAllAdminSessionsForUser(ctx, db.AuthAdminRevokeAllAdminSessionsForUserParams{
-		OrganizationID: organizationID,
-		UserID:         accountID,
-	}); err != nil {
+	if err := qtx.AuthAdminRevokeAllAdminSessionsForUser(ctx, accountID); err != nil {
 		return err
 	}
 	if err := s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 		Action:          authAuditRevokeSessions,
-		OrganizationID:  organizationID,
 		ActorAccountID:  actorAccountID,
 		TargetAccountID: accountID,
 	}); err != nil {
@@ -879,26 +828,21 @@ func (s *Service) ChangePassword(ctx context.Context, accountID uuid.UUID, req C
 		return err
 	}
 	hash := string(hashBytes)
-	orgID := acct.OrganizationID
 	err = s.runPasswordTxn(ctx, func(tx pgx.Tx, q *db.Queries) error {
-		if err := q.AuthAdminSetPasswordHash(ctx, db.AuthAdminSetPasswordHashParams{
-			ID:           accountID,
-			PasswordHash: hash,
+		if err := q.AuthAdminSetPasswordHash(ctx, db.AuthAdminSetPasswordHashParams{PasswordHash: hash,
+
+			ID: accountID,
 		}); err != nil {
 			return err
 		}
 		if err := q.AuthRevokeAllRefreshForAccount(ctx, accountID); err != nil {
 			return err
 		}
-		if err := q.AuthAdminRevokeAllAdminSessionsForUser(ctx, db.AuthAdminRevokeAllAdminSessionsForUserParams{
-			OrganizationID: orgID,
-			UserID:         accountID,
-		}); err != nil {
+		if err := q.AuthAdminRevokeAllAdminSessionsForUser(ctx, accountID); err != nil {
 			return err
 		}
 		return s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 			Action:          authAuditSelfChangePassword,
-			OrganizationID:  orgID,
 			ActorAccountID:  accountID,
 			TargetAccountID: accountID,
 		})
@@ -911,18 +855,12 @@ func (s *Service) RequestPasswordReset(ctx context.Context, req PasswordResetReq
 	if s == nil {
 		return nil, errors.New("auth service: nil")
 	}
-	if req.OrganizationID == uuid.Nil {
-		return nil, ErrInvalidRequest
-	}
 	email, err := normalizeEmail(req.Email)
 	if err != nil {
 		return nil, ErrInvalidRequest
 	}
 	out := &PasswordResetIssueResult{Accepted: true}
-	acct, err := s.q.AuthLookupAccountByOrgEmailAnyStatus(ctx, db.AuthLookupAccountByOrgEmailAnyStatusParams{
-		OrganizationID: req.OrganizationID,
-		Lower:          email,
-	})
+	acct, err := s.q.AuthLookupAccountByOrgEmailAnyStatus(ctx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return out, nil
@@ -948,17 +886,15 @@ func (s *Service) RequestPasswordReset(ctx context.Context, req PasswordResetReq
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
 	if err := qtx.AuthInsertPasswordResetToken(ctx, db.AuthInsertPasswordResetTokenParams{
-		ID:             tokID,
-		UserID:         acct.ID,
-		OrganizationID: acct.OrganizationID,
-		TokenHash:      hash,
-		ExpiresAt:      exp,
+		ID:        tokID,
+		UserID:    acct.ID,
+		TokenHash: hash,
+		ExpiresAt: exp,
 	}); err != nil {
 		return nil, err
 	}
 	if err := s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 		Action:          authAuditRequestReset,
-		OrganizationID:  acct.OrganizationID,
 		ActorAccountID:  acct.ID,
 		TargetAccountID: acct.ID,
 	}); err != nil {
@@ -1006,24 +942,20 @@ func (s *Service) ConfirmPasswordReset(ctx context.Context, req PasswordResetCon
 		if err := q.AuthMarkPasswordResetTokenUsed(ctx, row.ID); err != nil {
 			return err
 		}
-		if err := q.AuthAdminSetPasswordHash(ctx, db.AuthAdminSetPasswordHashParams{
-			ID:           row.UserID,
-			PasswordHash: hash,
+		if err := q.AuthAdminSetPasswordHash(ctx, db.AuthAdminSetPasswordHashParams{PasswordHash: hash,
+
+			ID: row.UserID,
 		}); err != nil {
 			return err
 		}
 		if err := q.AuthRevokeAllRefreshForAccount(ctx, row.UserID); err != nil {
 			return err
 		}
-		if err := q.AuthAdminRevokeAllAdminSessionsForUser(ctx, db.AuthAdminRevokeAllAdminSessionsForUserParams{
-			OrganizationID: acct.OrganizationID,
-			UserID:         row.UserID,
-		}); err != nil {
+		if err := q.AuthAdminRevokeAllAdminSessionsForUser(ctx, row.UserID); err != nil {
 			return err
 		}
 		return s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 			Action:          authAuditConfirmReset,
-			OrganizationID:  acct.OrganizationID,
 			ActorAccountID:  acct.ID,
 			TargetAccountID: acct.ID,
 		})

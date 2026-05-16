@@ -18,20 +18,19 @@ import (
 	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
 )
 
-// MachineOrgSite is tenant + site for a machine row.
+// MachineOrgSite holds site routing metadata for a machine row.
 type MachineOrgSite struct {
-	OrganizationID uuid.UUID
-	SiteID         uuid.UUID
+	SiteID uuid.UUID
 }
 
-// GetMachineOrgSite returns organization_id and site_id for envelope routing.
+// GetMachineOrgSite returns site_id for a machine (single-company schema; no machines.scope_id).
 func (s *Store) GetMachineOrgSite(ctx context.Context, machineID uuid.UUID) (MachineOrgSite, error) {
 	if s == nil || s.pool == nil {
 		return MachineOrgSite{}, errors.New("postgres: nil store")
 	}
-	const q = `SELECT organization_id, site_id FROM machines WHERE id = $1`
+	const q = `SELECT site_id FROM machines WHERE id = $1`
 	var row MachineOrgSite
-	err := s.pool.QueryRow(ctx, q, machineID).Scan(&row.OrganizationID, &row.SiteID)
+	err := s.pool.QueryRow(ctx, q, machineID).Scan(&row.SiteID)
 	if err != nil {
 		return MachineOrgSite{}, err
 	}
@@ -66,17 +65,17 @@ func jsonFingerprint(b []byte) string {
 }
 
 // UpsertMachineCurrentSnapshotRow upserts the denormalized snapshot row (worker).
-func (s *Store) UpsertMachineCurrentSnapshotRow(ctx context.Context, machineID, orgID, siteID uuid.UUID, reported, metrics []byte, repFp, metFp *string, hbAt *time.Time, appVer, fwVer *string) error {
+func (s *Store) UpsertMachineCurrentSnapshotRow(ctx context.Context, machineID, siteID uuid.UUID, reported, metrics []byte, repFp, metFp *string, hbAt *time.Time, appVer, fwVer *string) error {
 	if s == nil || s.pool == nil {
 		return errors.New("postgres: nil store")
 	}
 	const q = `
 INSERT INTO machine_current_snapshot (
-	machine_id, organization_id, site_id,
+	machine_id, site_id,
 	reported_fingerprint, metrics_fingerprint,
 	reported_state, metrics_state,
 	last_heartbeat_at, app_version, firmware_version, updated_at
-) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8,$9,$10, now())
+) VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7,$8,$9, now())
 ON CONFLICT (machine_id) DO UPDATE SET
 	reported_fingerprint = COALESCE(EXCLUDED.reported_fingerprint, machine_current_snapshot.reported_fingerprint),
 	metrics_fingerprint = COALESCE(EXCLUDED.metrics_fingerprint, machine_current_snapshot.metrics_fingerprint),
@@ -87,7 +86,7 @@ ON CONFLICT (machine_id) DO UPDATE SET
 	firmware_version = COALESCE(EXCLUDED.firmware_version, machine_current_snapshot.firmware_version),
 	updated_at = now()
 `
-	_, err := s.pool.Exec(ctx, q, machineID, orgID, siteID, repFp, metFp, jsonOrEmpty(reported), jsonOrEmpty(metrics), hbAt, appVer, fwVer)
+	_, err := s.pool.Exec(ctx, q, machineID, siteID, repFp, metFp, jsonOrEmpty(reported), jsonOrEmpty(metrics), hbAt, appVer, fwVer)
 	return err
 }
 
@@ -111,7 +110,7 @@ func (s *Store) ApplyShadowReportedProjection(ctx context.Context, machineID uui
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	if _, err := q.GetMachineByIDForUpdate(ctx, machineID); err != nil {
+	if _, err = q.GetMachineByIDForUpdate(ctx, machineID); err != nil {
 		return err
 	}
 	if _, err := q.UpsertMachineShadowReported(ctx, db.UpsertMachineShadowReportedParams{
@@ -121,7 +120,7 @@ func (s *Store) ApplyShadowReportedProjection(ctx context.Context, machineID uui
 		return err
 	}
 	var loc MachineOrgSite
-	if err := tx.QueryRow(ctx, `SELECT organization_id, site_id FROM machines WHERE id = $1`, machineID).Scan(&loc.OrganizationID, &loc.SiteID); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT site_id FROM machines WHERE id = $1`, machineID).Scan(&loc.SiteID); err != nil {
 		return err
 	}
 	var prev *string
@@ -141,15 +140,15 @@ VALUES ($1,'shadow.reported',$2::jsonb,$3::jsonb,$4::jsonb, now())`,
 	}
 	if _, err := tx.Exec(ctx, `
 INSERT INTO machine_current_snapshot (
-	machine_id, organization_id, site_id, reported_fingerprint, reported_state, app_version, firmware_version, updated_at
-) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7, now())
+	machine_id, site_id, reported_fingerprint, reported_state, app_version, firmware_version, updated_at
+) VALUES ($1,$2,$3,$4::jsonb,$5,$6, now())
 ON CONFLICT (machine_id) DO UPDATE SET
 	reported_fingerprint = EXCLUDED.reported_fingerprint,
 	reported_state = EXCLUDED.reported_state,
 	app_version = COALESCE(EXCLUDED.app_version, machine_current_snapshot.app_version),
 	firmware_version = COALESCE(EXCLUDED.firmware_version, machine_current_snapshot.firmware_version),
 	updated_at = now()
-`, machineID, loc.OrganizationID, loc.SiteID, fp, jsonOrEmpty(reported), appVer, fwVer); err != nil {
+`, machineID, loc.SiteID, fp, jsonOrEmpty(reported), appVer, fwVer); err != nil {
 		return err
 	}
 	if err := q.TouchMachineConnectivity(ctx, machineID); err != nil {
@@ -195,14 +194,14 @@ func (s *Store) UpsertHeartbeatSnapshot(ctx context.Context, machineID uuid.UUID
 	}
 	const q = `
 INSERT INTO machine_current_snapshot (
-	machine_id, organization_id, site_id,
+	machine_id, site_id,
 	reported_state, metrics_state, last_heartbeat_at, updated_at
-) VALUES ($1,$2,$3,'{}'::jsonb,'{}'::jsonb,$4, now())
+) VALUES ($1,$2,'{}'::jsonb,'{}'::jsonb,$3, now())
 ON CONFLICT (machine_id) DO UPDATE SET
 	last_heartbeat_at = EXCLUDED.last_heartbeat_at,
 	updated_at = now()
 `
-	_, err = s.pool.Exec(ctx, q, machineID, loc.OrganizationID, loc.SiteID, at)
+	_, err = s.pool.Exec(ctx, q, machineID, loc.SiteID, at)
 	return err
 }
 
@@ -254,7 +253,6 @@ VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb, now(), $8)`
 // TelemetrySnapshotRow is a read model for admin APIs.
 type TelemetrySnapshotRow struct {
 	MachineID         uuid.UUID
-	OrganizationID    uuid.UUID
 	SiteID            uuid.UUID
 	ReportedState     []byte
 	MetricsState      []byte
@@ -292,7 +290,6 @@ func (s *Store) GetTelemetrySnapshot(ctx context.Context, machineID uuid.UUID) (
 	const q = `
 SELECT
 	snap.machine_id,
-	snap.organization_id,
 	snap.site_id,
 	snap.reported_state,
 	snap.metrics_state,
@@ -309,18 +306,17 @@ SELECT
 	COALESCE(
 		NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
 		s.timezone,
-		o.default_timezone
+		'UTC'
 	) AS effective_timezone
 FROM machine_current_snapshot snap
 INNER JOIN machines m ON m.id = snap.machine_id
-INNER JOIN sites s ON s.id = m.site_id AND s.organization_id = m.organization_id
-INNER JOIN organizations o ON o.id = m.organization_id
+INNER JOIN sites s ON s.id = m.site_id
 WHERE snap.machine_id = $1`
 	var r TelemetrySnapshotRow
 	var androidID, simSerial, simIccid, deviceModel, osVer pgtype.Text
 	var lastIdentity pgtype.Timestamptz
 	err := s.pool.QueryRow(ctx, q, machineID).Scan(
-		&r.MachineID, &r.OrganizationID, &r.SiteID, &r.ReportedState, &r.MetricsState,
+		&r.MachineID, &r.SiteID, &r.ReportedState, &r.MetricsState,
 		&r.LastHeartbeatAt, &r.AppVersion, &r.FirmwareVersion, &r.UpdatedAt,
 		&androidID, &simSerial, &simIccid, &deviceModel, &osVer, &lastIdentity,
 		&r.EffectiveTimezone,
@@ -550,8 +546,8 @@ func (s *Store) AppendInventoryEventFromDeviceTelemetry(ctx context.Context, env
 	if s == nil || s.pool == nil {
 		return false, errors.New("postgres: nil store")
 	}
-	if env.TenantID == nil {
-		return false, errors.New("postgres: tenant_id is required for inventory projection")
+	if env.CompanyID == nil {
+		return false, errors.New("postgres: company_id is required for inventory projection")
 	}
 	idem := strings.TrimSpace(env.Idempotency)
 	if idem == "" {
@@ -567,9 +563,9 @@ func (s *Store) AppendInventoryEventFromDeviceTelemetry(ctx context.Context, env
 	if strings.TrimSpace(wire.SlotCode) == "" {
 		return false, errors.New("postgres: slot_code is required for device inventory ingest")
 	}
-	n, err := db.New(s.pool).InventoryAdminCountInventoryEventsByIdempotencyKey(ctx, db.InventoryAdminCountInventoryEventsByIdempotencyKeyParams{
+	n, err := db.New(s.pool).InventoryAdminCountInventoryEventsByIdempotencyKey(ctx, db.InventoryAdminCountInventoryEventsByIdempotencyKeyParams{Column2: idem,
+
 		MachineID: env.MachineID,
-		Column2:   idem,
 	})
 	if err != nil {
 		return false, err
@@ -596,13 +592,13 @@ func (s *Store) AppendInventoryEventFromDeviceTelemetry(ctx context.Context, env
 		occ = env.EmittedAt.UTC()
 	}
 	elem := map[string]any{
-		"organization_id": env.TenantID.String(),
-		"machine_id":      env.MachineID.String(),
-		"slot_code":       strings.TrimSpace(wire.SlotCode),
-		"event_type":      wire.EventType,
-		"quantity_delta":  wire.QuantityDelta,
-		"occurred_at":     occ.Format(time.RFC3339Nano),
-		"metadata":        json.RawMessage(metaJSON),
+		"scope_id":       env.CompanyID.String(),
+		"machine_id":     env.MachineID.String(),
+		"slot_code":      strings.TrimSpace(wire.SlotCode),
+		"event_type":     wire.EventType,
+		"quantity_delta": wire.QuantityDelta,
+		"occurred_at":    occ.Format(time.RFC3339Nano),
+		"metadata":       json.RawMessage(metaJSON),
 	}
 	if wire.ProductID != nil {
 		elem["product_id"] = wire.ProductID.String()
@@ -639,16 +635,16 @@ func pickSlotSnapshotForVend(slots []db.InventoryAdminListMachineSlotsRow, slotI
 
 // applyCommerceVendSuccessInventoryTx decrements machine_slot_state after a successful vend (idempotent on idempotencyKey).
 // Caller must hold an open transaction; q must be bound to that transaction.
-func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, orgID, machineID, orderID uuid.UUID, slotIndex int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
+func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, scopeID, machineID, orderID uuid.UUID, slotIndex int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
 	if strings.TrimSpace(idempotencyKey) == "" {
 		return false, errors.New("postgres: idempotency_key is required for vend inventory")
 	}
-	m, err := q.GetMachineByIDForUpdate(ctx, machineID)
+	_, err = q.GetMachineByIDForUpdate(ctx, machineID)
 	if err != nil {
 		return false, err
 	}
-	if m.OrganizationID != orgID {
-		return false, ErrMachineOrganizationMismatch
+	if uuid.Nil != scopeID {
+		return false, ErrMachineScopeMismatch
 	}
 	vend, err := q.GetVendSessionByOrderAndSlot(ctx, db.GetVendSessionByOrderAndSlotParams{
 		OrderID:   orderID,
@@ -663,9 +659,9 @@ func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, org
 	if vend.State != "success" {
 		return false, fmt.Errorf("postgres: vend session must be success before inventory decrement")
 	}
-	cnt, err := q.InventoryAdminCountInventoryEventsByIdempotencyKey(ctx, db.InventoryAdminCountInventoryEventsByIdempotencyKeyParams{
+	cnt, err := q.InventoryAdminCountInventoryEventsByIdempotencyKey(ctx, db.InventoryAdminCountInventoryEventsByIdempotencyKeyParams{Column2: idempotencyKey,
+
 		MachineID: machineID,
-		Column2:   idempotencyKey,
 	})
 	if err != nil {
 		return false, err
@@ -700,15 +696,15 @@ func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, org
 	}
 	slotCode := fmt.Sprintf("S%d", slotIndex)
 	elem := map[string]any{
-		"organization_id": orgID.String(),
-		"machine_id":      machineID.String(),
-		"slot_code":       slotCode,
-		"event_type":      "sale",
-		"quantity_delta":  -1,
-		"quantity_after":  newQty,
-		"product_id":      productID.String(),
-		"occurred_at":     time.Now().UTC().Format(time.RFC3339Nano),
-		"metadata":        json.RawMessage(metaJSON),
+		"scope_id":       scopeID.String(),
+		"machine_id":     machineID.String(),
+		"slot_code":      slotCode,
+		"event_type":     "sale",
+		"quantity_delta": -1,
+		"quantity_after": newQty,
+		"product_id":     productID.String(),
+		"occurred_at":    time.Now().UTC().Format(time.RFC3339Nano),
+		"metadata":       json.RawMessage(metaJSON),
 	}
 	if correlationID != nil {
 		elem["correlation_id"] = correlationID.String()
@@ -734,7 +730,7 @@ func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, org
 }
 
 // ApplyCommerceVendSuccessInventory decrements machine_slot_state after a successful vend (idempotent on idempotencyKey).
-func (s *Store) ApplyCommerceVendSuccessInventory(ctx context.Context, orgID, machineID, orderID uuid.UUID, slotIndex int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
+func (s *Store) ApplyCommerceVendSuccessInventory(ctx context.Context, scopeID, machineID, orderID uuid.UUID, slotIndex int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
 	if s == nil || s.pool == nil {
 		return false, errors.New("postgres: nil store")
 	}
@@ -745,7 +741,7 @@ func (s *Store) ApplyCommerceVendSuccessInventory(ctx context.Context, orgID, ma
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	replay, err = applyCommerceVendSuccessInventoryTx(ctx, q, orgID, machineID, orderID, slotIndex, productID, idempotencyKey, correlationID)
+	replay, err = applyCommerceVendSuccessInventoryTx(ctx, q, scopeID, machineID, orderID, slotIndex, productID, idempotencyKey, correlationID)
 	if err != nil {
 		return false, err
 	}

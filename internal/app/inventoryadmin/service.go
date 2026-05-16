@@ -25,10 +25,9 @@ func NewService(q *db.Queries) (*Service, error) {
 
 // MachineHead is minimal machine metadata for responses.
 type MachineHead struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	Name           string
-	Status         string
+	ID     uuid.UUID
+	Name   string
+	Status string
 }
 
 // ResolveMachine loads the machine row or ErrMachineNotFound.
@@ -47,10 +46,9 @@ func (s *Service) ResolveMachine(ctx context.Context, machineID uuid.UUID) (Mach
 		return MachineHead{}, err
 	}
 	return MachineHead{
-		ID:             row.ID,
-		OrganizationID: row.OrganizationID,
-		Name:           row.Name,
-		Status:         row.Status,
+		ID:     row.ID,
+		Name:   row.Name,
+		Status: row.Status,
 	}, nil
 }
 

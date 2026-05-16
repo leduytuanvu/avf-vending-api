@@ -24,7 +24,7 @@ Required environment:
 ```bash
 ALLOW_PROD_WRITES=true
 PROD_WRITE_CONFIRMATION=RUN_DESTRUCTIVE_PRODUCTION_TESTS
-CANARY_ORGANIZATION_ID=<canary org only>
+CANARY_SCOPE_ID=<canary company scope UUID only>
 CANARY_MACHINE_ID=<canary machine only>
 CANARY_MACHINE_TOKEN=<canary machine token>
 CANARY_SITE_ID=<canary site only>
@@ -35,7 +35,7 @@ BASE_URL=<production or staging API URL>
 
 Rules:
 
-- Do not use real customer organization, site, machine, product, or slot IDs.
+- Do not use real customer company, site, machine, product, or slot IDs.
 - Do not call a real payment provider destructive operation unless the PSP sandbox/canary account is explicitly configured.
 - Do not publish commands to non-canary MQTT topics.
 - Store evidence under `reports/test/` and `.e2e-runs/`; redact tokens before sharing reports.

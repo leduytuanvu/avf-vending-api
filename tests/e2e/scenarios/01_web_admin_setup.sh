@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# Web Admin setup: auth, org-scoped tenant entities, catalog, planogram+inventory (when planogram + operator session allow).
+# Web Admin setup: auth, company entities, catalog, planogram+inventory (when planogram + operator session allow).
 # Canonical paths per docs/swagger/swagger.json and Postman/OpenAPI.
 
 set -euo pipefail
@@ -57,9 +57,8 @@ fi
 
 # load_env + e2e_target_safety_guard already ran in runner; production writes still blocked without confirmation.
 
-ORG_NAME=$(jq -r '.organization.name // "E2E Organization"' "$SEED_FILE")
 SITE_NAME_SEED=$(jq -r '.site.name // "E2E Site"' "$SEED_FILE")
-SITE_TZ=$(jq -r '.organization.timezone // "UTC"' "$SEED_FILE")
+SITE_TZ=$(jq -r '.company.timezone // "UTC"' "$SEED_FILE")
 CABINET=$(jq -r '.planogram.cabinet_code // "A"' "$SEED_FILE")
 SLOT=$(jq -r '.planogram.slots[0].slot_code // "A1"' "$SEED_FILE")
 PRICE_MINOR=$(jq -r '.planogram.slots[0].price_minor // 15000' "$SEED_FILE")
@@ -73,50 +72,34 @@ e2e_set_data currency "$CUR"
 e2e_set_data seedSuffix "$SUFFIX"
 
 # --- Auth ---
-ORG_ID=""
 if [[ -n "${ADMIN_TOKEN:-}" ]] && [[ -n "${ADMIN_TOKEN// }" ]]; then
   export ADMIN_TOKEN
   wa_ev "auth" "ADMIN_TOKEN env" "pass" "Using pre-configured ADMIN_TOKEN" "{}"
-  if [[ "${E2E_REUSE_DATA:-false}" == "true" ]] && [[ -n "$(get_data organizationId)" ]] && [[ "$(get_data organizationId)" != "null" ]]; then
-    ORG_ID="$(get_data organizationId)"
-  else
-    ORG_ID="${E2E_ORGANIZATION_ID:-}"
-  fi
-  if [[ -z "$ORG_ID" ]]; then
-    wa_fail "auth" "—" "ADMIN_TOKEN set but organizationId unknown: set E2E_ORGANIZATION_ID or use --reuse-data with test-data containing organizationId"
-  fi
-  e2e_set_data organizationId "$ORG_ID"
 else
-  if [[ -z "${ADMIN_EMAIL:-}" ]] || [[ -z "${ADMIN_PASSWORD:-}" ]] || [[ -z "${E2E_ORGANIZATION_ID:-}" ]]; then
-    wa_fail "auth" "POST /v1/auth/login" "Need ADMIN_TOKEN or ADMIN_EMAIL+ADMIN_PASSWORD+E2E_ORGANIZATION_ID (login body per OpenAPI). Local DB must contain this org and user — seed via make/migrations or ops scripts."
+	if [[ -z "${ADMIN_EMAIL:-}" ]] || [[ -z "${ADMIN_PASSWORD:-}" ]]; then
+		wa_fail "auth" "POST /v1/auth/login" "Need ADMIN_TOKEN or ADMIN_EMAIL+ADMIN_PASSWORD. Local DB must contain this admin user — seed via make/migrations or ops scripts."
   fi
   LOGIN_JSON="$(jq -nc \
     --arg email "$ADMIN_EMAIL" \
     --arg password "$ADMIN_PASSWORD" \
-    --arg oid "$E2E_ORGANIZATION_ID" \
-    '{email:$email,password:$password,organizationId:$oid}')"
+		'{email:$email,password:$password}')"
   code="$(e2e_http_post_json_anon "wa-login" "/v1/auth/login" "$LOGIN_JSON")"
   if ! e2e_http_assert_status "wa-login" "200" "$code"; then
-    wa_fail "auth" "POST /v1/auth/login" "Login failed (HTTP $code). Check credentials, organizationId, and API logs in rest/wa-login.response.json."
+		wa_fail "auth" "POST /v1/auth/login" "Login failed (HTTP $code). Check credentials and API logs in rest/wa-login.response.json."
   fi
   export ADMIN_TOKEN="$(e2e_jq_resp wa-login -r '.tokens.accessToken // empty')"
   if [[ -z "$ADMIN_TOKEN" ]]; then
     wa_fail "auth" "POST /v1/auth/login" "No accessToken in login response"
   fi
   save_token adminAccessToken "$ADMIN_TOKEN"
-  ORG_ID="$(e2e_jq_resp wa-login -r '.organizationId // empty')"
-  [[ -n "$ORG_ID" ]] || ORG_ID="$E2E_ORGANIZATION_ID"
-  e2e_set_data organizationId "$ORG_ID"
-  wa_ev "auth" "POST /v1/auth/login" "pass" "Obtained JWT" "$(jq -nc --arg o "$ORG_ID" '{organizationId:$o}')"
+	wa_ev "auth" "POST /v1/auth/login" "pass" "Obtained JWT" "{}"
 fi
-
-Q_ORG="organization_id=$(printf '%s' "$ORG_ID" | jq -sRr @uri)"
 
 # --- Site ---
 SITE_ID=""
 if [[ "${E2E_REUSE_DATA:-false}" == "true" ]] && [[ -n "$(get_data siteId)" ]] && [[ "$(get_data siteId)" != "null" ]]; then
   SITE_ID="$(get_data siteId)"
-  wa_ev "site" "reuse test-data siteId" "pass" "Reusing site" "$(jq -nc --arg o "$ORG_ID" --arg s "$SITE_ID" '{organizationId:$o,siteId:$s}')"
+	wa_ev "site" "reuse test-data siteId" "pass" "Reusing site" "$(jq -nc --arg s "$SITE_ID" '{siteId:$s}')"
 else
   SITE_CODE="E${SUFFIX}"
   SITE_CODE="${SITE_CODE:0:12}"
@@ -126,14 +109,14 @@ else
     --arg tz "$SITE_TZ" \
     --arg l1 "E2E ${SUFFIX}" \
     '{name:$name,code:$code,timezone:$tz,address:{line1:$l1}}')"
-  path="/v1/admin/organizations/${ORG_ID}/sites"
+	path="/v1/admin/sites"
   code="$(e2e_http_post_json "wa-site-create" "$path" "$SITE_BODY")"
   if ! e2e_http_assert_status "wa-site-create" "201" "$code"; then
     wa_fail "site" "$path" "Create site failed HTTP $code — see rest/wa-site-create.response.json"
   fi
   SITE_ID="$(e2e_jq_resp wa-site-create -r '.id // empty')"
   e2e_set_data siteId "$SITE_ID"
-  wa_ev "site" "$path" "pass" "Created site" "$(jq -nc --arg o "$ORG_ID" --arg s "$SITE_ID" '{organizationId:$o,siteId:$s}')"
+	wa_ev "site" "$path" "pass" "Created site" "$(jq -nc --arg s "$SITE_ID" '{siteId:$s}')"
 fi
 
 # --- Machine ---
@@ -151,7 +134,7 @@ else
     --arg model "$MACHINE_MODEL" \
     --arg code "m-${SUFFIX}" \
     '{name:$name,serialNumber:$serial,siteId:$sid,status:"draft",timezone:"UTC",cabinetType:"ambient",model:$model,code:$code}')"
-  path="/v1/admin/organizations/${ORG_ID}/machines"
+	path="/v1/admin/machines"
   code="$(e2e_http_post_json "wa-machine-create" "$path" "$M_BODY")"
   if ! e2e_http_assert_status "wa-machine-create" "201" "$code"; then
     wa_fail "machine" "$path" "Create machine failed HTTP $code — see rest/wa-machine-create.response.json (site valid? permissions?)"
@@ -168,9 +151,8 @@ if [[ "${E2E_REUSE_DATA:-false}" == "true" ]] && [[ -n "$(get_data activationCod
   wa_ev "activation" "reuse" "pass" "Reuse activationCodeId in test-data" "$(jq -nc --arg a "$(get_data activationCodeId)" '{activationCodeId:$a}')"
 else
   A_BODY="$(jq -nc \
-    --arg mid "$MACHINE_ID" \
-    '{machineId:$mid,expiresInMinutes:10080,maxUses:2,notes:"e2e web admin setup"}')"
-  path="/v1/admin/organizations/${ORG_ID}/activation-codes"
+    '{expiresInMinutes:10080,maxUses:2,notes:"e2e web admin setup"}')"
+	path="/v1/admin/machines/${MACHINE_ID}/activation-codes"
   code="$(e2e_http_post_json_idem "wa-activation-create" "$path" "$A_BODY" "e2e-act-${SUFFIX}")"
   if ! e2e_http_assert_status "wa-activation-create" "201" "$code"; then
     wa_fail "activation" "$path" "Activation code issue failed HTTP $code — rest/wa-activation-create.response.json"
@@ -185,7 +167,7 @@ else
 fi
 
 # Planogram publish triggers remote MQTT dispatch; dispatcher only accepts commandable (active) machines.
-path_act="/v1/admin/machines/${MACHINE_ID}?${Q_ORG}"
+path_act="/v1/admin/machines/${MACHINE_ID}"
 ACT_BODY='{"status":"active"}'
 code_act="$(e2e_http_patch_json "wa-machine-status-active" "$path_act" "$ACT_BODY")"
 if ! e2e_http_assert_status "wa-machine-status-active" "200" "$code_act"; then
@@ -200,8 +182,8 @@ if [[ "${E2E_REUSE_DATA:-false}" == "true" ]] && [[ -n "$(get_data categoryId)" 
   CAT_ID="$(get_data categoryId)"
   wa_ev "category" "reuse" "pass" "Reusing categoryId" "$(jq -nc --arg c "$CAT_ID" '{categoryId:$c}')"
 else
-  C_BODY="$(jq -nc --arg name "${ORG_NAME} Cat ${SUFFIX}" --arg slug "$CAT_SLUG" '{name:$name,slug:$slug,parentId:null,active:true}')"
-  path="/v1/admin/categories?${Q_ORG}"
+	C_BODY="$(jq -nc --arg name "E2E Cat ${SUFFIX}" --arg slug "$CAT_SLUG" '{name:$name,slug:$slug,parentId:null,active:true}')"
+	path="/v1/admin/categories"
   code="$(e2e_http_post_json_idem "wa-category-create" "$path" "$C_BODY" "e2e-cat-${SUFFIX}")"
   if ! e2e_http_assert_status "wa-category-create" "200" "$code"; then
     wa_fail "category" "$path" "Create category failed HTTP $code"
@@ -218,7 +200,7 @@ if [[ "${E2E_WEB_ADMIN_SKIP_BRAND:-}" == "1" ]]; then
 else
   BR_SLUG="e2e-brand-${SUFFIX}"
   B_BODY="$(jq -nc --arg name "E2E Brand ${SUFFIX}" --arg slug "$BR_SLUG" '{name:$name,slug:$slug,active:true}')"
-  path="/v1/admin/brands?${Q_ORG}"
+	path="/v1/admin/brands"
   code="$(e2e_http_post_json_idem "wa-brand-create" "$path" "$B_BODY" "e2e-brand-${SUFFIX}")"
   if e2e_http_assert_status "wa-brand-create" "200" "$code"; then
     BRAND_ID="$(e2e_jq_resp wa-brand-create -r '.id // empty')"
@@ -236,7 +218,7 @@ if [[ "${E2E_WEB_ADMIN_SKIP_TAG:-}" == "1" ]]; then
 else
   T_SLUG="e2e-tag-${SUFFIX}"
   T_BODY="$(jq -nc --arg name "E2E Tag ${SUFFIX}" --arg slug "$T_SLUG" '{name:$name,slug:$slug,active:true}')"
-  path="/v1/admin/tags?${Q_ORG}"
+	path="/v1/admin/tags"
   code="$(e2e_http_post_json_idem "wa-tag-create" "$path" "$T_BODY" "e2e-tag-${SUFFIX}")"
   if e2e_http_assert_status "wa-tag-create" "200" "$code"; then
     TAG_ID="$(e2e_jq_resp wa-tag-create -r '.id // empty')"
@@ -262,7 +244,7 @@ else
   if [[ -n "$BRAND_ID" ]]; then
     P_BODY="$(echo "$P_BODY" | jq --arg bid "$BRAND_ID" '. + {brandId:$bid}')"
   fi
-  path="/v1/admin/products?${Q_ORG}"
+	path="/v1/admin/products"
   code="$(e2e_http_post_json_idem "wa-product-create" "$path" "$P_BODY" "e2e-prod-${SUFFIX}")"
   if ! e2e_http_assert_status "wa-product-create" "200" "$code"; then
     wa_fail "product" "$path" "Create product failed HTTP $code — check Idempotency-Key / SKU / category"
@@ -274,10 +256,10 @@ else
 fi
 
 log_idempotency_issue "P3" "$FLOW_ID" "$SCENARIO_ID" "admin-create-status-codes" "REST" "POST /v1/admin/*" "Setup uses 201 for site/machine creation but 200 for category/product in this flow — inconsistent REST semantics for 'created' resources" "Clients may mishandle Location/caching" "Normalize status codes and idempotent replay bodies in OpenAPI" "${E2E_RUN_DIR}/rest/wa-site-create.meta.json"
-log_docs_issue "P3" "$FLOW_ID" "$SCENARIO_ID" "setup-ordering" "docs" "WA-SETUP-01" "Tenant bootstrap ordering (auth→site→machine→activation→category→product→planogram) is implicit — unclear which steps can run in parallel or be retried safely" "Ops/automation errors" "Publish numbered setup runbook; mark optional vs required dependencies" "${E2E_RUN_DIR}/test-data.json"
+log_docs_issue "P3" "$FLOW_ID" "$SCENARIO_ID" "setup-ordering" "docs" "WA-SETUP-01" "Company bootstrap ordering (auth→site→machine→activation→category→product→planogram) is implicit — unclear which steps can run in parallel or be retried safely" "Ops/automation errors" "Publish numbered setup runbook; mark optional vs required dependencies" "${E2E_RUN_DIR}/test-data.json"
 
 # --- Planogram template + operator session + draft/publish + stock (best-effort) ---
-plc="$(e2e_http_get "wa-planogram-list" "/v1/admin/planograms?${Q_ORG}&limit=20")"
+plc="$(e2e_http_get "wa-planogram-list" "/v1/admin/planograms?limit=20")"
 if [[ "$plc" != "200" ]]; then
   wa_ev "planogram" "GET /v1/admin/planograms" "skip" "List planograms HTTP $plc (forbidden / wrong org?)" "{}"
   log_warn "Planogram list not available (HTTP ${plc}); skipping machine planogram + inventory."
@@ -307,7 +289,7 @@ if [[ -z "$PG_ID" ]]; then
 fi
 e2e_set_data planogramId "$PG_ID"
 e2e_set_data planogramRevision "$PG_REV"
-wa_ev "planogram-list" "GET /v1/admin/planograms?${Q_ORG}" "pass" "Selected planogram" "$(jq -nc --arg p "$PG_ID" --argjson r "$PG_REV" '{planogramId:$p,planogramRevision:$r}')"
+wa_ev "planogram-list" "GET /v1/admin/planograms" "pass" "Selected planogram" "$(jq -nc --arg p "$PG_ID" --argjson r "$PG_REV" '{planogramId:$p,planogramRevision:$r}')"
 
 OP_BODY="$(jq -nc '{force_admin_takeover:true, auth_method:"oidc"}')"
 code="$(e2e_http_post_json "wa-operator-login" "/v1/machines/${MACHINE_ID}/operator-sessions/login" "$OP_BODY")"
@@ -345,7 +327,7 @@ TOPO_JSON="$(jq -nc \
       status:"published"
     }]
   }')"
-path_topo="/v1/admin/machines/${MACHINE_ID}/topology?${Q_ORG}"
+path_topo="/v1/admin/machines/${MACHINE_ID}/topology"
 code_topo="$(e2e_http_put_json "wa-machine-topology" "$path_topo" "$TOPO_JSON")"
 if ! e2e_http_assert_status "wa-machine-topology" "204" "$code_topo"; then
   wa_ev "machine-topology" "$path_topo" "skip" "Topology PUT HTTP $code_topo — inspect rest/wa-machine-topology.response.json" "{}"
@@ -384,7 +366,7 @@ DRAFT_JSON="$(jq -nc \
       metadata:{}
     }]
   }')"
-path="/v1/admin/machines/${MACHINE_ID}/planograms/draft?${Q_ORG}"
+path="/v1/admin/machines/${MACHINE_ID}/planograms/draft"
 code="$(e2e_http_put_json "wa-planogram-draft" "$path" "$DRAFT_JSON")"
 if ! e2e_http_assert_status "wa-planogram-draft" "204" "$code"; then
   wa_ev "planogram-draft" "$path" "skip" "Draft save HTTP $code — inspect rest/wa-planogram-draft.response.json" "{}"
@@ -397,7 +379,7 @@ fi
 wa_ev "planogram-draft" "$path" "pass" "Saved draft slots" "$(jq -nc --arg p "$PG_ID" '{planogramId:$p}')"
 
 PUB_JSON="$DRAFT_JSON"
-path="/v1/admin/machines/${MACHINE_ID}/planograms/publish?${Q_ORG}"
+path="/v1/admin/machines/${MACHINE_ID}/planograms/publish"
 code="$(e2e_http_post_json_idem "wa-planogram-publish" "$path" "$PUB_JSON" "e2e-pub-${SUFFIX}")"
 if ! e2e_http_assert_status "wa-planogram-publish" "200" "$code"; then
   wa_ev "planogram-publish" "$path" "skip" "Publish HTTP $code" "{}"
@@ -408,7 +390,7 @@ if ! e2e_http_assert_status "wa-planogram-publish" "200" "$code"; then
 fi
 wa_ev "planogram-publish" "$path" "pass" "Published planogram" "{}"
 
-e2e_http_get "wa-slots-after" "/v1/admin/machines/${MACHINE_ID}/slots?${Q_ORG}"
+e2e_http_get "wa-slots-after" "/v1/admin/machines/${MACHINE_ID}/slots"
 Q_BEFORE="$(jq -r --arg sc "$SLOT" '(.slots // [])[] | select(.slotCode==$sc) | .currentQuantity' "${E2E_RUN_DIR}/rest/wa-slots-after.response.json" 2>/dev/null | head -n1)"
 [[ -n "$Q_BEFORE" ]] || Q_BEFORE="0"
 Q_AFTER="$INV_QTY"
@@ -433,7 +415,7 @@ STOCK_JSON="$(jq -nc \
       quantityAfter:$qa
     }]
   }')"
-path="/v1/admin/machines/${MACHINE_ID}/stock-adjustments?${Q_ORG}"
+path="/v1/admin/machines/${MACHINE_ID}/stock-adjustments"
 code="$(e2e_http_post_json_idem "wa-stock" "$path" "$STOCK_JSON" "e2e-stock-${SUFFIX}")"
 if e2e_http_assert_status "wa-stock" "200" "$code"; then
   e2e_set_data inventoryQuantityAfter "$Q_AFTER"
@@ -443,10 +425,10 @@ else
   log_api_contract_issue "P2" "$FLOW_ID" "$SCENARIO_ID" "stock-adjustment" "REST" "$path" "Stock adjustment did not apply — inventory quantity may not match expected E2E state" "Sale/inventory tests may flake" "Deterministic quantity_before rules; clearer conflict responses" "${E2E_RUN_DIR}/rest/wa-stock.response.json"
 fi
 
-wa_ev "done" "—" "pass" "Web admin setup completed" "$(jq -nc --arg o "$ORG_ID" --arg s "$SITE_ID" --arg m "$MACHINE_ID" --arg p "$PRODUCT_ID" --arg sl "$SLOT" '{organizationId:$o,siteId:$s,machineId:$m,productId:$p,slotCode:$sl}')"
+wa_ev "done" "—" "pass" "Web admin setup completed" "$(jq -nc --arg s "$SITE_ID" --arg m "$MACHINE_ID" --arg p "$PRODUCT_ID" --arg sl "$SLOT" '{siteId:$s,machineId:$m,productId:$p,slotCode:$sl}')"
 
 log_unnecessary_complexity_issue "P3" "$FLOW_ID" "$SCENARIO_ID" "setup-call-depth" "mixed" "WA-SETUP-01" "Scratch setup requires many sequential admin REST calls before machine is vending-ready" "Slower CI; fragile ordering" "Provide bundled onboarding or fixture APIs; document minimal call graph" "${E2E_RUN_DIR}/test-data.json"
-log_response_shape_issue "P3" "$FLOW_ID" "$SCENARIO_ID" "machine-create-shape" "REST" "POST /v1/admin/organizations/{org}/machines" "Harness tolerates both .id and .machineId in create-machine response" "Clients may parse inconsistently" "Single canonical resource id field in OpenAPI" "${E2E_RUN_DIR}/rest/wa-machine-create.response.json"
+log_response_shape_issue "P3" "$FLOW_ID" "$SCENARIO_ID" "machine-create-shape" "REST" "POST /v1/admin/machines" "Harness tolerates both .id and .machineId in create-machine response" "Clients may parse inconsistently" "Single canonical resource id field in OpenAPI" "${E2E_RUN_DIR}/rest/wa-machine-create.response.json"
 log_data_setup_issue "P3" "$FLOW_ID" "$SCENARIO_ID" "reuse-safety" "docs" "reuse vs --fresh-data" "Duplicate handling depends on idempotency keys and manual cleanup; no unified archive strategy asserted" "Shared-org QA collisions" "Document cleanup playbook; add delete/retire endpoints for E2E resources" "${E2E_RUN_DIR}/test-data.json"
 e2e_flow_review_scenario_complete "$FLOW_ID" "$SCENARIO_ID" "flow-review-complete" "wa_setup_completed_with_documented_debt"
 

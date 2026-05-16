@@ -19,11 +19,10 @@ type LifecycleStore interface {
 }
 
 type VendStarter interface {
-	EnsureVendInProgressForPaidOrder(ctx context.Context, organizationID, orderID uuid.UUID, slotIndex int32) error
+	EnsureVendInProgressForPaidOrder(ctx context.Context, companyID, orderID uuid.UUID, slotIndex int32) error
 }
 
 type ProviderRefundRequest struct {
-	OrganizationID uuid.UUID
 	PaymentID      uuid.UUID
 	RefundID       uuid.UUID
 	AmountMinor    int64
@@ -55,14 +54,12 @@ type ActivityDeps struct {
 
 // PaymentPendingTimeoutDecision is the activity output for an aged payment follow-up.
 type PaymentPendingTimeoutDecision struct {
-	OrganizationID uuid.UUID
 	CurrentState   string
 	ShouldEscalate bool
 }
 
 // VendFailureFollowUpDecision is the activity output for a failed vend after payment success.
 type VendFailureFollowUpDecision struct {
-	OrganizationID       uuid.UUID
 	CurrentPaymentState  string
 	CurrentVendState     string
 	CurrentOrderStatus   string
@@ -83,7 +80,6 @@ type VendStartResult struct {
 }
 
 type PaymentToVendDecision struct {
-	OrganizationID       uuid.UUID
 	Action               string
 	Detail               string
 	Reason               string
@@ -142,7 +138,7 @@ func (a *Activities) EnsureVendStartedForPaidOrder(ctx context.Context, in Payme
 			Detail: "no vend starter is wired for Temporal worker activities",
 		}, nil
 	}
-	if err := a.vendStarter.EnsureVendInProgressForPaidOrder(ctx, in.OrganizationID, in.OrderID, in.SlotIndex); err != nil {
+	if err := a.vendStarter.EnsureVendInProgressForPaidOrder(ctx, uuid.Nil, in.OrderID, in.SlotIndex); err != nil {
 		return VendStartResult{}, err
 	}
 	return VendStartResult{
@@ -169,7 +165,6 @@ func (a *Activities) EvaluatePaymentToVend(ctx context.Context, in PaymentToVend
 		return PaymentToVendDecision{}, err
 	}
 	out := PaymentToVendDecision{
-		OrganizationID:      order.OrganizationID,
 		CurrentPaymentState: pay.State,
 		CurrentVendState:    vend.State,
 		CurrentOrderStatus:  order.Status,
@@ -205,7 +200,6 @@ func (a *Activities) ResolvePaymentPendingTimeout(ctx context.Context, in Paymen
 		return PaymentPendingTimeoutDecision{}, fmt.Errorf("workfloworch: payment %s does not belong to order %s", pay.ID, order.ID)
 	}
 	return PaymentPendingTimeoutDecision{
-		OrganizationID: order.OrganizationID,
 		CurrentState:   pay.State,
 		ShouldEscalate: pay.State == "created" || pay.State == "authorized",
 	}, nil
@@ -225,7 +219,6 @@ func (a *Activities) AssessVendFailureAfterPaymentSuccess(ctx context.Context, i
 		return VendFailureFollowUpDecision{}, err
 	}
 	out := VendFailureFollowUpDecision{
-		OrganizationID:      order.OrganizationID,
 		CurrentPaymentState: pay.State,
 		CurrentVendState:    vend.State,
 		CurrentOrderStatus:  order.Status,
@@ -251,7 +244,6 @@ func (a *Activities) RequestProviderRefund(ctx context.Context, in RefundWorkflo
 		}, nil
 	}
 	err := a.refunds.RefundPayment(ctx, ProviderRefundRequest{
-		OrganizationID: in.OrganizationID,
 		PaymentID:      in.PaymentID,
 		RefundID:       in.RefundID,
 		AmountMinor:    in.AmountMinor,
@@ -305,10 +297,9 @@ func (a *Activities) AssessCommandAck(ctx context.Context, in CommandAckWorkflow
 
 func (a *Activities) EnqueueRefundReview(ctx context.Context, in RefundOrchestrationInput) (TicketDispatchResult, error) {
 	if err := a.refundSink.EnqueueRefundReview(ctx, domaincommerce.RefundReviewTicket{
-		OrganizationID: in.OrganizationID,
-		OrderID:        in.OrderID,
-		PaymentID:      in.PaymentID,
-		Reason:         strings.TrimSpace(in.Reason),
+		OrderID:   in.OrderID,
+		PaymentID: in.PaymentID,
+		Reason:    strings.TrimSpace(in.Reason),
 	}); err != nil {
 		return TicketDispatchResult{}, err
 	}
@@ -320,10 +311,9 @@ func (a *Activities) EnqueueRefundReview(ctx context.Context, in RefundOrchestra
 
 func (a *Activities) EnqueueManualReview(ctx context.Context, in ManualReviewEscalationInput) (TicketDispatchResult, error) {
 	if err := a.refundSink.EnqueueRefundReview(ctx, domaincommerce.RefundReviewTicket{
-		OrganizationID: in.OrganizationID,
-		OrderID:        in.OrderID,
-		PaymentID:      in.PaymentID,
-		Reason:         strings.TrimSpace(in.Reason),
+		OrderID:   in.OrderID,
+		PaymentID: in.PaymentID,
+		Reason:    strings.TrimSpace(in.Reason),
 	}); err != nil {
 		return TicketDispatchResult{}, err
 	}

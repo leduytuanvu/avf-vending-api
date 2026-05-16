@@ -29,12 +29,11 @@ type machineCommerceServer struct {
 
 func machinePrincipalFromAccessClaims(c plauth.MachineAccessClaims) plauth.Principal {
 	return plauth.Principal{
-		Subject:        "machine:" + c.MachineID.String(),
-		Roles:          []string{plauth.RoleMachine},
-		OrganizationID: c.OrganizationID,
-		SiteID:         c.SiteID,
-		MachineIDs:     []uuid.UUID{c.MachineID},
-		JWTType:        plauth.JWTClaimTypeMachine,
+		Subject:    "machine:" + c.MachineID.String(),
+		Roles:      []string{plauth.RoleMachine},
+		SiteID:     c.SiteID,
+		MachineIDs: []uuid.UUID{c.MachineID},
+		JWTType:    plauth.JWTClaimTypeMachine,
 	}
 }
 
@@ -144,13 +143,12 @@ func (s *machineCommerceServer) auditCommerce(ctx context.Context, claims plauth
 	md, _ := json.Marshal(meta)
 	mid := claims.MachineID.String()
 	_ = s.deps.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: claims.OrganizationID,
-		ActorType:      compliance.ActorMachine,
-		ActorID:        &mid,
-		Action:         action,
-		ResourceType:   "commerce.order",
-		ResourceID:     ptrMetaOrderID(meta),
-		Metadata:       md,
+		ActorType:    compliance.ActorMachine,
+		ActorID:      &mid,
+		Action:       action,
+		ResourceType: "commerce.order",
+		ResourceID:   ptrMetaOrderID(meta),
+		Metadata:     md,
 	})
 }
 
@@ -250,7 +248,6 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	}
 
 	out, err := svc.CreateOrder(ctx, appcommerce.CreateOrderInput{
-		OrganizationID: claims.OrganizationID,
 		MachineID:      claims.MachineID,
 		ProductID:      productID,
 		SlotID:         slotID,
@@ -316,7 +313,7 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
 	}
 	principal := machinePrincipalFromAccessClaims(claims)
-	if err := svc.EnsureCommerceCallerOrderAccess(ctx, claims.OrganizationID, orderID, principal); err != nil {
+	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
 	o, err := store.GetOrderByID(ctx, orderID)
@@ -355,7 +352,6 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 	_ = payState // vending clients cannot choose non-created PSP states; validated again in app layer
 
 	res, err := svc.CreateMachinePaymentSession(ctx, appcommerce.CreateMachinePaymentSessionInput{
-		OrganizationID:  claims.OrganizationID,
 		OrderID:         orderID,
 		MachineID:       claims.MachineID,
 		IdempotencyKey:  wctx.IdempotencyKey,
@@ -411,7 +407,7 @@ func (s *machineCommerceServer) ConfirmCashPayment(ctx context.Context, req *mac
 		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
 	}
 	principal := machinePrincipalFromAccessClaims(claims)
-	if err := svc.EnsureCommerceCallerOrderAccess(ctx, claims.OrganizationID, orderID, principal); err != nil {
+	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
 	o, err := store.GetOrderByID(ctx, orderID)
@@ -440,7 +436,6 @@ func (s *machineCommerceServer) ConfirmCashPayment(ctx context.Context, req *mac
 	outboxIdem := idem + ":cash:payment:outbox:" + orderID.String()
 
 	payRes, err := svc.StartPaymentWithOutbox(ctx, appcommerce.StartPaymentInput{
-		OrganizationID:       claims.OrganizationID,
 		OrderID:              orderID,
 		Provider:             "cash",
 		PaymentState:         "captured",
@@ -465,7 +460,7 @@ func (s *machineCommerceServer) ConfirmCashPayment(ctx context.Context, req *mac
 		}
 	}
 
-	paid, err := svc.MarkOrderPaidAfterPaymentCapture(ctx, claims.OrganizationID, orderID)
+	paid, err := svc.MarkOrderPaidAfterPaymentCapture(ctx, uuid.Nil, orderID)
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
@@ -491,10 +486,10 @@ func (s *machineCommerceServer) CreateCashCheckout(ctx context.Context, req *mac
 
 func (s *machineCommerceServer) getStatus(ctx context.Context, claims plauth.MachineAccessClaims, svc appcommerce.Orchestrator, orderID uuid.UUID, slotIndex int32) (appcommerce.CheckoutStatusView, error) {
 	principal := machinePrincipalFromAccessClaims(claims)
-	if err := svc.EnsureCommerceCallerOrderAccess(ctx, claims.OrganizationID, orderID, principal); err != nil {
+	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return appcommerce.CheckoutStatusView{}, err
 	}
-	return svc.GetCheckoutStatus(ctx, claims.OrganizationID, orderID, slotIndex)
+	return svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
 }
 
 func (s *machineCommerceServer) GetOrder(ctx context.Context, req *machinev1.GetOrderRequest) (*machinev1.GetOrderResponse, error) {
@@ -584,7 +579,7 @@ func (s *machineCommerceServer) StartVend(ctx context.Context, req *machinev1.St
 	}
 	slotIndex := req.GetSlotIndex()
 	principal := machinePrincipalFromAccessClaims(claims)
-	if err := svc.EnsureCommerceCallerOrderAccess(ctx, claims.OrganizationID, orderID, principal); err != nil {
+	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
 	o, err := store.GetOrderByID(ctx, orderID)
@@ -598,7 +593,7 @@ func (s *machineCommerceServer) StartVend(ctx context.Context, req *machinev1.St
 		return nil, status.Error(codes.FailedPrecondition, "order is terminal")
 	}
 
-	st, err := svc.GetCheckoutStatus(ctx, claims.OrganizationID, orderID, slotIndex)
+	st, err := svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
@@ -616,10 +611,9 @@ func (s *machineCommerceServer) StartVend(ctx context.Context, req *machinev1.St
 	}
 
 	v, err := svc.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
-		OrganizationID: claims.OrganizationID,
-		OrderID:        orderID,
-		SlotIndex:      slotIndex,
-		ToState:        "in_progress",
+		OrderID:   orderID,
+		SlotIndex: slotIndex,
+		ToState:   "in_progress",
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -702,7 +696,7 @@ func (s *machineCommerceServer) ConfirmVendSuccess(ctx context.Context, req *mac
 
 func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims plauth.MachineAccessClaims, svc appcommerce.Orchestrator, store *postgres.Store, wctx machineMutationContext, orderID uuid.UUID, slotIndex int32, corr *uuid.UUID) (*machinev1.ReportVendSuccessResponse, error) {
 	principal := machinePrincipalFromAccessClaims(claims)
-	if err := svc.EnsureCommerceCallerOrderAccess(ctx, claims.OrganizationID, orderID, principal); err != nil {
+	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
 	o, err := store.GetOrderByID(ctx, orderID)
@@ -719,15 +713,14 @@ func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims p
 	if corr != nil {
 		_ = store.TouchVendSessionCorrelation(ctx, orderID, slotIndex, *corr)
 	}
-	if _, err := svc.GetCheckoutStatus(ctx, claims.OrganizationID, orderID, slotIndex); err != nil {
+	if _, err := svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex); err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
-	if err := svc.EnsureVendInProgressForPaidOrder(ctx, claims.OrganizationID, orderID, slotIndex); err != nil {
+	if err := svc.EnsureVendInProgressForPaidOrder(ctx, uuid.Nil, orderID, slotIndex); err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
 
 	fout, err := svc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
-		OrganizationID:            claims.OrganizationID,
 		OrderID:                   orderID,
 		SlotIndex:                 slotIndex,
 		TerminalVendState:         "success",
@@ -787,7 +780,7 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 	}
 
 	principal := machinePrincipalFromAccessClaims(claims)
-	if err := svc.EnsureCommerceCallerOrderAccess(ctx, claims.OrganizationID, orderID, principal); err != nil {
+	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
 	o, err := store.GetOrderByID(ctx, orderID)
@@ -804,11 +797,11 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 	if corr != nil {
 		_ = store.TouchVendSessionCorrelation(ctx, orderID, slotIndex, *corr)
 	}
-	st, err := svc.GetCheckoutStatus(ctx, claims.OrganizationID, orderID, slotIndex)
+	st, err := svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
-	if err := svc.EnsureVendInProgressForPaidOrder(ctx, claims.OrganizationID, orderID, slotIndex); err != nil {
+	if err := svc.EnsureVendInProgressForPaidOrder(ctx, uuid.Nil, orderID, slotIndex); err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
 
@@ -818,7 +811,6 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 		reasonPtr = &reason
 	}
 	fout, err := svc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
-		OrganizationID:    claims.OrganizationID,
 		OrderID:           orderID,
 		SlotIndex:         slotIndex,
 		TerminalVendState: "failed",
@@ -829,7 +821,7 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 	}
 	vendReplay = vendReplay || fout.OrderVendReplay
 
-	st2, _ := svc.GetCheckoutStatus(ctx, claims.OrganizationID, orderID, slotIndex)
+	st2, _ := svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
 	resp := &machinev1.ReportVendFailureResponse{
 		Replay:      vendReplay,
 		OrderId:     fout.Order.ID.String(),
@@ -869,7 +861,7 @@ func (s *machineCommerceServer) CancelOrder(ctx context.Context, req *machinev1.
 		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
 	}
 	principal := machinePrincipalFromAccessClaims(claims)
-	if err := svc.EnsureCommerceCallerOrderAccess(ctx, claims.OrganizationID, orderID, principal); err != nil {
+	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
 	o, err := store.GetOrderByID(ctx, orderID)
@@ -887,7 +879,7 @@ func (s *machineCommerceServer) CancelOrder(ctx context.Context, req *machinev1.
 	}
 
 	reason := strings.TrimSpace(req.GetReason())
-	o2, err := svc.CancelOrder(ctx, claims.OrganizationID, orderID, reason)
+	o2, err := svc.CancelOrder(ctx, uuid.Nil, orderID, reason)
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}

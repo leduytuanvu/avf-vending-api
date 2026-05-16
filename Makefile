@@ -8,8 +8,8 @@ BUF ?= $(GO) run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
 # Local breaking-change baseline for proto-check. Override in CI/PR jobs when comparing to a remote base branch.
 PROTO_BREAKING_AGAINST ?= ../.git\#branch=HEAD,subdir=proto
 PROTO_BREAKING_PATH ?= avf/machine/v1
-# Pin sqlc to match CI (.github/workflows/ci.yml); uses go run so PATH sqlc is not required.
-SQLC_VERSION := v1.29.0
+# Pin sqlc to match committed internal/gen/db codegen headers; CI uses `make api-contract-check` (same pin).
+SQLC_VERSION := v1.31.1
 SQLC_GEN := $(GO) run github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION)
 # Python 3 for OpenAPI/Swagger generation (use `PY=python` on Windows if `python3` is not on PATH).
 PY ?= python3

@@ -130,27 +130,22 @@ func (s *Service) ListOTA(ctx context.Context, scope listscope.AdminFleet) (*app
 	if s == nil || s.q == nil {
 		return nil, errors.New("otaadmin: nil service")
 	}
-	if scope.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrAdminOrganizationRequired
-	}
 	st, en := timeRangeOrAll(scope.From, scope.To)
 	filterStatus := strings.TrimSpace(scope.Status) != ""
 
 	listArg := db.FleetAdminListOTACampaignsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterStatus,
-		Column3:        strings.TrimSpace(scope.Status),
-		Column4:        st,
-		Column5:        en,
-		Limit:          scope.Limit,
-		Offset:         scope.Offset,
+		Column1: filterStatus,
+		Column2: strings.TrimSpace(scope.Status),
+		Column3: st,
+		Column4: en,
+		Limit:   scope.Limit,
+		Offset:  scope.Offset,
 	}
 	countArg := db.FleetAdminCountOTACampaignsParams{
-		OrganizationID: scope.OrganizationID,
-		Column2:        filterStatus,
-		Column3:        strings.TrimSpace(scope.Status),
-		Column4:        st,
-		Column5:        en,
+		Column1: filterStatus,
+		Column2: strings.TrimSpace(scope.Status),
+		Column3: st,
+		Column4: en,
 	}
 	rows, err := s.q.FleetAdminListOTACampaigns(ctx, listArg)
 	if err != nil {
@@ -164,7 +159,6 @@ func (s *Service) ListOTA(ctx context.Context, scope listscope.AdminFleet) (*app
 	for _, r := range rows {
 		items = append(items, appfleetadmin.AdminOTAListItem{
 			CampaignID:         r.CampaignID.String(),
-			OrganizationID:     r.OrganizationID.String(),
 			CampaignName:       r.CampaignName,
 			Strategy:           r.Strategy,
 			CampaignStatus:     r.CampaignStatus,
@@ -190,29 +184,24 @@ func (s *Service) ListCampaigns(ctx context.Context, p CampaignListParams) (*Cam
 	if s == nil {
 		return nil, errors.New("otaadmin: nil service")
 	}
-	if p.OrganizationID == uuid.Nil {
-		return nil, listscope.ErrAdminOrganizationRequired
-	}
 	st, en := timeRangeOrAll(p.From, p.To)
 	filter := strings.TrimSpace(p.Status) != ""
 	rows, err := s.q.OtaAdminListCampaigns(ctx, db.OtaAdminListCampaignsParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        filter,
-		Column3:        strings.TrimSpace(p.Status),
-		Column4:        st,
-		Column5:        en,
-		Limit:          p.Limit,
-		Offset:         p.Offset,
+		Column1: filter,
+		Column2: strings.TrimSpace(p.Status),
+		Column3: st,
+		Column4: en,
+		Limit:   p.Limit,
+		Offset:  p.Offset,
 	})
 	if err != nil {
 		return nil, err
 	}
 	total, err := s.q.OtaAdminCountCampaigns(ctx, db.OtaAdminCountCampaignsParams{
-		OrganizationID: p.OrganizationID,
-		Column2:        filter,
-		Column3:        strings.TrimSpace(p.Status),
-		Column4:        st,
-		Column5:        en,
+		Column1: filter,
+		Column2: strings.TrimSpace(p.Status),
+		Column3: st,
+		Column4: en,
 	})
 	if err != nil {
 		return nil, err
@@ -226,7 +215,6 @@ func (s *Service) ListCampaigns(ctx context.Context, p CampaignListParams) (*Cam
 		}
 		items = append(items, CampaignListItem{
 			CampaignID:         r.CampaignID.String(),
-			OrganizationID:     r.OrganizationID.String(),
 			Name:               r.CampaignName,
 			RolloutStrategy:    r.RolloutStrategy,
 			Status:             r.CampaignStatus,
@@ -278,7 +266,6 @@ func listItemFromCampaignAndArtifact(c db.OtaCampaign, art db.OtaArtifact) Campa
 	}
 	return CampaignListItem{
 		CampaignID:         c.ID.String(),
-		OrganizationID:     c.OrganizationID.String(),
 		Name:               c.Name,
 		RolloutStrategy:    c.RolloutStrategy,
 		Status:             c.Status,
@@ -307,11 +294,8 @@ func detailFromCampaignAndArtifact(c db.OtaCampaign, art db.OtaArtifact) Campaig
 	return d
 }
 
-func (s *Service) campaignDetail(ctx context.Context, orgID uuid.UUID, c db.OtaCampaign) (CampaignDetail, error) {
-	art, err := s.q.OtaAdminGetArtifactForOrg(ctx, db.OtaAdminGetArtifactForOrgParams{
-		OrganizationID: orgID,
-		ID:             c.ArtifactID,
-	})
+func (s *Service) campaignDetail(ctx context.Context, scopeID uuid.UUID, c db.OtaCampaign) (CampaignDetail, error) {
+	art, err := s.q.OtaAdminGetArtifactForOrg(ctx, c.ArtifactID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return CampaignDetail{}, ErrNotFound
@@ -321,19 +305,18 @@ func (s *Service) campaignDetail(ctx context.Context, orgID uuid.UUID, c db.OtaC
 	return detailFromCampaignAndArtifact(c, art), nil
 }
 
-func (s *Service) emitEvent(ctx context.Context, q *db.Queries, orgID, campaignID uuid.UUID, typ string, payload map[string]any, actor pgtype.UUID) {
+func (s *Service) emitEvent(ctx context.Context, q *db.Queries, scopeID, campaignID uuid.UUID, typ string, payload map[string]any, actor pgtype.UUID) {
 	b, _ := json.Marshal(payload)
 	_, _ = q.OtaAdminInsertCampaignEvent(ctx, db.OtaAdminInsertCampaignEventParams{
-		OrganizationID: orgID,
-		CampaignID:     campaignID,
-		EventType:      typ,
-		Payload:        b,
-		ActorID:        actor,
+		CampaignID: campaignID,
+		EventType:  typ,
+		Payload:    b,
+		ActorID:    actor,
 	})
-	s.maybeEnterpriseCampaignAudit(ctx, orgID, campaignID, typ, payload)
+	s.maybeEnterpriseCampaignAudit(ctx, scopeID, campaignID, typ, payload)
 }
 
-func (s *Service) maybeEnterpriseCampaignAudit(ctx context.Context, orgID, campaignID uuid.UUID, typ string, payload map[string]any) {
+func (s *Service) maybeEnterpriseCampaignAudit(ctx context.Context, scopeID, campaignID uuid.UUID, typ string, payload map[string]any) {
 	if s == nil || s.audit == nil {
 		return
 	}
@@ -348,12 +331,11 @@ func (s *Service) maybeEnterpriseCampaignAudit(ctx context.Context, orgID, campa
 	}
 	md = compliance.SanitizeJSONBytes(md)
 	_ = s.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: orgID,
-		ActorType:      compliance.ActorSystem,
-		Action:         action,
-		ResourceType:   "ota.campaign",
-		ResourceID:     &cid,
-		Metadata:       md,
+		ActorType:    compliance.ActorSystem,
+		Action:       action,
+		ResourceType: "ota.campaign",
+		ResourceID:   &cid,
+		Metadata:     md,
 	})
 }
 
@@ -374,8 +356,8 @@ func mapOTACampaignEnterpriseAction(typ string) string {
 	}
 }
 
-func (s *Service) getCampaign(ctx context.Context, orgID, id uuid.UUID) (db.OtaCampaign, error) {
-	row, err := s.q.OtaAdminGetCampaign(ctx, db.OtaAdminGetCampaignParams{OrganizationID: orgID, ID: id})
+func (s *Service) getCampaign(ctx context.Context, scopeID, id uuid.UUID) (db.OtaCampaign, error) {
+	row, err := s.q.OtaAdminGetCampaign(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.OtaCampaign{}, ErrNotFound
@@ -398,13 +380,10 @@ func (s *Service) CreateCampaign(ctx context.Context, in CreateCampaignInput) (C
 	if s == nil {
 		return CampaignDetail{}, errors.New("otaadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil || strings.TrimSpace(in.Name) == "" || in.ArtifactID == uuid.Nil {
+	if strings.TrimSpace(in.Name) == "" || in.ArtifactID == uuid.Nil {
 		return CampaignDetail{}, ErrInvalidArgument
 	}
-	if _, err := s.q.OtaAdminGetArtifactForOrg(ctx, db.OtaAdminGetArtifactForOrgParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.ArtifactID,
-	}); err != nil {
+	if _, err := s.q.OtaAdminGetArtifactForOrg(ctx, in.ArtifactID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return CampaignDetail{}, ErrNotFound
 		}
@@ -427,10 +406,7 @@ func (s *Service) CreateCampaign(ctx context.Context, in CreateCampaignInput) (C
 	}
 	rb := uuidPtrPg(in.RollbackArtifactID)
 	if rb.Valid {
-		if _, err := s.q.OtaAdminGetArtifactForOrg(ctx, db.OtaAdminGetArtifactForOrgParams{
-			OrganizationID: in.OrganizationID,
-			ID:             uuid.UUID(rb.Bytes),
-		}); err != nil {
+		if _, err := s.q.OtaAdminGetArtifactForOrg(ctx, uuid.UUID(rb.Bytes)); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return CampaignDetail{}, ErrNotFound
 			}
@@ -438,7 +414,6 @@ func (s *Service) CreateCampaign(ctx context.Context, in CreateCampaignInput) (C
 		}
 	}
 	row, err := s.q.OtaAdminInsertCampaign(ctx, db.OtaAdminInsertCampaignParams{
-		OrganizationID:     in.OrganizationID,
 		Name:               strings.TrimSpace(in.Name),
 		ArtifactID:         in.ArtifactID,
 		ArtifactVersion:    av,
@@ -452,22 +427,22 @@ func (s *Service) CreateCampaign(ctx context.Context, in CreateCampaignInput) (C
 	if err != nil {
 		return CampaignDetail{}, err
 	}
-	s.emitEvent(ctx, s.q, in.OrganizationID, row.ID, "campaign_created", map[string]any{"name": row.Name}, uuidPg(in.CreatedBy))
-	return s.campaignDetail(ctx, in.OrganizationID, row)
+	s.emitEvent(ctx, s.q, uuid.Nil, row.ID, "campaign_created", map[string]any{"name": row.Name}, uuidPg(in.CreatedBy))
+	return s.campaignDetail(ctx, uuid.Nil, row)
 }
 
 // GetCampaignDetail returns one campaign with artifact metadata.
-func (s *Service) GetCampaignDetail(ctx context.Context, orgID, id uuid.UUID) (CampaignDetail, error) {
-	row, err := s.getCampaign(ctx, orgID, id)
+func (s *Service) GetCampaignDetail(ctx context.Context, scopeID, id uuid.UUID) (CampaignDetail, error) {
+	row, err := s.getCampaign(ctx, scopeID, id)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
-	return s.campaignDetail(ctx, orgID, row)
+	return s.campaignDetail(ctx, scopeID, row)
 }
 
 // PatchCampaign updates editable fields on draft/approved campaigns only.
-func (s *Service) PatchCampaign(ctx context.Context, orgID, id uuid.UUID, patch PatchCampaignInput) (CampaignDetail, error) {
-	cur, err := s.getCampaign(ctx, orgID, id)
+func (s *Service) PatchCampaign(ctx context.Context, scopeID, id uuid.UUID, patch PatchCampaignInput) (CampaignDetail, error) {
+	cur, err := s.getCampaign(ctx, scopeID, id)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
@@ -500,10 +475,7 @@ func (s *Service) PatchCampaign(ctx context.Context, orgID, id uuid.UUID, patch 
 	rb := cur.RollbackArtifactID
 	if patch.RollbackArtifactID != nil {
 		if *patch.RollbackArtifactID != uuid.Nil {
-			if _, err := s.q.OtaAdminGetArtifactForOrg(ctx, db.OtaAdminGetArtifactForOrgParams{
-				OrganizationID: orgID,
-				ID:             *patch.RollbackArtifactID,
-			}); err != nil {
+			if _, err := s.q.OtaAdminGetArtifactForOrg(ctx, *patch.RollbackArtifactID); err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
 					return CampaignDetail{}, ErrNotFound
 				}
@@ -512,26 +484,25 @@ func (s *Service) PatchCampaign(ctx context.Context, orgID, id uuid.UUID, patch 
 		}
 		rb = uuidPtrPg(patch.RollbackArtifactID)
 	}
-	row, err := s.q.OtaAdminUpdateCampaignPatch(ctx, db.OtaAdminUpdateCampaignPatchParams{
-		OrganizationID:     orgID,
-		ID:                 id,
-		Name:               name,
+	row, err := s.q.OtaAdminUpdateCampaignPatch(ctx, db.OtaAdminUpdateCampaignPatchParams{Name: name,
 		ArtifactVersion:    av,
 		CampaignType:       ct,
 		RolloutStrategy:    rs,
 		CanaryPercent:      cp,
 		RollbackArtifactID: rb,
+
+		ID: id,
 	})
 	if err != nil {
 		return CampaignDetail{}, err
 	}
-	s.emitEvent(ctx, s.q, orgID, id, "campaign_patched", map[string]any{}, pgtype.UUID{})
-	return s.campaignDetail(ctx, orgID, row)
+	s.emitEvent(ctx, s.q, scopeID, id, "campaign_patched", map[string]any{}, pgtype.UUID{})
+	return s.campaignDetail(ctx, scopeID, row)
 }
 
 // PutCampaignTargets replaces targets (draft/approved).
 func (s *Service) PutCampaignTargets(ctx context.Context, in PutTargetsInput) error {
-	cur, err := s.getCampaign(ctx, in.OrganizationID, in.CampaignID)
+	cur, err := s.getCampaign(ctx, uuid.Nil, in.CampaignID)
 	if err != nil {
 		return err
 	}
@@ -541,10 +512,7 @@ func (s *Service) PutCampaignTargets(ctx context.Context, in PutTargetsInput) er
 	if len(in.MachineIDs) == 0 {
 		return ErrNoTargets
 	}
-	valid, err := s.q.OtaAdminValidateMachinesBelongToOrg(ctx, db.OtaAdminValidateMachinesBelongToOrgParams{
-		OrganizationID: in.OrganizationID,
-		Column2:        in.MachineIDs,
-	})
+	valid, err := s.q.OtaAdminValidateMachinesBelongToOrg(ctx, in.MachineIDs)
 	if err != nil {
 		return err
 	}
@@ -571,12 +539,12 @@ func (s *Service) PutCampaignTargets(ctx context.Context, in PutTargetsInput) er
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-	s.emitEvent(ctx, s.q, in.OrganizationID, in.CampaignID, "targets_replaced", map[string]any{"count": len(in.MachineIDs)}, pgtype.UUID{})
+	s.emitEvent(ctx, s.q, uuid.Nil, in.CampaignID, "targets_replaced", map[string]any{"count": len(in.MachineIDs)}, pgtype.UUID{})
 	return nil
 }
 
-func (s *Service) ListCampaignTargets(ctx context.Context, orgID, campaignID uuid.UUID) ([]CampaignTargetItem, error) {
-	if _, err := s.getCampaign(ctx, orgID, campaignID); err != nil {
+func (s *Service) ListCampaignTargets(ctx context.Context, scopeID, campaignID uuid.UUID) ([]CampaignTargetItem, error) {
+	if _, err := s.getCampaign(ctx, scopeID, campaignID); err != nil {
 		return nil, err
 	}
 	rows, err := s.q.OtaAdminListCampaignTargetsSorted(ctx, campaignID)
@@ -596,14 +564,11 @@ func (s *Service) ListCampaignTargets(ctx context.Context, orgID, campaignID uui
 	return out, nil
 }
 
-func (s *Service) ListCampaignResults(ctx context.Context, orgID, campaignID uuid.UUID) ([]MachineResultItem, error) {
-	if _, err := s.getCampaign(ctx, orgID, campaignID); err != nil {
+func (s *Service) ListCampaignResults(ctx context.Context, scopeID, campaignID uuid.UUID) ([]MachineResultItem, error) {
+	if _, err := s.getCampaign(ctx, scopeID, campaignID); err != nil {
 		return nil, err
 	}
-	rows, err := s.q.OtaAdminListMachineResultsForCampaign(ctx, db.OtaAdminListMachineResultsForCampaignParams{
-		OrganizationID: orgID,
-		CampaignID:     campaignID,
-	})
+	rows, err := s.q.OtaAdminListMachineResultsForCampaign(ctx, campaignID)
 	if err != nil {
 		return nil, err
 	}
@@ -627,26 +592,26 @@ func (s *Service) ListCampaignResults(ctx context.Context, orgID, campaignID uui
 }
 
 // PublishCampaign moves a draft campaign through approval (when needed) and starts the first rollout wave.
-func (s *Service) PublishCampaign(ctx context.Context, orgID, campaignID, actor uuid.UUID) (CampaignDetail, error) {
-	cur, err := s.getCampaign(ctx, orgID, campaignID)
+func (s *Service) PublishCampaign(ctx context.Context, scopeID, campaignID, actor uuid.UUID) (CampaignDetail, error) {
+	cur, err := s.getCampaign(ctx, scopeID, campaignID)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
 	switch cur.Status {
 	case statusDraft:
-		if _, err := s.ApproveCampaign(ctx, orgID, campaignID, actor); err != nil {
+		if _, err := s.ApproveCampaign(ctx, scopeID, campaignID, actor); err != nil {
 			return CampaignDetail{}, err
 		}
-		return s.StartCampaign(ctx, orgID, campaignID)
+		return s.StartCampaign(ctx, scopeID, campaignID)
 	case statusApproved:
-		return s.StartCampaign(ctx, orgID, campaignID)
+		return s.StartCampaign(ctx, scopeID, campaignID)
 	default:
 		return CampaignDetail{}, ErrInvalidTransition
 	}
 }
 
-func (s *Service) ApproveCampaign(ctx context.Context, orgID, campaignID, actor uuid.UUID) (CampaignDetail, error) {
-	cur, err := s.getCampaign(ctx, orgID, campaignID)
+func (s *Service) ApproveCampaign(ctx context.Context, scopeID, campaignID, actor uuid.UUID) (CampaignDetail, error) {
+	cur, err := s.getCampaign(ctx, scopeID, campaignID)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
@@ -654,24 +619,23 @@ func (s *Service) ApproveCampaign(ctx context.Context, orgID, campaignID, actor 
 		return CampaignDetail{}, ErrInvalidTransition
 	}
 	now := time.Now().UTC()
-	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{
-		OrganizationID:    orgID,
-		ID:                campaignID,
-		Status:            statusApproved,
+	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{Status: statusApproved,
 		ApprovedBy:        uuidPg(actor),
 		ApprovedAt:        pgtype.Timestamptz{Time: now, Valid: true},
 		RolloutNextOffset: cur.RolloutNextOffset,
 		PausedAt:          cur.PausedAt,
+
+		ID: campaignID,
 	})
 	if err != nil {
 		return CampaignDetail{}, err
 	}
-	s.emitEvent(ctx, s.q, orgID, campaignID, "campaign_approved", map[string]any{}, uuidPg(actor))
-	return s.campaignDetail(ctx, orgID, row)
+	s.emitEvent(ctx, s.q, scopeID, campaignID, "campaign_approved", map[string]any{}, uuidPg(actor))
+	return s.campaignDetail(ctx, scopeID, row)
 }
 
-func (s *Service) StartCampaign(ctx context.Context, orgID, campaignID uuid.UUID) (CampaignDetail, error) {
-	cur, err := s.getCampaign(ctx, orgID, campaignID)
+func (s *Service) StartCampaign(ctx context.Context, scopeID, campaignID uuid.UUID) (CampaignDetail, error) {
+	cur, err := s.getCampaign(ctx, scopeID, campaignID)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
@@ -690,10 +654,7 @@ func (s *Service) StartCampaign(ctx context.Context, orgID, campaignID uuid.UUID
 	if n == 0 {
 		return CampaignDetail{}, ErrNoTargets
 	}
-	primary, err := s.q.OtaAdminGetArtifactForOrg(ctx, db.OtaAdminGetArtifactForOrgParams{
-		OrganizationID: orgID,
-		ID:             cur.ArtifactID,
-	})
+	primary, err := s.q.OtaAdminGetArtifactForOrg(ctx, cur.ArtifactID)
 	if err != nil {
 		return CampaignDetail{}, err
 	}
@@ -703,7 +664,7 @@ func (s *Service) StartCampaign(ctx context.Context, orgID, campaignID uuid.UUID
 	if cur.RolloutStrategy == strategyImmediate || first >= n {
 		phase = "full"
 	}
-	if err := s.dispatchOTACommands(ctx, orgID, cur, primary, wave, waveForward, phase); err != nil {
+	if err := s.dispatchOTACommands(ctx, scopeID, cur, primary, wave, waveForward, phase); err != nil {
 		return CampaignDetail{}, err
 	}
 	nextSt := statusRunning
@@ -712,23 +673,22 @@ func (s *Service) StartCampaign(ctx context.Context, orgID, campaignID uuid.UUID
 		nextSt = statusCompleted
 		nextOff = int32(n)
 	}
-	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{
-		OrganizationID:    orgID,
-		ID:                campaignID,
-		Status:            nextSt,
+	row, err := s.q.OtaAdminUpdateCampaignStatusFields(ctx, db.OtaAdminUpdateCampaignStatusFieldsParams{Status: nextSt,
 		ApprovedBy:        cur.ApprovedBy,
 		ApprovedAt:        cur.ApprovedAt,
 		RolloutNextOffset: nextOff,
 		PausedAt:          pgtype.Timestamptz{},
+
+		ID: campaignID,
 	})
 	if err != nil {
 		return CampaignDetail{}, err
 	}
-	s.emitEvent(ctx, s.q, orgID, campaignID, "campaign_started", map[string]any{"wave_size": len(wave)}, pgtype.UUID{})
-	return s.campaignDetail(ctx, orgID, row)
+	s.emitEvent(ctx, s.q, scopeID, campaignID, "campaign_started", map[string]any{"wave_size": len(wave)}, pgtype.UUID{})
+	return s.campaignDetail(ctx, scopeID, row)
 }
 
-func (s *Service) dispatchOTACommands(ctx context.Context, orgID uuid.UUID, camp db.OtaCampaign, art db.OtaArtifact, machines []uuid.UUID, wave, phase string) error {
+func (s *Service) dispatchOTACommands(ctx context.Context, scopeID uuid.UUID, camp db.OtaCampaign, art db.OtaArtifact, machines []uuid.UUID, wave, phase string) error {
 	semver := ""
 	if art.Semver.Valid {
 		semver = art.Semver.String
@@ -765,12 +725,11 @@ func (s *Service) dispatchOTACommands(ctx context.Context, orgID uuid.UUID, camp
 		}
 		cmdID := uuidPg(res.CommandID)
 		_, err = s.q.OtaAdminUpsertMachineResult(ctx, db.OtaAdminUpsertMachineResultParams{
-			OrganizationID: orgID,
-			CampaignID:     camp.ID,
-			MachineID:      mid,
-			Wave:           wave,
-			CommandID:      cmdID,
-			Status:         resDispatched,
+			CampaignID: camp.ID,
+			MachineID:  mid,
+			Wave:       wave,
+			CommandID:  cmdID,
+			Status:     resDispatched,
 		})
 		if err != nil {
 			return err

@@ -6,7 +6,7 @@ Implements append-only **`inventory_events`** plus **`machine_slot_state`** upda
 
 - **`Idempotency-Key`** or **`X-Idempotency-Key`** (required).
 - **`Authorization`**: Bearer access token.
-- **`platform_admin`**: pass **`organization_id`** query to resolve tenant (same as other admin inventory routes).
+- **`platform_admin`**: pass **`company_id`** query to resolve company (same as other admin inventory routes).
 
 ## Body
 

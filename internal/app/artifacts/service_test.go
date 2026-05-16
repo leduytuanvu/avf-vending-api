@@ -72,16 +72,16 @@ func (s *stubStore) ListPrefix(ctx context.Context, prefix string, maxKeys int32
 func TestPutContent_checksumOK(t *testing.T) {
 	st := &stubStore{}
 	svc := NewService(Deps{Store: st, MaxUploadBytes: 1 << 20})
-	org := uuid.New()
+	scopeID := uuid.New()
 	art := uuid.New()
 	payload := []byte("hello-artifact-world")
 	sum := sha256.Sum256(payload)
 	hexSum := hex.EncodeToString(sum[:])
-	err := svc.PutContent(context.Background(), org, art, bytes.NewReader(payload), int64(len(payload)), "application/octet-stream", hexSum, "f.bin")
+	err := svc.PutContent(context.Background(), scopeID, art, bytes.NewReader(payload), int64(len(payload)), "application/octet-stream", hexSum, "f.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := objectstore.BackendArtifactObjectKey(org, art)
+	key := objectstore.BackendArtifactObjectKey(scopeID, art)
 	if len(st.putKeys) != 1 || st.putKeys[0] != key {
 		t.Fatalf("puts: %#v", st.putKeys)
 	}
@@ -93,11 +93,11 @@ func TestPutContent_checksumOK(t *testing.T) {
 func TestPutContent_checksumMismatchDeletes(t *testing.T) {
 	st := &stubStore{}
 	svc := NewService(Deps{Store: st, MaxUploadBytes: 1 << 20})
-	org := uuid.New()
+	scopeID := uuid.New()
 	art := uuid.New()
 	payload := []byte("a")
 	wrongHex := strings.Repeat("0", 64)
-	err := svc.PutContent(context.Background(), org, art, bytes.NewReader(payload), int64(len(payload)), "application/octet-stream", wrongHex, "")
+	err := svc.PutContent(context.Background(), scopeID, art, bytes.NewReader(payload), int64(len(payload)), "application/octet-stream", wrongHex, "")
 	if err != ErrChecksumMismatch {
 		t.Fatalf("want ErrChecksumMismatch, got %v", err)
 	}

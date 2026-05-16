@@ -46,18 +46,17 @@ func EnterprisePromotionAuditHook(rec compliance.EnterpriseRecorder) func(contex
 			action = compliance.ActionPromotionArchived
 		}
 		_ = rec.Record(ctx, compliance.EnterpriseAuditRecord{
-			OrganizationID: ev.OrganizationID,
-			ActorType:      actorType,
-			ActorID:        aidPtr,
-			Action:         action,
-			ResourceType:   "catalog.promotion",
-			ResourceID:     &rid,
-			RequestID:      strPtrAudit(meta.RequestID),
-			TraceID:        strPtrAudit(meta.TraceID),
-			IPAddress:      strPtrAudit(meta.IP),
-			UserAgent:      strPtrAudit(meta.UserAgent),
-			Metadata:       md,
-			Outcome:        compliance.OutcomeSuccess,
+			ActorType:    actorType,
+			ActorID:      aidPtr,
+			Action:       action,
+			ResourceType: "catalog.promotion",
+			ResourceID:   &rid,
+			RequestID:    strPtrAudit(meta.RequestID),
+			TraceID:      strPtrAudit(meta.TraceID),
+			IPAddress:    strPtrAudit(meta.IP),
+			UserAgent:    strPtrAudit(meta.UserAgent),
+			Metadata:     md,
+			Outcome:      compliance.OutcomeSuccess,
 		})
 	}
 }

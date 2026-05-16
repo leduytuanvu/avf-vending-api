@@ -17,7 +17,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// rbac:inherited-mount: `/v1/reports` guarded in server.go; admin org-report routes sit under JWT + tenant-scoped report parsers.
+// rbac:inherited-mount: `/v1/reports` guarded in server.go; admin report routes sit under JWT + single-company report parsers.
 
 func reportingMaxSpan(app *api.HTTPApplication) time.Duration {
 	if app != nil && app.ReportingSyncMaxSpan > 0 {
@@ -63,29 +63,7 @@ func mountReportingRoutes(r chi.Router, app *api.HTTPApplication) {
 	r.Get("/inventory-exceptions", getReportInventoryExceptions(app, svc))
 }
 
-func mountAdminOrganizationReportingRoutes(r chi.Router, app *api.HTTPApplication) {
-	if app == nil || app.Reporting == nil {
-		return
-	}
-	svc := app.Reporting
-	r.Route("/organizations/{organizationId}/reports", func(r chi.Router) {
-		r.Get("/sales", getAdminOrgReportSales(app, svc))
-		r.Get("/payments", getAdminOrgReportPayments(app, svc))
-		r.Get("/refunds", getAdminOrgReportRefunds(app, svc))
-		r.Get("/cash", getAdminOrgReportCash(app, svc))
-		r.Get("/inventory-low-stock", getAdminOrgReportInventoryLowStock(app, svc))
-		r.Get("/machine-health", getAdminOrgReportMachineHealth(app, svc))
-		r.Get("/failed-vends", getAdminOrgReportFailedVends(app, svc))
-		r.Get("/reconciliation-queue", getAdminOrgReportReconciliationQueue(app, svc))
-		r.Get("/vends", getAdminOrgReportVends(app, svc))
-		r.Get("/inventory", getAdminOrgReportInventoryUnified(app, svc))
-		r.Get("/machines", getAdminOrgReportMachines(app, svc))
-		r.Get("/products", getAdminOrgReportProducts(app, svc))
-		r.Get("/reconciliation", getAdminOrgReportReconciliationBI(app, svc))
-		r.Get("/commands", getAdminOrgReportCommandFailures(app, svc))
-		r.Get("/fills", getAdminOrgReportTechnicianFills(app, svc))
-		r.Get("/export", getAdminOrgReportExportCSV(app, svc))
-	})
+func mountAdminCompanyReportingRoutes(r chi.Router, app *api.HTTPApplication) {
 }
 
 func parseRequiredRFC3339Range(q url.Values) (time.Time, time.Time, error) {
@@ -111,7 +89,7 @@ func parseRequiredRFC3339Range(q url.Values) (time.Time, time.Time, error) {
 	return from.UTC(), to.UTC(), nil
 }
 
-func parseReportingOrganization(r *http.Request, app *api.HTTPApplication) (listscope.ReportingQuery, error) {
+func parseReportingCompany(r *http.Request, app *api.HTTPApplication) (listscope.ReportingQuery, error) {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return listscope.ReportingQuery{}, listscope.ErrInvalidListQuery
@@ -129,29 +107,10 @@ func parseReportingOrganization(r *http.Request, app *api.HTTPApplication) (list
 	if !validateReportingTimezone(tz) {
 		return listscope.ReportingQuery{}, listscope.ErrInvalidListQuery
 	}
-	var orgID uuid.UUID
-	if p.HasRole(auth.RolePlatformAdmin) {
-		raw := strings.TrimSpace(qv.Get("organization_id"))
-		id, perr := uuid.Parse(raw)
-		if perr != nil || id == uuid.Nil {
-			return listscope.ReportingQuery{}, api.ErrCommerceOrganizationQueryRequired
-		}
-		orgID = id
-	} else {
-		if !p.HasOrganization() {
-			return listscope.ReportingQuery{}, api.ErrCommerceOrganizationQueryRequired
-		}
-		orgID = p.OrganizationID
-		if raw := strings.TrimSpace(qv.Get("organization_id")); raw != "" {
-			qid, perr := uuid.Parse(raw)
-			if perr != nil || qid != orgID {
-				return listscope.ReportingQuery{}, listscope.ErrInvalidListQuery
-			}
-		}
-	}
+	scopeID := uuid.Nil
+	_ = scopeID
 	return listscope.ReportingQuery{
 		IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin),
-		OrganizationID:  orgID,
 		From:            from,
 		To:              to,
 		Timezone:        tz,
@@ -171,20 +130,13 @@ func validateReportingTimezone(tz string) bool {
 	return err == nil
 }
 
-func parseAdminOrganizationReportingQuery(r *http.Request, paged bool, app *api.HTTPApplication) (listscope.ReportingQuery, int, error) {
+func parseAdminCompanyReportingQuery(r *http.Request, paged bool, app *api.HTTPApplication) (listscope.ReportingQuery, int, error) {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
 		return listscope.ReportingQuery{}, http.StatusUnauthorized, fmt.Errorf("missing principal")
 	}
-	orgID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "organizationId")))
-	if err != nil || orgID == uuid.Nil {
-		return listscope.ReportingQuery{}, http.StatusBadRequest, fmt.Errorf("invalid organizationId")
-	}
-	if !p.HasRole(auth.RolePlatformAdmin) {
-		if !p.HasOrganization() || p.OrganizationID != orgID {
-			return listscope.ReportingQuery{}, http.StatusForbidden, fmt.Errorf("organization access denied")
-		}
-	}
+	scopeID := uuid.Nil
+	_ = scopeID
 	qv := r.URL.Query()
 	from, to, err := parseRequiredRFC3339Range(qv)
 	maxSpan := reportingMaxSpanForRequest(r, app)
@@ -197,7 +149,6 @@ func parseAdminOrganizationReportingQuery(r *http.Request, paged bool, app *api.
 	}
 	out := listscope.ReportingQuery{
 		IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin),
-		OrganizationID:  orgID,
 		From:            from,
 		To:              to,
 		Timezone:        tz,
@@ -304,7 +255,7 @@ func normalizeExceptionKind(raw string) (string, error) {
 }
 
 func parseSalesReportingQuery(r *http.Request, app *api.HTTPApplication) (listscope.ReportingQuery, error) {
-	base, err := parseReportingOrganization(r, app)
+	base, err := parseReportingCompany(r, app)
 	if err != nil {
 		return listscope.ReportingQuery{}, err
 	}
@@ -317,7 +268,7 @@ func parseSalesReportingQuery(r *http.Request, app *api.HTTPApplication) (listsc
 }
 
 func parsePaymentsReportingQuery(r *http.Request, app *api.HTTPApplication) (listscope.ReportingQuery, error) {
-	base, err := parseReportingOrganization(r, app)
+	base, err := parseReportingCompany(r, app)
 	if err != nil {
 		return listscope.ReportingQuery{}, err
 	}
@@ -330,7 +281,7 @@ func parsePaymentsReportingQuery(r *http.Request, app *api.HTTPApplication) (lis
 }
 
 func parseFleetReportingQuery(r *http.Request, app *api.HTTPApplication) (listscope.ReportingQuery, error) {
-	base, err := parseReportingOrganization(r, app)
+	base, err := parseReportingCompany(r, app)
 	if err != nil {
 		return listscope.ReportingQuery{}, err
 	}
@@ -341,7 +292,7 @@ func parseFleetReportingQuery(r *http.Request, app *api.HTTPApplication) (listsc
 }
 
 func parseInventoryReportingQuery(r *http.Request, app *api.HTTPApplication) (listscope.ReportingQuery, error) {
-	base, err := parseReportingOrganization(r, app)
+	base, err := parseReportingCompany(r, app)
 	if err != nil {
 		return listscope.ReportingQuery{}, err
 	}
@@ -363,7 +314,7 @@ func parseInventoryReportingQuery(r *http.Request, app *api.HTTPApplication) (li
 }
 
 func parseCashReportingQuery(r *http.Request, app *api.HTTPApplication) (listscope.ReportingQuery, error) {
-	base, err := parseReportingOrganization(r, app)
+	base, err := parseReportingCompany(r, app)
 	if err != nil {
 		return listscope.ReportingQuery{}, err
 	}
@@ -468,7 +419,7 @@ func wantsCSV(r *http.Request) bool {
 	return format == "csv" || format == "text/csv"
 }
 
-func recordReportExportAudit(r *http.Request, app *api.HTTPApplication, orgID uuid.UUID, reportName string) {
+func recordReportExportAudit(r *http.Request, app *api.HTTPApplication, scopeID uuid.UUID, reportName string) {
 	if app == nil || app.EnterpriseAudit == nil {
 		return
 	}
@@ -483,19 +434,18 @@ func recordReportExportAudit(r *http.Request, app *api.HTTPApplication, orgID uu
 	})
 	rid := reportName
 	_ = app.EnterpriseAudit.Record(r.Context(), compliance.EnterpriseAuditRecord{
-		OrganizationID: orgID,
-		ActorType:      at,
-		ActorID:        stringPtrOrNil(aid),
-		Action:         "reports.exported",
-		ResourceType:   "report",
-		ResourceID:     &rid,
-		Metadata:       md,
+		ActorType:    at,
+		ActorID:      stringPtrOrNil(aid),
+		Action:       "reports.exported",
+		ResourceType: "report",
+		ResourceID:   &rid,
+		Metadata:     md,
 	})
 }
 
 func getAdminOrgReportSales(app *api.HTTPApplication, svc api.ReportingService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		q, status, err := parseAdminOrganizationReportingQuery(r, false, app)
+		q, status, err := parseAdminCompanyReportingQuery(r, false, app)
 		if err != nil {
 			writeAdminReportQueryError(w, r, status, err)
 			return
@@ -516,7 +466,7 @@ func getAdminOrgReportSales(app *api.HTTPApplication, svc api.ReportingService) 
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, q.OrganizationID, "sales")
+			recordReportExportAudit(r, app, uuid.Nil, "sales")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="sales.csv"`)
 			if err := reporting.WriteSalesSummaryCSV(w, out); err != nil {
@@ -530,7 +480,7 @@ func getAdminOrgReportSales(app *api.HTTPApplication, svc api.ReportingService) 
 
 func getAdminOrgReportPayments(app *api.HTTPApplication, svc api.ReportingService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		q, status, err := parseAdminOrganizationReportingQuery(r, false, app)
+		q, status, err := parseAdminCompanyReportingQuery(r, false, app)
 		if err != nil {
 			writeAdminReportQueryError(w, r, status, err)
 			return
@@ -545,7 +495,7 @@ func getAdminOrgReportPayments(app *api.HTTPApplication, svc api.ReportingServic
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, q.OrganizationID, "payments")
+			recordReportExportAudit(r, app, uuid.Nil, "payments")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="payments.csv"`)
 			if err := reporting.WritePaymentSettlementCSV(w, out); err != nil {
@@ -559,7 +509,7 @@ func getAdminOrgReportPayments(app *api.HTTPApplication, svc api.ReportingServic
 
 func getAdminOrgReportRefunds(app *api.HTTPApplication, svc api.ReportingService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		q, status, err := parseAdminOrganizationReportingQuery(r, true, app)
+		q, status, err := parseAdminCompanyReportingQuery(r, true, app)
 		if err != nil {
 			writeAdminReportQueryError(w, r, status, err)
 			return
@@ -574,7 +524,7 @@ func getAdminOrgReportRefunds(app *api.HTTPApplication, svc api.ReportingService
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, q.OrganizationID, "refunds")
+			recordReportExportAudit(r, app, uuid.Nil, "refunds")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="refunds.csv"`)
 			if err := reporting.WriteRefundsCSV(w, out); err != nil {
@@ -588,7 +538,7 @@ func getAdminOrgReportRefunds(app *api.HTTPApplication, svc api.ReportingService
 
 func getAdminOrgReportCash(app *api.HTTPApplication, svc api.ReportingService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		q, status, err := parseAdminOrganizationReportingQuery(r, true, app)
+		q, status, err := parseAdminCompanyReportingQuery(r, true, app)
 		if err != nil {
 			writeAdminReportQueryError(w, r, status, err)
 			return
@@ -603,10 +553,10 @@ func getAdminOrgReportCash(app *api.HTTPApplication, svc api.ReportingService) h
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "reporting_error", err.Error())
 				return
 			}
-			recordReportExportAudit(r, app, q.OrganizationID, "cash")
+			recordReportExportAudit(r, app, uuid.Nil, "cash")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="cash.csv"`)
-			if err := reporting.WriteCashCollectionsCSV(w, q.OrganizationID.String(), q.From.UTC().Format(time.RFC3339Nano), q.To.UTC().Format(time.RFC3339Nano), rows); err != nil {
+			if err := reporting.WriteCashCollectionsCSV(w, uuid.Nil.String(), q.From.UTC().Format(time.RFC3339Nano), q.To.UTC().Format(time.RFC3339Nano), rows); err != nil {
 				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			}
 			return
@@ -623,7 +573,7 @@ func getAdminOrgReportCash(app *api.HTTPApplication, svc api.ReportingService) h
 func getAdminOrgReportInventoryLowStock(app *api.HTTPApplication, svc api.ReportingService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_ = app
-		q, status, err := parseAdminOrganizationReportingQuery(r, true, app)
+		q, status, err := parseAdminCompanyReportingQuery(r, true, app)
 		if err != nil {
 			writeAdminReportQueryError(w, r, status, err)
 			return
@@ -645,7 +595,7 @@ func getAdminOrgReportInventoryLowStock(app *api.HTTPApplication, svc api.Report
 func getAdminOrgReportMachineHealth(app *api.HTTPApplication, svc api.ReportingService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_ = app
-		q, status, err := parseAdminOrganizationReportingQuery(r, true, app)
+		q, status, err := parseAdminCompanyReportingQuery(r, true, app)
 		if err != nil {
 			writeAdminReportQueryError(w, r, status, err)
 			return
@@ -666,7 +616,7 @@ func getAdminOrgReportMachineHealth(app *api.HTTPApplication, svc api.ReportingS
 func getAdminOrgReportFailedVends(app *api.HTTPApplication, svc api.ReportingService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_ = app
-		q, status, err := parseAdminOrganizationReportingQuery(r, true, app)
+		q, status, err := parseAdminCompanyReportingQuery(r, true, app)
 		if err != nil {
 			writeAdminReportQueryError(w, r, status, err)
 			return
@@ -687,7 +637,7 @@ func getAdminOrgReportFailedVends(app *api.HTTPApplication, svc api.ReportingSer
 func getAdminOrgReportReconciliationQueue(app *api.HTTPApplication, svc api.ReportingService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_ = app
-		q, status, err := parseAdminOrganizationReportingQuery(r, true, app)
+		q, status, err := parseAdminCompanyReportingQuery(r, true, app)
 		if err != nil {
 			writeAdminReportQueryError(w, r, status, err)
 			return

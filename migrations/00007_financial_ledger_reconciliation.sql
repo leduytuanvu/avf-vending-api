@@ -40,7 +40,7 @@ CREATE UNIQUE INDEX ux_machine_reconciliation_sessions_open_per_day ON machine_r
 
 CREATE INDEX ix_machine_reconciliation_sessions_machine_date ON machine_reconciliation_sessions (machine_id, business_date DESC);
 
-COMMENT ON COLUMN machine_reconciliation_sessions.business_date IS 'Operator calendar day in organization TZ; store date only—resolve TZ in application.';
+COMMENT ON COLUMN machine_reconciliation_sessions.business_date IS 'Operator calendar day in company TZ; store date only—resolve TZ in application.';
 COMMENT ON COLUMN machine_reconciliation_sessions.variance_amount_minor IS 'actual - expected under session convention when closed.';
 
 -- ---------------------------------------------------------------------------
@@ -48,7 +48,7 @@ COMMENT ON COLUMN machine_reconciliation_sessions.variance_amount_minor IS 'actu
 -- ---------------------------------------------------------------------------
 CREATE TABLE cash_collections (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     collected_at timestamptz NOT NULL,
     amount_minor bigint NOT NULL CHECK (amount_minor >= 0),
@@ -63,7 +63,7 @@ CREATE TABLE cash_collections (
 );
 
 CREATE INDEX ix_cash_collections_machine_collected ON cash_collections (machine_id, collected_at DESC);
-CREATE INDEX ix_cash_collections_org_collected ON cash_collections (organization_id, collected_at DESC);
+CREATE INDEX ix_cash_collections_org_collected ON cash_collections (scope_id, collected_at DESC);
 CREATE INDEX ix_cash_collections_unreconciled ON cash_collections (machine_id, collected_at DESC)
     WHERE reconciliation_status <> 'matched';
 
@@ -74,7 +74,7 @@ COMMENT ON TABLE cash_collections IS 'Physical cash removed from machine; reconc
 -- ---------------------------------------------------------------------------
 CREATE TABLE cash_events (
     id bigserial PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     event_type text NOT NULL CHECK (
         event_type IN ('insert', 'dispense_change', 'reject', 'audit_adjust', 'transfer', 'other')
@@ -87,7 +87,7 @@ CREATE TABLE cash_events (
     reconciliation_session_id uuid REFERENCES machine_reconciliation_sessions (id) ON DELETE SET NULL
 );
 
-CREATE INDEX ix_cash_events_org_occurred ON cash_events (organization_id, occurred_at DESC);
+CREATE INDEX ix_cash_events_org_occurred ON cash_events (scope_id, occurred_at DESC);
 CREATE INDEX ix_cash_events_machine_occurred ON cash_events (machine_id, occurred_at DESC);
 CREATE INDEX ix_cash_events_session ON cash_events (reconciliation_session_id)
     WHERE reconciliation_session_id IS NOT NULL;
@@ -202,7 +202,7 @@ COMMENT ON COLUMN cash_reconciliations.cash_session_id IS 'Reserved for future c
 -- ---------------------------------------------------------------------------
 CREATE TABLE financial_ledger_entries (
     id bigserial PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid REFERENCES machines (id) ON DELETE SET NULL,
     site_id uuid REFERENCES sites (id) ON DELETE SET NULL,
     order_id uuid REFERENCES orders (id) ON DELETE SET NULL,
@@ -234,7 +234,7 @@ CREATE TABLE financial_ledger_entries (
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
-CREATE INDEX ix_financial_ledger_entries_org_time ON financial_ledger_entries (organization_id, occurred_at DESC);
+CREATE INDEX ix_financial_ledger_entries_org_time ON financial_ledger_entries (scope_id, occurred_at DESC);
 CREATE INDEX ix_financial_ledger_entries_machine_time ON financial_ledger_entries (machine_id, occurred_at DESC)
     WHERE machine_id IS NOT NULL;
 CREATE INDEX ix_financial_ledger_entries_payment ON financial_ledger_entries (payment_id)

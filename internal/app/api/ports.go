@@ -28,7 +28,7 @@ type ShadowView struct {
 // MachinesAdminService is the application port for admin machine operations.
 type MachinesAdminService interface {
 	ListMachines(ctx context.Context, scope listscope.AdminFleet) (*appfleetadmin.MachinesListResponse, error)
-	GetMachine(ctx context.Context, organizationID, machineID uuid.UUID) (*appfleetadmin.AdminMachineListItem, error)
+	GetMachine(ctx context.Context, companyID, machineID uuid.UUID) (*appfleetadmin.AdminMachineListItem, error)
 }
 
 // TechniciansAdminService is the application port for admin technician operations.
@@ -50,39 +50,39 @@ type CommandsAdminService interface {
 type OTAAdminService interface {
 	ListOTA(ctx context.Context, scope listscope.AdminFleet) (*appfleetadmin.OTAListResponse, error)
 	ListCampaigns(ctx context.Context, p appotaadmin.CampaignListParams) (*appotaadmin.CampaignListResponse, error)
-	GetCampaignDetail(ctx context.Context, organizationID, campaignID uuid.UUID) (appotaadmin.CampaignDetail, error)
+	GetCampaignDetail(ctx context.Context, companyID, campaignID uuid.UUID) (appotaadmin.CampaignDetail, error)
 	CreateCampaign(ctx context.Context, in appotaadmin.CreateCampaignInput) (appotaadmin.CampaignDetail, error)
-	PatchCampaign(ctx context.Context, organizationID, campaignID uuid.UUID, patch appotaadmin.PatchCampaignInput) (appotaadmin.CampaignDetail, error)
+	PatchCampaign(ctx context.Context, companyID, campaignID uuid.UUID, patch appotaadmin.PatchCampaignInput) (appotaadmin.CampaignDetail, error)
 	PutCampaignTargets(ctx context.Context, in appotaadmin.PutTargetsInput) error
-	ListCampaignTargets(ctx context.Context, organizationID, campaignID uuid.UUID) ([]appotaadmin.CampaignTargetItem, error)
-	ListCampaignResults(ctx context.Context, organizationID, campaignID uuid.UUID) ([]appotaadmin.MachineResultItem, error)
-	ApproveCampaign(ctx context.Context, organizationID, campaignID, actor uuid.UUID) (appotaadmin.CampaignDetail, error)
-	StartCampaign(ctx context.Context, organizationID, campaignID uuid.UUID) (appotaadmin.CampaignDetail, error)
-	PauseCampaign(ctx context.Context, organizationID, campaignID uuid.UUID) (appotaadmin.CampaignDetail, error)
-	ResumeCampaign(ctx context.Context, organizationID, campaignID uuid.UUID) (appotaadmin.CampaignDetail, error)
-	CancelCampaign(ctx context.Context, organizationID, campaignID uuid.UUID) (appotaadmin.CampaignDetail, error)
-	RollbackCampaign(ctx context.Context, organizationID, campaignID uuid.UUID, rollbackArtifactID *uuid.UUID) (appotaadmin.CampaignDetail, error)
+	ListCampaignTargets(ctx context.Context, companyID, campaignID uuid.UUID) ([]appotaadmin.CampaignTargetItem, error)
+	ListCampaignResults(ctx context.Context, companyID, campaignID uuid.UUID) ([]appotaadmin.MachineResultItem, error)
+	ApproveCampaign(ctx context.Context, companyID, campaignID, actor uuid.UUID) (appotaadmin.CampaignDetail, error)
+	StartCampaign(ctx context.Context, companyID, campaignID uuid.UUID) (appotaadmin.CampaignDetail, error)
+	PauseCampaign(ctx context.Context, companyID, campaignID uuid.UUID) (appotaadmin.CampaignDetail, error)
+	ResumeCampaign(ctx context.Context, companyID, campaignID uuid.UUID) (appotaadmin.CampaignDetail, error)
+	CancelCampaign(ctx context.Context, companyID, campaignID uuid.UUID) (appotaadmin.CampaignDetail, error)
+	RollbackCampaign(ctx context.Context, companyID, campaignID uuid.UUID, rollbackArtifactID *uuid.UUID) (appotaadmin.CampaignDetail, error)
 	// PublishCampaign approves (when draft) and starts rollout (when approved); idempotent for already-running/completed states that reject Start.
-	PublishCampaign(ctx context.Context, organizationID, campaignID, actor uuid.UUID) (appotaadmin.CampaignDetail, error)
+	PublishCampaign(ctx context.Context, companyID, campaignID, actor uuid.UUID) (appotaadmin.CampaignDetail, error)
 }
 
 // PaymentsService is the application port for payment operations exposed on the public versioned API.
 type PaymentsService interface {
-	ListPayments(ctx context.Context, scope listscope.TenantCommerce) (*appcommerceadmin.PaymentsListResponse, error)
+	ListPayments(ctx context.Context, scope listscope.CompanyCommerce) (*appcommerceadmin.PaymentsListResponse, error)
 }
 
 // OrdersService is the application port for order operations exposed on the public versioned API.
 type OrdersService interface {
-	ListOrders(ctx context.Context, scope listscope.TenantCommerce) (*appcommerceadmin.OrdersListResponse, error)
+	ListOrders(ctx context.Context, scope listscope.CompanyCommerce) (*appcommerceadmin.OrdersListResponse, error)
 }
 
 type ReconciliationAdminService interface {
-	ListReconciliationCases(ctx context.Context, scope listscope.TenantCommerce) (*appcommerceadmin.ReconciliationListResponse, error)
-	GetReconciliationCase(ctx context.Context, organizationID, caseID uuid.UUID) (appcommerceadmin.ReconciliationCaseItem, error)
+	ListReconciliationCases(ctx context.Context, scope listscope.CompanyCommerce) (*appcommerceadmin.ReconciliationListResponse, error)
+	GetReconciliationCase(ctx context.Context, companyID, caseID uuid.UUID) (appcommerceadmin.ReconciliationCaseItem, error)
 	ResolveReconciliationCase(ctx context.Context, in appcommerceadmin.ResolveReconciliationInput) (appcommerceadmin.ReconciliationCaseItem, error)
-	ListOrderTimeline(ctx context.Context, organizationID, orderID uuid.UUID, limit, offset int32) (*appcommerceadmin.OrderTimelineResponse, error)
-	ListRefundRequests(ctx context.Context, scope listscope.TenantCommerce) (*appcommerceadmin.RefundRequestsListResponse, error)
-	GetRefundRequest(ctx context.Context, organizationID, refundRequestID uuid.UUID) (appcommerceadmin.RefundRequestItem, error)
+	ListOrderTimeline(ctx context.Context, companyID, orderID uuid.UUID, limit, offset int32) (*appcommerceadmin.OrderTimelineResponse, error)
+	ListRefundRequests(ctx context.Context, scope listscope.CompanyCommerce) (*appcommerceadmin.RefundRequestsListResponse, error)
+	GetRefundRequest(ctx context.Context, companyID, refundRequestID uuid.UUID) (appcommerceadmin.RefundRequestItem, error)
 	CreateOrderRefund(ctx context.Context, in appcommerceadmin.CreateOrderRefundInput) (appcommerceadmin.CreateOrderRefundResult, error)
 	RefundFromReconciliationCase(ctx context.Context, in appcommerceadmin.RefundFromReconciliationCaseInput) (appcommerceadmin.CreateOrderRefundResult, error)
 }
@@ -113,9 +113,9 @@ type ReportingService interface {
 	TechnicianFillOperations(ctx context.Context, q listscope.ReportingQuery) (*appreporting.TechnicianFillReportResponse, error)
 }
 
-// FinanceService manages immutable finance daily closes (tenant-scoped).
+// FinanceService manages immutable finance daily closes (single-company).
 type FinanceService interface {
 	CreateDailyClose(ctx context.Context, in appfinance.CreateDailyCloseInput) (*appfinance.DailyCloseView, error)
-	GetDailyClose(ctx context.Context, organizationID, closeID uuid.UUID) (*appfinance.DailyCloseView, error)
+	GetDailyClose(ctx context.Context, companyID, closeID uuid.UUID) (*appfinance.DailyCloseView, error)
 	ListDailyClose(ctx context.Context, p appfinance.ListDailyCloseParams) (*appfinance.DailyCloseListResponse, error)
 }

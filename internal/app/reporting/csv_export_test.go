@@ -8,10 +8,9 @@ import (
 
 func TestWriteSalesSummaryCSV_StableHeaders(t *testing.T) {
 	resp := &SalesSummaryResponse{
-		OrganizationID: "11111111-1111-1111-1111-111111111111",
-		From:           "2026-01-01T00:00:00Z",
-		To:             "2026-01-02T00:00:00Z",
-		GroupBy:        "none",
+		From:    "2026-01-01T00:00:00Z",
+		To:      "2026-01-02T00:00:00Z",
+		GroupBy: "none",
 		Summary: SalesSummaryRollup{
 			GrossTotalMinor:    100,
 			SubtotalMinor:      90,
@@ -25,7 +24,7 @@ func TestWriteSalesSummaryCSV_StableHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	first := strings.Split(buf.String(), "\n")[0]
-	wantPrefix := "organization_id,from,to,group_by,row_type,"
+	wantPrefix := "scope_id,from,to,group_by,row_type,"
 	if !strings.HasPrefix(first, wantPrefix) {
 		t.Fatalf("header prefix: %q", first)
 	}
@@ -33,17 +32,16 @@ func TestWriteSalesSummaryCSV_StableHeaders(t *testing.T) {
 
 func TestWritePaymentSettlementCSV_StableHeaders(t *testing.T) {
 	resp := &PaymentSettlementResponse{
-		OrganizationID: "11111111-1111-1111-1111-111111111111",
-		From:           "2026-01-01T00:00:00Z",
-		To:             "2026-01-02T00:00:00Z",
-		Timezone:       "UTC",
+		From:     "2026-01-01T00:00:00Z",
+		To:       "2026-01-02T00:00:00Z",
+		Timezone: "UTC",
 	}
 	var buf bytes.Buffer
 	if err := WritePaymentSettlementCSV(&buf, resp); err != nil {
 		t.Fatal(err)
 	}
 	first := strings.Split(buf.String(), "\n")[0]
-	want := "organization_id,from,to,timezone,bucket_start,provider,state,settlement_status,reconciliation_status,payment_count,amount_minor"
+	want := "scope_id,from,to,timezone,bucket_start,provider,state,settlement_status,reconciliation_status,payment_count,amount_minor"
 	if first != want {
 		t.Fatalf("header: %q", first)
 	}
@@ -51,10 +49,9 @@ func TestWritePaymentSettlementCSV_StableHeaders(t *testing.T) {
 
 func TestWritePaymentSettlementCSV_NoSensitivePaymentFields(t *testing.T) {
 	resp := &PaymentSettlementResponse{
-		OrganizationID: "11111111-1111-1111-1111-111111111111",
-		From:           "2026-01-01T00:00:00Z",
-		To:             "2026-01-02T00:00:00Z",
-		Timezone:       "UTC",
+		From:     "2026-01-01T00:00:00Z",
+		To:       "2026-01-02T00:00:00Z",
+		Timezone: "UTC",
 		Items: []PaymentSettlementRow{
 			{
 				BucketStart:          "2026-01-01T12:00:00Z",
@@ -81,16 +78,15 @@ func TestWritePaymentSettlementCSV_NoSensitivePaymentFields(t *testing.T) {
 
 func TestWriteRefundsCSV_StableHeaders(t *testing.T) {
 	resp := &RefundReportResponse{
-		OrganizationID: "11111111-1111-1111-1111-111111111111",
-		From:           "2026-01-01T00:00:00Z",
-		To:             "2026-01-02T00:00:00Z",
+		From: "2026-01-01T00:00:00Z",
+		To:   "2026-01-02T00:00:00Z",
 	}
 	var buf bytes.Buffer
 	if err := WriteRefundsCSV(&buf, resp); err != nil {
 		t.Fatal(err)
 	}
 	first := strings.Split(buf.String(), "\n")[0]
-	want := "organization_id,from,to,refund_id,payment_id,order_id,machine_id,amount_minor,currency,state,reason,reconciliation_status,settlement_status,created_at"
+	want := "scope_id,from,to,refund_id,payment_id,order_id,machine_id,amount_minor,currency,state,reason,reconciliation_status,settlement_status,created_at"
 	if first != want {
 		t.Fatalf("header: %q", first)
 	}
@@ -100,9 +96,8 @@ func TestWriteTechnicianFillOpsCSV_NoTechnicianEmailOrPhoneColumns(t *testing.T)
 	tid := "22222222-2222-2222-2222-222222222222"
 	pid := "33333333-3333-3333-3333-333333333333"
 	resp := &TechnicianFillReportResponse{
-		OrganizationID: "11111111-1111-1111-1111-111111111111",
-		From:           "2026-01-01T00:00:00Z",
-		To:             "2026-01-02T00:00:00Z",
+		From: "2026-01-01T00:00:00Z",
+		To:   "2026-01-02T00:00:00Z",
 		Items: []TechnicianFillOpRow{
 			{
 				InventoryEventID:      "42",

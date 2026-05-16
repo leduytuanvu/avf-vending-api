@@ -197,7 +197,6 @@ def iter_operations(doc: dict[str, Any]) -> list[RestOperation]:
 
 def prod_write_confirmed() -> bool:
     required = [
-        "CANARY_ORGANIZATION_ID",
         "CANARY_MACHINE_ID",
         "CANARY_MACHINE_TOKEN",
         "CANARY_SITE_ID",

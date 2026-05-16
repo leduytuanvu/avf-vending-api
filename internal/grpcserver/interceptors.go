@@ -210,8 +210,6 @@ func classifyGRPCAuthFailureReason(err error) string {
 		return "auth_misconfigured"
 	case strings.Contains(msg, "machine_id does not match"):
 		return "request_scope_mismatch"
-	case strings.Contains(msg, "organization_id does not match"):
-		return "request_scope_mismatch"
 	default:
 		return "other"
 	}
@@ -244,7 +242,7 @@ func grpcActorIdentityFields(ctx context.Context) []zap.Field {
 			zap.String("actor_type", "machine"),
 			zap.String("actor_id", c.MachineID.String()),
 			zap.String("machine_id", c.MachineID.String()),
-			zap.String("organization_id", c.OrganizationID.String()),
+			zap.String("scope_id", uuid.Nil.String()),
 		}
 	}
 	if p, ok := auth.PrincipalFromContext(ctx); ok {
@@ -253,8 +251,8 @@ func grpcActorIdentityFields(ctx context.Context) []zap.Field {
 			zap.String("actor_type", at),
 			zap.String("actor_id", aid),
 		}
-		if p.HasOrganization() {
-			fields = append(fields, zap.String("organization_id", p.OrganizationID.String()))
+		if false {
+			fields = append(fields, zap.String("scope_id", uuid.Nil.String()))
 		}
 		return fields
 	}
@@ -351,7 +349,7 @@ func unaryMachineAuth(ctx context.Context, req any, info *grpc.UnaryServerInfo, 
 			productionmetrics.RecordGRPCAuthFailure("invalid_client_certificate")
 			return nil, status.Error(codes.Unauthenticated, "invalid client certificate")
 		}
-		if certClaims.MachineID != claims.MachineID || certClaims.OrganizationID != claims.OrganizationID {
+		if certClaims.MachineID != claims.MachineID {
 			productionmetrics.RecordGRPCAuthFailure("certificate_token_mismatch")
 			return nil, status.Error(codes.Unauthenticated, "client certificate does not match token")
 		}

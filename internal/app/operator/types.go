@@ -20,7 +20,6 @@ type Deps struct {
 // ActorType / TechnicianID / UserPrincipal must be derived from the authenticated principal at the
 // edge (HTTP uses JWT only); do not accept unsanitized identity fields from untrusted clients.
 type StartOperatorSessionInput struct {
-	OrganizationID uuid.UUID
 	MachineID      uuid.UUID
 	ActorType      string
 	TechnicianID   *uuid.UUID
@@ -41,11 +40,10 @@ type StartOperatorSessionInput struct {
 
 // EndOperatorSessionInput ends an ACTIVE session as ENDED or REVOKED.
 type EndOperatorSessionInput struct {
-	OrganizationID uuid.UUID
-	MachineID      uuid.UUID // must match the session row; prevents cross-machine session_id reuse
-	SessionID      uuid.UUID
-	FinalStatus    string
-	EndedReason    string
+	MachineID   uuid.UUID // must match the session row; prevents cross-machine session_id reuse
+	SessionID   uuid.UUID
+	FinalStatus string
+	EndedReason string
 	// Optional logout audit row after a successful end.
 	LogoutAuthMethod    string
 	LogoutCorrelationID *uuid.UUID
@@ -54,15 +52,13 @@ type EndOperatorSessionInput struct {
 
 // TimeoutOperatorSessionInput expires a session when expires_at is in the past.
 type TimeoutOperatorSessionInput struct {
-	OrganizationID uuid.UUID
-	MachineID      uuid.UUID // must match the session row
-	SessionID      uuid.UUID
+	MachineID uuid.UUID // must match the session row
+	SessionID uuid.UUID
 }
 
 // RecordAuthEventInput appends an auth audit event. OperatorSessionID nil is allowed for
 // machine-scoped login_failure rows (no session row created).
 type RecordAuthEventInput struct {
-	OrganizationID    uuid.UUID
 	OperatorSessionID *uuid.UUID
 	MachineID         uuid.UUID
 	EventType         string
@@ -74,7 +70,6 @@ type RecordAuthEventInput struct {
 
 // RecordActionAttributionInput records polymorphic resource attribution.
 type RecordActionAttributionInput struct {
-	OrganizationID    uuid.UUID
 	OperatorSessionID *uuid.UUID
 	MachineID         uuid.UUID
 	ActionOriginType  string

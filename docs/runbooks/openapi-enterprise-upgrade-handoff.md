@@ -101,7 +101,7 @@ Add request + response examples for paths currently missing from the dict, inclu
 - `POST /v1/admin/machines/{machineId}/sync`  
 - `POST /v1/machines/{machineId}/check-ins`, `config-applies`  
 - `POST .../operator-sessions/logout`, `heartbeat`  
-- All four `/v1/reports/*` (query `from`, `to`, `organization_id`)  
+- All four `/v1/reports/*` (query `from`, `to`, `company_id`)  
 - `GET /v1/commerce/orders/{orderId}/reconciliation`  
 - `POST` webhook (body + success `replay`)  
 - Admin catalog GETs (minimal list envelope)  

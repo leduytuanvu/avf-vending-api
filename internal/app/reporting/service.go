@@ -71,12 +71,11 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 	var grossTotal, subtotal, taxMinor, orderCount int64
 	if filtered {
 		ft, err := s.q.ReportingSalesTotalsFiltered(ctx, db.ReportingSalesTotalsFilteredParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
-			Column4:        q.SiteIDFilter,
-			Column5:        q.MachineIDFilter,
-			Column6:        q.ProductIDFilter,
+			Column1: q.From,
+			Column2: q.To,
+			Column3: q.SiteIDFilter,
+			Column4: q.MachineIDFilter,
+			Column5: q.ProductIDFilter,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting sales totals: %w", err)
@@ -84,9 +83,8 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 		grossTotal, subtotal, taxMinor, orderCount = ft.GrossTotalMinor, ft.SubtotalMinor, ft.TaxMinor, ft.OrderCount
 	} else {
 		tot, err := s.q.ReportingSalesTotals(ctx, db.ReportingSalesTotalsParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
+			Column1: q.From,
+			Column2: q.To,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting sales totals: %w", err)
@@ -98,10 +96,9 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 		avg = grossTotal / orderCount
 	}
 	out := &SalesSummaryResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		GroupBy:        q.GroupBy,
+		From:    rfc3339(q.From),
+		To:      rfc3339(q.To),
+		GroupBy: q.GroupBy,
 		Summary: SalesSummaryRollup{
 			GrossTotalMinor:    grossTotal,
 			SubtotalMinor:      subtotal,
@@ -115,13 +112,12 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 	case "day":
 		if filtered {
 			rows, err := s.q.ReportingSalesByDayFiltered(ctx, db.ReportingSalesByDayFilteredParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
-				Column4:        q.SiteIDFilter,
-				Column5:        q.MachineIDFilter,
-				Column6:        q.ProductIDFilter,
-				Column7:        reportingTimezone(q),
+				Column1: reportingTimezone(q),
+				Column2: q.From,
+				Column3: q.To,
+				Column4: q.SiteIDFilter,
+				Column5: q.MachineIDFilter,
+				Column6: q.ProductIDFilter,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting sales by day: %w", err)
@@ -138,10 +134,9 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 			}
 		} else {
 			rows, err := s.q.ReportingSalesByDay(ctx, db.ReportingSalesByDayParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
-				Column4:        reportingTimezone(q),
+				Column1: reportingTimezone(q),
+				Column2: q.From,
+				Column3: q.To,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting sales by day: %w", err)
@@ -160,12 +155,11 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 	case "site":
 		if filtered {
 			rows, err := s.q.ReportingSalesBySiteFiltered(ctx, db.ReportingSalesBySiteFilteredParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
-				Column4:        q.SiteIDFilter,
-				Column5:        q.MachineIDFilter,
-				Column6:        q.ProductIDFilter,
+				Column1: q.From,
+				Column2: q.To,
+				Column3: q.SiteIDFilter,
+				Column4: q.MachineIDFilter,
+				Column5: q.ProductIDFilter,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting sales by site: %w", err)
@@ -182,9 +176,8 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 			}
 		} else {
 			rows, err := s.q.ReportingSalesBySite(ctx, db.ReportingSalesBySiteParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
+				Column1: q.From,
+				Column2: q.To,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting sales by site: %w", err)
@@ -203,12 +196,11 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 	case "machine":
 		if filtered {
 			rows, err := s.q.ReportingSalesByMachineFiltered(ctx, db.ReportingSalesByMachineFilteredParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
-				Column4:        q.SiteIDFilter,
-				Column5:        q.MachineIDFilter,
-				Column6:        q.ProductIDFilter,
+				Column1: q.From,
+				Column2: q.To,
+				Column3: q.SiteIDFilter,
+				Column4: q.MachineIDFilter,
+				Column5: q.ProductIDFilter,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting sales by machine: %w", err)
@@ -225,9 +217,8 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 			}
 		} else {
 			rows, err := s.q.ReportingSalesByMachine(ctx, db.ReportingSalesByMachineParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
+				Column1: q.From,
+				Column2: q.To,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting sales by machine: %w", err)
@@ -246,12 +237,11 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 	case "payment_method":
 		if filtered {
 			rows, err := s.q.ReportingSalesByPaymentProviderFiltered(ctx, db.ReportingSalesByPaymentProviderFilteredParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
-				Column4:        q.SiteIDFilter,
-				Column5:        q.MachineIDFilter,
-				Column6:        q.ProductIDFilter,
+				Column1: q.From,
+				Column2: q.To,
+				Column3: q.SiteIDFilter,
+				Column4: q.MachineIDFilter,
+				Column5: q.ProductIDFilter,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting sales by payment provider: %w", err)
@@ -268,9 +258,8 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 			}
 		} else {
 			rows, err := s.q.ReportingSalesByPaymentProvider(ctx, db.ReportingSalesByPaymentProviderParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
+				Column1: q.From,
+				Column2: q.To,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting sales by payment provider: %w", err)
@@ -288,12 +277,11 @@ func (s *Service) SalesSummary(ctx context.Context, q listscope.ReportingQuery) 
 		}
 	case "product":
 		rows, err := s.q.ReportingSalesByProduct(ctx, db.ReportingSalesByProductParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
-			Column4:        q.SiteIDFilter,
-			Column5:        q.MachineIDFilter,
-			Column6:        q.ProductIDFilter,
+			Column1: q.From,
+			Column2: q.To,
+			Column3: q.SiteIDFilter,
+			Column4: q.MachineIDFilter,
+			Column5: q.ProductIDFilter,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting sales by product: %w", err)
@@ -328,12 +316,11 @@ func (s *Service) PaymentsSummary(ctx context.Context, q listscope.ReportingQuer
 	var tot db.ReportingPaymentsTotalsRow
 	if filtered {
 		ft, err := s.q.ReportingPaymentsTotalsFiltered(ctx, db.ReportingPaymentsTotalsFilteredParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
-			Column4:        q.SiteIDFilter,
-			Column5:        q.MachineIDFilter,
-			Column6:        q.ProductIDFilter,
+			Column1: q.From,
+			Column2: q.To,
+			Column3: q.SiteIDFilter,
+			Column4: q.MachineIDFilter,
+			Column5: q.ProductIDFilter,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting payments totals: %w", err)
@@ -351,19 +338,17 @@ func (s *Service) PaymentsSummary(ctx context.Context, q listscope.ReportingQuer
 	} else {
 		var err error
 		tot, err = s.q.ReportingPaymentsTotals(ctx, db.ReportingPaymentsTotalsParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
+			Column1: q.From,
+			Column2: q.To,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting payments totals: %w", err)
 		}
 	}
 	out := &PaymentsSummaryResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		GroupBy:        q.GroupBy,
+		From:    rfc3339(q.From),
+		To:      rfc3339(q.To),
+		GroupBy: q.GroupBy,
 		Summary: PaymentsSummaryRollup{
 			AuthorizedCount:       tot.AuthorizedCount,
 			CapturedCount:         tot.CapturedCount,
@@ -379,13 +364,12 @@ func (s *Service) PaymentsSummary(ctx context.Context, q listscope.ReportingQuer
 	case "day":
 		if filtered {
 			rows, err := s.q.ReportingPaymentsByDayFiltered(ctx, db.ReportingPaymentsByDayFilteredParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
-				Column4:        q.SiteIDFilter,
-				Column5:        q.MachineIDFilter,
-				Column6:        q.ProductIDFilter,
-				Column7:        reportingTimezone(q),
+				Column1: reportingTimezone(q),
+				Column2: q.From,
+				Column3: q.To,
+				Column4: q.SiteIDFilter,
+				Column5: q.MachineIDFilter,
+				Column6: q.ProductIDFilter,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting payments by day: %w", err)
@@ -400,10 +384,9 @@ func (s *Service) PaymentsSummary(ctx context.Context, q listscope.ReportingQuer
 			}
 		} else {
 			rows, err := s.q.ReportingPaymentsByDay(ctx, db.ReportingPaymentsByDayParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
-				Column4:        reportingTimezone(q),
+				Column1: reportingTimezone(q),
+				Column2: q.From,
+				Column3: q.To,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting payments by day: %w", err)
@@ -421,12 +404,11 @@ func (s *Service) PaymentsSummary(ctx context.Context, q listscope.ReportingQuer
 		byProv := map[string]PaymentsBreakdownRow{}
 		if filtered {
 			rows, err := s.q.ReportingPaymentsByMethodAndStateFiltered(ctx, db.ReportingPaymentsByMethodAndStateFilteredParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
-				Column4:        q.SiteIDFilter,
-				Column5:        q.MachineIDFilter,
-				Column6:        q.ProductIDFilter,
+				Column1: q.From,
+				Column2: q.To,
+				Column3: q.SiteIDFilter,
+				Column4: q.MachineIDFilter,
+				Column5: q.ProductIDFilter,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting payments by method: %w", err)
@@ -441,9 +423,8 @@ func (s *Service) PaymentsSummary(ctx context.Context, q listscope.ReportingQuer
 			}
 		} else {
 			rows, err := s.q.ReportingPaymentsByMethodAndState(ctx, db.ReportingPaymentsByMethodAndStateParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
+				Column1: q.From,
+				Column2: q.To,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting payments by method: %w", err)
@@ -464,12 +445,11 @@ func (s *Service) PaymentsSummary(ctx context.Context, q listscope.ReportingQuer
 		byState := map[string]PaymentsBreakdownRow{}
 		if filtered {
 			rows, err := s.q.ReportingPaymentsByMethodAndStateFiltered(ctx, db.ReportingPaymentsByMethodAndStateFilteredParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
-				Column4:        q.SiteIDFilter,
-				Column5:        q.MachineIDFilter,
-				Column6:        q.ProductIDFilter,
+				Column1: q.From,
+				Column2: q.To,
+				Column3: q.SiteIDFilter,
+				Column4: q.MachineIDFilter,
+				Column5: q.ProductIDFilter,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting payments by status: %w", err)
@@ -484,9 +464,8 @@ func (s *Service) PaymentsSummary(ctx context.Context, q listscope.ReportingQuer
 			}
 		} else {
 			rows, err := s.q.ReportingPaymentsByMethodAndState(ctx, db.ReportingPaymentsByMethodAndStateParams{
-				OrganizationID: q.OrganizationID,
-				Column2:        q.From,
-				Column3:        q.To,
+				Column1: q.From,
+				Column2: q.To,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("reporting payments by status: %w", err)
@@ -512,7 +491,7 @@ func (s *Service) PaymentsSummary(ctx context.Context, q listscope.ReportingQuer
 
 // FleetHealth returns machine posture and incident rollups for the reporting window.
 func (s *Service) FleetHealth(ctx context.Context, q listscope.ReportingQuery) (*FleetHealthResponse, error) {
-	machineRows, err := s.q.ReportingFleetMachinesByStatus(ctx, q.OrganizationID)
+	machineRows, err := s.q.ReportingFleetMachinesByStatus(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("reporting fleet machines: %w", err)
 	}
@@ -537,9 +516,8 @@ func (s *Service) FleetHealth(ctx context.Context, q listscope.ReportingQuery) (
 		}
 	}
 	incP := db.ReportingFleetIncidentsByStatusParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
+		Column1: q.From,
+		Column2: q.To,
 	}
 	incRows, err := s.q.ReportingFleetIncidentsByStatus(ctx, incP)
 	if err != nil {
@@ -550,9 +528,8 @@ func (s *Service) FleetHealth(ctx context.Context, q listscope.ReportingQuery) (
 		incBy = append(incBy, FleetStatusCountRow{Status: r.Status, Count: r.IncidentCount})
 	}
 	sevP := db.ReportingFleetMachineIncidentsBySeverityParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
+		Column1: q.From,
+		Column2: q.To,
 	}
 	sevRows, err := s.q.ReportingFleetMachineIncidentsBySeverity(ctx, sevP)
 	if err != nil {
@@ -563,7 +540,6 @@ func (s *Service) FleetHealth(ctx context.Context, q listscope.ReportingQuery) (
 		sev = append(sev, FleetSeverityCountRow{Severity: r.Severity, Count: r.IncidentCount})
 	}
 	return &FleetHealthResponse{
-		OrganizationID:             uuidStr(q.OrganizationID),
 		From:                       rfc3339(q.From),
 		To:                         rfc3339(q.To),
 		MachineSummary:             summary,
@@ -583,25 +559,23 @@ func (s *Service) InventoryExceptions(ctx context.Context, q listscope.Reporting
 	var items []InventoryExceptionItem
 	if reportingFiltersActive(q) {
 		cnt, err = s.q.ReportingInventoryExceptionsFilteredCount(ctx, db.ReportingInventoryExceptionsFilteredCountParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        includeOut,
-			Column3:        includeLow,
-			Column4:        q.SiteIDFilter,
-			Column5:        q.MachineIDFilter,
-			Column6:        q.ProductIDFilter,
+			Column1: includeOut,
+			Column2: includeLow,
+			Column3: q.SiteIDFilter,
+			Column4: q.MachineIDFilter,
+			Column5: q.ProductIDFilter,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting inventory exceptions count: %w", err)
 		}
 		rows, ferr := s.q.ReportingInventoryExceptionsFiltered(ctx, db.ReportingInventoryExceptionsFilteredParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        includeOut,
-			Column3:        includeLow,
-			Column4:        q.SiteIDFilter,
-			Column5:        q.MachineIDFilter,
-			Column6:        q.ProductIDFilter,
-			Limit:          q.Limit,
-			Offset:         q.Offset,
+			Column1: includeOut,
+			Column2: includeLow,
+			Column3: q.SiteIDFilter,
+			Column4: q.MachineIDFilter,
+			Column5: q.ProductIDFilter,
+			Limit:   q.Limit,
+			Offset:  q.Offset,
 		})
 		if ferr != nil {
 			return nil, fmt.Errorf("reporting inventory exceptions: %w", ferr)
@@ -629,19 +603,17 @@ func (s *Service) InventoryExceptions(ctx context.Context, q listscope.Reporting
 		}
 	} else {
 		cnt, err = s.q.ReportingInventoryExceptionsCount(ctx, db.ReportingInventoryExceptionsCountParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        includeOut,
-			Column3:        includeLow,
+			Column1: includeOut,
+			Column2: includeLow,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting inventory exceptions count: %w", err)
 		}
 		rows, ferr := s.q.ReportingInventoryExceptions(ctx, db.ReportingInventoryExceptionsParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        includeOut,
-			Column3:        includeLow,
-			Limit:          q.Limit,
-			Offset:         q.Offset,
+			Column1: includeOut,
+			Column2: includeLow,
+			Limit:   q.Limit,
+			Offset:  q.Offset,
 		})
 		if ferr != nil {
 			return nil, fmt.Errorf("reporting inventory exceptions: %w", ferr)
@@ -669,10 +641,9 @@ func (s *Service) InventoryExceptions(ctx context.Context, q listscope.Reporting
 		}
 	}
 	return &InventoryExceptionsResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		ExceptionKind:  q.ExceptionKind,
+		From:          rfc3339(q.From),
+		To:            rfc3339(q.To),
+		ExceptionKind: q.ExceptionKind,
 		Meta: InventoryExceptionsListMeta{
 			Limit:    q.Limit,
 			Offset:   q.Offset,
@@ -683,14 +654,13 @@ func (s *Service) InventoryExceptions(ctx context.Context, q listscope.Reporting
 	}, nil
 }
 
-// CashCollectionsExport returns cash_collections rows for an organization within [from,to), honoring optional site/machine filters (uuid.Nil = unset).
+// CashCollectionsExport returns cash_collections rows within [from,to), honoring optional site/machine filters (uuid.Nil = unset).
 func (s *Service) CashCollectionsExport(ctx context.Context, q listscope.ReportingQuery) ([]CashCollectionExportRow, error) {
-	rows, err := s.q.ReportingCashCollectionsForOrganization(ctx, db.ReportingCashCollectionsForOrganizationParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        q.SiteIDFilter,
-		Column5:        q.MachineIDFilter,
+	rows, err := s.q.ReportingCashCollectionsForCompany(ctx, db.ReportingCashCollectionsForCompanyParams{
+		Column1: q.From,
+		Column2: q.To,
+		Column3: q.SiteIDFilter,
+		Column4: q.MachineIDFilter,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting cash collections export: %w", err)
@@ -726,13 +696,12 @@ func (s *Service) PaymentSettlement(ctx context.Context, q listscope.ReportingQu
 	var items []PaymentSettlementRow
 	if reportingFiltersActive(q) {
 		rows, err := s.q.ReportingPaymentSettlementFiltered(ctx, db.ReportingPaymentSettlementFilteredParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
-			Column4:        q.SiteIDFilter,
-			Column5:        q.MachineIDFilter,
-			Column6:        q.ProductIDFilter,
-			Column7:        reportingTimezone(q),
+			Column1: reportingTimezone(q),
+			Column2: q.From,
+			Column3: q.To,
+			Column4: q.SiteIDFilter,
+			Column5: q.MachineIDFilter,
+			Column6: q.ProductIDFilter,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting payment settlement: %w", err)
@@ -751,10 +720,9 @@ func (s *Service) PaymentSettlement(ctx context.Context, q listscope.ReportingQu
 		}
 	} else {
 		rows, err := s.q.ReportingPaymentSettlement(ctx, db.ReportingPaymentSettlementParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
-			Column4:        reportingTimezone(q),
+			Column1: reportingTimezone(q),
+			Column2: q.From,
+			Column3: q.To,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting payment settlement: %w", err)
@@ -773,11 +741,10 @@ func (s *Service) PaymentSettlement(ctx context.Context, q listscope.ReportingQu
 		}
 	}
 	return &PaymentSettlementResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Timezone:       reportingTimezone(q),
-		Items:          items,
+		From:     rfc3339(q.From),
+		To:       rfc3339(q.To),
+		Timezone: reportingTimezone(q),
+		Items:    items,
 		Meta: InventoryExceptionsListMeta{
 			Limit:    int32(len(items)),
 			Offset:   0,
@@ -789,19 +756,17 @@ func (s *Service) PaymentSettlement(ctx context.Context, q listscope.ReportingQu
 
 func (s *Service) Refunds(ctx context.Context, q listscope.ReportingQuery) (*RefundReportResponse, error) {
 	total, err := s.q.ReportingRefundsCount(ctx, db.ReportingRefundsCountParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
+		Column1: q.From,
+		Column2: q.To,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting refunds count: %w", err)
 	}
 	rows, err := s.q.ReportingRefunds(ctx, db.ReportingRefundsParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Limit:          q.Limit,
-		Offset:         q.Offset,
+		Column1: q.From,
+		Column2: q.To,
+		Limit:   q.Limit,
+		Offset:  q.Offset,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting refunds: %w", err)
@@ -823,21 +788,19 @@ func (s *Service) Refunds(ctx context.Context, q listscope.ReportingQuery) (*Ref
 		})
 	}
 	return &RefundReportResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Meta:           reportMeta(q, len(items), total),
-		Items:          items,
+		From:  rfc3339(q.From),
+		To:    rfc3339(q.To),
+		Meta:  reportMeta(q, len(items), total),
+		Items: items,
 	}, nil
 }
 
 func (s *Service) CashCollectionsReport(ctx context.Context, q listscope.ReportingQuery) (*CashCollectionReportResponse, error) {
 	total, err := s.q.ReportingCashCollectionsCount(ctx, db.ReportingCashCollectionsCountParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        q.SiteIDFilter,
-		Column5:        q.MachineIDFilter,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: q.SiteIDFilter,
+		Column4: q.MachineIDFilter,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting cash collections count: %w", err)
@@ -857,11 +820,10 @@ func (s *Service) CashCollectionsReport(ctx context.Context, q listscope.Reporti
 		rows = rows[:q.Limit]
 	}
 	return &CashCollectionReportResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Meta:           reportMeta(q, len(rows), total),
-		Items:          rows,
+		From:  rfc3339(q.From),
+		To:    rfc3339(q.To),
+		Meta:  reportMeta(q, len(rows), total),
+		Items: rows,
 	}, nil
 }
 
@@ -873,26 +835,24 @@ func (s *Service) MachineHealth(ctx context.Context, q listscope.ReportingQuery)
 	var items []MachineHealthReportItem
 	if filtered {
 		total, err = s.q.ReportingMachineHealthFilteredCount(ctx, db.ReportingMachineHealthFilteredCountParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.SiteIDFilter,
-			Column3:        q.MachineIDFilter,
-			Column4:        q.ProductIDFilter,
-			Column5:        q.From,
-			Column6:        q.To,
+			Column1: q.SiteIDFilter,
+			Column2: q.MachineIDFilter,
+			Column3: q.ProductIDFilter,
+			Column4: q.From,
+			Column5: q.To,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting machine health count: %w", err)
 		}
 		rows, ferr := s.q.ReportingMachineHealthFiltered(ctx, db.ReportingMachineHealthFilteredParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.SiteIDFilter,
-			Column3:        q.MachineIDFilter,
-			Column4:        q.ProductIDFilter,
-			Column5:        q.From,
-			Column6:        q.To,
-			Column7:        cutoff,
-			Limit:          q.Limit,
-			Offset:         q.Offset,
+			Column1: cutoff,
+			Column2: q.SiteIDFilter,
+			Column3: q.MachineIDFilter,
+			Column4: q.ProductIDFilter,
+			Column5: q.From,
+			Column6: q.To,
+			Limit:   q.Limit,
+			Offset:  q.Offset,
 		})
 		if ferr != nil {
 			return nil, fmt.Errorf("reporting machine health: %w", ferr)
@@ -911,15 +871,14 @@ func (s *Service) MachineHealth(ctx context.Context, q listscope.ReportingQuery)
 			})
 		}
 	} else {
-		total, err = s.q.ReportingMachineHealthCount(ctx, q.OrganizationID)
+		total, err = s.q.ReportingMachineHealthCount(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("reporting machine health count: %w", err)
 		}
 		rows, ferr := s.q.ReportingMachineHealth(ctx, db.ReportingMachineHealthParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        cutoff,
-			Limit:          q.Limit,
-			Offset:         q.Offset,
+			Column1: cutoff,
+			Limit:   q.Limit,
+			Offset:  q.Offset,
 		})
 		if ferr != nil {
 			return nil, fmt.Errorf("reporting machine health: %w", ferr)
@@ -939,11 +898,10 @@ func (s *Service) MachineHealth(ctx context.Context, q listscope.ReportingQuery)
 		}
 	}
 	return &MachineHealthReportResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Meta:           reportMeta(q, len(items), total),
-		Items:          items,
+		From:  rfc3339(q.From),
+		To:    rfc3339(q.To),
+		Meta:  reportMeta(q, len(items), total),
+		Items: items,
 	}, nil
 }
 
@@ -954,25 +912,23 @@ func (s *Service) FailedVends(ctx context.Context, q listscope.ReportingQuery) (
 	var items []FailedVendReportItem
 	if filtered {
 		total, err = s.q.ReportingFailedVendsCountFiltered(ctx, db.ReportingFailedVendsCountFilteredParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
-			Column4:        q.SiteIDFilter,
-			Column5:        q.MachineIDFilter,
-			Column6:        q.ProductIDFilter,
+			Column1: q.From,
+			Column2: q.To,
+			Column3: q.SiteIDFilter,
+			Column4: q.MachineIDFilter,
+			Column5: q.ProductIDFilter,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting failed vends count: %w", err)
 		}
 		fr, ferr := s.q.ReportingFailedVendsFiltered(ctx, db.ReportingFailedVendsFilteredParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
-			Column4:        q.SiteIDFilter,
-			Column5:        q.MachineIDFilter,
-			Column6:        q.ProductIDFilter,
-			Limit:          q.Limit,
-			Offset:         q.Offset,
+			Column1: q.From,
+			Column2: q.To,
+			Column3: q.SiteIDFilter,
+			Column4: q.MachineIDFilter,
+			Column5: q.ProductIDFilter,
+			Limit:   q.Limit,
+			Offset:  q.Offset,
 		})
 		if ferr != nil {
 			return nil, fmt.Errorf("reporting failed vends: %w", ferr)
@@ -996,19 +952,17 @@ func (s *Service) FailedVends(ctx context.Context, q listscope.ReportingQuery) (
 		}
 	} else {
 		total, err = s.q.ReportingFailedVendsCount(ctx, db.ReportingFailedVendsCountParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
+			Column1: q.From,
+			Column2: q.To,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("reporting failed vends count: %w", err)
 		}
 		rows, ferr := s.q.ReportingFailedVends(ctx, db.ReportingFailedVendsParams{
-			OrganizationID: q.OrganizationID,
-			Column2:        q.From,
-			Column3:        q.To,
-			Limit:          q.Limit,
-			Offset:         q.Offset,
+			Column1: q.From,
+			Column2: q.To,
+			Limit:   q.Limit,
+			Offset:  q.Offset,
 		})
 		if ferr != nil {
 			return nil, fmt.Errorf("reporting failed vends: %w", ferr)
@@ -1032,29 +986,26 @@ func (s *Service) FailedVends(ctx context.Context, q listscope.ReportingQuery) (
 		}
 	}
 	return &FailedVendReportResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Meta:           reportMeta(q, len(items), total),
-		Items:          items,
+		From:  rfc3339(q.From),
+		To:    rfc3339(q.To),
+		Meta:  reportMeta(q, len(items), total),
+		Items: items,
 	}, nil
 }
 
 func (s *Service) ReconciliationQueue(ctx context.Context, q listscope.ReportingQuery) (*ReconciliationQueueReportResponse, error) {
 	total, err := s.q.ReportingReconciliationQueueCount(ctx, db.ReportingReconciliationQueueCountParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
+		Column1: q.From,
+		Column2: q.To,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting reconciliation queue count: %w", err)
 	}
 	rows, err := s.q.ReportingReconciliationQueue(ctx, db.ReportingReconciliationQueueParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Limit:          q.Limit,
-		Offset:         q.Offset,
+		Column1: q.From,
+		Column2: q.To,
+		Limit:   q.Limit,
+		Offset:  q.Offset,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting reconciliation queue: %w", err)
@@ -1077,22 +1028,20 @@ func (s *Service) ReconciliationQueue(ctx context.Context, q listscope.Reporting
 		})
 	}
 	return &ReconciliationQueueReportResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Meta:           reportMeta(q, len(items), total),
-		Items:          items,
+		From:  rfc3339(q.From),
+		To:    rfc3339(q.To),
+		Meta:  reportMeta(q, len(items), total),
+		Items: items,
 	}, nil
 }
 
 func (s *Service) VendSummary(ctx context.Context, q listscope.ReportingQuery) (*VendSummaryResponse, error) {
 	tot, err := s.q.ReportingVendSummaryTotals(ctx, db.ReportingVendSummaryTotalsParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        q.SiteIDFilter,
-		Column5:        q.MachineIDFilter,
-		Column6:        q.ProductIDFilter,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: q.SiteIDFilter,
+		Column4: q.MachineIDFilter,
+		Column5: q.ProductIDFilter,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting vend summary totals: %w", err)
@@ -1102,9 +1051,8 @@ func (s *Service) VendSummary(ctx context.Context, q listscope.ReportingQuery) (
 		return nil, err
 	}
 	return &VendSummaryResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
+		From: rfc3339(q.From),
+		To:   rfc3339(q.To),
 		Summary: VendCountsSummary{
 			SuccessCount:    tot.SuccessCount,
 			FailedCount:     tot.FailedCount,
@@ -1119,25 +1067,23 @@ func (s *Service) VendSummary(ctx context.Context, q listscope.ReportingQuery) (
 
 func (s *Service) StockMovement(ctx context.Context, q listscope.ReportingQuery) (*StockMovementReportResponse, error) {
 	total, err := s.q.ReportingStockMovementCount(ctx, db.ReportingStockMovementCountParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        q.SiteIDFilter,
-		Column5:        q.MachineIDFilter,
-		Column6:        q.ProductIDFilter,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: q.SiteIDFilter,
+		Column4: q.MachineIDFilter,
+		Column5: q.ProductIDFilter,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting stock movement count: %w", err)
 	}
 	rows, err := s.q.ReportingStockMovement(ctx, db.ReportingStockMovementParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        q.SiteIDFilter,
-		Column5:        q.MachineIDFilter,
-		Column6:        q.ProductIDFilter,
-		Limit:          q.Limit,
-		Offset:         q.Offset,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: q.SiteIDFilter,
+		Column4: q.MachineIDFilter,
+		Column5: q.ProductIDFilter,
+		Limit:   q.Limit,
+		Offset:  q.Offset,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting stock movement: %w", err)
@@ -1161,35 +1107,32 @@ func (s *Service) StockMovement(ctx context.Context, q listscope.ReportingQuery)
 		})
 	}
 	return &StockMovementReportResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Meta:           reportMeta(q, len(items), total),
-		Items:          items,
+		From:  rfc3339(q.From),
+		To:    rfc3339(q.To),
+		Meta:  reportMeta(q, len(items), total),
+		Items: items,
 	}, nil
 }
 
 func (s *Service) TechnicianFillOperations(ctx context.Context, q listscope.ReportingQuery) (*TechnicianFillReportResponse, error) {
 	total, err := s.q.ReportingTechnicianFillOpsCount(ctx, db.ReportingTechnicianFillOpsCountParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        q.SiteIDFilter,
-		Column5:        q.MachineIDFilter,
-		Column6:        q.ProductIDFilter,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: q.SiteIDFilter,
+		Column4: q.MachineIDFilter,
+		Column5: q.ProductIDFilter,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting technician fill ops count: %w", err)
 	}
 	rows, err := s.q.ReportingTechnicianFillOps(ctx, db.ReportingTechnicianFillOpsParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        q.SiteIDFilter,
-		Column5:        q.MachineIDFilter,
-		Column6:        q.ProductIDFilter,
-		Limit:          q.Limit,
-		Offset:         q.Offset,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: q.SiteIDFilter,
+		Column4: q.MachineIDFilter,
+		Column5: q.ProductIDFilter,
+		Limit:   q.Limit,
+		Offset:  q.Offset,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting technician fill ops: %w", err)
@@ -1216,33 +1159,30 @@ func (s *Service) TechnicianFillOperations(ctx context.Context, q listscope.Repo
 		})
 	}
 	return &TechnicianFillReportResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Meta:           reportMeta(q, len(items), total),
-		Items:          items,
+		From:  rfc3339(q.From),
+		To:    rfc3339(q.To),
+		Meta:  reportMeta(q, len(items), total),
+		Items: items,
 	}, nil
 }
 
 func (s *Service) CommandFailures(ctx context.Context, q listscope.ReportingQuery) (*CommandFailuresReportResponse, error) {
 	total, err := s.q.ReportingCommandFailuresCount(ctx, db.ReportingCommandFailuresCountParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        q.SiteIDFilter,
-		Column5:        q.MachineIDFilter,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: q.SiteIDFilter,
+		Column4: q.MachineIDFilter,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting command failures count: %w", err)
 	}
 	rows, err := s.q.ReportingCommandFailures(ctx, db.ReportingCommandFailuresParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        q.SiteIDFilter,
-		Column5:        q.MachineIDFilter,
-		Limit:          q.Limit,
-		Offset:         q.Offset,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: q.SiteIDFilter,
+		Column4: q.MachineIDFilter,
+		Limit:   q.Limit,
+		Offset:  q.Offset,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting command failures: %w", err)
@@ -1261,11 +1201,10 @@ func (s *Service) CommandFailures(ctx context.Context, q listscope.ReportingQuer
 		})
 	}
 	return &CommandFailuresReportResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Meta:           reportMeta(q, len(items), total),
-		Items:          items,
+		From:  rfc3339(q.From),
+		To:    rfc3339(q.To),
+		Meta:  reportMeta(q, len(items), total),
+		Items: items,
 	}, nil
 }
 
@@ -1275,29 +1214,26 @@ func (s *Service) ReconciliationBI(ctx context.Context, q listscope.ReportingQue
 		scope = "all"
 	}
 	summary, err := s.q.ReportingReconciliationSummary(ctx, db.ReportingReconciliationSummaryParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
+		Column1: q.From,
+		Column2: q.To,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting reconciliation summary: %w", err)
 	}
 	total, err := s.q.ReportingReconciliationCasesCount(ctx, db.ReportingReconciliationCasesCountParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        scope,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: scope,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting reconciliation cases count: %w", err)
 	}
 	rows, err := s.q.ReportingReconciliationCases(ctx, db.ReportingReconciliationCasesParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        scope,
-		Limit:          q.Limit,
-		Offset:         q.Offset,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: scope,
+		Limit:   q.Limit,
+		Offset:  q.Offset,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting reconciliation cases: %w", err)
@@ -1321,10 +1257,9 @@ func (s *Service) ReconciliationBI(ctx context.Context, q listscope.ReportingQue
 		})
 	}
 	return &ReconciliationBIReportResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Scope:          scope,
+		From:  rfc3339(q.From),
+		To:    rfc3339(q.To),
+		Scope: scope,
 		Summary: ReconciliationBISummary{
 			OpenCases:   summary.OpenCount,
 			ClosedCases: summary.ClosedCount,
@@ -1336,12 +1271,11 @@ func (s *Service) ReconciliationBI(ctx context.Context, q listscope.ReportingQue
 
 func (s *Service) ProductPerformance(ctx context.Context, q listscope.ReportingQuery) (*ProductPerformanceResponse, error) {
 	rows, err := s.q.ReportingSalesByProduct(ctx, db.ReportingSalesByProductParams{
-		OrganizationID: q.OrganizationID,
-		Column2:        q.From,
-		Column3:        q.To,
-		Column4:        q.SiteIDFilter,
-		Column5:        q.MachineIDFilter,
-		Column6:        q.ProductIDFilter,
+		Column1: q.From,
+		Column2: q.To,
+		Column3: q.SiteIDFilter,
+		Column4: q.MachineIDFilter,
+		Column5: q.ProductIDFilter,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reporting product performance: %w", err)
@@ -1358,10 +1292,9 @@ func (s *Service) ProductPerformance(ctx context.Context, q listscope.ReportingQ
 		})
 	}
 	return &ProductPerformanceResponse{
-		OrganizationID: uuidStr(q.OrganizationID),
-		From:           rfc3339(q.From),
-		To:             rfc3339(q.To),
-		Items:          items,
+		From:  rfc3339(q.From),
+		To:    rfc3339(q.To),
+		Items: items,
 	}, nil
 }
 

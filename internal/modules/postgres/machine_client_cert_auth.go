@@ -42,7 +42,6 @@ func (a *MachineGRPCClientCertAuth) ResolveMachineAccessFromClientCert(ctx conte
 	copy(scopes, auth.DefaultMachineAccessScopes)
 	return auth.MachineAccessClaims{
 		MachineID:         row.MachineID,
-		OrganizationID:    row.OrganizationID,
 		SiteID:            uuid.Nil,
 		CredentialVersion: 0,
 		Scopes:            scopes,

@@ -18,10 +18,10 @@ The composite fingerprint string (**`catalog_version`**) is an **opaque, server-
 
 **Route:** `GET /v1/machines/{machineId}/sale-catalog`
 
-## Auth and tenant isolation
+## Auth and company isolation
 
 - Mount inside the existing Bearer-authenticated `/v1` group (same as bootstrap).
-- **Shipped:** **`RequireMachineTenantAccess`** (`internal/httpserver/machine_tenant_middleware.go`) — DB-bound `machines.organization_id` + machine allow list; same pattern as bootstrap.
+- **Shipped:** **`RequireMachineCompanyAccess`** (`internal/httpserver/machine_company_middleware.go`) — DB-bound `machines.company_id` + machine allow list; same pattern as bootstrap.
 - Callers: machine JWT (`machine_ids` contains `machineId`) or org/technician JWT with org scope matching the machine row.
 
 ## Query parameters
@@ -43,7 +43,7 @@ Parse with `strconv` / `strings` consistent with other list endpoints.
     ```json
     {
       "machineId": "...",
-      "organizationId": "...",
+      "companyId": "...",
       "siteId": "...",
       "configVersion": 7,
       "currency": "VND",
@@ -107,7 +107,7 @@ Map inventory **`Status`** string (`out_of_stock` from [`slotStatus`](../../inte
 
 Align field names with user spec:
 
-- Top-level: `machineId`, `organizationId`, `siteId`, `configVersion`, `currency`, `generatedAt` (UTC RFC3339Nano), `items`, optional `unchanged`
+- Top-level: `machineId`, `companyId`, `siteId`, `configVersion`, `currency`, `generatedAt` (UTC RFC3339Nano), `items`, optional `unchanged`
 - Item: `slotIndex`, `slotCode`, `cabinetCode`, `productId`, `sku`, `name`, `shortName`, `priceMinor`, `availableQuantity`, `maxQuantity`, `isAvailable`, `unavailableReason`, `image`, `sortOrder` (from assortment or cabinet sort + slot order)
 
 **`shortName`:** `attrs->>'shortName'` else truncate `name` (e.g. rune-safe 32 chars).
@@ -137,7 +137,7 @@ Add **`SaleCatalog *salecatalog.Service`** (or method on `InventoryAdmin`) to [`
 |------|------|
 | Own machine token | JWT with `machine_ids=[machineId]` |
 | Other machine token | 403 |
-| Other tenant user | 403 (or 404 if using tenant middleware + hidden existence) |
+| Other company user | 403 (or 404 if using company middleware + hidden existence) |
 | Active product + stock | `isAvailable` true when price > 0 |
 | Default `include_unavailable=false` | hides OOS lines |
 | `include_unavailable=true` | `unavailableReason` set |

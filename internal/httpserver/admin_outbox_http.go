@@ -197,17 +197,14 @@ func outboxEligibleForManualDLQ(row db.OutboxEvent) bool {
 	}
 }
 
-func resolvePlatformOutboxAuditOrganization(ctx context.Context, cfg *config.Config, rowOrg pgtype.UUID) (uuid.UUID, error) {
+func resolvePlatformOutboxAuditCompany(ctx context.Context, cfg *config.Config, rowOrg pgtype.UUID) (uuid.UUID, error) {
 	if rowOrg.Valid {
 		return uuid.UUID(rowOrg.Bytes), nil
 	}
-	if p, ok := auth.PrincipalFromContext(ctx); ok && p.OrganizationID != uuid.Nil {
-		return p.OrganizationID, nil
+	if cfg != nil && cfg.PlatformAuditScopeID() != uuid.Nil {
+		return cfg.PlatformAuditScopeID(), nil
 	}
-	if cfg != nil && cfg.PlatformAuditOrganizationID != uuid.Nil {
-		return cfg.PlatformAuditOrganizationID, nil
-	}
-	return uuid.Nil, errors.New("platform audit organization unresolved: set PLATFORM_AUDIT_ORGANIZATION_ID, use org-scoped outbox rows, or authenticate with an organization-scoped principal")
+	return uuid.Nil, errors.New("platform audit scope unresolved")
 }
 
 func postAdminOutboxReplay(pool *pgxpool.Pool, app *api.HTTPApplication, cfg *config.Config, param string) http.HandlerFunc {
@@ -237,9 +234,9 @@ func postAdminOutboxReplay(pool *pgxpool.Pool, app *api.HTTPApplication, cfg *co
 				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "enterprise audit not configured")
 				return
 			}
-			auditOrg, err := resolvePlatformOutboxAuditOrganization(r.Context(), cfg, before.OrganizationID)
+			auditOrg, err := resolvePlatformOutboxAuditCompany(r.Context(), cfg, pgtype.UUID{})
 			if err != nil {
-				writeAPIError(w, r.Context(), http.StatusServiceUnavailable, "platform_audit_org_unresolved", err.Error())
+				writeAPIError(w, r.Context(), http.StatusServiceUnavailable, "platform_audit_scope_unresolved", err.Error())
 				return
 			}
 			rec = buildOutboxAdminAuditRecord(r.Context(), auditOrg, id, compliance.ActionAdminPlatformOutboxReplay, map[string]any{
@@ -284,9 +281,9 @@ func postAdminSystemOutboxMarkDLQ(pool *pgxpool.Pool, app *api.HTTPApplication, 
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "enterprise audit not configured")
 			return
 		}
-		auditOrg, err := resolvePlatformOutboxAuditOrganization(r.Context(), cfg, before.OrganizationID)
+		auditOrg, err := resolvePlatformOutboxAuditCompany(r.Context(), cfg, pgtype.UUID{})
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusServiceUnavailable, "platform_audit_org_unresolved", err.Error())
+			writeAPIError(w, r.Context(), http.StatusServiceUnavailable, "platform_audit_scope_unresolved", err.Error())
 			return
 		}
 		note := ""
@@ -320,13 +317,12 @@ func buildOutboxAdminAuditRecord(ctx context.Context, auditOrg uuid.UUID, id int
 		at, aid = p.Actor()
 	}
 	return compliance.EnterpriseAuditRecord{
-		OrganizationID: auditOrg,
-		ActorType:      at,
-		ActorID:        stringPtrOrNil(aid),
-		Action:         action,
-		ResourceType:   "outbox_events",
-		ResourceID:     &rid,
-		Metadata:       md,
+		ActorType:    at,
+		ActorID:      stringPtrOrNil(aid),
+		Action:       action,
+		ResourceType: "outbox_events",
+		ResourceID:   &rid,
+		Metadata:     md,
 	}
 }
 
@@ -355,7 +351,6 @@ func mapDBOutboxOpsRow(row db.OutboxEvent) V1AdminOutboxRow {
 	next := pgTzToAPIPtr(row.NextPublishAfter)
 	return V1AdminOutboxRow{
 		ID:                   row.ID,
-		OrganizationID:       uuidPtrFromPgUUID(row.OrganizationID),
 		Topic:                row.Topic,
 		EventType:            row.EventType,
 		Payload:              payload,

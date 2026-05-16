@@ -17,6 +17,6 @@ func TestMapMachineInventoryLedgerError(t *testing.T) {
 	require.Equal(t, codes.NotFound, status.Code(mapMachineInventoryLedgerError(inventoryapp.ErrAdjustmentSlotNotFound)))
 	require.Equal(t, codes.InvalidArgument, status.Code(mapMachineInventoryLedgerError(inventoryapp.ErrInvalidStockAdjustmentReason)))
 	require.Equal(t, codes.Aborted, status.Code(mapMachineInventoryLedgerError(inventoryapp.ErrIdempotencyKeyConflict)))
-	require.Equal(t, codes.PermissionDenied, status.Code(mapMachineInventoryLedgerError(postgres.ErrMachineOrganizationMismatch)))
+	require.Equal(t, codes.PermissionDenied, status.Code(mapMachineInventoryLedgerError(postgres.ErrMachineScopeMismatch)))
 	require.Equal(t, codes.Internal, status.Code(mapMachineInventoryLedgerError(errors.New("other"))))
 }

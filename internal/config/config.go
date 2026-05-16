@@ -213,9 +213,16 @@ type Config struct {
 	// AuditCriticalFailOpen when true allows RecordCritical to swallow persistence errors (AUDIT_CRITICAL_FAIL_OPEN).
 	// Forbidden when APP_ENV is staging or production.
 	AuditCriticalFailOpen bool
-	// PlatformAuditOrganizationID scopes enterprise audit_events for platform outbox admin mutations when
-	// outbox_events.organization_id is NULL (PLATFORM_AUDIT_ORGANIZATION_ID). Optional in development/test.
-	PlatformAuditOrganizationID uuid.UUID
+	// PlatformAuditScopeUUID scopes enterprise audit_events for platform outbox admin mutations when
+	// outbox_events.scope_id is NULL (PLATFORM_AUDIT_SCOPE_ID). Optional in development/test.
+	PlatformAuditScopeUUID uuid.UUID
+}
+
+func (c *Config) PlatformAuditScopeID() uuid.UUID {
+	if c == nil {
+		return uuid.Nil
+	}
+	return c.PlatformAuditScopeUUID
 }
 
 // ArtifactsConfig gates /v1/admin/.../artifacts routes and upload limits.
@@ -323,7 +330,7 @@ type AbuseRateLimitConfig struct {
 	PublicPerMinute        int
 	// CommandDispatchPerMinute limits POST /v1/machines/{id}/commands/dispatch per machine id + client IP.
 	CommandDispatchPerMinute int
-	// ReportsReadPerMinute limits heavy GET reporting endpoints per interactive user + organization scope.
+	// ReportsReadPerMinute limits heavy GET reporting endpoints per interactive user + company scope.
 	ReportsReadPerMinute int
 
 	// LockoutWindow is the minimum Redis/memory bucket TTL (typically ≥ 1m); widens the observation window when larger than one minute.
@@ -1708,7 +1715,7 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	platformAuditOrgID, err := parseOptionalEnvUUID("PLATFORM_AUDIT_ORGANIZATION_ID")
+	platformAuditScopeID, err := parseOptionalEnvUUID("PLATFORM_AUDIT_SCOPE_ID")
 	if err != nil {
 		return nil, err
 	}
@@ -1826,7 +1833,7 @@ func Load() (*Config, error) {
 		RetentionWorker:                loadRetentionWorkerConfig(appEnv),
 		RetentionAllowDestructiveLocal: getenvBool("RETENTION_ALLOW_DESTRUCTIVE_LOCAL", false),
 		AuditCriticalFailOpen:          getenvBool("AUDIT_CRITICAL_FAIL_OPEN", false),
-		PlatformAuditOrganizationID:    platformAuditOrgID,
+		PlatformAuditScopeUUID:         platformAuditScopeID,
 		HTTPAuth:                       httpAuth,
 		AdminAuthSecurity:              adminAuthSecurity,
 		MachineJWT:                     machineJWT,

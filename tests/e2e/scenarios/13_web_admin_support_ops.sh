@@ -52,8 +52,6 @@ if [[ -z "${ADMIN_TOKEN:-}" ]]; then
   log_error "WA-SUP-13: ADMIN_TOKEN required"
   exit 2
 fi
-
-ORG_ID="$(get_data organizationId)"
 MACHINE_ID="$(get_data machineId)"
 PRODUCT_ID="$(get_data productId)"
 CUR="$(get_data currency)"
@@ -63,12 +61,7 @@ SLOT="$(get_data slotCode)"
 [[ -z "$CABINET" || "$CABINET" == "null" ]] && CABINET="A"
 [[ -z "$SLOT" || "$SLOT" == "null" ]] && SLOT="A1"
 
-if [[ -z "$ORG_ID" || "$ORG_ID" == "null" ]]; then
-  log_error "WA-SUP-13: organizationId required"
-  exit 2
-fi
 
-Q_ORG_QUERY="organization_id=$(printf '%s' "$ORG_ID" | jq -sRr @uri)"
 ANY_FAIL=0
 mut_safe=""
 if [[ "${E2E_ALLOW_WRITES:-}" == "true" ]] && [[ "${E2E_TARGET:-local}" != "production" ]]; then
@@ -76,8 +69,8 @@ if [[ "${E2E_ALLOW_WRITES:-}" == "true" ]] && [[ "${E2E_TARGET:-local}" != "prod
 fi
 
 # Support dashboard: list orders
-path="/v1/orders?${Q_ORG_QUERY}&limit=10"
-[[ -n "$MACHINE_ID" && "$MACHINE_ID" != "null" ]] && path="${path}&machine_id=$(printf '%s' "$MACHINE_ID" | jq -sRr @uri)"
+path="/v1/orders"
+[[ -n "$MACHINE_ID" && "$MACHINE_ID" != "null" ]] && path="${path}?machine_id=$(printf '%s' "$MACHINE_ID" | jq -sRr @uri)"
 code="$(e2e_http_get "sup-orders-list" "$path")"
 if [[ "$code" == "200" ]] && jq -e '(.items|type=="array")' "${E2E_RUN_DIR}/rest/sup-orders-list.response.json" >/dev/null 2>&1; then
   wa4_record "orders-list" "GET /v1/orders" "pass" "$code" "200 items" "ok" "" "sup-orders-list"
@@ -141,7 +134,7 @@ if [[ -n "$OID" && "$OID" != "null" ]]; then
     wa4_record "commerce-order-get" "GET /v1/commerce/orders/{id}" "skip" "$code" "200+order" "HTTP $code" "sup-order-get.response.json" "sup-order-get"
   fi
 
-  path="/v1/admin/organizations/${ORG_ID}/orders/${OID}/timeline"
+  path="/v1/admin/orders/${OID}/timeline"
   code="$(e2e_http_get "sup-order-timeline" "$path")"
   if [[ "$code" == "200" ]]; then
     wa4_record "admin-order-timeline" "GET .../orders/{id}/timeline" "pass" "$code" "200" "audit trail read" "" "sup-order-timeline"
@@ -154,7 +147,7 @@ if [[ -n "$OID" && "$OID" != "null" ]]; then
     did_mut=0
     if [[ "$RST" == "paid" ]] || [[ "$RST" == "completed" ]]; then
       RBODY="$(jq -nc '{amountMinor:1, reason:"e2e automation refund smoke"}')"
-      path="/v1/admin/organizations/${ORG_ID}/orders/${OID}/refunds"
+      path="/v1/admin/orders/${OID}/refunds"
       code="$(e2e_http_post_json_idem "sup-order-refund" "$path" "$RBODY" "e2e-refund-${OID}")"
       if [[ "$code" == "200" ]]; then
         wa4_record "admin-order-refund" "POST .../refunds" "pass" "$code" "200" "refund requested" "" "sup-order-refund"

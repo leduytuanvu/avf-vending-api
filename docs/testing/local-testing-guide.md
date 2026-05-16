@@ -47,7 +47,7 @@ Uses Goose against **`DATABASE_URL`**; see **`scripts/verify_database_environmen
 
 ## 4. Seed a local admin user
 
-There is no universal demo seed in-repo for every environment—follow **`../runbooks/local-dev.md`** and organization bootstrap flows your deployment uses (often first admin via **`POST /v1/auth/register`** where enabled, or ops-supplied SQL—check **`machine-activation.md`** / **`technician-setup.md`** for fleet provisioning vs kiosk activation).
+There is no universal demo seed in-repo for every environment—follow **`../runbooks/local-dev.md`** and company bootstrap flows your deployment uses (often first admin via **`POST /v1/auth/register`** where enabled, or ops-supplied SQL—check **`machine-activation.md`** / **`technician-setup.md`** for fleet provisioning vs kiosk activation).
 
 Once you have **User JWT** credentials, store **`access_token`** / **`refresh_token`** for Bearer calls to **`/v1/admin/*`**.
 
@@ -133,7 +133,7 @@ One-off prepend for the current PowerShell session (adjust if your profile paths
 $env:Path = "C:\Program Files\Mosquitto;$env:APPDATA\npm;$env:USERPROFILE\go\bin;$env:Path"
 ```
 
-`scripts/local/run-local-e2e.ps1` attempts an **idempotent** `INSERT` into `platform_auth_accounts` (dev org `11111111-1111-1111-1111-111111111111`, user `e2e-local-admin@invalid.local`) when `docker exec avf-postgres` can reach `avf_vending_test` on the same DB as `start-api-local.ps1` / full Go tests. Override with `E2E_LOCAL_ADMIN_EMAIL`, `E2E_LOCAL_ADMIN_PASSWORD`, or `E2E_LOCAL_ORGANIZATION_ID` before running the script if you manage credentials yourself.
+`scripts/local/run-local-e2e.ps1` attempts an **idempotent** `INSERT` into `platform_auth_accounts` (dev scope `11111111-1111-1111-1111-111111111111`, user `e2e-local-admin@invalid.local`) when `docker exec avf-postgres` can reach `avf_vending_test` on the same DB as `start-api-local.ps1` / full Go tests. Override with `E2E_LOCAL_ADMIN_EMAIL`, `E2E_LOCAL_ADMIN_PASSWORD`, or `E2E_LOCAL_SCOPE_ID` before running the script if you manage credentials yourself.
 
 ### Artifacts
 

@@ -101,7 +101,7 @@ func (a *AbuseProtection) RefreshPOST() func(http.Handler) http.Handler {
 	}
 }
 
-// AdminMutation limits mutating methods under /v1/admin per account + organization scope.
+// AdminMutation limits mutating methods under /v1/admin per account + company scope.
 func (a *AbuseProtection) AdminMutation() func(http.Handler) http.Handler {
 	if !a.enabled() {
 		return a.noop
@@ -121,9 +121,9 @@ func (a *AbuseProtection) AdminMutation() func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			org := p.OrganizationID
+			org := uuid.Nil
 			if p.HasRole(auth.RolePlatformAdmin) {
-				if q := strings.TrimSpace(r.URL.Query().Get("organization_id")); q != "" {
+				if q := strings.TrimSpace(r.URL.Query().Get("scope_id")); q != "" {
 					if id, err := uuid.Parse(q); err == nil {
 						org = id
 					}
@@ -201,7 +201,7 @@ func (a *AbuseProtection) WebhookPOST() func(http.Handler) http.Handler {
 	}
 }
 
-// ReportsReadGET limits GET report endpoints per interactive subject + organization scope.
+// ReportsReadGET limits GET report endpoints per interactive subject + company scope.
 func (a *AbuseProtection) ReportsReadGET() func(http.Handler) http.Handler {
 	if !a.enabled() {
 		return a.noop
@@ -217,9 +217,9 @@ func (a *AbuseProtection) ReportsReadGET() func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			org := p.OrganizationID
+			org := uuid.Nil
 			if p.HasRole(auth.RolePlatformAdmin) {
-				if q := strings.TrimSpace(r.URL.Query().Get("organization_id")); q != "" {
+				if q := strings.TrimSpace(r.URL.Query().Get("scope_id")); q != "" {
 					if id, err := uuid.Parse(q); err == nil {
 						org = id
 					}
@@ -245,11 +245,11 @@ func (a *AbuseProtection) PasswordResetRequestPOST() func(http.Handler) http.Han
 				return
 			}
 			var pr struct {
-				OrganizationID string `json:"organizationId"`
-				Email          string `json:"email"`
+				ScopeID string `json:"scopeId"`
+				Email   string `json:"email"`
 			}
 			_ = json.Unmarshal(body, &pr)
-			org := strings.TrimSpace(pr.OrganizationID)
+			org := ""
 			email := strings.TrimSpace(strings.ToLower(pr.Email))
 			emailDig := sha256.Sum256([]byte(email))
 			emailH := hex.EncodeToString(emailDig[:])

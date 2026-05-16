@@ -28,13 +28,12 @@ func (s *Store) ResolveSaleLine(ctx context.Context, in appcommerce.ResolveSaleL
 		eng = pricingengine.New(s.pool)
 	}
 	sel := pricingengine.SaleLineSelector{
-		OrganizationID: in.OrganizationID,
-		MachineID:      in.MachineID,
-		ProductID:      in.ProductID,
-		SlotID:         in.SlotID,
-		CabinetCode:    in.CabinetCode,
-		SlotCode:       in.SlotCode,
-		SlotIndex:      in.SlotIndex,
+		MachineID:   in.MachineID,
+		ProductID:   in.ProductID,
+		SlotID:      in.SlotID,
+		CabinetCode: in.CabinetCode,
+		SlotCode:    in.SlotCode,
+		SlotIndex:   in.SlotIndex,
 	}
 	line, row, err := eng.EvaluateSaleLine(ctx, sel, pricingengine.NowUTC(), 1)
 	if err != nil {
@@ -48,13 +47,12 @@ func (s *Store) ResolveSaleLine(ctx context.Context, in appcommerce.ResolveSaleL
 }
 
 // LookupSlotDisplay returns current slot identity for an order line without re-checking assortment (replay / read enrichment).
-func (s *Store) LookupSlotDisplay(ctx context.Context, organizationID, machineID, productID uuid.UUID, slotIndex int32) (appcommerce.ResolvedSaleLine, error) {
+func (s *Store) LookupSlotDisplay(ctx context.Context, companyID, machineID, productID uuid.UUID, slotIndex int32) (appcommerce.ResolvedSaleLine, error) {
 	idx := slotIndex
 	return s.ResolveSaleLine(ctx, appcommerce.ResolveSaleLineInput{
-		OrganizationID: organizationID,
-		MachineID:      machineID,
-		ProductID:      productID,
-		SlotIndex:      &idx,
+		MachineID: machineID,
+		ProductID: productID,
+		SlotIndex: &idx,
 	})
 }
 
@@ -68,13 +66,12 @@ func (s *Store) EvaluateSaleLineAt(ctx context.Context, in appcommerce.ResolveSa
 		eng = pricingengine.New(s.pool)
 	}
 	sel := pricingengine.SaleLineSelector{
-		OrganizationID: in.OrganizationID,
-		MachineID:      in.MachineID,
-		ProductID:      in.ProductID,
-		SlotID:         in.SlotID,
-		CabinetCode:    in.CabinetCode,
-		SlotCode:       in.SlotCode,
-		SlotIndex:      in.SlotIndex,
+		MachineID:   in.MachineID,
+		ProductID:   in.ProductID,
+		SlotID:      in.SlotID,
+		CabinetCode: in.CabinetCode,
+		SlotCode:    in.SlotCode,
+		SlotIndex:   in.SlotIndex,
 	}
 	line, row, err := eng.EvaluateSaleLine(ctx, sel, at.UTC(), qty)
 	if err != nil {

@@ -1,6 +1,6 @@
 # Payments (admin finance & PSP evidence)
 
-Org-scoped routes require a Bearer admin JWT. Tenant users may only access their own `organizationId`; platform admins may access any org id in the path.
+Role-scoped routes require a Bearer admin JWT. Company users may only access their own `companyId`; platform admins may access any company id in the path.
 
 ## Machine gRPC vs HTTP payment sessions
 
@@ -31,13 +31,13 @@ Public machine/webhook ingress persists rows when HMAC policy allows (`/v1/comme
 - `received_at`, `validation_status`, `signature_valid`
 - `payload` (JSON redacted via `compliance.SanitizeJSONBytes` at insert)
 - `applied_at`, `ingress_status`, `ingress_error` (processing outcome)
-- `organization_id` (denormalized from the order for admin filtering)
+- `company_id` (denormalized from the order for admin filtering)
 
 Duplicate `webhook_event_id` or `provider_ref` replays do not double-apply payment state (same transaction semantics as before).
 
 ## Provider settlements (`payment_provider_settlements`)
 
-Imported PSP settlement reports are keyed by `(organization_id, provider, provider_settlement_id)`. Reconciliation compares **gross_amount_minor** to the sum of internal **payments** referenced by `transaction_refs` (matched via `payment_attempts.provider_reference`).
+Imported PSP settlement reports are keyed by `(company_id, provider, provider_settlement_id)`. Reconciliation compares **gross_amount_minor** to the sum of internal **payments** referenced by `transaction_refs` (matched via `payment_attempts.provider_reference`).
 
 - **Matched** imports are marked `reconciled`.
 - **Mismatch** opens a `commerce_reconciliation_cases` row with `case_type = settlement_amount_mismatch` and `correlation_key = settlement:{provider}:{provider_settlement_id}`.
@@ -50,13 +50,13 @@ Foundation table for chargebacks/disputes with optional links to `payments` and 
 
 | Method | Path | Permission | Notes |
 |--------|------|------------|--------|
-| GET | `/v1/admin/organizations/{organizationId}/payments/reconciliation` | `commerce:read` or `payment:read` | Query: **`stale_after_seconds`** _or_ **`stale_hours`** (lookahead for paid-not-completed; default stale window applies when omitted), **`limit`** (caps at 500). JSON: stale paid orders stuck in **`paid`**/**`vending`**, PSP payload capture vs **`created`/`authorized`** payment rows, **`captured`** rows without webhook evidence (`payment_provider_events` HMAC/`unsigned_development`), and **applied** webhook rows whose **`provider_amount_minor` / currency** disagree with the **`payments`** ledger (drift / manual repair triage; **`cash`** excluded). |
-| GET | `/v1/admin/organizations/{organizationId}/payments/webhook-events` | `commerce:read` or `payment:read` | Pagination: `limit`, `offset` |
-| GET | `/v1/admin/organizations/{organizationId}/payments/settlements` | same | |
-| POST | `/v1/admin/organizations/{organizationId}/payments/settlements/import` | `payment:refund` | JSON body: `provider`, `settlements[]` |
-| GET | `/v1/admin/organizations/{organizationId}/payments/disputes` | same as GET lists | |
-| POST | `/v1/admin/organizations/{organizationId}/payments/disputes/{disputeId}/resolve` | `payment:refund` | JSON: `status`, `note`; writes enterprise audit |
-| GET | `/v1/admin/organizations/{organizationId}/payments/export` | same | Query: `from`, `to` (RFC3339); CSV download |
+| GET | `/v1/admin/payments/reconciliation` | `commerce:read` or `payment:read` | Query: **`stale_after_seconds`** _or_ **`stale_hours`** (lookahead for paid-not-completed; default stale window applies when omitted), **`limit`** (caps at 500). JSON: stale paid orders stuck in **`paid`**/**`vending`**, PSP payload capture vs **`created`/`authorized`** payment rows, **`captured`** rows without webhook evidence (`payment_provider_events` HMAC/`unsigned_development`), and **applied** webhook rows whose **`provider_amount_minor` / currency** disagree with the **`payments`** ledger (drift / manual repair triage; **`cash`** excluded). |
+| GET | `/v1/admin/payments/webhook-events` | `commerce:read` or `payment:read` | Pagination: `limit`, `offset` |
+| GET | `/v1/admin/payments/settlements` | same | |
+| POST | `/v1/admin/payments/settlements/import` | `payment:refund` | JSON body: `provider`, `settlements[]` |
+| GET | `/v1/admin/payments/disputes` | same as GET lists | |
+| POST | `/v1/admin/payments/disputes/{disputeId}/resolve` | `payment:refund` | JSON: `status`, `note`; writes enterprise audit |
+| GET | `/v1/admin/payments/export` | same | Query: `from`, `to` (RFC3339); CSV download |
 
 Settlement import and dispute resolution emit **critical** audit events (`payment.settlement.imported`, `payment.dispute.resolved`) when enterprise audit is configured.
 

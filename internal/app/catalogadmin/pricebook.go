@@ -27,9 +27,9 @@ func validatePriceBookWindow(effectiveFrom time.Time, effectiveTo pgtype.Timesta
 
 func validateScopeColumns(scopeType string, siteID, machineID pgtype.UUID) error {
 	switch scopeType {
-	case "organization":
+	case "company":
 		if siteID.Valid || machineID.Valid {
-			return fmt.Errorf("%w: organization scope must not set site_id or machine_id", ErrInvalidArgument)
+			return fmt.Errorf("%w: company scope must not set site_id or machine_id", ErrInvalidArgument)
 		}
 	case "site":
 		if !siteID.Valid || machineID.Valid {
@@ -47,25 +47,21 @@ func validateScopeColumns(scopeType string, siteID, machineID pgtype.UUID) error
 
 // CreatePriceBookInput validates and inserts a price book row.
 type CreatePriceBookInput struct {
-	OrganizationID uuid.UUID
-	Name           string
-	Currency       string
-	EffectiveFrom  time.Time
-	EffectiveTo    pgtype.Timestamptz
-	IsDefault      bool
-	ScopeType      string
-	SiteID         pgtype.UUID
-	MachineID      pgtype.UUID
-	Priority       int32
+	Name          string
+	Currency      string
+	EffectiveFrom time.Time
+	EffectiveTo   pgtype.Timestamptz
+	IsDefault     bool
+	ScopeType     string
+	SiteID        pgtype.UUID
+	MachineID     pgtype.UUID
+	Priority      int32
 }
 
 // CreatePriceBook creates an active price book.
 func (s *Service) CreatePriceBook(ctx context.Context, in CreatePriceBookInput) (db.PriceBook, error) {
 	if s == nil {
 		return db.PriceBook{}, errors.New("catalogadmin: nil service")
-	}
-	if in.OrganizationID == uuid.Nil {
-		return db.PriceBook{}, ErrOrganizationRequired
 	}
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
@@ -77,7 +73,7 @@ func (s *Service) CreatePriceBook(ctx context.Context, in CreatePriceBookInput) 
 	}
 	scope := strings.TrimSpace(strings.ToLower(in.ScopeType))
 	if scope == "" {
-		scope = "organization"
+		scope = "company"
 	}
 	if err := validatePriceBookWindow(in.EffectiveFrom, in.EffectiveTo); err != nil {
 		return db.PriceBook{}, err
@@ -86,17 +82,16 @@ func (s *Service) CreatePriceBook(ctx context.Context, in CreatePriceBookInput) 
 		return db.PriceBook{}, err
 	}
 	row, err := s.q.CatalogWriteInsertPriceBook(ctx, db.CatalogWriteInsertPriceBookParams{
-		OrganizationID: in.OrganizationID,
-		Name:           name,
-		Currency:       cur,
-		EffectiveFrom:  in.EffectiveFrom,
-		EffectiveTo:    in.EffectiveTo,
-		IsDefault:      in.IsDefault,
-		Active:         true,
-		ScopeType:      scope,
-		SiteID:         in.SiteID,
-		MachineID:      in.MachineID,
-		Priority:       in.Priority,
+		Name:          name,
+		Currency:      cur,
+		EffectiveFrom: in.EffectiveFrom,
+		EffectiveTo:   in.EffectiveTo,
+		IsDefault:     in.IsDefault,
+		Active:        true,
+		ScopeType:     scope,
+		SiteID:        in.SiteID,
+		MachineID:     in.MachineID,
+		Priority:      in.Priority,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -104,8 +99,8 @@ func (s *Service) CreatePriceBook(ctx context.Context, in CreatePriceBookInput) 
 		}
 		return db.PriceBook{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, in.OrganizationID, compliance.ActionPriceBookCreated, "catalog.price_book", row.ID, priceBookAuditSnapshot(row))
-	s.bumpCatalogCache(ctx, in.OrganizationID)
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionPriceBookCreated, "catalog.price_book", row.ID, priceBookAuditSnapshot(row))
+	s.bumpCatalogCache(ctx, uuid.Nil)
 	return row, nil
 }
 
@@ -114,8 +109,8 @@ func (s *Service) UpdatePriceBook(ctx context.Context, p db.CatalogWriteUpdatePr
 	if s == nil {
 		return db.PriceBook{}, errors.New("catalogadmin: nil service")
 	}
-	if p.OrganizationID == uuid.Nil || p.ID == uuid.Nil {
-		return db.PriceBook{}, ErrOrganizationRequired
+	if p.ID == uuid.Nil {
+		return db.PriceBook{}, ErrCompanyRequired
 	}
 	p.Name = strings.TrimSpace(p.Name)
 	if p.Name == "" {
@@ -142,73 +137,65 @@ func (s *Service) UpdatePriceBook(ctx context.Context, p db.CatalogWriteUpdatePr
 		}
 		return db.PriceBook{}, err
 	}
-	s.recordCatalogWriteAudit(ctx, p.OrganizationID, compliance.ActionPriceBookChanged, "catalog.price_book", row.ID, priceBookAuditSnapshot(row))
-	s.bumpCatalogCache(ctx, p.OrganizationID)
+	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionPriceBookChanged, "catalog.price_book", row.ID, priceBookAuditSnapshot(row))
+	s.bumpCatalogCache(ctx, uuid.Nil)
 	return row, nil
 }
 
 // ActivatePriceBook sets active=true (enterprise “reactivate” after deactivation).
-func (s *Service) ActivatePriceBook(ctx context.Context, organizationID, priceBookID uuid.UUID) (db.PriceBook, error) {
+func (s *Service) ActivatePriceBook(ctx context.Context, companyID, priceBookID uuid.UUID) (db.PriceBook, error) {
 	if s == nil {
 		return db.PriceBook{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || priceBookID == uuid.Nil {
-		return db.PriceBook{}, ErrOrganizationRequired
+	if priceBookID == uuid.Nil {
+		return db.PriceBook{}, ErrCompanyRequired
 	}
-	cur, err := s.GetPriceBook(ctx, organizationID, priceBookID)
+	cur, err := s.GetPriceBook(ctx, companyID, priceBookID)
 	if err != nil {
 		return db.PriceBook{}, err
 	}
-	return s.UpdatePriceBook(ctx, db.CatalogWriteUpdatePriceBookParams{
-		OrganizationID: cur.OrganizationID,
-		ID:             cur.ID,
-		Name:           cur.Name,
-		Currency:       cur.Currency,
-		EffectiveFrom:  cur.EffectiveFrom,
-		EffectiveTo:    cur.EffectiveTo,
-		IsDefault:      cur.IsDefault,
-		Active:         true,
-		ScopeType:      cur.ScopeType,
-		SiteID:         cur.SiteID,
-		MachineID:      cur.MachineID,
-		Priority:       cur.Priority,
+	return s.UpdatePriceBook(ctx, db.CatalogWriteUpdatePriceBookParams{Name: cur.Name,
+		Currency:      cur.Currency,
+		EffectiveFrom: cur.EffectiveFrom,
+		EffectiveTo:   cur.EffectiveTo,
+		IsDefault:     cur.IsDefault,
+		Active:        true,
+		ScopeType:     cur.ScopeType,
+		SiteID:        cur.SiteID,
+		MachineID:     cur.MachineID,
+		Priority:      cur.Priority,
+		ID:            cur.ID,
 	})
 }
 
 // DeactivatePriceBook sets active=false.
-func (s *Service) DeactivatePriceBook(ctx context.Context, organizationID, priceBookID uuid.UUID) (db.PriceBook, error) {
+func (s *Service) DeactivatePriceBook(ctx context.Context, companyID, priceBookID uuid.UUID) (db.PriceBook, error) {
 	if s == nil {
 		return db.PriceBook{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || priceBookID == uuid.Nil {
-		return db.PriceBook{}, ErrOrganizationRequired
+	if priceBookID == uuid.Nil {
+		return db.PriceBook{}, ErrCompanyRequired
 	}
-	row, err := s.q.CatalogWriteDeactivatePriceBook(ctx, db.CatalogWriteDeactivatePriceBookParams{
-		OrganizationID: organizationID,
-		ID:             priceBookID,
-	})
+	row, err := s.q.CatalogWriteDeactivatePriceBook(ctx, priceBookID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.PriceBook{}, ErrNotFound
 		}
 		return db.PriceBook{}, err
 	}
-	s.bumpCatalogCache(ctx, organizationID)
+	s.bumpCatalogCache(ctx, companyID)
 	return row, nil
 }
 
-// GetPriceBook returns a single price book for the tenant.
-func (s *Service) GetPriceBook(ctx context.Context, organizationID, priceBookID uuid.UUID) (db.PriceBook, error) {
+// GetPriceBook returns a single price book for the company.
+func (s *Service) GetPriceBook(ctx context.Context, companyID, priceBookID uuid.UUID) (db.PriceBook, error) {
 	if s == nil {
 		return db.PriceBook{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || priceBookID == uuid.Nil {
-		return db.PriceBook{}, ErrOrganizationRequired
+	if priceBookID == uuid.Nil {
+		return db.PriceBook{}, ErrCompanyRequired
 	}
-	row, err := s.q.CatalogAdminGetPriceBook(ctx, db.CatalogAdminGetPriceBookParams{
-		OrganizationID: organizationID,
-		ID:             priceBookID,
-	})
+	row, err := s.q.CatalogAdminGetPriceBook(ctx, priceBookID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.PriceBook{}, ErrNotFound
@@ -224,46 +211,37 @@ type PriceBookItemRow struct {
 	UnitPriceMinor int64
 }
 
-// ListPriceBookItems returns items for a book (tenant-scoped).
-func (s *Service) ListPriceBookItems(ctx context.Context, organizationID, priceBookID uuid.UUID) ([]db.PriceBookItem, error) {
+// ListPriceBookItems returns items for a book (single-company).
+func (s *Service) ListPriceBookItems(ctx context.Context, companyID, priceBookID uuid.UUID) ([]db.PriceBookItem, error) {
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || priceBookID == uuid.Nil {
-		return nil, ErrOrganizationRequired
+	if priceBookID == uuid.Nil {
+		return nil, ErrCompanyRequired
 	}
-	if _, err := s.q.CatalogAdminGetPriceBook(ctx, db.CatalogAdminGetPriceBookParams{
-		OrganizationID: organizationID,
-		ID:             priceBookID,
-	}); err != nil {
+	if _, err := s.q.CatalogAdminGetPriceBook(ctx, priceBookID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
-	return s.q.CatalogAdminListPriceBookItems(ctx, db.CatalogAdminListPriceBookItemsParams{
-		OrganizationID: organizationID,
-		PriceBookID:    priceBookID,
-	})
+	return s.q.CatalogAdminListPriceBookItems(ctx, priceBookID)
 }
 
 // ReplacePriceBookItems replaces all items for the book (PUT semantics).
-func (s *Service) ReplacePriceBookItems(ctx context.Context, organizationID, priceBookID uuid.UUID, items []PriceBookItemRow) error {
+func (s *Service) ReplacePriceBookItems(ctx context.Context, companyID, priceBookID uuid.UUID, items []PriceBookItemRow) error {
 	if s == nil {
 		return errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || priceBookID == uuid.Nil {
-		return ErrOrganizationRequired
+	if priceBookID == uuid.Nil {
+		return ErrCompanyRequired
 	}
 	for _, it := range items {
 		if it.ProductID == uuid.Nil || it.UnitPriceMinor < 0 {
 			return fmt.Errorf("%w: invalid item row", ErrInvalidArgument)
 		}
 	}
-	if _, err := s.q.CatalogAdminGetPriceBook(ctx, db.CatalogAdminGetPriceBookParams{
-		OrganizationID: organizationID,
-		ID:             priceBookID,
-	}); err != nil {
+	if _, err := s.q.CatalogAdminGetPriceBook(ctx, priceBookID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -277,15 +255,11 @@ func (s *Service) ReplacePriceBookItems(ctx context.Context, organizationID, pri
 	defer tx.Rollback(ctx)
 
 	qtx := s.q.WithTx(tx)
-	if err := qtx.CatalogWriteDeleteAllPriceBookItems(ctx, db.CatalogWriteDeleteAllPriceBookItemsParams{
-		OrganizationID: organizationID,
-		PriceBookID:    priceBookID,
-	}); err != nil {
+	if err := qtx.CatalogWriteDeleteAllPriceBookItems(ctx, priceBookID); err != nil {
 		return err
 	}
 	for _, it := range items {
 		if _, err := qtx.CatalogWriteUpsertPriceBookItem(ctx, db.CatalogWriteUpsertPriceBookItemParams{
-			OrganizationID: organizationID,
 			PriceBookID:    priceBookID,
 			ProductID:      it.ProductID,
 			UnitPriceMinor: it.UnitPriceMinor,
@@ -296,32 +270,28 @@ func (s *Service) ReplacePriceBookItems(ctx context.Context, organizationID, pri
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-	s.bumpCatalogCache(ctx, organizationID)
+	s.bumpCatalogCache(ctx, companyID)
 	return nil
 }
 
 // UpsertPriceBookItem PATCHes a single item.
-func (s *Service) UpsertPriceBookItem(ctx context.Context, organizationID, priceBookID, productID uuid.UUID, unitPriceMinor int64) (db.PriceBookItem, error) {
+func (s *Service) UpsertPriceBookItem(ctx context.Context, companyID, priceBookID, productID uuid.UUID, unitPriceMinor int64) (db.PriceBookItem, error) {
 	if s == nil {
 		return db.PriceBookItem{}, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || priceBookID == uuid.Nil || productID == uuid.Nil {
-		return db.PriceBookItem{}, ErrOrganizationRequired
+	if priceBookID == uuid.Nil || productID == uuid.Nil {
+		return db.PriceBookItem{}, ErrCompanyRequired
 	}
 	if unitPriceMinor < 0 {
 		return db.PriceBookItem{}, fmt.Errorf("%w: unit_price_minor must be >= 0", ErrInvalidArgument)
 	}
-	if _, err := s.q.CatalogAdminGetPriceBook(ctx, db.CatalogAdminGetPriceBookParams{
-		OrganizationID: organizationID,
-		ID:             priceBookID,
-	}); err != nil {
+	if _, err := s.q.CatalogAdminGetPriceBook(ctx, priceBookID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.PriceBookItem{}, ErrNotFound
 		}
 		return db.PriceBookItem{}, err
 	}
 	row, err := s.q.CatalogWriteUpsertPriceBookItem(ctx, db.CatalogWriteUpsertPriceBookItemParams{
-		OrganizationID: organizationID,
 		PriceBookID:    priceBookID,
 		ProductID:      productID,
 		UnitPriceMinor: unitPriceMinor,
@@ -329,31 +299,27 @@ func (s *Service) UpsertPriceBookItem(ctx context.Context, organizationID, price
 	if err != nil {
 		return db.PriceBookItem{}, err
 	}
-	s.bumpCatalogCache(ctx, organizationID)
+	s.bumpCatalogCache(ctx, companyID)
 	return row, nil
 }
 
 // DeletePriceBookItem removes one item line.
-func (s *Service) DeletePriceBookItem(ctx context.Context, organizationID, priceBookID, productID uuid.UUID) error {
+func (s *Service) DeletePriceBookItem(ctx context.Context, companyID, priceBookID, productID uuid.UUID) error {
 	if s == nil {
 		return errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || priceBookID == uuid.Nil || productID == uuid.Nil {
-		return ErrOrganizationRequired
+	if priceBookID == uuid.Nil || productID == uuid.Nil {
+		return ErrCompanyRequired
 	}
-	if _, err := s.q.CatalogAdminGetPriceBook(ctx, db.CatalogAdminGetPriceBookParams{
-		OrganizationID: organizationID,
-		ID:             priceBookID,
-	}); err != nil {
+	if _, err := s.q.CatalogAdminGetPriceBook(ctx, priceBookID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		return err
 	}
 	n, err := s.q.CatalogWriteDeletePriceBookItem(ctx, db.CatalogWriteDeletePriceBookItemParams{
-		OrganizationID: organizationID,
-		PriceBookID:    priceBookID,
-		ProductID:      productID,
+		PriceBookID: priceBookID,
+		ProductID:   productID,
 	})
 	if err != nil {
 		return err
@@ -361,38 +327,34 @@ func (s *Service) DeletePriceBookItem(ctx context.Context, organizationID, price
 	if n == 0 {
 		return ErrNotFound
 	}
-	s.bumpCatalogCache(ctx, organizationID)
+	s.bumpCatalogCache(ctx, companyID)
 	return nil
 }
 
-// AssignPriceBookTargetInput binds an organization-scoped book to a machine or site.
+// AssignPriceBookTargetInput binds an company-scoped book to a machine or site.
 type AssignPriceBookTargetInput struct {
-	OrganizationID uuid.UUID
-	PriceBookID    uuid.UUID
-	SiteID         *uuid.UUID
-	MachineID      *uuid.UUID
+	PriceBookID uuid.UUID
+	SiteID      *uuid.UUID
+	MachineID   *uuid.UUID
 }
 
-// AssignPriceBookTarget inserts a target row (organization-scoped books only).
+// AssignPriceBookTarget inserts a target row (company-scoped books only).
 func (s *Service) AssignPriceBookTarget(ctx context.Context, in AssignPriceBookTargetInput) (db.PriceBookTarget, error) {
 	if s == nil {
 		return db.PriceBookTarget{}, errors.New("catalogadmin: nil service")
 	}
-	if in.OrganizationID == uuid.Nil || in.PriceBookID == uuid.Nil {
-		return db.PriceBookTarget{}, ErrOrganizationRequired
+	if in.PriceBookID == uuid.Nil {
+		return db.PriceBookTarget{}, ErrCompanyRequired
 	}
-	pb, err := s.q.CatalogAdminGetPriceBook(ctx, db.CatalogAdminGetPriceBookParams{
-		OrganizationID: in.OrganizationID,
-		ID:             in.PriceBookID,
-	})
+	pb, err := s.q.CatalogAdminGetPriceBook(ctx, in.PriceBookID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.PriceBookTarget{}, ErrNotFound
 		}
 		return db.PriceBookTarget{}, err
 	}
-	if pb.ScopeType != "organization" {
-		return db.PriceBookTarget{}, fmt.Errorf("%w: assign-target only supports organization-scoped price books", ErrInvalidArgument)
+	if pb.ScopeType != "company" {
+		return db.PriceBookTarget{}, fmt.Errorf("%w: assign-target only supports company-scoped price books", ErrInvalidArgument)
 	}
 	var sitePg pgtype.UUID
 	var machPg pgtype.UUID
@@ -408,10 +370,9 @@ func (s *Service) AssignPriceBookTarget(ctx context.Context, in AssignPriceBookT
 	}
 
 	row, err := s.q.CatalogWriteInsertPriceBookTarget(ctx, db.CatalogWriteInsertPriceBookTargetParams{
-		OrganizationID: in.OrganizationID,
-		PriceBookID:    in.PriceBookID,
-		SiteID:         sitePg,
-		MachineID:      machPg,
+		PriceBookID: in.PriceBookID,
+		SiteID:      sitePg,
+		MachineID:   machPg,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -423,17 +384,14 @@ func (s *Service) AssignPriceBookTarget(ctx context.Context, in AssignPriceBookT
 }
 
 // DeletePriceBookTarget removes a target assignment.
-func (s *Service) DeletePriceBookTarget(ctx context.Context, organizationID, priceBookID, targetID uuid.UUID) error {
+func (s *Service) DeletePriceBookTarget(ctx context.Context, companyID, priceBookID, targetID uuid.UUID) error {
 	if s == nil {
 		return errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || priceBookID == uuid.Nil || targetID == uuid.Nil {
-		return ErrOrganizationRequired
+	if priceBookID == uuid.Nil || targetID == uuid.Nil {
+		return ErrCompanyRequired
 	}
-	tgt, err := s.q.CatalogAdminGetPriceBookTarget(ctx, db.CatalogAdminGetPriceBookTargetParams{
-		OrganizationID: organizationID,
-		ID:             targetID,
-	})
+	tgt, err := s.q.CatalogAdminGetPriceBookTarget(ctx, targetID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
@@ -443,10 +401,7 @@ func (s *Service) DeletePriceBookTarget(ctx context.Context, organizationID, pri
 	if tgt.PriceBookID != priceBookID {
 		return ErrNotFound
 	}
-	n, err := s.q.CatalogWriteDeletePriceBookTarget(ctx, db.CatalogWriteDeletePriceBookTargetParams{
-		OrganizationID: organizationID,
-		ID:             targetID,
-	})
+	n, err := s.q.CatalogWriteDeletePriceBookTarget(ctx, targetID)
 	if err != nil {
 		return err
 	}
@@ -457,24 +412,18 @@ func (s *Service) DeletePriceBookTarget(ctx context.Context, organizationID, pri
 }
 
 // ListPriceBookTargets lists assignments for a price book.
-func (s *Service) ListPriceBookTargets(ctx context.Context, organizationID, priceBookID uuid.UUID) ([]db.PriceBookTarget, error) {
+func (s *Service) ListPriceBookTargets(ctx context.Context, companyID, priceBookID uuid.UUID) ([]db.PriceBookTarget, error) {
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
 	}
-	if organizationID == uuid.Nil || priceBookID == uuid.Nil {
-		return nil, ErrOrganizationRequired
+	if priceBookID == uuid.Nil {
+		return nil, ErrCompanyRequired
 	}
-	if _, err := s.q.CatalogAdminGetPriceBook(ctx, db.CatalogAdminGetPriceBookParams{
-		OrganizationID: organizationID,
-		ID:             priceBookID,
-	}); err != nil {
+	if _, err := s.q.CatalogAdminGetPriceBook(ctx, priceBookID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
-	return s.q.CatalogAdminListPriceBookTargetsByBook(ctx, db.CatalogAdminListPriceBookTargetsByBookParams{
-		OrganizationID: organizationID,
-		PriceBookID:    priceBookID,
-	})
+	return s.q.CatalogAdminListPriceBookTargetsByBook(ctx, priceBookID)
 }

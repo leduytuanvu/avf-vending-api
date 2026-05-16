@@ -1,4 +1,4 @@
-{
+﻿{
   "summary": {
     "generated_at": "2026-05-12T08:23:35.359631+00:00",
     "mode": "local",
@@ -2586,7 +2586,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{orgId}/artifacts",
+      "path": "/v1/admin/artifacts",
       "operation_id": "DocOpV1AdminArtifactsList",
       "tags": [
         "Artifacts"
@@ -2616,7 +2616,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{orgId}/artifacts",
+      "path": "/v1/admin/artifacts",
       "operation_id": "DocOpV1AdminArtifactsReserve",
       "tags": [
         "Artifacts"
@@ -2647,7 +2647,7 @@
     },
     {
       "method": "DELETE",
-      "path": "/v1/admin/organizations/{orgId}/artifacts/{artifactId}",
+      "path": "/v1/admin/artifacts/{artifactId}",
       "operation_id": "DocOpV1AdminArtifactsDelete",
       "tags": [
         "Artifacts"
@@ -2679,7 +2679,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{orgId}/artifacts/{artifactId}",
+      "path": "/v1/admin/artifacts/{artifactId}",
       "operation_id": "DocOpV1AdminArtifactsGet",
       "tags": [
         "Artifacts"
@@ -2710,7 +2710,7 @@
     },
     {
       "method": "PUT",
-      "path": "/v1/admin/organizations/{orgId}/artifacts/{artifactId}/content",
+      "path": "/v1/admin/artifacts/{artifactId}/content",
       "operation_id": "DocOpV1AdminArtifactsPutContent",
       "tags": [
         "Artifacts"
@@ -2742,7 +2742,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{orgId}/artifacts/{artifactId}/download",
+      "path": "/v1/admin/artifacts/{artifactId}/download",
       "operation_id": "DocOpV1AdminArtifactsDownloadURL",
       "tags": [
         "Artifacts"
@@ -2773,7 +2773,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/activation-codes",
+      "path": "/v1/admin/companies/{scopeId}/activation-codes",
       "operation_id": "DocOpV1AdminOrgActivationCodesList",
       "tags": [
         "Machine Admin"
@@ -2798,7 +2798,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/activation-codes",
+      "path": "/v1/admin/companies/{scopeId}/activation-codes",
       "operation_id": "DocOpV1AdminOrgActivationCodesPost",
       "tags": [
         "Machine Admin"
@@ -2823,7 +2823,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/activation-codes/{codeId}/revoke",
+      "path": "/v1/admin/companies/{scopeId}/activation-codes/{codeId}/revoke",
       "operation_id": "DocOpV1AdminOrgActivationCodeRevoke",
       "tags": [
         "Machine Admin"
@@ -2848,7 +2848,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/anomalies",
+      "path": "/v1/admin/companies/{scopeId}/anomalies",
       "operation_id": "DocOpV1AdminOrgOperationalAnomaliesList",
       "tags": [
         "Operations"
@@ -2873,7 +2873,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/anomalies/{anomalyId}",
+      "path": "/v1/admin/companies/{scopeId}/anomalies/{anomalyId}",
       "operation_id": "DocOpV1AdminOrgOperationalAnomalyGet",
       "tags": [
         "Operations"
@@ -2900,7 +2900,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/anomalies/{anomalyId}/ignore",
+      "path": "/v1/admin/companies/{scopeId}/anomalies/{anomalyId}/ignore",
       "operation_id": "DocOpV1AdminOrgOperationalAnomalyIgnore",
       "tags": [
         "Operations"
@@ -2927,7 +2927,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/anomalies/{anomalyId}/resolve",
+      "path": "/v1/admin/companies/{scopeId}/anomalies/{anomalyId}/resolve",
       "operation_id": "DocOpV1AdminOrgOperationalAnomalyResolve",
       "tags": [
         "Operations"
@@ -2954,7 +2954,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/assignments",
+      "path": "/v1/admin/companies/{scopeId}/assignments",
       "operation_id": "DocOpV1AdminOrgAssignmentsList",
       "tags": [
         "Machine Admin"
@@ -2979,7 +2979,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/assignments",
+      "path": "/v1/admin/companies/{scopeId}/assignments",
       "operation_id": "DocOpV1AdminOrgAssignmentsCreate",
       "tags": [
         "Machine Admin"
@@ -3004,7 +3004,7 @@
     },
     {
       "method": "DELETE",
-      "path": "/v1/admin/organizations/{organizationId}/assignments/{assignmentId}",
+      "path": "/v1/admin/companies/{scopeId}/assignments/{assignmentId}",
       "operation_id": "DocOpV1AdminOrgAssignmentDelete",
       "tags": [
         "Machine Admin"
@@ -3029,7 +3029,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/assignments/{assignmentId}",
+      "path": "/v1/admin/companies/{scopeId}/assignments/{assignmentId}",
       "operation_id": "DocOpV1AdminOrgAssignmentGet",
       "tags": [
         "Machine Admin"
@@ -3054,8 +3054,8 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/audit-events",
-      "operation_id": "DocOpV1AdminOrganizationAuditEventsList",
+      "path": "/v1/admin/companies/{scopeId}/audit-events",
+      "operation_id": "DocOpV1AdminCompanyAuditEventsList",
       "tags": [
         "Audit Admin"
       ],
@@ -3084,8 +3084,8 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/audit-events/{auditEventId}",
-      "operation_id": "DocOpV1AdminOrganizationAuditEventGet",
+      "path": "/v1/admin/companies/{scopeId}/audit-events/{auditEventId}",
+      "operation_id": "DocOpV1AdminCompanyAuditEventGet",
       "tags": [
         "Audit Admin"
       ],
@@ -3115,7 +3115,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/commands",
+      "path": "/v1/admin/companies/{scopeId}/commands",
       "operation_id": "DocOpV1AdminOrgOperationsCommandsList",
       "tags": [
         "Operations"
@@ -3140,7 +3140,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/commands/{commandId}",
+      "path": "/v1/admin/companies/{scopeId}/commands/{commandId}",
       "operation_id": "DocOpV1AdminOrgOperationsCommandGet",
       "tags": [
         "Operations"
@@ -3167,7 +3167,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/commands/{commandId}/cancel",
+      "path": "/v1/admin/companies/{scopeId}/commands/{commandId}/cancel",
       "operation_id": "DocOpV1AdminOrgOperationsCommandCancel",
       "tags": [
         "Operations"
@@ -3194,7 +3194,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/commands/{commandId}/retry",
+      "path": "/v1/admin/companies/{scopeId}/commands/{commandId}/retry",
       "operation_id": "DocOpV1AdminOrgOperationsCommandRetry",
       "tags": [
         "Operations"
@@ -3222,7 +3222,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/commerce/reconciliation",
+      "path": "/v1/admin/companies/{scopeId}/commerce/reconciliation",
       "operation_id": "DocOpV1AdminCommerceReconciliationList",
       "tags": [
         "Commerce"
@@ -3253,7 +3253,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}",
+      "path": "/v1/admin/companies/{scopeId}/commerce/reconciliation/{id}",
       "operation_id": "DocOpV1AdminCommerceReconciliationGet",
       "tags": [
         "Commerce"
@@ -3285,7 +3285,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}/ignore",
+      "path": "/v1/admin/companies/{scopeId}/commerce/reconciliation/{id}/ignore",
       "operation_id": "DocOpV1AdminCommerceReconciliationIgnore",
       "tags": [
         "Commerce"
@@ -3317,7 +3317,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}/resolve",
+      "path": "/v1/admin/companies/{scopeId}/commerce/reconciliation/{id}/resolve",
       "operation_id": "DocOpV1AdminCommerceReconciliationResolve",
       "tags": [
         "Commerce"
@@ -3349,7 +3349,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/inventory/anomalies",
+      "path": "/v1/admin/companies/{scopeId}/inventory/anomalies",
       "operation_id": "DocOpV1AdminOrgOperationsInventoryAnomaliesList",
       "tags": [
         "Operations"
@@ -3375,7 +3375,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/inventory/anomalies/{anomalyId}/resolve",
+      "path": "/v1/admin/companies/{scopeId}/inventory/anomalies/{anomalyId}/resolve",
       "operation_id": "DocOpV1AdminOrgOperationsInventoryAnomalyResolve",
       "tags": [
         "Operations"
@@ -3403,7 +3403,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/machines",
+      "path": "/v1/admin/companies/{scopeId}/machines",
       "operation_id": "DocOpV1AdminOrgMachinesList",
       "tags": [
         "Machine Admin"
@@ -3429,7 +3429,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines",
+      "path": "/v1/admin/companies/{scopeId}/machines",
       "operation_id": "DocOpV1AdminOrgMachinesCreate",
       "tags": [
         "Machine Admin"
@@ -3455,7 +3455,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}",
       "operation_id": "DocOpV1AdminOrgMachineGet",
       "tags": [
         "Machine Admin"
@@ -3481,7 +3481,7 @@
     },
     {
       "method": "PATCH",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}",
       "operation_id": "DocOpV1AdminOrgMachinePatch",
       "tags": [
         "Machine Admin"
@@ -3507,7 +3507,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/archive",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/archive",
       "operation_id": "DocOpV1AdminOrgMachineArchive",
       "tags": [
         "Machine Admin"
@@ -3533,7 +3533,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/commands",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/commands",
       "operation_id": "DocOpV1AdminOrgOperationsMachineCommandsDispatch",
       "tags": [
         "Operations"
@@ -3561,7 +3561,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/health",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/health",
       "operation_id": "DocOpV1AdminOrgMachineOperationalHealthGet",
       "tags": [
         "Operations"
@@ -3589,7 +3589,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/inventory/anomalies",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/inventory/anomalies",
       "operation_id": "DocOpV1AdminOrgOperationsMachineInventoryAnomaliesList",
       "tags": [
         "Operations"
@@ -3617,7 +3617,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/inventory/reconcile",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/inventory/reconcile",
       "operation_id": "DocOpV1AdminOrgOperationsMachineInventoryReconcile",
       "tags": [
         "Operations"
@@ -3647,7 +3647,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/mark-compromised",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/mark-compromised",
       "operation_id": "DocOpV1AdminOrgMachineMarkCompromised",
       "tags": [
         "Machine Admin"
@@ -3673,7 +3673,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/resume",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/resume",
       "operation_id": "DocOpV1AdminOrgMachineResume",
       "tags": [
         "Machine Admin"
@@ -3699,7 +3699,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/revoke-credentials",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/revoke-credentials",
       "operation_id": "DocOpV1AdminOrgMachineRevokeCredentials",
       "tags": [
         "Machine Admin"
@@ -3725,7 +3725,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/revoke-token",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/revoke-token",
       "operation_id": "DocOpV1AdminOrgMachineRevokeToken",
       "tags": [
         "Machine Admin"
@@ -3751,7 +3751,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/rotate-credentials",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/rotate-credentials",
       "operation_id": "DocOpV1AdminOrgMachineRotateCredentials",
       "tags": [
         "Machine Admin"
@@ -3777,7 +3777,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/rotate-token-version",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/rotate-token-version",
       "operation_id": "DocOpV1AdminOrgMachineRotateTokenVersion",
       "tags": [
         "Machine Admin"
@@ -3803,7 +3803,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/suspend",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/suspend",
       "operation_id": "DocOpV1AdminOrgMachineSuspend",
       "tags": [
         "Machine Admin"
@@ -3829,7 +3829,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/technicians",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/technicians",
       "operation_id": "DocOpV1AdminOrgMachineTechniciansList",
       "tags": [
         "Machine Admin"
@@ -3855,7 +3855,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/technicians",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/technicians",
       "operation_id": "DocOpV1AdminOrgMachineTechniciansCreate",
       "tags": [
         "Machine Admin"
@@ -3881,7 +3881,7 @@
     },
     {
       "method": "DELETE",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/technicians/{userId}",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/technicians/{userId}",
       "operation_id": "DocOpV1AdminOrgMachineTechnicianDelete",
       "tags": [
         "Machine Admin"
@@ -3907,7 +3907,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/timeline",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/timeline",
       "operation_id": "DocOpV1AdminOrgMachineOperationalTimeline",
       "tags": [
         "Operations"
@@ -3933,7 +3933,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/machines/{machineId}/transfer-site",
+      "path": "/v1/admin/companies/{scopeId}/machines/{machineId}/transfer-site",
       "operation_id": "DocOpV1AdminOrgMachineTransferSite",
       "tags": [
         "Machine Admin"
@@ -3959,8 +3959,8 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/media/assets",
-      "operation_id": "DocOpV1AdminOrganizationMediaAssetsList",
+      "path": "/v1/admin/companies/{scopeId}/media/assets",
+      "operation_id": "DocOpV1AdminCompanyMediaAssetsList",
       "tags": [
         "Catalog Admin"
       ],
@@ -3988,8 +3988,8 @@
     },
     {
       "method": "DELETE",
-      "path": "/v1/admin/organizations/{organizationId}/media/assets/{assetId}",
-      "operation_id": "DocOpV1AdminOrganizationMediaAssetsDelete",
+      "path": "/v1/admin/companies/{scopeId}/media/assets/{assetId}",
+      "operation_id": "DocOpV1AdminCompanyMediaAssetsDelete",
       "tags": [
         "Catalog Admin"
       ],
@@ -4018,8 +4018,8 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/media/assets/{assetId}",
-      "operation_id": "DocOpV1AdminOrganizationMediaAssetsGet",
+      "path": "/v1/admin/companies/{scopeId}/media/assets/{assetId}",
+      "operation_id": "DocOpV1AdminCompanyMediaAssetsGet",
       "tags": [
         "Catalog Admin"
       ],
@@ -4048,8 +4048,8 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/media/product-images",
-      "operation_id": "DocOpV1AdminOrganizationMediaProductImagesPost",
+      "path": "/v1/admin/companies/{scopeId}/media/product-images",
+      "operation_id": "DocOpV1AdminCompanyMediaProductImagesPost",
       "tags": [
         "Catalog Admin"
       ],
@@ -4078,8 +4078,8 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/media/uploads/complete",
-      "operation_id": "DocOpV1AdminOrganizationMediaUploadComplete",
+      "path": "/v1/admin/companies/{scopeId}/media/uploads/complete",
+      "operation_id": "DocOpV1AdminCompanyMediaUploadComplete",
       "tags": [
         "Catalog Admin"
       ],
@@ -4110,8 +4110,8 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/media/uploads/init",
-      "operation_id": "DocOpV1AdminOrganizationMediaUploadInit",
+      "path": "/v1/admin/companies/{scopeId}/media/uploads/init",
+      "operation_id": "DocOpV1AdminCompanyMediaUploadInit",
       "tags": [
         "Catalog Admin"
       ],
@@ -4141,7 +4141,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/operations/machines/health",
+      "path": "/v1/admin/companies/{scopeId}/operations/machines/health",
       "operation_id": "DocOpV1AdminOrgOperationsMachinesHealthList",
       "tags": [
         "Operations"
@@ -4167,7 +4167,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/orders/{orderId}/refunds",
+      "path": "/v1/admin/companies/{scopeId}/orders/{orderId}/refunds",
       "operation_id": "DocOpV1AdminCommerceOrderRefundPost",
       "tags": [
         "Commerce"
@@ -4200,7 +4200,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/orders/{orderId}/timeline",
+      "path": "/v1/admin/companies/{scopeId}/orders/{orderId}/timeline",
       "operation_id": "DocOpV1AdminCommerceOrderTimelineGet",
       "tags": [
         "Commerce"
@@ -4232,8 +4232,8 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/products/{productId}/images",
-      "operation_id": "DocOpV1AdminOrganizationProductImagesList",
+      "path": "/v1/admin/companies/{scopeId}/products/{productId}/images",
+      "operation_id": "DocOpV1AdminCompanyProductImagesList",
       "tags": [
         "Catalog Admin"
       ],
@@ -4262,8 +4262,8 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/products/{productId}/images",
-      "operation_id": "DocOpV1AdminOrganizationProductImagesPost",
+      "path": "/v1/admin/companies/{scopeId}/products/{productId}/images",
+      "operation_id": "DocOpV1AdminCompanyProductImagesPost",
       "tags": [
         "Catalog Admin"
       ],
@@ -4294,8 +4294,8 @@
     },
     {
       "method": "DELETE",
-      "path": "/v1/admin/organizations/{organizationId}/products/{productId}/images/{imageId}",
-      "operation_id": "DocOpV1AdminOrganizationProductImagesDelete",
+      "path": "/v1/admin/companies/{scopeId}/products/{productId}/images/{imageId}",
+      "operation_id": "DocOpV1AdminCompanyProductImagesDelete",
       "tags": [
         "Catalog Admin"
       ],
@@ -4325,8 +4325,8 @@
     },
     {
       "method": "PATCH",
-      "path": "/v1/admin/organizations/{organizationId}/products/{productId}/images/{imageId}",
-      "operation_id": "DocOpV1AdminOrganizationProductImagesPatch",
+      "path": "/v1/admin/companies/{scopeId}/products/{productId}/images/{imageId}",
+      "operation_id": "DocOpV1AdminCompanyProductImagesPatch",
       "tags": [
         "Catalog Admin"
       ],
@@ -4356,8 +4356,8 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/products/{productId}/media",
-      "operation_id": "DocOpV1AdminOrganizationProductMediaPost",
+      "path": "/v1/admin/companies/{scopeId}/products/{productId}/media",
+      "operation_id": "DocOpV1AdminCompanyProductMediaPost",
       "tags": [
         "Catalog Admin"
       ],
@@ -4388,8 +4388,8 @@
     },
     {
       "method": "DELETE",
-      "path": "/v1/admin/organizations/{organizationId}/products/{productId}/media/{mediaId}",
-      "operation_id": "DocOpV1AdminOrganizationProductMediaDelete",
+      "path": "/v1/admin/companies/{scopeId}/products/{productId}/media/{mediaId}",
+      "operation_id": "DocOpV1AdminCompanyProductMediaDelete",
       "tags": [
         "Catalog Admin"
       ],
@@ -4419,7 +4419,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/provisioning/batches/{batchId}",
+      "path": "/v1/admin/companies/{scopeId}/provisioning/batches/{batchId}",
       "operation_id": "DocOpV1AdminOrgProvisioningBatchGet",
       "tags": [
         "Machine Admin"
@@ -4444,7 +4444,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/provisioning/machines/bulk",
+      "path": "/v1/admin/companies/{scopeId}/provisioning/machines/bulk",
       "operation_id": "DocOpV1AdminOrgProvisioningBulkCreate",
       "tags": [
         "Machine Admin"
@@ -4470,7 +4470,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/refunds",
+      "path": "/v1/admin/companies/{scopeId}/refunds",
       "operation_id": "DocOpV1AdminCommerceRefundRequestsList",
       "tags": [
         "Commerce"
@@ -4500,7 +4500,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/refunds/{refundId}",
+      "path": "/v1/admin/companies/{scopeId}/refunds/{refundId}",
       "operation_id": "DocOpV1AdminCommerceRefundRequestGet",
       "tags": [
         "Commerce"
@@ -4531,7 +4531,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/cash",
+      "path": "/v1/admin/companies/{scopeId}/reports/cash",
       "operation_id": "DocOpV1AdminOrgReportsCash",
       "tags": [
         "Reporting"
@@ -4560,7 +4560,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/commands",
+      "path": "/v1/admin/companies/{scopeId}/reports/commands",
       "operation_id": "DocOpV1AdminOrgReportsCommands",
       "tags": [
         "Reporting"
@@ -4589,7 +4589,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/export",
+      "path": "/v1/admin/companies/{scopeId}/reports/export",
       "operation_id": "DocOpV1AdminOrgReportsExport",
       "tags": [
         "Reporting"
@@ -4618,7 +4618,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/failed-vends",
+      "path": "/v1/admin/companies/{scopeId}/reports/failed-vends",
       "operation_id": "DocOpV1AdminOrgReportsFailedVends",
       "tags": [
         "Reporting"
@@ -4649,7 +4649,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/fills",
+      "path": "/v1/admin/companies/{scopeId}/reports/fills",
       "operation_id": "DocOpV1AdminOrgReportsTechnicianFills",
       "tags": [
         "Reporting"
@@ -4678,7 +4678,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/inventory",
+      "path": "/v1/admin/companies/{scopeId}/reports/inventory",
       "operation_id": "DocOpV1AdminOrgReportsInventoryUnified",
       "tags": [
         "Reporting"
@@ -4709,7 +4709,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/inventory-low-stock",
+      "path": "/v1/admin/companies/{scopeId}/reports/inventory-low-stock",
       "operation_id": "DocOpV1AdminOrgReportsInventoryLowStock",
       "tags": [
         "Reporting"
@@ -4740,7 +4740,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/machine-health",
+      "path": "/v1/admin/companies/{scopeId}/reports/machine-health",
       "operation_id": "DocOpV1AdminOrgReportsMachineHealth",
       "tags": [
         "Reporting"
@@ -4771,7 +4771,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/machines",
+      "path": "/v1/admin/companies/{scopeId}/reports/machines",
       "operation_id": "DocOpV1AdminOrgReportsMachines",
       "tags": [
         "Reporting"
@@ -4802,7 +4802,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/payments",
+      "path": "/v1/admin/companies/{scopeId}/reports/payments",
       "operation_id": "DocOpV1AdminOrgReportsPayments",
       "tags": [
         "Reporting"
@@ -4832,7 +4832,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/products",
+      "path": "/v1/admin/companies/{scopeId}/reports/products",
       "operation_id": "DocOpV1AdminOrgReportsProducts",
       "tags": [
         "Reporting"
@@ -4863,7 +4863,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/reconciliation",
+      "path": "/v1/admin/companies/{scopeId}/reports/reconciliation",
       "operation_id": "DocOpV1AdminOrgReportsReconciliationBI",
       "tags": [
         "Reporting"
@@ -4892,7 +4892,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/reconciliation-queue",
+      "path": "/v1/admin/companies/{scopeId}/reports/reconciliation-queue",
       "operation_id": "DocOpV1AdminOrgReportsReconciliationQueue",
       "tags": [
         "Reporting"
@@ -4921,7 +4921,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/refunds",
+      "path": "/v1/admin/companies/{scopeId}/reports/refunds",
       "operation_id": "DocOpV1AdminOrgReportsRefunds",
       "tags": [
         "Reporting"
@@ -4950,7 +4950,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/sales",
+      "path": "/v1/admin/companies/{scopeId}/reports/sales",
       "operation_id": "DocOpV1AdminOrgReportsSales",
       "tags": [
         "Reporting"
@@ -4981,7 +4981,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/reports/vends",
+      "path": "/v1/admin/companies/{scopeId}/reports/vends",
       "operation_id": "DocOpV1AdminOrgReportsVends",
       "tags": [
         "Reporting"
@@ -5012,7 +5012,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/restock/suggestions",
+      "path": "/v1/admin/companies/{scopeId}/restock/suggestions",
       "operation_id": "DocOpV1AdminOrgRestockSuggestions",
       "tags": [
         "Operations"
@@ -5037,7 +5037,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/rollouts",
+      "path": "/v1/admin/companies/{scopeId}/rollouts",
       "operation_id": "DocOpV1AdminOrgRolloutsList",
       "tags": [
         "Machine Admin"
@@ -5062,7 +5062,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/rollouts",
+      "path": "/v1/admin/companies/{scopeId}/rollouts",
       "operation_id": "DocOpV1AdminOrgRolloutsCreate",
       "tags": [
         "Machine Admin"
@@ -5087,7 +5087,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}",
+      "path": "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}",
       "operation_id": "DocOpV1AdminOrgRolloutsGet",
       "tags": [
         "Machine Admin"
@@ -5112,7 +5112,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/cancel",
+      "path": "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/cancel",
       "operation_id": "DocOpV1AdminOrgRolloutsCancel",
       "tags": [
         "Machine Admin"
@@ -5137,7 +5137,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/pause",
+      "path": "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/pause",
       "operation_id": "DocOpV1AdminOrgRolloutsPause",
       "tags": [
         "Machine Admin"
@@ -5162,7 +5162,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/resume",
+      "path": "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/resume",
       "operation_id": "DocOpV1AdminOrgRolloutsResume",
       "tags": [
         "Machine Admin"
@@ -5187,7 +5187,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/rollback",
+      "path": "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/rollback",
       "operation_id": "DocOpV1AdminOrgRolloutsRollback",
       "tags": [
         "Machine Admin"
@@ -5212,7 +5212,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/start",
+      "path": "/v1/admin/companies/{scopeId}/rollouts/{rolloutId}/start",
       "operation_id": "DocOpV1AdminOrgRolloutsStart",
       "tags": [
         "Machine Admin"
@@ -5237,7 +5237,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/sites",
+      "path": "/v1/admin/companies/{scopeId}/sites",
       "operation_id": "DocOpV1AdminOrgSitesList",
       "tags": [
         "Machine Admin"
@@ -5262,7 +5262,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/sites",
+      "path": "/v1/admin/companies/{scopeId}/sites",
       "operation_id": "DocOpV1AdminOrgSitesCreate",
       "tags": [
         "Machine Admin"
@@ -5287,7 +5287,7 @@
     },
     {
       "method": "DELETE",
-      "path": "/v1/admin/organizations/{organizationId}/sites/{siteId}",
+      "path": "/v1/admin/companies/{scopeId}/sites/{siteId}",
       "operation_id": "DocOpV1AdminOrgSiteDelete",
       "tags": [
         "Machine Admin"
@@ -5312,7 +5312,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/sites/{siteId}",
+      "path": "/v1/admin/companies/{scopeId}/sites/{siteId}",
       "operation_id": "DocOpV1AdminOrgSiteGet",
       "tags": [
         "Machine Admin"
@@ -5337,7 +5337,7 @@
     },
     {
       "method": "PATCH",
-      "path": "/v1/admin/organizations/{organizationId}/sites/{siteId}",
+      "path": "/v1/admin/companies/{scopeId}/sites/{siteId}",
       "operation_id": "DocOpV1AdminOrgSitePatch",
       "tags": [
         "Machine Admin"
@@ -5362,7 +5362,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/sites/{siteId}/archive",
+      "path": "/v1/admin/companies/{scopeId}/sites/{siteId}/archive",
       "operation_id": "DocOpV1AdminOrgSiteArchive",
       "tags": [
         "Machine Admin"
@@ -5387,7 +5387,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/technicians",
+      "path": "/v1/admin/companies/{scopeId}/technicians",
       "operation_id": "DocOpV1AdminOrgTechniciansList",
       "tags": [
         "Machine Admin"
@@ -5412,7 +5412,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/technicians",
+      "path": "/v1/admin/companies/{scopeId}/technicians",
       "operation_id": "DocOpV1AdminOrgTechniciansCreate",
       "tags": [
         "Machine Admin"
@@ -5437,7 +5437,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/technicians/{technicianId}",
+      "path": "/v1/admin/companies/{scopeId}/technicians/{technicianId}",
       "operation_id": "DocOpV1AdminOrgTechnicianGet",
       "tags": [
         "Machine Admin"
@@ -5462,7 +5462,7 @@
     },
     {
       "method": "PATCH",
-      "path": "/v1/admin/organizations/{organizationId}/technicians/{technicianId}",
+      "path": "/v1/admin/companies/{scopeId}/technicians/{technicianId}",
       "operation_id": "DocOpV1AdminOrgTechnicianPatch",
       "tags": [
         "Machine Admin"
@@ -5487,7 +5487,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/technicians/{technicianId}/disable",
+      "path": "/v1/admin/companies/{scopeId}/technicians/{technicianId}/disable",
       "operation_id": "DocOpV1AdminOrgTechnicianDisable",
       "tags": [
         "Machine Admin"
@@ -5512,7 +5512,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/technicians/{technicianId}/enable",
+      "path": "/v1/admin/companies/{scopeId}/technicians/{technicianId}/enable",
       "operation_id": "DocOpV1AdminOrgTechnicianEnable",
       "tags": [
         "Machine Admin"
@@ -5537,7 +5537,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/users",
+      "path": "/v1/admin/companies/{scopeId}/users",
       "operation_id": "DocOpV1AdminOrgUsersList",
       "tags": [
         "Auth Admin"
@@ -5562,7 +5562,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/users",
+      "path": "/v1/admin/companies/{scopeId}/users",
       "operation_id": "DocOpV1AdminOrgUsersCreate",
       "tags": [
         "Auth Admin"
@@ -5587,7 +5587,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}",
       "operation_id": "DocOpV1AdminOrgUsersGet",
       "tags": [
         "Auth Admin"
@@ -5612,7 +5612,7 @@
     },
     {
       "method": "PATCH",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}",
       "operation_id": "DocOpV1AdminOrgUsersPatch",
       "tags": [
         "Auth Admin"
@@ -5637,7 +5637,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}/disable",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}/disable",
       "operation_id": "DocOpV1AdminOrgUsersDisable",
       "tags": [
         "Auth Admin"
@@ -5662,7 +5662,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}/enable",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}/enable",
       "operation_id": "DocOpV1AdminOrgUsersEnable",
       "tags": [
         "Auth Admin"
@@ -5687,7 +5687,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}/reset-password",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}/reset-password",
       "operation_id": "DocOpV1AdminOrgUsersResetPassword",
       "tags": [
         "Auth Admin"
@@ -5712,7 +5712,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}/revoke-sessions",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}/revoke-sessions",
       "operation_id": "DocOpV1AdminOrgUsersRevokeSessions",
       "tags": [
         "Auth Admin"
@@ -5737,7 +5737,7 @@
     },
     {
       "method": "PATCH",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}/roles",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}/roles",
       "operation_id": "DocOpV1AdminOrgUsersPatchRoles",
       "tags": [
         "Auth Admin"
@@ -5762,7 +5762,7 @@
     },
     {
       "method": "POST",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}/roles",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}/roles",
       "operation_id": "DocOpV1AdminOrgUsersRoles",
       "tags": [
         "Auth Admin"
@@ -5787,7 +5787,7 @@
     },
     {
       "method": "DELETE",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}/roles/{role}",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}/roles/{role}",
       "operation_id": "DocOpV1AdminOrgUsersDeleteRole",
       "tags": [
         "Auth Admin"
@@ -5812,7 +5812,7 @@
     },
     {
       "method": "GET",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}/sessions",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}/sessions",
       "operation_id": "DocOpV1AdminOrgUsersSessions",
       "tags": [
         "Auth Admin"
@@ -5837,7 +5837,7 @@
     },
     {
       "method": "PATCH",
-      "path": "/v1/admin/organizations/{organizationId}/users/{userId}/status",
+      "path": "/v1/admin/companies/{scopeId}/users/{userId}/status",
       "operation_id": "DocOpV1AdminOrgUsersPatchStatus",
       "tags": [
         "Auth Admin"

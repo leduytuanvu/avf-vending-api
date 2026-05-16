@@ -31,8 +31,7 @@ SID="E2E-46-inventory-restock"
 start_step "phase8-${SID}"
 
 MID="$(get_data machineId)"
-ORG="$(get_data organizationId)"
-IDS_JSON="$(jq -nc --arg m "${MID:-}" --arg o "${ORG:-}" '{machineId:$m,organizationId:$o}')"
+IDS_JSON="$(jq -nc --arg m "${MID:-}" '{machineId:$m}')"
 APIS_JSON='["GET /v1/admin/machines/{id}/topology","inventory snapshot/events","stock adjustments (WA-INV-11)"]'
 EXPECTED="Topology/slots readable; restock or adjustment applied; snapshot reflects change when API exposes it."
 EVID_JSON="$(jq -nc --arg f "${E2E_RUN_DIR}/reports/wa-module-results.jsonl" '[$f]')"

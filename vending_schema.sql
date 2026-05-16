@@ -5,11 +5,11 @@
 --
 -- Tables introduced or extended by 00005: categories, brands, product_images;
 -- products (category_id, brand_id, primary_image_id, compliance columns);
--- price_books (scope_type, site_id, machine_id, priority); price_book_items (organization_id);
+-- price_books (scope_type, site_id, machine_id, priority); price_book_items (scope_id);
 -- machine_price_overrides; promotions; promotion_rules; promotion_targets.
 --
 -- Image policy: product_images is authoritative; do not add products.image_url.
--- Price book resolution: machine > site > organization; then higher priority; then effective_from.
+-- Price book resolution: machine > site > company; then higher priority; then effective_from.
 --
 -- Command / protocol traceability (migration 00006_command_protocol_traceability.sql):
 -- command_ledger → machine_command_attempts → machine_transport_sessions / device_messages_raw
@@ -38,7 +38,7 @@
 --
 -- Operator domain resources (migration 00011_operator_domain_resources.sql):
 -- refill_sessions, machine_configs, incidents (operator_session_id + transactional attributions);
--- org-scoped time indexes on those tables for admin/audit listing;
+-- role-scoped time indexes on those tables for admin/audit listing;
 -- machine-originated commands remain command_ledger (no separate machine_commands table in this repo).
 --
 -- Operator read APIs (HTTP): /v1/machines/{id}/operator-sessions/{current,history,auth-events,action-attributions,timeline};

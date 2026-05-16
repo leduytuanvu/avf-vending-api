@@ -31,8 +31,7 @@ SID="E2E-43-vend-failure-refund"
 start_step "phase8-${SID}"
 
 MID="$(get_data machineId)"
-ORG="$(get_data organizationId)"
-IDS_JSON="$(jq -nc --arg m "${MID:-}" --arg o "${ORG:-}" '{machineId:$m,organizationId:$o}')"
+IDS_JSON="$(jq -nc --arg m "${MID:-}" '{machineId:$m}')"
 APIS_JSON='["POST /v1/commerce/cash-checkout","POST .../vend/start","POST .../vend/failure","GET .../orders/{id}","POST .../refunds"]'
 EXPECTED="Paid order; vend failure recorded; refund POST accepted or explicitly skipped with HTTP reason; final GET order state."
 EVID_JSON="$(jq -nc \

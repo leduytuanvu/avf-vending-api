@@ -101,10 +101,9 @@ func TestP06_OfflineSync_sortedDescendingMetaStillProcessesAscendingSequences(t 
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
@@ -113,7 +112,7 @@ func TestP06_OfflineSync_sortedDescendingMetaStillProcessesAscendingSequences(t 
 	payloadSeq1 := telemetryBatchPayloadForOffline(t, "offline-seq-sort-"+id+"-s1", "client-seq-sort-"+id+"-s1")
 	payloadSeq2 := telemetryBatchPayloadForOffline(t, "offline-seq-sort-"+id+"-s2", "client-seq-sort-"+id+"-s2")
 
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
 	out, err := srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
@@ -156,10 +155,9 @@ func TestP06_OfflineSync_duplicateOfflineSequenceReplayed(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
@@ -183,7 +181,7 @@ func TestP06_OfflineSync_duplicateOfflineSequenceReplayed(t *testing.T) {
 	var payloadStruct structpb.Struct
 	require.NoError(t, protojson.Unmarshal(payloadJSON, &payloadStruct))
 
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
 	ev := &machinev1.OfflineEvent{
@@ -220,10 +218,9 @@ func TestP06_OfflineSync_gapInSequenceRejectedAfterSuccessfulCursorBump(t *testi
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
@@ -247,7 +244,7 @@ func TestP06_OfflineSync_gapInSequenceRejectedAfterSuccessfulCursorBump(t *testi
 	var payloadStruct structpb.Struct
 	require.NoError(t, protojson.Unmarshal(payloadJSON, &payloadStruct))
 
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
 	_, err = srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
@@ -288,10 +285,9 @@ func TestP06_OfflineSync_outOfOrderErrorIncludesExpectedSequence(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
@@ -313,7 +309,7 @@ func TestP06_OfflineSync_outOfOrderErrorIncludesExpectedSequence(t *testing.T) {
 	var payloadStruct structpb.Struct
 	require.NoError(t, protojson.Unmarshal(payloadJSON, &payloadStruct))
 
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
 	_, err = srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
@@ -340,10 +336,9 @@ func TestP06_OfflineSync_duplicateClientEventIdAtLaterSequenceRejected(t *testin
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, orgID, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
@@ -368,7 +363,7 @@ func TestP06_OfflineSync_duplicateClientEventIdAtLaterSequenceRejected(t *testin
 		return &payloadStruct
 	}
 
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
 	out1, err := srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
@@ -421,21 +416,21 @@ func TestP06_OfflineSync_devMachineCashAndVendReplayDoesNotDoubleDecrement(t *te
 		_, _ = pool.Exec(ctx2, `UPDATE machine_slot_state SET current_quantity = $1 WHERE machine_id = $2 AND slot_index = 0`,
 			qtyRestore, testfixtures.DevMachineID)
 		_, _ = pool.Exec(ctx2, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
-		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursors WHERE organization_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
-			testfixtures.DevOrganizationID, testfixtures.DevMachineID)
+		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursors WHERE scope_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
+			uuid.Nil, testfixtures.DevMachineID)
 	})
 
 	_, err := pool.Exec(ctx, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE organization_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
-		testfixtures.DevOrganizationID, testfixtures.DevMachineID)
+	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE scope_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
+		uuid.Nil, testfixtures.DevMachineID)
 	require.NoError(t, err)
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
 	var credVer int64
 	require.NoError(t, pool.QueryRow(ctx, `SELECT credential_version FROM machines WHERE id = $1`, testfixtures.DevMachineID).Scan(&credVer))
-	claims := plauth.MachineAccessClaims{OrganizationID: testfixtures.DevOrganizationID, MachineID: testfixtures.DevMachineID, CredentialVersion: credVer}
+	claims := plauth.MachineAccessClaims{MachineID: testfixtures.DevMachineID, CredentialVersion: credVer}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
 	base := "p06-offcash-" + uuid.NewString()
@@ -559,21 +554,21 @@ func TestP06_OfflineSync_duplicateInventoryAdjustmentDoesNotDoubleApply(t *testi
 		_, _ = pool.Exec(ctx2, `UPDATE machine_slot_state SET current_quantity = $1 WHERE machine_id = $2 AND slot_index = 1`,
 			qtyRestore, testfixtures.DevMachineID)
 		_, _ = pool.Exec(ctx2, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
-		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursors WHERE organization_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
-			testfixtures.DevOrganizationID, testfixtures.DevMachineID)
+		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursors WHERE scope_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
+			uuid.Nil, testfixtures.DevMachineID)
 	})
 
 	_, err := pool.Exec(ctx, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE organization_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
-		testfixtures.DevOrganizationID, testfixtures.DevMachineID)
+	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE scope_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
+		uuid.Nil, testfixtures.DevMachineID)
 	require.NoError(t, err)
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
 	var credVer int64
 	require.NoError(t, pool.QueryRow(ctx, `SELECT credential_version FROM machines WHERE id = $1`, testfixtures.DevMachineID).Scan(&credVer))
-	claims := plauth.MachineAccessClaims{OrganizationID: testfixtures.DevOrganizationID, MachineID: testfixtures.DevMachineID, CredentialVersion: credVer}
+	claims := plauth.MachineAccessClaims{MachineID: testfixtures.DevMachineID, CredentialVersion: credVer}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
 	base := "p06-adj-off-" + uuid.NewString()

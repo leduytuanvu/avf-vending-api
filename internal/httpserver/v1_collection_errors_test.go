@@ -74,9 +74,9 @@ func TestWriteV1ListError_NotImplemented(t *testing.T) {
 	}
 }
 
-func TestWriteV1ListError_TenantScopeRequired(t *testing.T) {
+func TestWriteV1ListError_CompanyScopeRequired(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeV1ListError(rec, context.Background(), api.ErrAdminTenantScopeRequired)
+	writeV1ListError(rec, context.Background(), api.ErrAdminCompanyScopeRequired)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status: got %d want %d", rec.Code, http.StatusBadRequest)
 	}

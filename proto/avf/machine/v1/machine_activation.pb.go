@@ -169,7 +169,6 @@ func (x *ClaimActivationRequest) GetDeviceFingerprint() *DeviceFingerprint {
 type ClaimActivationResponse struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	MachineId             string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	OrganizationId        string                 `protobuf:"bytes,2,opt,name=organization_id,json=organizationId,proto3" json:"organization_id,omitempty"`
 	SiteId                string                 `protobuf:"bytes,3,opt,name=site_id,json=siteId,proto3" json:"site_id,omitempty"`
 	MachineName           string                 `protobuf:"bytes,4,opt,name=machine_name,json=machineName,proto3" json:"machine_name,omitempty"`
 	AccessToken           string                 `protobuf:"bytes,5,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
@@ -217,13 +216,6 @@ func (*ClaimActivationResponse) Descriptor() ([]byte, []int) {
 func (x *ClaimActivationResponse) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
-	}
-	return ""
-}
-
-func (x *ClaimActivationResponse) GetOrganizationId() string {
-	if x != nil {
-		return x.OrganizationId
 	}
 	return ""
 }
@@ -314,11 +306,10 @@ const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
 	"\fversion_code\x18\a \x01(\x05R\vversionCode\"\x93\x01\n" +
 	"\x16ClaimActivationRequest\x12'\n" +
 	"\x0factivation_code\x18\x01 \x01(\tR\x0eactivationCode\x12P\n" +
-	"\x12device_fingerprint\x18\x02 \x01(\v2!.avf.machine.v1.DeviceFingerprintR\x11deviceFingerprint\"\xc0\x04\n" +
+	"\x12device_fingerprint\x18\x02 \x01(\v2!.avf.machine.v1.DeviceFingerprintR\x11deviceFingerprint\"\x97\x04\n" +
 	"\x17ClaimActivationResponse\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
-	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x17\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
 	"\asite_id\x18\x03 \x01(\tR\x06siteId\x12!\n" +
 	"\fmachine_name\x18\x04 \x01(\tR\vmachineName\x12!\n" +
 	"\faccess_token\x18\x05 \x01(\tR\vaccessToken\x12Q\n" +

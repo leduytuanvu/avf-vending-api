@@ -52,7 +52,7 @@ There is still **no automatic production deployment** on merge to `main`.
 ## 4. Manual Deploy Production (after gates)
 
 1. Select a **Build** run id and **Security Release** run id (and, when using the strict staging path, a **staging** run id) that are **consistent** (same digest-pinned `...@sha256:...` for app and goose images as validated by the workflows).
-2. In **Actions** → **Deploy Production** → **Run workflow** on **`main`**, set inputs per your organization’s runbook: confirmation flags, `security_release_run_id`, build/candidate selection, digest-pinned **`app_image_ref`** and **`goose_image_ref`**, and **`staging_evidence_id`** when required.
+2. In **Actions** → **Deploy Production** → **Run workflow** on **`main`**, set inputs per your company’s runbook: confirmation flags, `security_release_run_id`, build/candidate selection, digest-pinned **`app_image_ref`** and **`goose_image_ref`**, and **`staging_evidence_id`** when required.
 3. The **`production`** **environment** may require **manual approvers** in GitHub **Settings → Environments**; approval is not replaced by a green **CI** alone.
 
 **Automatic production deployment does not exist** in this repository’s design: no upstream workflow is allowed to “fire and forget” production without operator intent and the **`workflow_dispatch`** form.

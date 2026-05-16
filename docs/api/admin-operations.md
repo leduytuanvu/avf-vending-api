@@ -1,6 +1,6 @@
 # Admin operations API (P1.2)
 
-Bearer JWT interactive admins only (`RequireDenyMachinePrincipal`). Paths are scoped under `/v1/admin/organizations/{organizationId}/…`; platform admins must supply `{organizationId}` in the path.
+Bearer JWT interactive admins only (`RequireDenyMachinePrincipal`). Paths are scoped under `/v1/admin/…`; platform admins must supply `{companyId}` in the path.
 
 Machine-readable contract: OpenAPI tag **Operations** in `docs/swagger/swagger.json` (regenerate with `make swagger` after changing `swagger_operations.go` annotations). Static drift is enforced by **`make api-contract-check`** (see [api-contract-checks.md](./api-contract-checks.md)).
 
@@ -23,7 +23,7 @@ Fields mirror ops dashboards: connectivity counts, MQTT session hint (`mqttConne
 
 ## Timeline
 
-- **GET** `/machines/{machineId}/timeline` — merges `command_ledger`, `machine_command_attempts` (organization scoped), `order_timelines` via machine orders, and recent `machine_check_ins`.
+- **GET** `/machines/{machineId}/timeline` — merges `command_ledger`, `machine_command_attempts` (company scoped), `order_timelines` via machine orders, and recent `machine_check_ins`.
 
 ## Commands
 

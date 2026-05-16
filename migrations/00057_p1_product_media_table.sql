@@ -5,7 +5,7 @@ DROP VIEW IF EXISTS product_media;
 
 CREATE TABLE product_media (
     id uuid PRIMARY KEY,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     product_id uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
     media_type text NOT NULL DEFAULT 'image' CONSTRAINT chk_product_media_media_type CHECK (
         media_type IN ('image')
@@ -34,7 +34,7 @@ CREATE TABLE product_media (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_product_media_org_product ON product_media (organization_id, product_id);
+CREATE INDEX ix_product_media_org_product ON product_media (scope_id, product_id);
 
 CREATE INDEX ix_product_media_product ON product_media (product_id);
 
@@ -52,7 +52,7 @@ BEGIN
 
     INSERT INTO product_media (
         id,
-        organization_id,
+        scope_id,
         product_id,
         media_type,
         source_type,
@@ -76,7 +76,7 @@ BEGIN
     )
     SELECT
         pi.id,
-        p.organization_id,
+        p.scope_id,
         pi.product_id,
         'image'::text AS media_type,
         COALESCE(ma.source_type, 'external'::text) AS source_type,
@@ -183,7 +183,7 @@ EXECUTE FUNCTION trg_media_assets_touch_product_media ();
 
 INSERT INTO product_media (
     id,
-    organization_id,
+    scope_id,
     product_id,
     media_type,
     source_type,
@@ -207,7 +207,7 @@ INSERT INTO product_media (
 )
 SELECT
     pi.id,
-    p.organization_id,
+    p.scope_id,
     pi.product_id,
     'image'::text AS media_type,
     COALESCE(ma.source_type, 'external'::text) AS source_type,
@@ -259,7 +259,7 @@ DROP TABLE IF EXISTS product_media;
 CREATE OR REPLACE VIEW product_media AS
 SELECT
     pi.id,
-    p.organization_id,
+    p.scope_id,
     pi.product_id,
     'image'::text AS media_type,
     COALESCE(ma.source_type, 'external'::text) AS source_type,

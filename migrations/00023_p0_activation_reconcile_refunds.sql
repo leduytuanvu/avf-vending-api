@@ -4,7 +4,7 @@
 CREATE TABLE machine_activation_codes (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     code_hash bytea NOT NULL,
     max_uses int NOT NULL DEFAULT 1 CHECK (max_uses > 0),
     uses int NOT NULL DEFAULT 0 CHECK (uses >= 0),

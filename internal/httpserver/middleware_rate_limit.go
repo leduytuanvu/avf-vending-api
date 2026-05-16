@@ -121,7 +121,7 @@ func SensitiveWriteRateLimitWithBackendIfEnabled(cfg config.HTTPRateLimitConfig,
 func sensitiveWriteRateLimitKey(r *http.Request, ip string) string {
 	routeClass := sensitiveWriteRateLimitClass(r)
 	if p, ok := auth.PrincipalFromContext(r.Context()); ok {
-		return ratelimit.StableKey(routeClass, p.Subject, p.OrganizationID.String(), ip)
+		return ratelimit.StableKey(routeClass, p.Subject, ip)
 	}
 	return ratelimit.StableKey(routeClass, ip)
 }

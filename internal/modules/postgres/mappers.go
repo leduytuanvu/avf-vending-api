@@ -8,7 +8,6 @@ import (
 func mapOrder(row db.Order) commerce.Order {
 	return commerce.Order{
 		ID:             row.ID,
-		OrganizationID: row.OrganizationID,
 		MachineID:      row.MachineID,
 		Status:         row.Status,
 		Currency:       row.Currency,
@@ -66,7 +65,6 @@ func mapPayment(row db.Payment) commerce.Payment {
 func mapOutbox(row db.OutboxEvent) commerce.OutboxEvent {
 	return commerce.OutboxEvent{
 		ID:                   row.ID,
-		OrganizationID:       pgUUIDToPtr(row.OrganizationID),
 		Topic:                row.Topic,
 		EventType:            row.EventType,
 		Payload:              row.Payload,

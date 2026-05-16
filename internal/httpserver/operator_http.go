@@ -38,12 +38,12 @@ type operatorLogoutRequest struct {
 	SessionID   string `json:"session_id"`
 	EndedReason string `json:"ended_reason"`
 	AuthMethod  string `json:"auth_method"`
-	// FinalStatus is optional: ENDED (default) or REVOKED. REVOKED is restricted to org admins or platform admins.
+	// FinalStatus is optional: ENDED (default) or REVOKED. REVOKED is restricted to company admins or platform admins.
 	FinalStatus string `json:"final_status,omitempty"`
 }
 
-// errInsightOrgIDRequired is returned when a platform admin calls operator-insights without organization_id.
-var errInsightOrgIDRequired = errors.New("organization_id query is required for platform-wide access")
+// errInsightScopeIDRequired is returned when a platform admin calls operator-insights without scope_id.
+var errInsightScopeIDRequired = errors.New("scope_id query is required for platform-wide access")
 
 // operatorFetchMachine loads the machine row for operator routes and writes HTTP errors on failure.
 func operatorFetchMachine(w http.ResponseWriter, svc *operator.Service, ctx context.Context, machineID uuid.UUID) (fleet.Machine, bool) {
@@ -101,7 +101,7 @@ func sessionRevokeAllowed(p auth.Principal, machine fleet.Machine) bool {
 	if p.HasRole(auth.RolePlatformAdmin) {
 		return true
 	}
-	return p.HasOrganization() && p.OrganizationID == machine.OrganizationID && p.HasRole(auth.RoleOrgAdmin)
+	return uuid.Nil == uuid.Nil && p.HasRole(auth.RoleOrgAdmin)
 }
 
 // mountOperatorSessionRoutes wires machine-scoped operator session APIs under:
@@ -118,7 +118,7 @@ func mountOperatorSessionRoutes(r chi.Router, app *api.HTTPApplication) {
 	}
 	svc := app.MachineOperator
 	r.Route("/machines/{machineId}/operator-sessions", func(r chi.Router) {
-		r.Use(RequireMachineTenantAccess(app, "machineId"))
+		r.Use(RequireMachineCompanyAccess(app, "machineId"))
 		r.Get("/current", operatorCurrentHandler(svc))
 		r.Get("/history", operatorHistoryHandler(svc))
 		r.Get("/auth-events", operatorAuthEventsHandler(svc))
@@ -131,7 +131,7 @@ func mountOperatorSessionRoutes(r chi.Router, app *api.HTTPApplication) {
 }
 
 // mountOperatorAdminInsightRoutes lists operator action attributions across machines for support workflows.
-// organization_id query is required when the principal is platform_admin without tenant scope.
+// scope_id query is required when the principal is platform_admin without company scope.
 // Routes are mounted under /v1/operator-insights/...
 func mountOperatorAdminInsightRoutes(r chi.Router, app *api.HTTPApplication) {
 	if app == nil || app.MachineOperator == nil {
@@ -179,7 +179,7 @@ func operatorLoginHandler(svc *operator.Service) http.HandlerFunc {
 			return
 		}
 		if body.ForceAdminTakeover && !sessionRevokeAllowed(p, machine) {
-			writeAPIError(w, r.Context(), http.StatusForbidden, "admin_takeover_forbidden", "force_admin_takeover requires org admin or platform admin")
+			writeAPIError(w, r.Context(), http.StatusForbidden, "admin_takeover_forbidden", "force_admin_takeover requires company admin or platform admin")
 			return
 		}
 		authMethod := strings.TrimSpace(body.AuthMethod)
@@ -188,7 +188,7 @@ func operatorLoginHandler(svc *operator.Service) http.HandlerFunc {
 		}
 		actorType, techID, userPrincipal, err := deriveOperatorActor(p)
 		if err != nil {
-			_ = recordLoginFailure(ctx, svc, machine.OrganizationID, machineID, authMethod, correlationUUIDFromRequest(ctx), loginFailureMetadata(err, appmw.CorrelationIDFromContext(ctx)))
+			_ = recordLoginFailure(ctx, svc, machineID, authMethod, correlationUUIDFromRequest(ctx), loginFailureMetadata(err, appmw.CorrelationIDFromContext(ctx)))
 			writeOperatorError(w, r.Context(), err)
 			return
 		}
@@ -200,7 +200,6 @@ func operatorLoginHandler(svc *operator.Service) http.HandlerFunc {
 		meta = mergeCorrelationMetadata(meta, appmw.CorrelationIDFromContext(ctx))
 		adminTakeoverOK := body.ForceAdminTakeover && sessionRevokeAllowed(p, machine)
 		sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-			OrganizationID:          machine.OrganizationID,
 			MachineID:               machineID,
 			ActorType:               actorType,
 			TechnicianID:            techID,
@@ -214,7 +213,7 @@ func operatorLoginHandler(svc *operator.Service) http.HandlerFunc {
 			AdminTakeoverAuthorized: adminTakeoverOK,
 		})
 		if err != nil {
-			_ = recordLoginFailure(ctx, svc, machine.OrganizationID, machineID, authMethod, corr, loginFailureMetadata(err, appmw.CorrelationIDFromContext(ctx)))
+			_ = recordLoginFailure(ctx, svc, machineID, authMethod, corr, loginFailureMetadata(err, appmw.CorrelationIDFromContext(ctx)))
 			writeOperatorError(w, r.Context(), err)
 			return
 		}
@@ -287,12 +286,11 @@ func operatorLogoutHandler(svc *operator.Service) http.HandlerFunc {
 			return
 		}
 		if finalStatus == domainoperator.SessionStatusRevoked && !sessionRevokeAllowed(p, machine) {
-			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "revoke requires org admin or platform admin")
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "revoke requires company admin or platform admin")
 			return
 		}
 		corr := correlationUUIDFromRequest(ctx)
 		ended, err := svc.EndOperatorSession(ctx, operator.EndOperatorSessionInput{
-			OrganizationID:      machine.OrganizationID,
 			MachineID:           machineID,
 			SessionID:           sid,
 			FinalStatus:         finalStatus,
@@ -344,7 +342,7 @@ func operatorHeartbeatHandler(svc *operator.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
-		out, err := svc.HeartbeatOperatorSession(ctx, machine.OrganizationID, machineID, sessionID)
+		out, err := svc.HeartbeatOperatorSession(ctx, uuid.Nil, machineID, sessionID)
 		if err != nil {
 			writeOperatorError(w, r.Context(), err)
 			return
@@ -374,7 +372,7 @@ func operatorCurrentHandler(svc *operator.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
-		res, err := svc.ResolveCurrentOperatorForMachine(ctx, machine.OrganizationID, machineID)
+		res, err := svc.ResolveCurrentOperatorForMachine(ctx, uuid.Nil, machineID)
 		if err != nil {
 			writeOperatorError(w, r.Context(), err)
 			return
@@ -417,7 +415,7 @@ func operatorHistoryHandler(svc *operator.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
-		items, err := svc.ListSessionsByMachine(ctx, machine.OrganizationID, machineID, limit)
+		items, err := svc.ListSessionsByMachine(ctx, uuid.Nil, machineID, limit)
 		if err != nil {
 			writeOperatorError(w, r.Context(), err)
 			return
@@ -456,7 +454,7 @@ func operatorAuthEventsHandler(svc *operator.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
-		items, err := svc.ListAuthEventsForMachine(ctx, machine.OrganizationID, machineID, limit)
+		items, err := svc.ListAuthEventsForMachine(ctx, uuid.Nil, machineID, limit)
 		if err != nil {
 			writeOperatorError(w, r.Context(), err)
 			return
@@ -495,7 +493,7 @@ func operatorActionAttributionsMachineHandler(svc *operator.Service) http.Handle
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
-		items, err := svc.ListActionAttributionsForMachine(ctx, machine.OrganizationID, machineID, limit)
+		items, err := svc.ListActionAttributionsForMachine(ctx, uuid.Nil, machineID, limit)
 		if err != nil {
 			writeOperatorError(w, r.Context(), err)
 			return
@@ -534,7 +532,7 @@ func operatorTimelineHandler(svc *operator.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
-		items, err := svc.BuildMachineOperatorTimeline(ctx, machine.OrganizationID, machineID, limit)
+		items, err := svc.BuildMachineOperatorTimeline(ctx, uuid.Nil, machineID, limit)
 		if err != nil {
 			writeOperatorError(w, r.Context(), err)
 			return
@@ -551,14 +549,14 @@ func operatorActionAttributionsTechnicianHandler(svc *operator.Service) http.Han
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
-		orgID, err := resolveOrgScopeForInsight(p, r)
+		scopeID, err := resolveOrgScopeForInsight(p, r)
 		if err != nil {
 			if errors.Is(err, auth.ErrForbidden) {
 				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 				return
 			}
-			if errors.Is(err, errInsightOrgIDRequired) {
-				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_organization_id", err.Error())
+			if errors.Is(err, errInsightScopeIDRequired) {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_scope_id", err.Error())
 				return
 			}
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "bad_request", err.Error())
@@ -574,7 +572,7 @@ func operatorActionAttributionsTechnicianHandler(svc *operator.Service) http.Han
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
-		items, err := svc.ListActionAttributionsForTechnician(ctx, orgID, tid, limit)
+		items, err := svc.ListActionAttributionsForTechnician(ctx, scopeID, tid, limit)
 		if err != nil {
 			writeOperatorError(w, r.Context(), err)
 			return
@@ -595,14 +593,14 @@ func operatorActionAttributionsUserHandler(svc *operator.Service) http.HandlerFu
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
 			return
 		}
-		orgID, err := resolveOrgScopeForInsight(p, r)
+		scopeID, err := resolveOrgScopeForInsight(p, r)
 		if err != nil {
 			if errors.Is(err, auth.ErrForbidden) {
 				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 				return
 			}
-			if errors.Is(err, errInsightOrgIDRequired) {
-				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_organization_id", err.Error())
+			if errors.Is(err, errInsightScopeIDRequired) {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_scope_id", err.Error())
 				return
 			}
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "bad_request", err.Error())
@@ -618,7 +616,7 @@ func operatorActionAttributionsUserHandler(svc *operator.Service) http.HandlerFu
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_limit", lerr.Error())
 			return
 		}
-		items, err := svc.ListActionAttributionsForUserPrincipal(ctx, orgID, principal, limit)
+		items, err := svc.ListActionAttributionsForUserPrincipal(ctx, scopeID, principal, limit)
 		if err != nil {
 			writeOperatorError(w, r.Context(), err)
 			return
@@ -632,13 +630,13 @@ func operatorActionAttributionsUserHandler(svc *operator.Service) http.HandlerFu
 }
 
 func resolveOrgScopeForInsight(p auth.Principal, r *http.Request) (uuid.UUID, error) {
-	if p.HasOrganization() {
-		return p.OrganizationID, nil
+	if true {
+		return uuid.Nil, nil
 	}
 	if p.HasRole(auth.RolePlatformAdmin) {
-		raw := strings.TrimSpace(r.URL.Query().Get("organization_id"))
+		raw := strings.TrimSpace(r.URL.Query().Get("scope_id"))
 		if raw == "" {
-			return uuid.Nil, errInsightOrgIDRequired
+			return uuid.Nil, errInsightScopeIDRequired
 		}
 		return uuid.Parse(raw)
 	}
@@ -655,7 +653,7 @@ func authorizeMachineOperatorAccess(p auth.Principal, machine fleet.Machine) err
 	if p.AllowsMachine(machine.ID) {
 		return nil
 	}
-	if p.HasOrganization() && p.OrganizationID == machine.OrganizationID && p.HasAnyRole(auth.RoleOrgAdmin, auth.RoleOrgMember) {
+	if uuid.Nil == uuid.Nil && p.HasAnyRole(auth.RoleOrgAdmin, auth.RoleOrgMember) {
 		return nil
 	}
 	return auth.ErrForbidden
@@ -665,7 +663,7 @@ func assertSessionMutableByPrincipal(p auth.Principal, machine fleet.Machine, se
 	if p.HasRole(auth.RolePlatformAdmin) {
 		return nil
 	}
-	if p.HasOrganization() && p.OrganizationID == machine.OrganizationID && p.HasRole(auth.RoleOrgAdmin) {
+	if uuid.Nil == uuid.Nil && p.HasRole(auth.RoleOrgAdmin) {
 		return nil
 	}
 	if sess.ActorType == domainoperator.ActorTypeTechnician && sess.TechnicianID != nil && p.TechnicianID != uuid.Nil &&
@@ -673,7 +671,7 @@ func assertSessionMutableByPrincipal(p auth.Principal, machine fleet.Machine, se
 		return nil
 	}
 	if sess.ActorType == domainoperator.ActorTypeUser && sess.UserPrincipal != nil && strings.TrimSpace(p.Subject) != "" &&
-		*sess.UserPrincipal == strings.TrimSpace(p.Subject) && p.HasOrganization() && p.OrganizationID == machine.OrganizationID {
+		*sess.UserPrincipal == strings.TrimSpace(p.Subject) && uuid.Nil == uuid.Nil {
 		return nil
 	}
 	return auth.ErrForbidden
@@ -731,7 +729,7 @@ func loginFailureMetadata(cause error, httpCorr string) []byte {
 	return b
 }
 
-func recordLoginFailure(ctx context.Context, svc *operator.Service, machineOrgID, machineID uuid.UUID, authMethod string, corr *uuid.UUID, meta []byte) error {
+func recordLoginFailure(ctx context.Context, svc *operator.Service, machineID uuid.UUID, authMethod string, corr *uuid.UUID, meta []byte) error {
 	am := strings.TrimSpace(authMethod)
 	if am == "" {
 		am = domainoperator.AuthMethodUnknown
@@ -740,7 +738,6 @@ func recordLoginFailure(ctx context.Context, svc *operator.Service, machineOrgID
 		am = domainoperator.AuthMethodUnknown
 	}
 	_, err := svc.RecordAuthEvent(ctx, operator.RecordAuthEventInput{
-		OrganizationID:    machineOrgID,
 		OperatorSessionID: nil,
 		MachineID:         machineID,
 		EventType:         domainoperator.AuthEventLoginFailure,
@@ -754,7 +751,6 @@ func recordLoginFailure(ctx context.Context, svc *operator.Service, machineOrgID
 func sessionView(s domainoperator.Session) map[string]any {
 	out := map[string]any{
 		"id":               s.ID.String(),
-		"organization_id":  s.OrganizationID.String(),
 		"machine_id":       s.MachineID.String(),
 		"actor_type":       s.ActorType,
 		"status":           s.Status,
@@ -803,7 +799,7 @@ func writeOperatorError(w http.ResponseWriter, ctx context.Context, err error) {
 		errors.Is(err, domainoperator.ErrMachineContextRequired),
 		errors.Is(err, domainoperator.ErrTimeoutNotApplicable):
 		writeAPIError(w, ctx, http.StatusBadRequest, "bad_request", err.Error())
-	case errors.Is(err, domainoperator.ErrOrganizationMismatch):
+	case errors.Is(err, domainoperator.ErrCompanyMismatch):
 		writeAPIError(w, ctx, http.StatusForbidden, "forbidden", err.Error())
 	case errors.Is(err, domainoperator.ErrSessionNotFound):
 		writeAPIError(w, ctx, http.StatusNotFound, "not_found", err.Error())
@@ -832,7 +828,7 @@ func mountSetupBootstrapRoutes(r chi.Router, app *api.HTTPApplication) {
 	if app == nil {
 		return
 	}
-	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermSetupWrite)).Get("/setup/machines/{machineId}/bootstrap", getMachineSetupBootstrap(app))
+	r.With(RequireMachineCompanyAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermSetupWrite)).Get("/setup/machines/{machineId}/bootstrap", getMachineSetupBootstrap(app))
 }
 
 func getMachineSetupBootstrap(app *api.HTTPApplication) http.HandlerFunc {
@@ -957,7 +953,6 @@ func buildSetupBootstrapV1(b setupapp.MachineBootstrap) V1SetupMachineBootstrapR
 	out := V1SetupMachineBootstrapResponse{
 		Machine: V1SetupMachineSummary{
 			MachineID:         m.ID.String(),
-			OrganizationID:    m.OrganizationID.String(),
 			SiteID:            m.SiteID.String(),
 			HardwareProfileID: hw,
 			SerialNumber:      m.SerialNumber,

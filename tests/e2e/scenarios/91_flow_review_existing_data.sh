@@ -28,8 +28,6 @@ start_step "flow-review-existing-data"
 LIVE_OUT="${E2E_RUN_DIR}/reports/flow-review-live.json"
 TD="${E2E_RUN_DIR}/test-data.json"
 mkdir -p "${E2E_RUN_DIR}/reports" "${E2E_RUN_DIR}/rest" "${E2E_RUN_DIR}/grpc"
-
-ORG="$(jq -r '.organizationId // empty' "$TD" 2>/dev/null)"
 SITE="$(jq -r '.siteId // empty' "$TD" 2>/dev/null)"
 MID="$(jq -r '.machineId // empty' "$TD" 2>/dev/null)"
 PID="$(jq -r '.productId // empty' "$TD" 2>/dev/null)"
@@ -50,7 +48,6 @@ check_field() {
   return 0
 }
 
-check_field "organizationId" "${ORG}" || true
 check_field "siteId" "${SITE}" || true
 check_field "machineId" "${MID}" || true
 check_field "productId" "${PID}" || true
@@ -107,7 +104,7 @@ fi
 
 # --- Optional admin read (inventory topology) ---
 if [[ -n "${ADMIN_TOKEN:-}" ]] && [[ -n "${MID:-}" ]] && [[ -n "${ORG:-}" ]]; then
-  e2e_http_get_capture "fr91-admin-slots" "/v1/admin/organizations/${ORG}/machines/${MID}/slots" "optional404" "true" || true
+  e2e_http_get_capture "fr91-admin-slots" "/v1/admin/machines/${MID}/slots" "optional404" "true" || true
 else
   log_observability_issue "P3" "$FLOW_ID" "$SCEN" "admin-read-optional" "REST" "/v1/admin/.../slots" \
     "ADMIN_TOKEN not set — admin read-only inventory topology not exercised in flow review" \
@@ -121,7 +118,7 @@ grpc_ok=""
 if [[ -n "${MT:-}" ]] && [[ -n "${MID:-}" ]] && command -v grpcurl >/dev/null 2>&1 && e2e_grpc_tcp_open; then
   export MACHINE_TOKEN="$MT"
   export MACHINE_ID="$MID"
-  META="$(jq -nc --arg o "${ORG:-}" --arg m "$MID" --arg rid "fr91-$(date +%s)" '{organizationId:$o, machineId:$m, requestId:$rid}')"
+  META="$(jq -nc --arg m "$MID" --arg rid "fr91-$(date +%s)" '{ machineId:$m, requestId:$rid}')"
   BOOT_BODY="$(jq -nc --argjson meta "$META" '{meta:$meta}')"
   if e2e_grpc_call "avf.machine.v1.MachineBootstrapService/GetBootstrap" "$BOOT_BODY" "fr91-bootstrap" ""; then
     grpc_ok="true"
@@ -173,7 +170,6 @@ jq -nc \
   '{
     generatedAt:$gen,
     mode:$mode,
-    organizationIdPresent:($org != ""),
     machineIdPresent:($mid != ""),
     machineJwtPresent:$has_token,
     grpcBootstrapProbed:($grpc|test("true"))

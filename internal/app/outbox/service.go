@@ -34,9 +34,9 @@ func (s *AdminService) MarkManualDLQ(ctx context.Context, id int64, note string)
 	if s == nil || s.pool == nil {
 		return 0, fmt.Errorf("outbox: admin service not configured")
 	}
-	return db.New(s.pool).AdminMarkOutboxManualDeadLetter(ctx, db.AdminMarkOutboxManualDeadLetterParams{
-		ID:   id,
-		Note: note,
+	return db.New(s.pool).AdminMarkOutboxManualDeadLetter(ctx, db.AdminMarkOutboxManualDeadLetterParams{Note: note,
+
+		ID: id,
 	})
 }
 
@@ -85,9 +85,9 @@ func (s *AdminService) MarkManualDLQTx(ctx context.Context, id int64, note strin
 	defer tx.Rollback(ctx)
 
 	qtx := db.New(s.pool).WithTx(tx)
-	n, err := qtx.AdminMarkOutboxManualDeadLetter(ctx, db.AdminMarkOutboxManualDeadLetterParams{
-		ID:   id,
-		Note: note,
+	n, err := qtx.AdminMarkOutboxManualDeadLetter(ctx, db.AdminMarkOutboxManualDeadLetterParams{Note: note,
+
+		ID: id,
 	})
 	if err != nil {
 		return 0, err
@@ -139,9 +139,9 @@ func (s *AdminService) RequeuePendingByID(ctx context.Context, id int64, operato
 	if s == nil || s.pool == nil {
 		return 0, fmt.Errorf("outbox: admin service not configured")
 	}
-	return db.New(s.pool).AdminRequeueOutboxPendingByID(ctx, db.AdminRequeueOutboxPendingByIDParams{
-		ID:   id,
-		Note: operatorNote,
+	return db.New(s.pool).AdminRequeueOutboxPendingByID(ctx, db.AdminRequeueOutboxPendingByIDParams{Note: operatorNote,
+
+		ID: id,
 	})
 }
 

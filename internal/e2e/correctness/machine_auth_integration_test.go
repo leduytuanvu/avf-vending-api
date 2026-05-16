@@ -16,14 +16,12 @@ func TestP06_E2E_MachineCredentialChecker_rejectsSuspendedMachine(t *testing.T) 
 	pool := testPool(t)
 	ctx := context.Background()
 
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	insertOrganizationSiteMachine(t, ctx, pool, orgID, siteID, machineID, "suspended", 1)
+	insertSiteMachine(t, ctx, pool, siteID, machineID, "suspended", 1)
 
 	chk := grpcserver.NewSQLMachineTokenCredentialChecker(pool)
 	err := chk.ValidateMachineAccessClaims(ctx, plauth.MachineAccessClaims{
-		OrganizationID:    orgID,
 		MachineID:         machineID,
 		CredentialVersion: 1,
 	})
@@ -35,14 +33,12 @@ func TestP06_E2E_MachineCredentialChecker_rejectsCompromisedMachine(t *testing.T
 	pool := testPool(t)
 	ctx := context.Background()
 
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	insertOrganizationSiteMachine(t, ctx, pool, orgID, siteID, machineID, "compromised", 1)
+	insertSiteMachine(t, ctx, pool, siteID, machineID, "compromised", 1)
 
 	chk := grpcserver.NewSQLMachineTokenCredentialChecker(pool)
 	err := chk.ValidateMachineAccessClaims(ctx, plauth.MachineAccessClaims{
-		OrganizationID:    orgID,
 		MachineID:         machineID,
 		CredentialVersion: 1,
 	})

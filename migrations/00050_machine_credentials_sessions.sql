@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE machine_credentials (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     credential_version bigint NOT NULL,
     secret_hash bytea NULL,
@@ -19,7 +19,7 @@ CREATE INDEX ix_machine_credentials_machine_status ON machine_credentials (machi
 
 CREATE TABLE machine_sessions (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     credential_id uuid NOT NULL REFERENCES machine_credentials (id) ON DELETE CASCADE,
     refresh_token_hash bytea NOT NULL,
@@ -46,9 +46,9 @@ CREATE INDEX ix_machine_sessions_machine_exp ON machine_sessions (machine_id, ex
 CREATE INDEX ix_machine_sessions_credential ON machine_sessions (credential_id);
 
 INSERT INTO
-    machine_credentials (organization_id, machine_id, credential_version, status)
+    machine_credentials (scope_id, machine_id, credential_version, status)
 SELECT
-    m.organization_id,
+    m.scope_id,
     m.id,
     m.credential_version,
     'active'
@@ -58,7 +58,7 @@ ON CONFLICT (machine_id, credential_version) DO NOTHING;
 
 INSERT INTO
     machine_sessions (
-        organization_id,
+        scope_id,
         machine_id,
         credential_id,
         refresh_token_hash,
@@ -71,7 +71,7 @@ INSERT INTO
         last_used_at
     )
 SELECT
-    rt.organization_id,
+    rt.scope_id,
     rt.machine_id,
     mc.id,
     rt.token_hash,

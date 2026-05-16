@@ -24,13 +24,12 @@ import (
 func TestP06_E2E_MachineIdempotencyLedger_sameKeySamePayloadReturnsReplay(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	insertOrganizationSiteMachine(t, ctx, pool, orgID, siteID, machineID, "online", 1)
+	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	ledger := machineidempotency.NewLedger(pool, nil)
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	machineIDStr := machineID.String()
 	req := &machinev1.CreateOrderRequest{
 		Context: &machinev1.IdempotencyContext{
@@ -69,13 +68,12 @@ func TestP06_E2E_MachineIdempotencyLedger_sameKeySamePayloadReturnsReplay(t *tes
 func TestP06_E2E_MachineIdempotencyLedger_sameKeyDifferentPayloadConflict(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	insertOrganizationSiteMachine(t, ctx, pool, orgID, siteID, machineID, "online", 1)
+	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	ledger := machineidempotency.NewLedger(pool, nil)
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	machineIDStr := machineID.String()
 	req := &machinev1.CreateOrderRequest{
 		Context: &machinev1.IdempotencyContext{
@@ -112,14 +110,13 @@ func TestP06_E2E_MachineIdempotencyLedger_sameKeyDifferentPayloadConflict(t *tes
 func TestP06_E2E_MachineIdempotencyLedger_deleteStaleRowAllowsFreshInsert(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	insertOrganizationSiteMachine(t, ctx, pool, orgID, siteID, machineID, "online", 1)
+	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	ledger := machineidempotency.NewLedger(pool, nil)
 	q := db.New(pool)
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	machineIDStr := machineID.String()
 	req := &machinev1.CreateOrderRequest{
 		Context: &machinev1.IdempotencyContext{
@@ -144,13 +141,12 @@ func TestP06_E2E_MachineIdempotencyLedger_deleteStaleRowAllowsFreshInsert(t *tes
 	_, err = pool.Exec(ctx, `
 UPDATE machine_idempotency_keys
 SET last_seen_at = now() - interval '3 hours'
-WHERE organization_id = $1 AND machine_id = $2 AND operation = $3 AND idempotency_key = $4`,
-		orgID, machineID, op, "p06-stale")
+WHERE machine_id = $1 AND operation = $2 AND idempotency_key = $3`,
+		machineID, op, "p06-stale")
 	require.NoError(t, err)
 
 	cutoff := time.Now().UTC().Add(-time.Hour)
 	require.NoError(t, q.DeleteStaleMachineIdempotencyInProgress(ctx, db.DeleteStaleMachineIdempotencyInProgressParams{
-		OrganizationID: orgID,
 		MachineID:      machineID,
 		Operation:      op,
 		IdempotencyKey: "p06-stale",
@@ -168,13 +164,12 @@ WHERE organization_id = $1 AND machine_id = $2 AND operation = $3 AND idempotenc
 func TestP06_E2E_MachineIdempotencyLedger_secondCallerWhileInProgressAborts(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	orgID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	insertOrganizationSiteMachine(t, ctx, pool, orgID, siteID, machineID, "online", 1)
+	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	ledger := machineidempotency.NewLedger(pool, nil)
-	claims := plauth.MachineAccessClaims{OrganizationID: orgID, MachineID: machineID, CredentialVersion: 1}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	machineIDStr := machineID.String()
 	req := &machinev1.CreateOrderRequest{
 		Context: &machinev1.IdempotencyContext{

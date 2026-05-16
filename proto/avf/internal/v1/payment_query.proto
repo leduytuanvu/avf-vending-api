@@ -12,7 +12,6 @@ service InternalPaymentQueryService {
 }
 
 message GetPaymentByIdRequest {
-  string organization_id = 1;
   string payment_id = 2;
 }
 
@@ -21,7 +20,6 @@ message GetPaymentByIdResponse {
 }
 
 message GetLatestPaymentForOrderRequest {
-  string organization_id = 1;
   string order_id = 2;
 }
 

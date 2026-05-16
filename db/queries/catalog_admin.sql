@@ -1,14 +1,13 @@
 -- name: CatalogAdminCountProducts :one
 SELECT count(*)::bigint AS cnt
 FROM products p
-WHERE p.organization_id = $1
-  AND ($2::text = '' OR p.name ILIKE '%' || $2 || '%' OR p.sku ILIKE '%' || $2 || '%')
-  AND (NOT $3 OR p.active = true);
+WHERE TRUE
+  AND ($1::text = '' OR p.name ILIKE '%' || $1 || '%' OR p.sku ILIKE '%' || $1 || '%')
+  AND (NOT $2 OR p.active = true);
 
 -- name: CatalogAdminListProducts :many
 SELECT
     p.id,
-    p.organization_id,
     p.sku,
     p.barcode,
     p.name,
@@ -19,16 +18,15 @@ SELECT
     p.created_at,
     p.updated_at
 FROM products p
-WHERE p.organization_id = $1
-  AND ($4::text = '' OR p.name ILIKE '%' || $4 || '%' OR p.sku ILIKE '%' || $4 || '%')
-  AND (NOT $5 OR p.active = true)
+WHERE TRUE
+  AND ($1::text = '' OR p.name ILIKE '%' || $1 || '%' OR p.sku ILIKE '%' || $1 || '%')
+  AND (NOT $2 OR p.active = true)
 ORDER BY p.updated_at DESC, p.id
-LIMIT $2 OFFSET $3;
+LIMIT $3 OFFSET $4;
 
 -- name: CatalogAdminGetProduct :one
 SELECT
     p.id,
-    p.organization_id,
     p.sku,
     p.barcode,
     p.name,
@@ -45,8 +43,8 @@ SELECT
     p.created_at,
     p.updated_at
 FROM products p
-WHERE p.organization_id = $1
-  AND p.id = $2;
+WHERE TRUE
+  AND p.id = $1;
 
 -- name: CatalogAdminGetPrimaryProductImageForOrg :one
 SELECT
@@ -55,8 +53,8 @@ FROM product_images pi
 JOIN products p ON p.id = pi.product_id
 INNER JOIN product_media pm ON pm.id = pi.id
     AND pm.product_id = pi.product_id
-WHERE p.organization_id = $1
-  AND p.id = $2
+WHERE TRUE
+  AND p.id = $1
   AND pi.is_primary = true
   AND pi.status = 'active';
 
@@ -67,9 +65,9 @@ FROM product_images pi
 JOIN products p ON p.id = pi.product_id
 INNER JOIN product_media pm ON pm.id = pi.id
     AND pm.product_id = pi.product_id
-WHERE p.organization_id = $1
-  AND p.id = $2
-  AND ($3::bool OR pi.status = 'active')
+WHERE TRUE
+  AND p.id = $1
+  AND ($2::bool OR pi.status = 'active')
 ORDER BY pi.is_primary DESC, pi.sort_order ASC, pi.created_at ASC;
 
 -- name: CatalogAdminGetProductImageForOrg :one
@@ -79,14 +77,13 @@ FROM product_images pi
 JOIN products p ON p.id = pi.product_id
 INNER JOIN product_media pm ON pm.id = pi.id
     AND pm.product_id = pi.product_id
-WHERE p.organization_id = $1
-  AND p.id = $2
-  AND pi.id = $3;
+WHERE TRUE
+  AND p.id = $1
+  AND pi.id = $2;
 
 -- name: CatalogAdminListPriceBooks :many
 SELECT
     pb.id,
-    pb.organization_id,
     pb.name,
     pb.currency,
     pb.effective_from,
@@ -100,21 +97,20 @@ SELECT
     pb.created_at,
     pb.updated_at
 FROM price_books pb
-WHERE pb.organization_id = $1
-  AND ($4::bool OR pb.active = true)
+WHERE TRUE
+  AND ($1::bool OR pb.active = true)
 ORDER BY pb.effective_from DESC, pb.priority DESC, pb.name
 LIMIT $2 OFFSET $3;
 
 -- name: CatalogAdminCountPriceBooks :one
 SELECT count(*)::bigint AS cnt
 FROM price_books pb
-WHERE pb.organization_id = $1
-  AND ($2::bool OR pb.active = true);
+WHERE TRUE
+  AND ($1::bool OR pb.active = true);
 
 -- name: CatalogAdminGetPriceBook :one
 SELECT
     pb.id,
-    pb.organization_id,
     pb.name,
     pb.currency,
     pb.effective_from,
@@ -128,12 +124,11 @@ SELECT
     pb.created_at,
     pb.updated_at
 FROM price_books pb
-WHERE pb.organization_id = $1 AND pb.id = $2;
+WHERE pb.id = $1;
 
 -- name: CatalogAdminPricingPreviewBooksActiveAt :many
 SELECT
     pb.id,
-    pb.organization_id,
     pb.name,
     pb.currency,
     pb.effective_from,
@@ -147,61 +142,57 @@ SELECT
     pb.created_at,
     pb.updated_at
 FROM price_books pb
-WHERE pb.organization_id = $1
+WHERE TRUE
   AND pb.active = true
-  AND pb.effective_from <= $2::timestamptz
-  AND (pb.effective_to IS NULL OR pb.effective_to > $2::timestamptz);
+  AND pb.effective_from <= $1::timestamptz
+  AND (pb.effective_to IS NULL OR pb.effective_to > $1::timestamptz);
 
 -- name: CatalogAdminListPriceBookTargetsByOrg :many
 SELECT
     id,
-    organization_id,
     price_book_id,
     site_id,
     machine_id,
     created_at
 FROM price_book_targets
-WHERE organization_id = $1;
+WHERE TRUE;
 
 -- name: CatalogAdminListPriceBookTargetsByBook :many
 SELECT
     id,
-    organization_id,
     price_book_id,
     site_id,
     machine_id,
     created_at
 FROM price_book_targets
-WHERE organization_id = $1 AND price_book_id = $2
+WHERE price_book_id = $1
 ORDER BY created_at ASC, id ASC;
 
 -- name: CatalogAdminGetPriceBookTarget :one
 SELECT
     id,
-    organization_id,
     price_book_id,
     site_id,
     machine_id,
     created_at
 FROM price_book_targets
-WHERE organization_id = $1 AND id = $2;
+WHERE id = $1;
 
 -- name: CatalogAdminListPriceBookItems :many
 SELECT
     id,
-    organization_id,
     price_book_id,
     product_id,
     unit_price_minor,
     created_at
 FROM price_book_items
-WHERE organization_id = $1 AND price_book_id = $2
+WHERE price_book_id = $1
 ORDER BY product_id ASC;
 
 -- name: CatalogAdminGetMachineSiteForOrg :one
 SELECT site_id
 FROM machines
-WHERE organization_id = $1 AND id = $2;
+WHERE id = $1;
 
 -- name: CatalogAdminPriceBookItemsForPreview :many
 SELECT
@@ -209,47 +200,45 @@ SELECT
     pbi.product_id,
     pbi.unit_price_minor
 FROM price_book_items pbi
-WHERE pbi.organization_id = $1
-  AND pbi.price_book_id = ANY($2::uuid[])
-  AND pbi.product_id = ANY($3::uuid[]);
+WHERE TRUE
+  AND pbi.price_book_id = ANY($1::uuid[])
+  AND pbi.product_id = ANY($2::uuid[]);
 
 -- name: CatalogAdminCountProductsInOrgByIDs :one
 SELECT count(*)::bigint
 FROM products p
-WHERE p.organization_id = $1
-  AND p.id = ANY($2::uuid[]);
+WHERE TRUE
+  AND p.id = ANY($1::uuid[]);
 
 -- name: CatalogAdminListPlanograms :many
 SELECT
     pg.id,
-    pg.organization_id,
     pg.name,
     pg.revision,
     pg.status,
     pg.meta,
     pg.created_at
 FROM planograms pg
-WHERE pg.organization_id = $1
+WHERE TRUE
 ORDER BY pg.created_at DESC, pg.name, pg.revision DESC
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
 -- name: CatalogAdminCountPlanograms :one
 SELECT count(*)::bigint AS cnt
 FROM planograms pg
-WHERE pg.organization_id = $1;
+WHERE TRUE;
 
 -- name: CatalogAdminGetPlanogram :one
 SELECT
     pg.id,
-    pg.organization_id,
     pg.name,
     pg.revision,
     pg.status,
     pg.meta,
     pg.created_at
 FROM planograms pg
-WHERE pg.organization_id = $1
-  AND pg.id = $2;
+WHERE TRUE
+  AND pg.id = $1;
 
 -- name: CatalogAdminListSlotsByPlanogram :many
 SELECT
@@ -269,65 +258,65 @@ ORDER BY s.slot_index ASC;
 -- name: CatalogAdminListBrands :many
 SELECT *
 FROM brands b
-WHERE b.organization_id = $1
+WHERE TRUE
 ORDER BY b.name ASC, b.id
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
 -- name: CatalogAdminCountBrands :one
 SELECT count(*)::bigint
 FROM brands b
-WHERE b.organization_id = $1;
+WHERE TRUE;
 
 -- name: CatalogAdminGetBrand :one
 SELECT *
 FROM brands b
-WHERE b.organization_id = $1 AND b.id = $2;
+WHERE b.id = $1;
 
 -- name: CatalogAdminListCategories :many
 SELECT *
 FROM categories c
-WHERE c.organization_id = $1
+WHERE TRUE
 ORDER BY c.name ASC, c.id
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
 -- name: CatalogAdminCountCategories :one
 SELECT count(*)::bigint
 FROM categories c
-WHERE c.organization_id = $1;
+WHERE TRUE;
 
 -- name: CatalogAdminGetCategory :one
 SELECT *
 FROM categories c
-WHERE c.organization_id = $1 AND c.id = $2;
+WHERE c.id = $1;
 
 -- name: CatalogAdminListTags :many
 SELECT *
 FROM tags t
-WHERE t.organization_id = $1
+WHERE TRUE
 ORDER BY t.name ASC, t.id
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
 -- name: CatalogAdminCountTags :one
 SELECT count(*)::bigint
 FROM tags t
-WHERE t.organization_id = $1;
+WHERE TRUE;
 
 -- name: CatalogAdminGetTag :one
 SELECT *
 FROM tags t
-WHERE t.organization_id = $1 AND t.id = $2;
+WHERE t.id = $1;
 
 -- name: CatalogAdminListProductMediumRowsForProduct :many
 SELECT pm.*
 FROM product_media pm
-WHERE pm.organization_id = $1
-    AND pm.product_id = $2
+WHERE TRUE
+    AND pm.product_id = $1
 ORDER BY pm.sort_order ASC, pm.created_at ASC;
 
 -- name: CatalogAdminGetProductMediumForOrgProductImage :one
 SELECT pm.*
 FROM product_media pm
 JOIN products p ON p.id = pm.product_id
-WHERE p.organization_id = $1
-    AND pm.product_id = $2
-    AND pm.id = $3;
+WHERE TRUE
+    AND pm.product_id = $1
+    AND pm.id = $2;

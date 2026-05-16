@@ -7,7 +7,7 @@ package httpserver
 // Run: make swagger
 //
 // Auth contract: most `/v1/*` routes use BearerAccessTokenMiddlewareWithValidator plus route-level RBAC
-// (RequireAnyRole, RequireOrganizationScope, RequireMachineTenantAccess / machine URL access). Provider payment webhooks under
+// (RequireAnyRole, RequireCompanyScope, RequireMachineCompanyAccess / machine URL access). Provider payment webhooks under
 // `/v1/commerce/orders/.../webhooks` are registered before Bearer middleware and use HMAC headers instead.
 // All JSON errors—including
 // bearer, scope, and handler failures—use the same envelope:
@@ -80,7 +80,7 @@ func DocOpSwaggerIndex() {}
 
 // DocOpV1AuthLogin godoc
 // @Summary Exchange email/password for JWT session tokens
-// @Description Authenticates an **API account** for a specific organization. Returns access + refresh tokens and resolved roles. On failure returns **401** with `unauthenticated` or credential-specific codes. Rate limiting may apply when `HTTP_RATE_LIMIT_SENSITIVE_WRITES_ENABLED=true` (sensitive-write bucket).
+// @Description Authenticates an **API account** for a specific company. Returns access + refresh tokens and resolved roles. On failure returns **401** with `unauthenticated` or credential-specific codes. Rate limiting may apply when `HTTP_RATE_LIMIT_SENSITIVE_WRITES_ENABLED=true` (sensitive-write bucket).
 // @Tags Auth
 // @Accept json
 // @Produce json
@@ -109,7 +109,7 @@ func DocOpV1AuthRefresh() {}
 
 // DocOpV1AuthMe godoc
 // @Summary Current authenticated principal
-// @Description Returns account id, organization id (when scoped), email, and roles for the Bearer access token. Requires `Authorization: Bearer` on `/v1/auth/*` bearer group.
+// @Description Returns account id, company id (when scoped), email, and roles for the Bearer access token. Requires `Authorization: Bearer` on `/v1/auth/*` bearer group.
 // @Tags Auth
 // @Security BearerAuth
 // @Produce json
@@ -169,7 +169,7 @@ func DocOpV1AuthPasswordChange() {}
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param body body V1AuthPasswordResetRequest true "Organization and email"
+// @Param body body V1AuthPasswordResetRequest true "Company and email"
 // @Success 202 {object} V1AuthPasswordResetAccepted
 // @Failure 400 {object} V1StandardError
 // @Router /v1/auth/password/reset/request [post]
@@ -263,12 +263,12 @@ func DocOpV1AuthSessionDelete() {}
 func DocOpV1AuthSessionsRevokeOthers() {}
 
 // DocOpV1AdminAuthUsersList godoc
-// @Summary List API accounts for an organization (admin)
-// @Description Tenant-scoped directory of `platform_auth_accounts`. **platform_admin** must pass **organization_id** query; **org_admin** uses JWT organization scope. Pagination uses **limit**/**offset** (same semantics as other admin lists). **RBAC:** requires **user:read**; see **V1RBACPermissionMatrixDoc** in OpenAPI components for permission string examples and audit action notes.
+// @Summary List API accounts for an company (admin)
+// @Description Role-scoped directory of `platform_auth_accounts`. **platform_admin** must pass **scope_id** query; **admin** uses JWT company scope. Pagination uses **limit**/**offset** (same semantics as other admin lists). **RBAC:** requires **user:read**; see **V1RBACPermissionMatrixDoc** in OpenAPI components for permission string examples and audit action notes.
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
 // @Success 200 {object} V1AdminAuthUsersListEnvelope
@@ -286,7 +286,7 @@ func DocOpV1AdminAuthUsersList() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body V1AdminAuthUsersCreateRequest true "email, password, roles"
 // @Success 201 {object} V1AdminAuthAccount
 // @Failure 400 {object} V1StandardError
@@ -300,11 +300,11 @@ func DocOpV1AdminAuthUsersCreate() {}
 
 // DocOpV1AdminAuthUsersGet godoc
 // @Summary Get API account by id (admin)
-// @Description Returns account metadata (no credential fields). Tenant scope enforced via organization resolution (`organization_id` query for platform admins).
+// @Description Returns account metadata (no credential fields). Company scope enforced via company resolution (`scope_id` query for platform admins).
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Success 200 {object} V1AdminAuthAccount
 // @Failure 400 {object} V1StandardError
@@ -317,18 +317,18 @@ func DocOpV1AdminAuthUsersGet() {}
 
 // DocOpV1AdminAuthUsersPatch godoc
 // @Summary Patch API account (admin)
-// @Description Partial update for email (normalized), roles (whitelist), and/or status (`active` | `disabled`). Cannot remove or deactivate the last **org_admin** for the organization.
+// @Description Partial update for email (normalized), roles (whitelist), and/or status (`active` | `disabled`). Cannot remove or deactivate the last **admin** for the company.
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Param body body V1AdminAuthUsersPatchRequest true "Optional fields"
 // @Success 200 {object} V1AdminAuthAccount
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1StandardError "last_org_admin"
+// @Failure 403 {object} V1StandardError "last_admin"
 // @Failure 404 {object} V1StandardError
 // @Failure 409 {object} V1StandardError "duplicate_email"
 // @Failure 429 {object} V1StandardError
@@ -342,7 +342,7 @@ func DocOpV1AdminAuthUsersPatch() {}
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Success 200 {object} V1AdminAuthAccount
 // @Failure 400 {object} V1StandardError
@@ -356,16 +356,16 @@ func DocOpV1AdminAuthUsersActivate() {}
 
 // DocOpV1AdminAuthUsersDeactivate godoc
 // @Summary Deactivate API account (admin)
-// @Description Sets **status** to **disabled** (login blocked). Cannot deactivate the last **org_admin**.
+// @Description Sets **status** to **disabled** (login blocked). Cannot deactivate the last **admin**.
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Success 200 {object} V1AdminAuthAccount
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1StandardError "last_org_admin"
+// @Failure 403 {object} V1StandardError "last_admin"
 // @Failure 404 {object} V1StandardError
 // @Failure 429 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
@@ -379,7 +379,7 @@ func DocOpV1AdminAuthUsersDeactivate() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Param body body V1AdminAuthResetPasswordRequest true "New password"
 // @Success 200 {object} V1AdminAuthAccount
@@ -394,12 +394,12 @@ func DocOpV1AdminAuthUsersResetPassword() {}
 
 // DocOpV1AdminAuthUsersPutRoles godoc
 // @Summary Replace API account roles (admin)
-// @Description Replaces the **roles** array only. Requires **user:roles**. Cannot remove or deactivate the last **org_admin**.
+// @Description Replaces the **roles** array only. Requires **user:roles**. Cannot remove or deactivate the last **admin**.
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Param body body object true "{\"roles\":[\"viewer\"]}"
 // @Success 200 {object} V1AdminAuthAccount
@@ -419,7 +419,7 @@ func DocOpV1AdminAuthUsersPutRoles() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Param body body object true "{\"roles\":[\"viewer\"]}"
 // @Success 200 {object} V1AdminAuthAccount
@@ -432,7 +432,7 @@ func DocOpV1AdminAuthUsersPostRoles() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Param body body object true "{\"roles\":[\"viewer\"]}"
 // @Success 200 {object} V1AdminAuthAccount
@@ -445,7 +445,7 @@ func DocOpV1AdminAuthUsersPatchRoles() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Param body body V1AdminAuthUsersStatusPatchRequest true "status"
 // @Success 200 {object} V1AdminAuthAccount
@@ -458,7 +458,7 @@ func DocOpV1AdminAuthUsersPatchStatus() {}
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Success 204 {string} string "No Content"
 // @Failure 400 {object} V1StandardError
@@ -473,7 +473,7 @@ func DocOpV1AdminAuthUsersRevokeSessions() {}
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param accountId path string true "Account UUID"
 // @Success 200 {object} V1AdminAuthSessionsEnvelope
 // @Router /v1/admin/auth/users/{accountId}/sessions [get]
@@ -485,7 +485,7 @@ func DocOpV1AdminAuthUsersSessions() {}
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
 // @Success 200 {object} V1AdminAuthUsersListEnvelope
@@ -501,7 +501,7 @@ func DocOpV1AdminUsersList() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body V1AdminAuthUsersCreateRequest true "email, password, roles"
 // @Success 201 {object} V1AdminAuthAccount
 // @Failure 400 {object} V1StandardError
@@ -516,7 +516,7 @@ func DocOpV1AdminUsersCreate() {}
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Success 200 {object} V1AdminAuthAccount
 // @Failure 404 {object} V1StandardError
@@ -529,7 +529,7 @@ func DocOpV1AdminUsersGet() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Param body body V1AdminAuthUsersPatchRequest true "Optional fields; **roles** requires **user:roles**"
 // @Success 200 {object} V1AdminAuthAccount
@@ -542,7 +542,7 @@ func DocOpV1AdminUsersPatch() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Param body body object true "{\"roles\":[\"viewer\"]}"
 // @Success 200 {object} V1AdminAuthAccount
@@ -555,7 +555,7 @@ func DocOpV1AdminUsersPutRoles() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Param body body object true "{\"roles\":[\"catalog_manager\"]}"
 // @Success 200 {object} V1AdminAuthAccount
@@ -568,12 +568,25 @@ func DocOpV1AdminUsersPostRoles() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Param body body object true "{\"roles\":[\"catalog_manager\"]}"
 // @Success 200 {object} V1AdminAuthAccount
 // @Router /v1/admin/users/{userId}/roles [patch]
 func DocOpV1AdminUsersPatchRoles() {}
+
+// DocOpV1AdminUsersDeleteRole godoc
+// @Summary Remove one role from user
+// @Description **user:roles** required. At least one role must remain; removing the last **admin** may be rejected.
+// @Tags Auth Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
+// @Param userId path string true "Account UUID"
+// @Param role path string true "Role name to remove (URL-encoded)"
+// @Success 200 {object} V1AdminAuthAccount
+// @Router /v1/admin/users/{userId}/roles/{role} [delete]
+func DocOpV1AdminUsersDeleteRole() {}
 
 // DocOpV1AdminUsersPatchStatus godoc
 // @Summary Patch account status only — alternate path
@@ -581,7 +594,7 @@ func DocOpV1AdminUsersPatchRoles() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Param body body V1AdminAuthUsersStatusPatchRequest true "status"
 // @Success 200 {object} V1AdminAuthAccount
@@ -593,7 +606,7 @@ func DocOpV1AdminUsersPatchStatus() {}
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Success 204 {string} string "No Content"
 // @Router /v1/admin/users/{userId}/revoke-sessions [post]
@@ -604,172 +617,18 @@ func DocOpV1AdminUsersRevokeSessions() {}
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Success 200 {object} V1AdminAuthSessionsEnvelope
 // @Router /v1/admin/users/{userId}/sessions [get]
 func DocOpV1AdminUsersSessions() {}
-
-// DocOpV1AdminOrgUsersList godoc
-// @Summary List organization users
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param limit query int false "Page size"
-// @Param offset query int false "Row offset"
-// @Success 200 {object} V1AdminAuthUsersListEnvelope
-// @Router /v1/admin/organizations/{organizationId}/users [get]
-func DocOpV1AdminOrgUsersList() {}
-
-// DocOpV1AdminOrgUsersCreate godoc
-// @Summary Create organization user
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body V1AdminAuthUsersCreateRequest true "email, password, roles"
-// @Success 201 {object} V1AdminAuthAccount
-// @Router /v1/admin/organizations/{organizationId}/users [post]
-func DocOpV1AdminOrgUsersCreate() {}
-
-// DocOpV1AdminOrgUsersGet godoc
-// @Summary Get organization user
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Success 200 {object} V1AdminAuthAccount
-// @Router /v1/admin/organizations/{organizationId}/users/{userId} [get]
-func DocOpV1AdminOrgUsersGet() {}
-
-// DocOpV1AdminOrgUsersPatch godoc
-// @Summary Patch organization user
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Param body body V1AdminAuthUsersPatchRequest true "Optional fields"
-// @Success 200 {object} V1AdminAuthAccount
-// @Router /v1/admin/organizations/{organizationId}/users/{userId} [patch]
-func DocOpV1AdminOrgUsersPatch() {}
-
-// DocOpV1AdminOrgUsersDisable godoc
-// @Summary Disable organization user
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Success 200 {object} V1AdminAuthAccount
-// @Router /v1/admin/organizations/{organizationId}/users/{userId}/disable [post]
-func DocOpV1AdminOrgUsersDisable() {}
-
-// DocOpV1AdminOrgUsersEnable godoc
-// @Summary Enable organization user
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Success 200 {object} V1AdminAuthAccount
-// @Router /v1/admin/organizations/{organizationId}/users/{userId}/enable [post]
-func DocOpV1AdminOrgUsersEnable() {}
-
-// DocOpV1AdminOrgUsersRoles godoc
-// @Summary Replace organization user roles
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Param body body object true "{\"roles\":[\"support\"]}"
-// @Success 200 {object} V1AdminAuthAccount
-// @Router /v1/admin/organizations/{organizationId}/users/{userId}/roles [post]
-func DocOpV1AdminOrgUsersRoles() {}
-
-// DocOpV1AdminOrgUsersPatchRoles godoc
-// @Summary Replace organization user roles — PATCH alias
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Param body body object true "{\"roles\":[\"support\"]}"
-// @Success 200 {object} V1AdminAuthAccount
-// @Router /v1/admin/organizations/{organizationId}/users/{userId}/roles [patch]
-func DocOpV1AdminOrgUsersPatchRoles() {}
-
-// DocOpV1AdminOrgUsersDeleteRole godoc
-// @Summary Remove one role from organization user
-// @Description **user:roles** required. At least one role must remain; removing the last **org_admin** may be rejected.
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Param role path string true "Role name to remove (URL-encoded)"
-// @Success 200 {object} V1AdminAuthAccount
-// @Router /v1/admin/organizations/{organizationId}/users/{userId}/roles/{role} [delete]
-func DocOpV1AdminOrgUsersDeleteRole() {}
-
-// DocOpV1AdminOrgUsersPatchStatus godoc
-// @Summary Patch organization user status only
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Param body body V1AdminAuthUsersStatusPatchRequest true "status"
-// @Success 200 {object} V1AdminAuthAccount
-// @Router /v1/admin/organizations/{organizationId}/users/{userId}/status [patch]
-func DocOpV1AdminOrgUsersPatchStatus() {}
-
-// DocOpV1AdminOrgUsersRevokeSessions godoc
-// @Summary Revoke organization user sessions
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Success 204 {string} string "No Content"
-// @Router /v1/admin/organizations/{organizationId}/users/{userId}/revoke-sessions [post]
-func DocOpV1AdminOrgUsersRevokeSessions() {}
-
-// DocOpV1AdminOrgUsersSessions godoc
-// @Summary List sessions for an organization user
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Success 200 {object} V1AdminAuthSessionsEnvelope
-// @Router /v1/admin/organizations/{organizationId}/users/{userId}/sessions [get]
-func DocOpV1AdminOrgUsersSessions() {}
-
-// DocOpV1AdminOrgUsersResetPassword godoc
-// @Summary Reset organization user password
-// @Tags Auth Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param userId path string true "User UUID"
-// @Param body body V1AdminAuthResetPasswordRequest true "New password"
-// @Success 200 {object} V1AdminAuthAccount
-// @Router /v1/admin/organizations/{organizationId}/users/{userId}/reset-password [post]
-func DocOpV1AdminOrgUsersResetPassword() {}
 
 // DocOpV1AdminUsersDisable godoc
 // @Summary Disable API account — alternate path
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Success 200 {object} V1AdminAuthAccount
 // @Router /v1/admin/users/{userId}/disable [post]
@@ -780,7 +639,7 @@ func DocOpV1AdminUsersDisable() {}
 // @Tags Auth Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Success 200 {object} V1AdminAuthAccount
 // @Router /v1/admin/users/{userId}/enable [post]
@@ -792,7 +651,7 @@ func DocOpV1AdminUsersEnable() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param userId path string true "Account UUID"
 // @Param body body V1AdminAuthResetPasswordRequest true "New password"
 // @Success 200 {object} V1AdminAuthAccount
@@ -801,11 +660,11 @@ func DocOpV1AdminUsersResetPassword() {}
 
 // DocOpV1AdminAuditEventsList godoc
 // @Summary List enterprise audit events
-// @Description Append-only **audit_events** trail for security-sensitive actions. **platform_admin** must pass **organization_id** query; **org_admin** uses JWT organization scope. Filter by optional **action**, **actorId**, **actorType** (user/machine/system/payment_provider/webhook/service), **outcome** (success/failure), **resourceType**, **resourceId**, **machineId** (UUID), **from**/**to** (RFC3339), and pagination (**limit**/**offset**). Requires **audit.read** permission.
+// @Description Append-only **audit_events** trail for security-sensitive actions. **platform_admin** must pass **scope_id** query; **admin** uses JWT company scope. Filter by optional **action**, **actorId**, **actorType** (user/machine/system/payment_provider/webhook/service), **outcome** (success/failure), **resourceType**, **resourceId**, **machineId** (UUID), **from**/**to** (RFC3339), and pagination (**limit**/**offset**). Requires **audit.read** permission.
 // @Tags Audit Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param action query string false "Canonical action identifier filter"
 // @Param actorId query string false "Actor id substring filter"
 // @Param actorType query string false "Actor type filter (user, machine, system, payment_provider, webhook, service)"
@@ -825,39 +684,13 @@ func DocOpV1AdminUsersResetPassword() {}
 // @Router /v1/admin/audit/events [get]
 func DocOpV1AdminAuditEventsList() {}
 
-// DocOpV1AdminOrganizationAuditEventsList godoc
-// @Summary List enterprise audit events (organization scope)
-// @Description Same as `GET /v1/admin/audit/events`, with **organizationId** in the path (required for all interactive principals). Filter by **action**, **actorId**, **actorType** (user, machine, system, payment_provider, webhook, service), **outcome**, **resourceType**, **resourceId**, **machineId**, **from**/**to**, **limit**/**offset**. Requires **audit.read**.
-// @Tags Audit Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param action query string false "Canonical action identifier filter"
-// @Param actorId query string false "Actor id filter"
-// @Param actorType query string false "Actor type filter"
-// @Param outcome query string false "Outcome filter (success, failure)"
-// @Param resourceType query string false "Resource type filter"
-// @Param resourceId query string false "Resource id filter"
-// @Param machineId query string false "Machine UUID filter"
-// @Param from query string false "Include rows created at or after this time (RFC3339/RFC3339Nano)"
-// @Param to query string false "Include rows created before this time (RFC3339/RFC3339Nano)"
-// @Param limit query int false "Page size (default 50, max 500)"
-// @Param offset query int false "Row offset"
-// @Success 200 {object} V1EnterpriseAuditEventsListEnvelope
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/audit-events [get]
-func DocOpV1AdminOrganizationAuditEventsList() {}
-
-// DocOpV1AdminOrganizationAuditEventGet godoc
+// DocOpV1AdminAuditEventGet godoc
 // @Summary Get one enterprise audit event by id
-// @Description Returns a single append-only **audit_events** row scoped to the path **organizationId**. Requires **audit.read**.
+// @Description Returns a single append-only **audit_events** row. **platform_admin** should pass **scope_id** when resolving attribution across companies. Requires **audit.read**.
 // @Tags Audit Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when fetching across companies"
 // @Param auditEventId path string true "Audit event UUID"
 // @Success 200 {object} V1EnterpriseAuditEvent
 // @Failure 400 {object} V1StandardError
@@ -865,8 +698,8 @@ func DocOpV1AdminOrganizationAuditEventsList() {}
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 404 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/audit-events/{auditEventId} [get]
-func DocOpV1AdminOrganizationAuditEventGet() {}
+// @Router /v1/admin/audit/events/{auditEventId} [get]
+func DocOpV1AdminAuditEventGet() {}
 
 // DocOpV1AdminOutboxOpsGet godoc
 // @Summary List transactional outbox rows and pipeline stats
@@ -957,7 +790,7 @@ func DocOpV1AdminSystemOutboxGet() {}
 
 // DocOpV1AdminSystemOutboxReplayPost godoc
 // @Summary Replay a dead-lettered outbox row
-// @Description **platform_admin** only. Clears quarantine fields when the row is dead-lettered so `cmd/worker` can publish again. Audited when `organization_id` is present on the row.
+// @Description **platform_admin** only. Clears quarantine fields when the row is dead-lettered so `cmd/worker` can publish again. Audited when `scope_id` is present on the row.
 // @Tags Platform Ops
 // @Security BearerAuth
 // @Produce json
@@ -973,7 +806,7 @@ func DocOpV1AdminSystemOutboxReplayPost() {}
 
 // DocOpV1AdminSystemOutboxMarkDLQPost godoc
 // @Summary Manually move an outbox row to Postgres DLQ
-// @Description **platform_admin** only. Sets terminal dead-letter state for unpublished rows when automation cannot safely drain them. Optional JSON body with a note field for diagnostics. Audited when organization_id is present on the row.
+// @Description **platform_admin** only. Sets terminal dead-letter state for unpublished rows when automation cannot safely drain them. Optional JSON body with a note field for diagnostics. Audited when scope_id is present on the row.
 // @Tags Platform Ops
 // @Security BearerAuth
 // @Accept json
@@ -1005,11 +838,11 @@ func DocOpV1AdminSystemRetentionStatsGet() {}
 
 // DocOpV1AdminSystemRetentionDryRunPost godoc
 // @Summary Preview retention candidates (dry-run)
-// @Description **platform_admin** only. Computes candidate row counts for telemetry and enterprise retention without issuing deletes. Audited as **retention.dry_run** when audit attribution resolves (`organization_id` query, JWT org scope, or oldest organizations row).
+// @Description **platform_admin** only. Computes candidate row counts for telemetry and enterprise retention without issuing deletes. Audited as **retention.dry_run** when audit attribution resolves (`scope_id` query, JWT role claims, or oldest companies row).
 // @Tags Platform Ops
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Optional audit attribution organization id"
+// @Param scope_id query string false "Optional audit attribution company id"
 // @Success 200 {object} V1AdminSystemRetentionRunEnvelope
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
@@ -1023,7 +856,7 @@ func DocOpV1AdminSystemRetentionDryRunPost() {}
 // @Tags Platform Ops
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Optional audit attribution organization id"
+// @Param scope_id query string false "Optional audit attribution company id"
 // @Success 200 {object} V1AdminSystemRetentionRunEnvelope
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
@@ -1035,11 +868,11 @@ func DocOpV1AdminSystemRetentionRunPost() {}
 
 // DocOpV1AdminProductsList godoc
 // @Summary List products (admin catalog)
-// @Description Paginated product directory for an organization. **platform_admin** must pass **organization_id** query; **org_admin** is scoped to JWT organization. Supports `q` substring search on sku/name, `active_only` boolean, and standard **limit**/**offset** pagination (default 50, max 500).
+// @Description Paginated product directory for an company. **platform_admin** must pass **scope_id** query; **admin** is scoped to JWT company. Supports `q` substring search on sku/name, `active_only` boolean, and standard **limit**/**offset** pagination (default 50, max 500).
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param q query string false "Search substring (sku / name)"
 // @Param active_only query bool false "When true, only active products"
 // @Param limit query int false "Page size (default 50, max 500)"
@@ -1054,12 +887,12 @@ func DocOpV1AdminProductsList() {}
 
 // DocOpV1AdminProductGet godoc
 // @Summary Get product by id (admin catalog)
-// @Description Returns full product attributes including JSON `attrs`, allergen codes, and merchandising metadata. **platform_admin** must pass **organization_id** matching the product's organization.
+// @Description Returns full product attributes including JSON `attrs`, allergen codes, and merchandising metadata. **platform_admin** must pass **scope_id** matching the product's company.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -1071,12 +904,12 @@ func DocOpV1AdminProductGet() {}
 
 // DocOpV1AdminProductCreate godoc
 // @Summary Create product (admin catalog)
-// @Description Creates a product in the organization. **Idempotency-Key** required. SKU unique per org; barcode unique when set.
+// @Description Creates a product in the company. **Idempotency-Key** required. SKU unique per org; barcode unique when set.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "sku, name, description, active, optional categoryId, brandId, barcode"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
@@ -1095,7 +928,7 @@ func DocOpV1AdminProductCreate() {}
 // @Accept json
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "sku, name, description, active, optional categoryId, brandId, barcode"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
@@ -1115,7 +948,7 @@ func DocOpV1AdminProductReplace() {}
 // @Accept json
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "sku, name, description, active, optional categoryId, brandId, barcode"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
@@ -1134,7 +967,7 @@ func DocOpV1AdminProductPatch() {}
 // @Security BearerAuth
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -1146,13 +979,13 @@ func DocOpV1AdminProductDelete() {}
 
 // DocOpV1AdminProductImagePut godoc
 // @Summary Bind primary product image
-// @Description Binds the artifact-backed primary sale-catalog image. When API_ARTIFACTS_ENABLED wires object storage, bytes are copied to deterministic keys **org/{orgId}/products/{productId}/display.webp** and **thumb.webp** and URLs are short-lived presigned GET URLs (clients may omit displayUrl/thumbUrl). Legacy mode requires HTTPS display/thumb URLs. **Idempotency-Key** required.
+// @Description Binds the artifact-backed primary sale-catalog image. When API_ARTIFACTS_ENABLED wires object storage, bytes are copied to deterministic keys **company/{companyId}/products/{productId}/display.webp** and **thumb.webp** and URLs are short-lived presigned GET URLs (clients may omit displayUrl/thumbUrl). Legacy mode requires HTTPS display/thumb URLs. **Idempotency-Key** required.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "artifactId, thumbUrl, displayUrl, optional contentHash, width, height, mimeType"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
@@ -1171,7 +1004,7 @@ func DocOpV1AdminProductImagePut() {}
 // @Accept json
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "artifactId, thumbUrl, displayUrl, optional contentHash, width, height, mimeType"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
@@ -1189,7 +1022,7 @@ func DocOpV1AdminProductImagePost() {}
 // @Security BearerAuth
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -1206,7 +1039,7 @@ func DocOpV1AdminProductImageDelete() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body V1AdminMediaUploadInitRequest true "content_type must be image/*"
 // @Success 200 {object} V1AdminMediaUploadInitResponse
 // @Failure 400 {object} V1StandardError
@@ -1223,7 +1056,7 @@ func DocOpV1AdminMediaUploadInit() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body V1AdminMediaUploadInitRequest true "content_type must be image/*"
 // @Success 200 {object} V1AdminMediaUploadInitResponse
 // @Failure 400 {object} V1StandardError
@@ -1240,7 +1073,7 @@ func DocOpV1AdminMediaAssetsCreate() {}
 // @Security BearerAuth
 // @Produce json
 // @Param mediaId path string true "Media asset UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminMediaAsset
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -1250,353 +1083,119 @@ func DocOpV1AdminMediaAssetsCreate() {}
 // @Router /v1/admin/media/{mediaId}/complete [post]
 func DocOpV1AdminMediaUploadComplete() {}
 
-// DocOpV1AdminOrganizationMediaUploadInit godoc
-// @Summary Start organization-scoped product media upload
-// @Description Creates a pending media asset and returns a presigned PUT URL for the original image. No image bytes are stored in PostgreSQL.
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body V1AdminMediaUploadInitRequest true "content_type must be image/jpeg, image/png, or image/webp"
-// @Success 200 {object} V1AdminMediaUploadInitResponse
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 503 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/media/uploads/init [post]
-func DocOpV1AdminOrganizationMediaUploadInit() {}
-
-// DocOpV1AdminOrganizationMediaUploadComplete godoc
-// @Summary Complete organization-scoped product media upload
-// @Description Validates original object size/MIME, generates deterministic display/thumb objects through the media pipeline, and marks the asset ready or failed.
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body V1AdminMediaUploadCompleteRequest true "media_id"
-// @Success 200 {object} V1AdminMediaAsset
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Failure 409 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/media/uploads/complete [post]
-func DocOpV1AdminOrganizationMediaUploadComplete() {}
-
-// DocOpV1AdminMediaList godoc
-// @Summary List media assets for the tenant
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organization_id query string false "Required for platform_admin"
-// @Param limit query int false "Page size (default 50, max 500)"
-// @Param offset query int false "Row offset"
-// @Success 200 {object} V1AdminMediaListEnvelope
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/media [get]
-func DocOpV1AdminMediaList() {}
-
 // DocOpV1AdminMediaAssetsList godoc
-// @Summary List media assets for the tenant
-// @Description Alias for **GET /v1/admin/media**.
+// @Summary List media assets (admin)
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
-// @Param limit query int false "Page size (default 50, max 500)"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param limit query int false "Page size"
 // @Param offset query int false "Row offset"
-// @Success 200 {object} V1AdminMediaListEnvelope
-// @Failure 400 {object} V1StandardError
+// @Success 200 {object} object
 // @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
 // @Router /v1/admin/media/assets [get]
 func DocOpV1AdminMediaAssetsList() {}
 
-// DocOpV1AdminMediaGet godoc
-// @Summary Get one media asset
+// DocOpV1AdminMediaAssetGet godoc
+// @Summary Get one media asset by id (admin)
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
 // @Param mediaId path string true "Media asset UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
 // @Success 200 {object} V1AdminMediaAsset
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
 // @Failure 404 {object} V1StandardError
+// @Router /v1/admin/media/assets/{mediaId} [get]
+func DocOpV1AdminMediaAssetGet() {}
+
+// DocOpV1AdminMediaList godoc
+// @Summary List media assets (alias path)
+// @Description Same catalog projection as **GET /v1/admin/media/assets** under **`/v1/admin/media`**.
+// @Tags Catalog Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Success 200 {object} V1AdminMediaListEnvelope
+// @Router /v1/admin/media [get]
+func DocOpV1AdminMediaList() {}
+
+// DocOpV1AdminMediaGet godoc
+// @Summary Get media asset (alias path)
+// @Tags Catalog Admin
+// @Security BearerAuth
+// @Produce json
+// @Param mediaId path string true "Media asset UUID"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Success 200 {object} V1AdminMediaAsset
 // @Router /v1/admin/media/{mediaId} [get]
 func DocOpV1AdminMediaGet() {}
 
-// DocOpV1AdminMediaAssetsGet godoc
-// @Summary Get one media asset
-// @Description Alias for **GET /v1/admin/media/{mediaId}**.
+// DocOpV1AdminMediaAssetDelete godoc
+// @Summary Delete media asset (admin)
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
 // @Param mediaId path string true "Media asset UUID"
-// @Param organization_id query string false "Required for platform_admin"
-// @Success 200 {object} V1AdminMediaAsset
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Success 204 {string} string "No Content"
 // @Failure 404 {object} V1StandardError
-// @Router /v1/admin/media/assets/{mediaId} [get]
-func DocOpV1AdminMediaAssetsGet() {}
+// @Router /v1/admin/media/assets/{mediaId} [delete]
+func DocOpV1AdminMediaAssetDelete() {}
 
 // DocOpV1AdminMediaDelete godoc
-// @Summary Soft-delete media and unbind from products
-// @Description Sets asset status **deleted**, removes **product_images** bindings, best-effort deletes objects. **Idempotency-Key** required.
+// @Summary Delete media asset (alias path)
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Param mediaId path string true "Media asset UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
 // @Success 204 {string} string "No Content"
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
 // @Router /v1/admin/media/{mediaId} [delete]
 func DocOpV1AdminMediaDelete() {}
 
-// DocOpV1AdminMediaAssetsDelete godoc
-// @Summary Soft-delete media and unbind from products
-// @Description Alias for **DELETE /v1/admin/media/{mediaId}**.
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Param mediaId path string true "Media asset UUID"
-// @Param organization_id query string false "Required for platform_admin"
-// @Success 204 {string} string "No Content"
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/media/assets/{mediaId} [delete]
-func DocOpV1AdminMediaAssetsDelete() {}
-
-// DocOpV1AdminProductMediaPost godoc
-// @Summary Bind primary product image from media pipeline
-// @Description Replaces primary image with a **ready** media_assets row (presigned thumb/display URLs). When object storage is disabled → **503** `capability_not_configured`. **Idempotency-Key** required.
+// DocOpV1AdminProductMediaBindPost godoc
+// @Summary Bind media to product (POST)
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
-// @Param body body V1AdminProductMediaBindRequest true "media_id"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param body body object true "Binding payload (e.g. media id / artifact)"
 // @Success 200 {object} V1AdminProduct
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Failure 503 {object} V1StandardError
 // @Router /v1/admin/products/{productId}/media [post]
-func DocOpV1AdminProductMediaPost() {}
+func DocOpV1AdminProductMediaBindPost() {}
 
-// DocOpV1AdminProductMediaPut godoc
-// @Summary Bind primary product image (alias)
-// @Description Same as POST **/media**. **Idempotency-Key** required.
+// DocOpV1AdminProductMediaBindPut godoc
+// @Summary Bind or replace product media (PUT)
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
-// @Param body body V1AdminProductMediaBindRequest true "media_id"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param body body object true "Binding payload"
 // @Success 200 {object} V1AdminProduct
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Failure 503 {object} V1StandardError
 // @Router /v1/admin/products/{productId}/media [put]
-func DocOpV1AdminProductMediaPut() {}
+func DocOpV1AdminProductMediaBindPut() {}
 
-// DocOpV1AdminProductMediaDelete godoc
-// @Summary Unbind product image for a media asset
-// @Description Removes the **product_images** row for this **media_id** when bound to the product. **Idempotency-Key** required.
+// DocOpV1AdminProductMediaUnbind godoc
+// @Summary Remove bound media from product
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param mediaId path string true "Media asset UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param mediaId path string true "Bound media UUID"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
 // @Success 200 {object} V1AdminProduct
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Failure 503 {object} V1StandardError
 // @Router /v1/admin/products/{productId}/media/{mediaId} [delete]
-func DocOpV1AdminProductMediaDelete() {}
-
-// DocOpV1AdminOrganizationProductImagesPost godoc
-// @Summary Attach product image from uploaded media
-// @Description Binds a ready media asset as the product's active primary image and returns the updated product.
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param productId path string true "Product UUID"
-// @Param body body V1AdminProductMediaBindRequest true "media_id"
-// @Success 200 {object} V1AdminProduct
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Failure 503 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/products/{productId}/images [post]
-func DocOpV1AdminOrganizationProductImagesPost() {}
-
-// DocOpV1AdminOrganizationMediaProductImagesPost godoc
-// @Summary Init product image upload (org-scoped)
-// @Description Same contract as **POST /v1/admin/media/uploads** with explicit **organizationId** path scope.
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body V1AdminMediaUploadInitRequest true "content_type must be image/*"
-// @Success 200 {object} V1AdminMediaUploadInitResponse
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/media/product-images [post]
-func DocOpV1AdminOrganizationMediaProductImagesPost() {}
-
-// DocOpV1AdminOrganizationMediaAssetsList godoc
-// @Summary List media assets (org-scoped)
-// @Description Same response as **GET /v1/admin/media/assets** with explicit **organizationId** in the path.
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param limit query int false "Page size (default 50, max 500)"
-// @Param offset query int false "Offset (default 0)"
-// @Success 200 {object} V1AdminMediaListEnvelope
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/media/assets [get]
-func DocOpV1AdminOrganizationMediaAssetsList() {}
-
-// DocOpV1AdminOrganizationMediaAssetsGet godoc
-// @Summary Get one media asset (org-scoped)
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param assetId path string true "Media asset UUID"
-// @Success 200 {object} V1AdminMediaAsset
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/media/assets/{assetId} [get]
-func DocOpV1AdminOrganizationMediaAssetsGet() {}
-
-// DocOpV1AdminOrganizationMediaAssetsDelete godoc
-// @Summary Soft-delete media asset (org-scoped)
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Param organizationId path string true "Organization UUID"
-// @Param assetId path string true "Media asset UUID"
-// @Success 204 {string} string "No Content"
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/media/assets/{assetId} [delete]
-func DocOpV1AdminOrganizationMediaAssetsDelete() {}
-
-// DocOpV1AdminOrganizationProductMediaPost godoc
-// @Summary Bind primary product image (org-scoped path)
-// @Description Same as **POST /v1/admin/products/{productId}/media** with explicit organization scope.
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param productId path string true "Product UUID"
-// @Param body body V1AdminProductMediaBindRequest true "media_id"
-// @Success 200 {object} V1AdminProduct
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Failure 503 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/products/{productId}/media [post]
-func DocOpV1AdminOrganizationProductMediaPost() {}
-
-// DocOpV1AdminOrganizationProductMediaDelete godoc
-// @Summary Unbind product media (org-scoped path)
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param productId path string true "Product UUID"
-// @Param mediaId path string true "Media asset UUID"
-// @Success 200 {object} V1AdminProduct
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Failure 503 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/products/{productId}/media/{mediaId} [delete]
-func DocOpV1AdminOrganizationProductMediaDelete() {}
-
-// DocOpV1AdminOrganizationProductImagesList godoc
-// @Summary List product images
-// @Description Lists active product images. Archived images are excluded unless include_archived=true.
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param productId path string true "Product UUID"
-// @Param include_archived query bool false "Include archived images"
-// @Success 200 {object} object
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/products/{productId}/images [get]
-func DocOpV1AdminOrganizationProductImagesList() {}
-
-// DocOpV1AdminOrganizationProductImagesPatch godoc
-// @Summary Update product image metadata
-// @Description Updates sort order, primary flag, or alt text and increments media_version for app cache comparison.
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param productId path string true "Product UUID"
-// @Param imageId path string true "Product image UUID"
-// @Param body body V1AdminProductImagePatchRequest true "metadata patch"
-// @Success 200 {object} object
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/products/{productId}/images/{imageId} [patch]
-func DocOpV1AdminOrganizationProductImagesPatch() {}
-
-// DocOpV1AdminOrganizationProductImagesDelete godoc
-// @Summary Archive product image
-// @Description Archives the image so it no longer appears in active admin lists or runtime catalogs.
-// @Tags Catalog Admin
-// @Security BearerAuth
-// @Param organizationId path string true "Organization UUID"
-// @Param productId path string true "Product UUID"
-// @Param imageId path string true "Product image UUID"
-// @Success 204 {string} string "No Content"
-// @Failure 400 {object} V1StandardError
-// @Failure 401 {object} V1BearerAuthError
-// @Failure 403 {object} V1BearerAuthError
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/products/{productId}/images/{imageId} [delete]
-func DocOpV1AdminOrganizationProductImagesDelete() {}
+func DocOpV1AdminProductMediaUnbind() {}
 
 // DocOpV1AdminBrandsList godoc
 // @Summary List brands
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
 // @Success 200 {object} object
@@ -1613,7 +1212,7 @@ func DocOpV1AdminBrandsList() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "slug, name, active"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -1631,7 +1230,7 @@ func DocOpV1AdminBrandCreate() {}
 // @Accept json
 // @Produce json
 // @Param brandId path string true "Brand UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "slug, name, active"
 // @Success 200 {object} object
 // @Router /v1/admin/brands/{brandId} [put]
@@ -1644,7 +1243,7 @@ func DocOpV1AdminBrandReplace() {}
 // @Accept json
 // @Produce json
 // @Param brandId path string true "Brand UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "slug, name, active"
 // @Success 200 {object} object
 // @Router /v1/admin/brands/{brandId} [patch]
@@ -1656,7 +1255,7 @@ func DocOpV1AdminBrandPatch() {}
 // @Security BearerAuth
 // @Produce json
 // @Param brandId path string true "Brand UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} object
 // @Router /v1/admin/brands/{brandId} [delete]
 func DocOpV1AdminBrandDelete() {}
@@ -1666,7 +1265,7 @@ func DocOpV1AdminBrandDelete() {}
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
 // @Success 200 {object} object
@@ -1679,7 +1278,7 @@ func DocOpV1AdminCategoriesList() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "slug, name, optional parentId, active"
 // @Success 200 {object} object
 // @Router /v1/admin/categories [post]
@@ -1692,7 +1291,7 @@ func DocOpV1AdminCategoryCreate() {}
 // @Accept json
 // @Produce json
 // @Param categoryId path string true "Category UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "slug, name, optional parentId, active"
 // @Success 200 {object} object
 // @Router /v1/admin/categories/{categoryId} [put]
@@ -1705,7 +1304,7 @@ func DocOpV1AdminCategoryReplace() {}
 // @Accept json
 // @Produce json
 // @Param categoryId path string true "Category UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "slug, name, optional parentId, active"
 // @Success 200 {object} object
 // @Router /v1/admin/categories/{categoryId} [patch]
@@ -1717,7 +1316,7 @@ func DocOpV1AdminCategoryPatch() {}
 // @Security BearerAuth
 // @Produce json
 // @Param categoryId path string true "Category UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} object
 // @Router /v1/admin/categories/{categoryId} [delete]
 func DocOpV1AdminCategoryDelete() {}
@@ -1727,7 +1326,7 @@ func DocOpV1AdminCategoryDelete() {}
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
 // @Success 200 {object} object
@@ -1740,7 +1339,7 @@ func DocOpV1AdminTagsList() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "slug, name, active"
 // @Success 200 {object} object
 // @Router /v1/admin/tags [post]
@@ -1753,7 +1352,7 @@ func DocOpV1AdminTagCreate() {}
 // @Accept json
 // @Produce json
 // @Param tagId path string true "Tag UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "slug, name, active"
 // @Success 200 {object} object
 // @Router /v1/admin/tags/{tagId} [put]
@@ -1766,7 +1365,7 @@ func DocOpV1AdminTagReplace() {}
 // @Accept json
 // @Produce json
 // @Param tagId path string true "Tag UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "slug, name, active"
 // @Success 200 {object} object
 // @Router /v1/admin/tags/{tagId} [patch]
@@ -1778,18 +1377,18 @@ func DocOpV1AdminTagPatch() {}
 // @Security BearerAuth
 // @Produce json
 // @Param tagId path string true "Tag UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} object
 // @Router /v1/admin/tags/{tagId} [delete]
 func DocOpV1AdminTagDelete() {}
 
 // DocOpV1AdminPriceBooksList godoc
 // @Summary List price books (admin catalog)
-// @Description Operational pricing tables for the organization (effective windows, default flag, scope). **platform_admin** requires **organization_id** query.
+// @Description Operational pricing tables for the company (effective windows, default flag, scope). **platform_admin** requires **scope_id** query.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
 // @Param include_inactive query bool false "When true, include deactivated books"
@@ -1807,7 +1406,7 @@ func DocOpV1AdminPriceBooksList() {}
 // @Security BearerAuth
 // @Produce json
 // @Param priceBookId path string true "Price book UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminPriceBook
 // @Failure 404 {object} V1StandardError
 // @Router /v1/admin/price-books/{priceBookId} [get]
@@ -1819,7 +1418,7 @@ func DocOpV1AdminPriceBookGet() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "name, currency, effectiveFrom, scopeType, …"
 // @Success 200 {object} V1AdminPriceBook
 // @Router /v1/admin/price-books [post]
@@ -1832,7 +1431,7 @@ func DocOpV1AdminPriceBookCreate() {}
 // @Accept json
 // @Produce json
 // @Param priceBookId path string true "Price book UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "Partial fields"
 // @Success 200 {object} V1AdminPriceBook
 // @Router /v1/admin/price-books/{priceBookId} [patch]
@@ -1844,7 +1443,7 @@ func DocOpV1AdminPriceBookPatch() {}
 // @Security BearerAuth
 // @Produce json
 // @Param priceBookId path string true "Price book UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminPriceBook
 // @Router /v1/admin/price-books/{priceBookId}/deactivate [post]
 func DocOpV1AdminPriceBookDeactivate() {}
@@ -1856,7 +1455,7 @@ func DocOpV1AdminPriceBookDeactivate() {}
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
 // @Param priceBookId path string true "Price book UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminPriceBook
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -1873,7 +1472,7 @@ func DocOpV1AdminPriceBookActivate() {}
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
 // @Param priceBookId path string true "Price book UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminPriceBook
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -1889,7 +1488,7 @@ func DocOpV1AdminPriceBookArchive() {}
 // @Security BearerAuth
 // @Produce json
 // @Param priceBookId path string true "Price book UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} object
 // @Router /v1/admin/price-books/{priceBookId}/items [get]
 func DocOpV1AdminPriceBookItemsGet() {}
@@ -1901,7 +1500,7 @@ func DocOpV1AdminPriceBookItemsGet() {}
 // @Accept json
 // @Produce json
 // @Param priceBookId path string true "Price book UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "{\"items\":[{\"productId\":\"…\",\"unitPriceMinor\":100}]}"
 // @Success 204 {string} string "No Content"
 // @Failure 400 {object} V1StandardError
@@ -1919,7 +1518,7 @@ func DocOpV1AdminPriceBookItemsPut() {}
 // @Produce json
 // @Param priceBookId path string true "Price book UUID"
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "{\"unitPriceMinor\":100}"
 // @Success 200 {object} object
 // @Router /v1/admin/price-books/{priceBookId}/items/{productId} [patch]
@@ -1931,7 +1530,7 @@ func DocOpV1AdminPriceBookItemPatch() {}
 // @Security BearerAuth
 // @Param priceBookId path string true "Price book UUID"
 // @Param productId path string true "Product UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 204 {string} string "No Content"
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -1942,13 +1541,13 @@ func DocOpV1AdminPriceBookItemPatch() {}
 func DocOpV1AdminPriceBookItemDelete() {}
 
 // DocOpV1AdminPriceBookAssignTarget godoc
-// @Summary Assign organization price book to machine or site
+// @Summary Assign company price book to machine or site
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param priceBookId path string true "Price book UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "Exactly one of siteId or machineId"
 // @Success 200 {object} object
 // @Router /v1/admin/price-books/{priceBookId}/assign-target [post]
@@ -1960,7 +1559,7 @@ func DocOpV1AdminPriceBookAssignTarget() {}
 // @Security BearerAuth
 // @Param priceBookId path string true "Price book UUID"
 // @Param targetId path string true "Target UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 204 {string} string "No Content"
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
@@ -1971,11 +1570,11 @@ func DocOpV1AdminPriceBookTargetDelete() {}
 
 // DocOpV1AdminPromotionsList godoc
 // @Summary List promotions (admin catalog)
-// @Description Tenant-scoped promotions with pagination. **platform_admin** requires **organization_id** query. Use **include_deactivated** to list deactivated rows.
+// @Description Role-scoped promotions with pagination. **platform_admin** requires **scope_id** query. Use **include_deactivated** to list deactivated rows.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
 // @Param include_deactivated query bool false "When true, include lifecycle deactivated"
@@ -1993,7 +1592,7 @@ func DocOpV1AdminPromotionsList() {}
 // @Security BearerAuth
 // @Produce json
 // @Param promotionId path string true "Promotion UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminPromotionDetail
 // @Failure 400 {object} V1StandardError
 // @Failure 404 {object} V1StandardError
@@ -2006,7 +1605,7 @@ func DocOpV1AdminPromotionGet() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "name, startsAt, endsAt, priority, stackable, optional rules"
 // @Success 200 {object} V1AdminPromotion
 // @Failure 400 {object} V1StandardError
@@ -2020,7 +1619,7 @@ func DocOpV1AdminPromotionCreate() {}
 // @Accept json
 // @Produce json
 // @Param promotionId path string true "Promotion UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "Partial fields"
 // @Success 200 {object} V1AdminPromotion
 // @Router /v1/admin/promotions/{promotionId} [patch]
@@ -2032,7 +1631,7 @@ func DocOpV1AdminPromotionPatch() {}
 // @Security BearerAuth
 // @Produce json
 // @Param promotionId path string true "Promotion UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminPromotion
 // @Router /v1/admin/promotions/{promotionId}/activate [post]
 func DocOpV1AdminPromotionActivate() {}
@@ -2043,7 +1642,7 @@ func DocOpV1AdminPromotionActivate() {}
 // @Security BearerAuth
 // @Produce json
 // @Param promotionId path string true "Promotion UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminPromotion
 // @Router /v1/admin/promotions/{promotionId}/pause [post]
 func DocOpV1AdminPromotionPause() {}
@@ -2054,7 +1653,7 @@ func DocOpV1AdminPromotionPause() {}
 // @Security BearerAuth
 // @Produce json
 // @Param promotionId path string true "Promotion UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminPromotion
 // @Router /v1/admin/promotions/{promotionId}/deactivate [post]
 func DocOpV1AdminPromotionDeactivate() {}
@@ -2065,7 +1664,7 @@ func DocOpV1AdminPromotionDeactivate() {}
 // @Security BearerAuth
 // @Produce json
 // @Param promotionId path string true "Promotion UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminPromotion
 // @Failure 400 {object} V1StandardError
 // @Failure 404 {object} V1StandardError
@@ -2073,13 +1672,13 @@ func DocOpV1AdminPromotionDeactivate() {}
 func DocOpV1AdminPromotionArchive() {}
 
 // DocOpV1AdminPromotionAssignTarget godoc
-// @Summary Assign a promotion target (organization, site, machine, product, category, tag)
+// @Summary Assign a promotion target (company, site, machine, product, category, tag)
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param promotionId path string true "Promotion UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "targetType plus matching id field"
 // @Success 200 {object} V1AdminPromotionTarget
 // @Router /v1/admin/promotions/{promotionId}/assign-target [post]
@@ -2091,7 +1690,7 @@ func DocOpV1AdminPromotionAssignTarget() {}
 // @Security BearerAuth
 // @Param promotionId path string true "Promotion UUID"
 // @Param targetId path string true "Target row UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 204 {string} string "No Content"
 // @Failure 404 {object} V1StandardError
 // @Router /v1/admin/promotions/{promotionId}/targets/{targetId} [delete]
@@ -2103,7 +1702,7 @@ func DocOpV1AdminPromotionTargetDelete() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "productIds required; optional machineId, siteId, at"
 // @Success 200 {object} V1AdminPromotionPreviewResponse
 // @Router /v1/admin/promotions/preview [post]
@@ -2115,7 +1714,7 @@ func DocOpV1AdminPromotionsPreview() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "productIds required; optional machineId, siteId, at"
 // @Success 200 {object} V1AdminPricingPreviewResponse
 // @Router /v1/admin/pricing/preview [post]
@@ -2123,11 +1722,11 @@ func DocOpV1AdminPricingPreview() {}
 
 // DocOpV1AdminPlanogramsList godoc
 // @Summary List planograms (admin catalog)
-// @Description Planogram revisions for slot layouts (draft/published/archived). **platform_admin** requires **organization_id** query.
+// @Description Planogram revisions for slot layouts (draft/published/archived). **platform_admin** requires **scope_id** query.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
 // @Success 200 {object} V1AdminPlanogramListEnvelope
@@ -2140,12 +1739,12 @@ func DocOpV1AdminPlanogramsList() {}
 
 // DocOpV1AdminPlanogramGet godoc
 // @Summary Get planogram detail with slots
-// @Description Returns planogram header plus ordered slot rows (product assignment, max quantity, joined sku/name when configured). **platform_admin** requires **organization_id** matching the planogram organization.
+// @Description Returns planogram header plus ordered slot rows (product assignment, max quantity, joined sku/name when configured). **platform_admin** requires **scope_id** matching the planogram company.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
 // @Param planogramId path string true "Planogram UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminPlanogramDetail
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2164,7 +1763,7 @@ func DocOpV1AdminPlanogramGet() {}
 // @Security BearerAuth
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string false "Lower bound on occurredAt, inclusive (RFC3339Nano with explicit timezone offset)"
 // @Param to query string false "Upper bound on occurredAt, inclusive (RFC3339Nano with explicit timezone offset)"
 // @Param limit query int false "Page size (default 50, max 500)"
@@ -2180,12 +1779,12 @@ func DocOpV1AdminMachineInventoryEvents() {}
 
 // DocOpV1AdminMachineSlots godoc
 // @Summary List live slot inventory for a machine (restock / cycle-count UI)
-// @Description Merges `machine_slot_state` (legacy planogram slots) with current `machine_slot_configs` for **cabinetCode** / **cabinetIndex** / **slotCode**. Machines without cabinet rows get **cabinetCode** **CAB-A** (see `inventory_admin` coalesce). Derives **capacity**, **parLevel**, **lowStockThreshold**, **status** (`ok` | `low_stock` | `out_of_stock`), and resolves **currency** from the organization's default price book (falls back to **USD**). **platform_admin** must pass **organization_id** for tenant pick.
+// @Description Merges `machine_slot_state` (legacy planogram slots) with current `machine_slot_configs` for **cabinetCode** / **cabinetIndex** / **slotCode**. Machines without cabinet rows get **cabinetCode** **CAB-A** (see `inventory_admin` coalesce). Derives **capacity**, **parLevel**, **lowStockThreshold**, **status** (`ok` | `low_stock` | `out_of_stock`), and resolves **currency** from the company's default price book (falls back to **USD**). **platform_admin** must pass **scope_id** for company pick.
 // @Tags Inventory
 // @Security BearerAuth
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminMachineSlotListEnvelope
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2203,7 +1802,7 @@ func DocOpV1AdminMachineSlots() {}
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body V1AdminStockAdjustmentsRequest true "operator_session_id, reason, items[]"
 // @Success 200 {object} V1AdminStockAdjustmentsResponse
 // @Failure 400 {object} V1StandardError
@@ -2223,7 +1822,7 @@ func DocOpV1AdminMachineStockAdjustmentsPost() {}
 // @Security BearerAuth
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminMachineInventoryEnvelope
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2235,11 +1834,11 @@ func DocOpV1AdminMachineInventory() {}
 
 // DocOpV1AdminInventoryLowStock godoc
 // @Summary List slots estimated to need refill soon (low stock)
-// @Description Uses live slot inventory and successful **vend_sessions** velocity over **velocity_days** (default 14, clamped 7–90). Estimates **daysToEmpty**, **suggestedRefillQuantity** (up to slot capacity), and **urgency** (**critical** \| **high** \| **medium** \| **low**). Slots with no sales in the window omit **daysToEmpty** but still expose velocity **0** (no divide-by-zero). Restricts to empty slots or fill below 15%. **platform_admin** must pass **organization_id**.
+// @Description Uses live slot inventory and successful **vend_sessions** velocity over **velocity_days** (default 14, clamped 7–90). Estimates **daysToEmpty**, **suggestedRefillQuantity** (up to slot capacity), and **urgency** (**critical** \| **high** \| **medium** \| **low**). Slots with no sales in the window omit **daysToEmpty** but still expose velocity **0** (no divide-by-zero). Restricts to empty slots or fill below 15%. **platform_admin** must pass **scope_id**.
 // @Tags Inventory
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param site_id query string false "Filter by site UUID"
 // @Param machine_id query string false "Filter by machine UUID"
 // @Param product_id query string false "Filter by product UUID"
@@ -2262,7 +1861,7 @@ func DocOpV1AdminInventoryLowStock() {}
 // @Tags Inventory
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param site_id query string false "Filter by site UUID"
 // @Param machine_id query string false "Filter by machine UUID"
 // @Param product_id query string false "Filter by product UUID"
@@ -2281,12 +1880,12 @@ func DocOpV1AdminInventoryRefillSuggestions() {}
 
 // DocOpV1AdminMachineRefillSuggestions godoc
 // @Summary Refill suggestions for one machine
-// @Description Same projection as **GET /v1/admin/inventory/refill-suggestions** scoped to **machineId** (query **machine_id** must match the path when provided). **organization_id** must match the machine tenant for platform administrators.
+// @Description Same projection as **GET /v1/admin/inventory/refill-suggestions** scoped to **machineId** (query **machine_id** must match the path when provided). **scope_id** must match the machine company for platform administrators.
 // @Tags Inventory
 // @Security BearerAuth
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param site_id query string false "Optional filter (must match machine site when set)"
 // @Param machine_id query string false "Optional; must equal path machineId when set"
 // @Param product_id query string false "Filter by product UUID"
@@ -2306,12 +1905,12 @@ func DocOpV1AdminMachineRefillSuggestions() {}
 
 // DocOpV1AdminMachineCashbox godoc
 // @Summary Cashbox summary (expected vault from commerce)
-// @Description Returns **expectedCashboxMinor** / **expectedRecyclerMinor** (recycler is **0** until recycler telemetry is integrated), optional **denominations** hints, **lastCollectionAt**, and **openCollectionId** when a session is open. **Accounting-only** — does not command bill recycler hardware. **platform_admin** passes **organization_id** query for tenant pick.
+// @Description Returns **expectedCashboxMinor** / **expectedRecyclerMinor** (recycler is **0** until recycler telemetry is integrated), optional **denominations** hints, **lastCollectionAt**, and **openCollectionId** when a session is open. **Accounting-only** — does not command bill recycler hardware. **platform_admin** passes **scope_id** query for company pick.
 // @Tags Cash settlement
 // @Security BearerAuth
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param currency query string false "ISO 4217 minor currency (default USD)"
 // @Success 200 {object} V1AdminMachineCashboxResponse
 // @Failure 400 {object} V1StandardError
@@ -2330,7 +1929,7 @@ func DocOpV1AdminMachineCashbox() {}
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "operator_session_id, currency, notes"
 // @Success 200 {object} V1AdminCashCollection
 // @Failure 400 {object} V1StandardError
@@ -2345,12 +1944,12 @@ func DocOpV1AdminMachineCashCollectionsPost() {}
 
 // DocOpV1AdminMachineCashCollectionsList godoc
 // @Summary List cash collections for machine
-// @Description Recent **cash_collections** rows (open and closed), newest first. Tenant-scoped like other admin machine routes.
+// @Description Recent **cash_collections** rows (open and closed), newest first. Role-scoped like other admin machine routes.
 // @Tags Cash settlement
 // @Security BearerAuth
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Offset"
 // @Success 200 {object} V1AdminCashCollectionListResponse
@@ -2364,13 +1963,13 @@ func DocOpV1AdminMachineCashCollectionsList() {}
 
 // DocOpV1AdminMachineCashCollectionGet godoc
 // @Summary Get one cash collection
-// @Description Returns a single **cash_collections** row when it belongs to the machine and organization.
+// @Description Returns a single **cash_collections** row when it belongs to the machine and company.
 // @Tags Cash settlement
 // @Security BearerAuth
 // @Produce json
 // @Param machineId path string true "Machine UUID"
 // @Param collectionId path string true "Collection UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} V1AdminCashCollection
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2389,7 +1988,7 @@ func DocOpV1AdminMachineCashCollectionGet() {}
 // @Produce json
 // @Param machineId path string true "Machine UUID"
 // @Param collectionId path string true "Collection UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "operator_session_id, currency, counted_amount_minor (legacy) OR countedCashboxMinor+countedRecyclerMinor, optional denominations, closedAt, evidence"
 // @Success 200 {object} V1AdminCashCollection
 // @Failure 400 {object} V1StandardError
@@ -2403,12 +2002,12 @@ func DocOpV1AdminMachineCashCollectionGet() {}
 func DocOpV1AdminMachineCashCollectionClosePost() {}
 
 // DocOpV1AdminFeatureFlagsList godoc
-// @Summary List organization feature flags
-// @Description Paginates tenant-scoped **feature_flags**. Requires **fleet.read**. **platform_admin** must pass **organization_id**.
+// @Summary List company feature flags
+// @Description Paginates single-company **feature_flags**. Requires **fleet.read**. **platform_admin** must pass **scope_id**.
 // @Tags Fleet
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Offset"
 // @Success 200 {object} object "items[], meta{limit,offset,returned,total}"
@@ -2420,12 +2019,12 @@ func DocOpV1AdminFeatureFlagsList() {}
 
 // DocOpV1AdminFeatureFlagsPost godoc
 // @Summary Create a feature flag
-// @Description Inserts a **feature_flag** row keyed by **flagKey** (unique per organization). Requires **fleet.write**.
+// @Description Inserts a **feature_flag** row keyed by **flagKey** (unique per company). Requires **fleet.write**.
 // @Tags Fleet
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "flagKey, displayName, description, enabled, metadata"
 // @Success 201 {object} object
 // @Failure 400 {object} V1StandardError
@@ -2442,7 +2041,7 @@ func DocOpV1AdminFeatureFlagsPost() {}
 // @Security BearerAuth
 // @Produce json
 // @Param flagId path string true "Feature flag UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} object "flag, targets[]"
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2459,7 +2058,7 @@ func DocOpV1AdminFeatureFlagGet() {}
 // @Accept json
 // @Produce json
 // @Param flagId path string true "Feature flag UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object false "optional displayName, description, enabled, metadata"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -2476,7 +2075,7 @@ func DocOpV1AdminFeatureFlagPatch() {}
 // @Security BearerAuth
 // @Produce json
 // @Param flagId path string true "Feature flag UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2492,7 +2091,7 @@ func DocOpV1AdminFeatureFlagEnablePost() {}
 // @Security BearerAuth
 // @Produce json
 // @Param flagId path string true "Feature flag UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2503,13 +2102,13 @@ func DocOpV1AdminFeatureFlagDisablePost() {}
 
 // DocOpV1AdminFeatureFlagTargetsPut godoc
 // @Summary Replace scoped targets for a feature flag
-// @Description Deletes existing targets and inserts the provided list (**organization**, **site**, **machine**, **hardware_profile**, **canary**). Highest **priority** wins when evaluating on device bootstrap. Requires **fleet.write**.
+// @Description Deletes existing targets and inserts the provided list (**company**, **site**, **machine**, **hardware_profile**, **canary**). Highest **priority** wins when evaluating on device bootstrap. Requires **fleet.write**.
 // @Tags Fleet
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param flagId path string true "Feature flag UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "targets[]"
 // @Success 200 {object} object "targets[]"
 // @Failure 400 {object} V1StandardError
@@ -2526,7 +2125,7 @@ func DocOpV1AdminFeatureFlagTargetsPut() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "scopeType, optional targetVersionId or versionLabel+configPayload, optional rollbackFromRolloutId"
 // @Success 201 {object} object
 // @Failure 400 {object} V1StandardError
@@ -2538,11 +2137,11 @@ func DocOpV1AdminMachineConfigRolloutsPost() {}
 
 // DocOpV1AdminMachineConfigRolloutsList godoc
 // @Summary List machine config rollouts
-// @Description Paginates staged rollouts for the tenant. Requires **fleet.read**.
+// @Description Paginates staged rollouts for the company. Requires **fleet.read**.
 // @Tags Fleet
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Offset"
 // @Success 200 {object} object "items[], meta"
@@ -2559,7 +2158,7 @@ func DocOpV1AdminMachineConfigRolloutsList() {}
 // @Security BearerAuth
 // @Produce json
 // @Param rolloutId path string true "Rollout UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2570,7 +2169,7 @@ func DocOpV1AdminMachineConfigRolloutGet() {}
 
 // DocOpV1SetupMachineBootstrap godoc
 // @Summary Machine setup bootstrap (topology + catalog)
-// @Description Returns machine identity, nested topology (**cabinets** with **slots** from current cabinet slot configs), and **catalog.products** from the machine's primary assortment binding. Optional **runtimeHints** exposes evaluated **featureFlags**, latest applied **machine_configs** revision (`appliedMachineConfigRevision`), and pending staged rollouts when feature-flag services are enabled server-side. Requires **machine read** access (`RequireMachineTenantAccess` — org scope, explicit machine allow-list, or platform admin).
+// @Description Returns machine identity, nested topology (**cabinets** with **slots** from current cabinet slot configs), and **catalog.products** from the machine's primary assortment binding. Optional **runtimeHints** exposes evaluated **featureFlags**, latest applied **machine_configs** revision (`appliedMachineConfigRevision`), and pending staged rollouts when feature-flag services are enabled server-side. Requires **machine read** access (`RequireMachineCompanyAccess` — company scope, explicit machine allow-list, or platform admin).
 // @Tags Machine Setup
 // @Security BearerAuth
 // @Produce json
@@ -2600,13 +2199,13 @@ func DocOpV1SetupActivationClaimPost() {}
 
 // DocOpV1AdminMachineTopologyPut godoc
 // @Summary Upsert machine cabinet topology and slot layouts
-// @Description Upserts **cabinets** then **layouts** (cabinet-scoped `machine_slot_layouts`). Body requires **operator_session_id** for an **ACTIVE** session on this machine. **platform_admin** must pass **organization_id** query for tenant pick.
+// @Description Upserts **cabinets** then **layouts** (cabinet-scoped `machine_slot_layouts`). Body requires **operator_session_id** for an **ACTIVE** session on this machine. **platform_admin** must pass **scope_id** query for company pick.
 // @Tags Machine Setup
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "operator_session_id, cabinets[], layouts[]"
 // @Success 204 {string} string "No Content"
 // @Failure 400 {object} V1StandardError
@@ -2628,7 +2227,7 @@ func DocOpV1AdminMachineTopologyPut() {}
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]"
 // @Success 204 {string} string "No Content"
 // @Failure 400 {object} V1StandardError
@@ -2650,7 +2249,7 @@ func DocOpV1AdminMachinePlanogramDraftPut() {}
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]"
 // @Success 200 {object} V1AdminPlanogramPublishResponse
 // @Failure 400 {object} V1StandardError "missing_idempotency_key / invalid_json"
@@ -2672,7 +2271,7 @@ func DocOpV1AdminMachinePlanogramPublishPost() {}
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "operator_session_id, optional reason"
 // @Success 200 {object} V1AdminMachineSyncResponse
 // @Failure 400 {object} V1StandardError
@@ -2690,16 +2289,16 @@ func DocOpV1AdminMachineSetupSyncPost() {}
 
 // DocOpV1ReportsSalesSummary godoc
 // @Summary Sales rollup and trend breakdown
-// @Description Aggregates `orders` for an organization in a half-open time window **[from, to)** (RFC3339, required). **platform_admin** must pass **organization_id**; maximum span **366 days**. `group_by` controls the breakdown dimension: **day** (default), **site**, **machine** (top 500 by revenue), **payment_method** (joins authorized/captured payments), or **none** (summary only). Amounts are integer minor units as stored in OLTP.
+// @Description Aggregates `orders` for an company in a half-open time window **[from, to)** (RFC3339, required). **platform_admin** must pass **scope_id**; maximum span **366 days**. `group_by` controls the breakdown dimension: **day** (default), **site**, **machine** (top 500 by revenue), **payment_method** (joins authorized/captured payments), or **none** (summary only). Amounts are integer minor units as stored in OLTP.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param group_by query string false "day | site | machine | payment_method | none (default day)"
 // @Success 200 {object} V1ReportingSalesSummaryResponse
-// @Failure 400 {object} V1StandardError "invalid_query / organization_id_required / invalid date span"
+// @Failure 400 {object} V1StandardError "invalid_query / scope_id_required / invalid date span"
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 500 {object} V1StandardError
@@ -2708,11 +2307,11 @@ func DocOpV1ReportsSalesSummary() {}
 
 // DocOpV1ReportsPaymentsSummary godoc
 // @Summary Payment outcomes and method/status breakdown
-// @Description Aggregates `payments` joined to `orders` for the organization in **[from, to)** on `payments.created_at`. Counts authorized/captured/failed/refunded plus amount sums per state bucket. `group_by` selects **day** (default), **payment_method** (provider roll-up), **status** (state roll-up), or **none** (summary only). Requires same org scoping rules as other reports.
+// @Description Aggregates `payments` joined to `orders` for the company in **[from, to)** on `payments.created_at`. Counts authorized/captured/failed/refunded plus amount sums per state bucket. `group_by` selects **day** (default), **payment_method** (provider roll-up), **status** (state roll-up), or **none** (summary only). Requires same org scoping rules as other reports.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param group_by query string false "day | payment_method | status | none (default day)"
@@ -2730,7 +2329,7 @@ func DocOpV1ReportsPaymentsSummary() {}
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Success 200 {object} V1ReportingFleetHealthResponse
@@ -2747,7 +2346,7 @@ func DocOpV1ReportsFleetHealth() {}
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "RFC3339Nano with explicit timezone offset (validated; reserved for future time filtering)"
 // @Param to query string true "RFC3339Nano with explicit timezone offset (validated; reserved for future time filtering)"
 // @Param exception_kind query string false "all | low_stock | out_of_stock (default all)"
@@ -2761,13 +2360,13 @@ func DocOpV1ReportsFleetHealth() {}
 // @Router /v1/reports/inventory-exceptions [get]
 func DocOpV1ReportsInventoryExceptions() {}
 
-// DocOpV1AdminOrgReportsSales godoc
-// @Summary Organization sales report
-// @Description Admin Web sales report for one organization in **[from,to)**. Supports timezone-aware day buckets via **timezone** and **group_by=day|site|machine|payment_method|product|none**. Optional **site_id**, **machine_id**, **product_id** narrow facts. `format=csv` returns stable CSV and audits the export action. Requires **reports.read**.
+// DocOpV1AdminReportsSales godoc
+// @Summary Company sales report
+// @Description Admin Web sales report for one company in **[from,to)**. Supports timezone-aware day buckets via **timezone** and **group_by=day|site|machine|payment_method|product|none**. Optional **site_id**, **machine_id**, **product_id** narrow facts. `format=csv` returns stable CSV and audits the export action. Requires **reports.read**.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param timezone query string false "IANA timezone (default UTC)"
@@ -2780,16 +2379,16 @@ func DocOpV1ReportsInventoryExceptions() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/sales [get]
-func DocOpV1AdminOrgReportsSales() {}
+// @Router /v1/admin/reports/sales [get]
+func DocOpV1AdminReportsSales() {}
 
-// DocOpV1AdminOrgReportsPayments godoc
+// DocOpV1AdminReportsPayments godoc
 // @Summary Payment settlement report
-// @Description Provider/date/status settlement rollup for one organization. Groups by timezone-aware business day, provider, payment state, settlement status, and reconciliation status. `format=csv` returns stable CSV and audits the export action. Requires **reports.read**.
+// @Description Provider/date/status settlement rollup for one company. Groups by timezone-aware business day, provider, payment state, settlement status, and reconciliation status. `format=csv` returns stable CSV and audits the export action. Requires **reports.read**.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param timezone query string false "IANA timezone (default UTC)"
@@ -2801,16 +2400,16 @@ func DocOpV1AdminOrgReportsSales() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/payments [get]
-func DocOpV1AdminOrgReportsPayments() {}
+// @Router /v1/admin/reports/payments [get]
+func DocOpV1AdminReportsPayments() {}
 
-// DocOpV1AdminOrgReportsRefunds godoc
+// DocOpV1AdminReportsRefunds godoc
 // @Summary Refund report
-// @Description Paged refund rows for one organization in **[from,to)**. `format=csv` returns stable CSV and audits the export action. Requires **reports.read**.
+// @Description Paged refund rows for one company in **[from,to)**. `format=csv` returns stable CSV and audits the export action. Requires **reports.read**.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param limit query int false "Page size (default 50, max 500)"
@@ -2820,16 +2419,16 @@ func DocOpV1AdminOrgReportsPayments() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/refunds [get]
-func DocOpV1AdminOrgReportsRefunds() {}
+// @Router /v1/admin/reports/refunds [get]
+func DocOpV1AdminReportsRefunds() {}
 
-// DocOpV1AdminOrgReportsCash godoc
+// DocOpV1AdminReportsCash godoc
 // @Summary Cash collection report
-// @Description Paged cash collection rows for one organization in **[from,to)** on collected_at. Optional **site_id** and **machine_id** filters. `format=csv` exports all matching rows and audits the export action. Requires **reports.read**.
+// @Description Paged cash collection rows for one company in **[from,to)** on collected_at. Optional **site_id** and **machine_id** filters. `format=csv` exports all matching rows and audits the export action. Requires **reports.read**.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param site_id query string false "Site UUID filter"
@@ -2841,16 +2440,16 @@ func DocOpV1AdminOrgReportsRefunds() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/cash [get]
-func DocOpV1AdminOrgReportsCash() {}
+// @Router /v1/admin/reports/cash [get]
+func DocOpV1AdminReportsCash() {}
 
-// DocOpV1AdminOrgReportsInventoryLowStock godoc
+// DocOpV1AdminReportsInventoryLowStock godoc
 // @Summary Inventory low-stock report
-// @Description Paged current low-stock slot report for one organization. Requires **reports.read**.
+// @Description Paged current low-stock slot report for one company. Requires **reports.read**.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Validated RFC3339 window start"
 // @Param to query string true "Validated RFC3339 window end"
 // @Param limit query int false "Page size (default 50, max 500)"
@@ -2859,16 +2458,16 @@ func DocOpV1AdminOrgReportsCash() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/inventory-low-stock [get]
-func DocOpV1AdminOrgReportsInventoryLowStock() {}
+// @Router /v1/admin/reports/inventory-low-stock [get]
+func DocOpV1AdminReportsInventoryLowStock() {}
 
-// DocOpV1AdminOrgReportsMachineHealth godoc
+// DocOpV1AdminReportsMachineHealth godoc
 // @Summary Machine health and offline report
-// @Description Paged machine health report for one organization. Machines are marked offline by terminal/problem status, missing last_seen_at, or last_seen_at older than 15 minutes before **to**. Requires **reports.read**.
+// @Description Paged machine health report for one company. Machines are marked offline by terminal/problem status, missing last_seen_at, or last_seen_at older than 15 minutes before **to**. Requires **reports.read**.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Validated RFC3339 window start"
 // @Param to query string true "Validated RFC3339 window end"
 // @Param limit query int false "Page size (default 50, max 500)"
@@ -2877,16 +2476,16 @@ func DocOpV1AdminOrgReportsInventoryLowStock() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/machine-health [get]
-func DocOpV1AdminOrgReportsMachineHealth() {}
+// @Router /v1/admin/reports/machine-health [get]
+func DocOpV1AdminReportsMachineHealth() {}
 
-// DocOpV1AdminOrgReportsFailedVends godoc
+// DocOpV1AdminReportsFailedVends godoc
 // @Summary Failed vend report
-// @Description Paged failed vend session rows for one organization in **[from,to)**. Requires **reports.read**.
+// @Description Paged failed vend session rows for one company in **[from,to)**. Requires **reports.read**.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param limit query int false "Page size (default 50, max 500)"
@@ -2895,16 +2494,16 @@ func DocOpV1AdminOrgReportsMachineHealth() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/failed-vends [get]
-func DocOpV1AdminOrgReportsFailedVends() {}
+// @Router /v1/admin/reports/failed-vends [get]
+func DocOpV1AdminReportsFailedVends() {}
 
-// DocOpV1AdminOrgReportsReconciliationQueue godoc
+// DocOpV1AdminReportsReconciliationQueue godoc
 // @Summary Reconciliation queue report
-// @Description Paged open/reviewing commerce reconciliation cases for one organization in **[from,to)**. Requires **reports.read**.
+// @Description Paged open/reviewing commerce reconciliation cases for one company in **[from,to)**. Requires **reports.read**.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param limit query int false "Page size (default 50, max 500)"
@@ -2913,15 +2512,15 @@ func DocOpV1AdminOrgReportsFailedVends() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/reconciliation-queue [get]
-func DocOpV1AdminOrgReportsReconciliationQueue() {}
+// @Router /v1/admin/reports/reconciliation-queue [get]
+func DocOpV1AdminReportsReconciliationQueue() {}
 
-// DocOpV1AdminOrgReportsVends godoc
-// @Summary Organization vend lifecycle summary
+// DocOpV1AdminReportsVends godoc
+// @Summary Company vend lifecycle summary
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param site_id query string false "Site UUID filter"
@@ -2934,15 +2533,15 @@ func DocOpV1AdminOrgReportsReconciliationQueue() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/vends [get]
-func DocOpV1AdminOrgReportsVends() {}
+// @Router /v1/admin/reports/vends [get]
+func DocOpV1AdminReportsVends() {}
 
-// DocOpV1AdminOrgReportsInventoryUnified godoc
+// DocOpV1AdminReportsInventoryUnified godoc
 // @Summary Inventory BI (low stock or movement ledger)
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param kind query string false "low_stock | movement (default low_stock)"
@@ -2957,15 +2556,15 @@ func DocOpV1AdminOrgReportsVends() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/inventory [get]
-func DocOpV1AdminOrgReportsInventoryUnified() {}
+// @Router /v1/admin/reports/inventory [get]
+func DocOpV1AdminReportsInventoryUnified() {}
 
-// DocOpV1AdminOrgReportsMachines godoc
+// DocOpV1AdminReportsMachines godoc
 // @Summary Machine uptime / last-seen report (alias naming)
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param site_id query string false "Site UUID filter"
@@ -2978,15 +2577,15 @@ func DocOpV1AdminOrgReportsInventoryUnified() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/machines [get]
-func DocOpV1AdminOrgReportsMachines() {}
+// @Router /v1/admin/reports/machines [get]
+func DocOpV1AdminReportsMachines() {}
 
-// DocOpV1AdminOrgReportsProducts godoc
+// DocOpV1AdminReportsProducts godoc
 // @Summary Product performance report
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param site_id query string false "Site UUID filter"
@@ -2997,15 +2596,15 @@ func DocOpV1AdminOrgReportsMachines() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/products [get]
-func DocOpV1AdminOrgReportsProducts() {}
+// @Router /v1/admin/reports/products [get]
+func DocOpV1AdminReportsProducts() {}
 
-// DocOpV1AdminOrgReportsReconciliationBI godoc
+// DocOpV1AdminReportsReconciliationBI godoc
 // @Summary Reconciliation BI (open/closed summaries + scoped cases)
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param reconciliation_scope query string false "open | closed | all (default all)"
@@ -3019,15 +2618,15 @@ func DocOpV1AdminOrgReportsProducts() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/reconciliation [get]
-func DocOpV1AdminOrgReportsReconciliationBI() {}
+// @Router /v1/admin/reports/reconciliation [get]
+func DocOpV1AdminReportsReconciliationBI() {}
 
-// DocOpV1AdminOrgReportsCommands godoc
+// DocOpV1AdminReportsCommands godoc
 // @Summary Machine command failure report (terminal attempts only)
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param site_id query string false "Site UUID filter"
@@ -3039,15 +2638,15 @@ func DocOpV1AdminOrgReportsReconciliationBI() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/commands [get]
-func DocOpV1AdminOrgReportsCommands() {}
+// @Router /v1/admin/reports/commands [get]
+func DocOpV1AdminReportsCommands() {}
 
-// DocOpV1AdminOrgReportsTechnicianFills godoc
+// DocOpV1AdminReportsTechnicianFills godoc
 // @Summary Technician and fill / restock inventory operations
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param site_id query string false "Site UUID filter"
@@ -3060,15 +2659,15 @@ func DocOpV1AdminOrgReportsCommands() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/fills [get]
-func DocOpV1AdminOrgReportsTechnicianFills() {}
+// @Router /v1/admin/reports/fills [get]
+func DocOpV1AdminReportsTechnicianFills() {}
 
-// DocOpV1AdminOrgReportsExport godoc
+// DocOpV1AdminReportsExport godoc
 // @Summary Unified CSV export dispatcher
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce text/csv
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param report query string true "sales | payments | products | reconciliation | machines | vends | inventory | commands | fills"
@@ -3076,16 +2675,16 @@ func DocOpV1AdminOrgReportsTechnicianFills() {}
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
-// @Router /v1/admin/organizations/{organizationId}/reports/export [get]
-func DocOpV1AdminOrgReportsExport() {}
+// @Router /v1/admin/reports/export [get]
+func DocOpV1AdminReportsExport() {}
 
 // DocOpV1AdminReportsSalesSummaryExportCSV godoc
 // @Summary Export sales summary as CSV (UTF-8)
-// @Description Same filters as **GET /v1/reports/sales-summary** (**from**, **to**, **group_by**, **organization_id** for platform admins). Response is CSV with stable headers. Requires **reports.read**.
+// @Description Same filters as **GET /v1/reports/sales-summary** (**from**, **to**, **group_by**, **scope_id** for platform admins). Response is CSV with stable headers. Requires **reports.read**.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce text/csv
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param group_by query string false "day | site | machine | payment_method | none (default day)"
@@ -3103,7 +2702,7 @@ func DocOpV1AdminReportsSalesSummaryExportCSV() {}
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce text/csv
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param group_by query string false "day | payment_method | status | none (default day)"
@@ -3117,11 +2716,11 @@ func DocOpV1AdminReportsPaymentsSummaryExportCSV() {}
 
 // DocOpV1AdminReportsCashCollectionsExportCSV godoc
 // @Summary Export cash collection sessions as CSV (UTF-8)
-// @Description Lists **cash_collections** joined to machines/sites in **[from,to)** on **collected_at**. Optional **site_id** and **machine_id** narrow the export (unset = organization-wide). Requires **reports.read**.
+// @Description Lists **cash_collections** joined to machines/sites in **[from,to)** on **collected_at**. Optional **site_id** and **machine_id** narrow the export (unset = company-wide). Requires **reports.read**.
 // @Tags Reporting
 // @Security BearerAuth
 // @Produce text/csv
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param from query string true "Inclusive window start (RFC3339)"
 // @Param to query string true "Exclusive window end (RFC3339)"
 // @Param site_id query string false "Optional site UUID filter"
@@ -3142,7 +2741,7 @@ func DocOpV1AdminReportsCashCollectionsExportCSV() {}
 // @Accept json
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body V1FinanceDailyCloseCreateRequest true "Close payload"
 // @Success 201 {object} V1FinanceDailyClose
 // @Failure 400 {object} V1StandardError
@@ -3155,11 +2754,11 @@ func DocOpV1AdminFinanceDailyClosePost() {}
 
 // DocOpV1AdminFinanceDailyCloseList godoc
 // @Summary List finance daily closes
-// @Description Tenant-scoped list ordered by close date descending. Pagination **limit**/**offset**. Requires **cash.write** (includes **finance_admin**).
+// @Description Role-scoped list ordered by close date descending. Pagination **limit**/**offset**. Requires **cash.write** (includes **finance_admin**).
 // @Tags Finance
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
 // @Success 200 {object} V1FinanceDailyCloseListResponse
@@ -3172,11 +2771,11 @@ func DocOpV1AdminFinanceDailyCloseList() {}
 
 // DocOpV1AdminFinanceDailyCloseGet godoc
 // @Summary Get one finance daily close by id
-// @Description Immutable snapshot row for the tenant. Requires **cash.write**.
+// @Description Immutable snapshot row for the company. Requires **cash.write**.
 // @Tags Finance
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param closeId path string true "Daily close UUID"
 // @Success 200 {object} V1FinanceDailyClose
 // @Failure 400 {object} V1StandardError
@@ -3187,15 +2786,15 @@ func DocOpV1AdminFinanceDailyCloseList() {}
 // @Router /v1/admin/finance/daily-close/{closeId} [get]
 func DocOpV1AdminFinanceDailyCloseGet() {}
 
-// --- Admin (platform_admin or org_admin) ---
+// --- Admin (platform_admin or admin) ---
 
 // DocOpV1AdminMachinesList godoc
 // @Summary List machines (admin)
-// @Description Read-only operational list of machines for an organization. Each row includes site name, device snapshot identity, effective timezone, active technician assignments, current operator (when any), and `machine_slot_state` inventory summary—loaded in batch after the machine page query (**no N+1**). **platform_admin** must pass **organization_id** query (tenant pick). **org_admin** uses JWT organization scope. Optional filters: **site_id**, **machine_id**, **status** (machine.status), **from** / **to** on `updated_at` (RFC3339), **search** is ignored for this resource. Pagination: **limit** (default 50, max 500), **offset**.
+// @Description Read-only operational list of machines for an company. Each row includes site name, device snapshot identity, effective timezone, active technician assignments, current operator (when any), and `machine_slot_state` inventory summary—loaded in batch after the machine page query (**no N+1**). **platform_admin** must pass **scope_id** query (company pick). **admin** uses JWT company scope. Optional filters: **site_id**, **machine_id**, **status** (machine.status), **from** / **to** on `updated_at` (RFC3339), **search** is ignored for this resource. Pagination: **limit** (default 50, max 500), **offset**.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param site_id query string false "Filter by site UUID"
 // @Param machine_id query string false "Filter to a single machine UUID"
 // @Param status query string false "Filter by machine status (e.g. online, offline)"
@@ -3213,10 +2812,10 @@ func DocOpV1AdminMachinesList() {}
 
 // DocOpV1AdminMachineGet godoc
 // @Summary Get machine (admin)
-// @Description Single-machine fleet view: site, device identity from snapshot, effective timezone, active technician assignments, current operator session (from `v_machine_current_operator`), and slot inventory summary. **platform_admin** must pass **organization_id** query (tenant pick). **org_admin** uses JWT organization scope.
+// @Description Single-machine fleet view: site, device identity from snapshot, effective timezone, active technician assignments, current operator session (from `v_machine_current_operator`), and slot inventory summary. **platform_admin** must pass **scope_id** query (company pick). **admin** uses JWT company scope.
 // @Tags Machine Admin
 // @Security BearerAuth
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param machineId path string true "Machine UUID"
 // @Produce json
 // @Success 200 {object} V1AdminMachineListItem
@@ -3230,11 +2829,11 @@ func DocOpV1AdminMachineGet() {}
 
 // DocOpV1AdminSitesList godoc
 // @Summary List sites (admin)
-// @Description Requires **fleet.read**. **platform_admin** passes **organization_id**. Pagination **limit** / **offset**, optional **status** filter.
+// @Description Requires **fleet.read**. **platform_admin** passes **scope_id**. Pagination **limit** / **offset**, optional **status** filter.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param status query string false "Filter by site status"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
@@ -3251,7 +2850,7 @@ func DocOpV1AdminSitesList() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param siteId path string true "Site UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -3269,7 +2868,7 @@ func DocOpV1AdminSiteGet() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "name, timezone, code, optional region_id, address"
 // @Success 201 {object} object
 // @Failure 400 {object} V1StandardError
@@ -3286,7 +2885,7 @@ func DocOpV1AdminSiteCreate() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param siteId path string true "Site UUID"
 // @Param body body object true "Partial fields"
 // @Success 200 {object} object
@@ -3298,608 +2897,22 @@ func DocOpV1AdminSiteCreate() {}
 // @Router /v1/admin/sites/{siteId} [patch]
 func DocOpV1AdminSitePatch() {}
 
-// DocOpV1AdminOrgSitesList godoc
-// @Summary List organization sites
+// DocOpV1AdminSiteArchive godoc
+// @Summary Archive site (admin alias)
+// @Description Alias for **POST /v1/admin/sites/{siteId}/disable**; soft-archives the site when no blocking machines remain.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/sites [get]
-func DocOpV1AdminOrgSitesList() {}
-
-// DocOpV1AdminOrgSitesCreate godoc
-// @Summary Create organization site
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body object true "Site payload"
-// @Success 201 {object} object
-// @Router /v1/admin/organizations/{organizationId}/sites [post]
-func DocOpV1AdminOrgSitesCreate() {}
-
-// DocOpV1AdminOrgSiteGet godoc
-// @Summary Get organization site
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param siteId path string true "Site UUID"
 // @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/sites/{siteId} [get]
-func DocOpV1AdminOrgSiteGet() {}
-
-// DocOpV1AdminOrgSitePatch godoc
-// @Summary Patch organization site
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param siteId path string true "Site UUID"
-// @Param body body object true "Partial site payload"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/sites/{siteId} [patch]
-func DocOpV1AdminOrgSitePatch() {}
-
-// DocOpV1AdminOrgSiteArchive godoc
-// @Summary Archive organization site
-// @Description Soft archive: sets site status inactive.
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param siteId path string true "Site UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/sites/{siteId}/archive [post]
-func DocOpV1AdminOrgSiteArchive() {}
-
-// DocOpV1AdminOrgSiteDelete godoc
-// @Summary Delete (deactivate) organization site
-// @Description Archived when no active machines reference the site; otherwise **409**.
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param siteId path string true "Site UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/sites/{siteId} [delete]
-func DocOpV1AdminOrgSiteDelete() {}
-
-// DocOpV1AdminOrgMachinesList godoc
-// @Summary List organization machines
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Success 200 {object} V1AdminMachinesListResponse
-// @Router /v1/admin/organizations/{organizationId}/machines [get]
-func DocOpV1AdminOrgMachinesList() {}
-
-// DocOpV1AdminOrgMachinesCreate godoc
-// @Summary Create organization machine
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body object true "Machine payload"
-// @Success 201 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines [post]
-func DocOpV1AdminOrgMachinesCreate() {}
-
-// DocOpV1AdminOrgMachineGet godoc
-// @Summary Get organization machine
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} V1AdminMachineListItem
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId} [get]
-func DocOpV1AdminOrgMachineGet() {}
-
-// DocOpV1AdminOrgMachinePatch godoc
-// @Summary Patch organization machine
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Param body body object true "Partial machine payload"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId} [patch]
-func DocOpV1AdminOrgMachinePatch() {}
-
-// DocOpV1AdminOrgMachineArchive godoc
-// @Summary Archive organization machine
-// @Description Soft archive: sets status **decommissioned** (terminal).
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/archive [post]
-func DocOpV1AdminOrgMachineArchive() {}
-
-// DocOpV1AdminOrgMachineSuspend godoc
-// @Summary Suspend organization machine
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/suspend [post]
-func DocOpV1AdminOrgMachineSuspend() {}
-
-// DocOpV1AdminOrgMachineResume godoc
-// @Summary Resume organization machine
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/resume [post]
-func DocOpV1AdminOrgMachineResume() {}
-
-// DocOpV1AdminOrgMachineMarkCompromised godoc
-// @Summary Mark organization machine compromised
-// @Description Sets status compromised and revokes machine credentials.
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/mark-compromised [post]
-func DocOpV1AdminOrgMachineMarkCompromised() {}
-
-// DocOpV1AdminOrgMachineRotateCredentials godoc
-// @Summary Rotate organization machine credentials
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/rotate-credentials [post]
-func DocOpV1AdminOrgMachineRotateCredentials() {}
-
-// DocOpV1AdminOrgMachineRevokeCredentials godoc
-// @Summary Revoke organization machine credentials
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/revoke-credentials [post]
-func DocOpV1AdminOrgMachineRevokeCredentials() {}
-
-// DocOpV1AdminOrgMachineRotateTokenVersion godoc
-// @Summary Rotate machine credential version (alias)
-// @Description Same as **rotate-credentials**: bumps **credential_version** and invalidates prior machine JWTs.
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/rotate-token-version [post]
-func DocOpV1AdminOrgMachineRotateTokenVersion() {}
-
-// DocOpV1AdminOrgMachineRevokeToken godoc
-// @Summary Revoke machine JWT signing context (alias)
-// @Description Same as **revoke-credentials**.
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/revoke-token [post]
-func DocOpV1AdminOrgMachineRevokeToken() {}
-
-// DocOpV1AdminOrgMachineTransferSite godoc
-// @Summary Move machine to another site in the same organization
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Param body body object true "{\"site_id\":\"...\"}"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/transfer-site [post]
-func DocOpV1AdminOrgMachineTransferSite() {}
-
-// DocOpV1AdminOrgMachineTechniciansList godoc
-// @Summary List machine technician assignments
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} V1AdminAssignmentsListResponse
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/technicians [get]
-func DocOpV1AdminOrgMachineTechniciansList() {}
-
-// DocOpV1AdminOrgMachineTechniciansCreate godoc
-// @Summary Assign technician to machine
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Param body body object true "userId, role, optional scope"
-// @Success 201 {object} object
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/technicians [post]
-func DocOpV1AdminOrgMachineTechniciansCreate() {}
-
-// DocOpV1AdminOrgMachineTechnicianDelete godoc
-// @Summary Remove technician assignment from machine
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Param userId path string true "Technician/user UUID"
-// @Success 204 {string} string ""
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/technicians/{userId} [delete]
-func DocOpV1AdminOrgMachineTechnicianDelete() {}
-
-// DocOpV1AdminOrgOperationsMachinesHealthList godoc
-// @Summary List machine operational health rows for an organization
-// @Description Requires **fleet:read** or **telemetry:read**.
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param limit query int false "Page size"
-// @Param offset query int false "Offset"
-// @Success 200 {object} V1AdminOperationsMachineHealthListResponse
-// @Router /v1/admin/organizations/{organizationId}/operations/machines/health [get]
-func DocOpV1AdminOrgOperationsMachinesHealthList() {}
-
-// DocOpV1AdminOrgMachineOperationalHealthGet godoc
-// @Summary Get operational health for one machine
-// @Description Requires **fleet:read** or **telemetry:read**.
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} V1AdminOperationsMachineHealthItem
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/health [get]
-func DocOpV1AdminOrgMachineOperationalHealthGet() {}
-
-// DocOpV1AdminOrgMachineOperationalTimeline godoc
-// @Summary Machine timeline (commands, orders, check-ins)
-// @Description Requires **fleet:read** or **telemetry:read**.
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Param limit query int false "Page size"
-// @Param offset query int false "Offset"
-// @Success 200 {object} V1AdminOperationsTimelineListResponse
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/timeline [get]
-func DocOpV1AdminOrgMachineOperationalTimeline() {}
-
-// DocOpV1AdminOrgOperationsCommandsList godoc
-// @Summary List remote commands for an organization
-// @Description Requires **fleet:read**. Uses shared fleet command list filters (machine_id, time range, attempt status).
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Success 200 {object} V1AdminCommandsListResponse
-// @Router /v1/admin/organizations/{organizationId}/commands [get]
-func DocOpV1AdminOrgOperationsCommandsList() {}
-
-// DocOpV1AdminOrgOperationsCommandGet godoc
-// @Summary Get command ledger detail with attempts (timeline)
-// @Description Requires **fleet:read**.
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param commandId path string true "Command ledger UUID"
-// @Success 200 {object} V1AdminOperationsCommandDetailResponse
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/commands/{commandId} [get]
-func DocOpV1AdminOrgOperationsCommandGet() {}
-
-// DocOpV1AdminOrgOperationsCommandRetry godoc
-// @Summary Retry a non-terminal retryable remote command
-// @Description Requires **machine:command**. Requires ledger idempotency key; rejects terminal successes.
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param commandId path string true "Command ledger UUID"
-// @Success 200 {object} V1AdminOperationsCommandRetryResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
 // @Failure 409 {object} V1StandardError
-// @Failure 503 {object} V1CapabilityNotConfiguredError
-// @Router /v1/admin/organizations/{organizationId}/commands/{commandId}/retry [post]
-func DocOpV1AdminOrgOperationsCommandRetry() {}
-
-// DocOpV1AdminOrgOperationsCommandCancel godoc
-// @Summary Cancel pending or sent command attempts
-// @Description Requires **machine:command**.
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param commandId path string true "Command ledger UUID"
-// @Success 200 {object} V1AdminOperationsCommandCancelResponse
-// @Failure 409 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/commands/{commandId}/cancel [post]
-func DocOpV1AdminOrgOperationsCommandCancel() {}
-
-// DocOpV1AdminOrgOperationsMachineCommandsDispatch godoc
-// @Summary Dispatch a new remote command to a machine
-// @Description Requires **machine:command**. Idempotency-Key header is mandatory.
-// @Tags Operations
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Param body body V1AdminOperationsMachineCommandDispatchRequest true "Command type and payload"
-// @Success 202 {object} V1AdminOperationsMachineCommandDispatchResponse
-// @Failure 503 {object} V1CapabilityNotConfiguredError
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/commands [post]
-func DocOpV1AdminOrgOperationsMachineCommandsDispatch() {}
-
-// DocOpV1AdminOrgOperationsInventoryAnomaliesList godoc
-// @Summary List inventory anomalies for an organization
-// @Description Requires **inventory:read** or **fleet:read**. Query refresh=true runs detectors before listing.
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param refresh query bool false "Run anomaly detectors before listing"
-// @Param limit query int false "Page size"
-// @Param offset query int false "Offset"
-// @Success 200 {object} V1AdminOperationsInventoryAnomalyListResponse
-// @Router /v1/admin/organizations/{organizationId}/inventory/anomalies [get]
-func DocOpV1AdminOrgOperationsInventoryAnomaliesList() {}
-
-// DocOpV1AdminOrgOperationsMachineInventoryAnomaliesList godoc
-// @Summary List inventory anomalies for one machine
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Param refresh query bool false "Run anomaly detectors before listing"
-// @Param limit query int false "Page size"
-// @Param offset query int false "Offset"
-// @Success 200 {object} V1AdminOperationsInventoryAnomalyListResponse
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/inventory/anomalies [get]
-func DocOpV1AdminOrgOperationsMachineInventoryAnomaliesList() {}
-
-// DocOpV1AdminOrgOperationsInventoryAnomalyResolve godoc
-// @Summary Resolve an open inventory anomaly
-// @Description Requires **inventory:write**.
-// @Tags Operations
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param anomalyId path string true "Anomaly UUID"
-// @Param body body V1AdminOperationsInventoryAnomalyResolveRequest false "Optional resolution note"
-// @Success 200 {object} V1AdminOperationsInventoryAnomalyResolveResponse
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/inventory/anomalies/{anomalyId}/resolve [post]
-func DocOpV1AdminOrgOperationsInventoryAnomalyResolve() {}
-
-// DocOpV1AdminOrgOperationalAnomaliesList godoc
-// @Summary List unified operational anomalies (P2.4)
-// @Description Requires **inventory:read**, **fleet:read**, or **telemetry:read**. Optional **refresh=true** runs inventory + operational detectors (deduped open fingerprints).
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param refresh query bool false "Run anomaly detectors before listing"
-// @Param limit query int false "Page size"
-// @Param offset query int false "Offset"
-// @Success 200 {object} V1AdminOperationsInventoryAnomalyListResponse
-// @Router /v1/admin/organizations/{organizationId}/anomalies [get]
-func DocOpV1AdminOrgOperationalAnomaliesList() {}
-
-// DocOpV1AdminOrgOperationalAnomalyGet godoc
-// @Summary Get one operational anomaly
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param anomalyId path string true "Anomaly UUID"
-// @Success 200 {object} V1AdminOperationsInventoryAnomalyItem
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/anomalies/{anomalyId} [get]
-func DocOpV1AdminOrgOperationalAnomalyGet() {}
-
-// DocOpV1AdminOrgOperationalAnomalyResolve godoc
-// @Summary Resolve an open operational anomaly
-// @Description Requires **inventory:adjust**. Audited as admin.operational_anomaly.resolve.
-// @Tags Operations
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param anomalyId path string true "Anomaly UUID"
-// @Param body body V1AdminOperationsInventoryAnomalyResolveRequest false "Optional note"
-// @Success 200 {object} V1AdminOperationsInventoryAnomalyResolveResponse
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/anomalies/{anomalyId}/resolve [post]
-func DocOpV1AdminOrgOperationalAnomalyResolve() {}
-
-// DocOpV1AdminOrgOperationalAnomalyIgnore godoc
-// @Summary Ignore an open operational anomaly
-// @Description Requires **inventory:adjust**. Audited as admin.operational_anomaly.ignore.
-// @Tags Operations
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param anomalyId path string true "Anomaly UUID"
-// @Param body body V1AdminOperationsInventoryAnomalyResolveRequest false "Optional note"
-// @Success 200 {object} V1AdminOperationsInventoryAnomalyResolveResponse
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/anomalies/{anomalyId}/ignore [post]
-func DocOpV1AdminOrgOperationalAnomalyIgnore() {}
-
-// DocOpV1AdminOrgRestockSuggestions godoc
-// @Summary Organization-scoped restock suggestions (explainable forecast)
-// @Description Same projection as GET /v1/admin/inventory/refill-suggestions. Requires **inventory:read**, **fleet:read**, or **telemetry:read**.
-// @Tags Operations
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param velocity_days query int false "Lookback window for sales velocity (default 14)"
-// @Param limit query int false "Page size"
-// @Param offset query int false "Offset"
-// @Success 200 {object} V1AdminInventoryRefillForecastResponse
-// @Router /v1/admin/organizations/{organizationId}/restock/suggestions [get]
-func DocOpV1AdminOrgRestockSuggestions() {}
-
-// DocOpV1AdminOrgOperationsMachineInventoryReconcile godoc
-// @Summary Append an inventory reconcile marker event for a machine
-// @Description Requires **inventory:write**.
-// @Tags Operations
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param machineId path string true "Machine UUID"
-// @Param body body V1AdminOperationsInventoryReconcileRequest false "Optional human reason"
-// @Success 202 {object} V1AdminOperationsInventoryReconcileResponse
-// @Failure 404 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/machines/{machineId}/inventory/reconcile [post]
-func DocOpV1AdminOrgOperationsMachineInventoryReconcile() {}
-
-// DocOpV1AdminOrgProvisioningBulkCreate godoc
-// @Summary Bulk-create machines with optional activation codes (batch export)
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body V1AdminProvisioningBulkCreateRequest true "Provisioning payload"
-// @Success 201 {object} V1AdminProvisioningBulkCreateResponse
-// @Router /v1/admin/organizations/{organizationId}/provisioning/machines/bulk [post]
-func DocOpV1AdminOrgProvisioningBulkCreate() {}
-
-// DocOpV1AdminOrgProvisioningBatchGet godoc
-// @Summary Get provisioning batch detail (activation visibility / export metadata)
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param batchId path string true "Provisioning batch UUID"
-// @Success 200 {object} V1AdminProvisioningBatchDetailResponse
-// @Router /v1/admin/organizations/{organizationId}/provisioning/batches/{batchId} [get]
-func DocOpV1AdminOrgProvisioningBatchGet() {}
-
-// DocOpV1AdminOrgRolloutsCreate godoc
-// @Summary Create a fleet rollout campaign (MQTT command ledger targets resolved at start)
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body V1AdminRolloutCreateRequest true "Rollout definition"
-// @Success 201 {object} V1AdminRolloutCampaign
-// @Router /v1/admin/organizations/{organizationId}/rollouts [post]
-func DocOpV1AdminOrgRolloutsCreate() {}
-
-// DocOpV1AdminOrgRolloutsList godoc
-// @Summary List fleet rollout campaigns for an organization
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param limit query int false "Page size"
-// @Param offset query int false "Offset"
-// @Success 200 {object} V1AdminRolloutListResponse
-// @Router /v1/admin/organizations/{organizationId}/rollouts [get]
-func DocOpV1AdminOrgRolloutsList() {}
-
-// DocOpV1AdminOrgRolloutsGet godoc
-// @Summary Get rollout campaign detail including per-machine targets
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param rolloutId path string true "Rollout campaign UUID"
-// @Success 200 {object} V1AdminRolloutDetailResponse
-// @Router /v1/admin/organizations/{organizationId}/rollouts/{rolloutId} [get]
-func DocOpV1AdminOrgRolloutsGet() {}
-
-// DocOpV1AdminOrgRolloutsStart godoc
-// @Summary Resolve targets and dispatch rollout commands via MQTT ledger
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param rolloutId path string true "Rollout campaign UUID"
-// @Success 200 {object} V1AdminRolloutDetailResponse
-// @Router /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/start [post]
-func DocOpV1AdminOrgRolloutsStart() {}
-
-// DocOpV1AdminOrgRolloutsPause godoc
-// @Summary Pause an in-flight rollout (stops dispatch loops)
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param rolloutId path string true "Rollout campaign UUID"
-// @Success 200 {object} V1AdminRolloutDetailResponse
-// @Router /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/pause [post]
-func DocOpV1AdminOrgRolloutsPause() {}
-
-// DocOpV1AdminOrgRolloutsResume godoc
-// @Summary Resume a paused rollout
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param rolloutId path string true "Rollout campaign UUID"
-// @Success 200 {object} V1AdminRolloutDetailResponse
-// @Router /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/resume [post]
-func DocOpV1AdminOrgRolloutsResume() {}
-
-// DocOpV1AdminOrgRolloutsCancel godoc
-// @Summary Cancel remaining pending rollout targets
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param rolloutId path string true "Rollout campaign UUID"
-// @Success 200 {object} V1AdminRolloutDetailResponse
-// @Router /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/cancel [post]
-func DocOpV1AdminOrgRolloutsCancel() {}
-
-// DocOpV1AdminOrgRolloutsRollback godoc
-// @Summary Roll back succeeded targets via new MQTT fleet_rollout_apply commands (rollback_version required)
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param rolloutId path string true "Rollout campaign UUID"
-// @Success 200 {object} V1AdminRolloutDetailResponse
-// @Router /v1/admin/organizations/{organizationId}/rollouts/{rolloutId}/rollback [post]
-func DocOpV1AdminOrgRolloutsRollback() {}
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/sites/{siteId}/archive [post]
+func DocOpV1AdminSiteArchive() {}
 
 // DocOpV1AdminSiteDisable godoc
 // @Summary Disable site (admin)
@@ -3907,7 +2920,7 @@ func DocOpV1AdminOrgRolloutsRollback() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param siteId path string true "Site UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -3924,7 +2937,7 @@ func DocOpV1AdminSiteDisable() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param siteId path string true "Site UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -3941,7 +2954,7 @@ func DocOpV1AdminSiteDelete() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "site_id, serial_number, name, optional hardware_profile_id, status"
 // @Success 201 {object} object
 // @Failure 400 {object} V1StandardError
@@ -3958,7 +2971,7 @@ func DocOpV1AdminMachineCreate() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param machineId path string true "Machine UUID"
 // @Param body body object true "name, status, optional hardware_profile_id"
 // @Success 200 {object} object
@@ -3975,7 +2988,7 @@ func DocOpV1AdminMachinePatch() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param machineId path string true "Machine UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -3992,7 +3005,7 @@ func DocOpV1AdminMachineDisable() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param machineId path string true "Machine UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4009,7 +3022,7 @@ func DocOpV1AdminMachineEnable() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param machineId path string true "Machine UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4025,7 +3038,7 @@ func DocOpV1AdminMachineRetire() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param machineId path string true "Machine UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4036,12 +3049,160 @@ func DocOpV1AdminMachineRetire() {}
 // @Router /v1/admin/machines/{machineId}/rotate-credential [post]
 func DocOpV1AdminMachineRotateCredential() {}
 
+// DocOpV1AdminMachineArchive godoc
+// @Summary Retire machine (archive alias)
+// @Description Same handler as **POST .../retire**; use when integrating archive semantics.
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/archive [post]
+func DocOpV1AdminMachineArchive() {}
+
+// DocOpV1AdminMachineSuspend godoc
+// @Summary Suspend machine (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/suspend [post]
+func DocOpV1AdminMachineSuspend() {}
+
+// DocOpV1AdminMachineResume godoc
+// @Summary Resume suspended machine (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/resume [post]
+func DocOpV1AdminMachineResume() {}
+
+// DocOpV1AdminMachineMarkCompromised godoc
+// @Summary Mark machine compromised (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/mark-compromised [post]
+func DocOpV1AdminMachineMarkCompromised() {}
+
+// DocOpV1AdminMachineRotateCredentials godoc
+// @Summary Rotate machine credential (plural alias)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/rotate-credentials [post]
+func DocOpV1AdminMachineRotateCredentials() {}
+
+// DocOpV1AdminMachineRevokeCredentials godoc
+// @Summary Revoke machine credential material (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/revoke-credentials [post]
+func DocOpV1AdminMachineRevokeCredentials() {}
+
+// DocOpV1AdminMachineRotateTokenVersion godoc
+// @Summary Bump credential version / rotate token (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/rotate-token-version [post]
+func DocOpV1AdminMachineRotateTokenVersion() {}
+
+// DocOpV1AdminMachineRevokeToken godoc
+// @Summary Revoke machine tokens (alias path)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/revoke-token [post]
+func DocOpV1AdminMachineRevokeToken() {}
+
+// DocOpV1AdminMachineTransferSite godoc
+// @Summary Move machine to another site (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Param body body object true "target site_id / siteId"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/transfer-site [post]
+func DocOpV1AdminMachineTransferSite() {}
+
+// DocOpV1AdminMachineRevokeSessions godoc
+// @Summary Revoke interactive sessions for machine technicians/operators (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 204 {string} string "No Content"
+// @Router /v1/admin/machines/{machineId}/revoke-sessions [post]
+func DocOpV1AdminMachineRevokeSessions() {}
+
+// DocOpV1AdminMachineTechniciansOnMachineList godoc
+// @Summary List technicians assigned to a machine
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/technicians [get]
+func DocOpV1AdminMachineTechniciansOnMachineList() {}
+
+// DocOpV1AdminMachineTechnicianAssign godoc
+// @Summary Assign technician user to machine
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Param body body object true "userId / technician_id, role, optional scope"
+// @Success 201 {object} object
+// @Router /v1/admin/machines/{machineId}/technicians [post]
+func DocOpV1AdminMachineTechnicianAssign() {}
+
+// DocOpV1AdminMachineTechnicianRemove godoc
+// @Summary Remove technician assignment from machine by user id
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Param userId path string true "Technician user UUID"
+// @Success 204 {string} string "No Content"
+// @Router /v1/admin/machines/{machineId}/technicians/{userId} [delete]
+func DocOpV1AdminMachineTechnicianRemove() {}
+
 // DocOpV1AdminTechnicianGet godoc
 // @Summary Get technician by ID (admin)
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param technicianId path string true "Technician UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4058,7 +3219,7 @@ func DocOpV1AdminTechnicianGet() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "display_name, optional email, phone, external_subject"
 // @Success 201 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4074,7 +3235,7 @@ func DocOpV1AdminTechnicianCreate() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param technicianId path string true "Technician UUID"
 // @Param body body object true "Partial fields"
 // @Success 200 {object} object
@@ -4091,7 +3252,7 @@ func DocOpV1AdminTechnicianPatch() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param technicianId path string true "Technician UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4107,7 +3268,7 @@ func DocOpV1AdminTechnicianDisable() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param technicianId path string true "Technician UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4124,7 +3285,7 @@ func DocOpV1AdminTechnicianEnable() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param technician_id query string false "Filter by technician UUID"
 // @Param machine_id query string false "Filter by machine UUID"
 // @Param from query string false "created_at lower bound (RFC3339)"
@@ -4145,7 +3306,7 @@ func DocOpV1AdminTechnicianAssignmentsList() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "technician_id, machine_id, role"
 // @Success 201 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4161,7 +3322,7 @@ func DocOpV1AdminTechnicianAssignmentCreate() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param assignmentId path string true "Assignment UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4178,7 +3339,7 @@ func DocOpV1AdminTechnicianAssignmentGet() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param assignmentId path string true "Assignment UUID"
 // @Param body body object true "role, valid_to, status"
 // @Success 200 {object} object
@@ -4195,7 +3356,7 @@ func DocOpV1AdminTechnicianAssignmentPatch() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param assignmentId path string true "Assignment UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4211,7 +3372,7 @@ func DocOpV1AdminTechnicianAssignmentCancel() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param assignmentId path string true "Assignment UUID"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4224,13 +3385,13 @@ func DocOpV1AdminTechnicianAssignmentDelete() {}
 
 // DocOpV1AdminMachineActivationCodesPost godoc
 // @Summary Create machine activation code
-// @Description Returns the raw **activationCode** once (server stores a hash only). Requires org admin or platform admin with tenant scope. Subject to sensitive-write rate limiting when enabled.
+// @Description Returns the raw **activationCode** once (server stores a hash only). Requires org admin or platform admin with company scope. Subject to sensitive-write rate limiting when enabled.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "expiresInMinutes, maxUses, optional notes"
 // @Success 201 {object} object
 // @Failure 400 {object} V1StandardError
@@ -4248,7 +3409,7 @@ func DocOpV1AdminMachineActivationCodesPost() {}
 // @Security BearerAuth
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 200 {object} object
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -4264,7 +3425,7 @@ func DocOpV1AdminMachineActivationCodesList() {}
 // @Security BearerAuth
 // @Param machineId path string true "Machine UUID"
 // @Param activationCodeId path string true "Activation code row UUID"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Success 204 {string} string "No Content"
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -4274,159 +3435,13 @@ func DocOpV1AdminMachineActivationCodesList() {}
 // @Router /v1/admin/machines/{machineId}/activation-codes/{activationCodeId} [delete]
 func DocOpV1AdminMachineActivationCodeDelete() {}
 
-// DocOpV1AdminOrgActivationCodesList godoc
-// @Summary List activation codes for organization
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param limit query int false "Page size"
-// @Param offset query int false "Offset"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/activation-codes [get]
-func DocOpV1AdminOrgActivationCodesList() {}
-
-// DocOpV1AdminOrgActivationCodesPost godoc
-// @Summary Create activation code for a machine (organization path)
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body object true "{\"machineId\":\"...\",\"expiresInMinutes\":1440,\"maxUses\":1}"
-// @Success 201 {object} object
-// @Router /v1/admin/organizations/{organizationId}/activation-codes [post]
-func DocOpV1AdminOrgActivationCodesPost() {}
-
-// DocOpV1AdminOrgActivationCodeRevoke godoc
-// @Summary Revoke activation code by id (organization path)
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Param organizationId path string true "Organization UUID"
-// @Param codeId path string true "Activation code row UUID"
-// @Success 204 {string} string ""
-// @Router /v1/admin/organizations/{organizationId}/activation-codes/{codeId}/revoke [post]
-func DocOpV1AdminOrgActivationCodeRevoke() {}
-
-// DocOpV1AdminOrgTechniciansList godoc
-// @Summary List technicians under organization path
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Success 200 {object} V1AdminTechniciansListResponse
-// @Router /v1/admin/organizations/{organizationId}/technicians [get]
-func DocOpV1AdminOrgTechniciansList() {}
-
-// DocOpV1AdminOrgTechnicianGet godoc
-// @Summary Get technician under organization path
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param technicianId path string true "Technician UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/technicians/{technicianId} [get]
-func DocOpV1AdminOrgTechnicianGet() {}
-
-// DocOpV1AdminOrgTechniciansCreate godoc
-// @Summary Create technician under organization path
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body object true "display_name, optional email, phone, external_subject"
-// @Success 201 {object} object
-// @Router /v1/admin/organizations/{organizationId}/technicians [post]
-func DocOpV1AdminOrgTechniciansCreate() {}
-
-// DocOpV1AdminOrgTechnicianPatch godoc
-// @Summary Patch technician under organization path
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param technicianId path string true "Technician UUID"
-// @Param body body object true "Partial fields"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/technicians/{technicianId} [patch]
-func DocOpV1AdminOrgTechnicianPatch() {}
-
-// DocOpV1AdminOrgTechnicianDisable godoc
-// @Summary Disable technician under organization path
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param technicianId path string true "Technician UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/technicians/{technicianId}/disable [post]
-func DocOpV1AdminOrgTechnicianDisable() {}
-
-// DocOpV1AdminOrgTechnicianEnable godoc
-// @Summary Enable technician under organization path
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param technicianId path string true "Technician UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/technicians/{technicianId}/enable [post]
-func DocOpV1AdminOrgTechnicianEnable() {}
-
-// DocOpV1AdminOrgAssignmentsList godoc
-// @Summary List assignments under organization path
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Success 200 {object} V1AdminAssignmentsListResponse
-// @Router /v1/admin/organizations/{organizationId}/assignments [get]
-func DocOpV1AdminOrgAssignmentsList() {}
-
-// DocOpV1AdminOrgAssignmentGet godoc
-// @Summary Get assignment under organization path
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param assignmentId path string true "Assignment UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/assignments/{assignmentId} [get]
-func DocOpV1AdminOrgAssignmentGet() {}
-
-// DocOpV1AdminOrgAssignmentsCreate godoc
-// @Summary Create assignment under organization path
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param body body object true "technician_id, machine_id, role"
-// @Success 201 {object} object
-// @Router /v1/admin/organizations/{organizationId}/assignments [post]
-func DocOpV1AdminOrgAssignmentsCreate() {}
-
-// DocOpV1AdminOrgAssignmentDelete godoc
-// @Summary Release assignment under organization path
-// @Tags Machine Admin
-// @Security BearerAuth
-// @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param assignmentId path string true "Assignment UUID"
-// @Success 200 {object} object
-// @Router /v1/admin/organizations/{organizationId}/assignments/{assignmentId} [delete]
-func DocOpV1AdminOrgAssignmentDelete() {}
-
 // DocOpV1AdminTechniciansList godoc
 // @Summary List technicians (admin)
-// @Description Directory of technicians for the organization. **platform_admin** requires **organization_id** query. Optional **technician_id**, **search** (matches display_name or email), **from** / **to** on `created_at`, pagination **limit** / **offset**.
+// @Description Directory of technicians for the company. **platform_admin** requires **scope_id** query. Optional **technician_id**, **search** (matches display_name or email), **from** / **to** on `created_at`, pagination **limit** / **offset**.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param technician_id query string false "Filter to one technician UUID"
 // @Param search query string false "Case-insensitive substring on name or email"
 // @Param from query string false "created_at lower bound (RFC3339)"
@@ -4443,11 +3458,11 @@ func DocOpV1AdminTechniciansList() {}
 
 // DocOpV1AdminAssignmentsList godoc
 // @Summary List technician assignments (admin)
-// @Description Joins technician, machine, and assignment rows for the organization. **platform_admin** requires **organization_id**. Optional **technician_id**, **machine_id**, **from** / **to** on assignment `created_at`, pagination **limit** / **offset**.
+// @Description Joins technician, machine, and assignment rows for the company. **platform_admin** requires **scope_id**. Optional **technician_id**, **machine_id**, **from** / **to** on assignment `created_at`, pagination **limit** / **offset**.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param technician_id query string false "Filter by technician UUID"
 // @Param machine_id query string false "Filter by machine UUID"
 // @Param from query string false "created_at lower bound (RFC3339)"
@@ -4462,13 +3477,47 @@ func DocOpV1AdminTechniciansList() {}
 // @Router /v1/admin/assignments [get]
 func DocOpV1AdminAssignmentsList() {}
 
-// DocOpV1AdminCommandsList godoc
-// @Summary List machine commands (admin)
-// @Description Operational view of `command_ledger` joined to machines and latest `machine_command_attempts` status. **platform_admin** requires **organization_id**. Optional **machine_id**, **status** (filters latest attempt status; pending used when no attempts yet), **from** / **to** on command `created_at`, pagination **limit** / **offset**.
+// DocOpV1AdminAssignmentGet godoc
+// @Summary Get technician–machine assignment by id
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param assignmentId path string true "Assignment UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/assignments/{assignmentId} [get]
+func DocOpV1AdminAssignmentGet() {}
+
+// DocOpV1AdminAssignmentCreate godoc
+// @Summary Create technician assignment
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param body body object true "technician_id, machine_id, role"
+// @Success 201 {object} object
+// @Router /v1/admin/assignments [post]
+func DocOpV1AdminAssignmentCreate() {}
+
+// DocOpV1AdminAssignmentDelete godoc
+// @Summary Release assignment (delete)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param assignmentId path string true "Assignment UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/assignments/{assignmentId} [delete]
+func DocOpV1AdminAssignmentDelete() {}
+
+// DocOpV1AdminCommandsList godoc
+// @Summary List machine commands (admin)
+// @Description Operational view of `command_ledger` joined to machines and latest `machine_command_attempts` status. **platform_admin** requires **scope_id**. Optional **machine_id**, **status** (filters latest attempt status; pending used when no attempts yet), **from** / **to** on command `created_at`, pagination **limit** / **offset**.
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param machine_id query string false "Filter by machine UUID"
 // @Param status query string false "Latest attempt status (pending, sent, completed, …)"
 // @Param from query string false "created_at lower bound (RFC3339)"
@@ -4483,13 +3532,350 @@ func DocOpV1AdminAssignmentsList() {}
 // @Router /v1/admin/commands [get]
 func DocOpV1AdminCommandsList() {}
 
-// DocOpV1AdminOTAList godoc
-// @Summary List OTA campaigns (admin)
-// @Description Read-only list of `ota_campaigns` with joined artifact metadata. **platform_admin** requires **organization_id**. Optional **status** (draft, active, paused, completed), **from** / **to** on campaign `created_at`, pagination **limit** / **offset**.
+// DocOpV1AdminCommandGet godoc
+// @Summary Get command ledger row by id
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param commandId path string true "Command UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/commands/{commandId} [get]
+func DocOpV1AdminCommandGet() {}
+
+// DocOpV1AdminCommandRetry godoc
+// @Summary Retry failed command dispatch
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param commandId path string true "Command UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/commands/{commandId}/retry [post]
+func DocOpV1AdminCommandRetry() {}
+
+// DocOpV1AdminCommandCancel godoc
+// @Summary Cancel pending command
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param commandId path string true "Command UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/commands/{commandId}/cancel [post]
+func DocOpV1AdminCommandCancel() {}
+
+// DocOpV1AdminMachineCommandDispatch godoc
+// @Summary Dispatch new command to machine (MQTT/device pipeline)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Param body body object true "Command envelope"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/commands [post]
+func DocOpV1AdminMachineCommandDispatch() {}
+
+// DocOpV1AdminOperationsMachinesHealth godoc
+// @Summary Fleet machine health snapshot list
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Success 200 {object} object
+// @Router /v1/admin/operations/machines/health [get]
+func DocOpV1AdminOperationsMachinesHealth() {}
+
+// DocOpV1AdminMachineHealth godoc
+// @Summary Machine health detail
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/health [get]
+func DocOpV1AdminMachineHealth() {}
+
+// DocOpV1AdminMachineTimeline godoc
+// @Summary Machine operational timeline
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/timeline [get]
+func DocOpV1AdminMachineTimeline() {}
+
+// DocOpV1AdminInventoryAnomaliesList godoc
+// @Summary List inventory anomalies (ledger-backed)
+// @Tags Inventory
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Success 200 {object} object
+// @Router /v1/admin/inventory/anomalies [get]
+func DocOpV1AdminInventoryAnomaliesList() {}
+
+// DocOpV1AdminMachineInventoryAnomaliesList godoc
+// @Summary List inventory anomalies for one machine
+// @Tags Inventory
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/inventory/anomalies [get]
+func DocOpV1AdminMachineInventoryAnomaliesList() {}
+
+// DocOpV1AdminInventoryAnomalyResolve godoc
+// @Summary Resolve inventory anomaly
+// @Tags Inventory
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param anomalyId path string true "Anomaly UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/inventory/anomalies/{anomalyId}/resolve [post]
+func DocOpV1AdminInventoryAnomalyResolve() {}
+
+// DocOpV1AdminMachineInventoryReconcile godoc
+// @Summary Post machine inventory reconcile adjustment
+// @Tags Inventory
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/inventory/reconcile [post]
+func DocOpV1AdminMachineInventoryReconcile() {}
+
+// DocOpV1AdminOperationalAnomaliesList godoc
+// @Summary List operational anomalies
+// @Tags Inventory
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Success 200 {object} object
+// @Router /v1/admin/anomalies [get]
+func DocOpV1AdminOperationalAnomaliesList() {}
+
+// DocOpV1AdminOperationalAnomalyGet godoc
+// @Summary Get operational anomaly
+// @Tags Inventory
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param anomalyId path string true "Anomaly UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/anomalies/{anomalyId} [get]
+func DocOpV1AdminOperationalAnomalyGet() {}
+
+// DocOpV1AdminOperationalAnomalyResolve godoc
+// @Summary Resolve operational anomaly
+// @Tags Inventory
+// @Security BearerAuth
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param anomalyId path string true "Anomaly UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/anomalies/{anomalyId}/resolve [post]
+func DocOpV1AdminOperationalAnomalyResolve() {}
+
+// DocOpV1AdminOperationalAnomalyIgnore godoc
+// @Summary Ignore operational anomaly
+// @Tags Inventory
+// @Security BearerAuth
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param anomalyId path string true "Anomaly UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/anomalies/{anomalyId}/ignore [post]
+func DocOpV1AdminOperationalAnomalyIgnore() {}
+
+// DocOpV1AdminRestockSuggestions godoc
+// @Summary Restock suggestions (admin)
+// @Description Uses inventory/refill heuristics for the company scope.
+// @Tags Inventory
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Success 200 {object} object
+// @Router /v1/admin/restock/suggestions [get]
+func DocOpV1AdminRestockSuggestions() {}
+
+// DocOpV1AdminProvisioningBulk godoc
+// @Summary Bulk provision machines at a site
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param body body object true "Bulk create payload"
+// @Success 200 {object} object
+// @Router /v1/admin/provisioning/machines/bulk [post]
+func DocOpV1AdminProvisioningBulk() {}
+
+// DocOpV1AdminProvisioningBatchGet godoc
+// @Summary Get provisioning batch status
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param batchId path string true "Batch UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/provisioning/batches/{batchId} [get]
+func DocOpV1AdminProvisioningBatchGet() {}
+
+// DocOpV1AdminRolloutCreate godoc
+// @Summary Create rollout campaign
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param body body object true "Rollout create payload"
+// @Success 201 {object} object
+// @Router /v1/admin/rollouts [post]
+func DocOpV1AdminRolloutCreate() {}
+
+// DocOpV1AdminRolloutsList godoc
+// @Summary List rollout campaigns
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Success 200 {object} object
+// @Router /v1/admin/rollouts [get]
+func DocOpV1AdminRolloutsList() {}
+
+// DocOpV1AdminRolloutGet godoc
+// @Summary Get rollout campaign
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param rolloutId path string true "Rollout UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/rollouts/{rolloutId} [get]
+func DocOpV1AdminRolloutGet() {}
+
+// DocOpV1AdminRolloutStart godoc
+// @Summary Start rollout
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param rolloutId path string true "Rollout UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/rollouts/{rolloutId}/start [post]
+func DocOpV1AdminRolloutStart() {}
+
+// DocOpV1AdminRolloutPause godoc
+// @Summary Pause rollout
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param rolloutId path string true "Rollout UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/rollouts/{rolloutId}/pause [post]
+func DocOpV1AdminRolloutPause() {}
+
+// DocOpV1AdminRolloutResume godoc
+// @Summary Resume rollout
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param rolloutId path string true "Rollout UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/rollouts/{rolloutId}/resume [post]
+func DocOpV1AdminRolloutResume() {}
+
+// DocOpV1AdminRolloutCancel godoc
+// @Summary Cancel rollout
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param rolloutId path string true "Rollout UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/rollouts/{rolloutId}/cancel [post]
+func DocOpV1AdminRolloutCancel() {}
+
+// DocOpV1AdminRolloutRollback godoc
+// @Summary Roll back rollout
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param rolloutId path string true "Rollout UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/rollouts/{rolloutId}/rollback [post]
+func DocOpV1AdminRolloutRollback() {}
+
+// DocOpV1AdminActivationCodesCatalogList godoc
+// @Summary List activation codes across machines (admin catalog)
+// @Tags Activation
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Success 200 {object} object
+// @Router /v1/admin/activation-codes [get]
+func DocOpV1AdminActivationCodesCatalogList() {}
+
+// DocOpV1AdminActivationCodesCatalogCreate godoc
+// @Summary Create activation code (catalog path; targets machine in body)
+// @Tags Activation
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param body body object true "machineId, expiry, maxUses"
+// @Success 201 {object} object
+// @Router /v1/admin/activation-codes [post]
+func DocOpV1AdminActivationCodesCatalogCreate() {}
+
+// DocOpV1AdminActivationCodeCatalogRevoke godoc
+// @Summary Revoke activation code by id (catalog path)
+// @Tags Activation
+// @Security BearerAuth
+// @Produce json
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param scope_id query string false "Optional company UUID for platform administrators"
+// @Param codeId path string true "Activation code row UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/activation-codes/{codeId}/revoke [post]
+func DocOpV1AdminActivationCodeCatalogRevoke() {}
+
+// DocOpV1AdminOTAList godoc
+// @Summary List OTA campaigns (admin)
+// @Description Read-only list of `ota_campaigns` with joined artifact metadata. **platform_admin** requires **scope_id**. Optional **status** (draft, active, paused, completed), **from** / **to** on campaign `created_at`, pagination **limit** / **offset**.
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param status query string false "Campaign status filter"
 // @Param from query string false "created_at lower bound (RFC3339)"
 // @Param to query string false "created_at upper bound (RFC3339)"
@@ -4505,11 +3891,11 @@ func DocOpV1AdminOTAList() {}
 
 // DocOpV1AdminOTACampaignsList godoc
 // @Summary List OTA campaigns (lifecycle admin)
-// @Description Paginated list of `ota_campaigns` with artifact metadata. **platform_admin** requires **organization_id**.
+// @Description Paginated list of `ota_campaigns` with artifact metadata. **platform_admin** requires **scope_id**.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param status query string false "Campaign status filter"
 // @Param from query string false "created_at lower bound (RFC3339)"
 // @Param to query string false "created_at upper bound (RFC3339)"
@@ -4531,7 +3917,7 @@ func DocOpV1AdminOTACampaignsList() {}
 // @Accept json
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param body body object true "Campaign create payload"
 // @Success 201 {object} V1AdminOTACampaignDetail
 // @Failure 400 {object} V1StandardError
@@ -4547,7 +3933,7 @@ func DocOpV1AdminOTACampaignCreate() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Success 200 {object} V1AdminOTACampaignDetail
 // @Failure 400 {object} V1StandardError
@@ -4565,7 +3951,7 @@ func DocOpV1AdminOTACampaignGet() {}
 // @Accept json
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Param body body object true "Patch payload"
 // @Success 200 {object} V1AdminOTACampaignDetail
@@ -4580,12 +3966,12 @@ func DocOpV1AdminOTACampaignPatch() {}
 
 // DocOpV1AdminOTACampaignApprove godoc
 // @Summary Approve OTA campaign
-// @Description Requires **ota.write** and **org_admin** or **platform_admin**.
+// @Description Requires **ota.write** and **admin** or **platform_admin**.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Success 200 {object} V1AdminOTACampaignDetail
 // @Failure 400 {object} V1StandardError
@@ -4599,12 +3985,12 @@ func DocOpV1AdminOTACampaignApprove() {}
 
 // DocOpV1AdminOTACampaignStart godoc
 // @Summary Start OTA rollout (canary first wave)
-// @Description Requires **ota.write** and **org_admin** or **platform_admin**.
+// @Description Requires **ota.write** and **admin** or **platform_admin**.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Success 200 {object} V1AdminOTACampaignDetail
 // @Failure 400 {object} V1StandardError
@@ -4618,12 +4004,12 @@ func DocOpV1AdminOTACampaignStart() {}
 
 // DocOpV1AdminOTACampaignPublish godoc
 // @Summary Publish OTA campaign (approve + start when needed)
-// @Description Requires **ota.write** and **org_admin** or **platform_admin**. Idempotent transitions.
+// @Description Requires **ota.write** and **admin** or **platform_admin**. Idempotent transitions.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Success 200 {object} V1AdminOTACampaignDetail
 // @Failure 400 {object} V1StandardError
@@ -4641,7 +4027,7 @@ func DocOpV1AdminOTACampaignPublish() {}
 // @Security BearerAuth
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Success 200 {object} V1AdminOTACampaignDetail
 // @Failure 400 {object} V1StandardError
@@ -4659,7 +4045,7 @@ func DocOpV1AdminOTACampaignPause() {}
 // @Security BearerAuth
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Success 200 {object} V1AdminOTACampaignDetail
 // @Failure 400 {object} V1StandardError
@@ -4677,7 +4063,7 @@ func DocOpV1AdminOTACampaignResume() {}
 // @Security BearerAuth
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Success 200 {object} V1AdminOTACampaignDetail
 // @Failure 400 {object} V1StandardError
@@ -4691,13 +4077,13 @@ func DocOpV1AdminOTACampaignCancel() {}
 
 // DocOpV1AdminOTACampaignRollback godoc
 // @Summary Rollback OTA campaign (dispatch rollback commands)
-// @Description Requires **ota.write** and **org_admin** or **platform_admin**. Body may override **rollbackArtifactId**.
+// @Description Requires **ota.write** and **admin** or **platform_admin**. Body may override **rollbackArtifactId**.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Param body body object false "Optional rollback artifact override"
 // @Success 200 {object} V1AdminOTACampaignDetail
@@ -4715,7 +4101,7 @@ func DocOpV1AdminOTACampaignRollback() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Success 200 {object} V1AdminOTACampaignTargetsResponse
 // @Failure 400 {object} V1StandardError
@@ -4733,7 +4119,7 @@ func DocOpV1AdminOTACampaignTargetsGet() {}
 // @Accept json
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Param body body object true "{ machineIds: [] }"
 // @Success 204 {string} string "No Content"
@@ -4751,7 +4137,7 @@ func DocOpV1AdminOTACampaignTargetsPut() {}
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param campaignId path string true "Campaign UUID"
 // @Success 200 {object} V1AdminOTACampaignResultsResponse
 // @Failure 400 {object} V1StandardError
@@ -4768,7 +4154,7 @@ func DocOpV1AdminOTACampaignResultsGet() {}
 // @Tags Fleet
 // @Security BearerAuth
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin without org scope"
+// @Param scope_id query string false "Optional company UUID when the JWT has no company scope"
 // @Param Idempotency-Key header string true "Write idempotency key"
 // @Accept json
 // @Produce json
@@ -4788,7 +4174,7 @@ func DocOpV1AdminMachineDiagnosticRequest() {}
 // @Tags Fleet
 // @Security BearerAuth
 // @Param machineId path string true "Machine UUID"
-// @Param organization_id query string false "Required for platform_admin without org scope"
+// @Param scope_id query string false "Optional company UUID when the JWT has no company scope"
 // @Param limit query int false "Default 50, max 500"
 // @Param offset query int false "Default 0"
 // @Produce json
@@ -4804,10 +4190,9 @@ func DocOpV1AdminMachineDiagnosticBundlesList() {}
 
 // DocOpV1AdminArtifactsReserve godoc
 // @Summary Reserve artifact id
-// @Description Routes are **not mounted** unless API_ARTIFACTS_ENABLED=true and object store is configured. Requires org_admin for orgId or platform_admin. Uses sensitive-write rate limiting when HTTP_RATE_LIMIT_SENSITIVE_WRITES_ENABLED=true → **429** `rate_limited`.
+// @Description Routes are **not mounted** unless API_ARTIFACTS_ENABLED=true and object store is configured. Requires **catalog.write** to reserve an id or **platform_admin**. Uses sensitive-write rate limiting when HTTP_RATE_LIMIT_SENSITIVE_WRITES_ENABLED=true → **429** `rate_limited`.
 // @Tags Artifacts
 // @Security BearerAuth
-// @Param orgId path string true "Organization UUID"
 // @Accept json
 // @Produce json
 // @Success 201 {object} object "{artifact_id,upload_path}"
@@ -4816,28 +4201,26 @@ func DocOpV1AdminMachineDiagnosticBundlesList() {}
 // @Failure 403 {object} V1StandardError
 // @Failure 429 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{orgId}/artifacts [post]
+// @Router /v1/admin/artifacts [post]
 func DocOpV1AdminArtifactsReserve() {}
 
 // DocOpV1AdminArtifactsList godoc
 // @Summary List artifacts
 // @Tags Artifacts
 // @Security BearerAuth
-// @Param orgId path string true "Organization UUID"
 // @Produce json
 // @Success 200 {object} object "{items:[artifact objects]}"
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{orgId}/artifacts [get]
+// @Router /v1/admin/artifacts [get]
 func DocOpV1AdminArtifactsList() {}
 
 // DocOpV1AdminArtifactsGet godoc
 // @Summary Get artifact metadata
 // @Tags Artifacts
 // @Security BearerAuth
-// @Param orgId path string true "Organization UUID"
 // @Param artifactId path string true "Artifact UUID"
 // @Produce json
 // @Success 200 {object} object
@@ -4846,14 +4229,13 @@ func DocOpV1AdminArtifactsList() {}
 // @Failure 403 {object} V1StandardError
 // @Failure 404 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{orgId}/artifacts/{artifactId} [get]
+// @Router /v1/admin/artifacts/{artifactId} [get]
 func DocOpV1AdminArtifactsGet() {}
 
 // DocOpV1AdminArtifactsDownloadURL godoc
 // @Summary Presigned download URL
 // @Tags Artifacts
 // @Security BearerAuth
-// @Param orgId path string true "Organization UUID"
 // @Param artifactId path string true "Artifact UUID"
 // @Produce json
 // @Success 200 {object} object "{method,url,headers,expires_at}"
@@ -4862,7 +4244,7 @@ func DocOpV1AdminArtifactsGet() {}
 // @Failure 403 {object} V1StandardError
 // @Failure 404 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{orgId}/artifacts/{artifactId}/download [get]
+// @Router /v1/admin/artifacts/{artifactId}/download [get]
 func DocOpV1AdminArtifactsDownloadURL() {}
 
 // DocOpV1AdminArtifactsPutContent godoc
@@ -4870,7 +4252,6 @@ func DocOpV1AdminArtifactsDownloadURL() {}
 // @Description Request body is raw bytes. Required headers: **Content-Length**; optional **Content-Type**, **X-Artifact-SHA256**, **X-Artifact-Filename**. Sensitive-write rate limit may return **429**.
 // @Tags Artifacts
 // @Security BearerAuth
-// @Param orgId path string true "Organization UUID"
 // @Param artifactId path string true "Artifact UUID"
 // @Accept octet-stream
 // @Produce json
@@ -4881,14 +4262,13 @@ func DocOpV1AdminArtifactsDownloadURL() {}
 // @Failure 404 {object} V1StandardError
 // @Failure 429 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{orgId}/artifacts/{artifactId}/content [put]
+// @Router /v1/admin/artifacts/{artifactId}/content [put]
 func DocOpV1AdminArtifactsPutContent() {}
 
 // DocOpV1AdminArtifactsDelete godoc
 // @Summary Delete artifact
 // @Tags Artifacts
 // @Security BearerAuth
-// @Param orgId path string true "Organization UUID"
 // @Param artifactId path string true "Artifact UUID"
 // @Produce json
 // @Success 200 {object} object "{status,artifact_id}"
@@ -4898,18 +4278,18 @@ func DocOpV1AdminArtifactsPutContent() {}
 // @Failure 404 {object} V1StandardError
 // @Failure 429 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{orgId}/artifacts/{artifactId} [delete]
+// @Router /v1/admin/artifacts/{artifactId} [delete]
 func DocOpV1AdminArtifactsDelete() {}
 
 // --- Operator insights ---
 
 // DocOpV1OperatorInsightsTechnicianAttributions godoc
 // @Summary List action attributions for a technician
-// @Description Mounted only when operator service is configured. **organization_id** query is required when the caller is platform_admin without tenant org on the JWT.
+// @Description Mounted only when operator service is configured. **scope_id** query is required when the caller is platform_admin without a company claim on the JWT.
 // @Tags Operator Sessions
 // @Security BearerAuth
 // @Param technicianId path string true "Technician UUID"
-// @Param organization_id query string false "Required for platform_admin without org scope"
+// @Param scope_id query string false "Optional company UUID when the JWT has no company scope"
 // @Param limit query int false "Default 50, max 500"
 // @Produce json
 // @Success 200 {object} V1OperatorListEnvelope
@@ -4922,10 +4302,10 @@ func DocOpV1OperatorInsightsTechnicianAttributions() {}
 
 // DocOpV1OperatorInsightsUserAttributions godoc
 // @Summary List action attributions for a user principal
-// @Description **user_principal** query parameter is required. Same organization_id rules as technician insights.
+// @Description **user_principal** query parameter is required. Same scope_id rules as technician insights.
 // @Tags Operator Sessions
 // @Security BearerAuth
-// @Param organization_id query string false "Required for platform_admin without org scope"
+// @Param scope_id query string false "Optional company UUID when the JWT has no company scope"
 // @Param user_principal query string true "User subject / principal string"
 // @Param limit query int false "Default 50, max 500"
 // @Produce json
@@ -4937,15 +4317,15 @@ func DocOpV1OperatorInsightsTechnicianAttributions() {}
 // @Router /v1/operator-insights/users/action-attributions [get]
 func DocOpV1OperatorInsightsUserAttributions() {}
 
-// --- Tenant commerce operational lists ---
+// --- Company commerce operational lists ---
 
 // DocOpV1PaymentsList godoc
-// @Summary List payments for organization
-// @Description Read-only operational list: each row joins `payments` to its parent `orders` for machine and order status context. **platform_admin** must pass **organization_id** query; **org_admin** uses JWT organization scope (optional `organization_id` must match). Filters: **status** (payment.state enum), **payment_method** (exact provider string, e.g. stripe), **machine_id** (UUID on parent order), **search** (substring on payment id, order id, or idempotency key), **from** / **to** inclusive bounds on `payments.created_at` (defaults to wide internal bounds when omitted — prefer explicit windows for large tenants). Pagination: **limit** default 50, max **500**, **offset** for pages. Response is typed `items` + `meta.total` for UI virtualization.
+// @Summary List payments for company
+// @Description Read-only operational list: each row joins `payments` to its parent `orders` for machine and order status context. **platform_admin** must pass **scope_id** query; **admin** uses JWT company scope (optional `scope_id` must match). Filters: **status** (payment.state enum), **payment_method** (exact provider string, e.g. stripe), **machine_id** (UUID on parent order), **search** (substring on payment id, order id, or idempotency key), **from** / **to** inclusive bounds on `payments.created_at` (defaults to wide internal bounds when omitted — prefer explicit windows for large companys). Pagination: **limit** default 50, max **500**, **offset** for pages. Response is typed `items` + `meta.total` for UI virtualization.
 // @Tags Commerce
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param status query string false "Payment state filter (created, authorized, captured, failed, refunded)"
 // @Param payment_method query string false "Provider filter (e.g. stripe)"
 // @Param machine_id query string false "Filter by order.machine_id"
@@ -4963,12 +4343,12 @@ func DocOpV1OperatorInsightsUserAttributions() {}
 func DocOpV1PaymentsList() {}
 
 // DocOpV1OrdersList godoc
-// @Summary List orders for organization
-// @Description Read-only `orders` rows for reconciliation and support dashboards. **platform_admin** requires **organization_id** query; **org_admin** is JWT-scoped. Filters: **status** (order.status lifecycle), **machine_id** (UUID), **search** (substring on order id or idempotency key), **from** / **to** inclusive on `orders.created_at` (defaults apply when omitted). Pagination: **limit** default 50, max **500**, **offset**. Typed `items` + `meta.total` envelope matches payments list for shared client parsing.
+// @Summary List orders for company
+// @Description Read-only `orders` rows for reconciliation and support dashboards. **platform_admin** requires **scope_id** query; **admin** is JWT-scoped. Filters: **status** (order.status lifecycle), **machine_id** (UUID), **search** (substring on order id or idempotency key), **from** / **to** inclusive on `orders.created_at` (defaults apply when omitted). Pagination: **limit** default 50, max **500**, **offset**. Typed `items` + `meta.total` envelope matches payments list for shared client parsing.
 // @Tags Commerce
 // @Security BearerAuth
 // @Produce json
-// @Param organization_id query string false "Required for platform_admin"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param status query string false "Order status filter"
 // @Param machine_id query string false "Filter by machine UUID"
 // @Param search query string false "Substring search on order id or idempotency key"
@@ -4986,11 +4366,11 @@ func DocOpV1OrdersList() {}
 
 // DocOpV1AdminCommerceReconciliationList godoc
 // @Summary List commerce reconciliation cases
-// @Description Operator-visible payment/vend/refund reconciliation queue for one organization. Cases are created by background reconciliation and webhook replay/mismatch handling. Filters: **status** (open, reviewing, resolved, dismissed), **case_type** (payment_paid_vend_not_started, payment_paid_vend_failed, vend_started_no_terminal_ack, refund_pending_too_long, webhook_provider_mismatch, duplicate_provider_event, duplicate_payment), **limit**, **offset**.
+// @Description Operator-visible payment/vend/refund reconciliation queue for one company. Cases are created by background reconciliation and webhook replay/mismatch handling. Filters: **status** (open, reviewing, resolved, dismissed), **case_type** (payment_paid_vend_not_started, payment_paid_vend_failed, vend_started_no_terminal_ack, refund_pending_too_long, webhook_provider_mismatch, duplicate_provider_event, duplicate_payment), **limit**, **offset**.
 // @Tags Commerce
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param status query string false "Case status"
 // @Param case_type query string false "Case type"
 // @Param limit query int false "Page size (default 50, max 500)"
@@ -5000,24 +4380,24 @@ func DocOpV1OrdersList() {}
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/commerce/reconciliation [get]
+// @Router /v1/admin/commerce/reconciliation [get]
 func DocOpV1AdminCommerceReconciliationList() {}
 
 // DocOpV1AdminCommerceReconciliationGet godoc
 // @Summary Get commerce reconciliation case
-// @Description Returns one operator-visible commerce reconciliation case scoped to the organization.
+// @Description Returns one operator-visible commerce reconciliation case scoped to the company.
 // @Tags Commerce
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param id path string true "Reconciliation case UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
+// @Param caseId path string true "Reconciliation case UUID"
 // @Success 200 {object} V1CommerceReconciliationCase
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 404 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/commerce/reconciliation/{id} [get]
+// @Router /v1/admin/commerce/reconciliation/{caseId} [get]
 func DocOpV1AdminCommerceReconciliationGet() {}
 
 // DocOpV1AdminCommerceReconciliationResolve godoc
@@ -5027,8 +4407,8 @@ func DocOpV1AdminCommerceReconciliationGet() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param id path string true "Reconciliation case UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
+// @Param caseId path string true "Reconciliation case UUID"
 // @Param body body V1CommerceReconciliationResolveRequest true "Resolution body: status=resolved|dismissed, note optional"
 // @Success 200 {object} V1CommerceReconciliationCase
 // @Failure 400 {object} V1StandardError
@@ -5036,7 +4416,7 @@ func DocOpV1AdminCommerceReconciliationGet() {}
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 404 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}/resolve [post]
+// @Router /v1/admin/commerce/reconciliation/{caseId}/resolve [post]
 func DocOpV1AdminCommerceReconciliationResolve() {}
 
 // DocOpV1AdminCommerceReconciliationIgnore godoc
@@ -5046,8 +4426,8 @@ func DocOpV1AdminCommerceReconciliationResolve() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
-// @Param id path string true "Reconciliation case UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
+// @Param caseId path string true "Reconciliation case UUID"
 // @Param body body V1CommerceReconciliationIgnoreRequest false "Optional note"
 // @Success 200 {object} V1CommerceReconciliationCase
 // @Failure 400 {object} V1StandardError
@@ -5055,8 +4435,28 @@ func DocOpV1AdminCommerceReconciliationResolve() {}
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 404 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/commerce/reconciliation/{id}/ignore [post]
+// @Router /v1/admin/commerce/reconciliation/{caseId}/ignore [post]
 func DocOpV1AdminCommerceReconciliationIgnore() {}
+
+// DocOpV1AdminCommerceReconciliationRequestRefund godoc
+// @Summary Request refund from reconciliation case
+// @Description Opens or advances operator refund flow tied to a reconciliation case (provider rules apply).
+// @Tags Commerce
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
+// @Param caseId path string true "Reconciliation case UUID"
+// @Param Idempotency-Key header string true "Write idempotency key"
+// @Param body body object false "Optional refund request payload"
+// @Success 200 {object} object
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/commerce/reconciliation/{caseId}/request-refund [post]
+func DocOpV1AdminCommerceReconciliationRequestRefund() {}
 
 // DocOpV1AdminCommerceOrderTimelineGet godoc
 // @Summary List commerce order timeline events
@@ -5064,7 +4464,7 @@ func DocOpV1AdminCommerceReconciliationIgnore() {}
 // @Tags Commerce
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param orderId path string true "Order UUID"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
@@ -5074,16 +4474,16 @@ func DocOpV1AdminCommerceReconciliationIgnore() {}
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 404 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/orders/{orderId}/timeline [get]
+// @Router /v1/admin/orders/{orderId}/timeline [get]
 func DocOpV1AdminCommerceOrderTimelineGet() {}
 
 // DocOpV1AdminCommerceRefundRequestsList godoc
-// @Summary List refund requests for organization
-// @Description Operator-visible durable refund review rows (`refund_requests`) scoped to one organization.
+// @Summary List refund requests for company
+// @Description Operator-visible durable refund review rows (`refund_requests`) scoped to one company.
 // @Tags Commerce
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param status query string false "Refund request status filter"
 // @Param limit query int false "Page size (default 50, max 500)"
 // @Param offset query int false "Row offset"
@@ -5092,7 +4492,7 @@ func DocOpV1AdminCommerceOrderTimelineGet() {}
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/refunds [get]
+// @Router /v1/admin/refunds [get]
 func DocOpV1AdminCommerceRefundRequestsList() {}
 
 // DocOpV1AdminCommerceRefundRequestGet godoc
@@ -5100,7 +4500,7 @@ func DocOpV1AdminCommerceRefundRequestsList() {}
 // @Tags Commerce
 // @Security BearerAuth
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param refundId path string true "Refund request UUID"
 // @Success 200 {object} V1RefundRequestRow
 // @Failure 400 {object} V1StandardError
@@ -5108,7 +4508,7 @@ func DocOpV1AdminCommerceRefundRequestsList() {}
 // @Failure 403 {object} V1BearerAuthError
 // @Failure 404 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/refunds/{refundId} [get]
+// @Router /v1/admin/refunds/{refundId} [get]
 func DocOpV1AdminCommerceRefundRequestGet() {}
 
 // DocOpV1AdminCommerceOrderRefundPost godoc
@@ -5118,7 +4518,7 @@ func DocOpV1AdminCommerceRefundRequestGet() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param organizationId path string true "Organization UUID"
+// @Param scope_id query string false "Optional company UUID filter when listing across companies"
 // @Param orderId path string true "Order UUID"
 // @Param Idempotency-Key header string true "Write idempotency key"
 // @Param body body V1AdminOrderRefundPostRequest true "Refund amount/reason"
@@ -5129,14 +4529,14 @@ func DocOpV1AdminCommerceRefundRequestGet() {}
 // @Failure 404 {object} V1StandardError
 // @Failure 409 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
-// @Router /v1/admin/organizations/{organizationId}/orders/{orderId}/refunds [post]
+// @Router /v1/admin/orders/{orderId}/refunds [post]
 func DocOpV1AdminCommerceOrderRefundPost() {}
 
 // --- Fleet / device read ---
 
 // DocOpV1MachineShadowGet godoc
 // @Summary Get machine shadow JSON
-// @Description Returns the persisted desired/reported JSON documents used for fleet remote configuration. Requires Bearer JWT and machine read access (`RequireMachineTenantAccess`). Invalid UUID in path → **400** (`invalid_machine_id`). Missing shadow row → **404** `machine_shadow_not_found`. This is not live MQTT; it is the last reconciled projection in Postgres.
+// @Description Returns the persisted desired/reported JSON documents used for fleet remote configuration. Requires Bearer JWT and machine read access (`RequireMachineCompanyAccess`). Invalid UUID in path → **400** (`invalid_machine_id`). Missing shadow row → **404** `machine_shadow_not_found`. This is not live MQTT; it is the last reconciled projection in Postgres.
 // @Tags Device Runtime
 // @Security BearerAuth
 // @Param machineId path string true "Machine UUID"
@@ -5460,7 +4860,7 @@ func DocOpV1OperatorSessionTimeline() {}
 
 // DocOpV1OperatorSessionLogin godoc
 // @Summary Start or resume operator session
-// @Description Actor (TECHNICIAN vs USER) comes from JWT claims only. Optional **force_admin_takeover** (org/platform admin). Conflicts → **409** `active_session_exists`. Technician without assignment checker returns **503** with JSON `code` **assignment_checker_misconfigured** (standard envelope, not capability_not_configured). Rate limit → **429**.
+// @Description Actor (TECHNICIAN vs USER) comes from JWT claims only. Optional **force_admin_takeover** (company or platform admin). Conflicts → **409** `active_session_exists`. Technician without assignment checker returns **503** with JSON `code` **assignment_checker_misconfigured** (standard envelope, not capability_not_configured). Rate limit → **429**.
 // @Tags Operator Sessions
 // @Security BearerAuth
 // @Param machineId path string true "Machine UUID"
@@ -5480,7 +4880,7 @@ func DocOpV1OperatorSessionLogin() {}
 
 // DocOpV1OperatorSessionLogout godoc
 // @Summary End operator session
-// @Description **final_status** empty or ENDED (default) or REVOKED (org/platform admin only). **session_id** may be omitted when an ACTIVE session exists for the machine.
+// @Description **final_status** empty or ENDED (default) or REVOKED (company or platform admin only). **session_id** may be omitted when an ACTIVE session exists for the machine.
 // @Tags Operator Sessions
 // @Security BearerAuth
 // @Param machineId path string true "Machine UUID"

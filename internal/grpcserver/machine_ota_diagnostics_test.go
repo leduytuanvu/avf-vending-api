@@ -26,16 +26,15 @@ func TestNormalizeOTAStatus_AllowsOnlySafeLifecycleStates(t *testing.T) {
 	}
 }
 
-func TestDeviceReportOTAResultQueryScopesMachineAndOrg(t *testing.T) {
+func TestDeviceReportOTAResultQueryScopesMachine(t *testing.T) {
 	t.Parallel()
 	sql := db.DeviceReportOTAResult
 	for _, want := range []string{
-		"r.machine_id = $1",
-		"r.campaign_id = $2",
-		"c.organization_id = $3",
+		"r.machine_id = $3",
+		"r.campaign_id = $4",
 	} {
 		if !strings.Contains(sql, want) {
-			t.Fatalf("DeviceReportOTAResult missing scope predicate %q", want)
+			t.Fatalf("DeviceReportOTAResult missing machine predicate %q", want)
 		}
 	}
 }

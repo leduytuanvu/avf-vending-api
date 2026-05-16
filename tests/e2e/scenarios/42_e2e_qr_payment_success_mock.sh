@@ -75,7 +75,6 @@ if ! vm_payment_guard_ok; then
 fi
 
 MID="$(get_data machineId)"
-ORG="$(get_data organizationId)"
 PRODUCT_ID="$(get_data productId)"
 CUR="$(get_data currency)"
 CAB="$(get_data slotCabinetCode)"
@@ -90,7 +89,7 @@ MT="$(get_secret machineToken 2>/dev/null || true)"
 export ADMIN_TOKEN="$MT"
 e2e_http_apply_sale_catalog_currency "$MID" "p8-42-sale-cat" CUR
 
-IDS_JSON="$(jq -nc --arg m "$MID" --arg o "${ORG:-}" --arg p "$PRODUCT_ID" '{machineId:$m,organizationId:$o,productId:$p}')"
+IDS_JSON="$(jq -nc --arg m "$MID" --arg p "$PRODUCT_ID" '{machineId:$m,productId:$p}')"
 APIS_JSON='["POST /v1/commerce/orders","POST /v1/commerce/orders/{orderId}/payment-session","POST /v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks","GET /v1/commerce/orders/{orderId}","POST .../vend/start","POST .../vend/success"]'
 EXPECTED="Order created; payment-session 200; webhook 200 (or replay); order paid; vend completes."
 EVID_JSON='[]'

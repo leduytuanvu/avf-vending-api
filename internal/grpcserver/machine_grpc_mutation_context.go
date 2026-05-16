@@ -82,9 +82,6 @@ func validateOperatorSessionForMachine(ctx context.Context, q *db.Queries, claim
 	if sess.MachineID != claims.MachineID {
 		return status.Error(codes.PermissionDenied, "operator_session machine mismatch")
 	}
-	if sess.OrganizationID != claims.OrganizationID {
-		return status.Error(codes.PermissionDenied, "operator_session organization mismatch")
-	}
 	if !strings.EqualFold(strings.TrimSpace(sess.Status), "ACTIVE") {
 		return status.Error(codes.FailedPrecondition, "operator_session not active")
 	}

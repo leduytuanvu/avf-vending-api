@@ -9,7 +9,6 @@ import (
 
 // CreateOrderVendInput captures the transactional create of an order plus its first vend session.
 type CreateOrderVendInput struct {
-	OrganizationID uuid.UUID
 	MachineID      uuid.UUID
 	ProductID      uuid.UUID
 	SlotIndex      int32
@@ -33,12 +32,11 @@ type CreateOrderVendResult struct {
 type OrderVendWorkflow interface {
 	CreateOrderWithVendSession(ctx context.Context, in CreateOrderVendInput) (CreateOrderVendResult, error)
 	// TryReplayCreateOrderWithVend returns the existing order and its first vend session when the idempotency key was already used.
-	TryReplayCreateOrderWithVend(ctx context.Context, organizationID uuid.UUID, idempotencyKey string) (CreateOrderVendResult, bool, error)
+	TryReplayCreateOrderWithVend(ctx context.Context, companyID uuid.UUID, idempotencyKey string) (CreateOrderVendResult, bool, error)
 }
 
 // PaymentOutboxInput captures payment + outbox emission atomically.
 type PaymentOutboxInput struct {
-	OrganizationID       uuid.UUID
 	OrderID              uuid.UUID
 	Provider             string
 	PaymentState         string
@@ -94,10 +92,9 @@ type PaymentProviderGateway interface {
 
 // RefundReviewTicket hands off captured-money / failed-fulfillment cases for operator or PSP workflows.
 type RefundReviewTicket struct {
-	OrganizationID uuid.UUID
-	OrderID        uuid.UUID
-	PaymentID      uuid.UUID
-	Reason         string
+	OrderID   uuid.UUID
+	PaymentID uuid.UUID
+	Reason    string
 }
 
 // RefundReviewSink receives tickets from reconciler policy (queue, helpdesk, manual runbooks).
@@ -112,9 +109,8 @@ type OutboxPublisher interface {
 
 // VendReconciliationCandidate is a stuck vend row plus the parent order status for policy decisions.
 type VendReconciliationCandidate struct {
-	Session        VendSession
-	OrganizationID uuid.UUID
-	OrderStatus    string
+	Session     VendSession
+	OrderStatus string
 }
 
 // ReconciliationReader lists reconciliation candidates from Postgres (no provider I/O).

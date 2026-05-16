@@ -20,12 +20,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func insertAuditOrganization(t *testing.T, pool *pgxpool.Pool, id uuid.UUID) {
+func insertAuditCompany(t *testing.T, pool *pgxpool.Pool, id uuid.UUID) {
 	t.Helper()
 	ctx := context.Background()
 	slug := "audit-" + strings.ReplaceAll(id.String(), "-", "")
 	_, err := pool.Exec(ctx, `
-INSERT INTO organizations (id, name, slug, status)
+INSERT INTO companies (id, name, slug, status)
 VALUES ($1, $2, $3, 'active')
 `, id, "Enterprise audit test org", slug)
 	require.NoError(t, err)
@@ -58,9 +58,9 @@ func countAuditEvents(t *testing.T, pool *pgxpool.Pool, org uuid.UUID, action st
 	var n int64
 	var err error
 	if action == "" {
-		err = pool.QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE organization_id = $1`, org).Scan(&n)
+		err = pool.QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE scope_id = $1`, org).Scan(&n)
 	} else {
-		err = pool.QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE organization_id = $1 AND action = $2`, org, action).Scan(&n)
+		err = pool.QueryRow(ctx, `SELECT count(*) FROM audit_events WHERE scope_id = $1 AND action = $2`, org, action).Scan(&n)
 	}
 	require.NoError(t, err)
 	return n
@@ -69,7 +69,7 @@ func countAuditEvents(t *testing.T, pool *pgxpool.Pool, org uuid.UUID, action st
 func TestEnterpriseAudit_LoginSuccessAndFailure(t *testing.T) {
 	pool := testPool(t)
 	org := uuid.New()
-	insertAuditOrganization(t, pool, org)
+	insertAuditCompany(t, pool, org)
 
 	audit := appaudit.NewService(pool)
 	svc := testAuthServiceWithEnterpriseAudit(t, pool, audit, false)
@@ -84,14 +84,14 @@ func TestEnterpriseAudit_LoginSuccessAndFailure(t *testing.T) {
 		IP:        "203.0.113.9",
 	})
 
-	_, err := svc.Login(ctx, appauth.LoginRequest{OrganizationID: org, Email: email, Password: "wrong-password"})
+	_, err := svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "wrong-password"})
 	require.ErrorIs(t, err, appauth.ErrInvalidCredentials)
 	require.Equal(t, int64(1), countAuditEvents(t, pool, org, compliance.ActionAuthLoginFailed))
 	var failOutcome string
-	require.NoError(t, pool.QueryRow(ctx, `SELECT outcome FROM audit_events WHERE organization_id = $1 AND action = $2`, org, compliance.ActionAuthLoginFailed).Scan(&failOutcome))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT outcome FROM audit_events WHERE scope_id = $1 AND action = $2`, org, compliance.ActionAuthLoginFailed).Scan(&failOutcome))
 	require.Equal(t, compliance.OutcomeFailure, failOutcome)
 
-	_, err = svc.Login(ctx, appauth.LoginRequest{OrganizationID: org, Email: email, Password: "password12345"})
+	_, err = svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "password12345"})
 	require.NoError(t, err)
 	require.Equal(t, int64(1), countAuditEvents(t, pool, org, compliance.ActionAuthLoginSuccess))
 }
@@ -99,7 +99,7 @@ func TestEnterpriseAudit_LoginSuccessAndFailure(t *testing.T) {
 func TestEnterpriseAudit_DisabledLoginIncludesReason(t *testing.T) {
 	pool := testPool(t)
 	org := uuid.New()
-	insertAuditOrganization(t, pool, org)
+	insertAuditCompany(t, pool, org)
 
 	audit := appaudit.NewService(pool)
 	svc := testAuthServiceWithEnterpriseAudit(t, pool, audit, false)
@@ -109,18 +109,18 @@ func TestEnterpriseAudit_DisabledLoginIncludesReason(t *testing.T) {
 	insertAuthAccount(t, pool, id, org, email, "password12345", []string{plauth.RoleOrgAdmin}, "disabled")
 
 	ctx := context.Background()
-	_, err := svc.Login(ctx, appauth.LoginRequest{OrganizationID: org, Email: email, Password: "password12345"})
+	_, err := svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "password12345"})
 	require.ErrorIs(t, err, appauth.ErrInvalidCredentials)
 
 	var meta []byte
-	require.NoError(t, pool.QueryRow(ctx, `SELECT metadata FROM audit_events WHERE organization_id = $1 AND action = $2 ORDER BY created_at DESC LIMIT 1`, org, compliance.ActionAuthLoginFailed).Scan(&meta))
+	require.NoError(t, pool.QueryRow(ctx, `SELECT metadata FROM audit_events WHERE scope_id = $1 AND action = $2 ORDER BY created_at DESC LIMIT 1`, org, compliance.ActionAuthLoginFailed).Scan(&meta))
 	require.Contains(t, string(meta), "account_disabled")
 }
 
 func TestEnterpriseAudit_AdminCreateUser_emitsAuthUserCreated(t *testing.T) {
 	pool := testPool(t)
 	org := uuid.New()
-	insertAuditOrganization(t, pool, org)
+	insertAuditCompany(t, pool, org)
 
 	audit := appaudit.NewService(pool)
 	svc := testAuthServiceWithEnterpriseAudit(t, pool, audit, true)
@@ -141,7 +141,7 @@ func TestEnterpriseAudit_AdminCreateUser_emitsAuthUserCreated(t *testing.T) {
 func TestEnterpriseAudit_AdminPatchRoles_emitsRoleChanged(t *testing.T) {
 	pool := testPool(t)
 	org := uuid.New()
-	insertAuditOrganization(t, pool, org)
+	insertAuditCompany(t, pool, org)
 
 	audit := appaudit.NewService(pool)
 	svc := testAuthServiceWithEnterpriseAudit(t, pool, audit, true)
@@ -160,7 +160,7 @@ func TestEnterpriseAudit_AdminPatchRoles_emitsRoleChanged(t *testing.T) {
 func TestEnterpriseAudit_ListPaginationAndFilters(t *testing.T) {
 	pool := testPool(t)
 	org := uuid.New()
-	insertAuditOrganization(t, pool, org)
+	insertAuditCompany(t, pool, org)
 
 	audit := appaudit.NewService(pool)
 	ctx := context.Background()
@@ -172,57 +172,54 @@ func TestEnterpriseAudit_ListPaginationAndFilters(t *testing.T) {
 	r2 := "prod-2"
 
 	require.NoError(t, audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: org,
-		ActorType:      compliance.ActorUser,
-		ActorID:        &actor,
-		Action:         a1,
-		ResourceType:   "product",
-		ResourceID:     &r1,
-		Metadata:       []byte(`{}`),
-		Outcome:        compliance.OutcomeSuccess,
+		ActorType:    compliance.ActorUser,
+		ActorID:      &actor,
+		Action:       a1,
+		ResourceType: "product",
+		ResourceID:   &r1,
+		Metadata:     []byte(`{}`),
+		Outcome:      compliance.OutcomeSuccess,
 	}))
 	require.NoError(t, audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: org,
-		ActorType:      compliance.ActorMachine,
-		ActorID:        &actor,
-		Action:         a2,
-		ResourceType:   "product",
-		ResourceID:     &r2,
-		Metadata:       []byte(`{}`),
-		Outcome:        compliance.OutcomeFailure,
+		ActorType:    compliance.ActorMachine,
+		ActorID:      &actor,
+		Action:       a2,
+		ResourceType: "product",
+		ResourceID:   &r2,
+		Metadata:     []byte(`{}`),
+		Outcome:      compliance.OutcomeFailure,
 	}))
 
 	filtered, err := audit.ListEvents(ctx, appaudit.EventListParams{
-		OrganizationID: org,
-		Action:         a1,
-		ActorID:        actor,
-		ResourceType:   "product",
-		ResourceID:     r1,
-		Limit:          10,
-		Offset:         0,
+		Action:       a1,
+		ActorID:      actor,
+		ResourceType: "product",
+		ResourceID:   r1,
+		Limit:        10,
+		Offset:       0,
 	})
 	require.NoError(t, err)
 	require.Len(t, filtered.Items, 1)
 	require.Equal(t, int64(1), filtered.Meta.Total)
 	require.Equal(t, a1, filtered.Items[0].Action)
 
-	all, err := audit.ListEvents(ctx, appaudit.EventListParams{OrganizationID: org, Limit: 10, Offset: 0})
+	all, err := audit.ListEvents(ctx, appaudit.EventListParams{Limit: 10, Offset: 0})
 	require.NoError(t, err)
 	require.Len(t, all.Items, 2)
 	require.Equal(t, int64(2), all.Meta.Total)
 
-	paged, err := audit.ListEvents(ctx, appaudit.EventListParams{OrganizationID: org, Limit: 1, Offset: 1})
+	paged, err := audit.ListEvents(ctx, appaudit.EventListParams{Limit: 1, Offset: 1})
 	require.NoError(t, err)
 	require.Len(t, paged.Items, 1)
 	require.Equal(t, int64(2), paged.Meta.Total)
 }
 
-func TestEnterpriseAudit_TenantIsolation(t *testing.T) {
+func TestEnterpriseAudit_CompanyIsolation(t *testing.T) {
 	pool := testPool(t)
 	orgA := uuid.New()
 	orgB := uuid.New()
-	insertAuditOrganization(t, pool, orgA)
-	insertAuditOrganization(t, pool, orgB)
+	insertAuditCompany(t, pool, orgA)
+	insertAuditCompany(t, pool, orgB)
 
 	audit := appaudit.NewService(pool)
 	ctx := context.Background()
@@ -230,34 +227,31 @@ func TestEnterpriseAudit_TenantIsolation(t *testing.T) {
 	m2 := "m-isolation-b"
 
 	require.NoError(t, audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: orgA,
-		ActorType:      compliance.ActorSystem,
-		Action:         compliance.ActionInventoryAdjusted,
-		ResourceType:   "machine",
-		ResourceID:     &m1,
-		Metadata:       []byte(`{}`),
-		Outcome:        compliance.OutcomeSuccess,
+		ActorType:    compliance.ActorSystem,
+		Action:       compliance.ActionInventoryAdjusted,
+		ResourceType: "machine",
+		ResourceID:   &m1,
+		Metadata:     []byte(`{}`),
+		Outcome:      compliance.OutcomeSuccess,
 	}))
 	require.NoError(t, audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: orgB,
-		ActorType:      compliance.ActorSystem,
-		Action:         compliance.ActionInventoryAdjusted,
-		ResourceType:   "machine",
-		ResourceID:     &m2,
-		Metadata:       []byte(`{}`),
-		Outcome:        compliance.OutcomeSuccess,
+		ActorType:    compliance.ActorSystem,
+		Action:       compliance.ActionInventoryAdjusted,
+		ResourceType: "machine",
+		ResourceID:   &m2,
+		Metadata:     []byte(`{}`),
+		Outcome:      compliance.OutcomeSuccess,
 	}))
 
-	listA, err := audit.ListEvents(ctx, appaudit.EventListParams{OrganizationID: orgA, Limit: 50, Offset: 0})
+	listA, err := audit.ListEvents(ctx, appaudit.EventListParams{Limit: 50, Offset: 0})
 	require.NoError(t, err)
 	require.Len(t, listA.Items, 1)
-	require.Equal(t, orgA.String(), listA.Items[0].OrganizationID)
 }
 
 func TestEnterpriseAudit_MachineFilterAndGetByID(t *testing.T) {
 	pool := testPool(t)
 	org := uuid.New()
-	insertAuditOrganization(t, pool, org)
+	insertAuditCompany(t, pool, org)
 
 	audit := appaudit.NewService(pool)
 	ctx := context.Background()
@@ -265,15 +259,15 @@ func TestEnterpriseAudit_MachineFilterAndGetByID(t *testing.T) {
 	machineID := uuid.New()
 	hw := uuid.New()
 	_, err := pool.Exec(ctx, `
-INSERT INTO machine_hardware_profiles (id, organization_id, name, spec) VALUES ($1, $2, 'audit-hw', '{}'::jsonb)`,
+INSERT INTO machine_hardware_profiles (id, scope_id, name, spec) VALUES ($1, $2, 'audit-hw', '{}'::jsonb)`,
 		hw, org)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO sites (id, organization_id, name, address) VALUES ($1, $2, 'audit-site', '{}'::jsonb)`,
+INSERT INTO sites (id, scope_id, name, address) VALUES ($1, $2, 'audit-site', '{}'::jsonb)`,
 		siteID, org)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, organization_id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
+INSERT INTO machines (id, scope_id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
 VALUES ($1, $2, $3, $4, $5, 'm', 'online', 0, 0)`,
 		machineID, org, siteID, hw, "audit-sn-"+machineID.String()[:12])
 	require.NoError(t, err)
@@ -285,54 +279,51 @@ VALUES ($1, $2, $3, $4, $5, 'm', 'online', 0, 0)`,
 
 	rid := "res-machine-scope"
 	require.NoError(t, audit.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: org,
-		ActorType:      compliance.ActorMachine,
-		Action:         compliance.ActionMachineUpdated,
-		ResourceType:   "machine",
-		ResourceID:     &rid,
-		MachineID:      &machineID,
-		SiteID:         &siteID,
-		Metadata:       []byte(`{}`),
+		ActorType:    compliance.ActorMachine,
+		Action:       compliance.ActionMachineUpdated,
+		ResourceType: "machine",
+		ResourceID:   &rid,
+		MachineID:    &machineID,
+		SiteID:       &siteID,
+		Metadata:     []byte(`{}`),
 	}))
 	filtered, err := audit.ListEvents(ctx, appaudit.EventListParams{
-		OrganizationID: org,
-		MachineID:      machineID.String(),
-		Limit:          10,
-		Offset:         0,
+		MachineID: machineID.String(),
+		Limit:     10,
+		Offset:    0,
 	})
 	require.NoError(t, err)
 	require.Len(t, filtered.Items, 1)
 	require.Equal(t, machineID.String(), *filtered.Items[0].MachineID)
 
 	eventUUID := uuid.MustParse(filtered.Items[0].ID)
-	got, err := audit.GetEventForOrg(ctx, org, eventUUID)
+	got, err := audit.GetEvent(ctx, eventUUID)
 	require.NoError(t, err)
 	require.Equal(t, machineID.String(), *got.MachineID)
 
-	_, err = audit.GetEventForOrg(ctx, org, uuid.New())
+	_, err = audit.GetEvent(ctx, uuid.New())
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 
 	orgOther := uuid.New()
-	insertAuditOrganization(t, pool, orgOther)
-	_, err = audit.GetEventForOrg(ctx, orgOther, eventUUID)
+	insertAuditCompany(t, pool, orgOther)
+	_, err = audit.GetEvent(ctx, eventUUID)
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 }
 
 func TestEnterpriseAudit_RedactsSensitiveMetadataKeys(t *testing.T) {
 	pool := testPool(t)
 	org := uuid.New()
-	insertAuditOrganization(t, pool, org)
+	insertAuditCompany(t, pool, org)
 	svc := appaudit.NewService(pool)
 	ctx := context.Background()
 	meta := []byte(`{"refresh_token":"secret-value","ok":true}`)
 	require.NoError(t, svc.Record(ctx, compliance.EnterpriseAuditRecord{
-		OrganizationID: org,
-		ActorType:      compliance.ActorUser,
-		Action:         "test.redaction",
-		ResourceType:   "fixture",
-		Metadata:       meta,
+		ActorType:    compliance.ActorUser,
+		Action:       "test.redaction",
+		ResourceType: "fixture",
+		Metadata:     meta,
 	}))
-	rows, err := svc.ListEvents(ctx, appaudit.EventListParams{OrganizationID: org, Limit: 1})
+	rows, err := svc.ListEvents(ctx, appaudit.EventListParams{Limit: 1})
 	require.NoError(t, err)
 	require.Len(t, rows.Items, 1)
 	require.Contains(t, string(rows.Items[0].Metadata), "[REDACTED]")

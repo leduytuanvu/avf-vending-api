@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -87,26 +88,32 @@ func postMachineCheckIn(ctx context.Context, base string, m MachineRow) error {
 	return nil
 }
 
-// AdminPaths returns REST paths used by dashboard-style smoke loads (caller substitutes organization UUID).
-func AdminPaths(orgID uuid.UUID) []string {
-	o := orgID.String()
+// AdminPaths returns REST paths used by dashboard-style smoke loads (optional scope_id for platform-scoped report reads).
+func AdminPaths(scopeID uuid.UUID) []string {
 	from := time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339Nano)
 	to := time.Now().UTC().Format(time.RFC3339Nano)
-	q := fmt.Sprintf("from=%s&to=%s&limit=50", from, to)
+	q := url.Values{}
+	q.Set("from", from)
+	q.Set("to", to)
+	q.Set("limit", "50")
+	if scopeID != uuid.Nil {
+		q.Set("scope_id", scopeID.String())
+	}
+	qs := q.Encode()
 	return []string{
 		"/health/live",
 		"/health/ready",
 		"/v1/admin/machines?limit=50&offset=0",
-		fmt.Sprintf("/v1/admin/organizations/%s/reports/machine-health?%s", o, q),
-		fmt.Sprintf("/v1/admin/organizations/%s/reports/commands?%s", o, q),
-		fmt.Sprintf("/v1/admin/organizations/%s/reports/inventory?%s", o, q),
+		fmt.Sprintf("/v1/admin/reports/machine-health?%s", qs),
+		fmt.Sprintf("/v1/admin/reports/commands?%s", qs),
+		fmt.Sprintf("/v1/admin/reports/inventory?%s", qs),
 	}
 }
 
 // RunHTTPAdminSequence GETs admin paths once per iteration (JWT required).
-func RunHTTPAdminSequence(ctx context.Context, baseURL, adminJWT string, orgID uuid.UUID, iterations int, recorder *LatencyRecorder) error {
+func RunHTTPAdminSequence(ctx context.Context, baseURL, adminJWT string, scopeID uuid.UUID, iterations int, recorder *LatencyRecorder) error {
 	baseURL = strings.TrimRight(baseURL, "/")
-	paths := AdminPaths(orgID)
+	paths := AdminPaths(scopeID)
 	for i := 0; i < iterations; i++ {
 		for _, p := range paths {
 			select {

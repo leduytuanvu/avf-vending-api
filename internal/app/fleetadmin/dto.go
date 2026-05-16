@@ -39,7 +39,6 @@ type AdminCurrentOperator struct {
 type AdminMachineListItem struct {
 	MachineID           string                       `json:"machineId"`
 	MachineName         string                       `json:"machineName"`
-	OrganizationID      string                       `json:"organizationId"`
 	SiteID              string                       `json:"siteId"`
 	SiteName            string                       `json:"siteName"`
 	HardwareProfileID   *string                      `json:"hardwareProfileId,omitempty"`
@@ -70,7 +69,6 @@ type MachinesListResponse struct {
 // AdminTechnicianListItem is a normalized technician directory row.
 type AdminTechnicianListItem struct {
 	TechnicianID    string    `json:"technicianId"`
-	OrganizationID  string    `json:"organizationId"`
 	DisplayName     string    `json:"displayName"`
 	Email           *string   `json:"email,omitempty"`
 	Phone           *string   `json:"phone,omitempty"`
@@ -109,7 +107,6 @@ type AssignmentsListResponse struct {
 type AdminCommandListItem struct {
 	CommandID           string    `json:"commandId"`
 	MachineID           string    `json:"machineId"`
-	OrganizationID      string    `json:"organizationId"`
 	MachineName         string    `json:"machineName"`
 	MachineSerialNumber string    `json:"machineSerialNumber"`
 	Sequence            int64     `json:"sequence"`
@@ -129,7 +126,6 @@ type CommandsListResponse struct {
 // AdminOTAListItem summarizes an OTA campaign with linked artifact metadata.
 type AdminOTAListItem struct {
 	CampaignID         string    `json:"campaignId"`
-	OrganizationID     string    `json:"organizationId"`
 	CampaignName       string    `json:"campaignName"`
 	Strategy           string    `json:"strategy"`
 	CampaignStatus     string    `json:"campaignStatus"`

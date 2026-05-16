@@ -18,11 +18,11 @@ package httpserver
 // including public POST /v1/auth/login|refresh, /v1/setup/activation-codes/claim, and payment webhooks when enabled.
 // Fixed-window abuse limits (RATE_LIMIT_*): auth_login/auth_refresh/activation_claim/webhook buckets in abuse_protection.go.
 //
-// Backend artifacts (Bearer JWT + org_admin or platform_admin; S3 when API_ARTIFACTS_ENABLED=true):
-// POST/GET/PUT/DELETE under /v1/admin/organizations/{orgId}/artifacts — see artifacts_http.go.
+// Backend artifacts (Bearer JWT + admin or platform_admin; S3 when API_ARTIFACTS_ENABLED=true):
+// POST/GET/PUT/DELETE under /v1/admin/artifacts — see artifacts_http.go.
 //
 // Commerce: provider webhooks are mounted without Bearer JWT (HMAC-only); other commerce routes use
-// Bearer JWT + RequireOrganizationScope. Paths:
+// Bearer JWT + RequireCompanyScope. Paths:
 //
 //	/v1/commerce/cash-checkout
 //	/v1/commerce/orders
@@ -43,21 +43,21 @@ package httpserver
 //	POST /v1/machines/{machineId}/check-ins
 //	POST /v1/machines/{machineId}/config-applies
 //
-// Admin machine setup writes (Bearer JWT + platform_admin or org_admin + sensitive-write rate limit when enabled):
+// Admin machine setup writes (Bearer JWT + platform_admin or admin + sensitive-write rate limit when enabled):
 //
 //	PUT  /v1/admin/machines/{machineId}/topology
 //	PUT  /v1/admin/machines/{machineId}/planograms/draft
 //	POST /v1/admin/machines/{machineId}/planograms/publish  (requires Idempotency-Key header)
 //	POST /v1/admin/machines/{machineId}/sync               (requires Idempotency-Key header)
 //
-// Admin machine directory (Bearer JWT + platform_admin or org_admin):
+// Admin machine directory (Bearer JWT + platform_admin or admin):
 //
 //	GET /v1/admin/machines
-//	GET /v1/admin/machines/{machineId}   (optional organization_id query for platform_admin)
+//	GET /v1/admin/machines/{machineId}   (optional scope_id query for platform_admin)
 //
-// Admin inventory reads and stock writes (Bearer JWT + platform_admin or org_admin; stock-adjustments uses writeRL + Idempotency-Key):
+// Admin inventory reads and stock writes (Bearer JWT + platform_admin or admin; stock-adjustments uses writeRL + Idempotency-Key):
 //
-//	GET  /v1/admin/inventory/low-stock (velocity_days, site_id, machine_id, product_id, urgency, days_threshold; organization_id for platform_admin)
+//	GET  /v1/admin/inventory/low-stock (velocity_days, site_id, machine_id, product_id, urgency, days_threshold; scope_id for platform_admin)
 //	GET  /v1/admin/inventory/refill-suggestions (same filters; all slotted products)
 //	GET  /v1/admin/machines/{machineId}/slots (cabinetCode, cabinetIndex, slotCode; legacy-only machines default cabinet CAB-A)
 //	POST /v1/admin/machines/{machineId}/stock-adjustments
@@ -65,7 +65,7 @@ package httpserver
 //	GET  /v1/admin/machines/{machineId}/inventory-events (append-only ledger; optional from/to, limit, offset)
 //	GET  /v1/admin/machines/{machineId}/refill-suggestions (per-machine refill forecast)
 //
-// Feature flags + staged machine config rollouts (fleet.read reads; fleet.write mutates; organization_id for platform_admin):
+// Feature flags + staged machine config rollouts (fleet.read reads; fleet.write mutates; scope_id for platform_admin):
 //
 //	GET/PATCH/POST /v1/admin/feature-flags ... ; PUT /v1/admin/feature-flags/{flagId}/targets
 //	GET/POST /v1/admin/machine-config/rollouts ; GET /v1/admin/machine-config/rollouts/{rolloutId}
@@ -76,13 +76,13 @@ package httpserver
 //	GET /v1/machines/{machineId}/telemetry/incidents
 //	GET /v1/machines/{machineId}/telemetry/rollups
 //
-// Remote MQTT command dispatch (Bearer JWT + RequireMachineURLAccess("machineId") + org/platform admin):
+// Remote MQTT command dispatch (Bearer JWT + RequireMachineURLAccess("machineId") + admin/platform routing):
 //
 //	POST /v1/machines/{machineId}/commands/dispatch
 //	GET  /v1/machines/{machineId}/commands/{sequence}/status
 //	GET  /v1/machines/{machineId}/commands/receipts
 //
-// Device commerce bridge (Bearer JWT + RequireMachineURLAccess("machineId") + org/platform admin; same write rate limit group as command dispatch):
+// Device commerce bridge (Bearer JWT + RequireMachineURLAccess("machineId") + admin/platform routing; same write rate limit group as command dispatch):
 //
 //	POST /v1/device/machines/{machineId}/vend-results   (requires Idempotency-Key)
 //	POST /v1/device/machines/{machineId}/commands/poll  (HTTP fallback when MQTT is degraded)
@@ -108,28 +108,28 @@ package httpserver
 //	POST /v1/admin/system/retention/dry-run
 //	POST /v1/admin/system/retention/run
 //
-// Reporting reads (Bearer JWT + platform_admin or org_admin):
+// Reporting reads (Bearer JWT + platform_admin or admin):
 //
 //	GET /v1/reports/sales-summary
 //	GET /v1/reports/payments-summary
 //	GET /v1/reports/fleet-health
 //	GET /v1/reports/inventory-exceptions
-//	GET /v1/admin/organizations/{organizationId}/reports/sales
-//	GET /v1/admin/organizations/{organizationId}/reports/payments
-//	GET /v1/admin/organizations/{organizationId}/reports/refunds
-//	GET /v1/admin/organizations/{organizationId}/reports/cash
-//	GET /v1/admin/organizations/{organizationId}/reports/inventory-low-stock
-//	GET /v1/admin/organizations/{organizationId}/reports/machine-health
-//	GET /v1/admin/organizations/{organizationId}/reports/failed-vends
-//	GET /v1/admin/organizations/{organizationId}/reports/reconciliation-queue
-//	GET /v1/admin/organizations/{organizationId}/reports/vends
-//	GET /v1/admin/organizations/{organizationId}/reports/inventory
-//	GET /v1/admin/organizations/{organizationId}/reports/machines
-//	GET /v1/admin/organizations/{organizationId}/reports/products
-//	GET /v1/admin/organizations/{organizationId}/reports/reconciliation
-//	GET /v1/admin/organizations/{organizationId}/reports/commands
-//	GET /v1/admin/organizations/{organizationId}/reports/fills
-//	GET /v1/admin/organizations/{organizationId}/reports/export
+//	GET /v1/admin/reports/sales
+//	GET /v1/admin/reports/payments
+//	GET /v1/admin/reports/refunds
+//	GET /v1/admin/reports/cash
+//	GET /v1/admin/reports/inventory-low-stock
+//	GET /v1/admin/reports/machine-health
+//	GET /v1/admin/reports/failed-vends
+//	GET /v1/admin/reports/reconciliation-queue
+//	GET /v1/admin/reports/vends
+//	GET /v1/admin/reports/inventory
+//	GET /v1/admin/reports/machines
+//	GET /v1/admin/reports/products
+//	GET /v1/admin/reports/reconciliation
+//	GET /v1/admin/reports/commands
+//	GET /v1/admin/reports/fills
+//	GET /v1/admin/reports/export
 //
 // OpenAPI: every mounted path above must stay in sync with tools/build_openapi.py REQUIRED_OPERATIONS
 // and the DocOp* stubs in swagger_operations.go (generation fails on drift).

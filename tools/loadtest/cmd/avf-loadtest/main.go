@@ -30,7 +30,7 @@ func main() {
 	stormWaves := flag.Int("storm-waves", envIntOr("AVF_LOADTEST_STORM_WAVES", 3), "check-in reconnect waves for suite/storm (≥1)")
 
 	adminJWT := flag.String("admin-jwt", envOr("ADMIN_JWT", ""), "Bearer token for admin REST scenarios")
-	orgIDStr := flag.String("organization-id", envOr("LOADTEST_ORGANIZATION_ID", ""), "organization UUID for admin reports")
+	adminPhaseScopeStr := flag.String("company-id", envOr("LOADTEST_COMPANY_SCOPE_ID", ""), "company UUID for scoped admin report reads (platform_admin)")
 
 	productID := flag.String("grpc-product-id", envOr("LOADTEST_PRODUCT_ID", ""), "when set, run full cash vend on gRPC after core runtime calls")
 	slotIndex := flag.Int("grpc-slot-index", envIntOr("LOADTEST_SLOT_INDEX", 0), "planogram slot index for grpc cash vend")
@@ -141,9 +141,9 @@ func main() {
 		fmt.Println(loadtestReport(rec, time.Since(start)))
 
 	case "admin":
-		org, err := uuid.Parse(strings.TrimSpace(*orgIDStr))
+		org, err := uuid.Parse(strings.TrimSpace(*adminPhaseScopeStr))
 		if err != nil || strings.TrimSpace(*adminJWT) == "" {
-			fmt.Fprintln(os.Stderr, "admin scenario needs -admin-jwt and -organization-id")
+			fmt.Fprintln(os.Stderr, "admin scenario needs -admin-jwt and -company-id")
 			os.Exit(2)
 		}
 		rec := &loadtest.LatencyRecorder{}
@@ -221,29 +221,29 @@ func main() {
 		}
 
 		rep, err := loadtest.RunStorm(ctx, loadtest.StormConfig{
-			HTTPBase:      *httpBase,
-			GRPCAddr:      *grpcAddr,
-			Manifest:      manifest,
-			Concurrency:   *concurrency,
-			Duration:      *duration,
-			StormWaves:    *stormWaves,
-			AdminJWT:      *adminJWT,
-			OrgIDStr:      *orgIDStr,
-			ProductID:     *productID,
-			SlotIndex:     int32(*slotIndex),
-			SkipMQTT:      *skipMQTT,
-			SkipWebhook:   skipWh,
-			MQTTBroker:    *mqttBroker,
-			MQTTUser:      *mqttUser,
-			MQTTPass:      *mqttPass,
-			MQTTPrefix:    *mqttPrefix,
-			MQTTLayout:    *mqttLayout,
-			MQTTAckDL:     *mqttAckDeadline,
-			WebhookSecret: secret,
-			WebhookOrder:  orderID,
-			WebhookPay:    payID,
-			WebhookBurst:  *webhookBurst,
-			WebhookDupN:   *webhookDupEvery,
+			HTTPBase:           *httpBase,
+			GRPCAddr:           *grpcAddr,
+			Manifest:           manifest,
+			Concurrency:        *concurrency,
+			Duration:           *duration,
+			StormWaves:         *stormWaves,
+			AdminJWT:           *adminJWT,
+			AdminPhaseScopeStr: *adminPhaseScopeStr,
+			ProductID:          *productID,
+			SlotIndex:          int32(*slotIndex),
+			SkipMQTT:           *skipMQTT,
+			SkipWebhook:        skipWh,
+			MQTTBroker:         *mqttBroker,
+			MQTTUser:           *mqttUser,
+			MQTTPass:           *mqttPass,
+			MQTTPrefix:         *mqttPrefix,
+			MQTTLayout:         *mqttLayout,
+			MQTTAckDL:          *mqttAckDeadline,
+			WebhookSecret:      secret,
+			WebhookOrder:       orderID,
+			WebhookPay:         payID,
+			WebhookBurst:       *webhookBurst,
+			WebhookDupN:        *webhookDupEvery,
 		})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// Organization is the top-level tenant boundary.
-type Organization struct {
+// Company is the top-level company boundary.
+type Company struct {
 	ID        uuid.UUID
 	Name      string
 	Slug      string
@@ -16,20 +16,18 @@ type Organization struct {
 	UpdatedAt time.Time
 }
 
-// Region is a geographic grouping within an organization.
+// Region is a geographic grouping within an company.
 type Region struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	Name           string
-	Code           string
-	CreatedAt      time.Time
+	ID        uuid.UUID
+	Name      string
+	Code      string
+	CreatedAt time.Time
 }
 
 // Site is a physical location that hosts machines.
 type Site struct {
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
-	RegionID       *uuid.UUID
-	Name           string
-	CreatedAt      time.Time
+	ID        uuid.UUID
+	RegionID  *uuid.UUID
+	Name      string
+	CreatedAt time.Time
 }

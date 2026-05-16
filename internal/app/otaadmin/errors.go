@@ -10,7 +10,7 @@ var (
 	ErrNeedsApproval        = errors.New("otaadmin: campaign must be approved before start")
 	ErrRollbackArtifact     = errors.New("otaadmin: rollback requires rollback artifact")
 	ErrNoTargets            = errors.New("otaadmin: no target machines configured")
-	ErrMachinesNotInOrg     = errors.New("otaadmin: one or more machines are not in this organization")
+	ErrMachinesNotInOrg     = errors.New("otaadmin: one or more machines are not in this company")
 	ErrRolloutNotActive     = errors.New("otaadmin: rollout is not active for this operation")
 	ErrNothingLeftToRollout = errors.New("otaadmin: no remaining machines in rollout queue")
 )

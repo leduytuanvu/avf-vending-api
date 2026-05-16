@@ -142,8 +142,15 @@ e2e_mqtt_publish() {
     --argjson exitCode "$ec" \
     '{topic:$topic,exitCode:$exitCode}' >"${dir}/${output_name}.meta.json"
 
-  # 27 is a common mosquitto_* "still connected / no error path" smoke exit on Windows; treat like subscribe probe.
-  if [[ "$ec" -eq 0 ]] || [[ "$ec" -eq 27 ]]; then
+  # Documented: docs/api/mqtt-contract.md § "Phase 7 local smoke: Mosquitto client exit codes".
+  # Do not mask real broker/auth failures: exit 27 only if logs look like a client quirk, not a disconnect error.
+  if [[ "$ec" -eq 0 ]]; then
+    return 0
+  fi
+  if [[ "$ec" -eq 27 ]] && [[ -f "${logf}" ]]; then
+    if grep -qiE 'error|unable to connect|connection refused|not authorised|not authorized|denied' "${logf}"; then
+      return "$ec"
+    fi
     return 0
   fi
   return "$ec"
@@ -204,9 +211,29 @@ e2e_mqtt_subscribe_accept_connect() {
   local output_name="$3"
   e2e_mqtt_subscribe_once "$topic" "$timeout_sec" "$output_name"
   local ec=$?
-  # 0 received, 27 common timeout (still connected), 5 = no connection on some builds
+  # Documented: docs/api/mqtt-contract.md § "Phase 7 local smoke: Mosquitto client exit codes".
+  # 0 = received message; 27 = common timeout while session still up (Windows/Git Bash); 5 = no connection on some builds.
   if [[ "$ec" -eq 0 ]] || [[ "$ec" -eq 27 ]]; then
     return 0
   fi
   return "$ec"
+}
+
+# After `wait` on a background `mosquitto_sub -C 1`: exit 0 means clean receipt; 27 with an empty log means timeout.
+# Exit 27 with a non-empty first line is treated as success only for Phase 7 (see mqtt-contract.md).
+e2e_mqtt_sub_join_payload_ok() {
+  local wait_ec="$1"
+  local logf="$2"
+  if [[ "$wait_ec" -eq 0 ]]; then
+    return 0
+  fi
+  if [[ "$wait_ec" -eq 27 ]] && [[ -f "$logf" ]]; then
+    local line
+    line="$(head -n1 "$logf" 2>/dev/null || true)"
+    line="${line//$'\r'/}"
+    if [[ -n "${line// /}" ]]; then
+      return 0
+    fi
+  fi
+  return 1
 }

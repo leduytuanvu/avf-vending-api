@@ -9,7 +9,6 @@ import (
 // ReportingQuery carries validated parameters for read-only GET /v1/reports/* analytics.
 type ReportingQuery struct {
 	IsPlatformAdmin bool
-	OrganizationID  uuid.UUID
 	From            time.Time
 	To              time.Time
 	Timezone        string

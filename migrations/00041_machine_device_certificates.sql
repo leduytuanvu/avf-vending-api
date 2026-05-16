@@ -3,7 +3,7 @@
 -- P2.3: device TLS client certificate metadata for machine gRPC mTLS (registration/revocation/rotation; no private keys stored).
 CREATE TABLE machine_device_certificates (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
-    organization_id uuid NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+    scope_id uuid NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     fingerprint_sha256 bytea NOT NULL,
     serial_number text NOT NULL,
@@ -26,7 +26,7 @@ CREATE TABLE machine_device_certificates (
 
 CREATE INDEX ix_machine_device_certificates_machine_status ON machine_device_certificates (machine_id, status);
 
-CREATE INDEX ix_machine_device_certificates_org_machine ON machine_device_certificates (organization_id, machine_id);
+CREATE INDEX ix_machine_device_certificates_org_machine ON machine_device_certificates (scope_id, machine_id);
 
 COMMENT ON TABLE machine_device_certificates IS 'P2.3: registered device client cert fingerprints for mTLS + lifecycle (revoke/supersede).';
 

@@ -35,7 +35,6 @@ func (it AdjustmentItem) QuantityDelta() int32 {
 
 // AdjustmentBatchInput appends adjustment events and updates legacy slot quantities in one transaction.
 type AdjustmentBatchInput struct {
-	OrganizationID    uuid.UUID
 	MachineID         uuid.UUID
 	OperatorSessionID *uuid.UUID
 	CorrelationID     *uuid.UUID

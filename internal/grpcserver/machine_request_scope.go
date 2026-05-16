@@ -52,11 +52,6 @@ func inspectMachineScope(msg protoreflect.Message, claims auth.MachineAccessClai
 				*firstErr = status.Error(codes.PermissionDenied, "machine_id does not match token")
 				return
 			}
-		case "organization_id":
-			if id, err := uuid.Parse(value); err != nil || id != claims.OrganizationID {
-				*firstErr = status.Error(codes.PermissionDenied, "organization_id does not match token")
-				return
-			}
 		}
 	}
 }

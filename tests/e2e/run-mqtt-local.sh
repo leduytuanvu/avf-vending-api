@@ -69,6 +69,30 @@ fi
 # shellcheck source=lib/e2e_mqtt.sh
 source "${SCRIPT_DIR}/lib/e2e_mqtt.sh"
 
+# Standalone runs need a machine UUID for topic paths (MQTT_MACHINE_ID or machineId in test-data).
+# Parent orchestrators populate this earlier; when missing, seed via web-admin setup (REST writes).
+if [[ "${E2E_IN_PARENT:-0}" != "1" ]]; then
+  _mqtt_mid="${MQTT_MACHINE_ID:-}"
+  if [[ -z "${_mqtt_mid}" ]]; then
+    _mqtt_mid="$(get_data machineId)"
+    [[ "${_mqtt_mid}" == "null" ]] && _mqtt_mid=""
+  fi
+  if [[ -z "${_mqtt_mid}" ]]; then
+    log_info "mqtt-local: machineId unset; running scenarios/01_web_admin_setup.sh to provision MQTT machine scope"
+    if ! bash "${SCRIPT_DIR}/scenarios/01_web_admin_setup.sh"; then
+      log_error "mqtt-local: web admin setup failed (needed for machine-scoped MQTT topics)"
+      end_step failed "MQTT prerequisites (machine id)"
+      ec=1
+      # shellcheck source=lib/e2e_report.sh
+      source "${SCRIPT_DIR}/lib/e2e_report.sh"
+      e2e_finalize_reports "${ec}"
+      fr=$?
+      [[ "${fr}" -ne 0 ]] && ec="${fr}"
+      exit "${ec}"
+    fi
+  fi
+fi
+
 if ! e2e_mqtt_tcp_open; then
   log_error "MQTT broker not reachable at ${MQTT_HOST}:${MQTT_PORT:-1883}. Start mosquitto/EMQX locally; see docs/testing/e2e-troubleshooting.md#mqtt-phase-7-broker-unreachable."
   end_step failed "MQTT broker unreachable"

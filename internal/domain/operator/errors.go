@@ -4,7 +4,7 @@ import "errors"
 
 var (
 	ErrInvalidActor                        = errors.New("operator: actor_type does not match technician_id/user_principal")
-	ErrOrganizationMismatch                = errors.New("operator: organization context does not match machine or technician")
+	ErrCompanyMismatch                     = errors.New("operator: company context does not match machine or technician")
 	ErrActiveSessionExists                 = errors.New("operator: machine already has an active session")
 	ErrNoActiveSession                     = errors.New("operator: no active session for machine")
 	ErrSessionNotFound                     = errors.New("operator: session not found")

@@ -10,7 +10,6 @@ WHERE
 -- name: PlanogramGetMachineDraftByID :one
 SELECT
     id,
-    organization_id,
     machine_id,
     status,
     snapshot,
@@ -19,15 +18,22 @@ SELECT
 FROM machine_planogram_drafts
 WHERE
     id = $1
-    AND organization_id = $2
-    AND machine_id = $3;
+    AND TRUE
+    AND machine_id = $2;
 
 -- name: PlanogramInsertDraft :one
-INSERT INTO machine_planogram_drafts (organization_id, machine_id, status, snapshot)
-VALUES ($1, $2, $3, $4)
+INSERT INTO machine_planogram_drafts (
+    machine_id,
+    status,
+    snapshot
+)
+VALUES (
+    $1,
+    $2,
+    $3
+)
 RETURNING
     id,
-    organization_id,
     machine_id,
     status,
     snapshot,
@@ -42,11 +48,10 @@ SET
     updated_at = now ()
 WHERE
     d.id = sqlc.arg(id)
-    AND d.organization_id = sqlc.arg(organization_id)
+    AND TRUE
     AND d.machine_id = sqlc.arg(machine_id)
 RETURNING
     id,
-    organization_id,
     machine_id,
     status,
     snapshot,
@@ -62,17 +67,21 @@ WHERE
 
 -- name: PlanogramInsertVersion :one
 INSERT INTO machine_planogram_versions (
-    organization_id,
     machine_id,
     version_no,
     snapshot,
     source_draft_id,
     published_by
 )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5
+)
 RETURNING
     id,
-    organization_id,
     machine_id,
     version_no,
     snapshot,
@@ -92,21 +101,30 @@ INSERT INTO machine_planogram_slots (
     max_quantity,
     price_minor
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9
+);
 
 -- name: PlanogramSetMachinePublishedVersion :exec
 UPDATE machines
 SET
-    published_planogram_version_id = $2,
+    published_planogram_version_id = $1,
     updated_at = now ()
 WHERE
-    id = $1
-    AND organization_id = $3;
+    id = $2
+    AND TRUE;
 
 -- name: PlanogramGetVersionByIDForMachine :one
 SELECT
     id,
-    organization_id,
     machine_id,
     version_no,
     snapshot,
@@ -116,13 +134,12 @@ SELECT
 FROM machine_planogram_versions
 WHERE
     id = $1
-    AND organization_id = $2
-    AND machine_id = $3;
+    AND TRUE
+    AND machine_id = $2;
 
 -- name: PlanogramListVersionsForMachine :many
 SELECT
     id,
-    organization_id,
     machine_id,
     version_no,
     snapshot,
@@ -131,15 +148,13 @@ SELECT
     published_by
 FROM machine_planogram_versions
 WHERE
-    organization_id = $1
-    AND machine_id = $2
+    machine_id = $1
 ORDER BY
     version_no DESC;
 
 -- name: PlanogramListDraftsForMachine :many
 SELECT
     id,
-    organization_id,
     machine_id,
     status,
     snapshot,
@@ -147,17 +162,23 @@ SELECT
     updated_at
 FROM machine_planogram_drafts
 WHERE
-    organization_id = $1
-    AND machine_id = $2
+    machine_id = $1
 ORDER BY
     updated_at DESC;
 
 -- name: PlanogramInsertTemplate :one
-INSERT INTO planogram_templates (organization_id, name, description, snapshot)
-VALUES ($1, $2, $3, $4)
+INSERT INTO planogram_templates (
+    name,
+    description,
+    snapshot
+)
+VALUES (
+    $1,
+    $2,
+    $3
+)
 RETURNING
     id,
-    organization_id,
     name,
     description,
     snapshot,
@@ -167,15 +188,15 @@ RETURNING
 -- name: PlanogramSnapshotUpdateMachineAckPlanogram :exec
 UPDATE machine_current_snapshot
 SET
-    last_acknowledged_planogram_version_id = $2,
+    last_acknowledged_planogram_version_id = $1,
     updated_at = now ()
 WHERE
-    machine_id = $1;
+    machine_id = $2;
 
 -- name: PlanogramSnapshotUpdateMachineAckConfigRevision :exec
 UPDATE machine_current_snapshot
 SET
-    last_acknowledged_config_revision = $2,
+    last_acknowledged_config_revision = $1,
     updated_at = now ()
 WHERE
-    machine_id = $1;
+    machine_id = $2;

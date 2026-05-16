@@ -45,22 +45,20 @@ func TestPricingPromotion_catalogOrderPaymentAmountAlignment(t *testing.T) {
 	q := db.New(pool)
 
 	assRow, err := q.FleetAdminInsertAssortment(ctx, db.FleetAdminInsertAssortmentParams{
-		OrganizationID: testfixtures.DevOrganizationID,
-		Name:           "pricing-promo-e2e-" + uuid.NewString(),
-		Status:         "published",
-		Description:    "",
-		Meta:           []byte(`{}`),
+		Name:        "pricing-promo-e2e-" + uuid.NewString(),
+		Status:      "published",
+		Description: "",
+		Meta:        []byte(`{}`),
 	})
 	require.NoError(t, err)
 	assortmentID := assRow.ID
 	defer cleanupPricingTestMachine(ctx, t, pool, testfixtures.DevMachineID, assortmentID)
 
 	_, err = q.FleetAdminUpsertAssortmentItem(ctx, db.FleetAdminUpsertAssortmentItemParams{
-		OrganizationID: testfixtures.DevOrganizationID,
-		AssortmentID:   assortmentID,
-		ProductID:      testfixtures.DevProductWater,
-		SortOrder:      1,
-		Notes:          []byte(`{}`),
+		AssortmentID: assortmentID,
+		ProductID:    testfixtures.DevProductWater,
+		SortOrder:    1,
+		Notes:        []byte(`{}`),
 	})
 	require.NoError(t, err)
 	arepo := postgres.NewAssortmentRepository(pool)
@@ -108,10 +106,9 @@ func TestPricingPromotion_catalogOrderPaymentAmountAlignment(t *testing.T) {
 
 	store := postgres.NewStore(pool)
 	line, err := store.ResolveSaleLine(ctx, appcommerce.ResolveSaleLineInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		ProductID:      testfixtures.DevProductWater,
-		SlotIndex:      &slotIdx,
+		MachineID: testfixtures.DevMachineID,
+		ProductID: testfixtures.DevProductWater,
+		SlotIndex: &slotIdx,
 	})
 	require.NoError(t, err)
 
@@ -135,17 +132,15 @@ func TestPricingPromotion_catalogOrderPaymentAmountAlignment(t *testing.T) {
 
 	evAt := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
 	line2, err := store.EvaluateSaleLineAt(ctx, appcommerce.ResolveSaleLineInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		ProductID:      testfixtures.DevProductWater,
-		SlotIndex:      &slotIdx,
+		MachineID: testfixtures.DevMachineID,
+		ProductID: testfixtures.DevProductWater,
+		SlotIndex: &slotIdx,
 	}, evAt, 1)
 	require.NoError(t, err)
 	line3, err := store.EvaluateSaleLineAt(ctx, appcommerce.ResolveSaleLineInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		MachineID:      testfixtures.DevMachineID,
-		ProductID:      testfixtures.DevProductWater,
-		SlotIndex:      &slotIdx,
+		MachineID: testfixtures.DevMachineID,
+		ProductID: testfixtures.DevProductWater,
+		SlotIndex: &slotIdx,
 	}, evAt, 1)
 	require.NoError(t, err)
 	require.Equal(t, line2.TotalMinor, line3.TotalMinor)

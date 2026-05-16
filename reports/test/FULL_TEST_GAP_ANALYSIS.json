@@ -1227,7 +1227,7 @@
     },
     {
       "surface": "Business flow",
-      "id": "organization/site/user/admin CRUD",
+      "id": "company/site/user/admin CRUD",
       "priority": "P0",
       "gap_type": "partial test",
       "status": "partial",
@@ -3369,7 +3369,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationAuditEventGet",
+      "id": "DocOpV1AdminCompanyAuditEventGet",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3378,7 +3378,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationAuditEventsList",
+      "id": "DocOpV1AdminCompanyAuditEventsList",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3387,7 +3387,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationMediaAssetsDelete",
+      "id": "DocOpV1AdminCompanyMediaAssetsDelete",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3396,7 +3396,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationMediaAssetsGet",
+      "id": "DocOpV1AdminCompanyMediaAssetsGet",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3405,7 +3405,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationMediaAssetsList",
+      "id": "DocOpV1AdminCompanyMediaAssetsList",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3414,7 +3414,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationMediaProductImagesPost",
+      "id": "DocOpV1AdminCompanyMediaProductImagesPost",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3423,7 +3423,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationMediaUploadComplete",
+      "id": "DocOpV1AdminCompanyMediaUploadComplete",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3432,7 +3432,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationMediaUploadInit",
+      "id": "DocOpV1AdminCompanyMediaUploadInit",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3441,7 +3441,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationProductImagesDelete",
+      "id": "DocOpV1AdminCompanyProductImagesDelete",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3450,7 +3450,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationProductImagesList",
+      "id": "DocOpV1AdminCompanyProductImagesList",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3459,7 +3459,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationProductImagesPatch",
+      "id": "DocOpV1AdminCompanyProductImagesPatch",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3468,7 +3468,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationProductImagesPost",
+      "id": "DocOpV1AdminCompanyProductImagesPost",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3477,7 +3477,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationProductMediaDelete",
+      "id": "DocOpV1AdminCompanyProductMediaDelete",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",
@@ -3486,7 +3486,7 @@
     },
     {
       "surface": "REST",
-      "id": "DocOpV1AdminOrganizationProductMediaPost",
+      "id": "DocOpV1AdminCompanyProductMediaPost",
       "priority": "P2",
       "gap_type": "blocked by env",
       "status": "blocked-missing-seed",

@@ -15,19 +15,19 @@ const AudienceInternalGRPC = "avf-internal-grpc"
 const JWTClaimTypeInternalService = "service"
 
 type internalServiceAccessClaims struct {
-	Sub   string   `json:"sub"`
-	Roles []string `json:"roles"`
-	OrgID string   `json:"org_id,omitempty"`
-	Typ   string   `json:"typ"`
-	Aud   string   `json:"aud"`
-	Iss   string   `json:"iss,omitempty"`
-	Iat   int64    `json:"iat"`
-	Exp   int64    `json:"exp"`
+	Sub       string   `json:"sub"`
+	Roles     []string `json:"roles"`
+	CompanyID string   `json:"company_id,omitempty"`
+	Typ       string   `json:"typ"`
+	Aud       string   `json:"aud"`
+	Iss       string   `json:"iss,omitempty"`
+	Iat       int64    `json:"iat"`
+	Exp       int64    `json:"exp"`
 }
 
 // IssueInternalServiceAccessJWT signs a short-lived HS256 JWT for internal gRPC callers (reconcilers, workers in-process today; separate processes later).
-// organizationID may be uuid.Nil for platform-wide service subjects.
-func IssueInternalServiceAccessJWT(secret []byte, subject string, organizationID uuid.UUID, ttl time.Duration, issuer string) (token string, expiresAt time.Time, err error) {
+// companyID may be uuid.Nil for platform-wide service subjects.
+func IssueInternalServiceAccessJWT(secret []byte, subject string, companyID uuid.UUID, ttl time.Duration, issuer string) (token string, expiresAt time.Time, err error) {
 	if len(secret) == 0 {
 		return "", time.Time{}, fmt.Errorf("auth: nil secret")
 	}
@@ -50,8 +50,8 @@ func IssueInternalServiceAccessJWT(secret []byte, subject string, organizationID
 		Iat:   now.Unix(),
 		Exp:   expiresAt.Unix(),
 	}
-	if organizationID != uuid.Nil {
-		claims.OrgID = organizationID.String()
+	if companyID != uuid.Nil {
+		claims.CompanyID = companyID.String()
 	}
 	raw, err := SignHS256JWT(secret, claims)
 	if err != nil {

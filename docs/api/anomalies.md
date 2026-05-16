@@ -1,6 +1,6 @@
 # Operational anomalies & restock suggestions (P2.4)
 
-Bearer JWT admin routes under **`/v1/admin/organizations/{organizationId}/…`** (same scoping rules as fleet: platform admins pass `{organizationId}`; org admins use their tenant).
+Bearer JWT admin routes under **`/v1/admin/…`** (same scoping rules as fleet: platform admins pass `{companyId}`; admins use their company).
 
 ## Permissions
 
@@ -58,4 +58,4 @@ Legacy inventory detectors (`negative_stock`, `stale_inventory_sync`, …) still
 ## Related
 
 - Existing inventory-scoped listing: **`…/inventory/anomalies`** (P1.2).
-- OpenAPI / Swagger: paths registered next to other org admin operations.
+- OpenAPI / Swagger: paths registered next to other admin operations.

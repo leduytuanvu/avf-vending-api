@@ -1,15 +1,15 @@
 -- name: AuthGetAccountByOrgEmail :one
 SELECT *
 FROM platform_auth_accounts
-WHERE organization_id = $1
-  AND lower(email) = lower($2)
+WHERE TRUE
+  AND lower(email) = lower($1)
   AND status = 'active';
 
 -- name: AuthLookupAccountByOrgEmailAnyStatus :one
 SELECT *
 FROM platform_auth_accounts
-WHERE organization_id = $1
-  AND lower(email) = lower($2);
+WHERE TRUE
+  AND lower(email) = lower($1);
 
 -- name: AuthGetAccountByID :one
 SELECT *
@@ -18,8 +18,22 @@ WHERE id = $1
   AND status = 'active';
 
 -- name: AuthInsertRefreshToken :exec
-INSERT INTO auth_refresh_tokens (id, account_id, token_hash, expires_at, ip_address, user_agent)
-VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO auth_refresh_tokens (
+    id,
+    account_id,
+    token_hash,
+    expires_at,
+    ip_address,
+    user_agent
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6
+);
 
 -- name: AuthGetRefreshTokenByHash :one
 SELECT id, account_id, token_hash, expires_at, revoked_at, created_at, last_used_at
@@ -48,41 +62,51 @@ WHERE account_id = $1
 SELECT *
 FROM platform_auth_accounts
 WHERE id = $1
-  AND organization_id = $2;
+  AND TRUE;
 
 -- name: AuthAdminListAccounts :many
 SELECT *
 FROM platform_auth_accounts
-WHERE organization_id = $1
+WHERE TRUE
 ORDER BY created_at DESC
-LIMIT $2 OFFSET $3;
+LIMIT $1 OFFSET $2;
 
 -- name: AuthAdminCountAccounts :one
 SELECT count(*)::bigint
 FROM platform_auth_accounts
-WHERE organization_id = $1;
+WHERE TRUE;
 
 -- name: AuthAdminInsertAccount :one
-INSERT INTO platform_auth_accounts (organization_id, email, password_hash, roles, status)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO platform_auth_accounts (
+    email,
+    password_hash,
+    roles,
+    status
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
 RETURNING *;
 
 -- name: AuthAdminUpdateAccount :one
 UPDATE platform_auth_accounts
 SET
-    email = $3,
-    roles = $4,
-    status = $5,
+    email = $1,
+    roles = $2,
+    status = $3,
     updated_at = now()
-WHERE id = $1
-  AND organization_id = $2
+WHERE id = $4
+  AND TRUE
 RETURNING *;
 
 -- name: AuthAdminSetPasswordHash :exec
 UPDATE platform_auth_accounts
-SET password_hash = $2,
+SET password_hash = $1,
     updated_at = now()
-WHERE id = $1;
+WHERE id = $2;
 
 -- name: AuthRecordLoginSuccess :exec
 UPDATE platform_auth_accounts
@@ -96,10 +120,10 @@ WHERE id = $1;
 -- name: AuthRecordLoginFailure :exec
 UPDATE platform_auth_accounts
 SET failed_login_count = failed_login_count + 1,
-    locked_until = CASE WHEN failed_login_count + 1 >= $2 THEN now() + ($3::bigint * interval '1 second') ELSE locked_until END,
-    status = CASE WHEN failed_login_count + 1 >= $2 THEN 'locked' ELSE status END,
+    locked_until = CASE WHEN failed_login_count + 1 >= $1 THEN now() + ($2::bigint * interval '1 second') ELSE locked_until END,
+    status = CASE WHEN failed_login_count + 1 >= $1 THEN 'locked' ELSE status END,
     updated_at = now()
-WHERE id = $1;
+WHERE id = $3;
 
 -- name: AuthClearExpiredLock :exec
 UPDATE platform_auth_accounts
@@ -113,11 +137,23 @@ WHERE id = $1
   AND locked_until <= now();
 
 -- name: AuthInsertPasswordResetToken :exec
-INSERT INTO password_reset_tokens (id, user_id, organization_id, token_hash, expires_at, status)
-VALUES ($1, $2, $3, $4, $5, 'active');
+INSERT INTO password_reset_tokens (
+    id,
+    user_id,
+    token_hash,
+    expires_at,
+    status
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    'active'
+);
 
 -- name: AuthGetPasswordResetTokenByHash :one
-SELECT id, user_id, organization_id, token_hash, expires_at, used_at, created_at, status
+SELECT id, user_id, token_hash, expires_at, used_at, created_at, status
 FROM password_reset_tokens
 WHERE token_hash = $1
   AND status = 'active'
@@ -134,14 +170,14 @@ WHERE id = $1
 -- name: AuthAdminCountActiveOrgAdmins :one
 SELECT count(*)::bigint
 FROM platform_auth_accounts
-WHERE organization_id = $1
+WHERE TRUE
   AND status = 'active'
-  AND 'org_admin'::text = ANY (roles);
+  AND 'admin'::text = ANY (roles);
 
 -- name: AuthAdminCountActiveOrgAdminsExcluding :one
 SELECT count(*)::bigint
 FROM platform_auth_accounts
-WHERE organization_id = $1
-  AND id <> $2
+WHERE TRUE
+  AND id <> $1
   AND status = 'active'
-  AND 'org_admin'::text = ANY (roles);
+  AND 'admin'::text = ANY (roles);

@@ -97,7 +97,6 @@ func TestP06_E2E_PaymentWebhookHTTP_validHMACAccepted(t *testing.T) {
 
 	orderIDem := "p06-http-wh-" + uuid.NewString()
 	orderRes, err := postgres.NewStore(pool).CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -114,7 +113,6 @@ func TestP06_E2E_PaymentWebhookHTTP_validHMACAccepted(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := postgres.NewStore(pool).CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -161,7 +159,6 @@ func TestP06_E2E_PaymentWebhookHTTP_duplicateSignedDeliveryIsIdempotentHTTP(t *t
 
 	orderIDem := "p06-http-dup-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -178,7 +175,6 @@ func TestP06_E2E_PaymentWebhookHTTP_duplicateSignedDeliveryIsIdempotentHTTP(t *t
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -236,7 +232,6 @@ func TestP06_E2E_PaymentWebhookHTTP_invalidHMACRejected(t *testing.T) {
 
 	orderIDem := "p06-http-bad-" + uuid.NewString()
 	orderRes, err := postgres.NewStore(pool).CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -253,7 +248,6 @@ func TestP06_E2E_PaymentWebhookHTTP_invalidHMACRejected(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := postgres.NewStore(pool).CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -296,7 +290,6 @@ func TestP06_E2E_PaymentWebhookHTTP_oldTimestampRejected(t *testing.T) {
 
 	orderIDem := "p06-http-oldts-" + uuid.NewString()
 	orderRes, err := postgres.NewStore(pool).CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -313,7 +306,6 @@ func TestP06_E2E_PaymentWebhookHTTP_oldTimestampRejected(t *testing.T) {
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := postgres.NewStore(pool).CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -362,7 +354,6 @@ func TestP06_E2E_PaymentWebhookHTTP_captureDoesNotAutoCompleteVend(t *testing.T)
 
 	orderIDem := "p06-http-vend-" + uuid.NewString()
 	orderRes, err := postgres.NewStore(pool).CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -379,7 +370,6 @@ func TestP06_E2E_PaymentWebhookHTTP_captureDoesNotAutoCompleteVend(t *testing.T)
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := postgres.NewStore(pool).CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -440,7 +430,6 @@ func TestP06_E2E_PaymentWebhookHTTP_amountMismatchCreatesReconciliationCase(t *t
 
 	orderIDem := "p06-http-mm-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -457,7 +446,6 @@ func TestP06_E2E_PaymentWebhookHTTP_amountMismatchCreatesReconciliationCase(t *t
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -497,15 +485,15 @@ func TestP06_E2E_PaymentWebhookHTTP_amountMismatchCreatesReconciliationCase(t *t
 	var n int
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT COUNT(*) FROM commerce_reconciliation_cases
-WHERE organization_id = $1 AND payment_id = $2 AND case_type = 'webhook_amount_currency_mismatch'`,
-		testfixtures.DevOrganizationID, payRes.Payment.ID).Scan(&n))
+WHERE payment_id = $1 AND case_type = 'webhook_amount_currency_mismatch'`,
+		payRes.Payment.ID).Scan(&n))
 	require.Equal(t, 1, n)
 
 	var auditN int
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT COUNT(*) FROM audit_events
-WHERE organization_id = $1 AND action = 'payment.webhook.rejected'`,
-		testfixtures.DevOrganizationID).Scan(&auditN))
+WHERE action = 'payment.webhook.rejected'`,
+	).Scan(&auditN))
 	require.GreaterOrEqual(t, auditN, 1)
 }
 
@@ -518,7 +506,6 @@ func TestP06_E2E_PaymentWebhookHTTP_terminalWebhookDoesNotCorruptWhenOutOfOrder(
 
 	orderIDem := "p06-http-term-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -535,7 +522,6 @@ func TestP06_E2E_PaymentWebhookHTTP_terminalWebhookDoesNotCorruptWhenOutOfOrder(
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",
@@ -566,7 +552,6 @@ func TestP06_E2E_PaymentWebhookHTTP_terminalWebhookDoesNotCorruptWhenOutOfOrder(
 	}
 
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
-		OrganizationID:          testfixtures.DevOrganizationID,
 		OrderID:                 orderRes.Order.ID,
 		PaymentID:               payRes.Payment.ID,
 		Provider:                "psp_fixture",
@@ -607,7 +592,6 @@ func TestP06_E2E_PaymentWebhookHTTP_expiredTransitionFromCreatedAccepted(t *test
 
 	orderIDem := "p06-http-exp-" + uuid.NewString()
 	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
-		OrganizationID: testfixtures.DevOrganizationID,
 		MachineID:      testfixtures.DevMachineID,
 		ProductID:      testfixtures.DevProductWater,
 		SlotIndex:      1,
@@ -624,7 +608,6 @@ func TestP06_E2E_PaymentWebhookHTTP_expiredTransitionFromCreatedAccepted(t *test
 	payIDem := orderIDem + ":pay"
 	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
 	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
-		OrganizationID:       testfixtures.DevOrganizationID,
 		OrderID:              orderRes.Order.ID,
 		Provider:             "psp_fixture",
 		PaymentState:         "created",

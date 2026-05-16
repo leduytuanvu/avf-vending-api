@@ -20,7 +20,7 @@ func mountSaleCatalogRoute(r chi.Router, app *api.HTTPApplication) {
 	if app == nil || app.TelemetryStore == nil {
 		return
 	}
-	r.With(RequireMachineTenantAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCatalogRead)).Get("/machines/{machineId}/sale-catalog", getSaleCatalog(app))
+	r.With(RequireMachineCompanyAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCatalogRead)).Get("/machines/{machineId}/sale-catalog", getSaleCatalog(app))
 }
 
 func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
@@ -131,7 +131,6 @@ func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
 
 		writeJSON(w, http.StatusOK, map[string]any{
 			"machineId":      snap.MachineID.String(),
-			"organizationId": snap.OrganizationID.String(),
 			"siteId":         snap.SiteID.String(),
 			"configVersion":  snap.ConfigVersion,
 			"catalogVersion": snap.CatalogVersion,

@@ -6,9 +6,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// OrganizationRepository reads organization rows from the system of record.
-type OrganizationRepository interface {
-	GetByID(ctx context.Context, id uuid.UUID) (Organization, error)
+// CompanyRepository reads company rows from the system of record.
+type CompanyRepository interface {
+	GetByID(ctx context.Context, id uuid.UUID) (Company, error)
 }
 
 // SiteRepository reads site rows from the system of record.

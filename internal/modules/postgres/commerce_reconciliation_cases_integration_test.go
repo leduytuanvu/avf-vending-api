@@ -7,7 +7,6 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
-	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -18,11 +17,10 @@ func TestUpsertReconciliationCase_idempotentUnderConcurrentRuns(t *testing.T) {
 	repo := postgres.NewCommerceReconcileRepository(pool)
 
 	in := commerce.ReconciliationCaseInput{
-		OrganizationID: testfixtures.DevOrganizationID,
-		CaseType:       "payment_paid_vend_not_started",
-		Severity:       "critical",
-		Reason:         "test concurrent upsert",
-		Metadata:       []byte(`{"test":true}`),
+		CaseType: "payment_paid_vend_not_started",
+		Severity: "critical",
+		Reason:   "test concurrent upsert",
+		Metadata: []byte(`{"test":true}`),
 	}
 
 	var wg sync.WaitGroup

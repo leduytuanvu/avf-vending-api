@@ -1,10 +1,10 @@
 # Machine setup (bootstrap, topology, planogram)
 
-All paths are under **`/v1`**, Bearer JWT, roles **`platform_admin`** or **`org_admin`** (plus machine access where noted). `platform_admin` must pass **`organization_id`** query on several admin routes—match your deployment’s tenancy rules.
+All paths are under **`/v1`**, Bearer JWT, roles **`platform_admin`** or **`admin`** (plus machine access where noted). `platform_admin` must pass **`company_id`** query on several admin routes—match your deployment’s tenancy rules.
 
 ## Fleet directory (sites, machines, technician assignments)
 
-Organization-scoped admin APIs live under **`/v1/admin/organizations/{organizationId}/…`** (see OpenAPI). **`fleet_manager`** can mutate fleet writes (**`fleet:write`**); **`support`** is read-only on fleet lists where RBAC grants **`fleet:read`**. **`technician`** interactive JWTs must not pass fleet write middleware—assignments are performed by org/fleet admins only. Sites archive softly (**`status`: `active` \| `archived`**); machines archive (**retired**), suspend, or mark compromised without deleting historical rows. Technician machine bindings use **`technicians`** IDs on **`POST …/machines/{machineId}/technicians`** (`userId` path segment is the technician row UUID); self-assignment when the JWT carries a matching **`technician_id`** claim is rejected.
+Company-scoped admin APIs live under **`/v1/admin/…`** (see OpenAPI). **`fleet_manager`** can mutate fleet writes (**`fleet:write`**); **`support`** is read-only on fleet lists where RBAC grants **`fleet:read`**. **`technician`** interactive JWTs must not pass fleet write middleware—assignments are performed by org/fleet admins only. Sites archive softly (**`status`: `active` \| `archived`**); machines archive (**retired**), suspend, or mark compromised without deleting historical rows. Technician machine bindings use **`technicians`** IDs on **`POST …/machines/{machineId}/technicians`** (`userId` path segment is the technician row UUID); self-assignment when the JWT carries a matching **`technician_id`** claim is rejected.
 
 ## GET `/v1/setup/machines/{machineId}/bootstrap`
 
@@ -16,7 +16,7 @@ Organization-scoped admin APIs live under **`/v1/admin/organizations/{organizati
 
 ## Enterprise planogram (draft → validate → publish → versions → rollback)
 
-Organization-scoped routes under **`/v1/admin/organizations/{organizationId}/machines/{machineId}/`**:
+Company-scoped routes under **`/v1/admin/machines/{machineId}/`**:
 
 | Method | Path | Notes |
 | ------ | ---- | ----- |

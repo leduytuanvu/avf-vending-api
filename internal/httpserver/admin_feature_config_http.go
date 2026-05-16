@@ -41,17 +41,18 @@ func mountAdminFeatureConfigRoutes(r chi.Router, app *api.HTTPApplication, write
 }
 
 func parseOrgFleet(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	orgID, err := parseAdminFleetOrganizationScope(r)
+	scopeID, err := parseAdminFleetCompanyScope(r)
 	if err != nil {
 		writeV1ListError(w, r.Context(), err)
 		return uuid.Nil, false
 	}
-	return orgID, true
+	return scopeID, true
 }
 
 func listAdminFeatureFlags(svc *appfeatureflags.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, ok := parseOrgFleet(w, r)
+		scopeID, ok := parseOrgFleet(w, r)
+		_ = scopeID
 		if !ok {
 			return
 		}
@@ -61,9 +62,8 @@ func listAdminFeatureFlags(svc *appfeatureflags.Service) http.HandlerFunc {
 			return
 		}
 		out, err := svc.ListFlags(r.Context(), appfeatureflags.ListFlagsParams{
-			OrganizationID: orgID,
-			Limit:          limit,
-			Offset:         offset,
+			Limit:  limit,
+			Offset: offset,
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
@@ -83,7 +83,8 @@ func listAdminFeatureFlags(svc *appfeatureflags.Service) http.HandlerFunc {
 
 func getAdminFeatureFlag(svc *appfeatureflags.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, ok := parseOrgFleet(w, r)
+		scopeID, ok := parseOrgFleet(w, r)
+		_ = scopeID
 		if !ok {
 			return
 		}
@@ -92,7 +93,7 @@ func getAdminFeatureFlag(svc *appfeatureflags.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_flag_id", "invalid flagId")
 			return
 		}
-		out, err := svc.GetFlag(r.Context(), orgID, fid)
+		out, err := svc.GetFlag(r.Context(), scopeID, fid)
 		if err != nil {
 			if errors.Is(err, appfeatureflags.ErrNotFound) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "feature flag not found")
@@ -118,7 +119,8 @@ type postFeatureFlagBody struct {
 
 func postAdminFeatureFlag(svc *appfeatureflags.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, ok := parseOrgFleet(w, r)
+		scopeID, ok := parseOrgFleet(w, r)
+		_ = scopeID
 		if !ok {
 			return
 		}
@@ -131,12 +133,11 @@ func postAdminFeatureFlag(svc *appfeatureflags.Service) http.HandlerFunc {
 			meta = json.RawMessage("{}")
 		}
 		out, err := svc.CreateFlag(r.Context(), appfeatureflags.CreateFlagParams{
-			OrganizationID: orgID,
-			FlagKey:        body.FlagKey,
-			DisplayName:    body.DisplayName,
-			Description:    body.Description,
-			Enabled:        body.Enabled,
-			Metadata:       meta,
+			FlagKey:     body.FlagKey,
+			DisplayName: body.DisplayName,
+			Description: body.Description,
+			Enabled:     body.Enabled,
+			Metadata:    meta,
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
@@ -155,7 +156,8 @@ type patchFeatureFlagBody struct {
 
 func patchAdminFeatureFlag(svc *appfeatureflags.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, ok := parseOrgFleet(w, r)
+		scopeID, ok := parseOrgFleet(w, r)
+		_ = scopeID
 		if !ok {
 			return
 		}
@@ -182,12 +184,11 @@ func patchAdminFeatureFlag(svc *appfeatureflags.Service) http.HandlerFunc {
 			metaBytes = &b
 		}
 		out, err := svc.PatchFlag(r.Context(), appfeatureflags.PatchFlagParams{
-			OrganizationID: orgID,
-			FlagID:         fid,
-			DisplayName:    patch.DisplayName,
-			Description:    patch.Description,
-			Enabled:        patch.Enabled,
-			MetadataJSON:   metaBytes,
+			FlagID:       fid,
+			DisplayName:  patch.DisplayName,
+			Description:  patch.Description,
+			Enabled:      patch.Enabled,
+			MetadataJSON: metaBytes,
 		})
 		if err != nil {
 			if errors.Is(err, appfeatureflags.ErrNotFound) {
@@ -211,7 +212,8 @@ func postAdminFeatureFlagDisable(svc *appfeatureflags.Service) http.HandlerFunc 
 
 func enableDisableFeatureFlag(svc *appfeatureflags.Service, enabled bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, ok := parseOrgFleet(w, r)
+		scopeID, ok := parseOrgFleet(w, r)
+		_ = scopeID
 		if !ok {
 			return
 		}
@@ -220,7 +222,7 @@ func enableDisableFeatureFlag(svc *appfeatureflags.Service, enabled bool) http.H
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_flag_id", "invalid flagId")
 			return
 		}
-		out, err := svc.SetEnabled(r.Context(), orgID, fid, enabled)
+		out, err := svc.SetEnabled(r.Context(), scopeID, fid, enabled)
 		if err != nil {
 			if errors.Is(err, appfeatureflags.ErrNotFound) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "feature flag not found")
@@ -250,7 +252,8 @@ type targetWire struct {
 
 func putAdminFeatureFlagTargets(svc *appfeatureflags.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, ok := parseOrgFleet(w, r)
+		scopeID, ok := parseOrgFleet(w, r)
+		_ = scopeID
 		if !ok {
 			return
 		}
@@ -299,9 +302,8 @@ func putAdminFeatureFlagTargets(svc *appfeatureflags.Service) http.HandlerFunc {
 			inputs = append(inputs, in)
 		}
 		out, err := svc.ReplaceTargets(r.Context(), appfeatureflags.PutTargetsParams{
-			OrganizationID: orgID,
-			FlagID:         fid,
-			Targets:        inputs,
+			FlagID:  fid,
+			Targets: inputs,
 		})
 		if err != nil {
 			if errors.Is(err, appfeatureflags.ErrNotFound) {
@@ -337,7 +339,8 @@ type postRolloutBody struct {
 
 func postAdminMachineConfigRollouts(svc *appfeatureflags.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, ok := parseOrgFleet(w, r)
+		scopeID, ok := parseOrgFleet(w, r)
+		_ = scopeID
 		if !ok {
 			return
 		}
@@ -351,7 +354,7 @@ func postAdminMachineConfigRollouts(svc *appfeatureflags.Service) http.HandlerFu
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_rollout_id", "invalid rollbackFromRolloutId")
 				return
 			}
-			out, err := svc.RollbackRollout(r.Context(), orgID, rid)
+			out, err := svc.RollbackRollout(r.Context(), scopeID, rid)
 			if err != nil {
 				if errors.Is(err, appfeatureflags.ErrNotFound) {
 					writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "rollout not found")
@@ -395,7 +398,6 @@ func postAdminMachineConfigRollouts(svc *appfeatureflags.Service) http.HandlerFu
 				parent = &p
 			}
 			ver, err := svc.CreateMachineConfigVersion(r.Context(), appfeatureflags.CreateMachineConfigVersionParams{
-				OrganizationID:  orgID,
 				VersionLabel:    strings.TrimSpace(*body.VersionLabel),
 				ConfigPayload:   payload,
 				ParentVersionID: parent,
@@ -452,7 +454,6 @@ func postAdminMachineConfigRollouts(svc *appfeatureflags.Service) http.HandlerFu
 		}
 
 		out, err := svc.CreateRollout(r.Context(), appfeatureflags.CreateRolloutParams{
-			OrganizationID:    orgID,
 			TargetVersionID:   targetVer,
 			PreviousVersionID: prev,
 			Status:            st,
@@ -477,7 +478,8 @@ func postAdminMachineConfigRollouts(svc *appfeatureflags.Service) http.HandlerFu
 
 func listAdminMachineConfigRollouts(svc *appfeatureflags.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, ok := parseOrgFleet(w, r)
+		scopeID, ok := parseOrgFleet(w, r)
+		_ = scopeID
 		if !ok {
 			return
 		}
@@ -487,9 +489,8 @@ func listAdminMachineConfigRollouts(svc *appfeatureflags.Service) http.HandlerFu
 			return
 		}
 		out, err := svc.ListRollouts(r.Context(), appfeatureflags.ListRolloutsParams{
-			OrganizationID: orgID,
-			Limit:          limit,
-			Offset:         offset,
+			Limit:  limit,
+			Offset: offset,
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
@@ -509,7 +510,8 @@ func listAdminMachineConfigRollouts(svc *appfeatureflags.Service) http.HandlerFu
 
 func getAdminMachineConfigRollout(svc *appfeatureflags.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		orgID, ok := parseOrgFleet(w, r)
+		scopeID, ok := parseOrgFleet(w, r)
+		_ = scopeID
 		if !ok {
 			return
 		}
@@ -518,7 +520,7 @@ func getAdminMachineConfigRollout(svc *appfeatureflags.Service) http.HandlerFunc
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_rollout_id", "invalid rolloutId")
 			return
 		}
-		out, err := svc.GetRollout(r.Context(), orgID, rid)
+		out, err := svc.GetRollout(r.Context(), scopeID, rid)
 		if err != nil {
 			if errors.Is(err, appfeatureflags.ErrNotFound) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "rollout not found")

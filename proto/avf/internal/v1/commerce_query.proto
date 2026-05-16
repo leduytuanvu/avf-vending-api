@@ -12,14 +12,12 @@ service InternalCommerceQueryService {
 }
 
 message GetOrderPaymentVendStateRequest {
-  string organization_id = 1;
   string order_id = 2;
   int32 slot_index = 3;
 }
 
 message CommerceOrderSummary {
   string id = 1;
-  string organization_id = 2;
   string machine_id = 3;
   string status = 4;
   string currency = 5;

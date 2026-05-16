@@ -31,11 +31,9 @@ phase8_record() {
 
 SID="E2E-45-remote-command-ack"
 start_step "phase8-${SID}"
-
-ORG="$(get_data organizationId)"
 MID="$(get_data machineId)"
-IDS_JSON="$(jq -nc --arg o "${ORG:-}" --arg m "${MID:-}" '{organizationId:$o,machineId:$m}')"
-APIS_JSON='["POST /v1/admin/organizations/{org}/machines/{id}/commands","MQTT commands/dispatch (or enterprise .../commands)","MQTT commands/ack","MQTT commands/receipt","GET /v1/admin/organizations/{org}/commands/{id}"]'
+IDS_JSON="$(jq -nc --arg m "${MID:-}" '{machineId:$m}')"
+APIS_JSON='["POST /v1/admin/machines/{id}/commands","MQTT commands/dispatch (or enterprise .../commands)","MQTT commands/ack","MQTT commands/receipt","GET /v1/admin/commands/{id}"]'
 EXPECTED="Command dispatched; device receives; ACK + receipt published; admin GET shows terminal / accepted attempt when full admin path used."
 EVID_JSON='[]'
 

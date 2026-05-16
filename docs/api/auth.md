@@ -21,7 +21,7 @@ Production: set `ADMIN_MFA_REQUIRED_IN_PRODUCTION=true` and a **32-byte** `ADMIN
 
 Admin:
 
-- **GET /v1/admin/organizations/{organizationId}/users/{userId}/sessions** — `user:read`; subject must be scoped to the organization (`CanAccessOrganizationAdminData`).
+- **GET /v1/admin/users/{userId}/sessions** — `user:read`; subject must be scoped to the company (`CanAccessCompanyAdminData`).
 - **POST .../revoke-sessions** — `user:sessions:revoke` (existing).
 
 ## Password reset
@@ -37,4 +37,4 @@ Admin:
 ## RBAC
 
 - Fine-grained permission strings: `internal/platform/auth/permissions.go`.
-- Tenant guard for URL `organizationId`: `internal/platform/auth/admin_rbac.go` (`CanAccessOrganizationAdminData`).
+- Company guard for URL `companyId`: `internal/platform/auth/admin_rbac.go` (`CanAccessCompanyAdminData`).

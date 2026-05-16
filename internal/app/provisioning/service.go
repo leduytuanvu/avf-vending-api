@@ -78,11 +78,8 @@ type BulkCreateResult struct {
 }
 
 // BulkCreateMachines inserts machines plus provisioning metadata rows.
-func (s *Service) BulkCreateMachines(ctx context.Context, organizationID uuid.UUID, in BulkCreateInput) (BulkCreateResult, error) {
+func (s *Service) BulkCreateMachines(ctx context.Context, in BulkCreateInput) (BulkCreateResult, error) {
 	if s == nil || s.pool == nil || s.fleet == nil || s.activation == nil {
-		return BulkCreateResult{}, ErrInvalidArgument
-	}
-	if organizationID == uuid.Nil {
 		return BulkCreateResult{}, ErrInvalidArgument
 	}
 	if in.SiteID == uuid.Nil {
@@ -119,7 +116,6 @@ func (s *Service) BulkCreateMachines(ctx context.Context, organizationID uuid.UU
 	}
 
 	batchRow, err := q.InsertProvisioningBatch(ctx, db.InsertProvisioningBatchParams{
-		OrganizationID:    organizationID,
 		SiteID:            in.SiteID,
 		HardwareProfileID: hw,
 		CabinetType:       strings.TrimSpace(in.CabinetType),
@@ -140,7 +136,6 @@ func (s *Service) BulkCreateMachines(ctx context.Context, organizationID uuid.UU
 
 	for i, row := range in.Machines {
 		dm, cerr := s.fleet.CreateMachine(ctx, appfleet.CreateMachineInput{
-			OrganizationID:    organizationID,
 			SiteID:            in.SiteID,
 			HardwareProfileID: in.HardwareProfileID,
 			SerialNumber:      strings.TrimSpace(row.SerialNumber),
@@ -151,11 +146,10 @@ func (s *Service) BulkCreateMachines(ctx context.Context, organizationID uuid.UU
 			Status:            "provisioning",
 		})
 		if cerr != nil {
-			_, _ = q.UpdateProvisioningBatchStatus(ctx, db.UpdateProvisioningBatchStatusParams{
-				ID:             batchRow.ID,
-				OrganizationID: organizationID,
-				Status:         "failed",
-				MachineCount:   int32(len(out.Machines)),
+			_, _ = q.UpdateProvisioningBatchStatus(ctx, db.UpdateProvisioningBatchStatusParams{Status: "failed",
+				MachineCount: int32(len(out.Machines)),
+
+				ID: batchRow.ID,
 			})
 			return BulkCreateResult{}, cerr
 		}
@@ -169,17 +163,15 @@ func (s *Service) BulkCreateMachines(ctx context.Context, organizationID uuid.UU
 		if in.GenerateActivationCodes {
 			ar, aerr := s.activation.CreateCode(ctx, appactivation.CreateInput{
 				MachineID:        dm.ID,
-				OrganizationID:   organizationID,
 				ExpiresInMinutes: expMin,
 				MaxUses:          maxUses,
 				Notes:            fmt.Sprintf("bulk provisioning batch %s", batchRow.ID),
 			})
 			if aerr != nil {
-				_, _ = q.UpdateProvisioningBatchStatus(ctx, db.UpdateProvisioningBatchStatusParams{
-					ID:             batchRow.ID,
-					OrganizationID: organizationID,
-					Status:         "failed",
-					MachineCount:   int32(len(out.Machines)),
+				_, _ = q.UpdateProvisioningBatchStatus(ctx, db.UpdateProvisioningBatchStatusParams{Status: "failed",
+					MachineCount: int32(len(out.Machines)),
+
+					ID: batchRow.ID,
 				})
 				return BulkCreateResult{}, aerr
 			}
@@ -190,18 +182,16 @@ func (s *Service) BulkCreateMachines(ctx context.Context, organizationID uuid.UU
 
 		_, ierr := q.InsertProvisioningBatchMachine(ctx, db.InsertProvisioningBatchMachineParams{
 			BatchID:          batchRow.ID,
-			OrganizationID:   organizationID,
 			MachineID:        dm.ID,
 			SerialNumber:     strings.TrimSpace(row.SerialNumber),
 			ActivationCodeID: actID,
 			RowNo:            int32(i),
 		})
 		if ierr != nil {
-			_, _ = q.UpdateProvisioningBatchStatus(ctx, db.UpdateProvisioningBatchStatusParams{
-				ID:             batchRow.ID,
-				OrganizationID: organizationID,
-				Status:         "failed",
-				MachineCount:   int32(len(out.Machines)),
+			_, _ = q.UpdateProvisioningBatchStatus(ctx, db.UpdateProvisioningBatchStatusParams{Status: "failed",
+				MachineCount: int32(len(out.Machines)),
+
+				ID: batchRow.ID,
 			})
 			return BulkCreateResult{}, ierr
 		}
@@ -209,11 +199,10 @@ func (s *Service) BulkCreateMachines(ctx context.Context, organizationID uuid.UU
 		out.Machines = append(out.Machines, item)
 	}
 
-	final, err := q.UpdateProvisioningBatchStatus(ctx, db.UpdateProvisioningBatchStatusParams{
-		ID:             batchRow.ID,
-		OrganizationID: organizationID,
-		Status:         "completed",
-		MachineCount:   int32(len(out.Machines)),
+	final, err := q.UpdateProvisioningBatchStatus(ctx, db.UpdateProvisioningBatchStatusParams{Status: "completed",
+		MachineCount: int32(len(out.Machines)),
+
+		ID: batchRow.ID,
 	})
 	if err != nil {
 		return BulkCreateResult{}, err
@@ -225,12 +214,11 @@ func (s *Service) BulkCreateMachines(ctx context.Context, organizationID uuid.UU
 		md, _ := json.Marshal(map[string]any{"batch_id": batchRow.ID.String(), "machine_count": len(out.Machines)})
 		rid := batchRow.ID.String()
 		_ = s.audit.Record(ctx, compliance.EnterpriseAuditRecord{
-			OrganizationID: organizationID,
-			ActorType:      compliance.ActorUser,
-			Action:         compliance.ActionFleetProvisioningBulkCreated,
-			ResourceType:   "machine_provisioning_batches",
-			ResourceID:     &rid,
-			Metadata:       md,
+			ActorType:    compliance.ActorUser,
+			Action:       compliance.ActionFleetProvisioningBulkCreated,
+			ResourceType: "machine_provisioning_batches",
+			ResourceID:   &rid,
+			Metadata:     md,
 		})
 	}
 
@@ -238,25 +226,19 @@ func (s *Service) BulkCreateMachines(ctx context.Context, organizationID uuid.UU
 }
 
 // GetBatchDetail returns provisioning metadata plus activation-code visibility for operators.
-func (s *Service) GetBatchDetail(ctx context.Context, organizationID, batchID uuid.UUID) (db.MachineProvisioningBatch, []db.ListProvisioningBatchMachinesRow, error) {
+func (s *Service) GetBatchDetail(ctx context.Context, batchID uuid.UUID) (db.MachineProvisioningBatch, []db.ListProvisioningBatchMachinesRow, error) {
 	if s == nil || s.pool == nil {
 		return db.MachineProvisioningBatch{}, nil, ErrInvalidArgument
 	}
 	q := db.New(s.pool)
-	batch, err := q.GetProvisioningBatchByID(ctx, db.GetProvisioningBatchByIDParams{
-		ID:             batchID,
-		OrganizationID: organizationID,
-	})
+	batch, err := q.GetProvisioningBatchByID(ctx, batchID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.MachineProvisioningBatch{}, nil, ErrNotFound
 		}
 		return db.MachineProvisioningBatch{}, nil, err
 	}
-	items, err := q.ListProvisioningBatchMachines(ctx, db.ListProvisioningBatchMachinesParams{
-		BatchID:        batchID,
-		OrganizationID: organizationID,
-	})
+	items, err := q.ListProvisioningBatchMachines(ctx, batchID)
 	if err != nil {
 		return db.MachineProvisioningBatch{}, nil, err
 	}
