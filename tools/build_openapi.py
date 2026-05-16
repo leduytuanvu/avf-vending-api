@@ -159,8 +159,12 @@ def split_swagger_params(param_lines: list[str]) -> tuple[list[dict[str, Any]], 
         required = parts[3] == "true"
         desc = " ".join(parts[4:]).strip('"')
         if where == "body":
-            sch: dict[str, Any] = {"type": "object"}
-            if typ != "object":
+            sch: dict[str, Any]
+            if typ == "object":
+                sch = {"type": "object"}
+            elif typ.startswith("V1"):
+                sch = {"$ref": f"#/components/schemas/{typ}"}
+            else:
                 sch = {"type": "string"}
             body = {
                 "required": required,
@@ -2062,7 +2066,6 @@ def missing_reference_component_schemas() -> dict[str, Any]:
     }
     auth_account_props = {
         "accountId": dict(uuid_s),
-        "scopeId": dict(uuid_s),
         "email": {"type": "string", "format": "email"},
         "roles": {"type": "array", "items": {"type": "string"}},
     }
@@ -2189,6 +2192,26 @@ def missing_reference_component_schemas() -> dict[str, Any]:
         "required": ["id", "planogramId", "slotIndex", "maxQuantity", "createdAt"],
     }
     return {
+        "V1AuthLoginRequest": {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "format": "email"},
+                "password": {"type": "string"},
+            },
+            "required": ["email", "password"],
+        },
+        "V1AuthRefreshRequest": {
+            "type": "object",
+            "properties": {"refreshToken": {"type": "string"}},
+            "required": ["refreshToken"],
+        },
+        "V1AuthLogoutRequest": {
+            "type": "object",
+            "properties": {
+                "refreshToken": {"type": "string"},
+                "revokeAll": {"type": "boolean"},
+            },
+        },
         "V1AuthTokenPair": {
             "type": "object",
             "properties": {
@@ -2210,12 +2233,12 @@ def missing_reference_component_schemas() -> dict[str, Any]:
                 "mfaChallengeToken": {"type": "string"},
                 "mfaExpiresAt": {"type": "string", "format": "date-time", "nullable": True},
             },
-            "required": ["accountId", "scopeId", "email", "roles", "tokens"],
+            "required": ["accountId", "email", "roles", "tokens"],
         },
         "V1AuthMeResponse": {
             "type": "object",
             "properties": auth_account_props,
-            "required": ["accountId", "scopeId", "email", "roles"],
+            "required": ["accountId", "email", "roles"],
         },
         "V1AuthRefreshResponse": {
             "type": "object",
@@ -2247,7 +2270,6 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "sessionId": dict(uuid_s),
-                "scopeId": dict(uuid_s),
                 "ipAddress": {"type": "string", "nullable": True},
                 "userAgent": {"type": "string", "nullable": True},
                 "createdAt": ts,
@@ -2255,7 +2277,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
                 "expiresAt": ts,
                 "status": {"type": "string"},
             },
-            "required": ["sessionId", "scopeId", "createdAt", "expiresAt", "status"],
+            "required": ["sessionId", "createdAt", "expiresAt", "status"],
         },
         "V1AuthSessionsEnvelope": {
             "type": "object",
@@ -2456,10 +2478,9 @@ def missing_reference_component_schemas() -> dict[str, Any]:
         "V1AuthPasswordResetRequest": {
             "type": "object",
             "properties": {
-                "scopeId": dict(uuid_s),
                 "email": {"type": "string", "format": "email"},
             },
-            "required": ["scopeId", "email"],
+            "required": ["email"],
         },
         "V1AuthPasswordResetAccepted": {
             "type": "object",
@@ -2478,14 +2499,13 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "accountId": dict(uuid_s),
-                "scopeId": dict(uuid_s),
                 "email": {"type": "string", "format": "email"},
                 "roles": {"type": "array", "items": {"type": "string"}},
                 "status": {"type": "string", "enum": ["active", "disabled", "locked", "invited"]},
                 "createdAt": ts,
                 "updatedAt": ts,
             },
-            "required": ["accountId", "scopeId", "email", "roles", "status", "createdAt", "updatedAt"],
+            "required": ["accountId", "email", "roles", "status", "createdAt", "updatedAt"],
         },
         "V1AdminAuthUsersListEnvelope": {
             "type": "object",
@@ -2531,7 +2551,7 @@ def missing_reference_component_schemas() -> dict[str, Any]:
                 },
                 "roleSummary": {
                     "type": "string",
-                    "example": "platform_admin→admin.all (full access); admin→permission matrix with JWT company scope; member/viewer→read-only baseline",
+                    "example": "platform_admin→admin.all (full access); admin→permission matrix server-side; member/viewer→read-only baseline",
                 },
                 "auditActionsNote": {
                     "type": "string",
@@ -2707,6 +2727,11 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "properties": {"marked": {"type": "boolean"}},
             "required": ["marked"],
         },
+        "V1AdminMediaUploadInitRequest": {
+            "type": "object",
+            "properties": {"content_type": {"type": "string", "example": "image/jpeg"}},
+            "required": ["content_type"],
+        },
         "V1AdminMediaUploadInitResponse": {
             "type": "object",
             "properties": {
@@ -2782,7 +2807,6 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "type": "object",
             "properties": {
                 "id": uuid_s,
-                "scopeId": uuid_s,
                 "actorType": {"type": "string"},
                 "actorId": {"type": "string", "format": "uuid", "nullable": True},
                 "action": {"type": "string"},
@@ -2803,7 +2827,6 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             },
             "required": [
                 "id",
-                "scopeId",
                 "actorType",
                 "action",
                 "resourceType",
@@ -3385,7 +3408,6 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     audit_event_row_ex = {
         "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        "scopeId": _U2,
         "actorType": "user",
         "actorId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
         "action": "catalog.product.update",
@@ -3804,14 +3826,12 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     login_ok = {
         "accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        "scopeId": _U2,
         "email": "operator@example.com",
         "roles": ["admin"],
         "tokens": tok,
     }
     auth_acct_row = {
         "accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        "scopeId": _U2,
         "email": "operator@example.com",
         "roles": ["admin"],
         "status": "active",
@@ -4277,7 +4297,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             resp={"200": ({"openapi": "3.0.3", "info": {"title": "AVF Vending HTTP API", "version": "1.0"}}, None)},
         ),
         ("post", "/v1/auth/login"): ex(
-            req_body={"scopeId": _U2, "email": "operator@example.com", "password": "example-password"},
+            req_body={"email": "operator@example.com", "password": "example-password"},
             resp={
                 "200": (login_ok, None),
                 "401": (v1_error_example("unauthenticated", "invalid credentials", {}), None),
@@ -4292,7 +4312,6 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                 "200": (
                     {
                         "accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                        "scopeId": _U2,
                         "email": "operator@example.com",
                         "roles": ["admin"],
                     },
@@ -4308,7 +4327,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             req_body={"currentPassword": "example-password-old", "newPassword": "example-password-new"},
         ),
         ("post", "/v1/auth/password/reset/request"): ex(
-            req_body={"scopeId": _U2, "email": "operator@example.com"},
+            req_body={"email": "operator@example.com"},
             resp={"202": ({"accepted": True}, None)},
         ),
         ("post", "/v1/auth/password/reset/confirm"): ex(
@@ -4341,7 +4360,6 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                         "sessions": [
                             {
                                 "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                                "scopeId": _U2,
                                 "createdAt": "2026-04-19T10:00:00Z",
                                 "expiresAt": "2026-05-19T12:00:00Z",
                                 "status": "active",
@@ -4380,7 +4398,6 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                         "sessions": [
                             {
                                 "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                                "scopeId": _U2,
                                 "createdAt": "2026-04-19T10:00:00Z",
                                 "expiresAt": "2026-05-19T12:00:00Z",
                                 "status": "active",
@@ -4443,7 +4460,6 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                         "sessions": [
                             {
                                 "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                                "scopeId": _U2,
                                 "createdAt": "2026-04-19T10:00:00Z",
                                 "expiresAt": "2026-05-19T12:00:00Z",
                                 "status": "active",
@@ -4494,7 +4510,6 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
                         "sessions": [
                             {
                                 "sessionId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                                "scopeId": _U2,
                                 "createdAt": "2026-04-19T10:00:00Z",
                                 "expiresAt": "2026-05-19T12:00:00Z",
                                 "status": "active",

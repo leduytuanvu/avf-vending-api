@@ -125,9 +125,8 @@ type V1ListMeta struct {
 
 // --- Auth session (POST /v1/auth/login, /v1/auth/refresh; GET /v1/auth/me; POST /v1/auth/logout) ---
 
-// V1AuthLoginRequest is documented in tools/build_openapi.py (example scopeId + email + password).
+// V1AuthLoginRequest is documented in tools/build_openapi.py (email + password only).
 type V1AuthLoginRequest struct {
-	ScopeID  string `json:"scopeId" example:"11111111-1111-1111-1111-111111111111"`
 	Email    string `json:"email" example:"admin@example.com"`
 	Password string `json:"password" example:"••••••••"`
 }
@@ -144,7 +143,6 @@ type V1AuthTokenPair struct {
 // V1AuthLoginResponse documents POST /v1/auth/login success.
 type V1AuthLoginResponse struct {
 	AccountID             string          `json:"accountId"`
-	ScopeID               string          `json:"scopeId"`
 	Email                 string          `json:"email"`
 	Roles                 []string        `json:"roles"`
 	Tokens                V1AuthTokenPair `json:"tokens"`
@@ -157,7 +155,6 @@ type V1AuthLoginResponse struct {
 // V1AuthMeResponse documents GET /v1/auth/me success.
 type V1AuthMeResponse struct {
 	AccountID string   `json:"accountId"`
-	ScopeID   string   `json:"scopeId"`
 	Email     string   `json:"email"`
 	Roles     []string `json:"roles"`
 }
@@ -185,8 +182,7 @@ type V1AuthChangePasswordRequest struct {
 }
 
 type V1AuthPasswordResetRequest struct {
-	ScopeID string `json:"scopeId"`
-	Email   string `json:"email"`
+	Email string `json:"email"`
 }
 
 type V1AuthPasswordResetAccepted struct {
@@ -223,7 +219,6 @@ type V1AuthSessionsEnvelope struct {
 // V1AuthSessionItem is one admin console session row (no refresh material).
 type V1AuthSessionItem struct {
 	SessionID  string  `json:"sessionId"`
-	ScopeID    string  `json:"scopeId"`
 	IPAddress  *string `json:"ipAddress,omitempty"`
 	UserAgent  *string `json:"userAgent,omitempty"`
 	CreatedAt  string  `json:"createdAt"`
@@ -245,7 +240,6 @@ type V1AdminAuthSessionsEnvelope struct {
 // V1AdminAuthAccount is one row under GET/PATCH /v1/admin/auth/users (no password fields).
 type V1AdminAuthAccount struct {
 	AccountID string   `json:"accountId"`
-	ScopeID   string   `json:"scopeId"`
 	Email     string   `json:"email"`
 	Roles     []string `json:"roles"`
 	Status    string   `json:"status"`
@@ -289,7 +283,7 @@ type V1AdminAuthResetPasswordRequest struct {
 // V1RBACPermissionMatrixDoc is documentation-only metadata for OpenAPI (no HTTP route). Authoritative mapping lives in internal/platform/auth/permissions.go and internal/platform/auth/admin_rbac.go (company scoping).
 type V1RBACPermissionMatrixDoc struct {
 	PermissionExamples []string `json:"permissionExamples" example:"user:read,user:write,user:roles,user:sessions:revoke,catalog:read,fleet:read,payment:read,payment:refund,report:read,audit:read,machine:command,setup:machine,technician:operate"`
-	RoleSummary        string   `json:"roleSummary" example:"platform_admin→admin.all (explicit scopeId in URL or scope query); admin→permission matrix limited to JWT scope_id; member/viewer→read-only baseline"`
+	RoleSummary        string   `json:"roleSummary" example:"platform_admin→admin.all (full access); admin→permission matrix server-side; member/viewer→read-only baseline"`
 	AuditActionsNote   string   `json:"auditActionsNote" example:"User admin mutations emit auth.user.* and role.changed; auth.login.success/failed; MFA TOTP emits auth.mfa.*; session revoke emits auth.session.* and user.sessions.revoked"`
 }
 
@@ -298,7 +292,6 @@ type V1RBACPermissionMatrixDoc struct {
 // V1EnterpriseAuditEvent is one append-only row from GET /v1/admin/audit/events.
 type V1EnterpriseAuditEvent struct {
 	ID           string          `json:"id"`
-	ScopeID      string          `json:"scopeId"`
 	ActorType    string          `json:"actorType"`
 	ActorID      *string         `json:"actorId,omitempty"`
 	Action       string          `json:"action"`

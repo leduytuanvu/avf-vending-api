@@ -43,3 +43,4 @@ There is **no** automated `Down` for this script. Rollback is **restore from bac
 
 - [Migration safety](../migration-safety.md) — destructive patterns in goose `Up` are blocked in CI.
 - Goose migration `00073_single_company_scope_consolidation.sql` — applies only non-destructive uniqueness indexes.
+- Goose migration `00075_audit_events_relax_company_scope.sql` — drops legacy `audit_events` scope indexes and makes `scope_id` / `organization_id` nullable when those columns still exist, so enterprise audit INSERTs (auth login, etc.) no longer hit NOT NULL violations. After operators confirm API traffic and backups, optional manual follow-up: `ALTER TABLE audit_events DROP COLUMN IF EXISTS scope_id` and `DROP COLUMN IF EXISTS organization_id` (only if both code and SQL no longer reference them — canonical schema has neither column).

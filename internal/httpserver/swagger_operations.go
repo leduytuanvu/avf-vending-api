@@ -80,7 +80,7 @@ func DocOpSwaggerIndex() {}
 
 // DocOpV1AuthLogin godoc
 // @Summary Exchange email/password for JWT session tokens
-// @Description Authenticates an **API account** for a specific company. Returns access + refresh tokens and resolved roles. On failure returns **401** with `unauthenticated` or credential-specific codes. Rate limiting may apply when `HTTP_RATE_LIMIT_SENSITIVE_WRITES_ENABLED=true` (sensitive-write bucket).
+// @Description Authenticates an **API account** for the deployed tenant (single-company runtime). Returns access + refresh tokens and resolved roles. On failure returns **401** with `unauthenticated` or credential-specific codes. Rate limiting may apply when `HTTP_RATE_LIMIT_SENSITIVE_WRITES_ENABLED=true` (sensitive-write bucket).
 // @Tags Auth
 // @Accept json
 // @Produce json
@@ -109,7 +109,7 @@ func DocOpV1AuthRefresh() {}
 
 // DocOpV1AuthMe godoc
 // @Summary Current authenticated principal
-// @Description Returns account id, company id (when scoped), email, and roles for the Bearer access token. Requires `Authorization: Bearer` on `/v1/auth/*` bearer group.
+// @Description Returns account id, email, and roles for the Bearer access token. Requires `Authorization: Bearer` on `/v1/auth/*` bearer group.
 // @Tags Auth
 // @Security BearerAuth
 // @Produce json
@@ -169,7 +169,7 @@ func DocOpV1AuthPasswordChange() {}
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param body body V1AuthPasswordResetRequest true "Company and email"
+// @Param body body V1AuthPasswordResetRequest true "Account email"
 // @Success 202 {object} V1AuthPasswordResetAccepted
 // @Failure 400 {object} V1StandardError
 // @Router /v1/auth/password/reset/request [post]
