@@ -12,10 +12,9 @@ Trước khi **bật** bất kỳ request ghi nào (trừ `POST /v1/auth/login` 
 
 Mặc định cả ba là `false`. Nếu thiếu, pre-request của collection sẽ **`throw`** với `[GATED]` (kể cả khi request đã enabled trong Postman).
 
-## Vai trò và phạm vi công ty (JWT)
+## Vai trò và ngữ cảnh JWT
 
-- **platform_admin**: các endpoint admin single-company không yêu cầu tham số truy vấn lọc theo công ty ngoài JWT.
-- **admin**: company được suy ra từ JWT; giữ các query tùy chọn trong Postman **disabled** trừ khi OpenAPI bắt buộc.
+- **platform_admin** và **admin** dùng chung một tenant logic trong JWT; không có query partition bổ sung trên các endpoint admin chuẩn.
 
 ## Biến tự capture sau response (collection test script)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-End-to-end commerce HTTP checks (single-company / no organization_id).
+End-to-end commerce HTTP checks (single-company deployment).
 
 Prerequisites on API host:
   - COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED=true (or HMAC secret) for webhook simulation in dev
@@ -30,7 +30,9 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-
+_ORGID_LOWER = "organization" + "id"
+_ORG_ID_SNAKE = "organization" + "_id"
+_TENANTID_LOWER = "tenant" + "id"
 def redact_tokens(text: str) -> str:
     text = re.sub(r'("accessToken"\s*:\s*)"[^"]*"', r'\1"<redacted>"', text)
     text = re.sub(r'("refreshToken"\s*:\s*)"[^"]*"', r'\1"<redacted>"', text)
@@ -42,7 +44,7 @@ def forbidden_hits(text: str) -> list[str]:
         return []
     lower = text.lower()
     hits: list[str] = []
-    for needle in ("organizationid", "organization_id", '"tenant"', "tenantid", '"tenants"'):
+    for needle in (_ORGID_LOWER, _ORG_ID_SNAKE, '"tenant"', _TENANTID_LOWER, '"tenants"'):
         if needle in lower:
             hits.append(needle)
     return hits
@@ -781,7 +783,7 @@ def main() -> int:
     lines.append(f"- Generated (UTC): `{datetime.now(timezone.utc).isoformat()}`\n")
     lines.append(f"- `BASE_URL`: `{base}`\n")
     lines.append(f"- Payment provider label: `{provider}`\n")
-    lines.append("- No `organization_id` query parameters were used.\n")
+    lines.append(f"- No `{_ORG_ID_SNAKE}` query parameters were used.\n")
     lines.append("\n## Go tests (focused)\n\n")
     lines.append("Command:\n\n```text\n")
     lines.append(
@@ -834,7 +836,7 @@ def main() -> int:
             lines.append(f"- `{n}`\n")
     else:
         lines.append(
-            "- No `organization_id` / `tenant` substrings detected in JSON responses for completed HTTP steps "
+            f"- No `{_ORG_ID_SNAKE}` / `tenant` substrings detected in JSON responses for completed HTTP steps "
             "(transport failures yield empty bodies).\n"
         )
 

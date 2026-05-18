@@ -1,5 +1,4 @@
--- Canonical DDL mirror of goose migrations (00002 platform, 00004 device ingest, 00005 catalog/pricing/promotions, 00006 command protocol traceability, 00007 financial ledger reconciliation, 00008 machine operator sessions, 00009 operator action attribution correlation, 00010 operator session activity end reason, 00011 operator domain resources, 00014 platform auth API accounts, 00015 machine cabinets/assortments/inventory, 00016 machine slot layouts/configs, 00017 platform timezones and machine identity snapshot columns, 00018 machine cabinet index/slot_capacity/status, 00019 inventory ledger columns and refill_session_lines) for sqlc.
--- When changing schema, update migrations first, then sync this file.
+-- Canonical single-company platform DDL used by sqlc (sqlc.yaml) and goose baseline migration 00002.
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
@@ -106,6 +105,94 @@ WHERE
 CREATE INDEX ix_machine_sessions_machine_exp ON machine_sessions (machine_id, expires_at DESC);
 
 CREATE INDEX ix_machine_sessions_credential ON machine_sessions (credential_id);
+
+CREATE TABLE platform_auth_accounts (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    email text NOT NULL,
+    password_hash text NOT NULL,
+    roles text[] NOT NULL DEFAULT '{}'::text[],
+    status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled', 'locked', 'invited')),
+    failed_login_count integer NOT NULL DEFAULT 0,
+    locked_until timestamptz,
+    last_login_at timestamptz,
+    invited_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE auth_refresh_tokens (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
+    token_hash bytea NOT NULL,
+    expires_at timestamptz NOT NULL,
+    revoked_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    last_used_at timestamptz,
+    ip_address text,
+    user_agent text
+);
+
+CREATE INDEX ix_auth_refresh_tokens_account_created ON auth_refresh_tokens (account_id, created_at DESC);
+CREATE UNIQUE INDEX ux_auth_refresh_tokens_active_hash ON auth_refresh_tokens (token_hash)
+WHERE revoked_at IS NULL;
+
+CREATE TABLE admin_mfa_factors (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
+    factor_type text NOT NULL CHECK (factor_type = 'totp'),
+    secret_ciphertext bytea NOT NULL,
+    status text NOT NULL CHECK (status IN ('pending', 'active', 'disabled')),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    verified_at timestamptz,
+    disabled_at timestamptz,
+    CONSTRAINT ux_admin_mfa_factors_user_factor UNIQUE (user_id, factor_type)
+);
+
+CREATE TABLE admin_sessions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
+    refresh_token_id uuid NOT NULL UNIQUE REFERENCES auth_refresh_tokens (id) ON DELETE CASCADE,
+    refresh_token_hash bytea NOT NULL,
+    status text NOT NULL CHECK (status IN ('active', 'revoked', 'expired')),
+    ip_address text,
+    user_agent text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    last_used_at timestamptz,
+    expires_at timestamptz NOT NULL,
+    revoked_at timestamptz
+);
+
+CREATE TABLE admin_login_attempts (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    email_normalized text NOT NULL,
+    user_id uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL,
+    ip_address text,
+    user_agent text,
+    success boolean NOT NULL,
+    failure_reason text,
+    occurred_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX ix_admin_login_attempts_occurred ON admin_login_attempts (occurred_at DESC);
+
+CREATE TABLE password_reset_tokens (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
+    token_hash bytea NOT NULL,
+    expires_at timestamptz NOT NULL,
+    used_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    status text NOT NULL CHECK (status IN ('active', 'used', 'expired', 'revoked')),
+    revoked_at timestamptz
+);
+
+CREATE UNIQUE INDEX ux_password_reset_tokens_active_hash ON password_reset_tokens (token_hash)
+WHERE status = 'active';
+
+CREATE INDEX ix_password_reset_tokens_user_created ON password_reset_tokens (user_id, created_at DESC);
+
+-- Multi-cabinet, assortments, inventory ledger (migrations/00015_machine_cabinets_assortments_inventory.sql).
+
 
 CREATE TABLE technicians (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2040,92 +2127,6 @@ LEFT JOIN technicians t ON t.id = s.technician_id;
 
 COMMENT ON VIEW v_machine_current_operator IS 'Convenience join for UI: one row per machine; operator_session_id NULL when nobody logged in. At most one ACTIVE session per machine is enforced by index ux_machine_operator_sessions_one_active.';
 
-CREATE TABLE platform_auth_accounts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    email text NOT NULL,
-    password_hash text NOT NULL,
-    roles text[] NOT NULL DEFAULT '{}'::text[],
-    status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled', 'locked', 'invited')),
-    failed_login_count integer NOT NULL DEFAULT 0,
-    locked_until timestamptz,
-    last_login_at timestamptz,
-    invited_at timestamptz,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE auth_refresh_tokens (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    account_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
-    token_hash bytea NOT NULL,
-    expires_at timestamptz NOT NULL,
-    revoked_at timestamptz,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    last_used_at timestamptz,
-    ip_address text,
-    user_agent text
-);
-
-CREATE INDEX ix_auth_refresh_tokens_account_created ON auth_refresh_tokens (account_id, created_at DESC);
-CREATE UNIQUE INDEX ux_auth_refresh_tokens_active_hash ON auth_refresh_tokens (token_hash)
-WHERE revoked_at IS NULL;
-
-CREATE TABLE admin_mfa_factors (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
-    factor_type text NOT NULL CHECK (factor_type = 'totp'),
-    secret_ciphertext bytea NOT NULL,
-    status text NOT NULL CHECK (status IN ('pending', 'active', 'disabled')),
-    created_at timestamptz NOT NULL DEFAULT now(),
-    verified_at timestamptz,
-    disabled_at timestamptz,
-    CONSTRAINT ux_admin_mfa_factors_user_factor UNIQUE (user_id, factor_type)
-);
-
-CREATE TABLE admin_sessions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
-    refresh_token_id uuid NOT NULL UNIQUE REFERENCES auth_refresh_tokens (id) ON DELETE CASCADE,
-    refresh_token_hash bytea NOT NULL,
-    status text NOT NULL CHECK (status IN ('active', 'revoked', 'expired')),
-    ip_address text,
-    user_agent text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    last_used_at timestamptz,
-    expires_at timestamptz NOT NULL,
-    revoked_at timestamptz
-);
-
-CREATE TABLE admin_login_attempts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    email_normalized text NOT NULL,
-    user_id uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL,
-    ip_address text,
-    user_agent text,
-    success boolean NOT NULL,
-    failure_reason text,
-    occurred_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX ix_admin_login_attempts_occurred ON admin_login_attempts (occurred_at DESC);
-
-CREATE TABLE password_reset_tokens (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
-    token_hash bytea NOT NULL,
-    expires_at timestamptz NOT NULL,
-    used_at timestamptz,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    status text NOT NULL CHECK (status IN ('active', 'used', 'expired', 'revoked')),
-    revoked_at timestamptz
-);
-
-CREATE UNIQUE INDEX ux_password_reset_tokens_active_hash ON password_reset_tokens (token_hash)
-WHERE status = 'active';
-
-CREATE INDEX ix_password_reset_tokens_user_created ON password_reset_tokens (user_id, created_at DESC);
-
--- Multi-cabinet, assortments, inventory ledger (migrations/00015_machine_cabinets_assortments_inventory.sql).
 CREATE TABLE machine_cabinets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
