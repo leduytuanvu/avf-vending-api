@@ -392,14 +392,14 @@ func TestLoad_AuditCriticalFailOpenForbiddenOutsideDevTest(t *testing.T) {
 	}
 }
 
-func TestLoad_InvalidPlatformAuditScopeID(t *testing.T) {
+func TestLoad_InvalidPlatformAuditCompanyID(t *testing.T) {
 	setMinimalValidLoadEnv(t)
-	t.Setenv("PLATFORM_AUDIT_SCOPE_ID", "not-a-uuid")
+	t.Setenv("PLATFORM_AUDIT_COMPANY_ID", "not-a-uuid")
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if !strings.Contains(err.Error(), "PLATFORM_AUDIT_SCOPE_ID") {
+	if !strings.Contains(err.Error(), "PLATFORM_AUDIT_COMPANY_ID") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

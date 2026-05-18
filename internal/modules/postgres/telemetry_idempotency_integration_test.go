@@ -41,7 +41,7 @@ func TestAppendInventoryEventFromDeviceTelemetry_duplicateSafe(t *testing.T) {
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 	mid := testfixtures.DevMachineID
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 	idem := "inv-idem-" + uuid.NewString()
 	payload, err := json.Marshal(map[string]any{
 		"event_type":     "adjustment",

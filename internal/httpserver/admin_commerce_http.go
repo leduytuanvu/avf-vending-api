@@ -90,17 +90,15 @@ func mountAdminCommerceRoutes(r chi.Router, app *api.HTTPApplication, writeRL fu
 	})
 }
 
-func parseAdminCommerceScopeID(r *http.Request) (uuid.UUID, error) {
+func adminCommerceRequirePrincipal(r *http.Request) error {
 	if _, ok := auth.PrincipalFromContext(r.Context()); !ok {
-		return uuid.Nil, listscope.ErrInvalidListQuery
+		return listscope.ErrInvalidListQuery
 	}
-	return uuid.Nil, nil
+	return nil
 }
 
 func parseAdminCommerceReconciliationScope(r *http.Request) (listscope.CompanyCommerce, error) {
-	scopeID, err := parseAdminCommerceScopeID(r)
-	_ = scopeID
-	if err != nil {
+	if err := adminCommerceRequirePrincipal(r); err != nil {
 		return listscope.CompanyCommerce{}, err
 	}
 	limit, offset, err := parseAdminLimitOffset(r)
@@ -117,9 +115,7 @@ func parseAdminCommerceReconciliationScope(r *http.Request) (listscope.CompanyCo
 }
 
 func parseAdminRefundListScope(r *http.Request) (listscope.CompanyCommerce, error) {
-	scopeID, err := parseAdminCommerceScopeID(r)
-	_ = scopeID
-	if err != nil {
+	if err := adminCommerceRequirePrincipal(r); err != nil {
 		return listscope.CompanyCommerce{}, err
 	}
 	limit, offset, err := parseAdminLimitOffset(r)
@@ -134,20 +130,19 @@ func parseAdminRefundListScope(r *http.Request) (listscope.CompanyCommerce, erro
 	}, nil
 }
 
-func parseAdminOrderTimelineScope(r *http.Request) (scopeID uuid.UUID, orderID uuid.UUID, limit int32, offset int32, err error) {
-	scopeID, err = parseAdminCommerceScopeID(r)
-	if err != nil {
-		return uuid.Nil, uuid.Nil, 0, 0, err
+func parseAdminOrderTimelineParams(r *http.Request) (orderID uuid.UUID, limit int32, offset int32, err error) {
+	if err := adminCommerceRequirePrincipal(r); err != nil {
+		return uuid.Nil, 0, 0, err
 	}
 	orderID, err = uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
 	if err != nil || orderID == uuid.Nil {
-		return uuid.Nil, uuid.Nil, 0, 0, listscope.ErrInvalidListQuery
+		return uuid.Nil, 0, 0, listscope.ErrInvalidListQuery
 	}
 	limit, offset, err = parseAdminLimitOffset(r)
 	if err != nil {
-		return uuid.Nil, uuid.Nil, 0, 0, listscope.ErrInvalidListQuery
+		return uuid.Nil, 0, 0, listscope.ErrInvalidListQuery
 	}
-	return scopeID, orderID, limit, offset, nil
+	return orderID, limit, offset, nil
 }
 
 func listAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
@@ -164,9 +159,7 @@ func listAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc 
 
 func getAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -175,7 +168,7 @@ func getAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_case_id", "invalid reconciliation case id")
 			return
 		}
-		out, err := app.Reconciliation.GetReconciliationCase(r.Context(), scopeID, caseID)
+		out, err := app.Reconciliation.GetReconciliationCase(r.Context(), caseID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "reconciliation case not found")
 			return
@@ -190,12 +183,12 @@ func getAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 
 func listAdminCommerceOrderTimeline(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, orderID, limit, offset, err := parseAdminOrderTimelineScope(r)
+		orderID, limit, offset, err := parseAdminOrderTimelineParams(r)
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		out, err := app.Reconciliation.ListOrderTimeline(r.Context(), scopeID, orderID, limit, offset)
+		out, err := app.Reconciliation.ListOrderTimeline(r.Context(), orderID, limit, offset)
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "order not found for company")
 			return
@@ -222,9 +215,7 @@ func listAdminCommerceRefundRequests(app *api.HTTPApplication) http.HandlerFunc 
 
 func getAdminCommerceRefundRequest(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -233,7 +224,7 @@ func getAdminCommerceRefundRequest(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_refund_id", "invalid refund request id")
 			return
 		}
-		out, err := app.Reconciliation.GetRefundRequest(r.Context(), scopeID, refundRequestID)
+		out, err := app.Reconciliation.GetRefundRequest(r.Context(), refundRequestID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "refund request not found")
 			return
@@ -248,9 +239,7 @@ func getAdminCommerceRefundRequest(app *api.HTTPApplication) http.HandlerFunc {
 
 func resolveAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -304,9 +293,7 @@ func resolveAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFu
 
 func ignoreAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -363,9 +350,7 @@ func requestRefundAdminCommerceReconciliation(app *api.HTTPApplication) http.Han
 			writeCapabilityNotConfigured(w, r.Context(), "commerce.refund", "commerce service is required")
 			return
 		}
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -437,9 +422,7 @@ func createAdminCommerceOrderRefund(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}

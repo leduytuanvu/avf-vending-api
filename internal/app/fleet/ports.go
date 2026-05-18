@@ -81,11 +81,11 @@ type UpdateMachineMetadataParams struct {
 
 // InsertAssignmentParams creates a technician–machine assignment row.
 type InsertAssignmentParams struct {
-	TechnicianID uuid.UUID
-	MachineID    uuid.UUID
-	Role         string
-	Scope        string
-	CreatedBy    *uuid.UUID
+	TechnicianID     uuid.UUID
+	MachineID        uuid.UUID
+	Role             string
+	AssignmentDomain string
+	CreatedBy        *uuid.UUID
 }
 
 // ListMachinesScope selects machines visible within an company, optionally narrowed to a site.

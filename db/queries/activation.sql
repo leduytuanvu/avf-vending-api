@@ -29,7 +29,7 @@ WHERE
 ORDER BY
     created_at DESC;
 
--- name: ListMachineActivationCodesForScope :many
+-- name: ListMachineActivationCodesPaged :many
 SELECT
     *
 FROM
@@ -38,7 +38,7 @@ ORDER BY
     created_at DESC
 LIMIT $1 OFFSET $2;
 
--- name: CountMachineActivationCodesForScope :one
+-- name: CountMachineActivationCodesAll :one
 SELECT
     count(*)::bigint AS cnt
 FROM
@@ -65,7 +65,7 @@ WHERE
     AND status = 'active'
 RETURNING *;
 
--- name: RevokeMachineActivationCodeForScope :one
+-- name: RevokeMachineActivationCodeActive :one
 UPDATE machine_activation_codes
 SET
     status = 'revoked',

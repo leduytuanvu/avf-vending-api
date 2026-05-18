@@ -17,7 +17,7 @@ func TestParseAdminFleetCompanyScope_orgAdminCrossCompanyDenied(t *testing.T) {
 	_ = orgMine
 	orgOther := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("scopeId", orgOther.String())
+	rctx.URLParams.Add("companyPathToken", orgOther.String())
 	req := httptest.NewRequest("GET", "/", nil)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	p := auth.Principal{
@@ -26,7 +26,7 @@ func TestParseAdminFleetCompanyScope_orgAdminCrossCompanyDenied(t *testing.T) {
 	}
 	req = req.WithContext(auth.WithPrincipal(req.Context(), p))
 	if _, err := parseAdminFleetCompanyScope(req); err == nil {
-		t.Fatal("expected company scope error for cross-org path scopeId")
+		t.Fatal("expected company scope error for cross-org path company token")
 	}
 }
 
@@ -36,7 +36,7 @@ func TestParseAdminFleetCompanyScope_orgAdminSameCompany(t *testing.T) {
 	org := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	_ = org
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("scopeId", org.String())
+	rctx.URLParams.Add("companyPathToken", org.String())
 	req := httptest.NewRequest("GET", "/", nil)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	p := auth.Principal{

@@ -110,7 +110,7 @@ func TestOperatorSession_HeartbeatRejectedAfterEnd(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = svc.HeartbeatOperatorSession(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, sess.ID)
+	_, err = svc.HeartbeatOperatorSession(ctx, testfixtures.DevCompanyID, testfixtures.DevMachineID, sess.ID)
 	require.ErrorIs(t, err, domainoperator.ErrSessionNotActive)
 }
 
@@ -255,7 +255,7 @@ func TestOperatorInsightLists_AttributionsForFlows(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	attr, err := svc.ListActionAttributionsForMachine(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, 100)
+	attr, err := svc.ListActionAttributionsForMachine(ctx, testfixtures.DevCompanyID, testfixtures.DevMachineID, 100)
 	require.NoError(t, err)
 
 	found := map[string]bool{}
@@ -271,15 +271,15 @@ func TestOperatorInsightLists_AttributionsForFlows(t *testing.T) {
 	require.True(t, found["command_ledger"], "command attribution")
 	require.True(t, found["incidents"], "incident attribution")
 
-	byTech, err := svc.ListActionAttributionsForTechnician(ctx, testfixtures.DevScopeID, tid, 200)
+	byTech, err := svc.ListActionAttributionsForTechnician(ctx, testfixtures.DevCompanyID, tid, 200)
 	require.NoError(t, err)
 	require.NotEmpty(t, byTech)
 
-	tl, err := svc.BuildMachineOperatorTimeline(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, 50)
+	tl, err := svc.BuildMachineOperatorTimeline(ctx, testfixtures.DevCompanyID, testfixtures.DevMachineID, 50)
 	require.NoError(t, err)
 	require.NotEmpty(t, tl)
 
-	authEvents, err := svc.ListAuthEventsForMachine(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, 20)
+	authEvents, err := svc.ListAuthEventsForMachine(ctx, testfixtures.DevCompanyID, testfixtures.DevMachineID, 20)
 	require.NoError(t, err)
 	require.NotEmpty(t, authEvents)
 

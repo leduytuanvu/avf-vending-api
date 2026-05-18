@@ -70,7 +70,7 @@ func TestProjectionRowFromOutboxEvent_StablePayloadAndOccurredAt(t *testing.T) {
 	if row.OccurredAt != "2026-04-29T01:01:59Z" {
 		t.Fatalf("occurred_at=%q", row.OccurredAt)
 	}
-	if row.ScopeID != "" || row.AggregateID != aggID.String() || row.IdempotencyKey != idem {
+	if row.CompanyID != "" || row.AggregateID != aggID.String() || row.IdempotencyKey != idem {
 		t.Fatalf("unexpected row: %+v", row)
 	}
 }

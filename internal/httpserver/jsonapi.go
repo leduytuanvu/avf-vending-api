@@ -25,12 +25,8 @@ func writeAPIErrorDetails(w http.ResponseWriter, ctx context.Context, status int
 }
 
 func writeV1ListError(w http.ResponseWriter, ctx context.Context, err error) {
-	if errors.Is(err, api.ErrInvalidListQuery) {
+	if errors.Is(err, listscope.ErrInvalidListQuery) {
 		writeAPIError(w, ctx, http.StatusBadRequest, "invalid_query", "invalid list query parameters")
-		return
-	}
-	if errors.Is(err, api.ErrCommerceCompanyQueryRequired) {
-		writeAPIError(w, ctx, http.StatusBadRequest, "scope_id_required", "scope_id query parameter is required for platform administrators")
 		return
 	}
 	var capErr *api.CapabilityError
@@ -46,7 +42,7 @@ func writeV1ListError(w http.ResponseWriter, ctx context.Context, err error) {
 		))
 		return
 	}
-	if errors.Is(err, api.ErrAdminCompanyScopeRequired) || errors.Is(err, listscope.ErrAdminCompanyRequired) {
+	if errors.Is(err, listscope.ErrAdminCompanyRequired) {
 		writeAPIError(w, ctx, http.StatusBadRequest, "company_scope_required", "company scope is required for this list")
 		return
 	}

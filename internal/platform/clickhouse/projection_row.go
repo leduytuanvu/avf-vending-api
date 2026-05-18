@@ -29,7 +29,7 @@ type ProjectionRow struct {
 	EventType      string `json:"event_type"`
 	AggregateType  string `json:"aggregate_type"`
 	AggregateID    string `json:"aggregate_id"`
-	ScopeID        string `json:"scope_id"`
+	CompanyID      string `json:"company_id"`
 	OccurredAt     string `json:"occurred_at"`
 	PublishedAt    string `json:"published_at"`
 	IngestedAt     string `json:"ingested_at"`
@@ -76,7 +76,7 @@ func projectionRowFromOutboxEvent(ev domaincommerce.OutboxEvent, projectionType 
 		EventType:      ev.EventType,
 		AggregateType:  ev.AggregateType,
 		AggregateID:    ev.AggregateID.String(),
-		ScopeID:        org,
+		CompanyID:      org,
 		OccurredAt:     occurredAt,
 		PublishedAt:    pub,
 		IngestedAt:     time.Now().UTC().Format(time.RFC3339Nano),

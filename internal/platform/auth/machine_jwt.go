@@ -169,7 +169,7 @@ func jwtHeaderKid(t *jwt.Token) string {
 }
 
 // ParseMachineAccessClaimsFromPayload validates issuer, typ, aud, token_use,
-// role=machine, scope_id, and machine_id binding.
+// role=machine, and machine_id binding.
 func ParseMachineAccessClaimsFromPayload(payloadJSON []byte, leeway time.Duration, wantAudience, wantIssuer string, requireAudience bool) (MachineAccessClaims, error) {
 	if wantAudience == "" {
 		wantAudience = AudienceMachineGRPC

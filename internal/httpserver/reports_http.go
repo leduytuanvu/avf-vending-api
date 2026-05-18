@@ -6,7 +6,6 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/app/reporting"
-	"github.com/google/uuid"
 )
 
 func getAdminOrgReportVends(app *api.HTTPApplication, svc api.ReportingService) http.HandlerFunc {
@@ -26,7 +25,7 @@ func getAdminOrgReportVends(app *api.HTTPApplication, svc api.ReportingService) 
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, uuid.Nil, "vends")
+			recordReportExportAudit(r, app, "vends")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="vends.csv"`)
 			if err := reporting.WriteVendSummaryCSV(w, out); err != nil {
@@ -63,7 +62,7 @@ func getAdminOrgReportInventoryUnified(app *api.HTTPApplication, svc api.Reporti
 				return
 			}
 			if wantsCSV(r) {
-				recordReportExportAudit(r, app, uuid.Nil, "inventory_movement")
+				recordReportExportAudit(r, app, "inventory_movement")
 				w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 				w.Header().Set("Content-Disposition", `attachment; filename="inventory-movement.csv"`)
 				if err := reporting.WriteStockMovementCSV(w, out); err != nil {
@@ -90,7 +89,7 @@ func getAdminOrgReportInventoryUnified(app *api.HTTPApplication, svc api.Reporti
 				return
 			}
 			if wantsCSV(r) {
-				recordReportExportAudit(r, app, uuid.Nil, "inventory_low_stock")
+				recordReportExportAudit(r, app, "inventory_low_stock")
 				w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 				w.Header().Set("Content-Disposition", `attachment; filename="inventory-low-stock.csv"`)
 				if err := reporting.WriteInventoryExceptionsCSV(w, out); err != nil {
@@ -120,7 +119,7 @@ func getAdminOrgReportMachines(app *api.HTTPApplication, svc api.ReportingServic
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, uuid.Nil, "machines")
+			recordReportExportAudit(r, app, "machines")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="machines.csv"`)
 			if err := reporting.WriteMachineHealthCSV(w, out); err != nil {
@@ -149,7 +148,7 @@ func getAdminOrgReportProducts(app *api.HTTPApplication, svc api.ReportingServic
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, uuid.Nil, "products")
+			recordReportExportAudit(r, app, "products")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="products.csv"`)
 			if err := reporting.WriteProductPerformanceCSV(w, out); err != nil {
@@ -184,7 +183,7 @@ func getAdminOrgReportReconciliationBI(app *api.HTTPApplication, svc api.Reporti
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, uuid.Nil, "reconciliation_bi")
+			recordReportExportAudit(r, app, "reconciliation_bi")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="reconciliation.csv"`)
 			if err := reporting.WriteReconciliationBICSV(w, out); err != nil {
@@ -213,7 +212,7 @@ func getAdminOrgReportCommandFailures(app *api.HTTPApplication, svc api.Reportin
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, uuid.Nil, "command_failures")
+			recordReportExportAudit(r, app, "command_failures")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="command-failures.csv"`)
 			if err := reporting.WriteCommandFailuresCSV(w, out); err != nil {
@@ -242,7 +241,7 @@ func getAdminOrgReportTechnicianFills(app *api.HTTPApplication, svc api.Reportin
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, uuid.Nil, "technician_fills")
+			recordReportExportAudit(r, app, "technician_fills")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="technician-fills.csv"`)
 			if err := reporting.WriteTechnicianFillOpsCSV(w, out); err != nil {

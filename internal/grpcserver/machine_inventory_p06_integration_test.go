@@ -86,8 +86,8 @@ func TestP06_MachineGRPC_StockAdjustment_IsAudited(t *testing.T) {
 	var n int
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT COUNT(*) FROM audit_events
-WHERE scope_id = $1 AND action = $2 AND resource_id = $3`,
-		uuid.Nil,
+WHERE machine_id = $1 AND action = $2 AND resource_id = $3`,
+		testfixtures.DevMachineID,
 		compliance.ActionInventoryAdjusted,
 		testfixtures.DevMachineID.String(),
 	).Scan(&n))

@@ -17,7 +17,7 @@ lint:
 breaking:
   use:
     - FILE
-  # Single-company machine API: `organization_id` was removed from machine-facing messages.
+  # Single-company machine API: legacy tenant identifiers were removed from machine-facing messages.
   # Buf FILE breaking treats deleted fields as incompatible; per-file waiver limits blast radius vs the whole tree.
   ignore_only:
     FIELD_NO_DELETE:

@@ -23,7 +23,7 @@ type MachineOrgSite struct {
 	SiteID uuid.UUID
 }
 
-// GetMachineOrgSite returns site_id for a machine (single-company schema; no machines.scope_id).
+// GetMachineOrgSite returns site_id for a machine (single-deployment schema).
 func (s *Store) GetMachineOrgSite(ctx context.Context, machineID uuid.UUID) (MachineOrgSite, error) {
 	if s == nil || s.pool == nil {
 		return MachineOrgSite{}, errors.New("postgres: nil store")
@@ -592,7 +592,7 @@ func (s *Store) AppendInventoryEventFromDeviceTelemetry(ctx context.Context, env
 		occ = env.EmittedAt.UTC()
 	}
 	elem := map[string]any{
-		"scope_id":       env.CompanyID.String(),
+		"company_id":     env.CompanyID.String(),
 		"machine_id":     env.MachineID.String(),
 		"slot_code":      strings.TrimSpace(wire.SlotCode),
 		"event_type":     wire.EventType,
@@ -696,7 +696,7 @@ func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, sco
 	}
 	slotCode := fmt.Sprintf("S%d", slotIndex)
 	elem := map[string]any{
-		"scope_id":       scopeID.String(),
+		"company_id":     scopeID.String(),
 		"machine_id":     machineID.String(),
 		"slot_code":      slotCode,
 		"event_type":     "sale",

@@ -123,7 +123,7 @@ CREATE TABLE technician_machine_assignments (
     technician_id uuid NOT NULL REFERENCES technicians (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     role text NOT NULL,
-    scope text NOT NULL DEFAULT '',
+    assignment_domain text NOT NULL DEFAULT '',
     status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'released')),
     valid_from timestamptz NOT NULL DEFAULT now(),
     valid_to timestamptz,
@@ -145,7 +145,7 @@ SELECT
     machine_id,
     technician_id AS user_id,
     role,
-    NULLIF(scope, '') AS scope,
+    NULLIF(assignment_domain, '') AS assignment_domain,
     valid_from AS active_from,
     valid_to AS active_until,
     created_by,
@@ -428,16 +428,16 @@ CREATE TABLE price_books (
     effective_to timestamptz,
     is_default boolean NOT NULL DEFAULT false,
     active boolean NOT NULL DEFAULT true,
-    scope_type text NOT NULL DEFAULT 'global' CHECK (scope_type IN ('global', 'site', 'machine')),
+    price_book_level text NOT NULL DEFAULT 'global' CHECK (price_book_level IN ('global', 'site', 'machine')),
     site_id uuid,
     machine_id uuid,
     priority int NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT ck_price_books_scope_shape CHECK (
-        (scope_type = 'global' AND site_id IS NULL AND machine_id IS NULL)
-        OR (scope_type = 'site' AND site_id IS NOT NULL AND machine_id IS NULL)
-        OR (scope_type = 'machine' AND machine_id IS NOT NULL AND site_id IS NULL)
+    CONSTRAINT ck_price_books_level_shape CHECK (
+        (price_book_level = 'global' AND site_id IS NULL AND machine_id IS NULL)
+        OR (price_book_level = 'site' AND site_id IS NOT NULL AND machine_id IS NULL)
+        OR (price_book_level = 'machine' AND machine_id IS NOT NULL AND site_id IS NULL)
     )
 );
 
@@ -501,7 +501,7 @@ CREATE TABLE promotions (
     ends_at timestamptz NOT NULL,
     budget_limit_minor bigint,
     redemption_limit int CHECK (redemption_limit IS NULL OR redemption_limit >= 0),
-    channel_scope text CHECK (channel_scope IS NULL OR channel_scope IN ('in_person', 'mobile', 'all')),
+    promotion_channel_kind text CHECK (promotion_channel_kind IS NULL OR promotion_channel_kind IN ('in_person', 'mobile', 'all')),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -1223,13 +1223,13 @@ COMMENT ON COLUMN machine_command_attempts.raw_response IS 'Raw wire-level respo
 
 CREATE TABLE machine_mqtt_credentials (
     machine_id uuid PRIMARY KEY REFERENCES machines (id) ON DELETE CASCADE,
-    broker_scope text NOT NULL DEFAULT 'default',
+    mqtt_broker_shard text NOT NULL DEFAULT 'default',
     username text,
     secret_ref text,
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX ix_machine_mqtt_credentials_scope ON machine_mqtt_credentials (broker_scope);
+CREATE INDEX ix_machine_mqtt_credentials_shard ON machine_mqtt_credentials (mqtt_broker_shard);
 
 COMMENT ON TABLE machine_mqtt_credentials IS 'Optional per-machine MQTT username; secret_ref is an opaque pointer to a secret manager (never store broker passwords in this row).';
 
@@ -1962,8 +1962,8 @@ CREATE TABLE machine_config_rollouts (
             AND canary_percent <= 100
         )
     ),
-    scope_type text NOT NULL CHECK (
-        scope_type IN ('global', 'site', 'machine', 'hardware_profile')
+    rollout_target_level text NOT NULL CHECK (
+        rollout_target_level IN ('global', 'site', 'machine', 'hardware_profile')
     ),
     site_id uuid REFERENCES sites (id) ON DELETE CASCADE,
     machine_id uuid REFERENCES machines (id) ON DELETE CASCADE,
@@ -1971,27 +1971,27 @@ CREATE TABLE machine_config_rollouts (
     metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now (),
     updated_at timestamptz NOT NULL DEFAULT now (),
-    CONSTRAINT chk_mc_rollout_scope_exclusive CHECK (
+    CONSTRAINT chk_mc_rollout_target_exclusive CHECK (
         (
-            scope_type = 'global'
+            rollout_target_level = 'global'
             AND site_id IS NULL
             AND machine_id IS NULL
             AND hardware_profile_id IS NULL
         )
         OR (
-            scope_type = 'site'
+            rollout_target_level = 'site'
             AND site_id IS NOT NULL
             AND machine_id IS NULL
             AND hardware_profile_id IS NULL
         )
         OR (
-            scope_type = 'machine'
+            rollout_target_level = 'machine'
             AND machine_id IS NOT NULL
             AND site_id IS NULL
             AND hardware_profile_id IS NULL
         )
         OR (
-            scope_type = 'hardware_profile'
+            rollout_target_level = 'hardware_profile'
             AND hardware_profile_id IS NOT NULL
             AND site_id IS NULL
             AND machine_id IS NULL
@@ -2412,12 +2412,14 @@ CREATE TABLE finance_daily_closes (
     created_at timestamptz NOT NULL DEFAULT now ()
 );
 
-CREATE UNIQUE INDEX ux_finance_daily_closes_scope ON finance_daily_closes (
+CREATE UNIQUE INDEX ux_finance_daily_closes_site_machine ON finance_daily_closes (
     close_date,
     timezone,
     COALESCE(site_id, '00000000-0000-0000-0000-000000000000'::uuid),
     COALESCE(machine_id, '00000000-0000-0000-0000-000000000000'::uuid)
 );
+
+CREATE UNIQUE INDEX ux_finance_daily_closes_idempotency ON finance_daily_closes (idempotency_key);
 
 COMMENT ON TABLE finance_daily_closes IS 'Immutable day/timezone (optional site/machine scope) snapshot; corrections via finance_daily_close_adjustments.';
 
@@ -2577,9 +2579,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_brands_slug_lower ON brands (lower(slug))
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_products_sku ON products (sku);
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_products_barcode_lower ON products (lower(trim(barcode))) WHERE barcode IS NOT NULL AND btrim(barcode) <> '';
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_tags_slug_lower ON tags (lower(slug));
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_books_name_effective ON price_books (lower(name), effective_from) WHERE scope_type = 'global';
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_books_site_name_effective ON price_books (site_id, lower(name), effective_from) WHERE scope_type = 'site';
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_books_machine_name_effective ON price_books (machine_id, lower(name), effective_from) WHERE scope_type = 'machine';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_books_name_effective ON price_books (lower(name), effective_from) WHERE price_book_level = 'global';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_books_site_name_effective ON price_books (site_id, lower(name), effective_from) WHERE price_book_level = 'site';
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_books_machine_name_effective ON price_books (machine_id, lower(name), effective_from) WHERE price_book_level = 'machine';
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_book_items_book_product ON price_book_items (price_book_id, product_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_planograms_name_revision ON planograms (name, revision);
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_orders_idempotency ON orders (idempotency_key) WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) <> '';

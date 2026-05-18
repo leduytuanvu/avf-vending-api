@@ -89,7 +89,7 @@ func TestDevFixtureSiteProductRepos_ReadSeed(t *testing.T) {
 	ctx := context.Background()
 
 	orgRepo := postgres.NewOrgRepository(pool)
-	o, err := orgRepo.GetByID(ctx, testfixtures.DevScopeID)
+	o, err := orgRepo.GetByID(ctx, testfixtures.DevCompanyID)
 	require.NoError(t, err)
 	require.Equal(t, "Local Dev Org", o.Name)
 
@@ -157,8 +157,8 @@ func TestCreateOrderWithVendSession_RollbackOnInvalidMachine(t *testing.T) {
 
 	var cnt int
 	qerr := pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM orders WHERE scope_id = $1 AND idempotency_key = $2`,
-		testfixtures.DevScopeID, idem,
+		`SELECT COUNT(*) FROM orders WHERE idempotency_key = $1`,
+		idem,
 	).Scan(&cnt)
 	require.NoError(t, qerr)
 	require.Zero(t, cnt)
@@ -791,8 +791,8 @@ func TestApplyCommandReceiptTransition_ConflictingAckIsAudited(t *testing.T) {
 
 	var n int64
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM audit_events WHERE scope_id = $1 AND action = $2`,
-		testfixtures.DevScopeID, "mqtt.command_ack_conflict",
+		`SELECT count(*) FROM audit_events WHERE machine_id = $1 AND action = $2`,
+		mid, "mqtt.command_ack_conflict",
 	).Scan(&n))
 	require.GreaterOrEqual(t, n, int64(1))
 }
@@ -802,7 +802,7 @@ func TestFleetQueries_CompanyAndSiteScope(t *testing.T) {
 	ctx := context.Background()
 	q := db.New(pool)
 
-	byOrg, err := q.ListMachinesByScopeID(ctx)
+	byOrg, err := q.ListMachinesOrderedByName(ctx)
 	require.NoError(t, err)
 	var orgMachineIDs []uuid.UUID
 	for _, m := range byOrg {
@@ -811,7 +811,7 @@ func TestFleetQueries_CompanyAndSiteScope(t *testing.T) {
 	require.NotEmpty(t, orgMachineIDs)
 	require.Contains(t, orgMachineIDs, testfixtures.DevMachineID)
 
-	emptyOrg, err := q.ListMachinesByScopeID(ctx)
+	emptyOrg, err := q.ListMachinesOrderedByName(ctx)
 	require.NoError(t, err)
 	require.Empty(t, emptyOrg)
 

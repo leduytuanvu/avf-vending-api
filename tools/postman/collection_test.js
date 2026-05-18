@@ -46,9 +46,6 @@ if (cred.accessToken) {
 if (j.machineId) {
   save(j.machineId, "machine_id");
 }
-if (j.scopeId) {
-  save(j.scopeId, "scope_id");
-}
 if (j.siteId) {
   save(j.siteId, "site_id");
 }

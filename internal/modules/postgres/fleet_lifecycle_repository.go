@@ -29,7 +29,6 @@ func scanSite(row pgx.Row) (db.Site, error) {
 	var s db.Site
 	err := row.Scan(
 		&s.ID,
-		&uuid.Nil,
 		&s.RegionID,
 		&s.Name,
 		&s.Address,
@@ -47,7 +46,6 @@ func scanMachine(row pgx.Row) (db.Machine, error) {
 	var m db.Machine
 	err := row.Scan(
 		&m.ID,
-		&uuid.Nil,
 		&m.SiteID,
 		&m.HardwareProfileID,
 		&m.SerialNumber,
@@ -76,7 +74,6 @@ func scanTechnician(row pgx.Row) (db.Technician, error) {
 	var t db.Technician
 	err := row.Scan(
 		&t.ID,
-		&uuid.Nil,
 		&t.DisplayName,
 		&t.Email,
 		&t.Phone,
@@ -91,11 +88,12 @@ func scanTechnician(row pgx.Row) (db.Technician, error) {
 // InsertSite inserts a new active site; site codes must be unique per company when non-empty.
 func (r *FleetLifecycleRepository) InsertSite(ctx context.Context, companyID uuid.UUID, regionID pgtype.UUID, name string, address []byte, timezone string, code string) (db.Site, error) {
 	const sqlInsert = `
-INSERT INTO sites (scope_id, region_id, name, address, timezone, code, status)
-VALUES ($1, $2, $3, $4, $5, $6, 'active')
+INSERT INTO sites (region_id, name, address, timezone, code, status)
+VALUES ($1, $2, $3, $4, $5, 'active')
 RETURNING *
 `
-	row := r.pool.QueryRow(ctx, sqlInsert, companyID, regionID, name, address, timezone, code)
+	row := r.pool.QueryRow(ctx, sqlInsert, regionID, name, address, timezone, code)
+	_ = companyID
 	s, err := scanSite(row)
 	if err != nil {
 		return db.Site{}, err
@@ -110,7 +108,6 @@ func (r *FleetLifecycleRepository) InsertMachine(ctx context.Context, companyID,
 	}
 	const sqlInsert = `
 INSERT INTO machines (
-    scope_id,
     site_id,
     hardware_profile_id,
     serial_number,
@@ -120,11 +117,10 @@ INSERT INTO machines (
     name,
     status,
     timezone_override
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 RETURNING *
 `
 	row := r.pool.QueryRow(ctx, sqlInsert,
-		companyID,
 		siteID,
 		hardwareProfileID,
 		serialNumber,
@@ -135,6 +131,7 @@ RETURNING *
 		status,
 		tz,
 	)
+	_ = companyID
 	return scanMachine(row)
 }
 
@@ -146,10 +143,11 @@ SET credential_version = credential_version + 1,
     credential_rotated_at = now(),
     credential_revoked_at = NULL,
     updated_at = now()
-WHERE id = $1 AND scope_id = $2
+WHERE id = $1
 RETURNING *
 `
-	row := r.pool.QueryRow(ctx, sqlBump, machineID, companyID)
+	row := r.pool.QueryRow(ctx, sqlBump, machineID)
+	_ = companyID
 	return scanMachine(row)
 }
 
@@ -158,19 +156,21 @@ func (r *FleetLifecycleRepository) RevokeActiveActivationCodesForMachine(ctx con
 	const sqlRevoke = `
 UPDATE machine_activation_codes
 SET status = 'revoked', updated_at = now()
-WHERE machine_id = $1 AND scope_id = $2 AND status = 'active'
+WHERE machine_id = $1 AND status = 'active'
 `
-	_, err := r.pool.Exec(ctx, sqlRevoke, machineID, companyID)
+	_, err := r.pool.Exec(ctx, sqlRevoke, machineID)
+	_ = companyID
 	return err
 }
 
 // InsertMachineLineage records successor linkage after replacement.
 func (r *FleetLifecycleRepository) InsertMachineLineage(ctx context.Context, companyID, priorID, successorID uuid.UUID, reason pgtype.Text) error {
 	const sqlIns = `
-INSERT INTO machine_lineage (scope_id, prior_machine_id, successor_machine_id, reason)
-VALUES ($1,$2,$3,$4)
+INSERT INTO machine_lineage (prior_machine_id, successor_machine_id, reason)
+VALUES ($1,$2,$3)
 `
-	_, err := r.pool.Exec(ctx, sqlIns, companyID, priorID, successorID, reason)
+	_, err := r.pool.Exec(ctx, sqlIns, priorID, successorID, reason)
+	_ = companyID
 	return err
 }
 
@@ -198,9 +198,10 @@ SELECT EXISTS (
 func (r *FleetLifecycleRepository) CountNonRetiredMachinesForSite(ctx context.Context, companyID, siteID uuid.UUID) (int64, error) {
 	const q = `
 SELECT count(*)::bigint FROM machines
-WHERE scope_id = $1 AND site_id = $2 AND status NOT IN ('retired', 'decommissioned')
+WHERE site_id = $1 AND status NOT IN ('retired', 'decommissioned')
 `
-	row := r.pool.QueryRow(ctx, q, companyID, siteID)
+	row := r.pool.QueryRow(ctx, q, siteID)
+	_ = companyID
 	var n int64
 	if err := row.Scan(&n); err != nil {
 		return 0, err
@@ -222,10 +223,11 @@ func (r *FleetLifecycleRepository) DeactivateSite(ctx context.Context, companyID
 	}
 	const sqlUp = `
 UPDATE sites SET status = 'archived', updated_at = now()
-WHERE id = $1 AND scope_id = $2
+WHERE id = $1
 RETURNING *
 `
-	row := r.pool.QueryRow(ctx, sqlUp, siteID, companyID)
+	row := r.pool.QueryRow(ctx, sqlUp, siteID)
+	_ = companyID
 	s, err := scanSite(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return db.Site{}, pgx.ErrNoRows

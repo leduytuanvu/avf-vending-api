@@ -86,7 +86,7 @@ func pickWinner(cands []pricedCandidate) *pricedCandidate {
 }
 
 func applicability(machineID, siteID *uuid.UUID, b db.PriceBook, tgts []db.PriceBookTarget) (tier int, targetID uuid.UUID, ok bool) {
-	switch b.ScopeType {
+	switch b.PriceBookLevel {
 	case "machine":
 		if machineID != nil && b.MachineID.Valid && uuid.UUID(b.MachineID.Bytes) == *machineID {
 			return 3, uuid.Nil, true
@@ -95,7 +95,7 @@ func applicability(machineID, siteID *uuid.UUID, b db.PriceBook, tgts []db.Price
 		if siteID != nil && b.SiteID.Valid && uuid.UUID(b.SiteID.Bytes) == *siteID {
 			return 2, uuid.Nil, true
 		}
-	case "company":
+	case "global":
 		if len(tgts) == 0 {
 			return 1, uuid.Nil, true
 		}

@@ -373,9 +373,9 @@ func TestMachineGRPC_Commerce_GetOrder_WrongMachineDenied(t *testing.T) {
 	otherID := uuid.New()
 	hw := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 	_, err := pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
-VALUES ($1, $2, $3, $4, $5, $6, 'online', 0, 0)`,
-		otherID, uuid.Nil, testfixtures.DevSiteID, hw, "sn-other-grpc", "other")
+INSERT INTO machines (id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
+VALUES ($1, $2, $3, $4, $5, 'online', 0, 0)`,
+		otherID, testfixtures.DevSiteID, hw, "sn-other-grpc", "other")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM machines WHERE id = $1`, otherID)

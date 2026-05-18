@@ -107,8 +107,6 @@ func parseReportingCompany(r *http.Request, app *api.HTTPApplication) (listscope
 	if !validateReportingTimezone(tz) {
 		return listscope.ReportingQuery{}, listscope.ErrInvalidListQuery
 	}
-	scopeID := uuid.Nil
-	_ = scopeID
 	return listscope.ReportingQuery{
 		IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin),
 		From:            from,
@@ -135,8 +133,6 @@ func parseAdminCompanyReportingQuery(r *http.Request, paged bool, app *api.HTTPA
 	if !ok {
 		return listscope.ReportingQuery{}, http.StatusUnauthorized, fmt.Errorf("missing principal")
 	}
-	scopeID := uuid.Nil
-	_ = scopeID
 	qv := r.URL.Query()
 	from, to, err := parseRequiredRFC3339Range(qv)
 	maxSpan := reportingMaxSpanForRequest(r, app)
@@ -419,7 +415,7 @@ func wantsCSV(r *http.Request) bool {
 	return format == "csv" || format == "text/csv"
 }
 
-func recordReportExportAudit(r *http.Request, app *api.HTTPApplication, scopeID uuid.UUID, reportName string) {
+func recordReportExportAudit(r *http.Request, app *api.HTTPApplication, reportName string) {
 	if app == nil || app.EnterpriseAudit == nil {
 		return
 	}
@@ -466,7 +462,7 @@ func getAdminOrgReportSales(app *api.HTTPApplication, svc api.ReportingService) 
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, uuid.Nil, "sales")
+			recordReportExportAudit(r, app, "sales")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="sales.csv"`)
 			if err := reporting.WriteSalesSummaryCSV(w, out); err != nil {
@@ -495,7 +491,7 @@ func getAdminOrgReportPayments(app *api.HTTPApplication, svc api.ReportingServic
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, uuid.Nil, "payments")
+			recordReportExportAudit(r, app, "payments")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="payments.csv"`)
 			if err := reporting.WritePaymentSettlementCSV(w, out); err != nil {
@@ -524,7 +520,7 @@ func getAdminOrgReportRefunds(app *api.HTTPApplication, svc api.ReportingService
 			return
 		}
 		if wantsCSV(r) {
-			recordReportExportAudit(r, app, uuid.Nil, "refunds")
+			recordReportExportAudit(r, app, "refunds")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="refunds.csv"`)
 			if err := reporting.WriteRefundsCSV(w, out); err != nil {
@@ -553,10 +549,10 @@ func getAdminOrgReportCash(app *api.HTTPApplication, svc api.ReportingService) h
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "reporting_error", err.Error())
 				return
 			}
-			recordReportExportAudit(r, app, uuid.Nil, "cash")
+			recordReportExportAudit(r, app, "cash")
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 			w.Header().Set("Content-Disposition", `attachment; filename="cash.csv"`)
-			if err := reporting.WriteCashCollectionsCSV(w, uuid.Nil.String(), q.From.UTC().Format(time.RFC3339Nano), q.To.UTC().Format(time.RFC3339Nano), rows); err != nil {
+			if err := reporting.WriteCashCollectionsCSV(w, q.From.UTC().Format(time.RFC3339Nano), q.To.UTC().Format(time.RFC3339Nano), rows); err != nil {
 				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			}
 			return

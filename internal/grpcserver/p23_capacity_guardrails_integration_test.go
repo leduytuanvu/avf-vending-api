@@ -21,7 +21,7 @@ func TestP23_SubmitTelemetryBatch_rejectsOverConfiguredEventCap(t *testing.T) {
 	ctx := context.Background()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	cfg := testMachineGRPCConfig()
 	cfg.Capacity.MaxTelemetryGRPCBatchEvents = 2
@@ -60,7 +60,7 @@ func TestP23_PushOfflineEvents_rejectsOverConfiguredBatchCap(t *testing.T) {
 	ctx := context.Background()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	deps.Config.Capacity.MaxOfflineEventsPerRequest = 2

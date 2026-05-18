@@ -193,11 +193,11 @@ func (s *Service) ListAllCodes(ctx context.Context, limit, offset int32) ([]List
 		offset = 0
 	}
 	q := db.New(s.pool)
-	total, err := q.CountMachineActivationCodesForScope(ctx)
+	total, err := q.CountMachineActivationCodesAll(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
-	rows, err := q.ListMachineActivationCodesForScope(ctx, db.ListMachineActivationCodesForScopeParams{
+	rows, err := q.ListMachineActivationCodesPaged(ctx, db.ListMachineActivationCodesPagedParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -235,7 +235,7 @@ func (s *Service) ListAllCodes(ctx context.Context, limit, offset int32) ([]List
 
 // RevokeCodeByID revokes a code by id.
 func (s *Service) RevokeCodeByID(ctx context.Context, codeID uuid.UUID) error {
-	_, err := db.New(s.pool).RevokeMachineActivationCodeForScope(ctx, codeID)
+	_, err := db.New(s.pool).RevokeMachineActivationCodeActive(ctx, codeID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return ErrNotFound

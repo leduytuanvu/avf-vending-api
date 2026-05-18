@@ -88,7 +88,7 @@ WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
 		testfixtures.DevMachineID, testfixtures.DevPlanogramID, int32(1)).Scan(&qtyBefore))
 
 	replay1, err := store.ApplyCommerceVendSuccessInventory(ctx,
-		testfixtures.DevScopeID,
+		testfixtures.DevCompanyID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
 		1,
@@ -100,7 +100,7 @@ WHERE machine_id = $1 AND planogram_id = $2 AND slot_index = $3`,
 	require.False(t, replay1)
 
 	replay2, err := store.ApplyCommerceVendSuccessInventory(ctx,
-		testfixtures.DevScopeID,
+		testfixtures.DevCompanyID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
 		1,
@@ -145,7 +145,7 @@ func TestP06_E2E_VendInventory_failVendBlocksInventoryApply(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.ApplyCommerceVendSuccessInventory(ctx,
-		testfixtures.DevScopeID,
+		testfixtures.DevCompanyID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
 		1,

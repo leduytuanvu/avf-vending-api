@@ -53,11 +53,11 @@ package httpserver
 // Admin machine directory (Bearer JWT + platform_admin or admin):
 //
 //	GET /v1/admin/machines
-//	GET /v1/admin/machines/{machineId}   (optional scope_id query for platform_admin)
+//	GET /v1/admin/machines/{machineId}
 //
 // Admin inventory reads and stock writes (Bearer JWT + platform_admin or admin; stock-adjustments uses writeRL + Idempotency-Key):
 //
-//	GET  /v1/admin/inventory/low-stock (velocity_days, site_id, machine_id, product_id, urgency, days_threshold; scope_id for platform_admin)
+//	GET  /v1/admin/inventory/low-stock (velocity_days, site_id, machine_id, product_id, urgency, days_threshold)
 //	GET  /v1/admin/inventory/refill-suggestions (same filters; all slotted products)
 //	GET  /v1/admin/machines/{machineId}/slots (cabinetCode, cabinetIndex, slotCode; legacy-only machines default cabinet CAB-A)
 //	POST /v1/admin/machines/{machineId}/stock-adjustments
@@ -65,7 +65,7 @@ package httpserver
 //	GET  /v1/admin/machines/{machineId}/inventory-events (append-only ledger; optional from/to, limit, offset)
 //	GET  /v1/admin/machines/{machineId}/refill-suggestions (per-machine refill forecast)
 //
-// Feature flags + staged machine config rollouts (fleet.read reads; fleet.write mutates; scope_id for platform_admin):
+// Feature flags + staged machine config rollouts (fleet.read reads; fleet.write mutates):
 //
 //	GET/PATCH/POST /v1/admin/feature-flags ... ; PUT /v1/admin/feature-flags/{flagId}/targets
 //	GET/POST /v1/admin/machine-config/rollouts ; GET /v1/admin/machine-config/rollouts/{rolloutId}

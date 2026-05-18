@@ -140,7 +140,7 @@ INSERT INTO machine_config_rollouts (
     previous_version_id,
     status,
     canary_percent,
-    scope_type,
+    rollout_target_level,
     site_id,
     machine_id,
     hardware_profile_id,
@@ -198,18 +198,18 @@ WHERE
     r.status IN ('pending', 'in_progress')
     AND (
         (
-            r.scope_type = 'global'
+            r.rollout_target_level = 'global'
         )
         OR (
-            r.scope_type = 'site'
+            r.rollout_target_level = 'site'
             AND r.site_id = m.site_id
         )
         OR (
-            r.scope_type = 'machine'
+            r.rollout_target_level = 'machine'
             AND r.machine_id = m.id
         )
         OR (
-            r.scope_type = 'hardware_profile'
+            r.rollout_target_level = 'hardware_profile'
             AND r.hardware_profile_id IS NOT DISTINCT FROM m.hardware_profile_id
         )
     )

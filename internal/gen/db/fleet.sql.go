@@ -113,7 +113,7 @@ func (q *Queries) AdminGetSiteForOrg(ctx context.Context, id uuid.UUID) (Site, e
 }
 
 const AdminGetTechnicianAssignmentForOrg = `-- name: AdminGetTechnicianAssignmentForOrg :one
-SELECT id, technician_id, machine_id, role, scope, status, valid_from, valid_to, created_by, created_at, updated_at
+SELECT id, technician_id, machine_id, role, assignment_domain, status, valid_from, valid_to, created_by, created_at, updated_at
 FROM technician_machine_assignments
 WHERE
     id = $1
@@ -128,7 +128,7 @@ func (q *Queries) AdminGetTechnicianAssignmentForOrg(ctx context.Context, id uui
 		&i.TechnicianID,
 		&i.MachineID,
 		&i.Role,
-		&i.Scope,
+		&i.AssignmentDomain,
 		&i.Status,
 		&i.ValidFrom,
 		&i.ValidTo,
@@ -390,7 +390,7 @@ SET
 WHERE
     id = $1
     AND TRUE
-RETURNING id, technician_id, machine_id, role, scope, status, valid_from, valid_to, created_by, created_at, updated_at
+RETURNING id, technician_id, machine_id, role, assignment_domain, status, valid_from, valid_to, created_by, created_at, updated_at
 `
 
 func (q *Queries) AdminReleaseTechnicianAssignment(ctx context.Context, id uuid.UUID) (TechnicianMachineAssignment, error) {
@@ -401,7 +401,7 @@ func (q *Queries) AdminReleaseTechnicianAssignment(ctx context.Context, id uuid.
 		&i.TechnicianID,
 		&i.MachineID,
 		&i.Role,
-		&i.Scope,
+		&i.AssignmentDomain,
 		&i.Status,
 		&i.ValidFrom,
 		&i.ValidTo,
@@ -423,7 +423,7 @@ WHERE
     AND technician_id = $2
     AND status = 'active'
     AND valid_to IS NULL
-RETURNING id, technician_id, machine_id, role, scope, status, valid_from, valid_to, created_by, created_at, updated_at
+RETURNING id, technician_id, machine_id, role, assignment_domain, status, valid_from, valid_to, created_by, created_at, updated_at
 `
 
 type AdminReleaseTechnicianAssignmentForMachineUserParams struct {
@@ -439,7 +439,7 @@ func (q *Queries) AdminReleaseTechnicianAssignmentForMachineUser(ctx context.Con
 		&i.TechnicianID,
 		&i.MachineID,
 		&i.Role,
-		&i.Scope,
+		&i.AssignmentDomain,
 		&i.Status,
 		&i.ValidFrom,
 		&i.ValidTo,
@@ -560,7 +560,7 @@ SET
 WHERE
     id = $4
     AND TRUE
-RETURNING id, technician_id, machine_id, role, scope, status, valid_from, valid_to, created_by, created_at, updated_at
+RETURNING id, technician_id, machine_id, role, assignment_domain, status, valid_from, valid_to, created_by, created_at, updated_at
 `
 
 type AdminUpdateTechnicianAssignmentParams struct {
@@ -583,7 +583,7 @@ func (q *Queries) AdminUpdateTechnicianAssignment(ctx context.Context, arg Admin
 		&i.TechnicianID,
 		&i.MachineID,
 		&i.Role,
-		&i.Scope,
+		&i.AssignmentDomain,
 		&i.Status,
 		&i.ValidFrom,
 		&i.ValidTo,
@@ -911,7 +911,7 @@ INSERT INTO technician_machine_assignments (
     technician_id,
     machine_id,
     role,
-    scope,
+    assignment_domain,
     created_by,
     status
 )
@@ -923,15 +923,15 @@ VALUES (
     $5,
     'active'
 )
-RETURNING id, technician_id, machine_id, role, scope, status, valid_from, valid_to, created_by, created_at, updated_at
+RETURNING id, technician_id, machine_id, role, assignment_domain, status, valid_from, valid_to, created_by, created_at, updated_at
 `
 
 type InsertTechnicianMachineAssignmentParams struct {
-	TechnicianID uuid.UUID
-	MachineID    uuid.UUID
-	Role         string
-	Scope        string
-	CreatedBy    pgtype.UUID
+	TechnicianID     uuid.UUID
+	MachineID        uuid.UUID
+	Role             string
+	AssignmentDomain string
+	CreatedBy        pgtype.UUID
 }
 
 func (q *Queries) InsertTechnicianMachineAssignment(ctx context.Context, arg InsertTechnicianMachineAssignmentParams) (TechnicianMachineAssignment, error) {
@@ -939,7 +939,7 @@ func (q *Queries) InsertTechnicianMachineAssignment(ctx context.Context, arg Ins
 		arg.TechnicianID,
 		arg.MachineID,
 		arg.Role,
-		arg.Scope,
+		arg.AssignmentDomain,
 		arg.CreatedBy,
 	)
 	var i TechnicianMachineAssignment
@@ -948,7 +948,7 @@ func (q *Queries) InsertTechnicianMachineAssignment(ctx context.Context, arg Ins
 		&i.TechnicianID,
 		&i.MachineID,
 		&i.Role,
-		&i.Scope,
+		&i.AssignmentDomain,
 		&i.Status,
 		&i.ValidFrom,
 		&i.ValidTo,
@@ -957,56 +957,6 @@ func (q *Queries) InsertTechnicianMachineAssignment(ctx context.Context, arg Ins
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const ListMachinesByScopeID = `-- name: ListMachinesByScopeID :many
-SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
-FROM machines
-ORDER BY
-    name ASC
-`
-
-func (q *Queries) ListMachinesByScopeID(ctx context.Context) ([]Machine, error) {
-	rows, err := q.db.Query(ctx, ListMachinesByScopeID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Machine{}
-	for rows.Next() {
-		var i Machine
-		if err := rows.Scan(
-			&i.ID,
-			&i.SiteID,
-			&i.HardwareProfileID,
-			&i.SerialNumber,
-			&i.Code,
-			&i.Model,
-			&i.CabinetType,
-			&i.CredentialVersion,
-			&i.LastSeenAt,
-			&i.TimezoneOverride,
-			&i.Name,
-			&i.Status,
-			&i.CommandSequence,
-			&i.CredentialRevokedAt,
-			&i.CredentialRotatedAt,
-			&i.CredentialLastUsedAt,
-			&i.ActivatedAt,
-			&i.RevokedAt,
-			&i.RotatedAt,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.PublishedPlanogramVersionID,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const ListMachinesBySiteAndCompany = `-- name: ListMachinesBySiteAndCompany :many
@@ -1213,6 +1163,56 @@ func (q *Queries) ListMachinesForTechnicianID(ctx context.Context, technicianID 
 			&i.CommandSequence,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListMachinesOrderedByName = `-- name: ListMachinesOrderedByName :many
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
+FROM machines
+ORDER BY
+    name ASC
+`
+
+func (q *Queries) ListMachinesOrderedByName(ctx context.Context) ([]Machine, error) {
+	rows, err := q.db.Query(ctx, ListMachinesOrderedByName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Machine{}
+	for rows.Next() {
+		var i Machine
+		if err := rows.Scan(
+			&i.ID,
+			&i.SiteID,
+			&i.HardwareProfileID,
+			&i.SerialNumber,
+			&i.Code,
+			&i.Model,
+			&i.CabinetType,
+			&i.CredentialVersion,
+			&i.LastSeenAt,
+			&i.TimezoneOverride,
+			&i.Name,
+			&i.Status,
+			&i.CommandSequence,
+			&i.CredentialRevokedAt,
+			&i.CredentialRotatedAt,
+			&i.CredentialLastUsedAt,
+			&i.ActivatedAt,
+			&i.RevokedAt,
+			&i.RotatedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PublishedPlanogramVersionID,
 		); err != nil {
 			return nil, err
 		}

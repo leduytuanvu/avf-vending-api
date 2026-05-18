@@ -13,15 +13,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const CountMachineActivationCodesForScope = `-- name: CountMachineActivationCodesForScope :one
+const CountMachineActivationCodesAll = `-- name: CountMachineActivationCodesAll :one
 SELECT
     count(*)::bigint AS cnt
 FROM
     machine_activation_codes
 `
 
-func (q *Queries) CountMachineActivationCodesForScope(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, CountMachineActivationCodesForScope)
+func (q *Queries) CountMachineActivationCodesAll(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, CountMachineActivationCodesAll)
 	var cnt int64
 	err := row.Scan(&cnt)
 	return cnt, err
@@ -294,7 +294,7 @@ func (q *Queries) ListMachineActivationCodesForMachine(ctx context.Context, mach
 	return items, nil
 }
 
-const ListMachineActivationCodesForScope = `-- name: ListMachineActivationCodesForScope :many
+const ListMachineActivationCodesPaged = `-- name: ListMachineActivationCodesPaged :many
 SELECT
     id, machine_id, code_hash, max_uses, uses, expires_at, notes, status, claimed_fingerprint_hash, created_at, updated_at
 FROM
@@ -304,13 +304,13 @@ ORDER BY
 LIMIT $1 OFFSET $2
 `
 
-type ListMachineActivationCodesForScopeParams struct {
+type ListMachineActivationCodesPagedParams struct {
 	Limit  int32
 	Offset int32
 }
 
-func (q *Queries) ListMachineActivationCodesForScope(ctx context.Context, arg ListMachineActivationCodesForScopeParams) ([]MachineActivationCode, error) {
-	rows, err := q.db.Query(ctx, ListMachineActivationCodesForScope, arg.Limit, arg.Offset)
+func (q *Queries) ListMachineActivationCodesPaged(ctx context.Context, arg ListMachineActivationCodesPagedParams) ([]MachineActivationCode, error) {
+	rows, err := q.db.Query(ctx, ListMachineActivationCodesPaged, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +430,7 @@ func (q *Queries) RevokeMachineActivationCode(ctx context.Context, arg RevokeMac
 	return i, err
 }
 
-const RevokeMachineActivationCodeForScope = `-- name: RevokeMachineActivationCodeForScope :one
+const RevokeMachineActivationCodeActive = `-- name: RevokeMachineActivationCodeActive :one
 UPDATE machine_activation_codes
 SET
     status = 'revoked',
@@ -442,8 +442,8 @@ WHERE
 RETURNING id, machine_id, code_hash, max_uses, uses, expires_at, notes, status, claimed_fingerprint_hash, created_at, updated_at
 `
 
-func (q *Queries) RevokeMachineActivationCodeForScope(ctx context.Context, id uuid.UUID) (MachineActivationCode, error) {
-	row := q.db.QueryRow(ctx, RevokeMachineActivationCodeForScope, id)
+func (q *Queries) RevokeMachineActivationCodeActive(ctx context.Context, id uuid.UUID) (MachineActivationCode, error) {
+	row := q.db.QueryRow(ctx, RevokeMachineActivationCodeActive, id)
 	var i MachineActivationCode
 	err := row.Scan(
 		&i.ID,

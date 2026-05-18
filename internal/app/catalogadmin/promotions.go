@@ -30,29 +30,29 @@ type PromotionRuleInput struct {
 
 // CreatePromotionInput inserts promotion headers + optional rules.
 type CreatePromotionInput struct {
-	Name             string
-	StartsAt         time.Time
-	EndsAt           time.Time
-	Priority         int32
-	Stackable        bool
-	BudgetLimitMinor *int64
-	RedemptionLimit  *int32
-	ChannelScope     *string
-	Rules            []PromotionRuleInput
+	Name                 string
+	StartsAt             time.Time
+	EndsAt               time.Time
+	Priority             int32
+	Stackable            bool
+	BudgetLimitMinor     *int64
+	RedemptionLimit      *int32
+	PromotionChannelKind *string
+	Rules                []PromotionRuleInput
 }
 
 // PatchPromotionInput merges mutable promotion fields.
 type PatchPromotionInput struct {
-	Name             *string
-	StartsAt         *time.Time
-	EndsAt           *time.Time
-	Priority         *int32
-	Stackable        *bool
-	BudgetLimitMinor *int64
-	RedemptionLimit  *int32
-	ChannelScope     *string
-	ApprovalStatus   *string
-	Rules            *[]PromotionRuleInput
+	Name                 *string
+	StartsAt             *time.Time
+	EndsAt               *time.Time
+	Priority             *int32
+	Stackable            *bool
+	BudgetLimitMinor     *int64
+	RedemptionLimit      *int32
+	PromotionChannelKind *string
+	ApprovalStatus       *string
+	Rules                *[]PromotionRuleInput
 }
 
 // AssignPromotionTargetInput binds one promotion target row.
@@ -155,7 +155,7 @@ func (s *Service) GetPromotion(ctx context.Context, scopeID, promotionID uuid.UU
 	if promotionID == uuid.Nil {
 		return db.Promotion{}, ErrInvalidArgument
 	}
-	row, err := s.q.PromotionAdminGetPromotion(ctx)
+	row, err := s.q.PromotionAdminGetPromotion(ctx, promotionID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Promotion{}, ErrNotFound
@@ -202,16 +202,16 @@ func (s *Service) CreatePromotion(ctx context.Context, in CreatePromotionInput) 
 	qtx := s.q.WithTx(tx)
 
 	row, err := qtx.PromotionAdminInsertPromotion(ctx, db.PromotionAdminInsertPromotionParams{
-		Name:             name,
-		ApprovalStatus:   "approved",
-		LifecycleStatus:  "draft",
-		Priority:         in.Priority,
-		Stackable:        in.Stackable,
-		StartsAt:         in.StartsAt,
-		EndsAt:           in.EndsAt,
-		BudgetLimitMinor: pgInt8Ptr(in.BudgetLimitMinor),
-		RedemptionLimit:  pgInt4Ptr(in.RedemptionLimit),
-		ChannelScope:     pgTextPtr(in.ChannelScope),
+		Name:                 name,
+		ApprovalStatus:       "approved",
+		LifecycleStatus:      "draft",
+		Priority:             in.Priority,
+		Stackable:            in.Stackable,
+		StartsAt:             in.StartsAt,
+		EndsAt:               in.EndsAt,
+		BudgetLimitMinor:     pgInt8Ptr(in.BudgetLimitMinor),
+		RedemptionLimit:      pgInt4Ptr(in.RedemptionLimit),
+		PromotionChannelKind: pgTextPtr(in.PromotionChannelKind),
 	})
 	if err != nil {
 		return db.Promotion{}, err
@@ -247,7 +247,7 @@ func (s *Service) PatchPromotion(ctx context.Context, scopeID, promotionID uuid.
 	if promotionID == uuid.Nil {
 		return db.Promotion{}, ErrInvalidArgument
 	}
-	cur, err := s.q.PromotionAdminGetPromotion(ctx)
+	cur, err := s.q.PromotionAdminGetPromotion(ctx, promotionID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Promotion{}, ErrNotFound
@@ -295,9 +295,9 @@ func (s *Service) PatchPromotion(ctx context.Context, scopeID, promotionID uuid.
 	if patch.RedemptionLimit != nil {
 		red = pgInt4Ptr(patch.RedemptionLimit)
 	}
-	ch := cur.ChannelScope
-	if patch.ChannelScope != nil {
-		ch = pgTextPtr(patch.ChannelScope)
+	ch := cur.PromotionChannelKind
+	if patch.PromotionChannelKind != nil {
+		ch = pgTextPtr(patch.PromotionChannelKind)
 	}
 
 	if patch.Rules != nil {
@@ -316,15 +316,15 @@ func (s *Service) PatchPromotion(ctx context.Context, scopeID, promotionID uuid.
 	qtx := s.q.WithTx(tx)
 
 	row, err := qtx.PromotionAdminUpdatePromotion(ctx, db.PromotionAdminUpdatePromotionParams{Name: name,
-		ApprovalStatus:   appr,
-		LifecycleStatus:  life,
-		Priority:         prio,
-		Stackable:        stack,
-		StartsAt:         starts,
-		EndsAt:           ends,
-		BudgetLimitMinor: budget,
-		RedemptionLimit:  red,
-		ChannelScope:     ch,
+		ApprovalStatus:       appr,
+		LifecycleStatus:      life,
+		Priority:             prio,
+		Stackable:            stack,
+		StartsAt:             starts,
+		EndsAt:               ends,
+		BudgetLimitMinor:     budget,
+		RedemptionLimit:      red,
+		PromotionChannelKind: ch,
 	})
 	if err != nil {
 		return db.Promotion{}, err

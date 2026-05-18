@@ -65,7 +65,7 @@ func artifactReserveHandler(svc *artifacts.Service) http.HandlerFunc {
 		}
 		scopeID, _, ok := parseArtifactIDs(r)
 		if !ok {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope_id", "invalid artifact route context")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_artifact_route", "invalid artifact route context")
 			return
 		}
 		if !artifactScopeAllowed(p, scopeID) {
@@ -93,7 +93,7 @@ func artifactListHandler(svc *artifacts.Service) http.HandlerFunc {
 		}
 		scopeID, _, ok := parseArtifactIDs(r)
 		if !ok {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope_id", "invalid artifact route context")
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_artifact_route", "invalid artifact route context")
 			return
 		}
 		if !artifactScopeAllowed(p, scopeID) {

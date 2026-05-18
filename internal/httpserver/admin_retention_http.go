@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appretention "github.com/avf/avf-vending-api/internal/app/retention"
@@ -52,9 +51,9 @@ func postAdminRetentionDryRun(app *api.HTTPApplication, svc *appretention.Servic
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "retention_dry_run_failed", err.Error())
 			return
 		}
-		scopeID, aerr := resolveRetentionAuditOrg(r.Context(), app.TelemetryStore.Pool(), r)
+		auditCompanyID, aerr := resolveRetentionAuditOrg(r.Context(), app.TelemetryStore.Pool(), r)
 		if aerr == nil {
-			recordRetentionAuditEvent(r.Context(), app.EnterpriseAudit, scopeID, compliance.ActionRetentionDryRun, out)
+			recordRetentionAuditEvent(r.Context(), app.EnterpriseAudit, auditCompanyID, compliance.ActionRetentionDryRun, out)
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
@@ -72,25 +71,16 @@ func postAdminRetentionRun(app *api.HTTPApplication, svc *appretention.Service, 
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "retention_run_failed", err.Error())
 			return
 		}
-		scopeID, aerr := resolveRetentionAuditOrg(r.Context(), app.TelemetryStore.Pool(), r)
+		auditCompanyID, aerr := resolveRetentionAuditOrg(r.Context(), app.TelemetryStore.Pool(), r)
 		if aerr == nil {
-			recordRetentionAuditEvent(r.Context(), app.EnterpriseAudit, scopeID, compliance.ActionRetentionRun, out)
+			recordRetentionAuditEvent(r.Context(), app.EnterpriseAudit, auditCompanyID, compliance.ActionRetentionRun, out)
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
 }
 
 func resolveRetentionAuditOrg(ctx context.Context, pool *pgxpool.Pool, r *http.Request) (uuid.UUID, error) {
-	raw := strings.TrimSpace(r.URL.Query().Get("scope_id"))
-	if raw != "" {
-		id, err := uuid.Parse(raw)
-		if err == nil {
-			return id, nil
-		}
-	}
-	if _, ok := auth.PrincipalFromContext(ctx); ok && uuid.Nil != uuid.Nil {
-		return uuid.Nil, nil
-	}
+	_ = r
 	var id uuid.UUID
 	err := pool.QueryRow(ctx, `SELECT id FROM companies ORDER BY created_at ASC LIMIT 1`).Scan(&id)
 	if err != nil {
@@ -99,7 +89,7 @@ func resolveRetentionAuditOrg(ctx context.Context, pool *pgxpool.Pool, r *http.R
 	return id, nil
 }
 
-func recordRetentionAuditEvent(ctx context.Context, rec compliance.EnterpriseRecorder, scopeID uuid.UUID, action string, outcome appretention.RunOutcome) {
+func recordRetentionAuditEvent(ctx context.Context, rec compliance.EnterpriseRecorder, auditCompanyID uuid.UUID, action string, outcome appretention.RunOutcome) {
 	if rec == nil {
 		return
 	}

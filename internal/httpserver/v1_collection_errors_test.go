@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
+	"github.com/avf/avf-vending-api/internal/app/listscope"
 )
 
 func TestWriteCapabilityNotConfigured(t *testing.T) {
@@ -76,7 +77,7 @@ func TestWriteV1ListError_NotImplemented(t *testing.T) {
 
 func TestWriteV1ListError_CompanyScopeRequired(t *testing.T) {
 	rec := httptest.NewRecorder()
-	writeV1ListError(rec, context.Background(), api.ErrAdminCompanyScopeRequired)
+	writeV1ListError(rec, context.Background(), listscope.ErrAdminCompanyRequired)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status: got %d want %d", rec.Code, http.StatusBadRequest)
 	}

@@ -66,10 +66,10 @@ When **`run-all-local.sh`** runs phase scripts with **`E2E_IN_PARENT=1`**, reuse
 
 Runner: **`tests/e2e/run-web-admin-flows.sh`**, scenario **`tests/e2e/scenarios/01_web_admin_setup.sh`**.
 
-- **Auth:** Either set **`ADMIN_TOKEN`** (Bearer for admin APIs) and **`E2E_SCOPE_ID`** (or put **`scopeId`** in reuse data), or set **`ADMIN_EMAIL`**, **`ADMIN_PASSWORD`**, and **`E2E_SCOPE_ID`** so the script calls **`POST /v1/auth/login`** with `{ email, password, scopeId }` (matches OpenAPI / Postman).
+- **Auth:** Set **`ADMIN_TOKEN`** (Bearer for admin APIs), **or** set **`ADMIN_EMAIL`** and **`ADMIN_PASSWORD`** so the script calls **`POST /v1/auth/login`** with `{ email, password }` (matches OpenAPI / Postman).
 - **Mutations:** Set **`E2E_ALLOW_WRITES=true`** (default from `load_env` for local). The script exits early with a clear message if writes are disabled.
 - **Production:** If **`E2E_TARGET=production`**, writes require **`E2E_PRODUCTION_WRITE_CONFIRMATION=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION`** (see `e2e_target_safety_guard`).
-- **Seed file:** Optional **`E2E_SEED_FILE`** (default **`tests/e2e/data/seed.local.example.json`**) supplies names, slot codes (`A1`), prices, and quantities. It does **not** create an company; the org must already exist in your DB.
+- **Seed file:** Optional **`E2E_SEED_FILE`** (default **`tests/e2e/data/seed.local.example.json`**) supplies names, slot codes (`A1`), prices, and quantities. It does **not** create deployment-global entities beyond what your migrations provision.
 - **Artifacts:** Each REST call writes **`rest/*.request.json`**, **`rest/*.response.json`**, **`rest/*.meta.json`**. Structured flow log: **`test-events.jsonl`** (`flow_id`, `step_name`, `protocol=REST`, `endpoint`, `resource_ids`, `status`, `message`). Public IDs: **`test-data.json`**; plaintext activation code (if returned): **`secrets.private.json`**.
 - **`summary.md`:** After a standalone run (`run-web-admin-flows.sh` not under `run-all-local`), the report includes a **Web admin setup steps (WA-SETUP-01)** checklist plus the **Web admin test events** table from **`test-events.jsonl`**.
 
@@ -83,7 +83,7 @@ Runner: **`tests/e2e/run-web-admin-flows.sh`**, scenario **`tests/e2e/scenarios/
 ### Reuse data (`--reuse-data path/to/test-data.json`)
 
 1. Capture a previous run’s **`test-data.json`** (and ensure **`secrets.private.json`** if you rely on stored tokens — usually you still log in or pass **`ADMIN_TOKEN`**).
-2. Run: `./tests/e2e/run-web-admin-flows.sh --reuse-data path/to/test-data.json`. Existing **`scopeId`**, **`siteId`**, **`machineId`**, **`productId`**, **`categoryId`**, etc. are reused when present; missing steps are created.
+2. Run: `./tests/e2e/run-web-admin-flows.sh --reuse-data path/to/test-data.json`. Existing **`siteId`**, **`machineId`**, **`productId`**, **`categoryId`**, etc. are reused when present; missing steps are created.
 3. Useful for iterative UI or gRPC tests against a stable machine.
 
 ### Manual cleanup
@@ -99,7 +99,7 @@ Runner: **`tests/e2e/run-web-admin-flows.sh`**, scenario **`tests/e2e/scenarios/
 | Symptom | Likely cause | What to do |
 |---------|----------------|------------|
 | **`E2E_ALLOW_WRITES must be true`** | Writes gated | `export E2E_ALLOW_WRITES=true` or set in **`.env`**. |
-| **`ADMIN_TOKEN set but scopeId unknown`** | Token only | Set **`E2E_SCOPE_ID`** or use **`--reuse-data`** with **`scopeId`**. |
+| **`ADMIN_TOKEN set but site identifiers unknown`** | Token only | Use **`--reuse-data`** with a **`test-data.json`** that contains **`siteId`** / **`machineId`** / **`productId`**. |
 | **Login HTTP 401/404** | User/org mismatch | Confirm org and user exist locally; check **`rest/wa-login.response.json`**. |
 | **Site/machine create 403/422** | Role or validation | Inspect **`rest/wa-site-create.response.json`** / **`wa-machine-create`**. |
 | **“No planogram in org” (skip)** | Empty planogram list | Seed at least one org planogram template (admin UI or DB); script exits **0** after catalog steps. |
@@ -128,7 +128,7 @@ Runner: **`tests/e2e/run-web-admin-flows.sh`**, scenario **`tests/e2e/scenarios/
 
 ## Flow improvement reports and `--reuse-data`
 
-After any full or partial E2E run, **`improvement-findings.jsonl`** may contain **improvement findings** (distinct from **hard failures** in **`events.jsonl`**). When you fix product or docs debt, rerun with **`--reuse-data path/to/test-data.json`** so stable **`scopeId`**, **`machineId`**, **`productId`**, and secrets stay aligned (see **Reuse data** above).
+After any full or partial E2E run, **`improvement-findings.jsonl`** may contain **improvement findings** (distinct from **hard failures** in **`events.jsonl`**). When you fix product or docs debt, rerun with **`--reuse-data path/to/test-data.json`** so stable **`siteId`**, **`machineId`**, **`productId`**, and secrets stay aligned (see **Reuse data** above).
 
 - Read **`reports/improvement-summary.md`** and **`reports/optimization-backlog.md`** even on a green run.
 - Turn **P0 / P1 / P2** lines into tickets with **`finding_id`** and evidence paths under **`.e2e-runs/run-*`**.

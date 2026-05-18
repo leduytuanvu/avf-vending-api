@@ -8,10 +8,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// adminCatalogScopeID is a legacy compatibility shim for service methods
-// that still accept a scope UUID during the single-company migration. REST
-// contracts no longer accept company path or query parameters.
-func adminCatalogScopeID(r *http.Request) (uuid.UUID, error) {
+// requireCatalogPrincipalUUID ensures an authenticated principal is present for catalog admin routes.
+// Single-company deployments do not accept scope query parameters.
+func requireCatalogPrincipalUUID(r *http.Request) (uuid.UUID, error) {
 	if _, ok := auth.PrincipalFromContext(r.Context()); !ok {
 		return uuid.Nil, fmt.Errorf("missing principal")
 	}

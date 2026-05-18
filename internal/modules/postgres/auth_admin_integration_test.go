@@ -34,15 +34,15 @@ func testAuthServiceWithPool(t *testing.T, pool *pgxpool.Pool) *appauth.Service 
 	return svc
 }
 
-func insertAuthAccount(t *testing.T, pool *pgxpool.Pool, id uuid.UUID, org uuid.UUID, email string, password string, roles []string, status string) {
+func insertAuthAccount(t *testing.T, pool *pgxpool.Pool, id uuid.UUID, _ uuid.UUID, email string, password string, roles []string, status string) {
 	t.Helper()
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	require.NoError(t, err)
 	ctx := context.Background()
 	_, err = pool.Exec(ctx, `
-INSERT INTO platform_auth_accounts (id, scope_id, email, password_hash, roles, status)
-VALUES ($1,$2,$3,$4,$5,$6)
-`, id, org, email, string(hash), roles, status)
+INSERT INTO platform_auth_accounts (id, email, password_hash, roles, status)
+VALUES ($1,$2,$3,$4,$5)
+`, id, email, string(hash), roles, status)
 	require.NoError(t, err)
 }
 
@@ -50,7 +50,7 @@ func TestAuthAdmin_CreateUserAndDuplicateEmail(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-create-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -78,7 +78,7 @@ func TestAuthAdmin_InvalidRole(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-badrole-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -96,7 +96,7 @@ func TestAuthAdmin_MachineRoleRejected(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-machine-role-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -115,8 +115,6 @@ func TestAuthAdmin_ActivateDeactivateAndLastOrgAdmin(t *testing.T) {
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := uuid.New()
-	insertAuditCompany(t, pool, org)
-
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "solo-admin-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
@@ -152,7 +150,7 @@ func TestAuthAdmin_ResetPasswordAndLoginAndDisabledNoLogin(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-login-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -193,8 +191,6 @@ func TestAuthAdmin_PatchRemovesLastOrgAdminForbidden(t *testing.T) {
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := uuid.New()
-	insertAuditCompany(t, pool, org)
-
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "patch-last-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
@@ -207,7 +203,7 @@ func TestAuthAdmin_ChangePassword(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 
 	id := uuid.New()
 	email := "self-" + id.String()[:8] + "@test.example.com"
@@ -230,7 +226,7 @@ func TestAuthAdmin_ReplaceUserRoles(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-roles-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -248,9 +244,8 @@ func TestAuthAdmin_CrossCompanyGetUserDenied(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	orgA := testfixtures.DevScopeID
+	orgA := testfixtures.DevCompanyID
 	orgB := uuid.New()
-	insertAuditCompany(t, pool, orgB)
 
 	target := uuid.New()
 	insertAuthAccount(t, pool, target, orgA, "company-a-"+target.String()[:8]+"@test.example.com", "password12345", []string{"viewer"}, "active")
@@ -263,7 +258,7 @@ func TestAuthAdmin_DisabledUserCannotLogin(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 
 	id := uuid.New()
 	email := "disabled-" + id.String()[:8] + "@test.example.com"
@@ -280,7 +275,7 @@ func TestAuthAdmin_RevokeSessionsInvalidatesRefreshToken(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 
 	actor := uuid.New()
 	insertAuthAccount(t, pool, actor, org, "actor-revoke-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
@@ -303,7 +298,7 @@ func TestAuthAdmin_PasswordResetTokenOneTime(t *testing.T) {
 	pool := testPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 
 	id := uuid.New()
 	email := "reset-" + id.String()[:8] + "@test.example.com"

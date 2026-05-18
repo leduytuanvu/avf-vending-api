@@ -20,7 +20,7 @@ func TestPromotion_adminCRUD_preview_and_companyIsolation(t *testing.T) {
 	svc, err := appcatalogadmin.NewService(q, pool, nil)
 	require.NoError(t, err)
 
-	org := testfixtures.DevScopeID
+	org := testfixtures.DevCompanyID
 	at := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
 	starts := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 	ends := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)

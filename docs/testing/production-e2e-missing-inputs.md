@@ -73,7 +73,7 @@ From `tests/e2e/.env.production.destructive.local`:
 - **Admin login path:** `POST /v1/auth/login` (JSON body per OpenAPI / setup scenario).
 - **Production MQTT hostname:** `mqtt.ldtv.dev` per `docs/runbooks/production-2-vps.md` (still need credentials).
 - **Machine token:** from **`E2E_ACTIVATION_CODE`** + claim flows once code exists.
-- **`machineId` / `scopeId`:** from **`01_web_admin_setup.sh`** once admin auth works.
+- **`machineId` / `siteId`:** from **`01_web_admin_setup.sh`** once admin auth works.
 
 ---
 

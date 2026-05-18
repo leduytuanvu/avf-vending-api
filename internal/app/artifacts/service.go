@@ -115,7 +115,7 @@ func (s *Service) ReserveArtifact(_ context.Context) (uuid.UUID, error) {
 // PutContent streams exactly size bytes into the canonical artifact key, validating SHA-256 and content type.
 func (s *Service) PutContent(ctx context.Context, companyID, artifactID uuid.UUID, body io.Reader, size int64, contentType, sha256Hex, originalFilename string) error {
 	if companyID == uuid.Nil || artifactID == uuid.Nil {
-		return fmt.Errorf("%w: scope_id and artifact_id are required", ErrInvalidArgument)
+		return fmt.Errorf("%w: company_id and artifact_id are required", ErrInvalidArgument)
 	}
 	if size <= 0 {
 		return fmt.Errorf("%w: content length must be > 0", ErrInvalidArgument)
@@ -261,7 +261,7 @@ func (s *Service) GetInfo(ctx context.Context, companyID, artifactID uuid.UUID) 
 // ListArtifacts lists artifact payload objects for an company (best-effort Head for metadata).
 func (s *Service) ListArtifacts(ctx context.Context, companyID uuid.UUID) ([]ArtifactInfo, error) {
 	if companyID == uuid.Nil {
-		return nil, fmt.Errorf("%w: scope_id is required", ErrInvalidArgument)
+		return nil, fmt.Errorf("%w: company_id is required", ErrInvalidArgument)
 	}
 	prefix := objectstore.BackendArtifactOrgPrefix(companyID)
 	rows, err := s.store.ListPrefix(ctx, prefix, s.listMaxKeys)

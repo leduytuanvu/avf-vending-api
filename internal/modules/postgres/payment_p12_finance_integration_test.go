@@ -147,31 +147,31 @@ func TestPaymentP12_settlementImport_idempotentAndMismatch(t *testing.T) {
 		SettlementDate:       time.Now().UTC().Format("2006-01-02"),
 		TransactionRefs:      []string{settleTxRef},
 	}
-	r1, err := adm.ImportSettlements(ctx, testfixtures.DevScopeID, "psp_fixture", []apppayments.SettlementImportItem{item})
+	r1, err := adm.ImportSettlements(ctx, testfixtures.DevCompanyID, "psp_fixture", []apppayments.SettlementImportItem{item})
 	require.NoError(t, err)
 	require.Len(t, r1.Results, 1)
 	require.True(t, r1.Results[0].Matched)
 	require.Equal(t, "reconciled", r1.Results[0].Settlement.Status)
 
-	r2, err := adm.ImportSettlements(ctx, testfixtures.DevScopeID, "psp_fixture", []apppayments.SettlementImportItem{item})
+	r2, err := adm.ImportSettlements(ctx, testfixtures.DevCompanyID, "psp_fixture", []apppayments.SettlementImportItem{item})
 	require.NoError(t, err)
 	require.Len(t, r2.Results, 1)
 	var cnt int64
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM payment_provider_settlements WHERE scope_id = $1 AND provider_settlement_id = $2`,
-		testfixtures.DevScopeID, settleID).Scan(&cnt))
+		`SELECT count(*) FROM payment_provider_settlements WHERE provider_settlement_id = $1`,
+		settleID).Scan(&cnt))
 	require.EqualValues(t, 1, cnt)
 	require.Equal(t, r1.Results[0].Settlement.ID, r2.Results[0].Settlement.ID)
 
 	bad := item
 	bad.GrossAmountMinor = 1
 	bad.ProviderSettlementID = "set_bad_" + uuid.NewString()
-	_, err = adm.ImportSettlements(ctx, testfixtures.DevScopeID, "psp_fixture", []apppayments.SettlementImportItem{bad})
+	_, err = adm.ImportSettlements(ctx, testfixtures.DevCompanyID, "psp_fixture", []apppayments.SettlementImportItem{bad})
 	require.NoError(t, err)
 	var caseCnt int64
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM commerce_reconciliation_cases WHERE scope_id = $1 AND case_type = 'settlement_amount_mismatch' AND correlation_key = $2`,
-		testfixtures.DevScopeID, "settlement:psp_fixture:"+bad.ProviderSettlementID).Scan(&caseCnt))
+		`SELECT count(*) FROM commerce_reconciliation_cases WHERE case_type = 'settlement_amount_mismatch' AND correlation_key = $1`,
+		"settlement:psp_fixture:"+bad.ProviderSettlementID).Scan(&caseCnt))
 	require.EqualValues(t, 1, caseCnt)
 }
 
@@ -247,7 +247,7 @@ func TestPaymentP12_disputeResolve(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	list, err := adm.ListDisputes(ctx, testfixtures.DevScopeID, 20, 0)
+	list, err := adm.ListDisputes(ctx, testfixtures.DevCompanyID, 20, 0)
 	require.NoError(t, err)
 	require.NotEmpty(t, list.Items)
 	did := uuid.MustParse(list.Items[0].ID)

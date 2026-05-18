@@ -93,20 +93,20 @@ func TestWebPVariantGenerator_outputsWebP(t *testing.T) {
 		t.Fatal(err)
 	}
 	mid := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	ok := objectstore.MediaAssetOriginalKey(testScopeID, mid)
+	ok := objectstore.MediaAssetOriginalKey(testFixtureCompanyUUID, mid)
 	st := newMapObjectStore()
 	if err := st.Put(context.Background(), ok, bytes.NewReader(enc.Bytes()), int64(enc.Len()), "image/png"); err != nil {
 		t.Fatal(err)
 	}
 	g := WebPVariantGenerator{ThumbMax: 32, DisplayMax: 48}
-	va, err := g.GenerateWebPVariants(context.Background(), st, testScopeID, mid, ok, 1<<20)
+	va, err := g.GenerateWebPVariants(context.Background(), st, testFixtureCompanyUUID, mid, ok, 1<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if va.DisplayBytes <= 0 || va.ThumbBytes <= 0 {
 		t.Fatalf("expected non-empty variants: %+v", va)
 	}
-	tk := objectstore.MediaAssetThumbWebpKey(testScopeID, mid)
+	tk := objectstore.MediaAssetThumbWebpKey(testFixtureCompanyUUID, mid)
 	head, err := st.Head(context.Background(), tk)
 	if err != nil {
 		t.Fatal(err)
@@ -125,15 +125,15 @@ func TestWebPVariantGenerator_rejectsNonCanonicalOriginalKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	mid := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	ok := objectstore.MediaAssetOriginalKey(testScopeID, mid)
+	ok := objectstore.MediaAssetOriginalKey(testFixtureCompanyUUID, mid)
 	st := newMapObjectStore()
 	if err := st.Put(context.Background(), ok, bytes.NewReader(enc.Bytes()), int64(enc.Len()), "image/png"); err != nil {
 		t.Fatal(err)
 	}
 	g := WebPVariantGenerator{}
 	wrongMid := uuid.New()
-	wrongKey := objectstore.MediaAssetOriginalKey(testScopeID, wrongMid)
-	_, err := g.GenerateWebPVariants(context.Background(), st, testScopeID, mid, wrongKey, 1<<20)
+	wrongKey := objectstore.MediaAssetOriginalKey(testFixtureCompanyUUID, wrongMid)
+	_, err := g.GenerateWebPVariants(context.Background(), st, testFixtureCompanyUUID, mid, wrongKey, 1<<20)
 	if err == nil {
 		t.Fatal("expected error for key mismatch")
 	}
@@ -142,14 +142,14 @@ func TestWebPVariantGenerator_rejectsNonCanonicalOriginalKey(t *testing.T) {
 func TestWebPVariantGenerator_rejectsNonImageSniff(t *testing.T) {
 	t.Parallel()
 	mid := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	ok := objectstore.MediaAssetOriginalKey(testScopeID, mid)
+	ok := objectstore.MediaAssetOriginalKey(testFixtureCompanyUUID, mid)
 	st := newMapObjectStore()
 	payload := []byte("not-an-image-binary")
 	if err := st.Put(context.Background(), ok, bytes.NewReader(payload), int64(len(payload)), "text/plain"); err != nil {
 		t.Fatal(err)
 	}
 	g := WebPVariantGenerator{}
-	if _, err := g.GenerateWebPVariants(context.Background(), st, testScopeID, mid, ok, 1<<20); err == nil {
+	if _, err := g.GenerateWebPVariants(context.Background(), st, testFixtureCompanyUUID, mid, ok, 1<<20); err == nil {
 		t.Fatal("expected error for non-image payload")
 	}
 }

@@ -261,7 +261,7 @@ INSERT INTO price_books (
     effective_to,
     is_default,
     active,
-    scope_type,
+    price_book_level,
     site_id,
     machine_id,
     priority
@@ -288,7 +288,7 @@ SET
     effective_to = $4,
     is_default = $5,
     active = $6,
-    scope_type = $7,
+    price_book_level = $7,
     site_id = $8,
     machine_id = $9,
     priority = $10,

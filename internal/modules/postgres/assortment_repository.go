@@ -5,7 +5,6 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/assortmentapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -45,17 +44,15 @@ func (r *AssortmentRepository) BindMachineAssortment(ctx context.Context, in ass
 	if _, err := tx.Exec(ctx, `
 UPDATE machine_assortment_bindings
 SET valid_to = now()
-WHERE scope_id = $1
-  AND machine_id = $2
+WHERE machine_id = $1
   AND is_primary
   AND valid_to IS NULL
-`, uuid.Nil, in.MachineID); err != nil {
+`, in.MachineID); err != nil {
 		return err
 	}
 
 	tag, err := tx.Exec(ctx, `
 INSERT INTO machine_assortment_bindings (
-    scope_id,
     machine_id,
     assortment_id,
     is_primary,
@@ -63,14 +60,12 @@ INSERT INTO machine_assortment_bindings (
 )
 SELECT
     $1,
-    $2,
     a.id,
     TRUE,
     now()
 FROM assortments a
-WHERE a.id = $3
-  AND a.scope_id = $1
-`, uuid.Nil, in.MachineID, in.AssortmentID)
+WHERE a.id = $2
+`, in.MachineID, in.AssortmentID)
 	if err != nil {
 		return err
 	}

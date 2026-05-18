@@ -95,7 +95,7 @@ WHERE
     id = $1
 RETURNING command_sequence;
 
--- name: ListMachinesByScopeID :many
+-- name: ListMachinesOrderedByName :many
 SELECT *
 FROM machines
 ORDER BY
@@ -214,7 +214,7 @@ INSERT INTO technician_machine_assignments (
     technician_id,
     machine_id,
     role,
-    scope,
+    assignment_domain,
     created_by,
     status
 )

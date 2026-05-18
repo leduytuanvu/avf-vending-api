@@ -559,3 +559,90 @@ func TestOpenAPI_machineInternalGRPCNotDocumentedAsPublicHTTP(t *testing.T) {
 		}
 	}
 }
+
+func TestOpenAPI_adminSites_noLegacyScopeOrgTenantParamsOrExamples(t *testing.T) {
+	t.Parallel()
+	var spec map[string]any
+	if err := json.Unmarshal(swagger.OpenAPIJSON(), &spec); err != nil {
+		t.Fatal(err)
+	}
+	paths, ok := spec["paths"].(map[string]any)
+	if !ok {
+		t.Fatal("missing paths")
+	}
+
+	forbiddenParam := map[string]struct{}{
+		"scope" + "_id":        {},
+		"scope" + "Id":         {},
+		"organization" + "_id": {},
+		"organization" + "Id":  {},
+		"Organization" + "ID":  {},
+		"tenant" + "_id":       {},
+		"tenant" + "Id":        {},
+		"Tenant" + "ID":        {},
+	}
+
+	forbiddenJSONFragments := []string{
+		`"` + "scope" + "_id" + `"`,
+		`"` + "scope" + "Id" + `"`,
+		`"` + "Scope" + "ID" + `"`,
+		`"` + "organization" + "_id" + `"`,
+		`"` + "organization" + "Id" + `"`,
+		`"` + "Organization" + "ID" + `"`,
+		`"` + "tenant" + "_id" + `"`,
+		`"` + "tenant" + "Id" + `"`,
+		`"` + "Tenant" + "ID" + `"`,
+		"org" + "_admin",
+		"tenant" + "-scoped",
+		"org" + "-scoped",
+	}
+
+	checkParams := func(where string, op map[string]any) {
+		raw, ok := op["parameters"].([]any)
+		if !ok {
+			return
+		}
+		for _, pAny := range raw {
+			pm, ok := pAny.(map[string]any)
+			if !ok {
+				continue
+			}
+			n, _ := pm["name"].(string)
+			if _, bad := forbiddenParam[n]; bad {
+				t.Fatalf("%s: forbidden parameter %q", where, n)
+			}
+		}
+	}
+
+	for path, pmAny := range paths {
+		if !strings.HasPrefix(path, "/v1/admin/sites") {
+			continue
+		}
+		pm, ok := pmAny.(map[string]any)
+		if !ok {
+			continue
+		}
+		for method, opAny := range pm {
+			method = strings.ToLower(method)
+			if method == "parameters" {
+				continue
+			}
+			op, ok := opAny.(map[string]any)
+			if !ok {
+				continue
+			}
+			checkParams(fmt.Sprintf("%s %s", strings.ToUpper(method), path), op)
+		}
+
+		frag, err := json.Marshal(pmAny)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := string(frag)
+		for _, tok := range forbiddenJSONFragments {
+			if strings.Contains(s, tok) {
+				t.Fatalf("OpenAPI fragment for %s must not contain %q:\n%s", path, tok, s)
+			}
+		}
+	}
+}

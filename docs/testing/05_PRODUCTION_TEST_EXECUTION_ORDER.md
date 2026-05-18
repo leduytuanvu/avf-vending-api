@@ -12,10 +12,10 @@ Trước khi **bật** bất kỳ request ghi nào (trừ `POST /v1/auth/login` 
 
 Mặc định cả ba là `false`. Nếu thiếu, pre-request của collection sẽ **`throw`** với `[GATED]` (kể cả khi request đã enabled trong Postman).
 
-## Vai trò và `scope_id`
+## Vai trò và phạm vi công ty (JWT)
 
-- **platform_admin**: single-company admin endpoints do not require `scope_id`.
-- **admin**: thường **không** cần `scope_id` — company được suy ra từ JWT; giữ query **disabled** trừ khi swagger bắt buộc.
+- **platform_admin**: các endpoint admin single-company không yêu cầu tham số truy vấn lọc theo công ty ngoài JWT.
+- **admin**: company được suy ra từ JWT; giữ các query tùy chọn trong Postman **disabled** trừ khi OpenAPI bắt buộc.
 
 ## Biến tự capture sau response (collection test script)
 

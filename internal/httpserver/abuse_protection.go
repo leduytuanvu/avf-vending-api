@@ -122,13 +122,6 @@ func (a *AbuseProtection) AdminMutation() func(http.Handler) http.Handler {
 				return
 			}
 			org := uuid.Nil
-			if p.HasRole(auth.RolePlatformAdmin) {
-				if q := strings.TrimSpace(r.URL.Query().Get("scope_id")); q != "" {
-					if id, err := uuid.Parse(q); err == nil {
-						org = id
-					}
-				}
-			}
 			key := ratelimit.StableKey("admin_mut", p.Subject, org.String())
 			a.apply(w, r, key, int64(a.cfg.AdminMutationPerMinute), next)
 		})
@@ -218,13 +211,6 @@ func (a *AbuseProtection) ReportsReadGET() func(http.Handler) http.Handler {
 				return
 			}
 			org := uuid.Nil
-			if p.HasRole(auth.RolePlatformAdmin) {
-				if q := strings.TrimSpace(r.URL.Query().Get("scope_id")); q != "" {
-					if id, err := uuid.Parse(q); err == nil {
-						org = id
-					}
-				}
-			}
 			key := ratelimit.StableKey("reports_read", p.Subject, org.String())
 			a.apply(w, r, key, int64(a.cfg.ReportsReadPerMinute), next)
 		})
@@ -245,8 +231,7 @@ func (a *AbuseProtection) PasswordResetRequestPOST() func(http.Handler) http.Han
 				return
 			}
 			var pr struct {
-				ScopeID string `json:"scopeId"`
-				Email   string `json:"email"`
+				Email string `json:"email"`
 			}
 			_ = json.Unmarshal(body, &pr)
 			org := ""
