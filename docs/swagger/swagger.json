@@ -6474,9 +6474,9 @@
           "error": {
             "code": "invalid_query",
             "details": {
-              "param": "company"
+              "param": "limit"
             },
-            "message": "company query is required for this list operation",
+            "message": "invalid query parameter for this list operation",
             "requestId": "01ARZ3NDEKTSV4RRFFQ69G5AV"
           }
         }
@@ -6688,7 +6688,25 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "items": [
+                    {
+                      "activationCodeId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                      "createdAt": "2026-04-29T00:00:00Z",
+                      "expiresAt": "2026-04-30T00:00:00Z",
+                      "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                      "maxUses": 1,
+                      "notes": "",
+                      "remainingUses": 1,
+                      "status": "active",
+                      "uses": 0
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "totalCount": 1
+                  }
                 },
                 "schema": {
                   "type": "object"
@@ -6734,7 +6752,10 @@
           "content": {
             "application/json": {
               "example": {
-                "status": "ok"
+                "expiresInMinutes": 1440,
+                "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                "maxUses": 1,
+                "notes": "pilot"
               },
               "schema": {
                 "type": "object"
@@ -6749,7 +6770,13 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "activationCode": "AVF-123456",
+                  "activationCodeId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                  "expiresAt": "2026-04-30T00:00:00Z",
+                  "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "maxUses": 1,
+                  "remainingUses": 1,
+                  "status": "active"
                 },
                 "schema": {
                   "type": "object"
@@ -6847,7 +6874,24 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "items": [
+                    {
+                      "anomalyType": "machine_offline_too_long",
+                      "createdAt": "2026-04-29T12:00:00.000000000Z",
+                      "detectedAt": "2026-04-29T12:00:00.000000000Z",
+                      "fingerprint": "offline_long|7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                      "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                      "machineName": "Lobby A",
+                      "machineSerialNumber": "SN-001",
+                      "payload": {
+                        "last_seen_at": "2026-04-29T08:00:00Z",
+                        "threshold": "2 hours"
+                      },
+                      "status": "open",
+                      "updatedAt": "2026-04-29T12:00:00.000000000Z"
+                    }
+                  ]
                 },
                 "schema": {
                   "type": "object"
@@ -6896,7 +6940,19 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "anomalyType": "repeated_vend_failure",
+                  "createdAt": "2026-04-29T12:00:00.000000000Z",
+                  "detectedAt": "2026-04-29T12:00:00.000000000Z",
+                  "fingerprint": "repeated_vend_failure|7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "machineName": "Lobby A",
+                  "machineSerialNumber": "SN-001",
+                  "payload": {
+                    "failed_vend_count_24h": 4
+                  },
+                  "status": "open",
+                  "updatedAt": "2026-04-29T12:00:00.000000000Z"
                 },
                 "schema": {
                   "type": "object"
@@ -6954,7 +7010,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "anomalyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "status": "ignored"
                 },
                 "schema": {
                   "type": "object"
@@ -7012,7 +7069,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "anomalyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "status": "resolved"
                 },
                 "schema": {
                   "type": "object"
@@ -8087,7 +8145,9 @@
           "content": {
             "application/json": {
               "example": {
-                "status": "ok"
+                "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                "role": "field_service",
+                "technician_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
               },
               "schema": {
                 "type": "object"
@@ -8102,7 +8162,14 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "created_at": "2026-04-01T00:00:00.000000000Z",
+                  "id": "dddddddd-eeee-ffff-0000-111111111111",
+                  "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "role": "maintainer",
+                  "status": "active",
+                  "technician_id": "eeeeeeee-ffff-0000-1111-222222222222",
+                  "updated_at": "2026-04-01T00:00:00.000000000Z",
+                  "valid_from": "2026-04-01T00:00:00.000000000Z"
                 },
                 "schema": {
                   "type": "object"
@@ -8151,7 +8218,14 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "created_at": "2026-04-01T00:00:00.000000000Z",
+                  "id": "dddddddd-eeee-ffff-0000-111111111111",
+                  "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "role": "maintainer",
+                  "status": "active",
+                  "technician_id": "eeeeeeee-ffff-0000-1111-222222222222",
+                  "updated_at": "2026-04-01T00:00:00.000000000Z",
+                  "valid_from": "2026-04-01T00:00:00.000000000Z"
                 },
                 "schema": {
                   "type": "object"
@@ -8198,7 +8272,14 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "created_at": "2026-04-01T00:00:00.000000000Z",
+                  "id": "dddddddd-eeee-ffff-0000-111111111111",
+                  "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "role": "maintainer",
+                  "status": "active",
+                  "technician_id": "eeeeeeee-ffff-0000-1111-222222222222",
+                  "updated_at": "2026-04-01T00:00:00.000000000Z",
+                  "valid_from": "2026-04-01T00:00:00.000000000Z"
                 },
                 "schema": {
                   "type": "object"
@@ -11398,7 +11479,25 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "attempts": [
+                    {
+                      "attemptNo": 1,
+                      "dispatchState": "failed",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000001",
+                      "sentAt": "2026-04-29T12:00:10.000000000Z",
+                      "status": "failed",
+                      "timeoutReason": "mqtt_timeout"
+                    }
+                  ],
+                  "commandId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                  "commandType": "SET_TEMPERATURE",
+                  "createdAt": "2026-04-29T12:00:00.000000000Z",
+                  "idempotencyKey": "idem-retry-safe",
+                  "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "payload": {
+                    "celsius": 4
+                  },
+                  "sequence": 42
                 },
                 "schema": {
                   "type": "object"
@@ -11456,7 +11555,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "attemptsCancelled": 1
                 },
                 "schema": {
                   "type": "object"
@@ -11514,7 +11613,12 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "attemptId": "dddddddd-eeee-ffff-0000-111111111111",
+                  "commandId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                  "dispatchState": "published",
+                  "replay": false,
+                  "sequence": 42,
+                  "skippedRepublish": false
                 },
                 "schema": {
                   "type": "object"
@@ -11593,7 +11697,29 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "items": [
+                    {
+                      "caseType": "payment_paid_vend_failed",
+                      "firstDetectedAt": "2026-04-19T12:10:00Z",
+                      "id": "99999999-8888-7777-6666-555555555555",
+                      "lastDetectedAt": "2026-04-19T12:10:00Z",
+                      "metadata": {
+                        "payment_state": "captured",
+                        "vend_state": "failed"
+                      },
+                      "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "paymentId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                      "reason": "captured payment is attached to a failed vend",
+                      "severity": "critical",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 42
+                  }
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1CommerceReconciliationListResponse"
@@ -13732,7 +13858,24 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "items": [
+                    {
+                      "anomalyType": "negative_stock",
+                      "createdAt": "2026-04-29T12:00:00.000000000Z",
+                      "detectedAt": "2026-04-29T12:00:00.000000000Z",
+                      "fingerprint": "negative-stock:A3",
+                      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                      "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                      "machineName": "Lobby A",
+                      "machineSerialNumber": "SN-001",
+                      "payload": {
+                        "quantity": -1
+                      },
+                      "slotCode": "A3",
+                      "status": "open",
+                      "updatedAt": "2026-04-29T12:00:00.000000000Z"
+                    }
+                  ]
                 },
                 "schema": {
                   "type": "object"
@@ -13790,7 +13933,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "anomalyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "status": "resolved"
                 },
                 "schema": {
                   "type": "object"
@@ -14853,9 +14997,14 @@
           "content": {
             "application/json": {
               "example": {
-                "name": "New unit",
-                "serial_number": "SN-NEW",
-                "site_id": "aaaaaaaa-bbbb-cccc-dddd-111111111111"
+                "cabinetType": "ambient",
+                "code": "M001",
+                "model": "AVF-1",
+                "name": "Lobby A",
+                "serialNumber": "SN-001",
+                "siteId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "status": "draft",
+                "timezone": "UTC"
               },
               "schema": {
                 "type": "object"
@@ -14870,14 +15019,16 @@
             "content": {
               "application/json": {
                 "example": {
+                  "code": "M001",
                   "command_sequence": 0,
-                  "created_at": "2026-04-01T00:00:00.000000000Z",
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 0,
                   "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-                  "name": "New unit",
-                  "serial_number": "SN-NEW",
-                  "site_id": "aaaaaaaa-bbbb-cccc-dddd-111111111111",
-                  "status": "provisioning",
-                  "updated_at": "2026-04-01T00:00:00.000000000Z"
+                  "name": "Lobby A",
+                  "serial_number": "SN-001",
+                  "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "status": "draft",
+                  "updated_at": "2026-04-29T00:00:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -15170,7 +15321,8 @@
           "content": {
             "application/json": {
               "example": {
-                "name": "Renamed unit"
+                "name": "Lobby A1",
+                "status": "active"
               },
               "schema": {
                 "type": "object"
@@ -15185,14 +15337,16 @@
             "content": {
               "application/json": {
                 "example": {
+                  "code": "M001",
                   "command_sequence": 0,
-                  "created_at": "2026-04-01T00:00:00.000000000Z",
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 0,
                   "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-                  "name": "New unit",
-                  "serial_number": "SN-NEW",
-                  "site_id": "aaaaaaaa-bbbb-cccc-dddd-111111111111",
-                  "status": "provisioning",
-                  "updated_at": "2026-04-01T00:00:00.000000000Z"
+                  "name": "Lobby A1",
+                  "serial_number": "SN-001",
+                  "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "status": "active",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -15792,7 +15946,15 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "command_sequence": 0,
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 0,
+                  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "name": "Lobby A",
+                  "serial_number": "SN-001",
+                  "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "status": "decommissioned",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -16825,7 +16987,10 @@
           "content": {
             "application/json": {
               "example": {
-                "status": "ok"
+                "commandType": "REQUEST_DIAGNOSTICS",
+                "payload": {
+                  "bundle": "logs"
+                }
               },
               "schema": {
                 "type": "object"
@@ -17530,7 +17695,13 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "failedCommandCount": 0,
+                  "inventoryAnomalyCount": 0,
+                  "lastSeenAt": "2026-04-29T12:00:00.000000000Z",
+                  "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "pendingCommandCount": 1,
+                  "status": "online",
+                  "telemetryFreshnessSeconds": 95
                 },
                 "schema": {
                   "type": "object"
@@ -17929,7 +18100,24 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "items": [
+                    {
+                      "anomalyType": "stale_inventory_sync",
+                      "createdAt": "2026-04-29T12:00:00.000000000Z",
+                      "detectedAt": "2026-04-29T12:00:00.000000000Z",
+                      "fingerprint": "stale-sync",
+                      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                      "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                      "machineName": "Lobby A",
+                      "machineSerialNumber": "SN-001",
+                      "payload": {
+                        "publishedVersion": 3,
+                        "snapshotVersion": 2
+                      },
+                      "status": "open",
+                      "updatedAt": "2026-04-29T12:00:00.000000000Z"
+                    }
+                  ]
                 },
                 "schema": {
                   "type": "object"
@@ -18036,7 +18224,16 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "command_sequence": 0,
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 1,
+                  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "name": "Lobby A",
+                  "revoked_at": "2026-04-29T00:05:00Z",
+                  "serial_number": "SN-001",
+                  "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "status": "compromised",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -18795,7 +18992,15 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "command_sequence": 0,
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 0,
+                  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "name": "Lobby A",
+                  "serial_number": "SN-001",
+                  "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "status": "active",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -18990,7 +19195,16 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "command_sequence": 0,
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 3,
+                  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "name": "Lobby A",
+                  "revoked_at": "2026-04-29T00:05:00Z",
+                  "serial_number": "SN-001",
+                  "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "status": "active",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -19086,7 +19300,16 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "command_sequence": 0,
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 3,
+                  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "name": "Lobby A",
+                  "revoked_at": "2026-04-29T00:05:00Z",
+                  "serial_number": "SN-001",
+                  "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "status": "active",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -19281,7 +19504,16 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "command_sequence": 0,
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 2,
+                  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "name": "Lobby A",
+                  "rotated_at": "2026-04-29T00:05:00Z",
+                  "serial_number": "SN-001",
+                  "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "status": "active",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -19330,7 +19562,16 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "command_sequence": 0,
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 2,
+                  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "name": "Lobby A",
+                  "rotated_at": "2026-04-29T00:05:00Z",
+                  "serial_number": "SN-001",
+                  "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "status": "active",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -19742,7 +19983,15 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "command_sequence": 0,
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 0,
+                  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "name": "Lobby A",
+                  "serial_number": "SN-001",
+                  "site_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "status": "suspended",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -20012,7 +20261,25 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "items": [
+                    {
+                      "assignmentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "createdAt": "2026-04-29T00:00:00Z",
+                      "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                      "machineName": "Lobby A",
+                      "machineSerialNumber": "SN-001",
+                      "role": "field_service",
+                      "technicianDisplayName": "Field Tech",
+                      "technicianId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+                      "validFrom": "2026-04-29T00:00:00Z"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 42
+                  }
                 },
                 "schema": {
                   "type": "object"
@@ -20058,7 +20325,9 @@
           "content": {
             "application/json": {
               "example": {
-                "status": "ok"
+                "role": "field_service",
+                "scope": "maintenance",
+                "userId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
               },
               "schema": {
                 "type": "object"
@@ -20073,7 +20342,15 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "role": "field_service",
+                  "scope": "maintenance",
+                  "status": "active",
+                  "technician_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+                  "updated_at": "2026-04-29T00:00:00Z",
+                  "valid_from": "2026-04-29T00:00:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -20130,7 +20407,7 @@
           "204": {
             "content": {
               "application/json": {
-                "example": "example",
+                "example": "",
                 "schema": {
                   "type": "string"
                 }
@@ -20178,7 +20455,17 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "items": [
+                    {
+                      "eventKind": "command_attempt",
+                      "occurredAt": "2026-04-29T12:00:00.000000000Z",
+                      "payload": {
+                        "status": "sent"
+                      },
+                      "refId": "cccccccc-dddd-eeee-ffff-000000000001",
+                      "title": "Attempt sent"
+                    }
+                  ]
                 },
                 "schema": {
                   "type": "object"
@@ -20456,7 +20743,7 @@
           "content": {
             "application/json": {
               "example": {
-                "status": "ok"
+                "site_id": "11111111-2222-3333-4444-555555555555"
               },
               "schema": {
                 "type": "object"
@@ -20471,7 +20758,15 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "command_sequence": 0,
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "credential_version": 0,
+                  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "name": "Lobby A",
+                  "serial_number": "SN-001",
+                  "site_id": "11111111-2222-3333-4444-555555555555",
+                  "status": "active",
+                  "updated_at": "2026-04-29T00:06:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -21349,7 +21644,24 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "items": [
+                    {
+                      "appVersion": "1.4.2",
+                      "catalogVersion": "2026-04-29T00:00:00Z",
+                      "configVersion": "7",
+                      "failedCommandCount": 0,
+                      "inventoryAnomalyCount": 0,
+                      "lastCheckInAt": "2026-04-29T11:58:00.000000000Z",
+                      "lastErrorCode": "TEMP_SENSOR_DEGRADED",
+                      "lastSeenAt": "2026-04-29T12:00:00.000000000Z",
+                      "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                      "mediaVersion": "sha256:abcd0000",
+                      "mqttConnected": true,
+                      "pendingCommandCount": 1,
+                      "status": "online",
+                      "telemetryFreshnessSeconds": 95
+                    }
+                  ]
                 },
                 "schema": {
                   "type": "object"
@@ -21779,7 +22091,8 @@
           "content": {
             "application/json": {
               "example": {
-                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                "amountMinor": 100,
+                "reason": "customer courtesy"
               },
               "schema": {
                 "$ref": "#/components/schemas/V1AdminOrderRefundPostRequest"
@@ -21794,7 +22107,11 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "ledgerAmountMinor": 100,
+                  "ledgerCurrency": "USD",
+                  "ledgerRefundID": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "ledgerState": "requested",
+                  "refundRequest": {}
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminOrderRefundPostResponse"
@@ -21972,7 +22289,13 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "items": [],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 42
+                  }
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1OrderTimelineListResponse"
@@ -29178,7 +29501,17 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "batch": {
+                    "cabinetType": "ambient",
+                    "createdAt": "2026-04-29T12:00:00.000000000Z",
+                    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "machineCount": 1,
+                    "metadata": {},
+                    "siteId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "status": "completed",
+                    "updatedAt": "2026-04-29T12:00:00.000000000Z"
+                  },
+                  "machines": []
                 },
                 "schema": {
                   "type": "object"
@@ -29226,7 +29559,16 @@
           "content": {
             "application/json": {
               "example": {
-                "status": "ok"
+                "cabinetType": "ambient",
+                "generateActivationCodes": false,
+                "machines": [
+                  {
+                    "model": "AVF-1",
+                    "name": "Lobby",
+                    "serialNumber": "SN-BULK-001"
+                  }
+                ],
+                "siteId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
               },
               "schema": {
                 "type": "object"
@@ -29311,7 +29653,13 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "items": [],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 42
+                  }
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1RefundRequestsListResponse"
@@ -29431,9 +29779,7 @@
           "200": {
             "content": {
               "application/json": {
-                "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                },
+                "example": {},
                 "schema": {
                   "$ref": "#/components/schemas/V1RefundRequestRow"
                 }
@@ -29628,7 +29974,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -29758,7 +30117,7 @@
           "200": {
             "content": {
               "text/plain": {
-                "example": "company,from,to,group_by,row_type,bucket_start,site_id,machine_id,payment_provider,order_count,total_minor,subtotal_minor,tax_minor,gross_total_minor,summary_order_count,avg_order_value_minor\n",
+                "example": "from,to,group_by,row_type,bucket_start,site_id,machine_id,payment_provider,order_count,total_minor,subtotal_minor,tax_minor,gross_total_minor,summary_order_count,avg_order_value_minor\n",
                 "schema": {
                   "example": "ok",
                   "type": "string"
@@ -29935,7 +30294,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -30055,6 +30427,7 @@
           "200": {
             "content": {
               "text/plain": {
+                "example": "from,to,group_by,row_type,bucket_start,site_id,machine_id,payment_provider,order_count,total_minor,subtotal_minor,tax_minor,gross_total_minor,summary_order_count,avg_order_value_minor\n",
                 "schema": {
                   "example": "ok",
                   "type": "string"
@@ -30187,7 +30560,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -30355,7 +30741,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -30541,7 +30940,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -30674,7 +31086,16 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "exceptionKind": "low_stock",
+                  "from": "2026-04-01T00:00:00.000000000Z",
+                  "items": [],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 0,
+                    "total": 0
+                  },
+                  "to": "2026-04-20T00:00:00.000000000Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -30807,7 +31228,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -30975,7 +31409,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -31133,7 +31580,26 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "amountMinor": 12500,
+                      "bucketStart": "2026-04-01T00:00:00Z",
+                      "paymentCount": 5,
+                      "provider": "cash",
+                      "reconciliationStatus": "matched",
+                      "settlementStatus": "settled",
+                      "state": "captured"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "timezone": "UTC",
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportPaymentsResponse"
@@ -31254,7 +31720,7 @@
           "200": {
             "content": {
               "text/plain": {
-                "example": "company,from,to,group_by,row_type,bucket_start,site_id,machine_id,payment_provider,order_count,total_minor,subtotal_minor,tax_minor,gross_total_minor,summary_order_count,avg_order_value_minor\n",
+                "example": "from,to,group_by,row_type,bucket_start,site_id,machine_id,payment_provider,order_count,total_minor,subtotal_minor,tax_minor,gross_total_minor,summary_order_count,avg_order_value_minor\n",
                 "schema": {
                   "example": "ok",
                   "type": "string"
@@ -31420,7 +31886,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -31597,7 +32076,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -31730,7 +32222,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -31872,7 +32377,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -32039,7 +32557,17 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "breakdown": [],
+                  "from": "2026-04-01T00:00:00Z",
+                  "groupBy": "day",
+                  "summary": {
+                    "avgOrderValueMinor": 200,
+                    "grossTotalMinor": 10000,
+                    "orderCount": 50,
+                    "subtotalMinor": 9000,
+                    "taxMinor": 1000
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportSalesResponse"
@@ -32160,7 +32688,7 @@
           "200": {
             "content": {
               "text/plain": {
-                "example": "company,from,to,group_by,row_type,bucket_start,site_id,machine_id,payment_provider,order_count,total_minor,subtotal_minor,tax_minor,gross_total_minor,summary_order_count,avg_order_value_minor\n",
+                "example": "from,to,group_by,row_type,bucket_start,site_id,machine_id,payment_provider,order_count,total_minor,subtotal_minor,tax_minor,gross_total_minor,summary_order_count,avg_order_value_minor\n",
                 "schema": {
                   "example": "ok",
                   "type": "string"
@@ -32346,7 +32874,20 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "from": "2026-04-01T00:00:00Z",
+                  "items": [
+                    {
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "status": "open"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "to": "2026-04-20T00:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminReportListResponse"
@@ -32441,7 +32982,37 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "items": [
+                    {
+                      "currentQuantity": 3,
+                      "dailyVelocity": 1.0,
+                      "daysToEmpty": 3.0,
+                      "fillRatio": 0.3,
+                      "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                      "machineName": "Lobby-01",
+                      "maxQuantity": 10,
+                      "planogramId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                      "planogramName": "Lobby default",
+                      "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                      "productName": "Cola 12oz",
+                      "productSku": "COLA-12",
+                      "siteId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                      "siteName": "HQ",
+                      "slotIndex": 0,
+                      "suggestedRefillQuantity": 7,
+                      "unitsSoldInWindow": 14,
+                      "urgency": "medium"
+                    }
+                  ],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 1,
+                    "total": 1
+                  },
+                  "velocityWindowDays": 14,
+                  "windowEnd": "2026-04-28T00:00:00.000000000Z",
+                  "windowStart": "2026-04-14T00:00:00.000000000Z"
                 },
                 "schema": {
                   "type": "object"
@@ -32481,7 +33052,12 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "items": [],
+                  "meta": {
+                    "limit": 50,
+                    "offset": 0,
+                    "returned": 0
+                  }
                 },
                 "schema": {
                   "type": "object"
@@ -32527,7 +33103,12 @@
           "content": {
             "application/json": {
               "example": {
-                "status": "ok"
+                "rolloutType": "config_version",
+                "strategy": {
+                  "canary_percent": 10,
+                  "confirm_full_rollout": false
+                },
+                "targetVersion": "2026-04-29T00:00:00Z"
               },
               "schema": {
                 "type": "object"
@@ -32542,7 +33123,15 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "createdAt": "2026-04-29T12:00:00.000000000Z",
+                  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "rolloutType": "config_version",
+                  "status": "pending",
+                  "strategy": {
+                    "canary_percent": 10
+                  },
+                  "targetVersion": "2026-04-29T00:00:00Z",
+                  "updatedAt": "2026-04-29T12:00:00.000000000Z"
                 },
                 "schema": {
                   "type": "object"
@@ -32591,7 +33180,16 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "campaign": {
+                    "createdAt": "2026-04-29T12:00:00.000000000Z",
+                    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "rolloutType": "config_version",
+                    "status": "running",
+                    "strategy": {},
+                    "targetVersion": "2026-04-29T00:00:00Z",
+                    "updatedAt": "2026-04-29T12:00:00.000000000Z"
+                  },
+                  "targets": []
                 },
                 "schema": {
                   "type": "object"
@@ -32649,7 +33247,17 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "campaign": {
+                    "cancelledAt": "2026-04-29T12:01:00.000000000Z",
+                    "createdAt": "2026-04-29T12:00:00.000000000Z",
+                    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "rolloutType": "config_version",
+                    "status": "cancelled",
+                    "strategy": {},
+                    "targetVersion": "2026-04-29T00:00:00Z",
+                    "updatedAt": "2026-04-29T12:00:00.000000000Z"
+                  },
+                  "targets": []
                 },
                 "schema": {
                   "type": "object"
@@ -32707,7 +33315,16 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "campaign": {
+                    "createdAt": "2026-04-29T12:00:00.000000000Z",
+                    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "rolloutType": "config_version",
+                    "status": "paused",
+                    "strategy": {},
+                    "targetVersion": "2026-04-29T00:00:00Z",
+                    "updatedAt": "2026-04-29T12:00:00.000000000Z"
+                  },
+                  "targets": []
                 },
                 "schema": {
                   "type": "object"
@@ -32765,7 +33382,16 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "campaign": {
+                    "createdAt": "2026-04-29T12:00:00.000000000Z",
+                    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "rolloutType": "config_version",
+                    "status": "running",
+                    "strategy": {},
+                    "targetVersion": "2026-04-29T00:00:00Z",
+                    "updatedAt": "2026-04-29T12:00:00.000000000Z"
+                  },
+                  "targets": []
                 },
                 "schema": {
                   "type": "object"
@@ -32823,7 +33449,18 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "campaign": {
+                    "createdAt": "2026-04-29T12:00:00.000000000Z",
+                    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "rolloutType": "config_version",
+                    "status": "rolled_back",
+                    "strategy": {
+                      "rollback_version": "2026-04-28T00:00:00Z"
+                    },
+                    "targetVersion": "2026-04-29T00:00:00Z",
+                    "updatedAt": "2026-04-29T12:00:00.000000000Z"
+                  },
+                  "targets": []
                 },
                 "schema": {
                   "type": "object"
@@ -32881,7 +33518,16 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "campaign": {
+                    "createdAt": "2026-04-29T12:00:00.000000000Z",
+                    "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                    "rolloutType": "config_version",
+                    "status": "completed",
+                    "strategy": {},
+                    "targetVersion": "2026-04-29T00:00:00Z",
+                    "updatedAt": "2026-04-29T12:00:00.000000000Z"
+                  },
+                  "targets": []
                 },
                 "schema": {
                   "type": "object"
@@ -32954,13 +33600,13 @@
                   "items": [
                     {
                       "address": {},
-                      "code": "HQ-01",
-                      "created_at": "2026-04-01T00:00:00.000000000Z",
-                      "id": "aaaaaaaa-bbbb-cccc-dddd-111111111111",
-                      "name": "HQ Lobby",
+                      "code": "LOBBY",
+                      "created_at": "2026-04-29T00:00:00Z",
+                      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                      "name": "Lobby",
                       "status": "active",
-                      "timezone": "America/New_York",
-                      "updated_at": "2026-04-01T00:00:00.000000000Z"
+                      "timezone": "UTC",
+                      "updated_at": "2026-04-29T00:00:00Z"
                     }
                   ],
                   "meta": {
@@ -33078,10 +33724,12 @@
           "content": {
             "application/json": {
               "example": {
-                "address": {},
-                "code": "HQ-01",
-                "name": "HQ Lobby",
-                "timezone": "America/New_York"
+                "address": {
+                  "line1": "1 Main St"
+                },
+                "code": "LOBBY",
+                "name": "Lobby",
+                "timezone": "UTC"
               },
               "schema": {
                 "type": "object"
@@ -33097,13 +33745,13 @@
               "application/json": {
                 "example": {
                   "address": {},
-                  "code": "HQ-01",
-                  "created_at": "2026-04-01T00:00:00.000000000Z",
-                  "id": "aaaaaaaa-bbbb-cccc-dddd-111111111111",
-                  "name": "HQ Lobby",
+                  "code": "LOBBY",
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "name": "Lobby",
                   "status": "active",
-                  "timezone": "America/New_York",
-                  "updated_at": "2026-04-01T00:00:00.000000000Z"
+                  "timezone": "UTC",
+                  "updated_at": "2026-04-29T00:00:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -33244,13 +33892,13 @@
               "application/json": {
                 "example": {
                   "address": {},
-                  "code": "HQ-01",
-                  "created_at": "2026-04-01T00:00:00.000000000Z",
-                  "id": "aaaaaaaa-bbbb-cccc-dddd-111111111111",
-                  "name": "HQ Lobby",
-                  "status": "inactive",
-                  "timezone": "America/New_York",
-                  "updated_at": "2026-04-01T00:00:00.000000000Z"
+                  "code": "LOBBY",
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "name": "Lobby",
+                  "status": "archived",
+                  "timezone": "UTC",
+                  "updated_at": "2026-04-29T00:10:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -33388,13 +34036,13 @@
               "application/json": {
                 "example": {
                   "address": {},
-                  "code": "HQ-01",
-                  "created_at": "2026-04-01T00:00:00.000000000Z",
-                  "id": "aaaaaaaa-bbbb-cccc-dddd-111111111111",
-                  "name": "HQ Lobby",
+                  "code": "LOBBY",
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "name": "Lobby",
                   "status": "active",
-                  "timezone": "America/New_York",
-                  "updated_at": "2026-04-01T00:00:00.000000000Z"
+                  "timezone": "UTC",
+                  "updated_at": "2026-04-29T00:00:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -33530,7 +34178,8 @@
           "content": {
             "application/json": {
               "example": {
-                "name": "HQ Lobby West"
+                "name": "Lobby North",
+                "status": "active"
               },
               "schema": {
                 "type": "object"
@@ -33546,13 +34195,13 @@
               "application/json": {
                 "example": {
                   "address": {},
-                  "code": "HQ-01",
-                  "created_at": "2026-04-01T00:00:00.000000000Z",
-                  "id": "aaaaaaaa-bbbb-cccc-dddd-111111111111",
-                  "name": "HQ Lobby",
+                  "code": "LOBBY",
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "name": "Lobby North",
                   "status": "active",
-                  "timezone": "America/New_York",
-                  "updated_at": "2026-04-01T00:00:00.000000000Z"
+                  "timezone": "UTC",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -33692,7 +34341,14 @@
             "content": {
               "application/json": {
                 "example": {
-                  "status": "ok"
+                  "address": {},
+                  "code": "LOBBY",
+                  "created_at": "2026-04-29T00:00:00Z",
+                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "name": "Lobby",
+                  "status": "inactive",
+                  "timezone": "UTC",
+                  "updated_at": "2026-04-29T00:05:00Z"
                 },
                 "schema": {
                   "type": "object"
@@ -36760,7 +37416,7 @@
           "content": {
             "application/json": {
               "example": {
-                "display_name": "Alex T."
+                "display_name": "Alex Field"
               },
               "schema": {
                 "type": "object"
@@ -36776,7 +37432,7 @@
               "application/json": {
                 "example": {
                   "created_at": "2026-03-01T00:00:00.000000000Z",
-                  "display_name": "Alex Tech",
+                  "display_name": "Alex Field",
                   "id": "eeeeeeee-ffff-0000-1111-222222222222",
                   "status": "active",
                   "updated_at": "2026-03-01T00:00:00.000000000Z"
@@ -36921,7 +37577,7 @@
                   "created_at": "2026-03-01T00:00:00.000000000Z",
                   "display_name": "Alex Tech",
                   "id": "eeeeeeee-ffff-0000-1111-222222222222",
-                  "status": "active",
+                  "status": "inactive",
                   "updated_at": "2026-03-01T00:00:00.000000000Z"
                 },
                 "schema": {
@@ -37327,7 +37983,7 @@
                 "email": "new.user@example.com",
                 "password": "longpassword10",
                 "roles": [
-                  "viewer"
+                  "support"
                 ],
                 "status": "active"
               },
@@ -37543,7 +38199,9 @@
           "content": {
             "application/json": {
               "example": {
-                "status": "disabled"
+                "roles": [
+                  "support"
+                ]
               },
               "schema": {
                 "$ref": "#/components/schemas/V1AdminAuthUsersPatchRequest"
@@ -37844,7 +38502,7 @@
             "application/json": {
               "example": {
                 "roles": [
-                  "catalog_manager"
+                  "support"
                 ]
               },
               "schema": {
@@ -37914,7 +38572,7 @@
             "application/json": {
               "example": {
                 "roles": [
-                  "catalog_manager"
+                  "support"
                 ]
               },
               "schema": {
@@ -38066,7 +38724,14 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  "accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "email": "operator@example.com",
+                  "roles": [
+                    "viewer"
+                  ],
+                  "status": "active",
+                  "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/V1AdminAuthAccount"
@@ -47247,7 +47912,7 @@
       "name": "Auth Admin"
     },
     {
-      "description": "Enterprise append-only audit trail (`audit_events`) for principals with **audit.read** (`GET /v1/admin/audit/events`, `GET /v1/admin/audit/events/{auditEventId}`). **platform_admin** list/detail may require **company** query.",
+      "description": "Enterprise append-only audit trail (`audit_events`) for principals with **audit.read** (`GET /v1/admin/audit/events`, `GET /v1/admin/audit/events/{auditEventId}`). **platform_admin** list/detail supports optional filters documented per operation.",
       "name": "Audit Admin"
     },
     {

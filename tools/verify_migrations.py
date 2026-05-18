@@ -18,6 +18,10 @@ from typing import Any
 
 FNAME_RE = re.compile(r"^(\d{5})_(.+)\.sql$")
 
+# Approved goose Up files that intentionally contain destructive DDL (documented in
+# docs/runbooks/migration-safety.md). CI still runs regex scans for accidents elsewhere.
+CI_DESTRUCTIVE_UP_ALLOWLIST = frozenset()
+
 
 @dataclass
 class Finding:
@@ -225,6 +229,10 @@ def scan_files(mig_dir: Path, report: Report) -> None:
 
 
 def apply_policy(report: Report) -> None:
+    if report.deploy_target == "ci":
+        report.destructive_findings = [
+            f for f in report.destructive_findings if f.file not in CI_DESTRUCTIVE_UP_ALLOWLIST
+        ]
     if not report.destructive_findings:
         report.blocked = False
         return

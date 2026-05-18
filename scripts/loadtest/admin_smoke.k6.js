@@ -8,7 +8,6 @@ export const restErrors = new Rate("avf_load_rest_errors");
 const baseURL = (__ENV.API_BASE_URL || "http://localhost:8080").replace(/\/+$/, "");
 const token = __ENV.ADMIN_JWT || "";
 const scenario = __ENV.SCENARIO || "smoke";
-const scopeId = (__ENV.LOADTEST_COMPANY_SCOPE_ID || "").trim();
 
 const targets = {
   smoke: { vus: 1, duration: "30s" },
@@ -49,21 +48,17 @@ export default function () {
     "/health/ready",
     "/v1/admin/machines?limit=50&offset=0",
   ];
-  if (scopeId) {
-    const from = __ENV.LOADTEST_FROM || new Date(Date.now() - 86400000).toISOString();
-    const to = __ENV.LOADTEST_TO || new Date().toISOString();
-    const q =
-      "from=" +
-      encodeURIComponent(from) +
-      "&to=" +
-      encodeURIComponent(to) +
-      "&limit=50" +
-      "&scope_id=" +
-      encodeURIComponent(scopeId);
-    paths.push(`/v1/admin/reports/machine-health?${q}`);
-    paths.push(`/v1/admin/reports/commands?${q}`);
-    paths.push(`/v1/admin/reports/inventory?${q}`);
-  }
+  const from = __ENV.LOADTEST_FROM || new Date(Date.now() - 86400000).toISOString();
+  const to = __ENV.LOADTEST_TO || new Date().toISOString();
+  const q =
+    "from=" +
+    encodeURIComponent(from) +
+    "&to=" +
+    encodeURIComponent(to) +
+    "&limit=50";
+  paths.push(`/v1/admin/reports/machine-health?${q}`);
+  paths.push(`/v1/admin/reports/commands?${q}`);
+  paths.push(`/v1/admin/reports/inventory?${q}`);
   for (const path of paths) {
     const res = http.get(`${baseURL}${path}`, { headers: headers(), tags: { route: path } });
     record(res);

@@ -43,7 +43,7 @@ The verifier flags (case-insensitive, after stripping `--` and `/* */` comments)
 
 | Context | Behavior |
 |---------|----------|
-| **CI / PR** (`DEPLOY_TARGET=ci`) | Any destructive hit **fails** the check. There is no bypass in CI. |
+| **CI / PR** (`DEPLOY_TARGET=ci`) | Destructive hits **fail** unless the migration file is listed in `CI_DESTRUCTIVE_UP_ALLOWLIST` inside `tools/verify_migrations.py` (currently reserved for explicitly reviewed single-company teardown migrations such as **`00077_drop_remaining_legacy_scope_org_tenant_artifacts.sql`**). All other migrations remain fully blocking. |
 | **Staging deploy** | Fails if destructive unless repository variable **`ALLOW_DESTRUCTIVE_MIGRATIONS`** is set to `true` (workflow passes it into the gate). |
 | **Production deploy** | Fails if destructive unless **`ALLOW_PROD_DESTRUCTIVE_MIGRATIONS`** is `true` **and** the job still passes normal **GitHub Environment** protections (reviewers, wait timer, etc.). |
 
