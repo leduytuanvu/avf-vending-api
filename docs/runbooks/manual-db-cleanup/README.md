@@ -39,8 +39,14 @@ Use them only during a planned maintenance window after explicit operator approv
 
 There is **no** automated `Down` for this script. Rollback is **restore from backup** or forward-fix with a new migration designed by engineers.
 
+### `drop_legacy_scope_organization_tenant.sql`
+
+**Purpose:** Apply the former goose `00076` destructive block: rename/remove columns whose names carried legacy scope/org/tenant tokens, drop dependent constraints and indexes, optionally drop aggregate legacy tables, rebuild reporting views, and align uniqueness without multi-company columns.
+
+**Ordering:** Run after `single_company_scope_destructive_cleanup.sql` when your database still carries renamed intermediates from older releases; always dry-run on a clone first.
+
 ### Related
 
 - [Migration safety](../migration-safety.md) — destructive patterns in goose `Up` are blocked in CI.
 - Goose migration `00073_single_company_scope_consolidation.sql` — applies only non-destructive uniqueness indexes.
-- Goose migration `00075_audit_events_relax_company_scope.sql` — drops legacy `audit_events` scope indexes and makes `scope_id` / `organization_id` nullable when those columns still exist, so enterprise audit INSERTs (auth login, etc.) no longer hit NOT NULL violations. After operators confirm API traffic and backups, optional manual follow-up: `ALTER TABLE audit_events DROP COLUMN IF EXISTS scope_id` and `DROP COLUMN IF EXISTS organization_id` (only if both code and SQL no longer reference them — canonical schema has neither column).
+- Goose migration `00076_drop_legacy_scope_organization_tenant.sql` — non-destructive marker only; paired manual teardown is `drop_legacy_scope_organization_tenant.sql`.
