@@ -203,7 +203,7 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		price := legacyPriceForSlot(legacySnapshot, it.PlanogramID, it.SlotIndex)
 
 		row := map[string]any{
-			"scope_id":         uuid.Nil.String(),
+			"company_id":       uuid.Nil.String(),
 			"machine_id":       in.MachineID.String(),
 			"event_type":       eventType,
 			"reason_code":      strings.TrimSpace(in.Reason),

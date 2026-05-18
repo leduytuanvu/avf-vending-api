@@ -36,7 +36,7 @@ func TestApplyCommerceVendSuccessInventory_rejectsNonSuccessVend(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.ApplyCommerceVendSuccessInventory(ctx,
-		testfixtures.DevScopeID,
+		testfixtures.DevCompanyID,
 		testfixtures.DevMachineID,
 		orderRes.Order.ID,
 		2,

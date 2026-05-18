@@ -5,7 +5,7 @@ import "errors"
 var (
 	// ErrCompanyRequired is returned when a company scope is missing.
 	ErrCompanyRequired = errors.New("catalogadmin: company id required")
-	// ErrDuplicateSKU is returned on unique (scope_id, sku) violations.
+	// ErrDuplicateSKU is returned on unique SKU violations within the catalog.
 	ErrDuplicateSKU = errors.New("catalogadmin: duplicate sku in company")
 	// ErrDuplicateBarcode is returned on unique barcode violations within the org.
 	ErrDuplicateBarcode = errors.New("catalogadmin: duplicate barcode in company")

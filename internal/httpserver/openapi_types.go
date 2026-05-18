@@ -26,7 +26,6 @@ type V1ReportMeta struct {
 }
 
 type V1AdminReportSalesResponse struct {
-	ScopeID   string         `json:"scopeId"`
 	From      string         `json:"from"`
 	To        string         `json:"to"`
 	GroupBy   string         `json:"groupBy"`
@@ -35,7 +34,6 @@ type V1AdminReportSalesResponse struct {
 }
 
 type V1AdminReportPaymentsResponse struct {
-	ScopeID  string       `json:"scopeId"`
 	From     string       `json:"from"`
 	To       string       `json:"to"`
 	Timezone string       `json:"timezone"`
@@ -44,11 +42,10 @@ type V1AdminReportPaymentsResponse struct {
 }
 
 type V1AdminReportListResponse struct {
-	ScopeID string       `json:"scopeId"`
-	From    string       `json:"from"`
-	To      string       `json:"to"`
-	Meta    V1ReportMeta `json:"meta"`
-	Items   []any        `json:"items"`
+	From  string       `json:"from"`
+	To    string       `json:"to"`
+	Meta  V1ReportMeta `json:"meta"`
+	Items []any        `json:"items"`
 }
 
 // V1NotImplementedError is HTTP **501**; error.details carries capability + implemented.
@@ -330,7 +327,6 @@ type V1AdminOutboxPipelineStats struct {
 // V1AdminOutboxRow is one row from GET /v1/admin/ops/outbox or GET /v1/admin/system/outbox.
 type V1AdminOutboxRow struct {
 	ID                   int64           `json:"id"`
-	ScopeID              *string         `json:"scopeId,omitempty"`
 	Topic                string          `json:"topic"`
 	EventType            string          `json:"eventType"`
 	Payload              json.RawMessage `json:"payload"`
@@ -461,7 +457,6 @@ type V1AdminPageMeta struct {
 // V1AdminProductListItem is a row in GET /v1/admin/products.
 type V1AdminProductListItem struct {
 	ID          string  `json:"id"`
-	ScopeID     string  `json:"scopeId,omitempty"`
 	Sku         string  `json:"sku"`
 	Barcode     *string `json:"barcode,omitempty"`
 	Name        string  `json:"name"`
@@ -482,7 +477,6 @@ type V1AdminProductListEnvelope struct {
 // V1AdminProduct is GET /v1/admin/products/{productId} success.
 type V1AdminProduct struct {
 	ID             string          `json:"id"`
-	ScopeID        string          `json:"scopeId,omitempty"`
 	Sku            string          `json:"sku"`
 	Barcode        *string         `json:"barcode,omitempty"`
 	Name           string          `json:"name"`
@@ -523,7 +517,6 @@ type V1AdminProductMutationRequest struct {
 // V1AdminBrand is a brand row.
 type V1AdminBrand struct {
 	ID        string `json:"id"`
-	ScopeID   string `json:"scopeId"`
 	Slug      string `json:"slug"`
 	Name      string `json:"name"`
 	Active    bool   `json:"active"`
@@ -547,7 +540,6 @@ type V1AdminBrandMutationRequest struct {
 // V1AdminCategory is a category row.
 type V1AdminCategory struct {
 	ID        string  `json:"id"`
-	ScopeID   string  `json:"scopeId"`
 	Slug      string  `json:"slug"`
 	Name      string  `json:"name"`
 	ParentID  *string `json:"parentId,omitempty"`
@@ -573,7 +565,6 @@ type V1AdminCategoryMutationRequest struct {
 // V1AdminTag is a tag row.
 type V1AdminTag struct {
 	ID        string `json:"id"`
-	ScopeID   string `json:"scopeId"`
 	Slug      string `json:"slug"`
 	Name      string `json:"name"`
 	Active    bool   `json:"active"`
@@ -628,7 +619,6 @@ type V1AdminMediaUploadCompleteRequest struct {
 // V1AdminMediaAsset is a row in GET /v1/admin/media (no raw object keys).
 type V1AdminMediaAsset struct {
 	ID            string `json:"id"`
-	ScopeID       string `json:"scope_id"`
 	Kind          string `json:"kind"`
 	Status        string `json:"status"`
 	MimeType      string `json:"mime_type,omitempty"`
@@ -662,48 +652,47 @@ type V1AdminProductImagePatchRequest struct {
 
 // V1AdminPriceBook is a row in GET /v1/admin/price-books.
 type V1AdminPriceBook struct {
-	ID            string  `json:"id"`
-	ScopeID       string  `json:"scopeId"`
-	Name          string  `json:"name"`
-	Currency      string  `json:"currency"`
-	EffectiveFrom string  `json:"effectiveFrom"`
-	EffectiveTo   *string `json:"effectiveTo,omitempty"`
-	IsDefault     bool    `json:"isDefault"`
-	Active        bool    `json:"active"`
-	ScopeType     string  `json:"scopeType"`
-	SiteID        *string `json:"siteId,omitempty"`
-	MachineID     *string `json:"machineId,omitempty"`
-	Priority      int32   `json:"priority"`
-	CreatedAt     string  `json:"createdAt"`
-	UpdatedAt     string  `json:"updatedAt"`
+	ID             string  `json:"id"`
+	Name           string  `json:"name"`
+	Currency       string  `json:"currency"`
+	EffectiveFrom  string  `json:"effectiveFrom"`
+	EffectiveTo    *string `json:"effectiveTo,omitempty"`
+	IsDefault      bool    `json:"isDefault"`
+	Active         bool    `json:"active"`
+	PriceBookLevel string  `json:"priceBookLevel"`
+	SiteID         *string `json:"siteId,omitempty"`
+	MachineID      *string `json:"machineId,omitempty"`
+	Priority       int32   `json:"priority"`
+	CreatedAt      string  `json:"createdAt"`
+	UpdatedAt      string  `json:"updatedAt"`
 }
 
 // V1AdminPriceBookWriteRequest is POST /v1/admin/price-books.
 type V1AdminPriceBookWriteRequest struct {
-	Name          string  `json:"name"`
-	Currency      string  `json:"currency"`
-	EffectiveFrom string  `json:"effectiveFrom"`
-	EffectiveTo   *string `json:"effectiveTo,omitempty"`
-	IsDefault     bool    `json:"isDefault"`
-	ScopeType     string  `json:"scopeType"`
-	SiteID        *string `json:"siteId,omitempty"`
-	MachineID     *string `json:"machineId,omitempty"`
-	Priority      int32   `json:"priority"`
+	Name           string  `json:"name"`
+	Currency       string  `json:"currency"`
+	EffectiveFrom  string  `json:"effectiveFrom"`
+	EffectiveTo    *string `json:"effectiveTo,omitempty"`
+	IsDefault      bool    `json:"isDefault"`
+	PriceBookLevel string  `json:"priceBookLevel"`
+	SiteID         *string `json:"siteId,omitempty"`
+	MachineID      *string `json:"machineId,omitempty"`
+	Priority       int32   `json:"priority"`
 }
 
 // V1AdminPriceBookPatchRequest is PATCH /v1/admin/price-books/{priceBookId}.
 // Send effectiveTo as empty string to clear the upper bound.
 type V1AdminPriceBookPatchRequest struct {
-	Name          *string `json:"name,omitempty"`
-	Currency      *string `json:"currency,omitempty"`
-	EffectiveFrom *string `json:"effectiveFrom,omitempty"`
-	EffectiveTo   *string `json:"effectiveTo,omitempty"`
-	IsDefault     *bool   `json:"isDefault,omitempty"`
-	Active        *bool   `json:"active,omitempty"`
-	ScopeType     *string `json:"scopeType,omitempty"`
-	SiteID        *string `json:"siteId,omitempty"`
-	MachineID     *string `json:"machineId,omitempty"`
-	Priority      *int32  `json:"priority,omitempty"`
+	Name           *string `json:"name,omitempty"`
+	Currency       *string `json:"currency,omitempty"`
+	EffectiveFrom  *string `json:"effectiveFrom,omitempty"`
+	EffectiveTo    *string `json:"effectiveTo,omitempty"`
+	IsDefault      *bool   `json:"isDefault,omitempty"`
+	Active         *bool   `json:"active,omitempty"`
+	PriceBookLevel *string `json:"priceBookLevel,omitempty"`
+	SiteID         *string `json:"siteId,omitempty"`
+	MachineID      *string `json:"machineId,omitempty"`
+	Priority       *int32  `json:"priority,omitempty"`
 }
 
 // V1AdminPriceBookItemRow is one catalog price line.
@@ -753,20 +742,19 @@ type V1AdminPricingPreviewResponse struct {
 
 // V1AdminPromotion is a promotion header row.
 type V1AdminPromotion struct {
-	ID               string  `json:"id"`
-	ScopeID          string  `json:"scopeId"`
-	Name             string  `json:"name"`
-	ApprovalStatus   string  `json:"approvalStatus"`
-	LifecycleStatus  string  `json:"lifecycleStatus"`
-	Priority         int32   `json:"priority"`
-	Stackable        bool    `json:"stackable"`
-	StartsAt         string  `json:"startsAt"`
-	EndsAt           string  `json:"endsAt"`
-	BudgetLimitMinor *int64  `json:"budgetLimitMinor,omitempty"`
-	RedemptionLimit  *int32  `json:"redemptionLimit,omitempty"`
-	ChannelScope     *string `json:"channelScope,omitempty"`
-	CreatedAt        string  `json:"createdAt"`
-	UpdatedAt        string  `json:"updatedAt"`
+	ID                   string  `json:"id"`
+	Name                 string  `json:"name"`
+	ApprovalStatus       string  `json:"approvalStatus"`
+	LifecycleStatus      string  `json:"lifecycleStatus"`
+	Priority             int32   `json:"priority"`
+	Stackable            bool    `json:"stackable"`
+	StartsAt             string  `json:"startsAt"`
+	EndsAt               string  `json:"endsAt"`
+	BudgetLimitMinor     *int64  `json:"budgetLimitMinor,omitempty"`
+	RedemptionLimit      *int32  `json:"redemptionLimit,omitempty"`
+	PromotionChannelKind *string `json:"promotionChannelKind,omitempty"`
+	CreatedAt            string  `json:"createdAt"`
+	UpdatedAt            string  `json:"updatedAt"`
 }
 
 // V1AdminPromotionRule is one discount rule on a promotion.
@@ -782,7 +770,6 @@ type V1AdminPromotionRule struct {
 type V1AdminPromotionTarget struct {
 	ID          string  `json:"id"`
 	PromotionID string  `json:"promotionId"`
-	ScopeID     string  `json:"scopeId"`
 	TargetType  string  `json:"targetType"`
 	ProductID   *string `json:"productId,omitempty"`
 	CategoryID  *string `json:"categoryId,omitempty"`
@@ -814,29 +801,29 @@ type V1AdminPromotionRuleInput struct {
 
 // V1AdminPromotionCreateRequest is POST /v1/admin/promotions.
 type V1AdminPromotionCreateRequest struct {
-	Name             string                      `json:"name"`
-	StartsAt         string                      `json:"startsAt"`
-	EndsAt           string                      `json:"endsAt"`
-	Priority         int32                       `json:"priority"`
-	Stackable        bool                        `json:"stackable"`
-	BudgetLimitMinor *int64                      `json:"budgetLimitMinor,omitempty"`
-	RedemptionLimit  *int32                      `json:"redemptionLimit,omitempty"`
-	ChannelScope     *string                     `json:"channelScope,omitempty"`
-	Rules            []V1AdminPromotionRuleInput `json:"rules,omitempty"`
+	Name                 string                      `json:"name"`
+	StartsAt             string                      `json:"startsAt"`
+	EndsAt               string                      `json:"endsAt"`
+	Priority             int32                       `json:"priority"`
+	Stackable            bool                        `json:"stackable"`
+	BudgetLimitMinor     *int64                      `json:"budgetLimitMinor,omitempty"`
+	RedemptionLimit      *int32                      `json:"redemptionLimit,omitempty"`
+	PromotionChannelKind *string                     `json:"promotionChannelKind,omitempty"`
+	Rules                []V1AdminPromotionRuleInput `json:"rules,omitempty"`
 }
 
 // V1AdminPromotionPatchRequest is PATCH /v1/admin/promotions/{promotionId}.
 type V1AdminPromotionPatchRequest struct {
-	Name             *string                      `json:"name,omitempty"`
-	StartsAt         *string                      `json:"startsAt,omitempty"`
-	EndsAt           *string                      `json:"endsAt,omitempty"`
-	Priority         *int32                       `json:"priority,omitempty"`
-	Stackable        *bool                        `json:"stackable,omitempty"`
-	BudgetLimitMinor *int64                       `json:"budgetLimitMinor,omitempty"`
-	RedemptionLimit  *int32                       `json:"redemptionLimit,omitempty"`
-	ChannelScope     *string                      `json:"channelScope,omitempty"`
-	ApprovalStatus   *string                      `json:"approvalStatus,omitempty"`
-	Rules            *[]V1AdminPromotionRuleInput `json:"rules,omitempty"`
+	Name                 *string                      `json:"name,omitempty"`
+	StartsAt             *string                      `json:"startsAt,omitempty"`
+	EndsAt               *string                      `json:"endsAt,omitempty"`
+	Priority             *int32                       `json:"priority,omitempty"`
+	Stackable            *bool                        `json:"stackable,omitempty"`
+	BudgetLimitMinor     *int64                       `json:"budgetLimitMinor,omitempty"`
+	RedemptionLimit      *int32                       `json:"redemptionLimit,omitempty"`
+	PromotionChannelKind *string                      `json:"promotionChannelKind,omitempty"`
+	ApprovalStatus       *string                      `json:"approvalStatus,omitempty"`
+	Rules                *[]V1AdminPromotionRuleInput `json:"rules,omitempty"`
 }
 
 // V1AdminPromotionAssignTargetRequest is POST .../assign-target.
@@ -892,7 +879,6 @@ type V1AdminPriceBookListEnvelope struct {
 // V1AdminPlanogram is a planogram summary row.
 type V1AdminPlanogram struct {
 	ID        string          `json:"id"`
-	ScopeID   string          `json:"scopeId"`
 	Name      string          `json:"name"`
 	Revision  int32           `json:"revision"`
 	Status    string          `json:"status"`
@@ -984,7 +970,6 @@ type V1AdminStockAdjustmentsResponse struct {
 // V1AdminInventoryEvent is one append-only inventory_events row (audit / refill / future vend).
 type V1AdminInventoryEvent struct {
 	ID                      int64   `json:"id"`
-	ScopeID                 string  `json:"scopeId"`
 	MachineID               string  `json:"machineId"`
 	CabinetCode             *string `json:"cabinetCode,omitempty"`
 	SlotCode                *string `json:"slotCode,omitempty"`
@@ -1070,7 +1055,6 @@ type V1AdminInventoryRefillForecastItem struct {
 // V1AdminInventoryRefillForecastResponse is GET /v1/admin/inventory/low-stock,
 // GET /v1/admin/inventory/refill-suggestions, and GET /v1/admin/machines/{machineId}/refill-suggestions.
 type V1AdminInventoryRefillForecastResponse struct {
-	ScopeID            string                               `json:"scopeId"`
 	VelocityWindowDays int                                  `json:"velocityWindowDays"`
 	WindowStart        string                               `json:"windowStart"`
 	WindowEnd          string                               `json:"windowEnd"`
@@ -1113,7 +1097,6 @@ type V1PendingMachineConfigRolloutHint struct {
 // V1SetupMachineSummary is machine identity for setup clients.
 type V1SetupMachineSummary struct {
 	MachineID         string  `json:"machineId"`
-	ScopeID           string  `json:"scopeId"`
 	SiteID            string  `json:"siteId"`
 	HardwareProfileID *string `json:"hardwareProfileId,omitempty"`
 	SerialNumber      string  `json:"serialNumber"`
@@ -1204,7 +1187,6 @@ type V1CollectionListMeta struct {
 // V1OrderListItem is one row in GET /v1/orders.
 type V1OrderListItem struct {
 	OrderID        string  `json:"orderId"`
-	ScopeID        string  `json:"scopeId"`
 	MachineID      string  `json:"machineId"`
 	Status         string  `json:"status"`
 	Currency       string  `json:"currency"`
@@ -1226,7 +1208,6 @@ type V1OrdersListResponse struct {
 type V1PaymentListItem struct {
 	PaymentID            string `json:"paymentId"`
 	OrderID              string `json:"orderId"`
-	ScopeID              string `json:"scopeId"`
 	MachineID            string `json:"machineId"`
 	Provider             string `json:"provider"`
 	PaymentState         string `json:"paymentState"`
@@ -1248,7 +1229,6 @@ type V1PaymentsListResponse struct {
 // V1CommerceReconciliationCase is an operator-visible payment/vend/refund review row.
 type V1CommerceReconciliationCase struct {
 	ID              string         `json:"id"`
-	ScopeID         string         `json:"scopeId"`
 	CaseType        string         `json:"caseType"`
 	Status          string         `json:"status"`
 	Severity        string         `json:"severity"`
@@ -1300,7 +1280,6 @@ type V1OrderTimelineListResponse struct {
 
 type V1RefundRequestRow struct {
 	ID             string  `json:"id"`
-	ScopeID        string  `json:"scopeId"`
 	OrderID        string  `json:"orderId"`
 	PaymentID      *string `json:"paymentId,omitempty"`
 	RefundID       *string `json:"refundId,omitempty"`
@@ -1367,7 +1346,6 @@ type V1AdminCurrentOperator struct {
 type V1AdminMachineListItem struct {
 	MachineID           string                         `json:"machineId"`
 	MachineName         string                         `json:"machineName"`
-	ScopeID             string                         `json:"scopeId"`
 	SiteID              string                         `json:"siteId"`
 	SiteName            string                         `json:"siteName"`
 	HardwareProfileID   *string                        `json:"hardwareProfileId,omitempty"`
@@ -1393,7 +1371,6 @@ type V1AdminMachineListItem struct {
 // All timestamps are RFC3339Nano strings with explicit timezone offset (responses use UTC, "Z").
 type V1MachineTelemetrySnapshotResponse struct {
 	MachineID         string          `json:"machineId"`
-	ScopeID           string          `json:"scopeId"`
 	SiteID            string          `json:"siteId"`
 	ReportedState     json.RawMessage `json:"reportedState"`
 	MetricsState      json.RawMessage `json:"metricsState"`
@@ -1471,7 +1448,6 @@ type V1AdminMachinesListResponse struct {
 // V1AdminTechnicianListItem is one technician in GET /v1/admin/technicians.
 type V1AdminTechnicianListItem struct {
 	TechnicianID    string  `json:"technicianId"`
-	ScopeID         string  `json:"scopeId"`
 	DisplayName     string  `json:"displayName"`
 	Email           *string `json:"email,omitempty"`
 	Phone           *string `json:"phone,omitempty"`
@@ -1509,7 +1485,6 @@ type V1AdminAssignmentsListResponse struct {
 type V1AdminCommandListItem struct {
 	CommandID           string  `json:"commandId"`
 	MachineID           string  `json:"machineId"`
-	ScopeID             string  `json:"scopeId"`
 	MachineName         string  `json:"machineName"`
 	MachineSerialNumber string  `json:"machineSerialNumber"`
 	Sequence            int64   `json:"sequence"`
@@ -1529,7 +1504,6 @@ type V1AdminCommandsListResponse struct {
 // V1AdminOTAListItem is one OTA campaign in GET /v1/admin/ota.
 type V1AdminOTAListItem struct {
 	CampaignID         string  `json:"campaignId"`
-	ScopeID            string  `json:"scopeId"`
 	CampaignName       string  `json:"campaignName"`
 	Strategy           string  `json:"strategy"`
 	CampaignStatus     string  `json:"campaignStatus"`
@@ -1548,7 +1522,6 @@ type V1AdminOTAListResponse struct {
 // V1AdminOTACampaignListItem is one row in GET /v1/admin/ota/campaigns.
 type V1AdminOTACampaignListItem struct {
 	CampaignID         string  `json:"campaignId"`
-	ScopeID            string  `json:"scopeId"`
 	Name               string  `json:"name"`
 	RolloutStrategy    string  `json:"rolloutStrategy"`
 	Status             string  `json:"status"`
@@ -1633,7 +1606,6 @@ type V1AdminMachineCashboxResponse struct {
 type V1AdminCashCollection struct {
 	ID                       string  `json:"id"`
 	MachineID                string  `json:"machine_id"`
-	ScopeID                  string  `json:"scope_id"`
 	CollectedAt              string  `json:"collected_at"`
 	OpenedAt                 string  `json:"opened_at"`
 	ClosedAt                 *string `json:"closed_at,omitempty"`
@@ -1713,7 +1685,6 @@ type V1AdminOperationsCommandAttemptItem struct {
 type V1AdminOperationsCommandDetailResponse struct {
 	CommandID      string                                `json:"commandId"`
 	MachineID      string                                `json:"machineId"`
-	ScopeID        string                                `json:"scopeId"`
 	Sequence       int64                                 `json:"sequence"`
 	CommandType    string                                `json:"commandType"`
 	Payload        json.RawMessage                       `json:"payload"`
@@ -1756,7 +1727,6 @@ type V1AdminOperationsMachineCommandDispatchResponse struct {
 // V1AdminOperationsInventoryAnomalyItem is one inventory anomaly row.
 type V1AdminOperationsInventoryAnomalyItem struct {
 	ID                  string          `json:"id"`
-	ScopeID             string          `json:"scopeId"`
 	MachineID           string          `json:"machineId"`
 	MachineName         string          `json:"machineName"`
 	MachineSerialNumber string          `json:"machineSerialNumber"`
@@ -1852,7 +1822,6 @@ type V1AdminRolloutCreateRequest struct {
 // V1AdminRolloutCampaign describes rollout_campaigns rows for OpenAPI.
 type V1AdminRolloutCampaign struct {
 	ID            string          `json:"id"`
-	ScopeID       string          `json:"scopeId"`
 	RolloutType   string          `json:"rolloutType"`
 	TargetVersion string          `json:"targetVersion"`
 	Status        string          `json:"status"`
@@ -1868,7 +1837,6 @@ type V1AdminRolloutCampaign struct {
 // V1AdminRolloutTarget is one rollout_targets row.
 type V1AdminRolloutTarget struct {
 	ID         string  `json:"id"`
-	ScopeID    string  `json:"scopeId"`
 	CampaignID string  `json:"campaignId"`
 	MachineID  string  `json:"machineId"`
 	Status     string  `json:"status"`

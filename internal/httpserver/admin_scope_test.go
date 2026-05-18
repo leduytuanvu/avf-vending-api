@@ -21,13 +21,13 @@ func TestCatalogOrg_pathCompany_denies_orgAdmin_crossCompanyPath(t *testing.T) {
 
 	r := httptest.NewRequest("GET", "/v1/admin/companies/"+theirs.String()+"/noop", nil)
 	rc := chi.NewRouteContext()
-	rc.URLParams.Add("scopeId", theirs.String())
+	rc.URLParams.Add("companyPathToken", theirs.String())
 	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rc))
 
 	p := auth.Principal{Roles: []string{auth.RoleOrgAdmin}}
 	r = r.WithContext(auth.WithPrincipal(r.Context(), p))
 
-	_, err := adminCatalogScopeID(r)
+	_, err := requireCatalogPrincipalUUID(r)
 	if err == nil || !strings.Contains(err.Error(), "company scope mismatch") {
 		t.Fatalf("expected company scope mismatch, got %v", err)
 	}

@@ -27,7 +27,7 @@ func TestMachineReplayLedger_ReplayAndConflict(t *testing.T) {
 	ctx := context.Background()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	ledger := NewMachineReplayLedger(pool, nil)
 	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
@@ -79,7 +79,7 @@ func TestMachineReplayLedger_ConcurrentReplayAfterSuccess(t *testing.T) {
 	ctx := context.Background()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	ledger := NewMachineReplayLedger(pool, nil)
 	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
@@ -145,7 +145,7 @@ func TestMachineOfflineSync_OutOfOrderRejected(t *testing.T) {
 	ctx := context.Background()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	ctx = plauth.WithMachineAccessClaims(ctx, claims)
@@ -159,13 +159,10 @@ func TestMachineOfflineSync_OutOfOrderRejected(t *testing.T) {
 	require.Equal(t, codes.Aborted, status.Code(err))
 }
 
-func insertMachineReplayLedgerFixture(ctx context.Context, pool *pgxpool.Pool, scopeID, siteID, machineID uuid.UUID) error {
-	if _, err := pool.Exec(ctx, `INSERT INTO scopes (id, name, slug, status) VALUES ($1, 'replay-ledger', $2, 'active')`, scopeID, "replay-ledger-"+scopeID.String()); err != nil {
+func insertMachineReplayLedgerFixture(ctx context.Context, pool *pgxpool.Pool, siteID, machineID uuid.UUID) error {
+	if _, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID); err != nil {
 		return err
 	}
-	if _, err := pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, uuid.Nil); err != nil {
-		return err
-	}
-	_, err := pool.Exec(ctx, `INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version) VALUES ($1, $2, $3, $4, 'online', 1)`, machineID, uuid.Nil, siteID, "sn-replay-"+machineID.String())
+	_, err := pool.Exec(ctx, `INSERT INTO machines (id, site_id, serial_number, status, credential_version) VALUES ($1, $2, $3, 'online', 1)`, machineID, siteID, "sn-replay-"+machineID.String())
 	return err
 }

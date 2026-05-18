@@ -201,10 +201,10 @@ func resolvePlatformOutboxAuditCompany(ctx context.Context, cfg *config.Config, 
 	if rowOrg.Valid {
 		return uuid.UUID(rowOrg.Bytes), nil
 	}
-	if cfg != nil && cfg.PlatformAuditScopeID() != uuid.Nil {
-		return cfg.PlatformAuditScopeID(), nil
+	if cfg != nil && cfg.PlatformAuditCompanyID() != uuid.Nil {
+		return cfg.PlatformAuditCompanyID(), nil
 	}
-	return uuid.Nil, errors.New("platform audit scope unresolved")
+	return uuid.Nil, errors.New("platform audit company unresolved")
 }
 
 func postAdminOutboxReplay(pool *pgxpool.Pool, app *api.HTTPApplication, cfg *config.Config, param string) http.HandlerFunc {

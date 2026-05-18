@@ -186,7 +186,7 @@ func (s *Service) InitUpload(ctx context.Context, companyID uuid.UUID, contentTy
 
 func validateImageContentType(companyID uuid.UUID, contentType string) (uuid.UUID, string, error) {
 	if companyID == uuid.Nil {
-		return uuid.Nil, "", fmt.Errorf("%w: scope_id", ErrInvalidArgument)
+		return uuid.Nil, "", fmt.Errorf("%w: company_id", ErrInvalidArgument)
 	}
 	ct := normalizeMIMEHeader(contentType)
 	if ct == "" {

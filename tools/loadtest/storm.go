@@ -11,29 +11,28 @@ import (
 
 // StormConfig is the full P1.5 reconnect/load orchestration (sequential phases).
 type StormConfig struct {
-	HTTPBase           string
-	GRPCAddr           string
-	Manifest           []MachineRow
-	Concurrency        int
-	Duration           time.Duration
-	StormWaves         int
-	AdminJWT           string
-	AdminPhaseScopeStr string
-	ProductID          string
-	SlotIndex          int32
-	SkipMQTT           bool
-	SkipWebhook        bool
-	MQTTBroker         string
-	MQTTUser           string
-	MQTTPass           string
-	MQTTPrefix         string
-	MQTTLayout         string
-	MQTTAckDL          time.Duration
-	WebhookSecret      string
-	WebhookOrder       uuid.UUID
-	WebhookPay         uuid.UUID
-	WebhookBurst       int
-	WebhookDupN        int
+	HTTPBase      string
+	GRPCAddr      string
+	Manifest      []MachineRow
+	Concurrency   int
+	Duration      time.Duration
+	StormWaves    int
+	AdminJWT      string
+	ProductID     string
+	SlotIndex     int32
+	SkipMQTT      bool
+	SkipWebhook   bool
+	MQTTBroker    string
+	MQTTUser      string
+	MQTTPass      string
+	MQTTPrefix    string
+	MQTTLayout    string
+	MQTTAckDL     time.Duration
+	WebhookSecret string
+	WebhookOrder  uuid.UUID
+	WebhookPay    uuid.UUID
+	WebhookBurst  int
+	WebhookDupN   int
 }
 
 // StormReports is stdout-friendly phase output (for docs / log capture).
@@ -135,15 +134,14 @@ func RunStorm(ctx context.Context, c StormConfig) (StormReports, error) {
 	}
 
 	// 7) Admin dashboard / list / report reads (duration-bound).
-	org, err := uuid.Parse(strings.TrimSpace(c.AdminPhaseScopeStr))
-	if err == nil && strings.TrimSpace(c.AdminJWT) != "" {
+	if strings.TrimSpace(c.AdminJWT) != "" {
 		adm := &LatencyRecorder{}
 		tAdm := time.Now()
 		admDeadline, admCancel := context.WithTimeout(ctx, c.Duration)
 		defer admCancel()
 		var admErr error
 		for admDeadline.Err() == nil {
-			admErr = RunHTTPAdminSequence(admDeadline, c.HTTPBase, c.AdminJWT, org, 1, adm)
+			admErr = RunHTTPAdminSequence(admDeadline, c.HTTPBase, c.AdminJWT, 1, adm)
 			if admErr != nil {
 				break
 			}
@@ -153,7 +151,7 @@ func RunStorm(ctx context.Context, c StormConfig) (StormReports, error) {
 			rep.Admin += fmt.Sprintf(" (last_error=%v)", admErr)
 		}
 	} else {
-		rep.Admin = "admin_read_pressure: skipped (set ADMIN_JWT + LOADTEST_COMPANY_SCOPE_ID)"
+		rep.Admin = "admin_read_pressure: skipped (set ADMIN_JWT)"
 	}
 
 	return rep, nil

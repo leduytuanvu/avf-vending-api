@@ -186,7 +186,7 @@ type ReconciliationDriftReport struct {
 	AppliedWebhookVsPaymentAmountMismatch []ReconciliationWebhookAmountMismatchRow `json:"appliedWebhookVsPaymentAmountMismatch"`
 }
 
-// ListWebhookEvents returns role-scoped webhook ingress rows (includes join via payments when scope_id denorm is null).
+// ListWebhookEvents returns webhook ingress rows joined with payments when payment linkage is missing.
 func (s *AdminService) ListWebhookEvents(ctx context.Context, companyID uuid.UUID, limit, offset int32) (*WebhookEventsListResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("payments: nil service")

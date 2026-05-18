@@ -13,39 +13,38 @@ import (
 func TestFleetAdminP05_CredentialLifecycleAndSoftArchive(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	scopeID := uuid.New()
+	companyID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	insertAuditCompany(t, pool, scopeID)
 	_, err := pool.Exec(ctx, `
-INSERT INTO sites (id, scope_id, name, code, status)
-VALUES ($1, $2, 'P05 Site', $3, 'active')
-`, siteID, scopeID, "p05-site-"+siteID.String()[:8])
+INSERT INTO sites (id, name, code, status)
+VALUES ($1, 'P05 Site', $2, 'active')
+`, siteID, "p05-site-"+siteID.String()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, code, name, status, credential_version)
-VALUES ($1, $2, $3, $4, $5, 'P05 Machine', 'active', 7)
-`, machineID, scopeID, siteID, "p05-sn-"+machineID.String(), "p05-"+machineID.String()[:8])
+INSERT INTO machines (id, site_id, serial_number, code, name, status, credential_version)
+VALUES ($1, $2, $3, $4, 'P05 Machine', 'active', 7)
+`, machineID, siteID, "p05-sn-"+machineID.String(), "p05-"+machineID.String()[:8])
 	require.NoError(t, err)
 
 	svc := appfleet.NewService(postgres.NewFleetRepository(pool))
-	rotated, err := svc.RotateMachineCredential(ctx, scopeID, machineID)
+	rotated, err := svc.RotateMachineCredential(ctx, companyID, machineID)
 	require.NoError(t, err)
 	require.Equal(t, int64(8), rotated.CredentialVersion)
 	require.NotNil(t, rotated.RotatedAt)
 	require.Nil(t, rotated.RevokedAt)
 
-	revoked, err := svc.RevokeMachineCredential(ctx, scopeID, machineID)
+	revoked, err := svc.RevokeMachineCredential(ctx, companyID, machineID)
 	require.NoError(t, err)
 	require.Equal(t, int64(9), revoked.CredentialVersion)
 	require.NotNil(t, revoked.RevokedAt)
 
-	compromised, err := svc.MarkMachineCompromised(ctx, scopeID, machineID)
+	compromised, err := svc.MarkMachineCompromised(ctx, companyID, machineID)
 	require.NoError(t, err)
 	require.Equal(t, "compromised", compromised.Status)
 	require.NotNil(t, compromised.RevokedAt)
 
-	retired, err := svc.RetireMachine(ctx, scopeID, machineID)
+	retired, err := svc.RetireMachine(ctx, companyID, machineID)
 	require.NoError(t, err)
 	require.Equal(t, "decommissioned", retired.Status)
 
@@ -57,30 +56,29 @@ VALUES ($1, $2, $3, $4, $5, 'P05 Machine', 'active', 7)
 func TestFleetAdminP05_TechnicianAssignmentExplicitRelease(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	scopeID := uuid.New()
+	companyID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 	techID := uuid.New()
-	insertAuditCompany(t, pool, scopeID)
-	_, err := pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 'P05 Assign Site', $3, 'active')`, siteID, scopeID, "p05-assign-"+siteID.String()[:8])
+	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 'P05 Assign Site', $2, 'active')`, siteID, "p05-assign-"+siteID.String()[:8])
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO machines (id, scope_id, site_id, serial_number, code, name, status) VALUES ($1, $2, $3, $4, $5, 'P05 Assign Machine', 'active')`, machineID, scopeID, siteID, "p05-assign-sn-"+machineID.String(), "p05m-"+machineID.String()[:8])
+	_, err = pool.Exec(ctx, `INSERT INTO machines (id, site_id, serial_number, code, name, status, credential_version) VALUES ($1, $2, $3, $4, 'P05 Assign Machine', 'active', 0)`, machineID, siteID, "p05-assign-sn-"+machineID.String(), "p05m-"+machineID.String()[:8])
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO technicians (id, scope_id, display_name, status) VALUES ($1, $2, 'Tech P05', 'active')`, techID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO technicians (id, display_name, status) VALUES ($1, 'Tech P05', 'active')`, techID)
 	require.NoError(t, err)
 
 	svc := appfleet.NewService(postgres.NewFleetRepository(pool))
 	assignment, err := svc.AssignTechnicianToMachine(ctx, appfleet.AssignTechnicianInput{
-		MachineID:    machineID,
-		TechnicianID: techID,
-		Role:         "field_service",
-		Scope:        "maintenance",
+		MachineID:        machineID,
+		TechnicianID:     techID,
+		Role:             "field_service",
+		AssignmentDomain: "maintenance",
 	})
 	require.NoError(t, err)
 	require.Equal(t, "active", assignment.Status)
-	require.Equal(t, "maintenance", assignment.Scope)
+	require.Equal(t, "maintenance", assignment.AssignmentDomain)
 
-	released, err := svc.ReleaseTechnicianAssignmentForMachineUser(ctx, scopeID, machineID, techID)
+	released, err := svc.ReleaseTechnicianAssignmentForMachineUser(ctx, companyID, machineID, techID)
 	require.NoError(t, err)
 	require.Equal(t, "released", released.Status)
 	require.NotNil(t, released.ValidTo)
@@ -89,16 +87,14 @@ func TestFleetAdminP05_TechnicianAssignmentExplicitRelease(t *testing.T) {
 func TestFleetAdminP05_TechnicianSelfAssignmentForbidden(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 	techID := uuid.New()
-	insertAuditCompany(t, pool, scopeID)
-	_, err := pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 'Self Site', $3, 'active')`, siteID, scopeID, "self-site-"+siteID.String()[:8])
+	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 'Self Site', $2, 'active')`, siteID, "self-site-"+siteID.String()[:8])
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO machines (id, scope_id, site_id, serial_number, code, name, status) VALUES ($1, $2, $3, $4, $5, 'Self Machine', 'active')`, machineID, scopeID, siteID, "self-sn-"+machineID.String(), "selfm-"+machineID.String()[:8])
+	_, err = pool.Exec(ctx, `INSERT INTO machines (id, site_id, serial_number, code, name, status, credential_version) VALUES ($1, $2, $3, $4, 'Self Machine', 'active', 0)`, machineID, siteID, "self-sn-"+machineID.String(), "selfm-"+machineID.String()[:8])
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO technicians (id, scope_id, display_name, status) VALUES ($1, $2, 'Self Tech', 'active')`, techID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO technicians (id, display_name, status) VALUES ($1, 'Self Tech', 'active')`, techID)
 	require.NoError(t, err)
 
 	svc := appfleet.NewService(postgres.NewFleetRepository(pool))

@@ -71,7 +71,6 @@ func TestClaim_IdempotentReplaySameFingerprint(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
@@ -85,11 +84,11 @@ func TestClaim_IdempotentReplaySameFingerprint(t *testing.T) {
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, scopeID, siteID, "sn-act-1-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-1-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
@@ -116,7 +115,6 @@ func TestClaim_DifferentFingerprintRejectedWhenSingleUse(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
@@ -130,11 +128,11 @@ func TestClaim_DifferentFingerprintRejectedWhenSingleUse(t *testing.T) {
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, scopeID, siteID, "sn-act-2-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-2-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
@@ -162,7 +160,6 @@ func TestClaim_TwoDistinctFingerprintsWhenMaxUsesTwo(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
@@ -176,11 +173,11 @@ func TestClaim_TwoDistinctFingerprintsWhenMaxUsesTwo(t *testing.T) {
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, scopeID, siteID, "sn-act-3-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-3-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
@@ -219,7 +216,6 @@ func TestClaim_ConcurrentClaimsRespectMaxUses(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
@@ -233,11 +229,11 @@ func TestClaim_ConcurrentClaimsRespectMaxUses(t *testing.T) {
 	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
 	require.NoError(t, err)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, scopeID, siteID, "sn-act-4-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-4-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
@@ -278,7 +274,6 @@ func TestClaim_PersistsSucceededClaimAndAudit(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	scopeID := uuid.New()
 	siteID := uuid.New()
 	machineID := uuid.New()
 
@@ -293,11 +288,11 @@ func TestClaim_PersistsSucceededClaimAndAudit(t *testing.T) {
 	require.NoError(t, err)
 	auditSvc := appaudit.NewService(pool)
 	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), auditSvc)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, scopeID, siteID, "sn-act-5-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-5-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	create, err := svc.CreateCode(ctx, CreateInput{
@@ -323,6 +318,6 @@ SELECT COUNT(*) FROM machine_activation_claims WHERE activation_code_id = $1 AND
 	var auditCount int
 	require.NoError(t, pool.QueryRow(ctx, `
 SELECT COUNT(*) FROM audit_events
-WHERE scope_id = $1 AND action = 'machine.activation.claimed'`, scopeID).Scan(&auditCount))
+WHERE machine_id = $1 AND action = 'machine.activation.claimed'`, machineID).Scan(&auditCount))
 	require.GreaterOrEqual(t, auditCount, 1)
 }

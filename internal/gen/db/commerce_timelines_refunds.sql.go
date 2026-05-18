@@ -76,15 +76,15 @@ func (q *Queries) CommerceAdminGetRefundRequest(ctx context.Context, id uuid.UUI
 	return i, err
 }
 
-const CommerceAdminGetRefundRequestByScopeIdempotency = `-- name: CommerceAdminGetRefundRequestByScopeIdempotency :one
+const CommerceAdminGetRefundRequestByIdempotencyKey = `-- name: CommerceAdminGetRefundRequestByIdempotencyKey :one
 SELECT id, order_id, payment_id, refund_id, amount_minor, currency, reason, status, provider_refund_id, requested_by, approved_by, idempotency_key, created_at, updated_at, completed_at
 FROM refund_requests
 WHERE
     idempotency_key = $1
 `
 
-func (q *Queries) CommerceAdminGetRefundRequestByScopeIdempotency(ctx context.Context, idempotencyKey pgtype.Text) (RefundRequest, error) {
-	row := q.db.QueryRow(ctx, CommerceAdminGetRefundRequestByScopeIdempotency, idempotencyKey)
+func (q *Queries) CommerceAdminGetRefundRequestByIdempotencyKey(ctx context.Context, idempotencyKey pgtype.Text) (RefundRequest, error) {
+	row := q.db.QueryRow(ctx, CommerceAdminGetRefundRequestByIdempotencyKey, idempotencyKey)
 	var i RefundRequest
 	err := row.Scan(
 		&i.ID,
@@ -282,23 +282,21 @@ func (q *Queries) CommerceAdminListRefundRequests(ctx context.Context, arg Comme
 	return items, nil
 }
 
-const CommerceAdminOrderScopeID = `-- name: CommerceAdminOrderScopeID :one
+const CommerceAdminOrderLookup = `-- name: CommerceAdminOrderLookup :one
 
 SELECT
+    id
 FROM orders
 WHERE
     id = $1
 `
 
-type CommerceAdminOrderScopeIDRow struct {
-}
-
 // Order timeline + refund_requests (admin commerce P0.4).
-func (q *Queries) CommerceAdminOrderScopeID(ctx context.Context, id uuid.UUID) (CommerceAdminOrderScopeIDRow, error) {
-	row := q.db.QueryRow(ctx, CommerceAdminOrderScopeID, id)
-	var i CommerceAdminOrderScopeIDRow
-	err := row.Scan()
-	return i, err
+func (q *Queries) CommerceAdminOrderLookup(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, CommerceAdminOrderLookup, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
 }
 
 const CommerceAdminUpdateRefundRequestLinkedRefund = `-- name: CommerceAdminUpdateRefundRequestLinkedRefund :one

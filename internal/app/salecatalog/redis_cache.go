@@ -56,12 +56,6 @@ func (c *RedisCachedSnapshotBuilder) BuildSnapshot(ctx context.Context, machineI
 		return c.Inner.BuildSnapshot(ctx, machineID, opts)
 	}
 
-	var scopeID uuid.UUID
-	err := c.Pool.QueryRow(ctx, `SELECT scope_id FROM machines WHERE id = $1`, machineID).Scan(&scopeID)
-	if err != nil {
-		return c.Inner.BuildSnapshot(ctx, machineID, opts)
-	}
-
 	q := db.New(c.Pool)
 	cfgVer, err := q.GetMachineShadowVersion(ctx, machineID)
 	if err != nil {
@@ -74,7 +68,7 @@ func (c *RedisCachedSnapshotBuilder) BuildSnapshot(ctx context.Context, machineI
 	if err := c.Pool.QueryRow(ctx, `SELECT COALESCE(MAX(config_revision), 0) FROM machine_configs WHERE machine_id = $1`, machineID).Scan(&maxCfgRev); err != nil {
 		return c.Inner.BuildSnapshot(ctx, machineID, opts)
 	}
-	mediaEpoch := mediaadmin.ReadMediaEpoch(ctx, c.RDB, scopeID)
+	mediaEpoch := mediaadmin.ReadMediaEpoch(ctx, c.RDB, uuid.Nil)
 	cacheKey := saleCatalogRedisCacheKey(machineID, cfgVer, maxCfgRev, mediaEpoch, opts.IncludeUnavailable, opts.IncludeImages)
 
 	raw, err := c.RDB.Get(ctx, cacheKey).Bytes()

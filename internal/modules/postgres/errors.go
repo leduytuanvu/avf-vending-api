@@ -7,8 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// ErrMachineScopeMismatch is returned when a row's machine_id does not belong to the expected scope_id.
-var ErrMachineScopeMismatch = errors.New("postgres: machine does not belong to scope")
+// ErrMachineScopeMismatch is returned when a row's machine_id does not belong to the expected deployment boundary.
+var ErrMachineScopeMismatch = errors.New("postgres: machine does not belong to deployment boundary")
 
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError

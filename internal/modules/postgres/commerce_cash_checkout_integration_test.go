@@ -50,7 +50,7 @@ func TestCashCheckout_storeFlow_orderPaid_cashProviderCaptured(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ord, err := store.UpdateOrderStatus(ctx, orderRes.Order.ID, testfixtures.DevScopeID, "paid")
+	ord, err := store.UpdateOrderStatus(ctx, orderRes.Order.ID, testfixtures.DevCompanyID, "paid")
 	require.NoError(t, err)
 	require.Equal(t, "paid", ord.Status)
 

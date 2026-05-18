@@ -1,7 +1,8 @@
 -- Order timeline + refund_requests (admin commerce P0.4).
 
--- name: CommerceAdminOrderScopeID :one
+-- name: CommerceAdminOrderLookup :one
 SELECT
+    id
 FROM orders
 WHERE
     id = $1;
@@ -78,7 +79,7 @@ WHERE
     id = $3
 RETURNING *;
 
--- name: CommerceAdminGetRefundRequestByScopeIdempotency :one
+-- name: CommerceAdminGetRefundRequestByIdempotencyKey :one
 SELECT *
 FROM refund_requests
 WHERE

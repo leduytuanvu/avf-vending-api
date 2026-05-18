@@ -78,11 +78,11 @@ type OrdersService interface {
 
 type ReconciliationAdminService interface {
 	ListReconciliationCases(ctx context.Context, scope listscope.CompanyCommerce) (*appcommerceadmin.ReconciliationListResponse, error)
-	GetReconciliationCase(ctx context.Context, companyID, caseID uuid.UUID) (appcommerceadmin.ReconciliationCaseItem, error)
+	GetReconciliationCase(ctx context.Context, caseID uuid.UUID) (appcommerceadmin.ReconciliationCaseItem, error)
 	ResolveReconciliationCase(ctx context.Context, in appcommerceadmin.ResolveReconciliationInput) (appcommerceadmin.ReconciliationCaseItem, error)
-	ListOrderTimeline(ctx context.Context, companyID, orderID uuid.UUID, limit, offset int32) (*appcommerceadmin.OrderTimelineResponse, error)
+	ListOrderTimeline(ctx context.Context, orderID uuid.UUID, limit, offset int32) (*appcommerceadmin.OrderTimelineResponse, error)
 	ListRefundRequests(ctx context.Context, scope listscope.CompanyCommerce) (*appcommerceadmin.RefundRequestsListResponse, error)
-	GetRefundRequest(ctx context.Context, companyID, refundRequestID uuid.UUID) (appcommerceadmin.RefundRequestItem, error)
+	GetRefundRequest(ctx context.Context, refundRequestID uuid.UUID) (appcommerceadmin.RefundRequestItem, error)
 	CreateOrderRefund(ctx context.Context, in appcommerceadmin.CreateOrderRefundInput) (appcommerceadmin.CreateOrderRefundResult, error)
 	RefundFromReconciliationCase(ctx context.Context, in appcommerceadmin.RefundFromReconciliationCaseInput) (appcommerceadmin.CreateOrderRefundResult, error)
 }
@@ -116,6 +116,6 @@ type ReportingService interface {
 // FinanceService manages immutable finance daily closes (single-company).
 type FinanceService interface {
 	CreateDailyClose(ctx context.Context, in appfinance.CreateDailyCloseInput) (*appfinance.DailyCloseView, error)
-	GetDailyClose(ctx context.Context, companyID, closeID uuid.UUID) (*appfinance.DailyCloseView, error)
+	GetDailyClose(ctx context.Context, closeID uuid.UUID) (*appfinance.DailyCloseView, error)
 	ListDailyClose(ctx context.Context, p appfinance.ListDailyCloseParams) (*appfinance.DailyCloseListResponse, error)
 }

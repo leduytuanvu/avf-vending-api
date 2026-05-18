@@ -10,7 +10,7 @@ SELECT coalesce(
         FROM price_books pb
         WHERE TRUE
             AND pb.is_default = true
-            AND pb.scope_type = 'global'
+            AND pb.price_book_level = 'global'
             AND pb.site_id IS NULL
             AND pb.machine_id IS NULL
             AND (pb.effective_to IS NULL OR pb.effective_to > now())

@@ -155,7 +155,7 @@ func (r *fleetRepository) ListMachinesInScope(ctx context.Context, filter appfle
 	if filter.SiteID != nil {
 		rows, err = q.ListMachinesBySiteAndCompany(ctx, *filter.SiteID)
 	} else {
-		rows, err = q.ListMachinesByScopeID(ctx)
+		rows, err = q.ListMachinesOrderedByName(ctx)
 	}
 	if err != nil {
 		return nil, err
@@ -173,11 +173,11 @@ func (r *fleetRepository) RevokeMachineCredentials(ctx context.Context, companyI
 
 func (r *fleetRepository) InsertTechnicianMachineAssignment(ctx context.Context, p appfleet.InsertAssignmentParams) (domainfleet.TechnicianMachineAssignment, error) {
 	row, err := db.New(r.pool).InsertTechnicianMachineAssignment(ctx, db.InsertTechnicianMachineAssignmentParams{
-		TechnicianID: p.TechnicianID,
-		MachineID:    p.MachineID,
-		Role:         p.Role,
-		Scope:        p.Scope,
-		CreatedBy:    optionalUUIDToPg(p.CreatedBy),
+		TechnicianID:     p.TechnicianID,
+		MachineID:        p.MachineID,
+		Role:             p.Role,
+		AssignmentDomain: p.AssignmentDomain,
+		CreatedBy:        optionalUUIDToPg(p.CreatedBy),
 	})
 	if err != nil {
 		return domainfleet.TechnicianMachineAssignment{}, err
@@ -201,16 +201,16 @@ func (r *fleetRepository) ReleaseTechnicianAssignmentForMachineUser(ctx context.
 
 func mapTechnicianMachineAssignment(row db.TechnicianMachineAssignment) domainfleet.TechnicianMachineAssignment {
 	return domainfleet.TechnicianMachineAssignment{
-		ID:           row.ID,
-		TechnicianID: row.TechnicianID,
-		MachineID:    row.MachineID,
-		Role:         row.Role,
-		Scope:        row.Scope,
-		Status:       row.Status,
-		ValidFrom:    row.ValidFrom,
-		ValidTo:      pgTimestamptzToTimePtr(row.ValidTo),
-		CreatedBy:    pgUUIDToPtr(row.CreatedBy),
-		CreatedAt:    row.CreatedAt,
-		UpdatedAt:    row.UpdatedAt,
+		ID:               row.ID,
+		TechnicianID:     row.TechnicianID,
+		MachineID:        row.MachineID,
+		Role:             row.Role,
+		AssignmentDomain: row.AssignmentDomain,
+		Status:           row.Status,
+		ValidFrom:        row.ValidFrom,
+		ValidTo:          pgTimestamptzToTimePtr(row.ValidTo),
+		CreatedBy:        pgUUIDToPtr(row.CreatedBy),
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
 	}
 }

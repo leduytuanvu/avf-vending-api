@@ -242,7 +242,7 @@ func grpcActorIdentityFields(ctx context.Context) []zap.Field {
 			zap.String("actor_type", "machine"),
 			zap.String("actor_id", c.MachineID.String()),
 			zap.String("machine_id", c.MachineID.String()),
-			zap.String("scope_id", uuid.Nil.String()),
+			zap.String("company_id", uuid.Nil.String()),
 		}
 	}
 	if p, ok := auth.PrincipalFromContext(ctx); ok {
@@ -252,7 +252,7 @@ func grpcActorIdentityFields(ctx context.Context) []zap.Field {
 			zap.String("actor_id", aid),
 		}
 		if false {
-			fields = append(fields, zap.String("scope_id", uuid.Nil.String()))
+			fields = append(fields, zap.String("company_id", uuid.Nil.String()))
 		}
 		return fields
 	}

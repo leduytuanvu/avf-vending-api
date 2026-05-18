@@ -68,7 +68,7 @@ func (s *Service) CreateDailyClose(ctx context.Context, in CreateDailyCloseInput
 	}
 
 	closePgDate := pgtype.Date{Time: time.Date(y, m, day, 0, 0, 0, 0, time.UTC), Valid: true}
-	dup, err := s.q.FinanceDailyCloseExistsForScope(ctx, db.FinanceDailyCloseExistsForScopeParams{Column3: in.SiteID,
+	dup, err := s.q.FinanceDailyCloseExistsForDimensions(ctx, db.FinanceDailyCloseExistsForDimensionsParams{Column3: in.SiteID,
 		Column4: in.MachineID,
 
 		CloseDate: closePgDate,
@@ -112,14 +112,14 @@ func (s *Service) CreateDailyClose(ctx context.Context, in CreateDailyCloseInput
 	if err != nil {
 		if isPGUniqueViolation(err) {
 			var pe *pgconn.PgError
-			if errors.As(err, &pe) && strings.Contains(pe.ConstraintName, "finance_daily_closes_scope_idem") {
+			if errors.As(err, &pe) && pe.ConstraintName == "ux_finance_daily_closes_idempotency" {
 				got, err2 := s.q.GetFinanceDailyCloseByIdempotencyKey(ctx, strings.TrimSpace(in.IdempotencyKey))
 				if err2 == nil {
 					v := mapFinanceDailyClose(got)
 					return &v, nil
 				}
 			}
-			if errors.As(err, &pe) && strings.Contains(pe.ConstraintName, "finance_daily_closes_scope") {
+			if errors.As(err, &pe) && pe.ConstraintName == "ux_finance_daily_closes_site_machine" {
 				return nil, ErrDuplicateDailyClose
 			}
 		}
@@ -160,7 +160,7 @@ func (s *Service) emitDailyCloseAudit(ctx context.Context, in CreateDailyCloseIn
 }
 
 // GetDailyClose returns one immutable close row.
-func (s *Service) GetDailyClose(ctx context.Context, scopeID, closeID uuid.UUID) (*DailyCloseView, error) {
+func (s *Service) GetDailyClose(ctx context.Context, closeID uuid.UUID) (*DailyCloseView, error) {
 	row, err := s.q.GetFinanceDailyCloseByID(ctx, closeID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

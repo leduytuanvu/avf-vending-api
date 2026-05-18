@@ -162,7 +162,7 @@ FROM
 WHERE
     idempotency_key = $1;
 
--- name: FinanceDailyCloseExistsForScope :one
+-- name: FinanceDailyCloseExistsForDimensions :one
 SELECT
     EXISTS (
         SELECT

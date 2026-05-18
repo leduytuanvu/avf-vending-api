@@ -20,13 +20,12 @@ import (
 func TestP21_BulkProvisioning100Machines_NoActivationCodes(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	scopeID := uuid.New()
+	batchKey := uuid.New()
 	siteID := uuid.New()
-	insertAuditCompany(t, pool, scopeID)
 	_, err := pool.Exec(ctx, `
-INSERT INTO sites (id, scope_id, name, code, status)
-VALUES ($1, $2, 'Bulk Site', $3, 'active')
-`, siteID, scopeID, "bulk-site-"+siteID.String()[:8])
+INSERT INTO sites (id, name, code, status)
+VALUES ($1, 'Bulk Site', $2, 'active')
+`, siteID, "bulk-site-"+siteID.String()[:8])
 	require.NoError(t, err)
 
 	fleetSvc := appfleet.NewService(postgres.NewFleetRepository(pool))
@@ -42,7 +41,7 @@ VALUES ($1, $2, 'Bulk Site', $3, 'active')
 	rows := make([]approvisioning.BulkMachineRow, 100)
 	for i := range rows {
 		rows[i] = approvisioning.BulkMachineRow{
-			SerialNumber: fmt.Sprintf("%s-P21-%04d", scopeID.String()[:8], i),
+			SerialNumber: fmt.Sprintf("%s-P21-%04d", batchKey.String()[:8], i),
 			Name:         fmt.Sprintf("Bulk %d", i),
 			Model:        "AVF-TEST",
 		}
@@ -59,7 +58,7 @@ VALUES ($1, $2, 'Bulk Site', $3, 'active')
 
 	var n int
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM machines WHERE scope_id = $1 AND status = 'provisioning'`, scopeID).Scan(&n))
+		`SELECT count(*) FROM machines WHERE site_id = $1 AND status = 'provisioning'`, siteID).Scan(&n))
 	require.Equal(t, 100, n)
 }
 

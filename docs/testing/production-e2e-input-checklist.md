@@ -26,8 +26,7 @@ Use before running destructive production E2E. Audit-only references: [`producti
 ## Admin auth
 
 - [ ] `ADMIN_TOKEN` **set**, **or**
-- [ ] `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and **`E2E_SCOPE_ID`** set for `POST /v1/auth/login`
-- [ ] If `ADMIN_TOKEN` only: `E2E_SCOPE_ID` or reuse `test-data.json` with `scopeId`
+- [ ] `ADMIN_EMAIL`, `ADMIN_PASSWORD` set for **`POST /v1/auth/login`** (`{ email, password }`)
 
 ## Test namespace (non-secret)
 

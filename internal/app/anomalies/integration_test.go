@@ -66,7 +66,6 @@ func TestP24_Sync_OfflineMachineCreatesAnomaly(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
 	ctx := context.Background()
-	scopeID := uuid.Nil
 	siteID := uuid.New()
 	machineID := uuid.New()
 	q := db.New(pool)
@@ -75,24 +74,21 @@ func TestP24_Sync_OfflineMachineCreatesAnomaly(t *testing.T) {
 	svc, err := anomalies.NewService(pool, inv)
 	require.NoError(t, err)
 
-	slug := "anom-offline-" + uuid.NewString()
-	_, err = pool.Exec(ctx, `INSERT INTO companies (id, name, slug, status) VALUES ($1, 'a', $2, 'active')`, scopeID, slug)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	past := time.Now().UTC().Add(-4 * time.Hour)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'active', $5, 1)`, machineID, scopeID, siteID, "sn-offline-p24-"+uuid.NewString()[:8], past)
+INSERT INTO machines (id, site_id, serial_number, status, last_seen_at, credential_version)
+VALUES ($1, $2, $3, 'active', $4, 1)`, machineID, siteID, "sn-offline-p24-"+uuid.NewString()[:8], past)
 	require.NoError(t, err)
 
-	require.NoError(t, svc.Sync(ctx, scopeID))
+	require.NoError(t, svc.Sync(ctx, uuid.Nil))
 
 	var count int
 	err = pool.QueryRow(ctx, `
 SELECT count(*) FROM inventory_anomalies
-WHERE scope_id = $1 AND machine_id = $2 AND anomaly_type = 'machine_offline_too_long' AND status = 'open'`,
-		scopeID, machineID).Scan(&count)
+WHERE machine_id = $1 AND anomaly_type = 'machine_offline_too_long' AND status = 'open'`,
+		machineID).Scan(&count)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
 }
@@ -101,7 +97,6 @@ func TestP24_Sync_RepeatedVendFailure_Deduped(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
 	ctx := context.Background()
-	scopeID := uuid.Nil
 	siteID := uuid.New()
 	machineID := uuid.New()
 	productID := uuid.New()
@@ -111,24 +106,21 @@ func TestP24_Sync_RepeatedVendFailure_Deduped(t *testing.T) {
 	svc, err := anomalies.NewService(pool, inv)
 	require.NoError(t, err)
 
-	slug := "anom-vend-" + uuid.NewString()
-	_, err = pool.Exec(ctx, `INSERT INTO companies (id, name, slug, status) VALUES ($1, 'b', $2, 'active')`, scopeID, slug)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, scopeID, siteID, "sn-vend-p24-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, status, last_seen_at, credential_version)
+VALUES ($1, $2, $3, 'active', now(), 1)`, machineID, siteID, "sn-vend-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO products (id, scope_id, sku, name) VALUES ($1, $2, 'SKU1', 'Cola')`, productID, scopeID)
+INSERT INTO products (id, sku, name) VALUES ($1, 'SKU1', 'Cola')`, productID)
 	require.NoError(t, err)
 
 	for i := 0; i < 3; i++ {
 		orderID := uuid.New()
 		_, err = pool.Exec(ctx, `
-INSERT INTO orders (id, scope_id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor)
-VALUES ($1, $2, $3, 'failed', 'USD', 0, 0, 0)`, orderID, scopeID, machineID)
+INSERT INTO orders (id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor)
+VALUES ($1, $2, 'failed', 'USD', 0, 0, 0)`, orderID, machineID)
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, `
 INSERT INTO vend_sessions (order_id, machine_id, slot_index, product_id, state, failure_reason, completed_at)
@@ -136,14 +128,14 @@ VALUES ($1, $2, 0, $3, 'failed', 'mechanical', now())`, orderID, machineID, prod
 		require.NoError(t, err)
 	}
 
-	require.NoError(t, svc.Sync(ctx, scopeID))
-	require.NoError(t, svc.Sync(ctx, scopeID))
+	require.NoError(t, svc.Sync(ctx, uuid.Nil))
+	require.NoError(t, svc.Sync(ctx, uuid.Nil))
 
 	var count int
 	err = pool.QueryRow(ctx, `
 SELECT count(*) FROM inventory_anomalies
-WHERE scope_id = $1 AND machine_id = $2 AND anomaly_type = 'repeated_vend_failure' AND status = 'open'`,
-		scopeID, machineID).Scan(&count)
+WHERE machine_id = $1 AND anomaly_type = 'repeated_vend_failure' AND status = 'open'`,
+		machineID).Scan(&count)
 	require.NoError(t, err)
 	require.Equal(t, 1, count)
 }
@@ -152,7 +144,6 @@ func TestP24_RestockSuggestions_seededVelocity(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
 	ctx := context.Background()
-	scopeID := uuid.Nil
 	siteID := uuid.New()
 	machineID := uuid.New()
 	planogramID := uuid.New()
@@ -163,31 +154,28 @@ func TestP24_RestockSuggestions_seededVelocity(t *testing.T) {
 	svc, err := anomalies.NewService(pool, inv)
 	require.NoError(t, err)
 
-	slug := "anom-rest-" + uuid.NewString()
-	_, err = pool.Exec(ctx, `INSERT INTO companies (id, name, slug, status) VALUES ($1, 'c', $2, 'active')`, scopeID, slug)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'online', now(), 1)`, machineID, scopeID, siteID, "sn-rest-p24-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, status, last_seen_at, credential_version)
+VALUES ($1, $2, $3, 'online', now(), 1)`, machineID, siteID, "sn-rest-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO products (id, scope_id, sku, name) VALUES ($1, $2, 'SKU2', 'Water')`, productID, scopeID)
+INSERT INTO products (id, sku, name) VALUES ($1, 'SKU2', 'Water')`, productID)
 	require.NoError(t, err)
 
 	fix := func(sql string, args ...any) {
 		_, e := pool.Exec(ctx, sql, args...)
 		require.NoError(t, e)
 	}
-	fix(`INSERT INTO planograms (id, scope_id, name, revision, status) VALUES ($1, $2, 'P1', 1, 'published')`, planogramID, scopeID)
+	fix(`INSERT INTO planograms (id, name, revision, status) VALUES ($1, 'P1', 1, 'published')`, planogramID)
 	fix(`INSERT INTO slots (planogram_id, slot_index, product_id, max_quantity) VALUES ($1, 0, $2, 20)`, planogramID, productID)
 	fix(`INSERT INTO machine_slot_state (machine_id, planogram_id, slot_index, current_quantity, price_minor, planogram_revision_applied)
 VALUES ($1, $2, 0, 5, 100, 1)`, machineID, planogramID)
 
 	orderID := uuid.New()
-	fix(`INSERT INTO orders (id, scope_id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor)
-VALUES ($1, $2, $3, 'completed', 'USD', 100, 0, 100)`, orderID, scopeID, machineID)
+	fix(`INSERT INTO orders (id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor)
+VALUES ($1, $2, 'completed', 'USD', 100, 0, 100)`, orderID, machineID)
 	completedAt := time.Now().UTC().Add(-72 * time.Hour)
 	fix(`INSERT INTO vend_sessions (order_id, machine_id, slot_index, product_id, state, completed_at)
 VALUES ($1, $2, 0, $3, 'success', $4)`, orderID, machineID, productID, completedAt)
@@ -210,7 +198,6 @@ func TestP24_Resolve_thenClosed(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
 	ctx := context.Background()
-	scopeID := uuid.Nil
 	siteID := uuid.New()
 	machineID := uuid.New()
 	q := db.New(pool)
@@ -219,24 +206,21 @@ func TestP24_Resolve_thenClosed(t *testing.T) {
 	svc, err := anomalies.NewService(pool, inv)
 	require.NoError(t, err)
 
-	slug := "anom-res-" + uuid.NewString()
-	_, err = pool.Exec(ctx, `INSERT INTO companies (id, name, slug, status) VALUES ($1, 'd', $2, 'active')`, scopeID, slug)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, scopeID, siteID, "sn-res-p24-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, status, last_seen_at, credential_version)
+VALUES ($1, $2, $3, 'active', now(), 1)`, machineID, siteID, "sn-res-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	anomalyID := uuid.New()
 	_, err = pool.Exec(ctx, `
-INSERT INTO inventory_anomalies (id, scope_id, machine_id, anomaly_type, fingerprint, status, payload)
-VALUES ($1, $2, $3, 'telemetry_missing', $4, 'open', '{}')`,
-		anomalyID, scopeID, machineID, "telemetry_missing|"+machineID.String())
+INSERT INTO inventory_anomalies (id, machine_id, anomaly_type, fingerprint, status, payload)
+VALUES ($1, $2, 'telemetry_missing', $3, 'open', '{}')`,
+		anomalyID, machineID, "telemetry_missing|"+machineID.String())
 	require.NoError(t, err)
 
-	require.NoError(t, svc.Resolve(ctx, scopeID, anomalyID, uuid.Nil, "ack"))
+	require.NoError(t, svc.Resolve(ctx, uuid.Nil, anomalyID, uuid.Nil, "ack"))
 
 	var st string
 	require.NoError(t, pool.QueryRow(ctx, `SELECT status FROM inventory_anomalies WHERE id = $1`, anomalyID).Scan(&st))
@@ -247,7 +231,6 @@ func TestP24_Ignore_thenIgnored(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
 	ctx := context.Background()
-	scopeID := uuid.Nil
 	siteID := uuid.New()
 	machineID := uuid.New()
 	q := db.New(pool)
@@ -256,24 +239,21 @@ func TestP24_Ignore_thenIgnored(t *testing.T) {
 	svc, err := anomalies.NewService(pool, inv)
 	require.NoError(t, err)
 
-	slug := "anom-ign-" + uuid.NewString()
-	_, err = pool.Exec(ctx, `INSERT INTO companies (id, name, slug, status) VALUES ($1, 'e', $2, 'active')`, scopeID, slug)
-	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `INSERT INTO sites (id, scope_id, name, code, status) VALUES ($1, $2, 's', '', 'active')`, siteID, scopeID)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, serial_number, status, last_seen_at, credential_version)
-VALUES ($1, $2, $3, $4, 'active', now(), 1)`, machineID, scopeID, siteID, "sn-ign-p24-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, status, last_seen_at, credential_version)
+VALUES ($1, $2, $3, 'active', now(), 1)`, machineID, siteID, "sn-ign-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	anomalyID := uuid.New()
 	_, err = pool.Exec(ctx, `
-INSERT INTO inventory_anomalies (id, scope_id, machine_id, anomaly_type, fingerprint, status, payload)
-VALUES ($1, $2, $3, 'telemetry_missing', $4, 'open', '{}')`,
-		anomalyID, scopeID, machineID, "telemetry_missing|"+machineID.String()+"-b")
+INSERT INTO inventory_anomalies (id, machine_id, anomaly_type, fingerprint, status, payload)
+VALUES ($1, $2, 'telemetry_missing', $3, 'open', '{}')`,
+		anomalyID, machineID, "telemetry_missing|"+machineID.String()+"-b")
 	require.NoError(t, err)
 
-	require.NoError(t, svc.Ignore(ctx, scopeID, anomalyID, uuid.Nil, "noise"))
+	require.NoError(t, svc.Ignore(ctx, uuid.Nil, anomalyID, uuid.Nil, "noise"))
 
 	var st string
 	require.NoError(t, pool.QueryRow(ctx, `SELECT status FROM inventory_anomalies WHERE id = $1`, anomalyID).Scan(&st))

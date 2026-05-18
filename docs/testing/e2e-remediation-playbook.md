@@ -261,7 +261,7 @@ For each failure category: **symptom**, **likely cause**, **where to look**, **l
 | Where to look | **`test-events.jsonl`**; **`rest/wa-*.response.json`**; **`reports/summary.md`** (when run standalone) |
 | Log file | **`.e2e-runs/run-*/rest/*.meta.json`**, **`*.response.json`**, **`*.request.json`** |
 | Safe fix | Enable **`E2E_ALLOW_WRITES`**; set **`ADMIN_TOKEN` + `E2E_SCOPE_ID`** or email/password login; seed planogram; see **`docs/testing/e2e-test-data-guide.md`** (Web Admin section) |
-| --reuse-data | Yes — reuse **`scopeId` / `siteId` / `machineId`** to avoid duplicate machines |
+| --reuse-data | Yes — reuse **`siteId` / `machineId`** to avoid duplicate machines |
 | --fresh-data | Yes — new sites/machines/SKUs when IDs collide or activation conflicts |
 
 ## Offline replay conflict

@@ -74,15 +74,16 @@ SELECT
     p.ends_at,
     p.budget_limit_minor,
     p.redemption_limit,
-    p.channel_scope,
+    p.promotion_channel_kind,
     p.created_at,
     p.updated_at
 FROM promotions p
-WHERE TRUE
+WHERE
+    p.id = $1
 `
 
-func (q *Queries) PromotionAdminGetPromotion(ctx context.Context) (Promotion, error) {
-	row := q.db.QueryRow(ctx, PromotionAdminGetPromotion)
+func (q *Queries) PromotionAdminGetPromotion(ctx context.Context, id uuid.UUID) (Promotion, error) {
+	row := q.db.QueryRow(ctx, PromotionAdminGetPromotion, id)
 	var i Promotion
 	err := row.Scan(
 		&i.ID,
@@ -95,7 +96,7 @@ func (q *Queries) PromotionAdminGetPromotion(ctx context.Context) (Promotion, er
 		&i.EndsAt,
 		&i.BudgetLimitMinor,
 		&i.RedemptionLimit,
-		&i.ChannelScope,
+		&i.PromotionChannelKind,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -145,7 +146,7 @@ INSERT INTO promotions (
     ends_at,
     budget_limit_minor,
     redemption_limit,
-    channel_scope
+    promotion_channel_kind
 ) VALUES (
     $1,
     $2,
@@ -158,20 +159,20 @@ INSERT INTO promotions (
     $9,
     $10
 )
-RETURNING id, name, approval_status, lifecycle_status, priority, stackable, starts_at, ends_at, budget_limit_minor, redemption_limit, channel_scope, created_at, updated_at
+RETURNING id, name, approval_status, lifecycle_status, priority, stackable, starts_at, ends_at, budget_limit_minor, redemption_limit, promotion_channel_kind, created_at, updated_at
 `
 
 type PromotionAdminInsertPromotionParams struct {
-	Name             string
-	ApprovalStatus   string
-	LifecycleStatus  string
-	Priority         int32
-	Stackable        bool
-	StartsAt         time.Time
-	EndsAt           time.Time
-	BudgetLimitMinor pgtype.Int8
-	RedemptionLimit  pgtype.Int4
-	ChannelScope     pgtype.Text
+	Name                 string
+	ApprovalStatus       string
+	LifecycleStatus      string
+	Priority             int32
+	Stackable            bool
+	StartsAt             time.Time
+	EndsAt               time.Time
+	BudgetLimitMinor     pgtype.Int8
+	RedemptionLimit      pgtype.Int4
+	PromotionChannelKind pgtype.Text
 }
 
 func (q *Queries) PromotionAdminInsertPromotion(ctx context.Context, arg PromotionAdminInsertPromotionParams) (Promotion, error) {
@@ -185,7 +186,7 @@ func (q *Queries) PromotionAdminInsertPromotion(ctx context.Context, arg Promoti
 		arg.EndsAt,
 		arg.BudgetLimitMinor,
 		arg.RedemptionLimit,
-		arg.ChannelScope,
+		arg.PromotionChannelKind,
 	)
 	var i Promotion
 	err := row.Scan(
@@ -199,7 +200,7 @@ func (q *Queries) PromotionAdminInsertPromotion(ctx context.Context, arg Promoti
 		&i.EndsAt,
 		&i.BudgetLimitMinor,
 		&i.RedemptionLimit,
-		&i.ChannelScope,
+		&i.PromotionChannelKind,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -342,7 +343,7 @@ SELECT
     p.ends_at,
     p.budget_limit_minor,
     p.redemption_limit,
-    p.channel_scope,
+    p.promotion_channel_kind,
     p.created_at,
     p.updated_at
 FROM promotions p
@@ -378,7 +379,7 @@ func (q *Queries) PromotionAdminListPromotions(ctx context.Context, arg Promotio
 			&i.EndsAt,
 			&i.BudgetLimitMinor,
 			&i.RedemptionLimit,
-			&i.ChannelScope,
+			&i.PromotionChannelKind,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -404,7 +405,7 @@ SELECT
     p.ends_at,
     p.budget_limit_minor,
     p.redemption_limit,
-    p.channel_scope,
+    p.promotion_channel_kind,
     p.created_at,
     p.updated_at
 FROM promotions p
@@ -436,7 +437,7 @@ func (q *Queries) PromotionAdminListPromotionsForPreview(ctx context.Context, do
 			&i.EndsAt,
 			&i.BudgetLimitMinor,
 			&i.RedemptionLimit,
-			&i.ChannelScope,
+			&i.PromotionChannelKind,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -628,7 +629,7 @@ SET
     lifecycle_status = $1,
     updated_at = now()
 WHERE TRUE
-RETURNING id, name, approval_status, lifecycle_status, priority, stackable, starts_at, ends_at, budget_limit_minor, redemption_limit, channel_scope, created_at, updated_at
+RETURNING id, name, approval_status, lifecycle_status, priority, stackable, starts_at, ends_at, budget_limit_minor, redemption_limit, promotion_channel_kind, created_at, updated_at
 `
 
 func (q *Queries) PromotionAdminSetLifecycle(ctx context.Context, lifecycleStatus string) (Promotion, error) {
@@ -645,7 +646,7 @@ func (q *Queries) PromotionAdminSetLifecycle(ctx context.Context, lifecycleStatu
 		&i.EndsAt,
 		&i.BudgetLimitMinor,
 		&i.RedemptionLimit,
-		&i.ChannelScope,
+		&i.PromotionChannelKind,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -664,23 +665,23 @@ SET
     ends_at = $7,
     budget_limit_minor = $8,
     redemption_limit = $9,
-    channel_scope = $10,
+    promotion_channel_kind = $10,
     updated_at = now()
 WHERE TRUE
-RETURNING id, name, approval_status, lifecycle_status, priority, stackable, starts_at, ends_at, budget_limit_minor, redemption_limit, channel_scope, created_at, updated_at
+RETURNING id, name, approval_status, lifecycle_status, priority, stackable, starts_at, ends_at, budget_limit_minor, redemption_limit, promotion_channel_kind, created_at, updated_at
 `
 
 type PromotionAdminUpdatePromotionParams struct {
-	Name             string
-	ApprovalStatus   string
-	LifecycleStatus  string
-	Priority         int32
-	Stackable        bool
-	StartsAt         time.Time
-	EndsAt           time.Time
-	BudgetLimitMinor pgtype.Int8
-	RedemptionLimit  pgtype.Int4
-	ChannelScope     pgtype.Text
+	Name                 string
+	ApprovalStatus       string
+	LifecycleStatus      string
+	Priority             int32
+	Stackable            bool
+	StartsAt             time.Time
+	EndsAt               time.Time
+	BudgetLimitMinor     pgtype.Int8
+	RedemptionLimit      pgtype.Int4
+	PromotionChannelKind pgtype.Text
 }
 
 func (q *Queries) PromotionAdminUpdatePromotion(ctx context.Context, arg PromotionAdminUpdatePromotionParams) (Promotion, error) {
@@ -694,7 +695,7 @@ func (q *Queries) PromotionAdminUpdatePromotion(ctx context.Context, arg Promoti
 		arg.EndsAt,
 		arg.BudgetLimitMinor,
 		arg.RedemptionLimit,
-		arg.ChannelScope,
+		arg.PromotionChannelKind,
 	)
 	var i Promotion
 	err := row.Scan(
@@ -708,7 +709,7 @@ func (q *Queries) PromotionAdminUpdatePromotion(ctx context.Context, arg Promoti
 		&i.EndsAt,
 		&i.BudgetLimitMinor,
 		&i.RedemptionLimit,
-		&i.ChannelScope,
+		&i.PromotionChannelKind,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

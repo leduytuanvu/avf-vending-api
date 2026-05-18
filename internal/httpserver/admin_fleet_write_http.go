@@ -282,15 +282,15 @@ func technicianJSON(t domainfleet.Technician) map[string]any {
 
 func assignmentJSON(a domainfleet.TechnicianMachineAssignment) map[string]any {
 	out := map[string]any{
-		"id":            a.ID.String(),
-		"technician_id": a.TechnicianID.String(),
-		"machine_id":    a.MachineID.String(),
-		"role":          a.Role,
-		"scope":         a.Scope,
-		"status":        a.Status,
-		"valid_from":    a.ValidFrom.UTC().Format(time.RFC3339Nano),
-		"created_at":    a.CreatedAt.UTC().Format(time.RFC3339Nano),
-		"updated_at":    a.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		"id":                a.ID.String(),
+		"technician_id":     a.TechnicianID.String(),
+		"machine_id":        a.MachineID.String(),
+		"role":              a.Role,
+		"assignment_domain": a.AssignmentDomain,
+		"status":            a.Status,
+		"valid_from":        a.ValidFrom.UTC().Format(time.RFC3339Nano),
+		"created_at":        a.CreatedAt.UTC().Format(time.RFC3339Nano),
+		"updated_at":        a.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	}
 	if a.CreatedBy != nil {
 		out["created_by"] = a.CreatedBy.String()
@@ -1178,10 +1178,10 @@ func serveAdminMachineTechniciansList(app *api.HTTPApplication) http.HandlerFunc
 }
 
 type v1AdminMachineTechnicianAssignRequest struct {
-	UserID       string `json:"userId"`
-	TechnicianID string `json:"technician_id"`
-	Role         string `json:"role"`
-	Scope        string `json:"scope"`
+	UserID           string `json:"userId"`
+	TechnicianID     string `json:"technician_id"`
+	Role             string `json:"role"`
+	AssignmentDomain string `json:"assignment_domain"`
 }
 
 func serveAdminMachineTechnicianAssign(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
@@ -1220,7 +1220,7 @@ func serveAdminMachineTechnicianAssign(app *api.HTTPApplication, f *appfleet.Ser
 			TechnicianID:      uid,
 			MachineID:         mid,
 			Role:              body.Role,
-			Scope:             body.Scope,
+			AssignmentDomain:  body.AssignmentDomain,
 			CreatedBy:         stringPtrUUID(actor),
 			ActorTechnicianID: actorTech,
 		})

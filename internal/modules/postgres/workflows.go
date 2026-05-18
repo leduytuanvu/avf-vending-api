@@ -74,7 +74,7 @@ type CommandReceiptTransitionResult struct {
 }
 
 // CreateOrderWithVendSession inserts an order and its first vend session in one transaction.
-// It is idempotent on (scope_id, idempotency_key) for orders and will return the existing pair when replayed.
+// It is idempotent on order idempotency_key for orders and will return the existing pair when replayed.
 func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.CreateOrderVendInput) (commerce.CreateOrderVendResult, error) {
 	if in.IdempotencyKey == "" {
 		return commerce.CreateOrderVendResult{}, errors.New("postgres: idempotency_key is required")
@@ -90,7 +90,7 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 
 	var orderRow db.Order
 	var orderInserted bool
-	existingOrder, err := q.GetOrderByScopeIdempotency(ctx, optionalStringToPgText(in.IdempotencyKey))
+	existingOrder, err := q.GetOrderByIdempotencyKey(ctx, optionalStringToPgText(in.IdempotencyKey))
 	switch {
 	case err == nil:
 		orderRow = existingOrder
@@ -180,7 +180,7 @@ func (s *Store) TryReplayCreateOrderWithVend(ctx context.Context, companyID uuid
 		return commerce.CreateOrderVendResult{}, false, nil
 	}
 	q := db.New(s.pool)
-	orderRow, err := q.GetOrderByScopeIdempotency(ctx, optionalStringToPgText(key))
+	orderRow, err := q.GetOrderByIdempotencyKey(ctx, optionalStringToPgText(key))
 	if err != nil {
 		if isNoRows(err) {
 			return commerce.CreateOrderVendResult{}, false, nil
