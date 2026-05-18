@@ -78,11 +78,8 @@ func (s *Service) CreateSite(ctx context.Context, in CreateSiteInput) (domainfle
 	})
 }
 
-// GetSite returns a site scoped to the company.
+// GetSite returns a site by ID (single-tenant; companyID is unused but kept for API stability).
 func (s *Service) GetSite(ctx context.Context, companyID, siteID uuid.UUID) (domainfleet.Site, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.Site{}, err
-	}
 	if err := validateNonZero("site_id", siteID); err != nil {
 		return domainfleet.Site{}, err
 	}
@@ -178,9 +175,6 @@ func (s *Service) UpdateSite(ctx context.Context, in UpdateSiteInput) (domainfle
 
 // DeactivateSite sets a site to archived when no non-retired machines reference it.
 func (s *Service) DeactivateSite(ctx context.Context, companyID, siteID uuid.UUID) (domainfleet.Site, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.Site{}, err
-	}
 	if err := validateNonZero("site_id", siteID); err != nil {
 		return domainfleet.Site{}, err
 	}
@@ -221,9 +215,6 @@ func (s *Service) CreateTechnician(ctx context.Context, in CreateTechnicianInput
 
 // GetTechnician returns a technician in org scope.
 func (s *Service) GetTechnician(ctx context.Context, companyID, technicianID uuid.UUID) (domainfleet.Technician, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.Technician{}, err
-	}
 	if err := validateNonZero("technician_id", technicianID); err != nil {
 		return domainfleet.Technician{}, err
 	}
@@ -311,9 +302,6 @@ func derefString(p *string) string {
 
 // DisableTechnician sets technician status to inactive.
 func (s *Service) DisableTechnician(ctx context.Context, companyID, technicianID uuid.UUID) (domainfleet.Technician, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.Technician{}, err
-	}
 	if err := validateNonZero("technician_id", technicianID); err != nil {
 		return domainfleet.Technician{}, err
 	}
@@ -322,9 +310,6 @@ func (s *Service) DisableTechnician(ctx context.Context, companyID, technicianID
 
 // EnableTechnician sets technician status to active.
 func (s *Service) EnableTechnician(ctx context.Context, companyID, technicianID uuid.UUID) (domainfleet.Technician, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.Technician{}, err
-	}
 	if err := validateNonZero("technician_id", technicianID); err != nil {
 		return domainfleet.Technician{}, err
 	}
@@ -333,9 +318,6 @@ func (s *Service) EnableTechnician(ctx context.Context, companyID, technicianID 
 
 // GetTechnicianAssignment returns one assignment in org scope.
 func (s *Service) GetTechnicianAssignment(ctx context.Context, companyID, assignmentID uuid.UUID) (domainfleet.TechnicianMachineAssignment, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.TechnicianMachineAssignment{}, err
-	}
 	if err := validateNonZero("assignment_id", assignmentID); err != nil {
 		return domainfleet.TechnicianMachineAssignment{}, err
 	}
@@ -383,9 +365,6 @@ func (s *Service) UpdateTechnicianAssignment(ctx context.Context, in UpdateAssig
 
 // ReleaseTechnicianAssignment ends an assignment (released + valid_to).
 func (s *Service) ReleaseTechnicianAssignment(ctx context.Context, companyID, assignmentID uuid.UUID) (domainfleet.TechnicianMachineAssignment, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.TechnicianMachineAssignment{}, err
-	}
 	if err := validateNonZero("assignment_id", assignmentID); err != nil {
 		return domainfleet.TechnicianMachineAssignment{}, err
 	}
@@ -394,9 +373,6 @@ func (s *Service) ReleaseTechnicianAssignment(ctx context.Context, companyID, as
 
 // ReleaseTechnicianAssignmentForMachineUser ends an active assignment for the nested machine technician API.
 func (s *Service) ReleaseTechnicianAssignmentForMachineUser(ctx context.Context, companyID, machineID, technicianID uuid.UUID) (domainfleet.TechnicianMachineAssignment, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.TechnicianMachineAssignment{}, err
-	}
 	if err := validateNonZero("machine_id", machineID); err != nil {
 		return domainfleet.TechnicianMachineAssignment{}, err
 	}
@@ -417,9 +393,6 @@ func (s *Service) DisableMachine(ctx context.Context, companyID, machineID uuid.
 
 // EnableMachine returns a suspended machine to active runtime state. Retired and compromised machines are terminal.
 func (s *Service) EnableMachine(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.Machine{}, err
-	}
 	if err := validateNonZero("machine_id", machineID); err != nil {
 		return domainfleet.Machine{}, err
 	}
@@ -463,9 +436,6 @@ func (s *Service) MarkMachineCompromised(ctx context.Context, companyID, machine
 
 // RotateMachineCredential bumps credential_version and revokes active activation codes.
 func (s *Service) RotateMachineCredential(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.Machine{}, err
-	}
 	if err := validateNonZero("machine_id", machineID); err != nil {
 		return domainfleet.Machine{}, err
 	}
@@ -481,9 +451,6 @@ func (s *Service) RotateMachineCredential(ctx context.Context, companyID, machin
 
 // RevokeMachineCredential invalidates current machine JWTs until credentials are rotated again.
 func (s *Service) RevokeMachineCredential(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error) {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return domainfleet.Machine{}, err
-	}
 	if err := validateNonZero("machine_id", machineID); err != nil {
 		return domainfleet.Machine{}, err
 	}
@@ -499,9 +466,6 @@ func (s *Service) RevokeMachineCredential(ctx context.Context, companyID, machin
 
 // RevokeMachineSessions invalidates all active machine refresh sessions without rotating credentials.
 func (s *Service) RevokeMachineSessions(ctx context.Context, companyID, machineID uuid.UUID) error {
-	if err := validateNonZero("scope_id", companyID); err != nil {
-		return err
-	}
 	if err := validateNonZero("machine_id", machineID); err != nil {
 		return err
 	}

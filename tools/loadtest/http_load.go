@@ -10,8 +10,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // RunHTTPCheckIns exercises POST /v1/machines/{id}/check-ins for each machine row.
@@ -88,17 +86,14 @@ func postMachineCheckIn(ctx context.Context, base string, m MachineRow) error {
 	return nil
 }
 
-// AdminPaths returns REST paths used by dashboard-style smoke loads (optional scope_id for platform-scoped report reads).
-func AdminPaths(scopeID uuid.UUID) []string {
+// AdminPaths returns REST paths used by dashboard-style smoke loads (report reads use time window only).
+func AdminPaths() []string {
 	from := time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339Nano)
 	to := time.Now().UTC().Format(time.RFC3339Nano)
 	q := url.Values{}
 	q.Set("from", from)
 	q.Set("to", to)
 	q.Set("limit", "50")
-	if scopeID != uuid.Nil {
-		q.Set("scope_id", scopeID.String())
-	}
 	qs := q.Encode()
 	return []string{
 		"/health/live",
@@ -111,9 +106,9 @@ func AdminPaths(scopeID uuid.UUID) []string {
 }
 
 // RunHTTPAdminSequence GETs admin paths once per iteration (JWT required).
-func RunHTTPAdminSequence(ctx context.Context, baseURL, adminJWT string, scopeID uuid.UUID, iterations int, recorder *LatencyRecorder) error {
+func RunHTTPAdminSequence(ctx context.Context, baseURL, adminJWT string, iterations int, recorder *LatencyRecorder) error {
 	baseURL = strings.TrimRight(baseURL, "/")
-	paths := AdminPaths(scopeID)
+	paths := AdminPaths()
 	for i := 0; i < iterations; i++ {
 		for _, p := range paths {
 			select {

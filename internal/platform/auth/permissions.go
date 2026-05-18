@@ -8,9 +8,7 @@ import (
 // Canonical form uses colon namespaces (e.g. user:read, catalog:write). Legacy dotted strings from
 // older deployments are accepted in HasPermission via legacyPermissionCanonical.
 //
-// RBAC overview: platform_admin → admin.all and may target any company when HTTP handlers supply an explicit
-// scopeId / scope_id query (see CanAccessCompanyAdminData). admin receives orgScopedPermissions
-// and is limited to JWT scope_id claims. Specialized roles map to subsets in permissionsByNormalizedRole.
+// RBAC overview: platform_admin → admin.all. Specialized roles map to subsets in permissionsByNormalizedRole.
 const (
 	PermAdminAll = "admin.all"
 

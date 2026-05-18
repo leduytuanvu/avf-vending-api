@@ -14,13 +14,12 @@ func TestRollout_TagFilter_SelectsIntersection(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
 	q := db.New(pool)
-	org := testfixtures.DevScopeID
 
 	slugA := "rollout-tf-a-" + uuid.NewString()
 	slugB := "rollout-tf-b-" + uuid.NewString()
 	tagA := uuid.New()
 	tagB := uuid.New()
-	_, err := pool.Exec(ctx, `INSERT INTO tags (id, scope_id, slug, name) VALUES ($1,$2,$3,'A'), ($4,$2,$5,'B')`, tagA, org, slugA, tagB, slugB)
+	_, err := pool.Exec(ctx, `INSERT INTO tags (id, slug, name) VALUES ($1,$2,'A'), ($3,$4,'B')`, tagA, slugA, tagB, slugB)
 	require.NoError(t, err)
 	defer func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM machine_tag_assignments WHERE tag_id = ANY($1)`, []uuid.UUID{tagA, tagB})
@@ -31,16 +30,16 @@ func TestRollout_TagFilter_SelectsIntersection(t *testing.T) {
 	hw := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 	m2 := uuid.New()
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, scope_id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
-VALUES ($1, $2, $3, $4, $5, 'rollout-tf-b', 'online', 0, 0)`,
-		m2, org, testfixtures.DevSiteID, hw, "sn-rollout-tf-"+m2.String())
+INSERT INTO machines (id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
+VALUES ($1, $2, $3, $4, 'rollout-tf-b', 'online', 0, 0)`,
+		m2, testfixtures.DevSiteID, hw, "sn-rollout-tf-"+m2.String())
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM machines WHERE id = $1`, m2)
 	})
 
-	_, err = pool.Exec(ctx, `INSERT INTO machine_tag_assignments (scope_id, machine_id, tag_id) VALUES ($1,$2,$3), ($1,$2,$4), ($1,$5,$3)`,
-		org, m1, tagA, tagB, m2)
+	_, err = pool.Exec(ctx, `INSERT INTO machine_tag_assignments (machine_id, tag_id) VALUES ($1,$2), ($1,$3), ($4,$2)`,
+		m1, tagA, tagB, m2)
 	require.NoError(t, err)
 
 	machines, err := q.RolloutListMachineIDsWithAllTags(ctx, db.RolloutListMachineIDsWithAllTagsParams{

@@ -67,11 +67,11 @@ type UpdateMachineMetadataInput struct {
 
 // AssignTechnicianInput binds a technician to a machine with a role label.
 type AssignTechnicianInput struct {
-	MachineID    uuid.UUID
-	TechnicianID uuid.UUID
-	Role         string
-	Scope        string
-	CreatedBy    *uuid.UUID
+	MachineID        uuid.UUID
+	TechnicianID     uuid.UUID
+	Role             string
+	AssignmentDomain string
+	CreatedBy        *uuid.UUID
 	// ActorTechnicianID is the caller's technician identity from JWT (if any). When it matches TechnicianID, assignment is rejected.
 	ActorTechnicianID uuid.UUID
 }
@@ -167,11 +167,11 @@ func (s *Service) AssignTechnicianToMachine(ctx context.Context, in AssignTechni
 		return domainfleet.TechnicianMachineAssignment{}, err
 	}
 	return s.repo.InsertTechnicianMachineAssignment(ctx, InsertAssignmentParams{
-		TechnicianID: in.TechnicianID,
-		MachineID:    in.MachineID,
-		Role:         role,
-		Scope:        strings.TrimSpace(in.Scope),
-		CreatedBy:    in.CreatedBy,
+		TechnicianID:     in.TechnicianID,
+		MachineID:        in.MachineID,
+		Role:             role,
+		AssignmentDomain: strings.TrimSpace(in.AssignmentDomain),
+		CreatedBy:        in.CreatedBy,
 	})
 }
 

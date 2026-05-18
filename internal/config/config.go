@@ -213,16 +213,16 @@ type Config struct {
 	// AuditCriticalFailOpen when true allows RecordCritical to swallow persistence errors (AUDIT_CRITICAL_FAIL_OPEN).
 	// Forbidden when APP_ENV is staging or production.
 	AuditCriticalFailOpen bool
-	// PlatformAuditScopeUUID scopes enterprise audit_events for platform outbox admin mutations when
-	// outbox_events.scope_id is NULL (PLATFORM_AUDIT_SCOPE_ID). Optional in development/test.
-	PlatformAuditScopeUUID uuid.UUID
+	// PlatformAuditCompanyUUID attributes enterprise audit_events for platform outbox admin mutations when
+	// outbox_events.company attribution is NULL (PLATFORM_AUDIT_COMPANY_ID). Optional in development/test.
+	PlatformAuditCompanyUUID uuid.UUID
 }
 
-func (c *Config) PlatformAuditScopeID() uuid.UUID {
+func (c *Config) PlatformAuditCompanyID() uuid.UUID {
 	if c == nil {
 		return uuid.Nil
 	}
-	return c.PlatformAuditScopeUUID
+	return c.PlatformAuditCompanyUUID
 }
 
 // ArtifactsConfig gates /v1/admin/.../artifacts routes and upload limits.
@@ -1715,7 +1715,7 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	platformAuditScopeID, err := parseOptionalEnvUUID("PLATFORM_AUDIT_SCOPE_ID")
+	platformAuditCompanyID, err := parseOptionalEnvUUID("PLATFORM_AUDIT_COMPANY_ID")
 	if err != nil {
 		return nil, err
 	}
@@ -1833,7 +1833,7 @@ func Load() (*Config, error) {
 		RetentionWorker:                loadRetentionWorkerConfig(appEnv),
 		RetentionAllowDestructiveLocal: getenvBool("RETENTION_ALLOW_DESTRUCTIVE_LOCAL", false),
 		AuditCriticalFailOpen:          getenvBool("AUDIT_CRITICAL_FAIL_OPEN", false),
-		PlatformAuditScopeUUID:         platformAuditScopeID,
+		PlatformAuditCompanyUUID:       platformAuditCompanyID,
 		HTTPAuth:                       httpAuth,
 		AdminAuthSecurity:              adminAuthSecurity,
 		MachineJWT:                     machineJWT,

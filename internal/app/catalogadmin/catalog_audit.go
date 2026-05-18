@@ -98,11 +98,11 @@ func tagAuditSnapshot(t db.Tag) map[string]any {
 
 func priceBookAuditSnapshot(p db.PriceBook) map[string]any {
 	m := map[string]any{
-		"priceBookId": p.ID.String(),
-		"name":        p.Name,
-		"currency":    p.Currency,
-		"active":      p.Active,
-		"scopeType":   p.ScopeType,
+		"priceBookId":    p.ID.String(),
+		"name":           p.Name,
+		"currency":       p.Currency,
+		"active":         p.Active,
+		"priceBookLevel": p.PriceBookLevel,
 	}
 	if p.SiteID.Valid {
 		m["siteId"] = uuid.UUID(p.SiteID.Bytes).String()

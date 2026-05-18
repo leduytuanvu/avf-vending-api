@@ -101,7 +101,7 @@ func TestAdminREST_viewer_forbiddenCatalogMutationPost(t *testing.T) {
 	require.NoError(t, err)
 
 	body := strings.NewReader(`{}`)
-	req := httptest.NewRequest(http.MethodPost, "/v1/admin/products?scope_id="+org.String(), body)
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/products", body)
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

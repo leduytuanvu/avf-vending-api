@@ -217,8 +217,8 @@ func TestOutbox_AdminReplayDeadLetter_AuditedInSameTransaction(t *testing.T) {
 
 	var prior int
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM audit_events WHERE scope_id = $1 AND action = $2 AND resource_type = 'outbox_events' AND resource_id = $3`,
-		testfixtures.DevScopeID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
+		`SELECT count(*) FROM audit_events WHERE action = $1 AND resource_type = 'outbox_events' AND resource_id = $2`,
+		compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
 	).Scan(&prior))
 	require.Equal(t, 0, prior)
 
@@ -241,8 +241,8 @@ func TestOutbox_AdminReplayDeadLetter_AuditedInSameTransaction(t *testing.T) {
 
 	var auditCount int
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM audit_events WHERE scope_id = $1 AND action = $2 AND resource_id = $3`,
-		testfixtures.DevScopeID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
+		`SELECT count(*) FROM audit_events WHERE action = $1 AND resource_id = $2`,
+		compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
 	).Scan(&auditCount))
 	require.Equal(t, 1, auditCount)
 
@@ -255,8 +255,8 @@ func TestOutbox_AdminReplayDeadLetter_AuditedInSameTransaction(t *testing.T) {
 	require.EqualValues(t, 0, n)
 
 	require.NoError(t, pool.QueryRow(ctx,
-		`SELECT count(*) FROM audit_events WHERE scope_id = $1 AND action = $2 AND resource_id = $3`,
-		testfixtures.DevScopeID, compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
+		`SELECT count(*) FROM audit_events WHERE action = $1 AND resource_id = $2`,
+		compliance.ActionAdminPlatformOutboxReplay, strconv.FormatInt(obID, 10),
 	).Scan(&auditCount))
 	require.Equal(t, 1, auditCount)
 }

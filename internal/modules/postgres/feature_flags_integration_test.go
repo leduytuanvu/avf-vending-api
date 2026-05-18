@@ -67,20 +67,20 @@ func TestMachineConfig_versionAndRolloutRoundTrip(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	defer func() {
-		_, _ = pool.Exec(ctx, `DELETE FROM machine_config_rollouts WHERE scope_id = $1`, testfixtures.DevScopeID)
-		_, _ = pool.Exec(ctx, `DELETE FROM machine_config_versions WHERE id = $1`, ver.ID)
-	}()
-
 	roll, err := svc.CreateRollout(ctx, featureflags.CreateRolloutParams{
-		TargetVersionID: ver.ID,
-		Status:          "pending",
-		ScopeType:       "company",
-		Metadata:        json.RawMessage("{}"),
+		TargetVersionID:    ver.ID,
+		Status:             "pending",
+		RolloutTargetLevel: "global",
+		Metadata:           json.RawMessage("{}"),
 	})
 	require.NoError(t, err)
 
-	got, err := svc.GetRollout(ctx, testfixtures.DevScopeID, roll.ID)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM machine_config_rollouts WHERE id = $1`, roll.ID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM machine_config_versions WHERE id = $1`, ver.ID)
+	})
+
+	got, err := svc.GetRollout(ctx, uuid.Nil, roll.ID)
 	require.NoError(t, err)
 	require.Equal(t, roll.ID, got.ID)
 	require.Equal(t, ver.ID, got.TargetVersionID)
@@ -105,22 +105,22 @@ func TestMachineConfig_rolloutRollbackCreatesPendingPrevious(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	defer func() {
-		_, _ = pool.Exec(ctx, `DELETE FROM machine_config_rollouts WHERE scope_id = $1`, testfixtures.DevScopeID)
-		_, _ = pool.Exec(ctx, `DELETE FROM machine_config_versions WHERE id IN ($1, $2)`, v1.ID, v2.ID)
-	}()
-
 	r1, err := svc.CreateRollout(ctx, featureflags.CreateRolloutParams{
-		TargetVersionID:   v2.ID,
-		PreviousVersionID: &v1.ID,
-		Status:            "pending",
-		ScopeType:         "company",
-		Metadata:          json.RawMessage("{}"),
+		TargetVersionID:    v2.ID,
+		PreviousVersionID:  &v1.ID,
+		Status:             "pending",
+		RolloutTargetLevel: "global",
+		Metadata:           json.RawMessage("{}"),
 	})
 	require.NoError(t, err)
 
-	rb, err := svc.RollbackRollout(ctx, testfixtures.DevScopeID, r1.ID)
+	rb, err := svc.RollbackRollout(ctx, uuid.Nil, r1.ID)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM machine_config_rollouts WHERE id IN ($1, $2)`, r1.ID, rb.ID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM machine_config_versions WHERE id IN ($1, $2)`, v1.ID, v2.ID)
+	})
 	require.Equal(t, v1.ID, rb.TargetVersionID)
 	require.NotNil(t, rb.PreviousVersionID)
 	require.Equal(t, v2.ID, *rb.PreviousVersionID)

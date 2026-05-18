@@ -115,7 +115,7 @@ SET
     active = false,
     updated_at = now()
 WHERE pb.id = $1
-RETURNING id, name, currency, effective_from, effective_to, is_default, active, scope_type, site_id, machine_id, priority, created_at, updated_at
+RETURNING id, name, currency, effective_from, effective_to, is_default, active, price_book_level, site_id, machine_id, priority, created_at, updated_at
 `
 
 func (q *Queries) CatalogWriteDeactivatePriceBook(ctx context.Context, id uuid.UUID) (PriceBook, error) {
@@ -129,7 +129,7 @@ func (q *Queries) CatalogWriteDeactivatePriceBook(ctx context.Context, id uuid.U
 		&i.EffectiveTo,
 		&i.IsDefault,
 		&i.Active,
-		&i.ScopeType,
+		&i.PriceBookLevel,
 		&i.SiteID,
 		&i.MachineID,
 		&i.Priority,
@@ -298,7 +298,7 @@ INSERT INTO price_books (
     effective_to,
     is_default,
     active,
-    scope_type,
+    price_book_level,
     site_id,
     machine_id,
     priority
@@ -314,20 +314,20 @@ INSERT INTO price_books (
     $9,
     $10
 )
-RETURNING id, name, currency, effective_from, effective_to, is_default, active, scope_type, site_id, machine_id, priority, created_at, updated_at
+RETURNING id, name, currency, effective_from, effective_to, is_default, active, price_book_level, site_id, machine_id, priority, created_at, updated_at
 `
 
 type CatalogWriteInsertPriceBookParams struct {
-	Name          string
-	Currency      string
-	EffectiveFrom time.Time
-	EffectiveTo   pgtype.Timestamptz
-	IsDefault     bool
-	Active        bool
-	ScopeType     string
-	SiteID        pgtype.UUID
-	MachineID     pgtype.UUID
-	Priority      int32
+	Name           string
+	Currency       string
+	EffectiveFrom  time.Time
+	EffectiveTo    pgtype.Timestamptz
+	IsDefault      bool
+	Active         bool
+	PriceBookLevel string
+	SiteID         pgtype.UUID
+	MachineID      pgtype.UUID
+	Priority       int32
 }
 
 func (q *Queries) CatalogWriteInsertPriceBook(ctx context.Context, arg CatalogWriteInsertPriceBookParams) (PriceBook, error) {
@@ -338,7 +338,7 @@ func (q *Queries) CatalogWriteInsertPriceBook(ctx context.Context, arg CatalogWr
 		arg.EffectiveTo,
 		arg.IsDefault,
 		arg.Active,
-		arg.ScopeType,
+		arg.PriceBookLevel,
 		arg.SiteID,
 		arg.MachineID,
 		arg.Priority,
@@ -352,7 +352,7 @@ func (q *Queries) CatalogWriteInsertPriceBook(ctx context.Context, arg CatalogWr
 		&i.EffectiveTo,
 		&i.IsDefault,
 		&i.Active,
-		&i.ScopeType,
+		&i.PriceBookLevel,
 		&i.SiteID,
 		&i.MachineID,
 		&i.Priority,
@@ -818,27 +818,27 @@ SET
     effective_to = $4,
     is_default = $5,
     active = $6,
-    scope_type = $7,
+    price_book_level = $7,
     site_id = $8,
     machine_id = $9,
     priority = $10,
     updated_at = now()
 WHERE pb.id = $11
-RETURNING id, name, currency, effective_from, effective_to, is_default, active, scope_type, site_id, machine_id, priority, created_at, updated_at
+RETURNING id, name, currency, effective_from, effective_to, is_default, active, price_book_level, site_id, machine_id, priority, created_at, updated_at
 `
 
 type CatalogWriteUpdatePriceBookParams struct {
-	Name          string
-	Currency      string
-	EffectiveFrom time.Time
-	EffectiveTo   pgtype.Timestamptz
-	IsDefault     bool
-	Active        bool
-	ScopeType     string
-	SiteID        pgtype.UUID
-	MachineID     pgtype.UUID
-	Priority      int32
-	ID            uuid.UUID
+	Name           string
+	Currency       string
+	EffectiveFrom  time.Time
+	EffectiveTo    pgtype.Timestamptz
+	IsDefault      bool
+	Active         bool
+	PriceBookLevel string
+	SiteID         pgtype.UUID
+	MachineID      pgtype.UUID
+	Priority       int32
+	ID             uuid.UUID
 }
 
 func (q *Queries) CatalogWriteUpdatePriceBook(ctx context.Context, arg CatalogWriteUpdatePriceBookParams) (PriceBook, error) {
@@ -849,7 +849,7 @@ func (q *Queries) CatalogWriteUpdatePriceBook(ctx context.Context, arg CatalogWr
 		arg.EffectiveTo,
 		arg.IsDefault,
 		arg.Active,
-		arg.ScopeType,
+		arg.PriceBookLevel,
 		arg.SiteID,
 		arg.MachineID,
 		arg.Priority,
@@ -864,7 +864,7 @@ func (q *Queries) CatalogWriteUpdatePriceBook(ctx context.Context, arg CatalogWr
 		&i.EffectiveTo,
 		&i.IsDefault,
 		&i.Active,
-		&i.ScopeType,
+		&i.PriceBookLevel,
 		&i.SiteID,
 		&i.MachineID,
 		&i.Priority,

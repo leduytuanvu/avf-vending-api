@@ -415,7 +415,7 @@ func (q *Queries) MachineConfigRolloutsCountAll(ctx context.Context) (int64, err
 }
 
 const MachineConfigRolloutsGetByID = `-- name: MachineConfigRolloutsGetByID :one
-SELECT id, target_version_id, previous_version_id, status, canary_percent, scope_type, site_id, machine_id, hardware_profile_id, metadata, created_at, updated_at
+SELECT id, target_version_id, previous_version_id, status, canary_percent, rollout_target_level, site_id, machine_id, hardware_profile_id, metadata, created_at, updated_at
 FROM machine_config_rollouts
 WHERE
     id = $1
@@ -431,7 +431,7 @@ func (q *Queries) MachineConfigRolloutsGetByID(ctx context.Context, id uuid.UUID
 		&i.PreviousVersionID,
 		&i.Status,
 		&i.CanaryPercent,
-		&i.ScopeType,
+		&i.RolloutTargetLevel,
 		&i.SiteID,
 		&i.MachineID,
 		&i.HardwareProfileID,
@@ -448,7 +448,7 @@ INSERT INTO machine_config_rollouts (
     previous_version_id,
     status,
     canary_percent,
-    scope_type,
+    rollout_target_level,
     site_id,
     machine_id,
     hardware_profile_id,
@@ -464,19 +464,19 @@ INSERT INTO machine_config_rollouts (
     $8,
     $9
 )
-RETURNING id, target_version_id, previous_version_id, status, canary_percent, scope_type, site_id, machine_id, hardware_profile_id, metadata, created_at, updated_at
+RETURNING id, target_version_id, previous_version_id, status, canary_percent, rollout_target_level, site_id, machine_id, hardware_profile_id, metadata, created_at, updated_at
 `
 
 type MachineConfigRolloutsInsertParams struct {
-	TargetVersionID   uuid.UUID
-	PreviousVersionID pgtype.UUID
-	Status            string
-	CanaryPercent     pgtype.Numeric
-	ScopeType         string
-	SiteID            pgtype.UUID
-	MachineID         pgtype.UUID
-	HardwareProfileID pgtype.UUID
-	Metadata          []byte
+	TargetVersionID    uuid.UUID
+	PreviousVersionID  pgtype.UUID
+	Status             string
+	CanaryPercent      pgtype.Numeric
+	RolloutTargetLevel string
+	SiteID             pgtype.UUID
+	MachineID          pgtype.UUID
+	HardwareProfileID  pgtype.UUID
+	Metadata           []byte
 }
 
 func (q *Queries) MachineConfigRolloutsInsert(ctx context.Context, arg MachineConfigRolloutsInsertParams) (MachineConfigRollout, error) {
@@ -485,7 +485,7 @@ func (q *Queries) MachineConfigRolloutsInsert(ctx context.Context, arg MachineCo
 		arg.PreviousVersionID,
 		arg.Status,
 		arg.CanaryPercent,
-		arg.ScopeType,
+		arg.RolloutTargetLevel,
 		arg.SiteID,
 		arg.MachineID,
 		arg.HardwareProfileID,
@@ -498,7 +498,7 @@ func (q *Queries) MachineConfigRolloutsInsert(ctx context.Context, arg MachineCo
 		&i.PreviousVersionID,
 		&i.Status,
 		&i.CanaryPercent,
-		&i.ScopeType,
+		&i.RolloutTargetLevel,
 		&i.SiteID,
 		&i.MachineID,
 		&i.HardwareProfileID,
@@ -510,7 +510,7 @@ func (q *Queries) MachineConfigRolloutsInsert(ctx context.Context, arg MachineCo
 }
 
 const MachineConfigRolloutsListAll = `-- name: MachineConfigRolloutsListAll :many
-SELECT id, target_version_id, previous_version_id, status, canary_percent, scope_type, site_id, machine_id, hardware_profile_id, metadata, created_at, updated_at
+SELECT id, target_version_id, previous_version_id, status, canary_percent, rollout_target_level, site_id, machine_id, hardware_profile_id, metadata, created_at, updated_at
 FROM machine_config_rollouts
 ORDER BY
     created_at DESC
@@ -538,7 +538,7 @@ func (q *Queries) MachineConfigRolloutsListAll(ctx context.Context, arg MachineC
 			&i.PreviousVersionID,
 			&i.Status,
 			&i.CanaryPercent,
-			&i.ScopeType,
+			&i.RolloutTargetLevel,
 			&i.SiteID,
 			&i.MachineID,
 			&i.HardwareProfileID,
@@ -558,7 +558,7 @@ func (q *Queries) MachineConfigRolloutsListAll(ctx context.Context, arg MachineC
 
 const MachineConfigRolloutsPendingForMachine = `-- name: MachineConfigRolloutsPendingForMachine :many
 SELECT
-    r.id, r.target_version_id, r.previous_version_id, r.status, r.canary_percent, r.scope_type, r.site_id, r.machine_id, r.hardware_profile_id, r.metadata, r.created_at, r.updated_at
+    r.id, r.target_version_id, r.previous_version_id, r.status, r.canary_percent, r.rollout_target_level, r.site_id, r.machine_id, r.hardware_profile_id, r.metadata, r.created_at, r.updated_at
 FROM
     machine_config_rollouts r
     INNER JOIN machines m ON m.id = $1
@@ -567,18 +567,18 @@ WHERE
     r.status IN ('pending', 'in_progress')
     AND (
         (
-            r.scope_type = 'global'
+            r.rollout_target_level = 'global'
         )
         OR (
-            r.scope_type = 'site'
+            r.rollout_target_level = 'site'
             AND r.site_id = m.site_id
         )
         OR (
-            r.scope_type = 'machine'
+            r.rollout_target_level = 'machine'
             AND r.machine_id = m.id
         )
         OR (
-            r.scope_type = 'hardware_profile'
+            r.rollout_target_level = 'hardware_profile'
             AND r.hardware_profile_id IS NOT DISTINCT FROM m.hardware_profile_id
         )
     )
@@ -601,7 +601,7 @@ func (q *Queries) MachineConfigRolloutsPendingForMachine(ctx context.Context, id
 			&i.PreviousVersionID,
 			&i.Status,
 			&i.CanaryPercent,
-			&i.ScopeType,
+			&i.RolloutTargetLevel,
 			&i.SiteID,
 			&i.MachineID,
 			&i.HardwareProfileID,
@@ -627,7 +627,7 @@ SET
 WHERE
     id = $2
     AND TRUE
-RETURNING id, target_version_id, previous_version_id, status, canary_percent, scope_type, site_id, machine_id, hardware_profile_id, metadata, created_at, updated_at
+RETURNING id, target_version_id, previous_version_id, status, canary_percent, rollout_target_level, site_id, machine_id, hardware_profile_id, metadata, created_at, updated_at
 `
 
 type MachineConfigRolloutsUpdateStatusParams struct {
@@ -644,7 +644,7 @@ func (q *Queries) MachineConfigRolloutsUpdateStatus(ctx context.Context, arg Mac
 		&i.PreviousVersionID,
 		&i.Status,
 		&i.CanaryPercent,
-		&i.ScopeType,
+		&i.RolloutTargetLevel,
 		&i.SiteID,
 		&i.MachineID,
 		&i.HardwareProfileID,

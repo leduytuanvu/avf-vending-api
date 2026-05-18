@@ -17,7 +17,7 @@ See **[`../architecture/transport-boundary.md`](../architecture/transport-bounda
 | Authentication | `Authorization: Bearer` user access JWT on `/v1/admin/*` (`internal/platform/auth` bearer middleware). Missing/invalid token → **401** `unauthenticated`. |
 | Interactive + machine deny | `RequireInteractiveAccountActive`; **machine** principals (`RequireDenyMachinePrincipal`) → **403** on `/v1/admin`. |
 | RBAC | Per-route `RequireAnyPermission` / `RequirePermission` / `RequireAnyRole` in `internal/httpserver/admin*_http.go`, `server.go` groups, and **`TestRBAC_adminMountSourcesDeclareAccessControl`**. Insufficient permission → **403** `forbidden`. |
-| Company / org scope | Path or query `company_id` must match the interactive principal’s org (or platform-admin query rules). Mismatches typically → **400** `invalid_scope` via **`adminCatalogScopeID`** and sibling helpers (`admin_scope.go`). |
+| Deployment boundary | Single-company deployment: admin handlers validate site/machine path parameters and RBAC; invalid combinations typically → **400** `invalid_scope` via helpers in `admin_scope.go`. |
 | Audit | Security-sensitive mutations use **`internal/app/audit`** `RecordCritical` / `RecordCriticalTx` (actor, org, action, resource identifiers, request metadata where wired; never store secrets).
 
 OpenAPI is **`docs/swagger/swagger.json`**; internal-only gRPC URLs must not appear as public HTTP paths (see `github.com/avf/avf-vending-api/internal/httpserver` OpenAPI tests).

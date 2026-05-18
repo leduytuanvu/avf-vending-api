@@ -25,37 +25,37 @@ func validatePriceBookWindow(effectiveFrom time.Time, effectiveTo pgtype.Timesta
 	return nil
 }
 
-func validateScopeColumns(scopeType string, siteID, machineID pgtype.UUID) error {
-	switch scopeType {
-	case "company":
+func validatePriceBookLevelColumns(level string, siteID, machineID pgtype.UUID) error {
+	switch level {
+	case "global":
 		if siteID.Valid || machineID.Valid {
-			return fmt.Errorf("%w: company scope must not set site_id or machine_id", ErrInvalidArgument)
+			return fmt.Errorf("%w: global price books must not set site_id or machine_id", ErrInvalidArgument)
 		}
 	case "site":
 		if !siteID.Valid || machineID.Valid {
-			return fmt.Errorf("%w: site scope requires site_id and no machine_id", ErrInvalidArgument)
+			return fmt.Errorf("%w: site-targeted books require site_id and no machine_id", ErrInvalidArgument)
 		}
 	case "machine":
 		if siteID.Valid || !machineID.Valid {
-			return fmt.Errorf("%w: machine scope requires machine_id and no site_id", ErrInvalidArgument)
+			return fmt.Errorf("%w: machine-targeted books require machine_id and no site_id", ErrInvalidArgument)
 		}
 	default:
-		return fmt.Errorf("%w: invalid scope_type", ErrInvalidArgument)
+		return fmt.Errorf("%w: invalid price_book_level", ErrInvalidArgument)
 	}
 	return nil
 }
 
 // CreatePriceBookInput validates and inserts a price book row.
 type CreatePriceBookInput struct {
-	Name          string
-	Currency      string
-	EffectiveFrom time.Time
-	EffectiveTo   pgtype.Timestamptz
-	IsDefault     bool
-	ScopeType     string
-	SiteID        pgtype.UUID
-	MachineID     pgtype.UUID
-	Priority      int32
+	Name           string
+	Currency       string
+	EffectiveFrom  time.Time
+	EffectiveTo    pgtype.Timestamptz
+	IsDefault      bool
+	PriceBookLevel string
+	SiteID         pgtype.UUID
+	MachineID      pgtype.UUID
+	Priority       int32
 }
 
 // CreatePriceBook creates an active price book.
@@ -71,27 +71,27 @@ func (s *Service) CreatePriceBook(ctx context.Context, in CreatePriceBookInput) 
 	if len(cur) != 3 {
 		return db.PriceBook{}, fmt.Errorf("%w: currency must be ISO 4217 (3 letters)", ErrInvalidArgument)
 	}
-	scope := strings.TrimSpace(strings.ToLower(in.ScopeType))
-	if scope == "" {
-		scope = "company"
+	level := strings.TrimSpace(strings.ToLower(in.PriceBookLevel))
+	if level == "" {
+		level = "global"
 	}
 	if err := validatePriceBookWindow(in.EffectiveFrom, in.EffectiveTo); err != nil {
 		return db.PriceBook{}, err
 	}
-	if err := validateScopeColumns(scope, in.SiteID, in.MachineID); err != nil {
+	if err := validatePriceBookLevelColumns(level, in.SiteID, in.MachineID); err != nil {
 		return db.PriceBook{}, err
 	}
 	row, err := s.q.CatalogWriteInsertPriceBook(ctx, db.CatalogWriteInsertPriceBookParams{
-		Name:          name,
-		Currency:      cur,
-		EffectiveFrom: in.EffectiveFrom,
-		EffectiveTo:   in.EffectiveTo,
-		IsDefault:     in.IsDefault,
-		Active:        true,
-		ScopeType:     scope,
-		SiteID:        in.SiteID,
-		MachineID:     in.MachineID,
-		Priority:      in.Priority,
+		Name:           name,
+		Currency:       cur,
+		EffectiveFrom:  in.EffectiveFrom,
+		EffectiveTo:    in.EffectiveTo,
+		IsDefault:      in.IsDefault,
+		Active:         true,
+		PriceBookLevel: level,
+		SiteID:         in.SiteID,
+		MachineID:      in.MachineID,
+		Priority:       in.Priority,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -120,11 +120,11 @@ func (s *Service) UpdatePriceBook(ctx context.Context, p db.CatalogWriteUpdatePr
 	if len(p.Currency) != 3 {
 		return db.PriceBook{}, fmt.Errorf("%w: currency must be ISO 4217 (3 letters)", ErrInvalidArgument)
 	}
-	p.ScopeType = strings.TrimSpace(strings.ToLower(p.ScopeType))
+	p.PriceBookLevel = strings.TrimSpace(strings.ToLower(p.PriceBookLevel))
 	if err := validatePriceBookWindow(p.EffectiveFrom, p.EffectiveTo); err != nil {
 		return db.PriceBook{}, err
 	}
-	if err := validateScopeColumns(p.ScopeType, p.SiteID, p.MachineID); err != nil {
+	if err := validatePriceBookLevelColumns(p.PriceBookLevel, p.SiteID, p.MachineID); err != nil {
 		return db.PriceBook{}, err
 	}
 	row, err := s.q.CatalogWriteUpdatePriceBook(ctx, p)
@@ -155,16 +155,16 @@ func (s *Service) ActivatePriceBook(ctx context.Context, companyID, priceBookID 
 		return db.PriceBook{}, err
 	}
 	return s.UpdatePriceBook(ctx, db.CatalogWriteUpdatePriceBookParams{Name: cur.Name,
-		Currency:      cur.Currency,
-		EffectiveFrom: cur.EffectiveFrom,
-		EffectiveTo:   cur.EffectiveTo,
-		IsDefault:     cur.IsDefault,
-		Active:        true,
-		ScopeType:     cur.ScopeType,
-		SiteID:        cur.SiteID,
-		MachineID:     cur.MachineID,
-		Priority:      cur.Priority,
-		ID:            cur.ID,
+		Currency:       cur.Currency,
+		EffectiveFrom:  cur.EffectiveFrom,
+		EffectiveTo:    cur.EffectiveTo,
+		IsDefault:      cur.IsDefault,
+		Active:         true,
+		PriceBookLevel: cur.PriceBookLevel,
+		SiteID:         cur.SiteID,
+		MachineID:      cur.MachineID,
+		Priority:       cur.Priority,
+		ID:             cur.ID,
 	})
 }
 
@@ -353,8 +353,8 @@ func (s *Service) AssignPriceBookTarget(ctx context.Context, in AssignPriceBookT
 		}
 		return db.PriceBookTarget{}, err
 	}
-	if pb.ScopeType != "company" {
-		return db.PriceBookTarget{}, fmt.Errorf("%w: assign-target only supports company-scoped price books", ErrInvalidArgument)
+	if pb.PriceBookLevel != "global" {
+		return db.PriceBookTarget{}, fmt.Errorf("%w: assign-target only supports global price books", ErrInvalidArgument)
 	}
 	var sitePg pgtype.UUID
 	var machPg pgtype.UUID

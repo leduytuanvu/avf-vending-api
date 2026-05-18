@@ -53,7 +53,7 @@ func TestCashSettlement_summaryExpectedFromCommerce(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sum, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, "USD", 500)
+	sum, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevCompanyID, testfixtures.DevMachineID, "USD", 500)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, sum.ExpectedAmountMinor, int64(150))
 	require.Equal(t, "USD", sum.Currency)
@@ -134,7 +134,7 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, open.ID, replayOpen.ID)
 
-	sumBeforeClose, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevScopeID, testfixtures.DevMachineID, "USD", 500)
+	sumBeforeClose, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevCompanyID, testfixtures.DevMachineID, "USD", 500)
 	require.NoError(t, err)
 
 	closed, err := store.CloseMachineCashCollection(ctx, postgres.CloseMachineCashCollectionInput{

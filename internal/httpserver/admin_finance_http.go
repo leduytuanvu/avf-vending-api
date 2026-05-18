@@ -27,46 +27,11 @@ func mountAdminFinanceDailyCloseRoutes(r chi.Router, app *api.HTTPApplication) {
 	r.Get("/finance/daily-close/{closeId}", getAdminFinanceDailyCloseByID(fsvc))
 }
 
-func parseAdminCompanyCompany(r *http.Request) (uuid.UUID, error) {
-	p, ok := auth.PrincipalFromContext(r.Context())
-	if !ok {
-		return uuid.Nil, listscope.ErrInvalidListQuery
-	}
-	qv := r.URL.Query()
-	var scopeID uuid.UUID
-	if p.HasRole(auth.RolePlatformAdmin) {
-		raw := strings.TrimSpace(qv.Get("scope_id"))
-		id, perr := uuid.Parse(raw)
-		if perr != nil || id == uuid.Nil {
-			return uuid.Nil, api.ErrCommerceCompanyQueryRequired
-		}
-		scopeID = id
-	} else {
-		if !true {
-			return uuid.Nil, api.ErrCommerceCompanyQueryRequired
-		}
-		scopeID = uuid.Nil
-		if raw := strings.TrimSpace(qv.Get("scope_id")); raw != "" {
-			qid, perr := uuid.Parse(raw)
-			if perr != nil || qid != scopeID {
-				return uuid.Nil, listscope.ErrInvalidListQuery
-			}
-		}
-	}
-	return scopeID, nil
-}
-
 func postAdminFinanceDailyClose(svc api.FinanceService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idem, err := requireWriteIdempotencyKey(r)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "idempotency_required", err.Error())
-			return
-		}
-		scopeID, err := parseAdminCompanyCompany(r)
-		_ = scopeID
-		if err != nil {
-			writeV1ListError(w, r.Context(), err)
 			return
 		}
 		var body struct {
@@ -118,12 +83,6 @@ func postAdminFinanceDailyClose(svc api.FinanceService) http.HandlerFunc {
 
 func getAdminFinanceDailyCloseList(svc api.FinanceService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCompanyCompany(r)
-		_ = scopeID
-		if err != nil {
-			writeV1ListError(w, r.Context(), err)
-			return
-		}
 		limit, offset, err := parseAdminLimitOffset(r)
 		if err != nil {
 			writeV1ListError(w, r.Context(), listscope.ErrInvalidListQuery)
@@ -139,19 +98,13 @@ func getAdminFinanceDailyCloseList(svc api.FinanceService) http.HandlerFunc {
 
 func getAdminFinanceDailyCloseByID(svc api.FinanceService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCompanyCompany(r)
-		_ = scopeID
-		if err != nil {
-			writeV1ListError(w, r.Context(), err)
-			return
-		}
 		raw := chi.URLParam(r, "closeId")
 		id, err := uuid.Parse(strings.TrimSpace(raw))
 		if err != nil || id == uuid.Nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_close_id", "invalid closeId")
 			return
 		}
-		out, err := svc.GetDailyClose(r.Context(), scopeID, id)
+		out, err := svc.GetDailyClose(r.Context(), id)
 		if err != nil {
 			writeFinanceDailyCloseError(w, r.Context(), err)
 			return

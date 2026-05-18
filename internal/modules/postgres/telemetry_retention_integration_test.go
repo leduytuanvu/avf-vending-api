@@ -213,16 +213,15 @@ VALUES ($1, 't', '{}'::jsonb, $2, now() - interval '30 days')
 	require.Equal(t, 1, cnt)
 }
 
-func TestRunTelemetryRetention_machineCheckIns_orgScopedMachineOnly(t *testing.T) {
+func TestRunTelemetryRetention_machineCheckInsRetention(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
 	mid := testfixtures.DevMachineID
-	org := testfixtures.DevScopeID
 
 	_, err := pool.Exec(ctx, `
-INSERT INTO machine_check_ins (scope_id, machine_id, occurred_at)
-VALUES ($1, $2, now() - interval '400 days')
-`, org, mid)
+INSERT INTO machine_check_ins (machine_id, occurred_at)
+VALUES ($1, now() - interval '400 days')
+`, mid)
 	require.NoError(t, err)
 
 	var checkID int64

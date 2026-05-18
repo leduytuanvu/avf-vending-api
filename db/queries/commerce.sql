@@ -98,7 +98,7 @@ WHERE
     order_id = $1
     AND idempotency_key = $2;
 
--- name: GetOrderByScopeIdempotency :one
+-- name: GetOrderByIdempotencyKey :one
 SELECT
     id,
     machine_id,

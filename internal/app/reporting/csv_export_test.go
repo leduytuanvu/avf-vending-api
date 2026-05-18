@@ -24,7 +24,7 @@ func TestWriteSalesSummaryCSV_StableHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	first := strings.Split(buf.String(), "\n")[0]
-	wantPrefix := "scope_id,from,to,group_by,row_type,"
+	wantPrefix := "from,to,group_by,row_type,"
 	if !strings.HasPrefix(first, wantPrefix) {
 		t.Fatalf("header prefix: %q", first)
 	}
@@ -41,7 +41,7 @@ func TestWritePaymentSettlementCSV_StableHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	first := strings.Split(buf.String(), "\n")[0]
-	want := "scope_id,from,to,timezone,bucket_start,provider,state,settlement_status,reconciliation_status,payment_count,amount_minor"
+	want := "from,to,timezone,bucket_start,provider,state,settlement_status,reconciliation_status,payment_count,amount_minor"
 	if first != want {
 		t.Fatalf("header: %q", first)
 	}
@@ -86,7 +86,7 @@ func TestWriteRefundsCSV_StableHeaders(t *testing.T) {
 		t.Fatal(err)
 	}
 	first := strings.Split(buf.String(), "\n")[0]
-	want := "scope_id,from,to,refund_id,payment_id,order_id,machine_id,amount_minor,currency,state,reason,reconciliation_status,settlement_status,created_at"
+	want := "from,to,refund_id,payment_id,order_id,machine_id,amount_minor,currency,state,reason,reconciliation_status,settlement_status,created_at"
 	if first != want {
 		t.Fatalf("header: %q", first)
 	}

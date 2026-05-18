@@ -5,7 +5,7 @@
 --
 -- Tables introduced or extended by 00005: categories, brands, product_images;
 -- products (category_id, brand_id, primary_image_id, compliance columns);
--- price_books (scope_type, site_id, machine_id, priority); price_book_items (scope_id);
+-- price_books (site/machine targeting + priority); price_book_items (price_book linkage);
 -- machine_price_overrides; promotions; promotion_rules; promotion_targets.
 --
 -- Image policy: product_images is authoritative; do not add products.image_url.

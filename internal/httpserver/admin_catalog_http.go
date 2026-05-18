@@ -79,7 +79,7 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 
 func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := adminCatalogScopeID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -132,7 +132,7 @@ func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func getAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := adminCatalogScopeID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -158,7 +158,7 @@ func getAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminPriceBooks(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := adminCatalogScopeID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -198,7 +198,7 @@ func listAdminPriceBooks(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminPlanograms(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := adminCatalogScopeID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -232,7 +232,7 @@ func listAdminPlanograms(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := adminCatalogScopeID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -279,7 +279,7 @@ func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminBrands(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := adminCatalogScopeID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -316,7 +316,7 @@ func listAdminBrands(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminCategories(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := adminCatalogScopeID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -353,7 +353,7 @@ func listAdminCategories(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminTags(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := adminCatalogScopeID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -494,19 +494,19 @@ func writeAdminProductResponse(w http.ResponseWriter, r *http.Request, svc *appc
 
 func mapPriceBook(pb db.PriceBook) V1AdminPriceBook {
 	return V1AdminPriceBook{
-		ID:            pb.ID.String(),
-		Name:          pb.Name,
-		Currency:      pb.Currency,
-		EffectiveFrom: formatAPITimeRFC3339Nano(pb.EffectiveFrom),
-		EffectiveTo:   timePtrFromTimestamptz(pb.EffectiveTo),
-		IsDefault:     pb.IsDefault,
-		Active:        pb.Active,
-		ScopeType:     pb.ScopeType,
-		SiteID:        uuidPtrFromPgUUID(pb.SiteID),
-		MachineID:     uuidPtrFromPgUUID(pb.MachineID),
-		Priority:      pb.Priority,
-		CreatedAt:     formatAPITimeRFC3339Nano(pb.CreatedAt),
-		UpdatedAt:     formatAPITimeRFC3339Nano(pb.UpdatedAt),
+		ID:             pb.ID.String(),
+		Name:           pb.Name,
+		Currency:       pb.Currency,
+		EffectiveFrom:  formatAPITimeRFC3339Nano(pb.EffectiveFrom),
+		EffectiveTo:    timePtrFromTimestamptz(pb.EffectiveTo),
+		IsDefault:      pb.IsDefault,
+		Active:         pb.Active,
+		PriceBookLevel: pb.PriceBookLevel,
+		SiteID:         uuidPtrFromPgUUID(pb.SiteID),
+		MachineID:      uuidPtrFromPgUUID(pb.MachineID),
+		Priority:       pb.Priority,
+		CreatedAt:      formatAPITimeRFC3339Nano(pb.CreatedAt),
+		UpdatedAt:      formatAPITimeRFC3339Nano(pb.UpdatedAt),
 	}
 }
 

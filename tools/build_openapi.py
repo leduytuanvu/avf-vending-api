@@ -3345,7 +3345,6 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     }
     site_row = {
         "id": "aaaaaaaa-bbbb-cccc-dddd-111111111111",
-        "scope_id": _U2,
         "name": "HQ Lobby",
         "timezone": "America/New_York",
         "code": "HQ-01",
@@ -6376,6 +6375,97 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
 ]
 
 
+_LEGACY_OPENAPI_KEYS = frozenset({
+    "scope_id",
+    "scopeId",
+    "ScopeID",
+    "organization_id",
+    "organizationId",
+    "OrganizationID",
+    "tenant_id",
+    "tenantId",
+    "TenantID",
+})
+
+
+def strip_legacy_scope_tokens(obj: Any) -> Any:
+    """Remove tenant/org/scope JSON keys from nested OpenAPI maps (single-company deployment)."""
+    if isinstance(obj, dict):
+        out: dict[str, Any] = {}
+        for k, v in obj.items():
+            if k in _LEGACY_OPENAPI_KEYS:
+                continue
+            out[k] = strip_legacy_scope_tokens(v)
+        req = out.get("required")
+        if isinstance(req, list):
+            out["required"] = [x for x in req if x not in _LEGACY_OPENAPI_KEYS]
+        return out
+    if isinstance(obj, list):
+        return [strip_legacy_scope_tokens(x) for x in obj]
+    return obj
+
+
+def strip_legacy_scope_parameters(spec: dict[str, Any]) -> None:
+    paths = spec.get("paths")
+    if not isinstance(paths, dict):
+        return
+    for pobj in paths.values():
+        if not isinstance(pobj, dict):
+            continue
+        top_params = pobj.get("parameters")
+        if isinstance(top_params, list):
+            pobj["parameters"] = [
+                x for x in top_params
+                if not (isinstance(x, dict) and x.get("name") in _LEGACY_OPENAPI_KEYS)
+            ]
+        for method in ("get", "post", "put", "patch", "delete", "options", "head"):
+            op = pobj.get(method)
+            if not isinstance(op, dict):
+                continue
+            params = op.get("parameters")
+            if isinstance(params, list):
+                op["parameters"] = [
+                    x for x in params
+                    if not (isinstance(x, dict) and x.get("name") in _LEGACY_OPENAPI_KEYS)
+                ]
+
+
+def redact_legacy_scope_substrings(obj: Any) -> Any:
+    """Rewrite description/example strings so exported OpenAPI matches single-company terminology."""
+    repl = (
+        ("scope_id", "company"),
+        ("scopeId", "company"),
+        ("ScopeID", "company"),
+        ("organization_id", "company"),
+        ("organizationId", "company"),
+        ("OrganizationID", "company"),
+        ("tenant_id", "company"),
+        ("tenantId", "company"),
+        ("TenantID", "company"),
+        ("org_admin", "platform_admin"),
+        ("tenant-scoped", "single-company"),
+        ("org-scoped", "single-company"),
+    )
+    if isinstance(obj, str):
+        s = obj
+        for a, b in repl:
+            s = s.replace(a, b)
+        return s
+    if isinstance(obj, dict):
+        return {k: redact_legacy_scope_substrings(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [redact_legacy_scope_substrings(x) for x in obj]
+    return obj
+
+
+def scrub_openapi_spec(spec: dict[str, Any]) -> dict[str, Any]:
+    scrubbed = strip_legacy_scope_tokens(spec)
+    if not isinstance(scrubbed, dict):
+        return spec
+    strip_legacy_scope_parameters(scrubbed)
+    return redact_legacy_scope_substrings(scrubbed)  # type: ignore[return-value]
+
+
 def verify_paths(paths: dict[str, dict[str, Any]]) -> list[str]:
     missing: list[str] = []
     for method, path in REQUIRED_OPERATIONS:
@@ -6509,6 +6599,8 @@ def main() -> int:
             },
         ],
     }
+
+    spec = scrub_openapi_spec(spec)
 
     unresolved = unresolved_local_refs(spec)
     if unresolved:

@@ -42,9 +42,6 @@ type operatorLogoutRequest struct {
 	FinalStatus string `json:"final_status,omitempty"`
 }
 
-// errInsightScopeIDRequired is returned when a platform admin calls operator-insights without scope_id.
-var errInsightScopeIDRequired = errors.New("scope_id query is required for platform-wide access")
-
 // operatorFetchMachine loads the machine row for operator routes and writes HTTP errors on failure.
 func operatorFetchMachine(w http.ResponseWriter, svc *operator.Service, ctx context.Context, machineID uuid.UUID) (fleet.Machine, bool) {
 	machine, err := svc.MachineByID(ctx, machineID)
@@ -131,7 +128,6 @@ func mountOperatorSessionRoutes(r chi.Router, app *api.HTTPApplication) {
 }
 
 // mountOperatorAdminInsightRoutes lists operator action attributions across machines for support workflows.
-// scope_id query is required when the principal is platform_admin without company scope.
 // Routes are mounted under /v1/operator-insights/...
 func mountOperatorAdminInsightRoutes(r chi.Router, app *api.HTTPApplication) {
 	if app == nil || app.MachineOperator == nil {
@@ -555,10 +551,6 @@ func operatorActionAttributionsTechnicianHandler(svc *operator.Service) http.Han
 				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 				return
 			}
-			if errors.Is(err, errInsightScopeIDRequired) {
-				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_scope_id", err.Error())
-				return
-			}
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
@@ -599,10 +591,6 @@ func operatorActionAttributionsUserHandler(svc *operator.Service) http.HandlerFu
 				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 				return
 			}
-			if errors.Is(err, errInsightScopeIDRequired) {
-				writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_scope_id", err.Error())
-				return
-			}
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
@@ -630,17 +618,9 @@ func operatorActionAttributionsUserHandler(svc *operator.Service) http.HandlerFu
 }
 
 func resolveOrgScopeForInsight(p auth.Principal, r *http.Request) (uuid.UUID, error) {
-	if true {
-		return uuid.Nil, nil
-	}
-	if p.HasRole(auth.RolePlatformAdmin) {
-		raw := strings.TrimSpace(r.URL.Query().Get("scope_id"))
-		if raw == "" {
-			return uuid.Nil, errInsightScopeIDRequired
-		}
-		return uuid.Parse(raw)
-	}
-	return uuid.Nil, auth.ErrForbidden
+	_ = p
+	_ = r
+	return uuid.Nil, nil
 }
 
 func authorizeMachineOperatorAccess(p auth.Principal, machine fleet.Machine) error {

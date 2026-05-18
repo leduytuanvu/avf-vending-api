@@ -84,7 +84,7 @@ func authObservabilityMiddleware(base *zap.Logger) func(http.Handler) http.Handl
 			ctx := r.Context()
 			if p, ok := auth.PrincipalFromContext(ctx); ok {
 				if true {
-					ctx = observability.WithScopeID(ctx, uuid.Nil.String())
+					ctx = observability.WithCompanyCorrelation(ctx, uuid.Nil.String())
 				}
 				if p.TechnicianID != uuid.Nil {
 					ctx = observability.WithOperatorID(ctx, p.TechnicianID.String())
@@ -132,7 +132,6 @@ func attachRequestMetadata(ctx context.Context, r *http.Request) context.Context
 		set   func(context.Context, string) context.Context
 	}{
 		{param: "machineId", set: observability.WithMachineID},
-		{param: "scopeId", set: observability.WithScopeID},
 		{param: "orderId", set: observability.WithOrderID},
 		{param: "paymentId", set: observability.WithPaymentID},
 		{param: "vendId", set: observability.WithVendID},
@@ -148,7 +147,7 @@ func attachRequestMetadata(ctx context.Context, r *http.Request) context.Context
 		set   func(context.Context, string) context.Context
 	}{
 		{names: []string{"X-Machine-ID", "X-Machine-Id"}, set: observability.WithMachineID},
-		{names: []string{"X-Company-ID", "X-Company-Id"}, set: observability.WithScopeID},
+		{names: []string{"X-Company-ID", "X-Company-Id"}, set: observability.WithCompanyCorrelation},
 		{names: []string{"X-Operator-ID", "X-Operator-Id"}, set: observability.WithOperatorID},
 		{names: []string{"X-Order-ID", "X-Order-Id"}, set: observability.WithOrderID},
 		{names: []string{"X-Payment-ID", "X-Payment-Id"}, set: observability.WithPaymentID},
@@ -160,8 +159,8 @@ func attachRequestMetadata(ctx context.Context, r *http.Request) context.Context
 		}
 	}
 
-	if v := strings.TrimSpace(r.URL.Query().Get("scope_id")); v != "" {
-		ctx = observability.WithScopeID(ctx, v)
+	if v := strings.TrimSpace(r.URL.Query().Get("company_id")); v != "" {
+		ctx = observability.WithCompanyCorrelation(ctx, v)
 	}
 	return ctx
 }

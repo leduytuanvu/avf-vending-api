@@ -167,7 +167,7 @@ func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 	return i, err
 }
 
-const GetOrderByScopeIdempotency = `-- name: GetOrderByScopeIdempotency :one
+const GetOrderByIdempotencyKey = `-- name: GetOrderByIdempotencyKey :one
 SELECT
     id,
     machine_id,
@@ -184,8 +184,8 @@ WHERE
     idempotency_key = $1
 `
 
-func (q *Queries) GetOrderByScopeIdempotency(ctx context.Context, idempotencyKey pgtype.Text) (Order, error) {
-	row := q.db.QueryRow(ctx, GetOrderByScopeIdempotency, idempotencyKey)
+func (q *Queries) GetOrderByIdempotencyKey(ctx context.Context, idempotencyKey pgtype.Text) (Order, error) {
+	row := q.db.QueryRow(ctx, GetOrderByIdempotencyKey, idempotencyKey)
 	var i Order
 	err := row.Scan(
 		&i.ID,

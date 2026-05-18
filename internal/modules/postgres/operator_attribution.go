@@ -14,11 +14,10 @@ import (
 )
 
 // operatorAttributionSpec records one machine_action_attributions row tied to an operator session.
-// Extended fields (scope_id, action_domain, actor, resource_table) live in metadata JSON
+// Extended fields (action_domain, actor, resource_table) live in metadata JSON
 // alongside DB columns resource_type/resource_id.
 type operatorAttributionSpec struct {
 	MachineID         uuid.UUID
-	ScopeID           uuid.UUID // optional: when non-nil, must match the session's company
 	OperatorSessionID *uuid.UUID
 	ActionDomain      string
 	ActionType        string
@@ -29,7 +28,7 @@ type operatorAttributionSpec struct {
 }
 
 // insertOperatorSessionAttribution is a no-op when OperatorSessionID is nil.
-// It validates the session belongs to the same machine (and company when ScopeID is set),
+// It validates the session belongs to the same machine,
 // then inserts machine_action_attributions in the same transaction as the caller's Querier.
 //
 // P0 safety: spec.MachineID must match the session row's machine_id. Do not bypass this helper to
@@ -50,7 +49,6 @@ func insertOperatorSessionAttribution(ctx context.Context, q *db.Queries, spec o
 		return errors.New("postgres: operator session does not match machine")
 	}
 	meta := map[string]any{
-		"scope_id":            uuid.Nil.String(),
 		"machine_id":          sess.MachineID.String(),
 		"operator_session_id": sess.ID.String(),
 		"actor_type":          sess.ActorType,
@@ -76,8 +74,8 @@ func insertOperatorSessionAttribution(ctx context.Context, q *db.Queries, spec o
 
 	occAt := ptrTimeOrNow(spec.OccurredAt)
 
-	_, err = q.InsertMachineActionAttribution(ctx, db.InsertMachineActionAttributionParams{Column6: occAt,
-
+	_, err = q.InsertMachineActionAttribution(ctx, db.InsertMachineActionAttributionParams{
+		Column6:           occAt,
 		OperatorSessionID: optionalUUIDToPg(spec.OperatorSessionID),
 		MachineID:         spec.MachineID,
 		ActionOriginType:  domainoperator.ActionOriginOperatorSession,

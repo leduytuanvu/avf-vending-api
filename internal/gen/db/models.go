@@ -613,18 +613,18 @@ type MachineConfig struct {
 
 // Staged rollout of machine_config_versions with optional canary and rollback lineage.
 type MachineConfigRollout struct {
-	ID                uuid.UUID
-	TargetVersionID   uuid.UUID
-	PreviousVersionID pgtype.UUID
-	Status            string
-	CanaryPercent     pgtype.Numeric
-	ScopeType         string
-	SiteID            pgtype.UUID
-	MachineID         pgtype.UUID
-	HardwareProfileID pgtype.UUID
-	Metadata          []byte
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	ID                 uuid.UUID
+	TargetVersionID    uuid.UUID
+	PreviousVersionID  pgtype.UUID
+	Status             string
+	CanaryPercent      pgtype.Numeric
+	RolloutTargetLevel string
+	SiteID             pgtype.UUID
+	MachineID          pgtype.UUID
+	HardwareProfileID  pgtype.UUID
+	Metadata           []byte
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // Logical remote-config bundles for staged rollout (distinct from machine_configs apply log).
@@ -744,11 +744,11 @@ type MachineModule struct {
 
 // Optional per-machine MQTT username; secret_ref is an opaque pointer to a secret manager (never store broker passwords in this row).
 type MachineMqttCredential struct {
-	MachineID   uuid.UUID
-	BrokerScope string
-	Username    pgtype.Text
-	SecretRef   pgtype.Text
-	UpdatedAt   time.Time
+	MachineID       uuid.UUID
+	MqttBrokerShard string
+	Username        pgtype.Text
+	SecretRef       pgtype.Text
+	UpdatedAt       time.Time
 }
 
 type MachineOfflineEvent struct {
@@ -987,15 +987,15 @@ type MachineTagAssignment struct {
 }
 
 type MachineTechnicianAssignment struct {
-	ID          uuid.UUID
-	MachineID   uuid.UUID
-	UserID      uuid.UUID
-	Role        string
-	Scope       bool
-	ActiveFrom  time.Time
-	ActiveUntil pgtype.Timestamptz
-	CreatedBy   pgtype.UUID
-	CreatedAt   time.Time
+	ID               uuid.UUID
+	MachineID        uuid.UUID
+	UserID           uuid.UUID
+	Role             string
+	AssignmentDomain bool
+	ActiveFrom       time.Time
+	ActiveUntil      pgtype.Timestamptz
+	CreatedBy        pgtype.UUID
+	CreatedAt        time.Time
 }
 
 // One logical connection from edge to cloud for correlation of attempts and raw frames.
@@ -1313,19 +1313,19 @@ type PlatformAuthAccount struct {
 }
 
 type PriceBook struct {
-	ID            uuid.UUID
-	Name          string
-	Currency      string
-	EffectiveFrom time.Time
-	EffectiveTo   pgtype.Timestamptz
-	IsDefault     bool
-	Active        bool
-	ScopeType     string
-	SiteID        pgtype.UUID
-	MachineID     pgtype.UUID
-	Priority      int32
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID             uuid.UUID
+	Name           string
+	Currency       string
+	EffectiveFrom  time.Time
+	EffectiveTo    pgtype.Timestamptz
+	IsDefault      bool
+	Active         bool
+	PriceBookLevel string
+	SiteID         pgtype.UUID
+	MachineID      pgtype.UUID
+	Priority       int32
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type PriceBookItem struct {
@@ -1414,19 +1414,19 @@ type ProductTag struct {
 }
 
 type Promotion struct {
-	ID               uuid.UUID
-	Name             string
-	ApprovalStatus   string
-	LifecycleStatus  string
-	Priority         int32
-	Stackable        bool
-	StartsAt         time.Time
-	EndsAt           time.Time
-	BudgetLimitMinor pgtype.Int8
-	RedemptionLimit  pgtype.Int4
-	ChannelScope     pgtype.Text
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID                   uuid.UUID
+	Name                 string
+	ApprovalStatus       string
+	LifecycleStatus      string
+	Priority             int32
+	Stackable            bool
+	StartsAt             time.Time
+	EndsAt               time.Time
+	BudgetLimitMinor     pgtype.Int8
+	RedemptionLimit      pgtype.Int4
+	PromotionChannelKind pgtype.Text
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 type PromotionRule struct {
@@ -1608,17 +1608,17 @@ type Technician struct {
 }
 
 type TechnicianMachineAssignment struct {
-	ID           uuid.UUID
-	TechnicianID uuid.UUID
-	MachineID    uuid.UUID
-	Role         string
-	Scope        string
-	Status       string
-	ValidFrom    time.Time
-	ValidTo      pgtype.Timestamptz
-	CreatedBy    pgtype.UUID
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID               uuid.UUID
+	TechnicianID     uuid.UUID
+	MachineID        uuid.UUID
+	Role             string
+	AssignmentDomain string
+	Status           string
+	ValidFrom        time.Time
+	ValidTo          pgtype.Timestamptz
+	CreatedBy        pgtype.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // Aggregated telemetry; workers upsert buckets — raw MQTT metrics are not stored in Postgres.

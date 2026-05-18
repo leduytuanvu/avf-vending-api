@@ -15,13 +15,13 @@ type loggerCtxKey struct{}
 type stringCtxKey string
 
 const (
-	ctxMachineID  stringCtxKey = "machine_id"
-	ctxScopeID    stringCtxKey = "scope_id"
-	ctxOperatorID stringCtxKey = "operator_id"
-	ctxOrderID    stringCtxKey = "order_id"
-	ctxPaymentID  stringCtxKey = "payment_id"
-	ctxVendID     stringCtxKey = "vend_id"
-	ctxCommandID  stringCtxKey = "command_id"
+	ctxMachineID          stringCtxKey = "machine_id"
+	ctxCompanyCorrelation stringCtxKey = "company_correlation"
+	ctxOperatorID         stringCtxKey = "operator_id"
+	ctxOrderID            stringCtxKey = "order_id"
+	ctxPaymentID          stringCtxKey = "payment_id"
+	ctxVendID             stringCtxKey = "vend_id"
+	ctxCommandID          stringCtxKey = "command_id"
 )
 
 func withStringValue(ctx context.Context, key stringCtxKey, value string) context.Context {
@@ -71,12 +71,12 @@ func MachineIDFromContext(ctx context.Context) string {
 	return ""
 }
 
-func WithScopeID(ctx context.Context, companyID string) context.Context {
-	return withStringValue(ctx, ctxScopeID, companyID)
+func WithCompanyCorrelation(ctx context.Context, companyID string) context.Context {
+	return withStringValue(ctx, ctxCompanyCorrelation, companyID)
 }
 
-func ScopeIDFromContext(ctx context.Context) string {
-	if v := stringValueFromContext(ctx, ctxScopeID); v != "" {
+func CompanyCorrelationFromContext(ctx context.Context) string {
+	if v := stringValueFromContext(ctx, ctxCompanyCorrelation); v != "" {
 		return v
 	}
 	return ""
@@ -143,8 +143,8 @@ func ContextFields(ctx context.Context) []zap.Field {
 	if v := MachineIDFromContext(ctx); v != "" {
 		fields = append(fields, zap.String("machine_id", v))
 	}
-	if v := ScopeIDFromContext(ctx); v != "" {
-		fields = append(fields, zap.String("scope_id", v))
+	if v := CompanyCorrelationFromContext(ctx); v != "" {
+		fields = append(fields, zap.String("company_id", v))
 	}
 	if v := OperatorIDFromContext(ctx); v != "" {
 		fields = append(fields, zap.String("operator_id", v))

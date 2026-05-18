@@ -12,7 +12,6 @@ func WriteSalesSummaryCSV(w io.Writer, resp *SalesSummaryResponse) error {
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
 	header := []string{
-		"scope_id",
 		"from",
 		"to",
 		"group_by",
@@ -38,7 +37,6 @@ func WriteSalesSummaryCSV(w io.Writer, resp *SalesSummaryResponse) error {
 		return err
 	}
 	summaryRow := []string{
-		"",
 		resp.From,
 		resp.To,
 		resp.GroupBy,
@@ -65,7 +63,6 @@ func WriteSalesSummaryCSV(w io.Writer, resp *SalesSummaryResponse) error {
 	}
 	for _, b := range resp.Breakdown {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			resp.GroupBy,
@@ -100,7 +97,6 @@ func WritePaymentsSummaryCSV(w io.Writer, resp *PaymentsSummaryResponse) error {
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
 	header := []string{
-		"scope_id",
 		"from",
 		"to",
 		"group_by",
@@ -124,7 +120,6 @@ func WritePaymentsSummaryCSV(w io.Writer, resp *PaymentsSummaryResponse) error {
 	}
 	s := resp.Summary
 	sumRow := []string{
-		"",
 		resp.From,
 		resp.To,
 		resp.GroupBy,
@@ -148,7 +143,6 @@ func WritePaymentsSummaryCSV(w io.Writer, resp *PaymentsSummaryResponse) error {
 	}
 	for _, b := range resp.Breakdown {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			resp.GroupBy,
@@ -169,11 +163,10 @@ func WritePaymentsSummaryCSV(w io.Writer, resp *PaymentsSummaryResponse) error {
 }
 
 // WriteCashCollectionsCSV writes UTF-8 CSV for cross-machine cash_collections in a reporting window.
-func WriteCashCollectionsCSV(w io.Writer, scopeID, fromRFC3339, toRFC3339 string, rows []CashCollectionExportRow) error {
+func WriteCashCollectionsCSV(w io.Writer, fromRFC3339, toRFC3339 string, rows []CashCollectionExportRow) error {
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
 	header := []string{
-		"scope_id",
 		"from",
 		"to",
 		"collection_id",
@@ -197,7 +190,6 @@ func WriteCashCollectionsCSV(w io.Writer, scopeID, fromRFC3339, toRFC3339 string
 	}
 	for _, r := range rows {
 		row := []string{
-			scopeID,
 			fromRFC3339,
 			toRFC3339,
 			r.CollectionID,
@@ -228,13 +220,12 @@ func WriteCashCollectionsCSV(w io.Writer, scopeID, fromRFC3339, toRFC3339 string
 func WritePaymentSettlementCSV(w io.Writer, resp *PaymentSettlementResponse) error {
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
-	header := []string{"scope_id", "from", "to", "timezone", "bucket_start", "provider", "state", "settlement_status", "reconciliation_status", "payment_count", "amount_minor"}
+	header := []string{"from", "to", "timezone", "bucket_start", "provider", "state", "settlement_status", "reconciliation_status", "payment_count", "amount_minor"}
 	if err := cw.Write(header); err != nil {
 		return err
 	}
 	for _, r := range resp.Items {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			resp.Timezone,
@@ -258,13 +249,12 @@ func WritePaymentSettlementCSV(w io.Writer, resp *PaymentSettlementResponse) err
 func WriteRefundsCSV(w io.Writer, resp *RefundReportResponse) error {
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
-	header := []string{"scope_id", "from", "to", "refund_id", "payment_id", "order_id", "machine_id", "amount_minor", "currency", "state", "reason", "reconciliation_status", "settlement_status", "created_at"}
+	header := []string{"from", "to", "refund_id", "payment_id", "order_id", "machine_id", "amount_minor", "currency", "state", "reason", "reconciliation_status", "settlement_status", "created_at"}
 	if err := cw.Write(header); err != nil {
 		return err
 	}
 	for _, r := range resp.Items {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			r.RefundID,
@@ -292,7 +282,7 @@ func WriteInventoryExceptionsCSV(w io.Writer, resp *InventoryExceptionsResponse)
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
 	header := []string{
-		"scope_id", "from", "to", "machine_id", "machine_name", "machine_serial_number",
+		"from", "to", "machine_id", "machine_name", "machine_serial_number",
 		"machine_status", "planogram_id", "planogram_name", "slot_index", "current_quantity",
 		"max_quantity", "product_id", "product_sku", "product_name", "out_of_stock", "low_stock", "attention_needed",
 	}
@@ -301,7 +291,6 @@ func WriteInventoryExceptionsCSV(w io.Writer, resp *InventoryExceptionsResponse)
 	}
 	for _, r := range resp.Items {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			r.MachineID,
@@ -332,13 +321,12 @@ func WriteInventoryExceptionsCSV(w io.Writer, resp *InventoryExceptionsResponse)
 func WriteMachineHealthCSV(w io.Writer, resp *MachineHealthReportResponse) error {
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
-	header := []string{"scope_id", "from", "to", "machine_id", "site_id", "site_name", "serial_number", "machine_name", "status", "last_seen_at", "offline"}
+	header := []string{"from", "to", "machine_id", "site_id", "site_name", "serial_number", "machine_name", "status", "last_seen_at", "offline"}
 	if err := cw.Write(header); err != nil {
 		return err
 	}
 	for _, r := range resp.Items {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			r.MachineID,
@@ -363,7 +351,7 @@ func WriteStockMovementCSV(w io.Writer, resp *StockMovementReportResponse) error
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
 	header := []string{
-		"scope_id", "from", "to", "inventory_event_id", "machine_id", "site_id",
+		"from", "to", "inventory_event_id", "machine_id", "site_id",
 		"product_id", "product_sku", "product_name", "event_type", "slot_code",
 		"quantity_delta", "quantity_before", "quantity_after", "occurred_at",
 	}
@@ -372,7 +360,6 @@ func WriteStockMovementCSV(w io.Writer, resp *StockMovementReportResponse) error
 	}
 	for _, r := range resp.Items {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			r.InventoryEventID,
@@ -401,7 +388,7 @@ func WriteTechnicianFillOpsCSV(w io.Writer, resp *TechnicianFillReportResponse) 
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
 	header := []string{
-		"scope_id", "from", "to",
+		"from", "to",
 		"inventory_event_id", "machine_id", "site_id",
 		"product_id", "product_sku", "product_name", "event_type", "slot_code",
 		"quantity_delta", "quantity_before", "quantity_after",
@@ -413,7 +400,6 @@ func WriteTechnicianFillOpsCSV(w io.Writer, resp *TechnicianFillReportResponse) 
 	}
 	for _, r := range resp.Items {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			r.InventoryEventID,
@@ -452,13 +438,12 @@ func formatInt32Ptr(p *int32) string {
 func WriteProductPerformanceCSV(w io.Writer, resp *ProductPerformanceResponse) error {
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
-	header := []string{"scope_id", "from", "to", "product_id", "product_sku", "product_name", "success_vends", "failed_vends", "allocated_revenue_minor"}
+	header := []string{"from", "to", "product_id", "product_sku", "product_name", "success_vends", "failed_vends", "allocated_revenue_minor"}
 	if err := cw.Write(header); err != nil {
 		return err
 	}
 	for _, r := range resp.Items {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			r.ProductID,
@@ -481,7 +466,7 @@ func WriteReconciliationBICSV(w io.Writer, resp *ReconciliationBIReportResponse)
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
 	header := []string{
-		"scope_id", "from", "to", "scope", "open_cases", "closed_cases",
+		"from", "to", "reconciliation_slice", "open_cases", "closed_cases",
 		"id", "case_type", "status", "severity",
 		"order_id", "payment_id", "vend_session_id", "refund_id", "provider",
 		"reason", "first_detected_at", "last_detected_at", "resolved_at",
@@ -490,7 +475,6 @@ func WriteReconciliationBICSV(w io.Writer, resp *ReconciliationBIReportResponse)
 		return err
 	}
 	sumRow := []string{
-		"",
 		resp.From,
 		resp.To,
 		resp.Scope,
@@ -503,7 +487,6 @@ func WriteReconciliationBICSV(w io.Writer, resp *ReconciliationBIReportResponse)
 	}
 	for _, r := range resp.Items {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			resp.Scope,
@@ -534,13 +517,12 @@ func WriteReconciliationBICSV(w io.Writer, resp *ReconciliationBIReportResponse)
 func WriteCommandFailuresCSV(w io.Writer, resp *CommandFailuresReportResponse) error {
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
-	header := []string{"scope_id", "from", "to", "attempt_id", "command_id", "machine_id", "site_id", "attempt_no", "sent_at", "status", "timeout_reason"}
+	header := []string{"from", "to", "attempt_id", "command_id", "machine_id", "site_id", "attempt_no", "sent_at", "status", "timeout_reason"}
 	if err := cw.Write(header); err != nil {
 		return err
 	}
 	for _, r := range resp.Items {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			r.AttemptID,
@@ -565,7 +547,7 @@ func WriteVendSummaryCSV(w io.Writer, resp *VendSummaryResponse) error {
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = false
 	header := []string{
-		"scope_id", "from", "to", "row_type",
+		"from", "to", "row_type",
 		"success_count", "failed_count", "in_progress_count",
 		"vend_session_id", "order_id", "machine_id", "slot_index", "product_id",
 		"failure_reason", "total_minor", "currency", "order_status", "created_at",
@@ -574,7 +556,6 @@ func WriteVendSummaryCSV(w io.Writer, resp *VendSummaryResponse) error {
 		return err
 	}
 	sum := []string{
-		"",
 		resp.From,
 		resp.To,
 		"SUMMARY",
@@ -588,7 +569,6 @@ func WriteVendSummaryCSV(w io.Writer, resp *VendSummaryResponse) error {
 	}
 	for _, r := range resp.FailedVends.Items {
 		row := []string{
-			"",
 			resp.From,
 			resp.To,
 			"FAILED_VEND",

@@ -62,15 +62,15 @@ type Technician struct {
 
 // TechnicianMachineAssignment links technicians to machines for a time window.
 type TechnicianMachineAssignment struct {
-	ID           uuid.UUID
-	TechnicianID uuid.UUID
-	MachineID    uuid.UUID
-	Role         string
-	Scope        string
-	Status       string
-	ValidFrom    time.Time
-	ValidTo      *time.Time
-	CreatedBy    *uuid.UUID
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID               uuid.UUID
+	TechnicianID     uuid.UUID
+	MachineID        uuid.UUID
+	Role             string
+	AssignmentDomain string
+	Status           string
+	ValidFrom        time.Time
+	ValidTo          *time.Time
+	CreatedBy        *uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }

@@ -10,7 +10,7 @@ SELECT
     p.ends_at,
     p.budget_limit_minor,
     p.redemption_limit,
-    p.channel_scope,
+    p.promotion_channel_kind,
     p.created_at,
     p.updated_at
 FROM promotions p
@@ -37,11 +37,12 @@ SELECT
     p.ends_at,
     p.budget_limit_minor,
     p.redemption_limit,
-    p.channel_scope,
+    p.promotion_channel_kind,
     p.created_at,
     p.updated_at
 FROM promotions p
-WHERE TRUE;
+WHERE
+    p.id = $1;
 
 -- name: PromotionAdminInsertPromotion :one
 INSERT INTO promotions (
@@ -54,7 +55,7 @@ INSERT INTO promotions (
     ends_at,
     budget_limit_minor,
     redemption_limit,
-    channel_scope
+    promotion_channel_kind
 ) VALUES (
     $1,
     $2,
@@ -81,7 +82,7 @@ SET
     ends_at = $7,
     budget_limit_minor = $8,
     redemption_limit = $9,
-    channel_scope = $10,
+    promotion_channel_kind = $10,
     updated_at = now()
 WHERE TRUE
 RETURNING *;
@@ -206,7 +207,7 @@ SELECT
     p.ends_at,
     p.budget_limit_minor,
     p.redemption_limit,
-    p.channel_scope,
+    p.promotion_channel_kind,
     p.created_at,
     p.updated_at
 FROM promotions p

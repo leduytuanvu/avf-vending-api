@@ -136,7 +136,7 @@ func (q *Queries) FinanceDailyCloseAggregate(ctx context.Context, arg FinanceDai
 	return i, err
 }
 
-const FinanceDailyCloseExistsForScope = `-- name: FinanceDailyCloseExistsForScope :one
+const FinanceDailyCloseExistsForDimensions = `-- name: FinanceDailyCloseExistsForDimensions :one
 SELECT
     EXISTS (
         SELECT
@@ -150,15 +150,15 @@ SELECT
             AND COALESCE(machine_id, '00000000-0000-0000-0000-000000000000'::uuid) = COALESCE(NULLIF($4::uuid, '00000000-0000-0000-0000-000000000000'::uuid), '00000000-0000-0000-0000-000000000000'::uuid)) AS exists
 `
 
-type FinanceDailyCloseExistsForScopeParams struct {
+type FinanceDailyCloseExistsForDimensionsParams struct {
 	CloseDate pgtype.Date
 	Timezone  string
 	Column3   uuid.UUID
 	Column4   uuid.UUID
 }
 
-func (q *Queries) FinanceDailyCloseExistsForScope(ctx context.Context, arg FinanceDailyCloseExistsForScopeParams) (bool, error) {
-	row := q.db.QueryRow(ctx, FinanceDailyCloseExistsForScope,
+func (q *Queries) FinanceDailyCloseExistsForDimensions(ctx context.Context, arg FinanceDailyCloseExistsForDimensionsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, FinanceDailyCloseExistsForDimensions,
 		arg.CloseDate,
 		arg.Timezone,
 		arg.Column3,

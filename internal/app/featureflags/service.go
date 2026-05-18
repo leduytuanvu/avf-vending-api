@@ -621,18 +621,18 @@ func (s *Service) CreateMachineConfigVersion(ctx context.Context, p CreateMachin
 }
 
 type MachineConfigRolloutDTO struct {
-	ID                uuid.UUID       `json:"id"`
-	TargetVersionID   uuid.UUID       `json:"targetVersionId"`
-	PreviousVersionID *uuid.UUID      `json:"previousVersionId,omitempty"`
-	Status            string          `json:"status"`
-	CanaryPercent     *float64        `json:"canaryPercent,omitempty"`
-	ScopeType         string          `json:"scopeType"`
-	SiteID            *uuid.UUID      `json:"siteId,omitempty"`
-	MachineID         *uuid.UUID      `json:"machineId,omitempty"`
-	HardwareProfileID *uuid.UUID      `json:"hardwareProfileId,omitempty"`
-	Metadata          json.RawMessage `json:"metadata,omitempty"`
-	CreatedAt         time.Time       `json:"createdAt"`
-	UpdatedAt         time.Time       `json:"updatedAt"`
+	ID                 uuid.UUID       `json:"id"`
+	TargetVersionID    uuid.UUID       `json:"targetVersionId"`
+	PreviousVersionID  *uuid.UUID      `json:"previousVersionId,omitempty"`
+	Status             string          `json:"status"`
+	CanaryPercent      *float64        `json:"canaryPercent,omitempty"`
+	RolloutTargetLevel string          `json:"rolloutTargetLevel"`
+	SiteID             *uuid.UUID      `json:"siteId,omitempty"`
+	MachineID          *uuid.UUID      `json:"machineId,omitempty"`
+	HardwareProfileID  *uuid.UUID      `json:"hardwareProfileId,omitempty"`
+	Metadata           json.RawMessage `json:"metadata,omitempty"`
+	CreatedAt          time.Time       `json:"createdAt"`
+	UpdatedAt          time.Time       `json:"updatedAt"`
 }
 
 func rolloutDTO(r db.MachineConfigRollout) MachineConfigRolloutDTO {
@@ -641,13 +641,13 @@ func rolloutDTO(r db.MachineConfigRollout) MachineConfigRolloutDTO {
 		md = json.RawMessage("{}")
 	}
 	out := MachineConfigRolloutDTO{
-		ID:              r.ID,
-		TargetVersionID: r.TargetVersionID,
-		Status:          r.Status,
-		ScopeType:       r.ScopeType,
-		Metadata:        md,
-		CreatedAt:       r.CreatedAt,
-		UpdatedAt:       r.UpdatedAt,
+		ID:                 r.ID,
+		TargetVersionID:    r.TargetVersionID,
+		Status:             r.Status,
+		RolloutTargetLevel: r.RolloutTargetLevel,
+		Metadata:           md,
+		CreatedAt:          r.CreatedAt,
+		UpdatedAt:          r.UpdatedAt,
 	}
 	if r.PreviousVersionID.Valid {
 		u := uuid.UUID(r.PreviousVersionID.Bytes)
@@ -672,20 +672,20 @@ func rolloutDTO(r db.MachineConfigRollout) MachineConfigRolloutDTO {
 }
 
 type CreateRolloutParams struct {
-	TargetVersionID   uuid.UUID
-	PreviousVersionID *uuid.UUID
-	Status            string
-	CanaryPercent     *float64
-	ScopeType         string
-	SiteID            *uuid.UUID
-	MachineID         *uuid.UUID
-	HardwareProfileID *uuid.UUID
-	Metadata          json.RawMessage
+	TargetVersionID    uuid.UUID
+	PreviousVersionID  *uuid.UUID
+	Status             string
+	CanaryPercent      *float64
+	RolloutTargetLevel string
+	SiteID             *uuid.UUID
+	MachineID          *uuid.UUID
+	HardwareProfileID  *uuid.UUID
+	Metadata           json.RawMessage
 }
 
 // CreateRollout starts a rollout row (typically status=pending or in_progress).
 func (s *Service) CreateRollout(ctx context.Context, p CreateRolloutParams) (*MachineConfigRolloutDTO, error) {
-	if err := validateRolloutScope(p.ScopeType, p.SiteID, p.MachineID, p.HardwareProfileID); err != nil {
+	if err := validateRolloutScope(p.RolloutTargetLevel, p.SiteID, p.MachineID, p.HardwareProfileID); err != nil {
 		return nil, err
 	}
 	meta := []byte(p.Metadata)
@@ -697,15 +697,15 @@ func (s *Service) CreateRollout(ctx context.Context, p CreateRolloutParams) (*Ma
 		st = "pending"
 	}
 	row, err := s.q.MachineConfigRolloutsInsert(ctx, db.MachineConfigRolloutsInsertParams{
-		TargetVersionID:   p.TargetVersionID,
-		PreviousVersionID: uuidPtrPg(p.PreviousVersionID),
-		Status:            st,
-		CanaryPercent:     numericFromFloat64(p.CanaryPercent),
-		ScopeType:         strings.TrimSpace(strings.ToLower(p.ScopeType)),
-		SiteID:            uuidPtrPg(p.SiteID),
-		MachineID:         uuidPtrPg(p.MachineID),
-		HardwareProfileID: uuidPtrPg(p.HardwareProfileID),
-		Metadata:          meta,
+		TargetVersionID:    p.TargetVersionID,
+		PreviousVersionID:  uuidPtrPg(p.PreviousVersionID),
+		Status:             st,
+		CanaryPercent:      numericFromFloat64(p.CanaryPercent),
+		RolloutTargetLevel: strings.TrimSpace(strings.ToLower(p.RolloutTargetLevel)),
+		SiteID:             uuidPtrPg(p.SiteID),
+		MachineID:          uuidPtrPg(p.MachineID),
+		HardwareProfileID:  uuidPtrPg(p.HardwareProfileID),
+		Metadata:           meta,
 	})
 	if err != nil {
 		return nil, err
@@ -823,15 +823,15 @@ func (s *Service) RollbackRollout(ctx context.Context, scopeID, rolloutID uuid.U
 	}
 	meta := []byte(`{"reason":"rollback"}`)
 	row, err := q.MachineConfigRolloutsInsert(ctx, db.MachineConfigRolloutsInsertParams{
-		TargetVersionID:   prev,
-		PreviousVersionID: uuidPtrPg(&cur.TargetVersionID),
-		Status:            "pending",
-		CanaryPercent:     cur.CanaryPercent,
-		ScopeType:         cur.ScopeType,
-		SiteID:            cur.SiteID,
-		MachineID:         cur.MachineID,
-		HardwareProfileID: cur.HardwareProfileID,
-		Metadata:          meta,
+		TargetVersionID:    prev,
+		PreviousVersionID:  uuidPtrPg(&cur.TargetVersionID),
+		Status:             "pending",
+		CanaryPercent:      cur.CanaryPercent,
+		RolloutTargetLevel: cur.RolloutTargetLevel,
+		SiteID:             cur.SiteID,
+		MachineID:          cur.MachineID,
+		HardwareProfileID:  cur.HardwareProfileID,
+		Metadata:           meta,
 	})
 	if err != nil {
 		return nil, err

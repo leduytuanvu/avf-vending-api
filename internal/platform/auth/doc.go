@@ -8,5 +8,5 @@
 // Optional HTTP_AUTH_JWT_SECRET_PREVIOUS accepts tokens signed with the prior HS256 secret during rotation.
 //
 // Scope enforcement is intentionally shallow at the edge: route middleware checks claims;
-// data plane should still use scoped SQL (e.g. ListMachinesByScopeID) in repositories.
+// data plane should still enforce deployment boundaries in repositories (machine/site correlation).
 package auth

@@ -330,7 +330,7 @@ type postRolloutBody struct {
 	PreviousVersionID     *string         `json:"previousVersionId,omitempty"`
 	Status                string          `json:"status,omitempty"`
 	CanaryPercent         *float64        `json:"canaryPercent,omitempty"`
-	ScopeType             string          `json:"scopeType"`
+	RolloutTargetLevel    string          `json:"rolloutTargetLevel"`
 	SiteID                *string         `json:"siteId,omitempty"`
 	MachineID             *string         `json:"machineId,omitempty"`
 	HardwareProfileID     *string         `json:"hardwareProfileId,omitempty"`
@@ -454,15 +454,15 @@ func postAdminMachineConfigRollouts(svc *appfeatureflags.Service) http.HandlerFu
 		}
 
 		out, err := svc.CreateRollout(r.Context(), appfeatureflags.CreateRolloutParams{
-			TargetVersionID:   targetVer,
-			PreviousVersionID: prev,
-			Status:            st,
-			CanaryPercent:     body.CanaryPercent,
-			ScopeType:         body.ScopeType,
-			SiteID:            siteID,
-			MachineID:         mid,
-			HardwareProfileID: hid,
-			Metadata:          meta,
+			TargetVersionID:    targetVer,
+			PreviousVersionID:  prev,
+			Status:             st,
+			CanaryPercent:      body.CanaryPercent,
+			RolloutTargetLevel: body.RolloutTargetLevel,
+			SiteID:             siteID,
+			MachineID:          mid,
+			HardwareProfileID:  hid,
+			Metadata:           meta,
 		})
 		if err != nil {
 			if errors.Is(err, appfeatureflags.ErrInvalidRollout) {

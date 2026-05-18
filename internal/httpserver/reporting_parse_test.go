@@ -39,7 +39,7 @@ func TestParseAdminCompanyReportingQuery_DeniesCrossOrg(t *testing.T) {
 		t.Fatal(err)
 	}
 	rc := chi.NewRouteContext()
-	rc.URLParams.Add("scopeId", orgB.String())
+	rc.URLParams.Add("companyPathToken", orgB.String())
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rc)
 	ctx = auth.WithPrincipal(ctx, auth.Principal{Subject: "finance-user", Roles: []string{"finance"}})
 	_, status, err := parseAdminCompanyReportingQuery(req.WithContext(ctx), true, nil)
@@ -53,34 +53,34 @@ func TestParseAdminCompanyReportingQuery_DeniesCrossOrg(t *testing.T) {
 
 func TestParseAdminCompanyReportingQuery_AcceptsFinanceOrgScopeAndTimezone(t *testing.T) {
 	t.Skip("obsolete company-scoped REST contract removed")
-	scopeID := uuid.New()
-	_ = scopeID
+	correlationAnchor := uuid.New()
+	_ = correlationAnchor
 	req, err := http.NewRequest("GET", "/?from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z&timezone=Asia/Bangkok&limit=25&offset=5", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rc := chi.NewRouteContext()
-	rc.URLParams.Add("scopeId", scopeID.String())
+	rc.URLParams.Add("companyPathToken", correlationAnchor.String())
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rc)
 	ctx = auth.WithPrincipal(ctx, auth.Principal{Subject: "finance-user", Roles: []string{"finance"}})
 	q, status, err := parseAdminCompanyReportingQuery(req.WithContext(ctx), true, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status != http.StatusOK || uuid.Nil != scopeID || q.Timezone != "Asia/Bangkok" || q.Limit != 25 || q.Offset != 5 {
+	if status != http.StatusOK || uuid.Nil != correlationAnchor || q.Timezone != "Asia/Bangkok" || q.Limit != 25 || q.Offset != 5 {
 		t.Fatalf("unexpected query/status: status=%d q=%+v", status, q)
 	}
 }
 
 func TestParseAdminCompanyReportingQuery_RejectsBadDateRange(t *testing.T) {
-	scopeID := uuid.New()
-	_ = scopeID
+	correlationAnchor := uuid.New()
+	_ = correlationAnchor
 	req, err := http.NewRequest("GET", "/?from=2026-01-02T00:00:00Z&to=2026-01-01T00:00:00Z", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rc := chi.NewRouteContext()
-	rc.URLParams.Add("scopeId", scopeID.String())
+	rc.URLParams.Add("companyPathToken", correlationAnchor.String())
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rc)
 	ctx = auth.WithPrincipal(ctx, auth.Principal{Subject: "finance-user", Roles: []string{"finance"}})
 	_, status, err := parseAdminCompanyReportingQuery(req.WithContext(ctx), false, nil)
@@ -94,8 +94,8 @@ func TestParseAdminCompanyReportingQuery_RejectsBadDateRange(t *testing.T) {
 
 func TestParseAdminCompanyReportingQuery_CSVAllowsWiderExportWindow(t *testing.T) {
 	t.Skip("obsolete company-scoped REST contract removed")
-	scopeID := uuid.New()
-	_ = scopeID
+	correlationAnchor := uuid.New()
+	_ = correlationAnchor
 	app := &api.HTTPApplication{
 		ReportingSyncMaxSpan:   3 * 24 * time.Hour,
 		ReportingExportMaxSpan: 10 * 24 * time.Hour,
@@ -108,7 +108,7 @@ func TestParseAdminCompanyReportingQuery_CSVAllowsWiderExportWindow(t *testing.T
 		t.Fatal(err)
 	}
 	rc := chi.NewRouteContext()
-	rc.URLParams.Add("scopeId", scopeID.String())
+	rc.URLParams.Add("companyPathToken", correlationAnchor.String())
 	ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rc)
 	ctx = auth.WithPrincipal(ctx, auth.Principal{Subject: "rep-user", Roles: []string{"finance"}})
 	_, status, err := parseAdminCompanyReportingQuery(req.WithContext(ctx), false, app)
@@ -129,7 +129,7 @@ func TestParseAdminCompanyReportingQuery_CSVAllowsWiderExportWindow(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status != http.StatusOK || uuid.Nil != scopeID {
+	if status != http.StatusOK || uuid.Nil != correlationAnchor {
 		t.Fatalf("unexpected: status=%d q=%+v err=%v", status, q, err)
 	}
 }

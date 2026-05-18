@@ -163,7 +163,7 @@ func UnresolvedOrdersTick(ctx context.Context, deps ReconcilerDeps) error {
 		if deps.Log != nil {
 			deps.Log.Info("reconcile_unresolved_order_payment",
 				zap.String("order_id", o.ID.String()),
-				zap.String("scope_id", uuid.Nil.String()),
+				zap.String("deployment_company_id", uuid.Nil.String()),
 				zap.String("order_status", o.Status),
 			)
 		}

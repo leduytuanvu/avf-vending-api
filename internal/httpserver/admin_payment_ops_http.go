@@ -73,9 +73,7 @@ func parseAdminFinanceExportWindow(r *http.Request) (from time.Time, to time.Tim
 
 func getAdminPaymentReconciliationDrift(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -105,7 +103,7 @@ func getAdminPaymentReconciliationDrift(app *api.HTTPApplication) http.HandlerFu
 			}
 			limit = int32(n)
 		}
-		out, err := app.PaymentOps.ListPaymentReconciliationDrift(r.Context(), scopeID, staleSecs, limit)
+		out, err := app.PaymentOps.ListPaymentReconciliationDrift(r.Context(), uuid.Nil, staleSecs, limit)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -116,9 +114,7 @@ func getAdminPaymentReconciliationDrift(app *api.HTTPApplication) http.HandlerFu
 
 func listAdminPaymentWebhookEvents(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -127,7 +123,7 @@ func listAdminPaymentWebhookEvents(app *api.HTTPApplication) http.HandlerFunc {
 			writeV1ListError(w, r.Context(), listscope.ErrInvalidListQuery)
 			return
 		}
-		out, err := app.PaymentOps.ListWebhookEvents(r.Context(), scopeID, limit, offset)
+		out, err := app.PaymentOps.ListWebhookEvents(r.Context(), uuid.Nil, limit, offset)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -138,9 +134,7 @@ func listAdminPaymentWebhookEvents(app *api.HTTPApplication) http.HandlerFunc {
 
 func listAdminPaymentSettlements(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -149,7 +143,7 @@ func listAdminPaymentSettlements(app *api.HTTPApplication) http.HandlerFunc {
 			writeV1ListError(w, r.Context(), listscope.ErrInvalidListQuery)
 			return
 		}
-		out, err := app.PaymentOps.ListSettlements(r.Context(), scopeID, limit, offset)
+		out, err := app.PaymentOps.ListSettlements(r.Context(), uuid.Nil, limit, offset)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -160,9 +154,7 @@ func listAdminPaymentSettlements(app *api.HTTPApplication) http.HandlerFunc {
 
 func importAdminPaymentSettlements(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -174,7 +166,7 @@ func importAdminPaymentSettlements(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 			return
 		}
-		out, err := app.PaymentOps.ImportSettlements(r.Context(), scopeID, body.Provider, body.Settlements)
+		out, err := app.PaymentOps.ImportSettlements(r.Context(), uuid.Nil, body.Provider, body.Settlements)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_argument", err.Error())
 			return
@@ -202,9 +194,7 @@ func importAdminPaymentSettlements(app *api.HTTPApplication) http.HandlerFunc {
 
 func listAdminPaymentDisputes(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -213,7 +203,7 @@ func listAdminPaymentDisputes(app *api.HTTPApplication) http.HandlerFunc {
 			writeV1ListError(w, r.Context(), listscope.ErrInvalidListQuery)
 			return
 		}
-		out, err := app.PaymentOps.ListDisputes(r.Context(), scopeID, limit, offset)
+		out, err := app.PaymentOps.ListDisputes(r.Context(), uuid.Nil, limit, offset)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -224,9 +214,7 @@ func listAdminPaymentDisputes(app *api.HTTPApplication) http.HandlerFunc {
 
 func resolveAdminPaymentDispute(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -284,9 +272,7 @@ func resolveAdminPaymentDispute(app *api.HTTPApplication) http.HandlerFunc {
 
 func exportAdminPaymentsFinanceCSV(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := parseAdminCommerceScopeID(r)
-		_ = scopeID
-		if err != nil {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
@@ -296,12 +282,12 @@ func exportAdminPaymentsFinanceCSV(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		var buf bytes.Buffer
-		if err := app.PaymentOps.WriteFinanceExportCSV(r.Context(), &buf, scopeID, from, to); err != nil {
+		if err := app.PaymentOps.WriteFinanceExportCSV(r.Context(), &buf, uuid.Nil, from, to); err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", `attachment; filename="payments-`+scopeID.String()+`.csv"`)
+		w.Header().Set("Content-Disposition", `attachment; filename="payments-finance-export.csv"`)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(buf.Bytes())
 	}

@@ -290,7 +290,7 @@ func (s *Service) ListReconciliationCases(ctx context.Context, scope listscope.C
 	}, nil
 }
 
-func (s *Service) GetReconciliationCase(ctx context.Context, companyID, caseID uuid.UUID) (ReconciliationCaseItem, error) {
+func (s *Service) GetReconciliationCase(ctx context.Context, caseID uuid.UUID) (ReconciliationCaseItem, error) {
 	if s == nil || s.q == nil {
 		return ReconciliationCaseItem{}, errors.New("commerceadmin: nil service")
 	}
@@ -351,14 +351,14 @@ func (s *Service) ResolveReconciliationCase(ctx context.Context, in ResolveRecon
 }
 
 // ListOrderTimeline returns paginated lifecycle events for one order.
-func (s *Service) ListOrderTimeline(ctx context.Context, companyID, orderID uuid.UUID, limit, offset int32) (*OrderTimelineResponse, error) {
+func (s *Service) ListOrderTimeline(ctx context.Context, orderID uuid.UUID, limit, offset int32) (*OrderTimelineResponse, error) {
 	if s == nil || s.q == nil {
 		return nil, errors.New("commerceadmin: nil service")
 	}
-	if companyID == uuid.Nil || orderID == uuid.Nil {
-		return nil, listscope.ErrCommerceCompanyQueryRequired
+	if orderID == uuid.Nil {
+		return nil, errors.New("commerceadmin: order id required")
 	}
-	if _, err := s.q.CommerceAdminOrderScopeID(ctx, orderID); err != nil {
+	if _, err := s.q.CommerceAdminOrderLookup(ctx, orderID); err != nil {
 		return nil, err
 	}
 	rows, err := s.q.CommerceAdminListOrderTimeline(ctx, db.CommerceAdminListOrderTimelineParams{
@@ -434,7 +434,7 @@ func (s *Service) ListRefundRequests(ctx context.Context, scope listscope.Compan
 }
 
 // GetRefundRequest returns one refund_requests row scoped to the company.
-func (s *Service) GetRefundRequest(ctx context.Context, companyID, refundRequestID uuid.UUID) (RefundRequestItem, error) {
+func (s *Service) GetRefundRequest(ctx context.Context, refundRequestID uuid.UUID) (RefundRequestItem, error) {
 	if s == nil || s.q == nil {
 		return RefundRequestItem{}, errors.New("commerceadmin: nil service")
 	}
@@ -451,13 +451,13 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 		return CreateOrderRefundResult{}, errors.New("commerceadmin: refund execution not configured")
 	}
 	if in.OrderID == uuid.Nil {
-		return CreateOrderRefundResult{}, errors.New("commerceadmin: scope_id and order_id required")
+		return CreateOrderRefundResult{}, errors.New("commerceadmin: order_id required")
 	}
 	idem := strings.TrimSpace(in.IdempotencyKey)
 	if idem == "" {
 		return CreateOrderRefundResult{}, errors.New("commerceadmin: idempotency_key required")
 	}
-	if _, err := s.q.CommerceAdminOrderScopeID(ctx, in.OrderID); err != nil {
+	if _, err := s.q.CommerceAdminOrderLookup(ctx, in.OrderID); err != nil {
 		return CreateOrderRefundResult{}, err
 	}
 	pay, err := s.q.GetLatestPaymentForOrder(ctx, in.OrderID)
@@ -503,7 +503,7 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 		if !isPGUniqueViolation(insErr) {
 			return CreateOrderRefundResult{}, insErr
 		}
-		reqRow, err = s.q.CommerceAdminGetRefundRequestByScopeIdempotency(ctx, pgtype.Text{String: idem, Valid: true})
+		reqRow, err = s.q.CommerceAdminGetRefundRequestByIdempotencyKey(ctx, pgtype.Text{String: idem, Valid: true})
 		if err != nil {
 			return CreateOrderRefundResult{}, err
 		}
@@ -570,7 +570,7 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 
 // RefundFromReconciliationCase validates the case and executes CreateOrderRefund with a case-scoped idempotency key.
 func (s *Service) RefundFromReconciliationCase(ctx context.Context, in RefundFromReconciliationCaseInput) (CreateOrderRefundResult, error) {
-	cs, err := s.GetReconciliationCase(ctx, uuid.Nil, in.CaseID)
+	cs, err := s.GetReconciliationCase(ctx, in.CaseID)
 	if err != nil {
 		return CreateOrderRefundResult{}, err
 	}

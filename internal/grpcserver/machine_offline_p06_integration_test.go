@@ -103,7 +103,7 @@ func TestP06_OfflineSync_sortedDescendingMetaStillProcessesAscendingSequences(t 
 	ctx := context.Background()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
@@ -157,7 +157,7 @@ func TestP06_OfflineSync_duplicateOfflineSequenceReplayed(t *testing.T) {
 	ctx := context.Background()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
@@ -220,7 +220,7 @@ func TestP06_OfflineSync_gapInSequenceRejectedAfterSuccessfulCursorBump(t *testi
 	ctx := context.Background()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
@@ -287,7 +287,7 @@ func TestP06_OfflineSync_outOfOrderErrorIncludesExpectedSequence(t *testing.T) {
 	ctx := context.Background()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
@@ -338,7 +338,7 @@ func TestP06_OfflineSync_duplicateClientEventIdAtLaterSequenceRejected(t *testin
 	ctx := context.Background()
 	siteID := uuid.New()
 	machineID := uuid.New()
-	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, uuid.Nil, siteID, machineID))
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
 	srv := &machineOfflineSyncServer{deps: deps}
@@ -416,14 +416,14 @@ func TestP06_OfflineSync_devMachineCashAndVendReplayDoesNotDoubleDecrement(t *te
 		_, _ = pool.Exec(ctx2, `UPDATE machine_slot_state SET current_quantity = $1 WHERE machine_id = $2 AND slot_index = 0`,
 			qtyRestore, testfixtures.DevMachineID)
 		_, _ = pool.Exec(ctx2, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
-		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursors WHERE scope_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
-			uuid.Nil, testfixtures.DevMachineID)
+		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursors WHERE machine_id = $1 AND stream_name = 'offline'`,
+			testfixtures.DevMachineID)
 	})
 
 	_, err := pool.Exec(ctx, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE scope_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
-		uuid.Nil, testfixtures.DevMachineID)
+	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE machine_id = $1 AND stream_name = 'offline'`,
+		testfixtures.DevMachineID)
 	require.NoError(t, err)
 
 	deps := offlineSyncIntegrationDeps(t, pool)
@@ -554,14 +554,14 @@ func TestP06_OfflineSync_duplicateInventoryAdjustmentDoesNotDoubleApply(t *testi
 		_, _ = pool.Exec(ctx2, `UPDATE machine_slot_state SET current_quantity = $1 WHERE machine_id = $2 AND slot_index = 1`,
 			qtyRestore, testfixtures.DevMachineID)
 		_, _ = pool.Exec(ctx2, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
-		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursors WHERE scope_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
-			uuid.Nil, testfixtures.DevMachineID)
+		_, _ = pool.Exec(ctx2, `DELETE FROM machine_sync_cursors WHERE machine_id = $1 AND stream_name = 'offline'`,
+			testfixtures.DevMachineID)
 	})
 
 	_, err := pool.Exec(ctx, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE scope_id = $1 AND machine_id = $2 AND stream_name = 'offline'`,
-		uuid.Nil, testfixtures.DevMachineID)
+	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE machine_id = $1 AND stream_name = 'offline'`,
+		testfixtures.DevMachineID)
 	require.NoError(t, err)
 
 	deps := offlineSyncIntegrationDeps(t, pool)

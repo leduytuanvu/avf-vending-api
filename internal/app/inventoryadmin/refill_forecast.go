@@ -23,7 +23,7 @@ const (
 	UrgencyLow      = "low"
 )
 
-// RefillForecastParams drives refill / low-stock list endpoints (single-company by ScopeID).
+// RefillForecastParams drives refill / low-stock list endpoints (single deployment).
 type RefillForecastParams struct {
 	SiteID    *uuid.UUID
 	MachineID *uuid.UUID

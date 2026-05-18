@@ -7,7 +7,6 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
-	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -15,19 +14,18 @@ import (
 func TestRunEnterpriseRetention_dryRunDoesNotDeletePublishedOutbox(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	org := testfixtures.DevScopeID
 	topic := "retention-dry-" + uuid.New().String()
 
 	_, err := pool.Exec(ctx, `
 INSERT INTO outbox_events (
-  scope_id, topic, event_type, payload, aggregate_type, aggregate_id,
+  topic, event_type, payload, aggregate_type, aggregate_id,
   status, published_at, created_at, updated_at
 )
 VALUES (
-  $1, $2, 'test.event', '{}'::jsonb, 'test', gen_random_uuid(),
+  $1, 'test.event', '{}'::jsonb, 'test', gen_random_uuid(),
   'published', now() - interval '400 days', now() - interval '400 days', now()
 )
-`, org, topic)
+`, topic)
 	require.NoError(t, err)
 
 	var rowID int64

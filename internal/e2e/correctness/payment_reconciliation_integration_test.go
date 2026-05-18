@@ -82,7 +82,7 @@ func TestP06_PaymentReconciliation_providerCapturedLocalPendingVisible(t *testin
 	_, err = pool.Exec(ctx, `UPDATE payments SET state = 'authorized', updated_at = now() WHERE id = $1`, payRes.Payment.ID)
 	require.NoError(t, err)
 
-	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevScopeID, 3600, 100)
+	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevCompanyID, 3600, 100)
 	require.NoError(t, err)
 	found := false
 	for _, r := range rep.ProviderCapturedVsLocalPending {
@@ -161,7 +161,7 @@ func TestP06_PaymentReconciliation_localCapturedMissingProviderEvidenceVisible(t
 	_, err = pool.Exec(ctx, `DELETE FROM payment_provider_events WHERE payment_id = $1`, payRes.Payment.ID)
 	require.NoError(t, err)
 
-	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevScopeID, 3600, 100)
+	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevCompanyID, 3600, 100)
 	require.NoError(t, err)
 	found := false
 	for _, r := range rep.LocalCapturedMissingProviderAudit {
@@ -247,7 +247,7 @@ func TestP06_PaymentReconciliation_appliedWebhookAmountMismatchVisible(t *testin
 	_, err = pool.Exec(ctx, `UPDATE payment_provider_events SET provider_amount_minor = 999 WHERE id = $1`, evID)
 	require.NoError(t, err)
 
-	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevScopeID, 3600, 100)
+	rep, err := admin.ListPaymentReconciliationDrift(ctx, testfixtures.DevCompanyID, 3600, 100)
 	require.NoError(t, err)
 	found := false
 	for _, r := range rep.AppliedWebhookVsPaymentAmountMismatch {

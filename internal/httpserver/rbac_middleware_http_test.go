@@ -9,12 +9,12 @@ import (
 	"github.com/google/uuid"
 )
 
-func testFixtureScopeID() uuid.UUID {
+func testFixtureCompanyUUID() uuid.UUID {
 	return uuid.MustParse("11111111-1111-1111-1111-111111111111")
 }
 
 func TestRBAC_viewerBlockedAuditRead(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{
 		Subject: "550e8400-e29b-41d4-a716-446655440099",
@@ -31,7 +31,7 @@ func TestRBAC_viewerBlockedAuditRead(t *testing.T) {
 }
 
 func TestRBAC_viewerAllowedCatalogRead_blockedCatalogWrite(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{
 		Subject: "550e8400-e29b-41d4-a716-446655440000",
@@ -55,7 +55,7 @@ func TestRBAC_viewerAllowedCatalogRead_blockedCatalogWrite(t *testing.T) {
 }
 
 func TestRBAC_catalogManager_canCatalogWrite_notRefunds(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Subject: "550e8400-e29b-41d4-a716-446655440001", Roles: []string{"catalog_manager"}}
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
@@ -77,7 +77,7 @@ func TestRBAC_catalogManager_canCatalogWrite_notRefunds(t *testing.T) {
 }
 
 func TestRBAC_financeAdmin_canRefund(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{"finance_admin"}}
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
@@ -91,7 +91,7 @@ func TestRBAC_financeAdmin_canRefund(t *testing.T) {
 }
 
 func TestRBAC_financeAdmin_cannotCatalogWrite(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{"finance_admin"}}
 	req := httptest.NewRequest(http.MethodPatch, "/", nil)
@@ -105,7 +105,7 @@ func TestRBAC_financeAdmin_cannotCatalogWrite(t *testing.T) {
 }
 
 func TestRBAC_fleetLifecycle_fleetManagerAllowed_technicianManagerBlocked(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	reqBase := func(roles ...string) *http.Request {
 		p := auth.Principal{Roles: roles}
@@ -135,7 +135,7 @@ func TestRBAC_fleetLifecycle_fleetManagerAllowed_technicianManagerBlocked(t *tes
 }
 
 func TestRBAC_technician_cannotCatalogWrite(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{auth.RoleTechnician}}
 	req := httptest.NewRequest(http.MethodPut, "/", nil)
@@ -149,7 +149,7 @@ func TestRBAC_technician_cannotCatalogWrite(t *testing.T) {
 }
 
 func TestRBAC_technician_cannotTriggerOTAWrite(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{auth.RoleTechnician}}
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
@@ -163,7 +163,7 @@ func TestRBAC_technician_cannotTriggerOTAWrite(t *testing.T) {
 }
 
 func TestRBAC_orgAdmin_passesCatalogAndRefunds(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{auth.RoleOrgAdmin}}
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
@@ -180,7 +180,7 @@ func TestRBAC_orgAdmin_passesCatalogAndRefunds(t *testing.T) {
 
 func TestRBAC_machinePrincipal_bypassesInteractiveCommercePermission(t *testing.T) {
 	mid := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{auth.RoleMachine}, MachineIDs: []uuid.UUID{mid}}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -194,7 +194,7 @@ func TestRBAC_machinePrincipal_bypassesInteractiveCommercePermission(t *testing.
 }
 
 func TestRBAC_interactiveAccountDisabled_rejected(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{"viewer"}, AccountStatus: "disabled"}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -208,7 +208,7 @@ func TestRBAC_interactiveAccountDisabled_rejected(t *testing.T) {
 }
 
 func TestRBAC_technician_cannotUserRead(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{auth.RoleTechnician}}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -222,7 +222,7 @@ func TestRBAC_technician_cannotUserRead(t *testing.T) {
 }
 
 func TestRBAC_support_cannotUserRead(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{"support"}}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -236,7 +236,7 @@ func TestRBAC_support_cannotUserRead(t *testing.T) {
 }
 
 func TestRBAC_orgAdmin_canUserReadAndSessionsRevoke(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{auth.RoleOrgAdmin}}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -256,7 +256,7 @@ func TestRBAC_orgAdmin_canUserReadAndSessionsRevoke(t *testing.T) {
 }
 
 func TestRBAC_technician_cannotFleetSiteWrite(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{auth.RoleTechnician}}
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
@@ -270,7 +270,7 @@ func TestRBAC_technician_cannotFleetSiteWrite(t *testing.T) {
 }
 
 func TestRBAC_support_fleetReadOnly(t *testing.T) {
-	org := testFixtureScopeID()
+	org := testFixtureCompanyUUID()
 	_ = org
 	p := auth.Principal{Roles: []string{"support"}}
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
