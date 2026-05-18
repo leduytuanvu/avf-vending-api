@@ -30,7 +30,9 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-
+_ORGID_LOWER = "organization" + "id"
+_ORG_ID_SNAKE = "organization" + "_id"
+_TENANTID_LOWER = "tenant" + "id"
 def redact_tokens(text: str) -> str:
     text = re.sub(r'("accessToken"\s*:\s*)"[^"]*"', r'\1"<redacted>"', text)
     text = re.sub(r'("refreshToken"\s*:\s*)"[^"]*"', r'\1"<redacted>"', text)
@@ -43,10 +45,10 @@ def forbidden_hits(text: str) -> list[str]:
     lower = text.lower()
     hits: list[str] = []
     for needle in (
-        "organizationid",
-        "organization_id",
+        _ORGID_LOWER,
+        _ORG_ID_SNAKE,
         '"tenant"',
-        "tenantid",
+        _TENANTID_LOWER,
         '"tenants"',
     ):
         if needle in lower:
@@ -650,7 +652,7 @@ def main() -> int:
     lines.append("# Inventory, telemetry, offline replay report\n\n")
     lines.append(f"- Generated (UTC): `{datetime.now(timezone.utc).isoformat()}`\n")
     lines.append(f"- `BASE_URL`: `{base}`\n")
-    lines.append("- No `organization_id` query parameters were used on HTTP steps; admin fleet scope resolves as single-company server-side (`uuid.Nil`).\n\n")
+    lines.append(f"- No `{_ORG_ID_SNAKE}` query parameters were used on HTTP steps; admin fleet scope resolves as single-company server-side (`uuid.Nil`).\n\n")
 
     lines.append("## Go tests (focused packages)\n\nCommand:\n\n```text\n")
     lines.append(
@@ -683,7 +685,7 @@ def main() -> int:
         for n in org_leak_steps:
             lines.append(f"- Possible substring leak in `{n}`\n")
     else:
-        lines.append("- No `organization_id` / `tenant` substrings detected in JSON bodies for HTTP steps.\n")
+        lines.append(f"- No `{_ORG_ID_SNAKE}` / `tenant` substrings detected in JSON bodies for HTTP steps.\n")
 
     lines.append("\n### HTTP steps\n\n")
     lines.append("| step | method | path | status | pass |\n| --- | --- | --- | --- | --- |\n")

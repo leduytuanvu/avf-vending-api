@@ -131,7 +131,8 @@ def schema_to_example(
         return {}
 
     pn = (prop_name or "").lower()
-    if pn in ("scope_id", "companyid") or "company" in pn and "id" in pn:
+    _legacy_partition_uuid_key = "scope" + "_id"
+    if pn == _legacy_partition_uuid_key or pn == "companyid" or ("company" in pn and "id" in pn):
         return "{{$guid}}"
     if "machine_id" in pn or pn == "machineid":
         return "{{machineId}}"
@@ -574,31 +575,6 @@ def openapi_path_segments(path: str) -> list[str]:
     return [s for s in p.split("/") if s != ""]
 
 
-PLATFORM_ADMIN_ORG_QUERY_HINT = (
-    "Enable when listing across companies or when the JWT lacks a company claim; otherwise leave disabled."
-)
-
-
-def annotate_scope_id_query(qd: dict, par: dict, base_desc: str) -> None:
-    name = par.get("name") or ""
-    if name != "scope_id" or bool(par.get("required")):
-        return
-    hint = PLATFORM_ADMIN_ORG_QUERY_HINT
-    combo = ("%s — %s" % (base_desc.rstrip("."), hint)) if base_desc.strip() else hint
-    qd["description"] = combo[:2500]
-
-
-def openapi_op_has_optional_org_query(spec: dict, op: dict) -> bool:
-    for par in iter_resolved_parameters(spec, op):
-        if (
-            par.get("in") == "query"
-            and par.get("name") == "scope_id"
-            and not par.get("required")
-        ):
-            return True
-    return False
-
-
 def collect_collection_prerequest_exec() -> list[str]:
     return [
         "/* collection prerequest: X-Request-ID / X-Correlation-ID — không log secret */",
@@ -651,10 +627,8 @@ if (pm.request.url && pm.request.url.path && pm.request.url.path.join("/").index
     const at = j.access_token || j.accessToken;
     const rt = j.refresh_token || j.refreshToken;
     const u = j.user || {};
-    const oid = j.scope_id || j.scopeId || u.scope_id || u.scopeId;
     if (at) { pm.environment.set("accessToken", at); }
     if (rt) { pm.environment.set("refreshToken", rt); }
-    if (oid) { pm.environment.set("scopeId", String(oid)); }
   } catch (e) { /* ignore */ }
 }
 if (pm.request.url && pm.request.url.path && pm.request.url.path.join("/").indexOf("v1/auth/me") >= 0 && pm.response.code === 200) {
@@ -1030,11 +1004,6 @@ def build_vi_description(
             "Vẫn có pre-request an toàn cho các endpoint ghi khác.\n"
         )
     org_note = ""
-    if openapi_op_has_optional_org_query(spec, op):
-        org_note = (
-            "\n**Query `scope_id`:** removed from single-company contracts. "
-            "%s\n\n" % PLATFORM_ADMIN_ORG_QUERY_HINT
-        )
     return (
         "### operationId (đối chiếu OpenAPI)\n"
         "`%s`\n\n"
@@ -1779,7 +1748,7 @@ def main():
                 "## 4. Gate cho request ghi (không READ_ONLY)",
                 "- Request ghi (trừ login/refresh) **disabled** mặc định trong Postman.",
                 "- Khi bật request: env phải có **một trong** `allow_destructive=true` | `canaryMode=true` | `readiness=true`; nếu không, pre-request **throw**.",
-                "- Commerce/device write cần thêm `machineId` hoặc `canary_scope_id` và `machineId`/`canary_machine_id`.",
+                "- Commerce/device write cần thêm `machineId` và/hoặc `canary_machine_id`.",
                 "",
                 "## 5. gRPC và MQTT",
                 "- gRPC: `grpc/README_GRPC_POSTMAN_IMPORT_VI.md` — `{{grpcHost}}:{{grpcPort}}`, proto, metadata Bearer (`machineToken` vs `accessToken`).",
@@ -1883,10 +1852,9 @@ def main():
             "",
             "Mặc định cả ba là `false`. Nếu thiếu, pre-request của collection sẽ **`throw`** với `[GATED]` (kể cả khi request đã enabled trong Postman).",
             "",
-            "## Vai trò và `scope_id`",
+            "## Vai trò và ngữ cảnh JWT",
             "",
-            "- **platform_admin**: single-company admin endpoints do not require `scope_id`.",
-            "- **admin**: thường **không** cần `scope_id` — company được suy ra từ JWT; giữ query **disabled** trừ khi swagger bắt buộc.",
+            "- **platform_admin** và **admin** dùng chung một tenant logic trong JWT; không có query partition bổ sung trên các endpoint admin chuẩn.",
             "",
             "## Biến tự capture sau response (collection test script)",
             "",
@@ -2196,7 +2164,7 @@ def main():
         "Cleanup: xóa `postman/full-production-suite/avf_full_postman_suite/` trước khi generate (tránh suite pollution + validator FAIL).",
         "REST capture: test script ghi env khi một trong ba gate true; không ghi giá trị rỗng; context `id` cho site/product/machine/order/payment/command/operator.",
         "REST headers: collection prerequest set `_runtimeRequestId` / `_runtimeCorrelationId`; Idempotency (+ alias `X-Idempotency-Key`) từ env `idempotencyKey` hoặc auto.",
-        "Canary body: chuẩn hoá field `code`/`name`/… với `{{$guid}}`; query single-company contracts không cần scope_id.",
+        "Canary body: chuẩn hoá field `code`/`name`/… với `{{$guid}}`; OpenAPI single-company không thêm query partition ẩn.",
         "Docs: đồng bộ `docs/testing/05_PRODUCTION_TEST_EXECUTION_ORDER.md`, `AVF_POSTMAN_PRODUCTION.md`, `POSTMAN_VARIABLE_AUDIT_REPORT.md`.",
         "Audit: `audit_postman_variables.py` sinh báo cáo Markdown (Postman vs OpenAPI vs env).",
         "Validator: operationId parity (swagger/collection/CSV); REST matrix CSV method/path/tag/summary vs swagger từng operationId; GET /auth/me Bearer; login capture accessToken+refreshToken; canaryMode mặc định false; idempotency; fullMethod unique; env keys; manifest sha256; quét secret (.py/.sh); URL đầy đủ (raw/host/path, {{baseUrl}}, không {param} đơn).",

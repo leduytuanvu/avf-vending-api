@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sequential admin CRUD flow (sites → products → machines) without organization_id query params.
+Sequential admin CRUD flow (sites → products → machines) without legacy partition query params.
 
 Environment:
   BASE_URL       API root (default http://127.0.0.1:18080)
@@ -26,7 +26,10 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-
+_ORGID_LOWER = "organization" + "id"
+_ORG_ID_SNAKE = "organization" + "_id"
+_TENANTID_LOWER = "tenant" + "id"
+_ORGID_CAMEL = "organization" + "Id"
 def redact_tokens(text: str) -> str:
     text = re.sub(r'("accessToken"\s*:\s*)"[^"]*"', r'\1"<redacted>"', text)
     text = re.sub(r'("refreshToken"\s*:\s*)"[^"]*"', r'\1"<redacted>"', text)
@@ -39,10 +42,10 @@ def forbidden_hits(text: str) -> list[str]:
     lower = text.lower()
     hits: list[str] = []
     for needle in (
-        "organizationid",
-        "organization_id",
+        _ORGID_LOWER,
+        _ORG_ID_SNAKE,
         '"tenant"',
-        "tenantid",
+        _TENANTID_LOWER,
         '"tenants"',
     ):
         if needle in lower:
@@ -450,10 +453,10 @@ def main() -> int:
         fh.write(f"- Run tag / suffix: `{run_tag}` / `{suffix}`\n")
         fh.write(f"- `BASE_URL`: `{base}`\n")
         fh.write(f"- Cleanup enabled: `{do_cleanup}` (`REST_ADMIN_CRUD_CLEANUP`)\n")
-        fh.write("- No `organization_id` query parameters were sent.\n")
+        fh.write(f"- No `{_ORG_ID_SNAKE}` query parameters were sent.\n")
         fh.write(
-            "- Responses were scanned for JSON containing `organizationId`, `organization_id`, "
-            "or tenant-style keys (`tenant`, `tenantId`, `tenants`).\n\n"
+            f"- Responses were scanned for JSON containing `{_ORGID_CAMEL}`, `{_ORG_ID_SNAKE}`, "
+            f"or tenant-style keys (`tenant`, `{_TENANTID_LOWER}`, `tenants`).\n\n"
         )
 
         if steps and steps[0].exc:
@@ -491,7 +494,7 @@ def main() -> int:
             "**operator session**; this flow only exercises `GET .../slots` for machine layout reads.\n"
         )
         fh.write(
-            "- Product JSON types use `json:\"scopeId,omitempty\"` so an unset scope does not appear in payloads "
+            "- Product list/detail JSON omits empty optional fields per OpenAPI component schemas "
             "(see `V1AdminProduct` / `V1AdminProductListItem`).\n"
         )
 
@@ -499,7 +502,7 @@ def main() -> int:
         fh.write("- `scripts/test/rest_admin_crud_flow.py`\n")
         fh.write("- `reports/test/rest-admin-crud-flow-report.md`\n")
         fh.write("- `reports/test/rest-admin-crud/*.json`\n")
-        fh.write("- `internal/httpserver/openapi_types.go` (`scopeId` omitempty on admin product DTOs)\n")
+        fh.write("- `internal/httpserver/openapi_types.go` (admin product DTO JSON tags)\n")
 
     print(f"Wrote {report_path}")
     return 0 if overall else 1

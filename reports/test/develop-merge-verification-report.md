@@ -1,76 +1,56 @@
-# develop merge verification — single-company scope removal
+# develop merge verification — single-company baseline cleanup
 
-Date: 2026-05-18  
-Source branch: `test/openapi-json-body-shape-proof`  
-Target branch: `develop`  
-PR: [#221](https://github.com/leduytuanvu/avf-vending-api/pull/221) — *fix: complete single-company scope removal*
+Date: 2026-05-18 (UTC)
 
-## Branch tip (pre-merge on source branch)
+## Source / target
 
-- Latest commit on branch: `cda359c51faa4db6d6b67adb321f4bb5a0bf7b78`
-- Recent commits on branch:
-  - `6afded1` — `fix: complete single-company scope removal`
-  - `cda359c` — `fix: unblock CI migration gate and native Postman generator`
+- **Source branch:** `test/openapi-json-body-shape-proof` (tip merged into PR below)
+- **Target branch:** `develop`
+- **Pull request:** [#223](https://github.com/leduytuanvu/avf-vending-api/pull/223) — *fix: finalize single-company baseline cleanup*
 
-## develop baseline before merge
+## Intended merge method
 
-- `origin/develop` at verification time: `742658b3a3989a7a31604659f2c4306edb4ba174`
+- **Squash merge** with branch deletion (per team workflow); execution blocked until branch protection requirements are satisfied (see **Final decision**).
 
-## Files changed summary (PR scope, high level)
+## CI status (GitHub)
 
-- **SQL / schema:** `db/queries/*.sql`, `db/schema/01_platform.sql`, sqlc outputs under `internal/gen/db/`, migration marker `migrations/00076_drop_legacy_scope_organization_tenant.sql`, manual teardown `docs/runbooks/manual-db-cleanup/drop_legacy_scope_organization_tenant.sql`.
-- **Runtime:** `internal/httpserver/*`, `internal/modules/postgres/*`, catalog/fleet/feature-flag/reporting paths, removal of `internal/app/api/scope_errors.go`, integration tests including `fleet_site_integration_test.go`.
-- **Contracts / docs:** `docs/swagger/swagger.json`, `docs/postman/*.json`, testing docs, Postman generator scripts added under `postman/full-production-suite/` (`generate_full_postman_suite.py`, `validate_generated_assets.py`).
-- **Tooling:** `tools/build_openapi.py`, `tools/build_postman_collection.py`, `tools/postman/collection_test.js`, loadtest helpers.
+All required checks on PR **223** reported **pass** at verification time, including:
 
-## Verification commands and results (local)
+- Go CI Gates  
+- Linux race and contract gates  
+- Migration Safety Check  
+- Workflow and Script Quality  
+- Docker Compose config / governance / secret scan / vulnerability scan / deployment scan  
 
-| Gate | Result |
-|------|--------|
-| `sqlc generate` | PASS |
-| `python tools/build_openapi.py` | PASS |
-| `python postman/full-production-suite/generate_full_postman_suite.py` | PASS (`VALIDATION_PASS`, REST 325) |
-| `python tools/build_postman_collection.py` then `git diff --exit-code docs/postman/` | PASS (no drift vs committed native Postman) |
-| `gofmt` + `go vet ./...` | PASS |
-| `go test ./... -count=1` | PASS |
-| `DEPLOY_TARGET=ci bash scripts/ci/verify_migrations.sh` | PASS (after 00076 reduced to non-destructive marker) |
-| Forbidden-token `git grep` (pathspec excludes per project gate, incl. `reports/**`, `docs/runbooks/manual-db-cleanup/**`, migrations `00000`–`00075`) | PASS — empty |
-| `bash tests/e2e/run-all-local.sh --fresh-data` | PASS — exit 0, failed=0, skipped=0 |
+*(Some optional checks showed “skipping” — treated as non-blocking.)*
 
-### E2E run directory (latest full pass)
+## Local / workstation gates (pre-push)
 
-`.e2e-runs/run-20260518T021608Z-20847-26868`
+Aligned with `reports/test/final-remove-scope-id-100-percent-report.md` on the same PR:
 
-## CI status (PR #221)
+- Generator suite (OpenAPI, sqlc, Postman scripts): PASS  
+- `go vet ./...`: PASS  
+- `go test ./... -count=1`: PASS (including post-rebase rerun)  
+- Fresh Postgres (`avf-postgres`): goose applied through **`00003`**; legacy-name schema probes: **0 rows** each  
+- Forbidden-token `git grep` gates: PASS  
+- E2E (Git Bash): gRPC, MQTT, and `run-all-local.sh --fresh-data` — PASS (failed **0**, skipped **0**)
 
-All required checks **SUCCESS** on workflow run `26010299549` (CI), `26010299548` (Linux race and contract gates), `26010299552` (Security jobs present).  
-Examples: Migration Safety Check ✓, Go CI Gates ✓, Linux race and contract gates ✓.
+### E2E run directories (gitignored)
 
-**Merge blockers (GitHub policy):** `reviewDecision: REVIEW_REQUIRED` — PR is mergeable but blocked until an approving review (and any org rules) complete. `gh pr merge` without `--admin` fails by design.
+Under `.e2e-runs/` (local only):
 
-## Remaining allowed legacy references
+- `run-20260518T042444Z-35248-29269` — gRPC standalone  
+- `run-20260518T042652Z-37326-15100` — MQTT standalone  
+- `run-20260518T042756Z-38232-26502` — full `--fresh-data`
 
-- **Historical goose migrations** `00000`–`00075` (excluded from forbidden grep gate).
-- **`docs/runbooks/manual-db-cleanup/**`** — documents and SQL that intentionally mention legacy column names for operator teardown (excluded from forbidden grep gate).
-- **Untracked local-only trees** such as `postman/collections/` (not in `git grep` scan unless tracked).
+## Production reset warning
+
+Squashed baseline migrations require a **planned `public` schema reset** and **`goose up` from zero** on production-style databases; coordinate backup, downtime, seed of platform admin, and smoke tests.
 
 ## Final decision
 
-**BLOCKED** — CI is green and the branch is pushed, but **`develop` does not yet contain this work** because the PR cannot be merged without satisfying branch-protection review (and this environment cannot use `--admin` bypass).
+**BLOCKED** — GitHub reports the pull request is **not mergeable** under current **base branch policy** (`gh pr merge` rejected; auto-merge is disabled on the repository). **CI is green.**
 
-**After** maintainers squash-merge PR #221 using the preferred method:
+After a permitted reviewer (or administrator merge per policy) squash-merges PR **223**, update this section to **MERGED_TO_DEVELOP** and record the **`develop` tip SHA** from:
 
-```text
-gh pr merge 221 --squash --delete-branch
-```
-
-verify:
-
-```bash
-git fetch origin
-git checkout develop
-git pull --ff-only origin develop
-git log -1 --oneline
-```
-
-Then update this report’s “Final decision” section to **MERGED_TO_DEVELOP** and record the squash merge commit SHA.
+`git fetch origin && git checkout develop && git pull --ff-only origin develop && git rev-parse HEAD`

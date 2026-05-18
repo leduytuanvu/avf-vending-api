@@ -1,5 +1,6 @@
 /.env
 /.env.local
+tests/e2e/.env
 tests/e2e/.env.local
 tests/e2e/.env.production.destructive.local
 /.env.staging

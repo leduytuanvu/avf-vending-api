@@ -6,44 +6,34 @@ import (
 	"testing"
 )
 
-func TestMigration00066_indexes_are_additive_if_present(t *testing.T) {
-	b, err := os.ReadFile("../../migrations/00066_p25_capacity_indexes.sql")
+func TestBaselinePlatformMigration_is_irreversible_down(t *testing.T) {
+	b, err := os.ReadFile("../../migrations/00002_platform_schema.sql")
 	if err != nil {
 		t.Fatalf("read migration: %v", err)
 	}
 	raw := string(b)
-	if !strings.Contains(raw, "CREATE INDEX IF NOT EXISTS") {
-		t.Fatal("expected CREATE INDEX IF NOT EXISTS statements")
+	if !strings.Contains(raw, "-- +goose Down") {
+		t.Fatal("expected goose Down section")
 	}
-	if strings.Contains(strings.ToUpper(raw), "DROP TABLE") || strings.Contains(strings.ToUpper(raw), "ALTER TABLE DROP") {
-		t.Fatal("migration must not drop tables/columns")
+	if !strings.Contains(raw, "baseline schema migration irreversible") {
+		t.Fatal("expected irreversible Down marker")
 	}
 }
 
-func TestMigration00071_cost_indexes_are_additive_if_present(t *testing.T) {
-	b, err := os.ReadFile("../../migrations/00071_p23_capacity_cost_indexes.sql")
+func TestBaselinePlatformMigration_defines_core_tables(t *testing.T) {
+	b, err := os.ReadFile("../../migrations/00002_platform_schema.sql")
 	if err != nil {
 		t.Fatalf("read migration: %v", err)
 	}
-	raw := string(b)
-	if !strings.Contains(raw, "CREATE INDEX IF NOT EXISTS") {
-		t.Fatal("expected CREATE INDEX IF NOT EXISTS statements")
-	}
-	if strings.Contains(strings.ToUpper(raw), "DROP TABLE") || strings.Contains(strings.ToUpper(raw), "ALTER TABLE DROP") {
-		t.Fatal("migration must not drop tables/columns")
-	}
-}
-
-func TestMigration00072_operational_anomaly_types_is_safe(t *testing.T) {
-	b, err := os.ReadFile("../../migrations/00072_p24_operational_anomaly_types.sql")
-	if err != nil {
-		t.Fatalf("read migration: %v", err)
-	}
-	raw := string(b)
-	if !strings.Contains(raw, "ALTER TABLE inventory_anomalies") {
-		t.Fatal("expected ALTER TABLE inventory_anomalies")
-	}
-	if strings.Contains(strings.ToUpper(raw), "DROP TABLE") {
-		t.Fatal("migration must not drop tables")
+	raw := strings.ToUpper(string(b))
+	for _, needle := range []string{
+		"CREATE TABLE REGIONS",
+		"CREATE TABLE SITES",
+		"CREATE TABLE MACHINES",
+		"CREATE TABLE PRODUCTS",
+	} {
+		if !strings.Contains(raw, needle) {
+			t.Fatalf("expected %s in baseline migration", needle)
+		}
 	}
 }

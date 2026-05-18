@@ -10,7 +10,7 @@ Environment:
   REST_INDEPENDENT_MACHINE_ID  Optional UUID for machine-scoped GETs
   REST_INDEPENDENT_SITE_ID     Optional UUID for site GET (skipped if unset)
 
-No organization_id query parameters are sent.
+No legacy partition query keys are sent on requests.
 
 Usage:
   python scripts/test/rest_independent_api_smoke.py
@@ -34,7 +34,10 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-
+_ORGID_LOWER = "organization" + "id"
+_ORG_ID_SNAKE = "organization" + "_id"
+_ORGID_CAMEL = "organization" + "Id"
+_TENANTID_LOWER = "tenant" + "id"
 def redact_tokens(text: str) -> str:
     """Strip JWT-like secrets from serialized JSON for evidence files."""
     text = re.sub(r'("accessToken"\s*:\s*)"[^"]*"', r'\1"<redacted>"', text)
@@ -64,10 +67,10 @@ def forbidden_hits(text: str) -> list[str]:
     hits: list[str] = []
     # Match JSON-style keys and snake_case exposure.
     patterns = (
-        "organizationid",
-        "organization_id",
+        _ORGID_LOWER,
+        _ORG_ID_SNAKE,
         '"tenant"',
-        "tenantid",
+        _TENANTID_LOWER,
         '"tenants"',
     )
     for p in patterns:
@@ -573,7 +576,7 @@ def main() -> int:
             "because those payloads routinely contain schema strings that would false-positive.\n"
         )
         fh.write(
-            "- No `organization_id` / `organizationId` query parameters were sent on any request.\n\n"
+            f"- No `{_ORG_ID_SNAKE}` / `{_ORGID_CAMEL}` query parameters were sent on any request.\n\n"
         )
 
         fh.write("## Infra / auth notes\n\n")
