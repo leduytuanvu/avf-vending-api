@@ -3,6 +3,7 @@ package grpcserver
 import (
 	"context"
 	"fmt"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"strings"
 	"sync"
 	"testing"
@@ -276,7 +277,7 @@ func TestMachineCatalog_GetMediaManifest_ResourceExhausted(t *testing.T) {
 
 	items := make([]salecatalog.Item, 65)
 	for i := range items {
-		pid := uuid.New()
+		pid := id.NewUUIDV7()
 		items[i] = salecatalog.Item{
 			ProductID: pid,
 			SKU:       fmt.Sprintf("S%d", i),
@@ -1065,7 +1066,7 @@ func TestMachineCatalog_SyncCatalogBundle_BasisRemovals(t *testing.T) {
 	cfg := testMachineGRPCConfig()
 	machineID := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 	snap := catalogBundleTestSnapshot("aaa")
-	stale := uuid.New().String()
+	stale := id.NewUUIDV7().String()
 	srv, err := NewServer(cfg, zap.NewNop(), nil, nil, nil, nil, nil, nil, func(s *grpc.Server) error {
 		machinev1.RegisterMachineCatalogServiceServer(s, &machineCatalogServer{
 			deps: MachineGRPCServicesDeps{SaleCatalog: stubSaleCatalog{snap: snap}, Pool: nil},

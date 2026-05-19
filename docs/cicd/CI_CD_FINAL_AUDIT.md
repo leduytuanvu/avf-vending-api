@@ -211,7 +211,7 @@ ENFORCE_GITHUB_GOVERNANCE=false bash scripts/ci/verify_github_governance.sh
 **Full enterprise script** (includes Go tests, compose, OpenAPI):
 
 ```bash
-bash scripts/verify_enterprise_release.sh
+bash scripts/ci/verify_enterprise_release.sh
 ```
 
 **Final audit run (2026-04-26):** `git diff --check`, `verify_workflow_contracts.sh`, and `verify_github_workflow_cicd_contract.py` **passed**. `verify_github_governance.sh` **skipped API checks** without a token (**expected** locally). Repository tree contained **no** `__pycache__` or `*.pyc` files.

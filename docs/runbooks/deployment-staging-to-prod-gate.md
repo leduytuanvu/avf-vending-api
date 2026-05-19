@@ -51,5 +51,5 @@ In **Actions → Deploy Production → Run workflow** (on branch **`main`**) set
 ## Related
 
 - [Staging / pre-prod setup](staging-preprod.md)
-- [CI/CD staging–production contract](../ci-cd/staging-production-gate.md)
+- [CI/CD staging–production contract](../cicd/staging-production-gate.md)
 - [Prod / GHCR image deploy flow](prod-ghcr-image-only-deploy.md) (if applicable)

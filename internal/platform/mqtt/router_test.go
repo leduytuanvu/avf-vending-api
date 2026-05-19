@@ -3,6 +3,7 @@ package mqtt
 import (
 	"context"
 	"fmt"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 
 	"github.com/google/uuid"
@@ -28,7 +29,7 @@ func (rejectIngest) IngestCommandReceipt(ctx context.Context, in CommandReceiptI
 
 func TestDispatch_rejectsOversizePayload(t *testing.T) {
 	t.Parallel()
-	mid := uuid.New()
+	mid := id.NewUUIDV7()
 	topic := fmt.Sprintf("pre/%s/telemetry", mid)
 	payload := []byte(`{"event_type":"x","payload":{}}`)
 	lim := &TelemetryIngressLimits{

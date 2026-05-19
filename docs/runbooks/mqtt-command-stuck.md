@@ -46,4 +46,4 @@ Production rejects plain `tcp://` / `mqtt://` to non-localhost brokers; localhos
 
 **Runbooks:** `docs/runbooks/observability-alerts.md#command-ack-timeout-spike` and `#mqtt-command-dispatch-refused-elevated`.
 
-Legacy `avf_mqtt_*` series may still mirror these; prefer stable names in [`docs/observability/production-metrics.md`](../observability/production-metrics.md).
+Legacy `avf_mqtt_*` series may still mirror these; prefer stable names in [`docs/production/production-metrics.md`](../production/production-metrics.md).

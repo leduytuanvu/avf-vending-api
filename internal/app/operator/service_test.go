@@ -3,6 +3,7 @@ package operator
 import (
 	"context"
 	"errors"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -104,8 +105,8 @@ func strPtr(s string) *string { return &s }
 func TestEndOperatorSession_invalidFinalStatus(t *testing.T) {
 	svc := NewService(noopOpRepo{}, memMachineRepo{m: fleet.Machine{}}, memTechRepo{}, nil)
 	_, err := svc.EndOperatorSession(context.Background(), EndOperatorSessionInput{
-		MachineID:   uuid.New(),
-		SessionID:   uuid.New(),
+		MachineID:   id.NewUUIDV7(),
+		SessionID:   id.NewUUIDV7(),
 		FinalStatus: "ACTIVE",
 	})
 	if err != domainoperator.ErrInvalidSessionEndStatus {
@@ -123,8 +124,8 @@ func (r touchInactiveRepo) GetOperatorSessionByID(ctx context.Context, id uuid.U
 }
 
 func TestTouchOperatorSessionActivity_requiresActive(t *testing.T) {
-	mid := uuid.New()
-	sid := uuid.New()
+	mid := id.NewUUIDV7()
+	sid := id.NewUUIDV7()
 	sess := domainoperator.Session{
 		ID:        sid,
 		MachineID: mid,
@@ -145,8 +146,8 @@ func (memAssignFalse) HasActiveAssignment(ctx context.Context, technicianID, mac
 }
 
 func TestStartTechnicianSession_notAssignedToMachine(t *testing.T) {
-	mid := uuid.New()
-	tid := uuid.New()
+	mid := id.NewUUIDV7()
+	tid := id.NewUUIDV7()
 	svc := NewService(noopOpRepo{}, memMachineRepo{m: fleet.Machine{ID: mid}}, memTechRepo{t: fleet.Technician{ID: tid}}, memAssignFalse{})
 	_, err := svc.StartOperatorSession(context.Background(), StartOperatorSessionInput{
 		MachineID:    mid,
@@ -159,8 +160,8 @@ func TestStartTechnicianSession_notAssignedToMachine(t *testing.T) {
 }
 
 func TestStartTechnicianSession_requiresAssignmentChecker(t *testing.T) {
-	mid := uuid.New()
-	tid := uuid.New()
+	mid := id.NewUUIDV7()
+	tid := id.NewUUIDV7()
 	svc := NewService(noopOpRepo{}, memMachineRepo{m: fleet.Machine{ID: mid}}, memTechRepo{t: fleet.Technician{ID: tid}}, nil)
 	_, err := svc.StartOperatorSession(context.Background(), StartOperatorSessionInput{
 		MachineID:    mid,
@@ -173,7 +174,7 @@ func TestStartTechnicianSession_requiresAssignmentChecker(t *testing.T) {
 }
 
 func TestStartSession_rejectsPastExpiry(t *testing.T) {
-	mid := uuid.New()
+	mid := id.NewUUIDV7()
 	past := time.Now().UTC().Add(-time.Hour)
 	svc := NewService(noopOpRepo{}, memMachineRepo{m: fleet.Machine{ID: mid}}, memTechRepo{}, nil)
 	_, err := svc.StartOperatorSession(context.Background(), StartOperatorSessionInput{
@@ -188,7 +189,7 @@ func TestStartSession_rejectsPastExpiry(t *testing.T) {
 }
 
 func TestStartSession_adminTakeoverUnauthorized(t *testing.T) {
-	mid := uuid.New()
+	mid := id.NewUUIDV7()
 	principal := "u-1"
 	svc := NewService(noopOpRepo{}, memMachineRepo{m: fleet.Machine{ID: mid}}, memTechRepo{}, nil)
 	_, err := svc.StartOperatorSession(context.Background(), StartOperatorSessionInput{
@@ -213,9 +214,9 @@ func (r sessionRepoStub) GetOperatorSessionByID(ctx context.Context, id uuid.UUI
 }
 
 func TestRecordActionAttribution_rejectsSessionMachineMismatch(t *testing.T) {
-	machineA := uuid.New()
-	machineB := uuid.New()
-	sid := uuid.New()
+	machineA := id.NewUUIDV7()
+	machineB := id.NewUUIDV7()
+	sid := id.NewUUIDV7()
 	sess := domainoperator.Session{
 		ID:        sid,
 		MachineID: machineA,
@@ -235,9 +236,9 @@ func TestRecordActionAttribution_rejectsSessionMachineMismatch(t *testing.T) {
 }
 
 func TestEndSession_rejectsWrongMachine(t *testing.T) {
-	machineA := uuid.New()
-	machineB := uuid.New()
-	sid := uuid.New()
+	machineA := id.NewUUIDV7()
+	machineB := id.NewUUIDV7()
+	sid := id.NewUUIDV7()
 	sess := domainoperator.Session{
 		ID:        sid,
 		MachineID: machineA,

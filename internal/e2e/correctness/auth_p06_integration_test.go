@@ -3,6 +3,7 @@ package correctness
 import (
 	"bytes"
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -32,7 +32,7 @@ func TestP06_E2E_Auth_DisabledUserCannotLogin(t *testing.T) {
 	svc, err := appauth.NewService(appauth.Deps{Queries: queries, Issuer: issuer, Pool: pool})
 	require.NoError(t, err)
 
-	id := uuid.New()
+	id := id.NewUUIDV7()
 	email := "p06-disabled-" + id.String()[:8] + "@test.example.com"
 	hash, err := bcrypt.GenerateFromPassword([]byte("password12345"), bcrypt.MinCost)
 	require.NoError(t, err)

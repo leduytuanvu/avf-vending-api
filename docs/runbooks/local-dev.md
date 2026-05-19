@@ -77,7 +77,7 @@ python tools/openapi_verify_release.py
 Local mutating smoke, after migrations and seed data:
 
 ```bash
-bash scripts/smoke/local_field_smoke.sh --base-url http://localhost:8080 --evidence-json smoke-reports/local-field-smoke.json
+bash scripts/deploy/smoke/local_field_smoke.sh --base-url http://localhost:8080 --evidence-json smoke-reports/local-field-smoke.json
 ```
 
 ## Reset local database only (destructive)

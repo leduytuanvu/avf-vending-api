@@ -5,6 +5,7 @@ package telemetryapp
 import (
 	"context"
 	"errors"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -13,7 +14,6 @@ import (
 	"github.com/avf/avf-vending-api/internal/config"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -116,7 +116,7 @@ func TestBoundedDeviceIngest_queueFullDrop(t *testing.T) {
 		p.Close()
 	}()
 
-	mid := uuid.New()
+	mid := id.NewUUIDV7()
 	ctx := context.Background()
 	in := platformmqtt.TelemetryIngest{MachineID: mid, EventType: "heartbeat", Payload: []byte("{}")}
 
@@ -159,7 +159,7 @@ func TestBoundedDeviceIngest_perMachineRateLimit(t *testing.T) {
 	p := NewBoundedDeviceIngest(zap.NewNop(), stub, tel)
 	defer p.Close()
 
-	mid := uuid.New()
+	mid := id.NewUUIDV7()
 	ctx := context.Background()
 	in := platformmqtt.TelemetryIngest{MachineID: mid, EventType: "heartbeat", Payload: []byte("{}")}
 
@@ -191,7 +191,7 @@ func TestBoundedDeviceIngest_criticalTelemetryBypassesQueueUnderDroppablePressur
 		p.Close()
 	}()
 
-	mid := uuid.New()
+	mid := id.NewUUIDV7()
 	ctx := context.Background()
 	hb := platformmqtt.TelemetryIngest{MachineID: mid, EventType: "heartbeat", Payload: []byte("{}")}
 	if err := p.IngestTelemetry(ctx, hb); err != nil {
@@ -252,7 +252,7 @@ func TestBoundedDeviceIngest_criticalCommandReceiptBypassesQueue(t *testing.T) {
 		p.Close()
 	}()
 
-	mid := uuid.New()
+	mid := id.NewUUIDV7()
 	ctx := context.Background()
 	hb := platformmqtt.TelemetryIngest{MachineID: mid, EventType: "heartbeat", Payload: []byte("{}")}
 	if err := p.IngestTelemetry(ctx, hb); err != nil {
@@ -269,7 +269,7 @@ func TestBoundedDeviceIngest_criticalCommandReceiptBypassesQueue(t *testing.T) {
 		Status:     "acked",
 		DedupeKey:  "d1",
 		Payload:    []byte("{}"),
-		CommandID:  uuid.New(),
+		CommandID:  id.NewUUIDV7(),
 		OccurredAt: time.Now().UTC(),
 	}
 	if err := p.IngestCommandReceipt(ctx, rec); err != nil {
@@ -295,7 +295,7 @@ func TestBoundedDeviceIngest_criticalReturnsInnerErrorWithoutSuccess(t *testing.
 	p := NewBoundedDeviceIngest(zap.NewNop(), stub, telCfg)
 	defer p.Close()
 
-	mid := uuid.New()
+	mid := id.NewUUIDV7()
 	ctx := context.Background()
 	in := platformmqtt.TelemetryIngest{MachineID: mid, EventType: "events.vend", Payload: []byte("{}")}
 	if err := p.IngestTelemetry(ctx, in); !errors.Is(err, wantErr) {
@@ -326,7 +326,7 @@ func TestBoundedDeviceIngest_compactableShadowLatestCoalesces(t *testing.T) {
 		p.Close()
 	}()
 
-	mid := uuid.New()
+	mid := id.NewUUIDV7()
 	ctx := context.Background()
 
 	if err := p.IngestShadowReported(ctx, platformmqtt.ShadowReportedIngest{MachineID: mid, ReportedJSON: []byte(`{"v":1}`)}); err != nil {

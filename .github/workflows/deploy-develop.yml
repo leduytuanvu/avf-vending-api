@@ -228,7 +228,7 @@ jobs:
             fail "error: security-verdict verdict is '${verdict_raw}' (expected pass, fail, skipped, or no-candidate)"
           fi
 
-          python3 scripts/release/validate_release_verdict.py staging-candidate
+          python3 scripts/deploy/release/validate_release_verdict.py staging-candidate
 
   resolve-image-refs:
     name: Resolve Staging Immutable Image Refs
@@ -360,7 +360,7 @@ jobs:
           [[ -f "${verdict_file}" ]] || fail "security-verdict.zip did not contain security-verdict.json"
           python3 -c "import json; json.load(open('${verdict_file}',encoding='utf-8'))" || fail "security-verdict.json is not valid JSON"
 
-          python3 scripts/release/validate_release_verdict.py staging-gate
+          python3 scripts/deploy/release/validate_release_verdict.py staging-gate
 
 
       - name: Record staging gate summary
@@ -1033,7 +1033,7 @@ jobs:
           target="${SSH_USER}@${STAGING_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-            "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && bash 'scripts/smoke_staging.sh'"
+            "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && bash 'scripts/deploy/smoke_staging.sh'"
 
       - name: Post-deploy smoke test (runner, evidence + step summary)
         id: smoke_post_deploy

@@ -1,5 +1,6 @@
 /.env
 /.env.local
+/.env.*.local
 tests/e2e/.env
 tests/e2e/.env.local
 tests/e2e/.env.production.destructive.local
@@ -42,6 +43,7 @@ Thumbs.db
 .bin/
 *.exe
 *.test
+.go-tmp/
 
 # Local E2E shell harness artifacts (planned scripts under tests/e2e/)
 .e2e-runs/
@@ -49,17 +51,51 @@ Thumbs.db
 # Local Go integration / PowerShell workflow output (.test-runs/<timestamp>/)
 .test-runs/
 
-# Postman desktop local workspace metadata (not docs/postman JSON collections)
+# Postman desktop local workspace metadata (not committed CI collections)
 .postman/
+# Postman Desktop folder-style exports (canonical CI JSON is flat files only)
+postman/collections/*/
+# Postman Desktop folder exports and sidecar resources (not CI canonical JSON)
+postman/collections/**/.resources/
+postman/collections/**/*.postman_collection.json.bak
+postman/specs/
+# Packaged Postman suite archives and local Newman/run output (sources stay tracked)
+postman/**/*.zip
+postman/**/newman/
+postman/**/newman-report/
+postman/reports/**/*
+!postman/reports/README.md
+postman/**/*-report.html
+postman/**/*-report.json
+.e2e-runs/**/newman-report.json
+.e2e-runs/**/newman-junit.xml
 
 # Local CI/security reports
 ci-reports/
 security-reports/
+migration-evidence/*.json
 *.sarif
 coverage.out
 coverage.xml
+coverage/
+*.coverprofile
 repomix-output.xml
 
+# Local logs and editor/session artifacts
+.cursor-*.log
+.cursor-test-file-list.txt
+*.log
+tmp/
+*.tmp
+*.bak
+*.old
+*.orig
+
+# Database dumps and backup folders (local only; production paths under deployments/prod stay documented)
+*.sql.gz
+*.dump
+backups/
+
 # Local production deploy input files
-ops/private/
+deployments/docker/observability/private/
 prod-deploy-inputs*.json

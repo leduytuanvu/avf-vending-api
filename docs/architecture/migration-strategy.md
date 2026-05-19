@@ -75,7 +75,7 @@ The following is **descriptive of the codebase**, not a promise that every optio
 | **Application layer** | `internal/app/*` owns commerce, device, fleet, reliability, and HTTP app composition; handlers in `internal/httpserver` stay thin. |
 | **HTTP API** | `/health/*`, optional `/metrics`, JWT **`/v1`** admin lists, role-scoped lists, machine shadow access—see `internal/httpserver` and `internal/app/api`. |
 | **NATS** | JetStream client, streams, outbox **publisher** in `internal/platform/nats`; **worker** enables it when `NATS_URL` is set. `cmd/worker` also runs telemetry JetStream consumers. There is still **no** in-repo consumer for worker outbox subjects. |
-| **MQTT** | Subscriber/router in `internal/platform/mqtt`; **mqtt-ingest** publishes classified envelopes to **NATS JetStream** when `NATS_URL` is set (`telemetryapp` bridge), else legacy direct `postgres.Store`. **Worker** consumes telemetry streams and writes rollups/snapshots/incidents. See `ops/TELEMETRY_PIPELINE.md`. |
+| **MQTT** | Subscriber/router in `internal/platform/mqtt`; **mqtt-ingest** publishes classified envelopes to **NATS JetStream** when `NATS_URL` is set (`telemetryapp` bridge), else legacy direct `postgres.Store`. **Worker** consumes telemetry streams and writes rollups/snapshots/incidents. See `deployments/docker/observability/TELEMETRY_PIPELINE.md`. |
 | **Object storage** | S3-compatible storage is **implemented for API artifacts** when `API_ARTIFACTS_ENABLED=true`; broader OTA/diagnostic usage is still follow-on work. |
 | **Temporal** | `internal/platform/temporal` now backs a real `cmd/temporal-worker`; `cmd/api`, `cmd/worker`, and `cmd/reconciler` can schedule selected workflow follow-up behind `TEMPORAL_SCHEDULE_*` flags. |
 | **ClickHouse** | Optional **worker** path for mirroring published outbox events when analytics flags are enabled; **not** yet the general telemetry analytics plane. |
@@ -84,4 +84,4 @@ The following is **descriptive of the codebase**, not a promise that every optio
 
 For the concise current-state freeze, see [`current-architecture.md`](current-architecture.md). When cutting over traffic from another system, update both documents and add links to runbooks, dashboards, and the exact routing flip checklist.
 
-**Live ops notes** for this codebase: [`ops/RUNBOOK.md`](../../ops/RUNBOOK.md) (incidents, log queries, SQL) and [`ops/METRICS.md`](../../ops/METRICS.md).
+**Live ops notes** for this codebase: [`deployments/docker/observability/RUNBOOK.md`](../../deployments/docker/observability/RUNBOOK.md) (incidents, log queries, SQL) and [`deployments/docker/observability/METRICS.md`](../../deployments/docker/observability/METRICS.md).

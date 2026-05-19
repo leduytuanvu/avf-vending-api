@@ -38,7 +38,7 @@ Rules:
 - Do not use real customer company, site, machine, product, or slot IDs.
 - Do not call a real payment provider destructive operation unless the PSP sandbox/canary account is explicitly configured.
 - Do not publish commands to non-canary MQTT topics.
-- Store evidence under `reports/test/` and `.e2e-runs/`; redact tokens before sharing reports.
+- Store evidence under `docs/reports/test/` and `.e2e-runs/`; redact tokens before sharing reports.
 - If any required value is absent, the runner reports `BLOCKED`, not `PASS`.
 
 Run:

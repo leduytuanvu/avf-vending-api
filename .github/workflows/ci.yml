@@ -196,6 +196,13 @@ jobs:
       - name: Run go vet
         run: make vet
 
+      - name: Verify UUID v7 policy (no v4 resource ID generation)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          chmod +x scripts/checks/check-uuid-v7.sh
+          bash scripts/checks/check-uuid-v7.sh
+
       - name: Validate generated specs and repository invariants
         shell: bash
         run: |
@@ -272,7 +279,7 @@ jobs:
           bash -n deployments/prod/shared/scripts/check_restore_readiness.sh
           bash -n deployments/staging/scripts/deploy_staging.sh
           bash -n deployments/staging/scripts/healthcheck_staging.sh
-          bash -n deployments/staging/scripts/smoke_staging.sh
+          bash -n deployments/staging/scripts/deploy/smoke_staging.sh
 
   legacy-prod-asset-contract:
     name: Legacy Production Asset Contract

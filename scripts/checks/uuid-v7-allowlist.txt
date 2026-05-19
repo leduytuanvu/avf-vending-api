@@ -1,0 +1,37 @@
+# UUID v7 allowlist — paths exempt from check-uuid-v7.sh
+#
+# Format:
+#   go:path/to/file.go          — entire Go file (production)
+#   go:path/to/dir/             — directory prefix (trailing slash)
+#   sql:path/to/migration.sql   — entire SQL file (Up+Down); use for historical baselines
+#
+# Inline escape: add on the same line or line above:
+#   // uuid-v7-allow: reason
+#   -- uuid-v7-allow: reason
+#
+# See docs/architecture/UUID_V7_POLICY.md
+
+# JWT jti claims (opaque token identifiers, not resource PKs)
+go:internal/platform/auth/token_issuer.go
+
+# HTTP/gRPC request correlation (not DB resource IDs)
+go:internal/middleware/requestid.go
+go:internal/grpcserver/interceptors.go
+go:internal/httpserver/admin_machine_diagnostics_http.go
+
+# Idempotency / refresh JTI strings (not resource PKs)
+go:internal/app/planogram/service.go
+go:internal/app/activation/service.go
+
+# Load-test tooling idempotency prefixes
+go:tools/loadtest/
+
+# Central v7 generator (may import github.com/google/uuid NewV7 only)
+go:internal/platform/id/
+
+# Historical goose baselines (v4 defaults converted by 00005 Up)
+sql:migrations/00002_platform_schema.sql
+sql:migrations/00004_product_media_offline_cache.sql
+
+# 00005 Down restores gen_random_uuid(); Up section is v7-only
+sql:migrations/00005_uuid_v7_defaults.sql

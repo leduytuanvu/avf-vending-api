@@ -1,16 +1,41 @@
 -- Canonical single-company platform DDL used by sqlc (sqlc.yaml) and goose baseline migration 00002.
+-- UUID v7 defaults: migration 00005_uuid_v7_defaults.sql (function + ALTER DEFAULT).
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE OR REPLACE FUNCTION public.uuid_generate_v7()
+RETURNS uuid
+LANGUAGE plpgsql
+VOLATILE
+PARALLEL SAFE
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    unix_ts_ms bytea;
+    uuid_bytes bytea;
+BEGIN
+    unix_ts_ms := substring(
+        int8send(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint)
+        FROM 3 FOR 6
+    );
+    uuid_bytes := unix_ts_ms || gen_random_bytes(10);
+    uuid_bytes := set_byte(uuid_bytes, 6, (get_byte(uuid_bytes, 6) & 15) | 112);
+    uuid_bytes := set_byte(uuid_bytes, 8, (get_byte(uuid_bytes, 8) & 63) | 128);
+    RETURN encode(uuid_bytes, 'hex')::uuid;
+END;
+$$;
+
 CREATE TABLE regions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     name text NOT NULL,
     code text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE sites (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     region_id uuid REFERENCES regions (id) ON DELETE SET NULL,
     name text NOT NULL,
     address jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -25,14 +50,14 @@ CREATE TABLE sites (
 CREATE INDEX ix_sites_region_id ON sites (region_id);
 
 CREATE TABLE machine_hardware_profiles (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     name text NOT NULL,
     spec jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE machines (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     site_id uuid NOT NULL REFERENCES sites (id) ON DELETE RESTRICT,
     hardware_profile_id uuid REFERENCES machine_hardware_profiles (id) ON DELETE SET NULL,
     serial_number text NOT NULL,
@@ -63,7 +88,7 @@ WHERE
     btrim(serial_number) <> '';
 
 CREATE TABLE machine_credentials (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     credential_version bigint NOT NULL,
     secret_hash bytea NULL,
@@ -80,7 +105,7 @@ CREATE TABLE machine_credentials (
 CREATE INDEX ix_machine_credentials_machine_status ON machine_credentials (machine_id, status);
 
 CREATE TABLE machine_sessions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     credential_id uuid NOT NULL REFERENCES machine_credentials (id) ON DELETE CASCADE,
     refresh_token_hash bytea NOT NULL,
@@ -107,7 +132,7 @@ CREATE INDEX ix_machine_sessions_machine_exp ON machine_sessions (machine_id, ex
 CREATE INDEX ix_machine_sessions_credential ON machine_sessions (credential_id);
 
 CREATE TABLE platform_auth_accounts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     email text NOT NULL,
     password_hash text NOT NULL,
     roles text[] NOT NULL DEFAULT '{}'::text[],
@@ -121,7 +146,7 @@ CREATE TABLE platform_auth_accounts (
 );
 
 CREATE TABLE auth_refresh_tokens (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     account_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
     token_hash bytea NOT NULL,
     expires_at timestamptz NOT NULL,
@@ -137,7 +162,7 @@ CREATE UNIQUE INDEX ux_auth_refresh_tokens_active_hash ON auth_refresh_tokens (t
 WHERE revoked_at IS NULL;
 
 CREATE TABLE admin_mfa_factors (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
     factor_type text NOT NULL CHECK (factor_type = 'totp'),
     secret_ciphertext bytea NOT NULL,
@@ -149,7 +174,7 @@ CREATE TABLE admin_mfa_factors (
 );
 
 CREATE TABLE admin_sessions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
     refresh_token_id uuid NOT NULL UNIQUE REFERENCES auth_refresh_tokens (id) ON DELETE CASCADE,
     refresh_token_hash bytea NOT NULL,
@@ -163,7 +188,7 @@ CREATE TABLE admin_sessions (
 );
 
 CREATE TABLE admin_login_attempts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     email_normalized text NOT NULL,
     user_id uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL,
     ip_address text,
@@ -176,7 +201,7 @@ CREATE TABLE admin_login_attempts (
 CREATE INDEX ix_admin_login_attempts_occurred ON admin_login_attempts (occurred_at DESC);
 
 CREATE TABLE password_reset_tokens (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     user_id uuid NOT NULL REFERENCES platform_auth_accounts (id) ON DELETE CASCADE,
     token_hash bytea NOT NULL,
     expires_at timestamptz NOT NULL,
@@ -195,7 +220,7 @@ CREATE INDEX ix_password_reset_tokens_user_created ON password_reset_tokens (use
 
 
 CREATE TABLE technicians (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     display_name text NOT NULL,
     email text,
     phone text,
@@ -206,7 +231,7 @@ CREATE TABLE technicians (
 );
 
 CREATE TABLE technician_machine_assignments (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     technician_id uuid NOT NULL REFERENCES technicians (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     role text NOT NULL,
@@ -240,7 +265,7 @@ SELECT
 FROM technician_machine_assignments;
 
 CREATE TABLE machine_lineage (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     prior_machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
     successor_machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
     reason text,
@@ -252,7 +277,7 @@ CREATE TABLE machine_lineage (
 
 -- Machine operator sessions (see migrations/00008_machine_operator_sessions.sql). Text CHECKs replace PG enums in this repo.
 CREATE TABLE machine_operator_sessions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     actor_type text NOT NULL CHECK (actor_type IN ('TECHNICIAN', 'USER')),
     technician_id uuid REFERENCES technicians (id) ON DELETE SET NULL,
@@ -347,7 +372,7 @@ COMMENT ON COLUMN machine_action_attributions.operator_session_id IS 'NULL allow
 COMMENT ON COLUMN machine_action_attributions.correlation_id IS 'Optional request/correlation id aligned with device and auth event tracing.';
 
 CREATE TABLE categories (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     slug text NOT NULL,
     name text NOT NULL,
     parent_id uuid REFERENCES categories (id) ON DELETE SET NULL,
@@ -359,7 +384,7 @@ CREATE TABLE categories (
 CREATE INDEX ix_categories_parent_id ON categories (parent_id);
 
 CREATE TABLE brands (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     slug text NOT NULL,
     name text NOT NULL,
     active boolean NOT NULL DEFAULT true,
@@ -368,7 +393,7 @@ CREATE TABLE brands (
 );
 
 CREATE TABLE products (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     sku text NOT NULL,
     barcode text,
     name text NOT NULL,
@@ -387,7 +412,7 @@ CREATE TABLE products (
 );
 
 CREATE TABLE tags (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     slug text NOT NULL,
     name text NOT NULL,
     active boolean NOT NULL DEFAULT true,
@@ -412,7 +437,7 @@ CREATE TABLE machine_tag_assignments (
 -- P1.1 media pipeline: canonical object keys + variant paths (see migrations/00037_p1_media_assets.sql).
 -- Phase 1 offline cache: purpose via kind; optional original_filename; object_key mirrors canonical upload key for cache identity (see media_variants).
 CREATE TABLE media_assets (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     kind text NOT NULL DEFAULT 'product_image' CONSTRAINT chk_media_assets_kind CHECK (
         kind IN ('product_image')
     ),
@@ -447,7 +472,7 @@ COMMENT ON COLUMN media_assets.object_version IS 'Logical asset version for cach
 
 -- Per-rendition metadata for offline kiosk caches (keys + optional per-variant sha256/version).
 CREATE TABLE media_variants (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     media_asset_id uuid NOT NULL REFERENCES media_assets (id) ON DELETE CASCADE,
     variant text NOT NULL CONSTRAINT chk_media_variants_variant CHECK (
         variant IN ('original', 'thumb', 'display', 'fallback')
@@ -473,7 +498,7 @@ WHERE
 COMMENT ON TABLE media_variants IS 'Per-rendition object keys and optional per-variant sha256/version for kiosk offline caches.';
 
 CREATE TABLE product_images (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     product_id uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
     storage_key text NOT NULL,
     cdn_url text,
@@ -559,7 +584,7 @@ COMMENT ON TABLE product_media IS 'Denormalized catalog media projection per pro
 COMMENT ON COLUMN product_media.media_role IS 'primary: matches products.primary_image_id for this projection row; gallery: additional images.';
 
 CREATE TABLE price_books (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     name text NOT NULL,
     currency char(3) NOT NULL,
     effective_from timestamptz NOT NULL,
@@ -580,7 +605,7 @@ CREATE TABLE price_books (
 );
 
 CREATE TABLE price_book_items (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     price_book_id uuid NOT NULL,
     product_id uuid NOT NULL,
     unit_price_minor bigint NOT NULL CHECK (unit_price_minor >= 0),
@@ -590,7 +615,7 @@ CREATE TABLE price_book_items (
 CREATE INDEX ix_price_book_items_product_id ON price_book_items (product_id);
 
 CREATE TABLE price_book_targets (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     price_book_id uuid NOT NULL,
     site_id uuid,
     machine_id uuid,
@@ -606,7 +631,7 @@ CREATE UNIQUE INDEX ux_price_book_targets_book_machine ON price_book_targets (pr
 CREATE UNIQUE INDEX ux_price_book_targets_book_site ON price_book_targets (price_book_id, site_id) WHERE site_id IS NOT NULL;
 
 CREATE TABLE machine_price_overrides (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     product_id uuid NOT NULL REFERENCES products (id) ON DELETE RESTRICT,
     unit_price_minor bigint NOT NULL CHECK (unit_price_minor >= 0),
@@ -625,7 +650,7 @@ CREATE INDEX ix_machine_price_overrides_machine_product_valid
     ON machine_price_overrides (machine_id, product_id, valid_from DESC);
 
 CREATE TABLE promotions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     name text NOT NULL,
     approval_status text NOT NULL DEFAULT 'draft' CHECK (
         approval_status IN ('draft', 'pending_approval', 'approved', 'rejected', 'archived')
@@ -645,7 +670,7 @@ CREATE TABLE promotions (
 );
 
 CREATE TABLE promotion_rules (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     promotion_id uuid NOT NULL REFERENCES promotions (id) ON DELETE CASCADE,
     rule_type text NOT NULL,
     payload jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -657,7 +682,7 @@ CREATE TABLE promotion_rules (
 CREATE INDEX ix_promotion_rules_promotion_id ON promotion_rules (promotion_id);
 
 CREATE TABLE promotion_targets (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     promotion_id uuid NOT NULL REFERENCES promotions (id) ON DELETE CASCADE,
     target_type text NOT NULL CHECK (target_type IN ('product', 'category', 'machine', 'site', 'tag')),
     product_id uuid,
@@ -675,7 +700,7 @@ CREATE INDEX ix_promotion_targets_promotion_id ON promotion_targets (promotion_i
 CREATE INDEX ix_promotion_targets_tag_id ON promotion_targets (tag_id) WHERE tag_id IS NOT NULL;
 
 CREATE TABLE planograms (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     name text NOT NULL,
     revision int NOT NULL DEFAULT 1,
     status text NOT NULL CHECK (status IN ('draft', 'published', 'archived')),
@@ -684,7 +709,7 @@ CREATE TABLE planograms (
 );
 
 CREATE TABLE slots (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     planogram_id uuid NOT NULL REFERENCES planograms (id) ON DELETE CASCADE,
     slot_index int NOT NULL CHECK (slot_index >= 0),
     product_id uuid REFERENCES products (id) ON DELETE SET NULL,
@@ -696,7 +721,7 @@ CREATE TABLE slots (
 CREATE INDEX ix_slots_product_id ON slots (product_id);
 
 CREATE TABLE machine_slot_state (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     planogram_id uuid NOT NULL REFERENCES planograms (id) ON DELETE CASCADE,
     slot_index int NOT NULL CHECK (slot_index >= 0),
@@ -710,7 +735,7 @@ CREATE TABLE machine_slot_state (
 CREATE INDEX ix_machine_slot_state_planogram_id ON machine_slot_state (planogram_id);
 
 CREATE TABLE orders (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
     status text NOT NULL CHECK (status IN ('created', 'quoted', 'paid', 'vending', 'completed', 'failed', 'cancelled')),
     currency char(3) NOT NULL,
@@ -725,7 +750,7 @@ CREATE TABLE orders (
 CREATE INDEX ix_orders_machine_id ON orders (machine_id);
 
 CREATE TABLE vend_sessions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
     slot_index int NOT NULL,
@@ -745,7 +770,7 @@ CREATE INDEX ix_vend_sessions_final_command_attempt ON vend_sessions (final_comm
     WHERE final_command_attempt_id IS NOT NULL;
 
 CREATE TABLE settlement_batches (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     provider text NOT NULL,
     period_start date NOT NULL,
     period_end date NOT NULL,
@@ -759,7 +784,7 @@ CREATE INDEX ix_settlement_batches_provider_period ON settlement_batches (provid
 COMMENT ON TABLE settlement_batches IS 'PSP settlement window; link payments via settlement_batch_id when batched.';
 
 CREATE TABLE machine_reconciliation_sessions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     business_date date NOT NULL,
     opened_at timestamptz NOT NULL,
@@ -781,7 +806,7 @@ COMMENT ON COLUMN machine_reconciliation_sessions.business_date IS 'Operator cal
 COMMENT ON COLUMN machine_reconciliation_sessions.variance_amount_minor IS 'actual - expected under session convention when closed.';
 
 CREATE TABLE cash_collections (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     collected_at timestamptz NOT NULL,
     opened_at timestamptz NOT NULL,
@@ -844,7 +869,7 @@ CREATE INDEX ix_cash_events_correlation ON cash_events (correlation_id, occurred
 COMMENT ON TABLE cash_events IS 'Append-only cash movement log; application INSERT-only. amount_minor semantics per event_type in metadata or ops runbook.';
 
 CREATE TABLE payments (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE RESTRICT,
     provider text NOT NULL,
     state text NOT NULL CHECK (
@@ -886,7 +911,7 @@ COMMENT ON COLUMN payments.reconciliation_status IS 'Provider vs internal ledger
 COMMENT ON COLUMN payments.settlement_status IS 'PSP settlement lifecycle; settlement_batch_id when batched.';
 
 CREATE TABLE payment_attempts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     payment_id uuid NOT NULL REFERENCES payments (id) ON DELETE CASCADE,
     provider_reference text,
     state text NOT NULL,
@@ -897,7 +922,7 @@ CREATE TABLE payment_attempts (
 CREATE INDEX ix_payment_attempts_payment_id ON payment_attempts (payment_id);
 
 CREATE TABLE refunds (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     payment_id uuid NOT NULL REFERENCES payments (id) ON DELETE RESTRICT,
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE RESTRICT,
     amount_minor bigint NOT NULL CHECK (amount_minor >= 0),
@@ -977,7 +1002,7 @@ COMMENT ON COLUMN payment_provider_events.ingress_status IS 'Ingress/processing 
 COMMENT ON COLUMN payment_provider_events.ingress_error IS 'When ingress_status is failed, short operator-safe error text.';
 
 CREATE TABLE payment_provider_settlements (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     provider text NOT NULL,
     provider_settlement_id text NOT NULL,
     gross_amount_minor bigint NOT NULL,
@@ -997,7 +1022,7 @@ CREATE TABLE payment_provider_settlements (
 COMMENT ON TABLE payment_provider_settlements IS 'Imported PSP settlement reports for finance reconciliation.';
 
 CREATE TABLE payment_disputes (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     provider text NOT NULL,
     provider_dispute_id text NOT NULL,
     payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
@@ -1020,7 +1045,7 @@ CREATE TABLE payment_disputes (
 COMMENT ON TABLE payment_disputes IS 'Chargeback/dispute foundation; links to internal order/payment when known.';
 
 CREATE TABLE payment_reconciliations (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     payment_id uuid NOT NULL REFERENCES payments (id) ON DELETE CASCADE,
     provider text NOT NULL,
     provider_ref text NOT NULL,
@@ -1038,7 +1063,7 @@ CREATE INDEX ix_payment_reconciliations_unmatched ON payment_reconciliations (pr
     WHERE status IN ('pending', 'mismatch');
 
 CREATE TABLE cash_reconciliations (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     cash_session_id uuid,
     cash_collection_id uuid REFERENCES cash_collections (id) ON DELETE SET NULL,
@@ -1057,7 +1082,7 @@ CREATE INDEX ix_cash_reconciliations_unmatched ON cash_reconciliations (machine_
 COMMENT ON COLUMN cash_reconciliations.cash_session_id IS 'Reserved for future cash_sessions table; no FK until introduced.';
 
 CREATE TABLE commerce_reconciliation_cases (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     case_type text NOT NULL CHECK (
         case_type IN (
             'payment_paid_vend_not_started',
@@ -1110,7 +1135,7 @@ CREATE INDEX ix_commerce_reconciliation_cases_payment
 COMMENT ON TABLE commerce_reconciliation_cases IS 'Operator-visible payment/vend/refund reconciliation queue. Redis never stores authoritative case state.';
 
 CREATE TABLE order_timelines (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
     event_type text NOT NULL,
     actor_type text NOT NULL CHECK (
@@ -1125,7 +1150,7 @@ CREATE TABLE order_timelines (
 COMMENT ON TABLE order_timelines IS 'Append-only commerce order lifecycle events (reconciliation actions, refunds, operator visibility).';
 
 CREATE TABLE refund_requests (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
     payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
     refund_id uuid REFERENCES refunds (id) ON DELETE SET NULL,
@@ -1218,7 +1243,7 @@ COMMENT ON COLUMN financial_ledger_entries.signed_amount_minor IS 'Signed minor 
 COMMENT ON COLUMN financial_ledger_entries.reference_type IS 'Polymorphic pointer when no dedicated FK column; prefer order_id/payment_id/cash_event_id when possible.';
 
 CREATE TABLE command_ledger (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     sequence bigint NOT NULL,
     command_type text NOT NULL,
@@ -1265,7 +1290,7 @@ COMMENT ON TABLE command_ledger IS 'Authoritative machine command rows (sequence
 COMMENT ON COLUMN command_ledger.operator_session_id IS 'This repo uses command_ledger as machine command rows (no separate machine_commands table).';
 
 CREATE TABLE machine_modules (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     module_kind text NOT NULL CHECK (
         module_kind IN (
@@ -1296,7 +1321,7 @@ CREATE INDEX ix_machine_modules_machine_id ON machine_modules (machine_id);
 COMMENT ON TABLE machine_modules IS 'Physical or logical sub-units on a machine (coin, motor bank, etc.).';
 
 CREATE TABLE machine_transport_sessions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     protocol_type text NOT NULL,
     transport_type text NOT NULL,
@@ -1316,7 +1341,7 @@ COMMENT ON COLUMN machine_transport_sessions.transport_type IS 'e.g. mqtt, webso
 COMMENT ON TABLE machine_transport_sessions IS 'One logical connection from edge to cloud for correlation of attempts and raw frames.';
 
 CREATE TABLE machine_command_attempts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     command_id uuid NOT NULL REFERENCES command_ledger (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     transport_session_id uuid REFERENCES machine_transport_sessions (id) ON DELETE SET NULL,
@@ -1460,7 +1485,7 @@ CREATE TABLE audit_logs (
 
 -- P1.4 enterprise audit_events (see migrations/00031_enterprise_audit_events.sql).
 CREATE TABLE audit_events (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     actor_type text NOT NULL CONSTRAINT chk_audit_events_actor_type CHECK (
         actor_type IN ('user', 'machine', 'system', 'webhook', 'service', 'payment_provider')
     ),
@@ -1500,7 +1525,7 @@ COMMENT ON COLUMN audit_logs.legal_hold IS 'When true, retention cleanup must no
 
 -- P2.3 machine device TLS client certificates (see migrations/00041_machine_device_certificates.sql).
 CREATE TABLE machine_device_certificates (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     fingerprint_sha256 bytea NOT NULL,
     serial_number text NOT NULL,
@@ -1524,7 +1549,7 @@ CREATE TABLE machine_device_certificates (
 CREATE INDEX ix_machine_device_certificates_machine_status ON machine_device_certificates (machine_id, status);
 
 CREATE TABLE ota_artifacts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     storage_key text NOT NULL,
     sha256 text,
     size_bytes bigint CHECK (size_bytes IS NULL OR size_bytes >= 0),
@@ -1533,7 +1558,7 @@ CREATE TABLE ota_artifacts (
 );
 
 CREATE TABLE ota_campaigns (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     name text NOT NULL,
     artifact_id uuid NOT NULL REFERENCES ota_artifacts (id) ON DELETE RESTRICT,
     artifact_version text,
@@ -1567,7 +1592,7 @@ CREATE TABLE ota_campaigns (
 );
 
 CREATE TABLE ota_campaign_targets (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     campaign_id uuid NOT NULL REFERENCES ota_campaigns (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     state text NOT NULL DEFAULT 'pending',
@@ -1579,7 +1604,7 @@ CREATE TABLE ota_campaign_targets (
 CREATE INDEX ix_ota_campaign_targets_campaign_id ON ota_campaign_targets (campaign_id);
 
 CREATE TABLE ota_campaign_events (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     campaign_id uuid NOT NULL REFERENCES ota_campaigns (id) ON DELETE CASCADE,
     event_type text NOT NULL,
     payload jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -1590,7 +1615,7 @@ CREATE TABLE ota_campaign_events (
 CREATE INDEX ix_ota_campaign_events_campaign ON ota_campaign_events (campaign_id, created_at DESC);
 
 CREATE TABLE ota_machine_results (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     campaign_id uuid NOT NULL REFERENCES ota_campaigns (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     wave text NOT NULL DEFAULT 'forward' CHECK (wave IN ('forward', 'rollback')),
@@ -1608,7 +1633,7 @@ CREATE INDEX ix_ota_machine_results_campaign ON ota_machine_results (campaign_id
 
 -- Kiosk activation + device reconcile status (migrations/00023_p0_activation_reconcile_refunds.sql).
 CREATE TABLE machine_activation_codes (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     code_hash bytea NOT NULL,
     max_uses int NOT NULL DEFAULT 1 CHECK (max_uses > 0),
@@ -1626,7 +1651,7 @@ CREATE UNIQUE INDEX ux_machine_activation_codes_hash ON machine_activation_codes
 CREATE INDEX ix_machine_activation_codes_machine ON machine_activation_codes (machine_id, created_at DESC);
 
 CREATE TABLE machine_activation_claims (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     activation_code_id uuid NOT NULL REFERENCES machine_activation_codes (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     fingerprint_hash bytea NOT NULL,
@@ -1653,7 +1678,7 @@ WHERE
 
 -- Machine runtime refresh tokens (migrations/00034_machine_runtime_refresh_tokens.sql); store SHA-256 only.
 CREATE TABLE machine_runtime_refresh_tokens (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     token_hash bytea NOT NULL,
     expires_at timestamptz NOT NULL,
@@ -1672,7 +1697,7 @@ WHERE
 CREATE INDEX ix_machine_runtime_refresh_machine ON machine_runtime_refresh_tokens (machine_id, created_at DESC);
 
 CREATE TABLE machine_idempotency_keys (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     operation text NOT NULL,
     idempotency_key text NOT NULL,
@@ -1690,7 +1715,7 @@ CREATE UNIQUE INDEX ux_machine_idempotency_machine_op_key ON machine_idempotency
 CREATE INDEX ix_machine_idempotency_expiry ON machine_idempotency_keys (expires_at);
 
 CREATE TABLE machine_offline_events (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     offline_sequence bigint NOT NULL,
     event_type text NOT NULL,
@@ -1867,7 +1892,7 @@ CREATE INDEX ix_machine_state_transitions_machine_occurred ON machine_state_tran
 COMMENT ON TABLE machine_state_transitions IS 'Append-only semantic transitions derived from shadow/state stream; pruned by retention job.';
 
 CREATE TABLE machine_incidents (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     severity text NOT NULL,
     code text NOT NULL,
@@ -1906,7 +1931,7 @@ CREATE INDEX ix_telemetry_rollups_machine_bucket ON telemetry_rollups (machine_i
 COMMENT ON TABLE telemetry_rollups IS 'Aggregated telemetry; workers upsert buckets — raw MQTT metrics are not stored in Postgres.';
 
 CREATE TABLE diagnostic_bundle_manifests (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     request_id uuid,
     command_id uuid REFERENCES command_ledger (id) ON DELETE SET NULL,
@@ -1975,7 +2000,7 @@ CREATE INDEX ix_protocol_ack_events_raw_message ON protocol_ack_events (raw_mess
 COMMENT ON TABLE protocol_ack_events IS 'Low-level ack/nack/timeout for retry analysis; join to attempts, raw rows, or device_command_receipts.';
 
 CREATE TABLE refill_sessions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     started_at timestamptz NOT NULL DEFAULT now(),
     ended_at timestamptz,
@@ -2017,7 +2042,7 @@ CREATE INDEX ix_refill_session_lines_session ON refill_session_lines (refill_ses
 COMMENT ON TABLE refill_session_lines IS 'Per-slot deltas recorded during a refill session; append-only.';
 
 CREATE TABLE machine_configs (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     applied_at timestamptz NOT NULL DEFAULT now(),
     config_revision int NOT NULL DEFAULT 1,
@@ -2038,7 +2063,7 @@ COMMENT ON TABLE machine_configs IS 'Machine-local config application snapshots;
 -- P2.3 feature flags + staged machine config rollouts (see migrations/00033_p2_feature_flags_machine_config_rollout.sql).
 
 CREATE TABLE feature_flags (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     flag_key text NOT NULL,
     display_name text NOT NULL DEFAULT '',
     description text NOT NULL DEFAULT '',
@@ -2051,7 +2076,7 @@ CREATE TABLE feature_flags (
 COMMENT ON TABLE feature_flags IS 'Single-company feature switches; targets refine scope (site/machine/profile/canary).';
 
 CREATE TABLE feature_flag_targets (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     feature_flag_id uuid NOT NULL REFERENCES feature_flags (id) ON DELETE CASCADE,
     target_type text NOT NULL CHECK (
         target_type IN ('global', 'site', 'machine', 'hardware_profile', 'canary')
@@ -2077,7 +2102,7 @@ CREATE INDEX ix_feature_flag_targets_flag ON feature_flag_targets (feature_flag_
 COMMENT ON TABLE feature_flag_targets IS 'Scoped overrides for feature_flags (highest priority matching row wins).';
 
 CREATE TABLE machine_config_versions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     version_label text NOT NULL,
     config_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
     parent_version_id uuid REFERENCES machine_config_versions (id) ON DELETE SET NULL,
@@ -2087,7 +2112,7 @@ CREATE TABLE machine_config_versions (
 COMMENT ON TABLE machine_config_versions IS 'Logical remote-config bundles for staged rollout (distinct from machine_configs apply log).';
 
 CREATE TABLE machine_config_rollouts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     target_version_id uuid NOT NULL REFERENCES machine_config_versions (id) ON DELETE RESTRICT,
     previous_version_id uuid REFERENCES machine_config_versions (id) ON DELETE SET NULL,
     status text NOT NULL DEFAULT 'pending' CHECK (
@@ -2140,7 +2165,7 @@ CREATE TABLE machine_config_rollouts (
 COMMENT ON TABLE machine_config_rollouts IS 'Staged rollout of machine_config_versions with optional canary and rollback lineage.';
 
 CREATE TABLE incidents (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     status text NOT NULL DEFAULT 'open' CHECK (
         status IN ('open', 'acknowledged', 'in_progress', 'resolved', 'closed', 'cancelled')
@@ -2179,7 +2204,7 @@ LEFT JOIN technicians t ON t.id = s.technician_id;
 COMMENT ON VIEW v_machine_current_operator IS 'Convenience join for UI: one row per machine; operator_session_id NULL when nobody logged in. At most one ACTIVE session per machine is enforced by index ux_machine_operator_sessions_one_active.';
 
 CREATE TABLE machine_cabinets (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     cabinet_code text NOT NULL,
     title text NOT NULL DEFAULT '',
@@ -2198,7 +2223,7 @@ CREATE UNIQUE INDEX ux_machine_cabinets_machine_cabinet_code ON machine_cabinets
 CREATE INDEX ix_machine_cabinets_machine_sort ON machine_cabinets (machine_id, sort_order ASC, id ASC);
 
 CREATE TABLE assortments (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     name text NOT NULL,
     status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
     description text NOT NULL DEFAULT '',
@@ -2209,7 +2234,7 @@ CREATE TABLE assortments (
 );
 
 CREATE TABLE assortment_items (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     assortment_id uuid NOT NULL REFERENCES assortments (id) ON DELETE CASCADE,
     product_id uuid NOT NULL,
     sort_order int NOT NULL DEFAULT 0,
@@ -2223,7 +2248,7 @@ CREATE INDEX ix_assortment_items_assortment_sort ON assortment_items (assortment
 CREATE INDEX ix_assortment_items_product_id ON assortment_items (product_id);
 
 CREATE TABLE machine_assortment_bindings (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     assortment_id uuid NOT NULL REFERENCES assortments (id) ON DELETE RESTRICT,
     is_primary boolean NOT NULL DEFAULT false,
@@ -2242,7 +2267,7 @@ CREATE INDEX ix_machine_assortment_bindings_machine_valid_from ON machine_assort
 CREATE INDEX ix_machine_assortment_bindings_assortment ON machine_assortment_bindings (assortment_id);
 
 CREATE TABLE inventory_count_sessions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     operator_session_id uuid REFERENCES machine_operator_sessions (id) ON DELETE SET NULL,
     status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed', 'cancelled')),
@@ -2326,7 +2351,7 @@ COMMENT ON TABLE inventory_count_sessions IS 'Optional physical count visit cont
 
 -- Slot layouts and configs (migrations/00016_machine_slot_layouts_configs.sql).
 CREATE TABLE machine_slot_layouts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     machine_cabinet_id uuid NOT NULL REFERENCES machine_cabinets (id) ON DELETE CASCADE,
     layout_key text NOT NULL,
@@ -2344,7 +2369,7 @@ CREATE UNIQUE INDEX ux_machine_slot_layouts_machine_cabinet_key_revision ON mach
 CREATE INDEX ix_machine_slot_layouts_machine_cabinet ON machine_slot_layouts (machine_id, machine_cabinet_id, created_at DESC);
 
 CREATE TABLE machine_slot_configs (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     machine_cabinet_id uuid NOT NULL REFERENCES machine_cabinets (id) ON DELETE CASCADE,
     machine_slot_layout_id uuid NOT NULL REFERENCES machine_slot_layouts (id) ON DELETE RESTRICT,
@@ -2388,7 +2413,7 @@ COMMENT ON INDEX ux_machine_slot_configs_current_machine_slot IS 'Partial unique
 
 -- Enterprise planogram versioning (migrations/00054_enterprise_planogram_versioning.sql).
 CREATE TABLE planogram_templates (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     name text NOT NULL,
     description text NOT NULL DEFAULT '',
     snapshot jsonb NOT NULL,
@@ -2397,7 +2422,7 @@ CREATE TABLE planogram_templates (
 );
 
 CREATE TABLE machine_planogram_drafts (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     status text NOT NULL CHECK (
         status IN ('editing', 'validated')
@@ -2410,7 +2435,7 @@ CREATE TABLE machine_planogram_drafts (
 CREATE INDEX ix_machine_planogram_drafts_machine ON machine_planogram_drafts (machine_id, updated_at DESC);
 
 CREATE TABLE machine_planogram_versions (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     version_no int NOT NULL,
     snapshot jsonb NOT NULL,
@@ -2423,7 +2448,7 @@ CREATE TABLE machine_planogram_versions (
 CREATE INDEX ix_machine_planogram_versions_machine_published ON machine_planogram_versions (machine_id, published_at DESC);
 
 CREATE TABLE machine_planogram_slots (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     version_id uuid NOT NULL REFERENCES machine_planogram_versions (id) ON DELETE CASCADE,
     cabinet_code text NOT NULL,
     layout_key text NOT NULL,
@@ -2447,7 +2472,7 @@ ALTER TABLE machine_current_snapshot
 ADD COLUMN last_acknowledged_planogram_version_id UUID NULL;
 
 CREATE TABLE finance_daily_closes (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     close_date date NOT NULL,
     timezone text NOT NULL,
     site_id uuid REFERENCES sites (id) ON DELETE SET NULL,
@@ -2476,7 +2501,7 @@ CREATE UNIQUE INDEX ux_finance_daily_closes_idempotency ON finance_daily_closes 
 COMMENT ON TABLE finance_daily_closes IS 'Immutable day/timezone (optional site/machine scope) snapshot; corrections via finance_daily_close_adjustments.';
 
 CREATE TABLE finance_daily_close_adjustments (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     daily_close_id uuid NOT NULL REFERENCES finance_daily_closes (id) ON DELETE CASCADE,
     reason text NOT NULL,
     delta_net_minor bigint NOT NULL DEFAULT 0,
@@ -2489,7 +2514,7 @@ CREATE INDEX ix_finance_daily_close_adjustments_close ON finance_daily_close_adj
 COMMENT ON TABLE finance_daily_close_adjustments IS 'Post-close corrections; immutable daily_close rows are never updated in place.';
 
 CREATE TABLE inventory_anomalies (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     anomaly_type text NOT NULL CHECK (
         anomaly_type IN (
@@ -2535,7 +2560,7 @@ COMMENT ON TABLE inventory_anomalies IS 'Operator-visible machine anomalies (inv
 -- P2.1 provisioning batches + rollout campaigns (mirror migrations/00063_p2_provisioning_rollout.sql)
 
 CREATE TABLE machine_provisioning_batches (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     site_id uuid NOT NULL REFERENCES sites (id) ON DELETE RESTRICT,
     hardware_profile_id uuid REFERENCES machine_hardware_profiles (id) ON DELETE SET NULL,
     cabinet_type text NOT NULL DEFAULT '',
@@ -2550,7 +2575,7 @@ CREATE TABLE machine_provisioning_batches (
 );
 
 CREATE TABLE machine_provisioning_batch_machines (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     batch_id uuid NOT NULL REFERENCES machine_provisioning_batches (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     serial_number text NOT NULL DEFAULT '',
@@ -2563,7 +2588,7 @@ CREATE TABLE machine_provisioning_batch_machines (
 CREATE INDEX ix_prov_batch_machines_batch ON machine_provisioning_batch_machines (batch_id);
 
 CREATE TABLE rollout_campaigns (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     rollout_type text NOT NULL CHECK (
         rollout_type IN (
             'config_version',
@@ -2595,7 +2620,7 @@ CREATE TABLE rollout_campaigns (
 );
 
 CREATE TABLE rollout_targets (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     campaign_id uuid NOT NULL REFERENCES rollout_campaigns (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     status text NOT NULL DEFAULT 'pending' CHECK (

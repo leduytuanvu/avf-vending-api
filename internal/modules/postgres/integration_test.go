@@ -3,6 +3,7 @@ package postgres_test
 import (
 	"context"
 	"encoding/json"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -84,6 +85,28 @@ func TestSchemaCriticalIndexes(t *testing.T) {
 	}
 }
 
+func TestUUIDV7DefaultOnInsert(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+
+	code := "uuid-v7-default-" + id.NewUUIDV7String()
+	var id uuid.UUID
+	err := pool.QueryRow(ctx, `
+		INSERT INTO regions (name, code)
+		VALUES ($1, $2)
+		RETURNING id
+	`, "uuid-v7-default-check", code).Scan(&id)
+	require.NoError(t, err)
+	require.Equal(t, uuid.Version(7), id.Version(), "DB default id should be UUID v7")
+	require.NotEqual(t, uuid.Nil, id)
+	_, err = uuid.Parse(id.String())
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM regions WHERE code = $1`, code)
+	})
+}
+
 func TestDevFixtureSiteProductRepos_ReadSeed(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
@@ -140,7 +163,7 @@ func TestCreateOrderWithVendSession_RollbackOnInvalidMachine(t *testing.T) {
 	store := postgres.NewStore(pool)
 
 	idem := "rollback-" + uuid.NewString()
-	badMachine := uuid.New()
+	badMachine := id.NewUUIDV7()
 	_, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
 		MachineID:      badMachine,
 		ProductID:      testfixtures.DevProductCola,
@@ -819,7 +842,7 @@ func TestFleetQueries_CompanyAndSiteScope(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, bySite, 1)
 
-	wrongSite, err := q.ListMachinesBySiteAndCompany(ctx, uuid.New())
+	wrongSite, err := q.ListMachinesBySiteAndCompany(ctx, id.NewUUIDV7())
 	require.NoError(t, err)
 	require.Empty(t, wrongSite)
 }
@@ -835,7 +858,7 @@ func TestFleetQueries_TechnicianAssignmentScope(t *testing.T) {
 	require.Len(t, rows, 1)
 	require.Equal(t, testfixtures.DevMachineID, rows[0].ID)
 
-	otherTech := uuid.New()
+	otherTech := id.NewUUIDV7()
 	empty, err := q.ListMachinesForTechnicianID(ctx, otherTech)
 	require.NoError(t, err)
 	require.Empty(t, empty)

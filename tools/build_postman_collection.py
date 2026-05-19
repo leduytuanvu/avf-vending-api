@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Emit Postman v2.1 collection + environments under docs/postman/."""
+"""Emit Postman v2.1 collection + environments under postman/collections/ and postman/environments/."""
 from __future__ import annotations
 
 import json
@@ -7,12 +7,13 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-POSTMAN_DIR = ROOT / "docs" / "postman"
-TOOLS_POSTMAN = ROOT / "tools" / "postman"
+POSTMAN_COLLECTIONS_DIR = ROOT / "postman" / "collections"
+POSTMAN_ENVIRONMENTS_DIR = ROOT / "postman" / "environments"
+POSTMAN_SCRIPTS_DIR = ROOT / "postman" / "scripts"
 
 
 def load_exec(name: str) -> list[str]:
-    p = TOOLS_POSTMAN / name
+    p = POSTMAN_SCRIPTS_DIR / name
     return p.read_text(encoding="utf-8").splitlines()
 
 
@@ -170,7 +171,7 @@ def integrated_product_media_offline_cache_folder() -> dict[str, Any]:
             "Steps 19–23 use **machine JWT** (`bearer_token_var=machineToken`). "
             "After claim, optionally copy broker hints into `mqttHost` / `mqttPort` / `mqttTopicPrefix`. "
             "For catalog manifest RPCs use `grpcAddr` + `grpcUseReflection` with "
-            "`postman/full-production-suite/grpc/run-grpc-postman-adjacent.sh`. "
+            "`postman/suites/full-production-suite/grpc/run-grpc-postman-adjacent.sh`. "
             "For `catalog.refresh` ACK use `mqtt/run-mqtt-postman-adjacent.sh` and matrix payloads.\n\n"
             "1 Login → 2 auth/me → 3–5 category/brand/tag → 6–7 media init/complete → 8–9 product + GET verify → "
             "10 site → 11 machine → 12 activation code → 13 claim (`machineToken`) → 14–16 topology/planogram/publish → "
@@ -422,7 +423,8 @@ def integrated_product_media_offline_cache_folder() -> dict[str, Any]:
 
 
 def main() -> None:
-    POSTMAN_DIR.mkdir(parents=True, exist_ok=True)
+    POSTMAN_COLLECTIONS_DIR.mkdir(parents=True, exist_ok=True)
+    POSTMAN_ENVIRONMENTS_DIR.mkdir(parents=True, exist_ok=True)
     pre = load_exec("collection_prerequest.js")
     post = load_exec("collection_test.js")
     events = [
@@ -456,6 +458,7 @@ def main() -> None:
             {"key": "x_request_id", "value": ""},
             {"key": "x_correlation_id", "value": ""},
             {"key": "idempotency_key", "value": ""},
+            {"key": "resource_uuid", "value": ""},
             {"key": "event_id", "value": ""},
             {"key": "event_time", "value": ""},
             {"key": "now_iso", "value": ""},
@@ -516,10 +519,10 @@ def main() -> None:
             integrated_product_media_offline_cache_folder(),
         ],
     }
-    out = POSTMAN_DIR / "avf-vending-api.postman_collection.json"
+    out = POSTMAN_COLLECTIONS_DIR / "avf-vending-api.postman_collection.json"
     out.write_text(json.dumps(collection, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"Wrote {out}")
-    fn_path = POSTMAN_DIR / "avf-vending-api-function-path.postman_collection.json"
+    fn_path = POSTMAN_COLLECTIONS_DIR / "avf-vending-api-function-path.postman_collection.json"
     fn_path.write_text(out.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
     print(f"Wrote {fn_path}")
 
@@ -528,7 +531,7 @@ def main() -> None:
         display: str,
         values: list[tuple[str, str, bool]],
     ) -> None:
-        p = POSTMAN_DIR / name
+        p = POSTMAN_ENVIRONMENTS_DIR / name
         payload = {
             "id": f"avf-env-{name.replace('.postman_environment.json', '')}",
             "name": display,

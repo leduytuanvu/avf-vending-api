@@ -2,6 +2,7 @@ package commerce
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -67,14 +68,14 @@ func (s *refundLifecycleStub) InsertPaymentAttempt(context.Context, InsertPaymen
 }
 
 func (s *refundLifecycleStub) InsertRefundRow(_ context.Context, in InsertRefundRowInput) (RefundRowView, error) {
-	id := s.rid
-	if id == uuid.Nil {
-		id = uuid.New()
+	refundID := s.rid
+	if refundID == uuid.Nil {
+		refundID = id.NewUUIDV7()
 	}
 	reason := in.Reason
 	ik := in.IdempotencyKey
 	return RefundRowView{
-		ID:             id,
+		ID:             refundID,
 		PaymentID:      in.PaymentID,
 		OrderID:        in.OrderID,
 		AmountMinor:    in.AmountMinor,
@@ -113,8 +114,8 @@ func (s *refundLifecycleStub) FulfillFailedVendAtomically(context.Context, Fulfi
 
 func TestCreateRefund_recordsEnterpriseAudit(t *testing.T) {
 	t.Parallel()
-	orderID := uuid.New()
-	payID := uuid.New()
+	orderID := id.NewUUIDV7()
+	payID := id.NewUUIDV7()
 	refundID := uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc")
 	rec := &auditRecorderSpy{}
 	svc := NewService(Deps{
@@ -124,7 +125,7 @@ func TestCreateRefund_recordsEnterpriseAudit(t *testing.T) {
 			order: domaincommerce.Order{
 				ID:        orderID,
 				Status:    "completed",
-				MachineID: uuid.New(),
+				MachineID: id.NewUUIDV7(),
 				Currency:  "USD",
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),

@@ -2,13 +2,12 @@ package httpserver
 
 import (
 	"encoding/json"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestPlanogramPublishPayload_roundtripJSON(t *testing.T) {
-	id := uuid.New().String()
+	id := id.NewUUIDV7().String()
 	p := planogramPublishPayload{
 		PlanogramID:          id,
 		PlanogramRevision:    4,

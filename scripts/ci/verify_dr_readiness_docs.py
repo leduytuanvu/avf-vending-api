@@ -28,7 +28,7 @@ CHECKS: dict[str, list[str]] = {
         "NATS/JetStream posture",
         "object storage bucket/versioning validation",
     ],
-    "docs/operations/production-data-migration-safety.md": [
+    "docs/production/production-data-migration-safety.md": [
         "Idempotency keys",
         "Redis must not be used as source data",
         "JetStream replay",

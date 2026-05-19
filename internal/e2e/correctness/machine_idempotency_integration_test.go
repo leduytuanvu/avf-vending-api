@@ -3,6 +3,7 @@ package correctness
 import (
 	"bytes"
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -24,8 +25,8 @@ import (
 func TestP06_E2E_MachineIdempotencyLedger_sameKeySamePayloadReturnsReplay(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	ledger := machineidempotency.NewLedger(pool, nil)
@@ -68,8 +69,8 @@ func TestP06_E2E_MachineIdempotencyLedger_sameKeySamePayloadReturnsReplay(t *tes
 func TestP06_E2E_MachineIdempotencyLedger_sameKeyDifferentPayloadConflict(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	ledger := machineidempotency.NewLedger(pool, nil)
@@ -110,8 +111,8 @@ func TestP06_E2E_MachineIdempotencyLedger_sameKeyDifferentPayloadConflict(t *tes
 func TestP06_E2E_MachineIdempotencyLedger_deleteStaleRowAllowsFreshInsert(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	ledger := machineidempotency.NewLedger(pool, nil)
@@ -164,8 +165,8 @@ WHERE machine_id = $1 AND operation = $2 AND idempotency_key = $3`,
 func TestP06_E2E_MachineIdempotencyLedger_secondCallerWhileInProgressAborts(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	ledger := machineidempotency.NewLedger(pool, nil)

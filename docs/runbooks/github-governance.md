@@ -1,6 +1,6 @@
 # GitHub governance — branch protection and environments
 
-**Settings-only quick steps (branch rules + `production` environment):** [../operations/github-governance.md](../operations/github-governance.md)
+**Settings-only quick steps (branch rules + `production` environment):** [../deployment/github-governance.md](../deployment/github-governance.md)
 
 **Maintainer index (pipelines, branches, and triage):** [cicd-release.md](./cicd-release.md).
 
@@ -12,7 +12,7 @@ This runbook describes how to configure **Repository rulesets** (primary in this
 
 Offline self-test: `CHECK_MODE=offline bash scripts/ci/verify_github_governance.sh` (no API calls; validates CLI presence + planned checks).
 
-Needs **`GOVERNANCE_AUDIT_TOKEN`**, **`GH_TOKEN`**, or **`GITHUB_TOKEN`** (read access to **rulesets**, **environments**, and classic **branch protection** as applicable; see [operations doc](../operations/github-governance.md)) and **`GITHUB_REPOSITORY=owner/repo`** (or `REPOSITORY=owner/repo`). Fails when policies are missing or the API response proves misconfiguration. If the response omits `protection_rules` or `deployment_branch_policy` but your org still enforces policy, use **`GITHUB_GOVERNANCE_WARN_ONLY=true`** to treat those items as **warnings** (not for gating merge CI), complete the [P0-4 manual checklist](#p0-4--manual-configuration-checklist-github-ui), then re-run with a token that can read environments.
+Needs **`GOVERNANCE_AUDIT_TOKEN`**, **`GH_TOKEN`**, or **`GITHUB_TOKEN`** (read access to **rulesets**, **environments**, and classic **branch protection** as applicable; see [operations doc](../deployment/github-governance.md)) and **`GITHUB_REPOSITORY=owner/repo`** (or `REPOSITORY=owner/repo`). Fails when policies are missing or the API response proves misconfiguration. If the response omits `protection_rules` or `deployment_branch_policy` but your org still enforces policy, use **`GITHUB_GOVERNANCE_WARN_ONLY=true`** to treat those items as **warnings** (not for gating merge CI), complete the [P0-4 manual checklist](#p0-4--manual-configuration-checklist-github-ui), then re-run with a token that can read environments.
 
 ## P0-4 — Manual configuration checklist (GitHub UI)
 
@@ -42,7 +42,7 @@ Use this when onboarding a repo or when `verify_github_governance` reports API *
 | `deploy-prod.yml` | Deploy Production | **Only** file that can deploy/rollback **production** (`environment: production`). |
 | `deploy-production.yml` | Legacy pointer (no deploy) | **Not** a deploy: notice-only, legacy filename. Use **`deploy-prod.yml`**. |
 | `nightly-security.yml` | Nightly Security Rescan | Scheduled rescans; not merge/deploy gates. |
-| `nightly-ops.yml` | Manual Ops Evidence Check | `workflow_dispatch` only (no `schedule`); ops/evidence, restore drill; **not** deploy. |
+| `nightly-ops.yml` | Manual Ops Evidence Check | `workflow_dispatch` only (no `schedule`); deployments/docker/observability/evidence, restore drill; **not** deploy. |
 | `environment-separation-gates.yml` | Environment separation gates | Policy checks. |
 | `enterprise-release-verify.yml` | Enterprise release verification | Static preflight; not a deploy. |
 | `telemetry-storm-staging.yml` | Staging telemetry storm suite | **Manual** load/storm; not general staging app deploy. |
@@ -85,7 +85,7 @@ Set `ENFORCE_GITHUB_GOVERNANCE=true` in CI when you want missing tokens to **fai
 
 Do not commit tokens. Use a fine-grained or classic PAT / GitHub Actions `GITHUB_TOKEN` with permission to read branch protection and environments.
 
-**CI (`.github/workflows/ci.yml` — governance job):** If the default `github.token` returns **HTTP 403** for protection or environment APIs, add the repository secret **`GOVERNANCE_AUDIT_TOKEN`**: a **read-only** fine-grained PAT scoped to this repo only, with **Administration: Read** and the other read-only limits described under **“CI: optional `GOVERNANCE_AUDIT_TOKEN`”** in [docs/operations/github-governance.md](../operations/github-governance.md). When unset, CI falls back to `github.token`. Do not use write permissions for this check.
+**CI (`.github/workflows/ci.yml` — governance job):** If the default `github.token` returns **HTTP 403** for protection or environment APIs, add the repository secret **`GOVERNANCE_AUDIT_TOKEN`**: a **read-only** fine-grained PAT scoped to this repo only, with **Administration: Read** and the other read-only limits described under **“CI: optional `GOVERNANCE_AUDIT_TOKEN`”** in [docs/deployment/github-governance.md](../deployment/github-governance.md). When unset, CI falls back to `github.token`. Do not use write permissions for this check.
 
 ## Repository `GITHUB_TOKEN` permissions (Actions)
 

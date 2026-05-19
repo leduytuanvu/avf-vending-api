@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"strings"
 	"testing"
 
@@ -95,7 +96,7 @@ func TestValidateCanonicalMediaAssetKey_acceptsCanonicalPathsOnly(t *testing.T) 
 	if err := ValidateCanonicalMediaAssetKey(org, mid, "../../../"+orig, "original"); err == nil {
 		t.Fatal("expected rejection for traversal key")
 	}
-	if err := ValidateCanonicalMediaAssetKey(org, uuid.New(), orig, "original"); err == nil {
+	if err := ValidateCanonicalMediaAssetKey(org, id.NewUUIDV7(), orig, "original"); err == nil {
 		t.Fatal("expected rejection when asset id mismatched")
 	}
 }

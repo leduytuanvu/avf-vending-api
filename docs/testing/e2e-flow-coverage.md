@@ -16,7 +16,7 @@ This document maps **business flows** to **REST (Web Admin / Postman)**, **gRPC 
 
 **Runner modes:** `run-all-local.sh` runs Phase 3 web admin **`--full`** (setup + `10`–`13`), vending **`--rest-equivalent`** (`02`–`08` REST), Phase 6 gRPC, Phase 7 MQTT, then **Phase 8** integrated scenarios **`40_e2e_*.sh`–`47_e2e_*.sh`** with structured **`reports/phase8-scenario-results.jsonl`**. For Web Admin only, `--setup-only` / `--full` apply to **`run-web-admin-flows.sh`** in isolation. **`--reuse-data`** works for **`--full`** when `test-data.json` already holds `siteId`, `machineId`, `productId`, etc.
 
-**Postman:** the checked-in **[`docs/postman/avf-vending-api.postman_collection.json`](../postman/avf-vending-api.postman_collection.json)** currently emphasizes **Public** health/version; **`docs/postman/avf-vending-api-function-path.postman_collection.json`** is the same export used when **`POSTMAN_COLLECTION`** defaults in **`tests/e2e/.env.example`**. Import OpenAPI from `{{swagger_url}}` (`GET /swagger/doc.json`) for full admin routing parity. Where a dedicated named request does not exist yet, the column references the **canonical path**.
+**Postman:** the checked-in **[`postman/collections/avf-vending-api.postman_collection.json`](../postman/avf-vending-api.postman_collection.json)** currently emphasizes **Public** health/version; **`postman/collections/avf-vending-api-function-path.postman_collection.json`** is the same export used when **`POSTMAN_COLLECTION`** defaults in **`tests/e2e/.env.example`**. Import OpenAPI from `{{swagger_url}}` (`GET /swagger/doc.json`) for full admin routing parity. Where a dedicated named request does not exist yet, the column references the **canonical path**.
 
 ### Postman / Newman coverage exclusions
 

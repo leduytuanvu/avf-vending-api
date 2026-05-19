@@ -12,6 +12,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/auth/revocation"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -254,7 +255,7 @@ func (s *Service) issueLoginResponse(ctx context.Context, acct db.PlatformAuthAc
 	if err != nil {
 		return nil, err
 	}
-	rtID := uuid.New()
+	rtID := id.NewUUIDV7()
 	rtExp := time.Now().UTC().Add(s.i.RefreshTokenTTL())
 	meta := compliance.TransportMetaFromContext(ctx)
 	ip := strings.TrimSpace(meta.IP)
@@ -269,7 +270,7 @@ func (s *Service) issueLoginResponse(ctx context.Context, acct db.PlatformAuthAc
 	}); err != nil {
 		return nil, err
 	}
-	sessID := uuid.New()
+	sessID := id.NewUUIDV7()
 	_ = s.q.AuthAdminInsertAdminSession(ctx, db.AuthAdminInsertAdminSessionParams{
 		ID:               sessID,
 		UserID:           acct.ID,
@@ -333,7 +334,7 @@ func (s *Service) Refresh(ctx context.Context, req RefreshRequest) (*RefreshResp
 	if err != nil {
 		return nil, err
 	}
-	rtID := uuid.New()
+	rtID := id.NewUUIDV7()
 	rtExp := time.Now().UTC().Add(s.i.RefreshTokenTTL())
 	if err := s.q.AuthInsertRefreshToken(ctx, db.AuthInsertRefreshTokenParams{
 		ID:        rtID,

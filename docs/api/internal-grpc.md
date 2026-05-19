@@ -31,7 +31,7 @@ These RPCs are backed by the same `internal/app/*` and Postgres read paths used 
 
 - Proto source: `proto/avf/internal/v1/*.proto`
 - Generated Go stubs: `internal/gen/avfinternalv1/*.pb.go`
-- Machine-facing public gRPC: `proto/avf/machine/v1/*.proto`; see [`../local/grpc-local-test.md`](../local/grpc-local-test.md)
+- Machine-facing public gRPC: `proto/avf/machine/v1/*.proto`; see [`../testing/grpc-local-test.md`](../testing/grpc-local-test.md)
 - Transport wiring: `internal/grpcserver/*`
 
 ## Auth and exposure

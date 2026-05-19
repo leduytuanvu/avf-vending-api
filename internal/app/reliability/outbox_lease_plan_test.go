@@ -2,12 +2,12 @@ package reliability_test
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
 	appreliability "github.com/avf/avf-vending-api/internal/app/reliability"
 	domainreliability "github.com/avf/avf-vending-api/internal/domain/reliability"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,7 +55,7 @@ func TestPlanOutboxRepublishBatch_LeaseBypassesDecideMinAge(t *testing.T) {
 		ID:          77,
 		Topic:       "payments.x",
 		CreatedAt:   now,
-		AggregateID: uuid.New(),
+		AggregateID: id.NewUUIDV7(),
 		Status:      "publishing",
 	}
 	stub := &stubLeaseOutbox{
@@ -83,7 +83,7 @@ func TestDecideOutboxReplay_ActiveLeaseHeld(t *testing.T) {
 		ID:          4,
 		Topic:       "payments.x",
 		CreatedAt:   now.Add(-10 * time.Minute),
-		AggregateID: uuid.New(),
+		AggregateID: id.NewUUIDV7(),
 		Status:      "publishing",
 		LockedUntil: &until,
 	}

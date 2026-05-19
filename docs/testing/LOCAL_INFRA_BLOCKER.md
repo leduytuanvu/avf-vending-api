@@ -32,7 +32,7 @@ From the repository root:
    make run-api
    ```
 
-   For gRPC on `127.0.0.1:9090`, set `GRPC_ENABLED=true` and `GRPC_ADDR=127.0.0.1:9090` before starting (see [`docs/local/grpc-local-test.md`](../local/grpc-local-test.md)).
+   For gRPC on `127.0.0.1:9090`, set `GRPC_ENABLED=true` and `GRPC_ADDR=127.0.0.1:9090` before starting (see [`docs/testing/grpc-local-test.md`](../testing/grpc-local-test.md)).
 
 4. **E2E env:** copy or symlink secrets into `tests/e2e/.env` (from [`tests/e2e/.env.example`](../../tests/e2e/.env.example)); or use **`E2E_ENV_FILE=tests/e2e/.env.local`** for non-secret defaults and add `ADMIN_TOKEN` / machine tokens as required by Web Admin and machine flows.
 

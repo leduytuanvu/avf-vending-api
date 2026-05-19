@@ -1,11 +1,11 @@
 package nats
 
 import (
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +20,7 @@ func validOutboxEventForTest() domaincommerce.OutboxEvent {
 		EventType:            "payment.session_started",
 		Payload:              []byte(`{"schema_version":1,"payment_id":"pay_1"}`),
 		AggregateType:        "payment",
-		AggregateID:          uuid.New(),
+		AggregateID:          id.NewUUIDV7(),
 		IdempotencyKey:       &idem,
 		CreatedAt:            time.Date(2026, 4, 29, 1, 0, 0, 0, time.UTC),
 		PublishedAt:          &publishedAt,

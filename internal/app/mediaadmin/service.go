@@ -10,6 +10,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -139,7 +140,7 @@ func (s *Service) InitUpload(ctx context.Context, companyID uuid.UUID, filename 
 	if purpose != "product_image" {
 		return nil, fmt.Errorf("%w: unsupported purpose %q", ErrInvalidArgument, purpose)
 	}
-	mediaID := uuid.New()
+	mediaID := id.NewUUIDV7()
 	ok := objectstore.MediaAssetOriginalKey(companyID, mediaID)
 	tk := objectstore.MediaAssetThumbWebpKey(companyID, mediaID)
 	dk := objectstore.MediaAssetDisplayWebpKey(companyID, mediaID)

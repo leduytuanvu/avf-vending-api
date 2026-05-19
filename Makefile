@@ -1,4 +1,4 @@
-.PHONY: tidy fmt fmt-apply fmt-check vet test test-short test-e2e-local build proto proto-generate proto-check machine-grpc-docs-check machine-grpc-smoke api-contract-check api-contract-test sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates verify-workflows ci-workflows check-placeholders check-wiring check-migrations verify-governance verify-enterprise-release verify-e2e-assets build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full loadtest-build loadtest-small loadtest-100 loadtest-500 loadtest-1000
+.PHONY: tidy fmt fmt-apply fmt-check vet test test-short test-e2e-local build proto proto-generate proto-check machine-grpc-docs-check machine-grpc-smoke api-contract-check api-contract-test sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates verify-workflows ci-workflows check-placeholders check-wiring check-migrations check-uuid-v7 verify-governance verify-enterprise-release verify-e2e-assets build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full loadtest-build loadtest-small loadtest-100 loadtest-500 loadtest-1000
 
 BIN_DIR := bin
 GO ?= go
@@ -73,16 +73,20 @@ postman-generate: swagger
 # Validate committed Postman JSON, production/staging safety flags, no secret-like content, and generator drift (offline).
 postman-check: postman-generate
 	"$(PY)" tools/check_postman_artifacts.py
-	git diff --exit-code -- docs/postman/
+	git diff --exit-code -- postman/collections/ postman/environments/
 
 check-placeholders:
-	bash scripts/check_production_placeholders.sh
+	bash scripts/ci/check_production_placeholders.sh
 
 check-wiring:
-	bash scripts/check_feature_wiring.sh
+	bash scripts/ci/check_feature_wiring.sh
 
 check-migrations:
 	bash scripts/ci/verify_migrations.sh
+
+check-uuid-v7:
+	@chmod +x scripts/checks/check-uuid-v7.sh
+	bash scripts/checks/check-uuid-v7.sh
 
 # Shell E2E harness: bash -n, optional shellcheck, JSON/fixtures, scenario contracts, secret heuristics (no API).
 verify-e2e-assets:
@@ -90,7 +94,7 @@ verify-e2e-assets:
 	bash scripts/ci/verify_e2e_assets.sh
 
 # Repo-local gates (no Postgres or unit tests). Use before push; GitHub Actions runs `make ci-gates` and compose validation separately.
-ci-gates: fmt-check vet check-placeholders check-wiring check-migrations api-contract-check
+ci-gates: fmt-check vet check-placeholders check-wiring check-migrations check-uuid-v7 api-contract-check
 
 # fmt (check), vet, all package tests, and build. The Go CI job also runs tidy, sqlc, swagger, etc. (see
 # ci-gates) and `make test-short` in the workflow. For full static gates: make ci-gates; for short tests: make test-short
@@ -126,11 +130,11 @@ verify-governance:
 #   3) bash -n on scripts/**/*.sh and deployments/**/*.sh
 #   4) docker compose config against *example* env (offline)
 #   5) tools/openapi_verify_release.py (production+local servers, required P0 paths, Bearer on /v1, write examples, 2xx+error examples, no planned paths, no secret-like examples)
-#   6) scripts/check_stale_p0_docs.sh (no contradictory “not applied / unmounted P0” wording in docs/)
+#   6) scripts/ci/check_stale_p0_docs.sh (no contradictory “not applied / unmounted P0” wording in docs/)
 #   7) deployment example + docs/testdata secret heuristics
 #   8) optional YAML parse (deployments/**/*.yml|yaml)
 verify-enterprise-release:
-	bash scripts/verify_enterprise_release.sh
+	bash scripts/ci/verify_enterprise_release.sh
 
 # Assemble release evidence pack (requires env vars — see docs/runbooks/production-release-readiness.md).
 build-release-evidence-pack:
@@ -152,7 +156,7 @@ machine-grpc-docs-check:
 
 # Requires grpcurl on PATH (optional CI/dev smoke against localhost:9090).
 machine-grpc-smoke:
-	bash scripts/grpc_machine_smoke.sh
+	bash scripts/test/grpc_machine_smoke.sh
 
 # Aggregate OpenAPI/Swagger + Postman + protobuf + sqlc + machine gRPC docs consistency gates (offline).
 api-contract-check: sqlc-check swagger-check postman-check proto-check machine-grpc-docs-check
@@ -236,7 +240,7 @@ staging-migrate:
 	  exec $(GO) run github.com/pressly/goose/v3/cmd/goose@v3.27.0 -dir migrations postgres "$$DATABASE_URL" up'
 
 staging-smoke:
-	@bash scripts/smoke_staging.sh
+	@bash scripts/deploy/smoke_staging.sh
 
 production-validate-env:
 	@bash -c 'set -euo pipefail; test "$$APP_ENV" = "production" || { echo "production-validate-env: set APP_ENV=production" >&2; exit 1; }; \
@@ -320,11 +324,11 @@ loadtest-small:
 # Staging-oriented fleet storms (100 / 500 / 1000 machines). Requires LOADTEST_MACHINE_MANIFEST and broker/admin/webhook env as needed.
 # Refuses LOAD_TEST_ENV=production with -execute inside avf-loadtest.
 loadtest-100:
-	bash scripts/loadtest/run_fleet_storm.sh 100 $(EXTRA_LOADTEST_FLAGS)
+	bash scripts/test/loadtest/run_fleet_storm.sh 100 $(EXTRA_LOADTEST_FLAGS)
 
 loadtest-500:
-	bash scripts/loadtest/run_fleet_storm.sh 500 $(EXTRA_LOADTEST_FLAGS)
+	bash scripts/test/loadtest/run_fleet_storm.sh 500 $(EXTRA_LOADTEST_FLAGS)
 
 # Prefer dedicated staging / perf stacks for 1000-machine simulations (see docs/testing/load-test.md).
 loadtest-1000:
-	bash scripts/loadtest/run_fleet_storm.sh 1000 $(EXTRA_LOADTEST_FLAGS)
+	bash scripts/test/loadtest/run_fleet_storm.sh 1000 $(EXTRA_LOADTEST_FLAGS)

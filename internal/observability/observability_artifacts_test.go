@@ -78,7 +78,7 @@ func TestGrafanaDashboardsAreValidJSON(t *testing.T) {
 	root := repoRoot(t)
 	patterns := []string{
 		filepath.Join(root, "deployments", "prod", "observability", "grafana", "provisioning", "dashboards", "json", "*.json"),
-		filepath.Join(root, "ops", "grafana", "provisioning", "dashboards", "json", "*.json"),
+		filepath.Join(root, "deployments", "docker", "observability", "grafana", "provisioning", "dashboards", "json", "*.json"),
 	}
 	for _, pattern := range patterns {
 		files, err := filepath.Glob(pattern)

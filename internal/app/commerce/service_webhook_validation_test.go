@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
@@ -100,8 +101,8 @@ func TestApplyPaymentProviderWebhook_requiresWebhookPersistence(t *testing.T) {
 		saleLines: stubSaleLines{},
 	}
 	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
-		OrderID:                uuid.New(),
-		PaymentID:              uuid.New(),
+		OrderID:                id.NewUUIDV7(),
+		PaymentID:              id.NewUUIDV7(),
 		Provider:               "stripe",
 		ProviderReference:      "evt_1",
 		WebhookEventID:         "wh_evt_test_webhook_not_configured",
@@ -123,8 +124,8 @@ func TestApplyPaymentProviderWebhook_requiresWebhookEventID(t *testing.T) {
 		saleLines: stubSaleLines{},
 	}
 	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
-		OrderID:                uuid.New(),
-		PaymentID:              uuid.New(),
+		OrderID:                id.NewUUIDV7(),
+		PaymentID:              id.NewUUIDV7(),
 		Provider:               "stripe",
 		ProviderReference:      "evt_1",
 		EventType:              "charge.succeeded",
@@ -149,8 +150,8 @@ func TestApplyPaymentProviderWebhook_webhookEventIDTooLong(t *testing.T) {
 		long[i] = 'a'
 	}
 	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
-		OrderID:                uuid.New(),
-		PaymentID:              uuid.New(),
+		OrderID:                id.NewUUIDV7(),
+		PaymentID:              id.NewUUIDV7(),
 		Provider:               "stripe",
 		ProviderReference:      "evt_1",
 		WebhookEventID:         string(long),
@@ -173,8 +174,8 @@ func TestApplyPaymentProviderWebhook_redactsSensitivePaymentPayload(t *testing.T
 		saleLines: stubSaleLines{},
 	}
 	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
-		OrderID:                uuid.New(),
-		PaymentID:              uuid.New(),
+		OrderID:                id.NewUUIDV7(),
+		PaymentID:              id.NewUUIDV7(),
 		Provider:               "stripe",
 		ProviderReference:      "evt_sensitive",
 		WebhookEventID:         "wh_evt_sensitive",

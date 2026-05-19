@@ -3,6 +3,7 @@ package device
 import (
 	"context"
 	"errors"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 
 	domainfleet "github.com/avf/avf-vending-api/internal/domain/fleet"
@@ -51,7 +52,7 @@ func (s stubMachineStatusReader) GetMachine(ctx context.Context, machineID uuid.
 
 func TestEnsureMachineCommandableRejectsSuspendedAndCompromised(t *testing.T) {
 	t.Parallel()
-	mid := uuid.New()
+	mid := id.NewUUIDV7()
 	for _, status := range []string{"suspended", "compromised", "retired", "maintenance"} {
 		d := &MQTTCommandDispatcher{machines: stubMachineStatusReader{status: status}}
 		err := d.ensureMachineCommandable(context.Background(), mid)
@@ -98,7 +99,7 @@ func ptrStr(s string) *string {
 func TestEnsureMachineCommandableAllowsActive(t *testing.T) {
 	t.Parallel()
 	d := &MQTTCommandDispatcher{machines: stubMachineStatusReader{status: "active"}}
-	if err := d.ensureMachineCommandable(context.Background(), uuid.New()); err != nil {
+	if err := d.ensureMachineCommandable(context.Background(), id.NewUUIDV7()); err != nil {
 		t.Fatalf("active machine should be commandable: %v", err)
 	}
 }

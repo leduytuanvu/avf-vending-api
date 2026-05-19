@@ -118,4 +118,4 @@ Do not dispatch commands to production hardware from a generic smoke job. Comman
 
 - **`commands_dispatched_total`**, **`commands_acked_total`**, **`commands_failed_total`**, **`command_ack_latency_seconds`**, MQTT ingest mirrors under `productionmetrics` / `mqttprom`.
 
-See [`docs/observability/production-metrics.md`](../observability/production-metrics.md).
+See [`docs/production/production-metrics.md`](../production/production-metrics.md).

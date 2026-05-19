@@ -3,6 +3,7 @@ package mediaadmin
 import (
 	"bytes"
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"image"
 	"image/png"
 	"io"
@@ -131,7 +132,7 @@ func TestWebPVariantGenerator_rejectsNonCanonicalOriginalKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	g := WebPVariantGenerator{}
-	wrongMid := uuid.New()
+	wrongMid := id.NewUUIDV7()
 	wrongKey := objectstore.MediaAssetOriginalKey(testFixtureCompanyUUID, wrongMid)
 	_, err := g.GenerateWebPVariants(context.Background(), st, testFixtureCompanyUUID, mid, wrongKey, 1<<20)
 	if err == nil {

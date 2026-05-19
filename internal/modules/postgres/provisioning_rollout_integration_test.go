@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -13,15 +14,14 @@ import (
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
 func TestP21_BulkProvisioning100Machines_NoActivationCodes(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	batchKey := uuid.New()
-	siteID := uuid.New()
+	batchKey := id.NewUUIDV7()
+	siteID := id.NewUUIDV7()
 	_, err := pool.Exec(ctx, `
 INSERT INTO sites (id, name, code, status)
 VALUES ($1, 'Bulk Site', $2, 'active')

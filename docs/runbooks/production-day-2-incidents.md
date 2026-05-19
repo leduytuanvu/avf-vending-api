@@ -6,11 +6,11 @@ Use this with:
 
 - `docs/runbooks/production-2-vps.md`
 - `docs/runbooks/telemetry-production-rollout.md`
-- `ops/RUNBOOK.md`
+- `deployments/docker/observability/RUNBOOK.md`
 
 ## Metrics and logs while triaging
 
-- **API / gRPC:** use `http_*` and `grpc_*` series on job `avf_api_metrics` (see `docs/observability/production-metrics.md`); filter logs by `correlation_id` or `request_id`.
+- **API / gRPC:** use `http_*` and `grpc_*` series on job `avf_api_metrics` (see `docs/production/production-metrics.md`); filter logs by `correlation_id` or `request_id`.
 - **Outbox:** `avf_worker_outbox_*` on `avf_worker_metrics`; dead-letter alert reference `avf_worker_outbox_dispatch_dead_lettered_total`.
 - **Telemetry:** mqtt-ingest and worker JetStream metrics on `avf_mqtt_ingest_metrics` / `avf_worker_metrics` (see `deployments/prod/observability/prometheus/alerts.yml`).
 - **Payments:** reconciler counters on `avf_reconciler_metrics` (`avf_commerce_*`, `avf_commerce_reconciliation_cases_total`), **`payment_provider_probe_stale_pending_queue`**, webhooks on API scrape with `avf_commerce_payment_webhook_*`, **`payment_webhook_rejections_total`**, and **`payment_webhook_amount_currency_mismatch_total`**.

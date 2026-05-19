@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 
 	"github.com/avf/avf-vending-api/internal/app/activation"
@@ -101,8 +102,8 @@ func TestP06_OfflineSync_sortedDescendingMetaStillProcessesAscendingSequences(t 
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
@@ -155,8 +156,8 @@ func TestP06_OfflineSync_duplicateOfflineSequenceReplayed(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
@@ -218,8 +219,8 @@ func TestP06_OfflineSync_gapInSequenceRejectedAfterSuccessfulCursorBump(t *testi
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
@@ -285,8 +286,8 @@ func TestP06_OfflineSync_outOfOrderErrorIncludesExpectedSequence(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
@@ -336,8 +337,8 @@ func TestP06_OfflineSync_duplicateClientEventIdAtLaterSequenceRejected(t *testin
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)

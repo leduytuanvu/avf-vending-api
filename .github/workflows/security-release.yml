@@ -1,7 +1,7 @@
 # Release gate after "Build and Push Images" (image scan, security-verdict). Display name must stay
 # "Security Release" — distinct from repo-level "Security" (security.yml). Downstream staging listens here.
 # Does **not** deploy to production; production is **workflow_dispatch Deploy Production** (`deploy-prod.yml`, `main` only).
-# CONTRACT(verify_workflow_contracts): `write_security_verdict.py unsupported-trigger` remains for `scripts/release/security_release_signal.sh`; automatic eligibility uses artifact semantic `source_event`, not Build `workflow_run` wrapper rejection.
+# CONTRACT(verify_workflow_contracts): `write_security_verdict.py unsupported-trigger` remains for `scripts/deploy/release/security_release_signal.sh`; automatic eligibility uses artifact semantic `source_event`, not Build `workflow_run` wrapper rejection.
 name: Security Release
 
 env:
@@ -429,19 +429,19 @@ jobs:
             fi
             export GENERATED_AT_UTC="${generated_at_utc}"
             echo "::error::security-reports/security-verdict.json was not written; emitting emergency fail verdict" >&2
-            python3 scripts/security/write_security_verdict.py emergency --emergency-reason "Exit trap: verdict missing (Security Release signal step ended before a successful write)"
+            python3 scripts/deploy/security/write_security_verdict.py emergency --emergency-reason "Exit trap: verdict missing (Security Release signal step ended before a successful write)"
             return 0
           }
           trap 'emergency_on_missing' EXIT
-          if [[ ! -f scripts/security/write_security_verdict.py ]]; then
-            echo "::error::expected scripts/security/write_security_verdict.py from checkout" >&2
+          if [[ ! -f scripts/deploy/security/write_security_verdict.py ]]; then
+            echo "::error::expected scripts/deploy/security/write_security_verdict.py from checkout" >&2
             exit 1
           fi
           emit_verdict_outputs_and_summary() {
             set +e
-            python3 scripts/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
+            python3 scripts/deploy/security/emit_security_verdict_outputs.py >> "$GITHUB_OUTPUT"
             _eo=$?
-            python3 scripts/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
+            python3 scripts/deploy/security/emit_security_verdict_summary.py --section main >> "$GITHUB_STEP_SUMMARY"
             _es=$?
             set -e
             if [[ "${_eo}" -ne 0 ]]; then
@@ -453,7 +453,7 @@ jobs:
           }
           emit_source_debug_table_safe() {
             set +e
-            python3 scripts/security/emit_release_signal_debug_table.py
+            python3 scripts/deploy/security/emit_release_signal_debug_table.py
             _ed=$?
             set -e
             if [[ "${_ed}" -ne 0 ]]; then
@@ -469,7 +469,7 @@ jobs:
               echo "- Requires **success**, workflow name **Build and Push Images**, and \`develop\`/\`main\` \`head_branch\`."
               echo "- **Semantic** promotion source (\`push\` vs \`workflow_dispatch\`) is enforced from **promotion-manifest** / **immutable-image-contract**, not from the Build workflow's outer GHA \`event\` (\`workflow_run\` chain triggers are allowed when artifacts prove an eligible semantic source)."
             } >> "$GITHUB_STEP_SUMMARY"
-            python3 scripts/security/write_security_verdict.py skipped
+            python3 scripts/deploy/security/write_security_verdict.py skipped
             emit_verdict_outputs_and_summary
             trap - EXIT
             exit 0
@@ -495,7 +495,7 @@ jobs:
             # Do not use triggering Build head_branch for release-candidate identity (may differ from promotion-manifest when workflow_run chains).
           fi
           if [[ "${NO_RC}" -eq 1 ]]; then
-            python3 scripts/security/write_security_verdict.py no-candidate
+            python3 scripts/deploy/security/write_security_verdict.py no-candidate
             emit_verdict_outputs_and_summary
             {
               echo ""
@@ -581,7 +581,7 @@ jobs:
               echo "| \`resolved_source_branch\` | \`${RESOLVED_SOURCE_BRANCH:-}\` |"
               echo "| \`resolved_source_sha\` | \`${RESOLVED_SOURCE_SHA:-}\` |"
             } >> "$GITHUB_STEP_SUMMARY"
-            python3 scripts/security/write_security_verdict.py metadata-mismatch
+            python3 scripts/deploy/security/write_security_verdict.py metadata-mismatch
             emit_verdict_outputs_and_summary
             trap - EXIT
             exit 0
@@ -613,13 +613,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           # Semantic source_event is authoritative from promotion-manifest (must be push / workflow_dispatch / manual); Build may be CI workflow_run-wrapped.
           if [[ -n "${A_EV// }" && "${A_EV}" != "push" && "${A_EV}" != "workflow_dispatch" && "${A_EV}" != "manual" ]]; then
-            python3 scripts/security/write_security_verdict.py unsupported-artifact-source-event
+            python3 scripts/deploy/security/write_security_verdict.py unsupported-artifact-source-event
             emit_verdict_outputs_and_summary
             trap - EXIT
             exit 0
           fi
           if [[ -z "${want_branch// }" || ( "${want_branch}" != "develop" && "${want_branch}" != "main" ) ]]; then
-            python3 scripts/security/write_security_verdict.py ineligible-branch
+            python3 scripts/deploy/security/write_security_verdict.py ineligible-branch
             emit_verdict_outputs_and_summary
             trap - EXIT
             exit 0
@@ -631,7 +631,7 @@ jobs:
               echo "- **Why skipped / no-candidate**: \`RESOLVED_SOURCE_SHA\` (artifacts) and checkout fallback were empty; cannot evaluate the release gate (expected promotion-manifest / image-metadata or \`WORKFLOW_SHA\` for dispatch)."
             } >> "$GITHUB_STEP_SUMMARY"
             export ARTIFACT_CONSISTENCY_NOTE="empty canonical source SHA: RESOLVED_SOURCE_SHA and WORKFLOW_SHA fallback both empty (artifact chain incomplete)."
-            python3 scripts/security/write_security_verdict.py no-candidate
+            python3 scripts/deploy/security/write_security_verdict.py no-candidate
             emit_verdict_outputs_and_summary
             trap - EXIT
             exit 0
@@ -744,13 +744,13 @@ jobs:
           export REPO_RELEASE_TRIVY_CONFIG="${repo_release_trivy_config}"
           export REPO_RELEASE_SUMMARY="${repo_release_summary}"
           set +e
-          python3 scripts/security/write_security_verdict.py full
+          python3 scripts/deploy/security/write_security_verdict.py full
           _vw=$?
           set -e
           if [[ "${_vw}" -ne 0 ]]; then
             echo "::error::write_security_verdict.py full mode failed; writing emergency fail verdict" >&2
             set +e
-            python3 scripts/security/write_security_verdict.py emergency --emergency-reason "write_security_verdict.py full exited with code ${_vw}"
+            python3 scripts/deploy/security/write_security_verdict.py emergency --emergency-reason "write_security_verdict.py full exited with code ${_vw}"
             set -e
           fi
           REPO_RELEASE_MATCHED_RUN_ID="${repo_release_matched_run_id:-}"
@@ -778,7 +778,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          python3 scripts/release/write_production_deploy_candidate_package.py \
+          python3 scripts/deploy/release/write_production_deploy_candidate_package.py \
             --security-verdict security-reports/security-verdict.json \
             --out-dir production-deploy-candidate
 
@@ -844,10 +844,10 @@ jobs:
         run: |
           set -Eeuo pipefail
           if [[ -f security-reports/security-verdict.json ]]; then
-            python3 scripts/release/build_release_evidence_package.py --out release-evidence --phase security --root . --strict-phase security
+            python3 scripts/deploy/release/build_release_evidence_package.py --out release-evidence --phase security --root . --strict-phase security
           else
             echo "::warning::security-reports/security-verdict.json not present; building non-strict audit manifest only"
-            python3 scripts/release/build_release_evidence_package.py --out release-evidence --phase security --root .
+            python3 scripts/deploy/release/build_release_evidence_package.py --out release-evidence --phase security --root .
           fi
       - name: Upload release audit package
         if: always()
@@ -903,7 +903,7 @@ jobs:
             exit 0
           fi
           set +e
-          python3 scripts/security/emit_security_verdict_summary.py --section observability >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/deploy/security/emit_security_verdict_summary.py --section observability >> "$GITHUB_STEP_SUMMARY"
           _obs=$?
           set -e
           if [[ "${_obs}" -ne 0 ]]; then

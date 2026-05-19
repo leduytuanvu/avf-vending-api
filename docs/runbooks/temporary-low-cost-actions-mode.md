@@ -7,7 +7,7 @@ This runbook describes the smallest practical set of temporary workflow changes 
 If **`ci.yml`**, **`build-push.yml`**, or **`enterprise-release-verify.yml`** are temporarily manual-only (see sections below), **releases to production still require**:
 
 - **`make verify-enterprise-release`** (or equivalent **`verify_enterprise_result.json`**) executed on a controlled runner **before** **`deploy-prod`** approval.
-- Field evidence packs per **[`testing/field-test-cases.md`](../testing/field-test-cases.md)** + **[`operations/field-pilot-checklist.md`](../operations/field-pilot-checklist.md)** — **not replaced** by a green smoke script alone.
+- Field evidence packs per **[`testing/field-test-cases.md`](../testing/field-test-cases.md)** + **[`operations/field-pilot-checklist.md`](../production/field-pilot-checklist.md)** — **not replaced** by a green smoke script alone.
 
 ---
 

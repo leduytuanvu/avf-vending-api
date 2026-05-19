@@ -10,7 +10,7 @@ cd "${PROD_DIR}"
 
 SMOKE_PYTHON="${SMOKE_PYTHON:-python3}"
 
-EMITTER_PY="${REPO_ROOT}/scripts/smoke/emit_production_smoke_json.py"
+EMITTER_PY="${REPO_ROOT}/scripts/deploy/smoke/emit_production_smoke_json.py"
 JSON_MODE=0
 SMOKE_LEVEL="${SMOKE_LEVEL:-business-readonly}"
 SHOW_HELP=0

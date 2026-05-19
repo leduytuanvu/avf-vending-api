@@ -50,4 +50,4 @@ See also: [`payment.md` summary (P1.2 admin routes)](../api/payment.md), [`payme
 - **`refunds_requested_total{channel=…}`**, **`refunds_failed_total{reason=…}`** — refund workflow volume.
 - **`payment_webhooks_total`** / **`payment_webhook_rejections_total`** — webhook-side mismatches vs accepted traffic.
 
-[`docs/observability/production-metrics.md`](../observability/production-metrics.md).
+[`docs/production/production-metrics.md`](../production/production-metrics.md).

@@ -5,13 +5,25 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-PYTHON="${PYTHON:-python3}"
-if ! command -v "${PYTHON}" >/dev/null 2>&1; then
-  PYTHON="python"
-fi
-if ! command -v "${PYTHON}" >/dev/null 2>&1 && [[ -x "/c/Python314/python.exe" ]]; then
-  PYTHON="/c/Python314/python.exe"
-fi
+resolve_python() {
+  local c
+  for c in "${PYTHON:-}" python python3; do
+    [[ -n "${c}" ]] || continue
+    if command -v "${c}" >/dev/null 2>&1 && "${c}" -c "import sys" >/dev/null 2>&1; then
+      echo "${c}"
+      return 0
+    fi
+  done
+  for c in /c/Python314/python.exe /c/Python312/python.exe; do
+    if [[ -x "${c}" ]] && "${c}" -c "import sys" >/dev/null 2>&1; then
+      echo "${c}"
+      return 0
+    fi
+  done
+  echo "run-mqtt-full-coverage: python not found" >&2
+  return 1
+}
+PYTHON="$(resolve_python)"
 REPORT_DIR="${ROOT}/reports/test"
 EVIDENCE_DIR="${REPORT_DIR}/mqtt-full-evidence"
 mkdir -p "${REPORT_DIR}" "${EVIDENCE_DIR}"

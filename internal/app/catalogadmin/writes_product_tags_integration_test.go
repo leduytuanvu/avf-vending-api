@@ -2,6 +2,7 @@ package catalogadmin
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -88,7 +89,7 @@ func TestProductTags_CreateUpdateReplaceClear_OmitUnchanged(t *testing.T) {
 	require.Len(t, by[p.ID], 1)
 	require.Equal(t, t1.ID, by[p.ID][0].ID)
 
-	bad := uuid.New()
+	bad := id.NewUUIDV7()
 	_, err = svc.UpdateProduct(ctx, UpdateProductInput{
 		ProductID:     p.ID,
 		Sku:           sku,

@@ -2,12 +2,12 @@ package grpcserver
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"strings"
 	"testing"
 
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -19,8 +19,8 @@ func TestP23_SubmitTelemetryBatch_rejectsOverConfiguredEventCap(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	cfg := testMachineGRPCConfig()
@@ -58,8 +58,8 @@ func TestP23_PushOfflineEvents_rejectsOverConfiguredBatchCap(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	deps := offlineSyncIntegrationDeps(t, pool)
