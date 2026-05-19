@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+import "avf/machine/v1/common.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// MachineOfflineSyncService owns replay of durable app-side events after an
+// offline window. Event-specific mutations stay in their owning services.
+service MachineOfflineSyncService {
+  rpc PushOfflineEvents(SyncOfflineEventsRequest) returns (SyncOfflineEventsResponse);
+  rpc GetSyncCursor(GetSyncCursorRequest) returns (GetSyncCursorResponse);
+}
+
+message OfflineEvent {
+  MachineRequestMeta meta = 1;
+  string event_type = 2;
+  google.protobuf.Struct payload = 3;
+}
+
+message SyncOfflineEventsRequest {
+  MachineRequestMeta meta = 1;
+  repeated OfflineEvent events = 2;
+}
+
+message SyncOfflineEventsResponse {
+  MachineResponseMeta meta = 1;
+  repeated OfflineEventResult results = 2;
+  string next_sync_cursor = 3;
+}
+
+message OfflineEventResult {
+  int64 offline_sequence = 1;
+  string idempotency_key = 2;
+  MachineResponseStatus status = 3;
+  string reason = 4;
+}
+
+message GetSyncCursorRequest {
+  MachineRequestMeta meta = 1;
+}
+
+message GetSyncCursorResponse {
+  MachineResponseMeta meta = 1;
+  string sync_cursor = 2;
+}

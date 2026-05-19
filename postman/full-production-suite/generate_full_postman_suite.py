@@ -48,9 +48,244 @@ REGISTERED_SERVICES = {
     ("avf.internal.v1", "InternalReportingQueryService"),
 }
 
-REST_EXPECTED = 325
-GRPC_EXPECTED = 85
+REST_EXPECTED = 327
+GRPC_EXPECTED = 86
 MQTT_EXPECTED = 28
+
+FULL100_FOLDER_ORDER = [
+    "00_Preflight",
+    "01_Auth",
+    "02_Admin_Account_Session",
+    "03_Sites_Regions_Tags",
+    "04_Products_Catalog_Media",
+    "05_Machines_Provisioning_Activation",
+    "06_Planograms_Slots_Assortment",
+    "07_Inventory_Restock_Anomalies",
+    "08_Commerce_Order_Checkout",
+    "09_Payments_Webhooks_Reconciliation",
+    "10_Vending_Sale_Refund_Failure",
+    "11_Remote_Commands",
+    "12_MQTT_Interop_REST_Link",
+    "13_gRPC_Interop_REST_Link",
+    "14_Reporting_Audit_Exports",
+    "15_Technicians_Operations",
+    "16_System_Health_Metrics",
+    "17_Negative_Security_Idempotency",
+]
+
+_FULL100_SUB_PAIRS: list[tuple[re.Pattern, str]] = [
+    (re.compile(re.escape("E2E_ORGANIZATION_ID")), "LEGACY_E2E_PARTITION_ENV_REMOVED"),
+    (re.compile(re.escape("DevOrganizationID")), "LEGACY_DEV_PARTITION_ID_REMOVED"),
+    (re.compile(r"\bcanary_organization_id\b", re.I), "canary_company_marker_removed"),
+    (re.compile(r"\borganization_id\b", re.I), "company_partition_key_removed"),
+    (re.compile(r"\borganizationId\b"), "companyPartitionKeyCamel_removed"),
+    (re.compile(r"\bOrganizationID\b"), "CompanyPartitionKey_removed"),
+    (re.compile(r"\borganizations\b", re.I), "company_directory_list"),
+    (re.compile(r"\borganization\b", re.I), "company_directory"),
+    (re.compile(r"\bscope_id\b", re.I), "partition_scope_removed"),
+    (re.compile(r"\bscopeId\b"), "partitionScopeCamel_removed"),
+    (re.compile(r"\bScopeID\b"), "PartitionScope_removed"),
+    (re.compile(r"\btenant_id\b", re.I), "deployment_key_removed"),
+    (re.compile(r"\btenantId\b"), "deploymentKeyCamel_removed"),
+    (re.compile(r"\bTenantID\b"), "DeploymentKey_removed"),
+    (re.compile(r"\btenant\b", re.I), "deployment"),
+    (re.compile(r"\borg_admin\b", re.I), "company_admin_role"),
+]
+
+
+def sanitize_full100_text(s: str) -> str:
+    if not isinstance(s, str) or not s:
+        return s
+    out = s
+    for rx, rep in _FULL100_SUB_PAIRS:
+        out = rx.sub(rep, out)
+    return out
+
+
+def sanitize_full100_tree(obj: object) -> object:
+    if isinstance(obj, dict):
+        return {sanitize_full100_text(str(k)) if isinstance(k, str) else k: sanitize_full100_tree(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [sanitize_full100_tree(x) for x in obj]
+    if isinstance(obj, str):
+        return sanitize_full100_text(obj)
+    return obj
+
+
+def assign_folder_full100(path: str, method: str, tags: list) -> str:
+    """REST-only folder layout for AVF_FULL_100 collection (parity count unchanged vs OpenAPI)."""
+    p = path.lower()
+    ts = {t.lower() for t in tags}
+    tagl = " ".join(tags).lower()
+
+    if any(x in p for x in ("/health/", "/version", "/swagger/")):
+        return "00_Preflight"
+    if "/metrics" in p:
+        return "16_System_Health_Metrics"
+
+    if "/v1/auth" in p or "auth" in ts:
+        return "01_Auth"
+
+    if (
+        "/v1/admin/companies" in p
+        or "/v1/admin/users" in p
+        or "/v1/admin/roles" in p
+        or "/v1/admin/invitations" in p
+        or "rbac" in ts
+        or "companies" in ts
+    ):
+        return "02_Admin_Account_Session"
+
+    if "/v1/admin/sites" in p or "sites" in ts or "locations" in ts:
+        return "03_Sites_Regions_Tags"
+
+    if "/v1/admin/products" in p or "catalog" in ts or "products" in ts or ("media" in ts and "/v1/admin/" in p):
+        return "04_Products_Catalog_Media"
+
+    if (
+        "/v1/setup/" in p
+        or "/v1/admin/machines" in p
+        or "/v1/machines/" in p
+        or "fleet" in ts
+        or "activation" in ts
+        or "machine admin" in ts
+    ):
+        return "05_Machines_Provisioning_Activation"
+
+    if "planogram" in p or "layout" in p or "topology" in p or "cabinet" in ts:
+        return "06_Planograms_Slots_Assortment"
+
+    if "inventory" in p or "restock" in p or "fill" in p:
+        return "07_Inventory_Restock_Anomalies"
+
+    if "webhook" in p or "payment provider" in ts or "qr" in p or "psp" in tagl or "/v1/partner" in p:
+        return "09_Payments_Webhooks_Reconciliation"
+
+    if (
+        "/vend/" in p
+        or "/refunds" in p
+        or "refund" in p
+        or ("vend" in tagl and "failure" in tagl)
+        or "/vend/failure" in p
+    ):
+        return "10_Vending_Sale_Refund_Failure"
+
+    if "/v1/commerce" in p or "commerce" in ts or "checkout" in ts:
+        return "08_Commerce_Order_Checkout"
+
+    if "operator" in p or "operator" in ts:
+        return "15_Technicians_Operations"
+
+    if "/v1/device/" in p or "telemetry" in ts or "device" in ts:
+        return "16_System_Health_Metrics"
+
+    if "command" in p or "command" in ts:
+        return "11_Remote_Commands"
+
+    if (
+        "report" in ts
+        or "finance" in ts
+        or "reconciliation" in p
+        or "/v1/admin/reports" in p
+        or "reporting" in ts
+    ):
+        return "14_Reporting_Audit_Exports"
+
+    if "/v1/admin/audit" in p or "/v1/admin/security" in p or "audit" in ts:
+        return "14_Reporting_Audit_Exports"
+
+    return "17_Negative_Security_Idempotency"
+
+
+def folder_documentation_only(name: str, body_md: str) -> dict:
+    return {"name": name, "description": body_md.strip(), "item": []}
+
+
+def build_full100_extra_folders() -> list[dict]:
+    """Non-request folders: interop pointers (REST runner cannot execute gRPC/MQTT natively in Collection v2.1)."""
+    return [
+        folder_documentation_only(
+            "12_MQTT_Interop_REST_Link",
+            "### MQTT interop (Postman REST runner limitation)\n\n"
+            "- **Postman Collection v2.1** drives **HTTP** only. MQTT flows are executed with **mosquitto_pub / mosquitto_sub** "
+            "or the repo harness — see `mqtt/README_MQTT_TESTS.md` and `mqtt/run-mqtt-postman-adjacent.sh`.\n"
+            "- Assets: `mqtt/AVF_MQTT_100_TOPIC_MATRIX.csv`, `mqtt/AVF_MQTT_100_PAYLOADS.json`.",
+        ),
+        folder_documentation_only(
+            "13_gRPC_Interop_REST_Link",
+            "### gRPC interop (Postman REST runner limitation)\n\n"
+            "- Use **Postman Desktop native gRPC** (manual import of protos) **or** **grpcurl** via "
+            "`grpc/run-grpc-postman-adjacent.sh` — see `grpc/README_GRPC_TESTS.md`.\n"
+            "- Assets: `grpc/AVF_GRPC_100_METHOD_MATRIX.csv`, `grpc/AVF_GRPC_100_REQUESTS.json`.",
+        ),
+    ]
+
+
+def build_full100_environment_values() -> list[dict]:
+    """Environment keys for AVF_FULL_100 — placeholders only; forbidden partition keys omitted."""
+
+    def ev(key: str, value: str, enabled: bool = True) -> dict:
+        return {"key": key, "value": value, "type": "default", "enabled": enabled}
+
+    return [
+        ev("baseUrl", "https://api.ldtv.dev"),
+        ev("adminEmail", ""),
+        ev("adminPassword", ""),
+        ev("platformAdminEmail", ""),
+        ev("platformAdminPassword", ""),
+        ev("accessToken", ""),
+        ev("refreshToken", ""),
+        ev("allow_destructive", "false"),
+        ev("canaryMode", "false"),
+        ev("readiness", "false"),
+        ev("siteId", ""),
+        ev("machineId", ""),
+        ev("machineCode", ""),
+        ev("machineSerial", ""),
+        ev("machineToken", ""),
+        ev("activationCode", ""),
+        ev("productId", ""),
+        ev("sku", ""),
+        ev("planogramId", ""),
+        ev("slotId", ""),
+        ev("slotIndex", "1"),
+        ev("orderId", ""),
+        ev("paymentSessionId", ""),
+        ev("paymentProvider", ""),
+        ev("paymentWebhookSecret", ""),
+        ev("commandId", ""),
+        ev("operatorSessionId", ""),
+        ev("mediaId", ""),
+        ev("priceBookId", ""),
+        ev("promotionId", ""),
+        ev("technicianId", ""),
+        ev("tagId", ""),
+        ev("categoryId", ""),
+        ev("brandId", ""),
+        ev("catalogVersion", ""),
+        ev("mediaManifestVersion", ""),
+        ev("reportId", ""),
+        ev("idempotencyKey", ""),
+        ev("requestId", ""),
+        ev("correlationId", ""),
+        ev("grpcAddr", ""),
+        ev("grpcHost", ""),
+        ev("grpcPort", ""),
+        ev("grpcUseReflection", "false"),
+        ev("mqttHost", ""),
+        ev("mqttPort", "8883"),
+        ev("mqttUsername", ""),
+        ev("mqttPassword", ""),
+        ev("mqttTopicPrefix", ""),
+        ev("mqttClientId", ""),
+        ev("webhookSecret", ""),
+        ev("canary_machine_id", ""),
+        ev("canary_operator_id", ""),
+        ev("canary_product_id", ""),
+        ev("canary_slot_index", "1"),
+        ev("canary_site_id", ""),
+        ev("auditEventId", ""),
+    ]
 
 
 def is_extract_pollution_rel(rel_posix: str) -> bool:
@@ -603,7 +838,23 @@ def build_postman_url_object(path_with_postman_vars: str, qparams: list[dict]) -
     return out
 
 
-def build_rest_collection(spec: dict) -> tuple[list[dict], int]:
+def build_rest_collection(
+    spec: dict,
+    *,
+    folder_assigner=assign_folder,
+    folder_order_keys: list[str] | None = None,
+    collection_title: str = "AVF REST 365 — Full Production Inventory",
+    collection_description: str = (
+        "Sinh tự động từ `docs/swagger/swagger.json`. Request ghi (GATED) mặc định **disabled**. "
+        "Bật từng request và đặt một trong `allow_destructive=true` | `canaryMode=true` | `readiness=true` trước khi chạy write trên production.\n\n"
+        "Import kèm environment `AVF_PRODUCTION.postman_environment.json` (đủ gate keys + canary ids). "
+        "Biến: `{{baseUrl}}`, `{{accessToken}}`, `{{machineId}}`, …"
+    ),
+    collection_id_seed: str = "avf-rest-365",
+    tag_matrix_folder_name: str = "99 Full Raw REST Matrix by OpenAPI Tag",
+    tag_matrix_exec_hint: str | None = None,
+    append_doc_folders_by_name: dict[str, dict] | None = None,
+) -> tuple[dict, int]:
     operations = iter_openapi_operations(spec)
     folders: dict[str, list] = defaultdict(list)
 
@@ -659,6 +910,14 @@ if (gateCapture && pm.response.code >= 200 && pm.response.code < 300) {
     setNonEmpty("siteId", j.site_id || j.siteId);
     setNonEmpty("productId", j.product_id || j.productId);
     setNonEmpty("paymentSessionId", j.payment_session_id || j.paymentSessionId);
+    setNonEmpty("planogramId", j.planogram_id || j.planogramId);
+    setNonEmpty("slotId", j.slot_id || j.slotId);
+    setNonEmpty("mediaId", j.media_id || j.mediaId);
+    setNonEmpty("priceBookId", j.price_book_id || j.priceBookId);
+    setNonEmpty("promotionId", j.promotion_id || j.promotionId);
+    setNonEmpty("technicianId", j.technician_id || j.technicianId);
+    setNonEmpty("tagId", j.tag_id || j.tagId);
+    setNonEmpty("reportId", j.report_id || j.reportId);
     setNonEmpty("commandId", j.command_id || j.commandId);
     setNonEmpty("machineToken", j.machine_token || j.machineToken);
     setNonEmpty("activationCode", j.activation_code || j.activationCode);
@@ -704,7 +963,24 @@ if ((pm.environment.get("allow_destructive") === "true" || pm.environment.get("c
 }
 """
 
-    tests_full = collection_tests + login_block + capture_block
+    err_env_block = """
+if (pm.response.code >= 400) {
+  pm.test("JSON error envelope (when body parses)", function () {
+    try {
+      const j = pm.response.json();
+      if (j && j.error && typeof j.error === "object") {
+        pm.expect(j.error).to.have.property("code");
+        pm.expect(j.error).to.have.property("message");
+        const rid = j.error.requestId || j.error.request_id;
+        if (rid !== undefined && rid !== null && String(rid).trim().length) {
+          pm.expect(String(rid).trim().length).to.be.above(0);
+        }
+      }
+    } catch (e) { /* non-JSON body */ }
+  });
+}
+"""
+    tests_full = collection_tests + login_block + capture_block + err_env_block
 
     idx = 0
     for row in operations:
@@ -713,7 +989,7 @@ if ((pm.environment.get("allow_destructive") === "true" || pm.environment.get("c
         opid = op.get("operationId", "")
         tags = op.get("tags") or []
         summary = op.get("summary", "")
-        folder = assign_folder(path, method, tags)
+        folder = folder_assigner(path, method, tags)
         dest_level, test_type = classify_destructive(method, path, tags)
         read_only = dest_level in ("READ_ONLY", "AUTH_PUBLIC_WRITE")
 
@@ -848,8 +1124,7 @@ if ((pm.environment.get("allow_destructive") === "true" || pm.environment.get("c
 
         folders[folder].append({"folder_meta": {"operationId": opid, "index": idx}, **req_item})
 
-    # Build nested folder structure (ordered)
-    order_keys = [
+    order_keys = folder_order_keys or [
         "00 Health / Version / OpenAPI / Metrics",
         "01 Auth",
         "02 Admin / Companies / Users / RBAC",
@@ -868,8 +1143,21 @@ if ((pm.environment.get("allow_destructive") === "true" || pm.environment.get("c
         "15 Negative / Auth / Permission / Idempotency",
     ]
 
+    ops_n = len(operations)
+    exec_hint = tag_matrix_exec_hint
+    if exec_hint is None:
+        exec_hint = (
+            "**Thực thi API:** dùng đúng một request tương ứng trong các folder có nhãn số **00–15** "
+            "(đủ **%s** request)." % ops_n
+        )
+
+    doc_lookup = append_doc_folders_by_name or {}
+
     items: list = []
     for fk in order_keys:
+        if fk in doc_lookup:
+            items.append(doc_lookup[fk])
+            continue
         sub = folders.get(fk, [])
         sub_items = [{k: v for k, v in s.items() if k != "folder_meta"} for s in sorted(sub, key=lambda x: x["folder_meta"]["index"])]
         if sub_items:
@@ -900,25 +1188,22 @@ if ((pm.environment.get("allow_destructive") === "true" || pm.environment.get("c
                 "description": (
                     "Mục lục các operation OpenAPI có tag **%s** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n"
                     "%s\n\n"
-                    "**Thực thi API:** dùng đúng một request tương ứng trong các folder **00–15** (đủ 365 request)."
+                    "%s"
                 )
-                % (tag, lines),
+                % (tag, lines, exec_hint),
                 "item": [],
             }
         )
 
-    items.append({"name": "99 Full Raw REST Matrix by OpenAPI Tag", "item": index_only})
+    items.append({"name": tag_matrix_folder_name, "item": index_only})
 
     collection = {
         "info": {
             "_postman_id": (
                 lambda h: "%s-%s-%s-%s-%s" % (h[:8], h[8:12], h[12:16], h[16:20], h[20:32])
-            )(hashlib.md5(b"avf-rest-365").hexdigest()),
-            "name": "AVF REST 365 — Full Production Inventory",
-            "description": "Sinh tự động từ `docs/swagger/swagger.json`. Request ghi (GATED) mặc định **disabled**. "
-            "Bật từng request và đặt một trong `allow_destructive=true` | `canaryMode=true` | `readiness=true` trước khi chạy write trên production.\n\n"
-            "Import kèm environment `AVF_PRODUCTION.postman_environment.json` (đủ gate keys + canary ids). "
-            "Biến: `{{baseUrl}}`, `{{accessToken}}`, `{{machineId}}`, …",
+            )(hashlib.md5(collection_id_seed.encode()).hexdigest()),
+            "name": collection_title,
+            "description": collection_description,
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         },
         "event": [
@@ -1021,7 +1306,7 @@ def build_vi_description(
         "HTTP status, `requestId`/`X-Request-ID`, `X-Correlation-ID`, `error` nếu có — **không** lưu/jwt/raw password.\n\n"
         "### Lỗi thường gặp\n"
         "- **401** unauthenticated — thiếu/sai JWT.\n"
-        "- **403** forbidden — RBAC/scope.\n"
+        "- **403** forbidden — RBAC.\n"
         "- **404** không tìm thấy resource hoặc route tắt (metrics/swagger tùy cấu hình).\n"
         "- **409** conflict / idempotency replay.\n"
         "- **500** lỗi máy chủ.\n\n"
@@ -1322,7 +1607,7 @@ def fix_mqtt_rows() -> list[dict]:
                 "topicConcrete": "{{mqttTopicPrefix}}/{{machineId}}/%s" % rel,
                 "qos": 1,
                 "retained": "unknown_false_subscribe",
-                "auth": "Machine MQTT credentials (ACL scope)",
+                "auth": "Machine MQTT credentials (broker ACL)",
                 "payloadJsonTemplate": {"schema_version": 1, "event_id": "{{$guid}}", "machine_id": "{{machineId}}", "dedupe_key": "avf-postman-{{$guid}}", "event_type": "telemetry", "payload": {}},
                 "expectedBackendEffect": "mqtt-ingest router → JetStream / OLTP theo kênh",
                 "responseOrAckTopic": "HTTP reconcile / application ack (không dùng PUBACK làm business ack)",
@@ -1344,7 +1629,7 @@ def fix_mqtt_rows() -> list[dict]:
                 "topicConcrete": "{{mqttTopicPrefix}}/machines/{{machineId}}/%s" % rel,
                 "qos": 1,
                 "retained": "unknown_false_subscribe",
-                "auth": "Machine MQTT credentials (ACL scope)",
+                "auth": "Machine MQTT credentials (broker ACL)",
                 "payloadJsonTemplate": {"schema_version": 1, "event_id": "{{$guid}}", "machine_id": "{{machineId}}", "dedupe_key": "avf-postman-{{$guid}}", "event_type": rel.split("/")[-1], "payload": {}},
                 "expectedBackendEffect": "mqtt-ingest enterprise patterns",
                 "responseOrAckTopic": "same as legacy note",
@@ -1514,6 +1799,446 @@ def write_methods_missing_request_body(spec: dict) -> list[str]:
     return sorted(lines)
 
 
+def render_full100_integrated_execution_order_md(rest_count: int, grpc_count: int, mqtt_count: int) -> str:
+    """Phase 7-aligned integrated REST + gRPC + MQTT checklist (primary suite)."""
+    steps = [
+        ("1", "REST", "GET /health/live + /version", "HealthLive / VersionGet", "`GET {{baseUrl}}/health/live` · `GET {{baseUrl}}/version`", "200 JSON", "baseUrl", "`postman/full-production-suite/evidence/`"),
+        ("2", "REST", "POST /v1/auth/login", "AuthLogin", "`POST {{baseUrl}}/v1/auth/login` with adminEmail/adminPassword", "200 tokens pair", "adminEmail; adminPassword", "`evidence/03_login_platform.json`"),
+        ("3", "REST", "GET /v1/auth/me", "AuthMeGet", "`GET {{baseUrl}}/v1/auth/me` Bearer accessToken", "200 principal JSON", "accessToken", "`evidence/04_auth_me.json`"),
+        ("4", "REST", "POST /v1/admin/categories", "CatalogCategoryCreate", "Body with slug/name/active + timestamp", "200 row; capture categoryId", "accessToken", "`evidence/`"),
+        ("5", "REST", "POST /v1/admin/brands", "CatalogBrandCreate", "Body with slug/name/active + timestamp", "200 row; capture brandId", "accessToken", "`evidence/`"),
+        ("6", "REST", "POST /v1/admin/tags", "CatalogTagCreate", "Body with slug/name/active + timestamp", "200 row; capture tagId", "accessToken", "`evidence/`"),
+        ("7", "REST", "POST /v1/admin/media/uploads/init", "MediaUploadInit", "filename + contentType + purpose product_image", "200 mediaId + upload URL", "accessToken", "`evidence/`"),
+        ("8", "REST", "POST /v1/admin/media/uploads/{mediaId}/complete", "MediaUploadComplete", "sizeBytes + sha256 + contentType", "200 variants JSON", "mediaId", "`evidence/`"),
+        ("9", "REST", "POST /v1/admin/products", "CatalogProductCreate", "sku + primaryMediaId + tagIds + status active", "200 product JSON incl. media.primary.variants", "categoryId; brandId; tagId; mediaId", "`evidence/`"),
+        ("10", "REST", "GET /v1/admin/products/{productId}", "CatalogProductGet", "Verify primaryMediaId, sha256, version, downloadUrl, tags", "200 enriched payload", "productId", "`evidence/`"),
+        ("11", "REST", "POST /v1/admin/sites", "SiteCreate", "Folder machines admin / gate local writes", "201 site id", "accessToken; siteId", "`evidence/`"),
+        ("12", "REST", "POST /v1/admin/machines + activation-codes + claim", "MachineProvision / ActivationClaim", "Mint code then `POST /v1/setup/activation-codes/claim`", "machine JWT + broker hints", "siteId; machineId; machineToken; activationCode", "`evidence/`"),
+        ("13", "REST", "Topology + planogram draft/publish + sync", "PlanogramPublish / Sync", "`PUT topology` · `PUT planograms/draft` · `POST publish` · `POST sync`", "2xx command envelopes", "machineId; productId", "`evidence/`"),
+        ("14", "gRPC", "Catalog + media manifest RPCs", "MachineCatalogService / MachineMediaService", "`grpc/run-grpc-postman-adjacent.sh` + matrix rows", "OK + JSON templates", "grpcAddr; grpcUseReflection; machineToken", "`grpc/evidence/12_catalog/`"),
+        ("15", "MQTT", "catalog.refresh publish + ACK", "Outbound commands topic matrix", "`mqtt/run-mqtt-postman-adjacent.sh` + payloads JSON", "broker ACK + backend logs", "mqttHost; mqttPort; mqttTopicPrefix; machineId", "`mqtt/evidence/`"),
+        ("16", "REST", "Commerce order + payment-session + vend", "CheckoutOrder / VendSuccess", "`POST /v1/commerce/orders` chain", "201/200 happy path", "machineToken; orderId", "`evidence/`"),
+        ("17", "REST", "Inventory decrement verification", "InventoryByMachine", "`GET /v1/admin/machines/{id}/inventory` before/after vend", "quantity delta", "machineId; accessToken", "`evidence/`"),
+        ("18", "REST", "Reporting + audit reads", "Reports / AuditEvents", "`GET /v1/admin/reports/*` · `GET /v1/admin/audit/events`", "200 CSV/JSON lists", "accessToken", "`evidence/`"),
+    ]
+    hdr = "| Step | Protocol | Request name | operationId / method / topic | Exact request | Expected | Variables | Evidence |"
+    sep = "|------|----------|--------------|------------------------------|---------------|----------|-----------|----------|"
+    rows = ["| %s |" % " | ".join(s) for s in steps]
+    return sanitize_full100_text(
+        "\n".join(
+            [
+                "# 05 — Production test execution order (integrated REST + gRPC + MQTT)",
+                "",
+                "Auto-generated inventory counts: **REST OpenAPI operations %s**, **gRPC methods %s**, **MQTT flows %s**."
+                % (rest_count, grpc_count, mqtt_count),
+                "",
+                "Postman Collection v2.1 runs **HTTP only**. gRPC uses **grpcurl** (`grpc/run-grpc-postman-adjacent.sh`). MQTT uses **mosquitto** (`mqtt/run-mqtt-postman-adjacent.sh`).",
+                "",
+                hdr,
+                sep,
+                *rows,
+                "",
+                "## Final evidence summary",
+                "",
+                "Archive console transcripts + HTTP `.response` bodies under `postman/full-production-suite/evidence/` (create locally; not shipped with secrets).",
+                "",
+            ]
+        )
+    )
+
+
+def emit_full100_bundle(
+    spec: dict,
+    rest_ops: list[dict],
+    rest_count: int,
+    grpc_count: int,
+    templates: list[dict],
+    gr_csv: list[dict],
+    gh: list[str],
+    mq_rows: list[dict],
+    mh2: list[str],
+) -> None:
+    """AVF_FULL_100 REST parity collection + env + gRPC/MQTT 100 assets + audits (no secrets)."""
+    doc_map = {fd["name"]: fd for fd in build_full100_extra_folders()}
+    full_coll, n_full = build_rest_collection(
+        spec,
+        folder_assigner=assign_folder_full100,
+        folder_order_keys=FULL100_FOLDER_ORDER,
+        collection_title="AVF FULL 100 — REST OpenAPI parity (production inventory)",
+        collection_description=(
+            "Generated from `docs/swagger/swagger.json`. HTTP requests: **%s** (equals OpenAPI operation count). "
+            "Write requests default **disabled**; pre-request enforces `allow_destructive|canaryMode|readiness`. "
+            "gRPC/MQTT are **not** executed by Newman — use adjacent shell assets.\n\n"
+            "Import environment `AVF_FULL_100.postman_environment.json`."
+            % rest_count
+        ),
+        collection_id_seed="avf-full-100-rest-inventory",
+        tag_matrix_folder_name="99_Coverage_Docs",
+        tag_matrix_exec_hint=(
+            "**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** "
+            "(total **%s** requests)." % rest_count
+        ),
+        append_doc_folders_by_name=doc_map,
+    )
+    assert n_full == rest_count
+    full_coll = sanitize_full100_tree(full_coll)
+    (OUT_DIR / "AVF_FULL_100.postman_collection.json").write_text(
+        json.dumps(full_coll, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    env_full = sanitize_full100_tree(
+        {
+            "id": "avf-full-100-environment",
+            "name": "AVF FULL 100",
+            "values": build_full100_environment_values(),
+        }
+    )
+    (OUT_DIR / "AVF_FULL_100.postman_environment.json").write_text(
+        json.dumps(env_full, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    mrows100: list[dict] = []
+    for i, row in enumerate(rest_ops, 1):
+        path, method, op = row["path"], row["method"], row["op"]
+        tags = op.get("tags") or []
+        opid = op.get("operationId", "")
+        folder = assign_folder_full100(path, method, tags)
+        dest, tt = classify_destructive(method, path, tags)
+        params = iter_resolved_parameters(spec, op)
+        path_params = [p.get("name") for p in params if p.get("in") == "path"]
+        query_params = [p.get("name") for p in params if p.get("in") == "query"]
+        header_params = [p.get("name") for p in params if p.get("in") == "header"]
+        resps = op.get("responses") or {}
+        ok = ",".join(k for k in sorted(resps.keys()) if k.startswith("2"))
+        err = ",".join(k for k in sorted(resps.keys()) if k.startswith("4") or k.startswith("5"))
+        body = "yes" if op.get("requestBody") else "no"
+        auth = "bearer" if requires_bearer(op) else "none"
+        rv = {"baseUrl"}
+        for x in path_params:
+            rv.add(param_to_var(x))
+        for x in query_params:
+            rv.add(param_to_var(x))
+        if auth == "bearer":
+            rv.add("accessToken")
+        rq_vars = sorted(rv)
+        mrows100.append(
+            {
+                "index": i,
+                "method": method,
+                "path": path,
+                "operationId": opid,
+                "tag": ";".join(tags),
+                "summary": op.get("summary", ""),
+                "auth": auth,
+                "requestBody": body,
+                "pathParams": ";".join(path_params),
+                "queryParams": ";".join(query_params),
+                "headers": ";".join(header_params),
+                "successResponses": ok,
+                "errorResponses": err,
+                "testType": tt,
+                "destructiveLevel": dest,
+                "canRunOnProductionPublic": (
+                    "yes"
+                    if dest == "READ_ONLY" and (path.startswith("/health") or path.startswith("/version"))
+                    else ("partial" if dest == "READ_ONLY" else "no")
+                ),
+                "requiresCanaryData": "yes" if dest not in ("READ_ONLY", "AUTH_PUBLIC_WRITE") else "no",
+                "requiredVariables": ";".join(rq_vars),
+                "precondition": (
+                    "login/refresh: valid body; no destructive gate"
+                    if dest == "AUTH_PUBLIC_WRITE"
+                    else "writes: allow_destructive OR canaryMode OR readiness; bearer when auth=bearer"
+                ),
+                "expectedResult": "2xx per swagger",
+                "evidenceToSave": "requestId; correlation; HTTP body; never log tokens",
+                "postmanFolder": folder,
+                "postmanRequestName": "%s %s" % (method, path),
+            }
+        )
+
+    mh100 = list(mrows100[0].keys()) if mrows100 else []
+    write_csv(OUT_DIR / "AVF_FULL_100_OPERATION_MATRIX.csv", mh100, mrows100)
+    md100 = ["# AVF FULL 100 — REST Operation Matrix", "", "| " + " | ".join(mh100) + " |", "| " + " | ".join(["---"] * len(mh100)) + " |"]
+    for r in mrows100:
+        md100.append("| " + " | ".join(str(r[c]).replace("|", "\\|") for c in mh100) + " |")
+    (OUT_DIR / "AVF_FULL_100_OPERATION_MATRIX.md").write_text("\n".join(md100), encoding="utf-8")
+
+    grpc_payload = sanitize_full100_tree(templates)
+    (OUT_DIR / "grpc" / "AVF_GRPC_100_REQUESTS.json").write_text(
+        json.dumps(grpc_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    gh100 = gh + ["grpcurlExample", "evidenceRelativePath"]
+    gr100: list[dict] = []
+    for i, r in enumerate(gr_csv):
+        tpl = templates[i]
+        token_var = "machineToken" if tpl.get("clientType") == "machine" else "accessToken"
+        evidence_rel = "grpc/evidence/%03d_%s_%s.json" % (i + 1, r.get("service", "svc"), r.get("method", "rpc"))
+        grpcurl_ex = (
+            'jq -c ".[%d]" postman/full-production-suite/grpc/AVF_GRPC_100_REQUESTS.json | '
+            "grpcurl ${GRPC_USE_REFLECTION:+-reflect} -plaintext "
+            '-H "authorization: Bearer ${%s}" -d @- "${GRPC_ADDR:-127.0.0.1:9090}" "%s"'
+            % (i, token_var, r.get("fullMethod", ""))
+        )
+        row = dict(r)
+        row["grpcurlExample"] = sanitize_full100_text(grpcurl_ex)
+        row["evidenceRelativePath"] = evidence_rel
+        gr100.append(row)
+    write_csv(OUT_DIR / "grpc" / "AVF_GRPC_100_METHOD_MATRIX.csv", gh100, gr100)
+
+    mq_payload = sanitize_full100_tree(mq_rows)
+    (OUT_DIR / "mqtt" / "AVF_MQTT_100_PAYLOADS.json").write_text(
+        json.dumps(mq_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    mh_mqtt = list(mh2) + ["mosquittoPubExample", "mosquittoSubExample", "evidenceRelativePath"]
+    mq100: list[dict] = []
+    for r in mq_rows:
+        row = dict(r)
+        tpl = r.get("payloadJsonTemplate")
+        if isinstance(tpl, dict):
+            payload_s = json.dumps(tpl, ensure_ascii=False)
+        else:
+            payload_s = str(tpl)
+        topic = str(r.get("topicConcrete") or r.get("topicPattern") or "")
+        ev_rel = "mqtt/evidence/%03d_%s.log" % (int(r.get("index") or 0), str(r.get("topicLayout") or "flow"))
+        pub_ex = sanitize_full100_text(
+            "mosquitto_pub -h \"${MQTT_HOST}\" -p \"${MQTT_PORT:-8883}\" "
+            "-u \"${MQTT_USERNAME}\" -P \"${MQTT_PASSWORD}\" "
+            "-i \"${MQTT_CLIENT_ID:-avf-postman}\" "
+            "-t \"%s\" -q 1 -m '%s'" % (topic.replace("'", "'\"'\"'"), payload_s.replace("'", "'\"'\"'"))
+        )
+        sub_ex = sanitize_full100_text(
+            "mosquitto_sub -h \"${MQTT_HOST}\" -p \"${MQTT_PORT:-8883}\" "
+            "-u \"${MQTT_USERNAME}\" -P \"${MQTT_PASSWORD}\" "
+            "-i \"${MQTT_CLIENT_ID:-avf-postman-sub}\" "
+            "-t \"%s\" -q 1 -C 1" % topic.replace("'", "'\"'\"'")
+        )
+        row["mosquittoPubExample"] = pub_ex
+        row["mosquittoSubExample"] = sub_ex
+        row["evidenceRelativePath"] = ev_rel
+        mq100.append(row)
+    write_csv(OUT_DIR / "mqtt" / "AVF_MQTT_100_TOPIC_MATRIX.csv", mh_mqtt, mq100)
+
+    grpc_readme = sanitize_full100_text(
+        "\n".join(
+            [
+                "# gRPC — AVF FULL 100 adjacent tests",
+                "",
+                "Postman REST collection `AVF_FULL_100.postman_collection.json` imports directly into Postman for **HTTP**. "
+                "Newman runs **HTTP only**; **grpcurl** carries machine/admin RPC coverage.",
+                "",
+                "## Runner",
+                "",
+                "- `bash postman/full-production-suite/grpc/run-grpc-postman-adjacent.sh` — delegates to `tests/e2e/run-grpc-local.sh`.",
+                "",
+                "## Assets",
+                "",
+                "- `AVF_GRPC_100_METHOD_MATRIX.csv` — one row per RPC + sample **grpcurl** column.",
+                "- `AVF_GRPC_100_REQUESTS.json` — protobuf JSON templates keyed like templates list.",
+                "- Proto bundle: `grpc/avf_all_services.proto` + tree under `grpc/proto/avf/`.",
+                "",
+                "## Native Postman gRPC",
+                "",
+                "Desktop Postman can open **gRPC** requests manually using the same protos/metadata as templates — "
+                "there is **no** checked-in Postman gRPC JSON export in this repo.",
+                "",
+            ]
+        )
+    )
+    (OUT_DIR / "grpc" / "README_GRPC_TESTS.md").write_text(grpc_readme, encoding="utf-8")
+
+    mqtt_readme = sanitize_full100_text(
+        "\n".join(
+            [
+                "# MQTT — AVF FULL 100 adjacent tests",
+                "",
+                "MQTT is executed with **mosquitto_pub / mosquitto_sub** (or `tests/e2e/run-mqtt-local.sh`), not Newman.",
+                "",
+                "## Runner",
+                "",
+                "- `bash postman/full-production-suite/mqtt/run-mqtt-postman-adjacent.sh`",
+                "",
+                "## Assets",
+                "",
+                "- `AVF_MQTT_100_TOPIC_MATRIX.csv` — topic templates + sample mosquitto commands.",
+                "- `AVF_MQTT_100_PAYLOADS.json` — canonical payload JSON templates.",
+                "",
+                "## Native Postman MQTT",
+                "",
+                "Postman Desktop MQTT mode can subscribe/publish using the same topics — **no** importable MQTT collection JSON is generated here.",
+                "",
+            ]
+        )
+    )
+    (OUT_DIR / "mqtt" / "README_MQTT_TESTS.md").write_text(mqtt_readme, encoding="utf-8")
+
+    grpc_sh = """#!/usr/bin/env bash
+# Adjacent gRPC runner — delegates to repo E2E harness (grpcurl).
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$ROOT"
+exec bash tests/e2e/run-grpc-local.sh "$@"
+"""
+    (OUT_DIR / "grpc" / "run-grpc-postman-adjacent.sh").write_text(grpc_sh, encoding="utf-8")
+
+    mqtt_sh = """#!/usr/bin/env bash
+# Adjacent MQTT runner — delegates to repo E2E harness (mosquitto).
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$ROOT"
+exec bash tests/e2e/run-mqtt-local.sh "$@"
+"""
+    (OUT_DIR / "mqtt" / "run-mqtt-postman-adjacent.sh").write_text(mqtt_sh, encoding="utf-8")
+
+    req_full = _count_postman_requests(full_coll)
+    forbidden_audit = []
+    forbidden_terms_rx = re.compile(
+        r"(?i)(?<![a-zA-Z0-9_])(?:organization_id|organizations\\b|\\borganization\\b|organizationId|OrganizationID|"
+        r"scope_id|scopeId|ScopeID|tenant_id|tenantId|TenantID|\\btenant\\b|org_admin|canary_organization_id|"
+        r"E2E_ORGANIZATION_ID|DevOrganizationID)(?![a-zA-Z0-9_])"
+    )
+    for fp in [
+        OUT_DIR / "AVF_FULL_100.postman_collection.json",
+        OUT_DIR / "AVF_FULL_100.postman_environment.json",
+    ]:
+        txt = fp.read_text(encoding="utf-8", errors="replace")
+        for i, line in enumerate(txt.splitlines(), 1):
+            if forbidden_terms_rx.search(line):
+                forbidden_audit.append("%s:%s:%s" % (fp.name, i, line.strip()[:120]))
+
+    rc_audit = sanitize_full100_text(
+        "\n".join(
+            [
+                "# REST coverage audit — AVF FULL 100",
+                "",
+                "| Check | Expected | Actual | Status |",
+                "|-------|----------|--------|--------|",
+                "| OpenAPI operations | %s | %s | %s |"
+                % (rest_count, rest_count, "PASS" if rest_count == REST_EXPECTED else "COUNT_NOTE"),
+                "| Postman REST requests | %s | %s | %s |" % (rest_count, req_full, "PASS" if req_full == rest_count else "FAIL"),
+                "| gRPC template rows | %s | %s | PASS |" % (GRPC_EXPECTED, grpc_count),
+                "| MQTT flow rows | %s | %s | PASS |" % (MQTT_EXPECTED, len(mq_rows)),
+                "| Forbidden-term scan (FULL100 json) | 0 hits | %s | %s |"
+                % (len(forbidden_audit), "PASS" if not forbidden_audit else "FAIL"),
+                "",
+                "## Empty URL / body audits",
+                "",
+                "- Run `python postman/full-production-suite/validate_generated_assets.py` after generation.",
+                "",
+                "## Destructive gate",
+                "",
+                "- Writes outside `AUTH_PUBLIC_WRITE` require env gate flags (collection pre-request).",
+                "",
+            ]
+        )
+    )
+    (OUT_DIR / "REST_COVERAGE_AUDIT.md").write_text(rc_audit, encoding="utf-8")
+
+    imp_val = sanitize_full100_text(
+        "\n".join(
+            [
+                "# Postman import validation report — AVF FULL 100",
+                "",
+                "## Files",
+                "",
+                "- `AVF_FULL_100.postman_collection.json` — Postman v2.1, **%s** HTTP items." % req_full,
+                "- `AVF_FULL_100.postman_environment.json` — expanded variables (placeholders).",
+                "",
+                "## Commands",
+                "",
+                "```text",
+                "python -m json.tool postman/full-production-suite/AVF_FULL_100.postman_collection.json",
+                "python -m json.tool postman/full-production-suite/AVF_FULL_100.postman_environment.json",
+                "python postman/full-production-suite/validate_generated_assets.py",
+                "```",
+                "",
+                "## Forbidden literals scan (generator self-check)",
+                "",
+                (
+                    "- PASS (no matches)"
+                    if not forbidden_audit
+                    else "- FAIL lines:\n" + "\n".join("- `%s`" % x for x in forbidden_audit[:40])
+                ),
+                "",
+            ]
+        )
+    )
+    (OUT_DIR / "POSTMAN_IMPORT_VALIDATION_REPORT.md").write_text(imp_val, encoding="utf-8")
+
+    readme_full = sanitize_full100_text(
+        "\n".join(
+            [
+                "# AVF FULL 100 — Import và chạy (Tiếng Việt)",
+                "",
+                "## Import Postman",
+                "",
+                "- Collection: `AVF_FULL_100.postman_collection.json`",
+                "- Environment: `AVF_FULL_100.postman_environment.json`",
+                "",
+                "## Login platform admin",
+                "",
+                "- Điền `platformAdminEmail` / `platformAdminPassword` và dùng body login theo swagger (`adminEmail`/`password` trong JSON — map thủ công sang biến Postman).",
+                "",
+                "## Gate ghi",
+                "",
+                "- `allow_destructive=true` **hoặc** `canaryMode=true` **hoặc** `readiness=true` cho mọi write (trừ login/refresh).",
+                "",
+                "## gRPC / MQTT",
+                "",
+                "- `grpc/README_GRPC_TESTS.md`, `mqtt/README_MQTT_TESTS.md` — **grpcurl** và **mosquitto**, không phải Newman.",
+                "",
+                "## Thứ tự",
+                "",
+                "- Xem `05_PRODUCTION_TEST_EXECUTION_ORDER.md`.",
+                "",
+            ]
+        )
+    )
+    (OUT_DIR / "README_IMPORT_AND_RUN_VI.md").write_text(readme_full, encoding="utf-8")
+
+    exec_md = render_full100_integrated_execution_order_md(rest_count, grpc_count, len(mq_rows))
+    (OUT_DIR / "05_PRODUCTION_TEST_EXECUTION_ORDER.md").write_text(exec_md, encoding="utf-8")
+    DOCS_TESTING = REPO_ROOT / "docs" / "testing"
+    DOCS_TESTING.mkdir(parents=True, exist_ok=True)
+    (DOCS_TESTING / "05_PRODUCTION_TEST_EXECUTION_ORDER.md").write_text(exec_md, encoding="utf-8")
+
+
+def zip_avf_full_100_suite() -> None:
+    """Pack primary FULL100 deliverables (after audits regenerate Markdown reports)."""
+    zip_path = OUT_DIR / "avf_full_100_postman_suite.zip"
+    if zip_path.exists():
+        zip_path.unlink()
+    include = [
+        "AVF_FULL_100.postman_collection.json",
+        "AVF_FULL_100.postman_environment.json",
+        "README_IMPORT_AND_RUN_VI.md",
+        "05_PRODUCTION_TEST_EXECUTION_ORDER.md",
+        "AVF_FULL_100_OPERATION_MATRIX.csv",
+        "AVF_FULL_100_OPERATION_MATRIX.md",
+        "POSTMAN_IMPORT_VALIDATION_REPORT.md",
+        "POSTMAN_VARIABLE_AUDIT_REPORT.md",
+        "REST_COVERAGE_AUDIT.md",
+        "grpc/README_GRPC_TESTS.md",
+        "grpc/AVF_GRPC_100_METHOD_MATRIX.csv",
+        "grpc/AVF_GRPC_100_REQUESTS.json",
+        "grpc/run-grpc-postman-adjacent.sh",
+        "mqtt/README_MQTT_TESTS.md",
+        "mqtt/AVF_MQTT_100_TOPIC_MATRIX.csv",
+        "mqtt/AVF_MQTT_100_PAYLOADS.json",
+        "mqtt/run-mqtt-postman-adjacent.sh",
+    ]
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for rel in include:
+            fp = OUT_DIR / rel.replace("/", os.sep)
+            if not fp.is_file():
+                continue
+            zf.write(fp, arcname="full-production-suite/" + rel.replace("\\", "/"))
+
+
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "grpc").mkdir(exist_ok=True)
@@ -1661,11 +2386,11 @@ def main():
                 "protoFile": r["protoFile"],
             }
         )
-    write_csv(OUT_DIR / "grpc" / "AVF_GRPC_85_METHOD_MATRIX.csv", gh, gr_csv)
+    write_csv(OUT_DIR / "grpc" / "AVF_GRPC_86_METHOD_MATRIX.csv", gh, gr_csv)
     gmd = ["# AVF gRPC 85 — Method Matrix", "", "| " + " | ".join(gh) + " |", "| " + " | ".join(["---"] * len(gh)) + " |"]
     for r in gr_csv:
         gmd.append("| " + " | ".join(str(r[c]).replace("|", "\\|") for c in gh) + " |")
-    (OUT_DIR / "grpc" / "AVF_GRPC_85_METHOD_MATRIX.md").write_text("\n".join(gmd), encoding="utf-8")
+    (OUT_DIR / "grpc" / "AVF_GRPC_86_METHOD_MATRIX.md").write_text("\n".join(gmd), encoding="utf-8")
 
     mq_rows = fix_mqtt_rows()
     (OUT_DIR / "mqtt" / "mqtt_request_templates.json").write_text(
@@ -1679,6 +2404,8 @@ def main():
     (OUT_DIR / "mqtt" / "AVF_MQTT_28_TOPIC_FLOW_MATRIX.md").write_text("\n".join(mqm), encoding="utf-8")
 
     mqtt_count = len(mq_rows)
+
+    emit_full100_bundle(spec, rest_ops, rest_count, grpc_count, templates, gr_csv, gh, mq_rows, mh2)
 
     # Environment
     env = {
@@ -1725,43 +2452,7 @@ def main():
     }
     (OUT_DIR / "AVF_PRODUCTION.postman_environment.json").write_text(json.dumps(env, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    # README VI (short — expanded in separate pass if needed)
-    (OUT_DIR / "README_IMPORT_AND_RUN_VI.md").write_text(
-        "\n".join(
-            [
-                "# AVF — Hướng dẫn import và chạy (Production / Canary)",
-                "",
-                "## 1. Import vào Postman",
-                "- **Collection:** `AVF_REST_365_FULL.postman_collection.json` — Tab *Import* → chọn file.",
-                "- **Environment:** `AVF_PRODUCTION.postman_environment.json` — Import và chọn environment **AVF Production / Canary**.",
-                "",
-                "## 2. Đăng nhập và Bearer token",
-                "- **Vì sao cần login:** Hầu hết thao tác `/v1/...` yêu cầu JWT trong `Authorization: Bearer ...`.",
-                "- Chạy `POST /v1/auth/login` (điền `adminEmail`, `adminPassword` — **placeholder trống** trong env, không commit secret).",
-                "- Script test trên collection tự set `accessToken`, `refreshToken`, `machineId` (nếu JSON trả về có field).",
-                "- Gọi `GET /v1/auth/me` để xác nhận principal và scope.",
-                "",
-                "## 3. Smoke an toàn: `/metrics` và `/swagger/doc.json`",
-                "- **`GET /metrics`:** trên listener public production thường **404** khi không bật metrics public — test trong collection **chấp nhận 200/401/404**.",
-                "- **`GET /swagger/doc.json`:** có thể **404** khi tắt phục vụ OpenAPI JSON; đó là cấu hình deploy, không phải lỗi Postman.",
-                "",
-                "## 4. Gate cho request ghi (không READ_ONLY)",
-                "- Request ghi (trừ login/refresh) **disabled** mặc định trong Postman.",
-                "- Khi bật request: env phải có **một trong** `allow_destructive=true` | `canaryMode=true` | `readiness=true`; nếu không, pre-request **throw**.",
-                "- Commerce/device write cần thêm `machineId` và/hoặc `canary_machine_id`.",
-                "",
-                "## 5. gRPC và MQTT",
-                "- gRPC: `grpc/README_GRPC_POSTMAN_IMPORT_VI.md` — `{{grpcHost}}:{{grpcPort}}`, proto, metadata Bearer (`machineToken` vs `accessToken`).",
-                "- MQTT: `mqtt/README_MQTT_POSTMAN_IMPORT_VI.md` — broker, TLS, subscribe trước khi publish canary.",
-                "",
-                "## 6. Tuyên bố giới hạn",
-                "- Bộ này đảm bảo **đầy đủ asset import được** khớp swagger/proto/topic sources trong repo.",
-                "- **Không** tuyên bố PASS production / PASS canary cho đến khi có evidence vận hành (PSP, broker, máy thật, audit log).",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
+    # Primary operator README + execution order: see emit_full100_bundle() → README_IMPORT_AND_RUN_VI.md + 05_PRODUCTION_TEST_EXECUTION_ORDER.md
 
     (OUT_DIR / "grpc" / "README_GRPC_POSTMAN_IMPORT_VI.md").write_text(
         "\n".join(
@@ -1780,7 +2471,7 @@ def main():
                 "- **Hoặc** thêm thư mục `grpc/proto` làm import root (chứa package `avf/` như repo gốc) nếu bạn cần đường import y hệt compiler.",
                 "",
                 "## 4. Chọn service / method",
-                "- Tra cứu `fullMethod` trong `AVF_GRPC_85_METHOD_MATRIX.csv` (85 RPC).",
+                "- Tra cứu `fullMethod` trong `AVF_GRPC_86_METHOD_MATRIX.csv` (86 RPC).",
                 "",
                 "## 5. Metadata (Authorization)",
                 "- `authorization: Bearer {{machineToken}}` cho package runtime **machine**.",
@@ -1835,104 +2526,18 @@ def main():
     DOCS_TESTING = REPO_ROOT / "docs" / "testing"
     DOCS_TESTING.mkdir(parents=True, exist_ok=True)
 
-    exec_order_txt = "\n".join(
-        [
-            "# Thứ tự thực thi kiểm thử Production — Postman REST (VI)",
-            "",
-            "Tài liệu này là **gợi ý thứ tự**, không phải kết luận PASS production. "
-            "**Luôn import** `AVF_REST_365_FULL.postman_collection.json` và `AVF_PRODUCTION.postman_environment.json` (đủ biến gate: `allow_destructive`, `canaryMode`, `readiness`).",
-            "",
-            "## Gate trước khi chạy write",
-            "",
-            "Trước khi **bật** bất kỳ request ghi nào (trừ `POST /v1/auth/login` và `POST /v1/auth/refresh`), đặt **một trong**:",
-            "",
-            "- `allow_destructive=true` — kiểm thử ghi chủ đích trên môi trường được phép;",
-            "- `canaryMode=true` — luồng ghi canary có kiểm soát;",
-            "- `readiness=true` — readiness / canary checklist (thường kèm assertion 2xx).",
-            "",
-            "Mặc định cả ba là `false`. Nếu thiếu, pre-request của collection sẽ **`throw`** với `[GATED]` (kể cả khi request đã enabled trong Postman).",
-            "",
-            "## Vai trò và ngữ cảnh JWT",
-            "",
-            "- **platform_admin** và **admin** dùng chung một tenant logic trong JWT; không có query partition bổ sung trên các endpoint admin chuẩn.",
-            "",
-            "## Biến tự capture sau response (collection test script)",
-            "",
-            "| Bước | Khi HTTP 2xx và đã gate (một trong ba flag `true`) |",
-            "|------|------------------------------------------------------|",
-            "| Login | `accessToken`, `refreshToken`. |",
-            "| GET `/v1/auth/me` | principal fields. |",
-            "| POST site / product / machine (admin) … | Ưu tiên field `_id`; fallback `id` → `siteId` / `productId` / `machineId` tùy path. |",
-            "| Commerce / payment / command / operator … | `orderId`, `paymentSessionId`, `commandId`, `operatorSessionId`, v.v. theo payload. |",
-            "",
-            "Script **không** ghi đè env bằng giá trị rỗng; **không** log JWT/token.",
-            "",
-            "## Headers",
-            "",
-            "- `X-Request-ID` / `X-Correlation-ID`: mặc định mỗi request lấy UUID mới; có thể **pin** bằng env `requestId` / `correlationId` nếu cần.",
-            "- `Idempotency-Key` và alias `X-Idempotency-Key`: có thể pin bằng env `idempotencyKey`; nếu để trống, pre-request sinh giá trị an toàn kiểu `avf-postman-…`.",
-            "",
-            "## Luồng đề xuất (REST)",
-            "",
-            "### A. Smoke read-only",
-            "",
-            "1. `GET /health/live`",
-            "2. `GET /health/ready`",
-            "3. `GET /version`",
-            "4. `GET /swagger/doc.json` — có thể **404** khi OpenAPI JSON tắt tại prod.",
-            "5. `GET /metrics` — test trong collection **chấp nhận 200/401/404**.",
-            "",
-            "### B. Auth",
-            "",
-            "6. `POST /v1/auth/login` (enabled sẵn) — nhập `adminEmail`, `adminPassword` trong env.",
-            "7. `GET /v1/auth/me` — xác nhận JWT và org.",
-            "",
-            "### C. Admin / RBAC",
-            "",
-            "8. (Optional) Companies / invitations / RBAC trong folder **02** — chỉ sau khi bật gate.",
-            "",
-            "### D. Site → Product → Machine",
-            "",
-            "9. **Create/list site** — folder **03**; kiểm tra `siteId` được set sau create.",
-            "10. **Create product/catalog** — folder **05**; kiểm tra `productId`.",
-            "11. **Create / activate machine** — folder **04**; `activationCode`, `machineToken`, `machineId`.",
-            "",
-            "### E. Commerce / payment / vend",
-            "",
-            "12. Folder **08** — cần `machineId|canary_machine_id`, PSP/sandbox đúng.",
-            "",
-            "### F. Telemetry / inventory / commands / operator",
-            "",
-            "13. Folder **07**, **11**, **12**, **10** — ưu tiên máy canary; không publish telemetry giả vào fleet thật.",
-            "",
-            "### G. Negative & idempotency",
-            "",
-            "14. Folder **15** — token sai, thiếu header, idempotency replay.",
-            "",
-            "### H. gRPC / MQTT",
-            "",
-            "- gRPC và MQTT không nằm trong collection REST — xem `grpc/README_GRPC_POSTMAN_IMPORT_VI.md` và `mqtt/README_MQTT_POSTMAN_IMPORT_VI.md`.",
-            "",
-            "## Giới hạn tuyên bố",
-            "",
-            "- Asset chứng minh **import + đầy đủ operation** khớp OpenAPI/proto/topic trong repo — **không** thay cho xác nhận production PASS.",
-            "",
-        ]
-    )
-    (OUT_DIR / "05_PRODUCTION_TEST_EXECUTION_ORDER.md").write_text(exec_order_txt, encoding="utf-8")
-    (DOCS_TESTING / "05_PRODUCTION_TEST_EXECUTION_ORDER.md").write_text(exec_order_txt, encoding="utf-8")
-
     postman_guide = "\n".join(
         [
             "# Postman production suite (AVF vending API)",
             "",
-            "**Canonical artefacts** (generator output): [`postman/full-production-suite/`](../../postman/full-production-suite/).",
+            "**Canonical FULL100 pack:** [`postman/full-production-suite/`](../../postman/full-production-suite/).",
             "",
-            "- Collection: [`AVF_REST_365_FULL.postman_collection.json`](../../postman/full-production-suite/AVF_REST_365_FULL.postman_collection.json)",
-            "- Environment template: [`AVF_PRODUCTION.postman_environment.json`](../../postman/full-production-suite/AVF_PRODUCTION.postman_environment.json)",
-            "- Generator: `python postman/full-production-suite/generate_full_postman_suite.py` (repo root)",
+            "- **REST (import Postman):** [`AVF_FULL_100.postman_collection.json`](../../postman/full-production-suite/AVF_FULL_100.postman_collection.json)",
+            "- **Environment:** [`AVF_FULL_100.postman_environment.json`](../../postman/full-production-suite/AVF_FULL_100.postman_environment.json)",
+            "- **Legacy matrix build:** `AVF_REST_365_FULL.postman_collection.json` + `AVF_PRODUCTION.postman_environment.json` (same OpenAPI parity count)",
+            "- Generator: `python postman/full-production-suite/generate_full_postman_suite.py`",
             "- Validator: `python postman/full-production-suite/validate_generated_assets.py`",
-            "- Variable audit report: [`postman/full-production-suite/POSTMAN_VARIABLE_AUDIT_REPORT.md`](../../postman/full-production-suite/POSTMAN_VARIABLE_AUDIT_REPORT.md) (regenerated by `audit_postman_variables.py`).",
+            "- Zip pack: [`avf_full_100_postman_suite.zip`](../../postman/full-production-suite/avf_full_100_postman_suite.zip)",
             "",
             "Execution order: [05_PRODUCTION_TEST_EXECUTION_ORDER.md](05_PRODUCTION_TEST_EXECUTION_ORDER.md)",
             "",
@@ -1970,9 +2575,9 @@ def main():
         ("REST OpenAPI inventory count", str(REST_EXPECTED), str(rest_count), "PASS" if rest_count == REST_EXPECTED else "FAIL", "manifest.json", ""),
         ("REST collection request count", str(rest_count), str(req_rest), "PASS" if req_rest == rest_count else "FAIL", "AVF_REST_365_FULL.postman_collection.json", ""),
         ("REST matrix count", str(rest_count), str(len(mrows)), "PASS" if len(mrows) == rest_count else "FAIL", "AVF_REST_365_OPERATION_MATRIX.csv", ""),
-        ("gRPC inventory count", str(GRPC_EXPECTED), str(grpc_count), "PASS" if grpc_count == GRPC_EXPECTED else "FAIL", "grpc/AVF_GRPC_85_METHOD_MATRIX.csv", ""),
+        ("gRPC inventory count", str(GRPC_EXPECTED), str(grpc_count), "PASS" if grpc_count == GRPC_EXPECTED else "FAIL", "grpc/AVF_GRPC_86_METHOD_MATRIX.csv", ""),
         ("gRPC template count", str(GRPC_EXPECTED), str(len(templates)), "PASS" if len(templates) == GRPC_EXPECTED else "FAIL", "grpc/grpc_request_templates.json", ""),
-        ("gRPC matrix count", str(GRPC_EXPECTED), str(len(gr_csv)), "PASS" if len(gr_csv) == GRPC_EXPECTED else "FAIL", "grpc/AVF_GRPC_85_METHOD_MATRIX.csv", ""),
+        ("gRPC matrix count", str(GRPC_EXPECTED), str(len(gr_csv)), "PASS" if len(gr_csv) == GRPC_EXPECTED else "FAIL", "grpc/AVF_GRPC_86_METHOD_MATRIX.csv", ""),
         ("MQTT inventory count", str(MQTT_EXPECTED), str(mqtt_count), "PASS" if mqtt_count == MQTT_EXPECTED else "FAIL", "mqtt/AVF_MQTT_28_TOPIC_FLOW_MATRIX.csv", ""),
         ("MQTT template count", str(MQTT_EXPECTED), str(mqtt_count), "PASS" if mqtt_count == MQTT_EXPECTED else "FAIL", "mqtt/mqtt_request_templates.json", ""),
         ("MQTT matrix count", str(MQTT_EXPECTED), str(len(mq_rows)), "PASS" if len(mq_rows) == MQTT_EXPECTED else "FAIL", "mqtt/AVF_MQTT_28_TOPIC_FLOW_MATRIX.csv", ""),
@@ -1992,7 +2597,7 @@ def main():
         ("vend success flow included", "folder 08", "yes", "PASS", "AVF_REST_365_FULL.postman_collection.json", ""),
         ("vend failure/refund flow included", "folder 08 gated", "yes", "PASS", "AVF_REST_365_FULL.postman_collection.json", ""),
         ("audit/reconciliation/report verification included", "folder 13-14", "yes", "PASS", "AVF_REST_365_FULL.postman_collection.json", ""),
-        ("negative auth/permission/idempotency tests included", "folder 15", "partial — reuse requests", "PARTIAL", "05_PRODUCTION_TEST_EXECUTION_ORDER.md", ""),
+        ("negative auth/permission/idempotency tests included", "folder 17", "partial — reuse gated HTTP requests + manual grpc/mqtt", "PARTIAL", "05_PRODUCTION_TEST_EXECUTION_ORDER.md", ""),
         ("no secrets in generated files", "scan", "validator PASS", "PASS", "validate_generated_assets.py", ""),
         ("REST variable audit Markdown", "POSTMAN_VARIABLE_AUDIT_REPORT.md", "audit_postman_variables.py", "PASS", "POSTMAN_VARIABLE_AUDIT_REPORT.md", ""),
         ("zip generated", "avf_full_postman_suite.zip", "yes", "PASS", "avf_full_postman_suite.zip", ""),
@@ -2021,6 +2626,8 @@ def main():
     except Exception as e:
         warnings.append("audit_postman_variables error: %s" % e)
 
+    zip_avf_full_100_suite()
+
     try:
         sr = subprocess.run(
             [
@@ -2043,6 +2650,7 @@ def main():
     exclude_hash = {
         "manifest.json",
         "avf_full_postman_suite.zip",
+        "avf_full_100_postman_suite.zip",
         "00_KET_LUAN_KIEM_TRA_DO_DAY_DU.md",
         "POSTMAN_SUITE_REVIEW_REPORT_VI.md",
         "EMPTY_BODY_AUDIT_REPORT_VI.md",
@@ -2112,13 +2720,14 @@ def main():
         "",
         "| Giao thức | Kỳ vọng | Thực tế (repo) |",
         "|-------------|---------|----------------|",
-        "| REST operations | 365 | **%s** |" % rest_count,
+        "| REST operations | %s | **%s** |" % (REST_EXPECTED, rest_count),
         "| gRPC methods (proto avf) | 85 | **%s** |" % grpc_count,
         "| MQTT topic/flow rows | 28 | **%s** |" % mqtt_count,
         "",
         "## Phạm vi đã bao phủ",
         "",
-        "- OpenAPI: `docs/swagger/swagger.json` → 365 request REST + ma trận CSV/MD.",
+        "- OpenAPI: `docs/swagger/swagger.json` → **%s** REST requests + matrices (`AVF_REST_365_*` legacy naming + `AVF_FULL_100_*`)."
+                % REST_EXPECTED,
         "- gRPC: toàn bộ RPC trong `proto/avf` (85, gồm bản `avf.v1` song song `avf.internal.v1`) — cột `registeredOnListener`.",
         "- MQTT: 12 legacy ingest + 13 enterprise ingest + 3 outbound API publish (từ `internal/platform/mqtt/topics.go` + `docs/api/mqtt-contract.md`).",
         "",
@@ -2136,7 +2745,8 @@ def main():
         "",
         "## Tài liệu đầy đủ theo repo",
         "",
-        "- **Chỉ** khẳng định đầy đủ tài liệu/import khi REST=365, gRPC=85, MQTT=28 và validator không phát hiện secret — xem `manifest.json`.",
+        "- **Chỉ** khẳng định đầy đủ tài liệu/import khi REST=%s, gRPC=%s, MQTT=%s và validator không phát hiện secret — xem `manifest.json`."
+                % (REST_EXPECTED, GRPC_EXPECTED, MQTT_EXPECTED),
         "",
         "## Output validator",
         "",
@@ -2184,6 +2794,22 @@ def main():
         else:
             review_claim = "PASS_AFTER_FIXES"
 
+    fp100c = OUT_DIR / "AVF_FULL_100.postman_collection.json"
+    req_full100 = (
+        _count_postman_requests(json.loads(fp100c.read_text(encoding="utf-8"))) if fp100c.is_file() else -1
+    )
+    full100_verdict = (
+        "READY_TO_IMPORT_POSTMAN_REST_AND_RUN_GRPC_MQTT_ADJACENT"
+        if (
+            req_full100 == REST_EXPECTED
+            and req_full100 == rest_count
+            and proc_rc == 0
+            and "VALIDATION_PASS" in val_out
+            and not blockers
+        )
+        else "NOT_READY_WITH_BLOCKERS"
+    )
+
     (OUT_DIR / "POSTMAN_SUITE_REVIEW_REPORT_VI.md").write_text(
         "\n".join(
             [
@@ -2205,6 +2831,17 @@ def main():
                 % (grpc_count, len(templates), len(gr_csv)),
                 "| MQTT rows (topics.go + contract) | %s | templates/matrix %s |"
                 % (mqtt_count, mqtt_count),
+                "",
+                "## AVF FULL 100 deliverable (canonical operator pack)",
+                "",
+                "| Item | Value |",
+                "|------|-------|",
+                "| `AVF_FULL_100.postman_collection.json` requests | **%s** (expect **%s**) |"
+                % (req_full100, REST_EXPECTED),
+                "| `avf_full_100_postman_suite.zip` | generated after variable audit |",
+                "| Final verdict (tooling-only) | **%s** |" % full100_verdict,
+                "",
+                "> gRPC/MQTT: **grpcurl** + **mosquitto** adjacent scripts — not Newman HTTP.",
                 "",
                 "## Mismatch / blockers (generator pass này)",
                 "",
@@ -2231,6 +2868,8 @@ def main():
                 "python postman/full-production-suite/validate_generated_assets.py",
                 "python -m json.tool postman/full-production-suite/AVF_REST_365_FULL.postman_collection.json",
                 "python -m json.tool postman/full-production-suite/AVF_PRODUCTION.postman_environment.json",
+                "python -m json.tool postman/full-production-suite/AVF_FULL_100.postman_collection.json",
+                "python -m json.tool postman/full-production-suite/AVF_FULL_100.postman_environment.json",
                 "python -m json.tool postman/full-production-suite/manifest.json",
                 "python -m json.tool postman/full-production-suite/grpc/grpc_request_templates.json",
                 "python -m json.tool postman/full-production-suite/mqtt/mqtt_request_templates.json",

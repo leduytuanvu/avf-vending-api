@@ -9,7 +9,10 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/app/salecatalog"
+	"github.com/avf/avf-vending-api/internal/app/sellreadiness"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
+	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -31,14 +34,14 @@ func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, ctx, http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		q := r.URL.Query()
-		includeUnavailable := strings.EqualFold(q.Get("include_unavailable"), "true")
+		rawQuery := r.URL.Query()
+		includeUnavailable := strings.EqualFold(rawQuery.Get("include_unavailable"), "true")
 		includeImages := true
-		if v := strings.TrimSpace(q.Get("include_images")); v == "false" || v == "0" {
+		if v := strings.TrimSpace(rawQuery.Get("include_images")); v == "false" || v == "0" {
 			includeImages = false
 		}
 		var ifNone *int64
-		if raw := strings.TrimSpace(q.Get("if_none_match_config_version")); raw != "" {
+		if raw := strings.TrimSpace(rawQuery.Get("if_none_match_config_version")); raw != "" {
 			n, perr := strconv.ParseInt(raw, 10, 64)
 			if perr == nil {
 				ifNone = &n
@@ -129,7 +132,7 @@ func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
 			items = append(items, entry)
 		}
 
-		writeJSON(w, http.StatusOK, map[string]any{
+		payload := map[string]any{
 			"machineId":      snap.MachineID.String(),
 			"siteId":         snap.SiteID.String(),
 			"configVersion":  snap.ConfigVersion,
@@ -137,6 +140,23 @@ func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
 			"currency":       snap.Currency,
 			"generatedAt":    snap.GeneratedAt.UTC().Format(time.RFC3339),
 			"items":          items,
-		})
+		}
+		repo := postgres.NewSetupRepository(app.TelemetryStore.Pool())
+		dbq := db.New(app.TelemetryStore.Pool())
+		if b, err := repo.GetMachineBootstrap(ctx, machineID); err == nil {
+			if sv, err2 := repo.GetMachineSlotView(ctx, machineID); err2 == nil {
+				if rs, err3 := sellreadiness.Compute(ctx, dbq, sv, b); err3 == nil {
+					payload["readiness"] = map[string]any{
+						"catalogSynced":   rs.CatalogSynced,
+						"mediaSynced":     rs.MediaSynced,
+						"inventorySynced": rs.InventorySynced,
+						"readyForSale":    rs.ReadyForSale,
+						"readinessIssues": rs.Issues,
+					}
+				}
+			}
+		}
+
+		writeJSON(w, http.StatusOK, payload)
 	}
 }

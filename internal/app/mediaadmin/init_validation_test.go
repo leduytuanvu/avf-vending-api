@@ -65,3 +65,31 @@ func TestValidateImageContentType(t *testing.T) {
 		}
 	})
 }
+
+func TestValidateHeadContentTypeForImageUpload(t *testing.T) {
+	t.Parallel()
+	t.Run("rejects pdf", func(t *testing.T) {
+		t.Parallel()
+		if err := validateHeadContentTypeForImageUpload("application/pdf"); err == nil {
+			t.Fatal("expected error")
+		}
+	})
+	t.Run("allows octet-stream", func(t *testing.T) {
+		t.Parallel()
+		if err := validateHeadContentTypeForImageUpload("application/octet-stream"); err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Run("allows empty", func(t *testing.T) {
+		t.Parallel()
+		if err := validateHeadContentTypeForImageUpload(""); err != nil {
+			t.Fatal(err)
+		}
+	})
+	t.Run("allows png", func(t *testing.T) {
+		t.Parallel()
+		if err := validateHeadContentTypeForImageUpload("image/png"); err != nil {
+			t.Fatal(err)
+		}
+	})
+}

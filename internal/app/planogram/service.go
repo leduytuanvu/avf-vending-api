@@ -10,6 +10,7 @@ import (
 
 	appaudit "github.com/avf/avf-vending-api/internal/app/audit"
 	appdevice "github.com/avf/avf-vending-api/internal/app/device"
+	"github.com/avf/avf-vending-api/internal/app/sellreadiness"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
@@ -302,6 +303,9 @@ func validatePublishSnapshot(ctx context.Context, q *db.Queries, scopeID, machin
 			}
 			return err
 		}
+	}
+	if err := sellreadiness.ValidateSellableSlotProductsPrimaryMedia(ctx, q, save); err != nil {
+		return errors.Join(ErrValidation, err)
 	}
 	return nil
 }

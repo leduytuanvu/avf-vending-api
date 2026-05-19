@@ -148,6 +148,118 @@ func (s *machineCatalogServer) SyncSaleCatalog(ctx context.Context, req *machine
 	return s.GetCatalogSnapshot(ctx, req)
 }
 
+func (s *machineCatalogServer) SyncCatalogBundle(ctx context.Context, req *machinev1.SyncCatalogBundleRequest) (*machinev1.SyncCatalogBundleResponse, error) {
+	if req == nil {
+		req = &machinev1.SyncCatalogBundleRequest{}
+	}
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	machineID, err := resolveMachineScope(claims.MachineID, req.GetMachineId())
+	if err != nil {
+		return nil, err
+	}
+	if s.deps.Pool != nil {
+		q := db.New(s.deps.Pool)
+		if err := machineCredentialGate(ctx, q, claims); err != nil {
+			return nil, err
+		}
+	}
+	if s.deps.SaleCatalog == nil {
+		return nil, status.Error(codes.Unavailable, "sale catalog not configured")
+	}
+	includeImages := true
+	if req.IncludeImages != nil {
+		includeImages = *req.IncludeImages
+	}
+	snap, err := s.deps.SaleCatalog.BuildSnapshot(ctx, machineID, salecatalog.Options{
+		IncludeUnavailable: req.GetIncludeUnavailable(),
+		IncludeImages:      includeImages,
+	})
+	if err != nil {
+		return nil, mapSaleCatalogError(err)
+	}
+	if includeImages && s.deps.MediaStore != nil && s.deps.MediaPresignTTL > 0 {
+		salecatalog.RefreshPresignedProductMediaURLs(ctx, s.deps.MediaStore, s.deps.MediaPresignTTL, &snap)
+	}
+	if snap.Bootstrap == nil {
+		return nil, status.Error(codes.Internal, "catalog_bundle_missing_bootstrap")
+	}
+	opts := salecatalog.Options{
+		IncludeUnavailable: req.GetIncludeUnavailable(),
+		IncludeImages:      includeImages,
+	}
+	catVer := salecatalog.CatalogSyncCatalogVersion(*snap.Bootstrap, snap, opts)
+	mediaVer := salecatalog.MediaFingerprint(snap)
+
+	rid := ""
+	if req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+
+	curCat := strings.TrimSpace(req.GetCurrentCatalogVersion())
+	curMedia := strings.TrimSpace(req.GetCurrentMediaManifestVersion())
+	needCat := curCat == "" || curCat != catVer
+	needMedia := curMedia == "" || curMedia != mediaVer
+
+	respStatus := machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED
+	if !needCat && !needMedia {
+		respStatus = machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_NOT_MODIFIED
+	}
+
+	out := &machinev1.SyncCatalogBundleResponse{
+		MachineId:            snap.MachineID.String(),
+		CatalogVersion:       catVer,
+		MediaManifestVersion: mediaVer,
+		GeneratedAt:          timestamppb.New(snap.GeneratedAt),
+		Meta:                 responseMetaCtx(ctx, rid, respStatus),
+	}
+
+	maxEntries := 5000
+	if s.deps.Config != nil {
+		maxEntries = s.deps.Config.Capacity.MaxMediaManifestEntries
+	}
+
+	if needCat {
+		cp := make([]*machinev1.CatalogSlotItem, 0, len(snap.Items))
+		for _, it := range snap.Items {
+			cp = append(cp, catalogSlotItemFromSale(it))
+		}
+		out.ChangedProducts = cp
+		curProducts := productIDSetFromSaleSnapshot(snap)
+		for _, p := range req.GetBasisProductIds() {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			if _, ok := curProducts[p]; !ok {
+				out.RemovedProductIds = append(out.RemovedProductIds, p)
+			}
+		}
+	}
+
+	if needMedia && includeImages {
+		assets := mediaAssetsFromSaleSnapshot(snap)
+		if len(assets) > maxEntries {
+			return nil, status.Errorf(codes.ResourceExhausted, "sync catalog media bundle too large (%d assets max %d)", len(assets), maxEntries)
+		}
+		out.ChangedMediaAssets = assets
+		curKeys := mediaAssetKeySetFromSaleSnapshot(snap)
+		for _, k := range req.GetBasisMediaAssetKeys() {
+			k = strings.TrimSpace(k)
+			if k == "" {
+				continue
+			}
+			if _, ok := curKeys[k]; !ok {
+				out.RemovedMediaAssetIds = append(out.RemovedMediaAssetIds, k)
+			}
+		}
+	}
+
+	return out, nil
+}
+
 func (s *machineCatalogServer) GetCatalogSnapshot(ctx context.Context, req *machinev1.GetCatalogSnapshotRequest) (*machinev1.GetCatalogSnapshotResponse, error) {
 	if req == nil {
 		req = &machinev1.GetCatalogSnapshotRequest{}
@@ -403,23 +515,7 @@ func snapshotProtoFromSale(s salecatalog.Snapshot) *machinev1.CatalogSnapshot {
 	// Clients should key incremental sync off this string with the same IncludeUnavailable/IncludeImages as the request.
 	items := make([]*machinev1.CatalogSlotItem, 0, len(s.Items))
 	for _, it := range s.Items {
-		csi := &machinev1.CatalogSlotItem{
-			SlotIndex:         it.SlotIndex,
-			SlotCode:          it.SlotCode,
-			CabinetCode:       it.CabinetCode,
-			ProductId:         it.ProductID.String(),
-			Sku:               it.SKU,
-			Name:              it.Name,
-			ShortName:         it.ShortName,
-			PriceMinor:        it.PriceMinor,
-			AvailableQuantity: it.AvailableQuantity,
-			MaxQuantity:       it.MaxQuantity,
-			IsAvailable:       it.IsAvailable,
-			UnavailableReason: it.UnavailableReason,
-			SortOrder:         it.SortOrder,
-		}
-		csi.PrimaryMedia = productMediaRefProto(it.Image)
-		items = append(items, csi)
+		items = append(items, catalogSlotItemFromSale(it))
 	}
 	return &machinev1.CatalogSnapshot{
 		MachineId:      s.MachineID.String(),
@@ -430,6 +526,132 @@ func snapshotProtoFromSale(s salecatalog.Snapshot) *machinev1.CatalogSnapshot {
 		GeneratedAt:    timestamppb.New(s.GeneratedAt),
 		Items:          items,
 	}
+}
+
+func catalogSlotItemFromSale(it salecatalog.Item) *machinev1.CatalogSlotItem {
+	csi := &machinev1.CatalogSlotItem{
+		SlotIndex:         it.SlotIndex,
+		SlotCode:          it.SlotCode,
+		CabinetCode:       it.CabinetCode,
+		ProductId:         it.ProductID.String(),
+		Sku:               it.SKU,
+		Name:              it.Name,
+		ShortName:         it.ShortName,
+		PriceMinor:        it.PriceMinor,
+		AvailableQuantity: it.AvailableQuantity,
+		MaxQuantity:       it.MaxQuantity,
+		IsAvailable:       it.IsAvailable,
+		UnavailableReason: it.UnavailableReason,
+		SortOrder:         it.SortOrder,
+	}
+	csi.PrimaryMedia = productMediaRefProto(it.Image)
+	return csi
+}
+
+func productIDSetFromSaleSnapshot(snap salecatalog.Snapshot) map[string]struct{} {
+	m := make(map[string]struct{}, len(snap.Items))
+	for _, it := range snap.Items {
+		m[it.ProductID.String()] = struct{}{}
+	}
+	return m
+}
+
+func mediaAssetStableKey(mediaID uuid.UUID, variant string) string {
+	return mediaID.String() + ":" + variant
+}
+
+func variantRoleFromKind(k salecatalog.MediaVariantKind) string {
+	switch k {
+	case salecatalog.MediaVariantKindOriginal:
+		return "original"
+	case salecatalog.MediaVariantKindThumb:
+		return "thumb"
+	case salecatalog.MediaVariantKindDisplay:
+		return "display"
+	default:
+		return "unspecified"
+	}
+}
+
+func sha256ProtoField(checksum string) string {
+	checksum = strings.TrimSpace(checksum)
+	return strings.TrimPrefix(checksum, "sha256:")
+}
+
+func mediaAssetsFromSaleSnapshot(snap salecatalog.Snapshot) []*machinev1.MediaAsset {
+	var out []*machinev1.MediaAsset
+	for _, it := range snap.Items {
+		if it.Image == nil || it.Image.Deleted {
+			continue
+		}
+		if len(it.Image.Variants) > 0 {
+			for _, v := range it.Image.Variants {
+				mid := v.MediaAssetID
+				if mid == uuid.Nil {
+					mid = it.Image.MediaID
+				}
+				if mid == uuid.Nil {
+					continue
+				}
+				url := strings.TrimSpace(v.URL)
+				if url == "" {
+					continue
+				}
+				role := variantRoleFromKind(v.Kind)
+				out = append(out, &machinev1.MediaAsset{
+					Id:          mid.String(),
+					ProductId:   it.ProductID.String(),
+					Role:        "primary",
+					Variant:     role,
+					MimeType:    strings.TrimSpace(v.ContentType),
+					Width:       v.Width,
+					Height:      v.Height,
+					Sha256:      sha256ProtoField(v.ChecksumSHA256),
+					SizeBytes:   v.SizeBytes,
+					Version:     v.MediaVersion,
+					DownloadUrl: url,
+				})
+			}
+			continue
+		}
+		if it.Image.MediaID == uuid.Nil {
+			continue
+		}
+		url := strings.TrimSpace(it.Image.DisplayURL)
+		if url == "" {
+			url = strings.TrimSpace(it.Image.ThumbURL)
+		}
+		if url == "" {
+			continue
+		}
+		out = append(out, &machinev1.MediaAsset{
+			Id:          it.Image.MediaID.String(),
+			ProductId:   it.ProductID.String(),
+			Role:        "primary",
+			Variant:     "display",
+			MimeType:    strings.TrimSpace(it.Image.ContentType),
+			Width:       it.Image.Width,
+			Height:      it.Image.Height,
+			Sha256:      sha256ProtoField(it.Image.ContentHash),
+			SizeBytes:   it.Image.SizeBytes,
+			Version:     it.Image.MediaVersion,
+			DownloadUrl: url,
+		})
+	}
+	return out
+}
+
+func mediaAssetKeySetFromSaleSnapshot(snap salecatalog.Snapshot) map[string]struct{} {
+	m := make(map[string]struct{})
+	for _, a := range mediaAssetsFromSaleSnapshot(snap) {
+		id, err := uuid.Parse(strings.TrimSpace(a.GetId()))
+		if err != nil {
+			continue
+		}
+		k := mediaAssetStableKey(id, strings.TrimSpace(a.GetVariant()))
+		m[k] = struct{}{}
+	}
+	return m
 }
 
 func productMediaRefProto(im *salecatalog.ImageMeta) *machinev1.ProductMediaRef {

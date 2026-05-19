@@ -124,6 +124,58 @@ Top-level JSON must include:
 
 The ingest router rejects ACKs with identity mismatches before OLTP; Postgres rejects `command_id` / company mismatches with audit + metrics.
 
+### `catalog.refresh` (catalog + media manifest trigger)
+
+Machines pull catalog rows and media artifacts over **gRPC/HTTPS** (or other bulk transports). MQTT carries only a **small cursor** so the kiosk refreshes when operator-facing media changes—**never** image bytes, base64, or large URL lists on MQTT.
+
+**Dispatch** uses the normal outbound wire (`command_id`, `machine_id`, `sequence`, `command_type`, `payload`, …). For `command_type: "catalog.refresh"`, the inner **`payload`** object MUST be JSON with exactly these keys (allowlisted; unknown keys are rejected):
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `type` | string | Must be `"catalog.refresh"` (echo for kiosk parsers). |
+| `catalogVersion` | int or string | Non-negative integer; coerced to string server-side. |
+| `mediaManifestVersion` | int or string | Same as `catalogVersion`. |
+| `reason` | string | Required human/machine-readable reason (e.g. `product_media_updated`). Values must not embed `data:image/...;base64,...` or similar transport. |
+
+Optional tolerant echoes: `commandId` / `command_id` (ignored for dispatch semantics).
+
+**Example inner `payload`** (as nested inside the dispatch wire):
+
+```json
+{
+  "type": "catalog.refresh",
+  "catalogVersion": 124,
+  "mediaManifestVersion": 46,
+  "reason": "product_media_updated"
+}
+```
+
+**ACK / receipt** (`commands/ack`): top-level fields are unchanged (`command_id`, `machine_id`, `occurred_at`, `status`, `sequence`, `dedupe_key`, optional nested `payload`). Status aliases such as **`success`** normalize to **`acked`** (see `receiptStatusAliases` in `internal/platform/mqtt/router.go`).
+
+For **`catalog.refresh`** commands only, when the normalized status is **`acked`**, the nested **`payload`** object MUST include:
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `catalogVersion` | int or string | Must match dispatch semantics. |
+| `mediaManifestVersion` | int or string | Same. |
+| `mediaSynced` | bool | Must be **`true`** for successful completion. |
+
+Optional: `type` (`"catalog.refresh"`), `detail` (string), `commandId` / `command_id`. Nested objects/arrays in values are rejected.
+
+**Example nested ACK `payload`:**
+
+```json
+{
+  "type": "catalog.refresh",
+  "catalogVersion": 124,
+  "mediaManifestVersion": 46,
+  "mediaSynced": true,
+  "detail": "pulled manifest and artifacts"
+}
+```
+
+Invalid ACK payloads are rejected at OLTP (`ApplyCommandReceiptTransition`) with metric reason `catalog_refresh_ack_invalid`.
+
 ### OTA and diagnostic command types
 
 OTA rollouts and diagnostics use the same command-ledger/MQTT dispatch channel:
@@ -189,7 +241,7 @@ Non-critical metrics may still use time-based JetStream dedupe when no identity 
 
 ## Sample fixtures and contract tests
 
-- **JSON samples**: `testdata/telemetry/*.json` (vend, payment, cash, inventory, command ack, heartbeat, invalid cases, duplicate replay).
+- **JSON samples**: `testdata/telemetry/*.json` (vend, payment, cash, inventory, command ack, catalog.refresh command ack, heartbeat, invalid cases, duplicate replay).
 - **Index for device teams**: [examples/device-offline-replay-samples.md](./examples/device-offline-replay-samples.md).
 - **Go tests**: `internal/platform/mqtt/offline_replay_contract_test.go` (Dispatch + critical identity rules), `internal/app/telemetryapp/offline_replay_contract_test.go` (projection duplicate suppression), `internal/platform/telemetry/offline_replay_classify_test.go` (criticality map).
 - **JSON-only validator**: `go run ./tools/telemetry-contract` from repo root.

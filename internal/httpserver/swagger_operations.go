@@ -837,7 +837,7 @@ func DocOpV1AdminSystemRetentionRunPost() {}
 
 // DocOpV1AdminProductsList godoc
 // @Summary List products (admin catalog)
-// @Description Paginated product directory for an company. **platform_admin** must pass **single_company_admin_context** query; **admin** is scoped to JWT company. Supports `q` substring search on sku/name, `active_only` boolean, and standard **limit**/**offset** pagination (default 50, max 500).
+// @Description Paginated product directory for an company. **platform_admin** must pass **single_company_admin_context** query; **admin** is scoped to JWT company. Supports `q` substring search on sku/name, `active_only` boolean, and standard **limit**/**offset** pagination (default 50, max 500). Each row includes **tags** (linked catalog tags).
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
@@ -855,7 +855,7 @@ func DocOpV1AdminProductsList() {}
 
 // DocOpV1AdminProductGet godoc
 // @Summary Get product by id (admin catalog)
-// @Description Returns full product attributes including JSON `attrs`, allergen codes, and merchandising metadata. **platform_admin** must pass **single_company_admin_context** matching the product's company.
+// @Description Returns full product attributes including JSON `attrs`, allergen codes, merchandising metadata, primary image URLs when present, and linked **tags**.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Produce json
@@ -871,12 +871,12 @@ func DocOpV1AdminProductGet() {}
 
 // DocOpV1AdminProductCreate godoc
 // @Summary Create product (admin catalog)
-// @Description Creates a product in the company. **Idempotency-Key** required. SKU unique per org; barcode unique when set.
+// @Description Creates a product in the company. **Idempotency-Key** required. SKU unique per org; barcode unique when set. Optional **tagIds** (UUID[]): duplicates removed; unknown IDs return **400** `invalid_argument`. Omit **tagIds** to create without tags.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param body body object true "sku, name, description, active, optional categoryId, brandId, barcode"
+// @Param body body V1AdminProductMutationRequest true "Product fields (tagIds optional)"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -888,13 +888,13 @@ func DocOpV1AdminProductCreate() {}
 
 // DocOpV1AdminProductReplace godoc
 // @Summary Update product (PUT/PATCH)
-// @Description Full replacement of mutable fields. **Idempotency-Key** required.
+// @Description Updates mutable fields. **Idempotency-Key** required. **tagIds**: omit to keep existing product tags; send **[]** to clear all; send UUIDs to replace the linked set. Unknown tag IDs return **400** `invalid_argument`.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param body body object true "sku, name, description, active, optional categoryId, brandId, barcode"
+// @Param body body V1AdminProductMutationRequest true "Product fields (tagIds optional; PATCH omit tagIds to leave tags unchanged)"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -907,13 +907,13 @@ func DocOpV1AdminProductReplace() {}
 
 // DocOpV1AdminProductPatch godoc
 // @Summary Update product (PATCH)
-// @Description Same payload as PUT. **Idempotency-Key** required.
+// @Description Same semantics as PUT. **Idempotency-Key** required. **tagIds**: omit to keep tags; **[]** clears; non-empty replaces.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param productId path string true "Product UUID"
-// @Param body body object true "sku, name, description, active, optional categoryId, brandId, barcode"
+// @Param body body V1AdminProductMutationRequest true "Product fields"
 // @Success 200 {object} V1AdminProduct
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -992,6 +992,22 @@ func DocOpV1AdminProductImagePost() {}
 // @Router /v1/admin/products/{productId}/image [delete]
 func DocOpV1AdminProductImageDelete() {}
 
+// DocOpV1AdminMediaUploadInitV2 godoc
+// @Summary Start enterprise media upload (camelCase contract)
+// @Description Phase 2 **POST /v1/admin/media/uploads/init**: creates a pending asset and returns **mediaId**, **uploadUrl**, **objectKey**, **status**. Requires **Idempotency-Key**.
+// @Tags Catalog Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param body body V1AdminMediaUploadInitRequestV2 true "filename + contentType (+ optional purpose)"
+// @Success 200 {object} V1AdminMediaUploadInitResponseV2
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 503 {object} V1StandardError "capability_not_configured when media service not wired"
+// @Router /v1/admin/media/uploads/init [post]
+func DocOpV1AdminMediaUploadInitV2() {}
+
 // DocOpV1AdminMediaUploadInit godoc
 // @Summary Start enterprise media upload (presigned PUT)
 // @Description Creates a **pending** media_assets row and returns a presigned **PUT** URL for the **original** image. After upload, call **POST /v1/admin/media/{mediaId}/complete** to generate thumb/display variants and mark **ready**. Requires **API_ARTIFACTS_ENABLED** (object storage). **Idempotency-Key** required.
@@ -1026,12 +1042,14 @@ func DocOpV1AdminMediaAssetsCreate() {}
 
 // DocOpV1AdminMediaUploadComplete godoc
 // @Summary Finalize media upload (variants + ready)
-// @Description Heads the original object, generates **thumb.webp** / **display.webp** variants, records integrity metadata, marks asset **ready**. **Idempotency-Key** required.
+// @Description Heads the original object, generates **thumb.webp** / **display.webp** variants, records integrity metadata, marks asset **ready**. Response returns **id**, **status**, **variants** with presigned **downloadUrl**. **Idempotency-Key** required.
 // @Tags Catalog Admin
 // @Security BearerAuth
+// @Accept json
 // @Produce json
 // @Param mediaId path string true "Media asset UUID"
-// @Success 200 {object} V1AdminMediaAsset
+// @Param body body V1AdminMediaUploadCompleteRequestV2 false "Optional integrity hints (sizeBytes, sha256, contentType)"
+// @Success 200 {object} V1AdminMediaUploadCompleteResponseV2
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1BearerAuthError
@@ -1039,6 +1057,24 @@ func DocOpV1AdminMediaAssetsCreate() {}
 // @Failure 409 {object} V1StandardError
 // @Router /v1/admin/media/{mediaId}/complete [post]
 func DocOpV1AdminMediaUploadComplete() {}
+
+// DocOpV1AdminMediaUploadCompleteUploadsPrefix godoc
+// @Summary Finalize media upload (uploads/{mediaId}/complete alias)
+// @Description Same handler as **POST /v1/admin/media/{mediaId}/complete** — returns **id**, **status**, and **variants** with presigned **downloadUrl** entries.
+// @Tags Catalog Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param mediaId path string true "Media asset UUID"
+// @Param body body V1AdminMediaUploadCompleteRequestV2 false "Optional integrity hints (sizeBytes, sha256, contentType)"
+// @Success 200 {object} V1AdminMediaUploadCompleteResponseV2
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 409 {object} V1StandardError
+// @Router /v1/admin/media/uploads/{mediaId}/complete [post]
+func DocOpV1AdminMediaUploadCompleteUploadsPrefix() {}
 
 // DocOpV1AdminMediaAssetsList godoc
 // @Summary List media assets (admin)

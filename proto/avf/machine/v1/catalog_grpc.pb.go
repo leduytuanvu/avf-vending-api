@@ -22,6 +22,7 @@ const (
 	MachineCatalogService_GetSaleCatalog_FullMethodName     = "/avf.machine.v1.MachineCatalogService/GetSaleCatalog"
 	MachineCatalogService_SyncSaleCatalog_FullMethodName    = "/avf.machine.v1.MachineCatalogService/SyncSaleCatalog"
 	MachineCatalogService_GetCatalogSnapshot_FullMethodName = "/avf.machine.v1.MachineCatalogService/GetCatalogSnapshot"
+	MachineCatalogService_SyncCatalogBundle_FullMethodName  = "/avf.machine.v1.MachineCatalogService/SyncCatalogBundle"
 	MachineCatalogService_GetCatalogDelta_FullMethodName    = "/avf.machine.v1.MachineCatalogService/GetCatalogDelta"
 	MachineCatalogService_AckCatalogVersion_FullMethodName  = "/avf.machine.v1.MachineCatalogService/AckCatalogVersion"
 	MachineCatalogService_GetMediaManifest_FullMethodName   = "/avf.machine.v1.MachineCatalogService/GetMediaManifest"
@@ -40,6 +41,10 @@ type MachineCatalogServiceClient interface {
 	SyncSaleCatalog(ctx context.Context, in *GetCatalogSnapshotRequest, opts ...grpc.CallOption) (*GetCatalogSnapshotResponse, error)
 	// GetCatalogSnapshot returns the full sale catalog for the machine (planogram, price, availability, image URLs).
 	GetCatalogSnapshot(ctx context.Context, in *GetCatalogSnapshotRequest, opts ...grpc.CallOption) (*GetCatalogSnapshotResponse, error)
+	// SyncCatalogBundle returns delta-shaped catalog lines plus flattened MediaAsset rows for offline cache sync.
+	// Compare SyncCatalogBundleResponse.catalog_version to prior current_catalog_version for product/planogram deltas;
+	// compare media_manifest_version to prior current_media_manifest_version for media-only deltas (see CatalogSyncCatalogVersion vs composite CatalogSnapshot.catalog_version in docs).
+	SyncCatalogBundle(ctx context.Context, in *SyncCatalogBundleRequest, opts ...grpc.CallOption) (*SyncCatalogBundleResponse, error)
 	// GetCatalogDelta compares basis_catalog_version to the published snapshot on the server.
 	// When basis_matches=true clients may skip replacing cached snapshot bytes.
 	GetCatalogDelta(ctx context.Context, in *GetCatalogDeltaRequest, opts ...grpc.CallOption) (*GetCatalogDeltaResponse, error)
@@ -80,6 +85,16 @@ func (c *machineCatalogServiceClient) GetCatalogSnapshot(ctx context.Context, in
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetCatalogSnapshotResponse)
 	err := c.cc.Invoke(ctx, MachineCatalogService_GetCatalogSnapshot_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *machineCatalogServiceClient) SyncCatalogBundle(ctx context.Context, in *SyncCatalogBundleRequest, opts ...grpc.CallOption) (*SyncCatalogBundleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SyncCatalogBundleResponse)
+	err := c.cc.Invoke(ctx, MachineCatalogService_SyncCatalogBundle_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +144,10 @@ type MachineCatalogServiceServer interface {
 	SyncSaleCatalog(context.Context, *GetCatalogSnapshotRequest) (*GetCatalogSnapshotResponse, error)
 	// GetCatalogSnapshot returns the full sale catalog for the machine (planogram, price, availability, image URLs).
 	GetCatalogSnapshot(context.Context, *GetCatalogSnapshotRequest) (*GetCatalogSnapshotResponse, error)
+	// SyncCatalogBundle returns delta-shaped catalog lines plus flattened MediaAsset rows for offline cache sync.
+	// Compare SyncCatalogBundleResponse.catalog_version to prior current_catalog_version for product/planogram deltas;
+	// compare media_manifest_version to prior current_media_manifest_version for media-only deltas (see CatalogSyncCatalogVersion vs composite CatalogSnapshot.catalog_version in docs).
+	SyncCatalogBundle(context.Context, *SyncCatalogBundleRequest) (*SyncCatalogBundleResponse, error)
 	// GetCatalogDelta compares basis_catalog_version to the published snapshot on the server.
 	// When basis_matches=true clients may skip replacing cached snapshot bytes.
 	GetCatalogDelta(context.Context, *GetCatalogDeltaRequest) (*GetCatalogDeltaResponse, error)
@@ -153,6 +172,9 @@ func (UnimplementedMachineCatalogServiceServer) SyncSaleCatalog(context.Context,
 }
 func (UnimplementedMachineCatalogServiceServer) GetCatalogSnapshot(context.Context, *GetCatalogSnapshotRequest) (*GetCatalogSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCatalogSnapshot not implemented")
+}
+func (UnimplementedMachineCatalogServiceServer) SyncCatalogBundle(context.Context, *SyncCatalogBundleRequest) (*SyncCatalogBundleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SyncCatalogBundle not implemented")
 }
 func (UnimplementedMachineCatalogServiceServer) GetCatalogDelta(context.Context, *GetCatalogDeltaRequest) (*GetCatalogDeltaResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCatalogDelta not implemented")
@@ -238,6 +260,24 @@ func _MachineCatalogService_GetCatalogSnapshot_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MachineCatalogService_SyncCatalogBundle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyncCatalogBundleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineCatalogServiceServer).SyncCatalogBundle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineCatalogService_SyncCatalogBundle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineCatalogServiceServer).SyncCatalogBundle(ctx, req.(*SyncCatalogBundleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MachineCatalogService_GetCatalogDelta_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetCatalogDeltaRequest)
 	if err := dec(in); err != nil {
@@ -310,6 +350,10 @@ var MachineCatalogService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCatalogSnapshot",
 			Handler:    _MachineCatalogService_GetCatalogSnapshot_Handler,
+		},
+		{
+			MethodName: "SyncCatalogBundle",
+			Handler:    _MachineCatalogService_SyncCatalogBundle_Handler,
 		},
 		{
 			MethodName: "GetCatalogDelta",

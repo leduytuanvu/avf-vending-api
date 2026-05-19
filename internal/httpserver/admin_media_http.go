@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -36,8 +38,10 @@ func mountAdminMediaRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite))
-		r.With(writeRL).Post("/media/assets", postAdminMediaUploadInit(svc))
-		r.With(writeRL).Post("/media/uploads", postAdminMediaUploadInit(svc))
+		r.With(writeRL).Post("/media/assets", postAdminMediaUploadInitLegacy(svc))
+		r.With(writeRL).Post("/media/uploads/init", postAdminMediaUploadInitV2(svc))
+		r.With(writeRL).Post("/media/uploads/{mediaId}/complete", postAdminMediaUploadComplete(svc))
+		r.With(writeRL).Post("/media/uploads", postAdminMediaUploadInitLegacy(svc))
 		r.With(writeRL).Post("/media/{mediaId}/complete", postAdminMediaUploadComplete(svc))
 		r.With(writeRL).Delete("/media/{mediaId}", deleteAdminMedia(svc))
 		r.With(writeRL).Delete("/media/assets/{mediaId}", deleteAdminMedia(svc))
@@ -89,7 +93,7 @@ func writeMediaAdminError(w http.ResponseWriter, ctx context.Context, err error)
 	}
 }
 
-func postAdminMediaUploadInit(svc *appmediaadmin.Service) http.HandlerFunc {
+func postAdminMediaUploadInitLegacy(svc *appmediaadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -106,14 +110,11 @@ func postAdminMediaUploadInit(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
-		var body struct {
-			ContentType string `json:"content_type"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "invalid json body")
+		var body V1AdminMediaUploadInitRequest
+		if !decodeStrictJSON(w, r, &body) {
 			return
 		}
-		out, err := svc.InitUpload(r.Context(), scopeID, body.ContentType)
+		out, err := svc.InitUpload(r.Context(), scopeID, "", body.ContentType, "product_image")
 		if err != nil {
 			writeMediaAdminError(w, r.Context(), err)
 			return
@@ -125,6 +126,48 @@ func postAdminMediaUploadInit(svc *appmediaadmin.Service) http.HandlerFunc {
 			"upload_headers": out.UploadHeaders,
 			"expires_at":     formatAPITimeRFC3339Nano(out.ExpiresAt),
 			"complete_path":  out.CompletePath,
+		})
+	}
+}
+
+func postAdminMediaUploadInitV2(svc *appmediaadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		p, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+			return
+		}
+		scopeID, err := requireCatalogPrincipalUUID(r)
+		_ = scopeID
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
+			return
+		}
+		if !adminMediaOrgAllowed(p, scopeID) {
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			return
+		}
+		var body V1AdminMediaUploadInitRequestV2
+		if !decodeStrictJSON(w, r, &body) {
+			return
+		}
+		fn := strings.TrimSpace(body.Filename)
+		ct := strings.TrimSpace(body.ContentType)
+		if fn == "" || ct == "" {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_argument", "filename and contentType are required")
+			return
+		}
+		out, err := svc.InitUpload(r.Context(), scopeID, fn, ct, body.Purpose)
+		if err != nil {
+			writeMediaAdminError(w, r.Context(), err)
+			return
+		}
+		writeJSON(w, http.StatusOK, V1AdminMediaUploadInitResponseV2{
+			MediaID:      out.MediaID.String(),
+			UploadURL:    out.UploadURL,
+			ObjectKey:    out.OriginalKey,
+			Status:       out.Status,
+			CompletePath: out.CompletePath,
 		})
 	}
 }
@@ -151,12 +194,25 @@ func postAdminMediaUploadComplete(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_media_id", err.Error())
 			return
 		}
-		row, err := svc.CompleteUpload(r.Context(), scopeID, mediaID)
+		var opts appmediaadmin.CompleteUploadOptions
+		if r.Body != nil {
+			dec := json.NewDecoder(r.Body)
+			dec.DisallowUnknownFields()
+			var body V1AdminMediaUploadCompleteRequestV2
+			if err := dec.Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "invalid request body")
+				return
+			}
+			opts.SizeBytes = body.SizeBytes
+			opts.SHA256Hex = body.SHA256
+			opts.ContentType = body.ContentType
+		}
+		row, err := svc.CompleteUploadWithOptions(r.Context(), scopeID, mediaID, opts)
 		if err != nil {
 			writeMediaAdminError(w, r.Context(), err)
 			return
 		}
-		writeJSON(w, http.StatusOK, mapAdminMediaAssetJSON(*row))
+		writeMediaUploadCompleteV2(w, r.Context(), svc, row)
 	}
 }
 
@@ -300,6 +356,59 @@ func deleteAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 	}
 }
 
+func writeMediaUploadCompleteV2(w http.ResponseWriter, ctx context.Context, svc *appmediaadmin.Service, asset *db.MediaAsset) {
+	if asset == nil {
+		writeAPIError(w, ctx, http.StatusInternalServerError, "internal", "nil asset")
+		return
+	}
+	variants, err := svc.ListVariantsForAssets(ctx, []uuid.UUID{asset.ID})
+	if err != nil {
+		writeMediaAdminError(w, ctx, err)
+		return
+	}
+	order := map[string]int{"thumb": 0, "display": 1, "original": 2, "fallback": 3}
+	sort.SliceStable(variants, func(i, j int) bool {
+		oi, oj := order[variants[i].Variant], order[variants[j].Variant]
+		if oi != oj {
+			return oi < oj
+		}
+		return variants[i].Variant < variants[j].Variant
+	})
+	items := make([]V1AdminMediaVariantResponse, 0, len(variants))
+	for _, v := range variants {
+		u, err := svc.PresignedDownloadURL(ctx, v.ObjectKey)
+		if err != nil {
+			u = ""
+		}
+		item := V1AdminMediaVariantResponse{
+			Variant:     v.Variant,
+			Version:     v.Version,
+			DownloadURL: u,
+		}
+		if v.MimeType.Valid && strings.TrimSpace(v.MimeType.String) != "" {
+			item.MimeType = v.MimeType.String
+		}
+		if v.Width.Valid {
+			item.Width = v.Width.Int32
+		}
+		if v.Height.Valid {
+			item.Height = v.Height.Int32
+		}
+		if v.SizeBytes.Valid {
+			item.SizeBytes = v.SizeBytes.Int64
+		}
+		if v.Sha256.Valid && strings.TrimSpace(v.Sha256.String) != "" {
+			item.SHA256 = v.Sha256.String
+		}
+		items = append(items, item)
+	}
+	writeJSON(w, http.StatusOK, V1AdminMediaUploadCompleteResponseV2{
+		ID:       asset.ID.String(),
+		Status:   asset.Status,
+		Variants: items,
+	})
+}
+
 func mapAdminMediaAssetJSON(a db.MediaAsset) map[string]any {
 	out := map[string]any{
 		"id":             a.ID.String(),
@@ -380,8 +489,7 @@ func bindAdminProductMedia(app *api.HTTPApplication) http.HandlerFunc {
 			writeMediaAdminError(w, r.Context(), err)
 			return
 		}
-		img, _ := app.CatalogAdmin.PrimaryProductImageOrNil(r.Context(), scopeID, prod.ID)
-		writeJSON(w, http.StatusOK, mapAdminProduct(*prod, img))
+		writeAdminProductResponse(w, r, app, app.CatalogAdmin, scopeID, *prod)
 	}
 }
 
@@ -421,8 +529,7 @@ func deleteAdminProductMedia(app *api.HTTPApplication) http.HandlerFunc {
 			writeMediaAdminError(w, r.Context(), err)
 			return
 		}
-		img, _ := app.CatalogAdmin.PrimaryProductImageOrNil(r.Context(), scopeID, prod.ID)
-		writeJSON(w, http.StatusOK, mapAdminProduct(*prod, img))
+		writeAdminProductResponse(w, r, app, app.CatalogAdmin, scopeID, *prod)
 	}
 }
 

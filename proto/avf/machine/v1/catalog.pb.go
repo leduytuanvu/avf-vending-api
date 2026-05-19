@@ -1176,6 +1176,344 @@ func (x *MediaManifestEntry) GetMediaId() string {
 	return ""
 }
 
+// MediaAsset is one rendition row for kiosk offline cache (URLs may be presigned; identity is id + variant + sha256 + version).
+type MediaAsset struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProductId     string                 `protobuf:"bytes,2,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	Variant       string                 `protobuf:"bytes,4,opt,name=variant,proto3" json:"variant,omitempty"`
+	MimeType      string                 `protobuf:"bytes,5,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
+	Width         int32                  `protobuf:"varint,6,opt,name=width,proto3" json:"width,omitempty"`
+	Height        int32                  `protobuf:"varint,7,opt,name=height,proto3" json:"height,omitempty"`
+	Sha256        string                 `protobuf:"bytes,8,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	SizeBytes     int64                  `protobuf:"varint,9,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	Version       int32                  `protobuf:"varint,10,opt,name=version,proto3" json:"version,omitempty"`
+	DownloadUrl   string                 `protobuf:"bytes,11,opt,name=download_url,json=downloadUrl,proto3" json:"download_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MediaAsset) Reset() {
+	*x = MediaAsset{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MediaAsset) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MediaAsset) ProtoMessage() {}
+
+func (x *MediaAsset) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MediaAsset.ProtoReflect.Descriptor instead.
+func (*MediaAsset) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *MediaAsset) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MediaAsset) GetProductId() string {
+	if x != nil {
+		return x.ProductId
+	}
+	return ""
+}
+
+func (x *MediaAsset) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *MediaAsset) GetVariant() string {
+	if x != nil {
+		return x.Variant
+	}
+	return ""
+}
+
+func (x *MediaAsset) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
+func (x *MediaAsset) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *MediaAsset) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *MediaAsset) GetSha256() string {
+	if x != nil {
+		return x.Sha256
+	}
+	return ""
+}
+
+func (x *MediaAsset) GetSizeBytes() int64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
+func (x *MediaAsset) GetVersion() int32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *MediaAsset) GetDownloadUrl() string {
+	if x != nil {
+		return x.DownloadUrl
+	}
+	return ""
+}
+
+type SyncCatalogBundleRequest struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Meta               *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	MachineId          string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	IncludeUnavailable bool                   `protobuf:"varint,3,opt,name=include_unavailable,json=includeUnavailable,proto3" json:"include_unavailable,omitempty"`
+	IncludeImages      *bool                  `protobuf:"varint,4,opt,name=include_images,json=includeImages,proto3,oneof" json:"include_images,omitempty"`
+	// Product/planogram/pricing/inventory digest excluding media (pair with media_manifest_version).
+	CurrentCatalogVersion string `protobuf:"bytes,5,opt,name=current_catalog_version,json=currentCatalogVersion,proto3" json:"current_catalog_version,omitempty"`
+	// Sale-catalog media projection digest (same computation as GetMediaManifest.media_fingerprint).
+	CurrentMediaManifestVersion string `protobuf:"bytes,6,opt,name=current_media_manifest_version,json=currentMediaManifestVersion,proto3" json:"current_media_manifest_version,omitempty"`
+	// Optional: ids the client still holds locally — returned in removed_product_ids when no longer on this machine catalog.
+	BasisProductIds []string `protobuf:"bytes,7,rep,name=basis_product_ids,json=basisProductIds,proto3" json:"basis_product_ids,omitempty"`
+	// Optional tombstones for media rows; keys are "{media_asset_id}:{variant}" with variant in original|thumb|display.
+	BasisMediaAssetKeys []string `protobuf:"bytes,8,rep,name=basis_media_asset_keys,json=basisMediaAssetKeys,proto3" json:"basis_media_asset_keys,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *SyncCatalogBundleRequest) Reset() {
+	*x = SyncCatalogBundleRequest{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncCatalogBundleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncCatalogBundleRequest) ProtoMessage() {}
+
+func (x *SyncCatalogBundleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncCatalogBundleRequest.ProtoReflect.Descriptor instead.
+func (*SyncCatalogBundleRequest) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *SyncCatalogBundleRequest) GetMeta() *MachineRequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *SyncCatalogBundleRequest) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *SyncCatalogBundleRequest) GetIncludeUnavailable() bool {
+	if x != nil {
+		return x.IncludeUnavailable
+	}
+	return false
+}
+
+func (x *SyncCatalogBundleRequest) GetIncludeImages() bool {
+	if x != nil && x.IncludeImages != nil {
+		return *x.IncludeImages
+	}
+	return false
+}
+
+func (x *SyncCatalogBundleRequest) GetCurrentCatalogVersion() string {
+	if x != nil {
+		return x.CurrentCatalogVersion
+	}
+	return ""
+}
+
+func (x *SyncCatalogBundleRequest) GetCurrentMediaManifestVersion() string {
+	if x != nil {
+		return x.CurrentMediaManifestVersion
+	}
+	return ""
+}
+
+func (x *SyncCatalogBundleRequest) GetBasisProductIds() []string {
+	if x != nil {
+		return x.BasisProductIds
+	}
+	return nil
+}
+
+func (x *SyncCatalogBundleRequest) GetBasisMediaAssetKeys() []string {
+	if x != nil {
+		return x.BasisMediaAssetKeys
+	}
+	return nil
+}
+
+type SyncCatalogBundleResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Meta  *MachineResponseMeta   `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	// Catalog sync cursor excluding media projection (independent from MediaFingerprint).
+	CatalogVersion       string                 `protobuf:"bytes,2,opt,name=catalog_version,json=catalogVersion,proto3" json:"catalog_version,omitempty"`
+	MediaManifestVersion string                 `protobuf:"bytes,3,opt,name=media_manifest_version,json=mediaManifestVersion,proto3" json:"media_manifest_version,omitempty"`
+	GeneratedAt          *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
+	MachineId            string                 `protobuf:"bytes,5,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	ChangedProducts      []*CatalogSlotItem     `protobuf:"bytes,6,rep,name=changed_products,json=changedProducts,proto3" json:"changed_products,omitempty"`
+	RemovedProductIds    []string               `protobuf:"bytes,7,rep,name=removed_product_ids,json=removedProductIds,proto3" json:"removed_product_ids,omitempty"`
+	ChangedMediaAssets   []*MediaAsset          `protobuf:"bytes,8,rep,name=changed_media_assets,json=changedMediaAssets,proto3" json:"changed_media_assets,omitempty"`
+	RemovedMediaAssetIds []string               `protobuf:"bytes,9,rep,name=removed_media_asset_ids,json=removedMediaAssetIds,proto3" json:"removed_media_asset_ids,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *SyncCatalogBundleResponse) Reset() {
+	*x = SyncCatalogBundleResponse{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncCatalogBundleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncCatalogBundleResponse) ProtoMessage() {}
+
+func (x *SyncCatalogBundleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncCatalogBundleResponse.ProtoReflect.Descriptor instead.
+func (*SyncCatalogBundleResponse) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *SyncCatalogBundleResponse) GetMeta() *MachineResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *SyncCatalogBundleResponse) GetCatalogVersion() string {
+	if x != nil {
+		return x.CatalogVersion
+	}
+	return ""
+}
+
+func (x *SyncCatalogBundleResponse) GetMediaManifestVersion() string {
+	if x != nil {
+		return x.MediaManifestVersion
+	}
+	return ""
+}
+
+func (x *SyncCatalogBundleResponse) GetGeneratedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GeneratedAt
+	}
+	return nil
+}
+
+func (x *SyncCatalogBundleResponse) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *SyncCatalogBundleResponse) GetChangedProducts() []*CatalogSlotItem {
+	if x != nil {
+		return x.ChangedProducts
+	}
+	return nil
+}
+
+func (x *SyncCatalogBundleResponse) GetRemovedProductIds() []string {
+	if x != nil {
+		return x.RemovedProductIds
+	}
+	return nil
+}
+
+func (x *SyncCatalogBundleResponse) GetChangedMediaAssets() []*MediaAsset {
+	if x != nil {
+		return x.ChangedMediaAssets
+	}
+	return nil
+}
+
+func (x *SyncCatalogBundleResponse) GetRemovedMediaAssetIds() []string {
+	if x != nil {
+		return x.RemovedMediaAssetIds
+	}
+	return nil
+}
+
 var File_avf_machine_v1_catalog_proto protoreflect.FileDescriptor
 
 const file_avf_machine_v1_catalog_proto_rawDesc = "" +
@@ -1294,16 +1632,55 @@ const file_avf_machine_v1_catalog_proto_rawDesc = "" +
 	"product_id\x18\x01 \x01(\tR\tproductId\x12\x10\n" +
 	"\x03sku\x18\x02 \x01(\tR\x03sku\x12D\n" +
 	"\rprimary_media\x18\x03 \x01(\v2\x1f.avf.machine.v1.ProductMediaRefR\fprimaryMedia\x12\x19\n" +
-	"\bmedia_id\x18\x04 \x01(\tR\amediaId*\x95\x01\n" +
+	"\bmedia_id\x18\x04 \x01(\tR\amediaId\"\xa8\x02\n" +
+	"\n" +
+	"MediaAsset\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x02 \x01(\tR\tproductId\x12\x12\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12\x18\n" +
+	"\avariant\x18\x04 \x01(\tR\avariant\x12\x1b\n" +
+	"\tmime_type\x18\x05 \x01(\tR\bmimeType\x12\x14\n" +
+	"\x05width\x18\x06 \x01(\x05R\x05width\x12\x16\n" +
+	"\x06height\x18\a \x01(\x05R\x06height\x12\x16\n" +
+	"\x06sha256\x18\b \x01(\tR\x06sha256\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\t \x01(\x03R\tsizeBytes\x12\x18\n" +
+	"\aversion\x18\n" +
+	" \x01(\x05R\aversion\x12!\n" +
+	"\fdownload_url\x18\v \x01(\tR\vdownloadUrl\"\xbf\x03\n" +
+	"\x18SyncCatalogBundleRequest\x126\n" +
+	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId\x12/\n" +
+	"\x13include_unavailable\x18\x03 \x01(\bR\x12includeUnavailable\x12*\n" +
+	"\x0einclude_images\x18\x04 \x01(\bH\x00R\rincludeImages\x88\x01\x01\x126\n" +
+	"\x17current_catalog_version\x18\x05 \x01(\tR\x15currentCatalogVersion\x12C\n" +
+	"\x1ecurrent_media_manifest_version\x18\x06 \x01(\tR\x1bcurrentMediaManifestVersion\x12*\n" +
+	"\x11basis_product_ids\x18\a \x03(\tR\x0fbasisProductIds\x123\n" +
+	"\x16basis_media_asset_keys\x18\b \x03(\tR\x13basisMediaAssetKeysB\x11\n" +
+	"\x0f_include_images\"\x92\x04\n" +
+	"\x19SyncCatalogBundleResponse\x127\n" +
+	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12'\n" +
+	"\x0fcatalog_version\x18\x02 \x01(\tR\x0ecatalogVersion\x124\n" +
+	"\x16media_manifest_version\x18\x03 \x01(\tR\x14mediaManifestVersion\x12=\n" +
+	"\fgenerated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x05 \x01(\tR\tmachineId\x12J\n" +
+	"\x10changed_products\x18\x06 \x03(\v2\x1f.avf.machine.v1.CatalogSlotItemR\x0fchangedProducts\x12.\n" +
+	"\x13removed_product_ids\x18\a \x03(\tR\x11removedProductIds\x12L\n" +
+	"\x14changed_media_assets\x18\b \x03(\v2\x1a.avf.machine.v1.MediaAssetR\x12changedMediaAssets\x125\n" +
+	"\x17removed_media_asset_ids\x18\t \x03(\tR\x14removedMediaAssetIds*\x95\x01\n" +
 	"\x10MediaVariantKind\x12\"\n" +
 	"\x1eMEDIA_VARIANT_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bMEDIA_VARIANT_KIND_ORIGINAL\x10\x01\x12\x1c\n" +
 	"\x18MEDIA_VARIANT_KIND_THUMB\x10\x02\x12\x1e\n" +
-	"\x1aMEDIA_VARIANT_KIND_DISPLAY\x10\x032\x8c\x05\n" +
+	"\x1aMEDIA_VARIANT_KIND_DISPLAY\x10\x032\xf6\x05\n" +
 	"\x15MachineCatalogService\x12g\n" +
 	"\x0eGetSaleCatalog\x12).avf.machine.v1.GetCatalogSnapshotRequest\x1a*.avf.machine.v1.GetCatalogSnapshotResponse\x12h\n" +
 	"\x0fSyncSaleCatalog\x12).avf.machine.v1.GetCatalogSnapshotRequest\x1a*.avf.machine.v1.GetCatalogSnapshotResponse\x12k\n" +
-	"\x12GetCatalogSnapshot\x12).avf.machine.v1.GetCatalogSnapshotRequest\x1a*.avf.machine.v1.GetCatalogSnapshotResponse\x12b\n" +
+	"\x12GetCatalogSnapshot\x12).avf.machine.v1.GetCatalogSnapshotRequest\x1a*.avf.machine.v1.GetCatalogSnapshotResponse\x12h\n" +
+	"\x11SyncCatalogBundle\x12(.avf.machine.v1.SyncCatalogBundleRequest\x1a).avf.machine.v1.SyncCatalogBundleResponse\x12b\n" +
 	"\x0fGetCatalogDelta\x12&.avf.machine.v1.GetCatalogDeltaRequest\x1a'.avf.machine.v1.GetCatalogDeltaResponse\x12h\n" +
 	"\x11AckCatalogVersion\x12(.avf.machine.v1.AckCatalogVersionRequest\x1a).avf.machine.v1.AckCatalogVersionResponse\x12e\n" +
 	"\x10GetMediaManifest\x12'.avf.machine.v1.GetMediaManifestRequest\x1a(.avf.machine.v1.GetMediaManifestResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
@@ -1321,7 +1698,7 @@ func file_avf_machine_v1_catalog_proto_rawDescGZIP() []byte {
 }
 
 var file_avf_machine_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_avf_machine_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_avf_machine_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_avf_machine_v1_catalog_proto_goTypes = []any{
 	(MediaVariantKind)(0),              // 0: avf.machine.v1.MediaVariantKind
 	(*GetCatalogSnapshotRequest)(nil),  // 1: avf.machine.v1.GetCatalogSnapshotRequest
@@ -1337,50 +1714,60 @@ var file_avf_machine_v1_catalog_proto_goTypes = []any{
 	(*GetMediaManifestRequest)(nil),    // 11: avf.machine.v1.GetMediaManifestRequest
 	(*GetMediaManifestResponse)(nil),   // 12: avf.machine.v1.GetMediaManifestResponse
 	(*MediaManifestEntry)(nil),         // 13: avf.machine.v1.MediaManifestEntry
-	(*MachineRequestMeta)(nil),         // 14: avf.machine.v1.MachineRequestMeta
-	(*MachineResponseMeta)(nil),        // 15: avf.machine.v1.MachineResponseMeta
-	(*timestamppb.Timestamp)(nil),      // 16: google.protobuf.Timestamp
+	(*MediaAsset)(nil),                 // 14: avf.machine.v1.MediaAsset
+	(*SyncCatalogBundleRequest)(nil),   // 15: avf.machine.v1.SyncCatalogBundleRequest
+	(*SyncCatalogBundleResponse)(nil),  // 16: avf.machine.v1.SyncCatalogBundleResponse
+	(*MachineRequestMeta)(nil),         // 17: avf.machine.v1.MachineRequestMeta
+	(*MachineResponseMeta)(nil),        // 18: avf.machine.v1.MachineResponseMeta
+	(*timestamppb.Timestamp)(nil),      // 19: google.protobuf.Timestamp
 }
 var file_avf_machine_v1_catalog_proto_depIdxs = []int32{
-	14, // 0: avf.machine.v1.GetCatalogSnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	17, // 0: avf.machine.v1.GetCatalogSnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
 	3,  // 1: avf.machine.v1.GetCatalogSnapshotResponse.snapshot:type_name -> avf.machine.v1.CatalogSnapshot
-	15, // 2: avf.machine.v1.GetCatalogSnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	16, // 3: avf.machine.v1.CatalogSnapshot.generated_at:type_name -> google.protobuf.Timestamp
+	18, // 2: avf.machine.v1.GetCatalogSnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	19, // 3: avf.machine.v1.CatalogSnapshot.generated_at:type_name -> google.protobuf.Timestamp
 	4,  // 4: avf.machine.v1.CatalogSnapshot.items:type_name -> avf.machine.v1.CatalogSlotItem
 	6,  // 5: avf.machine.v1.CatalogSlotItem.primary_media:type_name -> avf.machine.v1.ProductMediaRef
 	0,  // 6: avf.machine.v1.ProductMediaVariant.kind:type_name -> avf.machine.v1.MediaVariantKind
-	16, // 7: avf.machine.v1.ProductMediaVariant.expires_at:type_name -> google.protobuf.Timestamp
-	16, // 8: avf.machine.v1.ProductMediaVariant.updated_at:type_name -> google.protobuf.Timestamp
-	16, // 9: avf.machine.v1.ProductMediaRef.updated_at:type_name -> google.protobuf.Timestamp
-	16, // 10: avf.machine.v1.ProductMediaRef.expires_at:type_name -> google.protobuf.Timestamp
+	19, // 7: avf.machine.v1.ProductMediaVariant.expires_at:type_name -> google.protobuf.Timestamp
+	19, // 8: avf.machine.v1.ProductMediaVariant.updated_at:type_name -> google.protobuf.Timestamp
+	19, // 9: avf.machine.v1.ProductMediaRef.updated_at:type_name -> google.protobuf.Timestamp
+	19, // 10: avf.machine.v1.ProductMediaRef.expires_at:type_name -> google.protobuf.Timestamp
 	5,  // 11: avf.machine.v1.ProductMediaRef.media_variants:type_name -> avf.machine.v1.ProductMediaVariant
-	14, // 12: avf.machine.v1.GetCatalogDeltaRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	15, // 13: avf.machine.v1.GetCatalogDeltaResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	17, // 12: avf.machine.v1.GetCatalogDeltaRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	18, // 13: avf.machine.v1.GetCatalogDeltaResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
 	3,  // 14: avf.machine.v1.GetCatalogDeltaResponse.snapshot:type_name -> avf.machine.v1.CatalogSnapshot
-	14, // 15: avf.machine.v1.AckCatalogVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	15, // 16: avf.machine.v1.AckCatalogVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	14, // 17: avf.machine.v1.GetMediaManifestRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	16, // 18: avf.machine.v1.GetMediaManifestResponse.generated_at:type_name -> google.protobuf.Timestamp
+	17, // 15: avf.machine.v1.AckCatalogVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	18, // 16: avf.machine.v1.AckCatalogVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	17, // 17: avf.machine.v1.GetMediaManifestRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	19, // 18: avf.machine.v1.GetMediaManifestResponse.generated_at:type_name -> google.protobuf.Timestamp
 	13, // 19: avf.machine.v1.GetMediaManifestResponse.entries:type_name -> avf.machine.v1.MediaManifestEntry
-	15, // 20: avf.machine.v1.GetMediaManifestResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	18, // 20: avf.machine.v1.GetMediaManifestResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
 	6,  // 21: avf.machine.v1.MediaManifestEntry.primary_media:type_name -> avf.machine.v1.ProductMediaRef
-	1,  // 22: avf.machine.v1.MachineCatalogService.GetSaleCatalog:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
-	1,  // 23: avf.machine.v1.MachineCatalogService.SyncSaleCatalog:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
-	1,  // 24: avf.machine.v1.MachineCatalogService.GetCatalogSnapshot:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
-	7,  // 25: avf.machine.v1.MachineCatalogService.GetCatalogDelta:input_type -> avf.machine.v1.GetCatalogDeltaRequest
-	9,  // 26: avf.machine.v1.MachineCatalogService.AckCatalogVersion:input_type -> avf.machine.v1.AckCatalogVersionRequest
-	11, // 27: avf.machine.v1.MachineCatalogService.GetMediaManifest:input_type -> avf.machine.v1.GetMediaManifestRequest
-	2,  // 28: avf.machine.v1.MachineCatalogService.GetSaleCatalog:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
-	2,  // 29: avf.machine.v1.MachineCatalogService.SyncSaleCatalog:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
-	2,  // 30: avf.machine.v1.MachineCatalogService.GetCatalogSnapshot:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
-	8,  // 31: avf.machine.v1.MachineCatalogService.GetCatalogDelta:output_type -> avf.machine.v1.GetCatalogDeltaResponse
-	10, // 32: avf.machine.v1.MachineCatalogService.AckCatalogVersion:output_type -> avf.machine.v1.AckCatalogVersionResponse
-	12, // 33: avf.machine.v1.MachineCatalogService.GetMediaManifest:output_type -> avf.machine.v1.GetMediaManifestResponse
-	28, // [28:34] is the sub-list for method output_type
-	22, // [22:28] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	17, // 22: avf.machine.v1.SyncCatalogBundleRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	18, // 23: avf.machine.v1.SyncCatalogBundleResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	19, // 24: avf.machine.v1.SyncCatalogBundleResponse.generated_at:type_name -> google.protobuf.Timestamp
+	4,  // 25: avf.machine.v1.SyncCatalogBundleResponse.changed_products:type_name -> avf.machine.v1.CatalogSlotItem
+	14, // 26: avf.machine.v1.SyncCatalogBundleResponse.changed_media_assets:type_name -> avf.machine.v1.MediaAsset
+	1,  // 27: avf.machine.v1.MachineCatalogService.GetSaleCatalog:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
+	1,  // 28: avf.machine.v1.MachineCatalogService.SyncSaleCatalog:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
+	1,  // 29: avf.machine.v1.MachineCatalogService.GetCatalogSnapshot:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
+	15, // 30: avf.machine.v1.MachineCatalogService.SyncCatalogBundle:input_type -> avf.machine.v1.SyncCatalogBundleRequest
+	7,  // 31: avf.machine.v1.MachineCatalogService.GetCatalogDelta:input_type -> avf.machine.v1.GetCatalogDeltaRequest
+	9,  // 32: avf.machine.v1.MachineCatalogService.AckCatalogVersion:input_type -> avf.machine.v1.AckCatalogVersionRequest
+	11, // 33: avf.machine.v1.MachineCatalogService.GetMediaManifest:input_type -> avf.machine.v1.GetMediaManifestRequest
+	2,  // 34: avf.machine.v1.MachineCatalogService.GetSaleCatalog:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
+	2,  // 35: avf.machine.v1.MachineCatalogService.SyncSaleCatalog:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
+	2,  // 36: avf.machine.v1.MachineCatalogService.GetCatalogSnapshot:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
+	16, // 37: avf.machine.v1.MachineCatalogService.SyncCatalogBundle:output_type -> avf.machine.v1.SyncCatalogBundleResponse
+	8,  // 38: avf.machine.v1.MachineCatalogService.GetCatalogDelta:output_type -> avf.machine.v1.GetCatalogDeltaResponse
+	10, // 39: avf.machine.v1.MachineCatalogService.AckCatalogVersion:output_type -> avf.machine.v1.AckCatalogVersionResponse
+	12, // 40: avf.machine.v1.MachineCatalogService.GetMediaManifest:output_type -> avf.machine.v1.GetMediaManifestResponse
+	34, // [34:41] is the sub-list for method output_type
+	27, // [27:34] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_catalog_proto_init() }
@@ -1390,13 +1777,14 @@ func file_avf_machine_v1_catalog_proto_init() {
 	}
 	file_avf_machine_v1_common_proto_init()
 	file_avf_machine_v1_catalog_proto_msgTypes[0].OneofWrappers = []any{}
+	file_avf_machine_v1_catalog_proto_msgTypes[14].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_catalog_proto_rawDesc), len(file_avf_machine_v1_catalog_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   13,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

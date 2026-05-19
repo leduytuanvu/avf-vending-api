@@ -127,6 +127,7 @@ mqtt_scenarios=(
   "${SCRIPT_DIR}/scenarios/30_mqtt_connect.sh"
   "${SCRIPT_DIR}/scenarios/31_mqtt_telemetry_publish.sh"
   "${SCRIPT_DIR}/scenarios/32_mqtt_command_ack.sh"
+  "${SCRIPT_DIR}/scenarios/33_mqtt_catalog_refresh.sh"
 )
 
 for scen in "${mqtt_scenarios[@]}"; do

@@ -1,0 +1,15 @@
+{
+  "machine_id": "55555555-5555-5555-5555-555555555555",
+  "command_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "occurred_at": "2024-01-02T15:04:05Z",
+  "sequence": 43,
+  "status": "success",
+  "dedupe_key": "cmd-ack:55555555-5555-5555-5555-555555555555:43:CATALOG_REFRESH",
+  "payload": {
+    "type": "catalog.refresh",
+    "catalogVersion": 124,
+    "mediaManifestVersion": 46,
+    "mediaSynced": true,
+    "detail": "manifest applied"
+  }
+}

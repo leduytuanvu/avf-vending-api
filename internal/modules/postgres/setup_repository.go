@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/sellreadiness"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
@@ -180,6 +181,12 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 			return setupapp.ErrNotFound
 		}
 		return err
+	}
+
+	if in.PublishAsCurrent {
+		if err := sellreadiness.ValidateSellableSlotProductsPrimaryMedia(ctx, q, in); err != nil {
+			return fmt.Errorf("postgres: sellable slot product media: %w", err)
+		}
 	}
 
 	var legacySnapshot []db.InventoryAdminListMachineSlotsRow

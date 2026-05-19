@@ -61,6 +61,7 @@ Runtime-oriented package docs (see each `doc.go`): `internal/platform/mqtt`, `na
 ## Local operations
 
 - [Local testing guide](testing/local-testing-guide.md) — Docker Compose, migrations, Swagger, grpcurl smoke tests, webhook/MQTT pointers.
+- [Integrated REST / gRPC / MQTT production verification](testing/integrated-rest-grpc-mqtt-production-verification.md) — canonical counts (**325 / 325 / 85 / 28**), execution-evidence commands, negative-case checklist, hygiene grep, **PASS only with archived artifacts**.
 - [gRPC local testing (grpcurl, env)](local/grpc-local-test.md) — optional `cmd/api` gRPC listener beside HTTP (**`avf.machine.v1`** + internal reads).
 - Docker stack: [deployments/docker/README.md](../deployments/docker/README.md)
 - Environment template: [../.env.example](../.env.example)

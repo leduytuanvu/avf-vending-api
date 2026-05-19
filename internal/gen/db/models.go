@@ -1014,8 +1014,12 @@ type MachineTransportSession struct {
 }
 
 type MediaAsset struct {
-	ID                uuid.UUID
-	Kind              string
+	ID uuid.UUID
+	// Asset purpose; product_image is the primary vending product image pipeline.
+	Kind             string
+	OriginalFilename pgtype.Text
+	// Canonical object-store key for the primary upload (typically mirrors original_object_key); use media_variants for per-rendition keys and hashes.
+	ObjectKey         pgtype.Text
 	OriginalObjectKey string
 	ThumbObjectKey    string
 	DisplayObjectKey  string
@@ -1026,13 +1030,30 @@ type MediaAsset struct {
 	Sha256            pgtype.Text
 	Width             pgtype.Int4
 	Height            pgtype.Int4
-	ObjectVersion     int32
-	Etag              pgtype.Text
-	Status            string
-	CreatedBy         pgtype.UUID
-	FailedReason      pgtype.Text
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	// Logical asset version for cache busting / offline sync (increment on substantive metadata or derivative updates).
+	ObjectVersion int32
+	Etag          pgtype.Text
+	Status        string
+	CreatedBy     pgtype.UUID
+	FailedReason  pgtype.Text
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// Per-rendition object keys and optional per-variant sha256/version for kiosk offline caches.
+type MediaVariant struct {
+	ID           uuid.UUID
+	MediaAssetID uuid.UUID
+	Variant      string
+	ObjectKey    string
+	MimeType     pgtype.Text
+	Width        pgtype.Int4
+	Height       pgtype.Int4
+	SizeBytes    pgtype.Int8
+	Sha256       pgtype.Text
+	Version      int32
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type MessagingConsumerDedupe struct {
@@ -1383,10 +1404,12 @@ type ProductImage struct {
 	UpdatedAt    time.Time
 }
 
-// Denormalized catalog media projection per product_images row (id matches product_images.id); maintained by triggers in migrations.
+// Denormalized catalog media projection per product_images row (id matches product_images.id). media_role marks primary vs gallery; align with product_images.is_primary in application writes.
 type ProductMedium struct {
-	ID                uuid.UUID
-	ProductID         uuid.UUID
+	ID        uuid.UUID
+	ProductID uuid.UUID
+	// primary: matches products.primary_image_id for this projection row; gallery: additional images.
+	MediaRole         string
 	MediaType         string
 	SourceType        string
 	OriginalObjectKey pgtype.Text

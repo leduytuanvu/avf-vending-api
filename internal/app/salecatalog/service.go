@@ -197,6 +197,17 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 		}
 	}
 
+	readyByID := make(map[uuid.UUID]bool, len(productIDs))
+	if len(productIDs) > 0 {
+		rrows, rerr := q.RuntimeProductPrimaryMediaReady(ctx, productIDs)
+		if rerr != nil {
+			return out, rerr
+		}
+		for _, rr := range rrows {
+			readyByID[rr.ProductID] = rr.Ready
+		}
+	}
+
 	imgByProduct := make(map[uuid.UUID][]db.RuntimeListProductImagesForProductsRow)
 	if opts.IncludeImages && len(productIDs) > 0 {
 		imgs, ierr := q.RuntimeListProductImagesForProducts(ctx, productIDs)
@@ -247,13 +258,20 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 		if !activeOK {
 			reasons = append(reasons, "product_inactive")
 		}
+		mediaOK := true
+		if activeOK {
+			mediaOK = readyByID[pid]
+			if !mediaOK {
+				reasons = append(reasons, "missing_primary_media")
+			}
+		}
 		if !priceOK {
 			reasons = append(reasons, "no_price")
 		}
 		if !stockOK {
 			reasons = append(reasons, "out_of_stock")
 		}
-		available := activeOK && priceOK && stockOK
+		available := activeOK && priceOK && stockOK && mediaOK
 		if !available && !opts.IncludeUnavailable {
 			continue
 		}

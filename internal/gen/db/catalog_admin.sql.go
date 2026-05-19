@@ -113,6 +113,19 @@ func (q *Queries) CatalogAdminCountTags(ctx context.Context) (int64, error) {
 	return column_1, err
 }
 
+const CatalogAdminCountTagsMatchingIDs = `-- name: CatalogAdminCountTagsMatchingIDs :one
+SELECT count(*)::bigint
+FROM tags
+WHERE id = ANY($1::uuid[])
+`
+
+func (q *Queries) CatalogAdminCountTagsMatchingIDs(ctx context.Context, dollar_1 []uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminCountTagsMatchingIDs, dollar_1)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const CatalogAdminGetBrand = `-- name: CatalogAdminGetBrand :one
 SELECT id, slug, name, active, created_at, updated_at
 FROM brands b
@@ -386,7 +399,7 @@ func (q *Queries) CatalogAdminGetProductImageForOrg(ctx context.Context, arg Cat
 }
 
 const CatalogAdminGetProductMediumForOrgProductImage = `-- name: CatalogAdminGetProductMediumForOrgProductImage :one
-SELECT pm.id, pm.product_id, pm.media_type, pm.source_type, pm.original_object_key, pm.thumb_object_key, pm.display_object_key, pm.original_url, pm.thumb_url, pm.display_url, pm.mime_type, pm.width, pm.height, pm.size_bytes, pm.content_hash, pm.media_version, pm.sort_order, pm.status, pm.created_by, pm.created_at, pm.updated_at
+SELECT pm.id, pm.product_id, pm.media_role, pm.media_type, pm.source_type, pm.original_object_key, pm.thumb_object_key, pm.display_object_key, pm.original_url, pm.thumb_url, pm.display_url, pm.mime_type, pm.width, pm.height, pm.size_bytes, pm.content_hash, pm.media_version, pm.sort_order, pm.status, pm.created_by, pm.created_at, pm.updated_at
 FROM product_media pm
 JOIN products p ON p.id = pm.product_id
 WHERE TRUE
@@ -405,6 +418,7 @@ func (q *Queries) CatalogAdminGetProductMediumForOrgProductImage(ctx context.Con
 	err := row.Scan(
 		&i.ID,
 		&i.ProductID,
+		&i.MediaRole,
 		&i.MediaType,
 		&i.SourceType,
 		&i.OriginalObjectKey,
@@ -750,6 +764,45 @@ func (q *Queries) CatalogAdminListPriceBooks(ctx context.Context, arg CatalogAdm
 	return items, nil
 }
 
+const CatalogAdminListPrimaryMediaAssetIDsForProducts = `-- name: CatalogAdminListPrimaryMediaAssetIDsForProducts :many
+SELECT
+    p.id AS product_id,
+    pi.media_asset_id AS media_asset_id
+FROM
+    products p
+    INNER JOIN product_images pi ON pi.product_id = p.id
+        AND pi.id = p.primary_image_id
+        AND pi.status = 'active'
+WHERE
+    p.id = ANY ($1::uuid[])
+    AND pi.media_asset_id IS NOT NULL
+`
+
+type CatalogAdminListPrimaryMediaAssetIDsForProductsRow struct {
+	ProductID    uuid.UUID
+	MediaAssetID pgtype.UUID
+}
+
+func (q *Queries) CatalogAdminListPrimaryMediaAssetIDsForProducts(ctx context.Context, dollar_1 []uuid.UUID) ([]CatalogAdminListPrimaryMediaAssetIDsForProductsRow, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminListPrimaryMediaAssetIDsForProducts, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CatalogAdminListPrimaryMediaAssetIDsForProductsRow{}
+	for rows.Next() {
+		var i CatalogAdminListPrimaryMediaAssetIDsForProductsRow
+		if err := rows.Scan(&i.ProductID, &i.MediaAssetID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const CatalogAdminListProductImagesForOrg = `-- name: CatalogAdminListProductImagesForOrg :many
 SELECT
     pi.id, pi.product_id, pi.storage_key, pi.cdn_url, pi.thumb_cdn_url, pi.content_hash, pi.width, pi.height, pi.mime_type, pi.alt_text, pi.sort_order, pi.is_primary, pi.media_asset_id, pi.media_version, pi.status, pi.created_at, pi.updated_at
@@ -807,7 +860,7 @@ func (q *Queries) CatalogAdminListProductImagesForOrg(ctx context.Context, arg C
 }
 
 const CatalogAdminListProductMediumRowsForProduct = `-- name: CatalogAdminListProductMediumRowsForProduct :many
-SELECT pm.id, pm.product_id, pm.media_type, pm.source_type, pm.original_object_key, pm.thumb_object_key, pm.display_object_key, pm.original_url, pm.thumb_url, pm.display_url, pm.mime_type, pm.width, pm.height, pm.size_bytes, pm.content_hash, pm.media_version, pm.sort_order, pm.status, pm.created_by, pm.created_at, pm.updated_at
+SELECT pm.id, pm.product_id, pm.media_role, pm.media_type, pm.source_type, pm.original_object_key, pm.thumb_object_key, pm.display_object_key, pm.original_url, pm.thumb_url, pm.display_url, pm.mime_type, pm.width, pm.height, pm.size_bytes, pm.content_hash, pm.media_version, pm.sort_order, pm.status, pm.created_by, pm.created_at, pm.updated_at
 FROM product_media pm
 WHERE TRUE
     AND pm.product_id = $1
@@ -826,6 +879,7 @@ func (q *Queries) CatalogAdminListProductMediumRowsForProduct(ctx context.Contex
 		if err := rows.Scan(
 			&i.ID,
 			&i.ProductID,
+			&i.MediaRole,
 			&i.MediaType,
 			&i.SourceType,
 			&i.OriginalObjectKey,
@@ -843,6 +897,59 @@ func (q *Queries) CatalogAdminListProductMediumRowsForProduct(ctx context.Contex
 			&i.SortOrder,
 			&i.Status,
 			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const CatalogAdminListProductTagsForProducts = `-- name: CatalogAdminListProductTagsForProducts :many
+SELECT
+    pt.product_id,
+    t.id,
+    t.slug,
+    t.name,
+    t.active,
+    t.created_at,
+    t.updated_at
+FROM product_tags pt
+INNER JOIN tags t ON t.id = pt.tag_id
+WHERE pt.product_id = ANY($1::uuid[])
+ORDER BY pt.product_id ASC, t.name ASC, t.id ASC
+`
+
+type CatalogAdminListProductTagsForProductsRow struct {
+	ProductID uuid.UUID
+	ID        uuid.UUID
+	Slug      string
+	Name      string
+	Active    bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (q *Queries) CatalogAdminListProductTagsForProducts(ctx context.Context, dollar_1 []uuid.UUID) ([]CatalogAdminListProductTagsForProductsRow, error) {
+	rows, err := q.db.Query(ctx, CatalogAdminListProductTagsForProducts, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CatalogAdminListProductTagsForProductsRow{}
+	for rows.Next() {
+		var i CatalogAdminListProductTagsForProductsRow
+		if err := rows.Scan(
+			&i.ProductID,
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.Active,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

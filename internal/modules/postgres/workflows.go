@@ -668,6 +668,7 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 		mqttprom.RecordCommandAckRejected("missing_command_id")
 		return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command_id is required")
 	}
+
 	if p.CommandID != cmdRow.ID {
 		mdMismatch, _ := json.Marshal(map[string]any{
 			"machine_id":          p.MachineID.String(),
@@ -697,6 +698,12 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 		mqttprom.RecordCommandAckRejected("command_id_mismatch")
 		return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: command_id mismatch")
 	}
+
+	if err := platformmqtt.ValidateCatalogRefreshAckPayload(cmdRow.CommandType, p.Status, p.Payload); err != nil {
+		mqttprom.RecordCommandAckRejected("catalog_refresh_ack_invalid")
+		return CommandReceiptTransitionResult{}, err
+	}
+
 	if uuid.Nil != uuid.Nil {
 		mqttprom.RecordCommandAckRejected("ledger_company_mismatch")
 		return CommandReceiptTransitionResult{}, fmt.Errorf("postgres: command receipt rejected: ledger company mismatch")

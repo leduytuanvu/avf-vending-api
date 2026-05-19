@@ -70,3 +70,19 @@ SET
     updated_at = now()
 WHERE
     machine_id = $2;
+
+-- name: RuntimeGetMachineSellReadinessAcks :one
+SELECT
+    m.published_planogram_version_id,
+    mcs.last_acknowledged_planogram_version_id,
+    mcs.last_acknowledged_config_revision,
+    COALESCE((
+        SELECT mc.config_revision FROM machine_configs mc
+        WHERE mc.machine_id = m.id
+        ORDER BY mc.applied_at DESC
+        LIMIT 1
+    ), 0)::integer AS latest_config_revision
+FROM machines m
+LEFT JOIN machine_current_snapshot mcs ON mcs.machine_id = m.id
+WHERE
+    m.id = $1;

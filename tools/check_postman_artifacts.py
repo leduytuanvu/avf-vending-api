@@ -10,6 +10,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 POSTMAN = ROOT / "docs" / "postman"
 
+FORBIDDEN_ENV_KEY_PARTS = (
+    "organization_id",
+    "organizationid",
+    "tenant_id",
+    "tenantid",
+    "scope_id",
+    "scopeid",
+)
+
 
 def die(msg: str) -> None:
     print(f"ERROR: {msg}", file=sys.stderr)
@@ -23,6 +32,81 @@ def env_values(path: Path) -> dict[str, str]:
         if e.get("enabled", True) and (k := e.get("key")) is not None:
             out[k] = e.get("value", "")
     return out
+
+
+def collection_variable_keys(coll: dict) -> set[str]:
+    out: set[str] = set()
+    for v in coll.get("variable") or []:
+        k = v.get("key")
+        if isinstance(k, str) and k:
+            out.add(k)
+    return out
+
+
+def walk_collection_requests(coll: dict):
+    def rec(items: list):
+        for it in items or []:
+            if not isinstance(it, dict):
+                continue
+            if it.get("item"):
+                yield from rec(it["item"])
+            elif it.get("request"):
+                yield it
+
+    yield from rec(coll.get("item") or [])
+
+
+def request_url_raw(req: dict) -> str:
+    u = req.get("url")
+    if isinstance(u, str):
+        return u
+    if isinstance(u, dict):
+        return str(u.get("raw") or "")
+    return ""
+
+
+def validate_phase7_postman(coll: dict, env_keys: set[str]) -> None:
+    """Placeholder resolution against env + collection vars; JSON bodies; non-empty URLs."""
+    cv = collection_variable_keys(coll)
+    allowed = env_keys | cv | {"active_token", "swagger_url", "api_prefix"}
+
+    placeholder_re = re.compile(r"\{\{([^}]+)\}\}")
+
+    def check_placeholders(text: str, ctx: str) -> None:
+        if not isinstance(text, str):
+            return
+        for m in placeholder_re.finditer(text):
+            name = m.group(1).strip()
+            if name.startswith("$"):
+                continue
+            if name not in allowed:
+                die(
+                    "unknown placeholder {{%s}} in %s (add to environment or collection variables)"
+                    % (name, ctx)
+                )
+
+    for it in walk_collection_requests(coll):
+        req = it.get("request") or {}
+        name = it.get("name") or "(unnamed)"
+        url_raw = request_url_raw(req)
+        if not url_raw.strip():
+            die("empty URL on request %r" % name)
+        check_placeholders(url_raw, "url." + str(name))
+        body = req.get("body") or {}
+        if body.get("mode") == "raw":
+            raw = body.get("raw")
+            if isinstance(raw, str) and raw.strip():
+                check_placeholders(raw, "body." + str(name))
+                try:
+                    json.loads(raw)
+                except json.JSONDecodeError as e:
+                    die("invalid JSON body on request %r: %s" % (name, e))
+
+    for ek in env_keys:
+        el = ek.lower().replace("-", "_")
+        for bad in FORBIDDEN_ENV_KEY_PARTS:
+            if bad in el:
+                die("forbidden environment key pattern %r matches %r" % (bad, ek))
 
 
 def main() -> None:
@@ -57,6 +141,8 @@ def main() -> None:
 
     prod = env_values(POSTMAN / "avf-production.postman_environment.json")
     stg = env_values(POSTMAN / "avf-staging.postman_environment.json")
+    local = env_values(POSTMAN / "avf-local.postman_environment.json")
+    env_key_union = set(local.keys()) | set(stg.keys()) | set(prod.keys())
 
     if prod.get("allow_mutation") != "false":
         die("production: allow_mutation must be false")
@@ -77,7 +163,7 @@ def main() -> None:
     if "postman-avf" not in craw:
         die("collection must include postman-avf marker")
     if "https://api.ldtv.dev" in craw:
-        die("collection must not hardcode https://api.ldtv.dev; use {{base_url}} / variables only")
+        die("collection must not hardcode https://api.ldtv.dev; use {{baseUrl}} variables only")
 
     banned = (
         "DATABASE_URL=",
@@ -95,6 +181,8 @@ def main() -> None:
                 die(f"forbidden pattern {b!r} in {p.name}")
     if re.search(r"(sk|pk)_(live|test)_[A-Za-z0-9]{20,}", craw):
         die("collection must not include stripe-like key material")
+
+    validate_phase7_postman(coll, env_key_union)
 
     print("OK: Postman artifact checks", flush=True)
 
