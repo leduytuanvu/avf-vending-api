@@ -2,9 +2,9 @@
 
 ## Thời điểm audit
 
-- **Timestamp (UTC):** 2026-05-19T05:21:48.246310+00:00
-- **Nhánh git:** test/openapi-json-body-shape-proof
-- **Commit:** cf58ad06bd06b02733f43d4a0db62946a5422fec
+- **Timestamp (UTC):** 2026-05-19T05:34:28.816317+00:00
+- **Nhánh git:** feature/product-media-offline-cache
+- **Commit:** 9e859d5ea156379669c6e93b5559685a15e70fbb
 
 ## Đếm URL / request
 

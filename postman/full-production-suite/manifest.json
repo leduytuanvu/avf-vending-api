@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-19T05:21:48.246310+00:00",
-  "gitCommit": "cf58ad06bd06b02733f43d4a0db62946a5422fec",
-  "gitBranch": "test/openapi-json-body-shape-proof",
+  "generatedAt": "2026-05-19T05:34:28.816317+00:00",
+  "gitCommit": "9e859d5ea156379669c6e93b5559685a15e70fbb",
+  "gitBranch": "feature/product-media-offline-cache",
   "swaggerSource": "docs/swagger/swagger.json",
   "protoSources": [
     "proto/avf/internal/v1/catalog_query.proto",
@@ -50,7 +50,7 @@
     },
     {
       "path": "AVF_FULL_100.postman_collection.json",
-      "sha256": "69989a6a068dfa85257e67b9a201a83e85e70c55eb29c607a91c2284cb61b073"
+      "sha256": "caf690e8dff55c7a0e2a9e4e62c2d37195b622422504a5dfbe1c131fa1e9b702"
     },
     {
       "path": "AVF_FULL_100.postman_environment.json",
@@ -70,7 +70,7 @@
     },
     {
       "path": "AVF_REST_365_FULL.postman_collection.json",
-      "sha256": "e8117e3555c953d16123aba9d23f946845315a2b7607f4f4ea637788042adbcf"
+      "sha256": "a9a2ab116761ab2ab707e8ad48b4237ffd7649000cbbdf11c9e7e3e55ce48f5a"
     },
     {
       "path": "AVF_REST_365_OPERATION_MATRIX.csv",
@@ -82,7 +82,7 @@
     },
     {
       "path": "generate_full_postman_suite.py",
-      "sha256": "756e95251fd73af186485ea41954d831416fde5752d65389e0ec61e6d8434d0b"
+      "sha256": "aba77830627d21edc19cb4d2a340048d3177a76169091a6a09fc9c0972febfcf"
     },
     {
       "path": "grpc/avf_all_services.proto",
@@ -258,7 +258,7 @@
     },
     {
       "path": "validate_generated_assets.py",
-      "sha256": "953c207efd93e1c108ffb948e1fe4c759b3f3d42d8d97b871693537c1cf616db"
+      "sha256": "62658d442aeb0567aeacde16e153a9afdc58a66166c8833a978e2962000a2bf4"
     }
   ],
   "notesExcludedFromSha256": [

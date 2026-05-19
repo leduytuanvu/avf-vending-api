@@ -52,7 +52,7 @@
       "item": [
         {
           "name": "GET /health/live",
-          "description": "openapiOperationId: DocOpHealthLive",
+          "description": "openapiOperationId: Doc‌OpHealthLive",
           "request": {
             "method": "GET",
             "header": [
@@ -233,7 +233,7 @@
         },
         {
           "name": "GET /health/ready",
-          "description": "openapiOperationId: DocOpHealthReady",
+          "description": "openapiOperationId: Doc‌OpHealthReady",
           "request": {
             "method": "GET",
             "header": [
@@ -414,7 +414,7 @@
         },
         {
           "name": "GET /metrics",
-          "description": "openapiOperationId: DocOpMetrics",
+          "description": "openapiOperationId: Doc‌OpMetrics",
           "request": {
             "method": "GET",
             "header": [
@@ -594,7 +594,7 @@
         },
         {
           "name": "GET /swagger/doc.json",
-          "description": "openapiOperationId: DocOpSwaggerDocJSON",
+          "description": "openapiOperationId: Doc‌OpSwaggerDocJSON",
           "request": {
             "method": "GET",
             "header": [
@@ -775,7 +775,7 @@
         },
         {
           "name": "GET /swagger/index.html",
-          "description": "openapiOperationId: DocOpSwaggerIndex",
+          "description": "openapiOperationId: Doc‌OpSwaggerIndex",
           "request": {
             "method": "GET",
             "header": [
@@ -956,7 +956,7 @@
         },
         {
           "name": "GET /version",
-          "description": "openapiOperationId: DocOpVersion",
+          "description": "openapiOperationId: Doc‌OpVersion",
           "request": {
             "method": "GET",
             "header": [
@@ -1141,7 +1141,7 @@
       "item": [
         {
           "name": "[GATED-WRITE] POST /v1/auth/change-password",
-          "description": "openapiOperationId: DocOpV1AuthChangePassword",
+          "description": "openapiOperationId: Doc‌OpV1AuthChangePassword",
           "request": {
             "method": "POST",
             "header": [
@@ -1348,7 +1348,7 @@
         },
         {
           "name": "POST /v1/auth/login",
-          "description": "openapiOperationId: DocOpV1AuthLogin",
+          "description": "openapiOperationId: Doc‌OpV1AuthLogin",
           "request": {
             "method": "POST",
             "header": [
@@ -1544,7 +1544,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/auth/logout",
-          "description": "openapiOperationId: DocOpV1AuthLogout",
+          "description": "openapiOperationId: Doc‌OpV1AuthLogout",
           "request": {
             "method": "POST",
             "header": [
@@ -1751,7 +1751,7 @@
         },
         {
           "name": "GET /v1/auth/me",
-          "description": "openapiOperationId: DocOpV1AuthMe",
+          "description": "openapiOperationId: Doc‌OpV1AuthMe",
           "request": {
             "method": "GET",
             "header": [
@@ -1938,7 +1938,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/auth/mfa/totp/disable",
-          "description": "openapiOperationId: DocOpV1AuthMFADisable",
+          "description": "openapiOperationId: Doc‌OpV1AuthMFADisable",
           "request": {
             "method": "POST",
             "header": [
@@ -2147,7 +2147,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/auth/mfa/totp/enroll",
-          "description": "openapiOperationId: DocOpV1AuthMFAEnroll",
+          "description": "openapiOperationId: Doc‌OpV1AuthMFAEnroll",
           "request": {
             "method": "POST",
             "header": [
@@ -2342,7 +2342,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/auth/mfa/totp/verify",
-          "description": "openapiOperationId: DocOpV1AuthMFAVerify",
+          "description": "openapiOperationId: Doc‌OpV1AuthMFAVerify",
           "request": {
             "method": "POST",
             "header": [
@@ -2551,7 +2551,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/auth/password/change",
-          "description": "openapiOperationId: DocOpV1AuthPasswordChange",
+          "description": "openapiOperationId: Doc‌OpV1AuthPasswordChange",
           "request": {
             "method": "POST",
             "header": [
@@ -2759,7 +2759,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/auth/password/reset/confirm",
-          "description": "openapiOperationId: DocOpV1AuthPasswordResetConfirm",
+          "description": "openapiOperationId: Doc‌OpV1AuthPasswordResetConfirm",
           "request": {
             "method": "POST",
             "header": [
@@ -2963,7 +2963,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/auth/password/reset/request",
-          "description": "openapiOperationId: DocOpV1AuthPasswordResetRequest",
+          "description": "openapiOperationId: Doc‌OpV1AuthPasswordResetRequest",
           "request": {
             "method": "POST",
             "header": [
@@ -3167,7 +3167,7 @@
         },
         {
           "name": "POST /v1/auth/refresh",
-          "description": "openapiOperationId: DocOpV1AuthRefresh",
+          "description": "openapiOperationId: Doc‌OpV1AuthRefresh",
           "request": {
             "method": "POST",
             "header": [
@@ -3363,7 +3363,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/auth/sessions",
-          "description": "openapiOperationId: DocOpV1AuthSessionsRevokeOthers",
+          "description": "openapiOperationId: Doc‌OpV1AuthSessionsRevokeOthers",
           "request": {
             "method": "DELETE",
             "header": [
@@ -3570,7 +3570,7 @@
         },
         {
           "name": "GET /v1/auth/sessions",
-          "description": "openapiOperationId: DocOpV1AuthSessionsList",
+          "description": "openapiOperationId: Doc‌OpV1AuthSessionsList",
           "request": {
             "method": "GET",
             "header": [
@@ -3757,7 +3757,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/auth/sessions/{sessionId}",
-          "description": "openapiOperationId: DocOpV1AuthSessionDelete",
+          "description": "openapiOperationId: Doc‌OpV1AuthSessionDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -3956,7 +3956,7 @@
       "item": [
         {
           "name": "GET /v1/admin/users",
-          "description": "openapiOperationId: DocOpV1AdminUsersList",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersList",
           "request": {
             "method": "GET",
             "header": [
@@ -4157,7 +4157,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/users",
-          "description": "openapiOperationId: DocOpV1AdminUsersCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -4364,7 +4364,7 @@
         },
         {
           "name": "GET /v1/admin/users/{userId}",
-          "description": "openapiOperationId: DocOpV1AdminUsersGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersGet",
           "request": {
             "method": "GET",
             "header": [
@@ -4552,7 +4552,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/users/{userId}",
-          "description": "openapiOperationId: DocOpV1AdminUsersPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -4760,7 +4760,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/users/{userId}/disable",
-          "description": "openapiOperationId: DocOpV1AdminUsersDisable",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersDisable",
           "request": {
             "method": "POST",
             "header": [
@@ -4955,7 +4955,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/users/{userId}/enable",
-          "description": "openapiOperationId: DocOpV1AdminUsersEnable",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersEnable",
           "request": {
             "method": "POST",
             "header": [
@@ -5150,7 +5150,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/users/{userId}/reset-password",
-          "description": "openapiOperationId: DocOpV1AdminUsersResetPassword",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersResetPassword",
           "request": {
             "method": "POST",
             "header": [
@@ -5359,7 +5359,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/users/{userId}/revoke-sessions",
-          "description": "openapiOperationId: DocOpV1AdminUsersRevokeSessions",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersRevokeSessions",
           "request": {
             "method": "POST",
             "header": [
@@ -5554,7 +5554,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/users/{userId}/roles",
-          "description": "openapiOperationId: DocOpV1AdminUsersPatchRoles",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersPatchRoles",
           "request": {
             "method": "PATCH",
             "header": [
@@ -5763,7 +5763,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/users/{userId}/roles",
-          "description": "openapiOperationId: DocOpV1AdminUsersPostRoles",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersPostRoles",
           "request": {
             "method": "POST",
             "header": [
@@ -5972,7 +5972,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/users/{userId}/roles",
-          "description": "openapiOperationId: DocOpV1AdminUsersPutRoles",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersPutRoles",
           "request": {
             "method": "PUT",
             "header": [
@@ -6181,7 +6181,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/users/{userId}/roles/{role}",
-          "description": "openapiOperationId: DocOpV1AdminUsersDeleteRole",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersDeleteRole",
           "request": {
             "method": "DELETE",
             "header": [
@@ -6377,7 +6377,7 @@
         },
         {
           "name": "GET /v1/admin/users/{userId}/sessions",
-          "description": "openapiOperationId: DocOpV1AdminUsersSessions",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersSessions",
           "request": {
             "method": "GET",
             "header": [
@@ -6566,7 +6566,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/users/{userId}/status",
-          "description": "openapiOperationId: DocOpV1AdminUsersPatchStatus",
+          "description": "openapiOperationId: Doc‌OpV1AdminUsersPatchStatus",
           "request": {
             "method": "PATCH",
             "header": [
@@ -6780,7 +6780,7 @@
       "item": [
         {
           "name": "GET /v1/admin/sites",
-          "description": "openapiOperationId: DocOpV1AdminSitesList",
+          "description": "openapiOperationId: Doc‌OpV1AdminSitesList",
           "request": {
             "method": "GET",
             "header": [
@@ -6987,7 +6987,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/sites",
-          "description": "openapiOperationId: DocOpV1AdminSiteCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminSiteCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -7194,7 +7194,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/sites/{siteId}",
-          "description": "openapiOperationId: DocOpV1AdminSiteDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminSiteDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -7388,7 +7388,7 @@
         },
         {
           "name": "GET /v1/admin/sites/{siteId}",
-          "description": "openapiOperationId: DocOpV1AdminSiteGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminSiteGet",
           "request": {
             "method": "GET",
             "header": [
@@ -7576,7 +7576,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/sites/{siteId}",
-          "description": "openapiOperationId: DocOpV1AdminSitePatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminSitePatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -7784,7 +7784,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/sites/{siteId}/archive",
-          "description": "openapiOperationId: DocOpV1AdminSiteArchive",
+          "description": "openapiOperationId: Doc‌OpV1AdminSiteArchive",
           "request": {
             "method": "POST",
             "header": [
@@ -7979,7 +7979,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/sites/{siteId}/disable",
-          "description": "openapiOperationId: DocOpV1AdminSiteDisable",
+          "description": "openapiOperationId: Doc‌OpV1AdminSiteDisable",
           "request": {
             "method": "POST",
             "header": [
@@ -8179,7 +8179,7 @@
       "item": [
         {
           "name": "GET /v1/admin/activation-codes",
-          "description": "openapiOperationId: DocOpV1AdminActivationCodesCatalogList",
+          "description": "openapiOperationId: Doc‌OpV1AdminActivationCodesCatalogList",
           "request": {
             "method": "GET",
             "header": [
@@ -8366,7 +8366,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/activation-codes",
-          "description": "openapiOperationId: DocOpV1AdminActivationCodesCatalogCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminActivationCodesCatalogCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -8590,7 +8590,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/activation-codes/{codeId}/revoke",
-          "description": "openapiOperationId: DocOpV1AdminActivationCodeCatalogRevoke",
+          "description": "openapiOperationId: Doc‌OpV1AdminActivationCodeCatalogRevoke",
           "request": {
             "method": "POST",
             "header": [
@@ -8802,7 +8802,7 @@
         },
         {
           "name": "GET /v1/admin/assignments",
-          "description": "openapiOperationId: DocOpV1AdminAssignmentsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminAssignmentsList",
           "request": {
             "method": "GET",
             "header": [
@@ -9027,7 +9027,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/assignments",
-          "description": "openapiOperationId: DocOpV1AdminAssignmentCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminAssignmentCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -9234,7 +9234,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/assignments/{assignmentId}",
-          "description": "openapiOperationId: DocOpV1AdminAssignmentDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminAssignmentDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -9428,7 +9428,7 @@
         },
         {
           "name": "GET /v1/admin/assignments/{assignmentId}",
-          "description": "openapiOperationId: DocOpV1AdminAssignmentGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminAssignmentGet",
           "request": {
             "method": "GET",
             "header": [
@@ -9616,7 +9616,7 @@
         },
         {
           "name": "GET /v1/admin/commands",
-          "description": "openapiOperationId: DocOpV1AdminCommandsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommandsList",
           "request": {
             "method": "GET",
             "header": [
@@ -9841,7 +9841,7 @@
         },
         {
           "name": "GET /v1/admin/commands/{commandId}",
-          "description": "openapiOperationId: DocOpV1AdminCommandGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommandGet",
           "request": {
             "method": "GET",
             "header": [
@@ -10029,7 +10029,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/commands/{commandId}/cancel",
-          "description": "openapiOperationId: DocOpV1AdminCommandCancel",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommandCancel",
           "request": {
             "method": "POST",
             "header": [
@@ -10241,7 +10241,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/commands/{commandId}/retry",
-          "description": "openapiOperationId: DocOpV1AdminCommandRetry",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommandRetry",
           "request": {
             "method": "POST",
             "header": [
@@ -10453,7 +10453,7 @@
         },
         {
           "name": "GET /v1/admin/feature-flags",
-          "description": "openapiOperationId: DocOpV1AdminFeatureFlagsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminFeatureFlagsList",
           "request": {
             "method": "GET",
             "header": [
@@ -10654,7 +10654,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/feature-flags",
-          "description": "openapiOperationId: DocOpV1AdminFeatureFlagsPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminFeatureFlagsPost",
           "request": {
             "method": "POST",
             "header": [
@@ -10861,7 +10861,7 @@
         },
         {
           "name": "GET /v1/admin/feature-flags/{flagId}",
-          "description": "openapiOperationId: DocOpV1AdminFeatureFlagGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminFeatureFlagGet",
           "request": {
             "method": "GET",
             "header": [
@@ -11049,7 +11049,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/feature-flags/{flagId}",
-          "description": "openapiOperationId: DocOpV1AdminFeatureFlagPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminFeatureFlagPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -11257,7 +11257,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/feature-flags/{flagId}/disable",
-          "description": "openapiOperationId: DocOpV1AdminFeatureFlagDisablePost",
+          "description": "openapiOperationId: Doc‌OpV1AdminFeatureFlagDisablePost",
           "request": {
             "method": "POST",
             "header": [
@@ -11452,7 +11452,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/feature-flags/{flagId}/enable",
-          "description": "openapiOperationId: DocOpV1AdminFeatureFlagEnablePost",
+          "description": "openapiOperationId: Doc‌OpV1AdminFeatureFlagEnablePost",
           "request": {
             "method": "POST",
             "header": [
@@ -11647,7 +11647,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/feature-flags/{flagId}/targets",
-          "description": "openapiOperationId: DocOpV1AdminFeatureFlagTargetsPut",
+          "description": "openapiOperationId: Doc‌OpV1AdminFeatureFlagTargetsPut",
           "request": {
             "method": "PUT",
             "header": [
@@ -11856,7 +11856,7 @@
         },
         {
           "name": "GET /v1/admin/machine-config/rollouts",
-          "description": "openapiOperationId: DocOpV1AdminMachineConfigRolloutsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineConfigRolloutsList",
           "request": {
             "method": "GET",
             "header": [
@@ -12058,7 +12058,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machine-config/rollouts",
-          "description": "openapiOperationId: DocOpV1AdminMachineConfigRolloutsPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineConfigRolloutsPost",
           "request": {
             "method": "POST",
             "header": [
@@ -12266,7 +12266,7 @@
         },
         {
           "name": "GET /v1/admin/machine-config/rollouts/{rolloutId}",
-          "description": "openapiOperationId: DocOpV1AdminMachineConfigRolloutGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineConfigRolloutGet",
           "request": {
             "method": "GET",
             "header": [
@@ -12455,7 +12455,7 @@
         },
         {
           "name": "GET /v1/admin/machines",
-          "description": "openapiOperationId: DocOpV1AdminMachinesList",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachinesList",
           "request": {
             "method": "GET",
             "header": [
@@ -12686,7 +12686,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines",
-          "description": "openapiOperationId: DocOpV1AdminMachineCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -12893,7 +12893,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}",
-          "description": "openapiOperationId: DocOpV1AdminMachineGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineGet",
           "request": {
             "method": "GET",
             "header": [
@@ -13081,7 +13081,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/machines/{machineId}",
-          "description": "openapiOperationId: DocOpV1AdminMachinePatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachinePatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -13289,7 +13289,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/activation-codes",
-          "description": "openapiOperationId: DocOpV1AdminMachineActivationCodesList",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineActivationCodesList",
           "request": {
             "method": "GET",
             "header": [
@@ -13478,7 +13478,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/activation-codes",
-          "description": "openapiOperationId: DocOpV1AdminMachineActivationCodesPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineActivationCodesPost",
           "request": {
             "method": "POST",
             "header": [
@@ -13687,7 +13687,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/machines/{machineId}/activation-codes/{activationCodeId}",
-          "description": "openapiOperationId: DocOpV1AdminMachineActivationCodeDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineActivationCodeDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -13883,7 +13883,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/archive",
-          "description": "openapiOperationId: DocOpV1AdminMachineArchive",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineArchive",
           "request": {
             "method": "POST",
             "header": [
@@ -14078,7 +14078,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/cash-collections",
-          "description": "openapiOperationId: DocOpV1AdminMachineCashCollectionsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineCashCollectionsList",
           "request": {
             "method": "GET",
             "header": [
@@ -14281,7 +14281,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/cash-collections",
-          "description": "openapiOperationId: DocOpV1AdminMachineCashCollectionsPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineCashCollectionsPost",
           "request": {
             "method": "POST",
             "header": [
@@ -14507,7 +14507,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/cash-collections/{collectionId}",
-          "description": "openapiOperationId: DocOpV1AdminMachineCashCollectionGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineCashCollectionGet",
           "request": {
             "method": "GET",
             "header": [
@@ -14697,7 +14697,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/cash-collections/{collectionId}/close",
-          "description": "openapiOperationId: DocOpV1AdminMachineCashCollectionClosePost",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineCashCollectionClosePost",
           "request": {
             "method": "POST",
             "header": [
@@ -14908,7 +14908,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/cashbox",
-          "description": "openapiOperationId: DocOpV1AdminMachineCashbox",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineCashbox",
           "request": {
             "method": "GET",
             "header": [
@@ -15105,7 +15105,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/commands",
-          "description": "openapiOperationId: DocOpV1AdminMachineCommandDispatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineCommandDispatch",
           "request": {
             "method": "POST",
             "header": [
@@ -15331,7 +15331,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/diagnostics/bundles",
-          "description": "openapiOperationId: DocOpV1AdminMachineDiagnosticBundlesList",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineDiagnosticBundlesList",
           "request": {
             "method": "GET",
             "header": [
@@ -15535,7 +15535,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/diagnostics/requests",
-          "description": "openapiOperationId: DocOpV1AdminMachineDiagnosticRequest",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineDiagnosticRequest",
           "request": {
             "method": "POST",
             "header": [
@@ -15748,7 +15748,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/disable",
-          "description": "openapiOperationId: DocOpV1AdminMachineDisable",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineDisable",
           "request": {
             "method": "POST",
             "header": [
@@ -15943,7 +15943,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/enable",
-          "description": "openapiOperationId: DocOpV1AdminMachineEnable",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineEnable",
           "request": {
             "method": "POST",
             "header": [
@@ -16138,7 +16138,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/health",
-          "description": "openapiOperationId: DocOpV1AdminMachineHealth",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineHealth",
           "request": {
             "method": "GET",
             "header": [
@@ -16327,7 +16327,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/inventory",
-          "description": "openapiOperationId: DocOpV1AdminMachineInventory",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineInventory",
           "request": {
             "method": "GET",
             "header": [
@@ -16516,7 +16516,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/inventory-events",
-          "description": "openapiOperationId: DocOpV1AdminMachineInventoryEvents",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineInventoryEvents",
           "request": {
             "method": "GET",
             "header": [
@@ -16731,7 +16731,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/inventory/anomalies",
-          "description": "openapiOperationId: DocOpV1AdminMachineInventoryAnomaliesList",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineInventoryAnomaliesList",
           "request": {
             "method": "GET",
             "header": [
@@ -16921,7 +16921,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/inventory/reconcile",
-          "description": "openapiOperationId: DocOpV1AdminMachineInventoryReconcile",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineInventoryReconcile",
           "request": {
             "method": "POST",
             "header": [
@@ -17134,7 +17134,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/mark-compromised",
-          "description": "openapiOperationId: DocOpV1AdminMachineMarkCompromised",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineMarkCompromised",
           "request": {
             "method": "POST",
             "header": [
@@ -17329,7 +17329,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/machines/{machineId}/planograms/draft",
-          "description": "openapiOperationId: DocOpV1AdminMachinePlanogramDraftPut",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachinePlanogramDraftPut",
           "request": {
             "method": "PUT",
             "header": [
@@ -17539,7 +17539,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/planograms/publish",
-          "description": "openapiOperationId: DocOpV1AdminMachinePlanogramPublishPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachinePlanogramPublishPost",
           "request": {
             "method": "POST",
             "header": [
@@ -17766,7 +17766,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/refill-suggestions",
-          "description": "openapiOperationId: DocOpV1AdminMachineRefillSuggestions",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineRefillSuggestions",
           "request": {
             "method": "GET",
             "header": [
@@ -18005,7 +18005,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/resume",
-          "description": "openapiOperationId: DocOpV1AdminMachineResume",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineResume",
           "request": {
             "method": "POST",
             "header": [
@@ -18200,7 +18200,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/retire",
-          "description": "openapiOperationId: DocOpV1AdminMachineRetire",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineRetire",
           "request": {
             "method": "POST",
             "header": [
@@ -18395,7 +18395,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/revoke-credentials",
-          "description": "openapiOperationId: DocOpV1AdminMachineRevokeCredentials",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineRevokeCredentials",
           "request": {
             "method": "POST",
             "header": [
@@ -18590,7 +18590,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/revoke-sessions",
-          "description": "openapiOperationId: DocOpV1AdminMachineRevokeSessions",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineRevokeSessions",
           "request": {
             "method": "POST",
             "header": [
@@ -18785,7 +18785,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/revoke-token",
-          "description": "openapiOperationId: DocOpV1AdminMachineRevokeToken",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineRevokeToken",
           "request": {
             "method": "POST",
             "header": [
@@ -18980,7 +18980,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/rotate-credential",
-          "description": "openapiOperationId: DocOpV1AdminMachineRotateCredential",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineRotateCredential",
           "request": {
             "method": "POST",
             "header": [
@@ -19175,7 +19175,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/rotate-credentials",
-          "description": "openapiOperationId: DocOpV1AdminMachineRotateCredentials",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineRotateCredentials",
           "request": {
             "method": "POST",
             "header": [
@@ -19370,7 +19370,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/rotate-token-version",
-          "description": "openapiOperationId: DocOpV1AdminMachineRotateTokenVersion",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineRotateTokenVersion",
           "request": {
             "method": "POST",
             "header": [
@@ -19565,7 +19565,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/slots",
-          "description": "openapiOperationId: DocOpV1AdminMachineSlots",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineSlots",
           "request": {
             "method": "GET",
             "header": [
@@ -19754,7 +19754,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/stock-adjustments",
-          "description": "openapiOperationId: DocOpV1AdminMachineStockAdjustmentsPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineStockAdjustmentsPost",
           "request": {
             "method": "POST",
             "header": [
@@ -19980,7 +19980,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/suspend",
-          "description": "openapiOperationId: DocOpV1AdminMachineSuspend",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineSuspend",
           "request": {
             "method": "POST",
             "header": [
@@ -20175,7 +20175,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/sync",
-          "description": "openapiOperationId: DocOpV1AdminMachineSetupSyncPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineSetupSyncPost",
           "request": {
             "method": "POST",
             "header": [
@@ -20401,7 +20401,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/technicians",
-          "description": "openapiOperationId: DocOpV1AdminMachineTechniciansOnMachineList",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineTechniciansOnMachineList",
           "request": {
             "method": "GET",
             "header": [
@@ -20590,7 +20590,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/technicians",
-          "description": "openapiOperationId: DocOpV1AdminMachineTechnicianAssign",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineTechnicianAssign",
           "request": {
             "method": "POST",
             "header": [
@@ -20799,7 +20799,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/machines/{machineId}/technicians/{userId}",
-          "description": "openapiOperationId: DocOpV1AdminMachineTechnicianRemove",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineTechnicianRemove",
           "request": {
             "method": "DELETE",
             "header": [
@@ -20995,7 +20995,7 @@
         },
         {
           "name": "GET /v1/admin/machines/{machineId}/timeline",
-          "description": "openapiOperationId: DocOpV1AdminMachineTimeline",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineTimeline",
           "request": {
             "method": "GET",
             "header": [
@@ -21184,7 +21184,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/machines/{machineId}/topology",
-          "description": "openapiOperationId: DocOpV1AdminMachineTopologyPut",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineTopologyPut",
           "request": {
             "method": "PUT",
             "header": [
@@ -21393,7 +21393,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/machines/{machineId}/transfer-site",
-          "description": "openapiOperationId: DocOpV1AdminMachineTransferSite",
+          "description": "openapiOperationId: Doc‌OpV1AdminMachineTransferSite",
           "request": {
             "method": "POST",
             "header": [
@@ -21602,7 +21602,7 @@
         },
         {
           "name": "GET /v1/admin/operations/machines/health",
-          "description": "openapiOperationId: DocOpV1AdminOperationsMachinesHealth",
+          "description": "openapiOperationId: Doc‌OpV1AdminOperationsMachinesHealth",
           "request": {
             "method": "GET",
             "header": [
@@ -21791,7 +21791,7 @@
         },
         {
           "name": "GET /v1/admin/ota",
-          "description": "openapiOperationId: DocOpV1AdminOTAList",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTAList",
           "request": {
             "method": "GET",
             "header": [
@@ -22010,7 +22010,7 @@
         },
         {
           "name": "GET /v1/admin/ota/campaigns",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignsList",
           "request": {
             "method": "GET",
             "header": [
@@ -22230,7 +22230,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/ota/campaigns",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -22455,7 +22455,7 @@
         },
         {
           "name": "GET /v1/admin/ota/campaigns/{campaignId}",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignGet",
           "request": {
             "method": "GET",
             "header": [
@@ -22644,7 +22644,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/ota/campaigns/{campaignId}",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -22870,7 +22870,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/approve",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignApprove",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignApprove",
           "request": {
             "method": "POST",
             "header": [
@@ -23083,7 +23083,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/cancel",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignCancel",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignCancel",
           "request": {
             "method": "POST",
             "header": [
@@ -23296,7 +23296,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/pause",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignPause",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignPause",
           "request": {
             "method": "POST",
             "header": [
@@ -23509,7 +23509,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/publish",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignPublish",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignPublish",
           "request": {
             "method": "POST",
             "header": [
@@ -23722,7 +23722,7 @@
         },
         {
           "name": "GET /v1/admin/ota/campaigns/{campaignId}/results",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignResultsGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignResultsGet",
           "request": {
             "method": "GET",
             "header": [
@@ -23912,7 +23912,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/resume",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignResume",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignResume",
           "request": {
             "method": "POST",
             "header": [
@@ -24125,7 +24125,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/rollback",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignRollback",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignRollback",
           "request": {
             "method": "POST",
             "header": [
@@ -24352,7 +24352,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/start",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignStart",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignStart",
           "request": {
             "method": "POST",
             "header": [
@@ -24565,7 +24565,7 @@
         },
         {
           "name": "GET /v1/admin/ota/campaigns/{campaignId}/targets",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignTargetsGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignTargetsGet",
           "request": {
             "method": "GET",
             "header": [
@@ -24755,7 +24755,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/ota/campaigns/{campaignId}/targets",
-          "description": "openapiOperationId: DocOpV1AdminOTACampaignTargetsPut",
+          "description": "openapiOperationId: Doc‌OpV1AdminOTACampaignTargetsPut",
           "request": {
             "method": "PUT",
             "header": [
@@ -24982,7 +24982,7 @@
         },
         {
           "name": "GET /v1/admin/provisioning/batches/{batchId}",
-          "description": "openapiOperationId: DocOpV1AdminProvisioningBatchGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminProvisioningBatchGet",
           "request": {
             "method": "GET",
             "header": [
@@ -25171,7 +25171,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/provisioning/machines/bulk",
-          "description": "openapiOperationId: DocOpV1AdminProvisioningBulk",
+          "description": "openapiOperationId: Doc‌OpV1AdminProvisioningBulk",
           "request": {
             "method": "POST",
             "header": [
@@ -25397,7 +25397,7 @@
         },
         {
           "name": "GET /v1/admin/rollouts",
-          "description": "openapiOperationId: DocOpV1AdminRolloutsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminRolloutsList",
           "request": {
             "method": "GET",
             "header": [
@@ -25584,7 +25584,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/rollouts",
-          "description": "openapiOperationId: DocOpV1AdminRolloutCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminRolloutCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -25808,7 +25808,7 @@
         },
         {
           "name": "GET /v1/admin/rollouts/{rolloutId}",
-          "description": "openapiOperationId: DocOpV1AdminRolloutGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminRolloutGet",
           "request": {
             "method": "GET",
             "header": [
@@ -25996,7 +25996,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/rollouts/{rolloutId}/cancel",
-          "description": "openapiOperationId: DocOpV1AdminRolloutCancel",
+          "description": "openapiOperationId: Doc‌OpV1AdminRolloutCancel",
           "request": {
             "method": "POST",
             "header": [
@@ -26208,7 +26208,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/rollouts/{rolloutId}/pause",
-          "description": "openapiOperationId: DocOpV1AdminRolloutPause",
+          "description": "openapiOperationId: Doc‌OpV1AdminRolloutPause",
           "request": {
             "method": "POST",
             "header": [
@@ -26420,7 +26420,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/rollouts/{rolloutId}/resume",
-          "description": "openapiOperationId: DocOpV1AdminRolloutResume",
+          "description": "openapiOperationId: Doc‌OpV1AdminRolloutResume",
           "request": {
             "method": "POST",
             "header": [
@@ -26632,7 +26632,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/rollouts/{rolloutId}/rollback",
-          "description": "openapiOperationId: DocOpV1AdminRolloutRollback",
+          "description": "openapiOperationId: Doc‌OpV1AdminRolloutRollback",
           "request": {
             "method": "POST",
             "header": [
@@ -26844,7 +26844,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/rollouts/{rolloutId}/start",
-          "description": "openapiOperationId: DocOpV1AdminRolloutStart",
+          "description": "openapiOperationId: Doc‌OpV1AdminRolloutStart",
           "request": {
             "method": "POST",
             "header": [
@@ -27056,7 +27056,7 @@
         },
         {
           "name": "GET /v1/admin/technician-assignments",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianAssignmentsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianAssignmentsList",
           "request": {
             "method": "GET",
             "header": [
@@ -27281,7 +27281,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/technician-assignments",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianAssignmentCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianAssignmentCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -27488,7 +27488,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/technician-assignments/{assignmentId}",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianAssignmentDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianAssignmentDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -27682,7 +27682,7 @@
         },
         {
           "name": "GET /v1/admin/technician-assignments/{assignmentId}",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianAssignmentGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianAssignmentGet",
           "request": {
             "method": "GET",
             "header": [
@@ -27870,7 +27870,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/technician-assignments/{assignmentId}",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianAssignmentPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianAssignmentPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -28078,7 +28078,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/technician-assignments/{assignmentId}/cancel",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianAssignmentCancel",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianAssignmentCancel",
           "request": {
             "method": "POST",
             "header": [
@@ -28273,7 +28273,7 @@
         },
         {
           "name": "GET /v1/admin/technicians",
-          "description": "openapiOperationId: DocOpV1AdminTechniciansList",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechniciansList",
           "request": {
             "method": "GET",
             "header": [
@@ -28498,7 +28498,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/technicians",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -28705,7 +28705,7 @@
         },
         {
           "name": "GET /v1/admin/technicians/{technicianId}",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianGet",
           "request": {
             "method": "GET",
             "header": [
@@ -28893,7 +28893,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/technicians/{technicianId}",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -29101,7 +29101,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/technicians/{technicianId}/disable",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianDisable",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianDisable",
           "request": {
             "method": "POST",
             "header": [
@@ -29296,7 +29296,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/technicians/{technicianId}/enable",
-          "description": "openapiOperationId: DocOpV1AdminTechnicianEnable",
+          "description": "openapiOperationId: Doc‌OpV1AdminTechnicianEnable",
           "request": {
             "method": "POST",
             "header": [
@@ -29491,7 +29491,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/machines/{machineId}/check-ins",
-          "description": "openapiOperationId: DocOpV1MachineCheckIn",
+          "description": "openapiOperationId: Doc‌OpV1MachineCheckIn",
           "request": {
             "method": "POST",
             "header": [
@@ -29699,7 +29699,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/machines/{machineId}/commands/dispatch",
-          "description": "openapiOperationId: DocOpV1MachineCommandDispatch",
+          "description": "openapiOperationId: Doc‌OpV1MachineCommandDispatch",
           "request": {
             "method": "POST",
             "header": [
@@ -29925,7 +29925,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/commands/receipts",
-          "description": "openapiOperationId: DocOpV1MachineCommandReceipts",
+          "description": "openapiOperationId: Doc‌OpV1MachineCommandReceipts",
           "request": {
             "method": "GET",
             "header": [
@@ -30122,7 +30122,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/commands/{sequence}/status",
-          "description": "openapiOperationId: DocOpV1MachineCommandStatus",
+          "description": "openapiOperationId: Doc‌OpV1MachineCommandStatus",
           "request": {
             "method": "GET",
             "header": [
@@ -30312,7 +30312,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/machines/{machineId}/config-applies",
-          "description": "openapiOperationId: DocOpV1MachineConfigApply",
+          "description": "openapiOperationId: Doc‌OpV1MachineConfigApply",
           "request": {
             "method": "POST",
             "header": [
@@ -30520,7 +30520,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/operator-sessions/action-attributions",
-          "description": "openapiOperationId: DocOpV1OperatorSessionActionAttributions",
+          "description": "openapiOperationId: Doc‌OpV1OperatorSessionActionAttributions",
           "request": {
             "method": "GET",
             "header": [
@@ -30717,7 +30717,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/operator-sessions/auth-events",
-          "description": "openapiOperationId: DocOpV1OperatorSessionAuthEvents",
+          "description": "openapiOperationId: Doc‌OpV1OperatorSessionAuthEvents",
           "request": {
             "method": "GET",
             "header": [
@@ -30914,7 +30914,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/operator-sessions/current",
-          "description": "openapiOperationId: DocOpV1OperatorSessionCurrent",
+          "description": "openapiOperationId: Doc‌OpV1OperatorSessionCurrent",
           "request": {
             "method": "GET",
             "header": [
@@ -31103,7 +31103,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/operator-sessions/history",
-          "description": "openapiOperationId: DocOpV1OperatorSessionHistory",
+          "description": "openapiOperationId: Doc‌OpV1OperatorSessionHistory",
           "request": {
             "method": "GET",
             "header": [
@@ -31300,7 +31300,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/machines/{machineId}/operator-sessions/login",
-          "description": "openapiOperationId: DocOpV1OperatorSessionLogin",
+          "description": "openapiOperationId: Doc‌OpV1OperatorSessionLogin",
           "request": {
             "method": "POST",
             "header": [
@@ -31509,7 +31509,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/machines/{machineId}/operator-sessions/logout",
-          "description": "openapiOperationId: DocOpV1OperatorSessionLogout",
+          "description": "openapiOperationId: Doc‌OpV1OperatorSessionLogout",
           "request": {
             "method": "POST",
             "header": [
@@ -31718,7 +31718,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/operator-sessions/timeline",
-          "description": "openapiOperationId: DocOpV1OperatorSessionTimeline",
+          "description": "openapiOperationId: Doc‌OpV1OperatorSessionTimeline",
           "request": {
             "method": "GET",
             "header": [
@@ -31915,7 +31915,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat",
-          "description": "openapiOperationId: DocOpV1OperatorSessionHeartbeat",
+          "description": "openapiOperationId: Doc‌OpV1OperatorSessionHeartbeat",
           "request": {
             "method": "POST",
             "header": [
@@ -32111,7 +32111,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/sale-catalog",
-          "description": "openapiOperationId: DocOpV1MachineSaleCatalogGet",
+          "description": "openapiOperationId: Doc‌OpV1MachineSaleCatalogGet",
           "request": {
             "method": "GET",
             "header": [
@@ -32319,7 +32319,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/shadow",
-          "description": "openapiOperationId: DocOpV1MachineShadowGet",
+          "description": "openapiOperationId: Doc‌OpV1MachineShadowGet",
           "request": {
             "method": "GET",
             "header": [
@@ -32507,7 +32507,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/telemetry/incidents",
-          "description": "openapiOperationId: DocOpV1MachineTelemetryIncidents",
+          "description": "openapiOperationId: Doc‌OpV1MachineTelemetryIncidents",
           "request": {
             "method": "GET",
             "header": [
@@ -32704,7 +32704,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/telemetry/rollups",
-          "description": "openapiOperationId: DocOpV1MachineTelemetryRollups",
+          "description": "openapiOperationId: Doc‌OpV1MachineTelemetryRollups",
           "request": {
             "method": "GET",
             "header": [
@@ -32913,7 +32913,7 @@
         },
         {
           "name": "GET /v1/machines/{machineId}/telemetry/snapshot",
-          "description": "openapiOperationId: DocOpV1MachineTelemetrySnapshot",
+          "description": "openapiOperationId: Doc‌OpV1MachineTelemetrySnapshot",
           "request": {
             "method": "GET",
             "header": [
@@ -33102,7 +33102,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/setup/activation-codes/claim",
-          "description": "openapiOperationId: DocOpV1SetupActivationClaimPost",
+          "description": "openapiOperationId: Doc‌OpV1SetupActivationClaimPost",
           "request": {
             "method": "POST",
             "header": [
@@ -33305,7 +33305,7 @@
         },
         {
           "name": "GET /v1/setup/machines/{machineId}/bootstrap",
-          "description": "openapiOperationId: DocOpV1SetupMachineBootstrap",
+          "description": "openapiOperationId: Doc‌OpV1SetupMachineBootstrap",
           "request": {
             "method": "GET",
             "header": [
@@ -33499,7 +33499,7 @@
       "item": [
         {
           "name": "GET /v1/admin/products",
-          "description": "openapiOperationId: DocOpV1AdminProductsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductsList",
           "request": {
             "method": "GET",
             "header": [
@@ -33712,7 +33712,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/products",
-          "description": "openapiOperationId: DocOpV1AdminProductCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -33936,7 +33936,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/products/{productId}",
-          "description": "openapiOperationId: DocOpV1AdminProductDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -34147,7 +34147,7 @@
         },
         {
           "name": "GET /v1/admin/products/{productId}",
-          "description": "openapiOperationId: DocOpV1AdminProductGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductGet",
           "request": {
             "method": "GET",
             "header": [
@@ -34335,7 +34335,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/products/{productId}",
-          "description": "openapiOperationId: DocOpV1AdminProductPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -34560,7 +34560,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/products/{productId}",
-          "description": "openapiOperationId: DocOpV1AdminProductReplace",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductReplace",
           "request": {
             "method": "PUT",
             "header": [
@@ -34785,7 +34785,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/products/{productId}/image",
-          "description": "openapiOperationId: DocOpV1AdminProductImageDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductImageDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -34997,7 +34997,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/products/{productId}/image",
-          "description": "openapiOperationId: DocOpV1AdminProductImagePost",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductImagePost",
           "request": {
             "method": "POST",
             "header": [
@@ -35223,7 +35223,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/products/{productId}/image",
-          "description": "openapiOperationId: DocOpV1AdminProductImagePut",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductImagePut",
           "request": {
             "method": "PUT",
             "header": [
@@ -35449,7 +35449,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/products/{productId}/media",
-          "description": "openapiOperationId: DocOpV1AdminProductMediaBindPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductMediaBindPost",
           "request": {
             "method": "POST",
             "header": [
@@ -35675,7 +35675,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/products/{productId}/media",
-          "description": "openapiOperationId: DocOpV1AdminProductMediaBindPut",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductMediaBindPut",
           "request": {
             "method": "PUT",
             "header": [
@@ -35901,7 +35901,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/products/{productId}/media/{mediaId}",
-          "description": "openapiOperationId: DocOpV1AdminProductMediaUnbind",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductMediaUnbind",
           "request": {
             "method": "DELETE",
             "header": [
@@ -36119,7 +36119,7 @@
       "item": [
         {
           "name": "GET /v1/admin/planograms",
-          "description": "openapiOperationId: DocOpV1AdminPlanogramsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminPlanogramsList",
           "request": {
             "method": "GET",
             "header": [
@@ -36320,7 +36320,7 @@
         },
         {
           "name": "GET /v1/admin/planograms/{planogramId}",
-          "description": "openapiOperationId: DocOpV1AdminPlanogramGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminPlanogramGet",
           "request": {
             "method": "GET",
             "header": [
@@ -36513,7 +36513,7 @@
       "item": [
         {
           "name": "GET /v1/admin/inventory/anomalies",
-          "description": "openapiOperationId: DocOpV1AdminInventoryAnomaliesList",
+          "description": "openapiOperationId: Doc‌OpV1AdminInventoryAnomaliesList",
           "request": {
             "method": "GET",
             "header": [
@@ -36701,7 +36701,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/inventory/anomalies/{anomalyId}/resolve",
-          "description": "openapiOperationId: DocOpV1AdminInventoryAnomalyResolve",
+          "description": "openapiOperationId: Doc‌OpV1AdminInventoryAnomalyResolve",
           "request": {
             "method": "POST",
             "header": [
@@ -36914,7 +36914,7 @@
         },
         {
           "name": "GET /v1/admin/inventory/low-stock",
-          "description": "openapiOperationId: DocOpV1AdminInventoryLowStock",
+          "description": "openapiOperationId: Doc‌OpV1AdminInventoryLowStock",
           "request": {
             "method": "GET",
             "header": [
@@ -37152,7 +37152,7 @@
         },
         {
           "name": "GET /v1/admin/inventory/refill-suggestions",
-          "description": "openapiOperationId: DocOpV1AdminInventoryRefillSuggestions",
+          "description": "openapiOperationId: Doc‌OpV1AdminInventoryRefillSuggestions",
           "request": {
             "method": "GET",
             "header": [
@@ -37390,7 +37390,7 @@
         },
         {
           "name": "GET /v1/admin/reports/fills",
-          "description": "openapiOperationId: DocOpV1AdminReportsTechnicianFills",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsTechnicianFills",
           "request": {
             "method": "GET",
             "header": [
@@ -37628,7 +37628,7 @@
         },
         {
           "name": "GET /v1/admin/reports/inventory",
-          "description": "openapiOperationId: DocOpV1AdminReportsInventoryUnified",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsInventoryUnified",
           "request": {
             "method": "GET",
             "header": [
@@ -37878,7 +37878,7 @@
         },
         {
           "name": "GET /v1/admin/reports/inventory-low-stock",
-          "description": "openapiOperationId: DocOpV1AdminReportsInventoryLowStock",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsInventoryLowStock",
           "request": {
             "method": "GET",
             "header": [
@@ -38092,7 +38092,7 @@
         },
         {
           "name": "GET /v1/admin/restock/suggestions",
-          "description": "openapiOperationId: DocOpV1AdminRestockSuggestions",
+          "description": "openapiOperationId: Doc‌OpV1AdminRestockSuggestions",
           "request": {
             "method": "GET",
             "header": [
@@ -38280,7 +38280,7 @@
         },
         {
           "name": "GET /v1/reports/inventory-exceptions",
-          "description": "openapiOperationId: DocOpV1ReportsInventoryExceptions",
+          "description": "openapiOperationId: Doc‌OpV1ReportsInventoryExceptions",
           "request": {
             "method": "GET",
             "header": [
@@ -38504,7 +38504,7 @@
       "item": [
         {
           "name": "GET /v1/admin/commerce/reconciliation",
-          "description": "openapiOperationId: DocOpV1AdminCommerceReconciliationList",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommerceReconciliationList",
           "request": {
             "method": "GET",
             "header": [
@@ -38718,7 +38718,7 @@
         },
         {
           "name": "GET /v1/admin/commerce/reconciliation/{caseId}",
-          "description": "openapiOperationId: DocOpV1AdminCommerceReconciliationGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommerceReconciliationGet",
           "request": {
             "method": "GET",
             "header": [
@@ -38907,7 +38907,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/commerce/reconciliation/{caseId}/ignore",
-          "description": "openapiOperationId: DocOpV1AdminCommerceReconciliationIgnore",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommerceReconciliationIgnore",
           "request": {
             "method": "POST",
             "header": [
@@ -39117,7 +39117,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/commerce/reconciliation/{caseId}/request-refund",
-          "description": "openapiOperationId: DocOpV1AdminCommerceReconciliationRequestRefund",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommerceReconciliationRequestRefund",
           "request": {
             "method": "POST",
             "header": [
@@ -39344,7 +39344,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/commerce/reconciliation/{caseId}/resolve",
-          "description": "openapiOperationId: DocOpV1AdminCommerceReconciliationResolve",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommerceReconciliationResolve",
           "request": {
             "method": "POST",
             "header": [
@@ -39554,7 +39554,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/orders/{orderId}/refunds",
-          "description": "openapiOperationId: DocOpV1AdminCommerceOrderRefundPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommerceOrderRefundPost",
           "request": {
             "method": "POST",
             "header": [
@@ -39780,7 +39780,7 @@
         },
         {
           "name": "GET /v1/admin/orders/{orderId}/timeline",
-          "description": "openapiOperationId: DocOpV1AdminCommerceOrderTimelineGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommerceOrderTimelineGet",
           "request": {
             "method": "GET",
             "header": [
@@ -39983,7 +39983,7 @@
         },
         {
           "name": "GET /v1/admin/refunds",
-          "description": "openapiOperationId: DocOpV1AdminCommerceRefundRequestsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommerceRefundRequestsList",
           "request": {
             "method": "GET",
             "header": [
@@ -40190,7 +40190,7 @@
         },
         {
           "name": "GET /v1/admin/refunds/{refundId}",
-          "description": "openapiOperationId: DocOpV1AdminCommerceRefundRequestGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminCommerceRefundRequestGet",
           "request": {
             "method": "GET",
             "header": [
@@ -40378,7 +40378,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/commerce/cash-checkout",
-          "description": "openapiOperationId: DocOpV1CommerceCashCheckout",
+          "description": "openapiOperationId: Doc‌OpV1CommerceCashCheckout",
           "request": {
             "method": "POST",
             "header": [
@@ -40602,7 +40602,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/commerce/orders",
-          "description": "openapiOperationId: DocOpV1CommerceCreateOrder",
+          "description": "openapiOperationId: Doc‌OpV1CommerceCreateOrder",
           "request": {
             "method": "POST",
             "header": [
@@ -40826,7 +40826,7 @@
         },
         {
           "name": "GET /v1/commerce/orders/{orderId}",
-          "description": "openapiOperationId: DocOpV1CommerceGetOrder",
+          "description": "openapiOperationId: Doc‌OpV1CommerceGetOrder",
           "request": {
             "method": "GET",
             "header": [
@@ -41022,7 +41022,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/commerce/orders/{orderId}/cancel",
-          "description": "openapiOperationId: DocOpV1CommerceOrderCancel",
+          "description": "openapiOperationId: Doc‌OpV1CommerceOrderCancel",
           "request": {
             "method": "POST",
             "header": [
@@ -41248,7 +41248,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/commerce/orders/{orderId}/payment-session",
-          "description": "openapiOperationId: DocOpV1CommercePaymentSession",
+          "description": "openapiOperationId: Doc‌OpV1CommercePaymentSession",
           "request": {
             "method": "POST",
             "header": [
@@ -41474,7 +41474,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks",
-          "description": "openapiOperationId: DocOpV1CommercePaymentWebhook",
+          "description": "openapiOperationId: Doc‌OpV1CommercePaymentWebhook",
           "request": {
             "method": "POST",
             "header": [
@@ -41690,7 +41690,7 @@
         },
         {
           "name": "GET /v1/commerce/orders/{orderId}/reconciliation",
-          "description": "openapiOperationId: DocOpV1CommerceReconciliationSnapshot",
+          "description": "openapiOperationId: Doc‌OpV1CommerceReconciliationSnapshot",
           "request": {
             "method": "GET",
             "header": [
@@ -41887,7 +41887,7 @@
         },
         {
           "name": "GET /v1/commerce/orders/{orderId}/refunds",
-          "description": "openapiOperationId: DocOpV1CommerceRefundsList",
+          "description": "openapiOperationId: Doc‌OpV1CommerceRefundsList",
           "request": {
             "method": "GET",
             "header": [
@@ -42076,7 +42076,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/commerce/orders/{orderId}/refunds",
-          "description": "openapiOperationId: DocOpV1CommerceRefundCreate",
+          "description": "openapiOperationId: Doc‌OpV1CommerceRefundCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -42302,7 +42302,7 @@
         },
         {
           "name": "GET /v1/commerce/orders/{orderId}/refunds/{refundId}",
-          "description": "openapiOperationId: DocOpV1CommerceRefundGet",
+          "description": "openapiOperationId: Doc‌OpV1CommerceRefundGet",
           "request": {
             "method": "GET",
             "header": [
@@ -42492,7 +42492,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/commerce/orders/{orderId}/vend/failure",
-          "description": "openapiOperationId: DocOpV1CommerceVendFailure",
+          "description": "openapiOperationId: Doc‌OpV1CommerceVendFailure",
           "request": {
             "method": "POST",
             "header": [
@@ -42719,7 +42719,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/commerce/orders/{orderId}/vend/start",
-          "description": "openapiOperationId: DocOpV1CommerceVendStart",
+          "description": "openapiOperationId: Doc‌OpV1CommerceVendStart",
           "request": {
             "method": "POST",
             "header": [
@@ -42946,7 +42946,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/commerce/orders/{orderId}/vend/success",
-          "description": "openapiOperationId: DocOpV1CommerceVendSuccess",
+          "description": "openapiOperationId: Doc‌OpV1CommerceVendSuccess",
           "request": {
             "method": "POST",
             "header": [
@@ -43173,7 +43173,7 @@
         },
         {
           "name": "GET /v1/orders",
-          "description": "openapiOperationId: DocOpV1OrdersList",
+          "description": "openapiOperationId: Doc‌OpV1OrdersList",
           "request": {
             "method": "GET",
             "header": [
@@ -43403,7 +43403,7 @@
         },
         {
           "name": "GET /v1/payments",
-          "description": "openapiOperationId: DocOpV1PaymentsList",
+          "description": "openapiOperationId: Doc‌OpV1PaymentsList",
           "request": {
             "method": "GET",
             "header": [
@@ -43644,7 +43644,7 @@
       "item": [
         {
           "name": "GET /v1/operator-insights/technicians/{technicianId}/action-attributions",
-          "description": "openapiOperationId: DocOpV1OperatorInsightsTechnicianAttributions",
+          "description": "openapiOperationId: Doc‌OpV1OperatorInsightsTechnicianAttributions",
           "request": {
             "method": "GET",
             "header": [
@@ -43841,7 +43841,7 @@
         },
         {
           "name": "GET /v1/operator-insights/users/action-attributions",
-          "description": "openapiOperationId: DocOpV1OperatorInsightsUserAttributions",
+          "description": "openapiOperationId: Doc‌OpV1OperatorInsightsUserAttributions",
           "request": {
             "method": "GET",
             "header": [
@@ -44048,7 +44048,7 @@
       "item": [
         {
           "name": "[GATED-WRITE] POST /v1/device/machines/{machineId}/commands/poll",
-          "description": "openapiOperationId: DocOpV1DeviceMachineCommandsPoll",
+          "description": "openapiOperationId: Doc‌OpV1DeviceMachineCommandsPoll",
           "request": {
             "method": "POST",
             "header": [
@@ -44258,7 +44258,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/device/machines/{machineId}/events/reconcile",
-          "description": "openapiOperationId: DocOpV1DeviceTelemetryReconcileBatch",
+          "description": "openapiOperationId: Doc‌OpV1DeviceTelemetryReconcileBatch",
           "request": {
             "method": "POST",
             "header": [
@@ -44468,7 +44468,7 @@
         },
         {
           "name": "GET /v1/device/machines/{machineId}/events/{idempotencyKey}/status",
-          "description": "openapiOperationId: DocOpV1DeviceTelemetryReconcileStatusGet",
+          "description": "openapiOperationId: Doc‌OpV1DeviceTelemetryReconcileStatusGet",
           "request": {
             "method": "GET",
             "header": [
@@ -44659,7 +44659,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/device/machines/{machineId}/vend-results",
-          "description": "openapiOperationId: DocOpV1DeviceMachineVendResults",
+          "description": "openapiOperationId: Doc‌OpV1DeviceMachineVendResults",
           "request": {
             "method": "POST",
             "header": [
@@ -44890,7 +44890,7 @@
       "item": [
         {
           "name": "GET /v1/admin/reports/commands",
-          "description": "openapiOperationId: DocOpV1AdminReportsCommands",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsCommands",
           "request": {
             "method": "GET",
             "header": [
@@ -45127,7 +45127,7 @@
       "item": [
         {
           "name": "GET /v1/admin/finance/daily-close",
-          "description": "openapiOperationId: DocOpV1AdminFinanceDailyCloseList",
+          "description": "openapiOperationId: Doc‌OpV1AdminFinanceDailyCloseList",
           "request": {
             "method": "GET",
             "header": [
@@ -45329,7 +45329,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/finance/daily-close",
-          "description": "openapiOperationId: DocOpV1AdminFinanceDailyClosePost",
+          "description": "openapiOperationId: Doc‌OpV1AdminFinanceDailyClosePost",
           "request": {
             "method": "POST",
             "header": [
@@ -45554,7 +45554,7 @@
         },
         {
           "name": "GET /v1/admin/finance/daily-close/{closeId}",
-          "description": "openapiOperationId: DocOpV1AdminFinanceDailyCloseGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminFinanceDailyCloseGet",
           "request": {
             "method": "GET",
             "header": [
@@ -45743,7 +45743,7 @@
         },
         {
           "name": "GET /v1/admin/reports/cash",
-          "description": "openapiOperationId: DocOpV1AdminReportsCash",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsCash",
           "request": {
             "method": "GET",
             "header": [
@@ -45975,7 +45975,7 @@
         },
         {
           "name": "GET /v1/admin/reports/cash-collections/export.csv",
-          "description": "openapiOperationId: DocOpV1AdminReportsCashCollectionsExportCSV",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsCashCollectionsExportCSV",
           "request": {
             "method": "GET",
             "header": [
@@ -46190,7 +46190,7 @@
         },
         {
           "name": "GET /v1/admin/reports/export",
-          "description": "openapiOperationId: DocOpV1AdminReportsExport",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsExport",
           "request": {
             "method": "GET",
             "header": [
@@ -46398,7 +46398,7 @@
         },
         {
           "name": "GET /v1/admin/reports/failed-vends",
-          "description": "openapiOperationId: DocOpV1AdminReportsFailedVends",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsFailedVends",
           "request": {
             "method": "GET",
             "header": [
@@ -46612,7 +46612,7 @@
         },
         {
           "name": "GET /v1/admin/reports/machine-health",
-          "description": "openapiOperationId: DocOpV1AdminReportsMachineHealth",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsMachineHealth",
           "request": {
             "method": "GET",
             "header": [
@@ -46826,7 +46826,7 @@
         },
         {
           "name": "GET /v1/admin/reports/machines",
-          "description": "openapiOperationId: DocOpV1AdminReportsMachines",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsMachines",
           "request": {
             "method": "GET",
             "header": [
@@ -47064,7 +47064,7 @@
         },
         {
           "name": "GET /v1/admin/reports/payments",
-          "description": "openapiOperationId: DocOpV1AdminReportsPayments",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsPayments",
           "request": {
             "method": "GET",
             "header": [
@@ -47296,7 +47296,7 @@
         },
         {
           "name": "GET /v1/admin/reports/payments-summary/export.csv",
-          "description": "openapiOperationId: DocOpV1AdminReportsPaymentsSummaryExportCSV",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsPaymentsSummaryExportCSV",
           "request": {
             "method": "GET",
             "header": [
@@ -47505,7 +47505,7 @@
         },
         {
           "name": "GET /v1/admin/reports/products",
-          "description": "openapiOperationId: DocOpV1AdminReportsProducts",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsProducts",
           "request": {
             "method": "GET",
             "header": [
@@ -47731,7 +47731,7 @@
         },
         {
           "name": "GET /v1/admin/reports/reconciliation",
-          "description": "openapiOperationId: DocOpV1AdminReportsReconciliationBI",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsReconciliationBI",
           "request": {
             "method": "GET",
             "header": [
@@ -47975,7 +47975,7 @@
         },
         {
           "name": "GET /v1/admin/reports/reconciliation-queue",
-          "description": "openapiOperationId: DocOpV1AdminReportsReconciliationQueue",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsReconciliationQueue",
           "request": {
             "method": "GET",
             "header": [
@@ -48189,7 +48189,7 @@
         },
         {
           "name": "GET /v1/admin/reports/refunds",
-          "description": "openapiOperationId: DocOpV1AdminReportsRefunds",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsRefunds",
           "request": {
             "method": "GET",
             "header": [
@@ -48409,7 +48409,7 @@
         },
         {
           "name": "GET /v1/admin/reports/sales",
-          "description": "openapiOperationId: DocOpV1AdminReportsSales",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsSales",
           "request": {
             "method": "GET",
             "header": [
@@ -48647,7 +48647,7 @@
         },
         {
           "name": "GET /v1/admin/reports/sales-summary/export.csv",
-          "description": "openapiOperationId: DocOpV1AdminReportsSalesSummaryExportCSV",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsSalesSummaryExportCSV",
           "request": {
             "method": "GET",
             "header": [
@@ -48856,7 +48856,7 @@
         },
         {
           "name": "GET /v1/admin/reports/vends",
-          "description": "openapiOperationId: DocOpV1AdminReportsVends",
+          "description": "openapiOperationId: Doc‌OpV1AdminReportsVends",
           "request": {
             "method": "GET",
             "header": [
@@ -49094,7 +49094,7 @@
         },
         {
           "name": "GET /v1/reports/fleet-health",
-          "description": "openapiOperationId: DocOpV1ReportsFleetHealth",
+          "description": "openapiOperationId: Doc‌OpV1ReportsFleetHealth",
           "request": {
             "method": "GET",
             "header": [
@@ -49295,7 +49295,7 @@
         },
         {
           "name": "GET /v1/reports/payments-summary",
-          "description": "openapiOperationId: DocOpV1ReportsPaymentsSummary",
+          "description": "openapiOperationId: Doc‌OpV1ReportsPaymentsSummary",
           "request": {
             "method": "GET",
             "header": [
@@ -49502,7 +49502,7 @@
         },
         {
           "name": "GET /v1/reports/sales-summary",
-          "description": "openapiOperationId: DocOpV1ReportsSalesSummary",
+          "description": "openapiOperationId: Doc‌OpV1ReportsSalesSummary",
           "request": {
             "method": "GET",
             "header": [
@@ -49714,7 +49714,7 @@
       "item": [
         {
           "name": "GET /v1/admin/audit/events",
-          "description": "openapiOperationId: DocOpV1AdminAuditEventsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuditEventsList",
           "request": {
             "method": "GET",
             "header": [
@@ -49970,7 +49970,7 @@
         },
         {
           "name": "GET /v1/admin/audit/events/{auditEventId}",
-          "description": "openapiOperationId: DocOpV1AdminAuditEventGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuditEventGet",
           "request": {
             "method": "GET",
             "header": [
@@ -50164,7 +50164,7 @@
       "item": [
         {
           "name": "GET /v1/admin/anomalies",
-          "description": "openapiOperationId: DocOpV1AdminOperationalAnomaliesList",
+          "description": "openapiOperationId: Doc‌OpV1AdminOperationalAnomaliesList",
           "request": {
             "method": "GET",
             "header": [
@@ -50351,7 +50351,7 @@
         },
         {
           "name": "GET /v1/admin/anomalies/{anomalyId}",
-          "description": "openapiOperationId: DocOpV1AdminOperationalAnomalyGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminOperationalAnomalyGet",
           "request": {
             "method": "GET",
             "header": [
@@ -50539,7 +50539,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/anomalies/{anomalyId}/ignore",
-          "description": "openapiOperationId: DocOpV1AdminOperationalAnomalyIgnore",
+          "description": "openapiOperationId: Doc‌OpV1AdminOperationalAnomalyIgnore",
           "request": {
             "method": "POST",
             "header": [
@@ -50751,7 +50751,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/anomalies/{anomalyId}/resolve",
-          "description": "openapiOperationId: DocOpV1AdminOperationalAnomalyResolve",
+          "description": "openapiOperationId: Doc‌OpV1AdminOperationalAnomalyResolve",
           "request": {
             "method": "POST",
             "header": [
@@ -50963,7 +50963,7 @@
         },
         {
           "name": "GET /v1/admin/artifacts",
-          "description": "openapiOperationId: DocOpV1AdminArtifactsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminArtifactsList",
           "request": {
             "method": "GET",
             "header": [
@@ -51150,7 +51150,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/artifacts",
-          "description": "openapiOperationId: DocOpV1AdminArtifactsReserve",
+          "description": "openapiOperationId: Doc‌OpV1AdminArtifactsReserve",
           "request": {
             "method": "POST",
             "header": [
@@ -51343,7 +51343,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/artifacts/{artifactId}",
-          "description": "openapiOperationId: DocOpV1AdminArtifactsDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminArtifactsDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -51537,7 +51537,7 @@
         },
         {
           "name": "GET /v1/admin/artifacts/{artifactId}",
-          "description": "openapiOperationId: DocOpV1AdminArtifactsGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminArtifactsGet",
           "request": {
             "method": "GET",
             "header": [
@@ -51725,7 +51725,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/artifacts/{artifactId}/content",
-          "description": "openapiOperationId: DocOpV1AdminArtifactsPutContent",
+          "description": "openapiOperationId: Doc‌OpV1AdminArtifactsPutContent",
           "request": {
             "method": "PUT",
             "header": [
@@ -51920,7 +51920,7 @@
         },
         {
           "name": "GET /v1/admin/artifacts/{artifactId}/download",
-          "description": "openapiOperationId: DocOpV1AdminArtifactsDownloadURL",
+          "description": "openapiOperationId: Doc‌OpV1AdminArtifactsDownloadURL",
           "request": {
             "method": "GET",
             "header": [
@@ -52109,7 +52109,7 @@
         },
         {
           "name": "GET /v1/admin/auth/users",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersList",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersList",
           "request": {
             "method": "GET",
             "header": [
@@ -52311,7 +52311,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/auth/users",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -52519,7 +52519,7 @@
         },
         {
           "name": "GET /v1/admin/auth/users/{accountId}",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersGet",
           "request": {
             "method": "GET",
             "header": [
@@ -52708,7 +52708,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/auth/users/{accountId}",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -52917,7 +52917,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/auth/users/{accountId}/activate",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersActivate",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersActivate",
           "request": {
             "method": "POST",
             "header": [
@@ -53113,7 +53113,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/auth/users/{accountId}/deactivate",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersDeactivate",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersDeactivate",
           "request": {
             "method": "POST",
             "header": [
@@ -53309,7 +53309,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/auth/users/{accountId}/reset-password",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersResetPassword",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersResetPassword",
           "request": {
             "method": "POST",
             "header": [
@@ -53519,7 +53519,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/auth/users/{accountId}/revoke-sessions",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersRevokeSessions",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersRevokeSessions",
           "request": {
             "method": "POST",
             "header": [
@@ -53715,7 +53715,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/auth/users/{accountId}/roles",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersPatchRoles",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersPatchRoles",
           "request": {
             "method": "PATCH",
             "header": [
@@ -53925,7 +53925,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/auth/users/{accountId}/roles",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersPostRoles",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersPostRoles",
           "request": {
             "method": "POST",
             "header": [
@@ -54135,7 +54135,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/auth/users/{accountId}/roles",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersPutRoles",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersPutRoles",
           "request": {
             "method": "PUT",
             "header": [
@@ -54345,7 +54345,7 @@
         },
         {
           "name": "GET /v1/admin/auth/users/{accountId}/sessions",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersSessions",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersSessions",
           "request": {
             "method": "GET",
             "header": [
@@ -54535,7 +54535,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/auth/users/{accountId}/status",
-          "description": "openapiOperationId: DocOpV1AdminAuthUsersPatchStatus",
+          "description": "openapiOperationId: Doc‌OpV1AdminAuthUsersPatchStatus",
           "request": {
             "method": "PATCH",
             "header": [
@@ -54745,7 +54745,7 @@
         },
         {
           "name": "GET /v1/admin/brands",
-          "description": "openapiOperationId: DocOpV1AdminBrandsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminBrandsList",
           "request": {
             "method": "GET",
             "header": [
@@ -54946,7 +54946,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/brands",
-          "description": "openapiOperationId: DocOpV1AdminBrandCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminBrandCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -55170,7 +55170,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/brands/{brandId}",
-          "description": "openapiOperationId: DocOpV1AdminBrandDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminBrandDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -55381,7 +55381,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/brands/{brandId}",
-          "description": "openapiOperationId: DocOpV1AdminBrandPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminBrandPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -55606,7 +55606,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/brands/{brandId}",
-          "description": "openapiOperationId: DocOpV1AdminBrandReplace",
+          "description": "openapiOperationId: Doc‌OpV1AdminBrandReplace",
           "request": {
             "method": "PUT",
             "header": [
@@ -55831,7 +55831,7 @@
         },
         {
           "name": "GET /v1/admin/categories",
-          "description": "openapiOperationId: DocOpV1AdminCategoriesList",
+          "description": "openapiOperationId: Doc‌OpV1AdminCategoriesList",
           "request": {
             "method": "GET",
             "header": [
@@ -56032,7 +56032,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/categories",
-          "description": "openapiOperationId: DocOpV1AdminCategoryCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminCategoryCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -56256,7 +56256,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/categories/{categoryId}",
-          "description": "openapiOperationId: DocOpV1AdminCategoryDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminCategoryDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -56467,7 +56467,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/categories/{categoryId}",
-          "description": "openapiOperationId: DocOpV1AdminCategoryPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminCategoryPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -56692,7 +56692,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/categories/{categoryId}",
-          "description": "openapiOperationId: DocOpV1AdminCategoryReplace",
+          "description": "openapiOperationId: Doc‌OpV1AdminCategoryReplace",
           "request": {
             "method": "PUT",
             "header": [
@@ -56917,7 +56917,7 @@
         },
         {
           "name": "GET /v1/admin/media",
-          "description": "openapiOperationId: DocOpV1AdminMediaList",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaList",
           "request": {
             "method": "GET",
             "header": [
@@ -57104,7 +57104,7 @@
         },
         {
           "name": "GET /v1/admin/media/assets",
-          "description": "openapiOperationId: DocOpV1AdminMediaAssetsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaAssetsList",
           "request": {
             "method": "GET",
             "header": [
@@ -57306,7 +57306,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/media/assets",
-          "description": "openapiOperationId: DocOpV1AdminMediaAssetsCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaAssetsCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -57531,7 +57531,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/media/assets/{mediaId}",
-          "description": "openapiOperationId: DocOpV1AdminMediaAssetDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaAssetDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -57743,7 +57743,7 @@
         },
         {
           "name": "GET /v1/admin/media/assets/{mediaId}",
-          "description": "openapiOperationId: DocOpV1AdminMediaAssetGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaAssetGet",
           "request": {
             "method": "GET",
             "header": [
@@ -57932,7 +57932,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/media/uploads",
-          "description": "openapiOperationId: DocOpV1AdminMediaUploadInit",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaUploadInit",
           "request": {
             "method": "POST",
             "header": [
@@ -58157,7 +58157,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/media/uploads/init",
-          "description": "openapiOperationId: DocOpV1AdminMediaUploadInitV2",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaUploadInitV2",
           "request": {
             "method": "POST",
             "header": [
@@ -58383,7 +58383,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/media/uploads/{mediaId}/complete",
-          "description": "openapiOperationId: DocOpV1AdminMediaUploadCompleteUploadsPrefix",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaUploadCompleteUploadsPrefix",
           "request": {
             "method": "POST",
             "header": [
@@ -58610,7 +58610,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/media/{mediaId}",
-          "description": "openapiOperationId: DocOpV1AdminMediaDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -58821,7 +58821,7 @@
         },
         {
           "name": "GET /v1/admin/media/{mediaId}",
-          "description": "openapiOperationId: DocOpV1AdminMediaGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaGet",
           "request": {
             "method": "GET",
             "header": [
@@ -59009,7 +59009,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/media/{mediaId}/complete",
-          "description": "openapiOperationId: DocOpV1AdminMediaUploadComplete",
+          "description": "openapiOperationId: Doc‌OpV1AdminMediaUploadComplete",
           "request": {
             "method": "POST",
             "header": [
@@ -59235,7 +59235,7 @@
         },
         {
           "name": "GET /v1/admin/ops/outbox",
-          "description": "openapiOperationId: DocOpV1AdminOutboxOpsGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminOutboxOpsGet",
           "request": {
             "method": "GET",
             "header": [
@@ -59437,7 +59437,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/ops/outbox/{outboxId}/retry",
-          "description": "openapiOperationId: DocOpV1AdminOutboxRetry",
+          "description": "openapiOperationId: Doc‌OpV1AdminOutboxRetry",
           "request": {
             "method": "POST",
             "header": [
@@ -59633,7 +59633,7 @@
         },
         {
           "name": "GET /v1/admin/ops/retention",
-          "description": "openapiOperationId: DocOpV1AdminRetentionOpsGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminRetentionOpsGet",
           "request": {
             "method": "GET",
             "header": [
@@ -59821,7 +59821,7 @@
         },
         {
           "name": "GET /v1/admin/price-books",
-          "description": "openapiOperationId: DocOpV1AdminPriceBooksList",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBooksList",
           "request": {
             "method": "GET",
             "header": [
@@ -60028,7 +60028,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/price-books",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -60252,7 +60252,7 @@
         },
         {
           "name": "GET /v1/admin/price-books/{priceBookId}",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookGet",
           "request": {
             "method": "GET",
             "header": [
@@ -60440,7 +60440,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/price-books/{priceBookId}",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -60665,7 +60665,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/price-books/{priceBookId}/activate",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookActivate",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookActivate",
           "request": {
             "method": "POST",
             "header": [
@@ -60877,7 +60877,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/price-books/{priceBookId}/archive",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookArchive",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookArchive",
           "request": {
             "method": "POST",
             "header": [
@@ -61089,7 +61089,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/price-books/{priceBookId}/assign-target",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookAssignTarget",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookAssignTarget",
           "request": {
             "method": "POST",
             "header": [
@@ -61315,7 +61315,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/price-books/{priceBookId}/deactivate",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookDeactivate",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookDeactivate",
           "request": {
             "method": "POST",
             "header": [
@@ -61527,7 +61527,7 @@
         },
         {
           "name": "GET /v1/admin/price-books/{priceBookId}/items",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookItemsGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookItemsGet",
           "request": {
             "method": "GET",
             "header": [
@@ -61716,7 +61716,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/price-books/{priceBookId}/items",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookItemsPut",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookItemsPut",
           "request": {
             "method": "PUT",
             "header": [
@@ -61942,7 +61942,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/price-books/{priceBookId}/items/{productId}",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookItemDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookItemDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -62155,7 +62155,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/price-books/{priceBookId}/items/{productId}",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookItemPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookItemPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -62382,7 +62382,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/price-books/{priceBookId}/targets/{targetId}",
-          "description": "openapiOperationId: DocOpV1AdminPriceBookTargetDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminPriceBookTargetDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -62595,7 +62595,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/pricing/preview",
-          "description": "openapiOperationId: DocOpV1AdminPricingPreview",
+          "description": "openapiOperationId: Doc‌OpV1AdminPricingPreview",
           "request": {
             "method": "POST",
             "header": [
@@ -62803,7 +62803,7 @@
         },
         {
           "name": "GET /v1/admin/promotions",
-          "description": "openapiOperationId: DocOpV1AdminPromotionsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionsList",
           "request": {
             "method": "GET",
             "header": [
@@ -63010,7 +63010,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/promotions",
-          "description": "openapiOperationId: DocOpV1AdminPromotionCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -63234,7 +63234,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/promotions/preview",
-          "description": "openapiOperationId: DocOpV1AdminPromotionsPreview",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionsPreview",
           "request": {
             "method": "POST",
             "header": [
@@ -63442,7 +63442,7 @@
         },
         {
           "name": "GET /v1/admin/promotions/{promotionId}",
-          "description": "openapiOperationId: DocOpV1AdminPromotionGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionGet",
           "request": {
             "method": "GET",
             "header": [
@@ -63630,7 +63630,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/promotions/{promotionId}",
-          "description": "openapiOperationId: DocOpV1AdminPromotionPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -63855,7 +63855,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/promotions/{promotionId}/activate",
-          "description": "openapiOperationId: DocOpV1AdminPromotionActivate",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionActivate",
           "request": {
             "method": "POST",
             "header": [
@@ -64067,7 +64067,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/promotions/{promotionId}/archive",
-          "description": "openapiOperationId: DocOpV1AdminPromotionArchive",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionArchive",
           "request": {
             "method": "POST",
             "header": [
@@ -64279,7 +64279,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/promotions/{promotionId}/assign-target",
-          "description": "openapiOperationId: DocOpV1AdminPromotionAssignTarget",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionAssignTarget",
           "request": {
             "method": "POST",
             "header": [
@@ -64505,7 +64505,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/promotions/{promotionId}/deactivate",
-          "description": "openapiOperationId: DocOpV1AdminPromotionDeactivate",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionDeactivate",
           "request": {
             "method": "POST",
             "header": [
@@ -64717,7 +64717,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/promotions/{promotionId}/pause",
-          "description": "openapiOperationId: DocOpV1AdminPromotionPause",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionPause",
           "request": {
             "method": "POST",
             "header": [
@@ -64929,7 +64929,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/promotions/{promotionId}/targets/{targetId}",
-          "description": "openapiOperationId: DocOpV1AdminPromotionTargetDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminPromotionTargetDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -65142,7 +65142,7 @@
         },
         {
           "name": "GET /v1/admin/system/outbox",
-          "description": "openapiOperationId: DocOpV1AdminSystemOutboxListGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminSystemOutboxListGet",
           "request": {
             "method": "GET",
             "header": [
@@ -65344,7 +65344,7 @@
         },
         {
           "name": "GET /v1/admin/system/outbox/stats",
-          "description": "openapiOperationId: DocOpV1AdminSystemOutboxStatsGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminSystemOutboxStatsGet",
           "request": {
             "method": "GET",
             "header": [
@@ -65533,7 +65533,7 @@
         },
         {
           "name": "GET /v1/admin/system/outbox/{eventId}",
-          "description": "openapiOperationId: DocOpV1AdminSystemOutboxGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminSystemOutboxGet",
           "request": {
             "method": "GET",
             "header": [
@@ -65722,7 +65722,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/system/outbox/{eventId}/mark-dlq",
-          "description": "openapiOperationId: DocOpV1AdminSystemOutboxMarkDLQPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminSystemOutboxMarkDLQPost",
           "request": {
             "method": "POST",
             "header": [
@@ -65932,7 +65932,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/system/outbox/{eventId}/replay",
-          "description": "openapiOperationId: DocOpV1AdminSystemOutboxReplayPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminSystemOutboxReplayPost",
           "request": {
             "method": "POST",
             "header": [
@@ -66128,7 +66128,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/system/retention/dry-run",
-          "description": "openapiOperationId: DocOpV1AdminSystemRetentionDryRunPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminSystemRetentionDryRunPost",
           "request": {
             "method": "POST",
             "header": [
@@ -66323,7 +66323,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/system/retention/run",
-          "description": "openapiOperationId: DocOpV1AdminSystemRetentionRunPost",
+          "description": "openapiOperationId: Doc‌OpV1AdminSystemRetentionRunPost",
           "request": {
             "method": "POST",
             "header": [
@@ -66518,7 +66518,7 @@
         },
         {
           "name": "GET /v1/admin/system/retention/stats",
-          "description": "openapiOperationId: DocOpV1AdminSystemRetentionStatsGet",
+          "description": "openapiOperationId: Doc‌OpV1AdminSystemRetentionStatsGet",
           "request": {
             "method": "GET",
             "header": [
@@ -66707,7 +66707,7 @@
         },
         {
           "name": "GET /v1/admin/tags",
-          "description": "openapiOperationId: DocOpV1AdminTagsList",
+          "description": "openapiOperationId: Doc‌OpV1AdminTagsList",
           "request": {
             "method": "GET",
             "header": [
@@ -66908,7 +66908,7 @@
         },
         {
           "name": "[GATED-WRITE] POST /v1/admin/tags",
-          "description": "openapiOperationId: DocOpV1AdminTagCreate",
+          "description": "openapiOperationId: Doc‌OpV1AdminTagCreate",
           "request": {
             "method": "POST",
             "header": [
@@ -67132,7 +67132,7 @@
         },
         {
           "name": "[GATED-WRITE] DELETE /v1/admin/tags/{tagId}",
-          "description": "openapiOperationId: DocOpV1AdminTagDelete",
+          "description": "openapiOperationId: Doc‌OpV1AdminTagDelete",
           "request": {
             "method": "DELETE",
             "header": [
@@ -67343,7 +67343,7 @@
         },
         {
           "name": "[GATED-WRITE] PATCH /v1/admin/tags/{tagId}",
-          "description": "openapiOperationId: DocOpV1AdminTagPatch",
+          "description": "openapiOperationId: Doc‌OpV1AdminTagPatch",
           "request": {
             "method": "PATCH",
             "header": [
@@ -67568,7 +67568,7 @@
         },
         {
           "name": "[GATED-WRITE] PUT /v1/admin/tags/{tagId}",
-          "description": "openapiOperationId: DocOpV1AdminTagReplace",
+          "description": "openapiOperationId: Doc‌OpV1AdminTagReplace",
           "request": {
             "method": "PUT",
             "header": [

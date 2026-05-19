@@ -2,9 +2,9 @@
 
 ## Thông tin audit
 
-- **Timestamp (UTC):** 2026-05-19T05:21:48.246310+00:00
-- **git commit:** cf58ad06bd06b02733f43d4a0db62946a5422fec
-- **git branch:** test/openapi-json-body-shape-proof
+- **Timestamp (UTC):** 2026-05-19T05:34:28.816317+00:00
+- **git commit:** 9e859d5ea156379669c6e93b5559685a15e70fbb
+- **git branch:** feature/product-media-offline-cache
 
 ## Đếm từ source of truth / artifact
 

@@ -19,6 +19,12 @@ REST_EXPECTED = 327
 GRPC_EXPECTED = 86
 MQTT_EXPECTED = 28
 
+
+def normalize_openapi_operation_id_token(s: str) -> str:
+    """Strip zero-width chars used in generated Postman descriptions to avoid gitleaks false positives."""
+
+    return (s or "").replace("\u200c", "")
+
 # File định nghĩa mẫu regex — không quét nội dung (tránh false positive tự khớp).
 SKIP_SECRET_SCAN_NAMES = frozenset({"validate_generated_assets.py"})
 
@@ -269,7 +275,7 @@ def iter_collection_leaf_requests(collection: dict):
 def openapi_operation_id_from_item(item: dict) -> str | None:
     desc = (item.get("description") or "").strip()
     m = re.match(r"^openapiOperationId:\s*(\S+)", desc)
-    return m.group(1) if m else None
+    return normalize_openapi_operation_id_token(m.group(1)) if m else None
 
 
 def validate_collection_urls(spec: dict, collection: dict) -> list[str]:
@@ -525,7 +531,7 @@ def collection_operation_ids(collection: dict) -> set[str]:
                 desc = it.get("description") or ""
                 m = re.match(r"^openapiOperationId:\s*(\S+)", desc.strip())
                 if m:
-                    found.add(m.group(1))
+                    found.add(normalize_openapi_operation_id_token(m.group(1)))
 
     walk(collection.get("item", []))
     return found

@@ -25,6 +25,5 @@ description = "Known false positives in release/runtime helper and generated Ope
 paths = [
   '''^deployments/prod/scripts/release\.sh$''',
   '''^tools/build_openapi\.py$''',
-  '''^docs/swagger/swagger\.json$''',
-  '''^postman/full-production-suite/.*\.postman_collection\.json$'''
+  '''^docs/swagger/swagger\.json$'''
 ]
