@@ -119,6 +119,7 @@ type Querier interface {
 	CatalogAdminCountProducts(ctx context.Context, arg CatalogAdminCountProductsParams) (int64, error)
 	CatalogAdminCountProductsInOrgByIDs(ctx context.Context, dollar_1 []uuid.UUID) (int64, error)
 	CatalogAdminCountTags(ctx context.Context) (int64, error)
+	CatalogAdminCountTagsMatchingIDs(ctx context.Context, dollar_1 []uuid.UUID) (int64, error)
 	CatalogAdminGetBrand(ctx context.Context, id uuid.UUID) (Brand, error)
 	CatalogAdminGetCategory(ctx context.Context, id uuid.UUID) (Category, error)
 	CatalogAdminGetMachineSiteForOrg(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
@@ -137,8 +138,10 @@ type Querier interface {
 	CatalogAdminListPriceBookTargetsByBook(ctx context.Context, priceBookID uuid.UUID) ([]PriceBookTarget, error)
 	CatalogAdminListPriceBookTargetsByOrg(ctx context.Context) ([]PriceBookTarget, error)
 	CatalogAdminListPriceBooks(ctx context.Context, arg CatalogAdminListPriceBooksParams) ([]PriceBook, error)
+	CatalogAdminListPrimaryMediaAssetIDsForProducts(ctx context.Context, dollar_1 []uuid.UUID) ([]CatalogAdminListPrimaryMediaAssetIDsForProductsRow, error)
 	CatalogAdminListProductImagesForOrg(ctx context.Context, arg CatalogAdminListProductImagesForOrgParams) ([]ProductImage, error)
 	CatalogAdminListProductMediumRowsForProduct(ctx context.Context, productID uuid.UUID) ([]ProductMedium, error)
+	CatalogAdminListProductTagsForProducts(ctx context.Context, dollar_1 []uuid.UUID) ([]CatalogAdminListProductTagsForProductsRow, error)
 	CatalogAdminListProducts(ctx context.Context, arg CatalogAdminListProductsParams) ([]CatalogAdminListProductsRow, error)
 	CatalogAdminListSlotsByPlanogram(ctx context.Context, planogramID uuid.UUID) ([]CatalogAdminListSlotsByPlanogramRow, error)
 	CatalogAdminListTags(ctx context.Context, arg CatalogAdminListTagsParams) ([]Tag, error)
@@ -151,6 +154,7 @@ type Querier interface {
 	CatalogWriteDeleteAllPriceBookItems(ctx context.Context, priceBookID uuid.UUID) error
 	CatalogWriteDeletePriceBookItem(ctx context.Context, arg CatalogWriteDeletePriceBookItemParams) (int64, error)
 	CatalogWriteDeletePriceBookTarget(ctx context.Context, id uuid.UUID) (int64, error)
+	CatalogWriteDeleteProductTagsForProduct(ctx context.Context, productID uuid.UUID) error
 	CatalogWriteGetPrimaryProductImage(ctx context.Context, productID uuid.UUID) (ProductImage, error)
 	CatalogWriteInsertBrand(ctx context.Context, arg CatalogWriteInsertBrandParams) (Brand, error)
 	CatalogWriteInsertCategory(ctx context.Context, arg CatalogWriteInsertCategoryParams) (Category, error)
@@ -159,6 +163,7 @@ type Querier interface {
 	CatalogWriteInsertProduct(ctx context.Context, arg CatalogWriteInsertProductParams) (Product, error)
 	CatalogWriteInsertProductImage(ctx context.Context, arg CatalogWriteInsertProductImageParams) (ProductImage, error)
 	CatalogWriteInsertProductImageWithMedia(ctx context.Context, arg CatalogWriteInsertProductImageWithMediaParams) (ProductImage, error)
+	CatalogWriteInsertProductTag(ctx context.Context, arg CatalogWriteInsertProductTagParams) error
 	CatalogWriteInsertTag(ctx context.Context, arg CatalogWriteInsertTagParams) (Tag, error)
 	CatalogWriteProductInCurrentSlot(ctx context.Context, productID pgtype.UUID) (bool, error)
 	CatalogWriteProductReferencedOpenOrder(ctx context.Context, productID uuid.UUID) (bool, error)
@@ -173,6 +178,7 @@ type Querier interface {
 	CatalogWriteUpdateProductImageMetadata(ctx context.Context, arg CatalogWriteUpdateProductImageMetadataParams) (ProductImage, error)
 	CatalogWriteUpdateTag(ctx context.Context, arg CatalogWriteUpdateTagParams) (Tag, error)
 	CatalogWriteUpsertPriceBookItem(ctx context.Context, arg CatalogWriteUpsertPriceBookItemParams) (PriceBookItem, error)
+	CatalogWriteUpsertProductMediaProjection(ctx context.Context, arg CatalogWriteUpsertProductMediaProjectionParams) (ProductMedium, error)
 	CloseCashCollection(ctx context.Context, arg CloseCashCollectionParams) (CashCollection, error)
 	CommerceAdminCountOrderTimeline(ctx context.Context, orderID uuid.UUID) (int64, error)
 	CommerceAdminCountOrders(ctx context.Context, arg CommerceAdminCountOrdersParams) (int64, error)
@@ -456,11 +462,16 @@ type Querier interface {
 	MediaAdminCountAssetsForOrg(ctx context.Context) (int64, error)
 	MediaAdminCountProductBindingsForAsset(ctx context.Context, mediaAssetID pgtype.UUID) (int64, error)
 	MediaAdminDeletePendingAsset(ctx context.Context, id uuid.UUID) (int64, error)
+	MediaAdminDeleteVariantsForAsset(ctx context.Context, mediaAssetID uuid.UUID) error
+	MediaAdminEnsureCanonicalObjectKey(ctx context.Context, id uuid.UUID) (MediaAsset, error)
 	MediaAdminFindProductImageBinding(ctx context.Context, arg MediaAdminFindProductImageBindingParams) (uuid.UUID, error)
 	MediaAdminGetAssetForOrg(ctx context.Context, id uuid.UUID) (MediaAsset, error)
 	MediaAdminInsertAsset(ctx context.Context, arg MediaAdminInsertAssetParams) (MediaAsset, error)
+	MediaAdminInsertMediaVariant(ctx context.Context, arg MediaAdminInsertMediaVariantParams) (MediaVariant, error)
+	MediaAdminListAssetsByIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]MediaAsset, error)
 	MediaAdminListAssetsForOrg(ctx context.Context, arg MediaAdminListAssetsForOrgParams) ([]MediaAsset, error)
 	MediaAdminListProductImagesForAsset(ctx context.Context, mediaAssetID pgtype.UUID) ([]MediaAdminListProductImagesForAssetRow, error)
+	MediaAdminListVariantsForAssets(ctx context.Context, dollar_1 []uuid.UUID) ([]MediaVariant, error)
 	MediaAdminMarkAssetFailed(ctx context.Context, arg MediaAdminMarkAssetFailedParams) (MediaAsset, error)
 	MediaAdminSetAssetStatus(ctx context.Context, arg MediaAdminSetAssetStatusParams) (MediaAsset, error)
 	MediaAdminSoftDeleteAsset(ctx context.Context, id uuid.UUID) (MediaAsset, error)
@@ -584,10 +595,12 @@ type Querier interface {
 	RolloutRefreshTargetFromLatestAttempt(ctx context.Context, campaignID uuid.UUID) error
 	RolloutResolveTagIDsBySlugs(ctx context.Context, slugs []string) ([]RolloutResolveTagIDsBySlugsRow, error)
 	RolloutSkipPendingTargets(ctx context.Context, campaignID uuid.UUID) error
+	RuntimeGetMachineSellReadinessAcks(ctx context.Context, id uuid.UUID) (RuntimeGetMachineSellReadinessAcksRow, error)
 	RuntimeGetProductsByIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]RuntimeGetProductsByIDsRow, error)
 	// Runtime product images joined to denormalized `product_media` and optional `media_assets` for authoritative
 	// checksums, etag, and deterministic thumb/display keys (presigned HTTPS refresh on gRPC snapshot/manifest).
 	RuntimeListProductImagesForProducts(ctx context.Context, dollar_1 []uuid.UUID) ([]RuntimeListProductImagesForProductsRow, error)
+	RuntimeProductPrimaryMediaReady(ctx context.Context, dollar_1 []uuid.UUID) ([]RuntimeProductPrimaryMediaReadyRow, error)
 	SettlementReferencedPaymentsTotalForOrg(ctx context.Context, arg SettlementReferencedPaymentsTotalForOrgParams) (SettlementReferencedPaymentsTotalForOrgRow, error)
 	SumNonFailedRefundAmountForPayment(ctx context.Context, paymentID uuid.UUID) (int64, error)
 	TechnicianActiveAssignmentExists(ctx context.Context, arg TechnicianActiveAssignmentExistsParams) (bool, error)

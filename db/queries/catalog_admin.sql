@@ -306,6 +306,38 @@ SELECT *
 FROM tags t
 WHERE t.id = $1;
 
+-- name: CatalogAdminListProductTagsForProducts :many
+SELECT
+    pt.product_id,
+    t.id,
+    t.slug,
+    t.name,
+    t.active,
+    t.created_at,
+    t.updated_at
+FROM product_tags pt
+INNER JOIN tags t ON t.id = pt.tag_id
+WHERE pt.product_id = ANY($1::uuid[])
+ORDER BY pt.product_id ASC, t.name ASC, t.id ASC;
+
+-- name: CatalogAdminCountTagsMatchingIDs :one
+SELECT count(*)::bigint
+FROM tags
+WHERE id = ANY($1::uuid[]);
+
+-- name: CatalogAdminListPrimaryMediaAssetIDsForProducts :many
+SELECT
+    p.id AS product_id,
+    pi.media_asset_id AS media_asset_id
+FROM
+    products p
+    INNER JOIN product_images pi ON pi.product_id = p.id
+        AND pi.id = p.primary_image_id
+        AND pi.status = 'active'
+WHERE
+    p.id = ANY ($1::uuid[])
+    AND pi.media_asset_id IS NOT NULL;
+
 -- name: CatalogAdminListProductMediumRowsForProduct :many
 SELECT pm.*
 FROM product_media pm

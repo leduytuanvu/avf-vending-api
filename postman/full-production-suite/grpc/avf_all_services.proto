@@ -1,0 +1,26 @@
+syntax = "proto3";
+package avf.postman;
+// Gộp import cho Postman — không đổi package/file gốc dưới proto/avf.
+// Root import trong Postman: trỏ tới thư mục grpc/proto (chứa avf/).
+
+import "avf/internal/v1/catalog_query.proto";
+import "avf/internal/v1/commerce_query.proto";
+import "avf/internal/v1/inventory_query.proto";
+import "avf/internal/v1/machine_query.proto";
+import "avf/internal/v1/payment_query.proto";
+import "avf/internal/v1/reporting_query.proto";
+import "avf/machine/v1/auth.proto";
+import "avf/machine/v1/bootstrap.proto";
+import "avf/machine/v1/catalog.proto";
+import "avf/machine/v1/command.proto";
+import "avf/machine/v1/commerce.proto";
+import "avf/machine/v1/common.proto";
+import "avf/machine/v1/inventory.proto";
+import "avf/machine/v1/machine_activation.proto";
+import "avf/machine/v1/machine_runtime.proto";
+import "avf/machine/v1/machine_token.proto";
+import "avf/machine/v1/media.proto";
+import "avf/machine/v1/offline_sync.proto";
+import "avf/machine/v1/operator_grpc.proto";
+import "avf/machine/v1/telemetry.proto";
+import "avf/v1/internal_queries.proto";

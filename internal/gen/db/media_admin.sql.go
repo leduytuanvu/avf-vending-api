@@ -175,6 +175,55 @@ func (q *Queries) MediaAdminDeletePendingAsset(ctx context.Context, id uuid.UUID
 	return result.RowsAffected(), nil
 }
 
+const MediaAdminDeleteVariantsForAsset = `-- name: MediaAdminDeleteVariantsForAsset :exec
+DELETE FROM media_variants
+WHERE media_asset_id = $1
+`
+
+func (q *Queries) MediaAdminDeleteVariantsForAsset(ctx context.Context, mediaAssetID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, MediaAdminDeleteVariantsForAsset, mediaAssetID)
+	return err
+}
+
+const MediaAdminEnsureCanonicalObjectKey = `-- name: MediaAdminEnsureCanonicalObjectKey :one
+UPDATE media_assets
+SET
+    object_key = COALESCE(NULLIF(TRIM(object_key), ''), original_object_key),
+    updated_at = now()
+WHERE
+    id = $1
+RETURNING id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
+`
+
+func (q *Queries) MediaAdminEnsureCanonicalObjectKey(ctx context.Context, id uuid.UUID) (MediaAsset, error) {
+	row := q.db.QueryRow(ctx, MediaAdminEnsureCanonicalObjectKey, id)
+	var i MediaAsset
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.OriginalFilename,
+		&i.ObjectKey,
+		&i.OriginalObjectKey,
+		&i.ThumbObjectKey,
+		&i.DisplayObjectKey,
+		&i.SourceType,
+		&i.OriginalUrl,
+		&i.MimeType,
+		&i.SizeBytes,
+		&i.Sha256,
+		&i.Width,
+		&i.Height,
+		&i.ObjectVersion,
+		&i.Etag,
+		&i.Status,
+		&i.CreatedBy,
+		&i.FailedReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const MediaAdminFindProductImageBinding = `-- name: MediaAdminFindProductImageBinding :one
 SELECT
     pi.id
@@ -203,7 +252,7 @@ func (q *Queries) MediaAdminFindProductImageBinding(ctx context.Context, arg Med
 
 const MediaAdminGetAssetForOrg = `-- name: MediaAdminGetAssetForOrg :one
 SELECT
-    id, kind, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
+    id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
 FROM
     media_assets
 WHERE
@@ -217,6 +266,8 @@ func (q *Queries) MediaAdminGetAssetForOrg(ctx context.Context, id uuid.UUID) (M
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
+		&i.OriginalFilename,
+		&i.ObjectKey,
 		&i.OriginalObjectKey,
 		&i.ThumbObjectKey,
 		&i.DisplayObjectKey,
@@ -240,7 +291,10 @@ func (q *Queries) MediaAdminGetAssetForOrg(ctx context.Context, id uuid.UUID) (M
 
 const MediaAdminInsertAsset = `-- name: MediaAdminInsertAsset :one
 INSERT INTO media_assets (
+    id,
     kind,
+    original_filename,
+    object_key,
     original_object_key,
     thumb_object_key,
     display_object_key,
@@ -259,13 +313,19 @@ VALUES (
     $6,
     $7,
     $8,
-    $9
+    $9,
+    $10,
+    $11,
+    $12
 )
-RETURNING id, kind, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
+RETURNING id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
 `
 
 type MediaAdminInsertAssetParams struct {
+	ID                uuid.UUID
 	Kind              string
+	OriginalFilename  pgtype.Text
+	ObjectKey         pgtype.Text
 	OriginalObjectKey string
 	ThumbObjectKey    string
 	DisplayObjectKey  string
@@ -278,7 +338,10 @@ type MediaAdminInsertAssetParams struct {
 
 func (q *Queries) MediaAdminInsertAsset(ctx context.Context, arg MediaAdminInsertAssetParams) (MediaAsset, error) {
 	row := q.db.QueryRow(ctx, MediaAdminInsertAsset,
+		arg.ID,
 		arg.Kind,
+		arg.OriginalFilename,
+		arg.ObjectKey,
 		arg.OriginalObjectKey,
 		arg.ThumbObjectKey,
 		arg.DisplayObjectKey,
@@ -292,6 +355,8 @@ func (q *Queries) MediaAdminInsertAsset(ctx context.Context, arg MediaAdminInser
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
+		&i.OriginalFilename,
+		&i.ObjectKey,
 		&i.OriginalObjectKey,
 		&i.ThumbObjectKey,
 		&i.DisplayObjectKey,
@@ -313,9 +378,129 @@ func (q *Queries) MediaAdminInsertAsset(ctx context.Context, arg MediaAdminInser
 	return i, err
 }
 
+const MediaAdminInsertMediaVariant = `-- name: MediaAdminInsertMediaVariant :one
+INSERT INTO media_variants (
+    media_asset_id,
+    variant,
+    object_key,
+    mime_type,
+    width,
+    height,
+    size_bytes,
+    sha256,
+    version
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9
+)
+RETURNING id, media_asset_id, variant, object_key, mime_type, width, height, size_bytes, sha256, version, created_at, updated_at
+`
+
+type MediaAdminInsertMediaVariantParams struct {
+	MediaAssetID uuid.UUID
+	Variant      string
+	ObjectKey    string
+	MimeType     pgtype.Text
+	Width        pgtype.Int4
+	Height       pgtype.Int4
+	SizeBytes    pgtype.Int8
+	Sha256       pgtype.Text
+	Version      int32
+}
+
+func (q *Queries) MediaAdminInsertMediaVariant(ctx context.Context, arg MediaAdminInsertMediaVariantParams) (MediaVariant, error) {
+	row := q.db.QueryRow(ctx, MediaAdminInsertMediaVariant,
+		arg.MediaAssetID,
+		arg.Variant,
+		arg.ObjectKey,
+		arg.MimeType,
+		arg.Width,
+		arg.Height,
+		arg.SizeBytes,
+		arg.Sha256,
+		arg.Version,
+	)
+	var i MediaVariant
+	err := row.Scan(
+		&i.ID,
+		&i.MediaAssetID,
+		&i.Variant,
+		&i.ObjectKey,
+		&i.MimeType,
+		&i.Width,
+		&i.Height,
+		&i.SizeBytes,
+		&i.Sha256,
+		&i.Version,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const MediaAdminListAssetsByIDs = `-- name: MediaAdminListAssetsByIDs :many
+SELECT
+    id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
+FROM
+    media_assets
+WHERE
+    id = ANY ($1::uuid[])
+    AND status NOT IN ('deleted', 'archived')
+`
+
+func (q *Queries) MediaAdminListAssetsByIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]MediaAsset, error) {
+	rows, err := q.db.Query(ctx, MediaAdminListAssetsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MediaAsset{}
+	for rows.Next() {
+		var i MediaAsset
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.OriginalFilename,
+			&i.ObjectKey,
+			&i.OriginalObjectKey,
+			&i.ThumbObjectKey,
+			&i.DisplayObjectKey,
+			&i.SourceType,
+			&i.OriginalUrl,
+			&i.MimeType,
+			&i.SizeBytes,
+			&i.Sha256,
+			&i.Width,
+			&i.Height,
+			&i.ObjectVersion,
+			&i.Etag,
+			&i.Status,
+			&i.CreatedBy,
+			&i.FailedReason,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const MediaAdminListAssetsForOrg = `-- name: MediaAdminListAssetsForOrg :many
 SELECT
-    id, kind, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
+    id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
 FROM
     media_assets
 WHERE
@@ -342,6 +527,8 @@ func (q *Queries) MediaAdminListAssetsForOrg(ctx context.Context, arg MediaAdmin
 		if err := rows.Scan(
 			&i.ID,
 			&i.Kind,
+			&i.OriginalFilename,
+			&i.ObjectKey,
 			&i.OriginalObjectKey,
 			&i.ThumbObjectKey,
 			&i.DisplayObjectKey,
@@ -408,6 +595,51 @@ func (q *Queries) MediaAdminListProductImagesForAsset(ctx context.Context, media
 	return items, nil
 }
 
+const MediaAdminListVariantsForAssets = `-- name: MediaAdminListVariantsForAssets :many
+SELECT
+    id, media_asset_id, variant, object_key, mime_type, width, height, size_bytes, sha256, version, created_at, updated_at
+FROM
+    media_variants
+WHERE
+    media_asset_id = ANY ($1::uuid[])
+ORDER BY
+    media_asset_id ASC,
+    variant ASC
+`
+
+func (q *Queries) MediaAdminListVariantsForAssets(ctx context.Context, dollar_1 []uuid.UUID) ([]MediaVariant, error) {
+	rows, err := q.db.Query(ctx, MediaAdminListVariantsForAssets, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MediaVariant{}
+	for rows.Next() {
+		var i MediaVariant
+		if err := rows.Scan(
+			&i.ID,
+			&i.MediaAssetID,
+			&i.Variant,
+			&i.ObjectKey,
+			&i.MimeType,
+			&i.Width,
+			&i.Height,
+			&i.SizeBytes,
+			&i.Sha256,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const MediaAdminMarkAssetFailed = `-- name: MediaAdminMarkAssetFailed :one
 UPDATE media_assets
 SET
@@ -417,7 +649,7 @@ SET
 WHERE
     id = $2
     AND TRUE
-RETURNING id, kind, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
+RETURNING id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
 `
 
 type MediaAdminMarkAssetFailedParams struct {
@@ -431,6 +663,8 @@ func (q *Queries) MediaAdminMarkAssetFailed(ctx context.Context, arg MediaAdminM
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
+		&i.OriginalFilename,
+		&i.ObjectKey,
 		&i.OriginalObjectKey,
 		&i.ThumbObjectKey,
 		&i.DisplayObjectKey,
@@ -460,7 +694,7 @@ SET
 WHERE
     id = $2
     AND TRUE
-RETURNING id, kind, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
+RETURNING id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
 `
 
 type MediaAdminSetAssetStatusParams struct {
@@ -474,6 +708,8 @@ func (q *Queries) MediaAdminSetAssetStatus(ctx context.Context, arg MediaAdminSe
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
+		&i.OriginalFilename,
+		&i.ObjectKey,
 		&i.OriginalObjectKey,
 		&i.ThumbObjectKey,
 		&i.DisplayObjectKey,
@@ -504,7 +740,7 @@ WHERE
     id = $1
     AND TRUE
     AND status != 'deleted'
-RETURNING id, kind, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
+RETURNING id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
 `
 
 func (q *Queries) MediaAdminSoftDeleteAsset(ctx context.Context, id uuid.UUID) (MediaAsset, error) {
@@ -513,6 +749,8 @@ func (q *Queries) MediaAdminSoftDeleteAsset(ctx context.Context, id uuid.UUID) (
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
+		&i.OriginalFilename,
+		&i.ObjectKey,
 		&i.OriginalObjectKey,
 		&i.ThumbObjectKey,
 		&i.DisplayObjectKey,
@@ -550,7 +788,7 @@ WHERE
     id = $7
     AND TRUE
     AND status IN ('pending', 'processing')
-RETURNING id, kind, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
+RETURNING id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
 `
 
 type MediaAdminUpdateAssetReadyParams struct {
@@ -577,6 +815,8 @@ func (q *Queries) MediaAdminUpdateAssetReady(ctx context.Context, arg MediaAdmin
 	err := row.Scan(
 		&i.ID,
 		&i.Kind,
+		&i.OriginalFilename,
+		&i.ObjectKey,
 		&i.OriginalObjectKey,
 		&i.ThumbObjectKey,
 		&i.DisplayObjectKey,

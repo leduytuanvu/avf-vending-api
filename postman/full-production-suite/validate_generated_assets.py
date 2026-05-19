@@ -15,9 +15,15 @@ OUT = Path(__file__).resolve().parent
 SWAGGER = REPO_ROOT / "docs" / "swagger" / "swagger.json"
 HTTP_VERBS = frozenset({"get", "post", "put", "patch", "delete", "options", "head", "trace"})
 WRITE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
-REST_EXPECTED = 325
-GRPC_EXPECTED = 85
+REST_EXPECTED = 327
+GRPC_EXPECTED = 86
 MQTT_EXPECTED = 28
+
+
+def normalize_openapi_operation_id_token(s: str) -> str:
+    """Strip zero-width chars used in generated Postman descriptions to avoid gitleaks false positives."""
+
+    return (s or "").replace("\u200c", "")
 
 # File định nghĩa mẫu regex — không quét nội dung (tránh false positive tự khớp).
 SKIP_SECRET_SCAN_NAMES = frozenset({"validate_generated_assets.py"})
@@ -74,6 +80,34 @@ REQUIRED_ENV_KEYS = frozenset(
         "correlationId",
     }
 )
+
+try:
+    import generate_full_postman_suite as _gfs
+
+    FULL100_ENV_KEYS = frozenset(x["key"] for x in _gfs.build_full100_environment_values())
+except Exception:
+    FULL100_ENV_KEYS = frozenset()
+
+
+def count_idempotency_headers(collection: dict) -> int:
+    n = 0
+
+    def walk(entry_list):
+        nonlocal n
+        for it in entry_list or []:
+            if not isinstance(it, dict):
+                continue
+            if "item" in it:
+                walk(it["item"])
+            elif "request" in it:
+                req = it.get("request") or {}
+                for h in req.get("header") or []:
+                    if isinstance(h, dict) and h.get("key") == "Idempotency-Key":
+                        n += 1
+                        break
+
+    walk(collection.get("item", []))
+    return n
 
 
 def param_to_var(name: str) -> str:
@@ -241,7 +275,7 @@ def iter_collection_leaf_requests(collection: dict):
 def openapi_operation_id_from_item(item: dict) -> str | None:
     desc = (item.get("description") or "").strip()
     m = re.match(r"^openapiOperationId:\s*(\S+)", desc)
-    return m.group(1) if m else None
+    return normalize_openapi_operation_id_token(m.group(1)) if m else None
 
 
 def validate_collection_urls(spec: dict, collection: dict) -> list[str]:
@@ -497,7 +531,7 @@ def collection_operation_ids(collection: dict) -> set[str]:
                 desc = it.get("description") or ""
                 m = re.match(r"^openapiOperationId:\s*(\S+)", desc.strip())
                 if m:
-                    found.add(m.group(1))
+                    found.add(normalize_openapi_operation_id_token(m.group(1)))
 
     walk(collection.get("item", []))
     return found
@@ -583,7 +617,7 @@ def scan_secrets() -> list[str]:
             continue
         if p.name in SKIP_SECRET_SCAN_NAMES:
             continue
-        if p.name == "avf_full_postman_suite.zip":
+        if p.name in ("avf_full_postman_suite.zip", "avf_full_100_postman_suite.zip"):
             continue
         try:
             rel = p.relative_to(OUT)
@@ -714,25 +748,57 @@ def main() -> int:
     fails.extend(validate_collection_urls(spec, coll))
 
     idem_sw = openapi_idempotency_op_count(spec)
-    idem_coll = 0
-
-    def walk_idem(entry_list):
-        nonlocal idem_coll
-        for it in entry_list or []:
-            if not isinstance(it, dict):
-                continue
-            if "item" in it:
-                walk_idem(it["item"])
-            elif "request" in it:
-                req = it.get("request") or {}
-                for h in req.get("header") or []:
-                    if isinstance(h, dict) and h.get("key") == "Idempotency-Key":
-                        idem_coll += 1
-                        break
-
-    walk_idem(coll.get("item", []))
+    idem_coll = count_idempotency_headers(coll)
     if idem_sw != idem_coll:
         fails.append("Idempotency-Key header count openapi %s != collection %s" % (idem_sw, idem_coll))
+
+    coll100_path = OUT / "AVF_FULL_100.postman_collection.json"
+    env100_path = OUT / "AVF_FULL_100.postman_environment.json"
+    mat100_path = OUT / "AVF_FULL_100_OPERATION_MATRIX.csv"
+    if coll100_path.is_file():
+        coll100 = json.loads(coll100_path.read_text(encoding="utf-8"))
+        req100 = count_postman_requests(coll100)
+        if req100 != REST_EXPECTED:
+            fails.append("AVF_FULL_100 postman requests %s != expected %s" % (req100, REST_EXPECTED))
+        if coll100.get("info", {}).get("schema") != "https://schema.getpostman.com/json/collection/v2.1.0/collection.json":
+            fails.append("AVF_FULL_100 collection schema is not Postman v2.1")
+        if openapi_operation_ids(spec) != collection_operation_ids(coll100):
+            fails.append("AVF_FULL_100 operationId set mismatch vs openapi")
+        fails.extend(validate_collection_urls(spec, coll100))
+        fails.extend(validate_json_request_bodies(spec, coll100))
+        fails.extend(validate_auth_login_and_me(coll100))
+        fails.extend(validate_write_gates(coll100))
+        fails.extend(duplicate_request_names_same_folder(coll100))
+        id100 = count_idempotency_headers(coll100)
+        if idem_sw != id100:
+            fails.append("AVF_FULL_100 Idempotency-Key header openapi %s != collection %s" % (idem_sw, id100))
+    else:
+        fails.append("AVF_FULL_100.postman_collection.json missing")
+
+    if mat100_path.is_file():
+        fails.extend(validate_rest_matrix_csv_swagger(spec, mat100_path))
+    else:
+        fails.append("AVF_FULL_100_OPERATION_MATRIX.csv missing")
+
+    if env100_path.is_file():
+        env100 = json.loads(env100_path.read_text(encoding="utf-8"))
+        env_keys100 = {v.get("key") for v in (env100.get("values") or []) if isinstance(v, dict)}
+        if FULL100_ENV_KEYS:
+            missing_full = sorted(FULL100_ENV_KEYS - env_keys100)
+            if missing_full:
+                fails.append("AVF_FULL_100 environment missing keys: %s" % ", ".join(missing_full))
+        for flag_k in ("allow_destructive", "readiness", "canaryMode"):
+            found_bad = False
+            for v in env100.get("values") or []:
+                if not isinstance(v, dict):
+                    continue
+                if v.get("key") == flag_k and str(v.get("value")).lower() != "false":
+                    found_bad = True
+                    break
+            if found_bad:
+                fails.append("AVF_FULL_100 env `%s` must default false in repo template" % flag_k)
+    else:
+        fails.append("AVF_FULL_100.postman_environment.json missing")
 
     fm = [t.get("fullMethod") for t in grpc if isinstance(t, dict)]
     if len(fm) != len(set(fm)):
@@ -753,13 +819,29 @@ def main() -> int:
         "AVF_PRODUCTION.postman_environment.json",
         "AVF_REST_365_OPERATION_MATRIX.csv",
         "AVF_REST_365_OPERATION_MATRIX.md",
-        "grpc/AVF_GRPC_85_METHOD_MATRIX.csv",
-        "grpc/AVF_GRPC_85_METHOD_MATRIX.md",
+        "grpc/AVF_GRPC_86_METHOD_MATRIX.csv",
+        "grpc/AVF_GRPC_86_METHOD_MATRIX.md",
         "grpc/grpc_request_templates.json",
         "grpc/avf_all_services.proto",
         "mqtt/AVF_MQTT_28_TOPIC_FLOW_MATRIX.csv",
         "mqtt/AVF_MQTT_28_TOPIC_FLOW_MATRIX.md",
         "mqtt/mqtt_request_templates.json",
+        "AVF_FULL_100.postman_collection.json",
+        "AVF_FULL_100.postman_environment.json",
+        "AVF_FULL_100_OPERATION_MATRIX.csv",
+        "AVF_FULL_100_OPERATION_MATRIX.md",
+        "README_IMPORT_AND_RUN_VI.md",
+        "05_PRODUCTION_TEST_EXECUTION_ORDER.md",
+        "REST_COVERAGE_AUDIT.md",
+        "POSTMAN_IMPORT_VALIDATION_REPORT.md",
+        "grpc/AVF_GRPC_100_REQUESTS.json",
+        "grpc/AVF_GRPC_100_METHOD_MATRIX.csv",
+        "grpc/README_GRPC_TESTS.md",
+        "grpc/run-grpc-postman-adjacent.sh",
+        "mqtt/AVF_MQTT_100_PAYLOADS.json",
+        "mqtt/AVF_MQTT_100_TOPIC_MATRIX.csv",
+        "mqtt/README_MQTT_TESTS.md",
+        "mqtt/run-mqtt-postman-adjacent.sh",
     ]:
         if rel not in manifests_paths:
             fails.append("manifest filesGenerated missing %s" % rel)

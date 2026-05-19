@@ -81,3 +81,29 @@ FROM
     products
 WHERE
     id = ANY ($1::uuid[]);
+
+-- name: RuntimeProductPrimaryMediaReady :many
+SELECT
+    p.id AS product_id,
+    (
+        p.primary_image_id IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM product_images pi
+            INNER JOIN product_media pm ON pm.id = pi.id
+                AND pm.product_id = pi.product_id
+            LEFT JOIN media_assets ma ON ma.id = pi.media_asset_id
+            WHERE
+                pi.product_id = p.id
+                AND pi.id = p.primary_image_id
+                AND pi.status = 'active'
+                AND pm.status = 'active'
+                AND (
+                    pi.media_asset_id IS NULL
+                    OR ma.status = 'ready'
+                )
+        )
+    )::boolean AS ready
+FROM products p
+WHERE
+    p.id = ANY ($1::uuid[]);

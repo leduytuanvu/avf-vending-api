@@ -487,8 +487,10 @@ type BootstrapCatalogProduct struct {
 	SortOrder      int32                  `protobuf:"varint,4,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
 	AssortmentId   string                 `protobuf:"bytes,5,opt,name=assortment_id,json=assortmentId,proto3" json:"assortment_id,omitempty"`
 	AssortmentName string                 `protobuf:"bytes,6,opt,name=assortment_name,json=assortmentName,proto3" json:"assortment_name,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// True when primary projection rows satisfy runtime readiness (active primary media + ready asset when bound).
+	PrimaryMediaReady bool `protobuf:"varint,7,opt,name=primary_media_ready,json=primaryMediaReady,proto3" json:"primary_media_ready,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *BootstrapCatalogProduct) Reset() {
@@ -563,6 +565,13 @@ func (x *BootstrapCatalogProduct) GetAssortmentName() string {
 	return ""
 }
 
+func (x *BootstrapCatalogProduct) GetPrimaryMediaReady() bool {
+	if x != nil {
+		return x.PrimaryMediaReady
+	}
+	return false
+}
+
 type BootstrapCatalog struct {
 	state         protoimpl.MessageState     `protogen:"open.v1"`
 	Products      []*BootstrapCatalogProduct `protobuf:"bytes,1,rep,name=products,proto3" json:"products,omitempty"`
@@ -607,18 +616,95 @@ func (x *BootstrapCatalog) GetProducts() []*BootstrapCatalogProduct {
 	return nil
 }
 
+type SellReadiness struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	CatalogSynced   bool                   `protobuf:"varint,1,opt,name=catalog_synced,json=catalogSynced,proto3" json:"catalog_synced,omitempty"`
+	MediaSynced     bool                   `protobuf:"varint,2,opt,name=media_synced,json=mediaSynced,proto3" json:"media_synced,omitempty"`
+	InventorySynced bool                   `protobuf:"varint,3,opt,name=inventory_synced,json=inventorySynced,proto3" json:"inventory_synced,omitempty"`
+	ReadyForSale    bool                   `protobuf:"varint,4,opt,name=ready_for_sale,json=readyForSale,proto3" json:"ready_for_sale,omitempty"`
+	ReadinessIssues []string               `protobuf:"bytes,5,rep,name=readiness_issues,json=readinessIssues,proto3" json:"readiness_issues,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SellReadiness) Reset() {
+	*x = SellReadiness{}
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SellReadiness) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SellReadiness) ProtoMessage() {}
+
+func (x *SellReadiness) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SellReadiness.ProtoReflect.Descriptor instead.
+func (*SellReadiness) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SellReadiness) GetCatalogSynced() bool {
+	if x != nil {
+		return x.CatalogSynced
+	}
+	return false
+}
+
+func (x *SellReadiness) GetMediaSynced() bool {
+	if x != nil {
+		return x.MediaSynced
+	}
+	return false
+}
+
+func (x *SellReadiness) GetInventorySynced() bool {
+	if x != nil {
+		return x.InventorySynced
+	}
+	return false
+}
+
+func (x *SellReadiness) GetReadyForSale() bool {
+	if x != nil {
+		return x.ReadyForSale
+	}
+	return false
+}
+
+func (x *SellReadiness) GetReadinessIssues() []string {
+	if x != nil {
+		return x.ReadinessIssues
+	}
+	return nil
+}
+
 type RuntimeHints struct {
 	state                        protoimpl.MessageState `protogen:"open.v1"`
 	FeatureFlags                 map[string]bool        `protobuf:"bytes,1,rep,name=feature_flags,json=featureFlags,proto3" json:"feature_flags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
 	AppliedMachineConfigRevision int32                  `protobuf:"varint,2,opt,name=applied_machine_config_revision,json=appliedMachineConfigRevision,proto3" json:"applied_machine_config_revision,omitempty"`
 	PendingMachineConfigRollouts []*PendingRolloutHint  `protobuf:"bytes,3,rep,name=pending_machine_config_rollouts,json=pendingMachineConfigRollouts,proto3" json:"pending_machine_config_rollouts,omitempty"`
+	SellReadiness                *SellReadiness         `protobuf:"bytes,4,opt,name=sell_readiness,json=sellReadiness,proto3" json:"sell_readiness,omitempty"`
 	unknownFields                protoimpl.UnknownFields
 	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *RuntimeHints) Reset() {
 	*x = RuntimeHints{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[8]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -630,7 +716,7 @@ func (x *RuntimeHints) String() string {
 func (*RuntimeHints) ProtoMessage() {}
 
 func (x *RuntimeHints) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[8]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -643,7 +729,7 @@ func (x *RuntimeHints) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeHints.ProtoReflect.Descriptor instead.
 func (*RuntimeHints) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{8}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *RuntimeHints) GetFeatureFlags() map[string]bool {
@@ -667,6 +753,13 @@ func (x *RuntimeHints) GetPendingMachineConfigRollouts() []*PendingRolloutHint {
 	return nil
 }
 
+func (x *RuntimeHints) GetSellReadiness() *SellReadiness {
+	if x != nil {
+		return x.SellReadiness
+	}
+	return nil
+}
+
 type PendingRolloutHint struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	RolloutId          string                 `protobuf:"bytes,1,opt,name=rollout_id,json=rolloutId,proto3" json:"rollout_id,omitempty"`
@@ -679,7 +772,7 @@ type PendingRolloutHint struct {
 
 func (x *PendingRolloutHint) Reset() {
 	*x = PendingRolloutHint{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[9]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -691,7 +784,7 @@ func (x *PendingRolloutHint) String() string {
 func (*PendingRolloutHint) ProtoMessage() {}
 
 func (x *PendingRolloutHint) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[9]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -704,7 +797,7 @@ func (x *PendingRolloutHint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PendingRolloutHint.ProtoReflect.Descriptor instead.
 func (*PendingRolloutHint) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{9}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *PendingRolloutHint) GetRolloutId() string {
@@ -756,7 +849,7 @@ type GetBootstrapResponse struct {
 
 func (x *GetBootstrapResponse) Reset() {
 	*x = GetBootstrapResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[10]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -768,7 +861,7 @@ func (x *GetBootstrapResponse) String() string {
 func (*GetBootstrapResponse) ProtoMessage() {}
 
 func (x *GetBootstrapResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[10]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -781,7 +874,7 @@ func (x *GetBootstrapResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBootstrapResponse.ProtoReflect.Descriptor instead.
 func (*GetBootstrapResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{10}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetBootstrapResponse) GetMachine() *BootstrapMachine {
@@ -887,7 +980,7 @@ type MachineBootstrapServiceCheckInRequest struct {
 
 func (x *MachineBootstrapServiceCheckInRequest) Reset() {
 	*x = MachineBootstrapServiceCheckInRequest{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[11]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -899,7 +992,7 @@ func (x *MachineBootstrapServiceCheckInRequest) String() string {
 func (*MachineBootstrapServiceCheckInRequest) ProtoMessage() {}
 
 func (x *MachineBootstrapServiceCheckInRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[11]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -912,7 +1005,7 @@ func (x *MachineBootstrapServiceCheckInRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use MachineBootstrapServiceCheckInRequest.ProtoReflect.Descriptor instead.
 func (*MachineBootstrapServiceCheckInRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{11}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *MachineBootstrapServiceCheckInRequest) GetMeta() *MachineRequestMeta {
@@ -952,7 +1045,7 @@ type MachineBootstrapServiceCheckInResponse struct {
 
 func (x *MachineBootstrapServiceCheckInResponse) Reset() {
 	*x = MachineBootstrapServiceCheckInResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[12]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -964,7 +1057,7 @@ func (x *MachineBootstrapServiceCheckInResponse) String() string {
 func (*MachineBootstrapServiceCheckInResponse) ProtoMessage() {}
 
 func (x *MachineBootstrapServiceCheckInResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[12]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -977,7 +1070,7 @@ func (x *MachineBootstrapServiceCheckInResponse) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use MachineBootstrapServiceCheckInResponse.ProtoReflect.Descriptor instead.
 func (*MachineBootstrapServiceCheckInResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{12}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *MachineBootstrapServiceCheckInResponse) GetMeta() *MachineResponseMeta {
@@ -998,7 +1091,7 @@ type AckConfigVersionRequest struct {
 
 func (x *AckConfigVersionRequest) Reset() {
 	*x = AckConfigVersionRequest{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[13]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1010,7 +1103,7 @@ func (x *AckConfigVersionRequest) String() string {
 func (*AckConfigVersionRequest) ProtoMessage() {}
 
 func (x *AckConfigVersionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[13]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1023,7 +1116,7 @@ func (x *AckConfigVersionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckConfigVersionRequest.ProtoReflect.Descriptor instead.
 func (*AckConfigVersionRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{13}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AckConfigVersionRequest) GetMeta() *MachineRequestMeta {
@@ -1056,7 +1149,7 @@ type AckConfigVersionResponse struct {
 
 func (x *AckConfigVersionResponse) Reset() {
 	*x = AckConfigVersionResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[14]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1068,7 +1161,7 @@ func (x *AckConfigVersionResponse) String() string {
 func (*AckConfigVersionResponse) ProtoMessage() {}
 
 func (x *AckConfigVersionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[14]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1081,7 +1174,7 @@ func (x *AckConfigVersionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckConfigVersionResponse.ProtoReflect.Descriptor instead.
 func (*AckConfigVersionResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{14}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AckConfigVersionResponse) GetMeta() *MachineResponseMeta {
@@ -1103,7 +1196,7 @@ type CheckForUpdatesRequest struct {
 
 func (x *CheckForUpdatesRequest) Reset() {
 	*x = CheckForUpdatesRequest{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[15]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1115,7 +1208,7 @@ func (x *CheckForUpdatesRequest) String() string {
 func (*CheckForUpdatesRequest) ProtoMessage() {}
 
 func (x *CheckForUpdatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[15]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1128,7 +1221,7 @@ func (x *CheckForUpdatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckForUpdatesRequest.ProtoReflect.Descriptor instead.
 func (*CheckForUpdatesRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{15}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *CheckForUpdatesRequest) GetCatalogFingerprint() string {
@@ -1176,7 +1269,7 @@ type CheckForUpdatesResponse struct {
 
 func (x *CheckForUpdatesResponse) Reset() {
 	*x = CheckForUpdatesResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[16]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1188,7 +1281,7 @@ func (x *CheckForUpdatesResponse) String() string {
 func (*CheckForUpdatesResponse) ProtoMessage() {}
 
 func (x *CheckForUpdatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[16]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1201,7 +1294,7 @@ func (x *CheckForUpdatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckForUpdatesResponse.ProtoReflect.Descriptor instead.
 func (*CheckForUpdatesResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{16}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CheckForUpdatesResponse) GetCatalogChanged() bool {
@@ -1319,7 +1412,7 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\bmetadata\x18\x05 \x01(\v2\x17.google.protobuf.StructR\bmetadata\x123\n" +
 	"\x05slots\x18\x06 \x03(\v2\x1d.avf.machine.v1.BootstrapSlotR\x05slots\"Q\n" +
 	"\x11BootstrapTopology\x12<\n" +
-	"\bcabinets\x18\x01 \x03(\v2 .avf.machine.v1.BootstrapCabinetR\bcabinets\"\xcb\x01\n" +
+	"\bcabinets\x18\x01 \x03(\v2 .avf.machine.v1.BootstrapCabinetR\bcabinets\"\xfb\x01\n" +
 	"\x17BootstrapCatalogProduct\x12\x1d\n" +
 	"\n" +
 	"product_id\x18\x01 \x01(\tR\tproductId\x12\x10\n" +
@@ -1328,13 +1421,21 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\n" +
 	"sort_order\x18\x04 \x01(\x05R\tsortOrder\x12#\n" +
 	"\rassortment_id\x18\x05 \x01(\tR\fassortmentId\x12'\n" +
-	"\x0fassortment_name\x18\x06 \x01(\tR\x0eassortmentName\"W\n" +
+	"\x0fassortment_name\x18\x06 \x01(\tR\x0eassortmentName\x12.\n" +
+	"\x13primary_media_ready\x18\a \x01(\bR\x11primaryMediaReady\"W\n" +
 	"\x10BootstrapCatalog\x12C\n" +
-	"\bproducts\x18\x01 \x03(\v2'.avf.machine.v1.BootstrapCatalogProductR\bproducts\"\xd6\x02\n" +
+	"\bproducts\x18\x01 \x03(\v2'.avf.machine.v1.BootstrapCatalogProductR\bproducts\"\xd5\x01\n" +
+	"\rSellReadiness\x12%\n" +
+	"\x0ecatalog_synced\x18\x01 \x01(\bR\rcatalogSynced\x12!\n" +
+	"\fmedia_synced\x18\x02 \x01(\bR\vmediaSynced\x12)\n" +
+	"\x10inventory_synced\x18\x03 \x01(\bR\x0finventorySynced\x12$\n" +
+	"\x0eready_for_sale\x18\x04 \x01(\bR\freadyForSale\x12)\n" +
+	"\x10readiness_issues\x18\x05 \x03(\tR\x0freadinessIssues\"\x9c\x03\n" +
 	"\fRuntimeHints\x12S\n" +
 	"\rfeature_flags\x18\x01 \x03(\v2..avf.machine.v1.RuntimeHints.FeatureFlagsEntryR\ffeatureFlags\x12E\n" +
 	"\x1fapplied_machine_config_revision\x18\x02 \x01(\x05R\x1cappliedMachineConfigRevision\x12i\n" +
-	"\x1fpending_machine_config_rollouts\x18\x03 \x03(\v2\".avf.machine.v1.PendingRolloutHintR\x1cpendingMachineConfigRollouts\x1a?\n" +
+	"\x1fpending_machine_config_rollouts\x18\x03 \x03(\v2\".avf.machine.v1.PendingRolloutHintR\x1cpendingMachineConfigRollouts\x12D\n" +
+	"\x0esell_readiness\x18\x04 \x01(\v2\x1d.avf.machine.v1.SellReadinessR\rsellReadiness\x1a?\n" +
 	"\x11FeatureFlagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\bR\x05value:\x028\x01\"\xa9\x01\n" +
@@ -1411,7 +1512,7 @@ func file_avf_machine_v1_bootstrap_proto_rawDescGZIP() []byte {
 	return file_avf_machine_v1_bootstrap_proto_rawDescData
 }
 
-var file_avf_machine_v1_bootstrap_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_avf_machine_v1_bootstrap_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_avf_machine_v1_bootstrap_proto_goTypes = []any{
 	(*GetBootstrapRequest)(nil),                    // 0: avf.machine.v1.GetBootstrapRequest
 	(*MqttConfigMetadata)(nil),                     // 1: avf.machine.v1.MqttConfigMetadata
@@ -1421,57 +1522,59 @@ var file_avf_machine_v1_bootstrap_proto_goTypes = []any{
 	(*BootstrapTopology)(nil),                      // 5: avf.machine.v1.BootstrapTopology
 	(*BootstrapCatalogProduct)(nil),                // 6: avf.machine.v1.BootstrapCatalogProduct
 	(*BootstrapCatalog)(nil),                       // 7: avf.machine.v1.BootstrapCatalog
-	(*RuntimeHints)(nil),                           // 8: avf.machine.v1.RuntimeHints
-	(*PendingRolloutHint)(nil),                     // 9: avf.machine.v1.PendingRolloutHint
-	(*GetBootstrapResponse)(nil),                   // 10: avf.machine.v1.GetBootstrapResponse
-	(*MachineBootstrapServiceCheckInRequest)(nil),  // 11: avf.machine.v1.MachineBootstrapServiceCheckInRequest
-	(*MachineBootstrapServiceCheckInResponse)(nil), // 12: avf.machine.v1.MachineBootstrapServiceCheckInResponse
-	(*AckConfigVersionRequest)(nil),                // 13: avf.machine.v1.AckConfigVersionRequest
-	(*AckConfigVersionResponse)(nil),               // 14: avf.machine.v1.AckConfigVersionResponse
-	(*CheckForUpdatesRequest)(nil),                 // 15: avf.machine.v1.CheckForUpdatesRequest
-	(*CheckForUpdatesResponse)(nil),                // 16: avf.machine.v1.CheckForUpdatesResponse
-	nil,                                            // 17: avf.machine.v1.RuntimeHints.FeatureFlagsEntry
-	nil,                                            // 18: avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
-	(*MachineRequestMeta)(nil),                     // 19: avf.machine.v1.MachineRequestMeta
-	(*timestamppb.Timestamp)(nil),                  // 20: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),                        // 21: google.protobuf.Struct
-	(*MachineResponseMeta)(nil),                    // 22: avf.machine.v1.MachineResponseMeta
+	(*SellReadiness)(nil),                          // 8: avf.machine.v1.SellReadiness
+	(*RuntimeHints)(nil),                           // 9: avf.machine.v1.RuntimeHints
+	(*PendingRolloutHint)(nil),                     // 10: avf.machine.v1.PendingRolloutHint
+	(*GetBootstrapResponse)(nil),                   // 11: avf.machine.v1.GetBootstrapResponse
+	(*MachineBootstrapServiceCheckInRequest)(nil),  // 12: avf.machine.v1.MachineBootstrapServiceCheckInRequest
+	(*MachineBootstrapServiceCheckInResponse)(nil), // 13: avf.machine.v1.MachineBootstrapServiceCheckInResponse
+	(*AckConfigVersionRequest)(nil),                // 14: avf.machine.v1.AckConfigVersionRequest
+	(*AckConfigVersionResponse)(nil),               // 15: avf.machine.v1.AckConfigVersionResponse
+	(*CheckForUpdatesRequest)(nil),                 // 16: avf.machine.v1.CheckForUpdatesRequest
+	(*CheckForUpdatesResponse)(nil),                // 17: avf.machine.v1.CheckForUpdatesResponse
+	nil,                                            // 18: avf.machine.v1.RuntimeHints.FeatureFlagsEntry
+	nil,                                            // 19: avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
+	(*MachineRequestMeta)(nil),                     // 20: avf.machine.v1.MachineRequestMeta
+	(*timestamppb.Timestamp)(nil),                  // 21: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),                        // 22: google.protobuf.Struct
+	(*MachineResponseMeta)(nil),                    // 23: avf.machine.v1.MachineResponseMeta
 }
 var file_avf_machine_v1_bootstrap_proto_depIdxs = []int32{
-	19, // 0: avf.machine.v1.GetBootstrapRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	20, // 1: avf.machine.v1.BootstrapMachine.created_at:type_name -> google.protobuf.Timestamp
-	20, // 2: avf.machine.v1.BootstrapMachine.updated_at:type_name -> google.protobuf.Timestamp
-	21, // 3: avf.machine.v1.BootstrapCabinet.metadata:type_name -> google.protobuf.Struct
+	20, // 0: avf.machine.v1.GetBootstrapRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	21, // 1: avf.machine.v1.BootstrapMachine.created_at:type_name -> google.protobuf.Timestamp
+	21, // 2: avf.machine.v1.BootstrapMachine.updated_at:type_name -> google.protobuf.Timestamp
+	22, // 3: avf.machine.v1.BootstrapCabinet.metadata:type_name -> google.protobuf.Struct
 	3,  // 4: avf.machine.v1.BootstrapCabinet.slots:type_name -> avf.machine.v1.BootstrapSlot
 	4,  // 5: avf.machine.v1.BootstrapTopology.cabinets:type_name -> avf.machine.v1.BootstrapCabinet
 	6,  // 6: avf.machine.v1.BootstrapCatalog.products:type_name -> avf.machine.v1.BootstrapCatalogProduct
-	17, // 7: avf.machine.v1.RuntimeHints.feature_flags:type_name -> avf.machine.v1.RuntimeHints.FeatureFlagsEntry
-	9,  // 8: avf.machine.v1.RuntimeHints.pending_machine_config_rollouts:type_name -> avf.machine.v1.PendingRolloutHint
-	2,  // 9: avf.machine.v1.GetBootstrapResponse.machine:type_name -> avf.machine.v1.BootstrapMachine
-	5,  // 10: avf.machine.v1.GetBootstrapResponse.topology:type_name -> avf.machine.v1.BootstrapTopology
-	7,  // 11: avf.machine.v1.GetBootstrapResponse.catalog:type_name -> avf.machine.v1.BootstrapCatalog
-	20, // 12: avf.machine.v1.GetBootstrapResponse.server_time:type_name -> google.protobuf.Timestamp
-	1,  // 13: avf.machine.v1.GetBootstrapResponse.mqtt:type_name -> avf.machine.v1.MqttConfigMetadata
-	8,  // 14: avf.machine.v1.GetBootstrapResponse.runtime_hints:type_name -> avf.machine.v1.RuntimeHints
-	22, // 15: avf.machine.v1.GetBootstrapResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	19, // 16: avf.machine.v1.MachineBootstrapServiceCheckInRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	18, // 17: avf.machine.v1.MachineBootstrapServiceCheckInRequest.attributes:type_name -> avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
-	22, // 18: avf.machine.v1.MachineBootstrapServiceCheckInResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	19, // 19: avf.machine.v1.AckConfigVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	22, // 20: avf.machine.v1.AckConfigVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	0,  // 21: avf.machine.v1.MachineBootstrapService.GetBootstrap:input_type -> avf.machine.v1.GetBootstrapRequest
-	11, // 22: avf.machine.v1.MachineBootstrapService.CheckIn:input_type -> avf.machine.v1.MachineBootstrapServiceCheckInRequest
-	13, // 23: avf.machine.v1.MachineBootstrapService.AckConfigVersion:input_type -> avf.machine.v1.AckConfigVersionRequest
-	15, // 24: avf.machine.v1.MachineBootstrapService.CheckForUpdates:input_type -> avf.machine.v1.CheckForUpdatesRequest
-	10, // 25: avf.machine.v1.MachineBootstrapService.GetBootstrap:output_type -> avf.machine.v1.GetBootstrapResponse
-	12, // 26: avf.machine.v1.MachineBootstrapService.CheckIn:output_type -> avf.machine.v1.MachineBootstrapServiceCheckInResponse
-	14, // 27: avf.machine.v1.MachineBootstrapService.AckConfigVersion:output_type -> avf.machine.v1.AckConfigVersionResponse
-	16, // 28: avf.machine.v1.MachineBootstrapService.CheckForUpdates:output_type -> avf.machine.v1.CheckForUpdatesResponse
-	25, // [25:29] is the sub-list for method output_type
-	21, // [21:25] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	18, // 7: avf.machine.v1.RuntimeHints.feature_flags:type_name -> avf.machine.v1.RuntimeHints.FeatureFlagsEntry
+	10, // 8: avf.machine.v1.RuntimeHints.pending_machine_config_rollouts:type_name -> avf.machine.v1.PendingRolloutHint
+	8,  // 9: avf.machine.v1.RuntimeHints.sell_readiness:type_name -> avf.machine.v1.SellReadiness
+	2,  // 10: avf.machine.v1.GetBootstrapResponse.machine:type_name -> avf.machine.v1.BootstrapMachine
+	5,  // 11: avf.machine.v1.GetBootstrapResponse.topology:type_name -> avf.machine.v1.BootstrapTopology
+	7,  // 12: avf.machine.v1.GetBootstrapResponse.catalog:type_name -> avf.machine.v1.BootstrapCatalog
+	21, // 13: avf.machine.v1.GetBootstrapResponse.server_time:type_name -> google.protobuf.Timestamp
+	1,  // 14: avf.machine.v1.GetBootstrapResponse.mqtt:type_name -> avf.machine.v1.MqttConfigMetadata
+	9,  // 15: avf.machine.v1.GetBootstrapResponse.runtime_hints:type_name -> avf.machine.v1.RuntimeHints
+	23, // 16: avf.machine.v1.GetBootstrapResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	20, // 17: avf.machine.v1.MachineBootstrapServiceCheckInRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	19, // 18: avf.machine.v1.MachineBootstrapServiceCheckInRequest.attributes:type_name -> avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
+	23, // 19: avf.machine.v1.MachineBootstrapServiceCheckInResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	20, // 20: avf.machine.v1.AckConfigVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	23, // 21: avf.machine.v1.AckConfigVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	0,  // 22: avf.machine.v1.MachineBootstrapService.GetBootstrap:input_type -> avf.machine.v1.GetBootstrapRequest
+	12, // 23: avf.machine.v1.MachineBootstrapService.CheckIn:input_type -> avf.machine.v1.MachineBootstrapServiceCheckInRequest
+	14, // 24: avf.machine.v1.MachineBootstrapService.AckConfigVersion:input_type -> avf.machine.v1.AckConfigVersionRequest
+	16, // 25: avf.machine.v1.MachineBootstrapService.CheckForUpdates:input_type -> avf.machine.v1.CheckForUpdatesRequest
+	11, // 26: avf.machine.v1.MachineBootstrapService.GetBootstrap:output_type -> avf.machine.v1.GetBootstrapResponse
+	13, // 27: avf.machine.v1.MachineBootstrapService.CheckIn:output_type -> avf.machine.v1.MachineBootstrapServiceCheckInResponse
+	15, // 28: avf.machine.v1.MachineBootstrapService.AckConfigVersion:output_type -> avf.machine.v1.AckConfigVersionResponse
+	17, // 29: avf.machine.v1.MachineBootstrapService.CheckForUpdates:output_type -> avf.machine.v1.CheckForUpdatesResponse
+	26, // [26:30] is the sub-list for method output_type
+	22, // [22:26] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_bootstrap_proto_init() }
@@ -1486,7 +1589,7 @@ func file_avf_machine_v1_bootstrap_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_bootstrap_proto_rawDesc), len(file_avf_machine_v1_bootstrap_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

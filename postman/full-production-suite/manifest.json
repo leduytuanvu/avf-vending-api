@@ -1,0 +1,279 @@
+{
+  "generatedAt": "2026-05-19T05:34:28.816317+00:00",
+  "gitCommit": "9e859d5ea156379669c6e93b5559685a15e70fbb",
+  "gitBranch": "feature/product-media-offline-cache",
+  "swaggerSource": "docs/swagger/swagger.json",
+  "protoSources": [
+    "proto/avf/internal/v1/catalog_query.proto",
+    "proto/avf/internal/v1/commerce_query.proto",
+    "proto/avf/internal/v1/inventory_query.proto",
+    "proto/avf/internal/v1/machine_query.proto",
+    "proto/avf/internal/v1/payment_query.proto",
+    "proto/avf/internal/v1/reporting_query.proto",
+    "proto/avf/machine/v1/auth.proto",
+    "proto/avf/machine/v1/bootstrap.proto",
+    "proto/avf/machine/v1/catalog.proto",
+    "proto/avf/machine/v1/command.proto",
+    "proto/avf/machine/v1/commerce.proto",
+    "proto/avf/machine/v1/inventory.proto",
+    "proto/avf/machine/v1/machine_activation.proto",
+    "proto/avf/machine/v1/machine_token.proto",
+    "proto/avf/machine/v1/media.proto",
+    "proto/avf/machine/v1/offline_sync.proto",
+    "proto/avf/machine/v1/operator_grpc.proto",
+    "proto/avf/machine/v1/telemetry.proto",
+    "proto/avf/v1/internal_queries.proto"
+  ],
+  "mqttSources": [
+    "internal/platform/mqtt/topics.go",
+    "docs/api/mqtt-contract.md"
+  ],
+  "restExpectedCount": 327,
+  "restActualCount": 327,
+  "grpcExpectedCount": 86,
+  "grpcActualCount": 86,
+  "mqttExpectedCount": 28,
+  "mqttActualCount": 28,
+  "restCollectionRequestCount": 327,
+  "filesGenerated": [
+    {
+      "path": "05_PRODUCTION_TEST_EXECUTION_ORDER.md",
+      "sha256": "85bda9c5debbd50f62385d1ac09ec67d78fba40b710b3029b5ab15eb0d93d41d"
+    },
+    {
+      "path": "06_COMPLETENESS_AUDIT.csv",
+      "sha256": "03a91b9ac49912bfe8d4e0d51d9c32a60804965e8c14822eec865278ddc431f3"
+    },
+    {
+      "path": "audit_postman_variables.py",
+      "sha256": "a31abaaf327447078f4b179c1a362b8d43e49a70fd1b1fb6f4a95a82f834921a"
+    },
+    {
+      "path": "AVF_FULL_100.postman_collection.json",
+      "sha256": "caf690e8dff55c7a0e2a9e4e62c2d37195b622422504a5dfbe1c131fa1e9b702"
+    },
+    {
+      "path": "AVF_FULL_100.postman_environment.json",
+      "sha256": "cac8586ec14556d020559b2ee62943f2c2a7a958855a2ba6050e1b799da130a1"
+    },
+    {
+      "path": "AVF_FULL_100_OPERATION_MATRIX.csv",
+      "sha256": "d25f2940d872e332c8a4da35356786fb61e1d9fe1e805db5a75278fc0e3b8d74"
+    },
+    {
+      "path": "AVF_FULL_100_OPERATION_MATRIX.md",
+      "sha256": "5c317c3f81116e3b4702a1e4d49c808e92900d0493bdfc43634122b0c6280154"
+    },
+    {
+      "path": "AVF_PRODUCTION.postman_environment.json",
+      "sha256": "88723332dbb5f3694e95fac93ed0df92eca0d8b252f62ba90c3e5c5722799716"
+    },
+    {
+      "path": "AVF_REST_365_FULL.postman_collection.json",
+      "sha256": "a9a2ab116761ab2ab707e8ad48b4237ffd7649000cbbdf11c9e7e3e55ce48f5a"
+    },
+    {
+      "path": "AVF_REST_365_OPERATION_MATRIX.csv",
+      "sha256": "80d2c8b0e04920a539d8bf3d69ed170dd8b3c431a7d12383f2296165f4e05ec9"
+    },
+    {
+      "path": "AVF_REST_365_OPERATION_MATRIX.md",
+      "sha256": "63509545e6a282afe8ccf42e7069a250375ff5ed687d5e10712ce4d22083233e"
+    },
+    {
+      "path": "generate_full_postman_suite.py",
+      "sha256": "aba77830627d21edc19cb4d2a340048d3177a76169091a6a09fc9c0972febfcf"
+    },
+    {
+      "path": "grpc/avf_all_services.proto",
+      "sha256": "5983990d56eb2f6a7d6d52587fcbf291cbd5d4dd72fad44d2c81154417fdca45"
+    },
+    {
+      "path": "grpc/AVF_GRPC_100_METHOD_MATRIX.csv",
+      "sha256": "1c0cebfad26efedff9bc66be935a8856ec0dda93a56c82733b7fc5d3aabe6a06"
+    },
+    {
+      "path": "grpc/AVF_GRPC_100_REQUESTS.json",
+      "sha256": "6fe96dfe35dd6478d838077b9878b2f8af4f93603fc48991e230e25bcf77862e"
+    },
+    {
+      "path": "grpc/AVF_GRPC_86_METHOD_MATRIX.csv",
+      "sha256": "edcdf6848293d078c7e956c6245549f9f4d231bc082dbdccc641b8793bcda2dc"
+    },
+    {
+      "path": "grpc/AVF_GRPC_86_METHOD_MATRIX.md",
+      "sha256": "bf5851bc8c4782af9f86eef810edc6407bdf9a6c3dd86c1aa494ede5d0c256b8"
+    },
+    {
+      "path": "grpc/grpc_request_templates.json",
+      "sha256": "6fe96dfe35dd6478d838077b9878b2f8af4f93603fc48991e230e25bcf77862e"
+    },
+    {
+      "path": "grpc/proto/avf/internal/v1/catalog_query.proto",
+      "sha256": "3d843c41baffee5422eabb00f20b39134c919b1d582772225d4b9e6b0a0ecdd8"
+    },
+    {
+      "path": "grpc/proto/avf/internal/v1/commerce_query.proto",
+      "sha256": "38753233fc5270dcf193f8d65a9f2e2f14739bc3c5db570f2bbd74455a107521"
+    },
+    {
+      "path": "grpc/proto/avf/internal/v1/inventory_query.proto",
+      "sha256": "fac11be816a63840fd2e84b41e4a3b82cf22921973ba1dce11ac53d065751180"
+    },
+    {
+      "path": "grpc/proto/avf/internal/v1/machine_query.proto",
+      "sha256": "2a6bd5e1729a39b29bb2e0da0aa95212473510b9b5a93aaa1f17142326ace5e8"
+    },
+    {
+      "path": "grpc/proto/avf/internal/v1/payment_query.proto",
+      "sha256": "ac27baf0d2361a484873e5ef5243ea649c1928733e9560df3106f38e40f6cf23"
+    },
+    {
+      "path": "grpc/proto/avf/internal/v1/reporting_query.proto",
+      "sha256": "6caaef96689818d1c1bb557c20a15b406082203de74f939b6ac6cdcc5a1f1db3"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/auth.proto",
+      "sha256": "aa240457a6883148d3cb321013f36ecdfb88f2e2e534cb92bc181bce615ba7fd"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/bootstrap.proto",
+      "sha256": "3d6a0c5ce797d26b78c138e4846e281d0c4e636853b618f2c5c5a593d26d0a1f"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/catalog.proto",
+      "sha256": "496da45cd39a4fcbad440d46663d9aa2141408861ce8acc2e79b750f60e33ac7"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/command.proto",
+      "sha256": "2b28f818e0a847ee65ebd0ed61a37fbcf174d8f0ada016c9518b6bc7e92d1094"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/commerce.proto",
+      "sha256": "3d2cffc9188d0c0b3f1d4d014b6d86c2b71aead57d36e2a39cba7403aad394df"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/common.proto",
+      "sha256": "81452bf0d16d459b628c013704aae24b4960417e8eae74262fe35ad826700622"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/inventory.proto",
+      "sha256": "5c5db51b8b0dbd12115187631c0cbc0b19ff404ac376f83f42cf10b25ca0f3f6"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/machine_activation.proto",
+      "sha256": "f0ad190a26f80daeb838b3546cba37172c489c723a3a36a4c9f63b4f7f8cfc63"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/machine_runtime.proto",
+      "sha256": "f60fa3dbb3d1cdf1b6cda0cd289bdeaf7fb7ef5cd8eac152a4aef05ed3f7d19c"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/machine_token.proto",
+      "sha256": "5de7114ded23e0706d316f84dcf71437b89c39e7d969c1300dbcbd384d2f89d1"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/media.proto",
+      "sha256": "8419892030dcddab87a6880e9e05bac0b2616b35d3336afbb62f226c0cfdacf6"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/offline_sync.proto",
+      "sha256": "1e74b60c3bc9f6f5e88c0c68717d3ee6c0040f9b83cea2cf40ad89e8ba019011"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/operator_grpc.proto",
+      "sha256": "7f0a3c3ef3e668082175217c5eae4991ef44f1c9e93c54e3c55ef4c8694d5d84"
+    },
+    {
+      "path": "grpc/proto/avf/machine/v1/telemetry.proto",
+      "sha256": "b2536c39f3080e2654c2390d1b47045df2d3f52f0c25a110aeb70451d87b8a72"
+    },
+    {
+      "path": "grpc/proto/avf/v1/internal_queries.proto",
+      "sha256": "21bb9616ae85408782248d2b1ca0ac03c583bd51b6ddac38ce2c75fb70ea9164"
+    },
+    {
+      "path": "grpc/proto/avf/v1/skeleton.proto",
+      "sha256": "a611003611a93a3fc608ae44a13062e257a054d770d58ea2ca791d115d853315"
+    },
+    {
+      "path": "grpc/README_GRPC_POSTMAN_IMPORT_VI.md",
+      "sha256": "e6c01772ccb6ead14e97d630711822dd993fa311b8739513a996931df95ef775"
+    },
+    {
+      "path": "grpc/README_GRPC_TESTS.md",
+      "sha256": "f45c52d35a1fba25fcc08ec2c0502b38eceb54fce97f6b0afd622f912c2c719f"
+    },
+    {
+      "path": "grpc/run-grpc-postman-adjacent.sh",
+      "sha256": "e18686d3b68671a2b460e588551d290d5db26dd040cf3acd02997eea263790cf"
+    },
+    {
+      "path": "mqtt/AVF_MQTT_100_PAYLOADS.json",
+      "sha256": "b8eac65be0c5119587ce6aa2ce378d086b3c46459dd0732867b36eed1e911864"
+    },
+    {
+      "path": "mqtt/AVF_MQTT_100_TOPIC_MATRIX.csv",
+      "sha256": "d0737fe8963c8fc698e8c075ab90da33aa4523a267bbd087182dd7b6ccca54be"
+    },
+    {
+      "path": "mqtt/AVF_MQTT_28_TOPIC_FLOW_MATRIX.csv",
+      "sha256": "6a8eb71684dd7dd6c94a5e3106b809116ad388de4fd4ddec963a70f2ba5d084a"
+    },
+    {
+      "path": "mqtt/AVF_MQTT_28_TOPIC_FLOW_MATRIX.md",
+      "sha256": "3a1f2daae4a4b464b8a3f6af8034caf722e0417ea5a9f9c07b4c36e90f848590"
+    },
+    {
+      "path": "mqtt/mqtt_request_templates.json",
+      "sha256": "b8eac65be0c5119587ce6aa2ce378d086b3c46459dd0732867b36eed1e911864"
+    },
+    {
+      "path": "mqtt/README_MQTT_POSTMAN_IMPORT_VI.md",
+      "sha256": "69f64b5ee69f6557308ee38e56f17ccb3702459743dfe4a1a5563bd9057f1e40"
+    },
+    {
+      "path": "mqtt/README_MQTT_TESTS.md",
+      "sha256": "e67336146fcd579c63e4bc473317762b1f8c8a5479d7ca0fcde319276b46e46e"
+    },
+    {
+      "path": "mqtt/run-mqtt-postman-adjacent.sh",
+      "sha256": "181139a094555b697a07d676090068b372523b8ec971301e96fd86081a308be8"
+    },
+    {
+      "path": "POSTMAN_IMPORT_VALIDATION_REPORT.md",
+      "sha256": "e38ba23e91da3bac9b10d9f010354b3f320ea841706daf9a349d885a41b18b60"
+    },
+    {
+      "path": "POSTMAN_VARIABLE_AUDIT_REPORT.md",
+      "sha256": "a73696786df77e92a3110654eea37cd55628ea577245754954dafdf447b584e9"
+    },
+    {
+      "path": "README_IMPORT_AND_RUN_VI.md",
+      "sha256": "345043ba035be06a9199565a18757e79ffe444d53415c32d2f812e6a0f348f3b"
+    },
+    {
+      "path": "REST_COVERAGE_AUDIT.md",
+      "sha256": "8671627ac66c584f9193b683341bd7c0485c18ea8c4ff8c57fc456d4193b0f74"
+    },
+    {
+      "path": "validate_generated_assets.py",
+      "sha256": "62658d442aeb0567aeacde16e153a9afdc58a66166c8833a978e2962000a2bf4"
+    }
+  ],
+  "notesExcludedFromSha256": [
+    "00_KET_LUAN_KIEM_TRA_DO_DAY_DU.md",
+    "EMPTY_BODY_AUDIT_REPORT_VI.md",
+    "EMPTY_URL_AUDIT_REPORT_VI.md",
+    "POSTMAN_SUITE_REVIEW_REPORT_VI.md",
+    "avf_full_100_postman_suite.zip",
+    "avf_full_postman_suite.zip",
+    "manifest.json"
+  ],
+  "warnings": [
+    "audit_postman_variables failed rc=1 — Traceback (most recent call last):\n  File \"D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\postman\\full-production-suite\\audit_postman_variables.py\", line 312, in <module>\n    raise SystemExit(main())\n                     ~~~~^^\n  File \"D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\postman\\full-production-suite\\audit_postman_variables.py\", line 302, in main\n    report = build_report(spec, coll, env_keys)\n  File \"D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-ap",
+    "sanitize_postman_sidecar_yamls error: cannot access local variable 'sys' where it is not associated with a value"
+  ],
+  "blockers": [],
+  "finalStatus": "PASS_IMPORT_ASSETS_COMPLETE"
+}

@@ -477,6 +477,8 @@ var requiredP0Operations = []struct {
 	{"delete", "/v1/admin/products/{productId}/image"},
 	{"post", "/v1/admin/media/assets"},
 	{"post", "/v1/admin/media/uploads"},
+	{"post", "/v1/admin/media/uploads/init"},
+	{"post", "/v1/admin/media/uploads/{mediaId}/complete"},
 	{"post", "/v1/admin/media/{mediaId}/complete"},
 	{"get", "/v1/admin/media/assets"},
 	{"get", "/v1/admin/media/assets/{mediaId}"},
@@ -644,5 +646,37 @@ func TestOpenAPI_adminSites_noLegacyScopeOrgTenantParamsOrExamples(t *testing.T)
 				t.Fatalf("OpenAPI fragment for %s must not contain %q:\n%s", path, tok, s)
 			}
 		}
+	}
+}
+
+func TestOpenAPI_adminProductSchemasIncludeTagIdsAndTags(t *testing.T) {
+	t.Parallel()
+	var spec map[string]any
+	if err := json.Unmarshal(swagger.OpenAPIJSON(), &spec); err != nil {
+		t.Fatal(err)
+	}
+	comp, ok := spec["components"].(map[string]any)
+	if !ok {
+		t.Fatal("missing components")
+	}
+	schemas, ok := comp["schemas"].(map[string]any)
+	if !ok {
+		t.Fatal("missing components.schemas")
+	}
+	mut, ok := schemas["V1AdminProductMutationRequest"].(map[string]any)
+	if !ok {
+		t.Fatal("missing V1AdminProductMutationRequest schema")
+	}
+	mprops, ok := mut["properties"].(map[string]any)
+	if !ok || mprops["tagIds"] == nil {
+		t.Fatal("V1AdminProductMutationRequest must define tagIds")
+	}
+	prod, ok := schemas["V1AdminProduct"].(map[string]any)
+	if !ok {
+		t.Fatal("missing V1AdminProduct schema")
+	}
+	pprops, ok := prod["properties"].(map[string]any)
+	if !ok || pprops["tags"] == nil {
+		t.Fatal("V1AdminProduct must define tags")
 	}
 }

@@ -268,6 +268,9 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 		}
 		mediaSvc = ms
 	}
+	if mediaSvc != nil {
+		catSvc.SetMediaBinder(mediaSvc)
+	}
 
 	adminOpsSvc, adminOpsErr := appadminops.NewService(appadminops.Deps{
 		Pool:           pool,

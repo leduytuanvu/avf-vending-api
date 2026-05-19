@@ -146,6 +146,42 @@ func (q *Queries) InsertMachineCheckIn(ctx context.Context, arg InsertMachineChe
 	return i, err
 }
 
+const RuntimeGetMachineSellReadinessAcks = `-- name: RuntimeGetMachineSellReadinessAcks :one
+SELECT
+    m.published_planogram_version_id,
+    mcs.last_acknowledged_planogram_version_id,
+    mcs.last_acknowledged_config_revision,
+    COALESCE((
+        SELECT mc.config_revision FROM machine_configs mc
+        WHERE mc.machine_id = m.id
+        ORDER BY mc.applied_at DESC
+        LIMIT 1
+    ), 0)::integer AS latest_config_revision
+FROM machines m
+LEFT JOIN machine_current_snapshot mcs ON mcs.machine_id = m.id
+WHERE
+    m.id = $1
+`
+
+type RuntimeGetMachineSellReadinessAcksRow struct {
+	PublishedPlanogramVersionID        pgtype.UUID
+	LastAcknowledgedPlanogramVersionID pgtype.UUID
+	LastAcknowledgedConfigRevision     pgtype.Int4
+	LatestConfigRevision               int32
+}
+
+func (q *Queries) RuntimeGetMachineSellReadinessAcks(ctx context.Context, id uuid.UUID) (RuntimeGetMachineSellReadinessAcksRow, error) {
+	row := q.db.QueryRow(ctx, RuntimeGetMachineSellReadinessAcks, id)
+	var i RuntimeGetMachineSellReadinessAcksRow
+	err := row.Scan(
+		&i.PublishedPlanogramVersionID,
+		&i.LastAcknowledgedPlanogramVersionID,
+		&i.LastAcknowledgedConfigRevision,
+		&i.LatestConfigRevision,
+	)
+	return i, err
+}
+
 const UpdateMachineCurrentSnapshotLastCheckIn = `-- name: UpdateMachineCurrentSnapshotLastCheckIn :exec
 UPDATE machine_current_snapshot
 SET

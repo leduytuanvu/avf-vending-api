@@ -579,6 +579,42 @@
         ],
         "type": "object"
       },
+      "V1AdminCatalogTag": {
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "active",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "V1AdminCommandListItem": {
         "properties": {
           "attemptCount": {
@@ -1443,6 +1479,45 @@
         ],
         "type": "object"
       },
+      "V1AdminMediaUploadCompleteRequestV2": {
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "format": "int64",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "V1AdminMediaUploadCompleteResponseV2": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/V1AdminMediaVariantResponse"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "variants"
+        ],
+        "type": "object"
+      },
       "V1AdminMediaUploadInitRequest": {
         "properties": {
           "content_type": {
@@ -1452,6 +1527,24 @@
         },
         "required": [
           "content_type"
+        ],
+        "type": "object"
+      },
+      "V1AdminMediaUploadInitRequestV2": {
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "filename",
+          "contentType"
         ],
         "type": "object"
       },
@@ -1493,6 +1586,73 @@
           "upload_headers",
           "expires_at",
           "complete_path"
+        ],
+        "type": "object"
+      },
+      "V1AdminMediaUploadInitResponseV2": {
+        "properties": {
+          "completePath": {
+            "type": "string"
+          },
+          "mediaId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "objectKey": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "uploadUrl": {
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mediaId",
+          "uploadUrl",
+          "objectKey",
+          "status"
+        ],
+        "type": "object"
+      },
+      "V1AdminMediaVariantResponse": {
+        "properties": {
+          "downloadUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "height": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "variant": {
+            "type": "string"
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "width": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "variant",
+          "version",
+          "downloadUrl"
         ],
         "type": "object"
       },
@@ -2854,9 +3014,20 @@
           "description": {
             "type": "string"
           },
+          "displayUrl": {
+            "nullable": true,
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "type": "string"
+          },
+          "imageUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "media": {
+            "$ref": "#/components/schemas/V1AdminProductMediaDoc"
           },
           "name": {
             "type": "string"
@@ -2870,7 +3041,26 @@
             "nullable": true,
             "type": "string"
           },
+          "primaryMediaId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
           "sku": {
+            "type": "string"
+          },
+          "status": {
+            "description": "active or inactive (derived from active)",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/V1AdminCatalogTag"
+            },
+            "type": "array"
+          },
+          "thumbUrl": {
+            "nullable": true,
             "type": "string"
           },
           "updatedAt": {
@@ -2885,6 +3075,8 @@
           "name",
           "description",
           "active",
+          "status",
+          "tags",
           "ageRestricted",
           "allergenCodes",
           "createdAt",
@@ -2941,11 +3133,29 @@
             "format": "uuid",
             "type": "string"
           },
+          "media": {
+            "$ref": "#/components/schemas/V1AdminProductMediaDoc"
+          },
           "name": {
+            "type": "string"
+          },
+          "primaryMediaId": {
+            "format": "uuid",
+            "nullable": true,
             "type": "string"
           },
           "sku": {
             "type": "string"
+          },
+          "status": {
+            "description": "active or inactive (derived from active)",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/V1AdminCatalogTag"
+            },
+            "type": "array"
           },
           "updatedAt": {
             "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
@@ -2959,8 +3169,160 @@
           "name",
           "description",
           "active",
+          "status",
+          "tags",
           "createdAt",
           "updatedAt"
+        ],
+        "type": "object"
+      },
+      "V1AdminProductMediaDoc": {
+        "properties": {
+          "primary": {
+            "$ref": "#/components/schemas/V1AdminProductMediaPrimaryDoc"
+          }
+        },
+        "type": "object"
+      },
+      "V1AdminProductMediaPrimaryDoc": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/V1AdminProductMediaVariantDoc"
+            },
+            "type": "array"
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "version",
+          "variants"
+        ],
+        "type": "object"
+      },
+      "V1AdminProductMediaVariantDoc": {
+        "properties": {
+          "downloadUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "height": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "variant": {
+            "type": "string"
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "width": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "variant",
+          "version",
+          "downloadUrl"
+        ],
+        "type": "object"
+      },
+      "V1AdminProductMutationRequest": {
+        "description": "Admin catalog product write. Optional **tagIds** (UUID[]): on create, omit or [] for no tags. On update, omit tagIds to leave links unchanged; [] clears all links; non-empty replaces the full set. Optional **primaryMediaId**: binds ready enterprise media as primary image (transactional). Required when **status**/**active** is sellable/active unless primary media already exists on update. Optional **status** string overrides **active** when present.",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "ageRestricted": {
+            "type": "boolean"
+          },
+          "allergenCodes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "attrs": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "barcode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "brandId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "countryOfOrigin": {
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nutritionalNote": {
+            "nullable": true,
+            "type": "string"
+          },
+          "primaryMediaId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "status": {
+            "description": "Optional lifecycle alias; when set overrides active (active/sellable/published vs inactive/draft/archived).",
+            "type": "string"
+          },
+          "tagIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sku",
+          "name",
+          "active",
+          "ageRestricted"
         ],
         "type": "object"
       },
@@ -10474,8 +10836,8 @@
                       "active": true,
                       "createdAt": "2026-01-01T00:00:00Z",
                       "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                      "name": "Coca-Cola",
-                      "slug": "coca-cola",
+                      "name": "Coca example",
+                      "slug": "coca-example",
                       "updatedAt": "2026-04-19T10:00:00Z"
                     }
                   ],
@@ -10597,8 +10959,8 @@
             "application/json": {
               "example": {
                 "active": true,
-                "name": "Coca-Cola",
-                "slug": "coca-cola"
+                "name": "Coca {{$timestamp}}",
+                "slug": "coca-{{$timestamp}}"
               },
               "schema": {
                 "type": "object"
@@ -10616,8 +10978,8 @@
                   "active": true,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                  "name": "Coca-Cola",
-                  "slug": "coca-cola",
+                  "name": "Coca example",
+                  "slug": "coca-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -10763,8 +11125,8 @@
                   "active": false,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                  "name": "Coca-Cola",
-                  "slug": "coca-cola",
+                  "name": "Coca example",
+                  "slug": "coca-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -10815,8 +11177,8 @@
             "application/json": {
               "example": {
                 "active": true,
-                "name": "Coca-Cola",
-                "slug": "coca-cola"
+                "name": "Coca {{$timestamp}}",
+                "slug": "coca-{{$timestamp}}"
               },
               "schema": {
                 "type": "object"
@@ -10834,8 +11196,8 @@
                   "active": true,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                  "name": "Coca-Cola",
-                  "slug": "coca-cola",
+                  "name": "Coca example",
+                  "slug": "coca-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -10886,8 +11248,8 @@
             "application/json": {
               "example": {
                 "active": true,
-                "name": "Coca-Cola",
-                "slug": "coca-cola"
+                "name": "Coca {{$timestamp}}",
+                "slug": "coca-{{$timestamp}}"
               },
               "schema": {
                 "type": "object"
@@ -10905,8 +11267,8 @@
                   "active": true,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-                  "name": "Coca-Cola",
-                  "slug": "coca-cola",
+                  "name": "Coca example",
+                  "slug": "coca-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -10972,8 +11334,8 @@
                       "active": true,
                       "createdAt": "2026-01-01T00:00:00Z",
                       "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
-                      "name": "Beverages",
-                      "slug": "beverages",
+                      "name": "Drinks example",
+                      "slug": "drinks-example",
                       "updatedAt": "2026-04-19T10:00:00Z"
                     }
                   ],
@@ -11023,8 +11385,8 @@
             "application/json": {
               "example": {
                 "active": true,
-                "name": "Beverages",
-                "slug": "beverages"
+                "name": "Drinks {{$timestamp}}",
+                "slug": "drinks-{{$timestamp}}"
               },
               "schema": {
                 "type": "object"
@@ -11042,8 +11404,8 @@
                   "active": true,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
-                  "name": "Beverages",
-                  "slug": "beverages",
+                  "name": "Drinks example",
+                  "slug": "drinks-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -11099,8 +11461,8 @@
                   "active": false,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
-                  "name": "Beverages",
-                  "slug": "beverages",
+                  "name": "Drinks example",
+                  "slug": "drinks-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -11151,8 +11513,8 @@
             "application/json": {
               "example": {
                 "active": true,
-                "name": "Beverages",
-                "slug": "beverages"
+                "name": "Drinks {{$timestamp}}",
+                "slug": "drinks-{{$timestamp}}"
               },
               "schema": {
                 "type": "object"
@@ -11170,8 +11532,8 @@
                   "active": true,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
-                  "name": "Beverages",
-                  "slug": "beverages",
+                  "name": "Drinks example",
+                  "slug": "drinks-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -11222,8 +11584,8 @@
             "application/json": {
               "example": {
                 "active": true,
-                "name": "Beverages",
-                "slug": "beverages"
+                "name": "Drinks {{$timestamp}}",
+                "slug": "drinks-{{$timestamp}}"
               },
               "schema": {
                 "type": "object"
@@ -11241,8 +11603,8 @@
                   "active": true,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
-                  "name": "Beverages",
-                  "slug": "beverages",
+                  "name": "Drinks example",
+                  "slug": "drinks-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -21367,6 +21729,326 @@
         ]
       }
     },
+    "/v1/admin/media/uploads/init": {
+      "post": {
+        "description": "Phase 2 **POST /v1/admin/media/uploads/init**: creates a pending asset and returns **mediaId**, **uploadUrl**, **objectKey**, **status**. Requires **Idempotency-Key**.",
+        "operationId": "DocOpV1AdminMediaUploadInitV2",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "contentType": "image/png",
+                "filename": "coca-330ml.png",
+                "purpose": "product_image"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/V1AdminMediaUploadInitRequestV2"
+              }
+            }
+          },
+          "description": "filename + contentType (+ optional purpose)",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "completePath": "/v1/admin/media/uploads/11111111-2222-3333-4444-555555555555/complete",
+                  "mediaId": "11111111-2222-3333-4444-555555555555",
+                  "objectKey": "org/11111111-2222-3333-4444-555555555555/original",
+                  "status": "pending",
+                  "uploadUrl": "https://s3.example.com/presigned-put"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1AdminMediaUploadInitResponseV2"
+                }
+              }
+            },
+            "description": "Start enterprise media upload (camelCase contract)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "capability_not_configured",
+                    "details": {
+                      "capability": "example_capability"
+                    },
+                    "message": "optional capability is not configured for this process",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Start enterprise media upload (camelCase contract)",
+        "tags": [
+          "Catalog Admin"
+        ]
+      }
+    },
+    "/v1/admin/media/uploads/{mediaId}/complete": {
+      "post": {
+        "description": "Same handler as **POST /v1/admin/media/{mediaId}/complete** \u2014 returns **id**, **status**, and **variants** with presigned **downloadUrl** entries.",
+        "operationId": "DocOpV1AdminMediaUploadCompleteUploadsPrefix",
+        "parameters": [
+          {
+            "description": "Media asset UUID",
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "contentType": "image/png",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sizeBytes": 12345
+              },
+              "schema": {
+                "$ref": "#/components/schemas/V1AdminMediaUploadCompleteRequestV2"
+              }
+            }
+          },
+          "description": "Optional integrity hints (sizeBytes, sha256, contentType)",
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "11111111-2222-3333-4444-555555555555",
+                  "status": "ready",
+                  "variants": [
+                    {
+                      "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                      "height": 160,
+                      "mimeType": "image/webp",
+                      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                      "sizeBytes": 8000,
+                      "variant": "thumb",
+                      "version": 1,
+                      "width": 160
+                    },
+                    {
+                      "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                      "height": 512,
+                      "mimeType": "image/webp",
+                      "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                      "sizeBytes": 24000,
+                      "variant": "display",
+                      "version": 2,
+                      "width": 512
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1AdminMediaUploadCompleteResponseV2"
+                }
+              }
+            },
+            "description": "Finalize media upload (uploads/{mediaId}/complete alias)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "illegal_transition",
+                    "details": {},
+                    "message": "request conflicts with current state",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Finalize media upload (uploads/{mediaId}/complete alias)",
+        "tags": [
+          "Catalog Admin"
+        ]
+      }
+    },
     "/v1/admin/media/{mediaId}": {
       "delete": {
         "operationId": "DocOpV1AdminMediaDelete",
@@ -21475,7 +22157,7 @@
     },
     "/v1/admin/media/{mediaId}/complete": {
       "post": {
-        "description": "Heads the original object, generates **thumb.webp** / **display.webp** variants, records integrity metadata, marks asset **ready**. **Idempotency-Key** required.",
+        "description": "Heads the original object, generates **thumb.webp** / **display.webp** variants, records integrity metadata, marks asset **ready**. Response returns **id**, **status**, **variants** with presigned **downloadUrl**. **Idempotency-Key** required.",
         "operationId": "DocOpV1AdminMediaUploadComplete",
         "parameters": [
           {
@@ -21500,24 +22182,50 @@
             "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {},
+              "schema": {
+                "$ref": "#/components/schemas/V1AdminMediaUploadCompleteRequestV2"
+              }
+            }
+          },
+          "description": "Optional integrity hints (sizeBytes, sha256, contentType)",
+          "required": false
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "example": {
-                  "created_at": "2026-01-01T00:00:00Z",
-                  "etag": "W/\"etag1\"",
                   "id": "11111111-2222-3333-4444-555555555555",
-                  "kind": "product_image",
-                  "mime_type": "image/webp",
-                  "object_version": 1,
-                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                  "size_bytes": 12000,
                   "status": "ready",
-                  "updated_at": "2026-04-19T10:00:00Z"
+                  "variants": [
+                    {
+                      "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                      "height": 160,
+                      "mimeType": "image/webp",
+                      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                      "sizeBytes": 8000,
+                      "variant": "thumb",
+                      "version": 1,
+                      "width": 160
+                    },
+                    {
+                      "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                      "height": 512,
+                      "mimeType": "image/webp",
+                      "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                      "sizeBytes": 24000,
+                      "variant": "display",
+                      "version": 2,
+                      "width": 512
+                    }
+                  ]
                 },
                 "schema": {
-                  "$ref": "#/components/schemas/V1AdminMediaAsset"
+                  "$ref": "#/components/schemas/V1AdminMediaUploadCompleteResponseV2"
                 }
               }
             },
@@ -26811,7 +27519,7 @@
     },
     "/v1/admin/products": {
       "get": {
-        "description": "Paginated product directory for an company. **platform_admin** must pass **single_company_admin_context** query; **admin** is scoped to JWT company. Supports `q` substring search on sku/name, `active_only` boolean, and standard **limit**/**offset** pagination (default 50, max 500).",
+        "description": "Paginated product directory for an company. **platform_admin** must pass **single_company_admin_context** query; **admin** is scoped to JWT company. Supports `q` substring search on sku/name, `active_only` boolean, and standard **limit**/**offset** pagination (default 50, max 500). Each row includes **tags** (linked catalog tags).",
         "operationId": "DocOpV1AdminProductsList",
         "parameters": [
           {
@@ -26871,11 +27579,45 @@
                     {
                       "active": true,
                       "barcode": "8850123456789",
+                      "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                      "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                       "createdAt": "2026-01-01T00:00:00Z",
                       "description": "Example product",
                       "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                      "media": {
+                        "primary": {
+                          "id": "11111111-2222-3333-4444-555555555555",
+                          "status": "ready",
+                          "variants": [
+                            {
+                              "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                              "height": 160,
+                              "mimeType": "image/webp",
+                              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                              "sizeBytes": 8000,
+                              "variant": "thumb",
+                              "version": 1,
+                              "width": 160
+                            },
+                            {
+                              "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                              "height": 512,
+                              "mimeType": "image/webp",
+                              "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                              "sizeBytes": 24000,
+                              "variant": "display",
+                              "version": 2,
+                              "width": 512
+                            }
+                          ],
+                          "version": 1
+                        }
+                      },
                       "name": "Cola 12oz",
+                      "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                       "sku": "COLA-12",
+                      "status": "active",
+                      "tags": [],
                       "updatedAt": "2026-04-19T10:00:00Z"
                     }
                   ],
@@ -26977,7 +27719,7 @@
         ]
       },
       "post": {
-        "description": "Creates a product in the company. **Idempotency-Key** required. SKU unique per org; barcode unique when set.",
+        "description": "Creates a product in the company. **Idempotency-Key** required. SKU unique per org; barcode unique when set. Optional **tagIds** (UUID[]): duplicates removed; unknown IDs return **400** `invalid_argument`. Omit **tagIds** to create without tags.",
         "operationId": "DocOpV1AdminProductCreate",
         "parameters": [
           {
@@ -27001,16 +27743,72 @@
                 "ageRestricted": false,
                 "allergenCodes": [],
                 "barcode": "8850123456789",
+                "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                 "description": "Example product",
                 "name": "Cola 12oz",
+                "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                 "sku": "COLA-12"
               },
+              "examples": {
+                "offline_cache_canary": {
+                  "summary": "Active product with primaryMediaId + tagIds (Postman variables)",
+                  "value": {
+                    "active": true,
+                    "ageRestricted": false,
+                    "allergenCodes": [],
+                    "brandId": "{{brandId}}",
+                    "categoryId": "{{categoryId}}",
+                    "description": "Canary test product",
+                    "name": "Coca Cola Can 330ml",
+                    "primaryMediaId": "{{mediaId}}",
+                    "sku": "COCA-330ML-{{$timestamp}}",
+                    "status": "active",
+                    "tagIds": [
+                      "{{tagId}}"
+                    ]
+                  }
+                },
+                "with_tag_ids": {
+                  "summary": "Product with tagIds",
+                  "value": {
+                    "active": true,
+                    "ageRestricted": false,
+                    "allergenCodes": [],
+                    "barcode": "8850123456789",
+                    "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                    "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                    "description": "Example product",
+                    "name": "Cola 12oz",
+                    "primaryMediaId": "11111111-2222-3333-4444-555555555555",
+                    "sku": "COLA-12",
+                    "tagIds": [
+                      "cccccccc-dddd-eeee-ffff-000000000000"
+                    ]
+                  }
+                },
+                "without_tags": {
+                  "summary": "Product without tagIds",
+                  "value": {
+                    "active": true,
+                    "ageRestricted": false,
+                    "allergenCodes": [],
+                    "barcode": "8850123456789",
+                    "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                    "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                    "description": "Example product",
+                    "name": "Cola 12oz",
+                    "primaryMediaId": "11111111-2222-3333-4444-555555555555",
+                    "sku": "COLA-12"
+                  }
+                }
+              },
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/V1AdminProductMutationRequest"
               }
             }
           },
-          "description": "sku, name, description, active, optional categoryId, brandId, barcode",
+          "description": "Product JSON body. Optional **tagIds** (UUID[]): on update omit the field to keep existing tags; send [] to clear all links; send IDs to replace the full set. Unknown tag IDs \u2192 HTTP 400 `invalid_argument`. Optional **primaryMediaId** binds ready enterprise media as primary (transactional); required when activating a product that does not yet have primary media. Optional **status** overrides **active** when set (active/sellable/published vs inactive/draft/archived).",
           "required": true
         },
         "responses": {
@@ -27023,11 +27821,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -27176,11 +28017,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -27292,7 +28176,7 @@
         ]
       },
       "get": {
-        "description": "Returns full product attributes including JSON `attrs`, allergen codes, and merchandising metadata. **platform_admin** must pass **single_company_admin_context** matching the product's company.",
+        "description": "Returns full product attributes including JSON `attrs`, allergen codes, merchandising metadata, primary image URLs when present, and linked **tags**.",
         "operationId": "DocOpV1AdminProductGet",
         "parameters": [
           {
@@ -27324,11 +28208,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -27440,7 +28367,7 @@
         ]
       },
       "patch": {
-        "description": "Same payload as PUT. **Idempotency-Key** required.",
+        "description": "Same semantics as PUT. **Idempotency-Key** required. **tagIds**: omit to keep tags; **[]** clears; non-empty replaces.",
         "operationId": "DocOpV1AdminProductPatch",
         "parameters": [
           {
@@ -27473,16 +28400,52 @@
                 "ageRestricted": false,
                 "allergenCodes": [],
                 "barcode": "8850123456789",
+                "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                 "description": "Example product",
                 "name": "Cola 12oz",
+                "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                 "sku": "COLA-12"
               },
+              "examples": {
+                "clear_tags": {
+                  "summary": "Clear tags",
+                  "value": {
+                    "active": true,
+                    "ageRestricted": false,
+                    "allergenCodes": [],
+                    "barcode": "8850123456789",
+                    "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                    "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                    "description": "Example product",
+                    "name": "Cola 12oz",
+                    "primaryMediaId": "11111111-2222-3333-4444-555555555555",
+                    "sku": "COLA-12",
+                    "tagIds": []
+                  }
+                },
+                "omit_tag_ids": {
+                  "summary": "PATCH omit tagIds \u2014 tags unchanged",
+                  "value": {
+                    "active": true,
+                    "ageRestricted": false,
+                    "allergenCodes": [],
+                    "barcode": "8850123456789",
+                    "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                    "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                    "description": "Example product",
+                    "name": "Cola 12oz",
+                    "primaryMediaId": "11111111-2222-3333-4444-555555555555",
+                    "sku": "COLA-12"
+                  }
+                }
+              },
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/V1AdminProductMutationRequest"
               }
             }
           },
-          "description": "sku, name, description, active, optional categoryId, brandId, barcode",
+          "description": "Product JSON body. Optional **tagIds** (UUID[]): on update omit the field to keep existing tags; send [] to clear all links; send IDs to replace the full set. Unknown tag IDs \u2192 HTTP 400 `invalid_argument`. Optional **primaryMediaId** binds ready enterprise media as primary (transactional); required when activating a product that does not yet have primary media. Optional **status** overrides **active** when set (active/sellable/published vs inactive/draft/archived).",
           "required": true
         },
         "responses": {
@@ -27495,11 +28458,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -27629,7 +28635,7 @@
         ]
       },
       "put": {
-        "description": "Full replacement of mutable fields. **Idempotency-Key** required.",
+        "description": "Updates mutable fields. **Idempotency-Key** required. **tagIds**: omit to keep existing product tags; send **[]** to clear all; send UUIDs to replace the linked set. Unknown tag IDs return **400** `invalid_argument`.",
         "operationId": "DocOpV1AdminProductReplace",
         "parameters": [
           {
@@ -27662,16 +28668,58 @@
                 "ageRestricted": false,
                 "allergenCodes": [],
                 "barcode": "8850123456789",
+                "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                 "description": "Example product",
                 "name": "Cola 12oz",
-                "sku": "COLA-12"
+                "primaryMediaId": "11111111-2222-3333-4444-555555555555",
+                "sku": "COLA-12",
+                "tagIds": [
+                  "cccccccc-dddd-eeee-ffff-000000000000"
+                ]
+              },
+              "examples": {
+                "clear_tags": {
+                  "summary": "Clear all tags (tagIds empty array)",
+                  "value": {
+                    "active": true,
+                    "ageRestricted": false,
+                    "allergenCodes": [],
+                    "barcode": "8850123456789",
+                    "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                    "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                    "description": "Example product",
+                    "name": "Cola 12oz",
+                    "primaryMediaId": "11111111-2222-3333-4444-555555555555",
+                    "sku": "COLA-12",
+                    "tagIds": []
+                  }
+                },
+                "replace_tags": {
+                  "summary": "Replace linked tags",
+                  "value": {
+                    "active": true,
+                    "ageRestricted": false,
+                    "allergenCodes": [],
+                    "barcode": "8850123456789",
+                    "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                    "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+                    "description": "Example product",
+                    "name": "Cola 12oz",
+                    "primaryMediaId": "11111111-2222-3333-4444-555555555555",
+                    "sku": "COLA-12",
+                    "tagIds": [
+                      "cccccccc-dddd-eeee-ffff-000000000000"
+                    ]
+                  }
+                }
               },
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/V1AdminProductMutationRequest"
               }
             }
           },
-          "description": "sku, name, description, active, optional categoryId, brandId, barcode",
+          "description": "Product JSON body. Optional **tagIds** (UUID[]): on update omit the field to keep existing tags; send [] to clear all links; send IDs to replace the full set. Unknown tag IDs \u2192 HTTP 400 `invalid_argument`. Optional **primaryMediaId** binds ready enterprise media as primary (transactional); required when activating a product that does not yet have primary media. Optional **status** overrides **active** when set (active/sellable/published vs inactive/draft/archived).",
           "required": true
         },
         "responses": {
@@ -27684,11 +28732,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -27855,11 +28946,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -28026,11 +29160,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -28197,11 +29374,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -28363,11 +29583,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -28437,11 +29700,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -28508,11 +29814,54 @@
                   "allergenCodes": [],
                   "attrs": {},
                   "barcode": "8850123456789",
+                  "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "createdAt": "2026-01-01T00:00:00Z",
                   "description": "Example product",
                   "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+                  "media": {
+                    "primary": {
+                      "id": "11111111-2222-3333-4444-555555555555",
+                      "status": "ready",
+                      "variants": [
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                          "height": 160,
+                          "mimeType": "image/webp",
+                          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "sizeBytes": 8000,
+                          "variant": "thumb",
+                          "version": 1,
+                          "width": 160
+                        },
+                        {
+                          "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                          "height": 512,
+                          "mimeType": "image/webp",
+                          "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                          "sizeBytes": 24000,
+                          "variant": "display",
+                          "version": 2,
+                          "width": 512
+                        }
+                      ],
+                      "version": 1
+                    }
+                  },
                   "name": "Cola 12oz",
+                  "primaryMediaId": "11111111-2222-3333-4444-555555555555",
                   "sku": "COLA-12",
+                  "status": "active",
+                  "tags": [
+                    {
+                      "active": true,
+                      "createdAt": "2026-01-01T00:00:00Z",
+                      "id": "cccccccc-dddd-eeee-ffff-000000000000",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
+                      "updatedAt": "2026-04-19T10:00:00Z"
+                    }
+                  ],
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -35714,8 +37063,8 @@
                       "active": true,
                       "createdAt": "2026-01-01T00:00:00Z",
                       "id": "cccccccc-dddd-eeee-ffff-000000000000",
-                      "name": "Chilled",
-                      "slug": "chilled",
+                      "name": "Cold drink example",
+                      "slug": "cold-drink-example",
                       "updatedAt": "2026-04-19T10:00:00Z"
                     }
                   ],
@@ -35765,8 +37114,8 @@
             "application/json": {
               "example": {
                 "active": true,
-                "name": "Chilled",
-                "slug": "chilled"
+                "name": "Cold Drink {{$timestamp}}",
+                "slug": "cold-drink-{{$timestamp}}"
               },
               "schema": {
                 "type": "object"
@@ -35784,8 +37133,8 @@
                   "active": true,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "cccccccc-dddd-eeee-ffff-000000000000",
-                  "name": "Chilled",
-                  "slug": "chilled",
+                  "name": "Cold drink example",
+                  "slug": "cold-drink-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -35841,8 +37190,8 @@
                   "active": false,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "cccccccc-dddd-eeee-ffff-000000000000",
-                  "name": "Chilled",
-                  "slug": "chilled",
+                  "name": "Cold drink example",
+                  "slug": "cold-drink-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -35893,8 +37242,8 @@
             "application/json": {
               "example": {
                 "active": true,
-                "name": "Chilled",
-                "slug": "chilled"
+                "name": "Cold Drink {{$timestamp}}",
+                "slug": "cold-drink-{{$timestamp}}"
               },
               "schema": {
                 "type": "object"
@@ -35912,8 +37261,8 @@
                   "active": true,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "cccccccc-dddd-eeee-ffff-000000000000",
-                  "name": "Chilled",
-                  "slug": "chilled",
+                  "name": "Cold drink example",
+                  "slug": "cold-drink-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {
@@ -35964,8 +37313,8 @@
             "application/json": {
               "example": {
                 "active": true,
-                "name": "Chilled",
-                "slug": "chilled"
+                "name": "Cold Drink {{$timestamp}}",
+                "slug": "cold-drink-{{$timestamp}}"
               },
               "schema": {
                 "type": "object"
@@ -35983,8 +37332,8 @@
                   "active": true,
                   "createdAt": "2026-01-01T00:00:00Z",
                   "id": "cccccccc-dddd-eeee-ffff-000000000000",
-                  "name": "Chilled",
-                  "slug": "chilled",
+                  "name": "Cold drink example",
+                  "slug": "cold-drink-example",
                   "updatedAt": "2026-04-19T10:00:00Z"
                 },
                 "schema": {

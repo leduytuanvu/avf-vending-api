@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package avf.internal.v1;
+
+option go_package = "github.com/avf/avf-vending-api/internal/gen/avfinternalv1;internalv1";
+
+// InternalCatalogQueryService returns sale catalog projection as JSON (HTTPS URLs / metadata only; no binary media).
+service InternalCatalogQueryService {
+  rpc GetSaleCatalogSnapshot(GetSaleCatalogSnapshotRequest) returns (GetSaleCatalogSnapshotResponse);
+}
+
+message GetSaleCatalogSnapshotRequest {
+  string machine_id = 1;
+  bool include_unavailable = 2;
+  bool include_images = 3;
+  optional int64 if_none_match_config_version = 4;
+}
+
+message GetSaleCatalogSnapshotResponse {
+  // UTF-8 JSON encoding of salecatalog.Snapshot (same shape as HTTP sale-catalog items + metadata).
+  string catalog_json = 1;
+  bool not_modified = 2;
+}

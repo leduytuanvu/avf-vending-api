@@ -7,6 +7,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/domain/device"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -301,6 +302,125 @@ func TestP06_E2E_MQTTCommand_publishFailureAllowsRetryAttempt(t *testing.T) {
 	att2, err := store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, cmdRow.ID, machineID, nil, []byte(`{}`), deadline, "")
 	require.NoError(t, err)
 	require.NotEqual(t, att1.ID, att2.ID)
+}
+
+func TestP06_E2E_MQTTCommand_catalogRefresh_ackSuccessNormalizesSuccessStatus(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+
+	siteID := uuid.New()
+	machineID := uuid.New()
+	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
+
+	inner := []byte(`{"type":"catalog.refresh","catalogVersion":124,"mediaManifestVersion":46,"reason":"product_media_updated"}`)
+	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
+		MachineID:      machineID,
+		CommandType:    platformmqtt.CommandTypeCatalogRefresh,
+		Payload:        inner,
+		IdempotencyKey: "p06-cat-refresh-ok-" + uuid.NewString(),
+		DesiredState:   []byte(`{}`),
+	})
+	require.NoError(t, err)
+
+	cmdRow, err := store.GetCommandLedgerByMachineSequence(ctx, machineID, appendRes.Sequence)
+	require.NoError(t, err)
+
+	deadline := time.Now().UTC().Add(time.Hour)
+	att, err := store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, cmdRow.ID, machineID, nil, []byte(`{}`), deadline, "")
+	require.NoError(t, err)
+	require.NoError(t, store.MarkMQTTDispatchAttemptSent(ctx, att.ID, deadline))
+
+	ackPayload := []byte(`{"type":"catalog.refresh","catalogVersion":124,"mediaManifestVersion":46,"mediaSynced":true}`)
+	_, err = store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
+		MachineID:  machineID,
+		Sequence:   appendRes.Sequence,
+		Status:     "success",
+		Payload:    ackPayload,
+		DedupeKey:  "dedupe-cat-refresh-ok-" + uuid.NewString(),
+		CommandID:  appendRes.CommandID,
+		OccurredAt: time.Now().UTC(),
+	})
+	require.NoError(t, err)
+}
+
+func TestP06_E2E_MQTTCommand_catalogRefresh_ackRejectedWithoutMediaSynced(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+
+	siteID := uuid.New()
+	machineID := uuid.New()
+	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
+
+	inner := []byte(`{"type":"catalog.refresh","catalogVersion":1,"mediaManifestVersion":2,"reason":"product_media_updated"}`)
+	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
+		MachineID:      machineID,
+		CommandType:    platformmqtt.CommandTypeCatalogRefresh,
+		Payload:        inner,
+		IdempotencyKey: "p06-cat-refresh-bad-" + uuid.NewString(),
+		DesiredState:   []byte(`{}`),
+	})
+	require.NoError(t, err)
+
+	cmdRow, err := store.GetCommandLedgerByMachineSequence(ctx, machineID, appendRes.Sequence)
+	require.NoError(t, err)
+
+	deadline := time.Now().UTC().Add(time.Hour)
+	att, err := store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, cmdRow.ID, machineID, nil, []byte(`{}`), deadline, "")
+	require.NoError(t, err)
+	require.NoError(t, store.MarkMQTTDispatchAttemptSent(ctx, att.ID, deadline))
+
+	_, err = store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
+		MachineID:  machineID,
+		Sequence:   appendRes.Sequence,
+		Status:     "acked",
+		Payload:    []byte(`{"catalogVersion":1,"mediaManifestVersion":2}`),
+		DedupeKey:  "dedupe-cat-refresh-bad-" + uuid.NewString(),
+		CommandID:  appendRes.CommandID,
+		OccurredAt: time.Now().UTC(),
+	})
+	require.Error(t, err)
+	require.ErrorIs(t, err, platformmqtt.ErrCatalogRefreshPayloadInvalid)
+}
+
+func TestP06_E2E_MQTTCommand_catalogRefresh_nackedDoesNotRequireCatalogAckPayload(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+
+	siteID := uuid.New()
+	machineID := uuid.New()
+	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
+
+	inner := []byte(`{"type":"catalog.refresh","catalogVersion":3,"mediaManifestVersion":4,"reason":"product_media_updated"}`)
+	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
+		MachineID:      machineID,
+		CommandType:    platformmqtt.CommandTypeCatalogRefresh,
+		Payload:        inner,
+		IdempotencyKey: "p06-cat-refresh-nack-" + uuid.NewString(),
+		DesiredState:   []byte(`{}`),
+	})
+	require.NoError(t, err)
+
+	cmdRow, err := store.GetCommandLedgerByMachineSequence(ctx, machineID, appendRes.Sequence)
+	require.NoError(t, err)
+
+	deadline := time.Now().UTC().Add(time.Hour)
+	att, err := store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, cmdRow.ID, machineID, nil, []byte(`{}`), deadline, "")
+	require.NoError(t, err)
+	require.NoError(t, store.MarkMQTTDispatchAttemptSent(ctx, att.ID, deadline))
+
+	_, err = store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
+		MachineID:  machineID,
+		Sequence:   appendRes.Sequence,
+		Status:     "nacked",
+		Payload:    []byte(`{}`),
+		DedupeKey:  "dedupe-cat-refresh-nack-" + uuid.NewString(),
+		CommandID:  appendRes.CommandID,
+		OccurredAt: time.Now().UTC(),
+	})
+	require.NoError(t, err)
 }
 
 func TestP06_E2E_MQTTCommand_maxDispatchAttemptsStopsRetries(t *testing.T) {

@@ -111,6 +111,14 @@ SET
 WHERE c.id = $5
 RETURNING *;
 
+-- name: CatalogWriteDeleteProductTagsForProduct :exec
+DELETE FROM product_tags
+WHERE product_id = $1;
+
+-- name: CatalogWriteInsertProductTag :exec
+INSERT INTO product_tags (product_id, tag_id)
+VALUES ($1, $2);
+
 -- name: CatalogWriteInsertTag :one
 INSERT INTO tags (
     slug,
@@ -342,3 +350,62 @@ RETURNING *;
 -- name: CatalogWriteDeletePriceBookTarget :execrows
 DELETE FROM price_book_targets pbt
 WHERE pbt.id = $1;
+
+-- name: CatalogWriteUpsertProductMediaProjection :one
+INSERT INTO product_media (
+    id,
+    product_id,
+    media_role,
+    media_type,
+    source_type,
+    original_object_key,
+    thumb_object_key,
+    display_object_key,
+    thumb_url,
+    display_url,
+    mime_type,
+    width,
+    height,
+    size_bytes,
+    content_hash,
+    media_version,
+    sort_order,
+    status
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    'image',
+    'upload',
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13,
+    $14,
+    0,
+    'active'
+)
+ON CONFLICT (id)
+    DO UPDATE SET
+        media_role = EXCLUDED.media_role,
+        original_object_key = EXCLUDED.original_object_key,
+        thumb_object_key = EXCLUDED.thumb_object_key,
+        display_object_key = EXCLUDED.display_object_key,
+        thumb_url = EXCLUDED.thumb_url,
+        display_url = EXCLUDED.display_url,
+        mime_type = EXCLUDED.mime_type,
+        width = EXCLUDED.width,
+        height = EXCLUDED.height,
+        size_bytes = EXCLUDED.size_bytes,
+        content_hash = EXCLUDED.content_hash,
+        media_version = EXCLUDED.media_version,
+        status = EXCLUDED.status,
+        updated_at = now()
+RETURNING *;

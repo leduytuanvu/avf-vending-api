@@ -1,6 +1,9 @@
 -- name: MediaAdminInsertAsset :one
 INSERT INTO media_assets (
+    id,
     kind,
+    original_filename,
+    object_key,
     original_object_key,
     thumb_object_key,
     display_object_key,
@@ -19,9 +22,70 @@ VALUES (
     $6,
     $7,
     $8,
+    $9,
+    $10,
+    $11,
+    $12
+)
+RETURNING *;
+
+-- name: MediaAdminDeleteVariantsForAsset :exec
+DELETE FROM media_variants
+WHERE media_asset_id = $1;
+
+-- name: MediaAdminInsertMediaVariant :one
+INSERT INTO media_variants (
+    media_asset_id,
+    variant,
+    object_key,
+    mime_type,
+    width,
+    height,
+    size_bytes,
+    sha256,
+    version
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
     $9
 )
 RETURNING *;
+
+-- name: MediaAdminListVariantsForAssets :many
+SELECT
+    *
+FROM
+    media_variants
+WHERE
+    media_asset_id = ANY ($1::uuid[])
+ORDER BY
+    media_asset_id ASC,
+    variant ASC;
+
+-- name: MediaAdminEnsureCanonicalObjectKey :one
+UPDATE media_assets
+SET
+    object_key = COALESCE(NULLIF(TRIM(object_key), ''), original_object_key),
+    updated_at = now()
+WHERE
+    id = $1
+RETURNING *;
+
+-- name: MediaAdminListAssetsByIDs :many
+SELECT
+    *
+FROM
+    media_assets
+WHERE
+    id = ANY ($1::uuid[])
+    AND status NOT IN ('deleted', 'archived');
 
 -- name: MediaAdminGetAssetForOrg :one
 SELECT

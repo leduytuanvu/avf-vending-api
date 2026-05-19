@@ -410,11 +410,14 @@ CREATE TABLE machine_tag_assignments (
 );
 
 -- P1.1 media pipeline: canonical object keys + variant paths (see migrations/00037_p1_media_assets.sql).
+-- Phase 1 offline cache: purpose via kind; optional original_filename; object_key mirrors canonical upload key for cache identity (see media_variants).
 CREATE TABLE media_assets (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     kind text NOT NULL DEFAULT 'product_image' CONSTRAINT chk_media_assets_kind CHECK (
         kind IN ('product_image')
     ),
+    original_filename text,
+    object_key text,
     original_object_key text NOT NULL,
     thumb_object_key text NOT NULL,
     display_object_key text NOT NULL,
@@ -437,6 +440,37 @@ CREATE TABLE media_assets (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+COMMENT ON COLUMN media_assets.kind IS 'Asset purpose; product_image is the primary vending product image pipeline.';
+COMMENT ON COLUMN media_assets.object_key IS 'Canonical object-store key for the primary upload (typically mirrors original_object_key); use media_variants for per-rendition keys and hashes.';
+COMMENT ON COLUMN media_assets.object_version IS 'Logical asset version for cache busting / offline sync (increment on substantive metadata or derivative updates).';
+
+-- Per-rendition metadata for offline kiosk caches (keys + optional per-variant sha256/version).
+CREATE TABLE media_variants (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    media_asset_id uuid NOT NULL REFERENCES media_assets (id) ON DELETE CASCADE,
+    variant text NOT NULL CONSTRAINT chk_media_variants_variant CHECK (
+        variant IN ('original', 'thumb', 'display', 'fallback')
+    ),
+    object_key text NOT NULL,
+    mime_type text,
+    width int CHECK (width IS NULL OR width >= 0),
+    height int CHECK (height IS NULL OR height >= 0),
+    size_bytes bigint CHECK (size_bytes IS NULL OR size_bytes >= 0),
+    sha256 text,
+    version int NOT NULL DEFAULT 1,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ux_media_variants_asset_variant UNIQUE (media_asset_id, variant)
+);
+
+CREATE INDEX ix_media_variants_media_asset_id ON media_variants (media_asset_id);
+
+CREATE INDEX ix_media_variants_sha256 ON media_variants (sha256)
+WHERE
+    sha256 IS NOT NULL;
+
+COMMENT ON TABLE media_variants IS 'Per-rendition object keys and optional per-variant sha256/version for kiosk offline caches.';
 
 CREATE TABLE product_images (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -472,9 +506,18 @@ ALTER TABLE products
     ADD CONSTRAINT fk_products_primary_image FOREIGN KEY (id, primary_image_id)
         REFERENCES product_images (product_id, id) DEFERRABLE INITIALLY DEFERRED;
 
+-- Supports audits and batch validation for sellable products (application enforces; no blocking CHECK on active).
+CREATE INDEX ix_products_active_missing_primary_image ON products (id)
+WHERE
+    active
+    AND primary_image_id IS NULL;
+
 CREATE TABLE product_media (
     id uuid PRIMARY KEY,
     product_id uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    media_role text NOT NULL DEFAULT 'gallery' CONSTRAINT chk_product_media_media_role CHECK (
+        media_role IN ('primary', 'gallery')
+    ),
     media_type text NOT NULL DEFAULT 'image' CONSTRAINT chk_product_media_media_type CHECK (
         media_type IN ('image')
     ),
@@ -505,7 +548,15 @@ CREATE TABLE product_media (
 
 CREATE INDEX ix_product_media_product ON product_media (product_id);
 
-COMMENT ON TABLE product_media IS 'Denormalized catalog media projection per product_images row (id matches product_images.id); maintained by triggers in migrations.';
+CREATE INDEX ix_product_media_product_role ON product_media (product_id, media_role);
+
+CREATE UNIQUE INDEX ux_product_media_one_primary_per_product ON product_media (product_id)
+WHERE
+    media_role = 'primary';
+
+COMMENT ON TABLE product_media IS 'Denormalized catalog media projection per product_images row (id matches product_images.id). media_role marks primary vs gallery; align with product_images.is_primary in application writes.';
+
+COMMENT ON COLUMN product_media.media_role IS 'primary: matches products.primary_image_id for this projection row; gallery: additional images.';
 
 CREATE TABLE price_books (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

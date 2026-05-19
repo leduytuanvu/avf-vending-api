@@ -27,6 +27,12 @@ pm.collectionVariables.set("idempotency_key", idem);
 pm.collectionVariables.set("event_id", evId);
 pm.collectionVariables.set("event_time", nowIso);
 pm.collectionVariables.set("now_iso", nowIso);
+try {
+  const at = pm.environment.get("accessToken") || pm.environment.get("admin_token");
+  if (at) pm.collectionVariables.set("admin_token", String(at));
+  const mt = pm.environment.get("machineToken") || pm.environment.get("machine_token");
+  if (mt) pm.collectionVariables.set("machine_token", String(mt));
+} catch (e) {}
 setIf(pm.request, "X-Request-ID", reqId);
 setIf(pm.request, "X-Correlation-ID", corr);
 setIf(pm.request, "Idempotency-Key", idem);
@@ -38,9 +44,18 @@ setIf(pm.request, "X-Client-Name", "postman-avf");
 const appEnv =
   (pm.environment.get("app_env") || pm.collectionVariables.get("app_env") || "").toLowerCase();
 setIf(pm.request, "X-App-Env", appEnv || "unknown");
-const base = (pm.environment.get("base_url") || pm.collectionVariables.get("base_url") || "").toLowerCase();
+const baseRaw =
+  pm.environment.get("baseUrl") ||
+  pm.environment.get("base_url") ||
+  pm.collectionVariables.get("base_url") ||
+  "";
+const base = baseRaw.toLowerCase();
 const pay = (pm.environment.get("payment_env") || "").toLowerCase();
-const mqtt = (pm.environment.get("mqtt_topic_prefix") || "").trim();
+const mqtt = (
+  pm.environment.get("mqtt_topic_prefix") ||
+  pm.environment.get("mqttTopicPrefix") ||
+  ""
+).trim();
 const isStaging = appEnv === "staging" || /staging-api[.]ldtv[.]dev/.test(base);
 const isProd = appEnv === "production" || /(^|\/)api[.]ldtv[.]dev/.test(base);
 if (isStaging) {
@@ -101,11 +116,15 @@ const mode = (
 let active = "";
 if (mode === "admin") {
   active =
+    pm.environment.get("accessToken") ||
+    pm.collectionVariables.get("accessToken") ||
     pm.environment.get("admin_token") ||
     pm.collectionVariables.get("admin_token") ||
     "";
 } else if (mode === "machine") {
   active =
+    pm.environment.get("machineToken") ||
+    pm.collectionVariables.get("machineToken") ||
     pm.environment.get("machine_token") ||
     pm.collectionVariables.get("machine_token") ||
     "";

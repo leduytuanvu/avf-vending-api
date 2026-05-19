@@ -14,6 +14,7 @@ import (
 	domainfleet "github.com/avf/avf-vending-api/internal/domain/fleet"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -218,6 +219,10 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 	}
 
 	_ = d.store.ApplyMQTTCommandAckTimeouts(ctx, time.Now())
+
+	if err := platformmqtt.ValidateCatalogRefreshDispatchPayload(strings.TrimSpace(in.Append.CommandType), in.Append.Payload); err != nil {
+		return RemoteCommandDispatchResult{}, err
+	}
 
 	appendIn := in.Append
 	if len(appendIn.DesiredState) == 0 {

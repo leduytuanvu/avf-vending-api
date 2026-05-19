@@ -1,0 +1,2893 @@
+[
+  {
+    "service": "InternalCatalogQueryService",
+    "method": "GetSaleCatalogSnapshot",
+    "fullMethod": "/avf.internal.v1.InternalCatalogQueryService/GetSaleCatalogSnapshot",
+    "requestType": "GetSaleCatalogSnapshotRequest",
+    "responseType": "GetSaleCatalogSnapshotResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}",
+      "include_unavailable": false,
+      "include_images": false,
+      "if_none_match_config_version": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalCatalogQueryService.GetSaleCatalogSnapshot — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalCommerceQueryService",
+    "method": "GetOrderPaymentVendState",
+    "fullMethod": "/avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState",
+    "requestType": "GetOrderPaymentVendStateRequest",
+    "responseType": "GetOrderPaymentVendStateResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "order_id": "{{$guid}}",
+      "slot_index": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalCommerceQueryService.GetOrderPaymentVendState — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalInventoryQueryService",
+    "method": "GetMachineSlotInventory",
+    "fullMethod": "/avf.internal.v1.InternalInventoryQueryService/GetMachineSlotInventory",
+    "requestType": "GetMachineSlotInventoryRequest",
+    "responseType": "GetMachineSlotInventoryResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalInventoryQueryService.GetMachineSlotInventory — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalMachineQueryService",
+    "method": "GetMachineCabinetSlotSummary",
+    "fullMethod": "/avf.internal.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary",
+    "requestType": "GetMachineCabinetSlotSummaryRequest",
+    "responseType": "GetMachineCabinetSlotSummaryResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalMachineQueryService.GetMachineCabinetSlotSummary — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalMachineQueryService",
+    "method": "GetMachineState",
+    "fullMethod": "/avf.internal.v1.InternalMachineQueryService/GetMachineState",
+    "requestType": "GetMachineStateRequest",
+    "responseType": "GetMachineStateResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalMachineQueryService.GetMachineState — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalMachineQueryService",
+    "method": "GetMachineSummary",
+    "fullMethod": "/avf.internal.v1.InternalMachineQueryService/GetMachineSummary",
+    "requestType": "GetMachineSummaryRequest",
+    "responseType": "GetMachineSummaryResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalMachineQueryService.GetMachineSummary — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalPaymentQueryService",
+    "method": "GetLatestPaymentForOrder",
+    "fullMethod": "/avf.internal.v1.InternalPaymentQueryService/GetLatestPaymentForOrder",
+    "requestType": "GetLatestPaymentForOrderRequest",
+    "responseType": "GetLatestPaymentForOrderResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "order_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalPaymentQueryService.GetLatestPaymentForOrder — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalPaymentQueryService",
+    "method": "GetPaymentById",
+    "fullMethod": "/avf.internal.v1.InternalPaymentQueryService/GetPaymentById",
+    "requestType": "GetPaymentByIdRequest",
+    "responseType": "GetPaymentByIdResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "payment_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalPaymentQueryService.GetPaymentById — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalReportingQueryService",
+    "method": "GetSalesSummary",
+    "fullMethod": "/avf.internal.v1.InternalReportingQueryService/GetSalesSummary",
+    "requestType": "GetSalesSummaryRequest",
+    "responseType": "GetSalesSummaryResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "from_rfc3339": "",
+      "to_rfc3339": "",
+      "group_by": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalReportingQueryService.GetSalesSummary — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalTelemetryQueryService",
+    "method": "GetLatestMachineTelemetry",
+    "fullMethod": "/avf.internal.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry",
+    "requestType": "GetLatestMachineTelemetryRequest",
+    "responseType": "GetLatestMachineTelemetryResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalTelemetryQueryService.GetLatestMachineTelemetry — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalTelemetryQueryService",
+    "method": "GetMachineIncidentSummary",
+    "fullMethod": "/avf.internal.v1.InternalTelemetryQueryService/GetMachineIncidentSummary",
+    "requestType": "GetMachineIncidentSummaryRequest",
+    "responseType": "GetMachineIncidentSummaryResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}",
+      "limit": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "internal_grpc_listener",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token",
+    "viExplain": {
+      "purpose": "RPC InternalTelemetryQueryService.GetMachineIncidentSummary — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineActivationService",
+    "method": "ClaimActivation",
+    "fullMethod": "/avf.machine.v1.MachineActivationService/ClaimActivation",
+    "requestType": "ClaimActivationRequest",
+    "responseType": "ClaimActivationResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "activation_code": "",
+      "device_fingerprint": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineActivationService.ClaimActivation — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineAuthService",
+    "method": "ActivateMachine",
+    "fullMethod": "/avf.machine.v1.MachineAuthService/ActivateMachine",
+    "requestType": "ActivateMachineRequest",
+    "responseType": "ActivateMachineResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "claim": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineAuthService.ActivateMachine — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineAuthService",
+    "method": "ClaimActivation",
+    "fullMethod": "/avf.machine.v1.MachineAuthService/ClaimActivation",
+    "requestType": "MachineAuthServiceClaimActivationRequest",
+    "responseType": "MachineAuthServiceClaimActivationResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "claim": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineAuthService.ClaimActivation — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineAuthService",
+    "method": "RefreshMachineToken",
+    "fullMethod": "/avf.machine.v1.MachineAuthService/RefreshMachineToken",
+    "requestType": "MachineAuthServiceRefreshMachineTokenRequest",
+    "responseType": "MachineAuthServiceRefreshMachineTokenResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "refresh": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineAuthService.RefreshMachineToken — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineBootstrapService",
+    "method": "AckConfigVersion",
+    "fullMethod": "/avf.machine.v1.MachineBootstrapService/AckConfigVersion",
+    "requestType": "AckConfigVersionRequest",
+    "responseType": "AckConfigVersionResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "acknowledged_config_version": 0,
+      "acknowledged_planogram_version_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineBootstrapService.AckConfigVersion — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineBootstrapService",
+    "method": "CheckForUpdates",
+    "fullMethod": "/avf.machine.v1.MachineBootstrapService/CheckForUpdates",
+    "requestType": "CheckForUpdatesRequest",
+    "responseType": "CheckForUpdatesResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "catalog_fingerprint": "",
+      "pricing_fingerprint": "",
+      "planogram_fingerprint": "",
+      "media_fingerprint": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineBootstrapService.CheckForUpdates — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineBootstrapService",
+    "method": "CheckIn",
+    "fullMethod": "/avf.machine.v1.MachineBootstrapService/CheckIn",
+    "requestType": "MachineBootstrapServiceCheckInRequest",
+    "responseType": "MachineBootstrapServiceCheckInResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "boot_id": "{{$guid}}",
+      "network_state": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineBootstrapService.CheckIn — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineBootstrapService",
+    "method": "GetBootstrap",
+    "fullMethod": "/avf.machine.v1.MachineBootstrapService/GetBootstrap",
+    "requestType": "GetBootstrapRequest",
+    "responseType": "GetBootstrapResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineBootstrapService.GetBootstrap — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCatalogService",
+    "method": "AckCatalogVersion",
+    "fullMethod": "/avf.machine.v1.MachineCatalogService/AckCatalogVersion",
+    "requestType": "AckCatalogVersionRequest",
+    "responseType": "AckCatalogVersionResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "acknowledged_catalog_version": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCatalogService.AckCatalogVersion — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCatalogService",
+    "method": "GetCatalogDelta",
+    "fullMethod": "/avf.machine.v1.MachineCatalogService/GetCatalogDelta",
+    "requestType": "GetCatalogDeltaRequest",
+    "responseType": "GetCatalogDeltaResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}",
+      "basis_catalog_version": "",
+      "meta": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCatalogService.GetCatalogDelta — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCatalogService",
+    "method": "GetCatalogSnapshot",
+    "fullMethod": "/avf.machine.v1.MachineCatalogService/GetCatalogSnapshot",
+    "requestType": "GetCatalogSnapshotRequest",
+    "responseType": "GetCatalogSnapshotResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "machine_id": "{{machineId}}",
+      "include_unavailable": false,
+      "include_images": false,
+      "if_none_match_config_version": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCatalogService.GetCatalogSnapshot — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCatalogService",
+    "method": "GetMediaManifest",
+    "fullMethod": "/avf.machine.v1.MachineCatalogService/GetMediaManifest",
+    "requestType": "GetMediaManifestRequest",
+    "responseType": "GetMediaManifestResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}",
+      "include_unavailable": false,
+      "meta": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCatalogService.GetMediaManifest — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCatalogService",
+    "method": "GetSaleCatalog",
+    "fullMethod": "/avf.machine.v1.MachineCatalogService/GetSaleCatalog",
+    "requestType": "GetCatalogSnapshotRequest",
+    "responseType": "GetCatalogSnapshotResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "machine_id": "{{machineId}}",
+      "include_unavailable": false,
+      "include_images": false,
+      "if_none_match_config_version": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCatalogService.GetSaleCatalog — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCatalogService",
+    "method": "SyncCatalogBundle",
+    "fullMethod": "/avf.machine.v1.MachineCatalogService/SyncCatalogBundle",
+    "requestType": "SyncCatalogBundleRequest",
+    "responseType": "SyncCatalogBundleResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "machine_id": "{{machineId}}",
+      "include_unavailable": false,
+      "include_images": false,
+      "current_catalog_version": "",
+      "current_media_manifest_version": "",
+      "basis_product_ids": [],
+      "basis_media_asset_keys": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCatalogService.SyncCatalogBundle — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCatalogService",
+    "method": "SyncSaleCatalog",
+    "fullMethod": "/avf.machine.v1.MachineCatalogService/SyncSaleCatalog",
+    "requestType": "GetCatalogSnapshotRequest",
+    "responseType": "GetCatalogSnapshotResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "machine_id": "{{machineId}}",
+      "include_unavailable": false,
+      "include_images": false,
+      "if_none_match_config_version": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCatalogService.SyncSaleCatalog — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommandService",
+    "method": "AckCommand",
+    "fullMethod": "/avf.machine.v1.MachineCommandService/AckCommand",
+    "requestType": "AckCommandRequest",
+    "responseType": "AckCommandResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "command_id": "{{$guid}}",
+      "command_sequence": 0,
+      "receipt_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommandService.AckCommand — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommandService",
+    "method": "GetAssignedUpdate",
+    "fullMethod": "/avf.machine.v1.MachineCommandService/GetAssignedUpdate",
+    "requestType": "GetAssignedUpdateRequest",
+    "responseType": "GetAssignedUpdateResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommandService.GetAssignedUpdate — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommandService",
+    "method": "GetPendingCommands",
+    "fullMethod": "/avf.machine.v1.MachineCommandService/GetPendingCommands",
+    "requestType": "GetPendingCommandsRequest",
+    "responseType": "GetPendingCommandsResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "after_command_sequence": 0,
+      "limit": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommandService.GetPendingCommands — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommandService",
+    "method": "RejectCommand",
+    "fullMethod": "/avf.machine.v1.MachineCommandService/RejectCommand",
+    "requestType": "RejectCommandRequest",
+    "responseType": "RejectCommandResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "command_id": "{{$guid}}",
+      "command_sequence": 0,
+      "reason": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommandService.RejectCommand — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommandService",
+    "method": "ReportDiagnosticBundleResult",
+    "fullMethod": "/avf.machine.v1.MachineCommandService/ReportDiagnosticBundleResult",
+    "requestType": "ReportDiagnosticBundleResultRequest",
+    "responseType": "ReportDiagnosticBundleResultResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "request_id": "{{$guid}}",
+      "storage_key": "",
+      "storage_provider": "",
+      "content_type": "",
+      "size_bytes": 0,
+      "sha256_hex": "",
+      "metadata": {},
+      "expires_at": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommandService.ReportDiagnosticBundleResult — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommandService",
+    "method": "ReportUpdateStatus",
+    "fullMethod": "/avf.machine.v1.MachineCommandService/ReportUpdateStatus",
+    "requestType": "ReportUpdateStatusRequest",
+    "responseType": "ReportUpdateStatusResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "campaign_id": "{{$guid}}",
+      "status": "",
+      "error_message": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommandService.ReportUpdateStatus — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "AttachPaymentResult",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/AttachPaymentResult",
+    "requestType": "CreatePaymentSessionRequest",
+    "responseType": "CreatePaymentSessionResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "provider": "",
+      "payment_state": "",
+      "amount_minor": 0,
+      "currency": "",
+      "outbox_payload_json": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.AttachPaymentResult — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "CancelOrder",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/CancelOrder",
+    "requestType": "CancelOrderRequest",
+    "responseType": "CancelOrderResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "reason": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.CancelOrder — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "ConfirmCashPayment",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/ConfirmCashPayment",
+    "requestType": "ConfirmCashPaymentRequest",
+    "responseType": "ConfirmCashPaymentResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.ConfirmCashPayment — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "ConfirmVendSuccess",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/ConfirmVendSuccess",
+    "requestType": "ConfirmVendSuccessRequest",
+    "responseType": "ConfirmVendSuccessResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "slot_index": 0,
+      "correlation_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.ConfirmVendSuccess — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "CreateCashCheckout",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/CreateCashCheckout",
+    "requestType": "ConfirmCashPaymentRequest",
+    "responseType": "ConfirmCashPaymentResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.CreateCashCheckout — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "CreateOrder",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/CreateOrder",
+    "requestType": "CreateOrderRequest",
+    "responseType": "CreateOrderResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "machine_id": "{{machineId}}",
+      "product_id": "{{$guid}}",
+      "slot": {},
+      "currency": "",
+      "meta": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.CreateOrder — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "CreatePaymentSession",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/CreatePaymentSession",
+    "requestType": "CreatePaymentSessionRequest",
+    "responseType": "CreatePaymentSessionResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "provider": "",
+      "payment_state": "",
+      "amount_minor": 0,
+      "currency": "",
+      "outbox_payload_json": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.CreatePaymentSession — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "GetOrder",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/GetOrder",
+    "requestType": "GetOrderRequest",
+    "responseType": "GetOrderResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "order_id": "{{$guid}}",
+      "slot_index": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.GetOrder — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "GetOrderStatus",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/GetOrderStatus",
+    "requestType": "GetOrderStatusRequest",
+    "responseType": "GetOrderStatusResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "order_id": "{{$guid}}",
+      "slot_index": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.GetOrderStatus — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "ReportVendFailure",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/ReportVendFailure",
+    "requestType": "ReportVendFailureRequest",
+    "responseType": "ReportVendFailureResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "slot_index": 0,
+      "failure_reason": "",
+      "correlation_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.ReportVendFailure — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "ReportVendSuccess",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/ReportVendSuccess",
+    "requestType": "ReportVendSuccessRequest",
+    "responseType": "ReportVendSuccessResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "slot_index": 0,
+      "correlation_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.ReportVendSuccess — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineCommerceService",
+    "method": "StartVend",
+    "fullMethod": "/avf.machine.v1.MachineCommerceService/StartVend",
+    "requestType": "StartVendRequest",
+    "responseType": "StartVendResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "slot_index": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineCommerceService.StartVend — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineInventoryService",
+    "method": "AckInventorySync",
+    "fullMethod": "/avf.machine.v1.MachineInventoryService/AckInventorySync",
+    "requestType": "AckInventorySyncRequest",
+    "responseType": "AckInventorySyncResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "sync_cursor": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineInventoryService.AckInventorySync — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineInventoryService",
+    "method": "GetInventorySnapshot",
+    "fullMethod": "/avf.machine.v1.MachineInventoryService/GetInventorySnapshot",
+    "requestType": "GetInventorySnapshotRequest",
+    "responseType": "GetInventorySnapshotResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineInventoryService.GetInventorySnapshot — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineInventoryService",
+    "method": "GetPlanogram",
+    "fullMethod": "/avf.machine.v1.MachineInventoryService/GetPlanogram",
+    "requestType": "GetPlanogramRequest",
+    "responseType": "GetPlanogramResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineInventoryService.GetPlanogram — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineInventoryService",
+    "method": "PushInventoryDelta",
+    "fullMethod": "/avf.machine.v1.MachineInventoryService/PushInventoryDelta",
+    "requestType": "ReportInventoryDeltaRequest",
+    "responseType": "ReportInventoryDeltaResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "meta": {},
+      "reason": "",
+      "lines": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineInventoryService.PushInventoryDelta — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineInventoryService",
+    "method": "SubmitFillReport",
+    "fullMethod": "/avf.machine.v1.MachineInventoryService/SubmitFillReport",
+    "requestType": "SubmitFillResultRequest",
+    "responseType": "SubmitFillResultResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "lines": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineInventoryService.SubmitFillReport — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineInventoryService",
+    "method": "SubmitFillResult",
+    "fullMethod": "/avf.machine.v1.MachineInventoryService/SubmitFillResult",
+    "requestType": "SubmitFillResultRequest",
+    "responseType": "SubmitFillResultResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "lines": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineInventoryService.SubmitFillResult — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineInventoryService",
+    "method": "SubmitInventoryAdjustment",
+    "fullMethod": "/avf.machine.v1.MachineInventoryService/SubmitInventoryAdjustment",
+    "requestType": "SubmitInventoryAdjustmentRequest",
+    "responseType": "SubmitInventoryAdjustmentResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "reason": "",
+      "lines": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineInventoryService.SubmitInventoryAdjustment — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineInventoryService",
+    "method": "SubmitRestock",
+    "fullMethod": "/avf.machine.v1.MachineInventoryService/SubmitRestock",
+    "requestType": "SubmitRestockRequest",
+    "responseType": "SubmitRestockResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "lines": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineInventoryService.SubmitRestock — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineInventoryService",
+    "method": "SubmitStockAdjustment",
+    "fullMethod": "/avf.machine.v1.MachineInventoryService/SubmitStockAdjustment",
+    "requestType": "SubmitInventoryAdjustmentRequest",
+    "responseType": "SubmitInventoryAdjustmentResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "reason": "",
+      "lines": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineInventoryService.SubmitStockAdjustment — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineInventoryService",
+    "method": "SubmitStockSnapshot",
+    "fullMethod": "/avf.machine.v1.MachineInventoryService/SubmitStockSnapshot",
+    "requestType": "SubmitStockSnapshotRequest",
+    "responseType": "SubmitStockSnapshotResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "lines": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineInventoryService.SubmitStockSnapshot — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineMediaService",
+    "method": "AckMediaVersion",
+    "fullMethod": "/avf.machine.v1.MachineMediaService/AckMediaVersion",
+    "requestType": "AckMediaVersionRequest",
+    "responseType": "AckMediaVersionResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "acknowledged_media_fingerprint": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineMediaService.AckMediaVersion — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineMediaService",
+    "method": "GetMediaDelta",
+    "fullMethod": "/avf.machine.v1.MachineMediaService/GetMediaDelta",
+    "requestType": "GetMediaDeltaRequest",
+    "responseType": "GetMediaDeltaResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}",
+      "basis_media_fingerprint": "",
+      "meta": {},
+      "include_unavailable": false
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineMediaService.GetMediaDelta — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineMediaService",
+    "method": "GetMediaManifest",
+    "fullMethod": "/avf.machine.v1.MachineMediaService/GetMediaManifest",
+    "requestType": "MachineMediaServiceGetMediaManifestRequest",
+    "responseType": "MachineMediaServiceGetMediaManifestResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}",
+      "include_unavailable": false,
+      "meta": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineMediaService.GetMediaManifest — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineOfflineSyncService",
+    "method": "GetSyncCursor",
+    "fullMethod": "/avf.machine.v1.MachineOfflineSyncService/GetSyncCursor",
+    "requestType": "GetSyncCursorRequest",
+    "responseType": "GetSyncCursorResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineOfflineSyncService.GetSyncCursor — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineOfflineSyncService",
+    "method": "PushOfflineEvents",
+    "fullMethod": "/avf.machine.v1.MachineOfflineSyncService/PushOfflineEvents",
+    "requestType": "SyncOfflineEventsRequest",
+    "responseType": "SyncOfflineEventsResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "meta": {},
+      "events": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineOfflineSyncService.PushOfflineEvents — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineOperatorService",
+    "method": "CloseOperatorSession",
+    "fullMethod": "/avf.machine.v1.MachineOperatorService/CloseOperatorSession",
+    "requestType": "CloseOperatorSessionRequest",
+    "responseType": "CloseOperatorSessionResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "session_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineOperatorService.CloseOperatorSession — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineOperatorService",
+    "method": "HeartbeatOperatorSession",
+    "fullMethod": "/avf.machine.v1.MachineOperatorService/HeartbeatOperatorSession",
+    "requestType": "HeartbeatOperatorSessionRequest",
+    "responseType": "HeartbeatOperatorSessionResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "session_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineOperatorService.HeartbeatOperatorSession — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineOperatorService",
+    "method": "LoginOperator",
+    "fullMethod": "/avf.machine.v1.MachineOperatorService/LoginOperator",
+    "requestType": "LoginOperatorRequest",
+    "responseType": "LoginOperatorResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {},
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineOperatorService.LoginOperator — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineOperatorService",
+    "method": "LogoutOperator",
+    "fullMethod": "/avf.machine.v1.MachineOperatorService/LogoutOperator",
+    "requestType": "LogoutOperatorRequest",
+    "responseType": "LogoutOperatorResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {},
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineOperatorService.LogoutOperator — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineOperatorService",
+    "method": "OpenOperatorSession",
+    "fullMethod": "/avf.machine.v1.MachineOperatorService/OpenOperatorSession",
+    "requestType": "OpenOperatorSessionRequest",
+    "responseType": "OpenOperatorSessionResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {},
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineOperatorService.OpenOperatorSession — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineOperatorService",
+    "method": "SubmitFillReport",
+    "fullMethod": "/avf.machine.v1.MachineOperatorService/SubmitFillReport",
+    "requestType": "SubmitFillReportRequest",
+    "responseType": "SubmitFillReportResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "fill": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineOperatorService.SubmitFillReport — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineOperatorService",
+    "method": "SubmitStockAdjustment",
+    "fullMethod": "/avf.machine.v1.MachineOperatorService/SubmitStockAdjustment",
+    "requestType": "SubmitStockAdjustmentRequest",
+    "responseType": "SubmitStockAdjustmentResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "adjustment": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineOperatorService.SubmitStockAdjustment — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineSaleService",
+    "method": "AttachPayment",
+    "fullMethod": "/avf.machine.v1.MachineSaleService/AttachPayment",
+    "requestType": "AttachPaymentRequest",
+    "responseType": "AttachPaymentResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "payment_session": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineSaleService.AttachPayment — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineSaleService",
+    "method": "CancelSale",
+    "fullMethod": "/avf.machine.v1.MachineSaleService/CancelSale",
+    "requestType": "CancelOrderRequest",
+    "responseType": "CancelOrderResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "reason": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineSaleService.CancelSale — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineSaleService",
+    "method": "CompleteVend",
+    "fullMethod": "/avf.machine.v1.MachineSaleService/CompleteVend",
+    "requestType": "ConfirmVendSuccessRequest",
+    "responseType": "ConfirmVendSuccessResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "slot_index": 0,
+      "correlation_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineSaleService.CompleteVend — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineSaleService",
+    "method": "ConfirmCashReceived",
+    "fullMethod": "/avf.machine.v1.MachineSaleService/ConfirmCashReceived",
+    "requestType": "ConfirmCashReceivedRequest",
+    "responseType": "ConfirmCashReceivedResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "payment": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineSaleService.ConfirmCashReceived — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineSaleService",
+    "method": "CreateSale",
+    "fullMethod": "/avf.machine.v1.MachineSaleService/CreateSale",
+    "requestType": "CreateSaleRequest",
+    "responseType": "CreateSaleResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "order": {}
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineSaleService.CreateSale — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineSaleService",
+    "method": "FailVend",
+    "fullMethod": "/avf.machine.v1.MachineSaleService/FailVend",
+    "requestType": "ReportVendFailureRequest",
+    "responseType": "ReportVendFailureResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "slot_index": 0,
+      "failure_reason": "",
+      "correlation_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineSaleService.FailVend — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineSaleService",
+    "method": "StartVend",
+    "fullMethod": "/avf.machine.v1.MachineSaleService/StartVend",
+    "requestType": "StartVendRequest",
+    "responseType": "StartVendResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "order_id": "{{$guid}}",
+      "slot_index": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineSaleService.StartVend — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineTelemetryService",
+    "method": "CheckIn",
+    "fullMethod": "/avf.machine.v1.MachineTelemetryService/CheckIn",
+    "requestType": "CheckInRequest",
+    "responseType": "CheckInResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "machine_id": "{{machineId}}",
+      "android_id": "{{$guid}}",
+      "sim_serial": "",
+      "package_name": "",
+      "version_name": "",
+      "version_code": 0,
+      "android_release": "",
+      "sdk_int": 0,
+      "manufacturer": "",
+      "model": "",
+      "timezone": "",
+      "network_state": "",
+      "boot_id": "{{$guid}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineTelemetryService.CheckIn — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineTelemetryService",
+    "method": "GetEventStatus",
+    "fullMethod": "/avf.machine.v1.MachineTelemetryService/GetEventStatus",
+    "requestType": "GetEventStatusRequest",
+    "responseType": "GetEventStatusResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "idempotency_key": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineTelemetryService.GetEventStatus — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineTelemetryService",
+    "method": "PushCriticalEvent",
+    "fullMethod": "/avf.machine.v1.MachineTelemetryService/PushCriticalEvent",
+    "requestType": "PushCriticalEventRequest",
+    "responseType": "PushCriticalEventResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "meta": {},
+      "event": {},
+      "severity": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineTelemetryService.PushCriticalEvent — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineTelemetryService",
+    "method": "PushTelemetryBatch",
+    "fullMethod": "/avf.machine.v1.MachineTelemetryService/PushTelemetryBatch",
+    "requestType": "PushTelemetryBatchRequest",
+    "responseType": "PushTelemetryBatchResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "meta": {},
+      "events": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineTelemetryService.PushTelemetryBatch — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineTelemetryService",
+    "method": "ReconcileEvents",
+    "fullMethod": "/avf.machine.v1.MachineTelemetryService/ReconcileEvents",
+    "requestType": "ReconcileEventsRequest",
+    "responseType": "ReconcileEventsResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "idempotency_keys": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineTelemetryService.ReconcileEvents — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineTelemetryService",
+    "method": "SubmitTelemetryBatch",
+    "fullMethod": "/avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch",
+    "requestType": "SubmitTelemetryBatchRequest",
+    "responseType": "SubmitTelemetryBatchResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "context": {},
+      "events": []
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineTelemetryService.SubmitTelemetryBatch — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "MachineTokenService",
+    "method": "RefreshMachineToken",
+    "fullMethod": "/avf.machine.v1.MachineTokenService/RefreshMachineToken",
+    "requestType": "RefreshMachineTokenRequest",
+    "responseType": "RefreshMachineTokenResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{machineToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "refresh_token": ""
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "DESTRUCTIVE_CANARY_ONLY",
+    "registeredOnListener": true,
+    "listenerBinding": "machine_grpc_listener",
+    "clientType": "machine",
+    "auth": "machine bearer token",
+    "viExplain": {
+      "purpose": "RPC MachineTokenService.RefreshMachineToken — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalCommerceQueryService",
+    "method": "GetOrderPaymentVendState",
+    "fullMethod": "/avf.v1.InternalCommerceQueryService/GetOrderPaymentVendState",
+    "requestType": "GetOrderPaymentVendStateRequest",
+    "responseType": "GetOrderPaymentVendStateResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "order_id": "{{$guid}}",
+      "slot_index": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": false,
+    "listenerBinding": "proto_legacy_avf_v1_not_registered_in_grpcserver",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token (proto legacy; kiểm tra listener)",
+    "viExplain": {
+      "purpose": "RPC InternalCommerceQueryService.GetOrderPaymentVendState — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalMachineQueryService",
+    "method": "GetMachineCabinetSlotSummary",
+    "fullMethod": "/avf.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary",
+    "requestType": "GetMachineRequest",
+    "responseType": "GetMachineCabinetSlotSummaryResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": false,
+    "listenerBinding": "proto_legacy_avf_v1_not_registered_in_grpcserver",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token (proto legacy; kiểm tra listener)",
+    "viExplain": {
+      "purpose": "RPC InternalMachineQueryService.GetMachineCabinetSlotSummary — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalMachineQueryService",
+    "method": "GetMachineState",
+    "fullMethod": "/avf.v1.InternalMachineQueryService/GetMachineState",
+    "requestType": "GetMachineRequest",
+    "responseType": "GetMachineStateResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": false,
+    "listenerBinding": "proto_legacy_avf_v1_not_registered_in_grpcserver",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token (proto legacy; kiểm tra listener)",
+    "viExplain": {
+      "purpose": "RPC InternalMachineQueryService.GetMachineState — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalMachineQueryService",
+    "method": "GetMachineSummary",
+    "fullMethod": "/avf.v1.InternalMachineQueryService/GetMachineSummary",
+    "requestType": "GetMachineRequest",
+    "responseType": "GetMachineSummaryResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": false,
+    "listenerBinding": "proto_legacy_avf_v1_not_registered_in_grpcserver",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token (proto legacy; kiểm tra listener)",
+    "viExplain": {
+      "purpose": "RPC InternalMachineQueryService.GetMachineSummary — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalTelemetryQueryService",
+    "method": "GetLatestMachineTelemetry",
+    "fullMethod": "/avf.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry",
+    "requestType": "GetMachineRequest",
+    "responseType": "GetLatestMachineTelemetryResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}"
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": false,
+    "listenerBinding": "proto_legacy_avf_v1_not_registered_in_grpcserver",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token (proto legacy; kiểm tra listener)",
+    "viExplain": {
+      "purpose": "RPC InternalTelemetryQueryService.GetLatestMachineTelemetry — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  },
+  {
+    "service": "InternalTelemetryQueryService",
+    "method": "GetMachineIncidentSummary",
+    "fullMethod": "/avf.v1.InternalTelemetryQueryService/GetMachineIncidentSummary",
+    "requestType": "GetMachineIncidentSummaryRequest",
+    "responseType": "GetMachineIncidentSummaryResponse",
+    "streamType": "unary",
+    "authMetadata": {
+      "authorization": "Bearer {{accessToken}}",
+      "x-request-id": "{{$guid}}",
+      "x-correlation-id": "{{$guid}}"
+    },
+    "requestJsonTemplate": {
+      "machine_id": "{{machineId}}",
+      "limit": 0
+    },
+    "expectedResponseShape": {
+      "note": "Protobuf JSON encoding theo responseType; xem descriptor."
+    },
+    "precondition": "Canary JWT đúng role; internal chỉ từ mạng private listener khi deploy tách.",
+    "postcondition": "HTTP/gRPC status OK; kiểm tra side effect qua REST read model khi cần.",
+    "destructiveLevel": "READ_ONLY",
+    "registeredOnListener": false,
+    "listenerBinding": "proto_legacy_avf_v1_not_registered_in_grpcserver",
+    "clientType": "admin/internal",
+    "auth": "admin bearer token (proto legacy; kiểm tra listener)",
+    "viExplain": {
+      "purpose": "RPC InternalTelemetryQueryService.GetMachineIncidentSummary — tham chiếu proto.",
+      "why": "Luồng runtime machine hoặc truy vấn nội bộ.",
+      "afterStep": "Theo `05_PRODUCTION_TEST_EXECUTION_ORDER.md` phần gRPC.",
+      "evidence": "Mã trạng thái gRPC + correlation metadata."
+    }
+  }
+]
