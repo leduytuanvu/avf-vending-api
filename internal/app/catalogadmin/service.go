@@ -13,6 +13,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// MediaPrimaryBinder plugs enterprise media binding into catalog transactions.
+type MediaPrimaryBinder interface {
+	BindProductPrimaryMediaTx(ctx context.Context, tx pgx.Tx, companyID, productID, mediaID uuid.UUID) (*db.Product, error)
+}
+
 // Service provides catalog admin queries and writes for HTTP APIs.
 type Service struct {
 	q              *db.Queries
@@ -21,6 +26,7 @@ type Service struct {
 	promotionAudit func(context.Context, PromotionAuditEvent)
 	media          ProductMediaDeps
 	cache          CatalogCacheInvalidator
+	mediaBinder    MediaPrimaryBinder
 }
 
 type CatalogCacheInvalidator interface {
@@ -52,6 +58,13 @@ func NewService(q *db.Queries, pool *pgxpool.Pool, audit compliance.EnterpriseRe
 func (s *Service) SetCatalogCacheInvalidator(cache CatalogCacheInvalidator) {
 	if s != nil {
 		s.cache = cache
+	}
+}
+
+// SetMediaBinder wires enterprise media binding for transactional primaryMediaId handling.
+func (s *Service) SetMediaBinder(b MediaPrimaryBinder) {
+	if s != nil {
+		s.mediaBinder = b
 	}
 }
 
@@ -152,6 +165,28 @@ func (s *Service) GetProduct(ctx context.Context, companyID, productID uuid.UUID
 		return db.Product{}, err
 	}
 	return row, nil
+}
+
+// PrimaryMediaAssetByProductIDs returns media_assets.id for each product's primary_image binding when present.
+func (s *Service) PrimaryMediaAssetByProductIDs(ctx context.Context, productIDs []uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	if s == nil {
+		return nil, errors.New("catalogadmin: nil service")
+	}
+	if len(productIDs) == 0 {
+		return map[uuid.UUID]uuid.UUID{}, nil
+	}
+	rows, err := s.q.CatalogAdminListPrimaryMediaAssetIDsForProducts(ctx, productIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]uuid.UUID, len(rows))
+	for _, r := range rows {
+		if !r.MediaAssetID.Valid {
+			continue
+		}
+		out[r.ProductID] = uuid.UUID(r.MediaAssetID.Bytes)
+	}
+	return out, nil
 }
 
 // ListPriceBooksParams filters price books for pagination.

@@ -9,6 +9,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/activation"
 	"github.com/avf/avf-vending-api/internal/app/featureflags"
+	"github.com/avf/avf-vending-api/internal/app/sellreadiness"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -415,14 +416,31 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 		})
 	}
 	products := make([]*machinev1.BootstrapCatalogProduct, 0, len(b.AssortmentProducts))
+	var assortReady map[uuid.UUID]bool
+	if deps.Pool != nil && len(b.AssortmentProducts) > 0 {
+		apIDs := make([]uuid.UUID, 0, len(b.AssortmentProducts))
+		for _, p := range b.AssortmentProducts {
+			apIDs = append(apIDs, p.ProductID)
+		}
+		var err error
+		assortReady, err = sellreadiness.PrimaryMediaReadyMap(ctx, db.New(deps.Pool), apIDs)
+		if err != nil {
+			return nil, err
+		}
+	}
 	for _, p := range b.AssortmentProducts {
+		pmReady := false
+		if assortReady != nil {
+			pmReady = assortReady[p.ProductID]
+		}
 		products = append(products, &machinev1.BootstrapCatalogProduct{
-			ProductId:      p.ProductID.String(),
-			Sku:            p.SKU,
-			Name:           p.Name,
-			SortOrder:      p.SortOrder,
-			AssortmentId:   p.AssortmentID.String(),
-			AssortmentName: p.AssortmentName,
+			ProductId:         p.ProductID.String(),
+			Sku:               p.SKU,
+			Name:              p.Name,
+			SortOrder:         p.SortOrder,
+			AssortmentId:      p.AssortmentID.String(),
+			AssortmentName:    p.AssortmentName,
+			PrimaryMediaReady: pmReady,
 		})
 	}
 	prefix := deps.MQTTTopicPrefix
@@ -460,6 +478,26 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 	if deps.FeatureFlags != nil {
 		if rh, err := deps.FeatureFlags.RuntimeHintsForMachine(ctx, machineID); err == nil && rh != nil {
 			resp.RuntimeHints = mapRuntimeHintsProto(rh)
+		}
+	}
+	if deps.Pool != nil && deps.MachineQueries != nil {
+		sv, err := deps.MachineQueries.GetMachineSlotView(ctx, machineID)
+		if err != nil {
+			return nil, err
+		}
+		sr, err := sellreadiness.Compute(ctx, db.New(deps.Pool), sv, b)
+		if err != nil {
+			return nil, err
+		}
+		if resp.RuntimeHints == nil {
+			resp.RuntimeHints = &machinev1.RuntimeHints{}
+		}
+		resp.RuntimeHints.SellReadiness = &machinev1.SellReadiness{
+			CatalogSynced:   sr.CatalogSynced,
+			MediaSynced:     sr.MediaSynced,
+			InventorySynced: sr.InventorySynced,
+			ReadyForSale:    sr.ReadyForSale,
+			ReadinessIssues: sr.Issues,
 		}
 	}
 	return resp, nil

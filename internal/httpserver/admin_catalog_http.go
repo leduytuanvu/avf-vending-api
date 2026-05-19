@@ -26,8 +26,8 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 	svc := app.CatalogAdmin
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermCatalogRead))
-		r.Get("/products", listAdminProducts(svc))
-		r.Get("/products/{productId}", getAdminProduct(svc))
+		r.Get("/products", listAdminProducts(app))
+		r.Get("/products/{productId}", getAdminProduct(app))
 		r.Get("/brands", listAdminBrands(svc))
 		r.Get("/categories", listAdminCategories(svc))
 		r.Get("/tags", listAdminTags(svc))
@@ -41,13 +41,13 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermCatalogWrite))
-		r.With(writeRL).Post("/products", postAdminProductCreate(svc))
-		r.With(writeRL).Put("/products/{productId}", putAdminProductUpdate(svc))
-		r.With(writeRL).Patch("/products/{productId}", putAdminProductUpdate(svc))
-		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermCatalogDelete)).Delete("/products/{productId}", deleteAdminProduct(svc))
-		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Post("/products/{productId}/image", bindAdminProductImage(svc))
-		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Put("/products/{productId}/image", bindAdminProductImage(svc))
-		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Delete("/products/{productId}/image", deleteAdminProductImage(svc))
+		r.With(writeRL).Post("/products", postAdminProductCreate(app))
+		r.With(writeRL).Put("/products/{productId}", putAdminProductUpdate(app))
+		r.With(writeRL).Patch("/products/{productId}", putAdminProductUpdate(app))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermCatalogDelete)).Delete("/products/{productId}", deleteAdminProduct(app))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Post("/products/{productId}/image", bindAdminProductImage(app))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Put("/products/{productId}/image", bindAdminProductImage(app))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Delete("/products/{productId}/image", deleteAdminProductImage(app))
 		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Post("/products/{productId}/media", bindAdminProductMedia(app))
 		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Put("/products/{productId}/media", bindAdminProductMedia(app))
 		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite)).Delete("/products/{productId}/media/{mediaId}", deleteAdminProductMedia(app))
@@ -77,7 +77,8 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 	})
 }
 
-func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
+func listAdminProducts(app *api.HTTPApplication) http.HandlerFunc {
+	svc := app.CatalogAdmin
 	return func(w http.ResponseWriter, r *http.Request) {
 		scopeID, err := requireCatalogPrincipalUUID(r)
 		_ = scopeID
@@ -103,19 +104,59 @@ func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
+		pids := make([]uuid.UUID, len(res.Items))
+		for i := range res.Items {
+			pids[i] = res.Items[i].ID
+		}
+		tagsBy, err := svc.ProductTagsByProductIDs(r.Context(), pids)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		assetByProd, err := svc.PrimaryMediaAssetByProductIDs(r.Context(), pids)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		var mediaByProd map[uuid.UUID]*V1AdminProductMediaDoc
+		if app != nil && app.MediaAdmin != nil && len(assetByProd) > 0 {
+			mediaByProd, err = batchAdminProductMediaDocs(r.Context(), app, assetByProd)
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+				return
+			}
+		}
 		items := make([]V1AdminProductListItem, 0, len(res.Items))
 		for _, row := range res.Items {
+			tagRows := tagsBy[row.ID]
+			tags := make([]V1AdminTag, 0, len(tagRows))
+			for _, tr := range tagRows {
+				tags = append(tags, mapAdminTag(tr))
+			}
+			var pmID *string
+			if aid, ok := assetByProd[row.ID]; ok {
+				s := aid.String()
+				pmID = &s
+			}
+			var md *V1AdminProductMediaDoc
+			if mediaByProd != nil {
+				md = mediaByProd[row.ID]
+			}
 			items = append(items, V1AdminProductListItem{
-				ID:          row.ID.String(),
-				Sku:         row.Sku,
-				Barcode:     textFromPgText(row.Barcode),
-				Name:        row.Name,
-				Description: row.Description,
-				Active:      row.Active,
-				CategoryID:  uuidPtrFromPgUUID(row.CategoryID),
-				BrandID:     uuidPtrFromPgUUID(row.BrandID),
-				CreatedAt:   formatAPITimeRFC3339Nano(row.CreatedAt),
-				UpdatedAt:   formatAPITimeRFC3339Nano(row.UpdatedAt),
+				ID:             row.ID.String(),
+				Sku:            row.Sku,
+				Barcode:        textFromPgText(row.Barcode),
+				Name:           row.Name,
+				Description:    row.Description,
+				Active:         row.Active,
+				Status:         adminProductStatus(row.Active),
+				CategoryID:     uuidPtrFromPgUUID(row.CategoryID),
+				BrandID:        uuidPtrFromPgUUID(row.BrandID),
+				PrimaryMediaID: pmID,
+				Media:          md,
+				Tags:           tags,
+				CreatedAt:      formatAPITimeRFC3339Nano(row.CreatedAt),
+				UpdatedAt:      formatAPITimeRFC3339Nano(row.UpdatedAt),
 			})
 		}
 		writeJSON(w, http.StatusOK, V1AdminProductListEnvelope{
@@ -130,7 +171,8 @@ func listAdminProducts(svc *appcatalogadmin.Service) http.HandlerFunc {
 	}
 }
 
-func getAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
+func getAdminProduct(app *api.HTTPApplication) http.HandlerFunc {
+	svc := app.CatalogAdmin
 	return func(w http.ResponseWriter, r *http.Request) {
 		scopeID, err := requireCatalogPrincipalUUID(r)
 		_ = scopeID
@@ -152,7 +194,7 @@ func getAdminProduct(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		writeAdminProductResponse(w, r, svc, scopeID, row)
+		writeAdminProductResponse(w, r, app, svc, scopeID, row)
 	}
 }
 
@@ -442,7 +484,14 @@ func textFromPgText(t pgtype.Text) *string {
 	return &s
 }
 
-func mapAdminProduct(p db.Product, img *db.ProductImage) V1AdminProduct {
+func mapAdminProduct(p db.Product, img *db.ProductImage, tags []db.Tag, media *V1AdminProductMediaDoc) V1AdminProduct {
+	if tags == nil {
+		tags = []db.Tag{}
+	}
+	tagViews := make([]V1AdminTag, 0, len(tags))
+	for _, tr := range tags {
+		tagViews = append(tagViews, mapAdminTag(tr))
+	}
 	out := V1AdminProduct{
 		ID:              p.ID.String(),
 		Sku:             p.Sku,
@@ -450,13 +499,17 @@ func mapAdminProduct(p db.Product, img *db.ProductImage) V1AdminProduct {
 		Name:            p.Name,
 		Description:     p.Description,
 		Active:          p.Active,
+		Status:          adminProductStatus(p.Active),
 		CategoryID:      uuidPtrFromPgUUID(p.CategoryID),
 		BrandID:         uuidPtrFromPgUUID(p.BrandID),
+		PrimaryMediaID:  primaryMediaIDPtr(img),
+		Media:           media,
 		PrimaryImageID:  uuidPtrFromPgUUID(p.PrimaryImageID),
 		CountryOfOrigin: textFromPgText(p.CountryOfOrigin),
 		AgeRestricted:   p.AgeRestricted,
 		AllergenCodes:   append([]string(nil), p.AllergenCodes...),
 		NutritionalNote: textFromPgText(p.NutritionalNote),
+		Tags:            tagViews,
 		CreatedAt:       formatAPITimeRFC3339Nano(p.CreatedAt),
 		UpdatedAt:       formatAPITimeRFC3339Nano(p.UpdatedAt),
 	}
@@ -483,13 +536,22 @@ func mapAdminProduct(p db.Product, img *db.ProductImage) V1AdminProduct {
 	return out
 }
 
-func writeAdminProductResponse(w http.ResponseWriter, r *http.Request, svc *appcatalogadmin.Service, scopeID uuid.UUID, p db.Product) {
+func writeAdminProductResponse(w http.ResponseWriter, r *http.Request, app *api.HTTPApplication, svc *appcatalogadmin.Service, scopeID uuid.UUID, p db.Product) {
 	img, err := svc.PrimaryProductImageOrNil(r.Context(), scopeID, p.ID)
 	if err != nil {
 		writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, mapAdminProduct(p, img))
+	tagsBy, err := svc.ProductTagsByProductIDs(r.Context(), []uuid.UUID{p.ID})
+	if err != nil {
+		writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+	var media *V1AdminProductMediaDoc
+	if app != nil && app.MediaAdmin != nil {
+		media = buildAdminProductMediaDoc(r.Context(), app, img)
+	}
+	writeJSON(w, http.StatusOK, mapAdminProduct(p, img, tagsBy[p.ID], media))
 }
 
 func mapPriceBook(pb db.PriceBook) V1AdminPriceBook {

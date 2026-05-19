@@ -181,6 +181,16 @@ func (q *Queries) CatalogWriteDeletePriceBookTarget(ctx context.Context, id uuid
 	return result.RowsAffected(), nil
 }
 
+const CatalogWriteDeleteProductTagsForProduct = `-- name: CatalogWriteDeleteProductTagsForProduct :exec
+DELETE FROM product_tags
+WHERE product_id = $1
+`
+
+func (q *Queries) CatalogWriteDeleteProductTagsForProduct(ctx context.Context, productID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, CatalogWriteDeleteProductTagsForProduct, productID)
+	return err
+}
+
 const CatalogWriteGetPrimaryProductImage = `-- name: CatalogWriteGetPrimaryProductImage :one
 SELECT id, product_id, storage_key, cdn_url, thumb_cdn_url, content_hash, width, height, mime_type, alt_text, sort_order, is_primary, media_asset_id, media_version, status, created_at, updated_at
 FROM product_images
@@ -555,6 +565,21 @@ func (q *Queries) CatalogWriteInsertProductImage(ctx context.Context, arg Catalo
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const CatalogWriteInsertProductTag = `-- name: CatalogWriteInsertProductTag :exec
+INSERT INTO product_tags (product_id, tag_id)
+VALUES ($1, $2)
+`
+
+type CatalogWriteInsertProductTagParams struct {
+	ProductID uuid.UUID
+	TagID     uuid.UUID
+}
+
+func (q *Queries) CatalogWriteInsertProductTag(ctx context.Context, arg CatalogWriteInsertProductTagParams) error {
+	_, err := q.db.Exec(ctx, CatalogWriteInsertProductTag, arg.ProductID, arg.TagID)
+	return err
 }
 
 const CatalogWriteInsertTag = `-- name: CatalogWriteInsertTag :one
@@ -1071,6 +1096,128 @@ func (q *Queries) CatalogWriteUpsertPriceBookItem(ctx context.Context, arg Catal
 		&i.ProductID,
 		&i.UnitPriceMinor,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const CatalogWriteUpsertProductMediaProjection = `-- name: CatalogWriteUpsertProductMediaProjection :one
+INSERT INTO product_media (
+    id,
+    product_id,
+    media_role,
+    media_type,
+    source_type,
+    original_object_key,
+    thumb_object_key,
+    display_object_key,
+    thumb_url,
+    display_url,
+    mime_type,
+    width,
+    height,
+    size_bytes,
+    content_hash,
+    media_version,
+    sort_order,
+    status
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    'image',
+    'upload',
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13,
+    $14,
+    0,
+    'active'
+)
+ON CONFLICT (id)
+    DO UPDATE SET
+        media_role = EXCLUDED.media_role,
+        original_object_key = EXCLUDED.original_object_key,
+        thumb_object_key = EXCLUDED.thumb_object_key,
+        display_object_key = EXCLUDED.display_object_key,
+        thumb_url = EXCLUDED.thumb_url,
+        display_url = EXCLUDED.display_url,
+        mime_type = EXCLUDED.mime_type,
+        width = EXCLUDED.width,
+        height = EXCLUDED.height,
+        size_bytes = EXCLUDED.size_bytes,
+        content_hash = EXCLUDED.content_hash,
+        media_version = EXCLUDED.media_version,
+        status = EXCLUDED.status,
+        updated_at = now()
+RETURNING id, product_id, media_role, media_type, source_type, original_object_key, thumb_object_key, display_object_key, original_url, thumb_url, display_url, mime_type, width, height, size_bytes, content_hash, media_version, sort_order, status, created_by, created_at, updated_at
+`
+
+type CatalogWriteUpsertProductMediaProjectionParams struct {
+	ID                uuid.UUID
+	ProductID         uuid.UUID
+	MediaRole         string
+	OriginalObjectKey pgtype.Text
+	ThumbObjectKey    pgtype.Text
+	DisplayObjectKey  pgtype.Text
+	ThumbUrl          pgtype.Text
+	DisplayUrl        pgtype.Text
+	MimeType          pgtype.Text
+	Width             pgtype.Int4
+	Height            pgtype.Int4
+	SizeBytes         int64
+	ContentHash       pgtype.Text
+	MediaVersion      int32
+}
+
+func (q *Queries) CatalogWriteUpsertProductMediaProjection(ctx context.Context, arg CatalogWriteUpsertProductMediaProjectionParams) (ProductMedium, error) {
+	row := q.db.QueryRow(ctx, CatalogWriteUpsertProductMediaProjection,
+		arg.ID,
+		arg.ProductID,
+		arg.MediaRole,
+		arg.OriginalObjectKey,
+		arg.ThumbObjectKey,
+		arg.DisplayObjectKey,
+		arg.ThumbUrl,
+		arg.DisplayUrl,
+		arg.MimeType,
+		arg.Width,
+		arg.Height,
+		arg.SizeBytes,
+		arg.ContentHash,
+		arg.MediaVersion,
+	)
+	var i ProductMedium
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.MediaRole,
+		&i.MediaType,
+		&i.SourceType,
+		&i.OriginalObjectKey,
+		&i.ThumbObjectKey,
+		&i.DisplayObjectKey,
+		&i.OriginalUrl,
+		&i.ThumbUrl,
+		&i.DisplayUrl,
+		&i.MimeType,
+		&i.Width,
+		&i.Height,
+		&i.SizeBytes,
+		&i.ContentHash,
+		&i.MediaVersion,
+		&i.SortOrder,
+		&i.Status,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

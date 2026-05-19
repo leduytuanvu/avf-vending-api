@@ -2027,6 +2027,18 @@ def missing_reference_component_schemas() -> dict[str, Any]:
         "email": {"type": "string", "format": "email"},
         "roles": {"type": "array", "items": {"type": "string"}},
     }
+    admin_catalog_tag = {
+        "type": "object",
+        "properties": {
+            "id": dict(uuid_s),
+            "slug": {"type": "string"},
+            "name": {"type": "string"},
+            "active": {"type": "boolean"},
+            "createdAt": ts,
+            "updatedAt": ts,
+        },
+        "required": ["id", "slug", "name", "active", "createdAt", "updatedAt"],
+    }
     product_list_item = {
         "type": "object",
         "properties": {
@@ -2036,12 +2048,16 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "name": {"type": "string"},
             "description": {"type": "string"},
             "active": {"type": "boolean"},
+            "status": {"type": "string", "description": "active or inactive (derived from active)"},
             "categoryId": {"type": "string", "format": "uuid", "nullable": True},
             "brandId": {"type": "string", "format": "uuid", "nullable": True},
+            "primaryMediaId": {"type": "string", "format": "uuid", "nullable": True},
+            "media": {"$ref": "#/components/schemas/V1AdminProductMediaDoc"},
+            "tags": {"type": "array", "items": {"$ref": "#/components/schemas/V1AdminCatalogTag"}},
             "createdAt": ts,
             "updatedAt": ts,
         },
-        "required": ["id", "sku", "name", "description", "active", "createdAt", "updatedAt"],
+        "required": ["id", "sku", "name", "description", "active", "status", "tags", "createdAt", "updatedAt"],
     }
     product_detail = {
         "type": "object",
@@ -2049,6 +2065,9 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             **product_list_item["properties"],
             "attrs": {"type": "object", "nullable": True, "additionalProperties": True},
             "primaryImageId": {"type": "string", "format": "uuid", "nullable": True},
+            "imageUrl": {"type": "string", "nullable": True},
+            "displayUrl": {"type": "string", "nullable": True},
+            "thumbUrl": {"type": "string", "nullable": True},
             "countryOfOrigin": {"type": "string", "nullable": True},
             "ageRestricted": {"type": "boolean"},
             "allergenCodes": {"type": "array", "items": {"type": "string"}},
@@ -2060,11 +2079,43 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "name",
             "description",
             "active",
+            "status",
+            "tags",
             "ageRestricted",
             "allergenCodes",
             "createdAt",
             "updatedAt",
         ],
+    }
+    product_mutation_request_schema = {
+        "type": "object",
+        "description": (
+            "Admin catalog product write. Optional **tagIds** (UUID[]): on create, omit or [] for no tags. "
+            "On update, omit tagIds to leave links unchanged; [] clears all links; non-empty replaces the full set. "
+            "Optional **primaryMediaId**: binds ready enterprise media as primary image (transactional). Required when **status**/**active** is sellable/active unless primary media already exists on update. "
+            "Optional **status** string overrides **active** when present."
+        ),
+        "properties": {
+            "sku": {"type": "string"},
+            "name": {"type": "string"},
+            "description": {"type": "string"},
+            "attrs": {"type": "object", "additionalProperties": True},
+            "active": {"type": "boolean"},
+            "status": {
+                "type": "string",
+                "description": "Optional lifecycle alias; when set overrides active (active/sellable/published vs inactive/draft/archived).",
+            },
+            "categoryId": {**uuid_s, "nullable": True},
+            "brandId": {**uuid_s, "nullable": True},
+            "barcode": {"type": "string", "nullable": True},
+            "countryOfOrigin": {"type": "string", "nullable": True},
+            "ageRestricted": {"type": "boolean"},
+            "allergenCodes": {"type": "array", "items": {"type": "string"}},
+            "nutritionalNote": {"type": "string", "nullable": True},
+            "primaryMediaId": {**uuid_s, "nullable": True},
+            "tagIds": {"type": "array", "items": dict(uuid_s)},
+        },
+        "required": ["sku", "name", "active", "ageRestricted"],
     }
     price_book = {
         "type": "object",
@@ -2264,6 +2315,8 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "required": ["order_id", "vend_session_id", "payment_id", "order_status", "payment_state", "replay"],
         },
         "V1AdminPageMeta": page_meta,
+        "V1AdminCatalogTag": admin_catalog_tag,
+        "V1AdminProductMutationRequest": product_mutation_request_schema,
         "V1AdminProductListItem": product_list_item,
         "V1AdminProductListEnvelope": {
             "type": "object",
@@ -2693,6 +2746,57 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             },
             "required": ["media_id", "upload_url", "upload_method", "upload_headers", "expires_at", "complete_path"],
         },
+        "V1AdminMediaUploadInitRequestV2": {
+            "type": "object",
+            "properties": {
+                "filename": {"type": "string"},
+                "contentType": {"type": "string"},
+                "purpose": {"type": "string"},
+            },
+            "required": ["filename", "contentType"],
+        },
+        "V1AdminMediaUploadInitResponseV2": {
+            "type": "object",
+            "properties": {
+                "mediaId": dict(uuid_s),
+                "uploadUrl": {"type": "string", "format": "uri"},
+                "objectKey": {"type": "string"},
+                "status": {"type": "string"},
+                "completePath": {"type": "string"},
+            },
+            "required": ["mediaId", "uploadUrl", "objectKey", "status"],
+        },
+        "V1AdminMediaUploadCompleteRequestV2": {
+            "type": "object",
+            "properties": {
+                "sizeBytes": {"type": "integer", "format": "int64", "nullable": True},
+                "sha256": {"type": "string"},
+                "contentType": {"type": "string"},
+            },
+        },
+        "V1AdminMediaVariantResponse": {
+            "type": "object",
+            "properties": {
+                "variant": {"type": "string"},
+                "mimeType": {"type": "string"},
+                "width": {"type": "integer", "format": "int32"},
+                "height": {"type": "integer", "format": "int32"},
+                "sizeBytes": {"type": "integer", "format": "int64"},
+                "sha256": {"type": "string"},
+                "version": {"type": "integer", "format": "int32"},
+                "downloadUrl": {"type": "string", "format": "uri"},
+            },
+            "required": ["variant", "version", "downloadUrl"],
+        },
+        "V1AdminMediaUploadCompleteResponseV2": {
+            "type": "object",
+            "properties": {
+                "id": dict(uuid_s),
+                "status": {"type": "string"},
+                "variants": {"type": "array", "items": {"$ref": "#/components/schemas/V1AdminMediaVariantResponse"}},
+            },
+            "required": ["id", "status", "variants"],
+        },
         "V1AdminMediaAsset": {
             "type": "object",
             "properties": {
@@ -2783,6 +2887,34 @@ def missing_reference_component_schemas() -> dict[str, Any]:
                 "occurredAt",
                 "createdAt",
             ],
+        },
+        "V1AdminProductMediaVariantDoc": {
+            "type": "object",
+            "properties": {
+                "variant": {"type": "string"},
+                "mimeType": {"type": "string"},
+                "width": {"type": "integer", "format": "int32"},
+                "height": {"type": "integer", "format": "int32"},
+                "sizeBytes": {"type": "integer", "format": "int64"},
+                "sha256": {"type": "string"},
+                "version": {"type": "integer", "format": "int32"},
+                "downloadUrl": {"type": "string", "format": "uri"},
+            },
+            "required": ["variant", "version", "downloadUrl"],
+        },
+        "V1AdminProductMediaPrimaryDoc": {
+            "type": "object",
+            "properties": {
+                "id": dict(uuid_s),
+                "status": {"type": "string"},
+                "version": {"type": "integer", "format": "int32"},
+                "variants": {"type": "array", "items": {"$ref": "#/components/schemas/V1AdminProductMediaVariantDoc"}},
+            },
+            "required": ["id", "status", "version", "variants"],
+        },
+        "V1AdminProductMediaDoc": {
+            "type": "object",
+            "properties": {"primary": {"$ref": "#/components/schemas/V1AdminProductMediaPrimaryDoc"}},
         },
         "V1EnterpriseAuditEventsListEnvelope": {
             "type": "object",
@@ -3021,6 +3153,8 @@ IDEMPOTENCY_OPS: set[tuple[str, str]] = {
     ("delete", "/v1/admin/products/{productId}/image"),
     ("post", "/v1/admin/media/assets"),
     ("post", "/v1/admin/media/uploads"),
+    ("post", "/v1/admin/media/uploads/init"),
+    ("post", "/v1/admin/media/uploads/{mediaId}/complete"),
     ("post", "/v1/admin/media/{mediaId}/complete"),
     ("delete", "/v1/admin/media/assets/{mediaId}"),
     ("delete", "/v1/admin/media/{mediaId}"),
@@ -3775,6 +3909,33 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "process": "api",
     }
     admin_page_meta = {"limit": 50, "offset": 0, "returned": 1, "totalCount": 1}
+    brand_row = {
+        "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "slug": "coca-example",
+        "name": "Coca example",
+        "active": True,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-04-19T10:00:00Z",
+    }
+    brand_mut_req = {"name": "Coca {{$timestamp}}", "slug": "coca-{{$timestamp}}", "active": True}
+    cat_row = {
+        "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+        "slug": "drinks-example",
+        "name": "Drinks example",
+        "active": True,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-04-19T10:00:00Z",
+    }
+    cat_mut_req = {"name": "Drinks {{$timestamp}}", "slug": "drinks-{{$timestamp}}", "active": True}
+    tag_row = {
+        "id": "cccccccc-dddd-eeee-ffff-000000000000",
+        "slug": "cold-drink-example",
+        "name": "Cold drink example",
+        "active": True,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-04-19T10:00:00Z",
+    }
+    tag_mut_req = {"name": "Cold Drink {{$timestamp}}", "slug": "cold-drink-{{$timestamp}}", "active": True}
     product_row = {
         "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
         "sku": "COLA-12",
@@ -3782,6 +3943,40 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "name": "Cola 12oz",
         "description": "Example product",
         "active": True,
+        "status": "active",
+        "categoryId": cat_row["id"],
+        "brandId": brand_row["id"],
+        "primaryMediaId": "11111111-2222-3333-4444-555555555555",
+        "media": {
+            "primary": {
+                "id": "11111111-2222-3333-4444-555555555555",
+                "status": "ready",
+                "version": 1,
+                "variants": [
+                    {
+                        "variant": "thumb",
+                        "mimeType": "image/webp",
+                        "width": 160,
+                        "height": 160,
+                        "sizeBytes": 8000,
+                        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                        "version": 1,
+                        "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                    },
+                    {
+                        "variant": "display",
+                        "mimeType": "image/webp",
+                        "width": 512,
+                        "height": 512,
+                        "sizeBytes": 24000,
+                        "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                        "version": 2,
+                        "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                    },
+                ],
+            }
+        },
+        "tags": [],
         "createdAt": "2026-01-01T00:00:00Z",
         "updatedAt": "2026-04-19T10:00:00Z",
     }
@@ -3790,43 +3985,35 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "attrs": {},
         "ageRestricted": False,
         "allergenCodes": [],
+        "tags": [tag_row],
     }
     product_mut_req = {
         "sku": "COLA-12",
         "name": "Cola 12oz",
         "description": "Example product",
         "active": True,
+        "categoryId": cat_row["id"],
+        "brandId": brand_row["id"],
         "barcode": "8850123456789",
         "ageRestricted": False,
         "allergenCodes": [],
+        # Required when activating/creating a sellable product without existing primary media (matches API rules).
+        "primaryMediaId": product_row["primaryMediaId"],
     }
-    brand_row = {
-        "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        "slug": "coca-cola",
-        "name": "Coca-Cola",
+    product_mut_req_with_tags = {**product_mut_req, "tagIds": [tag_row["id"]]}
+    product_mut_req_offline_cache = {
+        "sku": "COCA-330ML-{{$timestamp}}",
+        "name": "Coca Cola Can 330ml",
+        "description": "Canary test product",
         "active": True,
-        "createdAt": "2026-01-01T00:00:00Z",
-        "updatedAt": "2026-04-19T10:00:00Z",
+        "ageRestricted": False,
+        "allergenCodes": [],
+        "categoryId": "{{categoryId}}",
+        "brandId": "{{brandId}}",
+        "tagIds": ["{{tagId}}"],
+        "primaryMediaId": "{{mediaId}}",
+        "status": "active",
     }
-    brand_mut_req = {"slug": "coca-cola", "name": "Coca-Cola", "active": True}
-    cat_row = {
-        "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
-        "slug": "beverages",
-        "name": "Beverages",
-        "active": True,
-        "createdAt": "2026-01-01T00:00:00Z",
-        "updatedAt": "2026-04-19T10:00:00Z",
-    }
-    cat_mut_req = {"slug": "beverages", "name": "Beverages", "active": True}
-    tag_row = {
-        "id": "cccccccc-dddd-eeee-ffff-000000000000",
-        "slug": "chilled",
-        "name": "Chilled",
-        "active": True,
-        "createdAt": "2026-01-01T00:00:00Z",
-        "updatedAt": "2026-04-19T10:00:00Z",
-    }
-    tag_mut_req = {"slug": "chilled", "name": "Chilled", "active": True}
     img_bind_req = {
         "artifactId": "11111111-2222-3333-4444-555555555555",
         "thumbUrl": "https://cdn.example.com/products/coca330-thumb.webp",
@@ -3857,6 +4044,40 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "upload_headers": {"Content-Type": ["image/jpeg"]},
         "expires_at": "2026-04-19T13:00:00Z",
         "complete_path": "/v1/admin/media/11111111-2222-3333-4444-555555555555/complete",
+    }
+    media_init_req_v2 = {"filename": "coca-330ml.png", "contentType": "image/png", "purpose": "product_image"}
+    media_init_resp_v2 = {
+        "mediaId": "11111111-2222-3333-4444-555555555555",
+        "uploadUrl": "https://s3.example.com/presigned-put",
+        "objectKey": "org/11111111-2222-3333-4444-555555555555/original",
+        "status": "pending",
+        "completePath": "/v1/admin/media/uploads/11111111-2222-3333-4444-555555555555/complete",
+    }
+    media_complete_resp_v2 = {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "status": "ready",
+        "variants": [
+            {
+                "variant": "thumb",
+                "mimeType": "image/webp",
+                "width": 160,
+                "height": 160,
+                "sizeBytes": 8000,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "version": 1,
+                "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+            },
+            {
+                "variant": "display",
+                "mimeType": "image/webp",
+                "width": 512,
+                "height": 512,
+                "sizeBytes": 24000,
+                "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                "version": 2,
+                "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+            },
+        ],
     }
     product_media_bind_req = {"media_id": "11111111-2222-3333-4444-555555555555"}
     product_image_row = {
@@ -4146,11 +4367,14 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
     def ex(
         req_body: Any | None = None,
         resp: dict[str, tuple[Any | None, Any | None]] | None = None,
+        request_body_examples: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """resp: status -> (response_example_object, None) attaches to first JSON content."""
         out: dict[str, Any] = {}
         if req_body is not None:
             out["requestBodyExample"] = req_body
+        if request_body_examples is not None:
+            out["requestBodyExamples"] = request_body_examples
         if resp:
             out["responseExamples"] = resp
         return out
@@ -4457,18 +4681,50 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ),
         ("get", "/v1/admin/products"): ex(resp={"200": ({"items": [product_row], "meta": admin_page_meta}, None)}),
         ("get", "/v1/admin/products/{productId}"): ex(resp={"200": (product_detail, None)}),
-        ("post", "/v1/admin/products"): ex(req_body=product_mut_req, resp={"200": (product_detail, None)}),
-        ("put", "/v1/admin/products/{productId}"): ex(req_body=product_mut_req, resp={"200": (product_detail, None)}),
-        ("patch", "/v1/admin/products/{productId}"): ex(req_body=product_mut_req, resp={"200": (product_detail, None)}),
+        ("post", "/v1/admin/products"): ex(
+            req_body=product_mut_req,
+            resp={"200": (product_detail, None)},
+            request_body_examples={
+                "without_tags": {"summary": "Product without tagIds", "value": product_mut_req},
+                "with_tag_ids": {"summary": "Product with tagIds", "value": product_mut_req_with_tags},
+                "offline_cache_canary": {
+                    "summary": "Active product with primaryMediaId + tagIds (Postman variables)",
+                    "value": product_mut_req_offline_cache,
+                },
+            },
+        ),
+        ("put", "/v1/admin/products/{productId}"): ex(
+            req_body=product_mut_req_with_tags,
+            resp={"200": (product_detail, None)},
+            request_body_examples={
+                "replace_tags": {"summary": "Replace linked tags", "value": product_mut_req_with_tags},
+                "clear_tags": {"summary": "Clear all tags (tagIds empty array)", "value": {**product_mut_req, "tagIds": []}},
+            },
+        ),
+        ("patch", "/v1/admin/products/{productId}"): ex(
+            req_body=product_mut_req,
+            resp={"200": (product_detail, None)},
+            request_body_examples={
+                "omit_tag_ids": {"summary": "PATCH omit tagIds — tags unchanged", "value": product_mut_req},
+                "clear_tags": {"summary": "Clear tags", "value": {**product_mut_req, "tagIds": []}},
+            },
+        ),
         ("delete", "/v1/admin/products/{productId}"): ex(resp={"200": ({**product_detail, "active": False}, None)}),
         ("post", "/v1/admin/products/{productId}/image"): ex(req_body=img_bind_req, resp={"200": (product_detail, None)}),
         ("put", "/v1/admin/products/{productId}/image"): ex(req_body=img_bind_req, resp={"200": (product_detail, None)}),
         ("delete", "/v1/admin/products/{productId}/image"): ex(resp={"200": (product_detail, None)}),
         ("post", "/v1/admin/media/assets"): ex(req_body=media_init_req, resp={"200": (media_init_resp, None)}),
         ("post", "/v1/admin/media/uploads"): ex(req_body=media_init_req, resp={"200": (media_init_resp, None)}),
-        ("post", "/v1/admin/media/{mediaId}/complete"): ex(resp={"200": (media_asset_row, None)}),
-        ("post", "/v1/admin/media/uploads/init"): ex(req_body=media_init_req, resp={"200": (media_init_resp, None)}),
-        ("post", "/v1/admin/media/uploads/complete"): ex(req_body={"media_id": media_asset_row["id"]}, resp={"200": (media_asset_row, None)}),
+        ("post", "/v1/admin/media/{mediaId}/complete"): ex(req_body={}, resp={"200": (media_complete_resp_v2, None)}),
+        ("post", "/v1/admin/media/uploads/init"): ex(req_body=media_init_req_v2, resp={"200": (media_init_resp_v2, None)}),
+        ("post", "/v1/admin/media/uploads/{mediaId}/complete"): ex(
+            req_body={
+                "sizeBytes": 12345,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "contentType": "image/png",
+            },
+            resp={"200": (media_complete_resp_v2, None)},
+        ),
         ("post", "/v1/admin/media/product-images"): ex(req_body=media_init_req, resp={"200": (media_init_resp, None)}),
         ("get", "/v1/admin/media/assets"): ex(resp={"200": ({"items": [media_asset_row], "meta": admin_page_meta}, None)}),
         ("get", "/v1/admin/media/assets/{assetId}"): ex(resp={"200": (media_asset_row, None)}),
@@ -5833,10 +6089,20 @@ def attach_examples(method: str, path: str, op: dict[str, Any]) -> None:
     bag = operation_examples().get((method, path))
     if not bag:
         return
-    if bag.get("requestBodyExample") is not None and "requestBody" in op:
+    if "requestBody" in op:
         rb = op["requestBody"]
-        if "content" in rb and "application/json" in rb["content"]:
-            rb["content"]["application/json"]["example"] = bag["requestBodyExample"]
+        if isinstance(rb, dict):
+            content = rb.get("content")
+            if isinstance(content, dict):
+                block = content.get("application/json")
+                if isinstance(block, dict):
+                    examples_map = bag.get("requestBodyExamples")
+                    if isinstance(examples_map, dict) and examples_map:
+                        block["examples"] = examples_map
+                        if bag.get("requestBodyExample") is not None:
+                            block["example"] = bag["requestBodyExample"]
+                    elif bag.get("requestBodyExample") is not None:
+                        block["example"] = bag["requestBodyExample"]
     for code, pair in bag.get("responseExamples", {}).items():
         ex_obj = pair[0]
         if code not in op.get("responses", {}):
@@ -5921,7 +6187,7 @@ def enrich_success_and_request_examples(paths: dict[str, dict[str, Any]]) -> Non
             rb_content = rb.get("content") if isinstance(rb, dict) else None
             if isinstance(rb_content, dict):
                 block = rb_content.get("application/json")
-                if isinstance(block, dict) and block.get("example") is None:
+                if isinstance(block, dict) and block.get("example") is None and not block.get("examples"):
                     schema = block.get("schema") if isinstance(block.get("schema"), dict) else None
                     block["example"] = example_for_schema(schema)
 
@@ -6010,6 +6276,8 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("delete", "/v1/admin/products/{productId}/image"),
     ("post", "/v1/admin/media/assets"),
     ("post", "/v1/admin/media/uploads"),
+    ("post", "/v1/admin/media/uploads/init"),
+    ("post", "/v1/admin/media/uploads/{mediaId}/complete"),
     ("post", "/v1/admin/media/{mediaId}/complete"),
     ("get", "/v1/admin/media/assets"),
     ("get", "/v1/admin/media/assets/{mediaId}"),
@@ -6366,6 +6634,43 @@ def scrub_openapi_spec(spec: dict[str, Any]) -> dict[str, Any]:
     return redact_legacy_scope_substrings(scrubbed)  # type: ignore[return-value]
 
 
+def patch_admin_product_openapi(paths: dict[str, Any]) -> None:
+    """Bind admin product write operations to the structured mutation schema (tagIds semantics)."""
+    mut_schema: dict[str, Any] = {"$ref": "#/components/schemas/V1AdminProductMutationRequest"}
+    desc = (
+        "Product JSON body. Optional **tagIds** (UUID[]): on update omit the field to keep existing tags; "
+        "send [] to clear all links; send IDs to replace the full set. Unknown tag IDs → HTTP 400 `invalid_argument`. "
+        "Optional **primaryMediaId** binds ready enterprise media as primary (transactional); required when activating a product "
+        "that does not yet have primary media. Optional **status** overrides **active** when set "
+        "(active/sellable/published vs inactive/draft/archived)."
+    )
+    root = paths.get("/v1/admin/products")
+    if isinstance(root, dict):
+        post_op = root.get("post")
+        if isinstance(post_op, dict):
+            rb = post_op.get("requestBody")
+            if isinstance(rb, dict):
+                rb["description"] = desc
+                content = rb.get("content")
+                if isinstance(content, dict):
+                    aj = content.get("application/json")
+                    if isinstance(aj, dict):
+                        aj["schema"] = mut_schema
+    pid = paths.get("/v1/admin/products/{productId}")
+    if isinstance(pid, dict):
+        for mth in ("put", "patch"):
+            op = pid.get(mth)
+            if isinstance(op, dict):
+                rb = op.get("requestBody")
+                if isinstance(rb, dict):
+                    rb["description"] = desc
+                    content = rb.get("content")
+                    if isinstance(content, dict):
+                        aj = content.get("application/json")
+                        if isinstance(aj, dict):
+                            aj["schema"] = mut_schema
+
+
 def verify_paths(paths: dict[str, dict[str, Any]]) -> list[str]:
     missing: list[str] = []
     for method, path in REQUIRED_OPERATIONS:
@@ -6404,6 +6709,7 @@ def main() -> int:
         paths.setdefault(path, {})[method] = op
 
     enrich_error_response_examples(paths)
+    patch_admin_product_openapi(paths)
     enrich_success_and_request_examples(paths)
     mark_deprecated_machine_legacy_rest(paths)
 

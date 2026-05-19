@@ -1,6 +1,10 @@
 package httpserver
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+)
 
 // OpenAPI / Swagger documentation types (runtime responses use compatible JSON shapes).
 // Handlers may return additional fields; these structs capture stable fields for spec generation.
@@ -454,18 +458,47 @@ type V1AdminPageMeta struct {
 	TotalCount int64 `json:"totalCount"`
 }
 
+// V1AdminProductMediaVariantDoc is one rendition under product.media.primary (presigned download URL).
+type V1AdminProductMediaVariantDoc struct {
+	Variant     string `json:"variant"`
+	MimeType    string `json:"mimeType,omitempty"`
+	Width       int32  `json:"width,omitempty"`
+	Height      int32  `json:"height,omitempty"`
+	SizeBytes   int64  `json:"sizeBytes,omitempty"`
+	SHA256      string `json:"sha256,omitempty"`
+	Version     int32  `json:"version"`
+	DownloadURL string `json:"downloadUrl"`
+}
+
+// V1AdminProductMediaPrimaryDoc is product.media.primary for cache/offline clients.
+type V1AdminProductMediaPrimaryDoc struct {
+	ID       string                          `json:"id"`
+	Status   string                          `json:"status"`
+	Version  int32                           `json:"version"`
+	Variants []V1AdminProductMediaVariantDoc `json:"variants"`
+}
+
+// V1AdminProductMediaDoc nests primary media metadata for admin product responses.
+type V1AdminProductMediaDoc struct {
+	Primary *V1AdminProductMediaPrimaryDoc `json:"primary,omitempty"`
+}
+
 // V1AdminProductListItem is a row in GET /v1/admin/products.
 type V1AdminProductListItem struct {
-	ID          string  `json:"id"`
-	Sku         string  `json:"sku"`
-	Barcode     *string `json:"barcode,omitempty"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Active      bool    `json:"active"`
-	CategoryID  *string `json:"categoryId,omitempty"`
-	BrandID     *string `json:"brandId,omitempty"`
-	CreatedAt   string  `json:"createdAt"`
-	UpdatedAt   string  `json:"updatedAt"`
+	ID             string                  `json:"id"`
+	Sku            string                  `json:"sku"`
+	Barcode        *string                 `json:"barcode,omitempty"`
+	Name           string                  `json:"name"`
+	Description    string                  `json:"description"`
+	Active         bool                    `json:"active"`
+	Status         string                  `json:"status"`
+	CategoryID     *string                 `json:"categoryId,omitempty"`
+	BrandID        *string                 `json:"brandId,omitempty"`
+	PrimaryMediaID *string                 `json:"primaryMediaId,omitempty"`
+	Media          *V1AdminProductMediaDoc `json:"media,omitempty"`
+	Tags           []V1AdminTag            `json:"tags"`
+	CreatedAt      string                  `json:"createdAt"`
+	UpdatedAt      string                  `json:"updatedAt"`
 }
 
 // V1AdminProductListEnvelope matches listAdminProducts success JSON.
@@ -476,42 +509,52 @@ type V1AdminProductListEnvelope struct {
 
 // V1AdminProduct is GET /v1/admin/products/{productId} success.
 type V1AdminProduct struct {
-	ID             string          `json:"id"`
-	Sku            string          `json:"sku"`
-	Barcode        *string         `json:"barcode,omitempty"`
-	Name           string          `json:"name"`
-	Description    string          `json:"description"`
-	Attrs          json.RawMessage `json:"attrs,omitempty"`
-	Active         bool            `json:"active"`
-	CategoryID     *string         `json:"categoryId,omitempty"`
-	BrandID        *string         `json:"brandId,omitempty"`
-	PrimaryImageID *string         `json:"primaryImageId,omitempty"`
+	ID             string                  `json:"id"`
+	Sku            string                  `json:"sku"`
+	Barcode        *string                 `json:"barcode,omitempty"`
+	Name           string                  `json:"name"`
+	Description    string                  `json:"description"`
+	Attrs          json.RawMessage         `json:"attrs,omitempty"`
+	Active         bool                    `json:"active"`
+	Status         string                  `json:"status"`
+	CategoryID     *string                 `json:"categoryId,omitempty"`
+	BrandID        *string                 `json:"brandId,omitempty"`
+	PrimaryMediaID *string                 `json:"primaryMediaId,omitempty"`
+	Media          *V1AdminProductMediaDoc `json:"media,omitempty"`
+	PrimaryImageID *string                 `json:"primaryImageId,omitempty"`
 	// ImageURL matches DisplayURL when a primary image exists (compat alias).
-	ImageURL        *string  `json:"imageUrl,omitempty"`
-	DisplayURL      *string  `json:"displayUrl,omitempty"`
-	ThumbURL        *string  `json:"thumbUrl,omitempty"`
-	CountryOfOrigin *string  `json:"countryOfOrigin,omitempty"`
-	AgeRestricted   bool     `json:"ageRestricted"`
-	AllergenCodes   []string `json:"allergenCodes"`
-	NutritionalNote *string  `json:"nutritionalNote,omitempty"`
-	CreatedAt       string   `json:"createdAt"`
-	UpdatedAt       string   `json:"updatedAt"`
+	ImageURL        *string      `json:"imageUrl,omitempty"`
+	DisplayURL      *string      `json:"displayUrl,omitempty"`
+	ThumbURL        *string      `json:"thumbUrl,omitempty"`
+	CountryOfOrigin *string      `json:"countryOfOrigin,omitempty"`
+	AgeRestricted   bool         `json:"ageRestricted"`
+	AllergenCodes   []string     `json:"allergenCodes"`
+	NutritionalNote *string      `json:"nutritionalNote,omitempty"`
+	Tags            []V1AdminTag `json:"tags"`
+	CreatedAt       string       `json:"createdAt"`
+	UpdatedAt       string       `json:"updatedAt"`
 }
 
 // V1AdminProductMutationRequest is the body for POST/PUT/PATCH /v1/admin/products.
 type V1AdminProductMutationRequest struct {
-	Sku             string          `json:"sku"`
-	Name            string          `json:"name"`
-	Description     string          `json:"description,omitempty"`
-	Attrs           json.RawMessage `json:"attrs,omitempty"`
-	Active          bool            `json:"active"`
-	CategoryID      *string         `json:"categoryId,omitempty"`
-	BrandID         *string         `json:"brandId,omitempty"`
-	Barcode         *string         `json:"barcode,omitempty"`
-	CountryOfOrigin *string         `json:"countryOfOrigin,omitempty"`
-	AgeRestricted   bool            `json:"ageRestricted"`
-	AllergenCodes   []string        `json:"allergenCodes,omitempty"`
-	NutritionalNote *string         `json:"nutritionalNote,omitempty"`
+	Sku         string          `json:"sku"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Attrs       json.RawMessage `json:"attrs,omitempty"`
+	Active      bool            `json:"active"`
+	// Status optional alias for Active (active/sellable/published vs inactive/draft/archived).
+	Status          *string  `json:"status,omitempty"`
+	CategoryID      *string  `json:"categoryId,omitempty"`
+	BrandID         *string  `json:"brandId,omitempty"`
+	Barcode         *string  `json:"barcode,omitempty"`
+	CountryOfOrigin *string  `json:"countryOfOrigin,omitempty"`
+	AgeRestricted   bool     `json:"ageRestricted"`
+	AllergenCodes   []string `json:"allergenCodes,omitempty"`
+	NutritionalNote *string  `json:"nutritionalNote,omitempty"`
+	// PrimaryMediaID binds a ready media_assets row; required when creating/updating to active/sellable (unless primary already exists on update).
+	PrimaryMediaID *string `json:"primaryMediaId,omitempty"`
+	// TagIDs optional on create. On update: omit field to leave tags unchanged; [] clears; non-empty replaces.
+	TagIDs *[]uuid.UUID `json:"tagIds,omitempty"`
 }
 
 // V1AdminBrand is a brand row.
@@ -596,9 +639,16 @@ type V1AdminProductImageBindRequest struct {
 	MimeType    string `json:"mimeType,omitempty"`
 }
 
-// V1AdminMediaUploadInitRequest is POST /v1/admin/media/uploads.
+// V1AdminMediaUploadInitRequest is POST /v1/admin/media/uploads (legacy snake_case body).
 type V1AdminMediaUploadInitRequest struct {
 	ContentType string `json:"content_type"`
+}
+
+// V1AdminMediaUploadInitRequestV2 is POST /v1/admin/media/uploads/init (camelCase).
+type V1AdminMediaUploadInitRequestV2 struct {
+	Filename    string `json:"filename"`
+	ContentType string `json:"contentType"`
+	Purpose     string `json:"purpose,omitempty"`
 }
 
 // V1AdminMediaUploadInitResponse returns presigned PUT targets for the original object.
@@ -611,9 +661,44 @@ type V1AdminMediaUploadInitResponse struct {
 	CompletePath  string              `json:"complete_path"`
 }
 
+// V1AdminMediaUploadInitResponseV2 is returned from POST /v1/admin/media/uploads/init.
+type V1AdminMediaUploadInitResponseV2 struct {
+	MediaID      string `json:"mediaId"`
+	UploadURL    string `json:"uploadUrl"`
+	ObjectKey    string `json:"objectKey"`
+	Status       string `json:"status"`
+	CompletePath string `json:"completePath,omitempty"`
+}
+
 // V1AdminMediaUploadCompleteRequest finalizes an company-scoped upload.
 type V1AdminMediaUploadCompleteRequest struct {
 	MediaID string `json:"media_id"`
+}
+
+// V1AdminMediaUploadCompleteRequestV2 is POST .../media/uploads/{mediaId}/complete.
+type V1AdminMediaUploadCompleteRequestV2 struct {
+	SizeBytes   *int64 `json:"sizeBytes,omitempty"`
+	SHA256      string `json:"sha256,omitempty"`
+	ContentType string `json:"contentType,omitempty"`
+}
+
+// V1AdminMediaVariantResponse is one variant row after upload completion.
+type V1AdminMediaVariantResponse struct {
+	Variant     string `json:"variant"`
+	MimeType    string `json:"mimeType,omitempty"`
+	Width       int32  `json:"width,omitempty"`
+	Height      int32  `json:"height,omitempty"`
+	SizeBytes   int64  `json:"sizeBytes,omitempty"`
+	SHA256      string `json:"sha256,omitempty"`
+	Version     int32  `json:"version"`
+	DownloadURL string `json:"downloadUrl"`
+}
+
+// V1AdminMediaUploadCompleteResponseV2 is returned when finalizing an upload (camelCase).
+type V1AdminMediaUploadCompleteResponseV2 struct {
+	ID       string                        `json:"id"`
+	Status   string                        `json:"status"`
+	Variants []V1AdminMediaVariantResponse `json:"variants"`
 }
 
 // V1AdminMediaAsset is a row in GET /v1/admin/media (no raw object keys).

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/google/uuid"
 )
 
@@ -173,5 +174,55 @@ func TestMediaFingerprint_changesWhenVariantEtagChanges(t *testing.T) {
 	}
 	if MediaFingerprint(base) == MediaFingerprint(changed) {
 		t.Fatal("expected fingerprint to change when variant etag changes")
+	}
+}
+
+func TestCatalogSyncCatalogVersion_ignoresMediaProjection(t *testing.T) {
+	t.Parallel()
+	bootstrap := setupapp.MachineBootstrap{}
+	opts := Options{IncludeUnavailable: false, IncludeImages: true}
+	pid := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	mid := uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc")
+	baseItem := func(hash string) Item {
+		return Item{
+			ProductID:         pid,
+			SKU:               "SKU1",
+			Name:              "Water",
+			SlotIndex:         1,
+			IsAvailable:       true,
+			AvailableQuantity: 3,
+			MaxQuantity:       10,
+			PriceMinor:        100,
+			BasePriceMinor:    100,
+			Image: &ImageMeta{
+				MediaID:      mid,
+				MediaVersion: 1,
+				ContentHash:  "sha256:" + hash,
+				ThumbURL:     "https://example/t",
+				DisplayURL:   "https://example/d",
+				Etag:         `W/"x"`,
+				SizeBytes:    100,
+				ContentType:  "image/webp",
+				UpdatedAt:    time.Unix(10, 0).UTC(),
+				Variants: []ImageVariantMeta{
+					{
+						Kind: MediaVariantKindDisplay, MediaAssetID: mid,
+						StorageKey: "k/d", URL: "https://example/d",
+						ChecksumSHA256: "sha256:" + hash, Etag: `W/"x"`,
+						SizeBytes: 100, MediaVersion: 1, UpdatedAt: time.Unix(10, 0).UTC(),
+					},
+				},
+			},
+		}
+	}
+	s1 := Snapshot{Items: []Item{baseItem("aaa")}}
+	s2 := Snapshot{Items: []Item{baseItem("bbb")}}
+	cv1 := CatalogSyncCatalogVersion(bootstrap, s1, opts)
+	cv2 := CatalogSyncCatalogVersion(bootstrap, s2, opts)
+	if cv1 != cv2 {
+		t.Fatalf("catalog sync cursor should ignore media bytes metadata: %q vs %q", cv1, cv2)
+	}
+	if MediaFingerprint(s1) == MediaFingerprint(s2) {
+		t.Fatal("media fingerprint should differ when checksum changes")
 	}
 }

@@ -28,14 +28,18 @@ const metaSHA256Hex = "sha256hex"
 
 // VariantArtifacts captures stored object metadata after thumb/display generation.
 type VariantArtifacts struct {
-	ThumbSHA256Hex   string
-	DisplaySHA256Hex string
-	ThumbWidth       int
-	ThumbHeight      int
-	DisplayWidth     int
-	DisplayHeight    int
-	ThumbBytes       int64
-	DisplayBytes     int64
+	OriginalSHA256Hex string
+	OriginalBytes     int64
+	OriginalWidth     int
+	OriginalHeight    int
+	ThumbSHA256Hex    string
+	DisplaySHA256Hex  string
+	ThumbWidth        int
+	ThumbHeight       int
+	DisplayWidth      int
+	DisplayHeight     int
+	ThumbBytes        int64
+	DisplayBytes      int64
 }
 
 // VariantGenerator produces thumb.webp and display.webp objects from the uploaded original.
@@ -83,6 +87,9 @@ func (g WebPVariantGenerator) GenerateWebPVariants(ctx context.Context, store ob
 	if int64(len(raw)) > maxOriginalBytes {
 		return out, fmt.Errorf("variant: original exceeds max bytes")
 	}
+	oh256 := sha256.Sum256(raw)
+	out.OriginalSHA256Hex = hex.EncodeToString(oh256[:])
+	out.OriginalBytes = int64(len(raw))
 	if err := validateSniffedImageMIME(raw); err != nil {
 		return out, err
 	}
@@ -95,6 +102,7 @@ func (g WebPVariantGenerator) GenerateWebPVariants(ctx context.Context, store ob
 	}
 	bounds := src.Bounds()
 	ow, oh := bounds.Dx(), bounds.Dy()
+	out.OriginalWidth, out.OriginalHeight = ow, oh
 	if ow < 1 || oh < 1 {
 		return out, fmt.Errorf("variant: invalid image dimensions")
 	}
@@ -166,7 +174,11 @@ func resizeRGBA(src image.Image, w, h int) *image.RGBA {
 	return dst
 }
 
-// PassthroughVariantGenerator stores thumb/display using the original bytes and MIME type (tests / fallback).
+// PassthroughVariantGenerator copies the original bytes into thumb/display keys for tests or minimal environments.
+//
+// TODO(phase3): Do not use in production for offline-cache manifests: thumb/display sha256 match the original,
+// so caches cannot treat variants as distinct optimized renditions. Prefer WebPVariantGenerator when image
+// processing is available.
 type PassthroughVariantGenerator struct{}
 
 func (PassthroughVariantGenerator) GenerateWebPVariants(ctx context.Context, store objectstore.Store, companyID, mediaAssetID uuid.UUID, originalObjectKey string, maxOriginalBytes int64) (VariantArtifacts, error) {
@@ -198,6 +210,9 @@ func (PassthroughVariantGenerator) GenerateWebPVariants(ctx context.Context, sto
 	if len(body) == 0 {
 		return out, fmt.Errorf("variant: empty original")
 	}
+	h0 := sha256.Sum256(body)
+	out.OriginalSHA256Hex = hex.EncodeToString(h0[:])
+	out.OriginalBytes = int64(len(body))
 	if src, _, derr := image.Decode(bytes.NewReader(body)); derr == nil {
 		b := src.Bounds()
 		out.DisplayWidth = b.Dx()

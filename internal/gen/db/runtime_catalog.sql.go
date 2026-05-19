@@ -204,3 +204,55 @@ func (q *Queries) RuntimeListProductImagesForProducts(ctx context.Context, dolla
 	}
 	return items, nil
 }
+
+const RuntimeProductPrimaryMediaReady = `-- name: RuntimeProductPrimaryMediaReady :many
+SELECT
+    p.id AS product_id,
+    (
+        p.primary_image_id IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM product_images pi
+            INNER JOIN product_media pm ON pm.id = pi.id
+                AND pm.product_id = pi.product_id
+            LEFT JOIN media_assets ma ON ma.id = pi.media_asset_id
+            WHERE
+                pi.product_id = p.id
+                AND pi.id = p.primary_image_id
+                AND pi.status = 'active'
+                AND pm.status = 'active'
+                AND (
+                    pi.media_asset_id IS NULL
+                    OR ma.status = 'ready'
+                )
+        )
+    )::boolean AS ready
+FROM products p
+WHERE
+    p.id = ANY ($1::uuid[])
+`
+
+type RuntimeProductPrimaryMediaReadyRow struct {
+	ProductID uuid.UUID
+	Ready     bool
+}
+
+func (q *Queries) RuntimeProductPrimaryMediaReady(ctx context.Context, dollar_1 []uuid.UUID) ([]RuntimeProductPrimaryMediaReadyRow, error) {
+	rows, err := q.db.Query(ctx, RuntimeProductPrimaryMediaReady, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []RuntimeProductPrimaryMediaReadyRow{}
+	for rows.Next() {
+		var i RuntimeProductPrimaryMediaReadyRow
+		if err := rows.Scan(&i.ProductID, &i.Ready); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

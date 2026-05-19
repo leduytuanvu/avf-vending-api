@@ -1,0 +1,236 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+import "avf/machine/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// MachineCommerceService is the kiosk sale API (Machine JWT). All order scope is the authenticated machine.
+// Payment provider webhooks remain on REST; QR flows poll GetOrder / GetOrderStatus after PSP updates payment.
+service MachineCommerceService {
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc CreatePaymentSession(CreatePaymentSessionRequest) returns (CreatePaymentSessionResponse);
+  // AttachPaymentResult is an alias of CreatePaymentSession (spec-native name).
+  rpc AttachPaymentResult(CreatePaymentSessionRequest) returns (CreatePaymentSessionResponse);
+  rpc ConfirmCashPayment(ConfirmCashPaymentRequest) returns (ConfirmCashPaymentResponse);
+  // CreateCashCheckout is an alias of ConfirmCashPayment (spec-native name for cash tenders).
+  rpc CreateCashCheckout(ConfirmCashPaymentRequest) returns (ConfirmCashPaymentResponse);
+  rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+  rpc GetOrderStatus(GetOrderStatusRequest) returns (GetOrderStatusResponse);
+  rpc StartVend(StartVendRequest) returns (StartVendResponse);
+  rpc ConfirmVendSuccess(ConfirmVendSuccessRequest) returns (ConfirmVendSuccessResponse);
+  rpc ReportVendSuccess(ReportVendSuccessRequest) returns (ReportVendSuccessResponse);
+  rpc ReportVendFailure(ReportVendFailureRequest) returns (ReportVendFailureResponse);
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+}
+
+// MachineSaleService is the native vending machine runtime sale API (Machine JWT).
+// Handlers delegate to the same commerce orchestration as MachineCommerceService / REST.
+service MachineSaleService {
+  rpc CreateSale(CreateSaleRequest) returns (CreateSaleResponse);
+  rpc AttachPayment(AttachPaymentRequest) returns (AttachPaymentResponse);
+  rpc ConfirmCashReceived(ConfirmCashReceivedRequest) returns (ConfirmCashReceivedResponse);
+  rpc StartVend(StartVendRequest) returns (StartVendResponse);
+  rpc CompleteVend(ConfirmVendSuccessRequest) returns (ConfirmVendSuccessResponse);
+  rpc FailVend(ReportVendFailureRequest) returns (ReportVendFailureResponse);
+  rpc CancelSale(CancelOrderRequest) returns (CancelOrderResponse);
+}
+
+message CreateSaleRequest {
+  CreateOrderRequest order = 1;
+}
+
+message CreateSaleResponse {
+  CreateOrderResponse order = 1;
+}
+
+message AttachPaymentRequest {
+  CreatePaymentSessionRequest payment_session = 1;
+}
+
+message AttachPaymentResponse {
+  CreatePaymentSessionResponse payment_session = 1;
+}
+
+message ConfirmCashReceivedRequest {
+  ConfirmCashPaymentRequest payment = 1;
+}
+
+message ConfirmCashReceivedResponse {
+  ConfirmCashPaymentResponse payment = 1;
+}
+
+message SlotSelection {
+  optional string slot_id = 1;
+  string cabinet_code = 2;
+  string slot_code = 3;
+  optional int32 slot_index = 4;
+}
+
+message CreateOrderRequest {
+  IdempotencyContext context = 1;
+  // Optional echo of machine_id; must equal the Machine JWT machine when set.
+  optional string machine_id = 2;
+  string product_id = 3;
+  SlotSelection slot = 4;
+  string currency = 5;
+  MachineRequestMeta meta = 6;
+}
+
+message CreateOrderResponse {
+  bool replay = 1;
+  string order_id = 2;
+  string vend_session_id = 3;
+  string order_status = 4;
+  string vend_state = 5;
+  string slot_id = 6;
+  string cabinet_code = 7;
+  string slot_code = 8;
+  int32 slot_index = 9;
+  int64 subtotal_minor = 10;
+  int64 tax_minor = 11;
+  int64 total_minor = 12;
+  int64 price_minor = 13;
+  MachineResponseMeta meta = 14;
+}
+
+message CreatePaymentSessionRequest {
+  IdempotencyContext context = 1;
+  string order_id = 2;
+  string provider = 3;
+  // Defaults to "created" when empty (QR / PSP session).
+  string payment_state = 4;
+  int64 amount_minor = 5;
+  string currency = 6;
+  // JSON payload for outbox fan-out (e.g. PSP hints). Must be valid JSON when non-empty.
+  string outbox_payload_json = 7;
+}
+
+message CreatePaymentSessionResponse {
+  bool replay = 1;
+  string payment_id = 2;
+  string payment_state = 3;
+  int64 outbox_event_id = 4;
+  // Opaque provider payload or HTTPS URL for QR presentation (never raw image bytes).
+  string qr_payload_or_url = 5;
+}
+
+message ConfirmCashPaymentRequest {
+  IdempotencyContext context = 1;
+  string order_id = 2;
+}
+
+message ConfirmCashPaymentResponse {
+  bool replay = 1;
+  string payment_id = 2;
+  string order_status = 3;
+  string payment_state = 4;
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+  int32 slot_index = 2;
+}
+
+message GetOrderResponse {
+  string order_id = 1;
+  string order_status = 2;
+  string currency = 3;
+  int64 subtotal_minor = 4;
+  int64 tax_minor = 5;
+  int64 total_minor = 6;
+  google.protobuf.Timestamp order_created_at = 7;
+  string vend_state = 8;
+  int32 vend_slot_index = 9;
+  string product_id = 10;
+  bool payment_present = 11;
+  string payment_id = 12;
+  string payment_provider = 13;
+  string payment_state = 14;
+}
+
+message GetOrderStatusRequest {
+  string order_id = 1;
+  int32 slot_index = 2;
+}
+
+message GetOrderStatusResponse {
+  string order_id = 1;
+  string order_status = 2;
+  string vend_state = 3;
+  bool payment_present = 4;
+  string payment_state = 5;
+}
+
+message StartVendRequest {
+  IdempotencyContext context = 1;
+  string order_id = 2;
+  int32 slot_index = 3;
+}
+
+message StartVendResponse {
+  bool replay = 1;
+  string vend_state = 2;
+  int32 slot_index = 3;
+}
+
+message ConfirmVendSuccessRequest {
+  IdempotencyContext context = 1;
+  string order_id = 2;
+  int32 slot_index = 3;
+  optional string correlation_id = 4;
+}
+
+message ConfirmVendSuccessResponse {
+  bool replay = 1;
+  bool inventory_replay = 2;
+  string order_id = 3;
+  string order_status = 4;
+  string vend_state = 5;
+}
+
+message ReportVendSuccessRequest {
+  IdempotencyContext context = 1;
+  string order_id = 2;
+  int32 slot_index = 3;
+  optional string correlation_id = 4;
+}
+
+message ReportVendSuccessResponse {
+  bool replay = 1;
+  bool inventory_replay = 2;
+  string order_id = 3;
+  string order_status = 4;
+  string vend_state = 5;
+}
+
+message ReportVendFailureRequest {
+  IdempotencyContext context = 1;
+  string order_id = 2;
+  int32 slot_index = 3;
+  string failure_reason = 4;
+  optional string correlation_id = 5;
+}
+
+message ReportVendFailureResponse {
+  bool replay = 1;
+  string order_id = 2;
+  string order_status = 3;
+  string vend_state = 4;
+  bool local_cash_refund_required = 5;
+  bool refund_required = 6;
+}
+
+message CancelOrderRequest {
+  IdempotencyContext context = 1;
+  string order_id = 2;
+  string reason = 3;
+}
+
+message CancelOrderResponse {
+  bool replay = 1;
+  string order_id = 2;
+  string order_status = 3;
+}

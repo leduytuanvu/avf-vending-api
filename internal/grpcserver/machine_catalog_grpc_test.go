@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -742,5 +743,374 @@ func TestMachineCatalog_GetMediaManifest_MediaVariantsChecksumAndExpires(t *test
 		if mv.GetExpiresAt() == nil || !mv.GetExpiresAt().AsTime().Equal(exp) {
 			t.Fatalf("expected expires_at %v, got %v", exp, mv.GetExpiresAt())
 		}
+	}
+}
+
+type mutexSnapCatalog struct {
+	mu   sync.Mutex
+	snap salecatalog.Snapshot
+}
+
+func (m *mutexSnapCatalog) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts salecatalog.Options) (salecatalog.Snapshot, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := m.snap
+	out.MachineID = machineID
+	out.GeneratedAt = time.Now().UTC()
+	if out.Bootstrap == nil {
+		b := setupapp.MachineBootstrap{}
+		out.Bootstrap = &b
+	}
+	return out, nil
+}
+
+func catalogBundleTestSnapshot(displayHash string) salecatalog.Snapshot {
+	b := setupapp.MachineBootstrap{}
+	pid := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	mid := uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc")
+	return salecatalog.Snapshot{
+		SiteID:        uuid.MustParse("22222222-2222-2222-2222-222222222222"),
+		ConfigVersion: 1,
+		Currency:      "THB",
+		Bootstrap:     &b,
+		Items: []salecatalog.Item{{
+			ProductID:         pid,
+			SKU:               "SKU1",
+			Name:              "Water",
+			SlotIndex:         1,
+			IsAvailable:       true,
+			AvailableQuantity: 3,
+			MaxQuantity:       10,
+			PriceMinor:        100,
+			BasePriceMinor:    100,
+			Image: &salecatalog.ImageMeta{
+				MediaID:      mid,
+				MediaVersion: 1,
+				ContentHash:  "sha256:" + displayHash,
+				ThumbURL:     "https://cdn.example/t.webp",
+				DisplayURL:   "https://cdn.example/d.webp",
+				ContentType:  "image/webp",
+				SizeBytes:    100,
+				UpdatedAt:    time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+				Variants: []salecatalog.ImageVariantMeta{
+					{
+						Kind: salecatalog.MediaVariantKindDisplay, MediaAssetID: mid,
+						URL: "https://cdn.example/d.webp", StorageKey: "k/d",
+						ChecksumSHA256: "sha256:" + displayHash, Etag: `W/"d"`,
+						ContentType: "image/webp", SizeBytes: 100, MediaVersion: 1,
+						UpdatedAt: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+					},
+				},
+			},
+		}},
+	}
+}
+
+func TestMachineCatalog_SyncCatalogBundle_FirstSyncReturnsProductsAndMedia(t *testing.T) {
+	t.Parallel()
+	cfg := testMachineGRPCConfig()
+	machineID := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	snap := catalogBundleTestSnapshot("aaa")
+	stub := stubSaleCatalog{snap: snap}
+
+	srv, err := NewServer(cfg, zap.NewNop(), nil, nil, nil, nil, nil, nil, func(s *grpc.Server) error {
+		machinev1.RegisterMachineCatalogServiceServer(s, &machineCatalogServer{
+			deps: MachineGRPCServicesDeps{SaleCatalog: stub, Pool: nil},
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srvCtx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.ListenAndServe(srvCtx) }()
+	t.Cleanup(func() {
+		cancel()
+		<-errCh
+	})
+	conn, err := grpc.DialContext(context.Background(), srv.ln.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg.HTTPAuth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+tok)
+	cli := machinev1.NewMachineCatalogServiceClient(conn)
+	resp, err := cli.SyncCatalogBundle(md, &machinev1.SyncCatalogBundleRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.GetChangedProducts()) != 1 {
+		t.Fatalf("changed_products=%d", len(resp.GetChangedProducts()))
+	}
+	if len(resp.GetChangedMediaAssets()) != 1 {
+		t.Fatalf("changed_media_assets=%d", len(resp.GetChangedMediaAssets()))
+	}
+	a := resp.GetChangedMediaAssets()[0]
+	if a.GetDownloadUrl() == "" || a.GetSha256() == "" || a.GetVersion() == 0 {
+		t.Fatalf("media asset: %#v", a)
+	}
+	if resp.GetCatalogVersion() == "" || resp.GetMediaManifestVersion() == "" {
+		t.Fatal("expected non-empty version cursors")
+	}
+}
+
+func TestMachineCatalog_SyncCatalogBundle_SecondSyncSameVersionsEmpty(t *testing.T) {
+	t.Parallel()
+	cfg := testMachineGRPCConfig()
+	machineID := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	snap := catalogBundleTestSnapshot("aaa")
+	opts := salecatalog.Options{IncludeUnavailable: false, IncludeImages: true}
+	catVer := salecatalog.CatalogSyncCatalogVersion(*snap.Bootstrap, snap, opts)
+	mediaVer := salecatalog.MediaFingerprint(snap)
+	stub := stubSaleCatalog{snap: snap}
+
+	srv, err := NewServer(cfg, zap.NewNop(), nil, nil, nil, nil, nil, nil, func(s *grpc.Server) error {
+		machinev1.RegisterMachineCatalogServiceServer(s, &machineCatalogServer{
+			deps: MachineGRPCServicesDeps{SaleCatalog: stub, Pool: nil},
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srvCtx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.ListenAndServe(srvCtx) }()
+	t.Cleanup(func() {
+		cancel()
+		<-errCh
+	})
+	conn, err := grpc.DialContext(context.Background(), srv.ln.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg.HTTPAuth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+tok)
+	cli := machinev1.NewMachineCatalogServiceClient(conn)
+	resp, err := cli.SyncCatalogBundle(md, &machinev1.SyncCatalogBundleRequest{
+		CurrentCatalogVersion:       catVer,
+		CurrentMediaManifestVersion: mediaVer,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.GetChangedProducts()) != 0 || len(resp.GetChangedMediaAssets()) != 0 {
+		t.Fatalf("expected empty deltas: products=%d media=%d", len(resp.GetChangedProducts()), len(resp.GetChangedMediaAssets()))
+	}
+	if resp.GetMeta().GetStatus() != machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_NOT_MODIFIED {
+		t.Fatalf("expected not_modified meta: %v", resp.GetMeta().GetStatus())
+	}
+}
+
+func TestMachineCatalog_SyncCatalogBundle_MediaOnlyDelta(t *testing.T) {
+	t.Parallel()
+	cfg := testMachineGRPCConfig()
+	machineID := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	snapA := catalogBundleTestSnapshot("aaa")
+	snapB := catalogBundleTestSnapshot("bbb")
+	opts := salecatalog.Options{IncludeUnavailable: false, IncludeImages: true}
+	if salecatalog.CatalogSyncCatalogVersion(*snapA.Bootstrap, snapA, opts) != salecatalog.CatalogSyncCatalogVersion(*snapB.Bootstrap, snapB, opts) {
+		t.Fatal("fixture: catalog sync versions must match for media-only delta case")
+	}
+	if salecatalog.MediaFingerprint(snapA) == salecatalog.MediaFingerprint(snapB) {
+		t.Fatal("fixture: media versions must differ")
+	}
+
+	mc := &mutexSnapCatalog{snap: snapA}
+	srv, err := NewServer(cfg, zap.NewNop(), nil, nil, nil, nil, nil, nil, func(s *grpc.Server) error {
+		machinev1.RegisterMachineCatalogServiceServer(s, &machineCatalogServer{
+			deps: MachineGRPCServicesDeps{SaleCatalog: mc, Pool: nil},
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srvCtx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.ListenAndServe(srvCtx) }()
+	t.Cleanup(func() {
+		cancel()
+		<-errCh
+	})
+	conn, err := grpc.DialContext(context.Background(), srv.ln.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg.HTTPAuth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+tok)
+	cli := machinev1.NewMachineCatalogServiceClient(conn)
+	r1, err := cli.SyncCatalogBundle(md, &machinev1.SyncCatalogBundleRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mc.mu.Lock()
+	mc.snap = snapB
+	mc.mu.Unlock()
+
+	r2, err := cli.SyncCatalogBundle(md, &machinev1.SyncCatalogBundleRequest{
+		CurrentCatalogVersion:       r1.GetCatalogVersion(),
+		CurrentMediaManifestVersion: r1.GetMediaManifestVersion(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r2.GetChangedProducts()) != 0 {
+		t.Fatalf("expected no product delta, got %d", len(r2.GetChangedProducts()))
+	}
+	if len(r2.GetChangedMediaAssets()) != 1 {
+		t.Fatalf("expected media delta: %v", r2.GetChangedMediaAssets())
+	}
+}
+
+func TestMachineCatalog_SyncCatalogBundle_MissingMediaNotSellable(t *testing.T) {
+	t.Parallel()
+	cfg := testMachineGRPCConfig()
+	machineID := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	b := setupapp.MachineBootstrap{}
+	pid := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	stub := stubSaleCatalog{
+		snap: salecatalog.Snapshot{
+			SiteID:    uuid.MustParse("22222222-2222-2222-2222-222222222222"),
+			Bootstrap: &b,
+			Items: []salecatalog.Item{{
+				ProductID:         pid,
+				SKU:               "SKU1",
+				Name:              "X",
+				SlotIndex:         1,
+				IsAvailable:       false,
+				UnavailableReason: "missing_primary_media",
+				Image: &salecatalog.ImageMeta{
+					Deleted:   true,
+					UpdatedAt: time.Now().UTC(),
+				},
+			}},
+		},
+	}
+	srv, err := NewServer(cfg, zap.NewNop(), nil, nil, nil, nil, nil, nil, func(s *grpc.Server) error {
+		machinev1.RegisterMachineCatalogServiceServer(s, &machineCatalogServer{
+			deps: MachineGRPCServicesDeps{SaleCatalog: stub, Pool: nil},
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srvCtx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.ListenAndServe(srvCtx) }()
+	t.Cleanup(func() {
+		cancel()
+		<-errCh
+	})
+	conn, err := grpc.DialContext(context.Background(), srv.ln.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg.HTTPAuth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+tok)
+	cli := machinev1.NewMachineCatalogServiceClient(conn)
+	resp, err := cli.SyncCatalogBundle(md, &machinev1.SyncCatalogBundleRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	it := resp.GetChangedProducts()[0]
+	if it.GetIsAvailable() || !strings.Contains(it.GetUnavailableReason(), "missing_primary_media") {
+		t.Fatalf("expected missing media readiness: %#v", it)
+	}
+	if len(resp.GetChangedMediaAssets()) != 0 {
+		t.Fatal("deleted primary should not emit media assets")
+	}
+}
+
+func TestMachineCatalog_SyncCatalogBundle_BasisRemovals(t *testing.T) {
+	t.Parallel()
+	cfg := testMachineGRPCConfig()
+	machineID := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	snap := catalogBundleTestSnapshot("aaa")
+	stale := uuid.New().String()
+	srv, err := NewServer(cfg, zap.NewNop(), nil, nil, nil, nil, nil, nil, func(s *grpc.Server) error {
+		machinev1.RegisterMachineCatalogServiceServer(s, &machineCatalogServer{
+			deps: MachineGRPCServicesDeps{SaleCatalog: stubSaleCatalog{snap: snap}, Pool: nil},
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srvCtx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() { errCh <- srv.ListenAndServe(srvCtx) }()
+	t.Cleanup(func() {
+		cancel()
+		<-errCh
+	})
+	conn, err := grpc.DialContext(context.Background(), srv.ln.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg.HTTPAuth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	siteID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	tok, _, err := issuer.IssueMachineAccessJWT(machineID, siteID, 1, uuid.Nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+tok)
+	cli := machinev1.NewMachineCatalogServiceClient(conn)
+	mid := snap.Items[0].Image.MediaID.String()
+	resp, err := cli.SyncCatalogBundle(md, &machinev1.SyncCatalogBundleRequest{
+		BasisProductIds:     []string{stale},
+		BasisMediaAssetKeys: []string{mid + ":display", stale + ":thumb"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.GetRemovedProductIds()) != 1 || resp.GetRemovedProductIds()[0] != stale {
+		t.Fatalf("removed products: %v", resp.GetRemovedProductIds())
+	}
+	wantKey := stale + ":thumb"
+	if len(resp.GetRemovedMediaAssetIds()) != 1 || resp.GetRemovedMediaAssetIds()[0] != wantKey {
+		t.Fatalf("removed media: %v", resp.GetRemovedMediaAssetIds())
 	}
 }

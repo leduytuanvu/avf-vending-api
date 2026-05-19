@@ -36,6 +36,25 @@ func productUniqueViolationKind(err error, hasBarcode bool) error {
 	return ErrDuplicateSKU
 }
 
+func replaceProductTags(ctx context.Context, qtx *db.Queries, productID uuid.UUID, tagIDs []uuid.UUID) error {
+	if err := qtx.CatalogWriteDeleteProductTagsForProduct(ctx, productID); err != nil {
+		return err
+	}
+	for _, tid := range tagIDs {
+		if err := qtx.CatalogWriteInsertProductTag(ctx, db.CatalogWriteInsertProductTagParams{
+			ProductID: productID,
+			TagID:     tid,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func productHasPrimaryImage(p db.Product) bool {
+	return p.PrimaryImageID.Valid && uuid.UUID(p.PrimaryImageID.Bytes) != uuid.Nil
+}
+
 // CreateProductInput inserts a new product row.
 type CreateProductInput struct {
 	Sku             string
@@ -50,6 +69,11 @@ type CreateProductInput struct {
 	AgeRestricted   bool
 	AllergenCodes   []string
 	NutritionalNote *string
+	TagIDs          []uuid.UUID
+	// CompanyID scopes media object keys when binding primaryMediaId (required when PrimaryMediaID is set).
+	CompanyID uuid.UUID
+	// PrimaryMediaID when set binds this ready media_assets row as the product primary image inside the same transaction.
+	PrimaryMediaID *uuid.UUID
 }
 
 // CreateProduct creates a product.
@@ -99,7 +123,39 @@ func (s *Service) CreateProduct(ctx context.Context, in CreateProductInput) (db.
 	if allergen == nil {
 		allergen = []string{}
 	}
-	row, err := s.q.CatalogWriteInsertProduct(ctx, db.CatalogWriteInsertProductParams{
+	tagIDs, err := normalizeDedupeProductTagIDs(in.TagIDs)
+	if err != nil {
+		return db.Product{}, err
+	}
+	if in.PrimaryMediaID != nil && *in.PrimaryMediaID != uuid.Nil {
+		if s.mediaBinder == nil {
+			return db.Product{}, fmt.Errorf("%w: primaryMediaId requires configured media pipeline", ErrInvalidArgument)
+		}
+		if in.CompanyID == uuid.Nil {
+			return db.Product{}, fmt.Errorf("%w: primaryMediaId requires company context", ErrInvalidArgument)
+		}
+	}
+	if in.Active && (in.PrimaryMediaID == nil || *in.PrimaryMediaID == uuid.Nil) {
+		return db.Product{}, fmt.Errorf("%w: active products require primaryMediaId", ErrInvalidArgument)
+	}
+	if in.Active && s.mediaBinder == nil {
+		return db.Product{}, fmt.Errorf("%w: active products require configured media pipeline", ErrInvalidArgument)
+	}
+	if in.Active && in.CompanyID == uuid.Nil {
+		return db.Product{}, fmt.Errorf("%w: active products require company context", ErrInvalidArgument)
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return db.Product{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := db.New(tx)
+	if len(tagIDs) > 0 {
+		if err := s.validateProductTagIDsExist(ctx, qtx, tagIDs); err != nil {
+			return db.Product{}, err
+		}
+	}
+	row, err := qtx.CatalogWriteInsertProduct(ctx, db.CatalogWriteInsertProductParams{
 		Sku:             sku,
 		Barcode:         barcode,
 		Name:            name,
@@ -117,6 +173,30 @@ func (s *Service) CreateProduct(ctx context.Context, in CreateProductInput) (db.
 		if isUniqueViolation(err) {
 			return db.Product{}, productUniqueViolationKind(err, barcode.Valid)
 		}
+		return db.Product{}, err
+	}
+	if in.PrimaryMediaID != nil && *in.PrimaryMediaID != uuid.Nil {
+		prodPtr, berr := s.mediaBinder.BindProductPrimaryMediaTx(ctx, tx, in.CompanyID, row.ID, *in.PrimaryMediaID)
+		if berr != nil {
+			return db.Product{}, berr
+		}
+		row = *prodPtr
+	}
+	if len(tagIDs) > 0 {
+		if err := replaceProductTags(ctx, qtx, row.ID, tagIDs); err != nil {
+			return db.Product{}, err
+		}
+	}
+	if row.Active {
+		readyRows, rerr := qtx.RuntimeProductPrimaryMediaReady(ctx, []uuid.UUID{row.ID})
+		if rerr != nil {
+			return db.Product{}, rerr
+		}
+		if len(readyRows) != 1 || !readyRows[0].Ready {
+			return db.Product{}, fmt.Errorf("%w: active products require ready primary media", ErrInvalidArgument)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return db.Product{}, err
 	}
 	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionProductCreated, "catalog.product", row.ID, productAuditSnapshot(row))
@@ -139,6 +219,13 @@ type UpdateProductInput struct {
 	AgeRestricted   bool
 	AllergenCodes   []string
 	NutritionalNote *string
+	// TagIDs is nil when the client omitted tagIds (leave links unchanged).
+	// Non-nil means replace links with this set (empty slice clears all).
+	TagIDs *[]uuid.UUID
+	// CompanyID scopes media object keys when replacing primary media.
+	CompanyID uuid.UUID
+	// PrimaryMediaIDReplace when non-nil binds this ready media_assets row as primary (same semantics as POST primaryMediaId).
+	PrimaryMediaIDReplace *uuid.UUID
 }
 
 // UpdateProduct updates a product.
@@ -191,7 +278,13 @@ func (s *Service) UpdateProduct(ctx context.Context, in UpdateProductInput) (db.
 	if allergen == nil {
 		allergen = []string{}
 	}
-	row, err := s.q.CatalogWriteUpdateProduct(ctx, db.CatalogWriteUpdateProductParams{Sku: sku,
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return db.Product{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := db.New(tx)
+	row, err := qtx.CatalogWriteUpdateProduct(ctx, db.CatalogWriteUpdateProductParams{Sku: sku,
 		Barcode:         barcode,
 		Name:            name,
 		Description:     strings.TrimSpace(in.Description),
@@ -212,6 +305,45 @@ func (s *Service) UpdateProduct(ctx context.Context, in UpdateProductInput) (db.
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Product{}, ErrNotFound
 		}
+		return db.Product{}, err
+	}
+	if in.PrimaryMediaIDReplace != nil && *in.PrimaryMediaIDReplace != uuid.Nil {
+		if s.mediaBinder == nil {
+			return db.Product{}, fmt.Errorf("%w: primaryMediaId requires configured media pipeline", ErrInvalidArgument)
+		}
+		if in.CompanyID == uuid.Nil {
+			return db.Product{}, fmt.Errorf("%w: primaryMediaId requires company context", ErrInvalidArgument)
+		}
+		prodPtr, berr := s.mediaBinder.BindProductPrimaryMediaTx(ctx, tx, in.CompanyID, in.ProductID, *in.PrimaryMediaIDReplace)
+		if berr != nil {
+			return db.Product{}, berr
+		}
+		row = *prodPtr
+	}
+	if row.Active {
+		readyRows, rerr := qtx.RuntimeProductPrimaryMediaReady(ctx, []uuid.UUID{row.ID})
+		if rerr != nil {
+			return db.Product{}, rerr
+		}
+		if len(readyRows) != 1 || !readyRows[0].Ready {
+			return db.Product{}, fmt.Errorf("%w: active products require ready primary media", ErrInvalidArgument)
+		}
+	}
+	if in.TagIDs != nil {
+		tagIDs, err := normalizeDedupeProductTagIDs(*in.TagIDs)
+		if err != nil {
+			return db.Product{}, err
+		}
+		if len(tagIDs) > 0 {
+			if err := s.validateProductTagIDsExist(ctx, qtx, tagIDs); err != nil {
+				return db.Product{}, err
+			}
+		}
+		if err := replaceProductTags(ctx, qtx, in.ProductID, tagIDs); err != nil {
+			return db.Product{}, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return db.Product{}, err
 	}
 	s.recordCatalogWriteAudit(ctx, uuid.Nil, compliance.ActionProductUpdated, "catalog.product", row.ID, productAuditSnapshot(row))

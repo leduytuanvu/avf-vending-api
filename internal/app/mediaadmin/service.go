@@ -120,16 +120,24 @@ type InitUploadResult struct {
 	OriginalKey   string
 	ThumbKey      string
 	DisplayKey    string
+	Status        string
 }
 
 // InitUpload creates a pending media_assets row and a presigned PUT for the original object.
-func (s *Service) InitUpload(ctx context.Context, companyID uuid.UUID, contentType string) (*InitUploadResult, error) {
+func (s *Service) InitUpload(ctx context.Context, companyID uuid.UUID, filename string, contentType string, purpose string) (*InitUploadResult, error) {
 	if s == nil {
 		return nil, ErrNotConfigured
 	}
 	companyID, ct, err := validateImageContentType(companyID, contentType)
 	if err != nil {
 		return nil, err
+	}
+	purpose = strings.TrimSpace(strings.ToLower(purpose))
+	if purpose == "" {
+		purpose = "product_image"
+	}
+	if purpose != "product_image" {
+		return nil, fmt.Errorf("%w: unsupported purpose %q", ErrInvalidArgument, purpose)
 	}
 	mediaID := uuid.New()
 	ok := objectstore.MediaAssetOriginalKey(companyID, mediaID)
@@ -142,8 +150,16 @@ func (s *Service) InitUpload(ctx context.Context, companyID uuid.UUID, contentTy
 			createdBy = pgtype.UUID{Bytes: uid, Valid: true}
 		}
 	}
+	fn := strings.TrimSpace(filename)
+	fnPg := pgtype.Text{}
+	if fn != "" {
+		fnPg = pgtype.Text{String: fn, Valid: true}
+	}
 	row, err := q.MediaAdminInsertAsset(ctx, db.MediaAdminInsertAssetParams{
+		ID:                mediaID,
 		Kind:              "product_image",
+		OriginalFilename:  fnPg,
+		ObjectKey:         pgtype.Text{String: ok, Valid: true},
 		OriginalObjectKey: ok,
 		ThumbObjectKey:    tk,
 		DisplayObjectKey:  dk,
@@ -177,10 +193,11 @@ func (s *Service) InitUpload(ctx context.Context, companyID uuid.UUID, contentTy
 		UploadMethod:  signed.Method,
 		UploadHeaders: signed.Headers,
 		ExpiresAt:     exp,
-		CompletePath:  "/v1/admin/media/" + row.ID.String() + "/complete",
+		CompletePath:  "/v1/admin/media/uploads/" + row.ID.String() + "/complete",
 		OriginalKey:   ok,
 		ThumbKey:      tk,
 		DisplayKey:    dk,
+		Status:        "pending",
 	}, nil
 }
 
@@ -215,8 +232,33 @@ func validateRasterUploadMIME(ct string) error {
 	}
 }
 
+// validateHeadContentTypeForImageUpload enforces image/* (subset validated separately) or application/octet-stream
+// so clients can upload valid images before magic-byte sniffing in the variant pipeline.
+func validateHeadContentTypeForImageUpload(raw string) error {
+	ct := normalizeMIMEHeader(raw)
+	if ct == "" || ct == "application/octet-stream" {
+		return nil
+	}
+	if !strings.HasPrefix(ct, "image/") {
+		return fmt.Errorf("%w: stored object Content-Type must be image/* or application/octet-stream (got %q)", ErrInvalidArgument, ct)
+	}
+	return validateRasterUploadMIME(ct)
+}
+
+// CompleteUploadOptions carries optional client-supplied integrity hints validated against the uploaded bytes.
+type CompleteUploadOptions struct {
+	SizeBytes   *int64
+	SHA256Hex   string
+	ContentType string
+}
+
 // CompleteUpload finalizes a pending asset: generates variants, records SHA256/size, marks ready.
 func (s *Service) CompleteUpload(ctx context.Context, companyID, mediaID uuid.UUID) (*db.MediaAsset, error) {
+	return s.CompleteUploadWithOptions(ctx, companyID, mediaID, CompleteUploadOptions{})
+}
+
+// CompleteUploadWithOptions is like CompleteUpload but validates optional client claims against measured bytes/hashes.
+func (s *Service) CompleteUploadWithOptions(ctx context.Context, companyID, mediaID uuid.UUID, opts CompleteUploadOptions) (*db.MediaAsset, error) {
 	if s == nil {
 		return nil, ErrNotConfigured
 	}
@@ -244,15 +286,23 @@ func (s *Service) CompleteUpload(ctx context.Context, companyID, mediaID uuid.UU
 	if s.maxBytes > 0 && head.Size > s.maxBytes {
 		return nil, fmt.Errorf("%w: original exceeds max bytes", ErrInvalidArgument)
 	}
-	if strings.TrimSpace(head.ContentType) != "" {
-		if err := validateRasterUploadMIME(normalizeMIMEHeader(head.ContentType)); err != nil {
+	origMIME := strings.TrimSpace(head.ContentType)
+	if origMIME == "" && asset.MimeType.Valid {
+		origMIME = strings.TrimSpace(asset.MimeType.String)
+	}
+	if strings.TrimSpace(origMIME) != "" {
+		if err := validateHeadContentTypeForImageUpload(origMIME); err != nil {
 			return nil, err
+		}
+	}
+	if ct := strings.TrimSpace(opts.ContentType); ct != "" {
+		if normalizeMIMEHeader(ct) != normalizeMIMEHeader(origMIME) {
+			return nil, fmt.Errorf("%w: contentType does not match uploaded object", ErrInvalidArgument)
 		}
 	}
 	va, err := s.variants.GenerateWebPVariants(ctx, s.store, companyID, mediaID, asset.OriginalObjectKey, s.maxBytes)
 	if err != nil {
 		_, _ = q.MediaAdminMarkAssetFailed(ctx, db.MediaAdminMarkAssetFailedParams{FailedReason: pgtype.Text{String: err.Error(), Valid: true},
-
 			ID: mediaID,
 		})
 		mid := mediaID.String()
@@ -261,6 +311,14 @@ func (s *Service) CompleteUpload(ctx context.Context, companyID, mediaID uuid.UU
 			"error": err.Error(),
 		})
 		return nil, err
+	}
+	if opts.SizeBytes != nil && *opts.SizeBytes != va.OriginalBytes {
+		return nil, fmt.Errorf("%w: sizeBytes does not match uploaded object", ErrInvalidArgument)
+	}
+	if hx := strings.TrimSpace(opts.SHA256Hex); hx != "" {
+		if normalizeSHA256Hex(hx) != normalizeSHA256Hex(va.OriginalSHA256Hex) {
+			return nil, fmt.Errorf("%w: sha256 does not match uploaded object", ErrInvalidArgument)
+		}
 	}
 	dhead, err := s.store.Head(ctx, asset.DisplayObjectKey)
 	if err != nil {
@@ -276,34 +334,105 @@ func (s *Service) CompleteUpload(ctx context.Context, companyID, mediaID uuid.UU
 	} else if e := strings.TrimSpace(dhead.ETag); e != "" {
 		etag = `W/"` + strings.Trim(e, `"`) + `"`
 	}
-	updated, err := q.MediaAdminUpdateAssetReady(ctx, db.MediaAdminUpdateAssetReadyParams{MimeType: pgtype.Text{String: webpContentType, Valid: true},
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := db.New(tx)
+
+	if _, err := qtx.MediaAdminUpdateAssetReady(ctx, db.MediaAdminUpdateAssetReadyParams{MimeType: pgtype.Text{String: webpContentType, Valid: true},
 		SizeBytes: pgtype.Int8{Int64: va.DisplayBytes, Valid: true},
 		Sha256:    pgtype.Text{String: sha, Valid: sha != ""},
 		Width:     pgtype.Int4{Int32: int32(va.DisplayWidth), Valid: va.DisplayWidth > 0},
 		Height:    pgtype.Int4{Int32: int32(va.DisplayHeight), Valid: va.DisplayHeight > 0},
 		Etag:      pgtype.Text{String: etag, Valid: etag != ""},
-
-		ID: mediaID,
-	})
+		ID:        mediaID,
+	}); err != nil {
+		return nil, err
+	}
+	canonical, err := qtx.MediaAdminEnsureCanonicalObjectKey(ctx, mediaID)
 	if err != nil {
 		return nil, err
 	}
+	if err := s.persistMediaVariants(ctx, qtx, canonical, va, origMIME); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
 	s.bumpCache(ctx, companyID)
 	mid := mediaID.String()
 	s.auditRecord(ctx, companyID, compliance.ActionMediaVariantGenerated, "media.asset", &mid, map[string]any{
-		"phase":          "complete_upload",
-		"variants":       []string{"original", "thumb", "display"},
-		"thumb_mime":     webpContentType,
-		"display_mime":   webpContentType,
-		"display_bytes":  va.DisplayBytes,
-		"thumb_bytes":    va.ThumbBytes,
-		"thumb_sha256":   va.ThumbSHA256Hex,
-		"display_sha256": va.DisplaySHA256Hex,
-		"display_width":  va.DisplayWidth,
-		"display_height": va.DisplayHeight,
+		"phase":           "complete_upload",
+		"variants":        []string{"original", "thumb", "display"},
+		"thumb_mime":      webpContentType,
+		"display_mime":    webpContentType,
+		"display_bytes":   va.DisplayBytes,
+		"thumb_bytes":     va.ThumbBytes,
+		"thumb_sha256":    va.ThumbSHA256Hex,
+		"display_sha256":  va.DisplaySHA256Hex,
+		"display_width":   va.DisplayWidth,
+		"display_height":  va.DisplayHeight,
+		"original_sha256": va.OriginalSHA256Hex,
 	})
 	s.auditRecord(ctx, companyID, compliance.ActionMediaUploaded, "media.asset", &mid, map[string]any{"phase": "complete", "size_bytes": va.DisplayBytes})
-	return &updated, nil
+	return &canonical, nil
+}
+
+func (s *Service) persistMediaVariants(ctx context.Context, qtx *db.Queries, asset db.MediaAsset, va VariantArtifacts, originalMIME string) error {
+	if err := qtx.MediaAdminDeleteVariantsForAsset(ctx, asset.ID); err != nil {
+		return err
+	}
+	ver := asset.ObjectVersion
+	ins := func(variant, objectKey, mime string, w, h int, sz int64, shaHex string) error {
+		sh := normalizeSHA256Hex(shaHex)
+		var shaPg pgtype.Text
+		if sh != "" {
+			shaPg = pgtype.Text{String: sh, Valid: true}
+		}
+		var wPg, hPg pgtype.Int4
+		if w > 0 {
+			wPg = pgtype.Int4{Int32: int32(w), Valid: true}
+		}
+		if h > 0 {
+			hPg = pgtype.Int4{Int32: int32(h), Valid: true}
+		}
+		var szPg pgtype.Int8
+		if sz >= 0 {
+			szPg = pgtype.Int8{Int64: sz, Valid: true}
+		}
+		mt := strings.TrimSpace(mime)
+		var mimePg pgtype.Text
+		if mt != "" {
+			mimePg = pgtype.Text{String: mt, Valid: true}
+		}
+		_, err := qtx.MediaAdminInsertMediaVariant(ctx, db.MediaAdminInsertMediaVariantParams{
+			MediaAssetID: asset.ID,
+			Variant:      variant,
+			ObjectKey:    objectKey,
+			MimeType:     mimePg,
+			Width:        wPg,
+			Height:       hPg,
+			SizeBytes:    szPg,
+			Sha256:       shaPg,
+			Version:      ver,
+		})
+		return err
+	}
+	om := normalizeMIMEHeader(originalMIME)
+	if om == "" {
+		om = "application/octet-stream"
+	}
+	if err := ins("original", asset.OriginalObjectKey, om, va.OriginalWidth, va.OriginalHeight, va.OriginalBytes, va.OriginalSHA256Hex); err != nil {
+		return err
+	}
+	if err := ins("thumb", asset.ThumbObjectKey, webpContentType, va.ThumbWidth, va.ThumbHeight, va.ThumbBytes, va.ThumbSHA256Hex); err != nil {
+		return err
+	}
+	return ins("display", asset.DisplayObjectKey, webpContentType, va.DisplayWidth, va.DisplayHeight, va.DisplayBytes, va.DisplaySHA256Hex)
 }
 
 // GetAsset returns one media asset for the company.
@@ -402,20 +531,83 @@ func (s *Service) DeleteAsset(ctx context.Context, companyID, mediaID uuid.UUID)
 	return nil
 }
 
+func upsertPrimaryProductMediaProjection(ctx context.Context, qtx *db.Queries, productID uuid.UUID, img db.ProductImage, asset db.MediaAsset, thumbURL, dispURL string) error {
+	var sz int64
+	if asset.SizeBytes.Valid {
+		sz = asset.SizeBytes.Int64
+	}
+	ok := func(k string) pgtype.Text {
+		k = strings.TrimSpace(k)
+		if k == "" {
+			return pgtype.Text{}
+		}
+		return pgtype.Text{String: k, Valid: true}
+	}
+	_, err := qtx.CatalogWriteUpsertProductMediaProjection(ctx, db.CatalogWriteUpsertProductMediaProjectionParams{
+		ID:                img.ID,
+		ProductID:         productID,
+		MediaRole:         "primary",
+		OriginalObjectKey: ok(asset.OriginalObjectKey),
+		ThumbObjectKey:    ok(asset.ThumbObjectKey),
+		DisplayObjectKey:  ok(asset.DisplayObjectKey),
+		ThumbUrl:          pgtype.Text{String: thumbURL, Valid: thumbURL != ""},
+		DisplayUrl:        pgtype.Text{String: dispURL, Valid: dispURL != ""},
+		MimeType:          asset.MimeType,
+		Width:             asset.Width,
+		Height:            asset.Height,
+		SizeBytes:         sz,
+		ContentHash:       img.ContentHash,
+		MediaVersion:      img.MediaVersion,
+	})
+	return err
+}
+
+// BindProductPrimaryMediaTx binds ready media inside an existing transaction (shared with catalog writes).
+func (s *Service) BindProductPrimaryMediaTx(ctx context.Context, tx pgx.Tx, companyID, productID, mediaID uuid.UUID) (*db.Product, error) {
+	if s == nil {
+		return nil, ErrNotConfigured
+	}
+	qtx := db.New(tx)
+	return s.bindProductPrimaryMediaWithQ(ctx, qtx, companyID, productID, mediaID)
+}
+
 // BindProductPrimaryMedia binds a ready asset as the sole primary image for a product.
 func (s *Service) BindProductPrimaryMedia(ctx context.Context, companyID, productID, mediaID uuid.UUID) (*db.Product, error) {
 	if s == nil {
 		return nil, ErrNotConfigured
 	}
-	asset, err := s.GetAsset(ctx, companyID, mediaID)
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	prod, err := s.BindProductPrimaryMediaTx(ctx, tx, companyID, productID, mediaID)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	s.bumpCache(ctx, companyID)
+	pid := productID.String()
+	mid := mediaID.String()
+	s.auditRecord(ctx, companyID, compliance.ActionMediaBoundToProduct, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
+	s.auditRecord(ctx, companyID, compliance.ActionMediaBound, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
+	return prod, nil
+}
+
+func (s *Service) bindProductPrimaryMediaWithQ(ctx context.Context, qtx *db.Queries, companyID, productID, mediaID uuid.UUID) (*db.Product, error) {
+	asset, err := qtx.MediaAdminGetAssetForOrg(ctx, mediaID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	if asset.Status != "ready" {
 		return nil, fmt.Errorf("%w: media not ready", ErrConflict)
 	}
-	q := db.New(s.pool)
-	if _, err := q.CatalogAdminGetProduct(ctx, productID); err != nil {
+	if _, err := qtx.CatalogAdminGetProduct(ctx, productID); err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, ErrNotFound
 		}
@@ -436,12 +628,6 @@ func (s *Service) BindProductPrimaryMedia(ctx context.Context, companyID, produc
 	if ch != "" && !strings.HasPrefix(ch, "sha256:") {
 		ch = "sha256:" + ch
 	}
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := db.New(tx)
 	if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, productID); err != nil {
 		return nil, err
 	}
@@ -472,14 +658,10 @@ func (s *Service) BindProductPrimaryMedia(ctx context.Context, companyID, produc
 	if err != nil {
 		return nil, err
 	}
-	if err := tx.Commit(ctx); err != nil {
+	if err := upsertPrimaryProductMediaProjection(ctx, qtx, productID, img, asset, thumbSigned.URL, dispSigned.URL); err != nil {
 		return nil, err
 	}
-	s.bumpCache(ctx, companyID)
-	pid := productID.String()
-	mid := mediaID.String()
-	s.auditRecord(ctx, companyID, compliance.ActionMediaBoundToProduct, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
-	s.auditRecord(ctx, companyID, compliance.ActionMediaBound, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
+	_ = companyID
 	return &prod, nil
 }
 
@@ -534,4 +716,44 @@ func (s *Service) UnbindProductMedia(ctx context.Context, companyID, productID, 
 	s.auditRecord(ctx, companyID, compliance.ActionMediaUnboundFromProduct, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
 	s.auditRecord(ctx, companyID, compliance.ActionMediaUnbound, "catalog.product", &pid, map[string]any{"product_id": pid, "media_id": mid})
 	return &prod, nil
+}
+
+// ListAssetsByIDs returns media_assets rows for the given ids (empty ids yields empty slice).
+func (s *Service) ListAssetsByIDs(ctx context.Context, ids []uuid.UUID) ([]db.MediaAsset, error) {
+	if s == nil || s.pool == nil {
+		return nil, ErrNotConfigured
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	q := db.New(s.pool)
+	return q.MediaAdminListAssetsByIDs(ctx, ids)
+}
+
+// ListVariantsForAssets returns media_variants rows for assets (empty ids yields empty slice).
+func (s *Service) ListVariantsForAssets(ctx context.Context, assetIDs []uuid.UUID) ([]db.MediaVariant, error) {
+	if s == nil || s.pool == nil {
+		return nil, ErrNotConfigured
+	}
+	if len(assetIDs) == 0 {
+		return nil, nil
+	}
+	q := db.New(s.pool)
+	return q.MediaAdminListVariantsForAssets(ctx, assetIDs)
+}
+
+// PresignedDownloadURL returns a short-lived GET URL for an object key.
+func (s *Service) PresignedDownloadURL(ctx context.Context, objectKey string) (string, error) {
+	if s == nil || s.store == nil {
+		return "", ErrNotConfigured
+	}
+	key := strings.TrimSpace(objectKey)
+	if key == "" {
+		return "", fmt.Errorf("%w: empty object key", ErrInvalidArgument)
+	}
+	signed, err := s.store.PresignGet(ctx, key, s.putTTL)
+	if err != nil {
+		return "", err
+	}
+	return signed.URL, nil
 }

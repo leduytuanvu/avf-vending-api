@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+import "avf/machine/v1/machine_activation.proto";
+import "avf/machine/v1/machine_token.proto";
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// MachineAuthService groups public machine activation and token-refresh RPCs.
+// ActivateMachine is the only unauthenticated machine app RPC. Token refresh and
+// session revocation are protected by Machine JWT.
+service MachineAuthService {
+  rpc ActivateMachine(ActivateMachineRequest) returns (ActivateMachineResponse);
+  rpc ClaimActivation(MachineAuthServiceClaimActivationRequest) returns (MachineAuthServiceClaimActivationResponse);
+  rpc RefreshMachineToken(MachineAuthServiceRefreshMachineTokenRequest) returns (MachineAuthServiceRefreshMachineTokenResponse);
+}
+
+message ActivateMachineRequest {
+  ClaimActivationRequest claim = 1;
+}
+
+message ActivateMachineResponse {
+  ClaimActivationResponse claim = 1;
+}
+
+message MachineAuthServiceClaimActivationRequest {
+  ClaimActivationRequest claim = 1;
+}
+
+message MachineAuthServiceClaimActivationResponse {
+  ClaimActivationResponse claim = 1;
+}
+
+message MachineAuthServiceRefreshMachineTokenRequest {
+  RefreshMachineTokenRequest refresh = 1;
+}
+
+message MachineAuthServiceRefreshMachineTokenResponse {
+  RefreshMachineTokenResponse refresh = 1;
+}

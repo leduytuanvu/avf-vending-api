@@ -104,3 +104,20 @@ func RuntimeSaleCatalogFingerprint(bootstrap setupapp.MachineBootstrap, snap Sna
 	}
 	return setupapp.SortedKeyFingerprint("runtime_sale_catalog_v6", parts)
 }
+
+// CatalogSyncCatalogVersion fingerprints planogram, pricing, promotions, inventory, config, and snapshot flags
+// for SyncCatalogBundle deltas **excluding** media projection. Pair with MediaFingerprint(snap) as media_manifest_version.
+func CatalogSyncCatalogVersion(bootstrap setupapp.MachineBootstrap, snap Snapshot, opts Options) string {
+	parts := []string{
+		"asm:" + setupapp.CatalogFingerprint(bootstrap),
+		"prc:" + setupapp.PricingFingerprint(bootstrap),
+		"plg:" + setupapp.PlanogramFingerprint(bootstrap),
+		"prm:" + PromotionsSnapshotFingerprint(snap),
+		"inv:" + InventorySnapshotFingerprint(snap),
+		"cfg:" + strconv.FormatInt(snap.ConfigVersion, 10),
+		"cur:" + strings.ToUpper(strings.TrimSpace(snap.Currency)),
+		"uav:" + strconv.FormatBool(opts.IncludeUnavailable),
+		"img:" + strconv.FormatBool(opts.IncludeImages),
+	}
+	return setupapp.SortedKeyFingerprint("runtime_sale_catalog_sync_v1", parts)
+}
