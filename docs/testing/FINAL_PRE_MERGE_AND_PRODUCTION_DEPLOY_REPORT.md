@@ -197,4 +197,54 @@ Commit `891c5e2` created on branch `chore/final-full-system-verification-uuidv7-
 
 ---
 
-*Report generated immediately before `git commit` on this branch.*
+## Phase 4 — Push and develop merge (2026-05-20)
+
+### Feature branch
+
+| Field | Value |
+|-------|-------|
+| Branch | `chore/final-full-system-verification-uuidv7-postman-tests` |
+| Tip SHA (pushed) | `fee0bca` — `docs: record feature branch commit SHA in pre-merge report` |
+| Prior SHA | `891c5e2` — `chore: verify release readiness and production deploy gates` |
+| Remote | Pushed to `origin/chore/final-full-system-verification-uuidv7-postman-tests` |
+
+### Develop merge method
+
+**PR** — [PR #227](https://github.com/leduytuanvu/avf-vending-api/pull/227)  
+`chore/final-full-system-verification-uuidv7-postman-tests` → `develop`  
+Title: *chore: final verification and production deploy readiness*
+
+**Not merged** — CI failed (per policy: do not merge on failed checks).
+
+### Develop merge commit SHA
+
+*N/A — merge not performed.*
+
+### Develop validation result
+
+*Not run* — develop not updated locally; validation deferred until PR CI is green and merge completes.
+
+### PR CI status (run `26117817441` / related)
+
+| Check | Result |
+|-------|--------|
+| Linux race and contract gates | **PASS** |
+| Migration Safety Check | **PASS** |
+| Secret Scan | **PASS** |
+| Go Vulnerability Scan | **PASS** |
+| Deployment and Config Scan | **PASS** |
+| GitHub repository governance | **PASS** |
+| Legacy Production Asset Contract | **PASS** |
+| **Workflow and Script Quality** | **FAIL** — `scripts/scripts/security/write_security_verdict.py` path (repo reorg) |
+| **Go CI Gates** | **FAIL** — buf remote unavailable during `proto-generate` (may be transient) |
+| **Docker Compose Config Validation** | **FAIL** — missing `deployments/staging/scripts/deploy/smoke_staging.sh` (moved to `scripts/smoke_staging.sh`) |
+
+**mergeStateStatus:** `BLOCKED`
+
+### Phase 4 verdict
+
+**PR open — merge blocked by CI.** Fix failing workflow paths and re-run CI before merging to `develop`. No merge to `main`. No production deploy.
+
+---
+
+*Report generated immediately before `git commit` on this branch; Phase 4 appended after PR CI completed.*
