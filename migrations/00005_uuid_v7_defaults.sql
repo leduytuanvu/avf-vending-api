@@ -3,7 +3,9 @@
 -- Existing row UUID values are unchanged; only INSERT ... DEFAULT (omit id) uses v7.
 -- See docs/audits/UUID_V7_STANDARDIZATION_AUDIT.md (Phase 3).
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- +goose StatementBegin
 CREATE OR REPLACE FUNCTION public.uuid_generate_v7()
@@ -11,7 +13,7 @@ RETURNS uuid
 LANGUAGE plpgsql
 VOLATILE
 PARALLEL SAFE
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
     unix_ts_ms bytea;
@@ -22,7 +24,7 @@ BEGIN
         int8send(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint)
         FROM 3 FOR 6
     );
-    uuid_bytes := unix_ts_ms || gen_random_bytes(10);
+    uuid_bytes := unix_ts_ms || extensions.gen_random_bytes(10);
     -- Version 7 (bits 48-51 = 0111).
     uuid_bytes := set_byte(uuid_bytes, 6, (get_byte(uuid_bytes, 6) & 15) | 112);
     -- RFC 4122 variant (bits 64-65 = 10).
@@ -32,7 +34,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.uuid_generate_v7() IS
-    'RFC 9562 UUID v7 for internal resource PK defaults. Uses pgcrypto gen_random_bytes; no extension beyond pgcrypto required.';
+    'RFC 9562 UUID v7 for internal resource PK defaults. Uses extensions.gen_random_bytes (pgcrypto).';
 -- +goose StatementEnd
 
 -- Convert every public.id uuid column whose default is gen_random_uuid() or uuid_generate_v4().
@@ -118,7 +120,7 @@ BEGIN
           AND pg_get_expr(d.adbin, d.adrelid) ~ 'uuid_generate_v7\s*\(\s*\)'
     LOOP
         EXECUTE format(
-            'ALTER TABLE %I.%I ALTER COLUMN id SET DEFAULT gen_random_uuid()',
+            'ALTER TABLE %I.%I ALTER COLUMN id SET DEFAULT extensions.gen_random_uuid()',
             r.schema_name,
             r.table_name
         );
