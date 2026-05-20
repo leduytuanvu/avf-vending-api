@@ -4,7 +4,7 @@
 
 ARG GO_VERSION=1.25.10
 
-FROM golang:1.25.10-bookworm@sha256:e3a54b77385b4f8a31c1db4d12429ffb3718ea76865731a787c497755d409547 AS build
+FROM golang:1.26.3-bookworm@sha256:252599aeb51ad60b83e4d8821802068127c528c707cb7dd7afd93be057c6011c AS build
 WORKDIR /src
 
 COPY go.mod go.sum ./
