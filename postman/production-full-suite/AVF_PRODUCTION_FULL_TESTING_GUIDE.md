@@ -32,6 +32,19 @@ This folder contains exactly three files:
 | requestId / idempotencyKey | yes | yes | — | auto-generated | Correlation / idempotency |
 | allowGatedWrites | yes | — | — | false | Must be `true` to run `[GATED-WRITE]` requests |
 | confirmProductionWrites | yes | — | — | (empty) | Must be `I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION` for gated writes |
+| _runtimeRequestId | — | — | — | (empty) | Optional debug only; headers use direct `{{$guid}}` |
+| _runtimeCorrelationId | — | — | — | (empty) | Optional debug only; headers use direct `{{$guid}}` |
+| _runtimeIdempotencyKey | — | — | — | (empty) | Deprecated; do not use in headers |
+
+## Idempotency-Key
+
+- The backend requires `Idempotency-Key` or `X-Idempotency-Key` on **write** requests (POST, PUT, PATCH, DELETE).
+- This production suite uses the Postman dynamic variable directly:
+  - `Idempotency-Key: {{$guid}}`
+- Do **not** use empty runtime variables such as `{{_runtimeIdempotencyKey}}` — if unresolved, the backend returns:
+  - `400` with `error.code` = `missing_idempotency_key`
+- Each new write gets a fresh GUID automatically. To **retry the same write** safely (idempotent replay), copy the prior key and paste a fixed UUID into the header manually.
+- `X-Request-ID` and `X-Correlation-ID` also use direct `{{$guid}}` on every backend REST request.
 
 ## 4. Test REST APIs individually first
 
@@ -1195,7 +1208,15 @@ Request/response schema issues: 0 (derived from OpenAPI/proto/MQTT matrix)
 - **MQTT no ACK:** Subscribe to ack topic before publishing command
 - **Optional query params:** Disabled by default in collection; enable in Postman URL tab if needed
 
+### 400 missing_idempotency_key
 
+1. Open the request **Headers** tab.
+2. Confirm `Idempotency-Key` is **enabled** (checkbox on).
+3. Confirm the value is exactly `{{$guid}}` or a one-line UUID (no quotes, no spaces).
+4. **Save** the request and re-send.
+5. After re-send, confirm `X-Request-ID` in the response or console changes (proves a new GUID was sent).
+6. If it still fails, open **Postman Console** (View → Show Postman Console) and inspect the **actual sent headers** — the resolved `Idempotency-Key` must be non-empty.
+7. Do not rely on `{{_runtimeIdempotencyKey}}`; it may be empty if pre-request scripts did not run.
 
 ## Why some requests have [GATED-WRITE]
 
@@ -1217,6 +1238,8 @@ Domain folders use **human-readable names** (no numeric prefixes). Examples: `He
 
 - JSON parse: PASS
 - Folder naming: PASS (no `NN_` prefixes)
+- Direct `{{$guid}}` idempotency headers: PASS (189 write requests)
+- Direct `{{$guid}}` request/correlation headers: PASS (327 REST requests)
 - REST request/response audit: PASS
 - gRPC request/response audit: PASS
 - MQTT request/response audit: PASS
@@ -1225,4 +1248,4 @@ Domain folders use **human-readable names** (no numeric prefixes). Examples: `He
 
 ## 12. Final verdict
 
-**PRODUCTION_SUITE_FOLDER_NAMES_CLEANED_AND_VERIFIED**
+**POSTMAN_DIRECT_GUID_IDEMPOTENCY_FIXED_AND_VERIFIED**
