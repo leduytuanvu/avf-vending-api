@@ -74,7 +74,7 @@ Not produced from a full orchestrated run. Static flow review passed; see `repor
 - `tests/e2e/tools/generate-improvement-summary.py` — `import argparse`
 - `tests/e2e/.env.example` — `E2E_ENV_FILE` note
 - `.gitignore` — `tests/e2e/.env.local`
-- `docs/testing/LOCAL_INFRA_BLOCKER.md`, this report
+- `docs/reports/verification/LOCAL_INFRA_BLOCKER.md`, this report
 
 ## Next developer — one-liner checklist
 

@@ -87,18 +87,18 @@ Regenerated Postman collection includes UUID v7 prerequest (`uuid7()`, `resource
 
 | Report |
 |--------|
-| `docs/testing/FULL_SYSTEM_VERIFICATION_INVENTORY.md` |
-| `docs/testing/UUID_V7_AUDIT_REPORT.md` |
-| `docs/testing/DATABASE_MIGRATION_VERIFICATION.md` |
-| `docs/testing/PRODUCTION_AUTO_MIGRATION_GATE_AUDIT.md` |
-| `docs/testing/REST_API_VERIFICATION_REPORT.md` |
-| `docs/testing/GRPC_VERIFICATION_REPORT.md` |
-| `docs/testing/MQTT_VERIFICATION_REPORT.md` |
-| `docs/testing/POSTMAN_COLLECTION_ENVIRONMENT_AUDIT.md` |
-| `docs/testing/E2E_FLOW_VERIFICATION_REPORT.md` |
+| `docs/reports/verification/FULL_SYSTEM_VERIFICATION_INVENTORY.md` |
+| `docs/audits/UUID_V7_AUDIT_REPORT.md` |
+| `docs/reports/verification/DATABASE_MIGRATION_VERIFICATION.md` |
+| `docs/audits/PRODUCTION_AUTO_MIGRATION_GATE_AUDIT.md` |
+| `docs/reports/verification/REST_API_VERIFICATION_REPORT.md` |
+| `docs/reports/verification/GRPC_VERIFICATION_REPORT.md` |
+| `docs/reports/verification/MQTT_VERIFICATION_REPORT.md` |
+| `docs/reports/verification/POSTMAN_COLLECTION_ENVIRONMENT_AUDIT.md` |
+| `docs/reports/verification/E2E_FLOW_VERIFICATION_REPORT.md` |
 | `docs/testing/POSTMAN_FULL_FLOW_TESTING_GUIDE.md` |
-| `docs/testing/FULL_SYSTEM_FINAL_VERIFICATION_REPORT.md` (this file) |
-| `docs/testing/FINAL_RELEASE_READINESS_CHECKLIST.md` |
+| `docs/reports/verification/FULL_SYSTEM_FINAL_VERIFICATION_REPORT.md` (this file) |
+| `docs/reports/verification/FINAL_RELEASE_READINESS_CHECKLIST.md` |
 
 ---
 

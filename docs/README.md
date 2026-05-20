@@ -108,7 +108,11 @@ Incident and day-2 procedures: **[`runbooks/README.md`](runbooks/README.md)**
 ## Audits & reports
 
 - **Audits (readiness / gap / cleanup):** [`audits/README.md`](audits/README.md)
-- **Generated phase reports:** [`reports/README.md`](reports/README.md) (under `docs/reports/`)
+- **Generated phase reports:** [`reports/README.md`](reports/README.md)
+  - [Production deploy reports](reports/production-deploy/) — failure analysis, recovery, migration evidence
+  - [Verification reports](reports/verification/) — REST/gRPC/MQTT/E2E/Postman/full-system verification output
+  - [Test coverage reports](reports/test/) — e.g. MQTT full coverage
+- **Repository cleanup audits:** [`audits/REPO_CLEANUP_AUDIT.md`](audits/REPO_CLEANUP_AUDIT.md)
 
 ## Local dependencies
 
@@ -121,3 +125,4 @@ Incident and day-2 procedures: **[`runbooks/README.md`](runbooks/README.md)**
 - [Supply chain pinning](security/supply-chain-pinning.md)
 - [Vietnamese API guide](vi/huong-dan-api-tu-dang-nhap-den-ban-hang.md)
 - [Repository structure cleanup audit](audits/REPO_STRUCTURE_CLEANUP_AUDIT.md)
+- [Repository cleanup audit (2026-05-20)](audits/REPO_CLEANUP_AUDIT.md)
