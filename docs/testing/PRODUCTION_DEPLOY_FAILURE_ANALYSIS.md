@@ -125,3 +125,14 @@ Deploy Production with `run_migration=true` no longer requires pre-uploaded `bac
 ### Follow-up fix (sync migration scripts)
 
 Add to app-node A/B tar sync: `scripts/deploy/production-migrate.sh`, `scripts/verify_database_environment.sh`, `scripts/db/verify_database_environment.sh`.
+
+### Deploy run 26140405803 (migration confirm gate)
+
+| Field | Value |
+|-------|--------|
+| **Error** | `set CONFIRM_PRODUCTION_MIGRATION=true for manual production migration` |
+| **Cause** | `production-migrate.sh` skips confirm only when `GITHUB_ACTIONS=true`; remote SSH session does not inherit that env |
+
+### Follow-up fix (release migration confirm)
+
+`release_app_node.sh` exports `CONFIRM_PRODUCTION_MIGRATION=true` when `RUN_MIGRATION=1` (automated deploy path).
