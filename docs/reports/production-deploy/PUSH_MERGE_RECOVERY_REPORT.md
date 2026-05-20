@@ -42,7 +42,7 @@ Feature branch vs `origin/main`: **4 commits ahead** (`891c5e2` … `9994d50`), 
 |----------|--------|
 | **Modified (unstaged)** | None |
 | **Staged** | None |
-| **Untracked** | `docs/testing/PRODUCTION_DEPLOY_FAILURE_REPORT.md` |
+| **Untracked** | `docs/reports/production-deploy/PRODUCTION_DEPLOY_FAILURE_REPORT.md` |
 | **Merge conflicts** | None |
 | **Secrets / `.env` staged** | None |
 
@@ -174,8 +174,8 @@ No `*.dump`, `*.bak`, `*.key`, `*.pem`, or `id_rsa` files found on disk (excludi
 
 ### Untracked (safe to stage later)
 
-- `docs/testing/PRODUCTION_DEPLOY_FAILURE_REPORT.md`
-- `docs/testing/PUSH_MERGE_RECOVERY_REPORT.md`
+- `docs/reports/production-deploy/PRODUCTION_DEPLOY_FAILURE_REPORT.md`
+- `docs/reports/production-deploy/PUSH_MERGE_RECOVERY_REPORT.md`
 
 ### Files intentionally ignored (existing `.gitignore`)
 
@@ -275,8 +275,8 @@ Historical `gen_random_uuid()` references remain in baseline migration docs and 
 
 ### Files committed
 
-- `docs/testing/PUSH_MERGE_RECOVERY_REPORT.md` — Phases 0–3 recovery/validation report
-- `docs/testing/PRODUCTION_DEPLOY_FAILURE_REPORT.md` — production deploy failure analysis (Phase 10)
+- `docs/reports/production-deploy/PUSH_MERGE_RECOVERY_REPORT.md` — Phases 0–3 recovery/validation report
+- `docs/reports/production-deploy/PRODUCTION_DEPLOY_FAILURE_REPORT.md` — production deploy failure analysis (Phase 10)
 
 ### Files intentionally not committed
 

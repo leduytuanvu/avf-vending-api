@@ -246,7 +246,7 @@ Use machine JWT folders:
 
 ## 8. Related docs
 
-- `docs/testing/POSTMAN_COLLECTION_ENVIRONMENT_AUDIT.md`
+- `docs/reports/verification/POSTMAN_COLLECTION_ENVIRONMENT_AUDIT.md`
 - `docs/testing/e2e-local-test-guide.md`
 - `docs/api/mqtt-contract.md`
 - `docs/swagger/swagger.json` (OpenAPI source of truth)

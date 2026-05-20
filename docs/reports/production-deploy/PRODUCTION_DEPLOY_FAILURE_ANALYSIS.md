@@ -82,7 +82,7 @@ This is **not** a migration image, DB backup, compose, or health-check failure �
 |------|-----|
 | `scripts/verify_database_environment.sh` | Wrapper should invoke canonical script via `bash` (no execute bit required) |
 | `.github/workflows/deploy-prod.yml` | Post-extract `chmod +x` on synced migration helper scripts (app-node A/B tar sync) |
-| `docs/testing/PRODUCTION_DEPLOY_FAILURE_ANALYSIS.md` | Record fix and redeploy outcome |
+| `docs/reports/production-deploy/PRODUCTION_DEPLOY_FAILURE_ANALYSIS.md` | Record fix and redeploy outcome |
 
 Optional hardening (not strictly required if above two are done):
 
@@ -483,6 +483,65 @@ Image: `avf-vending-api:deploy-fix` (`deployments/prod/Dockerfile`)
 ### Phase 5 verdict
 
 **LOCAL_VALIDATION_PASS** — all local gates green; safe to open/merge PR for deploy script fixes. No commit performed in this phase (per instruction: commit only when explicitly requested).
+
+---
+
+## Phase 6 — Commit, merge, validate (no production deploy)
+
+**Date:** 2026-05-20  
+**Scope:** Commit permission-safe migration fix, merge to `develop` then `main`, validate CI. **No production deploy triggered.**
+
+### 1. Feature branch
+
+| Item | Value |
+|------|-------|
+| Branch | `fix/production-migration-script-permissions` |
+| Fix commit SHA | `b03496d547a28ee827aba65ae602379907835cc0` |
+| Commit message | `fix(deploy): make production migration scripts permission-safe` |
+| PR | [#238](https://github.com/leduytuanvu/avf-vending-api/pull/238) (superseded by direct develop push; CI green before merge) |
+
+### 2. Develop merge
+
+| Item | Value |
+|------|-------|
+| Merge SHA | `22f21b63c3bea3b3b6bc714188c7fe7ceaf0bfe3` |
+| Merge message | `merge: production deploy permission fix into develop` |
+| Push | `origin/develop` @ `22f21b6` (2026-05-20) |
+| Local validation | `validate-production-deploy.sh`, `go test ./...`, `go vet ./...`, `go list ./...` — **PASS** |
+
+### 3. Main merge
+
+| Item | Value |
+|------|-------|
+| Merge SHA | `31511a2d98c7589cda8ee0db52108f53aa997880` |
+| Merge message | `merge: production deploy permission fix into main` |
+| PR | [#239](https://github.com/leduytuanvu/avf-vending-api/pull/239) (`develop` → `main`; direct push to `main` blocked by branch protection) |
+| Local validation (pre-PR) | `validate-production-deploy.sh` — **PASS** on local merge tree |
+
+### 4. CI status
+
+#### Develop (post-push `22f21b6`)
+
+| Workflow | Run | Result |
+|----------|-----|--------|
+| CI | [26142726235](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26142726235) | **success** |
+| Security | [26142726233](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26142726233) | **success** |
+
+#### Main (post-merge `31511a2`)
+
+| Workflow | Run | Result |
+|----------|-----|--------|
+| CI | [26143123896](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26143123896) | **success** |
+| Enterprise release verification | [26143123895](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26143123895) | **success** |
+| Security (push) | [26143123914](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26143123914) | **success** |
+| Build and Push Images | [26143278523](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26143278523) | **success** |
+| Security Release | [26143426371](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26143426371) | **success** |
+
+**Deploy Production:** not triggered (per Phase 6 instruction).
+
+### Phase 6 verdict
+
+**MERGED_TO_MAIN** — fix is on `main` @ `31511a2`; release chain (CI → Build → Security Release) green. Ready for Phase 7 production deploy with `run_migration=true` when approved.
 
 ---
 

@@ -21,7 +21,7 @@ Generated: 2026-05-20 | Branch: `chore/final-full-system-verification-uuidv7-pos
 
 ## 2. Commands run
 
-See `docs/testing/FULL_SYSTEM_FINAL_VERIFICATION_REPORT.md` for full command list and outputs.
+See `docs/reports/verification/FULL_SYSTEM_FINAL_VERIFICATION_REPORT.md` for full command list and outputs.
 
 Key:
 

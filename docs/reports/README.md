@@ -10,7 +10,15 @@ Operator runbook: [`../runbooks/product-media-offline-cache-production-migration
 
 ## Test / merge verification
 
-[`test/`](test/) — develop merge verification, scope-id cleanup reports, readonly smoke output paths.
+[`test/`](test/) — develop merge verification, scope-id cleanup reports, readonly smoke output paths, MQTT full coverage.
+
+## Production deploy evidence
+
+[`production-deploy/`](production-deploy/) — production deploy failure analysis, recovery, and migration retry reports.
+
+## Full-system / protocol verification
+
+[`verification/`](verification/) — REST, gRPC, MQTT, E2E, Postman, and full-system verification outputs relocated from `docs/testing/`.
 
 ## Repository cleanup gates
 
