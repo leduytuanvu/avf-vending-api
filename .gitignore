@@ -1,12 +1,15 @@
 /.env
+/.env.*
+!/.env.example
+!/.env.local.example
+!/.env.production.example
+!/.env.staging.example
 /.env.local
 /.env.*.local
 tests/e2e/.env
 tests/e2e/.env.local
 tests/e2e/.env.production.destructive.local
-/.env.staging
-/.env.production
-# Node env files (examples *.example are tracked)
+# Node env files (examples *.example are tracked; see negated rules above)
 deployments/prod/**/.env.app-node
 deployments/prod/**/.env.data-node
 /repomix-output.xml
@@ -120,6 +123,7 @@ reports/newman/
 # Local deploy pipeline / build metadata scratch (gh run download, phase evidence)
 .tmp-phase*/
 .tmp-image-metadata/
+.go-tmp/
 
 # Local full-system verification run output in docs tree
 docs/testing/_verify*.txt

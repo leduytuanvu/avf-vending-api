@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Postman / sidecar import audit for the single-company API surface.
 
-Writes ``reports/final-single-scope-audit/postman-import-check-report.md``.
+Writes ``docs/reports/final-single-scope-audit/postman-import-check-report.md``.
 
 Usage from repo root::
 
@@ -74,7 +74,7 @@ def _forbidden_regex() -> re.Pattern[str]:
 
 
 ROOT = _repo_root()
-REPORT_PATH = ROOT / "reports/final-single-scope-audit/postman-import-check-report.md"
+REPORT_PATH = ROOT / "docs/reports/final-single-scope-audit/postman-import-check-report.md"
 FORBIDDEN = _forbidden_regex()
 
 
