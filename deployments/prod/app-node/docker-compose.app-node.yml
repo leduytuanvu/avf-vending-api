@@ -29,6 +29,8 @@ x-app-service: &app-service
 
 services:
   migrate:
+    # One-shot migration: /app/migrate + /app/migrations baked into digest-pinned APP_IMAGE_REF.
+    # GOOSE_IMAGE_REF is validated at deploy time for rollback parity; do not mount host migration folders.
     image: ${APP_IMAGE_REF:?set APP_IMAGE_REF in .env.app-node}
     profiles: ["migration"]
     restart: "no"

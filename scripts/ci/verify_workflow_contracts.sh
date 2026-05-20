@@ -541,6 +541,10 @@ grep -qF "group: production-deploy" "${WF}/deploy-prod.yml" || \
 grep -qF "scripts/deploy/production-migrate.sh" "${WF}/deploy-prod.yml" || \
   grep -qF "production-migrate.sh" "${ROOT}/deployments/prod/app-node/scripts/release_app_node.sh" || \
   fail "production deploy must invoke scripts/deploy/production-migrate.sh (via release_app_node.sh or workflow)"
+grep -qF "validate-production-deploy.sh" "${WF}/ci.yml" || \
+  fail "ci.yml must run scripts/ci/validate-production-deploy.sh (production deploy regression guard)"
+test -f "${ROOT}/scripts/ci/validate-production-deploy.sh" || \
+  fail "scripts/ci/validate-production-deploy.sh must exist (production deploy regression guard)"
 grep -qF "validate_backup_evidence.py" "${WF}/deploy-prod.yml" || \
   fail "deploy-prod.yml must invoke scripts/ci/validate_backup_evidence.py when supplementary backup_evidence_id is supplied"
 grep -qF "production-db-backup-evidence" "${WF}/deploy-prod.yml" || \

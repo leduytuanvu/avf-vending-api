@@ -64,7 +64,7 @@ if [[ "${TEMPORAL_ENABLED}" == "1" ]]; then
 fi
 
 note "managed dependency reachability"
-if bash "${SHARED_ROOT}/scripts/check_managed_services.sh" "${ENV_FILE}"; then
+if run_script "${SHARED_ROOT}/scripts/check_managed_services.sh" "${ENV_FILE}"; then
 	pass "managed services reachable from app node"
 else
 	echo "FAIL: managed services check failed" >&2

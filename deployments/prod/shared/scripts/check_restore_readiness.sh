@@ -47,7 +47,7 @@ else
 fi
 
 BACKUP_MANAGED_POSTGRES_REPORT_PATH="" \
-	bash "${SHARED_ROOT}/scripts/backup_managed_postgres.sh" "${SHARED_ROOT}/../backups/readiness-placeholder.dump" validate >/dev/null
+	run_script "${SHARED_ROOT}/scripts/backup_managed_postgres.sh" "${SHARED_ROOT}/../backups/readiness-placeholder.dump" validate >/dev/null
 
 if [[ -n "${DUMP_PATH}" ]]; then
 	require_file "${DUMP_PATH}"
