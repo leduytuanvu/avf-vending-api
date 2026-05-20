@@ -99,3 +99,10 @@ backups/
 # Local production deploy input files
 deployments/docker/observability/private/
 prod-deploy-inputs*.json
+
+# Local deploy pipeline / build metadata scratch (gh run download, phase evidence)
+.tmp-phase*/
+.tmp-image-metadata/
+
+# Local full-system verification run output in docs tree
+docs/testing/_verify*.txt

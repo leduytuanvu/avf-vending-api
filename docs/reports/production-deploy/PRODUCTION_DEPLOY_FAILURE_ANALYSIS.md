@@ -82,7 +82,7 @@ This is **not** a migration image, DB backup, compose, or health-check failure â
 |------|-----|
 | `scripts/verify_database_environment.sh` | Wrapper should invoke canonical script via `bash` (no execute bit required) |
 | `.github/workflows/deploy-prod.yml` | Post-extract `chmod +x` on synced migration helper scripts (app-node A/B tar sync) |
-| `docs/testing/PRODUCTION_DEPLOY_FAILURE_ANALYSIS.md` | Record fix and redeploy outcome |
+| `docs/reports/production-deploy/PRODUCTION_DEPLOY_FAILURE_ANALYSIS.md` | Record fix and redeploy outcome |
 
 Optional hardening (not strictly required if above two are done):
 
