@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package avf.internal.v1;
+
+option go_package = "github.com/avf/avf-vending-api/internal/gen/avfinternalv1;internalv1";
+
+import "google/protobuf/wrappers.proto";
+
+// InternalInventoryQueryService exposes planogram slot inventory reads (legacy slot view).
+service InternalInventoryQueryService {
+  rpc GetMachineSlotInventory(GetMachineSlotInventoryRequest) returns (GetMachineSlotInventoryResponse);
+}
+
+message GetMachineSlotInventoryRequest {
+  string machine_id = 1;
+}
+
+message InventoryLegacySlotRow {
+  string planogram_id = 1;
+  string planogram_name = 2;
+  int32 slot_index = 3;
+  int32 current_quantity = 4;
+  int32 max_quantity = 5;
+  int64 price_minor = 6;
+  google.protobuf.StringValue product_id = 7;
+  string product_sku = 8;
+  string product_name = 9;
+  int32 planogram_revision = 10;
+}
+
+message GetMachineSlotInventoryResponse {
+  string machine_id = 1;
+  repeated InventoryLegacySlotRow legacy_slots = 2;
+}
