@@ -2,20 +2,20 @@ package postgres_test
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 
 	appfleet "github.com/avf/avf-vending-api/internal/app/fleet"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFleetAdminP05_CredentialLifecycleAndSoftArchive(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	companyID := uuid.New()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	companyID := id.NewUUIDV7()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	_, err := pool.Exec(ctx, `
 INSERT INTO sites (id, name, code, status)
 VALUES ($1, 'P05 Site', $2, 'active')
@@ -56,10 +56,10 @@ VALUES ($1, $2, $3, $4, 'P05 Machine', 'active', 7)
 func TestFleetAdminP05_TechnicianAssignmentExplicitRelease(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	companyID := uuid.New()
-	siteID := uuid.New()
-	machineID := uuid.New()
-	techID := uuid.New()
+	companyID := id.NewUUIDV7()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	techID := id.NewUUIDV7()
 	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 'P05 Assign Site', $2, 'active')`, siteID, "p05-assign-"+siteID.String()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO machines (id, site_id, serial_number, code, name, status, credential_version) VALUES ($1, $2, $3, $4, 'P05 Assign Machine', 'active', 0)`, machineID, siteID, "p05-assign-sn-"+machineID.String(), "p05m-"+machineID.String()[:8])
@@ -87,9 +87,9 @@ func TestFleetAdminP05_TechnicianAssignmentExplicitRelease(t *testing.T) {
 func TestFleetAdminP05_TechnicianSelfAssignmentForbidden(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
-	techID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	techID := id.NewUUIDV7()
 	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 'Self Site', $2, 'active')`, siteID, "self-site-"+siteID.String()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO machines (id, site_id, serial_number, code, name, status, credential_version) VALUES ($1, $2, $3, $4, 'Self Machine', 'active', 0)`, machineID, siteID, "self-sn-"+machineID.String(), "selfm-"+machineID.String()[:8])

@@ -26,7 +26,7 @@ Deterministic integration tests for machine runtime, offline queue, payment webh
    ```bash
    export TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/avf?sslmode=disable'
    cd <path-to-avf-vending-api-checkout>
-   ./scripts/test-local/run-e2e-local.sh
+   ./scripts/test/run-e2e-local.sh
    ```
 
    Or:

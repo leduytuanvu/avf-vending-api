@@ -2,7 +2,7 @@
 
 **Purpose:** Executable cases for **staging**, **pilots**, and **go-live evidence**. Each row is one **measurable** verification aligned with **[`production-final-contract.md`](../architecture/production-final-contract.md)** (Admin REST, machine gRPC, MQTT commands, backend-owned payments, object storage + kiosk cache, legacy machine HTTP **off** in production).
 
-**Audiences:** Android team (gRPC + cache behavior), backend (API + webhooks + outbox), QA field (steps/expected), ops/on-call (reconciliation + rollback), release (evidence pack).
+**Audiences:** Android team (gRPC + cache behavior), backend (API + webhooks + outbox), QA field (steps/expected), deployments/docker/observability/on-call (reconciliation + rollback), release (evidence pack).
 
 ## Priority (do not conflate)
 
@@ -18,7 +18,7 @@
 2. Fill **Actual**, **Pass/Fail**, **Evidence** (ticket URL, workflow run, log artifact id — **no secrets**), **Owner** (name · role).
 3. **Setup** must name environment (`staging` / `pilot-10` / `prod`), **machine id**, build/API version, and broker profile (TLS endpoint).
 
-**Policy:** Production CI smoke remains **GET-only** per **[`production-smoke-tests.md`](../operations/production-smoke-tests.md)** — it does **not** satisfy **FT-PAY-***, **FT-VND-***, or **FT-MQT-*** mutating rows.
+**Policy:** Production CI smoke remains **GET-only** per **[`production-smoke-tests.md`](../production/production-smoke-tests.md)** — it does **not** satisfy **FT-PAY-***, **FT-VND-***, or **FT-MQT-*** mutating rows.
 
 ---
 
@@ -82,7 +82,7 @@ FT-BKP-01	P0/P2	DBA	Backup id before migrate; optional restore drill	Evidence re
 ## Related
 
 - **[`production-final-contract.md`](../architecture/production-final-contract.md)** — normative architecture
-- **[`field-pilot-checklist.md`](../operations/field-pilot-checklist.md)** — pilot sequencing
-- **[`field-rollout-checklist.md`](../operations/field-rollout-checklist.md)** — widen tranches
+- **[`field-pilot-checklist.md`](../production/field-pilot-checklist.md)** — pilot sequencing
+- **[`field-rollout-checklist.md`](../production/field-rollout-checklist.md)** — widen tranches
 - **[`local-e2e.md`](local-e2e.md)** — automated DB suites (not field-only proof)
 - **[`kiosk-app-implementation-checklist.md`](../api/kiosk-app-implementation-checklist.md)** — Android acceptance

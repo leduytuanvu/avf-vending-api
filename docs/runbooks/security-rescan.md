@@ -12,7 +12,7 @@ On branch **`main`** (checkout):
 | Secrets | `gitleaks` with `.gitleaks.toml` (blocking) |
 | Config / IaC | Trivy `config` with `trivy.yaml` (**HIGH** / **CRITICAL**, `ignore-unfixed: true`) |
 | Modules inventory | `go list -u -m -json all` (report artifact) |
-| Release images | Trivy `image` on digest-pinned `app` and `goose` refs from **`scripts/security/resolve_nightly_main_image_candidate.py`**, which lists recent successful **Build and Push Images** runs on **`main`** (**`gh api -X GET`** …/ **`build-push.yml`**`/runs`), downloads **`promotion-manifest`**, and requires **`source_branch`** **`main`**, semantic **`source_event`** **`push`** or **`workflow_dispatch`**, and digest **`app_ref`/`goose_ref`** or **`app_image_ref`/`goose_image_ref`** (CI **`workflow_run`‑wrapped** Builds qualify when the manifest says so). Same HIGH/CRITICAL policy as **Security Release**. |
+| Release images | Trivy `image` on digest-pinned `app` and `goose` refs from **`scripts/deploy/security/resolve_nightly_main_image_candidate.py`**, which lists recent successful **Build and Push Images** runs on **`main`** (**`gh api -X GET`** …/ **`build-push.yml`**`/runs`), downloads **`promotion-manifest`**, and requires **`source_branch`** **`main`**, semantic **`source_event`** **`push`** or **`workflow_dispatch`**, and digest **`app_ref`/`goose_ref`** or **`app_image_ref`/`goose_image_ref`** (CI **`workflow_run`‑wrapped** Builds qualify when the manifest says so). Same HIGH/CRITICAL policy as **Security Release**. |
 
 ## Artifacts
 

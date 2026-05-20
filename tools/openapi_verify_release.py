@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Release-time OpenAPI checks (used by scripts/verify_enterprise_release.sh).
+"""Release-time OpenAPI checks (used by scripts/ci/verify_enterprise_release.sh).
 
 Validates docs/swagger/swagger.json:
   - ``$ref`` values resolve within the document (no unresolved fragments); no external ``$ref``
@@ -56,7 +56,7 @@ JSON_ERR_EXEMPT = {
     ("/metrics", "get"),
 }
 
-# Heuristics aligned with scripts/verify_enterprise_release.sh (docs/testdata scan).
+# Heuristics aligned with scripts/ci/verify_enterprise_release.sh (docs/testdata scan).
 _SECRET_PATTERNS: list[tuple[str, str]] = [
     (r"sk_live_[a-zA-Z0-9]+", "live Stripe-style secret key"),
     (r"pk_live_[a-zA-Z0-9]+", "live Stripe-style publishable key"),

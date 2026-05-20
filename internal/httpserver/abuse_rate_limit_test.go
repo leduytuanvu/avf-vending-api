@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"encoding/json"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -146,7 +147,7 @@ func TestAbuseProtection_MachineScoped_keyedByMachineID(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusTooManyRequests, rec.Code)
 
-	other := uuid.New()
+	other := id.NewUUIDV7()
 	path2 := "/v1/machines/" + other.String() + "/telemetry/incidents"
 	req2 := httptest.NewRequest(http.MethodGet, path2, nil)
 	rec2 := httptest.NewRecorder()

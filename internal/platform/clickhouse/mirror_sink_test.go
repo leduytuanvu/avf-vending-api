@@ -2,11 +2,11 @@ package clickhouse
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -34,7 +34,7 @@ func TestAsyncOutboxMirrorSink_DropsWhenSaturated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ev := domaincommerce.OutboxEvent{ID: 1, AggregateID: uuid.New()}
+	ev := domaincommerce.OutboxEvent{ID: 1, AggregateID: id.NewUUIDV7()}
 	sink.EnqueuePublished(ev)
 	sink.EnqueuePublished(ev)
 	time.Sleep(20 * time.Millisecond)

@@ -33,7 +33,7 @@ export ADMIN_EMAIL="admin@local.test"
 export ADMIN_PASSWORD="password123"
 export MACHINE_ID="55555555-5555-5555-5555-555555555555"
 export COMMERCE_PAYMENT_WEBHOOK_SECRET="dev-secret"   # optional; skip if not configured
-bash scripts/smoke/local_field_smoke.sh --evidence-json smoke-reports/local-field-smoke.json
+bash scripts/deploy/smoke/local_field_smoke.sh --evidence-json smoke-reports/local-field-smoke.json
 ```
 
 PowerShell:

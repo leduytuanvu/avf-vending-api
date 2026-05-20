@@ -3,6 +3,7 @@ package background_test
 import (
 	"context"
 	"errors"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -11,7 +12,6 @@ import (
 	appreliability "github.com/avf/avf-vending-api/internal/app/reliability"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	domainreliability "github.com/avf/avf-vending-api/internal/domain/reliability"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -136,7 +136,7 @@ func TestOutboxDispatchTick_PublishFailureRecordsAttempt(t *testing.T) {
 		ID:                  42,
 		Topic:               "payments.test",
 		CreatedAt:           time.Now().UTC().Add(-time.Hour),
-		AggregateID:         uuid.New(),
+		AggregateID:         id.NewUUIDV7(),
 		PublishAttemptCount: 0,
 	}
 	stub := &stubOutboxRepo{
@@ -172,7 +172,7 @@ func TestOutboxDispatchTick_LastAttemptDeadLetters(t *testing.T) {
 		ID:                  7,
 		Topic:               "payments.test",
 		CreatedAt:           time.Now().UTC().Add(-2 * time.Hour),
-		AggregateID:         uuid.New(),
+		AggregateID:         id.NewUUIDV7(),
 		PublishAttemptCount: 2,
 	}
 	stub := &stubOutboxRepo{
@@ -207,7 +207,7 @@ func TestOutboxDispatchTick_LastAttemptInvokesDeadLetterHook(t *testing.T) {
 		ID:                  77,
 		Topic:               "payments.test",
 		CreatedAt:           time.Now().UTC().Add(-2 * time.Hour),
-		AggregateID:         uuid.New(),
+		AggregateID:         id.NewUUIDV7(),
 		PublishAttemptCount: 2,
 	}
 	stub := &stubOutboxRepo{
@@ -244,7 +244,7 @@ func TestOutboxDispatchTick_DeadLetterHookErrorStillReturnsNil(t *testing.T) {
 		ID:                  88,
 		Topic:               "payments.test",
 		CreatedAt:           time.Now().UTC().Add(-2 * time.Hour),
-		AggregateID:         uuid.New(),
+		AggregateID:         id.NewUUIDV7(),
 		PublishAttemptCount: 2,
 	}
 	stub := &stubOutboxRepo{list: []domainreliability.OutboxEvent{ev}, stats: domainreliability.OutboxPipelineStats{}}
@@ -277,7 +277,7 @@ func TestOutboxDispatchTick_MarkNoRowStillSuccess(t *testing.T) {
 		ID:          99,
 		Topic:       "payments.test",
 		CreatedAt:   time.Now().UTC().Add(-2 * time.Hour),
-		AggregateID: uuid.New(),
+		AggregateID: id.NewUUIDV7(),
 	}
 	stub := &stubOutboxRepo{list: []domainreliability.OutboxEvent{ev}}
 	rel := appreliability.NewService(appreliability.Deps{Outbox: stub})
@@ -308,7 +308,7 @@ func (m *mirrorSpy) hook(ev domaincommerce.OutboxEvent) {
 }
 
 func TestOutboxDispatchTick_OnOutboxPublishedMirrorAfterSuccessfulMark(t *testing.T) {
-	agg := uuid.New()
+	agg := id.NewUUIDV7()
 	ev := domainreliability.OutboxEvent{
 		ID:                  100,
 		Topic:               "payments.test",
@@ -345,7 +345,7 @@ func TestOutboxDispatchTick_OnOutboxPublishedMirrorSkippedWhenMarkNoop(t *testin
 		ID:          101,
 		Topic:       "payments.test",
 		CreatedAt:   time.Now().UTC().Add(-time.Hour),
-		AggregateID: uuid.New(),
+		AggregateID: id.NewUUIDV7(),
 	}
 	stub := &stubOutboxRepo{list: []domainreliability.OutboxEvent{ev}, stats: domainreliability.OutboxPipelineStats{}}
 	rel := appreliability.NewService(appreliability.Deps{Outbox: stub})
@@ -370,7 +370,7 @@ func TestOutboxDispatchTick_OnOutboxPublishedMirrorSkippedOnPublishFailure(t *te
 		ID:                  102,
 		Topic:               "payments.test",
 		CreatedAt:           time.Now().UTC().Add(-2 * time.Hour),
-		AggregateID:         uuid.New(),
+		AggregateID:         id.NewUUIDV7(),
 		PublishAttemptCount: 0,
 	}
 	stub := &stubOutboxRepo{
@@ -404,7 +404,7 @@ func TestOutboxDispatchTick_AnalyticsHookPanicDoesNotFailDispatch(t *testing.T) 
 		ID:          103,
 		Topic:       "payments.test",
 		CreatedAt:   time.Now().UTC().Add(-time.Hour),
-		AggregateID: uuid.New(),
+		AggregateID: id.NewUUIDV7(),
 	}
 	stub := &stubOutboxRepo{list: []domainreliability.OutboxEvent{ev}, stats: domainreliability.OutboxPipelineStats{}}
 	rel := appreliability.NewService(appreliability.Deps{Outbox: stub})
@@ -431,7 +431,7 @@ func TestOutboxDispatchTick_MarkErrorAfterPublishRetriesJetStreamPublish(t *test
 		ID:                  201,
 		Topic:               "payments.test",
 		CreatedAt:           time.Now().UTC().Add(-time.Hour),
-		AggregateID:         uuid.New(),
+		AggregateID:         id.NewUUIDV7(),
 		PublishAttemptCount: 0,
 	}
 	base := &stubOutboxRepo{
@@ -463,7 +463,7 @@ func TestOutboxDispatchTick_LeasePathInvokesLeaseOutboxForPublish(t *testing.T) 
 		ID:          501,
 		Topic:       "payments.test",
 		CreatedAt:   time.Now().UTC().Add(-time.Hour),
-		AggregateID: uuid.New(),
+		AggregateID: id.NewUUIDV7(),
 		Status:      "publishing",
 	}
 	base := &stubOutboxRepo{
@@ -492,7 +492,7 @@ func TestOutboxDispatchTick_TwoTicksMarkNoopDuplicatesPublishExpectJetStreamDedu
 		ID:          202,
 		Topic:       "payments.test",
 		CreatedAt:   time.Now().UTC().Add(-time.Hour),
-		AggregateID: uuid.New(),
+		AggregateID: id.NewUUIDV7(),
 	}
 	stub := &stubOutboxRepo{
 		list:  []domainreliability.OutboxEvent{ev},
@@ -521,7 +521,7 @@ func TestOutboxDispatchTick_PublishSuccess(t *testing.T) {
 		ID:                  203,
 		Topic:               "payments.test",
 		CreatedAt:           time.Now().UTC().Add(-time.Hour),
-		AggregateID:         uuid.New(),
+		AggregateID:         id.NewUUIDV7(),
 		PublishAttemptCount: 0,
 	}
 	stub := &stubOutboxRepo{

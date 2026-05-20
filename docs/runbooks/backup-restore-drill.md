@@ -22,7 +22,7 @@ This runbook covers **verifying** production backup **evidence** and recording a
 ## Validator
 
 - `python3 scripts/ci/validate_backup_evidence.py` (not `--for-production-migration` here; this is a drill, not a migration gate).
-- For production **migration** gating, see [../operations/production-backup-restore-drill.md](../operations/production-backup-restore-drill.md).
+- For production **migration** gating, see [../production/production-backup-restore-drill.md](../production/production-backup-restore-drill.md).
 
 ## Pass / fail / skipped
 

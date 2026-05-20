@@ -196,6 +196,13 @@ jobs:
       - name: Run go vet
         run: make vet
 
+      - name: Verify UUID v7 policy (no v4 resource ID generation)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          chmod +x scripts/checks/check-uuid-v7.sh
+          bash scripts/checks/check-uuid-v7.sh
+
       - name: Validate generated specs and repository invariants
         shell: bash
         run: |

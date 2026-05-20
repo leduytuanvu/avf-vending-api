@@ -13,4 +13,4 @@ if [[ -f "${STAGING_ROOT}/.env.staging" ]] && [[ -z "${STAGING_BASE_URL:-}" ]]; 
 	fi
 fi
 
-exec bash "${REPO_ROOT}/scripts/smoke_staging.sh" "$@"
+exec bash "${REPO_ROOT}/scripts/deploy/smoke_staging.sh" "$@"

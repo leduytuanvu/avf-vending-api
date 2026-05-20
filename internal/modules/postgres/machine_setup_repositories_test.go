@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -147,7 +148,7 @@ func TestInventoryRepository_CreateInventoryAdjustmentBatch(t *testing.T) {
 		})
 	}()
 
-	corr := uuid.New()
+	corr := id.NewUUIDV7()
 	idem := "adj-test-" + uuid.NewString()
 	inv := postgres.NewInventoryRepository(pool)
 	res, err := inv.CreateInventoryAdjustmentBatch(ctx, inventoryapp.AdjustmentBatchInput{

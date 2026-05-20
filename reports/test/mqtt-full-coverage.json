@@ -1,0 +1,150 @@
+{
+  "summary": {
+    "generated_at": "2026-05-19T18:40:54.807667+00:00",
+    "mqtt_host": "127.0.0.1",
+    "mqtt_port": "1883",
+    "mqtt_topic_prefix": "avf/local",
+    "broker_status": "blocked-tooling",
+    "broker_reason": "mosquitto_pub/mosquitto_sub not installed",
+    "total_flows": 12,
+    "passed": 0,
+    "failed": 0,
+    "partial": 0,
+    "blocked": 12
+  },
+  "flows": [
+    {
+      "name": "connect",
+      "topics": [],
+      "classification": "safe-read",
+      "priority": "P0",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "telemetry_publish",
+      "topics": [
+        "{prefix}/{machineId}/telemetry",
+        "{prefix}/machines/{machineId}/telemetry"
+      ],
+      "classification": "local-write",
+      "priority": "P0",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "command_subscribe",
+      "topics": [
+        "{prefix}/{machineId}/commands/dispatch",
+        "{prefix}/machines/{machineId}/commands"
+      ],
+      "classification": "safe-read",
+      "priority": "P0",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "command_dispatch",
+      "topics": [
+        "{prefix}/{machineId}/commands/dispatch",
+        "{prefix}/machines/{machineId}/commands"
+      ],
+      "classification": "canary-write",
+      "priority": "P0",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "ack_success",
+      "topics": [
+        "{prefix}/{machineId}/commands/ack"
+      ],
+      "classification": "canary-write",
+      "priority": "P0",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "ack_duplicate",
+      "topics": [
+        "{prefix}/{machineId}/commands/ack"
+      ],
+      "classification": "canary-write",
+      "priority": "P1",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "ack_timeout_no_ack",
+      "topics": [
+        "{prefix}/{machineId}/commands/ack"
+      ],
+      "classification": "hardware-required",
+      "priority": "P0",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "invalid_payload",
+      "topics": [
+        "{prefix}/{machineId}/telemetry"
+      ],
+      "classification": "local-write",
+      "priority": "P1",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "topic_prefix_correctness",
+      "topics": [
+        "{prefix}/#"
+      ],
+      "classification": "safe-read",
+      "priority": "P0",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "crlf_windows_handling",
+      "topics": [
+        "{prefix}/{machineId}/telemetry"
+      ],
+      "classification": "local-write",
+      "priority": "P1",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "reconnect_offline",
+      "topics": [
+        "{prefix}/{machineId}/telemetry"
+      ],
+      "classification": "hardware-required",
+      "priority": "P1",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    },
+    {
+      "name": "acl_topic_isolation",
+      "topics": [
+        "{prefix}/other-machine/#"
+      ],
+      "classification": "production-readonly",
+      "priority": "P1",
+      "status": "blocked-tooling",
+      "reason": "mosquitto_pub/mosquitto_sub not installed",
+      "evidence_path": ""
+    }
+  ]
+}

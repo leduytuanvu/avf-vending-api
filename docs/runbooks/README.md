@@ -38,6 +38,7 @@ Operational procedures live under **`docs/runbooks/`**. Use this index to jump t
 | -------- | ------- |
 | Principal **production readiness** signoff (P0–P2 checklist, commands, blockers) | [`final-production-readiness-signoff.md`](final-production-readiness-signoff.md) |
 | Roll back a deployment | [`rollback-production.md`](rollback-production.md), [`production-cutover-rollback.md`](production-cutover-rollback.md) |
+| **Product media offline cache** — production DB migration & verification | [`product-media-offline-cache-production-migration.md`](product-media-offline-cache-production-migration.md) |
 
 ## Local development
 

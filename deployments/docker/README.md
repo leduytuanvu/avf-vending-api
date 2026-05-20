@@ -12,8 +12,8 @@ Optional **profiles** (combine as needed):
 | ------- | -------- | ------------ |
 | *(default, none)* | `postgres`, `redis`, `nats` | Minimal backend for API + worker + reconciler on the host |
 | `broker` | `emqx`, `minio` | `cmd/mqtt-ingest` against EMQX; MinIO for S3-style artifacts when `API_ARTIFACTS_ENABLED=true` |
-| `observability` | `prometheus`, `loki`, `grafana`, `otel-collector` | Dashboards and sample scrapes (see `ops/prometheus/prometheus.yml`, `ops/grafana/provisioning/`) |
-| `experimental` | `clickhouse`, `temporal`, `temporal-ui` | ClickHouse: optional analytics mirror in `cmd/worker` when `ANALYTICS_*` is set (see [ops/ANALYTICS_CLICKHOUSE.md](../../ops/ANALYTICS_CLICKHOUSE.md)). Temporal: optional local server for the in-repo scheduler paths and `cmd/temporal-worker`. |
+| `observability` | `prometheus`, `loki`, `grafana`, `otel-collector` | Dashboards and sample scrapes (see `deployments/docker/observability/prometheus/prometheus.yml`, `deployments/docker/observability/grafana/provisioning/`) |
+| `experimental` | `clickhouse`, `temporal`, `temporal-ui` | ClickHouse: optional analytics mirror in `cmd/worker` when `ANALYTICS_*` is set (see [deployments/docker/observability/ANALYTICS_CLICKHOUSE.md](../../deployments/docker/observability/ANALYTICS_CLICKHOUSE.md)). Temporal: optional local server for the in-repo scheduler paths and `cmd/temporal-worker`. |
 
 **Important:** Neither ClickHouse nor Temporal is required for core OLTP. ClickHouse stays off by default; Temporal is optional and only used when `TEMPORAL_ENABLED=true` plus the relevant `TEMPORAL_SCHEDULE_*` flags are set for schedulers or when you run `cmd/temporal-worker`.
 
@@ -65,4 +65,4 @@ The API serves `/metrics` on `HTTP_ADDR` (default `:8080`); ensure the host port
 - Temporal UI (`experimental`): `http://localhost:8233`.
 - **`cmd/reconciler` with `RECONCILER_ACTIONS_ENABLED=true`:** set `RECONCILER_PAYMENT_PROBE_URL_TEMPLATE` with exactly one `%s` (payment id), `NATS_URL`, and `RECONCILER_REFUND_REVIEW_SUBJECT`. Use `RECONCILER_DRY_RUN=true` only together with actions enabled: probes still run, but payment rows are not updated and refund/duplicate NATS publishes are skipped.
 
-See also: [ops/PROCESSES.md](../../ops/PROCESSES.md), [ops/METRICS.md](../../ops/METRICS.md), [ops/ANALYTICS_CLICKHOUSE.md](../../ops/ANALYTICS_CLICKHOUSE.md), [ops/RUNBOOK.md](../../ops/RUNBOOK.md).
+See also: [deployments/docker/observability/PROCESSES.md](../../deployments/docker/observability/PROCESSES.md), [deployments/docker/observability/METRICS.md](../../deployments/docker/observability/METRICS.md), [deployments/docker/observability/ANALYTICS_CLICKHOUSE.md](../../deployments/docker/observability/ANALYTICS_CLICKHOUSE.md), [deployments/docker/observability/RUNBOOK.md](../../deployments/docker/observability/RUNBOOK.md).

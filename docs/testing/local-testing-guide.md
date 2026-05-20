@@ -66,7 +66,7 @@ go run ./cmd/cli -validate-config
 
 ## 6. gRPC smoke test (machine runtime)
 
-Full examples: **[`../local/grpc-local-test.md`](../local/grpc-local-test.md)** — **`grpcurl`** against **`GRPC_ADDR`**, **`avf.machine.v1.MachineActivationService/ClaimActivation`**, **`MachineBootstrapService/GetBootstrap`** with Machine JWT, catalog/inventory samples.
+Full examples: **[`../testing/grpc-local-test.md`](../testing/grpc-local-test.md)** — **`grpcurl`** against **`GRPC_ADDR`**, **`avf.machine.v1.MachineActivationService/ClaimActivation`**, **`MachineBootstrapService/GetBootstrap`** with Machine JWT, catalog/inventory samples.
 
 Minimal sanity:
 

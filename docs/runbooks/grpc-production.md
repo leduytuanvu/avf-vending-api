@@ -65,7 +65,7 @@ From repo root (requires **`grpcurl`** on **`PATH`**):
 make machine-grpc-smoke
 ```
 
-See **`scripts/grpc_machine_smoke.sh`**.
+See **`scripts/test/grpc_machine_smoke.sh`**.
 
 ## Size limits
 
@@ -73,5 +73,5 @@ See **`scripts/grpc_machine_smoke.sh`**.
 
 ## Related
 
-- Local development (plaintext): [`../local/grpc-local-test.md`](../local/grpc-local-test.md)
+- Local development (plaintext): [`../testing/grpc-local-test.md`](../testing/grpc-local-test.md)
 - API contract: [`../api/machine-grpc.md`](../api/machine-grpc.md)

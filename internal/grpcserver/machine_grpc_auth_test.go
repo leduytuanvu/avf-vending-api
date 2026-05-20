@@ -3,6 +3,7 @@ package grpcserver
 import (
 	"bytes"
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -215,7 +216,7 @@ func testMachineGRPCAdminUserJWTRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	userTok, _, err := issuer.IssueAccessJWT(uuid.New(), uuid.Nil, []string{plauth.RoleOrgAdmin}, "active")
+	userTok, _, err := issuer.IssueAccessJWT(id.NewUUIDV7(), uuid.Nil, []string{plauth.RoleOrgAdmin}, "active")
 	if err != nil {
 		t.Fatal(err)
 	}

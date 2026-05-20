@@ -3,6 +3,7 @@ package catalogadmin
 import (
 	"bytes"
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"image"
 	"image/png"
 	"io"
@@ -110,7 +111,7 @@ func TestPrimaryMedia_phase2_catalog_rules(t *testing.T) {
 	require.NoError(t, err)
 	catSvc.SetMediaBinder(mediaSvc)
 
-	company := uuid.New()
+	company := id.NewUUIDV7()
 
 	t.Run("inactive_without_primary_ok", func(t *testing.T) {
 		_, err := catSvc.CreateProduct(ctx, CreateProductInput{
@@ -135,7 +136,7 @@ func TestPrimaryMedia_phase2_catalog_rules(t *testing.T) {
 	})
 
 	t.Run("invalid_tag_ids_fail", func(t *testing.T) {
-		badTag := uuid.New()
+		badTag := id.NewUUIDV7()
 		_, err := catSvc.CreateProduct(ctx, CreateProductInput{
 			Sku:         "SKU-TAGBAD-" + uuid.NewString()[:8],
 			Name:        "T",
@@ -245,7 +246,7 @@ func TestPrimaryMedia_phase3_manifest_bind_complete_validation(t *testing.T) {
 	require.NoError(t, err)
 	catSvc.SetMediaBinder(mediaSvc)
 
-	company := uuid.New()
+	company := id.NewUUIDV7()
 
 	t.Run("init_upload_leaves_pending", func(t *testing.T) {
 		init, err := mediaSvc.InitUpload(ctx, company, "p.png", "image/png", "product_image")

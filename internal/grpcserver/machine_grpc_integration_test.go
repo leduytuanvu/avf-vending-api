@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -102,8 +103,8 @@ func TestMachineGRPC_GetBootstrap_RetiredMachineRejected(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 
 	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
@@ -176,8 +177,8 @@ func TestMachineGRPC_GetInventorySnapshot_MaintenanceMachineRejected(t *testing.
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 
 	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)

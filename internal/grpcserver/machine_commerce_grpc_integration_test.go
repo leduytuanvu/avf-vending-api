@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -370,7 +371,7 @@ func TestMachineGRPC_Commerce_CreatePaymentSession_IdempotentReplay_NoDuplicateP
 func TestMachineGRPC_Commerce_GetOrder_WrongMachineDenied(t *testing.T) {
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	otherID := uuid.New()
+	otherID := id.NewUUIDV7()
 	hw := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 	_, err := pool.Exec(ctx, `
 INSERT INTO machines (id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)

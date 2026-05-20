@@ -10,8 +10,8 @@ e2e_strict_mode
 
 load_env
 
-: "${POSTMAN_COLLECTION:=docs/postman/avf-vending-api-function-path.postman_collection.json}"
-: "${POSTMAN_ENV:=docs/postman/avf-local.postman_environment.json}"
+: "${POSTMAN_COLLECTION:=postman/collections/avf-vending-api-function-path.postman_collection.json}"
+: "${POSTMAN_ENV:=postman/environments/avf-local.postman_environment.json}"
 : "${E2E_ALLOW_WRITES:=true}"
 : "${E2E_TARGET:=local}"
 

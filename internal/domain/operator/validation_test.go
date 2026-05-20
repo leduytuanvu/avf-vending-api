@@ -1,6 +1,7 @@
 package operator
 
 import (
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -8,7 +9,7 @@ import (
 )
 
 func TestValidateActorConsistency(t *testing.T) {
-	tid := uuid.New()
+	tid := id.NewUUIDV7()
 	up := "sub-123"
 	cases := []struct {
 		name    string

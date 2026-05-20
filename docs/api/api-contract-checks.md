@@ -8,8 +8,8 @@ These gates prevent broken OpenAPI references, duplicate **operationId** values,
 |--------|---------|
 | `make swagger` | Regenerate `docs/swagger/swagger.json` and `docs/swagger/docs.go` from `cmd/api/main.go` + `internal/httpserver/swagger_operations.go`. Each route doc emits a stable **`operationId`** equal to the `DocOp*` function name. Legacy machine HTTP bridge routes get **`deprecated: true`** (see `LEGACY_MACHINE_REST_DEPRECATED` in `tools/build_openapi.py`). |
 | `make swagger-check` | Runs generation, then `tools/openapi_verify_release.py` (local `$ref`, external `$ref`, **`components.securitySchemes.bearerAuth`**, duplicate operationIds, legacy-route deprecation, route-doc registry, servers, Bearer rules, examples), then `git diff` on `docs/swagger/` — fails if committed Swagger is stale. |
-| `make postman-generate` | Regenerates Postman collection/env under `docs/postman/` (depends on `swagger`). |
-| `make postman-check` | Regenerates Postman artifacts and runs `tools/check_postman_artifacts.py`, then `git diff` on `docs/postman/`. |
+| `make postman-generate` | Regenerates Postman collection/env under `postman/collections/` and `postman/environments/` (depends on `swagger`). |
+| `make postman-check` | Regenerates Postman artifacts and runs `tools/check_postman_artifacts.py`, then `git diff` on `postman/collections/` and `postman/environments/`. |
 | `make proto-generate` | Runs `buf generate` for machine/public protos and internal query protos (`proto/buf.gen.yaml`, `proto/buf.gen.avfinternal.yaml`). |
 | `make proto-check` | Lint + breaking-change check vs baseline + `git diff` on generated paths — fails if committed `.pb.go` / stubs drift. |
 | `make sqlc` | Regenerate `internal/gen/db` from `db/queries` + schema (pinned sqlc via `SQLC_VERSION`). |

@@ -96,4 +96,4 @@ ALLOW_PROD_DESTRUCTIVE_MIGRATIONS=true DEPLOY_TARGET=production bash scripts/ci/
 
 - Watch **`http_requests_total` / `http_errors_total`** and **`grpc_requests_total` / `grpc_errors_total`** on API instances for spikes while goose runs or connections churn.
 - **`outbox_pending_total`** / **`outbox_dlq_total`** (worker) — backlog growth or poison-message drain after schema changes affecting publishers.
-- Catalog: [`docs/observability/production-metrics.md`](../observability/production-metrics.md).
+- Catalog: [`docs/production/production-metrics.md`](../production/production-metrics.md).

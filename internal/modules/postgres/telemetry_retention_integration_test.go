@@ -2,13 +2,13 @@ package postgres_test
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,8 +24,8 @@ func TestRunTelemetryRetention_nonCriticalOldDeleted_recentKept(t *testing.T) {
 	ctx := context.Background()
 	mid := testfixtures.DevMachineID
 
-	oldKey := uuid.New().String()
-	recentKey := uuid.New().String()
+	oldKey := id.NewUUIDV7().String()
+	recentKey := id.NewUUIDV7().String()
 	_, err := pool.Exec(ctx, `
 INSERT INTO device_telemetry_events (machine_id, event_type, payload, dedupe_key, received_at)
 VALUES
@@ -64,7 +64,7 @@ func TestRunTelemetryRetention_criticalLinked_keptPastNormalHorizon(t *testing.T
 	pool := testPool(t)
 	ctx := context.Background()
 	mid := testfixtures.DevMachineID
-	idem := "crit-ret-" + uuid.New().String()
+	idem := "crit-ret-" + id.NewUUIDV7().String()
 
 	_, err := pool.Exec(ctx, `
 INSERT INTO critical_telemetry_event_status (machine_id, idempotency_key, status, accepted_at, processed_at)
@@ -103,7 +103,7 @@ func TestRunTelemetryRetention_criticalLinked_deletedPastCriticalHorizon(t *test
 	pool := testPool(t)
 	ctx := context.Background()
 	mid := testfixtures.DevMachineID
-	idem := "crit-ret-old-" + uuid.New().String()
+	idem := "crit-ret-old-" + id.NewUUIDV7().String()
 
 	_, err := pool.Exec(ctx, `
 INSERT INTO critical_telemetry_event_status (machine_id, idempotency_key, status, accepted_at, processed_at)
@@ -151,7 +151,7 @@ func TestRunTelemetryRetention_batchSizeHonoredAcrossLoops(t *testing.T) {
 
 	var keys []string
 	for i := 0; i < 12; i++ {
-		keys = append(keys, "batch-ret-"+uuid.New().String())
+		keys = append(keys, "batch-ret-"+id.NewUUIDV7().String())
 	}
 	for _, k := range keys {
 		_, err := pool.Exec(ctx, `
@@ -186,7 +186,7 @@ func TestRunTelemetryRetention_dryRunDoesNotDelete(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
 	mid := testfixtures.DevMachineID
-	k := "dry-run-" + uuid.New().String()
+	k := "dry-run-" + id.NewUUIDV7().String()
 
 	_, err := pool.Exec(ctx, `
 INSERT INTO device_telemetry_events (machine_id, event_type, payload, dedupe_key, received_at)

@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"net/http"
 	"net/url"
 	"testing"
@@ -31,9 +32,9 @@ func TestParseRequiredRFC3339Range(t *testing.T) {
 
 func TestParseAdminCompanyReportingQuery_DeniesCrossOrg(t *testing.T) {
 	t.Skip("obsolete company-scoped REST contract removed")
-	orgA := uuid.New()
+	orgA := id.NewUUIDV7()
 	_ = orgA
-	orgB := uuid.New()
+	orgB := id.NewUUIDV7()
 	req, err := http.NewRequest("GET", "/?from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z&timezone=Asia/Bangkok", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -53,7 +54,7 @@ func TestParseAdminCompanyReportingQuery_DeniesCrossOrg(t *testing.T) {
 
 func TestParseAdminCompanyReportingQuery_AcceptsFinanceOrgScopeAndTimezone(t *testing.T) {
 	t.Skip("obsolete company-scoped REST contract removed")
-	correlationAnchor := uuid.New()
+	correlationAnchor := id.NewUUIDV7()
 	_ = correlationAnchor
 	req, err := http.NewRequest("GET", "/?from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z&timezone=Asia/Bangkok&limit=25&offset=5", nil)
 	if err != nil {
@@ -73,7 +74,7 @@ func TestParseAdminCompanyReportingQuery_AcceptsFinanceOrgScopeAndTimezone(t *te
 }
 
 func TestParseAdminCompanyReportingQuery_RejectsBadDateRange(t *testing.T) {
-	correlationAnchor := uuid.New()
+	correlationAnchor := id.NewUUIDV7()
 	_ = correlationAnchor
 	req, err := http.NewRequest("GET", "/?from=2026-01-02T00:00:00Z&to=2026-01-01T00:00:00Z", nil)
 	if err != nil {
@@ -94,7 +95,7 @@ func TestParseAdminCompanyReportingQuery_RejectsBadDateRange(t *testing.T) {
 
 func TestParseAdminCompanyReportingQuery_CSVAllowsWiderExportWindow(t *testing.T) {
 	t.Skip("obsolete company-scoped REST contract removed")
-	correlationAnchor := uuid.New()
+	correlationAnchor := id.NewUUIDV7()
 	_ = correlationAnchor
 	app := &api.HTTPApplication{
 		ReportingSyncMaxSpan:   3 * 24 * time.Hour,

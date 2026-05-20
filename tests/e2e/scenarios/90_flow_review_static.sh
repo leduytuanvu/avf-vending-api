@@ -23,7 +23,7 @@ start_step "flow-review-static"
 
 MATRIX="${E2E_REPO_ROOT}/docs/testing/e2e-flow-coverage.md"
 MQTT_DOC="${E2E_REPO_ROOT}/docs/api/mqtt-contract.md"
-: "${POSTMAN_COLLECTION:=docs/postman/avf-vending-api-function-path.postman_collection.json}"
+: "${POSTMAN_COLLECTION:=postman/collections/avf-vending-api-function-path.postman_collection.json}"
 POSTMAN_ABS="${POSTMAN_COLLECTION}"
 [[ "${POSTMAN_ABS}" != /* ]] && POSTMAN_ABS="${E2E_REPO_ROOT}/${POSTMAN_ABS}"
 

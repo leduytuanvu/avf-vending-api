@@ -20,7 +20,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$Lib = Join-Path $PSScriptRoot '_pslib.ps1'
+$Lib = Join-Path $PSScriptRoot '..' 'lib' '_pslib.ps1'
 . $Lib
 
 $RepoRoot = Get-AvfRepoRoot -StartPath $PSScriptRoot

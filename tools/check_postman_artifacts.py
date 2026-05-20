@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate docs/postman/*.json (offline; no network). Invoked by make postman-check."""
+"""Validate postman/collections/*.json and postman/environments/*.json (offline; no network). Invoked by make postman-check."""
 from __future__ import annotations
 
 import json
@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-POSTMAN = ROOT / "docs" / "postman"
+POSTMAN_COLLECTIONS = ROOT / "postman" / "collections"
+POSTMAN_ENVIRONMENTS = ROOT / "postman" / "environments"
 
 FORBIDDEN_ENV_KEY_PARTS = (
     "organization_id",
@@ -110,26 +111,33 @@ def validate_phase7_postman(coll: dict, env_keys: set[str]) -> None:
 
 
 def main() -> None:
-    if not POSTMAN.is_dir():
-        die(f"missing {POSTMAN}")
+    if not POSTMAN_COLLECTIONS.is_dir():
+        die(f"missing {POSTMAN_COLLECTIONS}")
+    if not POSTMAN_ENVIRONMENTS.is_dir():
+        die(f"missing {POSTMAN_ENVIRONMENTS}")
 
-    required = [
+    required_collections = [
         "avf-vending-api.postman_collection.json",
+    ]
+    required_envs = [
         "avf-local.postman_environment.json",
         "avf-staging.postman_environment.json",
         "avf-production.postman_environment.json",
     ]
-    for name in required:
-        if not (POSTMAN / name).is_file():
-            die(f"missing {POSTMAN / name}")
+    for name in required_collections:
+        if not (POSTMAN_COLLECTIONS / name).is_file():
+            die(f"missing {POSTMAN_COLLECTIONS / name}")
+    for name in required_envs:
+        if not (POSTMAN_ENVIRONMENTS / name).is_file():
+            die(f"missing {POSTMAN_ENVIRONMENTS / name}")
 
-    for p in sorted(POSTMAN.glob("*.json")):
+    for p in sorted(POSTMAN_COLLECTIONS.glob("*.json")) + sorted(POSTMAN_ENVIRONMENTS.glob("*.json")):
         try:
             json.loads(p.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
             die(f"invalid JSON {p}: {e}")
 
-    coll_path = POSTMAN / "avf-vending-api.postman_collection.json"
+    coll_path = POSTMAN_COLLECTIONS / "avf-vending-api.postman_collection.json"
     coll = json.loads(coll_path.read_text(encoding="utf-8"))
     schema = (coll.get("info") or {}).get("schema", "")
     if "getpostman.com" not in schema.lower() or "collection" not in schema.lower():
@@ -139,9 +147,9 @@ def main() -> None:
     if "item" not in coll:
         die("Postman collection must have top-level item")
 
-    prod = env_values(POSTMAN / "avf-production.postman_environment.json")
-    stg = env_values(POSTMAN / "avf-staging.postman_environment.json")
-    local = env_values(POSTMAN / "avf-local.postman_environment.json")
+    prod = env_values(POSTMAN_ENVIRONMENTS / "avf-production.postman_environment.json")
+    stg = env_values(POSTMAN_ENVIRONMENTS / "avf-staging.postman_environment.json")
+    local = env_values(POSTMAN_ENVIRONMENTS / "avf-local.postman_environment.json")
     env_key_union = set(local.keys()) | set(stg.keys()) | set(prod.keys())
 
     if prod.get("allow_mutation") != "false":
@@ -174,7 +182,7 @@ def main() -> None:
         "STRIPE_SECRET",
         "Bearer eyJ",
     )
-    for p in sorted(POSTMAN.glob("*.json")):
+    for p in sorted(POSTMAN_COLLECTIONS.glob("*.json")) + sorted(POSTMAN_ENVIRONMENTS.glob("*.json")):
         text = p.read_text(encoding="utf-8", errors="replace")
         for b in banned:
             if b in text:

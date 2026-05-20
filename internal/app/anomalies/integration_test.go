@@ -2,6 +2,7 @@ package anomalies_test
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -66,8 +67,8 @@ func TestP24_Sync_OfflineMachineCreatesAnomaly(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	q := db.New(pool)
 	inv, err := inventoryadmin.NewService(q)
 	require.NoError(t, err)
@@ -97,9 +98,9 @@ func TestP24_Sync_RepeatedVendFailure_Deduped(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
-	productID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	productID := id.NewUUIDV7()
 	q := db.New(pool)
 	inv, err := inventoryadmin.NewService(q)
 	require.NoError(t, err)
@@ -117,7 +118,7 @@ INSERT INTO products (id, sku, name) VALUES ($1, 'SKU1', 'Cola')`, productID)
 	require.NoError(t, err)
 
 	for i := 0; i < 3; i++ {
-		orderID := uuid.New()
+		orderID := id.NewUUIDV7()
 		_, err = pool.Exec(ctx, `
 INSERT INTO orders (id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor)
 VALUES ($1, $2, 'failed', 'USD', 0, 0, 0)`, orderID, machineID)
@@ -144,10 +145,10 @@ func TestP24_RestockSuggestions_seededVelocity(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
-	planogramID := uuid.New()
-	productID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	planogramID := id.NewUUIDV7()
+	productID := id.NewUUIDV7()
 	q := db.New(pool)
 	inv, err := inventoryadmin.NewService(q)
 	require.NoError(t, err)
@@ -173,7 +174,7 @@ INSERT INTO products (id, sku, name) VALUES ($1, 'SKU2', 'Water')`, productID)
 	fix(`INSERT INTO machine_slot_state (machine_id, planogram_id, slot_index, current_quantity, price_minor, planogram_revision_applied)
 VALUES ($1, $2, 0, 5, 100, 1)`, machineID, planogramID)
 
-	orderID := uuid.New()
+	orderID := id.NewUUIDV7()
 	fix(`INSERT INTO orders (id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor)
 VALUES ($1, $2, 'completed', 'USD', 100, 0, 100)`, orderID, machineID)
 	completedAt := time.Now().UTC().Add(-72 * time.Hour)
@@ -198,8 +199,8 @@ func TestP24_Resolve_thenClosed(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	q := db.New(pool)
 	inv, err := inventoryadmin.NewService(q)
 	require.NoError(t, err)
@@ -213,7 +214,7 @@ INSERT INTO machines (id, site_id, serial_number, status, last_seen_at, credenti
 VALUES ($1, $2, $3, 'active', now(), 1)`, machineID, siteID, "sn-res-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
-	anomalyID := uuid.New()
+	anomalyID := id.NewUUIDV7()
 	_, err = pool.Exec(ctx, `
 INSERT INTO inventory_anomalies (id, machine_id, anomaly_type, fingerprint, status, payload)
 VALUES ($1, $2, 'telemetry_missing', $3, 'open', '{}')`,
@@ -231,8 +232,8 @@ func TestP24_Ignore_thenIgnored(t *testing.T) {
 	t.Parallel()
 	pool := testPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	q := db.New(pool)
 	inv, err := inventoryadmin.NewService(q)
 	require.NoError(t, err)
@@ -246,7 +247,7 @@ INSERT INTO machines (id, site_id, serial_number, status, last_seen_at, credenti
 VALUES ($1, $2, $3, 'active', now(), 1)`, machineID, siteID, "sn-ign-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
-	anomalyID := uuid.New()
+	anomalyID := id.NewUUIDV7()
 	_, err = pool.Exec(ctx, `
 INSERT INTO inventory_anomalies (id, machine_id, anomaly_type, fingerprint, status, payload)
 VALUES ($1, $2, 'telemetry_missing', $3, 'open', '{}')`,

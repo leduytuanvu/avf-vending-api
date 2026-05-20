@@ -10,6 +10,8 @@ ENV_FILE="${NODE_ROOT}/.env.app-node"
 COMPOSE_FILE="${NODE_ROOT}/docker-compose.app-node.yml"
 COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
 PHASE="startup"
+REPO_ROOT="$(cd "${NODE_ROOT}/../../.." && pwd)"
+MIGRATION_LOG_DIR="${PRODUCTION_MIGRATION_LOG_DIR:-/opt/avf-vending-api/deployments/prod/logs/migrations}"
 
 trap 'rc=$?; if [[ "${rc}" -ne 0 ]]; then echo "release_app_node: failed during ${PHASE}" >&2; fi' EXIT
 
@@ -37,9 +39,27 @@ bash "${SHARED_ROOT}/scripts/bootstrap_prereqs.sh" app-node
 registry_login_optional
 
 snapshot_revision previous
-set_env_value "APP_IMAGE_REF" "${APP_IMAGE_REF_NEW}" 
+set_env_value "APP_IMAGE_REF" "${APP_IMAGE_REF_NEW}"
 set_env_value "GOOSE_IMAGE_REF" "${GOOSE_IMAGE_REF_NEW}"
 compose_config_or_fail
+
+PHASE="pull"
+note "pull app-node images (before migration so embedded migrations match digest)"
+"${COMPOSE[@]}" pull "${PULL_SERVICES[@]}"
+
+if [[ "${RUN_MIGRATION}" == "1" ]]; then
+	PHASE="migrate"
+	note "production database backup + migration (before traffic drain; old containers keep serving if migrate fails)"
+	export GITHUB_ACTIONS="${GITHUB_ACTIONS:-}"
+	migrate_args=(--compose-file "${COMPOSE_FILE}" --env-file "${ENV_FILE}")
+	if [[ -n "${COMPOSE_PROJECT_NAME:-}" ]]; then
+		migrate_args+=(--project-name "${COMPOSE_PROJECT_NAME}")
+	fi
+	if ! bash "${REPO_ROOT}/scripts/deploy/production-migrate.sh" "${migrate_args[@]}"; then
+		echo "error: production-migrate.sh failed; leaving running containers unchanged" >&2
+		exit 1
+	fi
+fi
 
 PHASE="drain"
 if [[ -f "${SHARED_ROOT}/scripts/traffic_drain_hook.sh" ]]; then
@@ -51,34 +71,8 @@ fi
 note "drain app-node traffic by stopping caddy"
 "${COMPOSE[@]}" stop caddy >/dev/null 2>&1 || true
 
-PHASE="pull"
-note "pull app-node images"
-"${COMPOSE[@]}" pull "${PULL_SERVICES[@]}"
-
-if [[ "${RUN_MIGRATION}" == "1" ]]; then
-	PHASE="migrate"
-	note "run one-shot migration profile"
-	REPO_ROOT="$(cd "${NODE_ROOT}/../../.." && pwd)"
-	set -a
-	# shellcheck source=/dev/null
-	source "${ENV_FILE}"
-	set +a
-	export APP_ENV="${APP_ENV:-production}"
-	if [[ "${GITHUB_ACTIONS:-}" != "true" ]]; then
-		if [[ "${CONFIRM_PRODUCTION_MIGRATION:-}" != "true" ]]; then
-			echo "error: set CONFIRM_PRODUCTION_MIGRATION=true to run app-node migration from a shell" >&2
-			exit 1
-		fi
-	fi
-	if ! bash "${REPO_ROOT}/scripts/verify_database_environment.sh"; then
-		echo "error: verify_database_environment.sh failed" >&2
-		exit 1
-	fi
-	"${COMPOSE[@]}" --profile migration run --rm migrate
-fi
-
 PHASE="restart"
-note "restart app workloads"
+note "restart app workloads with new image"
 "${COMPOSE[@]}" up -d --remove-orphans --force-recreate "${SERVICES[@]}"
 
 PHASE="verify-app"
@@ -94,6 +88,6 @@ APP_NODE_CHECK_CADDY="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" 
 PHASE="persist"
 snapshot_revision current
 record_image_state "${APP_IMAGE_REF_NEW}" "${GOOSE_IMAGE_REF_NEW}" "${APP_IMAGE_REF_OLD}" "${GOOSE_IMAGE_REF_OLD}"
-printf '%s\tdeploy\tapp=%s\tgoose=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${APP_IMAGE_REF_NEW}" "${GOOSE_IMAGE_REF_NEW}" >>"${STATE_DIR}/history.log"
+printf '%s\tdeploy\tapp=%s\tgoose=%s\tmigration=%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${APP_IMAGE_REF_NEW}" "${GOOSE_IMAGE_REF_NEW}" "${RUN_MIGRATION}" >>"${STATE_DIR}/history.log"
 
 echo "release_app_node: PASS"

@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -417,7 +418,7 @@ func TestP06_E2E_PaymentWebhookHTTP_productionUnsignedRejected(t *testing.T) {
 	body := []byte(`{"provider":"psp_fixture"}`)
 	rec := httptest.NewRecorder()
 	httpserver.IntegrationTestCommercePublicPaymentWebhook(app, cfg).ServeHTTP(rec,
-		p06CommerceWebhookReq(t, uuid.New(), uuid.New(), body, "", ""))
+		p06CommerceWebhookReq(t, id.NewUUIDV7(), id.NewUUIDV7(), body, "", ""))
 	require.Equal(t, http.StatusForbidden, rec.Code)
 }
 

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -71,8 +72,8 @@ func TestClaim_IdempotentReplaySameFingerprint(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 
 	cfg := config.HTTPAuthConfig{
 		Mode:            plauth.HTTPAuthModeHS256,
@@ -115,8 +116,8 @@ func TestClaim_DifferentFingerprintRejectedWhenSingleUse(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 
 	cfg := config.HTTPAuthConfig{
 		Mode:            plauth.HTTPAuthModeHS256,
@@ -160,8 +161,8 @@ func TestClaim_TwoDistinctFingerprintsWhenMaxUsesTwo(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 
 	cfg := config.HTTPAuthConfig{
 		Mode:            plauth.HTTPAuthModeHS256,
@@ -216,8 +217,8 @@ func TestClaim_ConcurrentClaimsRespectMaxUses(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 
 	cfg := config.HTTPAuthConfig{
 		Mode:            plauth.HTTPAuthModeHS256,
@@ -274,8 +275,8 @@ func TestClaim_PersistsSucceededClaimAndAudit(t *testing.T) {
 
 	pool := activationTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 
 	cfg := config.HTTPAuthConfig{
 		Mode:            plauth.HTTPAuthModeHS256,

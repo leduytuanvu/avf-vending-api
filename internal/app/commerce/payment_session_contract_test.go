@@ -1,11 +1,11 @@
 package commerce
 
 import (
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,9 +18,9 @@ func TestPaymentLifecycleClientStatus(t *testing.T) {
 
 func TestBuildPaymentSessionKioskView_extractsURLsAndExpiry(t *testing.T) {
 	t.Parallel()
-	oid := uuid.New()
-	pid := uuid.New()
-	vid := uuid.New()
+	oid := id.NewUUIDV7()
+	pid := id.NewUUIDV7()
+	vid := id.NewUUIDV7()
 	ts := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	payload := []byte(`{
 	  "checkout_url":"https://pay.example/c",

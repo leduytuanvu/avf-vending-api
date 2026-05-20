@@ -2,6 +2,7 @@ package correctness
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -19,9 +20,9 @@ func TestP06_E2E_MQTTCommand_ackWrongMachineRejectedUnknownSequence(t *testing.T
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineA := uuid.New()
-	machineB := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineA := id.NewUUIDV7()
+	machineB := id.NewUUIDV7()
 	insertSite(t, ctx, pool, siteID)
 	insertMachine(t, ctx, pool, siteID, machineA, "online", 1)
 	insertMachine(t, ctx, pool, siteID, machineB, "online", 1)
@@ -53,8 +54,8 @@ func TestP06_E2E_MQTTCommand_publishAttemptCreatesLedgerBeforeAckWindow(t *testi
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
@@ -90,8 +91,8 @@ func TestP06_E2E_MQTTCommand_expiresStaleLedgerRows(t *testing.T) {
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
@@ -124,8 +125,8 @@ func TestP06_E2E_MQTTCommand_ackDeadlineTimeoutsWhenLedgerSLAStillFuture(t *test
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
@@ -160,8 +161,8 @@ func TestP06_E2E_MQTTCommand_commandIDMismatchRejected(t *testing.T) {
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
@@ -173,7 +174,7 @@ func TestP06_E2E_MQTTCommand_commandIDMismatchRejected(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	wrongID := uuid.New()
+	wrongID := id.NewUUIDV7()
 	_, err = store.ApplyCommandReceiptTransition(ctx, postgres.CommandReceiptTransitionParams{
 		MachineID:  machineID,
 		Sequence:   appendRes.Sequence,
@@ -192,8 +193,8 @@ func TestP06_E2E_MQTTCommand_lateAckRejectedWhenLedgerTimeoutAtPassed(t *testing
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
@@ -235,8 +236,8 @@ func TestP06_E2E_MQTTCommand_duplicateAckSameDedupeKeyIsReplay(t *testing.T) {
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
@@ -279,8 +280,8 @@ func TestP06_E2E_MQTTCommand_publishFailureAllowsRetryAttempt(t *testing.T) {
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
@@ -309,8 +310,8 @@ func TestP06_E2E_MQTTCommand_catalogRefresh_ackSuccessNormalizesSuccessStatus(t 
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	inner := []byte(`{"type":"catalog.refresh","catalogVersion":124,"mediaManifestVersion":46,"reason":"product_media_updated"}`)
@@ -349,8 +350,8 @@ func TestP06_E2E_MQTTCommand_catalogRefresh_ackRejectedWithoutMediaSynced(t *tes
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	inner := []byte(`{"type":"catalog.refresh","catalogVersion":1,"mediaManifestVersion":2,"reason":"product_media_updated"}`)
@@ -389,8 +390,8 @@ func TestP06_E2E_MQTTCommand_catalogRefresh_nackedDoesNotRequireCatalogAckPayloa
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	inner := []byte(`{"type":"catalog.refresh","catalogVersion":3,"mediaManifestVersion":4,"reason":"product_media_updated"}`)
@@ -428,8 +429,8 @@ func TestP06_E2E_MQTTCommand_maxDispatchAttemptsStopsRetries(t *testing.T) {
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	insertSiteMachine(t, ctx, pool, siteID, machineID, "online", 1)
 
 	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{

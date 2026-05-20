@@ -28,7 +28,7 @@ Domain truths (all stages):
 - **`worker`**: Scheduled **reliability** ticks (stuck payments/commands/orphan vends, outbox listing); **NATS JetStream** outbox publish **only when** `NATS_URL` (see `internal/platform/nats`) is set. When NATS is configured, the worker also runs **telemetry JetStream consumers** and retention work. Optional Temporal scheduling can enqueue payment-timeout follow-up when `TEMPORAL_SCHEDULE_PAYMENT_PENDING_TIMEOUT=true`.
 - **`reconciler`**: Periodic **commerce reconciliation** (unresolved orders, payment probes, stuck vends, duplicate-payment hints, refund review lists). Default posture is still list/log-oriented, but **optional** payment probe + refund enqueue adapters are wired when `RECONCILER_ACTIONS_ENABLED=true`. Optional Temporal scheduling can enqueue refund/manual-review workflows on top of those reads.
 - **`temporal-worker`**: Dedicated Temporal worker process that executes the registered long-running compensation/review workflows on the configured task queue.
-- **`mqtt-ingest`**: MQTT subscriber → **JetStream telemetry buffers** (when `NATS_URL` is set) via `internal/app/telemetryapp`, then **`cmd/worker`** consumers project into Postgres (`machine_current_snapshot`, `telemetry_rollups`, incidents, receipts). Without NATS, ingest falls back to the legacy direct-`postgres.Store` hot path (see `ops/TELEMETRY_PIPELINE.md`).
+- **`mqtt-ingest`**: MQTT subscriber → **JetStream telemetry buffers** (when `NATS_URL` is set) via `internal/app/telemetryapp`, then **`cmd/worker`** consumers project into Postgres (`machine_current_snapshot`, `telemetry_rollups`, incidents, receipts). Without NATS, ingest falls back to the legacy direct-`postgres.Store` hot path (see `deployments/docker/observability/TELEMETRY_PIPELINE.md`).
 - **`cli`**: Config validation and version.
 
 **Application layer** (`internal/app/*`): Commerce, device, fleet, reliability, and API-facing surfaces are **real packages**; HTTP handlers stay thin and delegate here. Coverage of business scenarios is still **growing**—not every target-domain workflow has a full use-case implementation.
@@ -44,7 +44,7 @@ Domain truths (all stages):
 - **ClickHouse** (`internal/platform/clickhouse`): optional **worker-side analytics mirror** and typed projection sink for published outbox events when analytics flags are enabled. Typed projection classes cover sales, payment, vend, inventory delta, machine telemetry summary, and command lifecycle events derived from outbox metadata/payloads. PostgreSQL/outbox remain authoritative and analytics failure is cold-path only.
 - **Redis / OpenTelemetry**: Config and clients as used by bootstrap and readiness—not a substitute for Postgres SoR.
 
-**Observability**: OpenTelemetry hooks and standard health (and optional metrics) are wired from bootstrap where configured; Loki/Prometheus/Grafana stacks are **documented and sample-configured** under `ops/`—treat them as **deployment concerns**, not as “always running inside this Go binary.” **Incident response:** practical log fields, SQL, and alert ideas live in [`ops/RUNBOOK.md`](../../ops/RUNBOOK.md); worker/reconciler/MQTT are primarily **log-driven** until custom metrics exist ([`ops/METRICS.md`](../../ops/METRICS.md)).
+**Observability**: OpenTelemetry hooks and standard health (and optional metrics) are wired from bootstrap where configured; Loki/Prometheus/Grafana stacks are **documented and sample-configured** under `deployments/docker/observability/`—treat them as **deployment concerns**, not as “always running inside this Go binary.” **Incident response:** practical log fields, SQL, and alert ideas live in [`deployments/docker/observability/RUNBOOK.md`](../../deployments/docker/observability/RUNBOOK.md); worker/reconciler/MQTT are primarily **log-driven** until custom metrics exist ([`deployments/docker/observability/METRICS.md`](../../deployments/docker/observability/METRICS.md)).
 
 ```mermaid
 flowchart TB
@@ -181,7 +181,7 @@ flowchart TB
 ## Observability (target + today)
 
 - **OpenTelemetry** for traces/metrics/logs correlation at the application boundary—**wired** from bootstrap where configured.
-- **Prometheus + Alertmanager + Grafana** for SLOs, alerting, and dashboards—**sample configs** under `ops/`.
-- **Loki** for centralized logs—**sample configs** under `ops/`.
+- **Prometheus + Alertmanager + Grafana** for SLOs, alerting, and dashboards—**sample configs** under `deployments/docker/observability/`.
+- **Loki** for centralized logs—**sample configs** under `deployments/docker/observability/`.
 
 The **API process** exposes standard health endpoints and optional Prometheus scraping behind explicit configuration.

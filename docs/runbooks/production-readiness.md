@@ -2,7 +2,7 @@
 
 **Normative integration contract (kiosk vs admin vs MQTT):** **[`../architecture/production-final-contract.md`](../architecture/production-final-contract.md)**.
 
-**P2 documentation bridge:** For **100–1000 machine** go-live **field** proof, use **[`testing/field-test-cases.md`](../testing/field-test-cases.md)** + **[`operations/field-pilot-checklist.md`](../operations/field-pilot-checklist.md)** / **[`operations/field-rollout-checklist.md`](../operations/field-rollout-checklist.md)** together with **[`production-release-readiness.md`](production-release-readiness.md)** (storm + monitoring tiers). Config rules below remain **architecture** prerequisites (non-contradiction with managed PostgreSQL **+** **[`production-2-vps.md`](production-2-vps.md)** app nodes).
+**P2 documentation bridge:** For **100–1000 machine** go-live **field** proof, use **[`testing/field-test-cases.md`](../testing/field-test-cases.md)** + **[`operations/field-pilot-checklist.md`](../production/field-pilot-checklist.md)** / **[`operations/field-rollout-checklist.md`](../production/field-rollout-checklist.md)** together with **[`production-release-readiness.md`](production-release-readiness.md)** (storm + monitoring tiers). Config rules below remain **architecture** prerequisites (non-contradiction with managed PostgreSQL **+** **[`production-2-vps.md`](production-2-vps.md)** app nodes).
 
 This runbook summarizes **configuration gates** and **observability** expectations for deploying the AVF API and workers to production (roughly 100–1000 machines, no mandatory microservice split).
 

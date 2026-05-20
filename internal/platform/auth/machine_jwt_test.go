@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -67,7 +68,7 @@ func TestValidateMachineAccessJWT_RejectsUserAccessToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	userTok, _, err := issuer.IssueAccessJWT(uuid.New(), uuid.Nil, []string{RoleOrgAdmin}, "active")
+	userTok, _, err := issuer.IssueAccessJWT(id.NewUUIDV7(), uuid.Nil, []string{RoleOrgAdmin}, "active")
 	if err != nil {
 		t.Fatal(err)
 	}

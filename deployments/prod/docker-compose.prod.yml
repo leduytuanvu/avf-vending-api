@@ -302,24 +302,18 @@ services:
         max-file: "3"
 
   migrate:
-    image: ${GOOSE_IMAGE_REF:?set GOOSE_IMAGE_REF in .env.production or via environment}
+    image: ${APP_IMAGE_REF:?set APP_IMAGE_REF in .env.production or via environment}
     container_name: avf-prod-migrate
     restart: "no"
     env_file:
       - ${PROD_ENV_FILE:-.env.production}
     networks:
       - internal
-    volumes:
-      - ../../migrations:/migrations:ro
     depends_on:
       postgres:
         condition: service_healthy
-    entrypoint:
-      [
-        "/bin/sh",
-        "-c",
-        'exec /usr/local/bin/goose -dir /migrations postgres "$$DATABASE_URL" up',
-      ]
+    entrypoint: ["/app/migrate"]
+    command: ["up"]
 
   caddy:
     image: caddy:2.8-alpine@sha256:af32e97399febea808609119bb21544d0265c58a02836576e32a2d082c262c17 # caddy:2.8-alpine

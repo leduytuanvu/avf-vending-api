@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
-	"github.com/google/uuid"
 )
 
 type stubStore struct {
@@ -72,8 +72,8 @@ func (s *stubStore) ListPrefix(ctx context.Context, prefix string, maxKeys int32
 func TestPutContent_checksumOK(t *testing.T) {
 	st := &stubStore{}
 	svc := NewService(Deps{Store: st, MaxUploadBytes: 1 << 20})
-	scopeID := uuid.New()
-	art := uuid.New()
+	scopeID := id.NewUUIDV7()
+	art := id.NewUUIDV7()
 	payload := []byte("hello-artifact-world")
 	sum := sha256.Sum256(payload)
 	hexSum := hex.EncodeToString(sum[:])
@@ -93,8 +93,8 @@ func TestPutContent_checksumOK(t *testing.T) {
 func TestPutContent_checksumMismatchDeletes(t *testing.T) {
 	st := &stubStore{}
 	svc := NewService(Deps{Store: st, MaxUploadBytes: 1 << 20})
-	scopeID := uuid.New()
-	art := uuid.New()
+	scopeID := id.NewUUIDV7()
+	art := id.NewUUIDV7()
 	payload := []byte("a")
 	wrongHex := strings.Repeat("0", 64)
 	err := svc.PutContent(context.Background(), scopeID, art, bytes.NewReader(payload), int64(len(payload)), "application/octet-stream", wrongHex, "")

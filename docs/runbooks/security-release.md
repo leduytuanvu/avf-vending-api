@@ -38,11 +38,11 @@ The JSON always includes (machine-readable contract):
 
 ## GitHub Actions outputs
 
-After each verdict write, `scripts/security/emit_security_verdict_outputs.py` appends to `GITHUB_OUTPUT`, including `security_verdict` and `SECURITY_VERDICT` (same value as JSON `verdict`), plus `release_gate_verdict`, `source_sha`, `source_branch`, and related fields.
+After each verdict write, `scripts/deploy/security/emit_security_verdict_outputs.py` appends to `GITHUB_OUTPUT`, including `security_verdict` and `SECURITY_VERDICT` (same value as JSON `verdict`), plus `release_gate_verdict`, `source_sha`, `source_branch`, and related fields.
 
 ## Emergency writer
 
-`scripts/security/write_security_verdict.py emergency` defaults to **not** overwriting an existing file that already has a contract `verdict` in `pass`, `fail`, `skipped`, or `no-candidate`. Use `--emergency-force` only when intentionally replacing a valid verdict (for example operator recovery).
+`scripts/deploy/security/write_security_verdict.py emergency` defaults to **not** overwriting an existing file that already has a contract `verdict` in `pass`, `fail`, `skipped`, or `no-candidate`. Use `--emergency-force` only when intentionally replacing a valid verdict (for example operator recovery).
 
 The signal step exit trap follows the same rule: it emits an emergency fail only when the verdict file is missing, empty, or does not carry a valid contract verdict.
 

@@ -242,7 +242,7 @@ jobs:
           }
           run_verify "${APP_REF}" signing-evidence/cosign-verify-app.json
           run_verify "${GOOSE_REF}" signing-evidence/cosign-verify-goose.json
-          python3 scripts/security/write_cosign_signing_evidence.py \
+          python3 scripts/deploy/security/write_cosign_signing_evidence.py \
             --out signing-evidence/cosign-signing-evidence.json \
             --app-ref "${APP_REF}" \
             --goose-ref "${GOOSE_REF}" \
