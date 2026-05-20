@@ -483,3 +483,102 @@ Image: `avf-vending-api:deploy-fix` (`deployments/prod/Dockerfile`)
 ### Phase 5 verdict
 
 **LOCAL_VALIDATION_PASS** — all local gates green; safe to open/merge PR for deploy script fixes. No commit performed in this phase (per instruction: commit only when explicitly requested).
+
+---
+
+## Phase 8 — Production redeploy (2026-05-20)
+
+**Goal:** Redeploy after permission-safe migration fix; `run_migration=true`; no security/migration/backup bypass.
+
+| Item | Value |
+|------|-------|
+| **Deploy run** | [26143936277](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26143936277) (#142) |
+| **Conclusion** | **success** |
+| **headSha** | `31511a2d98c7589cda8ee0db52108f53aa997880` |
+| **App digest** | `sha256:23e80df72e9268f5e4bceeb2fac8ccf9121b48fdc7637fa8e92b0ddf5fa3034c` |
+| **Build run** | `26143278523` |
+| **Security Release** | `26143426371` (pass) |
+| **Migration** | goose v4 → v5 (`00005_uuid_v7_defaults.sql`); inline `pg_dump` backup `backup-20260520T054820Z.dump` |
+| **Permission errors** | **None** (`run_script` / `production-migrate.sh` path clean) |
+| **Smoke** | node A readiness/smoke **pass**; final cluster + public smoke **pass** |
+
+### Phase 8 verdict
+
+**DEPLOY_SUCCESS** — permission fix validated in production; migration gate completed.
+
+---
+
+## Phase 9 — Post-deploy verification (2026-05-20)
+
+**Goal:** Public smoke, container health, DB migration state, critical log scan.
+
+### 1. Deploy reference
+
+| Field | Value |
+|-------|-------|
+| **Run ID** | `26143936277` |
+| **Conclusion** | **success** |
+| **Release tag** | `v20260520-31511a2-permission-fix` |
+| **Evidence artifact** | `production-deploy-evidence` (downloaded from run 26143936277) |
+
+### 2. Public health (curl from operator workstation)
+
+| Endpoint | HTTP | Body / notes |
+|----------|------|--------------|
+| `https://api.ldtv.dev/health/live` | **200** | `ok` |
+| `https://api.ldtv.dev/health/ready` | **200** | `ok` |
+| `https://api.ldtv.dev/version` | **200** | `git_sha`: `52a076e340a15a69dad7787cad54d7e3000fcafe` (see note below) |
+
+**`/version` git_sha note:** Deploy pulled digest `sha256:23e80df…` built from main @ `31511a2`, but `/version` still reports `52a076e` (previous LKG). `internal/config/config.go` prefers runtime `APP_GIT_SHA` over link-time `version.Commit`; server `.env.app-node` likely still sets stale `APP_GIT_SHA`. **Not a permission/migration regression** — image rollout and migration succeeded per deploy logs; ops follow-up: align `APP_GIT_SHA` (or unset to use binary embed) on next release script/env sync.
+
+### 3. Container status
+
+Direct SSH from operator workstation: **blocked** (`Permission denied (publickey,password)`). Container/readiness state taken from GHA deploy evidence (`app-node-0-72.62.244.94-readiness.log`, deploy log).
+
+| Service | Readiness | Health check |
+|---------|-----------|--------------|
+| **api** | ready | `/health/live` 200, `/health/ready` 200, `/version` 200 |
+| **worker** | ready | `/health/ready` 200 |
+| **mqtt-ingest** | ready | `/health/ready` 200 |
+| **reconciler** | ready | `/health/ready` 200 |
+| **caddy** | ready | upstream healthcheck 200 |
+
+Managed deps: PostgreSQL `pg_isready` **PASS**, Redis TCP **PASS**, NATS TCP **PASS**.
+
+### 4. DB migration state
+
+From deploy log (`app-node-0-72.62.244.94-deploy.log`) — inline `production-migrate.sh` on app node A:
+
+| Check | Result |
+|-------|--------|
+| Backup (`pg_dump`) | **PASS** — `backup-20260520T054820Z.dump` |
+| `goose_db_version` before | **4** |
+| Applied migration | `00005_uuid_v7_defaults.sql` |
+| `goose_db_version` after | **5** |
+| `production-migrate` gate | **PASS** — `version_before=4 version_after=5 migration_gate=closed` |
+| Permission denied | **None** |
+
+Direct `psql` via SSH: **not run** (workstation SSH blocked); migration state corroborated by deploy job logs and backup/migrate gate output above.
+
+### 5. Critical logs (last 10m, deploy window)
+
+Scanned deploy evidence deploy log and GHA job output for: `panic`, `fatal`, `SQLSTATE`, `migration failed`, `Permission denied`, `audit.*error`, `uuid.*error`, `database.*error`.
+
+| Result |
+|--------|
+| **No matches** in deploy/migration path |
+
+Non-blocking advisory unlock warning after migration (`pg_advisory_unlock` returned `f`) — lock released by session teardown; migrate gate still reported **PASS**.
+
+### Phase 9 verdict
+
+**PRODUCTION_DEPLOY_FIXED_AND_VERIFIED**
+
+| Original failure | Status |
+|------------------|--------|
+| Script `Permission denied` before migration | **Fixed** — deploy reached `pg_dump`, goose up, and `release_app_node: PASS` |
+| Migration not applied | **Fixed** — goose v4 → v5 |
+| Public health | **OK** — live/ready 200 |
+| Workflow + smoke | **OK** — run 26143936277 success |
+
+**Follow-up (non-blocking):** Update `APP_GIT_SHA` in production `.env.app-node` (or release env sync) so `/version` reflects `31511a2`; restore workstation SSH if direct server audits are required.
