@@ -2154,7 +2154,10 @@ jobs:
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
           tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
             scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh | \
-            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' && chmod +x \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/deploy/production-migrate.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/verify_database_environment.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/db/verify_database_environment.sh'"
 
       - name: Sync app-node assets to node B
         if: success() && steps.validate_deploy_inputs.outputs.deploy_app_node_b == 'true'
@@ -2166,7 +2169,10 @@ jobs:
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
           tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
             scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh | \
-            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}'"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' && chmod +x \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/deploy/production-migrate.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/verify_database_environment.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/db/verify_database_environment.sh'"
 
       - name: Sync data-node fallback assets
         if: env.DEPLOY_DATA_NODE == 'true'

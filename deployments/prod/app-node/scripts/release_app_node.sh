@@ -35,7 +35,7 @@ fi
 
 PHASE="validate"
 note "validate app-node prerequisites"
-bash "${SHARED_ROOT}/scripts/bootstrap_prereqs.sh" app-node
+run_script "${SHARED_ROOT}/scripts/bootstrap_prereqs.sh" app-node
 registry_login_optional
 
 snapshot_revision previous
@@ -55,16 +55,18 @@ if [[ "${RUN_MIGRATION}" == "1" ]]; then
 	if [[ -n "${COMPOSE_PROJECT_NAME:-}" ]]; then
 		migrate_args+=(--project-name "${COMPOSE_PROJECT_NAME}")
 	fi
-	if ! bash "${REPO_ROOT}/scripts/deploy/production-migrate.sh" "${migrate_args[@]}"; then
+	if ! run_script "${REPO_ROOT}/scripts/deploy/production-migrate.sh" "${migrate_args[@]}"; then
 		echo "error: production-migrate.sh failed; leaving running containers unchanged" >&2
-		exit 1
+		note "restoring previous .env.app-node snapshot after failed migration (no traffic drain or app recreate)"
+		restore_revision previous
+		exit 41
 	fi
 fi
 
 PHASE="drain"
 if [[ -f "${SHARED_ROOT}/scripts/traffic_drain_hook.sh" ]]; then
 	note "traffic drain hook (TRAFFIC_DRAIN_MODE=${TRAFFIC_DRAIN_MODE:-none})"
-	bash "${SHARED_ROOT}/scripts/traffic_drain_hook.sh"
+	run_script "${SHARED_ROOT}/scripts/traffic_drain_hook.sh"
 else
 	note "traffic_drain_hook.sh missing; using caddy stop only (record as no external drain)"
 fi
@@ -76,14 +78,14 @@ note "restart app workloads with new image"
 "${COMPOSE[@]}" up -d --remove-orphans --force-recreate "${SERVICES[@]}"
 
 PHASE="verify-app"
-APP_NODE_CHECK_CADDY="0" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" bash "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
+APP_NODE_CHECK_CADDY="0" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
 
 PHASE="resume"
 note "resume app-node traffic by starting caddy"
 "${COMPOSE[@]}" up -d --remove-orphans caddy
 
 PHASE="verify-caddy"
-APP_NODE_CHECK_CADDY="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" bash "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
+APP_NODE_CHECK_CADDY="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
 
 PHASE="persist"
 snapshot_revision current

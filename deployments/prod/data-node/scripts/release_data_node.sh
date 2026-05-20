@@ -19,7 +19,7 @@ init_state_dir
 
 PHASE="validate"
 note "validate data-node prerequisites"
-bash "${SHARED_ROOT}/scripts/bootstrap_prereqs.sh" data-node
+run_script "${SHARED_ROOT}/scripts/bootstrap_prereqs.sh" data-node
 snapshot_revision previous
 compose_config_or_fail
 
@@ -33,10 +33,10 @@ note "restart data-node fallback services"
 
 PHASE="bootstrap-emqx"
 note "ensure EMQX MQTT app user exists"
-bash "${NODE_ROOT}/scripts/bootstrap_emqx_data_node.sh"
+run_script "${NODE_ROOT}/scripts/bootstrap_emqx_data_node.sh"
 
 PHASE="verify"
-bash "${NODE_ROOT}/scripts/healthcheck_data_node.sh"
+run_script "${NODE_ROOT}/scripts/healthcheck_data_node.sh"
 
 PHASE="persist"
 snapshot_revision current
