@@ -453,10 +453,15 @@ def main() -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
-    if "backup_evidence_id is required when run_migration=true" not in text:
+    if "scripts/deploy/production-migrate.sh" not in text:
         print(
-            "ERROR: deploy-prod must fail validation when run_migration is true and backup_evidence_id is empty "
-            "(expected explicit operator-facing error).",
+            "ERROR: deploy-prod must invoke scripts/deploy/production-migrate.sh for inline pg_dump before goose up.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if "inline pg_dump runs on VPS via production-migrate.sh" not in text:
+        print(
+            "ERROR: deploy-prod must document inline pg_dump via production-migrate.sh when supplementary backup_evidence_id is unset.",
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -481,19 +486,22 @@ def main() -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
-    if run_migration_inp.get("default") is False and "backup_evidence_id is required when run_migration=true" not in text:
-        print(
-            "ERROR: deploy-prod must fail validation when run_migration is true and backup_evidence_id is empty "
-            "(expected explicit operator-facing error).",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
     if not isinstance(backup_ev_inp, dict) or str(backup_ev_inp.get("type", "")).lower() != "string":
         print("ERROR: deploy-prod backup_evidence_id input must be type: string (artifact/run/path/id).", file=sys.stderr)
         raise SystemExit(1)
     if backup_ev_inp.get("required") is True:
         print(
             "ERROR: deploy-prod backup_evidence_id must not be required: true (optional when run_migration is false).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if (
+        "scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh"
+        not in text
+    ):
+        print(
+            "ERROR: deploy-prod app-node tar sync must ship scripts/deploy/production-migrate.sh "
+            "and scripts/verify_database_environment.sh (inline migration on VPS).",
             file=sys.stderr,
         )
         raise SystemExit(1)
