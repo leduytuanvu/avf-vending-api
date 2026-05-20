@@ -16,7 +16,7 @@ This folder contains exactly three files:
 2. Import `avf-production.postman_environment.json`
 3. Select **AVF Production** environment in the top-right dropdown
 4. Fill `adminEmail`, `adminPassword`, `mqttUsername`, `mqttPassword` locally — **never commit** filled values
-5. Run `00_Health_System` → REST → health/live first
+5. Run `Health System` → REST → health/live first
 
 ## 3. Required environment variables
 
@@ -30,12 +30,14 @@ This folder contains exactly three files:
 | mqttTopicPrefix | — | — | yes | avf/prod | Topic prefix per ACL |
 | machineId | yes | yes | yes | (empty) | Target machine UUID |
 | requestId / idempotencyKey | yes | yes | — | auto-generated | Correlation / idempotency |
+| allowGatedWrites | yes | — | — | false | Must be `true` to run `[GATED-WRITE]` requests |
+| confirmProductionWrites | yes | — | — | (empty) | Must be `I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION` for gated writes |
 
 ## 4. Test REST APIs individually first
 
 Grouped by **module/domain** folders in the collection (not by business flow).
 
-### 00_Health_System
+### Health System
 
 - `GET /health/live` — Liveness probe
   - Expected 200: `{}`
@@ -50,7 +52,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /version` — Build and runtime version
   - Expected 200: `{"app_env": "development", "build_time": "2026-04-19T12:00:00Z", "git_sha": "abc123", "name": "avf-vending-api", "proces`
 
-### 01_Auth
+### Auth
 
 - `POST /v1/auth/change-password` — Change password (self-service)
   - Request: `{"currentPassword": "{{adminPassword}}", "newPassword": "{{adminPassword}}"}`
@@ -91,7 +93,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `DELETE /v1/auth/sessions/{sessionId}` — Revoke one session
   - Expected 204: `{}`
 
-### 02_Admin_Accounts_RBAC
+### Admin Accounts RBAC
 
 - `GET /v1/admin/users` — List API accounts (admin) — alternate path
   - Expected 200: `{"items": [{"accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "createdAt": "2026-01-01T00:00:00Z", "email": "operator`
@@ -129,7 +131,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
   - Request: `{"status": "disabled"}`
   - Expected 200: `{"accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "createdAt": "2026-01-01T00:00:00Z", "email": "operator@example.co`
 
-### 04_Brands
+### Brands
 
 - `GET /v1/admin/brands` — List brands
   - Expected 200: `{"items": [{"active": true, "createdAt": "2026-01-01T00:00:00Z", "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "name": "`
@@ -145,7 +147,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
   - Request: `{"active": true, "name": "Coca {{$timestamp}}", "slug": "coca-{{$timestamp}}"}`
   - Expected 200: `{"active": true, "createdAt": "2026-01-01T00:00:00Z", "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "name": "Coca exampl`
 
-### 05_Categories
+### Categories
 
 - `GET /v1/admin/categories` — List categories
   - Expected 200: `{"items": [{"active": true, "createdAt": "2026-01-01T00:00:00Z", "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", "name": "`
@@ -161,7 +163,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
   - Request: `{"active": true, "name": "Drinks {{$timestamp}}", "slug": "drinks-{{$timestamp}}"}`
   - Expected 200: `{"active": true, "createdAt": "2026-01-01T00:00:00Z", "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", "name": "Drinks exam`
 
-### 06_Tags
+### Tags
 
 - `GET /v1/admin/tags` — List tags
   - Expected 200: `{"items": [{"active": true, "createdAt": "2026-01-01T00:00:00Z", "id": "cccccccc-dddd-eeee-ffff-000000000000", "name": "`
@@ -177,7 +179,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
   - Request: `{"active": true, "name": "Cold Drink {{$timestamp}}", "slug": "cold-drink-{{$timestamp}}"}`
   - Expected 200: `{"active": true, "createdAt": "2026-01-01T00:00:00Z", "id": "cccccccc-dddd-eeee-ffff-000000000000", "name": "Cold drink `
 
-### 07_Product_Media
+### Product Media
 
 - `GET /v1/admin/media` — List media assets (alias path)
   - Expected 200: `{"items": [{"created_at": "2026-01-01T00:00:00Z", "etag": "W/\"etag1\"", "id": "11111111-2222-3333-4444-555555555555", "`
@@ -215,7 +217,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `DELETE /v1/admin/products/{productId}/media/{mediaId}` — Remove bound media from product
   - Expected 200: `{"active": true, "ageRestricted": false, "allergenCodes": [], "attrs": {}, "barcode": "8850123456789", "brandId": "aaaaa`
 
-### 08_Products
+### Products
 
 - `GET /v1/admin/products` — List products (admin catalog)
   - Expected 200: `{"items": [{"active": true, "barcode": "8850123456789", "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "categoryId":`
@@ -243,7 +245,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /v1/admin/reports/products` — Product performance report
   - Expected 200: `{"from": "2026-04-01T00:00:00Z", "items": [{"id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "status": "open"}], "meta": {"`
 
-### 09_Sites_Regions
+### Sites Regions
 
 - `GET /v1/admin/sites` — List sites (admin)
   - Expected 200: `{"items": [{"address": {}, "code": "LOBBY", "created_at": "2026-04-29T00:00:00Z", "id": "3fa85f64-5717-4562-b3fc-2c963f6`
@@ -262,7 +264,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `POST /v1/admin/sites/{siteId}/disable` — Disable site (admin)
   - Expected 200: `{"address": {}, "code": "HQ-01", "created_at": "2026-04-01T00:00:00.000000000Z", "id": "aaaaaaaa-bbbb-cccc-dddd-11111111`
 
-### 10_Machines
+### Machines
 
 - `GET /v1/admin/commands` — List machine commands (admin)
   - Expected 200: `{"items": [{"attemptCount": 1, "commandId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", "commandType": "SET_TEMPERATURE", "c`
@@ -373,7 +375,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /v1/operator-insights/users/action-attributions` — List action attributions for a user principal
   - Expected 200: `{"items": [], "meta": {"limit": 50, "returned": 0}}`
 
-### 11_Machine_Provisioning
+### Machine Provisioning
 
 - `GET /v1/admin/activation-codes` — List activation codes across machines (admin catalog)
   - Expected 200: `{"items": [{"activationCodeId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", "createdAt": "2026-04-29T00:00:00Z", "expiresAt"`
@@ -395,7 +397,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /v1/setup/machines/{machineId}/bootstrap` — Machine setup bootstrap (topology + catalog)
   - Expected 200: `{"catalog": {"products": [{"assortmentId": "dddddddd-eeee-ffff-0000-111111111111", "assortmentName": "Standard", "name":`
 
-### 12_Machine_Runtime_Config
+### Machine Runtime Config
 
 - `POST /v1/admin/machines/{machineId}/rotate-credential` — Rotate machine credential (admin)
   - Expected 200: `{"command_sequence": 0, "created_at": "2026-04-01T00:00:00.000000000Z", "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "n`
@@ -409,7 +411,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /v1/machines/{machineId}/shadow` — Get machine shadow JSON
   - Expected 200: `{"desired": {"temperature_c": 4.0}, "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "metadata": {"version": 12}, "`
 
-### 13_Telemetry
+### Telemetry
 
 - `POST /v1/device/machines/{machineId}/commands/poll` — Poll pending remote commands over HTTP (MQTT fallback)
   - Request: `{"limit": 10}`
@@ -432,7 +434,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /v1/machines/{machineId}/telemetry/snapshot` — Current machine telemetry snapshot (projected)
   - Expected 200: `{"androidId": "dev123", "appVersion": "1.2.3", "deviceModel": "Pixel", "effectiveTimezone": "America/Los_Angeles", "firm`
 
-### 14_Inventory
+### Inventory
 
 - `GET /v1/admin/inventory/anomalies` — List inventory anomalies (ledger-backed)
   - Expected 200: `{"items": [{"anomalyType": "negative_stock", "createdAt": "2026-04-29T12:00:00.000000000Z", "detectedAt": "2026-04-29T12`
@@ -466,7 +468,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /v1/reports/inventory-exceptions` — Slots needing refill or restock attention
   - Expected 200: `{"exceptionKind": "low_stock", "from": "2026-04-01T00:00:00.000000000Z", "items": [], "meta": {"limit": 50, "offset": 0,`
 
-### 15_Planogram_Assortment
+### Planogram Assortment
 
 - `PUT /v1/admin/machines/{machineId}/planograms/draft` — Save draft cabinet slot planogram assignments
   - Request: `{"items": [{"cabinetCode": "A", "layoutKey": "grid-4x6", "layoutRevision": 1, "legacySlotIndex": 3, "maxQuantity": 12, "`
@@ -482,7 +484,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /v1/admin/planograms/{planogramId}` — Get planogram detail with slots
   - Expected 200: `{"planogram": {"createdAt": "2026-04-01T00:00:00Z", "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff", "name": "Lobby spring"`
 
-### 16_Orders
+### Orders
 
 - `GET /v1/admin/commerce/reconciliation` — List commerce reconciliation cases
   - Expected 200: `{"items": [{"caseType": "payment_paid_vend_failed", "firstDetectedAt": "2026-04-19T12:10:00Z", "id": "99999999-8888-7777`
@@ -529,7 +531,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /v1/payments` — List payments for company
   - Expected 200: `{"items": [{"amountMinor": 100, "createdAt": "2026-04-19T12:04:00Z", "currency": "USD", "machineId": "7c9e6679-7425-40de`
 
-### 17_Payments
+### Payments
 
 - `GET /v1/admin/machines/{machineId}/cash-collections` — List cash collections for machine
   - Expected 200: `{"items": [{"close_request_hash_hex": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "closed_at": "`
@@ -554,7 +556,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /v1/reports/payments-summary` — Payment outcomes and method/status breakdown
   - Expected 200: `{"breakdown": [], "from": "2026-04-01T00:00:00Z", "groupBy": "day", "summary": {"authorizedAmountMinor": 10200, "authori`
 
-### 18_Refunds_Disputes
+### Refunds Disputes
 
 - `POST /v1/admin/orders/{orderId}/refunds` — Create refund request + ledger refund (admin scoped)
   - Request: `{"amountMinor": 100, "reason": "customer courtesy"}`
@@ -576,7 +578,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
   - Request: `{"failure_reason": "motor_timeout", "slot_index": 3}`
   - Expected 200: `{"local_cash_refund_required": false, "order_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "order_status": "failed", "ref`
 
-### 19_Promotions_PriceBooks
+### Promotions PriceBooks
 
 - `GET /v1/admin/price-books` — List price books (admin catalog)
   - Expected 200: `{"items": [{"active": true, "createdAt": "2026-01-01T00:00:00Z", "currency": "USD", "effectiveFrom": "2026-01-01T00:00:0`
@@ -636,7 +638,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `DELETE /v1/admin/promotions/{promotionId}/targets/{targetId}` — Remove a promotion target assignment
   - Expected 204: `""`
 
-### 20_Finance_Reconciliation
+### Finance Reconciliation
 
 - `GET /v1/admin/finance/daily-close` — List finance daily closes
   - Expected 200: `{"items": [{"cashMinor": 60000, "closeDate": "2026-04-27", "createdAt": "2026-04-27T18:00:00.000000000Z", "discountMinor`
@@ -670,7 +672,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `GET /v1/reports/sales-summary` — Sales rollup and trend breakdown
   - Expected 200: `{"breakdown": [], "from": "2026-04-01T00:00:00Z", "groupBy": "day", "summary": {"avgOrderValueMinor": 200, "grossTotalMi`
 
-### 21_Incidents_Diagnostics
+### Incidents Diagnostics
 
 - `GET /v1/admin/anomalies` — List operational anomalies
   - Expected 200: `{"items": [{"anomalyType": "machine_offline_too_long", "createdAt": "2026-04-29T12:00:00.000000000Z", "detectedAt": "202`
@@ -685,7 +687,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `POST /v1/admin/machines/{machineId}/diagnostics/requests` — Request machine diagnostic bundle
   - Expected 202: `{"commandId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "dispatchState": "published", "machineId": "7c9e6679-7425-40de-944`
 
-### 22_OTA_Rollout
+### OTA Rollout
 
 - `GET /v1/admin/machine-config/rollouts` — List machine config rollouts
   - Expected 200: `{"items": [{"createdAt": "2026-04-19T12:00:00.000000000Z", "id": "77777777-8888-9999-aaaa-bbbbbbbbbbbb", "scopeType": "c`
@@ -746,14 +748,14 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 - `POST /v1/admin/rollouts/{rolloutId}/start` — Start rollout
   - Expected 200: `{"campaign": {"createdAt": "2026-04-29T12:00:00.000000000Z", "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "rolloutType"`
 
-### 23_Audit_Logs
+### Audit Logs
 
 - `GET /v1/admin/audit/events` — List enterprise audit events
   - Expected 200: `{"items": [{"action": "catalog.product.update", "actorId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff", "actorType": "user", `
 - `GET /v1/admin/audit/events/{auditEventId}` — Get one enterprise audit event by id
   - Expected 200: `{"id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"}`
 
-### 99_Utilities
+### Utilities
 
 - `GET /v1/admin/artifacts` — List artifacts
   - Expected 200: `{"items": [], "meta": {"limit": 50, "offset": 0, "returned": 0, "totalCount": 0}}`
@@ -875,7 +877,7 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 
 gRPC items are **manual test folders** under each domain's `gRPC` subfolder.
 
-### 01_Auth
+### Auth
 
 - `/avf.machine.v1.MachineAuthService/ActivateMachine` — metadata: Bearer token + x-request-id
   - Request: `{"claim": {}}`
@@ -886,7 +888,7 @@ gRPC items are **manual test folders** under each domain's `gRPC` subfolder.
 - `/avf.machine.v1.MachineTokenService/RefreshMachineToken` — metadata: Bearer token + x-request-id
   - Request: `{"refresh_token": ""}`
 
-### 03_Catalog
+### Catalog
 
 - `/avf.internal.v1.InternalCatalogQueryService/GetSaleCatalogSnapshot` — metadata: Bearer token + x-request-id
   - Request: `{"machine_id": "{{machineId}}", "include_unavailable": false, "include_images": false, "if_none_matc`
@@ -905,7 +907,7 @@ gRPC items are **manual test folders** under each domain's `gRPC` subfolder.
 - `/avf.machine.v1.MachineCatalogService/SyncSaleCatalog` — metadata: Bearer token + x-request-id
   - Request: `{"meta": {}, "machine_id": "{{machineId}}", "include_unavailable": false, "include_images": false, "`
 
-### 07_Product_Media
+### Product Media
 
 - `/avf.machine.v1.MachineMediaService/AckMediaVersion` — metadata: Bearer token + x-request-id
   - Request: `{"meta": {}, "acknowledged_media_fingerprint": ""}`
@@ -918,7 +920,7 @@ gRPC items are **manual test folders** under each domain's `gRPC` subfolder.
 - `/avf.machine.v1.MachineOfflineSyncService/PushOfflineEvents` — metadata: Bearer token + x-request-id
   - Request: `{"meta": {}, "events": []}`
 
-### 10_Machines
+### Machines
 
 - `/avf.internal.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary` — metadata: Bearer token + x-request-id
   - Request: `{"machine_id": "{{machineId}}"}`
@@ -953,7 +955,7 @@ gRPC items are **manual test folders** under each domain's `gRPC` subfolder.
 - `/avf.machine.v1.MachineOperatorService/SubmitStockAdjustment` — metadata: Bearer token + x-request-id
   - Request: `{"adjustment": {}}`
 
-### 11_Machine_Provisioning
+### Machine Provisioning
 
 - `/avf.machine.v1.MachineActivationService/ClaimActivation` — metadata: Bearer token + x-request-id
   - Request: `{"activation_code": "", "device_fingerprint": {}}`
@@ -966,7 +968,7 @@ gRPC items are **manual test folders** under each domain's `gRPC` subfolder.
 - `/avf.machine.v1.MachineBootstrapService/GetBootstrap` — metadata: Bearer token + x-request-id
   - Request: `{"meta": {}}`
 
-### 13_Telemetry
+### Telemetry
 
 - `/avf.internal.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry` — metadata: Bearer token + x-request-id
   - Request: `{"machine_id": "{{machineId}}"}`
@@ -983,7 +985,7 @@ gRPC items are **manual test folders** under each domain's `gRPC` subfolder.
 - `/avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch` — metadata: Bearer token + x-request-id
   - Request: `{"context": {}, "events": []}`
 
-### 14_Inventory
+### Inventory
 
 - `/avf.internal.v1.InternalInventoryQueryService/GetMachineSlotInventory` — metadata: Bearer token + x-request-id
   - Request: `{"machine_id": "{{machineId}}"}`
@@ -1008,7 +1010,7 @@ gRPC items are **manual test folders** under each domain's `gRPC` subfolder.
 - `/avf.machine.v1.MachineInventoryService/SubmitStockSnapshot` — metadata: Bearer token + x-request-id
   - Request: `{"context": {}, "lines": []}`
 
-### 16_Orders
+### Orders
 
 - `/avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState` — metadata: Bearer token + x-request-id
   - Request: `{"order_id": "{{$guid}}", "slot_index": 0}`
@@ -1051,24 +1053,24 @@ gRPC items are **manual test folders** under each domain's `gRPC` subfolder.
 - `/avf.machine.v1.MachineSaleService/StartVend` — metadata: Bearer token + x-request-id
   - Request: `{"context": {}, "order_id": "{{$guid}}", "slot_index": 0}`
 
-### 17_Payments
+### Payments
 
 - `/avf.internal.v1.InternalPaymentQueryService/GetLatestPaymentForOrder` — metadata: Bearer token + x-request-id
   - Request: `{"order_id": "{{$guid}}"}`
 - `/avf.internal.v1.InternalPaymentQueryService/GetPaymentById` — metadata: Bearer token + x-request-id
   - Request: `{"payment_id": "{{$guid}}"}`
 
-### 20_Finance_Reconciliation
+### Finance Reconciliation
 
 - `/avf.internal.v1.InternalReportingQueryService/GetSalesSummary` — metadata: Bearer token + x-request-id
   - Request: `{"from_rfc3339": "", "to_rfc3339": "", "group_by": ""}`
 
-### 21_Incidents_Diagnostics
+### Incidents Diagnostics
 
 - `/avf.internal.v1.InternalTelemetryQueryService/GetMachineIncidentSummary` — metadata: Bearer token + x-request-id
   - Request: `{"machine_id": "{{machineId}}", "limit": 0}`
 
-### 99_Utilities
+### Utilities
 
 - `/avf.v1.InternalCommerceQueryService/GetOrderPaymentVendState` — metadata: Bearer token + x-request-id
   - Request: `{"order_id": "{{$guid}}", "slot_index": 0}`
@@ -1089,7 +1091,7 @@ gRPC items are **manual test folders** under each domain's `gRPC` subfolder.
 
 MQTT items are **manual test folders** under each domain's `MQTT` subfolder.
 
-### 10_Machines
+### Machines
 
 - `{{mqttTopicPrefix}}/+/presence` (publish)
 - `{{mqttTopicPrefix}}/+/state/heartbeat` (publish)
@@ -1103,14 +1105,14 @@ MQTT items are **manual test folders** under each domain's `MQTT` subfolder.
 - `{{mqttTopicPrefix}}/{{machineId}}/commands/down` (publish)
 - `{{mqttTopicPrefix}}/machines/{{machineId}}/commands` (publish)
 
-### 12_Machine_Runtime_Config
+### Machine Runtime Config
 
 - `{{mqttTopicPrefix}}/+/shadow/reported` (publish)
 - `{{mqttTopicPrefix}}/+/shadow/desired` (publish)
 - `{{mqttTopicPrefix}}/machines/+/shadow/reported` (publish)
 - `{{mqttTopicPrefix}}/machines/+/shadow/desired` (publish)
 
-### 13_Telemetry
+### Telemetry
 
 - `{{mqttTopicPrefix}}/+/telemetry` (publish)
 - `{{mqttTopicPrefix}}/+/telemetry/snapshot` (publish)
@@ -1120,12 +1122,12 @@ MQTT items are **manual test folders** under each domain's `MQTT` subfolder.
 - `{{mqttTopicPrefix}}/machines/+/telemetry/incident` (publish)
 - `{{mqttTopicPrefix}}/machines/+/events` (publish)
 
-### 14_Inventory
+### Inventory
 
 - `{{mqttTopicPrefix}}/+/events/inventory` (publish)
 - `{{mqttTopicPrefix}}/machines/+/events/inventory` (publish)
 
-### 16_Orders
+### Orders
 
 - `{{mqttTopicPrefix}}/+/events/vend` (publish)
 - `{{mqttTopicPrefix}}/+/events/cash` (publish)
@@ -1136,7 +1138,7 @@ MQTT items are **manual test folders** under each domain's `MQTT` subfolder.
 
 After verifying each module individually, run these business flows in order:
 
-1. **Health/System** — `00_Health_System/REST` health/live, health/ready, version
+1. **Health/System** — `Health System/REST` health/live, health/ready, version
 2. **Auth** — login → capture accessToken → me → refresh
 3. **Admin/RBAC** — companies, users, roles (canary only for writes)
 4. **Catalog** — brands → categories → tags
@@ -1193,6 +1195,34 @@ Request/response schema issues: 0 (derived from OpenAPI/proto/MQTT matrix)
 - **MQTT no ACK:** Subscribe to ack topic before publishing command
 - **Optional query params:** Disabled by default in collection; enable in Postman URL tab if needed
 
+
+
+## Why some requests have [GATED-WRITE]
+
+- `[GATED-WRITE]` marks requests that **write to production** or can cause side effects (create/update/delete, commands, rollouts, webhooks, MQTT publish, etc.).
+- Read-only **GET** / health / list / get requests do **not** use this marker.
+- **Login** and **refresh** are intentionally **not** gated — they are required to obtain tokens — but they still write audit/session records.
+- To run gated requests, set in the environment:
+  - `allowGatedWrites` = `true`
+  - `confirmProductionWrites` = `I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION`
+- Legacy flags `allow_destructive`, `canaryMode`, and `readiness` still unlock gated writes for backward compatibility.
+
+## Folder naming update
+
+Domain folders use **human-readable names** (no numeric prefixes). Examples: `Health System`, `Auth`, `Machine Runtime Config`.
+
+
+
+## Validation summary
+
+- JSON parse: PASS
+- Folder naming: PASS (no `NN_` prefixes)
+- REST request/response audit: PASS
+- gRPC request/response audit: PASS
+- MQTT request/response audit: PASS
+- GATED-WRITE audit: PASS
+- Secret scan: PASS
+
 ## 12. Final verdict
 
-**COMPLETE_WITH_POSTMAN_GRPC_MQTT_MANUAL_STEPS**
+**PRODUCTION_SUITE_FOLDER_NAMES_CLEANED_AND_VERIFIED**
