@@ -3,14 +3,16 @@
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 CREATE OR REPLACE FUNCTION public.uuid_generate_v7()
 RETURNS uuid
 LANGUAGE plpgsql
 VOLATILE
 PARALLEL SAFE
-SET search_path = public, pg_temp
+SET search_path = public, extensions, pg_temp
 AS $$
 DECLARE
     unix_ts_ms bytea;
@@ -20,7 +22,7 @@ BEGIN
         int8send(floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint)
         FROM 3 FOR 6
     );
-    uuid_bytes := unix_ts_ms || gen_random_bytes(10);
+    uuid_bytes := unix_ts_ms || extensions.gen_random_bytes(10);
     uuid_bytes := set_byte(uuid_bytes, 6, (get_byte(uuid_bytes, 6) & 15) | 112);
     uuid_bytes := set_byte(uuid_bytes, 8, (get_byte(uuid_bytes, 8) & 63) | 128);
     RETURN encode(uuid_bytes, 'hex')::uuid;
