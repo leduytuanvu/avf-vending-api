@@ -1033,7 +1033,7 @@ jobs:
           target="${SSH_USER}@${STAGING_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-            "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && bash 'scripts/deploy/smoke_staging.sh'"
+            "cd '${STAGING_DEPLOY_ROOT}/deployments/staging' && bash 'scripts/smoke_staging.sh'"
 
       - name: Post-deploy smoke test (runner, evidence + step summary)
         id: smoke_post_deploy

@@ -279,7 +279,7 @@ jobs:
           bash -n deployments/prod/shared/scripts/check_restore_readiness.sh
           bash -n deployments/staging/scripts/deploy_staging.sh
           bash -n deployments/staging/scripts/healthcheck_staging.sh
-          bash -n deployments/staging/scripts/deploy/smoke_staging.sh
+          bash -n deployments/staging/scripts/smoke_staging.sh
 
   legacy-prod-asset-contract:
     name: Legacy Production Asset Contract

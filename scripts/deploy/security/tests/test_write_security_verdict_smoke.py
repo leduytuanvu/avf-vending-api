@@ -8,9 +8,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[4]
 VERDICT = REPO / "security-reports" / "security-verdict.json"
-WRITER = REPO / "scripts" / "security" / "write_security_verdict.py"
+WRITER = REPO / "scripts" / "deploy" / "security" / "write_security_verdict.py"
 
 
 def _run(
