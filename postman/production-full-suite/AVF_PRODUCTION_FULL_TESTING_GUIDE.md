@@ -1,6 +1,6 @@
 # AVF Production Full API Testing Guide
 
-Generated: 2026-05-20T08:36:45.706860+00:00
+Generated: 2026-05-20T08:37:41.525090+00:00
 
 ## 1. Generated files
 
@@ -397,6 +397,12 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 
 ### 12_Machine_Runtime_Config
 
+- `POST /v1/admin/machines/{machineId}/rotate-credential` — Rotate machine credential (admin)
+  - Expected 200: `{"command_sequence": 0, "created_at": "2026-04-01T00:00:00.000000000Z", "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "n`
+- `POST /v1/admin/machines/{machineId}/rotate-credentials` — Rotate machine credential (plural alias)
+  - Expected 200: `{"command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "credential_version": 2, "id": "7c9e6679-7425-40de-944b-e0`
+- `POST /v1/admin/machines/{machineId}/rotate-token-version` — Bump credential version / rotate token (admin)
+  - Expected 200: `{"command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "credential_version": 2, "id": "7c9e6679-7425-40de-944b-e0`
 - `POST /v1/machines/{machineId}/config-applies` — Acknowledge config applied on device
   - Request: `{"android_id": "device-android-1", "app_version": "1.0.0", "applied_at": "2026-04-19T12:05:00Z", "config_payload": {"app`
   - Expected 201: `{"applied_at": "2026-04-19T12:05:00.000000000Z", "config_revision": 7, "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "ma`
@@ -666,6 +672,14 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 
 ### 21_Incidents_Diagnostics
 
+- `GET /v1/admin/anomalies` — List operational anomalies
+  - Expected 200: `{"items": [{"anomalyType": "machine_offline_too_long", "createdAt": "2026-04-29T12:00:00.000000000Z", "detectedAt": "202`
+- `GET /v1/admin/anomalies/{anomalyId}` — Get operational anomaly
+  - Expected 200: `{"anomalyType": "repeated_vend_failure", "createdAt": "2026-04-29T12:00:00.000000000Z", "detectedAt": "2026-04-29T12:00:`
+- `POST /v1/admin/anomalies/{anomalyId}/ignore` — Ignore operational anomaly
+  - Expected 200: `{"anomalyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "status": "ignored"}`
+- `POST /v1/admin/anomalies/{anomalyId}/resolve` — Resolve operational anomaly
+  - Expected 200: `{"anomalyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "status": "resolved"}`
 - `GET /v1/admin/machines/{machineId}/diagnostics/bundles` — List machine diagnostic bundles
   - Expected 200: `{"items": [{"bundleId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "commandId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "co`
 - `POST /v1/admin/machines/{machineId}/diagnostics/requests` — Request machine diagnostic bundle
@@ -680,12 +694,6 @@ Grouped by **module/domain** folders in the collection (not by business flow).
   - Expected 201: `{"createdAt": "2026-04-19T12:00:00.000000000Z", "id": "77777777-8888-9999-aaaa-bbbbbbbbbbbb", "scopeType": "company", "s`
 - `GET /v1/admin/machine-config/rollouts/{rolloutId}` — Get one machine config rollout
   - Expected 200: `{"createdAt": "2026-04-19T12:00:00.000000000Z", "id": "77777777-8888-9999-aaaa-bbbbbbbbbbbb", "scopeType": "company", "s`
-- `POST /v1/admin/machines/{machineId}/rotate-credential` — Rotate machine credential (admin)
-  - Expected 200: `{"command_sequence": 0, "created_at": "2026-04-01T00:00:00.000000000Z", "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "n`
-- `POST /v1/admin/machines/{machineId}/rotate-credentials` — Rotate machine credential (plural alias)
-  - Expected 200: `{"command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "credential_version": 2, "id": "7c9e6679-7425-40de-944b-e0`
-- `POST /v1/admin/machines/{machineId}/rotate-token-version` — Bump credential version / rotate token (admin)
-  - Expected 200: `{"command_sequence": 0, "created_at": "2026-04-29T00:00:00Z", "credential_version": 2, "id": "7c9e6679-7425-40de-944b-e0`
 - `GET /v1/admin/ota` — List OTA campaigns (admin)
   - Expected 200: `{"items": [{"artifactId": "dddddddd-eeee-ffff-0000-333333333333", "artifactStorageKey": "org/acme/ota/fw.bin", "campaign`
 - `GET /v1/admin/ota/campaigns` — List OTA campaigns (lifecycle admin)
@@ -747,14 +755,6 @@ Grouped by **module/domain** folders in the collection (not by business flow).
 
 ### 99_Utilities
 
-- `GET /v1/admin/anomalies` — List operational anomalies
-  - Expected 200: `{"items": [{"anomalyType": "machine_offline_too_long", "createdAt": "2026-04-29T12:00:00.000000000Z", "detectedAt": "202`
-- `GET /v1/admin/anomalies/{anomalyId}` — Get operational anomaly
-  - Expected 200: `{"anomalyType": "repeated_vend_failure", "createdAt": "2026-04-29T12:00:00.000000000Z", "detectedAt": "2026-04-29T12:00:`
-- `POST /v1/admin/anomalies/{anomalyId}/ignore` — Ignore operational anomaly
-  - Expected 200: `{"anomalyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "status": "ignored"}`
-- `POST /v1/admin/anomalies/{anomalyId}/resolve` — Resolve operational anomaly
-  - Expected 200: `{"anomalyId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "status": "resolved"}`
 - `GET /v1/admin/artifacts` — List artifacts
   - Expected 200: `{"items": [], "meta": {"limit": 50, "offset": 0, "returned": 0, "totalCount": 0}}`
 - `POST /v1/admin/artifacts` — Reserve artifact id

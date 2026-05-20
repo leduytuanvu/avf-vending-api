@@ -15271,6 +15271,290 @@
           "description": "HTTP requests from OpenAPI",
           "item": [
             {
+              "name": "[GATED] POST /v1/admin/machines/{machineId}/rotate-credential",
+              "description": "openapiOperationId: DocOpV1AdminMachineRotateCredential",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Request-ID",
+                    "value": "{{requestId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Correlation-ID",
+                    "value": "{{correlationId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/rotate-credential",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "machines",
+                    "{{machineId}}",
+                    "rotate-credential"
+                  ]
+                },
+                "description": "**Purpose:** Rotate machine credential (admin)\n\n**Auth:** bearer\n\n**Domain:** 12_Machine_Runtime_Config\n\n**Source:** docs/swagger/swagger.json, openapi:POST /v1/admin/machines/{machineId}/rotate-credential"
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "200",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"command_sequence\": 0,\n  \"created_at\": \"2026-04-01T00:00:00.000000000Z\",\n  \"id\": \"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n  \"name\": \"New unit\",\n  \"serial_number\": \"SN-NEW\",\n  \"site_id\": \"aaaaaaaa-bbbb-cccc-dddd-111111111111\",\n  \"status\": \"provisioning\",\n  \"updated_at\": \"2026-04-01T00:00:00.000000000Z\"\n}"
+                },
+                {
+                  "name": "400 OK",
+                  "status": "400",
+                  "code": 400,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"error\": {\n    \"code\": \"invalid_request\",\n    \"details\": {},\n    \"message\": \"request could not be validated\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
+                },
+                {
+                  "name": "401 OK",
+                  "status": "401",
+                  "code": 401,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"error\": {\n    \"code\": \"unauthenticated\",\n    \"details\": {},\n    \"message\": \"missing or invalid bearer token\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
+                }
+              ],
+              "disabled": true,
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
+                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
+                      "  pm.test('JSON parse', () => pm.response.json());",
+                      "}",
+                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
+                      "  const j = pm.response.json();",
+                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
+                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
+                      "}",
+                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
+                      "  const j = pm.response.json();",
+                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
+                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
+                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
+                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
+                      "} catch(e){} }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[GATED] POST /v1/admin/machines/{machineId}/rotate-credentials",
+              "description": "openapiOperationId: DocOpV1AdminMachineRotateCredentials",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Request-ID",
+                    "value": "{{requestId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Correlation-ID",
+                    "value": "{{correlationId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/rotate-credentials",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "machines",
+                    "{{machineId}}",
+                    "rotate-credentials"
+                  ]
+                },
+                "description": "**Purpose:** Rotate machine credential (plural alias)\n\n**Auth:** bearer\n\n**Domain:** 12_Machine_Runtime_Config\n\n**Source:** docs/swagger/swagger.json, openapi:POST /v1/admin/machines/{machineId}/rotate-credentials"
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "200",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"command_sequence\": 0,\n  \"created_at\": \"2026-04-29T00:00:00Z\",\n  \"credential_version\": 2,\n  \"id\": \"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n  \"name\": \"Lobby A\",\n  \"rotated_at\": \"2026-04-29T00:05:00Z\",\n  \"serial_number\": \"SN-001\",\n  \"site_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"status\": \"active\",\n  \"updated_at\": \"2026-04-29T00:05:00Z\"\n}"
+                }
+              ],
+              "disabled": true,
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
+                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
+                      "  pm.test('JSON parse', () => pm.response.json());",
+                      "}",
+                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
+                      "  const j = pm.response.json();",
+                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
+                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
+                      "}",
+                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
+                      "  const j = pm.response.json();",
+                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
+                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
+                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
+                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
+                      "} catch(e){} }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[GATED] POST /v1/admin/machines/{machineId}/rotate-token-version",
+              "description": "openapiOperationId: DocOpV1AdminMachineRotateTokenVersion",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Request-ID",
+                    "value": "{{requestId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Correlation-ID",
+                    "value": "{{correlationId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/rotate-token-version",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "machines",
+                    "{{machineId}}",
+                    "rotate-token-version"
+                  ]
+                },
+                "description": "**Purpose:** Bump credential version / rotate token (admin)\n\n**Auth:** bearer\n\n**Domain:** 12_Machine_Runtime_Config\n\n**Source:** docs/swagger/swagger.json, openapi:POST /v1/admin/machines/{machineId}/rotate-token-version"
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "200",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"command_sequence\": 0,\n  \"created_at\": \"2026-04-29T00:00:00Z\",\n  \"credential_version\": 2,\n  \"id\": \"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n  \"name\": \"Lobby A\",\n  \"rotated_at\": \"2026-04-29T00:05:00Z\",\n  \"serial_number\": \"SN-001\",\n  \"site_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"status\": \"active\",\n  \"updated_at\": \"2026-04-29T00:05:00Z\"\n}"
+                }
+              ],
+              "disabled": true,
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
+                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
+                      "  pm.test('JSON parse', () => pm.response.json());",
+                      "}",
+                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
+                      "  const j = pm.response.json();",
+                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
+                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
+                      "}",
+                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
+                      "  const j = pm.response.json();",
+                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
+                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
+                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
+                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
+                      "} catch(e){} }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
               "name": "[GATED] POST /v1/machines/{machineId}/config-applies",
               "description": "openapiOperationId: DocOpV1MachineConfigApply",
               "request": {
@@ -28720,6 +29004,357 @@
           "description": "HTTP requests from OpenAPI",
           "item": [
             {
+              "name": "GET /v1/admin/anomalies",
+              "description": "openapiOperationId: DocOpV1AdminOperationalAnomaliesList",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Request-ID",
+                    "value": "{{requestId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Correlation-ID",
+                    "value": "{{correlationId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/anomalies",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "anomalies"
+                  ]
+                },
+                "description": "**Purpose:** List operational anomalies\n\n**Auth:** bearer\n\n**Domain:** 21_Incidents_Diagnostics\n\n**Source:** docs/swagger/swagger.json, openapi:GET /v1/admin/anomalies"
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "200",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"items\": [\n    {\n      \"anomalyType\": \"machine_offline_too_long\",\n      \"createdAt\": \"2026-04-29T12:00:00.000000000Z\",\n      \"detectedAt\": \"2026-04-29T12:00:00.000000000Z\",\n      \"fingerprint\": \"offline_long|7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n      \"id\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n      \"machineId\": \"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n      \"machineName\": \"Lobby A\",\n      \"machineSerialNumber\": \"SN-001\",\n      \"payload\": {\n        \"last_seen_at\": \"2026-04-29T08:00:00Z\",\n        \"threshold\": \"2 hours\"\n      },\n      \"status\": \"open\",\n      \"updatedAt\": \"2026-04-29T12:00:00.000000000Z\"\n    }\n  ]\n}"
+                }
+              ],
+              "disabled": false,
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
+                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
+                      "  pm.test('JSON parse', () => pm.response.json());",
+                      "}",
+                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
+                      "  const j = pm.response.json();",
+                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
+                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
+                      "}",
+                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
+                      "  const j = pm.response.json();",
+                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
+                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
+                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
+                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
+                      "} catch(e){} }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /v1/admin/anomalies/{anomalyId}",
+              "description": "openapiOperationId: DocOpV1AdminOperationalAnomalyGet",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Request-ID",
+                    "value": "{{requestId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Correlation-ID",
+                    "value": "{{correlationId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/anomalies/{{anomalyId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "anomalies",
+                    "{{anomalyId}}"
+                  ]
+                },
+                "description": "**Purpose:** Get operational anomaly\n\n**Auth:** bearer\n\n**Domain:** 21_Incidents_Diagnostics\n\n**Source:** docs/swagger/swagger.json, openapi:GET /v1/admin/anomalies/{anomalyId}"
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "200",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"anomalyType\": \"repeated_vend_failure\",\n  \"createdAt\": \"2026-04-29T12:00:00.000000000Z\",\n  \"detectedAt\": \"2026-04-29T12:00:00.000000000Z\",\n  \"fingerprint\": \"repeated_vend_failure|7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n  \"id\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n  \"machineId\": \"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n  \"machineName\": \"Lobby A\",\n  \"machineSerialNumber\": \"SN-001\",\n  \"payload\": {\n    \"failed_vend_count_24h\": 4\n  },\n  \"status\": \"open\",\n  \"updatedAt\": \"2026-04-29T12:00:00.000000000Z\"\n}"
+                }
+              ],
+              "disabled": false,
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
+                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
+                      "  pm.test('JSON parse', () => pm.response.json());",
+                      "}",
+                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
+                      "  const j = pm.response.json();",
+                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
+                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
+                      "}",
+                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
+                      "  const j = pm.response.json();",
+                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
+                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
+                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
+                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
+                      "} catch(e){} }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[GATED] POST /v1/admin/anomalies/{anomalyId}/ignore",
+              "description": "openapiOperationId: DocOpV1AdminOperationalAnomalyIgnore",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Request-ID",
+                    "value": "{{requestId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Correlation-ID",
+                    "value": "{{correlationId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{idempotencyKey}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/anomalies/{{anomalyId}}/ignore",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "anomalies",
+                    "{{anomalyId}}",
+                    "ignore"
+                  ]
+                },
+                "description": "**Purpose:** Ignore operational anomaly\n\n**Auth:** bearer\n\n**Domain:** 21_Incidents_Diagnostics\n\n**Source:** docs/swagger/swagger.json, openapi:POST /v1/admin/anomalies/{anomalyId}/ignore"
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "200",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"anomalyId\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n  \"status\": \"ignored\"\n}"
+                }
+              ],
+              "disabled": true,
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
+                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
+                      "  pm.test('JSON parse', () => pm.response.json());",
+                      "}",
+                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
+                      "  const j = pm.response.json();",
+                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
+                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
+                      "}",
+                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
+                      "  const j = pm.response.json();",
+                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
+                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
+                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
+                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
+                      "} catch(e){} }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "[GATED] POST /v1/admin/anomalies/{anomalyId}/resolve",
+              "description": "openapiOperationId: DocOpV1AdminOperationalAnomalyResolve",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Request-ID",
+                    "value": "{{requestId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "X-Correlation-ID",
+                    "value": "{{correlationId}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{idempotencyKey}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/anomalies/{{anomalyId}}/resolve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "anomalies",
+                    "{{anomalyId}}",
+                    "resolve"
+                  ]
+                },
+                "description": "**Purpose:** Resolve operational anomaly\n\n**Auth:** bearer\n\n**Domain:** 21_Incidents_Diagnostics\n\n**Source:** docs/swagger/swagger.json, openapi:POST /v1/admin/anomalies/{anomalyId}/resolve"
+              },
+              "response": [
+                {
+                  "name": "200 OK",
+                  "status": "200",
+                  "code": 200,
+                  "_postman_previewlanguage": "json",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"anomalyId\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n  \"status\": \"resolved\"\n}"
+                }
+              ],
+              "disabled": true,
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
+                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
+                      "  pm.test('JSON parse', () => pm.response.json());",
+                      "}",
+                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
+                      "  const j = pm.response.json();",
+                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
+                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
+                      "}",
+                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
+                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
+                      "  const j = pm.response.json();",
+                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
+                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
+                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
+                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
+                      "} catch(e){} }"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
               "name": "GET /v1/admin/machines/{machineId}/diagnostics/bundles",
               "description": "openapiOperationId: DocOpV1AdminMachineDiagnosticBundlesList",
               "request": {
@@ -29321,290 +29956,6 @@
                 }
               ],
               "disabled": false,
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
-                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
-                      "  pm.test('JSON parse', () => pm.response.json());",
-                      "}",
-                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
-                      "  const j = pm.response.json();",
-                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
-                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
-                      "}",
-                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
-                      "  const j = pm.response.json();",
-                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
-                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
-                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
-                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
-                      "} catch(e){} }"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "[GATED] POST /v1/admin/machines/{machineId}/rotate-credential",
-              "description": "openapiOperationId: DocOpV1AdminMachineRotateCredential",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "X-Request-ID",
-                    "value": "{{requestId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "X-Correlation-ID",
-                    "value": "{{correlationId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Accept",
-                    "value": "application/json",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/rotate-credential",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "machines",
-                    "{{machineId}}",
-                    "rotate-credential"
-                  ]
-                },
-                "description": "**Purpose:** Rotate machine credential (admin)\n\n**Auth:** bearer\n\n**Domain:** 22_OTA_Rollout\n\n**Source:** docs/swagger/swagger.json, openapi:POST /v1/admin/machines/{machineId}/rotate-credential"
-              },
-              "response": [
-                {
-                  "name": "200 OK",
-                  "status": "200",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"command_sequence\": 0,\n  \"created_at\": \"2026-04-01T00:00:00.000000000Z\",\n  \"id\": \"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n  \"name\": \"New unit\",\n  \"serial_number\": \"SN-NEW\",\n  \"site_id\": \"aaaaaaaa-bbbb-cccc-dddd-111111111111\",\n  \"status\": \"provisioning\",\n  \"updated_at\": \"2026-04-01T00:00:00.000000000Z\"\n}"
-                },
-                {
-                  "name": "400 OK",
-                  "status": "400",
-                  "code": 400,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"error\": {\n    \"code\": \"invalid_request\",\n    \"details\": {},\n    \"message\": \"request could not be validated\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
-                },
-                {
-                  "name": "401 OK",
-                  "status": "401",
-                  "code": 401,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"error\": {\n    \"code\": \"unauthenticated\",\n    \"details\": {},\n    \"message\": \"missing or invalid bearer token\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
-                }
-              ],
-              "disabled": true,
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
-                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
-                      "  pm.test('JSON parse', () => pm.response.json());",
-                      "}",
-                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
-                      "  const j = pm.response.json();",
-                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
-                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
-                      "}",
-                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
-                      "  const j = pm.response.json();",
-                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
-                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
-                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
-                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
-                      "} catch(e){} }"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "[GATED] POST /v1/admin/machines/{machineId}/rotate-credentials",
-              "description": "openapiOperationId: DocOpV1AdminMachineRotateCredentials",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "X-Request-ID",
-                    "value": "{{requestId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "X-Correlation-ID",
-                    "value": "{{correlationId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Accept",
-                    "value": "application/json",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/rotate-credentials",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "machines",
-                    "{{machineId}}",
-                    "rotate-credentials"
-                  ]
-                },
-                "description": "**Purpose:** Rotate machine credential (plural alias)\n\n**Auth:** bearer\n\n**Domain:** 22_OTA_Rollout\n\n**Source:** docs/swagger/swagger.json, openapi:POST /v1/admin/machines/{machineId}/rotate-credentials"
-              },
-              "response": [
-                {
-                  "name": "200 OK",
-                  "status": "200",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"command_sequence\": 0,\n  \"created_at\": \"2026-04-29T00:00:00Z\",\n  \"credential_version\": 2,\n  \"id\": \"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n  \"name\": \"Lobby A\",\n  \"rotated_at\": \"2026-04-29T00:05:00Z\",\n  \"serial_number\": \"SN-001\",\n  \"site_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"status\": \"active\",\n  \"updated_at\": \"2026-04-29T00:05:00Z\"\n}"
-                }
-              ],
-              "disabled": true,
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
-                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
-                      "  pm.test('JSON parse', () => pm.response.json());",
-                      "}",
-                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
-                      "  const j = pm.response.json();",
-                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
-                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
-                      "}",
-                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
-                      "  const j = pm.response.json();",
-                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
-                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
-                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
-                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
-                      "} catch(e){} }"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "[GATED] POST /v1/admin/machines/{machineId}/rotate-token-version",
-              "description": "openapiOperationId: DocOpV1AdminMachineRotateTokenVersion",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "X-Request-ID",
-                    "value": "{{requestId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "X-Correlation-ID",
-                    "value": "{{correlationId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Accept",
-                    "value": "application/json",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/rotate-token-version",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "machines",
-                    "{{machineId}}",
-                    "rotate-token-version"
-                  ]
-                },
-                "description": "**Purpose:** Bump credential version / rotate token (admin)\n\n**Auth:** bearer\n\n**Domain:** 22_OTA_Rollout\n\n**Source:** docs/swagger/swagger.json, openapi:POST /v1/admin/machines/{machineId}/rotate-token-version"
-              },
-              "response": [
-                {
-                  "name": "200 OK",
-                  "status": "200",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"command_sequence\": 0,\n  \"created_at\": \"2026-04-29T00:00:00Z\",\n  \"credential_version\": 2,\n  \"id\": \"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n  \"name\": \"Lobby A\",\n  \"rotated_at\": \"2026-04-29T00:05:00Z\",\n  \"serial_number\": \"SN-001\",\n  \"site_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n  \"status\": \"active\",\n  \"updated_at\": \"2026-04-29T00:05:00Z\"\n}"
-                }
-              ],
-              "disabled": true,
               "event": [
                 {
                   "listen": "test",
@@ -32531,357 +32882,6 @@
           "name": "REST",
           "description": "HTTP requests from OpenAPI",
           "item": [
-            {
-              "name": "GET /v1/admin/anomalies",
-              "description": "openapiOperationId: DocOpV1AdminOperationalAnomaliesList",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "X-Request-ID",
-                    "value": "{{requestId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "X-Correlation-ID",
-                    "value": "{{correlationId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Accept",
-                    "value": "application/json",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/anomalies",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "anomalies"
-                  ]
-                },
-                "description": "**Purpose:** List operational anomalies\n\n**Auth:** bearer\n\n**Domain:** 99_Utilities\n\n**Source:** docs/swagger/swagger.json, openapi:GET /v1/admin/anomalies"
-              },
-              "response": [
-                {
-                  "name": "200 OK",
-                  "status": "200",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"items\": [\n    {\n      \"anomalyType\": \"machine_offline_too_long\",\n      \"createdAt\": \"2026-04-29T12:00:00.000000000Z\",\n      \"detectedAt\": \"2026-04-29T12:00:00.000000000Z\",\n      \"fingerprint\": \"offline_long|7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n      \"id\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n      \"machineId\": \"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n      \"machineName\": \"Lobby A\",\n      \"machineSerialNumber\": \"SN-001\",\n      \"payload\": {\n        \"last_seen_at\": \"2026-04-29T08:00:00Z\",\n        \"threshold\": \"2 hours\"\n      },\n      \"status\": \"open\",\n      \"updatedAt\": \"2026-04-29T12:00:00.000000000Z\"\n    }\n  ]\n}"
-                }
-              ],
-              "disabled": false,
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
-                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
-                      "  pm.test('JSON parse', () => pm.response.json());",
-                      "}",
-                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
-                      "  const j = pm.response.json();",
-                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
-                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
-                      "}",
-                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
-                      "  const j = pm.response.json();",
-                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
-                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
-                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
-                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
-                      "} catch(e){} }"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "GET /v1/admin/anomalies/{anomalyId}",
-              "description": "openapiOperationId: DocOpV1AdminOperationalAnomalyGet",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "X-Request-ID",
-                    "value": "{{requestId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "X-Correlation-ID",
-                    "value": "{{correlationId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Accept",
-                    "value": "application/json",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/anomalies/{{anomalyId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "anomalies",
-                    "{{anomalyId}}"
-                  ]
-                },
-                "description": "**Purpose:** Get operational anomaly\n\n**Auth:** bearer\n\n**Domain:** 99_Utilities\n\n**Source:** docs/swagger/swagger.json, openapi:GET /v1/admin/anomalies/{anomalyId}"
-              },
-              "response": [
-                {
-                  "name": "200 OK",
-                  "status": "200",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"anomalyType\": \"repeated_vend_failure\",\n  \"createdAt\": \"2026-04-29T12:00:00.000000000Z\",\n  \"detectedAt\": \"2026-04-29T12:00:00.000000000Z\",\n  \"fingerprint\": \"repeated_vend_failure|7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n  \"id\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n  \"machineId\": \"7c9e6679-7425-40de-944b-e07fc1f90ae7\",\n  \"machineName\": \"Lobby A\",\n  \"machineSerialNumber\": \"SN-001\",\n  \"payload\": {\n    \"failed_vend_count_24h\": 4\n  },\n  \"status\": \"open\",\n  \"updatedAt\": \"2026-04-29T12:00:00.000000000Z\"\n}"
-                }
-              ],
-              "disabled": false,
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
-                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
-                      "  pm.test('JSON parse', () => pm.response.json());",
-                      "}",
-                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
-                      "  const j = pm.response.json();",
-                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
-                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
-                      "}",
-                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
-                      "  const j = pm.response.json();",
-                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
-                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
-                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
-                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
-                      "} catch(e){} }"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "[GATED] POST /v1/admin/anomalies/{anomalyId}/ignore",
-              "description": "openapiOperationId: DocOpV1AdminOperationalAnomalyIgnore",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "X-Request-ID",
-                    "value": "{{requestId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "X-Correlation-ID",
-                    "value": "{{correlationId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Accept",
-                    "value": "application/json",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{idempotencyKey}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/anomalies/{{anomalyId}}/ignore",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "anomalies",
-                    "{{anomalyId}}",
-                    "ignore"
-                  ]
-                },
-                "description": "**Purpose:** Ignore operational anomaly\n\n**Auth:** bearer\n\n**Domain:** 99_Utilities\n\n**Source:** docs/swagger/swagger.json, openapi:POST /v1/admin/anomalies/{anomalyId}/ignore"
-              },
-              "response": [
-                {
-                  "name": "200 OK",
-                  "status": "200",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"anomalyId\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n  \"status\": \"ignored\"\n}"
-                }
-              ],
-              "disabled": true,
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
-                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
-                      "  pm.test('JSON parse', () => pm.response.json());",
-                      "}",
-                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
-                      "  const j = pm.response.json();",
-                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
-                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
-                      "}",
-                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
-                      "  const j = pm.response.json();",
-                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
-                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
-                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
-                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
-                      "} catch(e){} }"
-                    ]
-                  }
-                }
-              ]
-            },
-            {
-              "name": "[GATED] POST /v1/admin/anomalies/{anomalyId}/resolve",
-              "description": "openapiOperationId: DocOpV1AdminOperationalAnomalyResolve",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "X-Request-ID",
-                    "value": "{{requestId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "X-Correlation-ID",
-                    "value": "{{correlationId}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Accept",
-                    "value": "application/json",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{idempotencyKey}}",
-                    "type": "text"
-                  },
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}",
-                    "type": "text"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/anomalies/{{anomalyId}}/resolve",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "anomalies",
-                    "{{anomalyId}}",
-                    "resolve"
-                  ]
-                },
-                "description": "**Purpose:** Resolve operational anomaly\n\n**Auth:** bearer\n\n**Domain:** 99_Utilities\n\n**Source:** docs/swagger/swagger.json, openapi:POST /v1/admin/anomalies/{anomalyId}/resolve"
-              },
-              "response": [
-                {
-                  "name": "200 OK",
-                  "status": "200",
-                  "code": 200,
-                  "_postman_previewlanguage": "json",
-                  "header": [
-                    {
-                      "key": "Content-Type",
-                      "value": "application/json"
-                    }
-                  ],
-                  "body": "{\n  \"anomalyId\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n  \"status\": \"resolved\"\n}"
-                }
-              ],
-              "disabled": true,
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('Status not 500', () => pm.expect(pm.response.code).to.not.equal(500));",
-                      "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('json')) {",
-                      "  pm.test('JSON parse', () => pm.response.json());",
-                      "}",
-                      "if (pm.response.code === 200 && pm.request.url.path.join('/').includes('v1/auth/login')) {",
-                      "  const j = pm.response.json();",
-                      "  if (j.access_token) pm.environment.set('accessToken', j.access_token);",
-                      "  if (j.refresh_token) pm.environment.set('refreshToken', j.refresh_token);",
-                      "}",
-                      "const cap = (k,v)=>{ if(v) pm.environment.set(k,String(v)); };",
-                      "if (pm.response.code >= 200 && pm.response.code < 300) { try {",
-                      "  const j = pm.response.json();",
-                      "  cap('machineId', j.machine_id||j.machineId); cap('siteId', j.site_id||j.siteId);",
-                      "  cap('productId', j.product_id||j.productId); cap('orderId', j.order_id||j.orderId);",
-                      "  cap('brandId', j.brand_id||j.brandId); cap('categoryId', j.category_id||j.categoryId);",
-                      "  cap('tagId', j.tag_id||j.tagId); cap('commandId', j.command_id||j.commandId);",
-                      "} catch(e){} }"
-                    ]
-                  }
-                }
-              ]
-            },
             {
               "name": "GET /v1/admin/artifacts",
               "description": "openapiOperationId: DocOpV1AdminArtifactsList",
