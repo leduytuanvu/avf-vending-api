@@ -1,6 +1,6 @@
 # Backup evidence for production migrations
 
-Production deploys that run **goose `Up`** on the first app node (`run_migration: true` in **Deploy Production**) must record **verifiable** database backup information before the workflow reaches SSH, image pull, or remote migration.
+Production deploys that run **goose `Up`** on the first app node (`run_migration: true` in **Deploy Production**) run **inline `pg_dump` backup on the VPS** via `scripts/deploy/production-migrate.sh` before migration. Operators may optionally supply **supplementary** `backup_evidence_id` (pre-uploaded JSON artifact) for audit; it is **not** required when inline backup runs.
 
 The GitHub Actions workflow enforces this in the **Validate production deploy inputs** step (before **Gate production release before SSH**, migration policy checks, and any sync to hosts).
 
@@ -9,7 +9,7 @@ The GitHub Actions workflow enforces this in the **Validate production deploy in
 | Input | When required | Description |
 |-------|---------------|-------------|
 | `run_migration` | Every deploy (default `false`) | If `true`, the first app wave runs goose **Up** on the new goose image. If `false`, the rollout is **image-only** (no migration on the first node); backup evidence is not required. |
-| `backup_evidence_id` | `run_migration: true` | **Required** when `run_migration` is true: a traceable reference (snapshot id, S3 key, `host:/path` dump, GitHub artifact/run, change ticket, or similar) proving a backup or recovery path before migration. **Optional** for image-only deploys. |
+| `backup_evidence_id` | `run_migration: true` | **Optional** supplementary evidence (snapshot id, artifact run id, or `path:…`). **Not required** when deploy uses inline `pg_dump` via `production-migrate.sh` on app node A. Validated only when supplied. |
 
 ## What counts as acceptable evidence
 

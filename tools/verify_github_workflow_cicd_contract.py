@@ -453,10 +453,15 @@ def main() -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
-    if "backup_evidence_id is required when run_migration=true" not in text:
+    if "scripts/deploy/production-migrate.sh" not in text:
         print(
-            "ERROR: deploy-prod must fail validation when run_migration is true and backup_evidence_id is empty "
-            "(expected explicit operator-facing error).",
+            "ERROR: deploy-prod must invoke scripts/deploy/production-migrate.sh for inline pg_dump before goose up.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if "inline pg_dump runs on VPS via production-migrate.sh" not in text:
+        print(
+            "ERROR: deploy-prod must document inline pg_dump via production-migrate.sh when supplementary backup_evidence_id is unset.",
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -478,13 +483,6 @@ def main() -> None:
         print(
             "ERROR: deploy-prod run_migration default true requires scripts/deploy/production-migrate.sh "
             "(inline pg_dump before goose up).",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    if run_migration_inp.get("default") is False and "backup_evidence_id is required when run_migration=true" not in text:
-        print(
-            "ERROR: deploy-prod must fail validation when run_migration is true and backup_evidence_id is empty "
-            "(expected explicit operator-facing error).",
             file=sys.stderr,
         )
         raise SystemExit(1)
