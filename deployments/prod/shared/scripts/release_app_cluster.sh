@@ -90,13 +90,13 @@ run_local_smoke_gate() {
 			SMOKE_CONNECT_TO_HOST="${APP_NODE_SMOKE_CONNECT_TO_HOST:-${host}}" \
 			SMOKE_CONNECT_TO_PORT="${APP_NODE_SMOKE_CONNECT_TO_PORT:-}" \
 			SMOKE_LABEL="${smoke_label}" \
-			bash "${SMOKE_SCRIPT}" --json >"${smoke_json_file}"
+			run_script "${SMOKE_SCRIPT}" --json >"${smoke_json_file}"
 	else
 		SMOKE_JSON=0 \
 			SMOKE_CONNECT_TO_HOST="${APP_NODE_SMOKE_CONNECT_TO_HOST:-${host}}" \
 			SMOKE_CONNECT_TO_PORT="${APP_NODE_SMOKE_CONNECT_TO_PORT:-}" \
 			SMOKE_LABEL="${smoke_label}" \
-			bash "${SMOKE_SCRIPT}"
+			run_script "${SMOKE_SCRIPT}"
 	fi
 	append_release_evidence "app-node" "${host}" "smoke" "pass" "post-readiness blackbox smoke passed"
 }

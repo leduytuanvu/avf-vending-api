@@ -84,6 +84,13 @@ jobs:
           chmod +x scripts/ci/verify_workflow_contracts.sh
           bash scripts/ci/verify_workflow_contracts.sh
 
+      - name: Validate production deploy scripts and migration gate
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          chmod +x scripts/ci/validate-production-deploy.sh
+          bash scripts/ci/validate-production-deploy.sh
+
       - name: Lint workflow YAML with yamllint
         shell: bash
         run: |

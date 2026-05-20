@@ -46,7 +46,9 @@ fi
 if norm_bool "${VALIDATE_PRODUCTION_SCALE_STORM_GATE:-}"; then
 	_gate_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 	export ACTION_MODE="${ACTION_MODE:-deploy}"
-	if ! "${_gate_dir}/validate_production_scale_storm_gate.sh"; then
+	# shellcheck source=./lib_release.sh
+	source "${_gate_dir}/lib_release.sh"
+	if ! run_script "${_gate_dir}/validate_production_scale_storm_gate.sh"; then
 		echo "error: production scale storm gate failed (see validate_production_scale_storm_evidence.py)" >&2
 		exit 1
 	fi

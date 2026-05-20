@@ -109,6 +109,22 @@ require_file() {
 	[[ -f "${path}" ]] || fail "required file not found: ${path}"
 }
 
+# Invoke a nested shell script without relying on the executable bit (+x).
+run_script() {
+	local script="$1"
+	shift
+	if [[ ! -f "${script}" ]]; then
+		echo "error: script not found: ${script}" >&2
+		return 1
+	fi
+	if [[ ! -r "${script}" ]]; then
+		echo "error: script not readable: ${script}" >&2
+		ls -l "${script}" >&2 || true
+		return 1
+	fi
+	bash "${script}" "$@"
+}
+
 require_dir() {
 	local path="$1"
 	[[ -d "${path}" ]] || fail "required directory not found: ${path}"
