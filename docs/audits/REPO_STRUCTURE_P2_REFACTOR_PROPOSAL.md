@@ -3,7 +3,7 @@
 **Date:** 2026-05-20  
 **Status:** Proposal only — **do not implement from this document without a dedicated PR plan**  
 **Scope:** Deeper architecture refactor for the AVF Vending API modular monolith  
-**Baseline:** Post–Phase 5 cleanup (`docs/audits/REPO_STRUCTURE_CLEANUP_AUDIT.md`, `docs/architecture/current-architecture.md`)
+**Baseline:** Post–Phase 5 cleanup (`docs/audits/DEEP_REPO_CLEANUP_AUDIT.md`, `docs/architecture/current-architecture.md`)
 
 ---
 
@@ -414,5 +414,5 @@ Run from repository root after **each PR** in the migration sequence.
 - [Enterprise target model](../architecture/enterprise-target-model.md)
 - [Transport boundary](../architecture/transport-boundary.md)
 - [P0/P1/P2 implementation roadmap](../architecture/p0-p1-p2-implementation-roadmap.md)
-- [Repository structure cleanup audit](./REPO_STRUCTURE_CLEANUP_AUDIT.md)
+- [Deep repository cleanup audit](./DEEP_REPO_CLEANUP_AUDIT.md)
 - [API contract checks](../api/api-contract-checks.md)
