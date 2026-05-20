@@ -136,3 +136,29 @@ Add to app-node A/B tar sync: `scripts/deploy/production-migrate.sh`, `scripts/v
 ### Follow-up fix (release migration confirm)
 
 `release_app_node.sh` exports `CONFIRM_PRODUCTION_MIGRATION=true` when `RUN_MIGRATION=1` (automated deploy path).
+
+---
+
+## Final redeploy result
+
+| Field | Value |
+|-------|--------|
+| **main SHA (fixes merged)** | `60e98a1` → `47299cf` (includes PRs #232–#237) |
+| **Latest deploy run** | [26141230829](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26141230829) |
+| **Deploy status** | **waiting** — production GitHub Environment approval required (`current_user_can_approve: false` for CI token) |
+| **Prior deploy attempts** | 26138320350 (validation), 26139516871 (missing script), 26140405803 (confirm gate), 26140955149 (SSH timeout) |
+| **Build / security used for retry** | Build `26140237163`, Security Release `26140368705` (images for `f7e6e2d`; deploy checkout syncs latest `main` scripts) |
+| **DB backup path** | Not completed — migration did not run (deploy blocked before/at SSH) |
+| **Migration result** | Not run |
+| **Public health** | `live=200`, `ready=200` |
+| **Public `/version` git_sha** | `52a076e` (stale — last successful deploy was image-only [26093589896](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26093589896)) |
+
+### Operator action required
+
+1. Approve **Deploy production release** job on run [26141230829](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26141230829) in GitHub → Environments → **production**.
+2. After approval, monitor migration logs for inline `pg_dump` + goose `Up` success.
+3. Re-run public smoke; `/version` `git_sha` should match deployed image (`f7e6e2d` or newer build SHA).
+
+### Final verdict
+
+**PRODUCTION_DEPLOY_STILL_BLOCKED** — code/CI fixes merged to `main`; deploy pipeline validated through SSH on run 26140405803; retry run pending environment approval.
