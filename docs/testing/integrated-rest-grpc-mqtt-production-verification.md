@@ -11,8 +11,8 @@
 | Field | Value |
 |--------|--------|
 | **Canonical tree** | Git `HEAD` at verification time |
-| **Repomix** | `repomix-output.xml` is **gitignored** in this repo; there is **no** checked-in repomix snapshot. Operators may attach an external repomix bundle to change-control tickets. **Counts below do not depend on repomix** — they come from `docs/swagger/swagger.json` and `python postman/full-production-suite/generate_full_postman_suite.py`. |
-| **Count refresh command** | From repo root: `python postman/full-production-suite/generate_full_postman_suite.py` — stdout ends with `openapi_operations`, `postman_requests`, `grpc_templates`, `mqtt_templates`. |
+| **Repomix** | `repomix-output.xml` is **gitignored** in this repo; there is **no** checked-in repomix snapshot. Operators may attach an external repomix bundle to change-control tickets. **Counts below do not depend on repomix** — they come from `docs/swagger/swagger.json` and `python postman/suites/full-production-suite/generate_full_postman_suite.py`. |
+| **Count refresh command** | From repo root: `python postman/suites/full-production-suite/generate_full_postman_suite.py` — stdout ends with `openapi_operations`, `postman_requests`, `grpc_templates`, `mqtt_templates`. |
 
 ---
 
@@ -24,9 +24,9 @@ These numbers are **tied to one regeneration**; re-run the generator after OpenA
 |------------------|------:|-----------------|
 | **REST OpenAPI operations** | **325** | `docs/swagger/swagger.json` paths × methods; mirrored as `openapi_operations` in generator stdout |
 | **REST operations carrying idempotency metadata** | **89** | `openapi_idempotency_ops` in generator stdout (`generate_full_postman_suite.py`) |
-| **Postman REST requests (full suite)** | **325** | `postman/full-production-suite/AVF_REST_365_FULL.postman_collection.json` (leaf requests); equals `postman_requests` in generator stdout |
-| **gRPC method templates** | **85** | `postman/full-production-suite/grpc/grpc_request_templates.json` |
-| **MQTT topic / flow templates** | **28** | `postman/full-production-suite/mqtt/mqtt_request_templates.json` |
+| **Postman REST requests (full suite)** | **325** | `postman/suites/full-production-suite/AVF_REST_365_FULL.postman_collection.json` (leaf requests); equals `postman_requests` in generator stdout |
+| **gRPC method templates** | **85** | `postman/suites/full-production-suite/grpc/grpc_request_templates.json` |
+| **MQTT topic / flow templates** | **28** | `postman/suites/full-production-suite/mqtt/mqtt_request_templates.json` |
 
 **Parity rule:** `openapi_operations == postman_requests == 325` is the **contract parity gate** for REST. **85 / 28** are template counts for gRPC/MQTT artifacts used by Postman/import tooling; runtime proof still requires **§ Execution evidence** commands below.
 
@@ -65,7 +65,7 @@ Run from **repository root**. Use **bash** (Git Bash on Windows). Archive output
 ```bash
 sqlc generate
 python tools/build_openapi.py
-python postman/full-production-suite/generate_full_postman_suite.py
+python postman/suites/full-production-suite/generate_full_postman_suite.py
 ```
 
 **Expected:** exit code **0**; generator ends with `VALIDATION_PASS` and counts **325 / 325 / 85 / 28**.
@@ -96,8 +96,8 @@ Preferred wrapper (honors repo paths and reporter layout):
 
 ```bash
 mkdir -p evidence/rest
-POSTMAN_COLLECTION=postman/full-production-suite/AVF_REST_365_FULL.postman_collection.json \
-POSTMAN_ENV=postman/full-production-suite/AVF_PRODUCTION.postman_environment.json \
+POSTMAN_COLLECTION=postman/suites/full-production-suite/AVF_REST_365_FULL.postman_collection.json \
+POSTMAN_ENV=postman/suites/full-production-suite/AVF_PRODUCTION.postman_environment.json \
 E2E_RUN_DIR="$(pwd)/evidence/rest/run-newman-$(date -u +%Y%m%dT%H%M%SZ)" \
 bash tests/e2e/postman/run-newman.sh
 ```
@@ -107,8 +107,8 @@ bash tests/e2e/postman/run-newman.sh
 Equivalent bare invocation:
 
 ```bash
-newman run postman/full-production-suite/AVF_REST_365_FULL.postman_collection.json \
-  -e postman/full-production-suite/AVF_PRODUCTION.postman_environment.json \
+newman run postman/suites/full-production-suite/AVF_REST_365_FULL.postman_collection.json \
+  -e postman/suites/full-production-suite/AVF_PRODUCTION.postman_environment.json \
   --reporters cli,json,junit \
   --reporter-json-export evidence/rest/newman-report.json \
   --reporter-junit-export evidence/rest/newman-junit.xml
@@ -126,7 +126,7 @@ Fill **`actual result`** and **`evidence path`** only after a real run. **`PENDI
 |-------|----------------|-----------------|---------------------------|---------------|
 | Codegen | `sqlc generate` | Exit **0** | CI log or `evidence/sqlc.txt` | **PENDING** |
 | OpenAPI | `python tools/build_openapi.py` | Exit **0**; `docs/swagger/swagger.json` updated | CI log + diff | **PENDING** |
-| Full suite gen | `python postman/full-production-suite/generate_full_postman_suite.py` | `VALIDATION_PASS`; counts **325 / 85 / 28** | CI log | **PENDING** |
+| Full suite gen | `python postman/suites/full-production-suite/generate_full_postman_suite.py` | `VALIDATION_PASS`; counts **325 / 85 / 28** | CI log | **PENDING** |
 | Go format | `gofmt -w $(find . -name '*.go' -not -path './vendor/*')` | No dirty `*.go` needed | `git diff --exit-code` | **PENDING** |
 | Go vet | `go vet ./...` | Exit **0** | CI log | **PENDING** |
 | Go test | `go test ./... -count=1` | Exit **0** | CI log | **PENDING** |
@@ -161,7 +161,7 @@ bash scripts/ci/git_grep_retired_partition_literals.sh
 1. **Business-flow matrix** in **[`e2e-flow-coverage.md`](e2e-flow-coverage.md)** still labels some narrative flows **partial** — **325 REST operations** does not guarantee every narrative row is exercised at **PASS** in one harness run.
 2. **Production** Newman/E2E requires live **`BASE_URL`**, secrets, broker ACLs, and PSP sandbox alignment — this guide only defines **what evidence must exist**, not network reachability.
 3. **NEG-10 / MQTT** may require broker ACL logs outside the repo; attach external artifacts to the evidence bundle.
-4. **Repomix** is not versioned here — rely on **git SHA + generator manifest** (`postman/full-production-suite/manifest.json` after regeneration).
+4. **Repomix** is not versioned here — rely on **git SHA + generator manifest** (`postman/suites/full-production-suite/manifest.json` after regeneration).
 
 ---
 

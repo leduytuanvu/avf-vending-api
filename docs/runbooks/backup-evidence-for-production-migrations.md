@@ -22,7 +22,7 @@ The workflow does **not** create backups automatically; operators complete backu
 
 ## Artifacts and manifests
 
-- Values are written to `deployment-evidence/production-deployment-manifest.json` and `production-deploy-evidence.json` under `run_migration_requested` and `db_backup_evidence` (see `scripts/release/write_deployment_manifest.py`). The same step also writes **`production-release-evidence.json`** and **`production-release-evidence.md`** (operator rollup including migration/backup, security gate ids, image digests, and LKG pointers) uploaded with the `production-deploy-evidence` artifact.
+- Values are written to `deployment-evidence/production-deployment-manifest.json` and `production-deploy-evidence.json` under `run_migration_requested` and `db_backup_evidence` (see `scripts/deploy/release/write_deployment_manifest.py`). The same step also writes **`production-release-evidence.json`** and **`production-release-evidence.md`** (operator rollup including migration/backup, security gate ids, image digests, and LKG pointers) uploaded with the `production-deploy-evidence` artifact.
 - Rollback mode does not require backup fields; production rollback remains **app/goose image only** and does **not** run `goose down`.
 
 ## Related

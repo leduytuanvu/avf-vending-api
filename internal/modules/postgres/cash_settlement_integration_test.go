@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -203,7 +204,7 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.Equal(t, int64(950), closed2.VarianceAmountMinor)
 	require.True(t, closed2.RequiresReview)
 
-	_, err = store.GetMachineCashCollection(ctx, uuid.New(), testfixtures.DevMachineID, open2.ID)
+	_, err = store.GetMachineCashCollection(ctx, id.NewUUIDV7(), testfixtures.DevMachineID, open2.ID)
 	require.Error(t, err)
 
 	_, err = svc.EndOperatorSession(ctx, operator.EndOperatorSessionInput{

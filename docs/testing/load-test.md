@@ -7,10 +7,10 @@ Optional tooling to simulate **100–1000** vending machines (and adjacent admin
 | Artifact | Purpose |
 | --- | --- |
 | `tools/loadtest/cmd/avf-loadtest` | Go CLI: HTTP check-ins, phased gRPC runtime (sync / telemetry / offline), signed webhook bursts, fleet MQTT command→ACK, admin GET storm, Prometheus scrape helper |
-| `scripts/loadtest/run_fleet_storm.sh` | Executes `storm` with `-machines N` + `-execute` (`LOADTEST_MACHINE_MANIFEST` required) |
-| `scripts/loadtest/run_suite.sh` | Staging orchestrator (`EXECUTE_LOAD_TEST=true` adds `-manifest`) + optional k6 |
-| `scripts/loadtest/run_small.sh` | Calls `make loadtest-small` (dry-run) |
-| `scripts/loadtest/admin_smoke.k6.js` | k6 admin + org reports |
+| `scripts/test/loadtest/run_fleet_storm.sh` | Executes `storm` with `-machines N` + `-execute` (`LOADTEST_MACHINE_MANIFEST` required) |
+| `scripts/test/loadtest/run_suite.sh` | Staging orchestrator (`EXECUTE_LOAD_TEST=true` adds `-manifest`) + optional k6 |
+| `scripts/test/loadtest/run_small.sh` | Calls `make loadtest-small` (dry-run) |
+| `scripts/test/loadtest/admin_smoke.k6.js` | k6 admin + org reports |
 | `deployments/loadtest/env.example` | Safe env template (copy privately; never commit secrets) |
 
 ## Makefile targets
@@ -114,7 +114,7 @@ See `deployments/loadtest/env.example`.
 ```bash
 export EXECUTE_LOAD_TEST=true
 export LOADTEST_MACHINE_MANIFEST=/secure/path/machines.tsv
-bash scripts/loadtest/run_suite.sh
+bash scripts/test/loadtest/run_suite.sh
 
 # or direct fleet size:
 export LOADTEST_MACHINE_MANIFEST=/secure/path/machines.tsv
@@ -142,4 +142,4 @@ Investigate if **error rate >1–2% sustained**, **`outbox_pending_total` grows 
 
 ## Legacy paths
 
-Older scripts under `scripts/load/` remain; prefer `scripts/loadtest/` for new work.
+Older scripts under `scripts/test/load/` remain; prefer `scripts/test/loadtest/` for new work.

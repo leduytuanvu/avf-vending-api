@@ -3,6 +3,7 @@ package correctness
 import (
 	"bytes"
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -47,7 +48,7 @@ func TestP01_AdminAuth_MFAInteractiveEnrollAndLoginChallenge(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	id := uuid.New()
+	id := id.NewUUIDV7()
 	email := "p01-mfa-" + id.String()[:8] + "@test.example.com"
 	hash, err := bcrypt.GenerateFromPassword([]byte("password12345"), bcrypt.MinCost)
 	require.NoError(t, err)
@@ -131,7 +132,7 @@ func TestP01_AdminAuth_PasswordResetOneTime(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	id := uuid.New()
+	id := id.NewUUIDV7()
 	email := "p01-reset-" + id.String()[:8] + "@test.example.com"
 	hash, err := bcrypt.GenerateFromPassword([]byte("password12345"), bcrypt.MinCost)
 	require.NoError(t, err)
@@ -179,7 +180,7 @@ func TestP01_AdminAuth_LoginLockoutRedis(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	id := uuid.New()
+	id := id.NewUUIDV7()
 	email := "p01-lock-" + id.String()[:8] + "@test.example.com"
 	hash, err := bcrypt.GenerateFromPassword([]byte("rightpass123"), bcrypt.MinCost)
 	require.NoError(t, err)

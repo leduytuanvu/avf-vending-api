@@ -50,8 +50,8 @@ of what CI cannot prove (field hardware, live PSP, org approvals).
 | 5 | **MQTT:** TLS in production; topic ACL documented; command ledger; ACK correlation; timeout / retry | [`../api/mqtt-contract.md`](../api/mqtt-contract.md), [`mqtt-command-debug.md`](mqtt-command-debug.md), [`mqtt-command-stuck.md`](mqtt-command-stuck.md), [`production-readiness.md`](production-readiness.md) |
 | 6 | **Media:** object storage; variants; HTTPS / signed URLs; hash / version for kiosk cache | [`../architecture/media-sync.md`](../architecture/media-sync.md), [`product-media-cache-invalidation.md`](product-media-cache-invalidation.md) |
 | 7 | **Internal:** PostgreSQL SoT; Redis cache/rate/session; NATS·JetStream outbox; DLQ / replay; audit | [`../architecture/transport-boundary.md`](../architecture/transport-boundary.md), [`outbox.md`](outbox.md), [`outbox-dlq-debug.md`](outbox-dlq-debug.md), [`audit.md`](audit.md) |
-| 8 | **Deployment:** production secrets contract; no staging/prod mix; no mock PSP in production; no plaintext public MQTT | [`../contracts/deployment-secrets-contract.yml`](../contracts/deployment-secrets-contract.yml), [`../operations/deployment-secrets.md`](../operations/deployment-secrets.md), [`production-release-readiness.md`](production-release-readiness.md) |
-| 9 | **Observability:** metrics; alerts; runbooks; field smoke | [`observability-alerts.md`](observability-alerts.md), [`production-observability-alerts.md`](production-observability-alerts.md), [`../operations/deploy-monitoring-slo.md`](../operations/deploy-monitoring-slo.md), [`../runbooks/field-smoke-tests.md`](../runbooks/field-smoke-tests.md), [`../operations/production-smoke-tests.md`](../operations/production-smoke-tests.md) |
+| 8 | **Deployment:** production secrets contract; no staging/prod mix; no mock PSP in production; no plaintext public MQTT | [`../contracts/deployment-secrets-contract.yml`](../contracts/deployment-secrets-contract.yml), [`../deployment/deployment-secrets.md`](../deployment/deployment-secrets.md), [`production-release-readiness.md`](production-release-readiness.md) |
+| 9 | **Observability:** metrics; alerts; runbooks; field smoke | [`observability-alerts.md`](observability-alerts.md), [`production-observability-alerts.md`](production-observability-alerts.md), [`../deployment/deploy-monitoring-slo.md`](../deployment/deploy-monitoring-slo.md), [`../runbooks/field-smoke-tests.md`](../runbooks/field-smoke-tests.md), [`../production/production-smoke-tests.md`](../production/production-smoke-tests.md) |
 
 ---
 
@@ -60,9 +60,9 @@ of what CI cannot prove (field hardware, live PSP, org approvals).
 | Scope | When to use | Preconditions |
 |-------|-------------|----------------|
 | **Lab only** | First integration of new build; broker / TLS / grpcurl / webhook harness | Staging or isolated lab; **`ENABLE_LEGACY_MACHINE_HTTP`** only if explicitly testing migration — **off** for production-parity |
-| **10-machine field pilot** | **Default first field gate** after lab green | [`../operations/field-pilot-checklist.md`](../operations/field-pilot-checklist.md), [`../testing/field-test-cases.md`](../testing/field-test-cases.md) material evidence |
+| **10-machine field pilot** | **Default first field gate** after lab green | [`../production/field-pilot-checklist.md`](../production/field-pilot-checklist.md), [`../testing/field-test-cases.md`](../testing/field-test-cases.md) material evidence |
 | **30-machine pilot** | Same as 10-machine but wider operator load / MQTT fan-out | Payment + MQTT + rollback owners named; no open P0 |
-| **100+ rollout** | Fleet tier | [`production-release-readiness.md`](production-release-readiness.md) storm + monitoring artifacts; tranche plan [`../operations/field-rollout-checklist.md`](../operations/field-rollout-checklist.md) |
+| **100+ rollout** | Fleet tier | [`production-release-readiness.md`](production-release-readiness.md) storm + monitoring artifacts; tranche plan [`../production/field-rollout-checklist.md`](../production/field-rollout-checklist.md) |
 
 **Recommendation:** **Do not** skip **lab → 10-machine**; treat **100+** as a separate gate with scale evidence.
 
@@ -145,7 +145,7 @@ npx --yes markdownlint-cli docs/runbooks/final-production-readiness-signoff.md
 
 1. **Org / CAB:** production environment reviewers, change record.
 2. **Images / supply chain:** digest-pinned deploy artifacts per
-   [`../operations/production-release-checklist.md`](../operations/production-release-checklist.md).
+   [`../production/production-release-checklist.md`](../production/production-release-checklist.md).
 3. **Field matrix:** [`../testing/field-test-cases.md`](../testing/field-test-cases.md) + pilot / rollout
    checklists.
 4. **PSP:** live or sandbox proof; webhook secret rotation exercised.
@@ -168,5 +168,5 @@ npx --yes markdownlint-cli docs/runbooks/final-production-readiness-signoff.md
 ## Related
 
 - [`production-release-readiness.md`](production-release-readiness.md) — pilot vs scale tiers.
-- [`../operations/production-release-checklist.md`](../operations/production-release-checklist.md) — deploy governance.
+- [`../production/production-release-checklist.md`](../production/production-release-checklist.md) — deploy governance.
 - [`../../Makefile`](../../Makefile) — `ci-gates`, `verify-enterprise-release`, `api-contract-check`.

@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -16,10 +17,10 @@ func TestReportingSalesAndPaymentsAggregatesMatchSeededData(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
 
-	siteID := uuid.New()
-	machineID := uuid.New()
-	orderID := uuid.New()
-	paymentID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	orderID := id.NewUUIDV7()
+	paymentID := id.NewUUIDV7()
 	from := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(24 * time.Hour)
 
@@ -83,11 +84,11 @@ func TestReportingTechnicianFillOpsSeededAndFiltered(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
 
-	siteID := uuid.New()
-	machineID := uuid.New()
-	productID := uuid.New()
-	otherProductID := uuid.New()
-	techID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	productID := id.NewUUIDV7()
+	otherProductID := id.NewUUIDV7()
+	techID := id.NewUUIDV7()
 	from := time.Date(2026, 5, 10, 0, 0, 0, 0, time.UTC)
 	to := from.Add(24 * time.Hour)
 	occurred := from.Add(3 * time.Hour)

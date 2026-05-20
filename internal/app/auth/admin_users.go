@@ -12,6 +12,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/listscope"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -875,7 +876,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, req PasswordResetReq
 		return nil, err
 	}
 	exp := time.Now().UTC().Add(s.adminSec.PasswordResetTTL)
-	tokID := uuid.New()
+	tokID := id.NewUUIDV7()
 	if s.pool == nil {
 		return nil, errors.New("auth service: Postgres pool required for RequestPasswordReset")
 	}

@@ -1,6 +1,6 @@
 # Local end-to-end correctness tests (P0.6)
 
-**vs field / P2 go-live:** Automated packages here prove **DB correctness** (idempotency, replay ordering, ledger rules). They **do not** satisfy **[`field-test-cases.md`](field-test-cases.md)** pilot rows (hardware, broker TLS, real PSP, operator sign-off) — treat as **dev/CI** gates; attach **[`operations/field-pilot-checklist.md`](../operations/field-pilot-checklist.md)** + **`field-test-cases`** matrix for production field evidence.
+**vs field / P2 go-live:** Automated packages here prove **DB correctness** (idempotency, replay ordering, ledger rules). They **do not** satisfy **[`field-test-cases.md`](field-test-cases.md)** pilot rows (hardware, broker TLS, real PSP, operator sign-off) — treat as **dev/CI** gates; attach **[`operations/field-pilot-checklist.md`](../production/field-pilot-checklist.md)** + **`field-test-cases`** matrix for production field evidence.
 
 **Normative prod transport:** **[`../architecture/production-final-contract.md`](../architecture/production-final-contract.md)**.
 
@@ -37,7 +37,7 @@ go test -count=1 -timeout=45m ./internal/e2e/correctness/... ./internal/grpcserv
 Git Bash wrapper:
 
 ```bash
-bash scripts/test-local/run-e2e-local.sh
+bash scripts/test/run-e2e-local.sh
 ```
 
 Additional Postgres-heavy suites live under `./internal/modules/postgres/` (commerce, MQTT commands). Run full integration coverage when needed:

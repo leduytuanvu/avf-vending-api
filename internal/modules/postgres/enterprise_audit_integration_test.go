@@ -3,6 +3,7 @@ package postgres_test
 import (
 	"bytes"
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -61,12 +62,12 @@ func countAuditByActorAndAction(t *testing.T, pool *pgxpool.Pool, actor uuid.UUI
 
 func TestEnterpriseAudit_LoginSuccessAndFailure(t *testing.T) {
 	pool := testPool(t)
-	deploymentKey := uuid.New()
+	deploymentKey := id.NewUUIDV7()
 
 	audit := appaudit.NewService(pool)
 	svc := testAuthServiceWithEnterpriseAudit(t, pool, audit, false)
 
-	uid := uuid.New()
+	uid := id.NewUUIDV7()
 	email := "audit-login-" + uid.String()[:8] + "@test.example.com"
 	insertAuthAccount(t, pool, uid, deploymentKey, email, "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
@@ -90,12 +91,12 @@ func TestEnterpriseAudit_LoginSuccessAndFailure(t *testing.T) {
 
 func TestEnterpriseAudit_DisabledLoginIncludesReason(t *testing.T) {
 	pool := testPool(t)
-	deploymentKey := uuid.New()
+	deploymentKey := id.NewUUIDV7()
 
 	audit := appaudit.NewService(pool)
 	svc := testAuthServiceWithEnterpriseAudit(t, pool, audit, false)
 
-	id := uuid.New()
+	id := id.NewUUIDV7()
 	email := "dis-reason-" + id.String()[:8] + "@test.example.com"
 	insertAuthAccount(t, pool, id, deploymentKey, email, "password12345", []string{plauth.RoleOrgAdmin}, "disabled")
 
@@ -112,12 +113,12 @@ func TestEnterpriseAudit_DisabledLoginIncludesReason(t *testing.T) {
 
 func TestEnterpriseAudit_AdminCreateUser_emitsAuthUserCreated(t *testing.T) {
 	pool := testPool(t)
-	deploymentKey := uuid.New()
+	deploymentKey := id.NewUUIDV7()
 
 	audit := appaudit.NewService(pool)
 	svc := testAuthServiceWithEnterpriseAudit(t, pool, audit, true)
 
-	actor := uuid.New()
+	actor := id.NewUUIDV7()
 	insertAuthAccount(t, pool, actor, deploymentKey, "actor-create-audit-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
 	_, err := svc.AdminCreateUser(context.Background(), actor, deploymentKey, appauth.AdminCreateUserRequest{
@@ -132,13 +133,13 @@ func TestEnterpriseAudit_AdminCreateUser_emitsAuthUserCreated(t *testing.T) {
 
 func TestEnterpriseAudit_AdminPatchRoles_emitsRoleChanged(t *testing.T) {
 	pool := testPool(t)
-	deploymentKey := uuid.New()
+	deploymentKey := id.NewUUIDV7()
 
 	audit := appaudit.NewService(pool)
 	svc := testAuthServiceWithEnterpriseAudit(t, pool, audit, true)
 
-	actor := uuid.New()
-	target := uuid.New()
+	actor := id.NewUUIDV7()
+	target := id.NewUUIDV7()
 	insertAuthAccount(t, pool, actor, deploymentKey, "audit-actor-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 	insertAuthAccount(t, pool, target, deploymentKey, "audit-tgt-"+target.String()[:8]+"@test.example.com", "password12345", []string{"viewer"}, "active")
 
@@ -239,9 +240,9 @@ func TestEnterpriseAudit_MachineFilterAndGetByID(t *testing.T) {
 
 	audit := appaudit.NewService(pool)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
-	hw := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	hw := id.NewUUIDV7()
 	_, err := pool.Exec(ctx, `
 INSERT INTO machine_hardware_profiles (id, name, spec) VALUES ($1, 'audit-hw', '{}'::jsonb)`,
 		hw)
@@ -285,7 +286,7 @@ VALUES ($1, $2, $3, $4, 'm', 'online', 0, 0)`,
 	require.NoError(t, err)
 	require.Equal(t, machineID.String(), *got.MachineID)
 
-	_, err = audit.GetEvent(ctx, uuid.New())
+	_, err = audit.GetEvent(ctx, id.NewUUIDV7())
 	require.ErrorIs(t, err, pgx.ErrNoRows)
 }
 

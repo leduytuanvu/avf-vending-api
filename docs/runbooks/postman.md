@@ -10,12 +10,12 @@ This returns **OpenAPI 3.0 JSON**, not a Postman collection. Postman will genera
 
 ## 2. Import native Postman files (guards, variables, headers)
 
-The repository ships separate artifacts under `docs/postman/` (these are **not** substitutes for `/swagger/doc.json`):
+The repository ships separate artifacts under [`postman/collections/`](../../postman/collections/) and [`postman/environments/`](../../postman/environments/) (these are **not** substitutes for `/swagger/doc.json`):
 
-- `docs/postman/avf-vending-api.postman_collection.json` — collection with `{{base_url}}`, `{{api_prefix}}`, and collection scripts (request IDs, staging/production safety checks, production mutation block).
-- `docs/postman/avf-local.postman_environment.json` — local development.
-- `docs/postman/avf-staging.postman_environment.json` — staging.
-- `docs/postman/avf-production.postman_environment.json` — production (read-only by default in Postman).
+- `postman/collections/avf-vending-api.postman_collection.json` — collection with `{{base_url}}`, `{{api_prefix}}`, and collection scripts (request IDs, staging/production safety checks, production mutation block).
+- `postman/environments/avf-local.postman_environment.json` — local development.
+- `postman/environments/avf-staging.postman_environment.json` — staging.
+- `postman/environments/avf-production.postman_environment.json` — production (read-only by default in Postman).
 
 In Postman: **Import → File** and select the collection, then the environment(s). Set the **active environment** before sending requests.
 

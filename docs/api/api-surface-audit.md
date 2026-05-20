@@ -14,7 +14,7 @@
 
 **Verification:** `make verify-enterprise-release` runs `go test ./...`, Swagger drift checks, `tools/openapi_verify_release.py` (production server first, Bearer on protected `/v1` routes, write examples, success+error examples, no planned-only paths, no secret-like examples), shell/compose checks, and doc secret heuristics.
 
-**Regenerate the matrix table:** `python scripts/compose_api_surface_audit_md.py` (preferred). For inspection only: `python scripts/gen_api_surface_audit_table.py`.
+**Regenerate the matrix table:** `python scripts/openapi/compose_api_surface_audit_md.py` (preferred). For inspection only: `python scripts/openapi/gen_api_surface_audit_table.py`.
 
 ---
 

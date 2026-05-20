@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"sync"
 	"testing"
 	"time"
@@ -25,8 +26,8 @@ func TestMachineReplayLedger_ReplayAndConflict(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	ledger := NewMachineReplayLedger(pool, nil)
@@ -77,8 +78,8 @@ func TestMachineReplayLedger_ConcurrentReplayAfterSuccess(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	ledger := NewMachineReplayLedger(pool, nil)
@@ -143,8 +144,8 @@ func TestMachineOfflineSync_OutOfOrderRejected(t *testing.T) {
 
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
-	siteID := uuid.New()
-	machineID := uuid.New()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
 
 	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}

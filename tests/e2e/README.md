@@ -101,7 +101,7 @@ Set in **`tests/e2e/.env`** or the shell: **`E2E_ENABLE_FLOW_REVIEW`**, **`E2E_W
 ### Prerequisites
 
 - **Newman:** `npm install -g newman` (or use `npx newman`).
-- **Collection / env:** set `POSTMAN_COLLECTION` and `POSTMAN_ENV` in `tests/e2e/.env` (see `.env.example`). The default collection filename is `docs/postman/avf-vending-api-function-path.postman_collection.json` (same content as the **Public** requests in `avf-vending-api.postman_collection.json` until you replace it with a fuller OpenAPI import).
+- **Collection / env:** set `POSTMAN_COLLECTION` and `POSTMAN_ENV` in `tests/e2e/.env` (see `.env.example`). The default collection filename is `postman/collections/avf-vending-api-function-path.postman_collection.json` (same content as the **Public** requests in `avf-vending-api.postman_collection.json` until you replace it with a fuller OpenAPI import).
 
 ### Run Newman
 
@@ -110,8 +110,8 @@ Writes **`rest/newman-cli.log`**, **`rest/newman-report.json`**, **`rest/newman-
 ```bash
 # After a normal E2E run dir exists (or export E2E_RUN_DIR):
 export E2E_RUN_DIR=.e2e-runs/run-…
-export POSTMAN_COLLECTION=docs/postman/avf-vending-api-function-path.postman_collection.json
-export POSTMAN_ENV=docs/postman/avf-local.postman_environment.json
+export POSTMAN_COLLECTION=postman/collections/avf-vending-api-function-path.postman_collection.json
+export POSTMAN_ENV=postman/environments/avf-local.postman_environment.json
 export E2E_ALLOW_WRITES=false   # only run folder "Public" when present
 ./tests/e2e/postman/run-newman.sh
 ```
@@ -138,7 +138,7 @@ Lists every request in the collection, compares normalized paths to **[`docs/tes
 
 ```bash
 python3 tests/e2e/postman/coverage-from-postman.py \
-  --collection docs/postman/avf-vending-api-function-path.postman_collection.json \
+  --collection postman/collections/avf-vending-api-function-path.postman_collection.json \
   --matrix docs/testing/e2e-flow-coverage.md \
   --out reports/coverage-postman.json
 ```

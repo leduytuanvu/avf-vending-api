@@ -438,7 +438,7 @@ def main() -> None:
             )
             raise SystemExit(1)
 
-    cand_pkg = ROOT / "scripts" / "release" / "write_production_deploy_candidate_package.py"
+    cand_pkg = ROOT / "scripts" / "deploy" / "release" / "write_production_deploy_candidate_package.py"
     cand_src = cand_pkg.read_text(encoding="utf-8")
     if "production-deploy-candidate-metadata.json" not in cand_src:
         print(
@@ -471,8 +471,22 @@ def main() -> None:
     if not isinstance(run_migration_inp, dict) or str(run_migration_inp.get("type", "")).lower() != "boolean":
         print("ERROR: deploy-prod run_migration input must be type: boolean (safe default; migration is not silent).", file=sys.stderr)
         raise SystemExit(1)
-    if run_migration_inp.get("default") is not False:
-        print("ERROR: deploy-prod run_migration must use default: false (image-only by default; no silent migrations).", file=sys.stderr)
+    if run_migration_inp.get("default") is not False and run_migration_inp.get("default") is not True:
+        print("ERROR: deploy-prod run_migration must declare default: true or false.", file=sys.stderr)
+        raise SystemExit(1)
+    if run_migration_inp.get("default") is True and "scripts/deploy/production-migrate.sh" not in text:
+        print(
+            "ERROR: deploy-prod run_migration default true requires scripts/deploy/production-migrate.sh "
+            "(inline pg_dump before goose up).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if run_migration_inp.get("default") is False and "backup_evidence_id is required when run_migration=true" not in text:
+        print(
+            "ERROR: deploy-prod must fail validation when run_migration is true and backup_evidence_id is empty "
+            "(expected explicit operator-facing error).",
+            file=sys.stderr,
+        )
         raise SystemExit(1)
     if not isinstance(backup_ev_inp, dict) or str(backup_ev_inp.get("type", "")).lower() != "string":
         print("ERROR: deploy-prod backup_evidence_id input must be type: string (artifact/run/path/id).", file=sys.stderr)

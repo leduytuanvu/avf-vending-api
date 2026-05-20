@@ -53,4 +53,4 @@ Local read-only smoke can include an optional NATS/ops read only if you expose a
 
 ## Prometheus signals (canonical)
 
-Worker forwards to **`outbox_*`** in `productionmetrics` (pending gauge, publish success/lag histograms, DLQ counters, dispatch failures). Names align with [`docs/observability/production-metrics.md`](../observability/production-metrics.md); legacy `avf_worker_outbox_*` may still appear during migration.
+Worker forwards to **`outbox_*`** in `productionmetrics` (pending gauge, publish success/lag histograms, DLQ counters, dispatch failures). Names align with [`docs/production/production-metrics.md`](../production/production-metrics.md); legacy `avf_worker_outbox_*` may still appear during migration.

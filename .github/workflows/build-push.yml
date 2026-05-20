@@ -555,7 +555,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          python3 scripts/release/build_release_evidence_package.py --out release-evidence --phase build --root . --strict-phase build
+          python3 scripts/deploy/release/build_release_evidence_package.py --out release-evidence --phase build --root . --strict-phase build
       - name: Upload release audit package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

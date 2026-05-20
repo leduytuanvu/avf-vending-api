@@ -40,10 +40,10 @@ The canonical server-side script is `deployments/staging/scripts/deploy_staging.
 ## Smoke tests
 
 ```bash
-STAGING_BASE_URL=https://staging-api.ldtv.dev bash scripts/smoke_staging.sh
+STAGING_BASE_URL=https://staging-api.ldtv.dev bash scripts/deploy/smoke_staging.sh
 ```
 
-On the server, `deployments/staging/scripts/smoke_staging.sh` resolves `API_DOMAIN` from `.env.staging` and calls the same repository script.
+On the server, `deployments/staging/scripts/deploy/smoke_staging.sh` resolves `API_DOMAIN` from `.env.staging` and calls the same repository script.
 
 ### CI evidence after staging deploy (GitHub Actions)
 

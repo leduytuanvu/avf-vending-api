@@ -3,6 +3,7 @@ package postgres_test
 import (
 	"context"
 	"errors"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"sync"
 	"testing"
 	"time"
@@ -84,7 +85,7 @@ func TestOperatorRepository_GetOperatorSessionByID_wrappedNotFound(t *testing.T)
 	ctx := context.Background()
 	repo := postgres.NewOperatorRepository(pool)
 
-	_, err := repo.GetOperatorSessionByID(ctx, uuid.New())
+	_, err := repo.GetOperatorSessionByID(ctx, id.NewUUIDV7())
 	require.ErrorIs(t, err, domainoperator.ErrSessionNotFound)
 }
 
@@ -93,7 +94,7 @@ func TestOperatorRepository_GetActiveSession_wrappedNoActive(t *testing.T) {
 	ctx := context.Background()
 	repo := postgres.NewOperatorRepository(pool)
 
-	_, err := repo.GetActiveSessionByMachineID(ctx, uuid.New())
+	_, err := repo.GetActiveSessionByMachineID(ctx, id.NewUUIDV7())
 	require.ErrorIs(t, err, domainoperator.ErrNoActiveSession)
 }
 

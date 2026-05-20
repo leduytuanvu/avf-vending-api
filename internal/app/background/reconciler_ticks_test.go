@@ -2,6 +2,7 @@ package background
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -159,7 +160,7 @@ type stubCaseWriter struct {
 func (s *stubCaseWriter) UpsertReconciliationCase(ctx context.Context, in domaincommerce.ReconciliationCaseInput) (domaincommerce.ReconciliationCase, error) {
 	_ = ctx
 	s.cases = append(s.cases, in)
-	return domaincommerce.ReconciliationCase{ID: uuid.New(), CaseType: in.CaseType}, nil
+	return domaincommerce.ReconciliationCase{ID: id.NewUUIDV7(), CaseType: in.CaseType}, nil
 }
 
 func TestPaymentProviderReconcileTick_settledAfterProbe(t *testing.T) {
@@ -368,7 +369,7 @@ func TestPaymentProviderReconcileTick_captureCallsMarkOrderPaid(t *testing.T) {
 func TestRefundReviewDecisionTick_actionsEnabledMissingSinkErrors(t *testing.T) {
 	t.Parallel()
 	reader := &stubReconReader{
-		refundReview: []domaincommerce.Payment{{ID: uuid.New(), OrderID: uuid.New()}},
+		refundReview: []domaincommerce.Payment{{ID: id.NewUUIDV7(), OrderID: id.NewUUIDV7()}},
 	}
 	ctx := context.Background()
 	deps := ReconcilerDeps{
@@ -434,9 +435,9 @@ func TestDuplicatePaymentRecoveryTick_schedulesWorkflowWhenEnabled(t *testing.T)
 
 func TestUnresolvedOrdersTick_paidNoVendStartCreatesCase(t *testing.T) {
 	t.Parallel()
-	orderID := uuid.New()
-	paymentID := uuid.New()
-	vendID := uuid.New()
+	orderID := id.NewUUIDV7()
+	paymentID := id.NewUUIDV7()
+	vendID := id.NewUUIDV7()
 	cases := &stubCaseWriter{}
 	reader := &stubReconReader{
 		paidNoVend: []domaincommerce.PaidOrderVendStartCandidate{{
@@ -446,7 +447,7 @@ func TestUnresolvedOrdersTick_paidNoVendStartCreatesCase(t *testing.T) {
 			Provider:      "psp",
 			PaymentState:  "captured",
 			VendState:     "pending",
-			MachineID:     uuid.New(),
+			MachineID:     id.NewUUIDV7(),
 		}},
 	}
 	if err := UnresolvedOrdersTick(context.Background(), ReconcilerDeps{Reader: reader, CaseWriter: cases, StableAge: time.Minute, Limits: 10}); err != nil {
@@ -462,13 +463,13 @@ func TestP06_Reconciler_VendTimeoutPaidVendFailedCreatesReviewCase(t *testing.T)
 	cases := &stubCaseWriter{}
 	reader := &stubReconReader{
 		paidFailures: []domaincommerce.PaidVendFailureCandidate{{
-			OrderID:       uuid.New(),
-			PaymentID:     uuid.New(),
-			VendSessionID: uuid.New(),
+			OrderID:       id.NewUUIDV7(),
+			PaymentID:     id.NewUUIDV7(),
+			VendSessionID: id.NewUUIDV7(),
 			Provider:      "psp",
 			PaymentState:  "captured",
 			VendState:     "failed",
-			MachineID:     uuid.New(),
+			MachineID:     id.NewUUIDV7(),
 		}},
 	}
 	if err := VendTimeoutReconcileTick(context.Background(), ReconcilerDeps{Reader: reader, CaseWriter: cases, StableAge: time.Minute, Limits: 10}); err != nil {
@@ -484,9 +485,9 @@ func TestRefundReviewDecisionTick_pendingRefundCreatesCase(t *testing.T) {
 	cases := &stubCaseWriter{}
 	reader := &stubReconReader{
 		pendingRefunds: []domaincommerce.RefundPendingCandidate{{
-			RefundID:    uuid.New(),
-			PaymentID:   uuid.New(),
-			OrderID:     uuid.New(),
+			RefundID:    id.NewUUIDV7(),
+			PaymentID:   id.NewUUIDV7(),
+			OrderID:     id.NewUUIDV7(),
 			Provider:    "psp",
 			RefundState: "processing",
 			AmountMinor: 100,
@@ -503,7 +504,7 @@ func TestRefundReviewDecisionTick_pendingRefundCreatesCase(t *testing.T) {
 
 func TestDuplicatePaymentRecoveryTick_safeConcurrentCaseUpserts(t *testing.T) {
 	t.Parallel()
-	reader := &stubReconReader{duplicates: []domaincommerce.Payment{{ID: uuid.New(), OrderID: uuid.New(), State: "captured", AmountMinor: 100, Currency: "USD"}}}
+	reader := &stubReconReader{duplicates: []domaincommerce.Payment{{ID: id.NewUUIDV7(), OrderID: id.NewUUIDV7(), State: "captured", AmountMinor: 100, Currency: "USD"}}}
 	run := func() error {
 		return DuplicatePaymentRecoveryTick(context.Background(), ReconcilerDeps{
 			Reader:     reader,

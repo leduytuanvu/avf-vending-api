@@ -2,6 +2,7 @@ package correctness
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 
 	appcatalogadmin "github.com/avf/avf-vending-api/internal/app/catalogadmin"
@@ -99,7 +100,7 @@ func TestP06_SellReadiness_runtimePrimaryMediaReady_falseWithoutPrimary(t *testi
 
 func TestP06_SellReadiness_sellableSlotProductID_filter(t *testing.T) {
 	t.Parallel()
-	pid := uuid.New()
+	pid := id.NewUUIDV7()
 	save := setupapp.SlotConfigSaveInput{
 		Items: []setupapp.SlotConfigSaveItem{
 			{ProductID: &pid, MaxQuantity: 2, PriceMinor: 100},

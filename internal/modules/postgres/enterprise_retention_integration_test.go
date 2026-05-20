@@ -2,19 +2,19 @@ package postgres_test
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRunEnterpriseRetention_dryRunDoesNotDeletePublishedOutbox(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	topic := "retention-dry-" + uuid.New().String()
+	topic := "retention-dry-" + id.NewUUIDV7().String()
 
 	_, err := pool.Exec(ctx, `
 INSERT INTO outbox_events (
@@ -22,10 +22,10 @@ INSERT INTO outbox_events (
   status, published_at, created_at, updated_at
 )
 VALUES (
-  $1, 'test.event', '{}'::jsonb, 'test', gen_random_uuid(),
+  $1, 'test.event', '{}'::jsonb, 'test', $2,
   'published', now() - interval '400 days', now() - interval '400 days', now()
 )
-`, topic)
+`, topic, id.NewUUIDV7())
 	require.NoError(t, err)
 
 	var rowID int64

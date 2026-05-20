@@ -1,6 +1,7 @@
 package salecatalog
 
 import (
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -46,12 +47,12 @@ func TestProductImageContentHash_prefersAssetSHA256(t *testing.T) {
 	t.Parallel()
 	pid := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 	row := db.RuntimeListProductImagesForProductsRow{
-		ID:           uuid.New(),
+		ID:           id.NewUUIDV7(),
 		ProductID:    pid,
 		StorageKey:   "k",
 		ContentHash:  pgtype.Text{String: "sha256:legacy", Valid: true},
 		CreatedAt:    time.Now().UTC(),
-		MediaAssetID: pgtype.UUID{Bytes: uuid.New(), Valid: true},
+		MediaAssetID: pgtype.UUID{Bytes: id.NewUUIDV7(), Valid: true},
 		AssetSha256:  pgtype.Text{String: "beefcafe", Valid: true},
 	}
 	if got := productImageContentHash(row); got != "sha256:beefcafe" {

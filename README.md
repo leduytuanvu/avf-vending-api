@@ -4,7 +4,7 @@ Go **1.25+** backend for the AVF vending platform: HTTP Admin/control plane (`cm
 
 **Migration note:** Company-scope model removed; system is now single-company. Admin APIs operate for the single company, with global, site-scoped, machine-scoped, and role-scoped authorization instead of company selection.
 
-**What runs today** (with env and migrations): HTTP `/v1` for admins/operators/webhooks; **native kiosk/runtime** on **`avf.machine.v1`** when machine gRPC is enabled (production requires **`MACHINE_GRPC_ENABLED=true`** explicitly); Postgres-backed commerce/device/fleet flows; legacy OpenAPI machine REST routes remain **`deprecated`** for migration windows only (`MACHINE_REST_LEGACY_ENABLED`). `cmd/worker` runs reliability ticks with **optional** NATS JetStream outbox publish when `NATS_URL` is set, **optional** ClickHouse analytics mirror when `ANALYTICS_*` is enabled (`ops/ANALYTICS_CLICKHOUSE.md`), `cmd/mqtt-ingest` MQTT→Postgres ingest, `cmd/reconciler` commerce reconciliation (list-only by default; **optional** close-the-loop actions when `RECONCILER_ACTIONS_ENABLED=true` with probe URL + NATS—see `internal/config/reconciler.go`). Optional **internal gRPC query services** (`INTERNAL_GRPC_ENABLED`) are loopback read/query only—not the vending app API. Optional **Temporal-backed workflow follow-up** via `cmd/temporal-worker`. **Artifacts** use S3 when `API_ARTIFACTS_ENABLED=true`. **Future scope:** broader internal gRPC mutation APIs and fully unified analytics/event planes—not missing native machine gRPC.
+**What runs today** (with env and migrations): HTTP `/v1` for admins/operators/webhooks; **native kiosk/runtime** on **`avf.machine.v1`** when machine gRPC is enabled (production requires **`MACHINE_GRPC_ENABLED=true`** explicitly); Postgres-backed commerce/device/fleet flows; legacy OpenAPI machine REST routes remain **`deprecated`** for migration windows only (`MACHINE_REST_LEGACY_ENABLED`). `cmd/worker` runs reliability ticks with **optional** NATS JetStream outbox publish when `NATS_URL` is set, **optional** ClickHouse analytics mirror when `ANALYTICS_*` is enabled (`deployments/docker/observability/ANALYTICS_CLICKHOUSE.md`), `cmd/mqtt-ingest` MQTT→Postgres ingest, `cmd/reconciler` commerce reconciliation (list-only by default; **optional** close-the-loop actions when `RECONCILER_ACTIONS_ENABLED=true` with probe URL + NATS—see `internal/config/reconciler.go`). Optional **internal gRPC query services** (`INTERNAL_GRPC_ENABLED`) are loopback read/query only—not the vending app API. Optional **Temporal-backed workflow follow-up** via `cmd/temporal-worker`. **Artifacts** use S3 when `API_ARTIFACTS_ENABLED=true`. **Future scope:** broader internal gRPC mutation APIs and fully unified analytics/event planes—not missing native machine gRPC.
 
 ## Current architecture
 
@@ -23,7 +23,7 @@ The repo still follows a **strangler** posture for traffic cutover from any lega
 | Path | Role |
 |------|------|
 | [`cmd/api`](cmd/api) | Public HTTP process |
-| [`cmd/worker`](cmd/worker) | Reliability ticks (payments/commands/outbox); **NATS JetStream** outbox + **DLQ** (`AVF_INTERNAL_DLQ`) when `NATS_URL` is set; optional **ClickHouse** mirror (`ANALYTICS_*`); optional **`METRICS_ENABLED`** + `WORKER_METRICS_LISTEN` for Prometheus `/metrics` (see [`ops/METRICS.md`](ops/METRICS.md)) |
+| [`cmd/worker`](cmd/worker) | Reliability ticks (payments/commands/outbox); **NATS JetStream** outbox + **DLQ** (`AVF_INTERNAL_DLQ`) when `NATS_URL` is set; optional **ClickHouse** mirror (`ANALYTICS_*`); optional **`METRICS_ENABLED`** + `WORKER_METRICS_LISTEN` for Prometheus `/metrics` (see [`deployments/docker/observability/METRICS.md`](deployments/docker/observability/METRICS.md)) |
 | [`cmd/mqtt-ingest`](cmd/mqtt-ingest) | MQTT subscriber → Postgres device ingest (broker via env; see `internal/platform/mqtt`) |
 | [`cmd/reconciler`](cmd/reconciler) | Commerce reconciliation ticks; optional PSP probe + refund routing when `RECONCILER_ACTIONS_ENABLED=true` (validated at startup) |
 | [`cmd/temporal-worker`](cmd/temporal-worker) | Temporal workflow worker for payment-to-vend, refund, command ACK, payment-timeout, vend-failure, and manual-review follow-up |
@@ -32,11 +32,17 @@ The repo still follows a **strangler** posture for traffic cutover from any lega
 | [`internal/httpserver`](internal/httpserver) | Chi HTTP server: `/health/*`, optional `/metrics` |
 | [`internal/bootstrap`](internal/bootstrap) | Process wiring (runtime clients, graceful shutdown) |
 | [`internal/modules/postgres`](internal/modules/postgres) | Postgres + sqlc-backed OLTP (orders/payments/commands; not Temporal) |
-| [`proto`](proto) | buf config — **`avf.machine.v1`** (public machine runtime), **`avf.internal.v1`** (loopback reads), legacy packages as applicable |
+| [`proto/`](proto/) | Protobuf sources (`buf generate`) — **`avf.machine.v1`**, **`avf.internal.v1`**, legacy packages |
 | [`migrations`](migrations) | goose SQL migrations |
-| [`deployments/docker`](deployments/docker) | Local dependency stack (Compose) |
+| [`deployments/docker`](deployments/docker) | Local dependency stack (Compose) + [`observability/`](deployments/docker/observability/) configs (Prometheus, Loki, Grafana, OTEL) |
 | [`deployments/prod/app-node`](deployments/prod/app-node) | New 2-VPS stateless production app-node stack |
 | [`deployments/prod/data-node`](deployments/prod/data-node) | New 2-VPS fallback broker/data-node stack |
+| [`postman/`](postman/) | CI Postman collections, environments, production verification suite |
+| [`api/openapi/`](api/openapi/) | OpenAPI pointer (embed lives in [`docs/swagger/`](docs/swagger/)) |
+| [`db/`](db/) | sqlc schema + queries (see [`sqlc.yaml`](sqlc.yaml)) |
+| [`tools/`](tools/) | OpenAPI/Postman generators and load-test CLI (`make swagger`, `tools/loadtest`) |
+| [`testdata/`](testdata/) | JSON fixtures for contract tests |
+| [`docs/`](docs/) | **Documentation hub** — [`docs/README.md`](docs/README.md) |
 
 ## Prerequisites
 
@@ -47,11 +53,11 @@ The repo still follows a **strangler** posture for traffic cutover from any lega
 
 ## CI and local gates
 
-**End-to-end pipeline and deploy chain (branches, staging, production, triage):** [docs/runbooks/cicd-release.md](docs/runbooks/cicd-release.md). Enterprise audit: [CI_CD_FINAL_AUDIT.md](CI_CD_FINAL_AUDIT.md).
+**End-to-end pipeline and deploy chain (branches, staging, production, triage):** [docs/runbooks/cicd-release.md](docs/runbooks/cicd-release.md). Enterprise audit: [docs/cicd/CI_CD_FINAL_AUDIT.md](docs/cicd/CI_CD_FINAL_AUDIT.md).
 
 This repository's GitHub Actions live under `.github/workflows/` (high level):
 
-- **`ci.yml` (`CI`)** — pull requests and pushes to `develop` and `main`, workflow contract and migration checks, and the same style of gates as `make ci-gates` (validates `deployments/docker/docker-compose.yml` among other steps). It also runs a **GitHub repository governance** read-only check (`scripts/ci/verify_github_governance.sh`); **Settings** for branches and the `production` environment must still be configured in the UI — see [docs/operations/github-governance.md](docs/operations/github-governance.md).
+- **`ci.yml` (`CI`)** — pull requests and pushes to `develop` and `main`, workflow contract and migration checks, and the same style of gates as `make ci-gates` (validates `deployments/docker/docker-compose.yml` among other steps). It also runs a **GitHub repository governance** read-only check (`scripts/ci/verify_github_governance.sh`); **Settings** for branches and the `production` environment must still be configured in the UI — see [docs/deployment/github-governance.md](docs/deployment/github-governance.md).
 - **`security.yml` (`Security`)** — repository scans (ex.: govulncheck, **Secret**/**Config** jobs); **not** the same as **Security Release** (verdict/artifact) or a deploy trigger.
 - **`build-push.yml` (`Build and Push Images`)** — runs after a successful **CI** `workflow_run` for eligible `develop`/`main` pushes; builds and pushes digest-pinned app and goose images and promotion artifacts. **Not** the default path for every open PR in isolation.
 
@@ -118,7 +124,7 @@ Integration-style tests under [`internal/modules/postgres`](internal/modules/pos
 
 ## Documentation
 
-- [Enterprise release process](docs/operations/release-process.md) and [operator checklists](docs/operations/production-release-checklist.md) (production is **manual-only**; see [CI/CD enterprise contract](docs/operations/ci-cd-enterprise-contract.md))
+- [Enterprise release process](docs/deployment/release-process.md) and [operator checklists](docs/production/production-release-checklist.md) (production is **manual-only**; see [CI/CD enterprise contract](docs/cicd/ci-cd-enterprise-contract.md))
 - [Enterprise target model](docs/architecture/enterprise-target-model.md) and [transport boundary](docs/architecture/transport-boundary.md) (credentials + per-transport ownership)
 - [Current architecture (as built)](docs/architecture/current-architecture.md), [data flow overview](docs/architecture/data-flow.md), [deployment topology](docs/architecture/deployment-topology.md)
 - [P0 / P1 / P2 implementation roadmap](docs/architecture/p0-p1-p2-implementation-roadmap.md)
@@ -126,17 +132,17 @@ Integration-style tests under [`internal/modules/postgres`](internal/modules/pos
 - [Strangler / migration strategy](docs/architecture/migration-strategy.md)
 - [Documentation index](docs/README.md)
 - [Machine gRPC (`avf.machine.v1`)](docs/api/machine-grpc.md), [internal gRPC reads (`avf.internal.v1`)](docs/api/internal-grpc.md), [Admin REST](docs/api/admin-rest.md)
-- [Local testing guide](docs/testing/local-testing-guide.md) · [LOCAL_TEST_GUIDE.md](LOCAL_TEST_GUIDE.md)
+- [Local testing guide](docs/testing/local-testing-guide.md)
 - [2-VPS production runbook](docs/runbooks/production-2-vps.md)
 - [2-VPS cutover and rollback](docs/runbooks/production-cutover-rollback.md)
 - [2-VPS backup, restore, and DR](docs/runbooks/production-backup-restore-dr.md)
 - [2-VPS day-2 incidents](docs/runbooks/production-day-2-incidents.md)
-- [Field pilot checklist](docs/operations/field-pilot-checklist.md)
+- [Field pilot checklist](docs/production/field-pilot-checklist.md)
 - [Field smoke tests](docs/runbooks/field-smoke-tests.md)
 - [Temporal workflow runbook](docs/runbooks/temporal-workflows.md)
 - [Machine activation runbook](docs/runbooks/machine-activation.md)
-- [Operations runbook](ops/RUNBOOK.md) — incidents, dashboards/alert ideas, SQL checks
-- [Metrics / signals](ops/METRICS.md)
+- [Operations runbook](deployments/docker/observability/RUNBOOK.md) — incidents, dashboards/alert ideas, SQL checks
+- [Metrics / signals](deployments/docker/observability/METRICS.md)
 
 ## Makefile
 

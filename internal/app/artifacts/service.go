@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
@@ -109,7 +110,7 @@ func (s *Service) DownloadPresignTTL() time.Duration {
 
 // ReserveArtifact allocates a new artifact id (no object written yet).
 func (s *Service) ReserveArtifact(_ context.Context) (uuid.UUID, error) {
-	return uuid.New(), nil
+	return id.NewUUIDV7(), nil
 }
 
 // PutContent streams exactly size bytes into the canonical artifact key, validating SHA-256 and content type.

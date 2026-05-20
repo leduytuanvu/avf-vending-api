@@ -112,12 +112,12 @@ on:
         default: "7"
         type: string
       run_migration:
-        description: "Whether to run the production database migration (goose Up) during this deploy. Default is image-only; do not enable without a confirmed backup."
+        description: "Run production database migration (goose up from embedded /app/migrations) during deploy. Default true; inline pg_dump backup runs on app node A before up. Set false only for image-only emergency rollouts."
         required: false
-        default: false
+        default: true
         type: boolean
       backup_evidence_id:
-        description: "When run_migration is true, required. Must be a GitHub Actions run id (digits only) whose workflow uploaded artifact 'production-db-backup-evidence' (file backup-evidence/backup-evidence.json), or path:RELATIVE/TO/backup-evidence.json in this repo. JSON must pass scripts/ci/validate_backup_evidence.py (docs/contracts/backup-evidence.schema.json). Optional and not validated when run_migration is false (informational if supplied)."
+        description: "Optional supplementary backup/restore-drill evidence (GitHub Actions run id or path:.../backup-evidence.json). Not required when deploy uses inline pg_dump via scripts/deploy/production-migrate.sh; validated when supplied."
         required: false
         default: ""
         type: string
@@ -150,7 +150,7 @@ on:
 # Production actions stay serialized under one stable gate.
 # Later runs queue behind the active rollout or rollback instead of canceling it.
 concurrency:
-  group: production-deployment
+  group: production-deploy
   cancel-in-progress: false
 
 permissions:
@@ -995,10 +995,10 @@ jobs:
           bash -n deployments/prod/data-node/scripts/rollback_data_node.sh
           bash -n deployments/prod/data-node/scripts/healthcheck_data_node.sh
           bash -n deployments/prod/data-node/scripts/bootstrap_emqx_data_node.sh
-          bash -n scripts/monitoring/collect_deploy_slo_evidence.sh
-          python3 -m py_compile scripts/smoke/emit_production_smoke_json.py
-          python3 -m py_compile scripts/release/build_release_evidence_package.py
-          python3 scripts/release/build_release_evidence_package.py --help >/dev/null
+          bash -n scripts/deploy/monitoring/collect_deploy_slo_evidence.sh
+          python3 -m py_compile scripts/deploy/smoke/emit_production_smoke_json.py
+          python3 -m py_compile scripts/deploy/release/build_release_evidence_package.py
+          python3 scripts/deploy/release/build_release_evidence_package.py --help >/dev/null
           bash deployments/prod/scripts/smoke_prod.sh --help >/dev/null
           python3 -m py_compile deployments/prod/shared/scripts/validate_production_scale_storm_evidence.py
           python3 -m py_compile deployments/prod/shared/scripts/render_storm_evidence_manifest_fragment.py
@@ -1714,9 +1714,6 @@ jobs:
           (( SSH_PORT >= 1 && SSH_PORT <= 65535 )) || fail "SSH_PORT must be between 1 and 65535"
           if [[ "${ACTION_MODE}" == "deploy" ]]; then
             [[ -n "${PRODUCTION_PUBLIC_BASE_URL}" ]] || fail "deploy mode requires PUBLIC_BASE_URL or API_DOMAIN for blackbox smoke"
-            if [[ "${INPUT_RUN_MIGRATION:-false}" == "true" ]]; then
-              [[ -n "${INPUT_BACKUP_EVIDENCE_ID:-}" ]] || fail "backup_evidence_id is required when run_migration=true"
-            fi
           fi
 
           if [[ "${DEPLOY_DATA_NODE}" == "true" ]]; then
@@ -1760,8 +1757,8 @@ jobs:
             fi
           fi
 
-      - name: Fetch and validate production backup evidence (run_migration only)
-        if: inputs.action_mode == 'deploy' && inputs.run_migration
+      - name: Fetch and validate production backup evidence (optional supplementary)
+        if: inputs.action_mode == 'deploy' && inputs.run_migration && inputs.backup_evidence_id != ''
         shell: bash
         env:
           INPUT_BACKUP_EVIDENCE_ID: ${{ inputs.backup_evidence_id || '' }}
@@ -1777,7 +1774,10 @@ jobs:
           ref_raw="${INPUT_BACKUP_EVIDENCE_ID:-}"
           ref_raw="${ref_raw#"${ref_raw%%[![:space:]]*}"}"
           ref_raw="${ref_raw%"${ref_raw##*[![:space:]]}"}"
-          [[ -n "${ref_raw}" ]] || fail "backup_evidence_id is required and non-empty when run_migration=true (use a workflow run id or path:...; see docs/operations/production-backup-restore-drill.md)"
+          if [[ -z "${ref_raw}" ]]; then
+            echo "backup_evidence_id not set; skipping supplementary evidence validation (inline pg_dump runs on VPS via production-migrate.sh)"
+            exit 0
+          fi
 
           ev_file=""
           if [[ "${ref_raw}" == path:* ]]; then
@@ -1917,19 +1917,24 @@ jobs:
           {
             echo "## Production Action Plan"
             echo "- action mode: \`${ACTION_MODE}\`"
-            echo "- concurrency policy: \`production-deployment\` queue; in-flight production runs are not canceled"
+            echo "- concurrency policy: \`production-deploy\` queue; in-flight production runs are not canceled"
             if [[ "${ACTION_MODE}" == "deploy" ]]; then
               echo "- selected build run: \`${SELECTED_BUILD_RUN_ID}\`"
               echo "- selected build actor: \`${SELECTED_BUILD_ACTOR}\`"
               echo "- source branch: \`${SOURCE_BRANCH}\`"
               echo "- source commit SHA: \`${SOURCE_COMMIT_SHA}\`"
-              echo "- run_migration (workflow input): \`${INPUT_RUN_MIGRATION:-false}\`"
-              if [[ "${INPUT_RUN_MIGRATION:-false}" == "true" ]]; then
-                echo "- backup_evidence_id (validated in migration gate step): \`${INPUT_BACKUP_EVIDENCE_ID:-}\`"
+              echo "- run_migration (workflow input): \`${INPUT_RUN_MIGRATION:-true}\`"
+              if [[ "${INPUT_RUN_MIGRATION:-true}" == "true" ]]; then
+                echo "- inline migration backup: \`scripts/deploy/production-migrate.sh pg_dump on app node A\`"
+                if [[ -n "${INPUT_BACKUP_EVIDENCE_ID:-}" ]]; then
+                  echo "- backup_evidence_id (supplementary, validated): \`${INPUT_BACKUP_EVIDENCE_ID}\`"
+                else
+                  echo "- backup_evidence_id: \`(not set; optional supplementary restore-drill evidence)\`"
+                fi
               elif [[ -n "${INPUT_BACKUP_EVIDENCE_ID:-}" ]]; then
-                echo "- backup_evidence_id (informational; run_migration is false, not schema-validated): \`${INPUT_BACKUP_EVIDENCE_ID}\`"
+                echo "- backup_evidence_id (informational; run_migration is false): \`${INPUT_BACKUP_EVIDENCE_ID}\`"
               else
-                echo "- backup_evidence_id: \`(not set; optional when run_migration is false)\`"
+                echo "- backup_evidence_id: \`(not set)\`"
               fi
             fi
             echo "- app image: \`${APP_IMAGE_REF}\`"
@@ -2199,7 +2204,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
-          bash scripts/monitoring/collect_deploy_slo_evidence.sh --json --phase pre_deploy --out deployment-evidence/slo-pre-deploy.json
+          bash scripts/deploy/monitoring/collect_deploy_slo_evidence.sh --json --phase pre_deploy --out deployment-evidence/slo-pre-deploy.json
 
       - name: Optionally deploy data-node fallback stack
         if: env.DEPLOY_DATA_NODE == 'true'
@@ -2259,7 +2264,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
-          bash scripts/monitoring/collect_deploy_slo_evidence.sh --json --phase post_node_a --out deployment-evidence/slo-post-node-a.json
+          bash scripts/deploy/monitoring/collect_deploy_slo_evidence.sh --json --phase post_node_a --out deployment-evidence/slo-post-node-a.json
 
       - name: Roll out app node B with smoke gate
         id: deploy_app_node_b
@@ -2437,7 +2442,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
-          bash scripts/monitoring/collect_deploy_slo_evidence.sh --json --phase post_final --out deployment-evidence/slo-post-final.json
+          bash scripts/deploy/monitoring/collect_deploy_slo_evidence.sh --json --phase post_final --out deployment-evidence/slo-post-final.json
 
       - name: Attempt automatic rollback after failed production release
         if: failure() && env.ACTION_MODE == 'deploy'
@@ -3063,7 +3068,7 @@ jobs:
             echo "## Production Deployment"
             echo "- action: \`${ACTION_MODE}\`"
             echo "- environment: \`production\`"
-            echo "- concurrency policy: \`production-deployment\` queue; rollback and deploy both serialize under the same gate"
+            echo "- concurrency policy: \`production-deploy\` queue; rollback and deploy both serialize under the same gate"
             echo "- actor: \`${ACTOR}\`"
             echo "- completed at (UTC): \`${completed_at_utc}\`"
             echo "- run: [#${GITHUB_RUN_NUMBER}](${run_url})"
@@ -3142,10 +3147,10 @@ jobs:
         run: |
           set -Eeuo pipefail
           if [[ -f deployment-evidence/production-deploy-evidence.json ]]; then
-            python3 scripts/release/build_release_evidence_package.py --out release-audit-prod --phase production --root . --strict-phase production
+            python3 scripts/deploy/release/build_release_evidence_package.py --out release-audit-prod --phase production --root . --strict-phase production
           else
             echo "::warning::production-deploy-evidence.json missing; building non-strict audit manifest (rollback or pre-manifest run)"
-            python3 scripts/release/build_release_evidence_package.py --out release-audit-prod --phase production --root .
+            python3 scripts/deploy/release/build_release_evidence_package.py --out release-audit-prod --phase production --root .
           fi
       - name: Upload production release audit package
         if: always()

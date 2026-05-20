@@ -54,4 +54,4 @@ Related: `docs/runbooks/mqtt-command-debug.md`, `docs/api/machine-grpc.md`, `doc
 - `machine_offline_replay_failures_total{reason=…}` — dispatch/replay rejects on the API.
 - `machine_sync_lag_seconds` — lag between `occurred_at` and server processing.
 - `machine_last_seen_age_seconds` — telemetry worker view of staleness vs `last_seen_at`.
-- Full list: [`docs/observability/production-metrics.md`](../observability/production-metrics.md).
+- Full list: [`docs/production/production-metrics.md`](../production/production-metrics.md).

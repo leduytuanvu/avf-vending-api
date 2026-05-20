@@ -12,9 +12,9 @@ This runbook defines **what must pass** before calling a release **pilot-safe** 
 | Field test matrix (**Case ID … Owner** columns) | [`../testing/field-test-cases.md`](../testing/field-test-cases.md) | Field lead |
 | Android kiosk implementation checklist | [`../api/kiosk-app-implementation-checklist.md`](../api/kiosk-app-implementation-checklist.md) | Android lead |
 | Kiosk narrative flow | [`../api/kiosk-app-flow.md`](../api/kiosk-app-flow.md) | Android + QA |
-| **Post-deploy machine** widen | [`../operations/field-rollout-checklist.md`](../operations/field-rollout-checklist.md) | Field / SRE |
-| **Pre-deploy GitHub** checklist | [`../operations/production-release-checklist.md`](../operations/production-release-checklist.md) | Release manager |
-| Automated **GET-only** prod smoke | [`../operations/production-smoke-tests.md`](../operations/production-smoke-tests.md) | CI/CD — **not** a substitute for PSP/vend hardware tests |
+| **Post-deploy machine** widen | [`../production/field-rollout-checklist.md`](../production/field-rollout-checklist.md) | Field / SRE |
+| **Pre-deploy GitHub** checklist | [`../production/production-release-checklist.md`](../production/production-release-checklist.md) | Release manager |
+| Automated **GET-only** prod smoke | [`../production/production-smoke-tests.md`](../production/production-smoke-tests.md) | CI/CD — **not** a substitute for PSP/vend hardware tests |
 | Mutating smoke **commands** | [`field-smoke-tests.md`](field-smoke-tests.md) | Operator (staging/pilot) |
 
 **Topology:** Production **2-VPS rolling** + **managed** PostgreSQL / Redis / MQTT / object storage (**not** single-host Compose primary) — **[`production-2-vps.md`](production-2-vps.md)**, **[`production-cutover-rollback.md`](production-cutover-rollback.md)**. Legacy Compose is **rehearsal / emergency** only.
@@ -42,7 +42,7 @@ make verify-enterprise-release
 Equivalent:
 
 ```bash
-bash scripts/verify_enterprise_release.sh
+bash scripts/ci/verify_enterprise_release.sh
 ```
 
 The command exits **non-zero** on any failed phase.
@@ -54,7 +54,7 @@ The command exits **non-zero** on any failed phase.
 3. **`bash -n`** — every `*.sh` under `scripts/` and `deployments/`.
 4. **Docker Compose config** — offline `docker compose … config` using **example** env files (`deployments/prod/app-node/.env.app-node.example`, data-node example, legacy prod example when present). Set `VERIFY_ENTERPRISE_SKIP_DOCKER=1` only for partial local runs (not a scale sign-off).
 5. **OpenAPI release checks** — `tools/openapi_verify_release.py`: production + local dev servers first/second, **required P0 paths** present, no **planned-only** paths in Swagger, JSON **POST/PUT/PATCH** bodies include examples, **Bearer** on protected `/v1` routes (except login, refresh, activation claim, PSP webhook), **2xx + error** response examples, no secret-like **examples**.
-6. **Stale P0 docs** — `scripts/check_stale_p0_docs.sh` rejects docs that claim P0 HTTP surfaces are still unmerged/unmounted (see script for exclusions).
+6. **Stale P0 docs** — `scripts/ci/check_stale_p0_docs.sh` rejects docs that claim P0 HTTP surfaces are still unmerged/unmounted (see script for exclusions).
 7. **Secret heuristics** — deployment `*.example` / `.env.*.example` files; plus `docs/` and `testdata/` (excludes generated `docs/swagger/swagger.json` from JWT-pattern scan). Blocks obvious live keys and JWT-shaped blobs in prose.
 8. **YAML parse (optional)** — if `python3` + PyYAML available, parses `deployments/**/*.yml|yaml`.
 
@@ -197,7 +197,7 @@ Document **which** path the org uses on the release ticket.
 | **B. Manual / out-of-band deploy** | Bastion-only or customer CI | Same **logical** gates: static verify JSON, monitoring JSON, storm JSON (if not pilot), manifest, known risks — assembled via `deployments/prod/scripts/build_release_evidence_pack.sh` |
 | **C. Legacy single-host compose** | Rollback or rehearsal only | `deployments/prod/docker-compose.prod.yml` + `.env.production.example` validation in `verify-enterprise-release`; not the default 2-VPS story |
 
-**Static CI gate:** [`.github/workflows/enterprise-release-verify.yml`](../../.github/workflows/enterprise-release-verify.yml) — `scripts/verify_enterprise_release.sh` (same as `make verify-enterprise-release`).
+**Static CI gate:** [`.github/workflows/enterprise-release-verify.yml`](../../.github/workflows/enterprise-release-verify.yml) — `scripts/ci/verify_enterprise_release.sh` (same as `make verify-enterprise-release`).
 
 ---
 
@@ -237,7 +237,7 @@ Prerequisites: `emit_verify_enterprise_result_json.sh`, monitoring + storm JSONs
 
 ## CI
 
-- **Static verify:** [`.github/workflows/enterprise-release-verify.yml`](../../.github/workflows/enterprise-release-verify.yml) runs `scripts/verify_enterprise_release.sh` on `main` PRs/pushes and `workflow_dispatch`.
+- **Static verify:** [`.github/workflows/enterprise-release-verify.yml`](../../.github/workflows/enterprise-release-verify.yml) runs `scripts/ci/verify_enterprise_release.sh` on `main` PRs/pushes and `workflow_dispatch`.
 - **Storm (staging):** [`.github/workflows/telemetry-storm-staging.yml`](../../.github/workflows/telemetry-storm-staging.yml) — manual; produces `telemetry-storm-result` for production scale gate.
 
 ---

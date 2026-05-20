@@ -2,10 +2,9 @@ package redis
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 func TestMemoryLockerReleaseRequiresOwner(t *testing.T) {
@@ -31,7 +30,7 @@ func TestMemoryRefreshSessionCacheInvalidate(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	c := NewMemoryRefreshSessionCache()
-	accountID := uuid.New()
+	accountID := id.NewUUIDV7()
 	if err := c.PutRefreshSession(ctx, []byte("hash-one"), accountID, time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
@@ -59,8 +58,8 @@ func TestMemoryCatalogCacheHitMissInvalidate(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	c := NewMemoryCatalogCache()
-	scopeID := uuid.New()
-	machineID := uuid.New()
+	scopeID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
 	if _, ok, err := c.Get(ctx, scopeID, machineID, "v1"); err != nil || ok {
 		t.Fatalf("expected miss ok=%v err=%v", ok, err)
 	}
@@ -82,7 +81,7 @@ func TestMemoryLoginFailureCounterLocksAtThreshold(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	c := NewMemoryLoginFailureCounter()
-	scopeID := uuid.New()
+	scopeID := id.NewUUIDV7()
 	locked, n, err := c.IncrementFailure(ctx, scopeID, "USER@example.com", 2, time.Minute)
 	if err != nil || locked || n != 1 {
 		t.Fatalf("first failure locked=%v n=%d err=%v", locked, n, err)

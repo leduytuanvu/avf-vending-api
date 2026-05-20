@@ -1,12 +1,12 @@
 package reliability_test
 
 import (
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
 	appreliability "github.com/avf/avf-vending-api/internal/app/reliability"
 	domainreliability "github.com/avf/avf-vending-api/internal/domain/reliability"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +18,7 @@ func TestDecideOutboxReplay_DeadLetterNeverRepublishes(t *testing.T) {
 		ID:                  9,
 		Topic:               "payments.x",
 		CreatedAt:           now.Add(-time.Hour),
-		AggregateID:         uuid.New(),
+		AggregateID:         id.NewUUIDV7(),
 		DeadLetteredAt:      &dl,
 		PublishAttemptCount: 99,
 	}
@@ -36,7 +36,7 @@ func TestDecideOutboxReplay_BackoffDefersEvenWhenOld(t *testing.T) {
 		ID:               2,
 		Topic:            "payments.x",
 		CreatedAt:        now.Add(-24 * time.Hour),
-		AggregateID:      uuid.New(),
+		AggregateID:      id.NewUUIDV7(),
 		NextPublishAfter: &next,
 	}
 	policy := appreliability.NormalizeRecoveryPolicy(appreliability.RecoveryPolicy{OutboxMinAge: time.Millisecond})
@@ -52,7 +52,7 @@ func TestDecideOutboxReplay_AgedEligibleRepublishes(t *testing.T) {
 		ID:          3,
 		Topic:       "payments.x",
 		CreatedAt:   now.Add(-10 * time.Minute),
-		AggregateID: uuid.New(),
+		AggregateID: id.NewUUIDV7(),
 	}
 	policy := appreliability.NormalizeRecoveryPolicy(appreliability.RecoveryPolicy{OutboxMinAge: time.Minute})
 	d := svc.DecideOutboxReplay(appreliability.ScanRunContext{Now: now}, policy, ev)

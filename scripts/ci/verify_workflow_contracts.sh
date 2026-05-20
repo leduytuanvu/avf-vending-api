@@ -34,7 +34,7 @@ fail() {
 
 # --- verify_enterprise_release.sh: legacy single-host docker-compose.prod CI check uses example env for both --env-file and PROD_ENV_FILE ---
 # (YAML env_file: ${PROD_ENV_FILE:-.env.production} would otherwise make compose look for a real .env.production.)
-grep -qE 'PROD_ENV_FILE=\.env\.production\.example.*docker-compose\.prod\.yml' "${ROOT}/scripts/verify_enterprise_release.sh" || \
+grep -qE 'PROD_ENV_FILE=\.env\.production\.example.*docker-compose\.prod\.yml' "${ROOT}/scripts/ci/verify_enterprise_release.sh" || \
   fail "verify_enterprise_release.sh must set PROD_ENV_FILE=.env.production.example when validating docker-compose.prod.yml (CI must not require deployments/prod/.env.production)"
 
 # From `on:` up to the next `concurrency:` (top level). Works for workflows where `concurrency` follows
@@ -126,16 +126,16 @@ if grep -qE 'cosign[[:space:]]+verify' "${WF}/_reusable-build.yml" 2>/dev/null; 
   fi
 fi
 
-# --- security-release: verdict must not be stoppable as empty; JSON comes from scripts/security/write_security_verdict.py ---
+# --- security-release: verdict must not be stoppable as empty; JSON comes from scripts/deploy/security/write_security_verdict.py ---
 grep -qF "blocking security verdict is empty" "${WF}/security-release.yml" || fail "security-release.yml must fail closed when the resolved verdict is empty (expected pass, fail, or skipped in SECURITY_VERDICT / security-verdict.json)"
 grep -qF "SECURITY_VERDICT" "${WF}/security-release.yml" || fail "security-release.yml must use SECURITY_VERDICT in the Enforce step (blocking empty string)"
 grep -qF "security-reports/security-verdict.json" "${WF}/security-release.yml" || fail "security-release.yml must write security-reports/security-verdict.json (uploaded as security-verdict artifact)"
-# Required writer modes are derived from scripts/security/write_security_verdict.py CONTRACT_VERDICT_MODES (checked in Python below; regression: empty verdict / missing skip path).
+# Required writer modes are derived from scripts/deploy/security/write_security_verdict.py CONTRACT_VERDICT_MODES (checked in Python below; regression: empty verdict / missing skip path).
 grep -qF "No releasable candidate. Security release gate skipped." "${WF}/security-release.yml" || fail "security-release.yml must document the neutral no-release-candidate skipped outcome (Build chain did not produce a releasable candidate)"
-grep -qF "scripts/security/emit_security_verdict_outputs.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_outputs.py after each verdict write (GITHUB_OUTPUT contract)"
-grep -qF "scripts/security/emit_security_verdict_summary.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_summary.py (job summary contract)"
+grep -qF "scripts/deploy/security/emit_security_verdict_outputs.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_outputs.py after each verdict write (GITHUB_OUTPUT contract)"
+grep -qF "scripts/deploy/security/emit_security_verdict_summary.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_security_verdict_summary.py (job summary contract)"
 grep -qF "export CANONICAL_SOURCE_SHA" "${WF}/security-release.yml" || fail "security-release.yml must export CANONICAL_SOURCE_SHA (artifact-first source coordinates for Security / verdict)"
-grep -qF "scripts/security/emit_release_signal_debug_table.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_release_signal_debug_table.py (source coordinate debug summary)"
+grep -qF "scripts/deploy/security/emit_release_signal_debug_table.py" "${WF}/security-release.yml" || fail "security-release.yml must call emit_release_signal_debug_table.py (source coordinate debug summary)"
 # Polling: must not use read < <(pipeline) on jq output (empty under set -e); require safe security_run_row + read <<< with || true
 grep -qF "security_run_row" "${WF}/security-release.yml" || fail "security-release.yml must use security_run_row for repo Security (push) run polling (safe under set -e)"
 # Release candidate identity: artifact-first (never prefer triggering workflow_run head over promotion-manifest)
@@ -144,8 +144,8 @@ grep -qF 'want_branch="${RESOLVED_SOURCE_BRANCH' "${WF}/security-release.yml" ||
 if grep -E 'want_branch=.*(BUILD_HEAD_BRANCH|TRIGGERING_BUILD_HEAD_BRANCH)' "${WF}/security-release.yml" 2>/dev/null; then
   fail "security-release.yml: candidate want_branch must not be derived from BUILD_HEAD_BRANCH or TRIGGERING_BUILD_HEAD_BRANCH (use RESOLVED_SOURCE_BRANCH from promotion-manifest)"
 fi
-grep -qF "scripts/security/write_security_verdict.py ineligible-branch" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py ineligible-branch (canonical branch not develop/main; neutral skip)"
-grep -qF "scripts/security/write_security_verdict.py unsupported-artifact-source-event" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py unsupported-artifact-source-event when ARTIFACT_SOURCE_EVENT is not an allowed semantic event"
+grep -qF "scripts/deploy/security/write_security_verdict.py ineligible-branch" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py ineligible-branch (canonical branch not develop/main; neutral skip)"
+grep -qF "scripts/deploy/security/write_security_verdict.py unsupported-artifact-source-event" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py unsupported-artifact-source-event when ARTIFACT_SOURCE_EVENT is not an allowed semantic event"
 # Semantic promotion eligibility: artifacts (not github.event.workflow_run.event); CI chain triggers allowed when manifest says push/workflow_dispatch
 grep -qF "promotion-manifest / immutable-image-contract" "${WF}/security-release.yml" || fail "security-release.yml must document artifact-first semantic promotion eligibility"
 if grep -qF "github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'" "${WF}/security-release.yml" 2>/dev/null; then
@@ -165,9 +165,9 @@ _sr_hb="$(grep -cF "(github.event.workflow_run.head_branch == 'develop' || githu
 if [[ "${_sr_hb}" -lt 3 ]]; then
   fail "security-release.yml: expected at least 3 occurrences of head_branch develop|main guards on workflow_run (found ${_sr_hb})"
 fi
-grep -qF "scripts/release/write_production_deploy_candidate_package.py" "${WF}/security-release.yml" || fail "security-release.yml must generate production-deploy-candidate via scripts/release/write_production_deploy_candidate_package.py"
+grep -qF "scripts/deploy/release/write_production_deploy_candidate_package.py" "${WF}/security-release.yml" || fail "security-release.yml must generate production-deploy-candidate via scripts/deploy/release/write_production_deploy_candidate_package.py"
 grep -qF '[[ "${V}" == "fail" ]]' "${WF}/security-release.yml" || fail "security-release.yml Enforce step must block on verdict fail (full gate JSON with verdict=fail); missing fail branch allows pass with broken release gate"
-grep -qF "python3 scripts/security/write_security_verdict.py full" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py full (pass and fail outcomes both emit JSON via write_full)"
+grep -qF "python3 scripts/deploy/security/write_security_verdict.py full" "${WF}/security-release.yml" || fail "security-release.yml must call write_security_verdict.py full (pass and fail outcomes both emit JSON via write_full)"
 
 # Prefer an interpreter that actually runs (skip broken Windows "python3" app-install stubs when possible).
 python_exec=""
@@ -209,7 +209,7 @@ def str_from_ast_elt(elt: ast.AST) -> str | None:
 
 
 contract_modes: tuple[str, ...] | None = None
-mod = ast.parse(Path("scripts/security/write_security_verdict.py").read_text(encoding="utf-8", errors="replace"))
+mod = ast.parse(Path("scripts/deploy/security/write_security_verdict.py").read_text(encoding="utf-8", errors="replace"))
 for node in mod.body:
     if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == "CONTRACT_VERDICT_MODES":
         if isinstance(node.value, ast.Tuple):
@@ -219,7 +219,7 @@ for node in mod.body:
         break
 if not contract_modes:
     print(
-        "verify_workflow_contracts: error: scripts/security/write_security_verdict.py must define "
+        "verify_workflow_contracts: error: scripts/deploy/security/write_security_verdict.py must define "
         "CONTRACT_VERDICT_MODES = (\"skipped\", ...) for the workflow contract checker.",
         file=sys.stderr,
     )
@@ -229,7 +229,7 @@ for m in contract_modes:
     needle = "write_security_verdict.py %s" % m
     if needle not in wf_text:
         print(
-            "verify_workflow_contracts: error: security-release.yml must invoke `python3 scripts/security/%s` "
+            "verify_workflow_contracts: error: security-release.yml must invoke `python3 scripts/deploy/security/%s` "
             "(every CONTRACT_VERDICT_MODES entry must have a reachable write path so security-verdict.json is never missing on skip/fail)." % needle,
             file=sys.stderr,
         )
@@ -335,7 +335,7 @@ for n, line in enumerate(lines, 1):
 PY
 
 # write_security_verdict.py smoke: always emits security-reports/security-verdict.json
-"${python_exec}" "${ROOT}/scripts/security/tests/test_write_security_verdict_smoke.py" || fail "scripts/security/tests/test_write_security_verdict_smoke.py failed"
+"${python_exec}" "${ROOT}/scripts/deploy/security/tests/test_write_security_verdict_smoke.py" || fail "scripts/deploy/security/tests/test_write_security_verdict_smoke.py failed"
 
 # --- build-push: CI workflow_run completed + dispatch; only develop/main push paths in job if ---
 on_until_concurrency "${WF}/build-push.yml" | grep -qE '^[[:space:]]*workflow_run:' || fail "build-push.yml must use workflow_run trigger"
@@ -519,9 +519,9 @@ grep -qF 'security-verdict-bundle/security-verdict.json' "${WF}/deploy-prod.yml"
 grep -qF 'p.get("source_event")' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must load semantic source_event from verdict JSON"
 grep -qF 'TRIGGER_WORKFLOW_EVENT_BUILD_API' "${WF}/deploy-prod.yml" || fail "deploy-prod.yml must pass TRIGGER_WORKFLOW_EVENT_BUILD_API into production security gate"
 grep -qE 'source_commit_sha source_event run_status' "${WF}/deploy-prod.yml" && fail "deploy-prod.yml must not parse Build API event into variable named source_event (use build_trigger_event)"
-grep -qF 'production-deploy-candidate-metadata.json' "${ROOT}/scripts/release/write_production_deploy_candidate_package.py" || fail "write_production_deploy_candidate_package.py must emit production-deploy-candidate-metadata.json"
+grep -qF 'production-deploy-candidate-metadata.json' "${ROOT}/scripts/deploy/release/write_production_deploy_candidate_package.py" || fail "write_production_deploy_candidate_package.py must emit production-deploy-candidate-metadata.json"
 
-# --- deploy-prod: migration is opt-in; backup evidence is mandatory when run_migration is true ---
+# --- deploy-prod: migration on by default; inline pg_dump on VPS; supplementary backup evidence optional ---
 deploy_prod_on_slice="$(
   awk '/^on:/{p=1;next} p && /^[a-zA-Z#@]/ {exit} p' "${WF}/deploy-prod.yml"
 )"
@@ -534,12 +534,15 @@ dp_run_mig_block="$(
     p && /^      [a-zA-Z0-9_-]+:/ && $0 !~ /^      run_migration:/{ exit }
     p' "${WF}/deploy-prod.yml"
 )"
-printf '%s\n' "${dp_run_mig_block}" | grep -qE '^[[:space:]]*default: false' || \
-  fail "deploy-prod.yml run_migration must default to false (image-only deploy by default)"
-grep -qF "backup_evidence_id is required when run_migration=true" "${WF}/deploy-prod.yml" || \
-  fail "deploy-prod.yml must fail closed when run_migration is true and backup_evidence_id is empty (pre-SSH / pre-artifact validation)"
+printf '%s\n' "${dp_run_mig_block}" | grep -qE '^[[:space:]]*default: true' || \
+  fail "deploy-prod.yml run_migration must default to true (auto migration on deploy)"
+grep -qF "group: production-deploy" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must serialize production deploy under concurrency group production-deploy"
+grep -qF "scripts/deploy/production-migrate.sh" "${WF}/deploy-prod.yml" || \
+  grep -qF "production-migrate.sh" "${ROOT}/deployments/prod/app-node/scripts/release_app_node.sh" || \
+  fail "production deploy must invoke scripts/deploy/production-migrate.sh (via release_app_node.sh or workflow)"
 grep -qF "validate_backup_evidence.py" "${WF}/deploy-prod.yml" || \
-  fail "deploy-prod.yml must invoke scripts/ci/validate_backup_evidence.py (structured production backup / restore-drill JSON)"
+  fail "deploy-prod.yml must invoke scripts/ci/validate_backup_evidence.py when supplementary backup_evidence_id is supplied"
 grep -qF "production-db-backup-evidence" "${WF}/deploy-prod.yml" || \
   fail "deploy-prod.yml must reference artifact name production-db-backup-evidence for backup resolution by run id"
 grep -qF "backup-evidence/backup-evidence.json" "${WF}/deploy-prod.yml" || \
@@ -555,13 +558,13 @@ grep -qF "SMOKE_LEVEL" "${WF}/deploy-prod.yml" || \
 grep -qF "enable_business_synthetic_smoke" "${WF}/deploy-prod.yml" || \
   fail "deploy-prod.yml must define enable_business_synthetic_smoke input (optional synthetic tier)"
 grep -qF "emit_production_smoke_json.py" "${WF}/deploy-prod.yml" || \
-  fail "deploy-prod validate job must py_compile scripts/smoke/emit_production_smoke_json.py"
+  fail "deploy-prod validate job must py_compile scripts/deploy/smoke/emit_production_smoke_json.py"
 grep -qF "build_release_evidence_package.py" "${WF}/deploy-prod.yml" || \
-  fail "deploy-prod must validate scripts/release/build_release_evidence_package.py (release audit package)"
+  fail "deploy-prod must validate scripts/deploy/release/build_release_evidence_package.py (release audit package)"
 grep -qF "build_release_evidence_package.py" "${WF}/build-push.yml" || \
-  fail "build-push must run scripts/release/build_release_evidence_package.py (release audit package)"
+  fail "build-push must run scripts/deploy/release/build_release_evidence_package.py (release audit package)"
 grep -qF "build_release_evidence_package.py" "${WF}/security-release.yml" || \
-  fail "security-release must run scripts/release/build_release_evidence_package.py (release audit package)"
+  fail "security-release must run scripts/deploy/release/build_release_evidence_package.py (release audit package)"
 grep -qF "release-audit-package" "${WF}/build-push.yml" || \
   fail "build-push must upload release-audit-package (enterprise release evidence)"
 grep -qF "security-release-audit-package" "${WF}/security-release.yml" || \

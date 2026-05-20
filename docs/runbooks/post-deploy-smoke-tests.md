@@ -44,7 +44,7 @@ Report: `smoke-reports/smoke-test.json` (fields `overall` and `overall_status`).
 
 ## CI wiring
 
-- **Staging** (`deploy-develop.yml`): after remote `scripts/smoke_staging.sh`, the runner invokes `scripts/deploy/smoke_test.sh`. Base URL comes from `STAGING_SMOKE_BASE_URL`, `STAGING_PUBLIC_BASE_URL`, or the origin of `STAGING_API_READY_URL`. Artifact: `staging-post-deploy-smoke`. If the smoke step fails, the job fails.
+- **Staging** (`deploy-develop.yml`): after remote `scripts/deploy/smoke_staging.sh`, the runner invokes `scripts/deploy/smoke_test.sh`. Base URL comes from `STAGING_SMOKE_BASE_URL`, `STAGING_PUBLIC_BASE_URL`, or the origin of `STAGING_API_READY_URL`. Artifact: `staging-post-deploy-smoke`. If the smoke step fails, the job fails.
 - **Production** (`deploy-prod.yml`): after final cluster smoke, the runner runs the same script against `PRODUCTION_PUBLIC_BASE_URL`. Artifact: `post-deploy-smoke-report`. On job failure, the existing **automatic rollback** path also treats a failed post-deploy smoke step like other rollout failures (see workflow `Attempt automatic rollback`).
 
 ## Adding authenticated smoke checks later

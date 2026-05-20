@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 
 	appauth "github.com/avf/avf-vending-api/internal/app/auth"
@@ -72,7 +73,7 @@ func TestWireAuthAdminMutationAudit_nilRecorderSafe(t *testing.T) {
 	hook := WireAuthAdminMutationAudit(nil)
 	require.NoError(t, hook(context.Background(), nil, appauth.AuthAdminMutationEvent{
 		Action:          authAuditPatchUser,
-		ActorAccountID:  uuid.New(),
-		TargetAccountID: uuid.New(),
+		ActorAccountID:  id.NewUUIDV7(),
+		TargetAccountID: id.NewUUIDV7(),
 	}))
 }

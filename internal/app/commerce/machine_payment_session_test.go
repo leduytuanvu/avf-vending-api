@@ -3,6 +3,7 @@ package commerce
 import (
 	"context"
 	"errors"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"strings"
 	"testing"
 
@@ -67,7 +68,7 @@ func (m *mpayLife) InsertPaymentAttempt(ctx context.Context, in InsertPaymentAtt
 	if m.lastAttempt != nil {
 		*m.lastAttempt = in
 	}
-	return PaymentAttemptView{ID: uuid.New()}, nil
+	return PaymentAttemptView{ID: id.NewUUIDV7()}, nil
 }
 
 func (m *mpayLife) InsertRefundRow(context.Context, InsertRefundRowInput) (RefundRowView, error) {
@@ -123,9 +124,9 @@ func (c *captureProvider) CreatePaymentSession(ctx context.Context, in platformp
 func TestCreateMachinePaymentSession_rejectsClientAmountMismatchVsOrder(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	mid := uuid.New()
-	oid := uuid.New()
-	payID := uuid.New()
+	mid := id.NewUUIDV7()
+	oid := id.NewUUIDV7()
+	payID := id.NewUUIDV7()
 
 	life := &mpayLife{order: domaincommerce.Order{
 		ID:         oid,
@@ -168,9 +169,9 @@ func TestCreateMachinePaymentSession_rejectsClientAmountMismatchVsOrder(t *testi
 func TestCreateMachinePaymentSession_adapterUsesServerOrderTotalsAndBindsProviderReference(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	mid := uuid.New()
-	oid := uuid.New()
-	payID := uuid.New()
+	mid := id.NewUUIDV7()
+	oid := id.NewUUIDV7()
+	payID := id.NewUUIDV7()
 
 	var attempt InsertPaymentAttemptParams
 	life := &mpayLife{

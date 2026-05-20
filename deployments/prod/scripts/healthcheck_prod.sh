@@ -568,7 +568,7 @@ METRICS_FLAG="$(read_env_default METRICS_ENABLED false | tr '[:upper:]' '[:lower
 if [[ "${METRICS_FLAG}" == "true" ]]; then
 	readiness_failures_before="${READINESS_FAILURES}"
 	METRICS_RESULT="passed"
-	check_cmd "worker /metrics exposes avf_telemetry_* series" "confirm METRICS_ENABLED=true and WORKER_METRICS_LISTEN; see ops/METRICS.md" readiness "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/metrics" | grep -Eq "avf_telemetry_(consumer|projection|duplicate)"'
+	check_cmd "worker /metrics exposes avf_telemetry_* series" "confirm METRICS_ENABLED=true and WORKER_METRICS_LISTEN; see deployments/docker/observability/METRICS.md" readiness "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/metrics" | grep -Eq "avf_telemetry_(consumer|projection|duplicate)"'
 	check_cmd "mqtt-ingest /metrics exposes avf_mqtt_ingest_dispatch_total" "confirm METRICS_ENABLED=true and MQTT_INGEST_METRICS_LISTEN" readiness "${COMPOSE[@]}" exec -T mqtt-ingest sh -c 'addr="${MQTT_INGEST_METRICS_LISTEN:-127.0.0.1:9093}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/metrics" | grep -q "avf_mqtt_ingest_dispatch_total"'
 	if [[ "${SKIP_WORKER_READY_STRICT:-0}" == "1" ]]; then
 		emit_info "SKIP_WORKER_READY_STRICT=1 set; skipping worker /health/ready on metrics port (503 may indicate JetStream backlog)"

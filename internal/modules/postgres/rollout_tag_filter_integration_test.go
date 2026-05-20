@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -17,8 +18,8 @@ func TestRollout_TagFilter_SelectsIntersection(t *testing.T) {
 
 	slugA := "rollout-tf-a-" + uuid.NewString()
 	slugB := "rollout-tf-b-" + uuid.NewString()
-	tagA := uuid.New()
-	tagB := uuid.New()
+	tagA := id.NewUUIDV7()
+	tagB := id.NewUUIDV7()
 	_, err := pool.Exec(ctx, `INSERT INTO tags (id, slug, name) VALUES ($1,$2,'A'), ($3,$4,'B')`, tagA, slugA, tagB, slugB)
 	require.NoError(t, err)
 	defer func() {
@@ -28,7 +29,7 @@ func TestRollout_TagFilter_SelectsIntersection(t *testing.T) {
 
 	m1 := testfixtures.DevMachineID
 	hw := uuid.MustParse("44444444-4444-4444-4444-444444444444")
-	m2 := uuid.New()
+	m2 := id.NewUUIDV7()
 	_, err = pool.Exec(ctx, `
 INSERT INTO machines (id, site_id, hardware_profile_id, serial_number, name, status, command_sequence, credential_version)
 VALUES ($1, $2, $3, $4, 'rollout-tf-b', 'online', 0, 0)`,

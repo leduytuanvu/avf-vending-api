@@ -79,7 +79,7 @@ def map_tests(method: str, path: str) -> list[str]:
     if "media" in p or "upload" in p:
         hits.append("internal/app/mediaadmin/*_test.go")
     if not hits:
-        hits.append("(map via docs/postman/ + router tests)")
+        hits.append("(map via postman/collections/ + router tests)")
     return hits
 
 

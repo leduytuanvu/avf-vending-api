@@ -69,7 +69,7 @@ For the current production direction, treat these as the default runtime contrac
 
 This differs from local development, where local containers may still be used for convenience. Production scripts in the split topology should not assume a local Postgres or Redis container exists.
 
-**Fail-fast checks:** `cmd/*` binaries validate production env at startup (`internal/config`): `COMMERCE_PAYMENT_PROVIDER` must not be a mock/sandbox registry key, `MQTT_BROKER_URL` to a non-loopback host must imply TLS (or set `MQTT_TLS_ENABLED=true` with a documented private broker), Redis must be configured unless `PRODUCTION_ALLOW_MISSING_REDIS=true`, and legacy machine HTTP requires `MACHINE_REST_LEGACY_ALLOW_IN_PRODUCTION=true`. See [`docs/operations/deployment-secrets.md`](../operations/deployment-secrets.md) for the operator secret inventory.
+**Fail-fast checks:** `cmd/*` binaries validate production env at startup (`internal/config`): `COMMERCE_PAYMENT_PROVIDER` must not be a mock/sandbox registry key, `MQTT_BROKER_URL` to a non-loopback host must imply TLS (or set `MQTT_TLS_ENABLED=true` with a documented private broker), Redis must be configured unless `PRODUCTION_ALLOW_MISSING_REDIS=true`, and legacy machine HTTP requires `MACHINE_REST_LEGACY_ALLOW_IN_PRODUCTION=true`. See [`docs/deployment/deployment-secrets.md`](../deployment/deployment-secrets.md) for the operator secret inventory.
 
 The same separation applies to MQTT transport posture: local or private-network exceptions may still use plaintext for narrowly scoped compatibility, but the production public path is TLS-first on `8883`.
 

@@ -60,7 +60,7 @@ The runner **always** sets **`E2E_ALLOW_WRITES=false`**, so it does not align wi
 
 Artifacts match other runs: **`reports/summary.md`**, **`improvement-summary.md`**, **`optimization-backlog.md`**, **`flow-review-scorecard.json`**, **`coverage.json`** (includes **`flowReview`** when static/live fragments exist).
 
-**Postman paths:** `.env.example` references `docs/postman/avf-vending-api-function-path.postman_collection.json`. If that file does not exist in your tree yet, point `POSTMAN_COLLECTION` at an existing export such as `docs/postman/avf-vending-api.postman_collection.json`.
+**Postman paths:** `.env.example` references `postman/collections/avf-vending-api-function-path.postman_collection.json`. If that file does not exist in your tree yet, point `POSTMAN_COLLECTION` at an existing export such as `postman/collections/avf-vending-api.postman_collection.json`.
 
 ## Run directory layout
 

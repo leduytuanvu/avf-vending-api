@@ -1,7 +1,7 @@
 # Local stack for avf-vending-api. Services without `profiles` always start (minimal core).
 # Optional profiles:
 #   broker         — EMQX + MinIO (device MQTT ingest, S3-style artifacts when enabled)
-#   observability  — Prometheus, Loki, Grafana, OTEL collector (metrics/logs; see ops/METRICS.md)
+#   observability  — Prometheus, Loki, Grafana, OTEL collector (metrics/logs; see observability/METRICS.md)
 #   experimental   — ClickHouse + Temporal (+ UI); NOT wired into Go production paths (placeholders / future work)
 #
 # Examples:
@@ -151,7 +151,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ../../ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -164,7 +164,7 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ../../ops/loki/config.yml:/etc/loki/config.yml:ro
+      - ./observability/loki/config.yml:/etc/loki/config.yml:ro
       - loki_data:/loki
 
   grafana:
@@ -179,7 +179,7 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ../../ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
       - loki
@@ -194,7 +194,7 @@ services:
       - "4318:4318"
       - "8889:8889"
     volumes:
-      - ../../ops/otel/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+      - ./observability/otel/otel-collector.yaml:/etc/otelcol/config.yaml:ro
 
 volumes:
   postgres_data:

@@ -2,7 +2,7 @@
 
 This document is the **binding integration contract** for AVF vending **production**. It is the single normative summary for **Android**, **backend**, **QA field**, **operations/on-call**, and **pilot → fleet rollout (10 → 100 → 1000 machines)**. Detailed RPC fields, JSON examples, and wire formats live in linked docs and protos; this file states **non‑negotiable boundaries** only.
 
-**Related:** [`transport-boundary.md`](transport-boundary.md) (full rationale), [`deployment-secrets.md`](../operations/deployment-secrets.md), [`deployment-secrets-contract.yml`](../contracts/deployment-secrets-contract.yml), field evidence [`../testing/field-test-cases.md`](../testing/field-test-cases.md), pilot [`../operations/field-pilot-checklist.md`](../operations/field-pilot-checklist.md), scale [`../runbooks/production-release-readiness.md`](../runbooks/production-release-readiness.md).
+**Related:** [`transport-boundary.md`](transport-boundary.md) (full rationale), [`deployment-secrets.md`](../deployment/deployment-secrets.md), [`deployment-secrets-contract.yml`](../contracts/deployment-secrets-contract.yml), field evidence [`../testing/field-test-cases.md`](../testing/field-test-cases.md), pilot [`../production/field-pilot-checklist.md`](../production/field-pilot-checklist.md), scale [`../runbooks/production-release-readiness.md`](../runbooks/production-release-readiness.md).
 
 ---
 
@@ -34,7 +34,7 @@ This document is the **binding integration contract** for AVF vending **producti
 
 **Canonical machine API surface:** `proto/avf/machine/v1/machine_runtime.proto` and companions in the same directory.
 
-**Secrets and deployment safety:** [`deployment-secrets-contract.yml`](../contracts/deployment-secrets-contract.yml), [`deployment-secrets.md`](../operations/deployment-secrets.md).
+**Secrets and deployment safety:** [`deployment-secrets-contract.yml`](../contracts/deployment-secrets-contract.yml), [`deployment-secrets.md`](../deployment/deployment-secrets.md).
 
 ---
 
@@ -42,8 +42,8 @@ This document is the **binding integration contract** for AVF vending **producti
 
 | Phase | Machines (typical) | Documentation pack |
 | ----- | ------------------ | -------------------- |
-| **Pilot** | ~10 | Complete **P0/P1** rows in [`field-test-cases.md`](../testing/field-test-cases.md); [`field-pilot-checklist.md`](../operations/field-pilot-checklist.md) |
-| **Widen** | 10–100 | [`field-rollout-checklist.md`](../operations/field-rollout-checklist.md); per-tranche MQTT + payment + catalog evidence |
+| **Pilot** | ~10 | Complete **P0/P1** rows in [`field-test-cases.md`](../testing/field-test-cases.md); [`field-pilot-checklist.md`](../production/field-pilot-checklist.md) |
+| **Widen** | 10–100 | [`field-rollout-checklist.md`](../production/field-rollout-checklist.md); per-tranche MQTT + payment + catalog evidence |
 | **Fleet** | 100–1000 | [`production-release-readiness.md`](../runbooks/production-release-readiness.md) storm JSON + monitoring tiers; expanded **FT-*** matrix for the release id |
 
 Automated DB correctness suites ([`local-e2e.md`](../testing/local-e2e.md)) **do not** replace field rows (hardware, broker TLS, real PSP, operator sign-off).

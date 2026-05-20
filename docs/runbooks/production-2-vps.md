@@ -47,7 +47,7 @@ When enabled, JSON-only is enough for Postman imports (`https://<api-host>/swagg
 
 These endpoints are **documentation only**. **`/v1/*`** routes still require a valid **`Authorization: Bearer <JWT>`** (and remain subject to the same auth middleware as always).
 
-**Metrics:** Prometheus should scrape **`HTTP_OPS_ADDR`** (for example `http://127.0.0.1:8081/metrics` from the private network or sidecar), not public `:8080`, unless you deliberately enable `METRICS_EXPOSE_ON_PUBLIC_HTTP` with operator approval flags—see `docs/operations/production-openapi-and-metrics.md`.
+**Metrics:** Prometheus should scrape **`HTTP_OPS_ADDR`** (for example `http://127.0.0.1:8081/metrics` from the private network or sidecar), not public `:8080`, unless you deliberately enable `METRICS_EXPOSE_ON_PUBLIC_HTTP` with operator approval flags—see `docs/production/production-openapi-and-metrics.md`.
 
 ### Data node
 

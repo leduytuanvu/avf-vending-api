@@ -3,12 +3,12 @@ package clickhouse
 import (
 	"context"
 	"errors"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -34,7 +34,7 @@ func TestAsyncProjectionSink_FailureDoesNotReturnToCaller(t *testing.T) {
 		ID:            99,
 		EventType:     "payment.captured",
 		AggregateType: "payment",
-		AggregateID:   uuid.New(),
+		AggregateID:   id.NewUUIDV7(),
 		CreatedAt:     time.Now().UTC().Add(-time.Second),
 	})
 	sink.Shutdown()

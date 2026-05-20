@@ -73,7 +73,7 @@ source "${SCRIPT_DIR}/lib/e2e_http.sh"
 start_step "rest-local-suite"
 
 e2e_resolve_postman_paths() {
-  : "${POSTMAN_COLLECTION:=docs/postman/avf-vending-api-function-path.postman_collection.json}"
+  : "${POSTMAN_COLLECTION:=postman/collections/avf-vending-api-function-path.postman_collection.json}"
   E2E_POSTMAN_COLL_ABS="${POSTMAN_COLLECTION}"
   [[ "${E2E_POSTMAN_COLL_ABS}" != /* ]] && E2E_POSTMAN_COLL_ABS="${E2E_REPO_ROOT}/${E2E_POSTMAN_COLL_ABS}"
   E2E_POSTMAN_MATRIX_ABS="${E2E_REPO_ROOT}/docs/testing/e2e-flow-coverage.md"

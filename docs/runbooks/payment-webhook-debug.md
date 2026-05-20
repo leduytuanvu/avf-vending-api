@@ -32,7 +32,7 @@ Git Bash:
 ```bash
 export BASE_URL="http://localhost:8080"
 export COMMERCE_PAYMENT_WEBHOOK_SECRET="dev-secret"
-bash scripts/smoke/local_field_smoke.sh --evidence-json smoke-reports/payment-webhook-smoke.json
+bash scripts/deploy/smoke/local_field_smoke.sh --evidence-json smoke-reports/payment-webhook-smoke.json
 ```
 
 PowerShell:
@@ -59,4 +59,4 @@ The smoke posts the same signed webhook event twice. Both requests must return 2
 
 - `payment_webhooks_total{result=…}` — per-outcome webhook handling.
 - `payment_webhook_rejections_total{reason=…}` — HMAC, validation, ordering, replay conflict (subset of rejects).
-- See [`docs/observability/production-metrics.md`](../observability/production-metrics.md).
+- See [`docs/production/production-metrics.md`](../production/production-metrics.md).

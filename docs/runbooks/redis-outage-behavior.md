@@ -50,4 +50,4 @@ Do not disable Redis-backed security controls in production to clear readiness w
 - Elevated **`http_errors_total`** / **`grpc_errors_total`** (429 / readiness failures) when rate limits or revocation caches degrade.
 - **`grpc_auth_failures_total{reason=…}`** should not spike solely because Redis returned errors unless auth plumbing maps failures into credential rejection — correlate with Redis provider dashboards first.
 
-Canonical names: [`docs/observability/production-metrics.md`](../observability/production-metrics.md).
+Canonical names: [`docs/production/production-metrics.md`](../production/production-metrics.md).

@@ -3,6 +3,7 @@ package payments
 import (
 	"context"
 	"fmt"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -57,8 +58,8 @@ func TestHTTPStatusGateway_rejectsMissingNormalizedState(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = gw.FetchPaymentStatus(context.Background(), domaincommerce.PaymentProviderLookup{
-		PaymentID: uuid.New(),
-		OrderID:   uuid.New(),
+		PaymentID: id.NewUUIDV7(),
+		OrderID:   id.NewUUIDV7(),
 	})
 	if err == nil {
 		t.Fatal("expected error")
