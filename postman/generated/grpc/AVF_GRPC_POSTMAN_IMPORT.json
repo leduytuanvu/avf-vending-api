@@ -1,0 +1,1782 @@
+{
+  "info": {
+    "name": "AVF gRPC Manual Setup Reference",
+    "description": "Not a native Postman gRPC collection — use Postman Desktop gRPC + proto import. See README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "/avf.internal.v1.InternalCatalogQueryService/GetSaleCatalogSnapshot",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}",
+        "include_unavailable": false,
+        "include_images": false,
+        "if_none_match_config_version": 0
+      }
+    },
+    {
+      "name": "/avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "order_id": "{{$guid}}",
+        "slot_index": 0
+      }
+    },
+    {
+      "name": "/avf.internal.v1.InternalInventoryQueryService/GetMachineSlotInventory",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}"
+      }
+    },
+    {
+      "name": "/avf.internal.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}"
+      }
+    },
+    {
+      "name": "/avf.internal.v1.InternalMachineQueryService/GetMachineState",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}"
+      }
+    },
+    {
+      "name": "/avf.internal.v1.InternalMachineQueryService/GetMachineSummary",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}"
+      }
+    },
+    {
+      "name": "/avf.internal.v1.InternalPaymentQueryService/GetLatestPaymentForOrder",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "order_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.internal.v1.InternalPaymentQueryService/GetPaymentById",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "payment_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.internal.v1.InternalReportingQueryService/GetSalesSummary",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "from_rfc3339": "",
+        "to_rfc3339": "",
+        "group_by": ""
+      }
+    },
+    {
+      "name": "/avf.internal.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}"
+      }
+    },
+    {
+      "name": "/avf.internal.v1.InternalTelemetryQueryService/GetMachineIncidentSummary",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}",
+        "limit": 0
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineActivationService/ClaimActivation",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "activation_code": "",
+        "device_fingerprint": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineAuthService/ActivateMachine",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "claim": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineAuthService/ClaimActivation",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "claim": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineAuthService/RefreshMachineToken",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "refresh": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineBootstrapService/AckConfigVersion",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "acknowledged_config_version": 0,
+        "acknowledged_planogram_version_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineBootstrapService/CheckForUpdates",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "catalog_fingerprint": "",
+        "pricing_fingerprint": "",
+        "planogram_fingerprint": "",
+        "media_fingerprint": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineBootstrapService/CheckIn",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "boot_id": "{{$guid}}",
+        "network_state": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineBootstrapService/GetBootstrap",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCatalogService/AckCatalogVersion",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "acknowledged_catalog_version": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCatalogService/GetCatalogDelta",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}",
+        "basis_catalog_version": "",
+        "meta": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCatalogService/GetCatalogSnapshot",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "machine_id": "{{machineId}}",
+        "include_unavailable": false,
+        "include_images": false,
+        "if_none_match_config_version": 0
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCatalogService/GetMediaManifest",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}",
+        "include_unavailable": false,
+        "meta": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCatalogService/GetSaleCatalog",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "machine_id": "{{machineId}}",
+        "include_unavailable": false,
+        "include_images": false,
+        "if_none_match_config_version": 0
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCatalogService/SyncCatalogBundle",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "machine_id": "{{machineId}}",
+        "include_unavailable": false,
+        "include_images": false,
+        "current_catalog_version": "",
+        "current_media_manifest_version": "",
+        "basis_product_ids": [],
+        "basis_media_asset_keys": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCatalogService/SyncSaleCatalog",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "machine_id": "{{machineId}}",
+        "include_unavailable": false,
+        "include_images": false,
+        "if_none_match_config_version": 0
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommandService/AckCommand",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "command_id": "{{$guid}}",
+        "command_sequence": 0,
+        "receipt_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommandService/GetAssignedUpdate",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommandService/GetPendingCommands",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "after_command_sequence": 0,
+        "limit": 0
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommandService/RejectCommand",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "command_id": "{{$guid}}",
+        "command_sequence": 0,
+        "reason": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommandService/ReportDiagnosticBundleResult",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "request_id": "{{$guid}}",
+        "storage_key": "",
+        "storage_provider": "",
+        "content_type": "",
+        "size_bytes": 0,
+        "sha256_hex": "",
+        "metadata": {},
+        "expires_at": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommandService/ReportUpdateStatus",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "campaign_id": "{{$guid}}",
+        "status": "",
+        "error_message": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/AttachPaymentResult",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "provider": "",
+        "payment_state": "",
+        "amount_minor": 0,
+        "currency": "",
+        "outbox_payload_json": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/CancelOrder",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "reason": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/ConfirmCashPayment",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/ConfirmVendSuccess",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "slot_index": 0,
+        "correlation_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/CreateCashCheckout",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/CreateOrder",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "machine_id": "{{machineId}}",
+        "product_id": "{{$guid}}",
+        "slot": {},
+        "currency": "",
+        "meta": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/CreatePaymentSession",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "provider": "",
+        "payment_state": "",
+        "amount_minor": 0,
+        "currency": "",
+        "outbox_payload_json": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/GetOrder",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "order_id": "{{$guid}}",
+        "slot_index": 0
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/GetOrderStatus",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "order_id": "{{$guid}}",
+        "slot_index": 0
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/ReportVendFailure",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "slot_index": 0,
+        "failure_reason": "",
+        "correlation_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/ReportVendSuccess",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "slot_index": 0,
+        "correlation_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineCommerceService/StartVend",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "slot_index": 0
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineInventoryService/AckInventorySync",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "sync_cursor": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineInventoryService/GetInventorySnapshot",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineInventoryService/GetPlanogram",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineInventoryService/PushInventoryDelta",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "meta": {},
+        "reason": "",
+        "lines": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineInventoryService/SubmitFillReport",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "lines": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineInventoryService/SubmitFillResult",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "lines": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineInventoryService/SubmitInventoryAdjustment",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "reason": "",
+        "lines": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineInventoryService/SubmitRestock",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "lines": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineInventoryService/SubmitStockAdjustment",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "reason": "",
+        "lines": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineInventoryService/SubmitStockSnapshot",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "lines": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineMediaService/AckMediaVersion",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "acknowledged_media_fingerprint": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineMediaService/GetMediaDelta",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}",
+        "basis_media_fingerprint": "",
+        "meta": {},
+        "include_unavailable": false
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineMediaService/GetMediaManifest",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}",
+        "include_unavailable": false,
+        "meta": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineOfflineSyncService/GetSyncCursor",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineOfflineSyncService/PushOfflineEvents",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "meta": {},
+        "events": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineOperatorService/CloseOperatorSession",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "session_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineOperatorService/HeartbeatOperatorSession",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "session_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineOperatorService/LoginOperator",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {}
+    },
+    {
+      "name": "/avf.machine.v1.MachineOperatorService/LogoutOperator",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {}
+    },
+    {
+      "name": "/avf.machine.v1.MachineOperatorService/OpenOperatorSession",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {}
+    },
+    {
+      "name": "/avf.machine.v1.MachineOperatorService/SubmitFillReport",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "fill": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineOperatorService/SubmitStockAdjustment",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "adjustment": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineSaleService/AttachPayment",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "payment_session": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineSaleService/CancelSale",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "reason": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineSaleService/CompleteVend",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "slot_index": 0,
+        "correlation_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineSaleService/ConfirmCashReceived",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "payment": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineSaleService/CreateSale",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "order": {}
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineSaleService/FailVend",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "slot_index": 0,
+        "failure_reason": "",
+        "correlation_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineSaleService/StartVend",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "order_id": "{{$guid}}",
+        "slot_index": 0
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineTelemetryService/CheckIn",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "machine_id": "{{machineId}}",
+        "android_id": "{{$guid}}",
+        "sim_serial": "",
+        "package_name": "",
+        "version_name": "",
+        "version_code": 0,
+        "android_release": "",
+        "sdk_int": 0,
+        "manufacturer": "",
+        "model": "",
+        "timezone": "",
+        "network_state": "",
+        "boot_id": "{{$guid}}"
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineTelemetryService/GetEventStatus",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "idempotency_key": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineTelemetryService/PushCriticalEvent",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "meta": {},
+        "event": {},
+        "severity": ""
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineTelemetryService/PushTelemetryBatch",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "meta": {},
+        "events": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineTelemetryService/ReconcileEvents",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "idempotency_keys": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "context": {},
+        "events": []
+      }
+    },
+    {
+      "name": "/avf.machine.v1.MachineTokenService/RefreshMachineToken",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{machineToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "refresh_token": ""
+      }
+    },
+    {
+      "name": "/avf.v1.InternalCommerceQueryService/GetOrderPaymentVendState",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "order_id": "{{$guid}}",
+        "slot_index": 0
+      }
+    },
+    {
+      "name": "/avf.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}"
+      }
+    },
+    {
+      "name": "/avf.v1.InternalMachineQueryService/GetMachineState",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}"
+      }
+    },
+    {
+      "name": "/avf.v1.InternalMachineQueryService/GetMachineSummary",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}"
+      }
+    },
+    {
+      "name": "/avf.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}"
+      }
+    },
+    {
+      "name": "/avf.v1.InternalTelemetryQueryService/GetMachineIncidentSummary",
+      "description": "Manual gRPC setup in Postman Desktop — import protos from grpc/proto. See README.md.",
+      "metadata": [
+        {
+          "key": "authorization",
+          "required": true,
+          "example": "{{accessToken}}"
+        },
+        {
+          "key": "x-request-id",
+          "required": false,
+          "example": "{{requestId}}"
+        }
+      ],
+      "requestExample": {
+        "machine_id": "{{machineId}}",
+        "limit": 0
+      }
+    }
+  ]
+}

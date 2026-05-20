@@ -1,4 +1,4 @@
-.PHONY: tidy fmt fmt-apply fmt-check vet test test-short test-e2e-local build proto proto-generate proto-check machine-grpc-docs-check machine-grpc-smoke api-contract-check api-contract-test sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates verify-workflows ci-workflows check-placeholders check-wiring check-migrations check-uuid-v7 verify-governance verify-enterprise-release verify-e2e-assets build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full loadtest-build loadtest-small loadtest-100 loadtest-500 loadtest-1000
+.PHONY: tidy fmt fmt-apply fmt-check vet test test-short test-e2e-local build proto proto-generate proto-check machine-grpc-docs-check machine-grpc-smoke api-contract-check api-contract-test sqlc sqlc-check swagger swagger-check postman-generate postman-check ci ci-gates verify-workflows ci-workflows check-placeholders check-wiring check-migrations check-uuid-v7 check-pgcrypto verify-governance verify-enterprise-release verify-e2e-assets build-release-evidence-pack run-api run-worker migrate-up migrate-down docker-up docker-down dev-up dev-down dev-reset-db dev-migrate dev-test staging-validate-env staging-migrate staging-smoke production-validate-env production-preflight prod-up prod-down prod-restart prod-logs prod-status prod-migrate prod-deploy prod-backup prod-restore prod-smoke prod-compose-config prod-validate-telemetry prod-smoke-full loadtest-build loadtest-small loadtest-100 loadtest-500 loadtest-1000
 
 BIN_DIR := bin
 GO ?= go
@@ -93,8 +93,12 @@ verify-e2e-assets:
 	@chmod +x scripts/ci/verify_e2e_assets.sh
 	bash scripts/ci/verify_e2e_assets.sh
 
+check-pgcrypto:
+	@chmod +x scripts/checks/check-pgcrypto-schema-qualification.sh
+	bash scripts/checks/check-pgcrypto-schema-qualification.sh
+
 # Repo-local gates (no Postgres or unit tests). Use before push; GitHub Actions runs `make ci-gates` and compose validation separately.
-ci-gates: fmt-check vet check-placeholders check-wiring check-migrations check-uuid-v7 api-contract-check
+ci-gates: fmt-check vet check-placeholders check-wiring check-migrations check-uuid-v7 check-pgcrypto api-contract-check
 
 # fmt (check), vet, all package tests, and build. The Go CI job also runs tidy, sqlc, swagger, etc. (see
 # ci-gates) and `make test-short` in the workflow. For full static gates: make ci-gates; for short tests: make test-short

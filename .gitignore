@@ -1,12 +1,15 @@
 /.env
+/.env.*
+!/.env.example
+!/.env.local.example
+!/.env.production.example
+!/.env.staging.example
 /.env.local
 /.env.*.local
 tests/e2e/.env
 tests/e2e/.env.local
 tests/e2e/.env.production.destructive.local
-/.env.staging
-/.env.production
-# Node env files (examples *.example are tracked)
+# Node env files (examples *.example are tracked; see negated rules above)
 deployments/prod/**/.env.app-node
 deployments/prod/**/.env.data-node
 /repomix-output.xml
@@ -37,6 +40,7 @@ __pycache__/
 .idea/
 .vscode/
 *.swp
+.DS_Store
 Thumbs.db
 
 # Local build artifacts
@@ -79,6 +83,7 @@ coverage.out
 coverage.xml
 coverage/
 *.coverprofile
+*.coverage
 repomix-output.xml
 
 # Local logs and editor/session artifacts
@@ -86,6 +91,7 @@ repomix-output.xml
 .cursor-test-file-list.txt
 *.log
 tmp/
+temp/
 *.tmp
 *.bak
 *.old
@@ -95,14 +101,29 @@ tmp/
 *.sql.gz
 *.dump
 backups/
+db-backups/
 
 # Local production deploy input files
 deployments/docker/observability/private/
+deployment-evidence/local/
 prod-deploy-inputs*.json
+
+# Local env overrides (examples *.example remain tracked)
+*.env.local
+
+# Local keys (production cert paths under deployments/prod/ are documented separately)
+id_rsa
+*.pem
+*.key
+
+# Local Newman output (canonical Postman JSON stays tracked)
+newman/
+reports/newman/
 
 # Local deploy pipeline / build metadata scratch (gh run download, phase evidence)
 .tmp-phase*/
 .tmp-image-metadata/
+.go-tmp/
 
 # Local full-system verification run output in docs tree
 docs/testing/_verify*.txt

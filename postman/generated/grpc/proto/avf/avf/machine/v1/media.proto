@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+import "avf/machine/v1/catalog.proto";
+import "avf/machine/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// MachineMediaService exposes downloadable media metadata for the kiosk cache.
+// Binary media is not transported over gRPC; responses contain HTTPS URLs and cache metadata only.
+service MachineMediaService {
+  rpc GetMediaManifest(MachineMediaServiceGetMediaManifestRequest) returns (MachineMediaServiceGetMediaManifestResponse);
+  rpc GetMediaDelta(GetMediaDeltaRequest) returns (GetMediaDeltaResponse);
+  // AckMediaVersion records that the kiosk applied media_fingerprint locally (audit signal — MQTT remains command plane).
+  rpc AckMediaVersion(AckMediaVersionRequest) returns (AckMediaVersionResponse);
+}
+
+message MachineMediaServiceGetMediaManifestRequest {
+  string machine_id = 1;
+  bool include_unavailable = 2;
+  MachineRequestMeta meta = 3;
+}
+
+message MachineMediaServiceGetMediaManifestResponse {
+  string machine_id = 1;
+  string catalog_version = 2;
+  string media_fingerprint = 3;
+  google.protobuf.Timestamp generated_at = 4;
+  repeated MediaManifestEntry entries = 5;
+  MachineResponseMeta meta = 6;
+}
+
+message AckMediaVersionRequest {
+  MachineRequestMeta meta = 1;
+  string acknowledged_media_fingerprint = 2;
+}
+
+message AckMediaVersionResponse {
+  MachineResponseMeta meta = 1;
+}
+
+message GetMediaDeltaRequest {
+  string machine_id = 1;
+  string basis_media_fingerprint = 2;
+  MachineRequestMeta meta = 3;
+  // Must match GetMediaManifest.include_unavailable so fingerprints align.
+  bool include_unavailable = 4;
+}
+
+message GetMediaDeltaResponse {
+  MachineResponseMeta meta = 1;
+  bool basis_matches = 2;
+  // Full manifest rows when basis_matches=false (same projection as GetMediaManifest.entries).
+  repeated MediaManifestEntry changed_entries = 3;
+  // Products whose primary media disappeared vs prior snapshot — conservative signal without durable basis replay on server.
+  repeated string deleted_product_ids = 4;
+  // Echo of server media_fingerprint clients should persist as next sync cursor.
+  string next_sync_token = 5;
+}

@@ -32,27 +32,6 @@ func TestInternalQueryServices_RejectMissingBearerToken(t *testing.T) {
 	}
 }
 
-func TestInternalQueryServices_RejectScopeScopeMismatch(t *testing.T) {
-	t.Skip("single-company internal gRPC no longer rejects scope mismatch")
-	t.Parallel()
-
-	cfg, conn := startInternalQueryTestServer(t)
-	tokenCompanyScope := uuid.MustParse("aaaaaaaa-1111-1111-1111-111111111111")
-	orderID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
-
-	token := issueTestInternalServiceToken(t, cfg.HTTPAuth.JWTSecret, tokenCompanyScope)
-	ctx := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
-
-	client := internalv1.NewInternalCommerceQueryServiceClient(conn)
-	_, err := client.GetOrderPaymentVendState(ctx, &internalv1.GetOrderPaymentVendStateRequest{
-		OrderId:   orderID.String(),
-		SlotIndex: 1,
-	})
-	if status.Code(err) != codes.PermissionDenied {
-		t.Fatalf("code=%v err=%v", status.Code(err), err)
-	}
-}
-
 func TestInternalQueryServices_RejectUserAccessJWT(t *testing.T) {
 	t.Parallel()
 

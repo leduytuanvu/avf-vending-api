@@ -20,7 +20,9 @@ System design, transport boundaries, and phased roadmaps.
 
 Operator checklists, smoke tests, metrics, and production migration safety.
 
-- [Production release checklist](production/production-release-checklist.md)
+- [Production docs index](production/README.md)
+- [Deployment runbook (index)](production/DEPLOYMENT_RUNBOOK.md)
+- [Production troubleshooting](production/TROUBLESHOOTING.md)
 - [Production smoke tests](production/production-smoke-tests.md)
 - [Production data migration safety](production/production-data-migration-safety.md)
 - [Production backup / restore drill](production/production-backup-restore-drill.md)
@@ -64,16 +66,7 @@ Release process, staging gates, secrets contract, and environment matrix.
 
 ## Testing
 
-Local, E2E, load, and production verification guides.
-
-- [Local testing guide](testing/local-testing-guide.md)
-- [Integrated REST / gRPC / MQTT production verification](testing/integrated-rest-grpc-mqtt-production-verification.md)
-- [gRPC local testing (grpcurl)](testing/grpc-local-test.md)
-- [E2E local test guide](testing/e2e-local-test-guide.md)
-- [Load test harness](testing/load-test.md)
-- [Field test cases](testing/field-test-cases.md)
-- [Production canary test guide](testing/production-canary-test-guide.md)
-- [Production test execution order](testing/05_PRODUCTION_TEST_EXECUTION_ORDER.md)
+Local, E2E, load, and production verification guides — see [testing/README.md](testing/README.md).
 
 ## Postman / OpenAPI
 
@@ -112,7 +105,7 @@ Incident and day-2 procedures: **[`runbooks/README.md`](runbooks/README.md)**
   - [Production deploy reports](reports/production-deploy/) — failure analysis, recovery, migration evidence
   - [Verification reports](reports/verification/) — REST/gRPC/MQTT/E2E/Postman/full-system verification output
   - [Test coverage reports](reports/test/) — e.g. MQTT full coverage
-- **Repository cleanup audits:** [`audits/REPO_CLEANUP_AUDIT.md`](audits/REPO_CLEANUP_AUDIT.md)
+- **Repository cleanup:** [`audits/DEEP_REPO_CLEANUP_AUDIT.md`](audits/DEEP_REPO_CLEANUP_AUDIT.md)
 
 ## Local dependencies
 
@@ -124,5 +117,4 @@ Incident and day-2 procedures: **[`runbooks/README.md`](runbooks/README.md)**
 
 - [Supply chain pinning](security/supply-chain-pinning.md)
 - [Vietnamese API guide](vi/huong-dan-api-tu-dang-nhap-den-ban-hang.md)
-- [Repository structure cleanup audit](audits/REPO_STRUCTURE_CLEANUP_AUDIT.md)
-- [Repository cleanup audit (2026-05-20)](audits/REPO_CLEANUP_AUDIT.md)
+- [P2 structure refactor proposal](audits/REPO_STRUCTURE_P2_REFACTOR_PROPOSAL.md)

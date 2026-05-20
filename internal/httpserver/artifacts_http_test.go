@@ -18,10 +18,6 @@ import (
 
 func noopWriteRL(next http.Handler) http.Handler { return next }
 
-func TestArtifactScopeAllowed_skippedLegacy(t *testing.T) {
-	t.Skip("obsolete scoped REST contract removed; permission checks are catalog-role based")
-}
-
 func TestMountArtifactRoutes_smokeReserve(t *testing.T) {
 	stub := stubArtifactStore{}
 	svc := artifacts.NewService(artifacts.Deps{Store: stub, MaxUploadBytes: 1024, DownloadPresignTTL: time.Minute, ListMaxKeys: 10})

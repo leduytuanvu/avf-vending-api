@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// Machine runtime (P0.1) — public vending-app contract surface.
+//
+// Implementations live in modular protos below. Native gRPC with Machine JWT is the primary
+// production runtime for the vending machine app; REST machine routes are legacy/fallback.
+//
+// Required service groups:
+//   - MachineAuthService (claim activation, refresh)
+//   - MachineBootstrapService (bootstrap, check-in, config ack)
+//   - MachineCatalogService (sale catalog snapshot/delta)
+//   - MachineMediaService (media manifest/delta, ack)
+//   - MachineCommerceService + MachineSaleService (commerce / native sale names)
+//   - MachineInventoryService (snapshot, deltas, fills, adjustments)
+//   - MachineTelemetryService
+//   - MachineOfflineSyncService
+//
+// Mutations must carry idempotency via IdempotencyContext and/or MachineRequestMeta as
+// documented in docs/api/machine-grpc.md.
+
+import "avf/machine/v1/auth.proto";
+import "avf/machine/v1/bootstrap.proto";
+import "avf/machine/v1/catalog.proto";
+import "avf/machine/v1/command.proto";
+import "avf/machine/v1/commerce.proto";
+import "avf/machine/v1/inventory.proto";
+import "avf/machine/v1/machine_activation.proto";
+import "avf/machine/v1/machine_token.proto";
+import "avf/machine/v1/media.proto";
+import "avf/machine/v1/offline_sync.proto";
+import "avf/machine/v1/operator_grpc.proto";
+import "avf/machine/v1/telemetry.proto";

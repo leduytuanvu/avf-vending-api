@@ -92,14 +92,6 @@ func (noopOpRepo) ListActionAttributionsForUserPrincipal(ctx context.Context, co
 	return nil, nil
 }
 
-func TestStartOperatorSession_orgMismatchMachine(t *testing.T) {
-	t.Skip("single-company mode has no machine scope mismatch")
-}
-
-func TestStartOperatorSession_orgMismatchTechnician(t *testing.T) {
-	t.Skip("single-company mode has no technician scope mismatch")
-}
-
 func strPtr(s string) *string { return &s }
 
 func TestEndOperatorSession_invalidFinalStatus(t *testing.T) {
