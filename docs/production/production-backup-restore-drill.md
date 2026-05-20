@@ -4,7 +4,7 @@ Production schema migrations (goose `Up` during **Deploy Production**) are gated
 
 ## When backup and drill evidence is required
 
-- **`run_migration=true`** in the **Deploy Production** workflow: you must supply `backup_evidence_id` and pass automated validation **before** any SSH to production or migration step.
+- **`run_migration=true`** in the **Deploy Production** workflow: inline **`pg_dump` + goose `Up`** on app node A via `scripts/deploy/production-migrate.sh`. Optional **`backup_evidence_id`** supplies supplementary pre-uploaded JSON evidence (validated when set).
 - **`run_migration=false`**: image-only deploy. `backup_evidence_id` is optional; if you set it, it is **not** schema-validated (informational only, shown in the job summary).
 
 ## Contract

@@ -424,9 +424,6 @@ jobs:
             [[ "${INPUT_GOOSE_IMAGE_REF}" == *@sha256:* ]] || fail "manual deploy goose_image_ref must be digest-pinned (...@sha256:...)"
             [[ "${INPUT_APP_IMAGE_REF}" != *":latest"* ]] || fail "manual deploy app_image_ref must not use the latest tag"
             [[ "${INPUT_GOOSE_IMAGE_REF}" != *":latest"* ]] || fail "manual deploy goose_image_ref must not use the latest tag"
-            if [[ "${INPUT_RUN_MIGRATION:-false}" == "true" ]]; then
-              [[ -n "${INPUT_BACKUP_EVIDENCE_ID:-}" ]] || fail "backup_evidence_id is required when run_migration=true"
-            fi
           fi
 
           if [[ "${ACTION_MODE}" == "deploy" ]]; then
