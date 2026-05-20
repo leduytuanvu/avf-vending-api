@@ -50,7 +50,7 @@ note "pull app-node images (before migration so embedded migrations match digest
 if [[ "${RUN_MIGRATION}" == "1" ]]; then
 	PHASE="migrate"
 	note "production database backup + migration (before traffic drain; old containers keep serving if migrate fails)"
-	export GITHUB_ACTIONS="${GITHUB_ACTIONS:-}"
+	export CONFIRM_PRODUCTION_MIGRATION=true
 	migrate_args=(--compose-file "${COMPOSE_FILE}" --env-file "${ENV_FILE}")
 	if [[ -n "${COMPOSE_PROJECT_NAME:-}" ]]; then
 		migrate_args+=(--project-name "${COMPOSE_PROJECT_NAME}")
