@@ -112,3 +112,16 @@ Backup and migration state will be verified via Deploy Production workflow logs 
 ### Fix summary
 
 Deploy Production with `run_migration=true` no longer requires pre-uploaded `backup_evidence_id`. Inline `pg_dump` on app node A via `scripts/deploy/production-migrate.sh` satisfies the backup gate before goose `Up`.
+
+### Deploy run 26139516871 (post-fix, second failure)
+
+| Field | Value |
+|-------|--------|
+| **Run** | [26139516871](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26139516871) |
+| **Phase** | During migration (SSH reached; validation passed) |
+| **Error** | `bash: .../scripts/deploy/production-migrate.sh: No such file or directory` |
+| **Cause** | App-node tar sync shipped `deployments/prod/*` and `migrations/` but **not** `scripts/deploy/production-migrate.sh` |
+
+### Follow-up fix (sync migration scripts)
+
+Add to app-node A/B tar sync: `scripts/deploy/production-migrate.sh`, `scripts/verify_database_environment.sh`, `scripts/db/verify_database_environment.sh`.

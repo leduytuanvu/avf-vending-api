@@ -495,6 +495,16 @@ def main() -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
+    if (
+        "scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh"
+        not in text
+    ):
+        print(
+            "ERROR: deploy-prod app-node tar sync must ship scripts/deploy/production-migrate.sh "
+            "and scripts/verify_database_environment.sh (inline migration on VPS).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
     for key, typ in (
         ("staging_evidence_id", "string"),
