@@ -12,7 +12,7 @@ This pass re-ran the **Phase-8 text alternation** (case-insensitive, ticket word
 
 - **Go:** `go fmt ./...` rewrote every file that still had formatting drift (see `git diff --name-only` for the exact set — predominantly `internal/httpserver/*.go`, auth/catalog/fleet helpers, and Postgres adapters touched by the formatter).
 - **Generated:** `internal/gen/db/*.go` (`sqlc`), `docs/swagger/swagger.json`, `docs/swagger/docs.go` (from OpenAPI build), `docs/postman/*.postman_collection.json` + `*.postman_environment.json`, and artifacts under `postman/suites/full-production-suite/` refreshed by `generate_full_postman_suite.py` (REST counts validated **333**; generator exited **VALIDATION_PASS**).
-- **Audit-only:** `docs/reports/final-gate-audit/{classification.md,path-hits-before.txt,all-hits-before.txt,all-hits-final.txt,path-hits-final.txt}`.
+- **Audit-only:** `docs/reports/final-gate-audit/classification.md` (grep scratch files removed 2026-05-20 junk cleanup; zero-hit result preserved in §9–§10 below).
 
 *(The repo already contained many other modified first-party files from ongoing branch work; they were **not** individually triaged in this pass unless surfaced by the scanners.)*
 
@@ -45,7 +45,7 @@ python tools/build_postman_collection.py
 python postman/suites/full-production-suite/generate_full_postman_suite.py
 python tools/sanitize_postman_sidecar_yamls.py
 python tools/check_postman_artifacts.py
-git grep -n -I -i -E '<Phase-8 alternation>' -- . ':!vendor' ':!node_modules' ':!.git' > docs/reports/final-gate-audit/all-hits-final.txt
+git grep -n -I -i -E '<Phase-8 alternation>' -- . ':!vendor' ':!node_modules' ':!.git'
 go fmt ./...
 go vet ./...
 go test ./...
@@ -71,14 +71,14 @@ python -m json.tool (nine Postman JSON files under docs/postman + postman/)
 
 ## 9. Final grep result
 
-- **Tracked paths (`git grep`):** `docs/reports/final-gate-audit/all-hits-final.txt` is **empty** (zero lines).
+- **Tracked paths (`git grep`):** **zero lines** (empty capture file removed in 2026-05-20 junk cleanup).
 - **Working tree (`rg` semantics / IDE search):** no matches outside third-party trees after sanitizing the interim audit scratch list.
 
 ## 10. Final filename-search result
 
 PowerShell probe over **names** (excluding `.git/`, `vendor/`, `node_modules/`):
 
-- `docs/reports/final-gate-audit/path-hits-final.txt` is an **empty file** (zero bytes).
+- Filename probe: **no matching paths** under first-party trees (empty capture file removed in 2026-05-20 junk cleanup).
 
 ## 11. Remaining exceptions (line-by-line)
 

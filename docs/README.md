@@ -112,7 +112,7 @@ Incident and day-2 procedures: **[`runbooks/README.md`](runbooks/README.md)**
   - [Production deploy reports](reports/production-deploy/) — failure analysis, recovery, migration evidence
   - [Verification reports](reports/verification/) — REST/gRPC/MQTT/E2E/Postman/full-system verification output
   - [Test coverage reports](reports/test/) — e.g. MQTT full coverage
-- **Repository cleanup audits:** [`audits/REPO_CLEANUP_AUDIT.md`](audits/REPO_CLEANUP_AUDIT.md)
+- **Repository cleanup audits:** [`audits/REPO_CLEANUP_AUDIT.md`](audits/REPO_CLEANUP_AUDIT.md) · [`audits/REPO_JUNK_CLEANUP_AUDIT.md`](audits/REPO_JUNK_CLEANUP_AUDIT.md)
 
 ## Local dependencies
 
