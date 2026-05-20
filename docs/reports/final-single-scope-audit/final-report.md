@@ -4,12 +4,12 @@
 
 This pass eliminated stale audit/report filenames and content that repeated retired multi-company vocabulary, aligned operational docs and tooling with the **single-company / single-scope** model, fixed Postman generator wiring to call sanitization under `tools/`, and introduced neutral Postman audit tooling.
 
-Repo-wide verification repeats **Phase 8** from the cleanup specification (case-insensitive extended alternation over the legacy identifier and scope vocabulary). **Result:** `git grep` over the tracked tree (excluding `vendor`, `node_modules`, `.git`) returns **no matches**. Output is captured in `docs/reports/final-single-scope-audit/final-zero-hit-grep.txt` (empty file).
+Repo-wide verification repeats **Phase 8** from the cleanup specification (case-insensitive extended alternation over the legacy identifier and scope vocabulary). **Result:** `git grep` over the tracked tree (excluding `vendor`, `node_modules`, `.git`) returns **no matches** (empty capture file removed in 2026-05-20 junk cleanup; result preserved in §8 below).
 
 ## 2. Files deleted
 
 - Interim audit trees and loose text dumps under `reports/` from the earlier removal project (stale inventories, duplicate helper scripts, and captured grep output that only existed for that transition).
-- Removed stale `docs/reports/final-single-scope-audit/all-current-hits.txt` (superseded by `final-zero-hit-grep.txt`).
+- Removed stale `docs/reports/final-single-scope-audit/all-current-hits.txt` (superseded; grep capture files removed 2026-05-20 junk cleanup).
 
 ## 3. Files renamed
 
@@ -48,9 +48,7 @@ Repo-wide verification repeats **Phase 8** from the cleanup specification (case-
 
 ## 8. Final grep result
 
-The Phase 8 command from the cleanup ticket was executed with stdout/stderr redirected to `docs/reports/final-single-scope-audit/final-zero-hit-grep.txt`.
-
-`final-zero-hit-grep.txt` is **empty** (zero hits).
+The Phase 8 command from the cleanup ticket was executed; **zero hits** (empty capture file since removed in 2026-05-20 junk cleanup).
 
 ## 9. VS Code search confirmation
 

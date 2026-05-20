@@ -37,6 +37,7 @@ __pycache__/
 .idea/
 .vscode/
 *.swp
+.DS_Store
 Thumbs.db
 
 # Local build artifacts
@@ -79,6 +80,7 @@ coverage.out
 coverage.xml
 coverage/
 *.coverprofile
+*.coverage
 repomix-output.xml
 
 # Local logs and editor/session artifacts
@@ -86,6 +88,7 @@ repomix-output.xml
 .cursor-test-file-list.txt
 *.log
 tmp/
+temp/
 *.tmp
 *.bak
 *.old
@@ -95,10 +98,24 @@ tmp/
 *.sql.gz
 *.dump
 backups/
+db-backups/
 
 # Local production deploy input files
 deployments/docker/observability/private/
+deployment-evidence/local/
 prod-deploy-inputs*.json
+
+# Local env overrides (examples *.example remain tracked)
+*.env.local
+
+# Local keys (production cert paths under deployments/prod/ are documented separately)
+id_rsa
+*.pem
+*.key
+
+# Local Newman output (canonical Postman JSON stays tracked)
+newman/
+reports/newman/
 
 # Local deploy pipeline / build metadata scratch (gh run download, phase evidence)
 .tmp-phase*/
