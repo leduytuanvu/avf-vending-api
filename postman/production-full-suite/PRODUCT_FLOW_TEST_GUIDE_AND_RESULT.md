@@ -32,8 +32,9 @@ Import: `avf-product-admin-to-app-flow.postman_collection.json` + `avf-productio
 5. **Upload image** — `POST /v1/admin/product-images` (multipart)
 6. **Create product** — `POST /v1/admin/products` (pre-request builds `_runtimeProductCreateBody`)
 7. **Configure price** — price book create → PUT items → assign-target to machine
-8. **Planogram** — operator session (if legacy REST enabled) → PUT draft → POST publish
-9. **Sale catalog** — `GET /v1/machines/{machineId}/sale-catalog` (gRPC preferred when REST legacy off)
+8. **Operator session (production)** — `POST /v1/admin/machines/{machineId}/operator-sessions/start` with admin JWT (`force_admin_takeover: true` if needed). Legacy `POST /v1/machines/{machineId}/operator-sessions/login` is **disabled** when `MachineRESTLegacyEnabled=false`.
+9. **Planogram** — PUT draft → POST publish (body includes `operator_session_id` from step 8)
+10. **Sale catalog (app)** — gRPC `MachineCatalogService.SyncSaleCatalog` / `GetSaleCatalog` with **Machine JWT** (not admin JWT). REST `GET /v1/machines/{machineId}/sale-catalog` is disabled in production by default.
 
 ## Key Requests
 
@@ -103,6 +104,20 @@ Content-Type: application/json
 Body: {{_runtimeProductCreateBody}}
 ```
 
+### Start operator session (production admin path)
+
+```http
+POST /v1/admin/machines/{{machineId}}/operator-sessions/start
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"force_admin_takeover": true, "auth_method": "oidc"}
+```
+
+Success **200** — save `session.id` as `operator_session_id` for planogram draft/publish.
+
+Legacy machine REST login (`POST /v1/machines/{machineId}/operator-sessions/login`) returns **404** when `MachineRESTLegacyEnabled=false`.
+
 ### Planogram publish
 
 ```http
@@ -123,16 +138,20 @@ POST /v1/admin/machines/{{machineId}}/planograms/publish
 }
 ```
 
-Requires **ACTIVE** operator session on the machine (`POST /v1/machines/{machineId}/operator-sessions/login` with admin JWT + `force_admin_takeover: true` when legacy REST is enabled).
+Requires **ACTIVE** operator session on the machine. In production use **admin** `POST /v1/admin/machines/{machineId}/operator-sessions/start` (not legacy machine REST login).
 
-### Sale catalog
+### Sale catalog (gRPC — production)
 
-```http
-GET /v1/machines/{{machineId}}/sale-catalog
-Authorization: Bearer {{machineToken}} or admin with catalog read
+REST is disabled when `MachineRESTLegacyEnabled=false`. Use **Machine JWT** metadata:
+
+```bash
+grpcurl -H "authorization: Bearer ${MACHINE_ACCESS_TOKEN}" \
+  -d '{"machine_id":"<machineId>","include_images":true}' \
+  machine-api.ldtv.dev:443 \
+  avf.machine.v1.MachineCatalogService/SyncSaleCatalog
 ```
 
-Prefer gRPC: `MachineCatalogService.SyncSaleCatalog` (`proto/avf/machine/v1/catalog.proto`).
+Or `GetSaleCatalog` / `GetCatalogSnapshot` (aliases). Verify `snapshot.items[]` contains `product_id`, `sku`, `price_minor`, `primary_media.display_url`.
 
 ## Common Errors
 
@@ -141,8 +160,8 @@ Prefer gRPC: `MachineCatalogService.SyncSaleCatalog` (`proto/avf/machine/v1/cata
 | `invalid_json` on product create | Bad Postman templating / unknown fields | Use `{{_runtimeProductCreateBody}}` from pre-request |
 | `primaryMediaId requires company context` | Fixed in deploy `8d41859` — scope resolves `MEDIA_COMPANY_ID` | Ensure `MEDIA_COMPANY_ID` is set in production API env |
 | `invalid_image_file` on upload | Manual Content-Type on multipart | Remove Content-Type header; pick real image file |
-| `operator: session not found` on planogram | Random UUID or no active session | Start operator session first |
-| `404 page not found` on sale-catalog / operator login | `MachineRESTLegacyEnabled=false` in production | Use gRPC catalog sync or enable legacy REST |
+| `operator: session not found` on planogram | Missing/invalid `operator_session_id` | Call `POST /v1/admin/machines/{machineId}/operator-sessions/start` first |
+| `404 page not found` on legacy operator login / sale-catalog | `MachineRESTLegacyEnabled=false` | Admin operator start + gRPC `MachineCatalogService.SyncSaleCatalog` |
 | GATED-WRITE blocked | Safety flags | Set `allowGatedWrites` + `confirmProductionWrites` |
 
 ## Latest Production Result
