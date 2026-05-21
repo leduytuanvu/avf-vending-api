@@ -31,6 +31,9 @@ type Service struct {
 	maxBytes    int64
 	cache       CatalogMediaCacheBumper
 	external    config.ExternalProductImageConfig
+	uploadCfg   config.MediaUploadConfig
+	cloudinary  ProductImageFileUploader
+	appEnv      string
 	remoteProbe func(ctx context.Context, imageURL, expectedMIME string, cfg config.ExternalProductImageConfig) error
 }
 
@@ -41,7 +44,8 @@ func NewService(d Deps) (*Service, error) {
 	}
 	hasUpload := d.Store != nil
 	hasExternal := d.External.Enabled
-	if !hasUpload && !hasExternal {
+	hasCloudinary := d.Cloudinary != nil && d.Upload.CloudinaryConfigured()
+	if !hasUpload && !hasExternal && !hasCloudinary {
 		return nil, ErrNotConfigured
 	}
 	ttl := d.PresignPutTTL
@@ -65,6 +69,9 @@ func NewService(d Deps) (*Service, error) {
 		maxBytes:    maxB,
 		cache:       d.Cache,
 		external:    d.External,
+		uploadCfg:   d.Upload,
+		cloudinary:  d.Cloudinary,
+		appEnv:      strings.TrimSpace(d.AppEnv),
 		remoteProbe: d.RemoteProbe,
 	}, nil
 }
@@ -118,6 +125,26 @@ func (s *Service) auditRecord(ctx context.Context, org uuid.UUID, action, resTyp
 		Metadata:     mdBytes,
 		Outcome:      compliance.OutcomeSuccess,
 	})
+}
+
+// MaxUploadBytes returns configured multipart upload limit for Cloudinary uploads.
+func (s *Service) MaxUploadBytes() int64 {
+	if s == nil || s.uploadCfg.MaxBytes <= 0 {
+		return 5 << 20
+	}
+	return s.uploadCfg.MaxBytes
+}
+
+// CloudinaryImageCacheKey builds offline cache key for Cloudinary-hosted product images.
+func CloudinaryImageCacheKey(mediaID uuid.UUID, version int, checksum string) string {
+	ch := strings.TrimSpace(checksum)
+	if strings.HasPrefix(ch, "sha256:") {
+		ch = strings.TrimPrefix(ch, "sha256:")
+	}
+	if version <= 0 {
+		version = 1
+	}
+	return fmt.Sprintf("%s:%d:%s", mediaID.String(), version, ch)
 }
 
 // InitUploadResult is returned from POST /v1/admin/media/uploads.
@@ -645,18 +672,28 @@ func (s *Service) bindProductPrimaryMediaWithQ(ctx context.Context, qtx *db.Quer
 		return nil, err
 	}
 	var thumbURL, dispURL, storageKey string
-	if asset.SourceType == "external" {
+	switch asset.SourceType {
+	case "external", "cloudinary":
 		ext := ""
 		if asset.OriginalUrl.Valid {
 			ext = strings.TrimSpace(asset.OriginalUrl.String)
 		}
-		if ext == "" {
-			return nil, fmt.Errorf("%w: external media missing original_url", ErrInvalidArgument)
+		if ext == "" && asset.SourceType == "cloudinary" {
+			ext = strings.TrimSpace(asset.DisplayObjectKey)
 		}
-		thumbURL = ext
+		if ext == "" {
+			return nil, fmt.Errorf("%w: hosted media missing display url", ErrInvalidArgument)
+		}
 		dispURL = ext
+		thumbURL = strings.TrimSpace(asset.ThumbObjectKey)
+		if thumbURL == "" || !strings.HasPrefix(strings.ToLower(thumbURL), "http") {
+			thumbURL = ext
+		}
 		storageKey = asset.DisplayObjectKey
-	} else {
+		if storageKey == "" {
+			storageKey = ext
+		}
+	default:
 		if s.store == nil {
 			return nil, ErrUploadNotConfigured
 		}

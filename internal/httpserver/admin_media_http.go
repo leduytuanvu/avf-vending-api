@@ -21,7 +21,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const adminMediaCapabilityMsg = "enterprise media pipeline requires API_ARTIFACTS_ENABLED object storage"
+const adminMediaCapabilityMsg = "enterprise media pipeline requires API_ARTIFACTS_ENABLED object storage, Cloudinary upload (MEDIA_PROVIDER=cloudinary), or external image URLs"
 
 func withMediaAdmin(app *api.HTTPApplication, fn func(*appmediaadmin.Service) http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +47,8 @@ func mountAdminMediaRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite))
 		r.With(writeRL).Post("/media/external-images", postAdminExternalProductImage(app))
+		r.With(writeRL).Post("/product-images", withCloudinaryUpload(app, postAdminProductImageUpload))
+		r.With(writeRL).Post("/media/product-images", withCloudinaryUpload(app, postAdminProductImageUpload))
 		r.With(writeRL).Post("/media/assets", withMediaUpload(app, postAdminMediaUploadInitLegacy))
 		r.With(writeRL).Post("/media/uploads/init", withMediaUpload(app, postAdminMediaUploadInitV2))
 		r.With(writeRL).Post("/media/uploads/{mediaId}/complete", withMediaUpload(app, postAdminMediaUploadComplete))
@@ -67,6 +69,20 @@ func withMediaUpload(app *api.HTTPApplication, h mediaAdminHandler) http.Handler
 		}
 		if !app.MediaAdmin.UploadConfigured() {
 			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media.upload", "object storage media upload is not configured for this process")
+			return
+		}
+		h(app.MediaAdmin)(w, r)
+	}
+}
+
+func withCloudinaryUpload(app *api.HTTPApplication, h mediaAdminHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app == nil || app.MediaAdmin == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media", adminMediaCapabilityMsg)
+			return
+		}
+		if !app.MediaAdmin.CloudinaryConfigured() {
+			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media", "product image upload is not configured for this process (set MEDIA_PROVIDER=cloudinary and Cloudinary credentials)")
 			return
 		}
 		h(app.MediaAdmin)(w, r)
@@ -113,9 +129,33 @@ func writeMediaAdminError(w http.ResponseWriter, ctx context.Context, err error)
 		writeCapabilityNotConfigured(w, ctx, "v1.admin.media.upload", "object storage media upload is not configured for this process")
 	case errors.Is(err, appmediaadmin.ErrExternalNotConfigured):
 		writeCapabilityNotConfigured(w, ctx, "v1.admin.media.external_images", "external product image URLs are not configured for this process")
+	case errors.Is(err, appmediaadmin.ErrCloudinaryNotConfigured):
+		writeCapabilityNotConfigured(w, ctx, "v1.admin.media", "product image upload is not configured for this process")
 	default:
+		if inv, ok := appmediaadmin.AsInvalidImageFile(err); ok {
+			writeInvalidImageFileError(w, ctx, inv)
+			return
+		}
 		writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
 	}
+}
+
+func writeInvalidImageFileError(w http.ResponseWriter, ctx context.Context, inv *appmediaadmin.InvalidImageFileError) {
+	if inv == nil {
+		writeAPIError(w, ctx, http.StatusBadRequest, "invalid_image_file", "invalid image file")
+		return
+	}
+	status := http.StatusBadRequest
+	code := "invalid_image_file"
+	if inv.TooLarge {
+		status = http.StatusRequestEntityTooLarge
+		code = "file_too_large"
+	}
+	details := map[string]any{
+		"allowedTypes": inv.AllowedTypes,
+		"maxSizeMb":    inv.MaxSizeMB,
+	}
+	writeAPIErrorDetails(w, ctx, status, code, inv.Error(), details)
 }
 
 func postAdminMediaUploadInitLegacy(svc *appmediaadmin.Service) http.HandlerFunc {
@@ -878,6 +918,112 @@ func postAdminExternalProductImage(app *api.HTTPApplication) http.HandlerFunc {
 		}
 		writeJSON(w, status, mapExternalProductImageResponse(out))
 	}
+}
+
+func postAdminProductImageUpload(svc *appmediaadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := requireWriteIdempotencyKey(r); err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
+			return
+		}
+		scopeID, err := requireCatalogPrincipalUUID(r)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
+			return
+		}
+		p, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+			return
+		}
+		if !adminMediaOrgAllowed(p, scopeID) {
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			return
+		}
+		maxBytes := svc.MaxUploadBytes()
+		if err := r.ParseMultipartForm(maxBytes + (1 << 20)); err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_multipart", "invalid multipart form")
+			return
+		}
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			writeInvalidImageFileError(w, r.Context(), &appmediaadmin.InvalidImageFileError{Message: "file field is required"})
+			return
+		}
+		defer func() { _ = file.Close() }()
+		purpose := strings.TrimSpace(r.FormValue("purpose"))
+		altText := strings.TrimSpace(r.FormValue("altText"))
+		_ = altText
+		var productID uuid.UUID
+		if raw := strings.TrimSpace(r.FormValue("productId")); raw != "" {
+			productID, err = uuid.Parse(raw)
+			if err != nil || productID == uuid.Nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_argument", "invalid productId")
+				return
+			}
+		}
+		isPrimary := strings.EqualFold(strings.TrimSpace(r.FormValue("isPrimary")), "true")
+		contentType := ""
+		if header != nil {
+			contentType = header.Header.Get("Content-Type")
+		}
+		filename := ""
+		if header != nil {
+			filename = header.Filename
+		}
+		size := int64(0)
+		if header != nil {
+			size = header.Size
+		}
+		out, err := svc.UploadProductImageFile(r.Context(), appmediaadmin.UploadProductImageFileInput{
+			CompanyID:   scopeID,
+			Filename:    filename,
+			ContentType: contentType,
+			SizeBytes:   size,
+			Reader:      file,
+			Purpose:     purpose,
+			AltText:     altText,
+			ProductID:   productID,
+			IsPrimary:   isPrimary,
+		})
+		if err != nil {
+			writeMediaAdminError(w, r.Context(), err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, mapProductImageUploadResponse(out))
+	}
+}
+
+func mapProductImageUploadResponse(out *appmediaadmin.UploadProductImageFileResult) map[string]any {
+	if out == nil {
+		return map[string]any{}
+	}
+	resp := map[string]any{
+		"mediaId":      out.MediaID.String(),
+		"provider":     out.Provider,
+		"sourceType":   out.SourceType,
+		"status":       out.Status,
+		"filename":     out.Filename,
+		"contentType":  out.ContentType,
+		"sizeBytes":    out.SizeBytes,
+		"checksum":     out.Checksum,
+		"displayUrl":   out.DisplayURL,
+		"thumbnailUrl": out.ThumbnailURL,
+		"version":      out.Version,
+		"createdAt":    formatAPITimeRFC3339Nano(out.CreatedAt),
+	}
+	if out.Width > 0 {
+		resp["width"] = out.Width
+	}
+	if out.Height > 0 {
+		resp["height"] = out.Height
+	}
+	if out.ProductID != uuid.Nil {
+		resp["productId"] = out.ProductID.String()
+		resp["attached"] = out.Attached
+		resp["isPrimary"] = out.IsPrimary
+	}
+	return resp
 }
 
 func mapExternalProductImageResponse(out *appmediaadmin.ExternalProductImageResult) V1AdminExternalProductImageResponse {

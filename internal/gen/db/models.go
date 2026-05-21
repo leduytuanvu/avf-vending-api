@@ -1024,6 +1024,9 @@ type MediaAsset struct {
 	ThumbObjectKey    string
 	DisplayObjectKey  string
 	SourceType        string
+	StorageProvider   string
+	ProviderPublicID  pgtype.Text
+	ProviderAssetID   pgtype.Text
 	OriginalUrl       pgtype.Text
 	MimeType          pgtype.Text
 	SizeBytes         pgtype.Int8

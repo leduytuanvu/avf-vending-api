@@ -3184,6 +3184,89 @@
         ],
         "type": "object"
       },
+      "V1AdminProductImageUploadResponse": {
+        "properties": {
+          "attached": {
+            "type": "boolean"
+          },
+          "checksum": {
+            "example": "sha256:...",
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "displayUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "height": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "isPrimary": {
+            "type": "boolean"
+          },
+          "mediaId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "productId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "provider": {
+            "example": "cloudinary",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "sourceType": {
+            "example": "uploaded_file",
+            "type": "string"
+          },
+          "status": {
+            "example": "ready",
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "width": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mediaId",
+          "provider",
+          "sourceType",
+          "status",
+          "contentType",
+          "sizeBytes",
+          "checksum",
+          "displayUrl",
+          "thumbnailUrl",
+          "version",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "V1AdminProductListEnvelope": {
         "properties": {
           "items": {
@@ -27756,6 +27839,185 @@
         "summary": "Preview effective prices for products",
         "tags": [
           "Catalog Admin"
+        ]
+      }
+    },
+    "/v1/admin/product-images": {
+      "post": {
+        "description": "Multipart upload of png/jpg/jpeg/webp/gif to Cloudinary server-side. Requires **Idempotency-Key**. When Cloudinary is not configured returns **503** `capability_not_configured` (`v1.admin.media`).",
+        "operationId": "DocOpV1AdminProductImageUpload",
+        "parameters": [
+          {
+            "description": "UUID idempotency key",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Image file",
+            "in": "formData",
+            "name": "file",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Default product_image",
+            "in": "formData",
+            "name": "purpose",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Alt text",
+            "in": "formData",
+            "name": "altText",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional product UUID to attach",
+            "in": "formData",
+            "name": "productId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "When productId set, bind as primary",
+            "in": "formData",
+            "name": "isPrimary",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1AdminProductImageUploadResponse"
+                }
+              }
+            },
+            "description": "Upload product image file (Cloudinary)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "capability_not_configured",
+                    "details": {
+                      "capability": "example_capability"
+                    },
+                    "message": "optional capability is not configured for this process",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Upload product image file (Cloudinary)",
+        "tags": [
+          "Media Admin"
         ]
       }
     },

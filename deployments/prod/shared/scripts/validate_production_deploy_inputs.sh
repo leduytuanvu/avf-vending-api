@@ -40,6 +40,22 @@ if norm_bool "${ENABLE_APP_NODE_B:-}"; then
 	echo "WARNING: Re-check total_connections = sum(effective_max_conns per process × number of app nodes running that stack)." >&2
 fi
 
+# Cloudinary: when MEDIA_UPLOAD_ENABLED on the app-node env, require complete credentials in that file.
+if norm_bool "${MEDIA_UPLOAD_ENABLED:-false}" && [[ "${MEDIA_PROVIDER:-}" == "cloudinary" ]]; then
+	[[ -n "${CLOUDINARY_CLOUD_NAME:-}" ]] || {
+		echo "error: MEDIA_UPLOAD_ENABLED=true requires CLOUDINARY_CLOUD_NAME in ${ENV_FILE:-app-node env}" >&2
+		exit 1
+	}
+	[[ -n "${CLOUDINARY_API_KEY:-}" ]] || {
+		echo "error: MEDIA_UPLOAD_ENABLED=true requires CLOUDINARY_API_KEY in ${ENV_FILE:-app-node env}" >&2
+		exit 1
+	}
+	[[ -n "${CLOUDINARY_API_SECRET:-}" ]] || {
+		echo "error: MEDIA_UPLOAD_ENABLED=true requires CLOUDINARY_API_SECRET in ${ENV_FILE:-app-node env}" >&2
+		exit 1
+	}
+fi
+
 # Optional local mirror of CI fleet-scale storm gate (set VALIDATE_PRODUCTION_SCALE_STORM_GATE=true and storm env vars).
 # Typical env: FLEET_SCALE_TARGET, TELEMETRY_STORM_EVIDENCE_FILE, STORM_EVIDENCE_MAX_AGE_DAYS (default 7 in the validator),
 # ALLOW_SCALE_GATE_BYPASS, SCALE_GATE_BYPASS_REASON or BYPASS_REASON.

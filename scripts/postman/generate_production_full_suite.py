@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Regenerate postman/production-full-suite from OpenAPI + proto + MQTT contracts."""
 from __future__ import annotations
 
@@ -149,7 +149,7 @@ def assign_production_domain(path: str, method: str, tags: list) -> str:
         return "Categories"
     if "/v1/admin/tags" in p:
         return "Tags"
-    if any(x in p for x in ("/media", "/offline", "/manifest", "external-images")):
+    if any(x in p for x in ("/media", "/offline", "/manifest", "external-images", "product-images")):
         return "Product Media"
     if "/v1/admin/products" in p and "catalog" not in " ".join(tags).lower():
         return "Products"
@@ -331,6 +331,98 @@ def patch_request_item(item: dict) -> dict:
     return item
 
 
+PRODUCT_IMAGE_UPLOAD_TEST = [
+    "if (pm.response.code === 201 || pm.response.code === 200) {",
+    "  try {",
+    "    const json = pm.response.json();",
+    "    if (json.mediaId) pm.environment.set('mediaId', json.mediaId);",
+    "    if (json.displayUrl) pm.environment.set('displayUrl', json.displayUrl);",
+    "    if (json.thumbnailUrl) pm.environment.set('thumbnailUrl', json.thumbnailUrl);",
+    "    pm.test('upload returns mediaId and URLs', function () {",
+    "      pm.expect(json.mediaId).to.be.a('string').and.not.empty;",
+    "      pm.expect(json.displayUrl).to.be.a('string').and.not.empty;",
+    "      pm.expect(json.thumbnailUrl).to.be.a('string').and.not.empty;",
+    "    });",
+    "  } catch (e) { /* ignore */ }",
+    "}",
+]
+
+
+def patch_product_image_upload_item(item: dict) -> dict:
+    key = request_path_key(item).lower()
+    if "post /v1/admin/product-images" not in key:
+        return item
+    req = item.get("request") or {}
+    headers = []
+    for h in req.get("header") or []:
+        kl = (h.get("key") or "").lower()
+        if kl in ("content-type", "x-idempotency-key"):
+            continue
+        headers.append(h)
+    req["header"] = headers
+    req["body"] = {
+        "mode": "formdata",
+        "formdata": [
+            {"key": "file", "type": "file", "src": [], "description": "Select local png/jpg/jpeg/webp/gif in Postman"},
+            {"key": "purpose", "value": "product_image", "type": "text"},
+            {"key": "altText", "value": "Sample product image", "type": "text"},
+        ],
+    }
+    item["request"] = req
+    item["disabled"] = False
+    item["name"] = "[GATED-WRITE] POST /v1/admin/product-images (Cloudinary multipart)"
+    events = list(item.get("event") or [])
+    for ev in events:
+        if ev.get("listen") == "test":
+            ev["script"] = {"type": "text/javascript", "exec": list(PRODUCT_IMAGE_UPLOAD_TEST)}
+    item["event"] = events
+    item["response"] = [
+        {
+            "name": "201 Created (Cloudinary enabled)",
+            "code": 201,
+            "status": "Created",
+            "_postman_previewlanguage": "json",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": json.dumps(
+                {
+                    "mediaId": "11111111-1111-1111-1111-111111111111",
+                    "provider": "cloudinary",
+                    "sourceType": "uploaded_file",
+                    "status": "ready",
+                    "filename": "product.png",
+                    "contentType": "image/png",
+                    "sizeBytes": 183421,
+                    "checksum": "sha256:abc123",
+                    "displayUrl": "https://res.cloudinary.com/demo/image/upload/v1/sample.png",
+                    "thumbnailUrl": "https://res.cloudinary.com/demo/image/upload/c_fill,w_300,h_300/sample.png",
+                    "version": 1,
+                    "createdAt": "2026-01-01T00:00:00Z",
+                },
+                indent=2,
+            ),
+        },
+        {
+            "name": "503 capability_not_configured (Cloudinary disabled)",
+            "code": 503,
+            "status": "Service Unavailable",
+            "_postman_previewlanguage": "json",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": json.dumps(
+                {
+                    "error": {
+                        "code": "capability_not_configured",
+                        "message": "product image upload is not configured for this process",
+                        "details": {"capability": "v1.admin.media", "implemented": False},
+                        "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+                    }
+                },
+                indent=2,
+            ),
+        },
+    ]
+    return item
+
+
 def build_grpc_doc_items(grpc_rows: list[dict], templates: list[dict]) -> dict[str, list[dict]]:
     tmpl = {t["fullMethod"]: t for t in templates}
     by_domain: dict[str, list[dict]] = defaultdict(list)
@@ -356,7 +448,7 @@ def build_grpc_doc_items(grpc_rows: list[dict], templates: list[dict]) -> dict[s
             domain = "Admin Accounts RBAC"
         req_json = t.get("requestJsonTemplate") or {}
         desc = (
-            "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n"
+            "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n"
             "- **fullMethod:** `%s`\n"
             "- **Proto:** `%s`\n"
             "- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n"
@@ -380,7 +472,7 @@ def build_mqtt_doc_items(mq_rows: list[dict]) -> dict[str, list[dict]]:
             domain = "Telemetry"
         payload = row.get("payloadJsonTemplate") or {}
         desc = (
-            "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n"
+            "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n"
             "- **Topic:** `%s`\n"
             "- **Direction:** %s\n"
             "- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n"
@@ -410,6 +502,8 @@ def build_environment() -> dict:
         "allow_destructive": "true",
         "canaryMode": "true",
         "readiness": "true",
+        "cloudinaryEnabled": "true",
+        "productImageFileNote": "Select file manually in Postman form-data",
         "accountId": "",
         "assortmentId": "",
     }
@@ -610,12 +704,13 @@ Generated: {now}
 
 ## 3. Recommended run order
 
-1. **System Health** — `Health System` → REST → `/health/live`, `/health/ready`, `/version`
-2. **Auth** → `POST /v1/auth/login` then `GET /v1/auth/me`
-3. Domain REST folders (Catalog, Product Media, Products, Machines, …)
-4. **Product Media** — `POST /v1/admin/media/uploads/init` (200 or 503, not raw 404)
-5. **Product Media** — `POST /v1/admin/media/external-images` (201 or 503 if disabled)
-6. Product create with `primaryMediaId`
+1. **System Health** ΓÇö `Health System` ΓåÆ REST ΓåÆ `/health/live`, `/health/ready`, `/version`
+2. **Auth** ΓåÆ `POST /v1/auth/login` then `GET /v1/auth/me`
+3. Domain REST folders (Catalog, Product Media, Products, Machines, ΓÇª)
+4. **Product Media** ΓÇö `POST /v1/admin/product-images` (multipart file ΓåÆ Cloudinary; 201 or 503)
+5. **Product Media** ΓÇö `POST /v1/admin/media/uploads/init` (200 or 503, not raw 404)
+6. **Product Media** ΓÇö `POST /v1/admin/media/external-images` (201 or 503 if disabled)
+7. Product create with `primaryMediaId`
 7. Machine planogram / catalog assignment (canary)
 8. gRPC / MQTT manual doc folders
 
@@ -629,8 +724,8 @@ Write requests use `Idempotency-Key: {{{{$guid}}}}` directly.
 
 ## 6. Object storage vs external image URL
 
-- **Upload init** requires object storage (`API_ARTIFACTS_ENABLED`) — else **503** `capability_not_configured`
-- **External image URL** requires `PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED` — else **503**
+- **Upload init** requires object storage (`API_ARTIFACTS_ENABLED`) ΓÇö else **503** `capability_not_configured`
+- **External image URL** requires `PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED` ΓÇö else **503**
 
 ## 7. Troubleshooting
 
@@ -689,6 +784,7 @@ def main() -> int:
                 break
         domain = assign_production_domain(path, method, tags)
         patched = patch_request_item(dict(it))
+        patched = patch_product_image_upload_item(patched)
         patched = add_media_upload_responses(patched)
         patched = add_external_image_responses(patched)
         by_domain[domain].append(patched)
@@ -717,7 +813,7 @@ def main() -> int:
             sub.append(
                 {
                     "name": "gRPC",
-                    "description": "Manual gRPC test items — import protos from proto/avf",
+                    "description": "Manual gRPC test items ΓÇö import protos from proto/avf",
                     "item": sorted(grpc_items, key=lambda x: x["name"]),
                 }
             )
@@ -726,7 +822,7 @@ def main() -> int:
             sub.append(
                 {
                     "name": "MQTT",
-                    "description": "Manual MQTT test items — see docs/api/mqtt-contract.md",
+                    "description": "Manual MQTT test items ΓÇö see docs/api/mqtt-contract.md",
                     "item": sorted(mqtt_items, key=lambda x: x["name"])[:20],
                 }
             )

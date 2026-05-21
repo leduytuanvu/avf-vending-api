@@ -449,8 +449,13 @@ CREATE TABLE media_assets (
     thumb_object_key text NOT NULL,
     display_object_key text NOT NULL,
     source_type text NOT NULL DEFAULT 'upload' CONSTRAINT chk_media_assets_source_type CHECK (
-        source_type IN ('upload', 'external', 'import')
+        source_type IN ('upload', 'external', 'import', 'cloudinary')
     ),
+    storage_provider text NOT NULL DEFAULT 's3' CONSTRAINT chk_media_assets_storage_provider CHECK (
+        storage_provider IN ('s3', 'cloudinary', 'external')
+    ),
+    provider_public_id text,
+    provider_asset_id text,
     original_url text,
     mime_type text,
     size_bytes bigint CHECK (size_bytes IS NULL OR size_bytes >= 0),

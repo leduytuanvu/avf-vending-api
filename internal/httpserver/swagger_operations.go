@@ -1009,6 +1009,28 @@ func DocOpV1AdminProductImageDelete() {}
 // @Router /v1/admin/media/external-images [post]
 func DocOpV1AdminExternalProductImageRegister() {}
 
+// DocOpV1AdminProductImageUpload godoc
+// @Summary Upload product image file (Cloudinary)
+// @Description Multipart upload of png/jpg/jpeg/webp/gif to Cloudinary server-side. Requires **Idempotency-Key**. When Cloudinary is not configured returns **503** `capability_not_configured` (`v1.admin.media`).
+// @Tags Media Admin
+// @Accept multipart/form-data
+// @Produce json
+// @Param Idempotency-Key header string true "UUID idempotency key"
+// @Param file formData file true "Image file"
+// @Param purpose formData string false "Default product_image"
+// @Param altText formData string false "Alt text"
+// @Param productId formData string false "Optional product UUID to attach"
+// @Param isPrimary formData bool false "When productId set, bind as primary"
+// @Success 201 {object} V1AdminProductImageUploadResponse
+// @Failure 400 {object} V1StandardError "invalid_image_file / missing file"
+// @Failure 401 {object} V1StandardError
+// @Failure 403 {object} V1StandardError
+// @Failure 413 {object} V1StandardError "file_too_large"
+// @Failure 503 {object} V1StandardError "capability_not_configured when Cloudinary disabled"
+// @Security BearerAuth
+// @Router /v1/admin/product-images [post]
+func DocOpV1AdminProductImageUpload() {}
+
 // DocOpV1AdminMediaUploadInitV2 godoc
 // @Summary Start enterprise media upload (camelCase contract)
 // @Description Phase 2 **POST /v1/admin/media/uploads/init**: creates a pending asset and returns **mediaId**, **uploadUrl**, **objectKey**, **status**. Requires **Idempotency-Key**.

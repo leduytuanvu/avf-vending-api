@@ -1,6 +1,6 @@
 # AVF Production Full API Testing Guide
 
-Generated: 2026-05-21T07:19:01Z
+Generated: 2026-05-21T08:29:28Z
 
 ## 1. Import
 
@@ -21,12 +21,13 @@ Generated: 2026-05-21T07:19:01Z
 
 ## 3. Recommended run order
 
-1. **System Health** — `Health System` → REST → `/health/live`, `/health/ready`, `/version`
-2. **Auth** → `POST /v1/auth/login` then `GET /v1/auth/me`
-3. Domain REST folders (Catalog, Product Media, Products, Machines, …)
-4. **Product Media** — `POST /v1/admin/media/uploads/init` (200 or 503, not raw 404)
-5. **Product Media** — `POST /v1/admin/media/external-images` (201 or 503 if disabled)
-6. Product create with `primaryMediaId`
+1. **System Health** ΓÇö `Health System` ΓåÆ REST ΓåÆ `/health/live`, `/health/ready`, `/version`
+2. **Auth** ΓåÆ `POST /v1/auth/login` then `GET /v1/auth/me`
+3. Domain REST folders (Catalog, Product Media, Products, Machines, ΓÇª)
+4. **Product Media** ΓÇö `POST /v1/admin/product-images` (multipart file ΓåÆ Cloudinary; 201 or 503)
+5. **Product Media** ΓÇö `POST /v1/admin/media/uploads/init` (200 or 503, not raw 404)
+6. **Product Media** ΓÇö `POST /v1/admin/media/external-images` (201 or 503 if disabled)
+7. Product create with `primaryMediaId`
 7. Machine planogram / catalog assignment (canary)
 8. gRPC / MQTT manual doc folders
 
@@ -40,8 +41,8 @@ Write requests use `Idempotency-Key: {{$guid}}` directly.
 
 ## 6. Object storage vs external image URL
 
-- **Upload init** requires object storage (`API_ARTIFACTS_ENABLED`) — else **503** `capability_not_configured`
-- **External image URL** requires `PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED` — else **503**
+- **Upload init** requires object storage (`API_ARTIFACTS_ENABLED`) ΓÇö else **503** `capability_not_configured`
+- **External image URL** requires `PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED` ΓÇö else **503**
 
 ## 7. Troubleshooting
 
@@ -56,6 +57,6 @@ Write requests use `Idempotency-Key: {{$guid}}` directly.
 
 ## 8. Coverage
 
-- REST operations: 328
+- REST operations: 329
 - gRPC methods (doc): 86
 - MQTT topics (doc): 28

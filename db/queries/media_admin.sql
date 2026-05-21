@@ -41,6 +41,51 @@ VALUES (
 )
 RETURNING *;
 
+-- name: MediaAdminInsertCloudinaryAsset :one
+INSERT INTO media_assets (
+    id,
+    kind,
+    original_filename,
+    object_key,
+    original_object_key,
+    thumb_object_key,
+    display_object_key,
+    source_type,
+    storage_provider,
+    provider_public_id,
+    provider_asset_id,
+    original_url,
+    mime_type,
+    size_bytes,
+    sha256,
+    width,
+    height,
+    created_by,
+    status
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13,
+    $14,
+    $15,
+    $16,
+    $17,
+    $18,
+    $19
+)
+RETURNING *;
+
 -- name: MediaAdminDeleteVariantsForAsset :exec
 DELETE FROM media_variants
 WHERE media_asset_id = $1;
