@@ -577,6 +577,19 @@ func (s *Service) DeleteAsset(ctx context.Context, companyID, mediaID uuid.UUID)
 	return nil
 }
 
+// normalizeProductMediaSourceType maps media_assets.source_type values onto product_media.source_type
+// (upload | external | import). Cloudinary and other hosted pipelines store URLs as external.
+func normalizeProductMediaSourceType(assetSourceType string) string {
+	switch strings.ToLower(strings.TrimSpace(assetSourceType)) {
+	case "upload", "external", "import":
+		return strings.ToLower(strings.TrimSpace(assetSourceType))
+	case "cloudinary", "uploaded_file", "external_url":
+		return "external"
+	default:
+		return "upload"
+	}
+}
+
 func upsertPrimaryProductMediaProjection(ctx context.Context, qtx *db.Queries, productID uuid.UUID, img db.ProductImage, asset db.MediaAsset, thumbURL, dispURL string) error {
 	var sz int64
 	if asset.SizeBytes.Valid {
@@ -589,10 +602,7 @@ func upsertPrimaryProductMediaProjection(ctx context.Context, qtx *db.Queries, p
 		}
 		return pgtype.Text{String: k, Valid: true}
 	}
-	sourceType := strings.TrimSpace(asset.SourceType)
-	if sourceType == "" {
-		sourceType = "upload"
-	}
+	sourceType := normalizeProductMediaSourceType(asset.SourceType)
 	origURL := pgtype.Text{}
 	if asset.OriginalUrl.Valid {
 		if s := strings.TrimSpace(asset.OriginalUrl.String); s != "" {
