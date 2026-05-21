@@ -983,6 +983,8 @@ jobs:
           bash -n deployments/prod/shared/scripts/healthcheck_data_node.sh
           bash -n deployments/prod/shared/scripts/validate_production_scale_storm_gate.sh
           bash -n deployments/prod/shared/scripts/validate_digest_pinned_image_refs.sh
+          bash -n deployments/prod/shared/scripts/validate_cloudinary_deploy_secrets.sh
+          bash -n deployments/prod/shared/scripts/apply_cloudinary_app_node_env.sh
           bash -n deployments/prod/app-node/scripts/release_app_node.sh
           bash -n deployments/prod/app-node/scripts/release_app_cluster.sh
           bash -n deployments/prod/app-node/scripts/rollback_app_node.sh
@@ -1657,6 +1659,15 @@ jobs:
       # Set PRODUCTION_ALLOW_SINGLE_APP_NODE=1 only for single app-node; default requires two distinct hosts for rolling deploy
       PRODUCTION_ALLOW_SINGLE_APP_NODE: ${{ vars.PRODUCTION_ALLOW_SINGLE_APP_NODE || '0' }}
       ALLOW_IDENTICAL_PRODUCTION_APP_NODES: ${{ vars.ALLOW_IDENTICAL_PRODUCTION_APP_NODES || '0' }}
+      PRODUCTION_SYNC_CLOUDINARY_ENV: ${{ vars.PRODUCTION_SYNC_CLOUDINARY_ENV || '0' }}
+      MEDIA_PROVIDER: cloudinary
+      MEDIA_UPLOAD_ENABLED: "true"
+      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+      CLOUDINARY_FOLDER: avf-vending/products
+      MEDIA_MAX_IMAGE_SIZE_MB: "5"
+      MEDIA_ALLOWED_IMAGE_TYPES: image/jpeg,image/png,image/webp,image/gif
     steps:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -1753,6 +1764,11 @@ jobs:
               fi
             fi
           fi
+
+      - name: Validate Cloudinary deploy secrets
+        if: env.ACTION_MODE == 'deploy'
+        shell: bash
+        run: bash deployments/prod/shared/scripts/validate_cloudinary_deploy_secrets.sh
 
       - name: Fetch and validate production backup evidence (optional supplementary)
         if: inputs.action_mode == 'deploy' && inputs.run_migration && inputs.backup_evidence_id != ''
@@ -2173,6 +2189,39 @@ jobs:
               '${PRODUCTION_DEPLOY_ROOT}/scripts/deploy/production-migrate.sh' \
               '${PRODUCTION_DEPLOY_ROOT}/scripts/verify_database_environment.sh' \
               '${PRODUCTION_DEPLOY_ROOT}/scripts/db/verify_database_environment.sh'"
+
+      - name: Apply Cloudinary env on app nodes
+        if: env.ACTION_MODE == 'deploy'
+        shell: bash
+        env:
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
+        run: |
+          set -Eeuo pipefail
+          if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" ]]; then
+            echo "Cloudinary GitHub secrets not configured; skipping remote env sync"
+            exit 0
+          fi
+          apply_cloudinary_remote() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+            read -r -a ssh_opts <<< "${SSH_OPTS}"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
+              "MEDIA_PROVIDER=${MEDIA_PROVIDER}" \
+              "MEDIA_UPLOAD_ENABLED=${MEDIA_UPLOAD_ENABLED}" \
+              "CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}" \
+              "CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}" \
+              "CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}" \
+              "CLOUDINARY_FOLDER=${CLOUDINARY_FOLDER}" \
+              "MEDIA_MAX_IMAGE_SIZE_MB=${MEDIA_MAX_IMAGE_SIZE_MB}" \
+              "MEDIA_ALLOWED_IMAGE_TYPES=${MEDIA_ALLOWED_IMAGE_TYPES}" \
+              "APP_NODE_ENV_FILE=${env_path}" \
+              bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_cloudinary_app_node_env.sh" "${env_path}"
+          }
+          apply_cloudinary_remote "${APP_NODE_A_HOST}"
+          if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_HOST:-}" ]]; then
+            apply_cloudinary_remote "${APP_NODE_B_HOST}"
+          fi
 
       - name: Sync data-node fallback assets
         if: env.DEPLOY_DATA_NODE == 'true'

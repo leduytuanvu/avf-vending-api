@@ -110,6 +110,8 @@ prod-deploy-inputs*.json
 
 # Local env overrides (examples *.example remain tracked)
 *.env.local
+*.secret
+*.secrets
 
 # Local keys (production cert paths under deployments/prod/ are documented separately)
 id_rsa
