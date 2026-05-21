@@ -12,6 +12,7 @@ import (
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
+	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -29,11 +30,17 @@ type Service struct {
 	putTTL   time.Duration
 	maxBytes int64
 	cache    CatalogMediaCacheBumper
+	external config.ExternalProductImageConfig
 }
 
-// NewService returns a media pipeline service. Store must be non-nil.
+// NewService returns a media pipeline service. Store may be nil when only external URL registration is enabled.
 func NewService(d Deps) (*Service, error) {
-	if d.Store == nil || d.Pool == nil {
+	if d.Pool == nil {
+		return nil, ErrNotConfigured
+	}
+	hasUpload := d.Store != nil
+	hasExternal := d.External.Enabled
+	if !hasUpload && !hasExternal {
 		return nil, ErrNotConfigured
 	}
 	ttl := d.PresignPutTTL
@@ -56,6 +63,7 @@ func NewService(d Deps) (*Service, error) {
 		putTTL:   ttl,
 		maxBytes: maxB,
 		cache:    d.Cache,
+		external: d.External,
 	}, nil
 }
 
@@ -128,6 +136,9 @@ type InitUploadResult struct {
 func (s *Service) InitUpload(ctx context.Context, companyID uuid.UUID, filename string, contentType string, purpose string) (*InitUploadResult, error) {
 	if s == nil {
 		return nil, ErrNotConfigured
+	}
+	if s.store == nil {
+		return nil, ErrUploadNotConfigured
 	}
 	companyID, ct, err := validateImageContentType(companyID, contentType)
 	if err != nil {
@@ -262,6 +273,9 @@ func (s *Service) CompleteUpload(ctx context.Context, companyID, mediaID uuid.UU
 func (s *Service) CompleteUploadWithOptions(ctx context.Context, companyID, mediaID uuid.UUID, opts CompleteUploadOptions) (*db.MediaAsset, error) {
 	if s == nil {
 		return nil, ErrNotConfigured
+	}
+	if s.store == nil {
+		return nil, ErrUploadNotConfigured
 	}
 	if companyID == uuid.Nil || mediaID == uuid.Nil {
 		return nil, ErrInvalidArgument
@@ -523,9 +537,11 @@ func (s *Service) DeleteAsset(ctx context.Context, companyID, mediaID uuid.UUID)
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-	_ = s.store.Delete(ctx, asset.OriginalObjectKey)
-	_ = s.store.Delete(ctx, asset.ThumbObjectKey)
-	_ = s.store.Delete(ctx, asset.DisplayObjectKey)
+	if s.store != nil {
+		_ = s.store.Delete(ctx, asset.OriginalObjectKey)
+		_ = s.store.Delete(ctx, asset.ThumbObjectKey)
+		_ = s.store.Delete(ctx, asset.DisplayObjectKey)
+	}
 	s.bumpCache(ctx, companyID)
 	mid := mediaID.String()
 	s.auditRecord(ctx, companyID, compliance.ActionMediaDeleted, "media.asset", &mid, map[string]any{"media_id": mid})
@@ -544,10 +560,22 @@ func upsertPrimaryProductMediaProjection(ctx context.Context, qtx *db.Queries, p
 		}
 		return pgtype.Text{String: k, Valid: true}
 	}
+	sourceType := strings.TrimSpace(asset.SourceType)
+	if sourceType == "" {
+		sourceType = "upload"
+	}
+	origURL := pgtype.Text{}
+	if asset.OriginalUrl.Valid {
+		if s := strings.TrimSpace(asset.OriginalUrl.String); s != "" {
+			origURL = pgtype.Text{String: s, Valid: true}
+		}
+	}
 	_, err := qtx.CatalogWriteUpsertProductMediaProjection(ctx, db.CatalogWriteUpsertProductMediaProjectionParams{
 		ID:                img.ID,
 		ProductID:         productID,
 		MediaRole:         "primary",
+		SourceType:        sourceType,
+		OriginalUrl:       origURL,
 		OriginalObjectKey: ok(asset.OriginalObjectKey),
 		ThumbObjectKey:    ok(asset.ThumbObjectKey),
 		DisplayObjectKey:  ok(asset.DisplayObjectKey),
@@ -614,13 +642,33 @@ func (s *Service) bindProductPrimaryMediaWithQ(ctx context.Context, qtx *db.Quer
 		}
 		return nil, err
 	}
-	thumbSigned, err := s.store.PresignGet(ctx, asset.ThumbObjectKey, s.putTTL)
-	if err != nil {
-		return nil, err
-	}
-	dispSigned, err := s.store.PresignGet(ctx, asset.DisplayObjectKey, s.putTTL)
-	if err != nil {
-		return nil, err
+	var thumbURL, dispURL, storageKey string
+	if asset.SourceType == "external" {
+		ext := ""
+		if asset.OriginalUrl.Valid {
+			ext = strings.TrimSpace(asset.OriginalUrl.String)
+		}
+		if ext == "" {
+			return nil, fmt.Errorf("%w: external media missing original_url", ErrInvalidArgument)
+		}
+		thumbURL = ext
+		dispURL = ext
+		storageKey = asset.DisplayObjectKey
+	} else {
+		if s.store == nil {
+			return nil, ErrUploadNotConfigured
+		}
+		thumbSigned, err := s.store.PresignGet(ctx, asset.ThumbObjectKey, s.putTTL)
+		if err != nil {
+			return nil, err
+		}
+		dispSigned, err := s.store.PresignGet(ctx, asset.DisplayObjectKey, s.putTTL)
+		if err != nil {
+			return nil, err
+		}
+		thumbURL = thumbSigned.URL
+		dispURL = dispSigned.URL
+		storageKey = asset.DisplayObjectKey
 	}
 	ch := ""
 	if asset.Sha256.Valid {
@@ -637,9 +685,9 @@ func (s *Service) bindProductPrimaryMediaWithQ(ctx context.Context, qtx *db.Quer
 	}
 	img, err := qtx.CatalogWriteInsertProductImageWithMedia(ctx, db.CatalogWriteInsertProductImageWithMediaParams{
 		ProductID:    productID,
-		StorageKey:   asset.DisplayObjectKey,
-		CdnUrl:       pgtype.Text{String: dispSigned.URL, Valid: true},
-		ThumbCdnUrl:  pgtype.Text{String: thumbSigned.URL, Valid: true},
+		StorageKey:   storageKey,
+		CdnUrl:       pgtype.Text{String: dispURL, Valid: true},
+		ThumbCdnUrl:  pgtype.Text{String: thumbURL, Valid: true},
 		ContentHash:  pgtype.Text{String: ch, Valid: ch != ""},
 		Width:        asset.Width,
 		Height:       asset.Height,
@@ -659,7 +707,7 @@ func (s *Service) bindProductPrimaryMediaWithQ(ctx context.Context, qtx *db.Quer
 	if err != nil {
 		return nil, err
 	}
-	if err := upsertPrimaryProductMediaProjection(ctx, qtx, productID, img, asset, thumbSigned.URL, dispSigned.URL); err != nil {
+	if err := upsertPrimaryProductMediaProjection(ctx, qtx, productID, img, asset, thumbURL, dispURL); err != nil {
 		return nil, err
 	}
 	_ = companyID

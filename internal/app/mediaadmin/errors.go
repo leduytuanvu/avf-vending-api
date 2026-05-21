@@ -3,8 +3,10 @@ package mediaadmin
 import "errors"
 
 var (
-	// ErrNotConfigured is returned when object storage is not wired for this process.
-	ErrNotConfigured   = errors.New("mediaadmin: object storage not configured")
+	// ErrNotConfigured is returned when neither object storage nor external URL registration is wired.
+	ErrNotConfigured   = errors.New("mediaadmin: not configured")
+	ErrUploadNotConfigured = errors.New("mediaadmin: object storage upload not configured")
+	ErrExternalNotConfigured = errors.New("mediaadmin: external product image URLs not configured")
 	ErrInvalidArgument = errors.New("mediaadmin: invalid argument")
 	ErrNotFound        = errors.New("mediaadmin: not found")
 	ErrConflict        = errors.New("mediaadmin: conflict")

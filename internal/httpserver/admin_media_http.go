@@ -22,36 +22,49 @@ import (
 )
 
 func mountAdminMediaRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
-	if app == nil || app.MediaAdmin == nil {
-		return
-	}
 	if writeRL == nil {
 		writeRL = func(h http.Handler) http.Handler { return h }
 	}
-	svc := app.MediaAdmin
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaRead, auth.PermCatalogRead))
-		r.Get("/media", listAdminMedia(svc))
-		r.Get("/media/assets", listAdminMedia(svc))
-		r.Get("/media/{mediaId}", getAdminMedia(svc))
-		r.Get("/media/assets/{mediaId}", getAdminMedia(svc))
+		r.Get("/media", withMediaAdmin(app, listAdminMedia))
+		r.Get("/media/assets", withMediaAdmin(app, listAdminMedia))
+		r.Get("/media/{mediaId}", withMediaAdmin(app, getAdminMedia))
+		r.Get("/media/assets/{mediaId}", withMediaAdmin(app, getAdminMedia))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite))
-		r.With(writeRL).Post("/media/assets", postAdminMediaUploadInitLegacy(svc))
-		r.With(writeRL).Post("/media/uploads/init", postAdminMediaUploadInitV2(svc))
-		r.With(writeRL).Post("/media/uploads/{mediaId}/complete", postAdminMediaUploadComplete(svc))
-		r.With(writeRL).Post("/media/uploads", postAdminMediaUploadInitLegacy(svc))
-		r.With(writeRL).Post("/media/{mediaId}/complete", postAdminMediaUploadComplete(svc))
-		r.With(writeRL).Delete("/media/{mediaId}", deleteAdminMedia(svc))
-		r.With(writeRL).Delete("/media/assets/{mediaId}", deleteAdminMedia(svc))
+		r.With(writeRL).Post("/media/external-images", postAdminExternalProductImage(app))
+		r.With(writeRL).Post("/media/assets", withMediaUpload(app, postAdminMediaUploadInitLegacy))
+		r.With(writeRL).Post("/media/uploads/init", withMediaUpload(app, postAdminMediaUploadInitV2))
+		r.With(writeRL).Post("/media/uploads/{mediaId}/complete", withMediaUpload(app, postAdminMediaUploadComplete))
+		r.With(writeRL).Post("/media/uploads", withMediaUpload(app, postAdminMediaUploadInitLegacy))
+		r.With(writeRL).Post("/media/{mediaId}/complete", withMediaUpload(app, postAdminMediaUploadComplete))
+		r.With(writeRL).Delete("/media/{mediaId}", withMediaAdmin(app, deleteAdminMedia))
+		r.With(writeRL).Delete("/media/assets/{mediaId}", withMediaAdmin(app, deleteAdminMedia))
 	})
-	r.Group(func(r chi.Router) {
-		r.Use(auth.RequireAnyPermission(auth.PermMediaRead, auth.PermCatalogRead))
-	})
-	r.Group(func(r chi.Router) {
-		r.Use(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite))
-	})
+}
+
+type mediaAdminHandler func(*appmediaadmin.Service) http.HandlerFunc
+
+func withMediaAdmin(app *api.HTTPApplication, h mediaAdminHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app == nil || app.MediaAdmin == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media", "media admin service is not configured for this process")
+			return
+		}
+		h(app.MediaAdmin)(w, r)
+	}
+}
+
+func withMediaUpload(app *api.HTTPApplication, h mediaAdminHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app == nil || app.MediaAdmin == nil || !app.MediaAdmin.UploadConfigured() {
+			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media.upload", "object storage media upload is not configured for this process")
+			return
+		}
+		h(app.MediaAdmin)(w, r)
+	}
 }
 
 func parseAdminOptionalMediaRouteID(r *http.Request) (uuid.UUID, error) {
@@ -88,6 +101,12 @@ func writeMediaAdminError(w http.ResponseWriter, ctx context.Context, err error)
 		writeAPIError(w, ctx, http.StatusBadRequest, "invalid_argument", err.Error())
 	case errors.Is(err, appmediaadmin.ErrConflict):
 		writeAPIError(w, ctx, http.StatusConflict, "conflict", err.Error())
+	case errors.Is(err, appmediaadmin.ErrNotConfigured):
+		writeCapabilityNotConfigured(w, ctx, "v1.admin.media", "media admin service is not configured for this process")
+	case errors.Is(err, appmediaadmin.ErrUploadNotConfigured):
+		writeCapabilityNotConfigured(w, ctx, "v1.admin.media.upload", "object storage media upload is not configured for this process")
+	case errors.Is(err, appmediaadmin.ErrExternalNotConfigured):
+		writeCapabilityNotConfigured(w, ctx, "v1.admin.media.external_images", "external product image URLs are not configured for this process")
 	default:
 		writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
 	}
@@ -802,4 +821,78 @@ func mapAdminProductImageJSON(img db.ProductImage, pm *db.ProductMedium) map[str
 		out["media_id"] = uuid.UUID(img.MediaAssetID.Bytes).String()
 	}
 	return out
+}
+
+func postAdminExternalProductImage(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := requireWriteIdempotencyKey(r); err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
+			return
+		}
+		if app == nil || app.MediaAdmin == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media", "media admin service is not configured for this process")
+			return
+		}
+		if !app.MediaAdmin.ExternalConfigured() {
+			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media.external_images", "external product image URLs are not configured for this process")
+			return
+		}
+		scopeID, err := requireCatalogPrincipalUUID(r)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
+			return
+		}
+		p, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
+			return
+		}
+		if !adminMediaOrgAllowed(p, scopeID) {
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			return
+		}
+		var body V1AdminExternalProductImageRequest
+		if !decodeStrictJSON(w, r, &body) {
+			return
+		}
+		out, err := app.MediaAdmin.RegisterExternalProductImage(r.Context(), appmediaadmin.RegisterExternalProductImageInput{
+			CompanyID:   scopeID,
+			URL:         body.URL,
+			Purpose:     body.Purpose,
+			Filename:    body.Filename,
+			ContentType: body.ContentType,
+		})
+		if err != nil {
+			writeMediaAdminError(w, r.Context(), err)
+			return
+		}
+		status := http.StatusCreated
+		if out.Replay {
+			status = http.StatusOK
+		}
+		writeJSON(w, status, mapExternalProductImageResponse(out))
+	}
+}
+
+func mapExternalProductImageResponse(out *appmediaadmin.ExternalProductImageResult) V1AdminExternalProductImageResponse {
+	if out == nil {
+		return V1AdminExternalProductImageResponse{}
+	}
+	return V1AdminExternalProductImageResponse{
+		MediaID:      out.MediaID.String(),
+		SourceType:   out.SourceType,
+		URL:          out.URL,
+		DisplayURL:   out.DisplayURL,
+		ThumbnailURL: out.ThumbnailURL,
+		ContentType:  out.ContentType,
+		Filename:     out.Filename,
+		Status:       out.Status,
+		CacheKey:     out.CacheKey,
+		Version:      out.Version,
+		OfflineCache: V1AdminExternalProductImageOfflineCache{
+			Required: true,
+			Strategy: "download_when_online_use_local_when_offline",
+		},
+		CreatedAt: formatAPITimeRFC3339Nano(out.CreatedAt),
+	}
 }

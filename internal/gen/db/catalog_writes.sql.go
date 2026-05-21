@@ -1107,6 +1107,7 @@ INSERT INTO product_media (
     media_role,
     media_type,
     source_type,
+    original_url,
     original_object_key,
     thumb_object_key,
     display_object_key,
@@ -1126,7 +1127,6 @@ VALUES (
     $2,
     $3,
     'image',
-    'upload',
     $4,
     $5,
     $6,
@@ -1138,12 +1138,16 @@ VALUES (
     $12,
     $13,
     $14,
+    $15,
+    $16,
     0,
     'active'
 )
 ON CONFLICT (id)
     DO UPDATE SET
         media_role = EXCLUDED.media_role,
+        source_type = EXCLUDED.source_type,
+        original_url = EXCLUDED.original_url,
         original_object_key = EXCLUDED.original_object_key,
         thumb_object_key = EXCLUDED.thumb_object_key,
         display_object_key = EXCLUDED.display_object_key,
@@ -1164,6 +1168,8 @@ type CatalogWriteUpsertProductMediaProjectionParams struct {
 	ID                uuid.UUID
 	ProductID         uuid.UUID
 	MediaRole         string
+	SourceType        string
+	OriginalUrl       pgtype.Text
 	OriginalObjectKey pgtype.Text
 	ThumbObjectKey    pgtype.Text
 	DisplayObjectKey  pgtype.Text
@@ -1182,6 +1188,8 @@ func (q *Queries) CatalogWriteUpsertProductMediaProjection(ctx context.Context, 
 		arg.ID,
 		arg.ProductID,
 		arg.MediaRole,
+		arg.SourceType,
+		arg.OriginalUrl,
 		arg.OriginalObjectKey,
 		arg.ThumbObjectKey,
 		arg.DisplayObjectKey,

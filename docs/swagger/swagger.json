@@ -727,6 +727,106 @@
         ],
         "type": "object"
       },
+      "V1AdminExternalProductImageOfflineCache": {
+        "properties": {
+          "required": {
+            "type": "boolean"
+          },
+          "strategy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "required",
+          "strategy"
+        ],
+        "type": "object"
+      },
+      "V1AdminExternalProductImageRequest": {
+        "properties": {
+          "contentType": {
+            "example": "image/png",
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "purpose": {
+            "example": "product_image",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "V1AdminExternalProductImageResponse": {
+        "properties": {
+          "cacheKey": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "displayUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "mediaId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "offlineCache": {
+            "$ref": "#/components/schemas/V1AdminExternalProductImageOfflineCache"
+          },
+          "sourceType": {
+            "example": "external_url",
+            "type": "string"
+          },
+          "status": {
+            "example": "ready",
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "format": "uri",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "type": "string"
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mediaId",
+          "sourceType",
+          "url",
+          "displayUrl",
+          "thumbnailUrl",
+          "status",
+          "cacheKey",
+          "version",
+          "offlineCache",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "V1AdminInventoryEvent": {
         "properties": {
           "cabinetCode": {
@@ -21583,6 +21683,148 @@
           }
         ],
         "summary": "Get one media asset by id (admin)",
+        "tags": [
+          "Catalog Admin"
+        ]
+      }
+    },
+    "/v1/admin/media/external-images": {
+      "post": {
+        "description": "Registers an existing HTTPS product image URL (allowlisted host) as a ready **media_assets** row with **source_type=external**. Does **not** require **API_ARTIFACTS_ENABLED**. Requires **PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED**. **Idempotency-Key** required. Re-registering the same normalized URL returns the existing **mediaId**.",
+        "operationId": "DocOpV1AdminExternalProductImageRegister",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/V1AdminExternalProductImageRequest"
+              }
+            }
+          },
+          "description": "url, purpose, optional filename/contentType",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1AdminExternalProductImageResponse"
+                }
+              }
+            },
+            "description": "Register external product image URL"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1AdminExternalProductImageResponse"
+                }
+              }
+            },
+            "description": "Register external product image URL"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "capability_not_configured",
+                    "details": {
+                      "capability": "example_capability"
+                    },
+                    "message": "optional capability is not configured for this process",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Register external product image URL",
         "tags": [
           "Catalog Admin"
         ]

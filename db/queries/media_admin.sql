@@ -1,3 +1,15 @@
+-- name: MediaAdminGetAssetByOriginalURL :one
+SELECT
+    *
+FROM
+    media_assets
+WHERE
+    source_type = 'external'
+    AND lower(trim(original_url)) = lower(trim($1::text))
+    AND status NOT IN ('deleted', 'archived')
+LIMIT
+    1;
+
 -- name: MediaAdminInsertAsset :one
 INSERT INTO media_assets (
     id,
