@@ -47,8 +47,8 @@ func mountAdminMediaRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite))
 		r.With(writeRL).Post("/media/external-images", postAdminExternalProductImage(app))
-		r.With(writeRL).Post("/product-images", withCloudinaryUpload(app, postAdminProductImageUpload))
-		r.With(writeRL).Post("/media/product-images", withCloudinaryUpload(app, postAdminProductImageUpload))
+		r.With(writeRL).Post("/product-images", withCloudinaryUpload(app, postAdminProductImageUploadHandler))
+		r.With(writeRL).Post("/media/product-images", withCloudinaryUpload(app, postAdminProductImageUploadHandler))
 		r.With(writeRL).Post("/media/assets", withMediaUpload(app, postAdminMediaUploadInitLegacy))
 		r.With(writeRL).Post("/media/uploads/init", withMediaUpload(app, postAdminMediaUploadInitV2))
 		r.With(writeRL).Post("/media/uploads/{mediaId}/complete", withMediaUpload(app, postAdminMediaUploadComplete))
@@ -75,7 +75,7 @@ func withMediaUpload(app *api.HTTPApplication, h mediaAdminHandler) http.Handler
 	}
 }
 
-func withCloudinaryUpload(app *api.HTTPApplication, h mediaAdminHandler) http.HandlerFunc {
+func withCloudinaryUpload(app *api.HTTPApplication, h func(*api.HTTPApplication) http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if app == nil || app.MediaAdmin == nil {
 			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media", adminMediaCapabilityMsg)
@@ -85,7 +85,7 @@ func withCloudinaryUpload(app *api.HTTPApplication, h mediaAdminHandler) http.Ha
 			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media", "product image upload is not configured for this process (set MEDIA_PROVIDER=cloudinary and Cloudinary credentials)")
 			return
 		}
-		h(app.MediaAdmin)(w, r)
+		h(app)(w, r)
 	}
 }
 
@@ -103,12 +103,11 @@ func parseAdminOptionalMediaRouteID(r *http.Request) (uuid.UUID, error) {
 }
 
 func adminMediaOrgAllowed(p auth.Principal, scopeID uuid.UUID) bool {
+	_ = scopeID
 	if p.HasRole(auth.RolePlatformAdmin) {
 		return true
 	}
-	if uuid.Nil != scopeID {
-		return false
-	}
+	// Single-company: scopeID may be server-resolved (MEDIA_COMPANY_ID); permission-based access only.
 	return auth.HasPermission(p, auth.PermMediaRead) || auth.HasPermission(p, auth.PermCatalogRead) ||
 		auth.HasPermission(p, auth.PermCatalogWrite) || auth.HasPermission(p, auth.PermMediaWrite)
 }
@@ -920,15 +919,15 @@ func postAdminExternalProductImage(app *api.HTTPApplication) http.HandlerFunc {
 	}
 }
 
-func postAdminProductImageUpload(svc *appmediaadmin.Service) http.HandlerFunc {
+func postAdminProductImageUploadHandler(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, err := requireWriteIdempotencyKey(r); err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
+		if app == nil || app.MediaAdmin == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media", adminMediaCapabilityMsg)
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
-		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
+		svc := app.MediaAdmin
+		if _, err := requireWriteIdempotencyKey(r); err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
 		p, ok := auth.PrincipalFromContext(r.Context())
@@ -936,13 +935,25 @@ func postAdminProductImageUpload(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		if !adminMediaOrgAllowed(p, scopeID) {
-			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
-			return
-		}
 		maxBytes := svc.MaxUploadBytes()
 		if err := r.ParseMultipartForm(maxBytes + (1 << 20)); err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_multipart", "invalid multipart form")
+			return
+		}
+		scopeID, err := resolveProductImageCompanyID(r, p, svc)
+		if err != nil {
+			switch {
+			case errors.Is(err, errMediaCompanyNotConfigured):
+				writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media", "product image upload requires MEDIA_COMPANY_ID server configuration")
+			case strings.Contains(err.Error(), "forbidden"):
+				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
+			default:
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_argument", err.Error())
+			}
+			return
+		}
+		if !adminMediaOrgAllowed(p, scopeID) {
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", auth.ErrForbidden.Error())
 			return
 		}
 		file, header, err := r.FormFile("file")

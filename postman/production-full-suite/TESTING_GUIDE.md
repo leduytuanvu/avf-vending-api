@@ -1,6 +1,6 @@
 # AVF Production Full API Testing Guide
 
-Generated: 2026-05-21T08:29:28Z
+Generated: 2026-05-21T10:50:32Z
 
 ## 1. Import
 

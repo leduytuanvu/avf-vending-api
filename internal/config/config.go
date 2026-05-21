@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/url"
 	"os"
@@ -259,7 +260,9 @@ type MediaUploadConfig struct {
 	AllowedTypes []string
 	ThumbWidth   int
 	ThumbHeight  int
-	Cloudinary   CloudinaryConfig
+	// CompanyID is the stable server-side media tenant id (MEDIA_COMPANY_ID). Clients must not send company_id in normal flows.
+	CompanyID  uuid.UUID
+	Cloudinary CloudinaryConfig
 }
 
 // CloudinaryConfig holds Cloudinary credentials (API secret must never be exposed to clients).
@@ -706,6 +709,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.Artifacts.validate(c.AppEnv); err != nil {
+		return err
+	}
+	if err := c.MediaUpload.validate(c.AppEnv); err != nil {
 		return err
 	}
 	if err := c.Analytics.validate(); err != nil {
@@ -2085,6 +2091,7 @@ func loadMediaUploadConfig() MediaUploadConfig {
 	if provider == "cloudinary" && !enabled {
 		enabled = true
 	}
+	companyID, _ := parseMediaCompanyIDEnv()
 	return MediaUploadConfig{
 		Enabled:      enabled,
 		Provider:     provider,
@@ -2092,6 +2099,7 @@ func loadMediaUploadConfig() MediaUploadConfig {
 		AllowedTypes: types,
 		ThumbWidth:   getenvInt("MEDIA_THUMBNAIL_WIDTH", 300),
 		ThumbHeight:  getenvInt("MEDIA_THUMBNAIL_HEIGHT", 300),
+		CompanyID:    companyID,
 		Cloudinary: CloudinaryConfig{
 			CloudName: strings.TrimSpace(getenv("CLOUDINARY_CLOUD_NAME", "")),
 			APIKey:    strings.TrimSpace(getenv("CLOUDINARY_API_KEY", "")),
@@ -2099,6 +2107,46 @@ func loadMediaUploadConfig() MediaUploadConfig {
 			Folder:    strings.TrimSpace(getenv("CLOUDINARY_FOLDER", "avf-vending/products")),
 		},
 	}
+}
+
+// parseMediaCompanyIDEnv resolves MEDIA_COMPANY_ID (canonical) with optional deprecated MEDIA_SCOPE_ID alias.
+func parseMediaCompanyIDEnv() (uuid.UUID, error) {
+	companyRaw := strings.TrimSpace(os.Getenv("MEDIA_COMPANY_ID"))
+	scopeRaw := strings.TrimSpace(os.Getenv("MEDIA_SCOPE_ID"))
+	raw := companyRaw
+	if raw == "" {
+		raw = scopeRaw
+		if scopeRaw != "" {
+			log.Printf("config: MEDIA_SCOPE_ID is deprecated; use MEDIA_COMPANY_ID instead")
+		}
+	} else if scopeRaw != "" && scopeRaw != companyRaw {
+		log.Printf("config: MEDIA_COMPANY_ID takes priority over deprecated MEDIA_SCOPE_ID")
+	}
+	if raw == "" {
+		return uuid.Nil, nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("config: invalid MEDIA_COMPANY_ID %q: %w", raw, err)
+	}
+	if id == uuid.Nil {
+		return uuid.Nil, errors.New("config: MEDIA_COMPANY_ID must not be the nil UUID")
+	}
+	return id, nil
+}
+
+func (m MediaUploadConfig) validate(appEnv AppEnvironment) error {
+	if !m.CloudinaryConfigured() {
+		return nil
+	}
+	companyID, err := parseMediaCompanyIDEnv()
+	if err != nil {
+		return err
+	}
+	if companyID == uuid.Nil && appEnv == AppEnvProduction {
+		return errors.New("config: MEDIA_COMPANY_ID is required when APP_ENV=production and Cloudinary media upload is enabled (MEDIA_PROVIDER=cloudinary with credentials)")
+	}
+	return nil
 }
 
 func loadArtifactsConfig() ArtifactsConfig {

@@ -1662,6 +1662,7 @@ jobs:
       PRODUCTION_SYNC_CLOUDINARY_ENV: ${{ vars.PRODUCTION_SYNC_CLOUDINARY_ENV || '0' }}
       MEDIA_PROVIDER: cloudinary
       MEDIA_UPLOAD_ENABLED: "true"
+      MEDIA_COMPANY_ID: ${{ vars.MEDIA_COMPANY_ID || secrets.MEDIA_COMPANY_ID }}
       CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
       CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
@@ -2197,8 +2198,8 @@ jobs:
           DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
         run: |
           set -Eeuo pipefail
-          if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" ]]; then
-            echo "Cloudinary GitHub secrets not configured; skipping remote env sync"
+          if [[ -z "${CLOUDINARY_CLOUD_NAME:-}" || -z "${CLOUDINARY_API_KEY:-}" || -z "${CLOUDINARY_API_SECRET:-}" || -z "${MEDIA_COMPANY_ID:-}" ]]; then
+            echo "Cloudinary GitHub secrets/variables not fully configured; skipping remote env sync"
             exit 0
           fi
           apply_cloudinary_remote() {
@@ -2209,6 +2210,7 @@ jobs:
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
               "MEDIA_PROVIDER=${MEDIA_PROVIDER}" \
               "MEDIA_UPLOAD_ENABLED=${MEDIA_UPLOAD_ENABLED}" \
+              "MEDIA_COMPANY_ID=${MEDIA_COMPANY_ID}" \
               "CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}" \
               "CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}" \
               "CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}" \
