@@ -985,6 +985,7 @@ jobs:
           bash -n deployments/prod/shared/scripts/validate_digest_pinned_image_refs.sh
           bash -n deployments/prod/shared/scripts/validate_cloudinary_deploy_secrets.sh
           bash -n deployments/prod/shared/scripts/apply_cloudinary_app_node_env.sh
+          bash -n deployments/prod/shared/scripts/apply_machine_grpc_app_node_env.sh
           bash -n deployments/prod/app-node/scripts/release_app_node.sh
           bash -n deployments/prod/app-node/scripts/release_app_cluster.sh
           bash -n deployments/prod/app-node/scripts/rollback_app_node.sh
@@ -2223,6 +2224,21 @@ jobs:
           apply_cloudinary_remote "${APP_NODE_A_HOST}"
           if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_HOST:-}" ]]; then
             apply_cloudinary_remote "${APP_NODE_B_HOST}"
+          fi
+          apply_machine_grpc_remote() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+            read -r -a ssh_opts <<< "${SSH_OPTS}"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
+              "MACHINE_GRPC_DOMAIN=${MACHINE_GRPC_DOMAIN:-machine-api.ldtv.dev}" \
+              "UPSTREAM_GRPC=${UPSTREAM_GRPC:-h2c://api:9090}" \
+              "APP_NODE_ENV_FILE=${env_path}" \
+              bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_machine_grpc_app_node_env.sh" "${env_path}"
+          }
+          apply_machine_grpc_remote "${APP_NODE_A_HOST}"
+          if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_HOST:-}" ]]; then
+            apply_machine_grpc_remote "${APP_NODE_B_HOST}"
           fi
 
       - name: Sync data-node fallback assets
