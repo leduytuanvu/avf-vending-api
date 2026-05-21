@@ -16,8 +16,8 @@ import (
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -25,7 +25,7 @@ import (
 
 const (
 	externalDownloadStrategy = "download_when_online_use_local_when_offline"
-	externalMediaVersion       = 1
+	externalMediaVersion     = 1
 )
 
 // RegisterExternalProductImageInput registers a hosted HTTPS image URL as a ready media_assets row.
