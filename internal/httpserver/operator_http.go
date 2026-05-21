@@ -101,6 +101,39 @@ func sessionRevokeAllowed(p auth.Principal, machine fleet.Machine) bool {
 	return uuid.Nil == uuid.Nil && p.HasRole(auth.RoleOrgAdmin)
 }
 
+// startOperatorSessionForLogin opens or resumes an ACTIVE operator session for the JWT principal.
+// Used by legacy machine REST login and admin inventory operator-session start (production path when legacy REST is off).
+func startOperatorSessionForLogin(ctx context.Context, svc *operator.Service, machineID uuid.UUID, machine fleet.Machine, p auth.Principal, body operatorLoginRequest) (domainoperator.Session, error) {
+	authMethod := strings.TrimSpace(body.AuthMethod)
+	if authMethod == "" {
+		authMethod = domainoperator.AuthMethodOIDC
+	}
+	actorType, techID, userPrincipal, err := deriveOperatorActor(p)
+	if err != nil {
+		return domainoperator.Session{}, err
+	}
+	meta := []byte("{}")
+	if len(body.ClientMetadata) > 0 {
+		meta = body.ClientMetadata
+	}
+	corr := correlationUUIDFromRequest(ctx)
+	meta = mergeCorrelationMetadata(meta, appmw.CorrelationIDFromContext(ctx))
+	adminTakeoverOK := body.ForceAdminTakeover && sessionRevokeAllowed(p, machine)
+	return svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
+		MachineID:               machineID,
+		ActorType:               actorType,
+		TechnicianID:            techID,
+		UserPrincipal:           userPrincipal,
+		ExpiresAt:               body.ExpiresAt,
+		ClientMetadata:          meta,
+		InitialAuthMethod:       authMethod,
+		CorrelationID:           corr,
+		InitialAuthMetadata:     meta,
+		ForceAdminTakeover:      body.ForceAdminTakeover,
+		AdminTakeoverAuthorized: adminTakeoverOK,
+	})
+}
+
 // mountOperatorSessionRoutes wires machine-scoped operator session APIs under:
 //
 //	/v1/machines/{machineId}/operator-sessions/...
@@ -178,38 +211,13 @@ func operatorLoginHandler(svc *operator.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusForbidden, "admin_takeover_forbidden", "force_admin_takeover requires company admin or platform admin")
 			return
 		}
-		authMethod := strings.TrimSpace(body.AuthMethod)
-		if authMethod == "" {
-			authMethod = domainoperator.AuthMethodOIDC
-		}
-		actorType, techID, userPrincipal, err := deriveOperatorActor(p)
+		sess, err := startOperatorSessionForLogin(ctx, svc, machineID, machine, p, body)
 		if err != nil {
+			authMethod := strings.TrimSpace(body.AuthMethod)
+			if authMethod == "" {
+				authMethod = domainoperator.AuthMethodOIDC
+			}
 			_ = recordLoginFailure(ctx, svc, machineID, authMethod, correlationUUIDFromRequest(ctx), loginFailureMetadata(err, appmw.CorrelationIDFromContext(ctx)))
-			writeOperatorError(w, r.Context(), err)
-			return
-		}
-		meta := []byte("{}")
-		if len(body.ClientMetadata) > 0 {
-			meta = body.ClientMetadata
-		}
-		corr := correlationUUIDFromRequest(ctx)
-		meta = mergeCorrelationMetadata(meta, appmw.CorrelationIDFromContext(ctx))
-		adminTakeoverOK := body.ForceAdminTakeover && sessionRevokeAllowed(p, machine)
-		sess, err := svc.StartOperatorSession(ctx, operator.StartOperatorSessionInput{
-			MachineID:               machineID,
-			ActorType:               actorType,
-			TechnicianID:            techID,
-			UserPrincipal:           userPrincipal,
-			ExpiresAt:               body.ExpiresAt,
-			ClientMetadata:          meta,
-			InitialAuthMethod:       authMethod,
-			CorrelationID:           corr,
-			InitialAuthMetadata:     meta,
-			ForceAdminTakeover:      body.ForceAdminTakeover,
-			AdminTakeoverAuthorized: adminTakeoverOK,
-		})
-		if err != nil {
-			_ = recordLoginFailure(ctx, svc, machineID, authMethod, corr, loginFailureMetadata(err, appmw.CorrelationIDFromContext(ctx)))
 			writeOperatorError(w, r.Context(), err)
 			return
 		}
