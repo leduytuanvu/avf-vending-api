@@ -657,18 +657,18 @@ type V1AdminExternalProductImageOfflineCache struct {
 
 // V1AdminExternalProductImageResponse is returned from POST /v1/admin/media/external-images.
 type V1AdminExternalProductImageResponse struct {
-	MediaID      string                                   `json:"mediaId"`
-	SourceType   string                                   `json:"sourceType"`
-	URL          string                                   `json:"url"`
-	DisplayURL   string                                   `json:"displayUrl"`
-	ThumbnailURL string                                   `json:"thumbnailUrl"`
-	ContentType  string                                   `json:"contentType"`
-	Filename     string                                   `json:"filename,omitempty"`
-	Status       string                                   `json:"status"`
-	CacheKey     string                                   `json:"cacheKey"`
-	Version      int32                                    `json:"version"`
-	OfflineCache V1AdminExternalProductImageOfflineCache  `json:"offlineCache"`
-	CreatedAt    string                                   `json:"createdAt"`
+	MediaID      string                                  `json:"mediaId"`
+	SourceType   string                                  `json:"sourceType"`
+	URL          string                                  `json:"url"`
+	DisplayURL   string                                  `json:"displayUrl"`
+	ThumbnailURL string                                  `json:"thumbnailUrl"`
+	ContentType  string                                  `json:"contentType"`
+	Filename     string                                  `json:"filename,omitempty"`
+	Status       string                                  `json:"status"`
+	CacheKey     string                                  `json:"cacheKey"`
+	Version      int32                                   `json:"version"`
+	OfflineCache V1AdminExternalProductImageOfflineCache `json:"offlineCache"`
+	CreatedAt    string                                  `json:"createdAt"`
 }
 
 // V1AdminMediaUploadInitRequest is POST /v1/admin/media/uploads (legacy snake_case body).

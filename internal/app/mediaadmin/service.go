@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
-	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -23,14 +23,14 @@ const s3UserMetaSHA256 = metaSHA256Hex
 
 // Service manages media_assets rows and S3 objects for the enterprise media pipeline.
 type Service struct {
-	pool     *pgxpool.Pool
-	store    objectstore.Store
-	audit    compliance.EnterpriseRecorder
-	variants VariantGenerator
-	putTTL   time.Duration
-	maxBytes int64
-	cache    CatalogMediaCacheBumper
-	external config.ExternalProductImageConfig
+	pool        *pgxpool.Pool
+	store       objectstore.Store
+	audit       compliance.EnterpriseRecorder
+	variants    VariantGenerator
+	putTTL      time.Duration
+	maxBytes    int64
+	cache       CatalogMediaCacheBumper
+	external    config.ExternalProductImageConfig
 	remoteProbe func(ctx context.Context, imageURL, expectedMIME string, cfg config.ExternalProductImageConfig) error
 }
 
@@ -57,14 +57,14 @@ func NewService(d Deps) (*Service, error) {
 		v = WebPVariantGenerator{ThumbMax: d.ThumbMaxPixels, DisplayMax: d.DisplayMaxPixels}
 	}
 	return &Service{
-		pool:     d.Pool,
-		store:    d.Store,
-		audit:    d.Audit,
-		variants: v,
-		putTTL:   ttl,
-		maxBytes: maxB,
-		cache:    d.Cache,
-		external: d.External,
+		pool:        d.Pool,
+		store:       d.Store,
+		audit:       d.Audit,
+		variants:    v,
+		putTTL:      ttl,
+		maxBytes:    maxB,
+		cache:       d.Cache,
+		external:    d.External,
 		remoteProbe: d.RemoteProbe,
 	}, nil
 }
