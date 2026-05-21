@@ -4,7 +4,8 @@ This matrix makes the hardened edge assumptions explicit for the primary split p
 
 ## Public DNS names
 
-- `api.ldtv.dev`: public HTTPS API entrypoint terminated by `caddy` on each app node
+- `api.ldtv.dev`: public HTTPS REST API entrypoint terminated by `caddy` on each app node
+- `machine-api.ldtv.dev`: public HTTPS machine gRPC entrypoint (TLS at Caddy → h2c `api:9090`)
 - `mqtt.ldtv.dev`: public raw MQTT/TLS entrypoint terminated by EMQX on the data node when the self-hosted fallback broker is used
 
 No separate public admin hostname is defined by default in this repo. Keep operator-only surfaces private and reach them by VPN, private network, or SSH tunnel.
@@ -13,11 +14,12 @@ No separate public admin hostname is defined by default in this repo. Keep opera
 
 - `22/tcp`: SSH, operator IPs only
 - `80/tcp`: public ACME HTTP challenge and optional redirect handling
-- `443/tcp`: public HTTPS for the API domain
+- `443/tcp`: public HTTPS for `API_DOMAIN` (REST) and `MACHINE_GRPC_DOMAIN` (machine gRPC, same Caddy listener)
 
 Keep these app-node ports internal-only:
 
 - `8080/tcp`: API container HTTP, reachable only from `caddy`
+- `9090/tcp`: API container machine gRPC (h2c), reachable only from `caddy` — **do not publish on host firewall**
 - `8081/tcp`: API ops listener, loopback only
 - `9091/tcp`: worker metrics/health, loopback only
 - `9092/tcp`: reconciler metrics/health, loopback only

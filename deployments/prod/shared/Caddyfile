@@ -47,6 +47,35 @@
 	}
 }
 
+# Machine runtime gRPC: TLS terminates here; cleartext h2c to api:9090 (GRPC_BEHIND_TLS_PROXY=true).
+# Do not gzip-encode this vhost — gRPC uses HTTP/2 binary frames.
+(machine_grpc_https) {
+	log {
+		output stdout
+		format console
+	}
+	reverse_proxy {$UPSTREAM_GRPC} {
+		transport http {
+			versions h2c
+			dial_timeout 5s
+			response_header_timeout 30s
+			read_timeout 75s
+			write_timeout 75s
+		}
+	}
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Content-Type-Options nosniff
+	}
+}
+
 {$API_DOMAIN} {
 	import app_https
+}
+
+{$MACHINE_GRPC_DOMAIN} {
+	import machine_grpc_https
 }
