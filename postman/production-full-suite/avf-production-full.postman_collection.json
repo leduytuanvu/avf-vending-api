@@ -12668,8 +12668,14 @@
                       "  pm.environment.set('mediaId', mediaId);",
                       "  pm.environment.set('primaryMediaId', mediaId);",
                       "}",
-                      "if (displayUrl) pm.environment.set('productImageDisplayUrl', displayUrl);",
-                      "if (thumbnailUrl) pm.environment.set('productImageThumbnailUrl', thumbnailUrl);"
+                      "if (displayUrl) {",
+                      "  pm.environment.set('primaryMediaUrl', displayUrl);",
+                      "  pm.environment.set('productImageDisplayUrl', displayUrl);",
+                      "}",
+                      "if (thumbnailUrl) {",
+                      "  pm.environment.set('primaryMediaThumbnailUrl', thumbnailUrl);",
+                      "  pm.environment.set('productImageThumbnailUrl', thumbnailUrl);",
+                      "}"
                     ]
                   }
                 }
@@ -14237,7 +14243,7 @@
                 }
               },
               "response": [],
-              "disabled": true,
+              "disabled": false,
               "event": [
                 {
                   "listen": "prerequest",
@@ -21360,7 +21366,37 @@
                       "if (!pm.variables.get(\"_runtimeCorrelationId\")) {",
                       "  pm.variables.set(\"_runtimeCorrelationId\", pm.variables.replaceIn(\"{{$guid}}\"));",
                       "}",
-                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                      "/* build planogram draft/publish body */",
+                      "const productId = String(pm.environment.get('productId') || '').trim();",
+                      "if (!productId) { throw new Error('planogram requires productId'); }",
+                      "let operatorSessionId = String(pm.environment.get('operatorSessionId') || '').trim();",
+                      "if (!operatorSessionId) {",
+                      "  operatorSessionId = pm.variables.replaceIn('{{$guid}}');",
+                      "  pm.environment.set('operatorSessionId', operatorSessionId);",
+                      "const slotIndex = parseInt(String(pm.environment.get('slotIndex') || '1'), 10) || 1;",
+                      "const priceMinor = parseInt(String(pm.environment.get('unitPriceMinor') || '150'), 10) || 150;",
+                      "const body = {",
+                      "  operator_session_id: operatorSessionId,",
+                      "  syncLegacyReadModel: true,",
+                      "  items: [{",
+                      "    cabinetCode: 'A',",
+                      "    layoutKey: 'grid-4x6',",
+                      "    layoutRevision: 1,",
+                      "    slotCode: 'A' + slotIndex,",
+                      "    legacySlotIndex: slotIndex,",
+                      "    productId: productId,",
+                      "    maxQuantity: 12,",
+                      "    priceMinor: priceMinor,",
+                      "    metadata: {},",
+                      "  }],",
+                      "};",
+                      "const planogramId = String(pm.environment.get('planogramId') || '').trim();",
+                      "if (planogramId && !planogramId.startsWith('<')) {",
+                      "  body.planogramId = planogramId;",
+                      "  body.planogramRevision = parseInt(String(pm.environment.get('planogramRevision') || '1'), 10) || 1;",
+                      "pm.request.body.raw = JSON.stringify(body);",
+                      "pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });"
                     ]
                   }
                 },
@@ -32971,7 +33007,37 @@
                       "if (!pm.variables.get(\"_runtimeCorrelationId\")) {",
                       "  pm.variables.set(\"_runtimeCorrelationId\", pm.variables.replaceIn(\"{{$guid}}\"));",
                       "}",
-                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                      "/* build planogram draft/publish body */",
+                      "const productId = String(pm.environment.get('productId') || '').trim();",
+                      "if (!productId) { throw new Error('planogram requires productId'); }",
+                      "let operatorSessionId = String(pm.environment.get('operatorSessionId') || '').trim();",
+                      "if (!operatorSessionId) {",
+                      "  operatorSessionId = pm.variables.replaceIn('{{$guid}}');",
+                      "  pm.environment.set('operatorSessionId', operatorSessionId);",
+                      "const slotIndex = parseInt(String(pm.environment.get('slotIndex') || '1'), 10) || 1;",
+                      "const priceMinor = parseInt(String(pm.environment.get('unitPriceMinor') || '150'), 10) || 150;",
+                      "const body = {",
+                      "  operator_session_id: operatorSessionId,",
+                      "  syncLegacyReadModel: true,",
+                      "  items: [{",
+                      "    cabinetCode: 'A',",
+                      "    layoutKey: 'grid-4x6',",
+                      "    layoutRevision: 1,",
+                      "    slotCode: 'A' + slotIndex,",
+                      "    legacySlotIndex: slotIndex,",
+                      "    productId: productId,",
+                      "    maxQuantity: 12,",
+                      "    priceMinor: priceMinor,",
+                      "    metadata: {},",
+                      "  }],",
+                      "};",
+                      "const planogramId = String(pm.environment.get('planogramId') || '').trim();",
+                      "if (planogramId && !planogramId.startsWith('<')) {",
+                      "  body.planogramId = planogramId;",
+                      "  body.planogramRevision = parseInt(String(pm.environment.get('planogramRevision') || '1'), 10) || 1;",
+                      "pm.request.body.raw = JSON.stringify(body);",
+                      "pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });"
                     ]
                   }
                 },
@@ -45451,7 +45517,18 @@
                       "if (!pm.variables.get(\"_runtimeCorrelationId\")) {",
                       "  pm.variables.set(\"_runtimeCorrelationId\", pm.variables.replaceIn(\"{{$guid}}\"));",
                       "}",
-                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                      "const ts = String(Date.now());",
+                      "const body = {",
+                      "  name: 'canary-price-book-' + ts,",
+                      "  currency: 'USD',",
+                      "  effectiveFrom: new Date().toISOString(),",
+                      "  isDefault: false,",
+                      "  scopeType: 'company',",
+                      "  priority: 10,",
+                      "};",
+                      "pm.request.body.raw = JSON.stringify(body);",
+                      "pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });"
                     ]
                   }
                 },
@@ -46102,7 +46179,12 @@
                       "if (!pm.variables.get(\"_runtimeCorrelationId\")) {",
                       "  pm.variables.set(\"_runtimeCorrelationId\", pm.variables.replaceIn(\"{{$guid}}\"));",
                       "}",
-                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                      "const machineId = String(pm.environment.get('machineId') || '').trim();",
+                      "if (!machineId || machineId.startsWith('<')) {",
+                      "  throw new Error('assign-target requires machineId in environment');",
+                      "pm.request.body.raw = JSON.stringify({ machineId });",
+                      "pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });"
                     ]
                   }
                 },
@@ -48061,7 +48143,12 @@
                       "if (!pm.variables.get(\"_runtimeCorrelationId\")) {",
                       "  pm.variables.set(\"_runtimeCorrelationId\", pm.variables.replaceIn(\"{{$guid}}\"));",
                       "}",
-                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                      "const productId = String(pm.environment.get('productId') || '').trim();",
+                      "if (!productId) { throw new Error('price book items requires productId'); }",
+                      "const unitPriceMinor = parseInt(String(pm.environment.get('unitPriceMinor') || '150'), 10) || 150;",
+                      "pm.request.body.raw = JSON.stringify({ items: [{ productId, unitPriceMinor }] });",
+                      "pm.request.headers.upsert({ key: 'Content-Type', value: 'application/json' });"
                     ]
                   }
                 },
