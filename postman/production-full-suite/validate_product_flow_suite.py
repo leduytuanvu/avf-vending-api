@@ -205,8 +205,11 @@ def main() -> int:
             for ev in prod_item.get("event", []):
                 if ev.get("listen") == "prerequest":
                     prereq = "\n".join(ev.get("script", {}).get("exec", []))
-            if "JSON.stringify(body)" not in prereq:
-                errors.append("product create prerequest must JSON.stringify(body)")
+            if "_runtimeProductCreateBody" not in prereq and "JSON.stringify(body)" not in prereq:
+                errors.append("product create prerequest must set _runtimeProductCreateBody")
+            raw_body = body.get("raw", "")
+            if raw_body.strip() != "{{_runtimeProductCreateBody}}":
+                errors.append("product create raw body must be {{_runtimeProductCreateBody}}")
             print(f"product create keys: {sorted(keys)}")
         except Exception as exc:
             errors.append(f"product create body parse: {exc}")
