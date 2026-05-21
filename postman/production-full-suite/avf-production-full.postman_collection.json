@@ -12495,19 +12495,19 @@
               ]
             },
             {
-              "name": "[GATED-WRITE] POST /v1/admin/product-images (Cloudinary multipart)",
-              "description": "openapiOperationId: Doc‌OpV1AdminProductImageUpload",
+              "name": "[GATED-WRITE] POST /v1/admin/product-images - Upload Product Image",
+              "description": "## Multipart product image upload\n\nThis request uses **multipart/form-data**. **Do not** manually set `Content-Type` in Headers — Postman must generate `multipart/form-data; boundary=...` automatically.\n\n1. Select a real image file (png, jpg, jpeg, webp, gif) under 5MB in the **file** form-data field.\n2. If you get `invalid_image_file` / `unsupported content type`, re-select the file or use the curl fallback with `;type=image/png`.\n\nAllowed types: image/jpeg, image/png, image/webp, image/gif. Max size: 5MB.\n\nBackend resolves `MEDIA_COMPANY_ID` server-side — do **not** send `company_id`.",
               "request": {
                 "method": "POST",
                 "header": [
                   {
                     "key": "X-Request-ID",
-                    "value": "{{$guid}}",
+                    "value": "{{_runtimeRequestId}}",
                     "type": "text"
                   },
                   {
                     "key": "X-Correlation-ID",
-                    "value": "{{$guid}}",
+                    "value": "{{_runtimeCorrelationId}}",
                     "type": "text"
                   },
                   {
@@ -12517,7 +12517,7 @@
                   },
                   {
                     "key": "Idempotency-Key",
-                    "value": "{{$guid}}",
+                    "value": "{{_runtimeIdempotencyKey}}",
                     "type": "text"
                   },
                   {
@@ -12537,7 +12537,7 @@
                     "product-images"
                   ]
                 },
-                "description": "### operationId (đối chiếu OpenAPI)\n`DocOpV1AdminProductImageUpload`\n\n### Mục đích / API dùng để làm gì\nUpload product image file (Cloudinary)\n\n### Khi nào gọi / gọi sau bước nào\nTheo tag **Media Admin** và thứ tự trong `docs/testing/05_PRODUCTION_TEST_EXECUTION_ORDER.md` và `postman/suites/full-production-suite/05_PRODUCTION_TEST_EXECUTION_ORDER.md`. Nếu cần auth: gọi `POST /v1/auth/login` trước, sau đó `GET /v1/auth/me` để xác nhận principal.\n### Request truyền gì\nBiến Postman trên path/query/header; body mẫu sinh từ OpenAPI và chuẩn hoá **canary** (tránh 409).\n\n### Response nhận gì\nHTTP + body theo schema 2xx trong `docs/swagger/swagger.json`; lỗi chuẩn envelope JSON (`error.code`, `requestId`).\n\n### Evidence cần lưu\nHTTP status, `requestId`/`X-Request-ID`, `X-Correlation-ID`, `error` nếu có — **không** lưu/jwt/raw password.\n\n### Lỗi thường gặp\n- **401** unauthenticated — thiếu/sai JWT.\n- **403** forbidden — RBAC.\n- **404** không tìm thấy resource hoặc route tắt (metrics/swagger tùy cấu hình).\n- **409** conflict / idempotency replay.\n- **500** lỗi máy chủ.\n\n### Auth\nCó — Bearer JWT (`{{accessToken}}`). Với machine JWT: đặt `accessToken` = giá trị machine token (hoặc dùng biến `machineToken` và copy thủ công vào header nếu bạn tách biến).\n\n### Có destructive không?\nMức: **DESTRUCTIVE_CANARY_ONLY**. Request ghi mặc định **disabled** trong Postman; pre-request **throw** nếu chưa đặt `allow_destructive` / `canaryMode` / `readiness`.\n",
+                "description": "### operationId\n`DocOpV1AdminProductImageUpload`\n\n### Multipart upload (Cloudinary)\n- Body mode: **form-data** (not raw JSON).\n- **Do not** add `Content-Type` header manually.\n- Select a local image file in the `file` field.\n\n### Form fields\n| Key | Type | Value |\n|-----|------|-------|\n| file | File | Select png/jpg/jpeg/webp/gif ≤ 5MB |\n| purpose | text | product_image |\n| altText | text | Coca Cola 330ml product image |\n\n### Auth\nBearer JWT (`{{accessToken}}`). Run `POST /v1/auth/login` first.\n\n### Expected success (200/201)\n`mediaId`, `displayUrl`, `secureUrl`, `contentType`, `status: ready`\n\n### Common errors\n- **401** — missing/invalid token\n- **invalid_image_file** — unsupported content type (fix file selection or use curl `;type=image/png`)\n- **GATED-WRITE blocked** — set environment flags (see PRODUCT_IMAGE_UPLOAD_TESTING.md)\n",
                 "body": {
                   "mode": "formdata",
                   "formdata": [
@@ -12545,7 +12545,8 @@
                       "key": "file",
                       "type": "file",
                       "src": [],
-                      "description": "Select local png/jpg/jpeg/webp/gif in Postman"
+                      "contentType": "image/png",
+                      "description": "Select local image file. Allowed: png, jpg, jpeg, webp, gif. Max 5MB."
                     },
                     {
                       "key": "purpose",
@@ -12554,15 +12555,8 @@
                     },
                     {
                       "key": "altText",
-                      "value": "Sample product image",
+                      "value": "Coca Cola 330ml product image",
                       "type": "text"
-                    },
-                    {
-                      "key": "company_id",
-                      "value": "{{mediaCompanyId}}",
-                      "type": "text",
-                      "disabled": true,
-                      "description": "Optional legacy override only. Backend resolves MEDIA_COMPANY_ID server-side."
                     }
                   ]
                 }
@@ -12602,20 +12596,36 @@
                   "script": {
                     "type": "text/javascript",
                     "exec": [
-                      "/* production gated-write guard */",
-                      "const allowGatedWrites = String(pm.environment.get('allowGatedWrites') || '').toLowerCase() === 'true';",
-                      "const confirmProductionWrites = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "/* production gated-write guard + multipart Content-Type guard */",
+                      "const allowGatedWrites = String(pm.variables.get(\"allowGatedWrites\") || \"\").trim().toLowerCase();",
+                      "const confirmProductionWrites = String(pm.variables.get(\"confirmProductionWrites\") || \"\").trim();",
+                      "",
+                      "if (allowGatedWrites !== \"true\" || confirmProductionWrites !== \"I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION\") {",
+                      "  throw new Error(\"GATED-WRITE blocked: set allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION\");",
+                      "}",
+                      "",
                       "const allowDestructive = String(pm.environment.get('allow_destructive') || '').toLowerCase() === 'true';",
                       "const canaryMode = String(pm.environment.get('canaryMode') || '').toLowerCase() === 'true';",
-                      "if (!allowGatedWrites || !confirmProductionWrites) {",
-                      "  throw new Error('GATED-WRITE blocked: set allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION');",
-                      "}",
                       "if (pm.info.requestName.includes('[DESTRUCTIVE]') && !allowDestructive) {",
                       "  throw new Error('Destructive request blocked: set allow_destructive=true');",
                       "}",
                       "if (pm.info.requestName.includes('[CANARY]') && !canaryMode) {",
                       "  throw new Error('Canary request blocked: set canaryMode=true');",
-                      "}"
+                      "}",
+                      "",
+                      "if (!pm.variables.get(\"_runtimeRequestId\")) {",
+                      "  pm.variables.set(\"_runtimeRequestId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                      "}",
+                      "if (!pm.variables.get(\"_runtimeCorrelationId\")) {",
+                      "  pm.variables.set(\"_runtimeCorrelationId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                      "}",
+                      "pm.variables.set(\"_runtimeIdempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                      "",
+                      "pm.request.headers.remove('Content-Type');",
+                      "",
+                      "console.log(\"[gated-write] enabled:\", allowGatedWrites === \"true\");",
+                      "console.log(\"[gated-write] confirmation valid:\", confirmProductionWrites === \"I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION\");",
+                      "console.log(\"[multipart] Content-Type header removed; Postman sets multipart boundary automatically\");"
                     ]
                   }
                 },
@@ -12648,7 +12658,10 @@
                     ]
                   }
                 }
-              ]
+              ],
+              "protocolProfileBehavior": {
+                "disableBodyPruning": true
+              }
             },
             {
               "name": "[GATED-WRITE] POST /v1/admin/products/{productId}/media",
