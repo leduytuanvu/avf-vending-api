@@ -9,7 +9,10 @@ import (
 )
 
 func productImageDisplayURL(r db.RuntimeListProductImagesForProductsRow) string {
-	return strings.TrimSpace(r.CdnUrl)
+	if s := strings.TrimSpace(r.CdnUrl); s != "" {
+		return s
+	}
+	return strings.TrimSpace(r.OriginalCdnUrl)
 }
 
 func productImageThumbURL(r db.RuntimeListProductImagesForProductsRow) string {

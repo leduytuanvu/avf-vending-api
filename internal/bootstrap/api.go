@@ -203,6 +203,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		ReportingExportMaxSpan:                     cfg.Capacity.EffectiveReportingExportMaxSpan(),
 		ProductMediaThumbSize:                      cfg.Artifacts.ThumbSize,
 		ProductMediaDisplaySize:                    cfg.Artifacts.DisplaySize,
+		ExternalProductImages:                      cfg.ExternalProductImages,
 	})
 	if rt.Deps.PaymentProviders != nil {
 		httpApp.ListPaymentProviders = func() []api.PaymentProviderRegistryInfo {

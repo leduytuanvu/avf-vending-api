@@ -475,6 +475,7 @@ var requiredP0Operations = []struct {
 	{"post", "/v1/admin/products/{productId}/image"},
 	{"put", "/v1/admin/products/{productId}/image"},
 	{"delete", "/v1/admin/products/{productId}/image"},
+	{"post", "/v1/admin/media/external-images"},
 	{"post", "/v1/admin/media/assets"},
 	{"post", "/v1/admin/media/uploads"},
 	{"post", "/v1/admin/media/uploads/init"},

@@ -202,6 +202,8 @@ type Config struct {
 
 	// Artifacts enables S3-backed backend artifact APIs (requires object store env when enabled).
 	Artifacts ArtifactsConfig
+	// ExternalProductImages gates POST /v1/admin/media/external-images (no object storage required).
+	ExternalProductImages ExternalProductImageConfig
 
 	// Analytics optional cold-path sinks (ClickHouse HTTP); never required for OLTP correctness.
 	Analytics AnalyticsConfig
@@ -236,6 +238,15 @@ type ArtifactsConfig struct {
 	AllowedTypes       []string
 	ThumbSize          int
 	DisplaySize        int
+}
+
+// ExternalProductImageConfig gates admin registration of HTTPS product image URLs hosted outside object storage.
+type ExternalProductImageConfig struct {
+	Enabled       bool
+	AllowedHosts  []string
+	RequireHTTPS  bool
+	MaxBytes      int64
+	RemoteTimeout time.Duration
 }
 
 // HTTPAuthConfig configures Bearer JWT validation for /v1 (see internal/platform/auth).
@@ -1840,6 +1851,7 @@ func Load() (*Config, error) {
 		HTTPRateLimit:                  loadHTTPRateLimitConfig(),
 		Capacity:                       loadCapacityLimitsConfig(),
 		Artifacts:                      loadArtifactsConfig(),
+		ExternalProductImages:          loadExternalProductImageConfig(),
 		Analytics:                      loadAnalyticsConfig(),
 		SMTP:                           loadSMTPConfig(),
 	}
@@ -1990,6 +2002,21 @@ func loadHTTPRateLimitConfig() HTTPRateLimitConfig {
 			ReportsReadPerMinute:     getenvInt("RATE_LIMIT_REPORTS_READ_PER_MIN", 120),
 			LockoutWindow:            lockout,
 		},
+	}
+}
+
+func loadExternalProductImageConfig() ExternalProductImageConfig {
+	hosts := splitCSV(getenv("PRODUCT_IMAGE_EXTERNAL_URL_ALLOWED_HOSTS", "adm.avf.vn"))
+	maxB := int64(getenvInt("PRODUCT_IMAGE_EXTERNAL_URL_MAX_BYTES", 5<<20))
+	if maxB <= 0 {
+		maxB = 5 << 20
+	}
+	return ExternalProductImageConfig{
+		Enabled:       getenvBool("PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED", false),
+		AllowedHosts:  hosts,
+		RequireHTTPS:  getenvBool("PRODUCT_IMAGE_EXTERNAL_URL_REQUIRE_HTTPS", true),
+		MaxBytes:      maxB,
+		RemoteTimeout: mustParseDuration("PRODUCT_IMAGE_EXTERNAL_URL_TIMEOUT", getenv("PRODUCT_IMAGE_EXTERNAL_URL_TIMEOUT", "10s")),
 	}
 }
 
