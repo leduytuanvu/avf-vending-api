@@ -25,6 +25,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/auth/revocation"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
+	platformcloudinary "github.com/avf/avf-vending-api/internal/platform/cloudinary"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
 	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
 	"go.uber.org/zap"
@@ -172,6 +173,21 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	}
 	saleCatalogInner := appsalecatalog.NewService(rt.Pool())
 	var saleCatalog appsalecatalog.SnapshotBuilder = saleCatalogInner
+	var cloudinaryUploader appmediaadmin.ProductImageFileUploader
+	if cfg.MediaUpload.CloudinaryConfigured() {
+		upl, uerr := platformcloudinary.NewUploader(
+			cfg.MediaUpload.Cloudinary.CloudName,
+			cfg.MediaUpload.Cloudinary.APIKey,
+			cfg.MediaUpload.Cloudinary.APISecret,
+			cfg.MediaUpload.Cloudinary.Folder,
+			cfg.MediaUpload.ThumbWidth,
+			cfg.MediaUpload.ThumbHeight,
+		)
+		if uerr != nil {
+			return fmt.Errorf("bootstrap: cloudinary uploader: %w", uerr)
+		}
+		cloudinaryUploader = upl
+	}
 	if cfg.RedisRuntime.CacheEnabled && rt.Redis() != nil && cfg.RedisRuntime.SaleCatalogCacheTTL > 0 {
 		saleCatalog = &appsalecatalog.RedisCachedSnapshotBuilder{
 			Inner: saleCatalogInner,
@@ -204,6 +220,8 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		ProductMediaThumbSize:                      cfg.Artifacts.ThumbSize,
 		ProductMediaDisplaySize:                    cfg.Artifacts.DisplaySize,
 		ExternalProductImages:                      cfg.ExternalProductImages,
+		MediaUpload:                                cfg.MediaUpload,
+		CloudinaryUploader:                         cloudinaryUploader,
 	})
 	if rt.Deps.PaymentProviders != nil {
 		httpApp.ListPaymentProviders = func() []api.PaymentProviderRegistryInfo {

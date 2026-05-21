@@ -671,6 +671,27 @@ type V1AdminExternalProductImageResponse struct {
 	CreatedAt    string                                  `json:"createdAt"`
 }
 
+// V1AdminProductImageUploadResponse is returned from POST /v1/admin/product-images (Cloudinary multipart upload).
+type V1AdminProductImageUploadResponse struct {
+	MediaID      string `json:"mediaId"`
+	Provider     string `json:"provider"`
+	SourceType   string `json:"sourceType"`
+	Status       string `json:"status"`
+	Filename     string `json:"filename,omitempty"`
+	ContentType  string `json:"contentType"`
+	SizeBytes    int64  `json:"sizeBytes"`
+	Width        int32  `json:"width,omitempty"`
+	Height       int32  `json:"height,omitempty"`
+	Checksum     string `json:"checksum"`
+	DisplayURL   string `json:"displayUrl"`
+	ThumbnailURL string `json:"thumbnailUrl"`
+	Version      int32  `json:"version"`
+	CreatedAt    string `json:"createdAt"`
+	ProductID    string `json:"productId,omitempty"`
+	Attached     bool   `json:"attached,omitempty"`
+	IsPrimary    bool   `json:"isPrimary,omitempty"`
+}
+
 // V1AdminMediaUploadInitRequest is POST /v1/admin/media/uploads (legacy snake_case body).
 type V1AdminMediaUploadInitRequest struct {
 	ContentType string `json:"content_type"`

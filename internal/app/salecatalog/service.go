@@ -370,12 +370,18 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 				apiSourceType := sourceType
 				if sourceType == "external" {
 					apiSourceType = "external_url"
+				} else if sourceType == "cloudinary" {
+					apiSourceType = "cloudinary"
 				}
 				cacheKey := ""
 				offlineRequired := false
 				downloadStrategy := ""
 				if sourceType == "external" && origCDN != "" {
 					cacheKey = appmediaadmin.ExternalImageCacheKey(origCDN, int(im.MediaVersion))
+					offlineRequired = true
+					downloadStrategy = "download_when_online_use_local_when_offline"
+				} else if sourceType == "cloudinary" && mid != uuid.Nil {
+					cacheKey = appmediaadmin.CloudinaryImageCacheKey(mid, int(im.MediaVersion), ch)
 					offlineRequired = true
 					downloadStrategy = "download_when_online_use_local_when_offline"
 				} else if mid != uuid.Nil {

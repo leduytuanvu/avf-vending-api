@@ -30,6 +30,11 @@ type Deps struct {
 	Cache            CatalogMediaCacheBumper
 	// External configures HTTPS external product image URL registration (independent of Store).
 	External config.ExternalProductImageConfig
+	// Upload configures server-side Cloudinary multipart upload.
+	Upload config.MediaUploadConfig
+	// Cloudinary optional server-side uploader (nil disables multipart upload).
+	Cloudinary ProductImageFileUploader
+	AppEnv   string
 	// RemoteProbe optional override for integration tests (nil uses SSRF-safe HEAD/GET probe).
 	RemoteProbe func(ctx context.Context, imageURL, expectedMIME string, cfg config.ExternalProductImageConfig) error
 }

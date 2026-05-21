@@ -468,6 +468,7 @@ type Querier interface {
 	MediaAdminGetAssetByOriginalURL(ctx context.Context, dollar_1 string) (MediaAsset, error)
 	MediaAdminGetAssetForOrg(ctx context.Context, id uuid.UUID) (MediaAsset, error)
 	MediaAdminInsertAsset(ctx context.Context, arg MediaAdminInsertAssetParams) (MediaAsset, error)
+	MediaAdminInsertCloudinaryAsset(ctx context.Context, arg MediaAdminInsertCloudinaryAssetParams) (MediaAsset, error)
 	MediaAdminInsertMediaVariant(ctx context.Context, arg MediaAdminInsertMediaVariantParams) (MediaVariant, error)
 	MediaAdminListAssetsByIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]MediaAsset, error)
 	MediaAdminListAssetsForOrg(ctx context.Context, arg MediaAdminListAssetsForOrgParams) ([]MediaAsset, error)

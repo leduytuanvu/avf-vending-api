@@ -167,3 +167,14 @@ func TestWriteMediaAdminError_notConfigured_returns503CapabilityNotConfigured(t 
 	errObj := body["error"].(map[string]any)
 	require.Equal(t, "capability_not_configured", errObj["code"])
 }
+
+func TestWithCloudinaryUpload_notConfiguredReturns503(t *testing.T) {
+	t.Parallel()
+	h := withCloudinaryUpload(&api.HTTPApplication{MediaAdmin: nil}, func(_ *appmediaadmin.Service) http.HandlerFunc {
+		return func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
+	})
+	rec := httptest.NewRecorder()
+	h(rec, httptest.NewRequest(http.MethodPost, "/v1/admin/product-images", nil))
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	require.Contains(t, rec.Body.String(), "capability_not_configured")
+}

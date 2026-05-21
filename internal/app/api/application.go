@@ -140,6 +140,10 @@ type HTTPApplicationDeps struct {
 	ProductMediaDisplaySize int
 	// ExternalProductImages configures HTTPS external product image URL registration.
 	ExternalProductImages config.ExternalProductImageConfig
+	// MediaUpload configures server-side Cloudinary product image upload.
+	MediaUpload config.MediaUploadConfig
+	// CloudinaryUploader optional; wired when MediaUpload.CloudinaryConfigured().
+	CloudinaryUploader appmediaadmin.ProductImageFileUploader
 }
 
 // NewHTTPApplication constructs HTTP ports backed by real adapters where they exist.
@@ -254,7 +258,7 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 	})
 
 	var mediaSvc *appmediaadmin.Service
-	if deps.Artifacts != nil || deps.ExternalProductImages.Enabled {
+	if deps.Artifacts != nil || deps.ExternalProductImages.Enabled || deps.MediaUpload.CloudinaryConfigured() {
 		mediaDeps := appmediaadmin.Deps{
 			Pool:             pool,
 			Audit:            auditSvc,
@@ -264,11 +268,21 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 			ThumbMaxPixels:   deps.ProductMediaThumbSize,
 			DisplayMaxPixels: deps.ProductMediaDisplaySize,
 			External:         deps.ExternalProductImages,
+			Upload:           deps.MediaUpload,
+			AppEnv:           string(deps.AppEnv),
 		}
 		if deps.Artifacts != nil {
 			mediaDeps.Store = deps.Artifacts.Store()
 			mediaDeps.PresignPutTTL = deps.Artifacts.DownloadPresignTTL()
 			mediaDeps.MaxUploadBytes = deps.Artifacts.MaxUploadBytes()
+		}
+		if deps.MediaUpload.CloudinaryConfigured() {
+			if deps.CloudinaryUploader != nil {
+				mediaDeps.Cloudinary = deps.CloudinaryUploader
+			}
+			if mediaDeps.MaxUploadBytes <= 0 && deps.MediaUpload.MaxBytes > 0 {
+				mediaDeps.MaxUploadBytes = deps.MediaUpload.MaxBytes
+			}
 		}
 		ms, merr := appmediaadmin.NewService(mediaDeps)
 		if merr != nil {

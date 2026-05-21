@@ -204,6 +204,8 @@ type Config struct {
 	Artifacts ArtifactsConfig
 	// ExternalProductImages gates POST /v1/admin/media/external-images (no object storage required).
 	ExternalProductImages ExternalProductImageConfig
+	// MediaUpload configures server-side product image upload (Cloudinary when MEDIA_PROVIDER=cloudinary).
+	MediaUpload MediaUploadConfig
 
 	// Analytics optional cold-path sinks (ClickHouse HTTP); never required for OLTP correctness.
 	Analytics AnalyticsConfig
@@ -247,6 +249,36 @@ type ExternalProductImageConfig struct {
 	RequireHTTPS  bool
 	MaxBytes      int64
 	RemoteTimeout time.Duration
+}
+
+// MediaUploadConfig gates server-side multipart product image upload (Cloudinary provider).
+type MediaUploadConfig struct {
+	Enabled      bool
+	Provider     string
+	MaxBytes     int64
+	AllowedTypes []string
+	ThumbWidth   int
+	ThumbHeight  int
+	Cloudinary   CloudinaryConfig
+}
+
+// CloudinaryConfig holds Cloudinary credentials (API secret must never be exposed to clients).
+type CloudinaryConfig struct {
+	CloudName string
+	APIKey    string
+	APISecret string
+	Folder    string
+}
+
+// CloudinaryConfigured reports whether Cloudinary server-side upload is fully wired.
+func (m MediaUploadConfig) CloudinaryConfigured() bool {
+	if !m.Enabled || !strings.EqualFold(strings.TrimSpace(m.Provider), "cloudinary") {
+		return false
+	}
+	c := m.Cloudinary
+	return strings.TrimSpace(c.CloudName) != "" &&
+		strings.TrimSpace(c.APIKey) != "" &&
+		strings.TrimSpace(c.APISecret) != ""
 }
 
 // HTTPAuthConfig configures Bearer JWT validation for /v1 (see internal/platform/auth).
@@ -1852,6 +1884,7 @@ func Load() (*Config, error) {
 		Capacity:                       loadCapacityLimitsConfig(),
 		Artifacts:                      loadArtifactsConfig(),
 		ExternalProductImages:          loadExternalProductImageConfig(),
+		MediaUpload:                    loadMediaUploadConfig(),
 		Analytics:                      loadAnalyticsConfig(),
 		SMTP:                           loadSMTPConfig(),
 	}
@@ -2017,6 +2050,36 @@ func loadExternalProductImageConfig() ExternalProductImageConfig {
 		RequireHTTPS:  getenvBool("PRODUCT_IMAGE_EXTERNAL_URL_REQUIRE_HTTPS", true),
 		MaxBytes:      maxB,
 		RemoteTimeout: mustParseDuration("PRODUCT_IMAGE_EXTERNAL_URL_TIMEOUT", getenv("PRODUCT_IMAGE_EXTERNAL_URL_TIMEOUT", "10s")),
+	}
+}
+
+func loadMediaUploadConfig() MediaUploadConfig {
+	maxMB := getenvInt("MEDIA_MAX_IMAGE_SIZE_MB", 5)
+	if maxMB <= 0 {
+		maxMB = 5
+	}
+	types := splitCSV(getenv("MEDIA_ALLOWED_IMAGE_TYPES", "image/jpeg,image/png,image/webp,image/gif"))
+	if len(types) == 0 {
+		types = []string{"image/jpeg", "image/png", "image/webp", "image/gif"}
+	}
+	provider := strings.ToLower(strings.TrimSpace(getenv("MEDIA_PROVIDER", "")))
+	enabled := getenvBool("MEDIA_UPLOAD_ENABLED", false)
+	if provider == "cloudinary" && !enabled {
+		enabled = true
+	}
+	return MediaUploadConfig{
+		Enabled:      enabled,
+		Provider:     provider,
+		MaxBytes:     int64(maxMB) << 20,
+		AllowedTypes: types,
+		ThumbWidth:   getenvInt("MEDIA_THUMBNAIL_WIDTH", 300),
+		ThumbHeight:  getenvInt("MEDIA_THUMBNAIL_HEIGHT", 300),
+		Cloudinary: CloudinaryConfig{
+			CloudName: strings.TrimSpace(getenv("CLOUDINARY_CLOUD_NAME", "")),
+			APIKey:    strings.TrimSpace(getenv("CLOUDINARY_API_KEY", "")),
+			APISecret: strings.TrimSpace(getenv("CLOUDINARY_API_SECRET", "")),
+			Folder:    strings.TrimSpace(getenv("CLOUDINARY_FOLDER", "avf-vending/products")),
+		},
 	}
 }
 
