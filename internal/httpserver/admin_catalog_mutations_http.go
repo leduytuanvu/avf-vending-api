@@ -11,6 +11,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appcatalogadmin "github.com/avf/avf-vending-api/internal/app/catalogadmin"
+	appmediaadmin "github.com/avf/avf-vending-api/internal/app/mediaadmin"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -194,6 +195,23 @@ func postAdminProductCreate(app *api.HTTPApplication) http.HandlerFunc {
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_primary_media_id", "invalid primaryMediaId")
 			return
+		}
+		if (pm == nil || *pm == uuid.Nil) && body.PrimaryImageURL != nil && strings.TrimSpace(*body.PrimaryImageURL) != "" {
+			if app.MediaAdmin == nil || !app.MediaAdmin.ExternalConfigured() {
+				writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media.external_images", "external product image URLs are not configured for this process")
+				return
+			}
+			reg, rerr := app.MediaAdmin.RegisterExternalProductImage(r.Context(), appmediaadmin.RegisterExternalProductImageInput{
+				CompanyID:   scopeID,
+				URL:         strings.TrimSpace(*body.PrimaryImageURL),
+				Purpose:     "product_image",
+				ContentType: "image/png",
+			})
+			if rerr != nil {
+				writeMediaAdminError(w, r.Context(), rerr)
+				return
+			}
+			pm = &reg.MediaID
 		}
 		var tagSlice []uuid.UUID
 		if body.TagIDs != nil {

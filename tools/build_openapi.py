@@ -2729,6 +2729,42 @@ def missing_reference_component_schemas() -> dict[str, Any]:
             "properties": {"marked": {"type": "boolean"}},
             "required": ["marked"],
         },
+        "V1AdminExternalProductImageRequest": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "format": "uri"},
+                "purpose": {"type": "string", "example": "product_image"},
+                "filename": {"type": "string"},
+                "contentType": {"type": "string", "example": "image/png"},
+            },
+            "required": ["url"],
+        },
+        "V1AdminExternalProductImageOfflineCache": {
+            "type": "object",
+            "properties": {
+                "required": {"type": "boolean"},
+                "strategy": {"type": "string"},
+            },
+            "required": ["required", "strategy"],
+        },
+        "V1AdminExternalProductImageResponse": {
+            "type": "object",
+            "properties": {
+                "mediaId": dict(uuid_s),
+                "sourceType": {"type": "string", "example": "external_url"},
+                "url": {"type": "string", "format": "uri"},
+                "displayUrl": {"type": "string", "format": "uri"},
+                "thumbnailUrl": {"type": "string", "format": "uri"},
+                "contentType": {"type": "string"},
+                "filename": {"type": "string"},
+                "status": {"type": "string", "example": "ready"},
+                "cacheKey": {"type": "string"},
+                "version": {"type": "integer", "format": "int32"},
+                "offlineCache": {"$ref": "#/components/schemas/V1AdminExternalProductImageOfflineCache"},
+                "createdAt": ts,
+            },
+            "required": ["mediaId", "sourceType", "url", "displayUrl", "thumbnailUrl", "status", "cacheKey", "version", "offlineCache", "createdAt"],
+        },
         "V1AdminMediaUploadInitRequest": {
             "type": "object",
             "properties": {"content_type": {"type": "string", "example": "image/jpeg"}},

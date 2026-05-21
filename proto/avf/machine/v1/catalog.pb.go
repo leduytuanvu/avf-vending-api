@@ -607,8 +607,14 @@ type ProductMediaRef struct {
 	ExpiresAt *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	// Per-rendition metadata for durable kiosk caches (keys + hashes are stable; urls may rotate when presigned).
 	MediaVariants []*ProductMediaVariant `protobuf:"bytes,15,rep,name=media_variants,json=mediaVariants,proto3" json:"media_variants,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// source_type distinguishes object_storage uploads vs external_url hosted images.
+	SourceType string `protobuf:"bytes,16,opt,name=source_type,json=sourceType,proto3" json:"source_type,omitempty"`
+	// cache_key is a deterministic offline cache identity for vending clients.
+	CacheKey         string `protobuf:"bytes,17,opt,name=cache_key,json=cacheKey,proto3" json:"cache_key,omitempty"`
+	OfflineRequired  bool   `protobuf:"varint,18,opt,name=offline_required,json=offlineRequired,proto3" json:"offline_required,omitempty"`
+	DownloadStrategy string `protobuf:"bytes,19,opt,name=download_strategy,json=downloadStrategy,proto3" json:"download_strategy,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ProductMediaRef) Reset() {
@@ -744,6 +750,34 @@ func (x *ProductMediaRef) GetMediaVariants() []*ProductMediaVariant {
 		return x.MediaVariants
 	}
 	return nil
+}
+
+func (x *ProductMediaRef) GetSourceType() string {
+	if x != nil {
+		return x.SourceType
+	}
+	return ""
+}
+
+func (x *ProductMediaRef) GetCacheKey() string {
+	if x != nil {
+		return x.CacheKey
+	}
+	return ""
+}
+
+func (x *ProductMediaRef) GetOfflineRequired() bool {
+	if x != nil {
+		return x.OfflineRequired
+	}
+	return false
+}
+
+func (x *ProductMediaRef) GetDownloadStrategy() string {
+	if x != nil {
+		return x.DownloadStrategy
+	}
+	return ""
 }
 
 type GetCatalogDeltaRequest struct {
@@ -1578,7 +1612,7 @@ const file_avf_machine_v1_catalog_proto_rawDesc = "" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12#\n" +
 	"\rmedia_version\x18\v \x01(\x05R\fmediaVersion\x129\n" +
 	"\n" +
-	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xbf\x04\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xd5\x05\n" +
 	"\x0fProductMediaRef\x12\x1b\n" +
 	"\tthumb_url\x18\x01 \x01(\tR\bthumbUrl\x12\x1f\n" +
 	"\vdisplay_url\x18\x02 \x01(\tR\n" +
@@ -1599,7 +1633,12 @@ const file_avf_machine_v1_catalog_proto_rawDesc = "" +
 	"\adeleted\x18\r \x01(\bR\adeleted\x129\n" +
 	"\n" +
 	"expires_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12J\n" +
-	"\x0emedia_variants\x18\x0f \x03(\v2#.avf.machine.v1.ProductMediaVariantR\rmediaVariants\"\xa3\x01\n" +
+	"\x0emedia_variants\x18\x0f \x03(\v2#.avf.machine.v1.ProductMediaVariantR\rmediaVariants\x12\x1f\n" +
+	"\vsource_type\x18\x10 \x01(\tR\n" +
+	"sourceType\x12\x1b\n" +
+	"\tcache_key\x18\x11 \x01(\tR\bcacheKey\x12)\n" +
+	"\x10offline_required\x18\x12 \x01(\bR\x0fofflineRequired\x12+\n" +
+	"\x11download_strategy\x18\x13 \x01(\tR\x10downloadStrategy\"\xa3\x01\n" +
 	"\x16GetCatalogDeltaRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x122\n" +

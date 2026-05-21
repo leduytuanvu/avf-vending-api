@@ -80,6 +80,7 @@ func TestMountV1_machineSetupRoutesRegistered(t *testing.T) {
 		"GET /v1/admin/sites",
 		"POST /v1/admin/sites",
 		"GET /v1/admin/media/assets",
+		"POST /v1/admin/media/external-images",
 		"GET /v1/admin/audit/events",
 	}
 	for _, w := range wantContains {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
 	"github.com/google/uuid"
@@ -27,4 +28,8 @@ type Deps struct {
 	ThumbMaxPixels   int
 	DisplayMaxPixels int
 	Cache            CatalogMediaCacheBumper
+	// External configures HTTPS external product image URL registration (independent of Store).
+	External config.ExternalProductImageConfig
+	// RemoteProbe optional override for integration tests (nil uses SSRF-safe HEAD/GET probe).
+	RemoteProbe func(ctx context.Context, imageURL, expectedMIME string, cfg config.ExternalProductImageConfig) error
 }

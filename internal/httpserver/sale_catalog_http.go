@@ -123,6 +123,20 @@ func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
 						if it.Image.Height > 0 {
 							img["height"] = it.Image.Height
 						}
+						if it.Image.ContentType != "" {
+							img["contentType"] = it.Image.ContentType
+						}
+						if it.Image.SourceType != "" {
+							img["sourceType"] = it.Image.SourceType
+						}
+						if it.Image.CacheKey != "" {
+							img["cacheKey"] = it.Image.CacheKey
+							img["version"] = it.Image.MediaVersion
+						}
+						if it.Image.OfflineRequired {
+							img["offlineRequired"] = true
+							img["downloadStrategy"] = it.Image.DownloadStrategy
+						}
 						entry["image"] = img
 					}
 				} else {

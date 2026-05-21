@@ -50,7 +50,14 @@ SELECT
             NULLIF(TRIM(COALESCE(ma.display_object_key, '')), ''),
             ''
         ) AS text
-    ) AS display_object_key
+    ) AS display_object_key,
+    CAST(
+        COALESCE(
+            NULLIF(TRIM(COALESCE(pm.source_type, '')), ''),
+            NULLIF(TRIM(COALESCE(ma.source_type, '')), ''),
+            'upload'
+        ) AS text
+    ) AS media_source_type
 FROM
     product_images pi
     INNER JOIN product_media pm ON pm.id = pi.id

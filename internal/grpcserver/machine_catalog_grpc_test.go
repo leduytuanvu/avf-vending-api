@@ -1115,3 +1115,39 @@ func TestMachineCatalog_SyncCatalogBundle_BasisRemovals(t *testing.T) {
 		t.Fatalf("removed media: %v", resp.GetRemovedMediaAssetIds())
 	}
 }
+
+func TestProductMediaRefProto_externalURLMetadata(t *testing.T) {
+	t.Parallel()
+	mid := id.NewUUIDV7()
+	im := &salecatalog.ImageMeta{
+		MediaID:          mid,
+		ThumbURL:         "https://adm.avf.vn/storage/photos/1/Product/69f0e277129d9.png",
+		DisplayURL:       "https://adm.avf.vn/storage/photos/1/Product/69f0e277129d9.png",
+		ContentType:      "image/png",
+		MediaVersion:     1,
+		SourceType:       "external_url",
+		CacheKey:         "external-image:abc:v1",
+		OfflineRequired:  true,
+		DownloadStrategy: "download_when_online_use_local_when_offline",
+		UpdatedAt:        time.Now().UTC(),
+	}
+	pm := productMediaRefProto(im)
+	if pm == nil {
+		t.Fatal("nil ref")
+	}
+	if pm.GetMediaId() != mid.String() {
+		t.Fatalf("media id: %s", pm.GetMediaId())
+	}
+	if pm.GetSourceType() != "external_url" {
+		t.Fatalf("source type: %s", pm.GetSourceType())
+	}
+	if pm.GetCacheKey() != im.CacheKey {
+		t.Fatalf("cache key: %s", pm.GetCacheKey())
+	}
+	if !pm.GetOfflineRequired() {
+		t.Fatal("offline required")
+	}
+	if pm.GetDownloadStrategy() != im.DownloadStrategy {
+		t.Fatalf("download strategy: %s", pm.GetDownloadStrategy())
+	}
+}

@@ -553,6 +553,8 @@ type V1AdminProductMutationRequest struct {
 	NutritionalNote *string  `json:"nutritionalNote,omitempty"`
 	// PrimaryMediaID binds a ready media_assets row; required when creating/updating to active/sellable (unless primary already exists on update).
 	PrimaryMediaID *string `json:"primaryMediaId,omitempty"`
+	// PrimaryImageURL registers an external HTTPS image and binds it when primaryMediaId is omitted.
+	PrimaryImageURL *string `json:"primaryImageUrl,omitempty"`
 	// TagIDs optional on create. On update: omit field to leave tags unchanged; [] clears; non-empty replaces.
 	TagIDs *[]uuid.UUID `json:"tagIds,omitempty"`
 }
@@ -637,6 +639,36 @@ type V1AdminProductImageBindRequest struct {
 	Width       int32  `json:"width,omitempty"`
 	Height      int32  `json:"height,omitempty"`
 	MimeType    string `json:"mimeType,omitempty"`
+}
+
+// V1AdminExternalProductImageRequest is POST /v1/admin/media/external-images.
+type V1AdminExternalProductImageRequest struct {
+	URL         string `json:"url"`
+	Purpose     string `json:"purpose,omitempty"`
+	Filename    string `json:"filename,omitempty"`
+	ContentType string `json:"contentType,omitempty"`
+}
+
+// V1AdminExternalProductImageOfflineCache describes kiosk offline caching hints.
+type V1AdminExternalProductImageOfflineCache struct {
+	Required bool   `json:"required"`
+	Strategy string `json:"strategy"`
+}
+
+// V1AdminExternalProductImageResponse is returned from POST /v1/admin/media/external-images.
+type V1AdminExternalProductImageResponse struct {
+	MediaID      string                                  `json:"mediaId"`
+	SourceType   string                                  `json:"sourceType"`
+	URL          string                                  `json:"url"`
+	DisplayURL   string                                  `json:"displayUrl"`
+	ThumbnailURL string                                  `json:"thumbnailUrl"`
+	ContentType  string                                  `json:"contentType"`
+	Filename     string                                  `json:"filename,omitempty"`
+	Status       string                                  `json:"status"`
+	CacheKey     string                                  `json:"cacheKey"`
+	Version      int32                                   `json:"version"`
+	OfflineCache V1AdminExternalProductImageOfflineCache `json:"offlineCache"`
+	CreatedAt    string                                  `json:"createdAt"`
 }
 
 // V1AdminMediaUploadInitRequest is POST /v1/admin/media/uploads (legacy snake_case body).
