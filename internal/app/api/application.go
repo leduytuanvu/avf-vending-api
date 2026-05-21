@@ -138,6 +138,8 @@ type HTTPApplicationDeps struct {
 	// ProductMediaThumbSize / ProductMediaDisplaySize bound catalog WebP variants (zero uses mediaadmin defaults).
 	ProductMediaThumbSize   int
 	ProductMediaDisplaySize int
+	// ExternalProductImages configures HTTPS external product image URL registration.
+	ExternalProductImages config.ExternalProductImageConfig
 }
 
 // NewHTTPApplication constructs HTTP ports backed by real adapters where they exist.
@@ -252,17 +254,23 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 	})
 
 	var mediaSvc *appmediaadmin.Service
-	if deps.Artifacts != nil {
-		ms, merr := appmediaadmin.NewService(appmediaadmin.Deps{
+	if deps.Artifacts != nil || deps.ExternalProductImages.Enabled {
+		mediaDeps := appmediaadmin.Deps{
 			Pool:             pool,
-			Store:            deps.Artifacts.Store(),
 			Audit:            auditSvc,
-			PresignPutTTL:    deps.Artifacts.DownloadPresignTTL(),
-			MaxUploadBytes:   deps.Artifacts.MaxUploadBytes(),
+			PresignPutTTL:    15 * time.Minute,
+			MaxUploadBytes:   10 << 20,
 			Cache:            deps.CatalogMediaCacheBumper,
 			ThumbMaxPixels:   deps.ProductMediaThumbSize,
 			DisplayMaxPixels: deps.ProductMediaDisplaySize,
-		})
+			External:         deps.ExternalProductImages,
+		}
+		if deps.Artifacts != nil {
+			mediaDeps.Store = deps.Artifacts.Store()
+			mediaDeps.PresignPutTTL = deps.Artifacts.DownloadPresignTTL()
+			mediaDeps.MaxUploadBytes = deps.Artifacts.MaxUploadBytes()
+		}
+		ms, merr := appmediaadmin.NewService(mediaDeps)
 		if merr != nil {
 			panic("api.NewHTTPApplication: media admin: " + merr.Error())
 		}

@@ -250,6 +250,48 @@ func (q *Queries) MediaAdminFindProductImageBinding(ctx context.Context, arg Med
 	return id, err
 }
 
+const MediaAdminGetAssetByOriginalURL = `-- name: MediaAdminGetAssetByOriginalURL :one
+SELECT
+    id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at
+FROM
+    media_assets
+WHERE
+    source_type = 'external'
+    AND lower(trim(original_url)) = lower(trim($1::text))
+    AND status NOT IN ('deleted', 'archived')
+LIMIT
+    1
+`
+
+func (q *Queries) MediaAdminGetAssetByOriginalURL(ctx context.Context, dollar_1 string) (MediaAsset, error) {
+	row := q.db.QueryRow(ctx, MediaAdminGetAssetByOriginalURL, dollar_1)
+	var i MediaAsset
+	err := row.Scan(
+		&i.ID,
+		&i.Kind,
+		&i.OriginalFilename,
+		&i.ObjectKey,
+		&i.OriginalObjectKey,
+		&i.ThumbObjectKey,
+		&i.DisplayObjectKey,
+		&i.SourceType,
+		&i.OriginalUrl,
+		&i.MimeType,
+		&i.SizeBytes,
+		&i.Sha256,
+		&i.Width,
+		&i.Height,
+		&i.ObjectVersion,
+		&i.Etag,
+		&i.Status,
+		&i.CreatedBy,
+		&i.FailedReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const MediaAdminGetAssetForOrg = `-- name: MediaAdminGetAssetForOrg :one
 SELECT
     id, kind, original_filename, object_key, original_object_key, thumb_object_key, display_object_key, source_type, original_url, mime_type, size_bytes, sha256, width, height, object_version, etag, status, created_by, failed_reason, created_at, updated_at

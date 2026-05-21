@@ -992,6 +992,23 @@ func DocOpV1AdminProductImagePost() {}
 // @Router /v1/admin/products/{productId}/image [delete]
 func DocOpV1AdminProductImageDelete() {}
 
+// DocOpV1AdminExternalProductImageRegister godoc
+// @Summary Register external product image URL
+// @Description Registers an existing HTTPS product image URL (allowlisted host) as a ready **media_assets** row with **source_type=external**. Does **not** require **API_ARTIFACTS_ENABLED**. Requires **PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED**. **Idempotency-Key** required. Re-registering the same normalized URL returns the existing **mediaId**.
+// @Tags Catalog Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param body body V1AdminExternalProductImageRequest true "url, purpose, optional filename/contentType"
+// @Success 201 {object} V1AdminExternalProductImageResponse
+// @Success 200 {object} V1AdminExternalProductImageResponse "idempotent replay for same URL"
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 503 {object} V1StandardError "capability_not_configured when external URLs disabled"
+// @Router /v1/admin/media/external-images [post]
+func DocOpV1AdminExternalProductImageRegister() {}
+
 // DocOpV1AdminMediaUploadInitV2 godoc
 // @Summary Start enterprise media upload (camelCase contract)
 // @Description Phase 2 **POST /v1/admin/media/uploads/init**: creates a pending asset and returns **mediaId**, **uploadUrl**, **objectKey**, **status**. Requires **Idempotency-Key**.

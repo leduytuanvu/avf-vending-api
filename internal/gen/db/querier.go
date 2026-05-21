@@ -465,6 +465,7 @@ type Querier interface {
 	MediaAdminDeleteVariantsForAsset(ctx context.Context, mediaAssetID uuid.UUID) error
 	MediaAdminEnsureCanonicalObjectKey(ctx context.Context, id uuid.UUID) (MediaAsset, error)
 	MediaAdminFindProductImageBinding(ctx context.Context, arg MediaAdminFindProductImageBindingParams) (uuid.UUID, error)
+	MediaAdminGetAssetByOriginalURL(ctx context.Context, dollar_1 string) (MediaAsset, error)
 	MediaAdminGetAssetForOrg(ctx context.Context, id uuid.UUID) (MediaAsset, error)
 	MediaAdminInsertAsset(ctx context.Context, arg MediaAdminInsertAssetParams) (MediaAsset, error)
 	MediaAdminInsertMediaVariant(ctx context.Context, arg MediaAdminInsertMediaVariantParams) (MediaVariant, error)

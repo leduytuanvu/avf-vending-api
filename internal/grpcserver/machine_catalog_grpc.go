@@ -677,6 +677,10 @@ func productMediaRefProto(im *salecatalog.ImageMeta) *machinev1.ProductMediaRef 
 	if im.MediaID != uuid.Nil {
 		pm.MediaId = im.MediaID.String()
 	}
+	pm.SourceType = im.SourceType
+	pm.CacheKey = im.CacheKey
+	pm.OfflineRequired = im.OfflineRequired
+	pm.DownloadStrategy = im.DownloadStrategy
 	if !im.URLExpiresAt.IsZero() {
 		pm.ExpiresAt = timestamppb.New(im.URLExpiresAt)
 	}

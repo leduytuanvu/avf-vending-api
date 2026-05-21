@@ -3,9 +3,11 @@ package salecatalog
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
+	appmediaadmin "github.com/avf/avf-vending-api/internal/app/mediaadmin"
 	"github.com/avf/avf-vending-api/internal/app/pricingengine"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -102,6 +104,10 @@ type ImageMeta struct {
 	Height             int32
 	UpdatedAt          time.Time
 	OriginalURL        string
+	SourceType         string
+	CacheKey           string
+	OfflineRequired    bool
+	DownloadStrategy   string
 	Deleted            bool
 	ThumbStorageKey    string
 	DisplayStorageKey  string
@@ -357,11 +363,33 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 				dk := strings.TrimSpace(im.DisplayObjectKey)
 				ok := strings.TrimSpace(im.OriginalObjectKey)
 				origCDN := strings.TrimSpace(im.OriginalCdnUrl)
+				sourceType := strings.TrimSpace(im.MediaSourceType)
+				if sourceType == "" {
+					sourceType = "upload"
+				}
+				apiSourceType := sourceType
+				if sourceType == "external" {
+					apiSourceType = "external_url"
+				}
+				cacheKey := ""
+				offlineRequired := false
+				downloadStrategy := ""
+				if sourceType == "external" && origCDN != "" {
+					cacheKey = appmediaadmin.ExternalImageCacheKey(origCDN, int(im.MediaVersion))
+					offlineRequired = true
+					downloadStrategy = "download_when_online_use_local_when_offline"
+				} else if mid != uuid.Nil {
+					cacheKey = fmt.Sprintf("media:%s:v%d", mid.String(), im.MediaVersion)
+				}
 				it.Image = &ImageMeta{
 					MediaID:            mid,
 					ThumbURL:           thumb,
 					DisplayURL:         disp,
 					OriginalURL:        origCDN,
+					SourceType:         apiSourceType,
+					CacheKey:           cacheKey,
+					OfflineRequired:    offlineRequired,
+					DownloadStrategy:   downloadStrategy,
 					ContentHash:        ch,
 					Etag:               etag,
 					ContentType:        ct,
