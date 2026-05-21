@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Regenerate postman/production-full-suite from OpenAPI + proto + MQTT contracts."""
 from __future__ import annotations
 
@@ -448,7 +448,7 @@ def build_grpc_doc_items(grpc_rows: list[dict], templates: list[dict]) -> dict[s
             domain = "Admin Accounts RBAC"
         req_json = t.get("requestJsonTemplate") or {}
         desc = (
-            "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n"
+            "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n"
             "- **fullMethod:** `%s`\n"
             "- **Proto:** `%s`\n"
             "- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n"
@@ -472,7 +472,7 @@ def build_mqtt_doc_items(mq_rows: list[dict]) -> dict[str, list[dict]]:
             domain = "Telemetry"
         payload = row.get("payloadJsonTemplate") or {}
         desc = (
-            "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n"
+            "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n"
             "- **Topic:** `%s`\n"
             "- **Direction:** %s\n"
             "- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n"
@@ -704,12 +704,12 @@ Generated: {now}
 
 ## 3. Recommended run order
 
-1. **System Health** — `Health System` → REST → `/health/live`, `/health/ready`, `/version`
-2. **Auth** → `POST /v1/auth/login` then `GET /v1/auth/me`
-3. Domain REST folders (Catalog, Product Media, Products, Machines, …)
-4. **Product Media** — `POST /v1/admin/product-images` (multipart file → Cloudinary; 201 or 503)
-5. **Product Media** — `POST /v1/admin/media/uploads/init` (200 or 503, not raw 404)
-6. **Product Media** — `POST /v1/admin/media/external-images` (201 or 503 if disabled)
+1. **System Health** ΓÇö `Health System` ΓåÆ REST ΓåÆ `/health/live`, `/health/ready`, `/version`
+2. **Auth** ΓåÆ `POST /v1/auth/login` then `GET /v1/auth/me`
+3. Domain REST folders (Catalog, Product Media, Products, Machines, ΓÇª)
+4. **Product Media** ΓÇö `POST /v1/admin/product-images` (multipart file ΓåÆ Cloudinary; 201 or 503)
+5. **Product Media** ΓÇö `POST /v1/admin/media/uploads/init` (200 or 503, not raw 404)
+6. **Product Media** ΓÇö `POST /v1/admin/media/external-images` (201 or 503 if disabled)
 7. Product create with `primaryMediaId`
 7. Machine planogram / catalog assignment (canary)
 8. gRPC / MQTT manual doc folders
@@ -724,8 +724,8 @@ Write requests use `Idempotency-Key: {{{{$guid}}}}` directly.
 
 ## 6. Object storage vs external image URL
 
-- **Upload init** requires object storage (`API_ARTIFACTS_ENABLED`) — else **503** `capability_not_configured`
-- **External image URL** requires `PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED` — else **503**
+- **Upload init** requires object storage (`API_ARTIFACTS_ENABLED`) ΓÇö else **503** `capability_not_configured`
+- **External image URL** requires `PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED` ΓÇö else **503**
 
 ## 7. Troubleshooting
 
@@ -813,7 +813,7 @@ def main() -> int:
             sub.append(
                 {
                     "name": "gRPC",
-                    "description": "Manual gRPC test items — import protos from proto/avf",
+                    "description": "Manual gRPC test items ΓÇö import protos from proto/avf",
                     "item": sorted(grpc_items, key=lambda x: x["name"]),
                 }
             )
@@ -822,7 +822,7 @@ def main() -> int:
             sub.append(
                 {
                     "name": "MQTT",
-                    "description": "Manual MQTT test items — see docs/api/mqtt-contract.md",
+                    "description": "Manual MQTT test items ΓÇö see docs/api/mqtt-contract.md",
                     "item": sorted(mqtt_items, key=lambda x: x["name"])[:20],
                 }
             )

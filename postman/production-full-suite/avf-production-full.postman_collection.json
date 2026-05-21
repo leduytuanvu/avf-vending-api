@@ -6567,56 +6567,56 @@
         },
         {
           "name": "gRPC",
-          "description": "Manual gRPC test items — import protos from proto/avf",
+          "description": "Manual gRPC test items ΓÇö import protos from proto/avf",
           "item": [
             {
               "name": "/avf.internal.v1.InternalCatalogQueryService/GetSaleCatalogSnapshot",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalCatalogQueryService/GetSaleCatalogSnapshot`\n- **Proto:** `proto/avf/internal/v1/catalog_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"include_images\": false,\n  \"if_none_match_config_version\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalCatalogQueryService/GetSaleCatalogSnapshot`\n- **Proto:** `proto/avf/internal/v1/catalog_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"include_images\": false,\n  \"if_none_match_config_version\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState`\n- **Proto:** `proto/avf/internal/v1/commerce_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState`\n- **Proto:** `proto/avf/internal/v1/commerce_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.internal.v1.InternalInventoryQueryService/GetMachineSlotInventory",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalInventoryQueryService/GetMachineSlotInventory`\n- **Proto:** `proto/avf/internal/v1/inventory_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalInventoryQueryService/GetMachineSlotInventory`\n- **Proto:** `proto/avf/internal/v1/inventory_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.internal.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary`\n- **Proto:** `proto/avf/internal/v1/machine_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary`\n- **Proto:** `proto/avf/internal/v1/machine_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.internal.v1.InternalMachineQueryService/GetMachineState",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalMachineQueryService/GetMachineState`\n- **Proto:** `proto/avf/internal/v1/machine_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalMachineQueryService/GetMachineState`\n- **Proto:** `proto/avf/internal/v1/machine_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.internal.v1.InternalMachineQueryService/GetMachineSummary",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalMachineQueryService/GetMachineSummary`\n- **Proto:** `proto/avf/internal/v1/machine_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalMachineQueryService/GetMachineSummary`\n- **Proto:** `proto/avf/internal/v1/machine_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.internal.v1.InternalPaymentQueryService/GetLatestPaymentForOrder",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalPaymentQueryService/GetLatestPaymentForOrder`\n- **Proto:** `proto/avf/internal/v1/payment_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalPaymentQueryService/GetLatestPaymentForOrder`\n- **Proto:** `proto/avf/internal/v1/payment_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.internal.v1.InternalPaymentQueryService/GetPaymentById",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalPaymentQueryService/GetPaymentById`\n- **Proto:** `proto/avf/internal/v1/payment_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"payment_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalPaymentQueryService/GetPaymentById`\n- **Proto:** `proto/avf/internal/v1/payment_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"payment_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.internal.v1.InternalReportingQueryService/GetSalesSummary",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalReportingQueryService/GetSalesSummary`\n- **Proto:** `proto/avf/internal/v1/reporting_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"from_rfc3339\": \"\",\n  \"to_rfc3339\": \"\",\n  \"group_by\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalReportingQueryService/GetSalesSummary`\n- **Proto:** `proto/avf/internal/v1/reporting_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"from_rfc3339\": \"\",\n  \"to_rfc3339\": \"\",\n  \"group_by\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.internal.v1.InternalTelemetryQueryService/GetMachineIncidentSummary",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalTelemetryQueryService/GetMachineIncidentSummary`\n- **Proto:** `proto/avf/internal/v1/machine_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"limit\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalTelemetryQueryService/GetMachineIncidentSummary`\n- **Proto:** `proto/avf/internal/v1/machine_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"limit\": 0\n}\n```\n",
               "item": []
             }
           ]
@@ -32830,366 +32830,366 @@
         },
         {
           "name": "gRPC",
-          "description": "Manual gRPC test items — import protos from proto/avf",
+          "description": "Manual gRPC test items ΓÇö import protos from proto/avf",
           "item": [
             {
               "name": "/avf.machine.v1.MachineActivationService/ClaimActivation",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineActivationService/ClaimActivation`\n- **Proto:** `proto/avf/machine/v1/machine_activation.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"activation_code\": \"\",\n  \"device_fingerprint\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineActivationService/ClaimActivation`\n- **Proto:** `proto/avf/machine/v1/machine_activation.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"activation_code\": \"\",\n  \"device_fingerprint\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineAuthService/ActivateMachine",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineAuthService/ActivateMachine`\n- **Proto:** `proto/avf/machine/v1/auth.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"claim\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineAuthService/ActivateMachine`\n- **Proto:** `proto/avf/machine/v1/auth.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"claim\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineAuthService/ClaimActivation",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineAuthService/ClaimActivation`\n- **Proto:** `proto/avf/machine/v1/auth.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"claim\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineAuthService/ClaimActivation`\n- **Proto:** `proto/avf/machine/v1/auth.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"claim\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineAuthService/RefreshMachineToken",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineAuthService/RefreshMachineToken`\n- **Proto:** `proto/avf/machine/v1/auth.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"refresh\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineAuthService/RefreshMachineToken`\n- **Proto:** `proto/avf/machine/v1/auth.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"refresh\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineBootstrapService/AckConfigVersion",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineBootstrapService/AckConfigVersion`\n- **Proto:** `proto/avf/machine/v1/bootstrap.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"acknowledged_config_version\": 0,\n  \"acknowledged_planogram_version_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineBootstrapService/AckConfigVersion`\n- **Proto:** `proto/avf/machine/v1/bootstrap.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"acknowledged_config_version\": 0,\n  \"acknowledged_planogram_version_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineBootstrapService/CheckForUpdates",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineBootstrapService/CheckForUpdates`\n- **Proto:** `proto/avf/machine/v1/bootstrap.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"catalog_fingerprint\": \"\",\n  \"pricing_fingerprint\": \"\",\n  \"planogram_fingerprint\": \"\",\n  \"media_fingerprint\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineBootstrapService/CheckForUpdates`\n- **Proto:** `proto/avf/machine/v1/bootstrap.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"catalog_fingerprint\": \"\",\n  \"pricing_fingerprint\": \"\",\n  \"planogram_fingerprint\": \"\",\n  \"media_fingerprint\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineBootstrapService/CheckIn",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineBootstrapService/CheckIn`\n- **Proto:** `proto/avf/machine/v1/bootstrap.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"boot_id\": \"{{$guid}}\",\n  \"network_state\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineBootstrapService/CheckIn`\n- **Proto:** `proto/avf/machine/v1/bootstrap.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"boot_id\": \"{{$guid}}\",\n  \"network_state\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineBootstrapService/GetBootstrap",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineBootstrapService/GetBootstrap`\n- **Proto:** `proto/avf/machine/v1/bootstrap.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineBootstrapService/GetBootstrap`\n- **Proto:** `proto/avf/machine/v1/bootstrap.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCatalogService/AckCatalogVersion",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/AckCatalogVersion`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"acknowledged_catalog_version\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/AckCatalogVersion`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"acknowledged_catalog_version\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCatalogService/GetCatalogDelta",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/GetCatalogDelta`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"basis_catalog_version\": \"\",\n  \"meta\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/GetCatalogDelta`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"basis_catalog_version\": \"\",\n  \"meta\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCatalogService/GetCatalogSnapshot",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/GetCatalogSnapshot`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"include_images\": false,\n  \"if_none_match_config_version\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/GetCatalogSnapshot`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"include_images\": false,\n  \"if_none_match_config_version\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCatalogService/GetMediaManifest",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/GetMediaManifest`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"meta\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/GetMediaManifest`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"meta\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCatalogService/GetSaleCatalog",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/GetSaleCatalog`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"include_images\": false,\n  \"if_none_match_config_version\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/GetSaleCatalog`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"include_images\": false,\n  \"if_none_match_config_version\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCatalogService/SyncCatalogBundle",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/SyncCatalogBundle`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"include_images\": false,\n  \"current_catalog_version\": \"\",\n  \"current_media_manifest_version\": \"\",\n  \"basis_product_ids\": [],\n  \"basis_media_asset_keys\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/SyncCatalogBundle`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"include_images\": false,\n  \"current_catalog_version\": \"\",\n  \"current_media_manifest_version\": \"\",\n  \"basis_product_ids\": [],\n  \"basis_media_asset_keys\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCatalogService/SyncSaleCatalog",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/SyncSaleCatalog`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"include_images\": false,\n  \"if_none_match_config_version\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCatalogService/SyncSaleCatalog`\n- **Proto:** `proto/avf/machine/v1/catalog.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"include_images\": false,\n  \"if_none_match_config_version\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommandService/AckCommand",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/AckCommand`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"command_id\": \"{{$guid}}\",\n  \"command_sequence\": 0,\n  \"receipt_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/AckCommand`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"command_id\": \"{{$guid}}\",\n  \"command_sequence\": 0,\n  \"receipt_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommandService/GetAssignedUpdate",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/GetAssignedUpdate`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/GetAssignedUpdate`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommandService/GetPendingCommands",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/GetPendingCommands`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"after_command_sequence\": 0,\n  \"limit\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/GetPendingCommands`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"after_command_sequence\": 0,\n  \"limit\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommandService/RejectCommand",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/RejectCommand`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"command_id\": \"{{$guid}}\",\n  \"command_sequence\": 0,\n  \"reason\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/RejectCommand`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"command_id\": \"{{$guid}}\",\n  \"command_sequence\": 0,\n  \"reason\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommandService/ReportDiagnosticBundleResult",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/ReportDiagnosticBundleResult`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"request_id\": \"{{$guid}}\",\n  \"storage_key\": \"\",\n  \"storage_provider\": \"\",\n  \"content_type\": \"\",\n  \"size_bytes\": 0,\n  \"sha256_hex\": \"\",\n  \"metadata\": {},\n  \"expires_at\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/ReportDiagnosticBundleResult`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"request_id\": \"{{$guid}}\",\n  \"storage_key\": \"\",\n  \"storage_provider\": \"\",\n  \"content_type\": \"\",\n  \"size_bytes\": 0,\n  \"sha256_hex\": \"\",\n  \"metadata\": {},\n  \"expires_at\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommandService/ReportUpdateStatus",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/ReportUpdateStatus`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"campaign_id\": \"{{$guid}}\",\n  \"status\": \"\",\n  \"error_message\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommandService/ReportUpdateStatus`\n- **Proto:** `proto/avf/machine/v1/command.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"campaign_id\": \"{{$guid}}\",\n  \"status\": \"\",\n  \"error_message\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/AttachPaymentResult",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/AttachPaymentResult`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"provider\": \"\",\n  \"payment_state\": \"\",\n  \"amount_minor\": 0,\n  \"currency\": \"\",\n  \"outbox_payload_json\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/AttachPaymentResult`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"provider\": \"\",\n  \"payment_state\": \"\",\n  \"amount_minor\": 0,\n  \"currency\": \"\",\n  \"outbox_payload_json\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/CancelOrder",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/CancelOrder`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"reason\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/CancelOrder`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"reason\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/ConfirmCashPayment",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/ConfirmCashPayment`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/ConfirmCashPayment`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/ConfirmVendSuccess",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/ConfirmVendSuccess`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0,\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/ConfirmVendSuccess`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0,\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/CreateCashCheckout",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/CreateCashCheckout`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/CreateCashCheckout`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/CreateOrder",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/CreateOrder`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"product_id\": \"{{$guid}}\",\n  \"slot\": {},\n  \"currency\": \"\",\n  \"meta\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/CreateOrder`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"product_id\": \"{{$guid}}\",\n  \"slot\": {},\n  \"currency\": \"\",\n  \"meta\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/CreatePaymentSession",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/CreatePaymentSession`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"provider\": \"\",\n  \"payment_state\": \"\",\n  \"amount_minor\": 0,\n  \"currency\": \"\",\n  \"outbox_payload_json\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/CreatePaymentSession`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"provider\": \"\",\n  \"payment_state\": \"\",\n  \"amount_minor\": 0,\n  \"currency\": \"\",\n  \"outbox_payload_json\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/GetOrder",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/GetOrder`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/GetOrder`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/GetOrderStatus",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/GetOrderStatus`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/GetOrderStatus`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/ReportVendFailure",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/ReportVendFailure`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0,\n  \"failure_reason\": \"\",\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/ReportVendFailure`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0,\n  \"failure_reason\": \"\",\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/ReportVendSuccess",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/ReportVendSuccess`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0,\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/ReportVendSuccess`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0,\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineCommerceService/StartVend",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/StartVend`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineCommerceService/StartVend`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineInventoryService/AckInventorySync",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/AckInventorySync`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"sync_cursor\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/AckInventorySync`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"sync_cursor\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineInventoryService/GetInventorySnapshot",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/GetInventorySnapshot`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/GetInventorySnapshot`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineInventoryService/GetPlanogram",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/GetPlanogram`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/GetPlanogram`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineInventoryService/PushInventoryDelta",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/PushInventoryDelta`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"meta\": {},\n  \"reason\": \"\",\n  \"lines\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/PushInventoryDelta`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"meta\": {},\n  \"reason\": \"\",\n  \"lines\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineInventoryService/SubmitFillReport",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitFillReport`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"lines\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitFillReport`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"lines\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineInventoryService/SubmitFillResult",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitFillResult`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"lines\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitFillResult`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"lines\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineInventoryService/SubmitInventoryAdjustment",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitInventoryAdjustment`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"reason\": \"\",\n  \"lines\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitInventoryAdjustment`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"reason\": \"\",\n  \"lines\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineInventoryService/SubmitRestock",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitRestock`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"lines\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitRestock`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"lines\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineInventoryService/SubmitStockAdjustment",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitStockAdjustment`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"reason\": \"\",\n  \"lines\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitStockAdjustment`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"reason\": \"\",\n  \"lines\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineInventoryService/SubmitStockSnapshot",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitStockSnapshot`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"lines\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitStockSnapshot`\n- **Proto:** `proto/avf/machine/v1/inventory.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"lines\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineMediaService/AckMediaVersion",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineMediaService/AckMediaVersion`\n- **Proto:** `proto/avf/machine/v1/media.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"acknowledged_media_fingerprint\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineMediaService/AckMediaVersion`\n- **Proto:** `proto/avf/machine/v1/media.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"acknowledged_media_fingerprint\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineMediaService/GetMediaDelta",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineMediaService/GetMediaDelta`\n- **Proto:** `proto/avf/machine/v1/media.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"basis_media_fingerprint\": \"\",\n  \"meta\": {},\n  \"include_unavailable\": false\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineMediaService/GetMediaDelta`\n- **Proto:** `proto/avf/machine/v1/media.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"basis_media_fingerprint\": \"\",\n  \"meta\": {},\n  \"include_unavailable\": false\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineMediaService/GetMediaManifest",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineMediaService/GetMediaManifest`\n- **Proto:** `proto/avf/machine/v1/media.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"meta\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineMediaService/GetMediaManifest`\n- **Proto:** `proto/avf/machine/v1/media.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"include_unavailable\": false,\n  \"meta\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineOfflineSyncService/GetSyncCursor",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOfflineSyncService/GetSyncCursor`\n- **Proto:** `proto/avf/machine/v1/offline_sync.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOfflineSyncService/GetSyncCursor`\n- **Proto:** `proto/avf/machine/v1/offline_sync.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineOfflineSyncService/PushOfflineEvents",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOfflineSyncService/PushOfflineEvents`\n- **Proto:** `proto/avf/machine/v1/offline_sync.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"events\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOfflineSyncService/PushOfflineEvents`\n- **Proto:** `proto/avf/machine/v1/offline_sync.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"meta\": {},\n  \"events\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineOperatorService/CloseOperatorSession",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/CloseOperatorSession`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"session_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/CloseOperatorSession`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"session_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineOperatorService/HeartbeatOperatorSession",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/HeartbeatOperatorSession`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"session_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/HeartbeatOperatorSession`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"session_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineOperatorService/LoginOperator",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/LoginOperator`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/LoginOperator`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineOperatorService/LogoutOperator",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/LogoutOperator`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/LogoutOperator`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineOperatorService/OpenOperatorSession",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/OpenOperatorSession`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/OpenOperatorSession`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineOperatorService/SubmitFillReport",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/SubmitFillReport`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"fill\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/SubmitFillReport`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"fill\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineOperatorService/SubmitStockAdjustment",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/SubmitStockAdjustment`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"adjustment\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineOperatorService/SubmitStockAdjustment`\n- **Proto:** `proto/avf/machine/v1/operator_grpc.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"adjustment\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineSaleService/AttachPayment",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/AttachPayment`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"payment_session\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/AttachPayment`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"payment_session\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineSaleService/CancelSale",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/CancelSale`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"reason\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/CancelSale`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"reason\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineSaleService/CompleteVend",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/CompleteVend`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0,\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/CompleteVend`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0,\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineSaleService/ConfirmCashReceived",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/ConfirmCashReceived`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"payment\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/ConfirmCashReceived`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"payment\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineSaleService/CreateSale",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/CreateSale`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order\": {}\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/CreateSale`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineSaleService/FailVend",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/FailVend`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0,\n  \"failure_reason\": \"\",\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/FailVend`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0,\n  \"failure_reason\": \"\",\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineSaleService/StartVend",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/StartVend`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineSaleService/StartVend`\n- **Proto:** `proto/avf/machine/v1/commerce.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineTelemetryService/CheckIn",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/CheckIn`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"android_id\": \"{{$guid}}\",\n  \"sim_serial\": \"\",\n  \"package_name\": \"\",\n  \"version_name\": \"\",\n  \"version_code\": 0,\n  \"android_release\": \"\",\n  \"sdk_int\": 0,\n  \"manufacturer\": \"\",\n  \"model\": \"\",\n  \"timezone\": \"\",\n  \"network_state\": \"\",\n  \"boot_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/CheckIn`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"machine_id\": \"{{machineId}}\",\n  \"android_id\": \"{{$guid}}\",\n  \"sim_serial\": \"\",\n  \"package_name\": \"\",\n  \"version_name\": \"\",\n  \"version_code\": 0,\n  \"android_release\": \"\",\n  \"sdk_int\": 0,\n  \"manufacturer\": \"\",\n  \"model\": \"\",\n  \"timezone\": \"\",\n  \"network_state\": \"\",\n  \"boot_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineTelemetryService/GetEventStatus",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/GetEventStatus`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"idempotency_key\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/GetEventStatus`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"idempotency_key\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineTelemetryService/PushCriticalEvent",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/PushCriticalEvent`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"meta\": {},\n  \"event\": {},\n  \"severity\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/PushCriticalEvent`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"meta\": {},\n  \"event\": {},\n  \"severity\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineTelemetryService/ReconcileEvents",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/ReconcileEvents`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"idempotency_keys\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/ReconcileEvents`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"idempotency_keys\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineTokenService/RefreshMachineToken",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTokenService/RefreshMachineToken`\n- **Proto:** `proto/avf/machine/v1/machine_token.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"refresh_token\": \"\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTokenService/RefreshMachineToken`\n- **Proto:** `proto/avf/machine/v1/machine_token.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"refresh_token\": \"\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.v1.InternalCommerceQueryService/GetOrderPaymentVendState",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalCommerceQueryService/GetOrderPaymentVendState`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalCommerceQueryService/GetOrderPaymentVendState`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"order_id\": \"{{$guid}}\",\n  \"slot_index\": 0\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.v1.InternalMachineQueryService/GetMachineState",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalMachineQueryService/GetMachineState`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalMachineQueryService/GetMachineState`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.v1.InternalMachineQueryService/GetMachineSummary",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalMachineQueryService/GetMachineSummary`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalMachineQueryService/GetMachineSummary`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.v1.InternalTelemetryQueryService/GetMachineIncidentSummary",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalTelemetryQueryService/GetMachineIncidentSummary`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"limit\": 0\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalTelemetryQueryService/GetMachineIncidentSummary`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\",\n  \"limit\": 0\n}\n```\n",
               "item": []
             }
           ]
@@ -34796,132 +34796,132 @@
         },
         {
           "name": "gRPC",
-          "description": "Manual gRPC test items — import protos from proto/avf",
+          "description": "Manual gRPC test items ΓÇö import protos from proto/avf",
           "item": [
             {
               "name": "/avf.internal.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry`\n- **Proto:** `proto/avf/internal/v1/machine_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.internal.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry`\n- **Proto:** `proto/avf/internal/v1/machine_query.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineTelemetryService/PushTelemetryBatch",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/PushTelemetryBatch`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"meta\": {},\n  \"events\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/PushTelemetryBatch`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"meta\": {},\n  \"events\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"events\": []\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch`\n- **Proto:** `proto/avf/machine/v1/telemetry.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"context\": {},\n  \"events\": []\n}\n```\n",
               "item": []
             },
             {
               "name": "/avf.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry",
-              "description": "**gRPC manual test item** (Postman Desktop → New → gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
+              "description": "**gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)\n\n- **fullMethod:** `/avf.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry`\n- **Proto:** `proto/avf/v1/internal_queries.proto`\n- **Host:** `{{grpcHost}}:{{grpcPort}}`\n\n**Request JSON:**\n```json\n{\n  \"machine_id\": \"{{machineId}}\"\n}\n```\n",
               "item": []
             }
           ]
         },
         {
           "name": "MQTT",
-          "description": "Manual MQTT test items — see docs/api/mqtt-contract.md",
+          "description": "Manual MQTT test items ΓÇö see docs/api/mqtt-contract.md",
           "item": [
             {
               "name": "{{mqttTopicPrefix}}/+/events/cash",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/events/cash`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/events/cash`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/+/events/inventory",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/events/inventory`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/events/inventory`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/+/events/vend",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/events/vend`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/events/vend`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/+/presence",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/presence`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/presence`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/+/shadow/desired",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/shadow/desired`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/shadow/desired`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/+/shadow/reported",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/shadow/reported`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/shadow/reported`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/+/state/heartbeat",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/state/heartbeat`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/state/heartbeat`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/+/telemetry",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/telemetry`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/telemetry`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/+/telemetry/incident",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/telemetry/incident`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/telemetry/incident`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/+/telemetry/snapshot",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/telemetry/snapshot`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/telemetry/snapshot`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/events",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/events`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"events\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/events`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"events\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/events/cash",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/events/cash`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"cash\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/events/cash`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"cash\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/events/inventory",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/events/inventory`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"inventory\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/events/inventory`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"inventory\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/events/vend",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/events/vend`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"vend\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/events/vend`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"vend\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/presence",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/presence`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"presence\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/presence`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"presence\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/shadow/desired",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/shadow/desired`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"desired\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/shadow/desired`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"desired\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/shadow/reported",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/shadow/reported`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"reported\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/shadow/reported`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"reported\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/state/heartbeat",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/state/heartbeat`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"heartbeat\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/state/heartbeat`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"heartbeat\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/telemetry",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/telemetry`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/telemetry`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/telemetry/incident",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/telemetry/incident`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"incident\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/telemetry/incident`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"incident\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             }
           ]
@@ -66885,41 +66885,41 @@
         },
         {
           "name": "MQTT",
-          "description": "Manual MQTT test items — see docs/api/mqtt-contract.md",
+          "description": "Manual MQTT test items ΓÇö see docs/api/mqtt-contract.md",
           "item": [
             {
               "name": "{{mqttTopicPrefix}}/+/commands/ack",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/commands/ack`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/commands/ack`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/+/commands/receipt",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/commands/receipt`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/+/commands/receipt`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"telemetry\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/commands/ack",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/commands/ack`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"ack\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/commands/ack`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"ack\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/+/commands/receipt",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/commands/receipt`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"receipt\",\n  \"payload\": {}\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/+/commands/receipt`\n- **Direction:** machine_publishes_backend_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"schema_version\": 1,\n  \"event_id\": \"{{$guid}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"dedupe_key\": \"avf-postman-{{$guid}}\",\n  \"event_type\": \"receipt\",\n  \"payload\": {}\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/machines/{{machineId}}/commands",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/{{machineId}}/commands`\n- **Direction:** backend_publishes_machine_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"command_id\": \"{{commandId}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"sequence\": 1,\n  \"command_type\": \"NOOP_POSTMAN\",\n  \"payload\": {},\n  \"idempotency_key\": \"avf-postman-{{$guid}}\",\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/machines/{{machineId}}/commands`\n- **Direction:** backend_publishes_machine_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"command_id\": \"{{commandId}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"sequence\": 1,\n  \"command_type\": \"NOOP_POSTMAN\",\n  \"payload\": {},\n  \"idempotency_key\": \"avf-postman-{{$guid}}\",\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/{{machineId}}/commands/dispatch",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/{{machineId}}/commands/dispatch`\n- **Direction:** backend_publishes_machine_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"command_id\": \"{{commandId}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"sequence\": 1,\n  \"command_type\": \"NOOP_POSTMAN\",\n  \"payload\": {},\n  \"idempotency_key\": \"avf-postman-{{$guid}}\",\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/{{machineId}}/commands/dispatch`\n- **Direction:** backend_publishes_machine_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"command_id\": \"{{commandId}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"sequence\": 1,\n  \"command_type\": \"NOOP_POSTMAN\",\n  \"payload\": {},\n  \"idempotency_key\": \"avf-postman-{{$guid}}\",\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             },
             {
               "name": "{{mqttTopicPrefix}}/{{machineId}}/commands/down",
-              "description": "**MQTT manual test item** (Postman Desktop → New → MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/{{machineId}}/commands/down`\n- **Direction:** backend_publishes_machine_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"command_id\": \"{{commandId}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"sequence\": 1,\n  \"command_type\": \"NOOP_POSTMAN\",\n  \"payload\": {},\n  \"idempotency_key\": \"avf-postman-{{$guid}}\",\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
+              "description": "**MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)\n\n- **Topic:** `{{mqttTopicPrefix}}/{{machineId}}/commands/down`\n- **Direction:** backend_publishes_machine_subscribes\n- **Host:** `{{mqttHost}}:{{mqttPort}}`\n\n**Payload:**\n```json\n{\n  \"command_id\": \"{{commandId}}\",\n  \"machine_id\": \"{{machineId}}\",\n  \"sequence\": 1,\n  \"command_type\": \"NOOP_POSTMAN\",\n  \"payload\": {},\n  \"idempotency_key\": \"avf-postman-{{$guid}}\",\n  \"correlation_id\": \"{{$guid}}\"\n}\n```\n",
               "item": []
             }
           ]
