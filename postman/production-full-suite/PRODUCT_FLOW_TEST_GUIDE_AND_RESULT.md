@@ -116,7 +116,23 @@ Content-Type: application/json
 
 Success **200** — save `session.id` as `operator_session_id` for planogram draft/publish.
 
-Legacy machine REST login (`POST /v1/machines/{machineId}/operator-sessions/login`) returns **404** when `MachineRESTLegacyEnabled=false`.
+### Machine topology (required before planogram)
+
+```http
+PUT /v1/admin/machines/{{machineId}}/topology
+
+{
+  "operator_session_id": "<session uuid>",
+  "cabinets": [{"code": "A", "title": "Cabinet A", "sortOrder": 1}],
+  "layouts": [{
+    "cabinetCode": "A",
+    "layoutKey": "grid-4x6",
+    "revision": 1,
+    "layoutSpec": {"rows": 4, "cols": 6},
+    "status": "published"
+  }]
+}
+```
 
 ### Planogram publish
 
@@ -125,8 +141,10 @@ PUT /v1/admin/machines/{{machineId}}/planograms/draft
 POST /v1/admin/machines/{{machineId}}/planograms/publish
 
 {
-  "operator_session_id": "<active session uuid>",
-  "syncLegacyReadModel": true,
+  "operator_session_id": "<session uuid from admin start>",
+  "planogramId": "<new uuid v7>",
+  "planogramRevision": 1,
+  "syncLegacyReadModel": false,
   "items": [{
     "cabinetCode": "A",
     "slotCode": "A1",
@@ -142,16 +160,32 @@ Requires **ACTIVE** operator session on the machine. In production use **admin**
 
 ### Sale catalog (gRPC — production)
 
-REST is disabled when `MachineRESTLegacyEnabled=false`. Use **Machine JWT** metadata:
+REST is disabled when `MachineRESTLegacyEnabled=false`. Use **Machine JWT** on **`machine-api.ldtv.dev:443`** (not `api.ldtv.dev`).
+
+**DNS (ops, before deploy):** A/AAAA `machine-api.ldtv.dev` → same public IP as `api.ldtv.dev`. Verify: `dig +short machine-api.ldtv.dev`. If using Cloudflare, prefer DNS-only for first gRPC verify.
+
+**Obtain `MACHINE_ACCESS_TOKEN` (runtime only):**
+
+1. Admin login → `POST /v1/auth/login`
+2. Create code → `POST /v1/admin/machines/{machineId}/activation-codes`
+3. Claim → `POST /v1/setup/activation-codes/claim` → save `machineToken`
+
+```powershell
+$env:MACHINE_ACCESS_TOKEN = "<from claim machineToken>"
+$env:GRPC_TARGET = "machine-api.ldtv.dev:443"
+```
 
 ```bash
-grpcurl -H "authorization: Bearer ${MACHINE_ACCESS_TOKEN}" \
+grpcurl -import-path proto \
+  -proto proto/avf/machine/v1/catalog.proto \
+  -proto proto/avf/machine/v1/common.proto \
+  -H "authorization: Bearer ${MACHINE_ACCESS_TOKEN}" \
   -d '{"machine_id":"<machineId>","include_images":true}' \
-  machine-api.ldtv.dev:443 \
+  "${GRPC_TARGET}" \
   avf.machine.v1.MachineCatalogService/SyncSaleCatalog
 ```
 
-Or `GetSaleCatalog` / `GetCatalogSnapshot` (aliases). Verify `snapshot.items[]` contains `product_id`, `sku`, `price_minor`, `primary_media.display_url`.
+Verify `snapshot.items[]`: `product_id`, `sku`, `price_minor`, `slot_code`, `primary_media.display_url`.
 
 ## Common Errors
 
@@ -166,57 +200,72 @@ Or `GetSaleCatalog` / `GetCatalogSnapshot` (aliases). Verify `snapshot.items[]` 
 
 ## Latest Production Result
 
-**Run:** 2026-05-21 UTC · deploy main `8d418590a74033ddc804722e7d2e768a86ad7ede` · deploy run [26246729386](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26246729386) · API `https://api.ldtv.dev`
+**Run:** 2026-05-21 UTC · deploy main `be0f43b44db96a9af8077447e57356797316b191` · deploy run [26249178789](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26249178789) · API `https://api.ldtv.dev`
 
 | Step | Status |
 |------|--------|
 | Health live/ready/version | **PASS** |
 | Login | **PASS** |
-| Category / brand / tag create | **PASS** |
 | Image upload (Cloudinary + `MEDIA_COMPANY_ID`) | **PASS** (201) |
 | Product create (active + primaryMediaId) | **PASS** (200) |
-| Product create (inactive draft) | **PASS** (200) |
 | Price book + items + assign-target | **PASS** |
-| Planogram draft/publish | **BLOCKED** — `404 operator: session not found` (no active operator session; legacy operator REST disabled) |
-| Sale catalog REST | **BLOCKED** — `404 page not found` (`MachineRESTLegacyEnabled=false`; use gRPC `MachineCatalogService.SyncSaleCatalog`) |
+| Admin operator session start | **PASS** (200) |
+| Machine topology PUT | **PASS** (204) |
+| Planogram draft/publish | **PASS** (204 / 200) — `syncLegacyReadModel=false`; MQTT `machine_planogram_publish` dispatched |
+| Sale catalog REST | **BLOCKED** — `404` (`MachineRESTLegacyEnabled=false`) |
+| gRPC SyncSaleCatalog | **BLOCKED_EDGE** — Caddy vhost pending deploy + DNS (see below) |
+| gRPC GetSaleCatalog | **BLOCKED_EDGE** — same |
 
 ### IDs from last run (sanitized)
 
 | ID | Value |
 |----|--------|
-| primaryMediaId | `019e4bea-5573-7916-ab1f-7a631e98ef04` |
-| productId (active) | `019e4bea-6de1-72f9-8df6-6eae2455a0e5` |
-| sku | `COCA-ACTIVE-1779390109349` |
+| primaryMediaId | `019e4c17-d4aa-7c3e-b047-855575ae63c4` |
+| productId (active) | `019e4c17-de65-71c4-b0ab-3013619b2e8c` |
+| sku | `COCA-ACTIVE-1779393091510` |
 | machineId | `55555555-5555-5555-5555-555555555555` |
-| priceBookId | `019e4bea-7b11-77db-af22-911413448dc2` |
-| displayUrl | `https://res.cloudinary.com/dz4qz0tk9/image/upload/.../019e4bea-5573-7916-ab1f-7a631e98ef04.png` |
+| operatorSessionId | `019e4c16-12b0-7a0f-8f9e-70b9b3ad4f9f` |
+| planogramId | `a13beea1-c3d3-4d81-a589-ddb5b484d3b8` |
+| commandId (planogram publish) | `019e4c17-ff9c-70a6-bff4-9e8163928cc7` |
+| priceBookId | `019e4c17-e6e3-7a2c-9f55-0a84fe3ff866` |
 
-### Active product create (sanitized)
+### MQTT command evidence
 
-```json
-{
-  "id": "019e4bea-6de1-72f9-8df6-6eae2455a0e5",
-  "sku": "COCA-ACTIVE-1779390109349",
-  "active": true,
-  "primaryMediaId": "019e4bea-5573-7916-ab1f-7a631e98ef04",
-  "displayUrl": "https://res.cloudinary.com/.../....png"
-}
-```
-
-### Notes
-
-- Product image upload requires Cloudinary config and `MEDIA_COMPANY_ID` on the API process.
-- Product is **not** assigned to all machines automatically; sellable only after pricing + planogram slot publish.
-- Planogram publish needs a real **ACTIVE** operator/machine session or an admin flow that supplies a valid `operator_session_id`.
-- If REST `/v1/machines/{machineId}/sale-catalog` is disabled, the app must use gRPC catalog sync.
+Planogram publish returned `command.commandId` with `dispatchState=published` and `command_type=machine_planogram_publish` (indirect — broker ACL not verified in this run).
 
 ### Sale catalog contains product?
 
-**No** — planogram publish blocked; REST sale catalog route not exposed in production.
+**Pending** — `MACHINE_ACCESS_TOKEN` acquisition **PASS**; gRPC edge not deployed yet.
+
+## Machine gRPC Edge Verification
+
+**Run:** 2026-05-21 UTC · fix branch `fix/prod-machine-grpc-edge`
+
+| Check | Result |
+|-------|--------|
+| DNS `machine-api.ldtv.dev` | **NXDOMAIN** (A/AAAA not configured) |
+| Caddy machine gRPC vhost in repo | **yes** — `deployments/prod/shared/Caddyfile` |
+| Caddy vhost deployed to production | **pending** merge + deploy |
+| `MACHINE_ACCESS_TOKEN` (activation claim) | **yes** |
+| gRPC target | `machine-api.ldtv.dev:443` |
+| SyncSaleCatalog | **BLOCKED_EDGE** / **BLOCKED_DNS_PENDING** |
+| GetSaleCatalog | **BLOCKED_EDGE** / **BLOCKED_DNS_PENDING** |
+| productId present | not verified |
+| priceMinor=15000 | not verified |
+| slot A1 | not verified |
+| Cloudinary media URL | not verified |
+
+### Ops checklist (after merge)
+
+1. DNS: `machine-api.ldtv.dev` → production VPS IP (same as `api.ldtv.dev`)
+2. Deploy app-node with updated `shared/Caddyfile` + env: `MACHINE_GRPC_DOMAIN`, `GRPC_PUBLIC_BASE_URL=grpcs://machine-api.ldtv.dev:443`
+3. Reload Caddy; confirm ACME cert for `machine-api.ldtv.dev`
+4. Internal smoke (on app VPS Docker network): `grpcurl -plaintext api:9090 grpc.health.v1.Health/Check`
+5. External: `SyncSaleCatalog` with machine JWT — verify canary `019e4c17-de65-71c4-b0ab-3013619b2e8c`
 
 ### Image URL in sale catalog?
 
-**N/A** — sale catalog not reachable via REST; gRPC not exercised in this run (no machine JWT).
+**Pending gRPC verify** after edge + DNS.
 
 ## Postman fixes applied
 

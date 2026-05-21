@@ -56,7 +56,11 @@ For the split production topology, app-node health checks treat managed PostgreS
 The app node exposes only HTTP(S):
 
 - `80/tcp` for ACME HTTP challenge handling and optional redirect handling
-- `443/tcp` for the public API HTTPS surface on `API_DOMAIN`
+- `443/tcp` for public HTTPS on `API_DOMAIN` (REST) and `MACHINE_GRPC_DOMAIN` (machine gRPC via h2c to `api:9090`)
+
+Machine gRPC is **not** served on `api.ldtv.dev` and **must not** be exposed on host `:9090`. Caddy terminates TLS and reverse-proxies cleartext h2c to the internal `api:9090` listener.
+
+**DNS prerequisite:** add an A/AAAA record for `MACHINE_GRPC_DOMAIN` (e.g. `machine-api.ldtv.dev`) pointing to the same public IP as `API_DOMAIN` before rolling out the Caddy vhost, so ACME can issue the certificate.
 
 Hardening defaults in `../shared/Caddyfile` are intentional:
 
