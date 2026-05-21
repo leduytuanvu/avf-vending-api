@@ -160,16 +160,32 @@ Requires **ACTIVE** operator session on the machine. In production use **admin**
 
 ### Sale catalog (gRPC — production)
 
-REST is disabled when `MachineRESTLegacyEnabled=false`. Use **Machine JWT** metadata:
+REST is disabled when `MachineRESTLegacyEnabled=false`. Use **Machine JWT** on **`machine-api.ldtv.dev:443`** (not `api.ldtv.dev`).
+
+**DNS (ops, before deploy):** A/AAAA `machine-api.ldtv.dev` → same public IP as `api.ldtv.dev`. Verify: `dig +short machine-api.ldtv.dev`. If using Cloudflare, prefer DNS-only for first gRPC verify.
+
+**Obtain `MACHINE_ACCESS_TOKEN` (runtime only):**
+
+1. Admin login → `POST /v1/auth/login`
+2. Create code → `POST /v1/admin/machines/{machineId}/activation-codes`
+3. Claim → `POST /v1/setup/activation-codes/claim` → save `machineToken`
+
+```powershell
+$env:MACHINE_ACCESS_TOKEN = "<from claim machineToken>"
+$env:GRPC_TARGET = "machine-api.ldtv.dev:443"
+```
 
 ```bash
-grpcurl -H "authorization: Bearer ${MACHINE_ACCESS_TOKEN}" \
+grpcurl -import-path proto \
+  -proto proto/avf/machine/v1/catalog.proto \
+  -proto proto/avf/machine/v1/common.proto \
+  -H "authorization: Bearer ${MACHINE_ACCESS_TOKEN}" \
   -d '{"machine_id":"<machineId>","include_images":true}' \
-  machine-api.ldtv.dev:443 \
+  "${GRPC_TARGET}" \
   avf.machine.v1.MachineCatalogService/SyncSaleCatalog
 ```
 
-Or `GetSaleCatalog` / `GetCatalogSnapshot` (aliases). Verify `snapshot.items[]` contains `product_id`, `sku`, `price_minor`, `primary_media.display_url`.
+Verify `snapshot.items[]`: `product_id`, `sku`, `price_minor`, `slot_code`, `primary_media.display_url`.
 
 ## Common Errors
 
@@ -197,7 +213,8 @@ Or `GetSaleCatalog` / `GetCatalogSnapshot` (aliases). Verify `snapshot.items[]` 
 | Machine topology PUT | **PASS** (204) |
 | Planogram draft/publish | **PASS** (204 / 200) — `syncLegacyReadModel=false`; MQTT `machine_planogram_publish` dispatched |
 | Sale catalog REST | **BLOCKED** — `404` (`MachineRESTLegacyEnabled=false`) |
-| gRPC SyncSaleCatalog | **NOT RUN** — requires runtime `MACHINE_ACCESS_TOKEN` (machine JWT) |
+| gRPC SyncSaleCatalog | **BLOCKED_EDGE** — Caddy vhost pending deploy + DNS (see below) |
+| gRPC GetSaleCatalog | **BLOCKED_EDGE** — same |
 
 ### IDs from last run (sanitized)
 
@@ -218,11 +235,37 @@ Planogram publish returned `command.commandId` with `dispatchState=published` an
 
 ### Sale catalog contains product?
 
-**Pending gRPC verify** — REST disabled; run `MachineCatalogService.SyncSaleCatalog` with machine JWT after publish.
+**Pending** — `MACHINE_ACCESS_TOKEN` acquisition **PASS**; gRPC edge not deployed yet.
+
+## Machine gRPC Edge Verification
+
+**Run:** 2026-05-21 UTC · fix branch `fix/prod-machine-grpc-edge`
+
+| Check | Result |
+|-------|--------|
+| DNS `machine-api.ldtv.dev` | **NXDOMAIN** (A/AAAA not configured) |
+| Caddy machine gRPC vhost in repo | **yes** — `deployments/prod/shared/Caddyfile` |
+| Caddy vhost deployed to production | **pending** merge + deploy |
+| `MACHINE_ACCESS_TOKEN` (activation claim) | **yes** |
+| gRPC target | `machine-api.ldtv.dev:443` |
+| SyncSaleCatalog | **BLOCKED_EDGE** / **BLOCKED_DNS_PENDING** |
+| GetSaleCatalog | **BLOCKED_EDGE** / **BLOCKED_DNS_PENDING** |
+| productId present | not verified |
+| priceMinor=15000 | not verified |
+| slot A1 | not verified |
+| Cloudinary media URL | not verified |
+
+### Ops checklist (after merge)
+
+1. DNS: `machine-api.ldtv.dev` → production VPS IP (same as `api.ldtv.dev`)
+2. Deploy app-node with updated `shared/Caddyfile` + env: `MACHINE_GRPC_DOMAIN`, `GRPC_PUBLIC_BASE_URL=grpcs://machine-api.ldtv.dev:443`
+3. Reload Caddy; confirm ACME cert for `machine-api.ldtv.dev`
+4. Internal smoke (on app VPS Docker network): `grpcurl -plaintext api:9090 grpc.health.v1.Health/Check`
+5. External: `SyncSaleCatalog` with machine JWT — verify canary `019e4c17-de65-71c4-b0ab-3013619b2e8c`
 
 ### Image URL in sale catalog?
 
-**Pending gRPC verify**
+**Pending gRPC verify** after edge + DNS.
 
 ## Postman fixes applied
 
