@@ -18,9 +18,11 @@ Clients should target **`grpcs://machine-api.<your-domain>:443`** (TLS). Match *
 
 ## Caddy (reverse proxy → plaintext upstream)
 
-Terminate TLS on **`machine-api.<domain>`**, forward **`h2c`** to the API container’s **`GRPC_ADDR`** (e.g. **`api:9090`**).
+Production app-node ships the machine gRPC vhost in **`deployments/prod/shared/Caddyfile`** (`{$MACHINE_GRPC_DOMAIN}` → h2c **`{$UPSTREAM_GRPC}`**, default **`h2c://api:9090`**). Set **`MACHINE_GRPC_DOMAIN=machine-api.ldtv.dev`** in **`.env.app-node`** and add DNS **before** rollout so ACME can issue the certificate.
 
-Sample site block (adapt paths/domains):
+Terminate TLS on **`machine-api.<domain>`**, forward **`h2c`** to the API container’s **`GRPC_ADDR`** (e.g. **`api:9090`**). Do **not** publish host **`:9090`**; only Caddy **`:443`** is public.
+
+Sample site block (legacy reference — prefer shared Caddyfile):
 
 ```caddyfile
 machine-api.example.com {

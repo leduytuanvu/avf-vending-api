@@ -10,7 +10,8 @@ This matrix is for the primary production split:
 Set these in `app-node/.env.app-node` on every app VPS:
 
 - image refs: `APP_IMAGE_REF`, `GOOSE_IMAGE_REF`
-- public edge: `API_DOMAIN`, `PUBLIC_BASE_URL`, `CADDY_ACME_EMAIL`, `UPSTREAM_API`, `CADDY_MAX_REQUEST_BODY`
+- public edge: `API_DOMAIN`, `MACHINE_GRPC_DOMAIN`, `PUBLIC_BASE_URL`, `CADDY_ACME_EMAIL`, `UPSTREAM_API`, `UPSTREAM_GRPC`, `CADDY_MAX_REQUEST_BODY`
+- machine gRPC runtime (api container): `MACHINE_GRPC_ENABLED`, `GRPC_ADDR`, `GRPC_BEHIND_TLS_PROXY`, `GRPC_PUBLIC_BASE_URL`
 - managed/shared state: `DATABASE_URL`, `NATS_URL`, `MQTT_BROKER_URL`
 - optional managed cache: `REDIS_ADDR`, `REDIS_PASSWORD`
 - auth/app runtime: `APP_ENV`, `HTTP_AUTH_*`, `READINESS_STRICT`, `LOG_*`

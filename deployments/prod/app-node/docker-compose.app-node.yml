@@ -154,8 +154,10 @@ services:
       - "443:443"
     environment:
       API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env.app-node}
+      MACHINE_GRPC_DOMAIN: ${MACHINE_GRPC_DOMAIN:?set MACHINE_GRPC_DOMAIN in .env.app-node}
       CADDY_ACME_EMAIL: ${CADDY_ACME_EMAIL:?set CADDY_ACME_EMAIL in .env.app-node}
       UPSTREAM_API: ${UPSTREAM_API:-api:8080}
+      UPSTREAM_GRPC: ${UPSTREAM_GRPC:-h2c://api:9090}
     volumes:
       - ../shared/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
