@@ -21,7 +21,7 @@ norm_bool() {
 	case "${1:-}" in
 	1 | true | TRUE | yes | YES | on | ON) return 0 ;;
 	*) return 1 ;;
-	}
+	esac
 }
 
 set_env_kv() {
