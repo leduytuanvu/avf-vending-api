@@ -89,3 +89,19 @@ func TestService_CloudinaryConfigured_requiresUploader(t *testing.T) {
 	}
 	require.True(t, svc.CloudinaryConfigured())
 }
+
+func TestNewService_cloudinaryConfigWithoutPoolNotConfigured(t *testing.T) {
+	_, err := NewService(Deps{
+		Upload: config.MediaUploadConfig{
+			Enabled:  true,
+			Provider: "cloudinary",
+			Cloudinary: config.CloudinaryConfig{
+				CloudName: "demo",
+				APIKey:    "key",
+				APISecret: "secret",
+			},
+		},
+		Cloudinary: &fakeCloudinaryUploader{},
+	})
+	require.ErrorIs(t, err, ErrNotConfigured)
+}

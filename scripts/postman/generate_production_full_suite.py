@@ -336,9 +336,12 @@ PRODUCT_IMAGE_UPLOAD_TEST = [
     "  try {",
     "    const json = pm.response.json();",
     "    if (json.mediaId) pm.environment.set('mediaId', json.mediaId);",
-    "    pm.test('upload returns mediaId', function () {",
+    "    if (json.displayUrl) pm.environment.set('displayUrl', json.displayUrl);",
+    "    if (json.thumbnailUrl) pm.environment.set('thumbnailUrl', json.thumbnailUrl);",
+    "    pm.test('upload returns mediaId and URLs', function () {",
     "      pm.expect(json.mediaId).to.be.a('string').and.not.empty;",
     "      pm.expect(json.displayUrl).to.be.a('string').and.not.empty;",
+    "      pm.expect(json.thumbnailUrl).to.be.a('string').and.not.empty;",
     "    });",
     "  } catch (e) { /* ignore */ }",
     "}",
@@ -362,7 +365,7 @@ def patch_product_image_upload_item(item: dict) -> dict:
         "formdata": [
             {"key": "file", "type": "file", "src": [], "description": "Select local png/jpg/jpeg/webp/gif in Postman"},
             {"key": "purpose", "value": "product_image", "type": "text"},
-            {"key": "altText", "value": "Product image {{$timestamp}}", "type": "text"},
+            {"key": "altText", "value": "Sample product image", "type": "text"},
         ],
     }
     item["request"] = req

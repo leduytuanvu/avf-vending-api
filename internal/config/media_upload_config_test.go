@@ -28,3 +28,25 @@ func TestLoadMediaUploadConfig_missingSecretNotConfigured(t *testing.T) {
 	cfg := loadMediaUploadConfig()
 	require.False(t, cfg.CloudinaryConfigured())
 }
+
+func TestLoadMediaUploadConfig_fullCredentialsConfigured(t *testing.T) {
+	t.Setenv("MEDIA_PROVIDER", "cloudinary")
+	t.Setenv("MEDIA_UPLOAD_ENABLED", "true")
+	t.Setenv("CLOUDINARY_CLOUD_NAME", "demo")
+	t.Setenv("CLOUDINARY_API_KEY", "key123")
+	t.Setenv("CLOUDINARY_API_SECRET", "secret456")
+	t.Setenv("CLOUDINARY_FOLDER", "avf-vending/products")
+	cfg := loadMediaUploadConfig()
+	require.True(t, cfg.CloudinaryConfigured())
+	require.Equal(t, "avf-vending/products", cfg.Cloudinary.Folder)
+}
+
+func TestLoadMediaUploadConfig_placeholderCredentialsNotConfigured(t *testing.T) {
+	t.Setenv("MEDIA_PROVIDER", "cloudinary")
+	t.Setenv("MEDIA_UPLOAD_ENABLED", "true")
+	t.Setenv("CLOUDINARY_CLOUD_NAME", "your-cloudinary-cloud-name")
+	t.Setenv("CLOUDINARY_API_KEY", "your-cloudinary-api-key")
+	t.Setenv("CLOUDINARY_API_SECRET", "your-cloudinary-api-secret")
+	cfg := loadMediaUploadConfig()
+	require.False(t, cfg.CloudinaryConfigured())
+}

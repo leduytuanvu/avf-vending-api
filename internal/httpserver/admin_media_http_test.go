@@ -178,3 +178,25 @@ func TestWithCloudinaryUpload_notConfiguredReturns503(t *testing.T) {
 	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	require.Contains(t, rec.Body.String(), "capability_not_configured")
 }
+
+func TestMountAdminMediaRoutes_registersProductImagesRoutes(t *testing.T) {
+	t.Parallel()
+	r := chi.NewRouter()
+	mountAdminMediaRoutes(r, &api.HTTPApplication{MediaAdmin: nil}, nil)
+
+	var routes []string
+	require.NoError(t, chi.Walk(r, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+		routes = append(routes, method+" "+route)
+		return nil
+	}))
+	for _, want := range []string{"POST /product-images", "POST /media/product-images"} {
+		found := false
+		for _, got := range routes {
+			if got == want {
+				found = true
+				break
+			}
+		}
+		require.True(t, found, "missing %q in:\n%s", want, strings.Join(routes, "\n"))
+	}
+}

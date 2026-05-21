@@ -276,9 +276,27 @@ func (m MediaUploadConfig) CloudinaryConfigured() bool {
 		return false
 	}
 	c := m.Cloudinary
-	return strings.TrimSpace(c.CloudName) != "" &&
-		strings.TrimSpace(c.APIKey) != "" &&
-		strings.TrimSpace(c.APISecret) != ""
+	return cloudinaryCredentialConfigured(c.CloudName) &&
+		cloudinaryCredentialConfigured(c.APIKey) &&
+		cloudinaryCredentialConfigured(c.APISecret)
+}
+
+func cloudinaryCredentialConfigured(raw string) bool {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return false
+	}
+	lower := strings.ToLower(s)
+	switch {
+	case strings.HasPrefix(lower, "your-"):
+		return false
+	case strings.HasPrefix(lower, "change_me"):
+		return false
+	case lower == "replace_with_real_secret_locally":
+		return false
+	default:
+		return true
+	}
 }
 
 // HTTPAuthConfig configures Bearer JWT validation for /v1 (see internal/platform/auth).

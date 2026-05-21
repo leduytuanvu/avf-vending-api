@@ -12554,7 +12554,7 @@
                     },
                     {
                       "key": "altText",
-                      "value": "Product image {{$timestamp}}",
+                      "value": "Sample product image",
                       "type": "text"
                     }
                   ]
@@ -12621,9 +12621,12 @@
                       "  try {",
                       "    const json = pm.response.json();",
                       "    if (json.mediaId) pm.environment.set('mediaId', json.mediaId);",
-                      "    pm.test('upload returns mediaId', function () {",
+                      "    if (json.displayUrl) pm.environment.set('displayUrl', json.displayUrl);",
+                      "    if (json.thumbnailUrl) pm.environment.set('thumbnailUrl', json.thumbnailUrl);",
+                      "    pm.test('upload returns mediaId and URLs', function () {",
                       "      pm.expect(json.mediaId).to.be.a('string').and.not.empty;",
                       "      pm.expect(json.displayUrl).to.be.a('string').and.not.empty;",
+                      "      pm.expect(json.thumbnailUrl).to.be.a('string').and.not.empty;",
                       "    });",
                       "  } catch (e) { /* ignore */ }",
                       "}"

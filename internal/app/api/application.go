@@ -277,9 +277,10 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 			mediaDeps.MaxUploadBytes = deps.Artifacts.MaxUploadBytes()
 		}
 		if deps.MediaUpload.CloudinaryConfigured() {
-			if deps.CloudinaryUploader != nil {
-				mediaDeps.Cloudinary = deps.CloudinaryUploader
+			if deps.CloudinaryUploader == nil {
+				panic("api.NewHTTPApplication: MEDIA_PROVIDER=cloudinary is configured but CloudinaryUploader is nil")
 			}
+			mediaDeps.Cloudinary = deps.CloudinaryUploader
 			if mediaDeps.MaxUploadBytes <= 0 && deps.MediaUpload.MaxBytes > 0 {
 				mediaDeps.MaxUploadBytes = deps.MediaUpload.MaxBytes
 			}
