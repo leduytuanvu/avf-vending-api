@@ -170,7 +170,7 @@ func TestWriteMediaAdminError_notConfigured_returns503CapabilityNotConfigured(t 
 
 func TestWithCloudinaryUpload_notConfiguredReturns503(t *testing.T) {
 	t.Parallel()
-	h := withCloudinaryUpload(&api.HTTPApplication{MediaAdmin: nil}, func(_ *appmediaadmin.Service) http.HandlerFunc {
+	h := withCloudinaryUpload(&api.HTTPApplication{MediaAdmin: nil}, func(_ *api.HTTPApplication) http.HandlerFunc {
 		return func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
 	})
 	rec := httptest.NewRecorder()

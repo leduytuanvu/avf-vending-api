@@ -53,10 +53,15 @@ if norm_bool "${MEDIA_UPLOAD_ENABLED}"; then
 		echo "error: MEDIA_UPLOAD_ENABLED=true requires CLOUDINARY_API_SECRET (server-side secret; not logged)" >&2
 		exit 1
 	}
+	[[ -n "${MEDIA_COMPANY_ID:-}" ]] || {
+		echo "error: MEDIA_UPLOAD_ENABLED=true requires MEDIA_COMPANY_ID (stable non-nil UUID)" >&2
+		exit 1
+	}
 fi
 
 set_env_kv "MEDIA_PROVIDER" "${MEDIA_PROVIDER}"
 set_env_kv "MEDIA_UPLOAD_ENABLED" "$(norm_bool "${MEDIA_UPLOAD_ENABLED}" && printf true || printf false)"
+set_env_kv "MEDIA_COMPANY_ID" "${MEDIA_COMPANY_ID:-}"
 set_env_kv "CLOUDINARY_CLOUD_NAME" "${CLOUDINARY_CLOUD_NAME:-}"
 set_env_kv "CLOUDINARY_API_KEY" "${CLOUDINARY_API_KEY:-}"
 set_env_kv "CLOUDINARY_API_SECRET" "${CLOUDINARY_API_SECRET:-}"

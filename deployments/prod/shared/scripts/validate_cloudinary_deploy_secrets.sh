@@ -4,6 +4,7 @@
 #
 # Env (from GitHub Actions secrets or operator shell):
 #   MEDIA_UPLOAD_ENABLED (default true when PRODUCTION_SYNC_CLOUDINARY_ENV=1)
+#   MEDIA_COMPANY_ID (GitHub variable or secret; stable non-nil UUID)
 #   CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
 #   PRODUCTION_SYNC_CLOUDINARY_ENV — when 1, require full Cloudinary credential set
 set -euo pipefail
@@ -27,19 +28,21 @@ fi
 has_name="0"
 has_key="0"
 has_secret="0"
+has_company="0"
 is_set "${CLOUDINARY_CLOUD_NAME:-}" && has_name="1"
 is_set "${CLOUDINARY_API_KEY:-}" && has_key="1"
 is_set "${CLOUDINARY_API_SECRET:-}" && has_secret="1"
+is_set "${MEDIA_COMPANY_ID:-}" && has_company="1"
 
-partial=$((has_name + has_key + has_secret))
-if [[ "${partial}" -gt 0 && "${partial}" -lt 3 ]]; then
-	echo "error: Cloudinary credentials are partially set (need all of CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)" >&2
+partial=$((has_name + has_key + has_secret + has_company))
+if [[ "${partial}" -gt 0 && "${partial}" -lt 4 ]]; then
+	echo "error: Cloudinary media env is partially set (need MEDIA_COMPANY_ID, CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)" >&2
 	exit 1
 fi
 
 if [[ "${sync_enabled}" == "1" ]]; then
-	if [[ "${partial}" -ne 3 ]]; then
-		echo "error: PRODUCTION_SYNC_CLOUDINARY_ENV=1 requires all Cloudinary GitHub secrets" >&2
+	if [[ "${partial}" -ne 4 ]]; then
+		echo "error: PRODUCTION_SYNC_CLOUDINARY_ENV=1 requires MEDIA_COMPANY_ID and all Cloudinary GitHub secrets" >&2
 		exit 1
 	fi
 	if norm_bool "${MEDIA_UPLOAD_ENABLED:-true}"; then
@@ -50,8 +53,8 @@ if [[ "${sync_enabled}" == "1" ]]; then
 	exit 0
 fi
 
-if norm_bool "${MEDIA_UPLOAD_ENABLED:-false}" && [[ "${partial}" -ne 3 ]]; then
-	echo "error: MEDIA_UPLOAD_ENABLED=true requires complete Cloudinary credentials" >&2
+if norm_bool "${MEDIA_UPLOAD_ENABLED:-false}" && [[ "${partial}" -ne 4 ]]; then
+	echo "error: MEDIA_UPLOAD_ENABLED=true requires MEDIA_COMPANY_ID and complete Cloudinary credentials" >&2
 	exit 1
 fi
 
