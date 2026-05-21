@@ -160,16 +160,52 @@ Requires **ACTIVE** operator session on the machine. In production use **admin**
 
 ### Sale catalog (gRPC — production)
 
-REST is disabled when `MachineRESTLegacyEnabled=false`. Use **Machine JWT** metadata:
+REST is disabled when `MachineRESTLegacyEnabled=false`. Use **Machine JWT** metadata on the **machine gRPC public host** (`GRPC_PUBLIC_BASE_URL`, e.g. `grpcs://machine-api.<domain>:443`). The HTTP edge at `api.ldtv.dev` does **not** proxy gRPC — Caddy must expose a separate vhost (see `deployments/prod/examples/caddy-machine-grpc.Caddyfile.sample`).
+
+**Obtain `MACHINE_ACCESS_TOKEN` (runtime only — never commit):**
+
+1. Admin login — `POST /v1/auth/login`
+2. Create code — `POST /v1/admin/machines/{machineId}/activation-codes` (admin JWT)
+3. Claim — `POST /v1/setup/activation-codes/claim` (public; returns `machineToken`)
+   gRPC equivalent: `MachineAuthService/ClaimActivation` or `MachineActivationService/ClaimActivation`
+4. Optional refresh — gRPC `MachineTokenService/RefreshMachineToken` with `refresh_token`
+
+```powershell
+$env:MACHINE_ACCESS_TOKEN = "<from claim response machineToken>"
+$env:GRPC_TARGET = "machine-api.ldtv.dev:443"   # must resolve in DNS + Caddy h2c → api:9090
+```
 
 ```bash
-grpcurl -H "authorization: Bearer ${MACHINE_ACCESS_TOKEN}" \
+grpcurl \
+  -import-path proto \
+  -proto proto/avf/machine/v1/catalog.proto \
+  -proto proto/avf/machine/v1/common.proto \
+  -H "authorization: Bearer ${MACHINE_ACCESS_TOKEN}" \
   -d '{"machine_id":"<machineId>","include_images":true}' \
-  machine-api.ldtv.dev:443 \
+  "${GRPC_TARGET}" \
   avf.machine.v1.MachineCatalogService/SyncSaleCatalog
 ```
 
-Or `GetSaleCatalog` / `GetCatalogSnapshot` (aliases). Verify `snapshot.items[]` contains `product_id`, `sku`, `price_minor`, `primary_media.display_url`.
+`GetSaleCatalog` / `GetCatalogSnapshot` are aliases (same request/response). Expected shape:
+
+```json
+{
+  "snapshot": {
+    "machineId": "<uuid>",
+    "catalogVersion": "runtime_sale_catalog_v4:...",
+    "configVersion": 1,
+    "currency": "USD",
+    "items": [{
+      "slotCode": "A1",
+      "cabinetCode": "A",
+      "productId": "<uuid>",
+      "sku": "COCA-ACTIVE-...",
+      "priceMinor": 15000,
+      "primaryMedia": { "displayUrl": "https://res.cloudinary.com/...", "thumbUrl": "..." }
+    }]
+  }
+}
+```
 
 ## Common Errors
 
@@ -197,7 +233,8 @@ Or `GetSaleCatalog` / `GetCatalogSnapshot` (aliases). Verify `snapshot.items[]` 
 | Machine topology PUT | **PASS** (204) |
 | Planogram draft/publish | **PASS** (204 / 200) — `syncLegacyReadModel=false`; MQTT `machine_planogram_publish` dispatched |
 | Sale catalog REST | **BLOCKED** — `404` (`MachineRESTLegacyEnabled=false`) |
-| gRPC SyncSaleCatalog | **NOT RUN** — requires runtime `MACHINE_ACCESS_TOKEN` (machine JWT) |
+| gRPC SyncSaleCatalog | **BLOCKED** — machine gRPC not reachable from public internet (see below) |
+| gRPC GetSaleCatalog | **BLOCKED** — same endpoint blocker |
 
 ### IDs from last run (sanitized)
 
@@ -216,13 +253,56 @@ Or `GetSaleCatalog` / `GetCatalogSnapshot` (aliases). Verify `snapshot.items[]` 
 
 Planogram publish returned `command.commandId` with `dispatchState=published` and `command_type=machine_planogram_publish` (indirect — broker ACL not verified in this run).
 
-### Sale catalog contains product?
+## Machine gRPC Catalog Verification
 
-**Pending gRPC verify** — REST disabled; run `MachineCatalogService.SyncSaleCatalog` with machine JWT after publish.
+**Run:** 2026-05-21 UTC · same deploy as above · branch `test/production-machine-catalog-grpc`
 
-### Image URL in sale catalog?
+| Check | Result |
+|-------|--------|
+| `MACHINE_ACCESS_TOKEN` obtained | **yes** — admin activation code + `POST /v1/setup/activation-codes/claim` |
+| Token source | `admin_activation_code_claim` (REST; not legacy machine REST) |
+| Token expiry | ~24h from claim (sanitized) |
+| gRPC target tried | `machine-api.ldtv.dev:443`, `api.ldtv.dev:443`, `api.ldtv.dev:9090` |
+| SyncSaleCatalog | **BLOCKED** — endpoint unreachable |
+| GetSaleCatalog | **BLOCKED** — endpoint unreachable |
+| Catalog contains productId | **not verified** (RPC blocked) |
+| Catalog contains price | **not verified** |
+| Catalog contains slot | **not verified** |
+| Catalog contains image URL / mediaId | **not verified** |
 
-**Pending gRPC verify**
+### Blocker detail
+
+Production API reports `MACHINE_GRPC_ENABLED` wiring (`GRPC_ADDR=:9090`, `GRPC_BEHIND_TLS_PROXY=true`) but **no public machine gRPC edge** is reachable from this runner:
+
+- `machine-api.ldtv.dev` — **DNS NXDOMAIN** (no A/AAAA record)
+- `api.ldtv.dev:443` + gRPC — **404 / Unimplemented** (Caddy `deployments/prod/shared/Caddyfile` proxies HTTP only to `:8080`, not h2c to `:9090`)
+- `api.ldtv.dev:9090` — **connection timeout** (port not exposed)
+
+**Fix (ops, not app code):** Add DNS + Caddy vhost per `deployments/prod/examples/caddy-machine-grpc.Caddyfile.sample`, set `GRPC_PUBLIC_BASE_URL=grpcs://machine-api.ldtv.dev:443`, re-run `SyncSaleCatalog`.
+
+### Code sources inspected
+
+| Area | Files |
+|------|--------|
+| Catalog RPC | `proto/avf/machine/v1/catalog.proto`, `internal/grpcserver/machine_catalog_grpc.go` |
+| Machine auth | `proto/avf/machine/v1/auth.proto`, `proto/avf/machine/v1/machine_activation.proto`, `internal/httpserver/activation_http.go` |
+| Token claim | `POST /v1/setup/activation-codes/claim`, `POST /v1/admin/machines/{id}/activation-codes` |
+| Catalog build | `internal/app/salecatalog/service.go` — reads published planogram slots (no machine ACK required for snapshot) |
+
+### MQTT / command apply (prior run)
+
+Planogram publish returned `commandId=019e4c17-ff9c-70a6-bff4-9e8163928cc7`, `dispatchState=published`, `machine_planogram_publish`. Server-side sale catalog projection uses **published planogram** (`bootstrap.CurrentCabinetSlots`), not machine ACK — once gRPC is reachable, product should appear without device ACK.
+
+### Canary IDs checked (when gRPC unblocked)
+
+| Field | Value |
+|-------|--------|
+| productId | `019e4c17-de65-71c4-b0ab-3013619b2e8c` |
+| primaryMediaId | `019e4c17-d4aa-7c3e-b047-855575ae63c4` |
+| sku prefix | `COCA-ACTIVE` |
+| machineId | `55555555-5555-5555-5555-555555555555` |
+| expected priceMinor | `15000` |
+| expected slot | `A1` / cabinet `A` |
 
 ## Postman fixes applied
 
