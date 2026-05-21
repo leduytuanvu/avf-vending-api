@@ -167,11 +167,11 @@ func (s *Service) UploadProductImageFile(ctx context.Context, in UploadProductIm
 	s.bumpCache(ctx, in.CompanyID)
 	mid := row.ID.String()
 	s.auditRecord(ctx, in.CompanyID, compliance.ActionMediaCreated, "media.asset", &mid, map[string]any{
-		"phase":             "cloudinary_upload",
-		"kind":              "product_image",
-		"status":            "ready",
-		"source_type":       "cloudinary",
-		"storage_provider":  "cloudinary",
+		"phase":              "cloudinary_upload",
+		"kind":               "product_image",
+		"status":             "ready",
+		"source_type":        "cloudinary",
+		"storage_provider":   "cloudinary",
 		"provider_public_id": upResult.PublicID,
 	})
 

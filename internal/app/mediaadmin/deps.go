@@ -34,7 +34,7 @@ type Deps struct {
 	Upload config.MediaUploadConfig
 	// Cloudinary optional server-side uploader (nil disables multipart upload).
 	Cloudinary ProductImageFileUploader
-	AppEnv   string
+	AppEnv     string
 	// RemoteProbe optional override for integration tests (nil uses SSRF-safe HEAD/GET probe).
 	RemoteProbe func(ctx context.Context, imageURL, expectedMIME string, cfg config.ExternalProductImageConfig) error
 }
