@@ -138,7 +138,7 @@ func postAdminPriceBookCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -194,7 +194,7 @@ func postAdminPriceBookCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func getAdminPriceBookDetail(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -224,7 +224,7 @@ func patchAdminPriceBook(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -269,7 +269,7 @@ func postAdminPriceBookDeactivate(svc *appcatalogadmin.Service, app *api.HTTPApp
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -312,7 +312,7 @@ func postAdminPriceBookActivate(svc *appcatalogadmin.Service, app *api.HTTPAppli
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -355,7 +355,7 @@ func postAdminPriceBookArchive(svc *appcatalogadmin.Service, app *api.HTTPApplic
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -399,7 +399,7 @@ func getAdminPriceBookItems(svc *appcatalogadmin.Service) http.HandlerFunc {
 		PriceBookID    string `json:"priceBookId"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -437,7 +437,7 @@ func putAdminPriceBookItems(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -479,7 +479,7 @@ func patchAdminPriceBookItem(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -521,7 +521,7 @@ func deleteAdminPriceBookItem(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -551,7 +551,7 @@ func postAdminPriceBookAssignTarget(svc *appcatalogadmin.Service) http.HandlerFu
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -610,7 +610,7 @@ func deleteAdminPriceBookTarget(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -636,7 +636,7 @@ func deleteAdminPriceBookTarget(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func postAdminPricingPreview(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
