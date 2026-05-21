@@ -31,6 +31,7 @@ type Service struct {
 	maxBytes int64
 	cache    CatalogMediaCacheBumper
 	external config.ExternalProductImageConfig
+	remoteProbe func(ctx context.Context, imageURL, expectedMIME string, cfg config.ExternalProductImageConfig) error
 }
 
 // NewService returns a media pipeline service. Store may be nil when only external URL registration is enabled.
@@ -64,6 +65,7 @@ func NewService(d Deps) (*Service, error) {
 		maxBytes: maxB,
 		cache:    d.Cache,
 		external: d.External,
+		remoteProbe: d.RemoteProbe,
 	}, nil
 }
 

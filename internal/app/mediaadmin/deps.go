@@ -30,4 +30,6 @@ type Deps struct {
 	Cache            CatalogMediaCacheBumper
 	// External configures HTTPS external product image URL registration (independent of Store).
 	External config.ExternalProductImageConfig
+	// RemoteProbe optional override for integration tests (nil uses SSRF-safe HEAD/GET probe).
+	RemoteProbe func(ctx context.Context, imageURL, expectedMIME string, cfg config.ExternalProductImageConfig) error
 }

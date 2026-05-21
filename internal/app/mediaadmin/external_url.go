@@ -121,7 +121,11 @@ func (s *Service) RegisterExternalProductImage(ctx context.Context, in RegisterE
 		return nil, err
 	}
 
-	if err := probeExternalImageHEAD(ctx, normalized.String(), contentType, s.external); err != nil {
+	probe := probeExternalImageHEAD
+	if s.remoteProbe != nil {
+		probe = s.remoteProbe
+	}
+	if err := probe(ctx, normalized.String(), contentType, s.external); err != nil {
 		return nil, err
 	}
 
