@@ -332,19 +332,27 @@ def patch_request_item(item: dict) -> dict:
 
 
 PRODUCT_IMAGE_UPLOAD_TEST = [
-    "if (pm.response.code === 201 || pm.response.code === 200) {",
-    "  try {",
-    "    const json = pm.response.json();",
-    "    if (json.mediaId) pm.environment.set('mediaId', json.mediaId);",
-    "    if (json.displayUrl) pm.environment.set('displayUrl', json.displayUrl);",
-    "    if (json.thumbnailUrl) pm.environment.set('thumbnailUrl', json.thumbnailUrl);",
-    "    pm.test('upload returns mediaId and URLs', function () {",
-    "      pm.expect(json.mediaId).to.be.a('string').and.not.empty;",
-    "      pm.expect(json.displayUrl).to.be.a('string').and.not.empty;",
-    "      pm.expect(json.thumbnailUrl).to.be.a('string').and.not.empty;",
-    "    });",
-    "  } catch (e) { /* ignore */ }",
-    "}",
+    "const json = pm.response.json();",
+    "",
+    "pm.test('product image upload success', function () {",
+    "  pm.expect([200, 201]).to.include(pm.response.code);",
+    "});",
+    "",
+    "const mediaId = json.mediaId || json.id || (json.media && (json.media.mediaId || json.media.id));",
+    "const displayUrl = json.displayUrl || json.url || (json.media && (json.media.displayUrl || json.media.url));",
+    "const thumbnailUrl = json.thumbnailUrl || (json.media && json.media.thumbnailUrl);",
+    "",
+    "pm.test('media id exists', function () {",
+    "  pm.expect(mediaId).to.be.a('string').and.not.empty;",
+    "});",
+    "",
+    "pm.test('display url exists', function () {",
+    "  pm.expect(displayUrl).to.be.a('string').and.not.empty;",
+    "});",
+    "",
+    "pm.environment.set('mediaId', mediaId);",
+    "pm.environment.set('productImageDisplayUrl', displayUrl);",
+    "if (thumbnailUrl) pm.environment.set('productImageThumbnailUrl', thumbnailUrl);",
 ]
 
 
@@ -366,6 +374,13 @@ def patch_product_image_upload_item(item: dict) -> dict:
             {"key": "file", "type": "file", "src": [], "description": "Select local png/jpg/jpeg/webp/gif in Postman"},
             {"key": "purpose", "value": "product_image", "type": "text"},
             {"key": "altText", "value": "Sample product image", "type": "text"},
+            {
+                "key": "company_id",
+                "value": "{{mediaCompanyId}}",
+                "type": "text",
+                "disabled": True,
+                "description": "Optional legacy override only. Backend resolves MEDIA_COMPANY_ID server-side.",
+            },
         ],
     }
     item["request"] = req

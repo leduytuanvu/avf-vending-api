@@ -63,6 +63,14 @@ func (s *Service) CloudinaryConfigured() bool {
 	return s != nil && s.cloudinary != nil && s.uploadCfg.CloudinaryConfigured()
 }
 
+// ConfiguredMediaCompanyID returns the stable server-side MEDIA_COMPANY_ID when set.
+func (s *Service) ConfiguredMediaCompanyID() uuid.UUID {
+	if s == nil {
+		return uuid.Nil
+	}
+	return s.uploadCfg.CompanyID
+}
+
 // UploadProductImageFile validates, uploads to Cloudinary, persists media_assets, optionally binds product.
 func (s *Service) UploadProductImageFile(ctx context.Context, in UploadProductImageFileInput) (*UploadProductImageFileResult, error) {
 	if s == nil || s.pool == nil {
