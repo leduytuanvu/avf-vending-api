@@ -210,7 +210,8 @@ Grouped by **module/domain** folders in the collection (not by business flow).
   - Expected 200: `{"complete_path": "/v1/admin/media/11111111-2222-3333-4444-555555555555/complete", "expires_at": "2026-04-19T13:00:00Z",`
 - `POST /v1/admin/media/uploads/init` — Start enterprise media upload (camelCase contract)
   - Request: `{"contentType": "image/png", "filename": "coca-330ml.png", "purpose": "product_image"}`
-  - Expected 200: `{"completePath": "/v1/admin/media/uploads/11111111-2222-3333-4444-555555555555/complete", "mediaId": "11111111-2222-3333`
+  - Expected **200** when object storage is configured (`API_ARTIFACTS_ENABLED` / `OBJECT_STORAGE_ENABLED`): `{"mediaId","uploadUrl","objectKey","status":"pending","completePath"}`
+  - Expected **503** `capability_not_configured` (`details.capability`: `admin.media`) when object storage is **not** configured — **not** raw 404
 - `POST /v1/admin/media/uploads/{mediaId}/complete` — Finalize media upload (uploads/{mediaId}/complete alias)
   - Request: `{"contentType": "image/png", "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "sizeBytes": `
   - Expected 200: `{"id": "11111111-2222-3333-4444-555555555555", "status": "ready", "variants": [{"downloadUrl": "https://cdn.example.com/`
@@ -1217,6 +1218,12 @@ Request/response schema issues: 0 (derived from OpenAPI/proto/MQTT matrix)
 5. After re-send, confirm `X-Request-ID` in the response or console changes (proves a new GUID was sent).
 6. If it still fails, open **Postman Console** (View → Show Postman Console) and inspect the **actual sent headers** — the resolved `Idempotency-Key` must be non-empty.
 7. Do not rely on `{{_runtimeIdempotencyKey}}`; it may be empty if pre-request scripts did not run.
+
+### 404 page not found on admin media upload
+
+If `POST /v1/admin/media/uploads/init` returns raw **404 page not found**, the route was not mounted (older API builds). Current builds always mount documented media routes:
+- **503** `capability_not_configured` when object storage is disabled
+- **200** when `API_ARTIFACTS_ENABLED=true` (or `OBJECT_STORAGE_ENABLED=true`) with valid `OBJECT_STORAGE_*` env
 
 ## Why some requests have [GATED-WRITE]
 

@@ -21,30 +21,41 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const adminMediaCapabilityMsg = "enterprise media pipeline requires API_ARTIFACTS_ENABLED object storage"
+
+func withMediaAdmin(app *api.HTTPApplication, fn func(*appmediaadmin.Service) http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app == nil || app.MediaAdmin == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "admin.media", adminMediaCapabilityMsg)
+			return
+		}
+		fn(app.MediaAdmin)(w, r)
+	}
+}
+
 func mountAdminMediaRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
-	if app == nil || app.MediaAdmin == nil {
+	if app == nil {
 		return
 	}
 	if writeRL == nil {
 		writeRL = func(h http.Handler) http.Handler { return h }
 	}
-	svc := app.MediaAdmin
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaRead, auth.PermCatalogRead))
-		r.Get("/media", listAdminMedia(svc))
-		r.Get("/media/assets", listAdminMedia(svc))
-		r.Get("/media/{mediaId}", getAdminMedia(svc))
-		r.Get("/media/assets/{mediaId}", getAdminMedia(svc))
+		r.Get("/media", withMediaAdmin(app, listAdminMedia))
+		r.Get("/media/assets", withMediaAdmin(app, listAdminMedia))
+		r.Get("/media/{mediaId}", withMediaAdmin(app, getAdminMedia))
+		r.Get("/media/assets/{mediaId}", withMediaAdmin(app, getAdminMedia))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaWrite, auth.PermCatalogWrite))
-		r.With(writeRL).Post("/media/assets", postAdminMediaUploadInitLegacy(svc))
-		r.With(writeRL).Post("/media/uploads/init", postAdminMediaUploadInitV2(svc))
-		r.With(writeRL).Post("/media/uploads/{mediaId}/complete", postAdminMediaUploadComplete(svc))
-		r.With(writeRL).Post("/media/uploads", postAdminMediaUploadInitLegacy(svc))
-		r.With(writeRL).Post("/media/{mediaId}/complete", postAdminMediaUploadComplete(svc))
-		r.With(writeRL).Delete("/media/{mediaId}", deleteAdminMedia(svc))
-		r.With(writeRL).Delete("/media/assets/{mediaId}", deleteAdminMedia(svc))
+		r.With(writeRL).Post("/media/assets", withMediaAdmin(app, postAdminMediaUploadInitLegacy))
+		r.With(writeRL).Post("/media/uploads/init", withMediaAdmin(app, postAdminMediaUploadInitV2))
+		r.With(writeRL).Post("/media/uploads/{mediaId}/complete", withMediaAdmin(app, postAdminMediaUploadComplete))
+		r.With(writeRL).Post("/media/uploads", withMediaAdmin(app, postAdminMediaUploadInitLegacy))
+		r.With(writeRL).Post("/media/{mediaId}/complete", withMediaAdmin(app, postAdminMediaUploadComplete))
+		r.With(writeRL).Delete("/media/{mediaId}", withMediaAdmin(app, deleteAdminMedia))
+		r.With(writeRL).Delete("/media/assets/{mediaId}", withMediaAdmin(app, deleteAdminMedia))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermMediaRead, auth.PermCatalogRead))
@@ -82,6 +93,8 @@ func writeMediaAdminError(w http.ResponseWriter, ctx context.Context, err error)
 	switch {
 	case err == nil:
 		return
+	case errors.Is(err, appmediaadmin.ErrNotConfigured):
+		writeCapabilityNotConfigured(w, ctx, "admin.media", adminMediaCapabilityMsg)
 	case errors.Is(err, appmediaadmin.ErrNotFound):
 		writeAPIError(w, ctx, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, appmediaadmin.ErrInvalidArgument):
