@@ -164,7 +164,7 @@ func postAdminMediaUploadInitLegacy(svc *appmediaadmin.Service) http.HandlerFunc
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, svc)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -201,7 +201,7 @@ func postAdminMediaUploadInitV2(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, svc)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -243,7 +243,7 @@ func postAdminMediaUploadComplete(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, svc)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -310,7 +310,7 @@ func listAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, svc)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -366,7 +366,7 @@ func getAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, svc)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -397,7 +397,7 @@ func deleteAdminMedia(svc *appmediaadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, svc)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -516,7 +516,7 @@ func bindAdminProductMedia(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, app.MediaAdmin)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -568,7 +568,7 @@ func deleteAdminProductMedia(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, app.MediaAdmin)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -608,7 +608,7 @@ func listAdminProductImages(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, app.MediaAdmin)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -662,7 +662,7 @@ func patchAdminProductImage(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, app.MediaAdmin)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -719,7 +719,7 @@ func deleteAdminProductImageByID(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", "unauthenticated")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, app.MediaAdmin)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
@@ -882,7 +882,7 @@ func postAdminExternalProductImage(app *api.HTTPApplication) http.HandlerFunc {
 			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media.external_images", "external product image URLs are not configured for this process")
 			return
 		}
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, app.MediaAdmin)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "company_scope_required", err.Error())
 			return

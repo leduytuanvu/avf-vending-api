@@ -61,3 +61,45 @@ func TestResolveProductImageCompanyID_missingConfiguration(t *testing.T) {
 	_, err := resolveProductImageCompanyID(req, p, svc)
 	require.ErrorIs(t, err, errMediaCompanyNotConfigured)
 }
+
+func TestRequireCatalogPrincipalUUID_usesConfiguredMediaCompanyID(t *testing.T) {
+	t.Parallel()
+	companyID := uuid.MustParse("0194a1b2-c3d4-7890-abcd-ef1234567890")
+	svc := testMediaAdminWithCompanyID(t, companyID)
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/products", nil)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{Roles: []string{auth.RoleOrgAdmin}}))
+
+	got, err := requireCatalogPrincipalUUID(req, svc)
+	require.NoError(t, err)
+	require.Equal(t, companyID, got)
+}
+
+func TestRequireCatalogPrincipalUUID_missingPrincipal(t *testing.T) {
+	t.Parallel()
+	svc := testMediaAdminWithCompanyID(t, uuid.MustParse("0194a1b2-c3d4-7890-abcd-ef1234567890"))
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/products", nil)
+
+	_, err := requireCatalogPrincipalUUID(req, svc)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "missing principal")
+}
+
+func TestRequireCatalogPrincipalUUID_nilMediaSvcLegacy(t *testing.T) {
+	t.Parallel()
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/products", nil)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{Roles: []string{auth.RoleOrgAdmin}}))
+
+	got, err := requireCatalogPrincipalUUID(req, nil)
+	require.NoError(t, err)
+	require.Equal(t, uuid.Nil, got)
+}
+
+func TestRequireCatalogMediaCompanyScope_requiresConfiguration(t *testing.T) {
+	t.Parallel()
+	svc := testMediaAdminWithCompanyID(t, uuid.Nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/admin/products", nil)
+	req = req.WithContext(auth.WithPrincipal(req.Context(), auth.Principal{Roles: []string{auth.RoleOrgAdmin}}))
+
+	_, err := requireCatalogMediaCompanyScope(req, svc)
+	require.ErrorIs(t, err, errMediaCompanyNotConfigured)
+}

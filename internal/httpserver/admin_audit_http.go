@@ -28,7 +28,7 @@ func mountAdminAuditRoutes(r chi.Router, app *api.HTTPApplication) {
 
 func getAdminAuditEvents(svc *appaudit.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -107,7 +107,7 @@ func getAdminAuditEvents(svc *appaudit.Service) http.HandlerFunc {
 
 func getAdminOrgAuditEventByID(svc *appaudit.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())

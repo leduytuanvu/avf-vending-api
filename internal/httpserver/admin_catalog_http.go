@@ -80,7 +80,7 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 func listAdminProducts(app *api.HTTPApplication) http.HandlerFunc {
 	svc := app.CatalogAdmin
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, app.MediaAdmin)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -174,7 +174,7 @@ func listAdminProducts(app *api.HTTPApplication) http.HandlerFunc {
 func getAdminProduct(app *api.HTTPApplication) http.HandlerFunc {
 	svc := app.CatalogAdmin
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, app.MediaAdmin)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -200,7 +200,7 @@ func getAdminProduct(app *api.HTTPApplication) http.HandlerFunc {
 
 func listAdminPriceBooks(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -240,7 +240,7 @@ func listAdminPriceBooks(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminPlanograms(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -274,7 +274,7 @@ func listAdminPlanograms(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -321,7 +321,7 @@ func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminBrands(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -358,7 +358,7 @@ func listAdminBrands(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminCategories(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
@@ -395,7 +395,7 @@ func listAdminCategories(svc *appcatalogadmin.Service) http.HandlerFunc {
 
 func listAdminTags(svc *appcatalogadmin.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID, err := requireCatalogPrincipalUUID(r)
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
 		_ = scopeID
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
