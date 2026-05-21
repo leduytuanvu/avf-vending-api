@@ -213,8 +213,8 @@ Verify `snapshot.items[]`: `product_id`, `sku`, `price_minor`, `slot_code`, `pri
 | Machine topology PUT | **PASS** (204) |
 | Planogram draft/publish | **PASS** (204 / 200) — `syncLegacyReadModel=false`; MQTT `machine_planogram_publish` dispatched |
 | Sale catalog REST | **BLOCKED** — `404` (`MachineRESTLegacyEnabled=false`) |
-| gRPC SyncSaleCatalog | **BLOCKED_EDGE** — Caddy vhost pending deploy + DNS (see below) |
-| gRPC GetSaleCatalog | **BLOCKED_EDGE** — same |
+| gRPC SyncSaleCatalog | **BLOCKED_DNS_PENDING** — Caddy deployed; DNS NXDOMAIN |
+| gRPC GetSaleCatalog | **BLOCKED_DNS_PENDING** — same |
 
 ### IDs from last run (sanitized)
 
@@ -239,33 +239,56 @@ Planogram publish returned `command.commandId` with `dispatchState=published` an
 
 ## Machine gRPC Edge Verification
 
-**Run:** 2026-05-21 UTC · fix branch `fix/prod-machine-grpc-edge`
+**Run:** 2026-05-21 UTC · main `348220412aaa10205068277115f65fd1bf3b89e0` · deploy [26253083954](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26253083954)
 
 | Check | Result |
 |-------|--------|
-| DNS `machine-api.ldtv.dev` | **NXDOMAIN** (A/AAAA not configured) |
-| Caddy machine gRPC vhost in repo | **yes** — `deployments/prod/shared/Caddyfile` |
-| Caddy vhost deployed to production | **pending** merge + deploy |
-| `MACHINE_ACCESS_TOKEN` (activation claim) | **yes** |
+| PR #273 (Caddy gRPC vhost) | **MERGED** → develop → main (#274, #276) |
+| PR #275 (env default + sync) | **MERGED** — fixes rollout `MACHINE_GRPC_DOMAIN` missing |
+| Build run | [26252740198](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26252740198) |
+| Security Release | [26252968900](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26252968900) |
+| Deploy run | [26253083954](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26253083954) **SUCCESS** |
+| `run_migration` | **false** |
+| APP_IMAGE | `ghcr.io/leduytuanvu/avf-vending-api@sha256:55c5c14d0a9ad39431f0bf256dd95818e6141e01cc892856a1023b659446fb17` |
+| DNS `api.ldtv.dev` | `72.62.244.94` |
+| DNS `machine-api.ldtv.dev` | **NXDOMAIN** — A record not configured |
+| Caddy vhost deployed | **yes** (deploy sync + rollout PASS) |
+| REST `/health/live` | **200** |
+| `MACHINE_ACCESS_TOKEN` (activation claim) | **yes** (token redacted) |
 | gRPC target | `machine-api.ldtv.dev:443` |
-| SyncSaleCatalog | **BLOCKED_EDGE** / **BLOCKED_DNS_PENDING** |
-| GetSaleCatalog | **BLOCKED_EDGE** / **BLOCKED_DNS_PENDING** |
-| productId present | not verified |
+| SyncSaleCatalog | **BLOCKED_DNS_PENDING** |
+| GetSaleCatalog | **BLOCKED_DNS_PENDING** |
+| productId `019e4c17-de65-71c4-b0ab-3013619b2e8c` | not verified |
 | priceMinor=15000 | not verified |
 | slot A1 | not verified |
 | Cloudinary media URL | not verified |
 
-### Ops checklist (after merge)
+**First deploy attempt** [26251651410](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26251651410) failed: server `.env.app-node` lacked `MACHINE_GRPC_DOMAIN` (fixed in PR #275).
 
-1. DNS: `machine-api.ldtv.dev` → production VPS IP (same as `api.ldtv.dev`)
-2. Deploy app-node with updated `shared/Caddyfile` + env: `MACHINE_GRPC_DOMAIN`, `GRPC_PUBLIC_BASE_URL=grpcs://machine-api.ldtv.dev:443`
-3. Reload Caddy; confirm ACME cert for `machine-api.ldtv.dev`
-4. Internal smoke (on app VPS Docker network): `grpcurl -plaintext api:9090 grpc.health.v1.Health/Check`
-5. External: `SyncSaleCatalog` with machine JWT — verify canary `019e4c17-de65-71c4-b0ab-3013619b2e8c`
+### Remaining ops step (DNS)
+
+Add DNS **before** external gRPC verify can PASS:
+
+```
+machine-api.ldtv.dev  A  72.62.244.94
+```
+
+Verify: `dig +short machine-api.ldtv.dev` → `72.62.244.94`
+
+Then re-run (runtime token only):
+
+```powershell
+$env:MACHINE_ACCESS_TOKEN = "<from activation claim>"
+$env:GRPC_TARGET = "machine-api.ldtv.dev:443"
+grpcurl -import-path proto -proto proto/avf/machine/v1/catalog.proto -proto proto/avf/machine/v1/common.proto `
+  -H "authorization: Bearer $env:MACHINE_ACCESS_TOKEN" `
+  -d '{"machine_id":"55555555-5555-5555-5555-555555555555","include_images":true}' `
+  $env:GRPC_TARGET avf.machine.v1.MachineCatalogService/SyncSaleCatalog
+```
 
 ### Image URL in sale catalog?
 
-**Pending gRPC verify** after edge + DNS.
+**Pending gRPC verify** — blocked on DNS only; server edge is deployed.
 
 ## Postman fixes applied
 
