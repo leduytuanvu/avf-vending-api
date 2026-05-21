@@ -21,6 +21,18 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const adminMediaCapabilityMsg = "enterprise media pipeline requires API_ARTIFACTS_ENABLED object storage"
+
+func withMediaAdmin(app *api.HTTPApplication, fn func(*appmediaadmin.Service) http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app == nil || app.MediaAdmin == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "admin.media", adminMediaCapabilityMsg)
+			return
+		}
+		fn(app.MediaAdmin)(w, r)
+	}
+}
+
 func mountAdminMediaRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
 	if writeRL == nil {
 		writeRL = func(h http.Handler) http.Handler { return h }
@@ -47,19 +59,13 @@ func mountAdminMediaRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(
 
 type mediaAdminHandler func(*appmediaadmin.Service) http.HandlerFunc
 
-func withMediaAdmin(app *api.HTTPApplication, h mediaAdminHandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if app == nil || app.MediaAdmin == nil {
-			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media", "media admin service is not configured for this process")
-			return
-		}
-		h(app.MediaAdmin)(w, r)
-	}
-}
-
 func withMediaUpload(app *api.HTTPApplication, h mediaAdminHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if app == nil || app.MediaAdmin == nil || !app.MediaAdmin.UploadConfigured() {
+		if app == nil || app.MediaAdmin == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "admin.media", adminMediaCapabilityMsg)
+			return
+		}
+		if !app.MediaAdmin.UploadConfigured() {
 			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media.upload", "object storage media upload is not configured for this process")
 			return
 		}
@@ -95,14 +101,14 @@ func writeMediaAdminError(w http.ResponseWriter, ctx context.Context, err error)
 	switch {
 	case err == nil:
 		return
+	case errors.Is(err, appmediaadmin.ErrNotConfigured):
+		writeCapabilityNotConfigured(w, ctx, "admin.media", adminMediaCapabilityMsg)
 	case errors.Is(err, appmediaadmin.ErrNotFound):
 		writeAPIError(w, ctx, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, appmediaadmin.ErrInvalidArgument):
 		writeAPIError(w, ctx, http.StatusBadRequest, "invalid_argument", err.Error())
 	case errors.Is(err, appmediaadmin.ErrConflict):
 		writeAPIError(w, ctx, http.StatusConflict, "conflict", err.Error())
-	case errors.Is(err, appmediaadmin.ErrNotConfigured):
-		writeCapabilityNotConfigured(w, ctx, "v1.admin.media", "media admin service is not configured for this process")
 	case errors.Is(err, appmediaadmin.ErrUploadNotConfigured):
 		writeCapabilityNotConfigured(w, ctx, "v1.admin.media.upload", "object storage media upload is not configured for this process")
 	case errors.Is(err, appmediaadmin.ErrExternalNotConfigured):
