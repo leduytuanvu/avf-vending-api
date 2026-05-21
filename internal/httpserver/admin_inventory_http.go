@@ -21,6 +21,7 @@ import (
 	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	appmw "github.com/avf/avf-vending-api/internal/middleware"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
@@ -54,6 +55,7 @@ func mountAdminInventoryRoutes(r chi.Router, app *api.HTTPApplication, writeRL f
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermInventoryWrite))
+		r.With(writeRL).Post("/machines/{machineId}/operator-sessions/start", postAdminMachineOperatorSessionStart(app))
 		r.With(writeRL).Post("/machines/{machineId}/stock-adjustments", postAdminMachineStockAdjustments(app))
 		r.With(writeRL).Put("/machines/{machineId}/topology", putAdminMachineTopology(app))
 		r.With(writeRL).Put("/machines/{machineId}/planograms/draft", putAdminMachinePlanogramDraft(app))
@@ -924,6 +926,56 @@ func putAdminMachinePlanogramDraft(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func postAdminMachineOperatorSessionStart(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app == nil || app.MachineOperator == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "operator_sessions", "operator service is not configured for this API process")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil || machineID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		if _, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
+			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
+		p, ok := auth.PrincipalFromContext(r.Context())
+		if !ok {
+			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
+			return
+		}
+		if !p.HasRole(auth.RolePlatformAdmin) && !(uuid.Nil == uuid.Nil && p.HasRole(auth.RoleOrgAdmin)) {
+			writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "admin operator session start requires platform_admin or admin role")
+			return
+		}
+		body, ok := decodeOperatorLoginBody(w, r)
+		if !ok {
+			return
+		}
+		machine, ok := operatorFetchMachine(w, app.MachineOperator, r.Context(), machineID)
+		if !ok {
+			return
+		}
+		if body.ForceAdminTakeover && !sessionRevokeAllowed(p, machine) {
+			writeAPIError(w, r.Context(), http.StatusForbidden, "admin_takeover_forbidden", "force_admin_takeover requires company admin or platform admin")
+			return
+		}
+		sess, err := startOperatorSessionForLogin(r.Context(), app.MachineOperator, machineID, machine, p, body)
+		if err != nil {
+			authMethod := strings.TrimSpace(body.AuthMethod)
+			if authMethod == "" {
+				authMethod = domainoperator.AuthMethodOIDC
+			}
+			_ = recordLoginFailure(r.Context(), app.MachineOperator, machineID, authMethod, correlationUUIDFromRequest(r.Context()), loginFailureMetadata(err, appmw.CorrelationIDFromContext(r.Context())))
+			writeOperatorError(w, r.Context(), err)
+			return
+		}
+		writeJSON(w, http.StatusOK, V1OperatorSessionEnvelope{Session: sessionView(sess)})
 	}
 }
 
