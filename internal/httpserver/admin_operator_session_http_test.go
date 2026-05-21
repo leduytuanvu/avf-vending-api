@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
 	"github.com/avf/avf-vending-api/internal/app/api"
+	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
