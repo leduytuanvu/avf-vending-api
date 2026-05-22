@@ -16,7 +16,7 @@ import (
 	"golang.org/x/image/webp"
 )
 
-func validateProductImageFile(filename, contentType string, sizeBytes int64, peek []byte, cfg config.MediaUploadConfig) error {
+func validateProductImageFile(filename, contentType string, sizeBytes int64, peek []byte, cfg config.MediaUploadConfig) (string, error) {
 	allowed := cfg.AllowedTypes
 	if len(allowed) == 0 {
 		allowed = []string{"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -26,42 +26,71 @@ func validateProductImageFile(filename, contentType string, sizeBytes int64, pee
 		maxMB = 5
 	}
 	if sizeBytes <= 0 {
-		return invalidImageFile("file is empty", allowed, maxMB)
+		return "", invalidImageFile("file is empty", allowed, maxMB)
 	}
 	if cfg.MaxBytes > 0 && sizeBytes > cfg.MaxBytes {
-		return fileTooLarge(maxMB, allowed)
+		return "", fileTooLarge(maxMB, allowed)
 	}
 	fn := strings.TrimSpace(filename)
 	if fn == "" {
-		return invalidImageFile("filename is required", allowed, maxMB)
+		return "", invalidImageFile("filename is required", allowed, maxMB)
 	}
 	ext := strings.ToLower(strings.TrimSpace(path.Ext(fn)))
 	switch ext {
 	case ".jpg", ".jpeg", ".png", ".webp", ".gif":
 	default:
-		return invalidImageFile("unsupported file extension", allowed, maxMB)
-	}
-	ct := normalizeMIMEHeader(contentType)
-	if ct == "" {
-		ct = inferProductImageMIME(fn)
-	}
-	if ct == "" {
-		return invalidImageFile("content type is required", allowed, maxMB)
-	}
-	if !mimeAllowed(ct, allowed) {
-		return invalidImageFile("unsupported content type", allowed, maxMB)
+		return "", invalidImageFile("unsupported file extension", allowed, maxMB)
 	}
 	if len(peek) == 0 {
-		return invalidImageFile("unable to read file header", allowed, maxMB)
+		return "", invalidImageFile("unable to read file header", allowed, maxMB)
 	}
+	resolved, err := resolveProductImageContentType(contentType, fn, peek, allowed, maxMB)
+	if err != nil {
+		return "", err
+	}
+	if err := decodeImageConfig(peek, resolved); err != nil {
+		return "", invalidImageFile(err.Error(), allowed, maxMB)
+	}
+	return resolved, nil
+}
+
+func isGenericBinaryMIME(ct string) bool {
+	ct = normalizeMIMEHeader(ct)
+	return ct == "" || ct == "application/octet-stream"
+}
+
+// resolveProductImageContentType picks the effective image MIME type from the multipart
+// part header, magic-byte sniffing, and filename. Postman and other clients often send
+// application/octet-stream or omit the part Content-Type even for valid PNG/JPEG/WebP/GIF.
+func resolveProductImageContentType(headerType, filename string, peek []byte, allowed []string, maxMB int) (string, error) {
+	header := normalizeMIMEHeader(headerType)
 	detected := normalizeMIMEHeader(http.DetectContentType(peek))
-	if detected != "" && !mimeAllowed(detected, allowed) {
-		return invalidImageFile("file content does not match allowed image types", allowed, maxMB)
+
+	if isGenericBinaryMIME(header) {
+		if detected != "" && mimeAllowed(detected, allowed) {
+			return detected, nil
+		}
+		inferred := inferProductImageMIME(filename)
+		if inferred != "" && mimeAllowed(inferred, allowed) {
+			if err := decodeImageConfig(peek, inferred); err == nil {
+				return inferred, nil
+			}
+		}
+		return "", invalidImageFile("unsupported content type", allowed, maxMB)
 	}
-	if err := decodeImageConfig(peek, ct); err != nil {
-		return invalidImageFile(err.Error(), allowed, maxMB)
+
+	if mimeAllowed(header, allowed) {
+		if detected != "" && !isGenericBinaryMIME(detected) && !mimeAllowed(detected, allowed) {
+			return "", invalidImageFile("file content does not match allowed image types", allowed, maxMB)
+		}
+		return header, nil
 	}
-	return nil
+
+	if detected != "" && mimeAllowed(detected, allowed) {
+		return detected, nil
+	}
+
+	return "", invalidImageFile("unsupported content type", allowed, maxMB)
 }
 
 func inferProductImageMIME(name string) string {
