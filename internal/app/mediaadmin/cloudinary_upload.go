@@ -102,12 +102,9 @@ func (s *Service) UploadProductImageFile(ctx context.Context, in UploadProductIm
 	if size <= 0 {
 		size = int64(len(peek))
 	}
-	if err := validateProductImageFile(in.Filename, in.ContentType, size, peek, s.uploadCfg); err != nil {
+	contentType, err := validateProductImageFile(in.Filename, in.ContentType, size, peek, s.uploadCfg)
+	if err != nil {
 		return nil, err
-	}
-	contentType := normalizeMIMEHeader(in.ContentType)
-	if contentType == "" {
-		contentType = inferMIMEFromFilename(in.Filename)
 	}
 
 	hasher := sha256.New()
