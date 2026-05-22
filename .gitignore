@@ -13,6 +13,8 @@ tests/e2e/.env.production.destructive.local
 deployments/prod/**/.env.app-node
 deployments/prod/**/.env.data-node
 /repomix-output.xml
+/repomix-output*.xml
+/repopack-output*.xml
 /bin/
 /dist/
 /gen/
@@ -80,11 +82,17 @@ security-reports/
 migration-evidence/*.json
 *.sarif
 coverage.out
+coverage.html
 coverage.xml
 coverage/
+*.cov
 *.coverprofile
 *.coverage
+*.test.log
+test-results/
+junit.xml
 repomix-output.xml
+docs/reports/test/mqtt-full-coverage.json
 
 # Local logs and editor/session artifacts
 .cursor-*.log
@@ -123,6 +131,7 @@ newman/
 reports/newman/
 
 # Local deploy pipeline / build metadata scratch (gh run download, phase evidence)
+.tmp-*/
 .tmp-phase*/
 .tmp-image-metadata/
 .go-tmp/

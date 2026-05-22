@@ -1,0 +1,31 @@
+{
+  "$schema": "https://repomix.com/schemas/config.schema.json",
+  "output": {
+    "filePath": "repomix-output-slim.xml",
+    "style": "xml",
+    "removeComments": false,
+    "removeEmptyLines": true,
+    "showLineNumbers": true,
+    "topFilesLength": 20
+  },
+  "include": [],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "postman/suites/**",
+      "postman/generated/**",
+      "docs/swagger/swagger.json",
+      "docs/reports/**",
+      "docs/audits/**",
+      "docs/testing/production-e2e-input-audit.json",
+      "migration-evidence/**",
+      "scripts/test/**",
+      "tools/loadtest/**"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  }
+}

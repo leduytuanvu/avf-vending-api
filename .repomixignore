@@ -1,0 +1,83 @@
+# Repomix-only ignores for slim source-review exports.
+# Source files remain in git; this shrinks ChatGPT/review bundles only.
+
+# VCS / IDE / local scratch
+.git/
+.cursor/
+.idea/
+.vscode/
+
+# Local and generated scratch (also in .gitignore)
+.go-tmp/
+.tmp-*/
+.tmp-phase*/
+.tmp-image-metadata/
+tmp/
+temp/
+ci-reports/
+security-reports/
+.test-runs/
+.e2e-runs/
+newman/
+reports/newman/
+postman/**/newman/
+postman/**/newman-report/
+postman/reports/**
+!postman/reports/README.md
+
+# Repomix outputs
+repomix-output*.xml
+repopack-output*.xml
+
+# Build / coverage / logs
+bin/
+dist/
+build/
+gen/
+coverage.out
+coverage.html
+coverage/
+*.cov
+*.coverprofile
+*.coverage
+*.test.log
+test-results/
+junit.xml
+*.log
+*.dump
+*.bak
+*.old
+*.orig
+*.sarif
+
+# Large generated Postman/OpenAPI artifacts (canonical sources kept)
+postman/suites/
+postman/generated/
+postman/collections/*/
+postman/specs/
+postman/**/*.zip
+postman/**/*-report.html
+postman/**/*-report.json
+
+# Generated OpenAPI bundle (source: tools/build_openapi.py, proto/, internal/)
+docs/swagger/swagger.json
+
+# Historical verification/audit archives (active guides in docs/testing, docs/runbooks)
+docs/reports/
+docs/audits/
+docs/testing/_verify*.txt
+docs/testing/production-e2e-input-audit.json
+
+# Local deploy evidence downloads
+migration-evidence/
+deployment-evidence/local/
+prod-deploy-inputs*.json
+
+# Secrets / env (never export)
+.env
+.env.*
+*.pem
+*.key
+deployments/prod/**/.env*
+deployments/prod/.deploy/
+deployments/prod/backups/

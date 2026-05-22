@@ -8,4 +8,5 @@ Generated verification and readiness outputs (REST, gRPC, MQTT, E2E, Postman, fu
 | `REST_*`, `GRPC_*`, `MQTT_*`, `E2E_*` | Protocol verification |
 | `DATABASE_MIGRATION_VERIFICATION.md` | Migration verification |
 | `POSTMAN_*` | Postman collection/environment audits |
+| `EXTERNAL_PRODUCT_IMAGE_URL_FULL_TEST_FINAL.md` | External product image URL flow (final) |
 | `LOCAL_INFRA_BLOCKER.md`, `e2e-stabilization-final-report.md` | Local infra / E2E stabilization |
