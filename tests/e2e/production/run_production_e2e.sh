@@ -189,8 +189,13 @@ prod_e2e_route_matrix_pipeline() {
 }
 
 prod_e2e_generate_postman() {
-  export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  # Committed Postman must always reflect the full manifest; online payment exclusion is runtime-only.
+  local saved_exclude="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  unset PROD_E2E_EXCLUDE_ONLINE_PAYMENT
   prod_e2e_py "${PROD_E2E_REPO_ROOT}/postman/production/generate_postman_from_manifest.py"
+  local rc=$?
+  [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
+  return "${rc}"
 }
 
 prod_e2e_validate_postman_parity() {
@@ -357,7 +362,7 @@ prod_e2e_run_flows() {
   local eff="${EFFECTIVE_SUITE:-${SUITE}}"
   prod_e2e_run_flows_from_manifest "${PROD_E2E_SCRIPT_DIR}/e2e-manifest.yaml" || failures=$?
   if [[ "${eff}" == "rest" || "${eff}" == "all" ]]; then
-    if [[ -f "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-rest-coverage.yaml" ]]; then
+    if [[ -f "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-rest-coverage.yaml" && "${PROD_E2E_PREFLIGHT_ONLY:-}" != "1" ]]; then
       prod_e2e_refresh_admin_token || true
       local rf=0
       prod_e2e_run_flows_from_manifest "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-rest-coverage.yaml" || rf=$?
