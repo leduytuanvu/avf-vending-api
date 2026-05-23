@@ -7,6 +7,7 @@ prod_e2e_sync_postman_env() {
   local dst="${PROD_E2E_RUN_DIR}/postman/runtime.postman_environment.json"
   [[ -f "$src" ]] || { echo "missing Postman env: $src" >&2; return 1; }
   mkdir -p "${PROD_E2E_RUN_DIR}/postman"
+  export src dst
   prod_e2e_py -c "
 import json, os
 from pathlib import Path

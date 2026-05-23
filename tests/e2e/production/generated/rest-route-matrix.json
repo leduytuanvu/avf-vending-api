@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generated_at": "2026-05-23T08:20:24Z",
+  "generated_at": "2026-05-23T20:06:53Z",
   "swagger_source": ".tmp-swagger-prod.json",
-  "total_routes": 329,
+  "total_routes": 330,
   "routes": {
     "DELETE /v1/admin/artifacts/{artifactId}": {
       "method": "DELETE",
@@ -1508,14 +1508,12 @@
     "GET /v1/admin/refunds": {
       "method": "GET",
       "path": "/v1/admin/refunds",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0061"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "excluded by operator request: no online payment test",
       "postman": false,
       "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "List refund requests for company",
       "openapi_tags": [
         "Commerce"
@@ -1527,10 +1525,10 @@
       "path": "/v1/admin/refunds/{refundId}",
       "coverage": "documented_skip",
       "flow_ids": [],
-      "skip_reason": "No auto rule matched",
+      "skip_reason": "excluded by operator request: no online payment test",
       "postman": false,
       "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Get refund request by id",
       "openapi_tags": [
         "Commerce"
@@ -1542,7 +1540,7 @@
       "path": "/v1/admin/reports/cash",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0062"
+        "REST-COV-GET-0061"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1559,7 +1557,7 @@
       "path": "/v1/admin/reports/cash-collections/export.csv",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0063"
+        "REST-COV-GET-0062"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1576,7 +1574,7 @@
       "path": "/v1/admin/reports/commands",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0064"
+        "REST-COV-GET-0063"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1593,7 +1591,7 @@
       "path": "/v1/admin/reports/export",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0065"
+        "REST-COV-GET-0064"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1627,7 +1625,7 @@
       "path": "/v1/admin/reports/fills",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0066"
+        "REST-COV-GET-0065"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1644,7 +1642,7 @@
       "path": "/v1/admin/reports/inventory",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0067"
+        "REST-COV-GET-0066"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1659,43 +1657,43 @@
     "GET /v1/admin/reports/inventory-low-stock": {
       "method": "GET",
       "path": "/v1/admin/reports/inventory-low-stock",
-      "coverage": "success",
+      "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-REPORT-001"
+        "REST-COV-GET-0067"
       ],
       "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
       "openapi_summary": "Inventory low-stock report",
       "openapi_tags": [
         "Reporting"
       ],
-      "source": "manifest"
+      "source": "auto"
     },
     "GET /v1/admin/reports/machine-health": {
       "method": "GET",
       "path": "/v1/admin/reports/machine-health",
-      "coverage": "success",
+      "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-REPORT-002"
+        "REST-COV-GET-0068"
       ],
       "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
       "openapi_summary": "Machine health and offline report",
       "openapi_tags": [
         "Reporting"
       ],
-      "source": "manifest"
+      "source": "auto"
     },
     "GET /v1/admin/reports/machines": {
       "method": "GET",
       "path": "/v1/admin/reports/machines",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0068"
+        "REST-COV-GET-0069"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1712,7 +1710,7 @@
       "path": "/v1/admin/reports/payments",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0069"
+        "REST-COV-GET-0070"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1729,7 +1727,7 @@
       "path": "/v1/admin/reports/payments-summary/export.csv",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0070"
+        "REST-COV-GET-0071"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1746,7 +1744,7 @@
       "path": "/v1/admin/reports/products",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0071"
+        "REST-COV-GET-0072"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1763,7 +1761,7 @@
       "path": "/v1/admin/reports/reconciliation",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0072"
+        "REST-COV-GET-0073"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1795,14 +1793,12 @@
     "GET /v1/admin/reports/refunds": {
       "method": "GET",
       "path": "/v1/admin/reports/refunds",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0073"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "excluded by operator request: no online payment test",
       "postman": false,
       "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Refund report",
       "openapi_tags": [
         "Reporting"
@@ -1812,26 +1808,26 @@
     "GET /v1/admin/reports/sales": {
       "method": "GET",
       "path": "/v1/admin/reports/sales",
-      "coverage": "success",
+      "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-REPORT-005"
+        "REST-COV-GET-0074"
       ],
       "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
       "openapi_summary": "Company sales report",
       "openapi_tags": [
         "Reporting"
       ],
-      "source": "manifest"
+      "source": "auto"
     },
     "GET /v1/admin/reports/sales-summary/export.csv": {
       "method": "GET",
       "path": "/v1/admin/reports/sales-summary/export.csv",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0074"
+        "REST-COV-GET-0075"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1848,7 +1844,7 @@
       "path": "/v1/admin/reports/vends",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0075"
+        "REST-COV-GET-0076"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1865,7 +1861,7 @@
       "path": "/v1/admin/restock/suggestions",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0076"
+        "REST-COV-GET-0077"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1882,7 +1878,7 @@
       "path": "/v1/admin/rollouts",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0077"
+        "REST-COV-GET-0078"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1914,7 +1910,7 @@
       "path": "/v1/admin/sites",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0078"
+        "REST-COV-GET-0079"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1931,7 +1927,7 @@
       "path": "/v1/admin/sites/{siteId}",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0079"
+        "REST-COV-GET-0080"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1948,7 +1944,7 @@
       "path": "/v1/admin/system/outbox",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0080"
+        "REST-COV-GET-0081"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1965,7 +1961,7 @@
       "path": "/v1/admin/system/outbox/stats",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0081"
+        "REST-COV-GET-0082"
       ],
       "skip_reason": null,
       "postman": false,
@@ -1997,7 +1993,7 @@
       "path": "/v1/admin/system/retention/stats",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0082"
+        "REST-COV-GET-0083"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2014,7 +2010,7 @@
       "path": "/v1/admin/tags",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0083"
+        "REST-COV-GET-0084"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2031,7 +2027,7 @@
       "path": "/v1/admin/technician-assignments",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0084"
+        "REST-COV-GET-0085"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2063,7 +2059,7 @@
       "path": "/v1/admin/technicians",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0085"
+        "REST-COV-GET-0086"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2095,7 +2091,7 @@
       "path": "/v1/admin/users",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0086"
+        "REST-COV-GET-0087"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2160,7 +2156,7 @@
       "path": "/v1/auth/sessions",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0087"
+        "REST-COV-GET-0088"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2175,14 +2171,14 @@
     "GET /v1/commerce/orders/{orderId}": {
       "method": "GET",
       "path": "/v1/commerce/orders/{orderId}",
-      "coverage": "success",
+      "coverage": "documented_skip",
       "flow_ids": [
         "REST-COMMERCE-004"
       ],
-      "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "skip_reason": "excluded by operator request: no online payment test",
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Checkout status for order",
       "openapi_tags": [
         "Commerce"
@@ -2192,11 +2188,9 @@
     "GET /v1/commerce/orders/{orderId}/reconciliation": {
       "method": "GET",
       "path": "/v1/commerce/orders/{orderId}/reconciliation",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0088"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy machine commerce HTTP; production vending uses avf.machine.v1 gRPC",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2204,48 +2198,44 @@
       "openapi_tags": [
         "Commerce"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/commerce/orders/{orderId}/refunds": {
       "method": "GET",
       "path": "/v1/commerce/orders/{orderId}/refunds",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0089"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "excluded by operator request: no online payment test",
       "postman": false,
       "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "List refunds for an order",
       "openapi_tags": [
         "Commerce"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/commerce/orders/{orderId}/refunds/{refundId}": {
       "method": "GET",
       "path": "/v1/commerce/orders/{orderId}/refunds/{refundId}",
       "coverage": "documented_skip",
       "flow_ids": [],
-      "skip_reason": "No auto rule matched",
+      "skip_reason": "excluded by operator request: no online payment test",
       "postman": false,
       "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Get one refund on an order",
       "openapi_tags": [
         "Commerce"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/device/machines/{machineId}/events/{idempotencyKey}/status": {
       "method": "GET",
       "path": "/v1/device/machines/{machineId}/events/{idempotencyKey}/status",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-GET-0090"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy device bridge HTTP; production command path is MQTT + admin REST dispatch",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2253,14 +2243,14 @@
       "openapi_tags": [
         "Telemetry Reconcile"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/machines/{machineId}/commands/receipts": {
       "method": "GET",
       "path": "/v1/machines/{machineId}/commands/receipts",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0091"
+        "REST-COV-GET-0089"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2277,7 +2267,7 @@
       "path": "/v1/machines/{machineId}/commands/{sequence}/status",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-GET-0092"
+        "REST-COV-GET-0090"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2292,11 +2282,9 @@
     "GET /v1/machines/{machineId}/operator-sessions/action-attributions": {
       "method": "GET",
       "path": "/v1/machines/{machineId}/operator-sessions/action-attributions",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0093"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy operator session HTTP; production uses POST /v1/admin/machines/{machineId}/operator-sessions/start",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2304,16 +2292,14 @@
       "openapi_tags": [
         "Operator Sessions"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/machines/{machineId}/operator-sessions/auth-events": {
       "method": "GET",
       "path": "/v1/machines/{machineId}/operator-sessions/auth-events",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0094"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy operator session HTTP; production uses POST /v1/admin/machines/{machineId}/operator-sessions/start",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2321,16 +2307,14 @@
       "openapi_tags": [
         "Operator Sessions"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/machines/{machineId}/operator-sessions/current": {
       "method": "GET",
       "path": "/v1/machines/{machineId}/operator-sessions/current",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0095"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy operator session HTTP; production uses POST /v1/admin/machines/{machineId}/operator-sessions/start",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2338,16 +2322,14 @@
       "openapi_tags": [
         "Operator Sessions"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/machines/{machineId}/operator-sessions/history": {
       "method": "GET",
       "path": "/v1/machines/{machineId}/operator-sessions/history",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0096"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy operator session HTTP; production uses POST /v1/admin/machines/{machineId}/operator-sessions/start",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2355,16 +2337,14 @@
       "openapi_tags": [
         "Operator Sessions"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/machines/{machineId}/operator-sessions/timeline": {
       "method": "GET",
       "path": "/v1/machines/{machineId}/operator-sessions/timeline",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0097"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy operator session HTTP; production uses POST /v1/admin/machines/{machineId}/operator-sessions/start",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2372,7 +2352,7 @@
       "openapi_tags": [
         "Operator Sessions"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/machines/{machineId}/sale-catalog": {
       "method": "GET",
@@ -2394,11 +2374,9 @@
     "GET /v1/machines/{machineId}/shadow": {
       "method": "GET",
       "path": "/v1/machines/{machineId}/shadow",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0098"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy machine telemetry/shadow HTTP; production uses gRPC and MQTT",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2406,16 +2384,14 @@
       "openapi_tags": [
         "Device Runtime"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/machines/{machineId}/telemetry/incidents": {
       "method": "GET",
       "path": "/v1/machines/{machineId}/telemetry/incidents",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0099"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy machine telemetry/shadow HTTP; production uses gRPC and MQTT",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2423,16 +2399,14 @@
       "openapi_tags": [
         "Telemetry"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/machines/{machineId}/telemetry/rollups": {
       "method": "GET",
       "path": "/v1/machines/{machineId}/telemetry/rollups",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0100"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy machine telemetry/shadow HTTP; production uses gRPC and MQTT",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2440,16 +2414,14 @@
       "openapi_tags": [
         "Telemetry"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/machines/{machineId}/telemetry/snapshot": {
       "method": "GET",
       "path": "/v1/machines/{machineId}/telemetry/snapshot",
-      "coverage": "readonly_smoke",
-      "flow_ids": [
-        "REST-COV-GET-0101"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy machine telemetry/shadow HTTP; production uses gRPC and MQTT",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -2457,7 +2429,7 @@
       "openapi_tags": [
         "Telemetry"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "GET /v1/operator-insights/technicians/{technicianId}/action-attributions": {
       "method": "GET",
@@ -2479,7 +2451,7 @@
       "path": "/v1/operator-insights/users/action-attributions",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0102"
+        "REST-COV-GET-0091"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2496,7 +2468,7 @@
       "path": "/v1/orders",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0103"
+        "REST-COV-GET-0092"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2513,7 +2485,7 @@
       "path": "/v1/payments",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0104"
+        "REST-COV-GET-0093"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2528,43 +2500,43 @@
     "GET /v1/reports/fleet-health": {
       "method": "GET",
       "path": "/v1/reports/fleet-health",
-      "coverage": "readonly_smoke",
+      "coverage": "success",
       "flow_ids": [
-        "REST-COV-GET-0105"
+        "REST-REPORT-002"
       ],
       "skip_reason": null,
-      "postman": false,
-      "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "postman": true,
+      "non_postman": false,
+      "non_postman_reason": null,
       "openapi_summary": "Machine posture and incident rollups",
       "openapi_tags": [
         "Reporting"
       ],
-      "source": "auto"
+      "source": "manifest"
     },
     "GET /v1/reports/inventory-exceptions": {
       "method": "GET",
       "path": "/v1/reports/inventory-exceptions",
-      "coverage": "readonly_smoke",
+      "coverage": "success",
       "flow_ids": [
-        "REST-COV-GET-0106"
+        "REST-REPORT-001"
       ],
       "skip_reason": null,
-      "postman": false,
-      "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "postman": true,
+      "non_postman": false,
+      "non_postman_reason": null,
       "openapi_summary": "Slots needing refill or restock attention",
       "openapi_tags": [
         "Reporting"
       ],
-      "source": "auto"
+      "source": "manifest"
     },
     "GET /v1/reports/payments-summary": {
       "method": "GET",
       "path": "/v1/reports/payments-summary",
       "coverage": "readonly_smoke",
       "flow_ids": [
-        "REST-COV-GET-0107"
+        "REST-COV-GET-0094"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2579,19 +2551,19 @@
     "GET /v1/reports/sales-summary": {
       "method": "GET",
       "path": "/v1/reports/sales-summary",
-      "coverage": "readonly_smoke",
+      "coverage": "success",
       "flow_ids": [
-        "REST-COV-GET-0108"
+        "REST-REPORT-005"
       ],
       "skip_reason": null,
-      "postman": false,
-      "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "postman": true,
+      "non_postman": false,
+      "non_postman_reason": null,
       "openapi_summary": "Sales rollup and trend breakdown",
       "openapi_tags": [
         "Reporting"
       ],
-      "source": "auto"
+      "source": "manifest"
     },
     "GET /v1/setup/machines/{machineId}/bootstrap": {
       "method": "GET",
@@ -2632,7 +2604,7 @@
       "path": "/v1/admin/auth/users/{accountId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0109"
+        "REST-COV-PAT-0095"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2649,7 +2621,7 @@
       "path": "/v1/admin/auth/users/{accountId}/roles",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0110"
+        "REST-COV-PAT-0096"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2666,7 +2638,7 @@
       "path": "/v1/admin/auth/users/{accountId}/status",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0111"
+        "REST-COV-PAT-0097"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2683,7 +2655,7 @@
       "path": "/v1/admin/brands/{brandId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0112"
+        "REST-COV-PAT-0098"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2700,7 +2672,7 @@
       "path": "/v1/admin/categories/{categoryId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0113"
+        "REST-COV-PAT-0099"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2717,7 +2689,7 @@
       "path": "/v1/admin/feature-flags/{flagId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0114"
+        "REST-COV-PAT-0100"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2751,7 +2723,7 @@
       "path": "/v1/admin/ota/campaigns/{campaignId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0115"
+        "REST-COV-PAT-0101"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2768,7 +2740,7 @@
       "path": "/v1/admin/price-books/{priceBookId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0116"
+        "REST-COV-PAT-0102"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2785,7 +2757,7 @@
       "path": "/v1/admin/price-books/{priceBookId}/items/{productId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0117"
+        "REST-COV-PAT-0103"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2802,7 +2774,7 @@
       "path": "/v1/admin/products/{productId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0118"
+        "REST-COV-PAT-0104"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2819,7 +2791,7 @@
       "path": "/v1/admin/promotions/{promotionId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0119"
+        "REST-COV-PAT-0105"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2836,7 +2808,7 @@
       "path": "/v1/admin/sites/{siteId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0120"
+        "REST-COV-PAT-0106"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2853,7 +2825,7 @@
       "path": "/v1/admin/tags/{tagId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0121"
+        "REST-COV-PAT-0107"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2870,7 +2842,7 @@
       "path": "/v1/admin/technician-assignments/{assignmentId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0122"
+        "REST-COV-PAT-0108"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2887,7 +2859,7 @@
       "path": "/v1/admin/technicians/{technicianId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0123"
+        "REST-COV-PAT-0109"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2904,7 +2876,7 @@
       "path": "/v1/admin/users/{userId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0124"
+        "REST-COV-PAT-0110"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2921,7 +2893,7 @@
       "path": "/v1/admin/users/{userId}/roles",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0125"
+        "REST-COV-PAT-0111"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2938,7 +2910,7 @@
       "path": "/v1/admin/users/{userId}/status",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PAT-0126"
+        "REST-COV-PAT-0112"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2955,7 +2927,7 @@
       "path": "/v1/admin/activation-codes",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0127"
+        "REST-COV-POS-0113"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2972,7 +2944,7 @@
       "path": "/v1/admin/activation-codes/{codeId}/revoke",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0128"
+        "REST-COV-POS-0114"
       ],
       "skip_reason": null,
       "postman": false,
@@ -2989,7 +2961,7 @@
       "path": "/v1/admin/anomalies/{anomalyId}/ignore",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0129"
+        "REST-COV-POS-0115"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3006,7 +2978,7 @@
       "path": "/v1/admin/anomalies/{anomalyId}/resolve",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0130"
+        "REST-COV-POS-0116"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3023,7 +2995,7 @@
       "path": "/v1/admin/artifacts",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0131"
+        "REST-COV-POS-0117"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3040,7 +3012,7 @@
       "path": "/v1/admin/assignments",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0132"
+        "REST-COV-POS-0118"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3057,7 +3029,7 @@
       "path": "/v1/admin/auth/users",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0133"
+        "REST-COV-POS-0119"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3074,7 +3046,7 @@
       "path": "/v1/admin/auth/users/{accountId}/activate",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0134"
+        "REST-COV-POS-0120"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3091,7 +3063,7 @@
       "path": "/v1/admin/auth/users/{accountId}/deactivate",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0135"
+        "REST-COV-POS-0121"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3108,7 +3080,7 @@
       "path": "/v1/admin/auth/users/{accountId}/reset-password",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0136"
+        "REST-COV-POS-0122"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3125,7 +3097,7 @@
       "path": "/v1/admin/auth/users/{accountId}/revoke-sessions",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0137"
+        "REST-COV-POS-0123"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3142,7 +3114,7 @@
       "path": "/v1/admin/auth/users/{accountId}/roles",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0138"
+        "REST-COV-POS-0124"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3193,7 +3165,7 @@
       "path": "/v1/admin/commands/{commandId}/cancel",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0139"
+        "REST-COV-POS-0125"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3210,7 +3182,7 @@
       "path": "/v1/admin/commands/{commandId}/retry",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0140"
+        "REST-COV-POS-0126"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3227,7 +3199,7 @@
       "path": "/v1/admin/commerce/reconciliation/{caseId}/ignore",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0141"
+        "REST-COV-POS-0127"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3244,7 +3216,7 @@
       "path": "/v1/admin/commerce/reconciliation/{caseId}/request-refund",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0142"
+        "REST-COV-POS-0128"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3261,7 +3233,7 @@
       "path": "/v1/admin/commerce/reconciliation/{caseId}/resolve",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0143"
+        "REST-COV-POS-0129"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3278,7 +3250,7 @@
       "path": "/v1/admin/feature-flags",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0144"
+        "REST-COV-POS-0130"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3295,7 +3267,7 @@
       "path": "/v1/admin/feature-flags/{flagId}/disable",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0145"
+        "REST-COV-POS-0131"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3312,7 +3284,7 @@
       "path": "/v1/admin/feature-flags/{flagId}/enable",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0146"
+        "REST-COV-POS-0132"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3329,7 +3301,7 @@
       "path": "/v1/admin/finance/daily-close",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0147"
+        "REST-COV-POS-0133"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3346,7 +3318,7 @@
       "path": "/v1/admin/inventory/anomalies/{anomalyId}/resolve",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0148"
+        "REST-COV-POS-0134"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3363,7 +3335,7 @@
       "path": "/v1/admin/machine-config/rollouts",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0149"
+        "REST-COV-POS-0135"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3414,7 +3386,7 @@
       "path": "/v1/admin/machines/{machineId}/archive",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0150"
+        "REST-COV-POS-0136"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3431,7 +3403,7 @@
       "path": "/v1/admin/machines/{machineId}/cash-collections",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0151"
+        "REST-COV-POS-0137"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3448,7 +3420,7 @@
       "path": "/v1/admin/machines/{machineId}/cash-collections/{collectionId}/close",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0152"
+        "REST-COV-POS-0138"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3465,7 +3437,7 @@
       "path": "/v1/admin/machines/{machineId}/commands",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0153"
+        "REST-COV-POS-0139"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3482,7 +3454,7 @@
       "path": "/v1/admin/machines/{machineId}/diagnostics/requests",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0154"
+        "REST-COV-POS-0140"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3499,7 +3471,7 @@
       "path": "/v1/admin/machines/{machineId}/disable",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0155"
+        "REST-COV-POS-0141"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3516,7 +3488,7 @@
       "path": "/v1/admin/machines/{machineId}/enable",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0156"
+        "REST-COV-POS-0142"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3533,7 +3505,7 @@
       "path": "/v1/admin/machines/{machineId}/inventory/reconcile",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0157"
+        "REST-COV-POS-0143"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3550,7 +3522,7 @@
       "path": "/v1/admin/machines/{machineId}/mark-compromised",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0158"
+        "REST-COV-POS-0144"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3561,6 +3533,21 @@
         "Machine Admin"
       ],
       "source": "auto"
+    },
+    "POST /v1/admin/machines/{machineId}/operator-sessions/start": {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/operator-sessions/start",
+      "coverage": "success",
+      "flow_ids": [
+        "REST-PLANO-001"
+      ],
+      "skip_reason": null,
+      "postman": true,
+      "non_postman": false,
+      "non_postman_reason": null,
+      "openapi_summary": "Main E2E manifest route (pending OpenAPI sync)",
+      "openapi_tags": [],
+      "source": "manifest_only"
     },
     "POST /v1/admin/machines/{machineId}/planograms/publish": {
       "method": "POST",
@@ -3584,7 +3571,7 @@
       "path": "/v1/admin/machines/{machineId}/resume",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0159"
+        "REST-COV-POS-0145"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3601,7 +3588,7 @@
       "path": "/v1/admin/machines/{machineId}/retire",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0160"
+        "REST-COV-POS-0146"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3618,7 +3605,7 @@
       "path": "/v1/admin/machines/{machineId}/revoke-credentials",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0161"
+        "REST-COV-POS-0147"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3635,7 +3622,7 @@
       "path": "/v1/admin/machines/{machineId}/revoke-sessions",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0162"
+        "REST-COV-POS-0148"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3652,7 +3639,7 @@
       "path": "/v1/admin/machines/{machineId}/revoke-token",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0163"
+        "REST-COV-POS-0149"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3669,7 +3656,7 @@
       "path": "/v1/admin/machines/{machineId}/rotate-credential",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0164"
+        "REST-COV-POS-0150"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3686,7 +3673,7 @@
       "path": "/v1/admin/machines/{machineId}/rotate-credentials",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0165"
+        "REST-COV-POS-0151"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3703,7 +3690,7 @@
       "path": "/v1/admin/machines/{machineId}/rotate-token-version",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0166"
+        "REST-COV-POS-0152"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3738,7 +3725,7 @@
       "path": "/v1/admin/machines/{machineId}/suspend",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0167"
+        "REST-COV-POS-0153"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3755,7 +3742,7 @@
       "path": "/v1/admin/machines/{machineId}/sync",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0168"
+        "REST-COV-POS-0154"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3772,7 +3759,7 @@
       "path": "/v1/admin/machines/{machineId}/technicians",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0169"
+        "REST-COV-POS-0155"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3789,7 +3776,7 @@
       "path": "/v1/admin/machines/{machineId}/transfer-site",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0170"
+        "REST-COV-POS-0156"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3806,7 +3793,7 @@
       "path": "/v1/admin/media/assets",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0171"
+        "REST-COV-POS-0157"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3823,7 +3810,7 @@
       "path": "/v1/admin/media/external-images",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0172"
+        "REST-COV-POS-0158"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3840,7 +3827,7 @@
       "path": "/v1/admin/media/uploads",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0173"
+        "REST-COV-POS-0159"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3893,7 +3880,7 @@
       "path": "/v1/admin/media/{mediaId}/complete",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0174"
+        "REST-COV-POS-0160"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3910,7 +3897,7 @@
       "path": "/v1/admin/ops/outbox/{outboxId}/retry",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0175"
+        "REST-COV-POS-0161"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3925,14 +3912,12 @@
     "POST /v1/admin/orders/{orderId}/refunds": {
       "method": "POST",
       "path": "/v1/admin/orders/{orderId}/refunds",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-POS-0176"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "excluded by operator request: no online payment test",
       "postman": false,
       "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Create refund request + ledger refund (admin scoped)",
       "openapi_tags": [
         "Commerce"
@@ -3944,7 +3929,7 @@
       "path": "/v1/admin/ota/campaigns",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0177"
+        "REST-COV-POS-0162"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3976,7 +3961,7 @@
       "path": "/v1/admin/ota/campaigns/{campaignId}/cancel",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0178"
+        "REST-COV-POS-0163"
       ],
       "skip_reason": null,
       "postman": false,
@@ -3993,7 +3978,7 @@
       "path": "/v1/admin/ota/campaigns/{campaignId}/pause",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0179"
+        "REST-COV-POS-0164"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4025,7 +4010,7 @@
       "path": "/v1/admin/ota/campaigns/{campaignId}/resume",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0180"
+        "REST-COV-POS-0165"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4072,7 +4057,7 @@
       "path": "/v1/admin/price-books",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0181"
+        "REST-COV-POS-0166"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4089,7 +4074,7 @@
       "path": "/v1/admin/price-books/{priceBookId}/activate",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0182"
+        "REST-COV-POS-0167"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4106,7 +4091,7 @@
       "path": "/v1/admin/price-books/{priceBookId}/archive",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0183"
+        "REST-COV-POS-0168"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4123,7 +4108,7 @@
       "path": "/v1/admin/price-books/{priceBookId}/assign-target",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0184"
+        "REST-COV-POS-0169"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4140,7 +4125,7 @@
       "path": "/v1/admin/price-books/{priceBookId}/deactivate",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0185"
+        "REST-COV-POS-0170"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4157,7 +4142,7 @@
       "path": "/v1/admin/pricing/preview",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0186"
+        "REST-COV-POS-0171"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4172,19 +4157,19 @@
     "POST /v1/admin/product-images": {
       "method": "POST",
       "path": "/v1/admin/product-images",
-      "coverage": "auth_negative",
+      "coverage": "success",
       "flow_ids": [
-        "REST-COV-POS-0187"
+        "REST-MEDIA-INIT"
       ],
       "skip_reason": null,
-      "postman": false,
-      "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "postman": true,
+      "non_postman": false,
+      "non_postman_reason": null,
       "openapi_summary": "Upload product image file (Cloudinary)",
       "openapi_tags": [
         "Media Admin"
       ],
-      "source": "auto"
+      "source": "manifest"
     },
     "POST /v1/admin/products": {
       "method": "POST",
@@ -4208,7 +4193,7 @@
       "path": "/v1/admin/products/{productId}/image",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0188"
+        "REST-COV-POS-0172"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4225,7 +4210,7 @@
       "path": "/v1/admin/products/{productId}/media",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0189"
+        "REST-COV-POS-0173"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4242,7 +4227,7 @@
       "path": "/v1/admin/promotions",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0190"
+        "REST-COV-POS-0174"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4259,7 +4244,7 @@
       "path": "/v1/admin/promotions/preview",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0191"
+        "REST-COV-POS-0175"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4276,7 +4261,7 @@
       "path": "/v1/admin/promotions/{promotionId}/activate",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0192"
+        "REST-COV-POS-0176"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4293,7 +4278,7 @@
       "path": "/v1/admin/promotions/{promotionId}/archive",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0193"
+        "REST-COV-POS-0177"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4310,7 +4295,7 @@
       "path": "/v1/admin/promotions/{promotionId}/assign-target",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0194"
+        "REST-COV-POS-0178"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4327,7 +4312,7 @@
       "path": "/v1/admin/promotions/{promotionId}/deactivate",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0195"
+        "REST-COV-POS-0179"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4344,7 +4329,7 @@
       "path": "/v1/admin/promotions/{promotionId}/pause",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0196"
+        "REST-COV-POS-0180"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4361,7 +4346,7 @@
       "path": "/v1/admin/provisioning/machines/bulk",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0197"
+        "REST-COV-POS-0181"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4378,7 +4363,7 @@
       "path": "/v1/admin/rollouts",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0198"
+        "REST-COV-POS-0182"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4395,7 +4380,7 @@
       "path": "/v1/admin/rollouts/{rolloutId}/cancel",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0199"
+        "REST-COV-POS-0183"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4412,7 +4397,7 @@
       "path": "/v1/admin/rollouts/{rolloutId}/pause",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0200"
+        "REST-COV-POS-0184"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4429,7 +4414,7 @@
       "path": "/v1/admin/rollouts/{rolloutId}/resume",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0201"
+        "REST-COV-POS-0185"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4446,7 +4431,7 @@
       "path": "/v1/admin/rollouts/{rolloutId}/rollback",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0202"
+        "REST-COV-POS-0186"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4463,7 +4448,7 @@
       "path": "/v1/admin/rollouts/{rolloutId}/start",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0203"
+        "REST-COV-POS-0187"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4497,7 +4482,7 @@
       "path": "/v1/admin/sites/{siteId}/archive",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0204"
+        "REST-COV-POS-0188"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4514,7 +4499,7 @@
       "path": "/v1/admin/sites/{siteId}/disable",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0205"
+        "REST-COV-POS-0189"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4531,7 +4516,7 @@
       "path": "/v1/admin/system/outbox/{eventId}/mark-dlq",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0206"
+        "REST-COV-POS-0190"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4548,7 +4533,7 @@
       "path": "/v1/admin/system/outbox/{eventId}/replay",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0207"
+        "REST-COV-POS-0191"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4612,7 +4597,7 @@
       "path": "/v1/admin/technician-assignments",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0208"
+        "REST-COV-POS-0192"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4629,7 +4614,7 @@
       "path": "/v1/admin/technician-assignments/{assignmentId}/cancel",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0209"
+        "REST-COV-POS-0193"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4646,7 +4631,7 @@
       "path": "/v1/admin/technicians",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0210"
+        "REST-COV-POS-0194"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4663,7 +4648,7 @@
       "path": "/v1/admin/technicians/{technicianId}/disable",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0211"
+        "REST-COV-POS-0195"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4680,7 +4665,7 @@
       "path": "/v1/admin/technicians/{technicianId}/enable",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0212"
+        "REST-COV-POS-0196"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4697,7 +4682,7 @@
       "path": "/v1/admin/users",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0213"
+        "REST-COV-POS-0197"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4714,7 +4699,7 @@
       "path": "/v1/admin/users/{userId}/disable",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0214"
+        "REST-COV-POS-0198"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4731,7 +4716,7 @@
       "path": "/v1/admin/users/{userId}/enable",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0215"
+        "REST-COV-POS-0199"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4748,7 +4733,7 @@
       "path": "/v1/admin/users/{userId}/reset-password",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0216"
+        "REST-COV-POS-0200"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4765,7 +4750,7 @@
       "path": "/v1/admin/users/{userId}/revoke-sessions",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0217"
+        "REST-COV-POS-0201"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4782,7 +4767,7 @@
       "path": "/v1/admin/users/{userId}/roles",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0218"
+        "REST-COV-POS-0202"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4799,7 +4784,7 @@
       "path": "/v1/auth/change-password",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0219"
+        "REST-COV-POS-0203"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4894,7 +4879,7 @@
       "path": "/v1/auth/password/change",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0220"
+        "REST-COV-POS-0204"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4911,7 +4896,7 @@
       "path": "/v1/auth/password/reset/confirm",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0221"
+        "REST-COV-POS-0205"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4928,7 +4913,7 @@
       "path": "/v1/auth/password/reset/request",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0222"
+        "REST-COV-POS-0206"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4945,7 +4930,7 @@
       "path": "/v1/auth/refresh",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0223"
+        "REST-COV-POS-0207"
       ],
       "skip_reason": null,
       "postman": false,
@@ -4960,11 +4945,9 @@
     "POST /v1/commerce/cash-checkout": {
       "method": "POST",
       "path": "/v1/commerce/cash-checkout",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-POS-0224"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy machine commerce HTTP; production vending uses avf.machine.v1 gRPC",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -4972,19 +4955,19 @@
       "openapi_tags": [
         "Commerce"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "POST /v1/commerce/orders": {
       "method": "POST",
       "path": "/v1/commerce/orders",
-      "coverage": "success",
+      "coverage": "documented_skip",
       "flow_ids": [
         "REST-COMMERCE-001"
       ],
-      "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "skip_reason": "excluded by operator request: no online payment test",
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Create order and initial vend session",
       "openapi_tags": [
         "Commerce"
@@ -4994,11 +4977,9 @@
     "POST /v1/commerce/orders/{orderId}/cancel": {
       "method": "POST",
       "path": "/v1/commerce/orders/{orderId}/cancel",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-POS-0225"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy machine commerce HTTP; production vending uses avf.machine.v1 gRPC",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -5006,19 +4987,19 @@
       "openapi_tags": [
         "Commerce"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "POST /v1/commerce/orders/{orderId}/payment-session": {
       "method": "POST",
       "path": "/v1/commerce/orders/{orderId}/payment-session",
-      "coverage": "success",
+      "coverage": "documented_skip",
       "flow_ids": [
         "REST-COMMERCE-002"
       ],
-      "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "skip_reason": "excluded by operator request: no online payment test",
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Start payment with outbox row",
       "openapi_tags": [
         "Commerce"
@@ -5028,17 +5009,17 @@
     "POST /v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks": {
       "method": "POST",
       "path": "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks",
-      "coverage": "success",
+      "coverage": "documented_skip",
       "flow_ids": [
         "REST-COMMERCE-003",
         "REST-COMMERCE-003-DUP",
         "REST-NEG-002",
         "REST-NEG-003"
       ],
-      "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "skip_reason": "excluded by operator request: no online payment test",
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Apply provider webhook",
       "openapi_tags": [
         "Commerce"
@@ -5048,28 +5029,24 @@
     "POST /v1/commerce/orders/{orderId}/refunds": {
       "method": "POST",
       "path": "/v1/commerce/orders/{orderId}/refunds",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-POS-0226"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "excluded by operator request: no online payment test",
       "postman": false,
       "non_postman": true,
-      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Create or replay a refund (idempotent)",
       "openapi_tags": [
         "Commerce"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "POST /v1/commerce/orders/{orderId}/vend/failure": {
       "method": "POST",
       "path": "/v1/commerce/orders/{orderId}/vend/failure",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-POS-0227"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy machine commerce HTTP; production vending uses avf.machine.v1 gRPC",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -5077,19 +5054,19 @@
       "openapi_tags": [
         "Commerce"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "POST /v1/commerce/orders/{orderId}/vend/start": {
       "method": "POST",
       "path": "/v1/commerce/orders/{orderId}/vend/start",
-      "coverage": "success",
+      "coverage": "documented_skip",
       "flow_ids": [
         "REST-COMMERCE-005"
       ],
-      "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "skip_reason": "excluded by operator request: no online payment test",
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Advance vend to in_progress",
       "openapi_tags": [
         "Commerce"
@@ -5099,14 +5076,14 @@
     "POST /v1/commerce/orders/{orderId}/vend/success": {
       "method": "POST",
       "path": "/v1/commerce/orders/{orderId}/vend/success",
-      "coverage": "success",
+      "coverage": "documented_skip",
       "flow_ids": [
         "REST-COMMERCE-006"
       ],
-      "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "skip_reason": "excluded by operator request: no online payment test",
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "excluded by operator request: no online payment test",
       "openapi_summary": "Finalize vend success",
       "openapi_tags": [
         "Commerce"
@@ -5116,11 +5093,9 @@
     "POST /v1/device/machines/{machineId}/commands/poll": {
       "method": "POST",
       "path": "/v1/device/machines/{machineId}/commands/poll",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-POS-0228"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy device bridge HTTP; production command path is MQTT + admin REST dispatch",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -5128,16 +5103,14 @@
       "openapi_tags": [
         "Device Runtime"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "POST /v1/device/machines/{machineId}/events/reconcile": {
       "method": "POST",
       "path": "/v1/device/machines/{machineId}/events/reconcile",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-POS-0229"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy device bridge HTTP; production command path is MQTT + admin REST dispatch",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -5145,16 +5118,14 @@
       "openapi_tags": [
         "Telemetry Reconcile"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "POST /v1/device/machines/{machineId}/vend-results": {
       "method": "POST",
       "path": "/v1/device/machines/{machineId}/vend-results",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-POS-0230"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy device bridge HTTP; production command path is MQTT + admin REST dispatch",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -5162,14 +5133,14 @@
       "openapi_tags": [
         "Device Runtime"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "POST /v1/machines/{machineId}/check-ins": {
       "method": "POST",
       "path": "/v1/machines/{machineId}/check-ins",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0231"
+        "REST-COV-POS-0208"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5184,11 +5155,9 @@
     "POST /v1/machines/{machineId}/commands/dispatch": {
       "method": "POST",
       "path": "/v1/machines/{machineId}/commands/dispatch",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-POS-0232"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Machine-scoped command dispatch HTTP; E2E uses admin POST /v1/admin/machines/{machineId}/commands",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -5196,14 +5165,14 @@
       "openapi_tags": [
         "Device Runtime"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "POST /v1/machines/{machineId}/config-applies": {
       "method": "POST",
       "path": "/v1/machines/{machineId}/config-applies",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-POS-0233"
+        "REST-COV-POS-0209"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5218,19 +5187,17 @@
     "POST /v1/machines/{machineId}/operator-sessions/login": {
       "method": "POST",
       "path": "/v1/machines/{machineId}/operator-sessions/login",
-      "coverage": "success",
-      "flow_ids": [
-        "REST-PLANO-001"
-      ],
-      "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy operator session HTTP; production uses POST /v1/admin/machines/{machineId}/operator-sessions/start",
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
       "openapi_summary": "Start or resume operator session",
       "openapi_tags": [
         "Operator Sessions"
       ],
-      "source": "manifest"
+      "source": "override"
     },
     "POST /v1/machines/{machineId}/operator-sessions/logout": {
       "method": "POST",
@@ -5252,11 +5219,9 @@
     "POST /v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat": {
       "method": "POST",
       "path": "/v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat",
-      "coverage": "auth_negative",
-      "flow_ids": [
-        "REST-COV-POS-0234"
-      ],
-      "skip_reason": null,
+      "coverage": "documented_skip",
+      "flow_ids": [],
+      "skip_reason": "Legacy operator session HTTP; production uses POST /v1/admin/machines/{machineId}/operator-sessions/start",
       "postman": false,
       "non_postman": true,
       "non_postman_reason": "Auto coverage manifest \u2014 exercised by shell route-matrix only; Postman collection is generated from e2e-manifest.yaml main flows only",
@@ -5264,7 +5229,7 @@
       "openapi_tags": [
         "Operator Sessions"
       ],
-      "source": "auto"
+      "source": "override"
     },
     "POST /v1/setup/activation-codes/claim": {
       "method": "POST",
@@ -5288,7 +5253,7 @@
       "path": "/v1/admin/artifacts/{artifactId}/content",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0235"
+        "REST-COV-PUT-0210"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5305,7 +5270,7 @@
       "path": "/v1/admin/auth/users/{accountId}/roles",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0236"
+        "REST-COV-PUT-0211"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5322,7 +5287,7 @@
       "path": "/v1/admin/brands/{brandId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0237"
+        "REST-COV-PUT-0212"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5339,7 +5304,7 @@
       "path": "/v1/admin/categories/{categoryId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0238"
+        "REST-COV-PUT-0213"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5356,7 +5321,7 @@
       "path": "/v1/admin/feature-flags/{flagId}/targets",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0239"
+        "REST-COV-PUT-0214"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5407,7 +5372,7 @@
       "path": "/v1/admin/ota/campaigns/{campaignId}/targets",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0240"
+        "REST-COV-PUT-0215"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5424,7 +5389,7 @@
       "path": "/v1/admin/price-books/{priceBookId}/items",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0241"
+        "REST-COV-PUT-0216"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5441,7 +5406,7 @@
       "path": "/v1/admin/products/{productId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0242"
+        "REST-COV-PUT-0217"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5458,7 +5423,7 @@
       "path": "/v1/admin/products/{productId}/image",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0243"
+        "REST-COV-PUT-0218"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5475,7 +5440,7 @@
       "path": "/v1/admin/products/{productId}/media",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0244"
+        "REST-COV-PUT-0219"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5492,7 +5457,7 @@
       "path": "/v1/admin/tags/{tagId}",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0245"
+        "REST-COV-PUT-0220"
       ],
       "skip_reason": null,
       "postman": false,
@@ -5509,7 +5474,7 @@
       "path": "/v1/admin/users/{userId}/roles",
       "coverage": "auth_negative",
       "flow_ids": [
-        "REST-COV-PUT-0246"
+        "REST-COV-PUT-0221"
       ],
       "skip_reason": null,
       "postman": false,

@@ -57,6 +57,9 @@ prod_e2e_assert_body_file() {
         local got jpath
         jpath="$(prod_e2e_jq_path "$path")"
         got="$(jq -r "${jpath} // empty" "$body_file")"
+        if declare -F prod_e2e_render_template_string >/dev/null 2>&1; then
+          value="$(prod_e2e_render_template_string "$value")"
+        fi
         if [[ "$got" != "$value" ]]; then
           echo "ASSERT FAIL ${label}: ${path} expected ${value}, got ${got}" >&2
           return 1
@@ -74,14 +77,33 @@ prod_e2e_capture_from_body() {
   local body_file="$1"
   local capture_json="$2"
   [[ -n "$capture_json" && "$capture_json" != "null" ]] || return 0
-  command -v jq >/dev/null 2>&1 || return 0
-  local keys key jqpath val
-  keys="$(echo "$capture_json" | jq -r 'keys[]?')"
+  local keys key jqpath val capture_tmp
+  keys="$(echo "$capture_json" | jq -r 'keys[]?' 2>/dev/null || true)"
+  [[ -n "$keys" ]] || return 0
+  capture_tmp="${PROD_E2E_RUN_DIR:-/tmp}/.capture.tmp"
   while IFS= read -r key; do
+    key="${key//$'\r'/}"
     [[ -n "$key" ]] || continue
-    jqpath="$(echo "$capture_json" | jq -r --arg k "$key" '.[$k]')"
+    jqpath="$(echo "$capture_json" | jq -r --arg k "$key" '.[$k]' 2>/dev/null || true)"
+    jqpath="${jqpath//$'\r'/}"
+    [[ -n "$jqpath" ]] || continue
     jqpath="$(prod_e2e_jq_path "$jqpath")"
-    val="$(jq -r "${jqpath} // empty" "$body_file" 2>/dev/null || true)"
+    val=""
+    local cap_py="${PROD_E2E_PRODUCTION_DIR:-${PROD_E2E_REPO_ROOT}/tests/e2e/production}/scripts/capture_json_path.py"
+    if [[ -f "$cap_py" ]]; then
+      if declare -F prod_e2e_py >/dev/null 2>&1; then
+        val="$(prod_e2e_py "$cap_py" "$body_file" "$jqpath" 2>/dev/null || true)"
+      elif command -v python3 >/dev/null 2>&1; then
+        val="$(python3 "$cap_py" "$body_file" "$jqpath" 2>/dev/null || true)"
+      elif command -v py >/dev/null 2>&1; then
+        val="$(py -3 "$cap_py" "$body_file" "$jqpath" 2>/dev/null || true)"
+      fi
+    elif command -v jq >/dev/null 2>&1; then
+      jq -r "${jqpath} // empty" "$body_file" >"$capture_tmp" 2>/dev/null || : >"$capture_tmp"
+      val="$(tr -d '\r\n' <"$capture_tmp")"
+      rm -f "$capture_tmp"
+    fi
+    val="${val//$'\r'/}"
     [[ -n "$val" ]] || continue
     prod_e2e_state_set "$key" "$val"
   done <<<"$keys"
