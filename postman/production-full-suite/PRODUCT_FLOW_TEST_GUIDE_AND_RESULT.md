@@ -141,15 +141,16 @@ Expected **201**: `mediaId`, `displayUrl`, `thumbnailUrl`, `status=ready`, `prov
 
 ## Latest production result
 
+**Deploy:** 2026-05-22 UTC · main `fa0e962` · PR [#278](https://github.com/leduytuanvu/avf-vending-api/pull/278) · deploy run [26275066293](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26275066293)
+
 | Step | Status |
 |------|--------|
-| Health / login | **PASS** |
-| Image upload (Cloudinary) | **PASS** (201) |
-| Product create | **PASS** (200) |
-| Price + planogram publish | **PASS** |
-| gRPC catalog | **BLOCKED_DNS_PENDING** (`machine-api.ldtv.dev` NXDOMAIN) |
+| Upload with `application/octet-stream` part type | **PASS** (201, `contentType=image/png`, `provider=cloudinary`) |
+| Upload without explicit part type | **PASS** (201) |
+| Product create with `primaryMediaId` | **PASS** (200) |
+| Postman validator | **PASS** |
 
-Canary IDs from last full run: `productId` `019e4c17-de65-71c4-b0ab-3013619b2e8c`, `primaryMediaId` `019e4c17-d4aa-7c3e-b047-855575ae63c4`, `machineId` `55555555-5555-5555-5555-555555555555`.
+Example verified IDs (2026-05-22): `primaryMediaId` `019e4ea3-e154-724e-8d86-86b598ace960`, `productId` `019e4ea3-eced-72cc-b41d-a28b946743fe`, sku `COCA-MIME-20260522144346`.
 
 ## Suite layout
 
