@@ -288,6 +288,46 @@ jobs:
           bash -n deployments/staging/scripts/healthcheck_staging.sh
           bash -n deployments/staging/scripts/smoke_staging.sh
 
+  production-e2e-postman-parity:
+    name: Production E2E Postman parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4cb2a2790ae807c399 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install pyyaml
+
+      - name: Verify Postman manifest parity
+        shell: bash
+        env:
+          RUN_PRODUCTION_NEWMAN: ${{ secrets.E2E_PROD_ADMIN_EMAIL != '' && '1' || '0' }}
+          E2E_PROD_BASE_URL: ${{ secrets.E2E_PROD_BASE_URL }}
+          E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+          E2E_PROD_ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+          E2E_PRODUCTION_WRITE_CONFIRMATION: I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION
+        run: |
+          set -Eeuo pipefail
+          chmod +x scripts/ci/verify_production_postman_parity.sh
+          bash scripts/ci/verify_production_postman_parity.sh
+
+      - name: Postman parity summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Production E2E Postman parity"
+            echo "- Manifest source: \`tests/e2e/production/e2e-manifest.yaml\`"
+            echo "- Script: \`scripts/ci/verify_production_postman_parity.sh\`"
+            echo "- Import guide: [docs/testing/production-e2e/postman-import.md](../../docs/testing/production-e2e/postman-import.md)"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
   legacy-prod-asset-contract:
     name: Legacy Production Asset Contract
     runs-on: ubuntu-latest

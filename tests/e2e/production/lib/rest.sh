@@ -11,7 +11,7 @@ prod_e2e_rest_execute_flow() {
   path="$(echo "$flow_json" | jq -r '.path')"
   auth="$(echo "$flow_json" | jq -r '.auth // "none"')"
   evidence_label="$(echo "$flow_json" | jq -r '.evidence_label')"
-  expected_status="$(echo "$flow_json" | jq -r '.expected_status // 200')"
+  expected_status="$(echo "$flow_json" | jq -c '.expected_status // 200')"
   optional="$(echo "$flow_json" | jq -r '.optional // false')"
 
   local skip_if
@@ -48,6 +48,8 @@ prod_e2e_rest_execute_flow() {
     '{method:$method,path:$path,url:$url,auth:$auth,body:$body}' >"$req_file" 2>/dev/null || {
     printf '{"method":"%s","path":"%s","url":"%s","body":%s}\n' "$method" "$path" "$url" "$body" >"$req_file"
   }
+  prod_e2e_redact_file "$req_file" "${req_file}.redacted"
+  mv "${req_file}.redacted" "$req_file"
 
   if [[ "${PROD_E2E_DRY_RUN:-}" == "1" ]]; then
     prod_e2e_evidence_append_row "$id" "$label" "rest" "dry-run" "$evidence_label"
@@ -69,6 +71,12 @@ prod_e2e_rest_execute_flow() {
     webhook_hmac)
       local ts sig
       ts="$(date +%s)"
+      sig="$(prod_e2e_webhook_signature "$body" "$ts" "${COMMERCE_PAYMENT_WEBHOOK_SECRET:-}")"
+      curl_opts+=(-H "X-AVF-Webhook-Timestamp: ${ts}" -H "X-AVF-Webhook-Signature: ${sig}")
+      ;;
+    webhook_hmac_stale)
+      local ts sig
+      ts="$(( $(date +%s) - 86400 ))"
       sig="$(prod_e2e_webhook_signature "$body" "$ts" "${COMMERCE_PAYMENT_WEBHOOK_SECRET:-}")"
       curl_opts+=(-H "X-AVF-Webhook-Timestamp: ${ts}" -H "X-AVF-Webhook-Signature: ${sig}")
       ;;
@@ -131,6 +139,17 @@ prod_e2e_rest_execute_flow() {
   prod_e2e_evidence_append_section "$id" "$evidence_label" "${method} ${path}" "$code" "$req_file" "$resp_file"
   [[ "$status" == "fail" ]] && return 1
   return 0
+}
+
+prod_e2e_rest_run_flow() {
+  local flow_json="$1"
+  local handler
+  handler="$(echo "$flow_json" | jq -r '.handler // empty')"
+  if [[ -n "$handler" && "$handler" != "null" ]]; then
+    prod_e2e_rest_dispatch "$flow_json"
+  else
+    prod_e2e_rest_execute_flow "$flow_json"
+  fi
 }
 
 prod_e2e_webhook_signature() {

@@ -1,0 +1,183 @@
+# Production MQTT E2E manifest — mosquitto_pub/sub against E2E_PROD_MQTT_* with machine ID from current run.
+# REST setup (auth → machine activation) runs from e2e-manifest.yaml before these flows when --suite mqtt.
+version: 1
+name: avf-production-mqtt-e2e
+description: >-
+  MQTT command, telemetry, and negative tests for production. Uses only the E2E machine ID
+  captured during REST provisioning in the same run.
+
+flows:
+  - id: MQTT-CONN-001
+    label: MQTT connect with valid credentials
+    phase: mqtt-connect
+    protocol: mqtt
+    evidence_label: mqtt-connect-valid
+    handler: connect_valid
+    cleanup: none
+
+  - id: MQTT-CONN-002
+    label: MQTT connect with invalid credentials fails
+    phase: mqtt-connect
+    protocol: mqtt
+    evidence_label: mqtt-connect-invalid
+    handler: connect_invalid
+    cleanup: none
+
+  - id: MQTT-CMD-001
+    label: REST dispatch catalog.refresh → MQTT command → ACK → verify
+    phase: mqtt-command
+    protocol: mqtt
+    evidence_label: mqtt-command-pipeline
+    handler: command_pipeline
+    dispatch_flow:
+      id: MQTT-CMD-DISPATCH
+      label: POST /v1/admin/machines/{id}/commands catalog.refresh
+      protocol: rest
+      method: POST
+      path: /v1/admin/machines/{{machineId}}/commands
+      auth: bearer_admin
+      evidence_label: mqtt-rest-command-dispatch
+      idempotency: true
+      request_template:
+        commandType: catalog.refresh
+        payload:
+          type: catalog.refresh
+          catalogVersion: 1
+          mediaManifestVersion: 1
+          reason: "{{run_prefix}} e2e_prod_mqtt"
+      expected_status: 202
+      capture:
+        commandId: commandId
+    verify_flow:
+      id: MQTT-CMD-VERIFY
+      label: GET /v1/admin/commands/{commandId}
+      protocol: rest
+      method: GET
+      path: /v1/admin/commands/{{commandId}}
+      auth: bearer_admin
+      evidence_label: mqtt-rest-command-status
+      request_template: {}
+      expected_status: 200
+    cleanup: none
+
+  - id: MQTT-TEL-001
+    label: Publish heartbeat (state/heartbeat)
+    phase: mqtt-telemetry
+    protocol: mqtt
+    evidence_label: mqtt-telemetry-heartbeat
+    handler: telemetry_publish
+    topic_key: heartbeat
+    cleanup: none
+
+  - id: MQTT-TEL-002
+    label: Publish presence check-in
+    phase: mqtt-telemetry
+    protocol: mqtt
+    evidence_label: mqtt-telemetry-presence
+    handler: telemetry_publish
+    topic_key: presence
+    cleanup: none
+
+  - id: MQTT-TEL-003
+    label: Publish telemetry snapshot (machine health metrics)
+    phase: mqtt-telemetry
+    protocol: mqtt
+    evidence_label: mqtt-telemetry-snapshot
+    handler: telemetry_publish
+    topic_key: snapshot
+    publish_template:
+      schema_version: 1
+      event_id: "{{run_prefix}}-tel-snapshot"
+      machine_id: "{{machineId}}"
+      event_type: telemetry.snapshot
+      occurred_at: "2026-01-01T00:00:00Z"
+      dedupe_key: "{{run_prefix}}-tel-snapshot"
+      payload:
+        cpu_load: 0.1
+        mem_mb: 512
+        uptime_sec: 3600
+        temperature_c: 22.5
+        source: e2e-prod-mqtt
+    cleanup: none
+
+  - id: MQTT-TEL-004
+    label: Publish inventory signal (events/inventory)
+    phase: mqtt-telemetry
+    protocol: mqtt
+    evidence_label: mqtt-telemetry-inventory
+    handler: telemetry_publish
+    topic_key: inventory
+    publish_template:
+      schema_version: 1
+      event_id: "{{run_prefix}}-inv"
+      machine_id: "{{machineId}}"
+      occurred_at: "2026-01-01T00:00:01Z"
+      dedupe_key: "{{run_prefix}}-inv"
+      event_type: inventory.delta
+      payload:
+        slot_index: 1
+        delta: 0
+        reason: e2e_probe
+    cleanup: none
+
+  - id: MQTT-READ-001
+    label: Admin readback after telemetry
+    phase: mqtt-readback
+    protocol: mqtt
+    evidence_label: mqtt-readback-reports
+    handler: readback_reports
+    readback_flows:
+      - id: MQTT-READ-HEALTH
+        label: GET /v1/admin/machines/{id}/health
+        protocol: rest
+        method: GET
+        path: /v1/admin/machines/{{machineId}}/health
+        auth: bearer_admin
+        evidence_label: mqtt-rest-machine-health
+        request_template: {}
+        expected_status: 200
+        optional: true
+      - id: MQTT-READ-REPORT
+        label: GET /v1/admin/reports/machine-health
+        protocol: rest
+        method: GET
+        path: /v1/admin/reports/machine-health?limit=5
+        auth: bearer_admin
+        evidence_label: mqtt-rest-report-machine-health
+        request_template: {}
+        expected_status: 200
+        optional: true
+    cleanup: none
+
+  - id: MQTT-NEG-001
+    label: ACK with wrong machine_id (ignored/rejected)
+    phase: mqtt-negative
+    protocol: mqtt
+    evidence_label: mqtt-neg-wrong-machine-ack
+    handler: neg_wrong_machine_ack
+    cleanup: none
+
+  - id: MQTT-NEG-002
+    label: Stale command ACK (unknown command_id)
+    phase: mqtt-negative
+    protocol: mqtt
+    evidence_label: mqtt-neg-stale-ack
+    handler: neg_stale_ack
+    cleanup: none
+
+  - id: MQTT-NEG-003
+    label: Malformed critical telemetry (missing identity)
+    phase: mqtt-negative
+    protocol: mqtt
+    evidence_label: mqtt-neg-malformed-telemetry
+    handler: neg_malformed_telemetry
+    cleanup: none
+
+  - id: MQTT-NEG-004
+    label: Duplicate command ACK idempotency
+    phase: mqtt-negative
+    protocol: mqtt
+    evidence_label: mqtt-neg-duplicate-ack
+    handler: neg_duplicate_ack
+    source_evidence: mqtt-command-pipeline
+    cleanup: none
