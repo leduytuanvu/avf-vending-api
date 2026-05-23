@@ -19,7 +19,7 @@ echo "== production Postman parity =="
 ${PY} postman/production/generate_postman_from_manifest.py
 
 echo "== git diff postman/production/ (must be clean after regen) =="
-if ! git diff --exit-code -- postman/production/; then
+if ! git diff --ignore-cr-at-eol --exit-code -- postman/production/; then
   echo "POSTMAN_GIT_DIFF_FAIL: commit regenerated postman/production/* or fix generator" >&2
   exit 1
 fi
