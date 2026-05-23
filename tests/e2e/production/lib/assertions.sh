@@ -57,6 +57,9 @@ prod_e2e_assert_body_file() {
         local got jpath
         jpath="$(prod_e2e_jq_path "$path")"
         got="$(jq -r "${jpath} // empty" "$body_file")"
+        if declare -F prod_e2e_render_template_string >/dev/null 2>&1; then
+          value="$(prod_e2e_render_template_string "$value")"
+        fi
         if [[ "$got" != "$value" ]]; then
           echo "ASSERT FAIL ${label}: ${path} expected ${value}, got ${got}" >&2
           return 1
