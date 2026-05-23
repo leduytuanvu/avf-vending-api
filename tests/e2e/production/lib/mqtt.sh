@@ -29,9 +29,26 @@ prod_e2e_mqtt_publish_raw() {
   local -a args=()
   prod_e2e_mqtt_client_args args
   if [[ -n "$user_override" ]]; then
-    args=(-h "${MQTT_HOST:-}" -p "${MQTT_PORT:-8883}" -u "$user_override" -P "$pass_override" -i "${PROD_E2E_PREFIX}-mqtt-bad-${RANDOM}")
-    if [[ "${MQTT_USE_TLS:-true}" == "true" && -n "${MQTT_CAFILE:-${MQTT_CA_CERT:-}}" && -f "${MQTT_CAFILE:-${MQTT_CA_CERT:-}}" ]]; then
-      args+=(--cafile "${MQTT_CAFILE:-${MQTT_CA_CERT}}")
+    args=(-h "${MQTT_HOST:-}" -p "${MQTT_PORT:-8883}" -u "$user_override" -P "$pass_override" -i "${PROD_E2E_PREFIX}-mqtt-bad-${RANDOM}" -V "${MQTT_PROTOCOL_VERSION:-mqttv311}")
+    if [[ "${MQTT_USE_TLS:-true}" == "true" ]]; then
+      local ca="${MQTT_CAFILE:-${MQTT_CA_CERT:-}}"
+      if [[ -n "$ca" && -f "$ca" ]]; then
+        args+=(--cafile "$ca")
+      elif [[ -d /etc/ssl/certs ]]; then
+        args+=(--capath /etc/ssl/certs)
+      else
+        local -a ca_candidates=(
+          "/c/Program Files/Git/usr/ssl/certs/ca-bundle.crt"
+          "/c/Program Files/Git/mingw64/ssl/certs/ca-bundle.crt"
+        )
+        local c
+        for c in "${ca_candidates[@]}"; do
+          if [[ -f "$c" ]]; then
+            args+=(--cafile "$c")
+            break
+          fi
+        done
+      fi
     fi
   fi
   args+=(-t "$topic" -m "$payload" -q 1)

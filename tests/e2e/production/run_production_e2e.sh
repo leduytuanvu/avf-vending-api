@@ -3,7 +3,7 @@
 # Usage:
 #   bash tests/e2e/production/run_production_e2e.sh --mode contract [--dry-run]
 #   bash tests/e2e/production/run_production_e2e.sh --mode route-matrix [--fetch-swagger]
-#   bash tests/e2e/production/run_production_e2e.sh --mode live
+#   bash tests/e2e/production/run_production_e2e.sh --mode live [--suite all|all-no-online-payment|rest|grpc|mqtt]
 set -Eeuo pipefail
 
 PROD_E2E_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -59,6 +59,8 @@ source "${PROD_E2E_SCRIPT_DIR}/lib/grpc_handlers.sh"
 source "${PROD_E2E_SCRIPT_DIR}/lib/mqtt.sh"
 # shellcheck source=lib/mqtt_handlers.sh
 source "${PROD_E2E_SCRIPT_DIR}/lib/mqtt_handlers.sh"
+# shellcheck source=lib/suite_exclude.sh
+source "${PROD_E2E_SCRIPT_DIR}/lib/suite_exclude.sh"
 
 prod_e2e_python() {
   if [[ -n "${PROD_E2E_PYTHON:-}" ]]; then
@@ -108,9 +110,13 @@ prod_e2e_load_env() {
   : "${GRPC_USE_REFLECTION:=false}"
   : "${GRPC_PROTO_ROOT:=${PROD_E2E_REPO_ROOT}/proto}"
   export PROD_E2E_USE_MEDIA_PIPE=1
+  export PROD_E2E_USE_CLOUDINARY_MEDIA=1
   export E2E_TARGET=production
   export GRPC_PROTO_ROOT
-  if [[ -z "${COMMERCE_PAYMENT_WEBHOOK_SECRET:-}" ]]; then
+  if [[ "${MODE}" == "live" ]]; then
+    export PROD_E2E_SKIP_LEGACY_MACHINE_HTTP=1
+  fi
+  if [[ -z "${COMMERCE_PAYMENT_WEBHOOK_SECRET:-}" && "${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}" != "1" ]]; then
     export SKIP_GRPC_QR_WEBHOOK=1
   fi
 }
@@ -135,20 +141,22 @@ print('MANIFEST_OK', p.name, len(flows), 'flows')
 }
 
 prod_e2e_validate_contract() {
+  local eff="${EFFECTIVE_SUITE:-${SUITE}}"
   prod_e2e_validate_manifest_file "${PROD_E2E_SCRIPT_DIR}/e2e-manifest.yaml"
-  if [[ "${SUITE}" == "grpc" || "${SUITE}" == "all" ]]; then
+  if [[ "${eff}" == "grpc" || "${eff}" == "all" ]]; then
     prod_e2e_validate_manifest_file "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-grpc.yaml"
   fi
-  if [[ "${SUITE}" == "mqtt" || "${SUITE}" == "all" ]]; then
+  if [[ "${eff}" == "mqtt" || "${eff}" == "all" ]]; then
     prod_e2e_validate_manifest_file "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-mqtt.yaml"
   fi
   for f in fixtures/test-product.png fixtures/webhook-payment-success.json fixtures/webhook-payment-failed.json; do
     [[ -f "${PROD_E2E_SCRIPT_DIR}/${f}" ]] || { echo "missing fixture: ${f}" >&2; return 1; }
   done
-  for lib in lib/ids.sh lib/state.sh lib/rest.sh lib/rest_handlers.sh lib/classify.sh lib/postman_env.sh lib/grpc_common.sh lib/grpc.sh lib/grpc_handlers.sh lib/mqtt_common.sh lib/mqtt.sh lib/mqtt_handlers.sh lib/assertions.sh lib/redact.sh lib/evidence.sh; do
+  for lib in lib/ids.sh lib/state.sh lib/rest.sh lib/rest_handlers.sh lib/classify.sh lib/postman_env.sh lib/grpc_common.sh lib/grpc.sh lib/grpc_handlers.sh lib/mqtt_common.sh lib/mqtt.sh lib/mqtt_handlers.sh lib/assertions.sh lib/redact.sh lib/evidence.sh lib/suite_exclude.sh; do
     [[ -f "${PROD_E2E_SCRIPT_DIR}/${lib}" ]] || { echo "missing lib: ${lib}" >&2; return 1; }
   done
-  if [[ "${SUITE}" == "rest" || "${SUITE}" == "all" ]]; then
+  [[ -f "${PROD_E2E_SCRIPT_DIR}/suite-profiles.yaml" ]] || { echo "missing suite-profiles.yaml" >&2; return 1; }
+  if [[ "${eff}" == "rest" || "${eff}" == "all" ]]; then
     [[ -f "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-rest-coverage.yaml" ]] && \
       prod_e2e_validate_manifest_file "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-rest-coverage.yaml"
   fi
@@ -156,7 +164,7 @@ prod_e2e_validate_contract() {
   prod_e2e_py -m py_compile "${PROD_E2E_REPO_ROOT}/postman/production/generate_postman_from_manifest.py"
   prod_e2e_py -m py_compile "${PROD_E2E_SCRIPT_DIR}/scripts/validate_postman_shell_parity.py"
   prod_e2e_py -m py_compile "${PROD_E2E_SCRIPT_DIR}/scripts/generate_rest_route_matrix.py"
-  if [[ "${SUITE}" == "rest" || "${SUITE}" == "all" ]]; then
+  if [[ "${eff}" == "rest" || "${eff}" == "all" ]]; then
     prod_e2e_route_matrix_pipeline || return 1
   fi
 }
@@ -165,11 +173,22 @@ prod_e2e_generate_route_matrix() {
   local -a args=()
   [[ "${FETCH_SWAGGER}" -eq 1 ]] && args+=(--fetch-swagger)
   args+=(--skip-postman-check)
+  # Route matrix + Postman artifacts must reflect the full manifest; online payment exclusion is runtime-only.
+  local saved_exclude="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  unset PROD_E2E_EXCLUDE_ONLINE_PAYMENT
   prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/generate_rest_route_matrix.py" "${args[@]}"
+  local rc=$?
+  [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
+  return "${rc}"
 }
 
 prod_e2e_validate_route_matrix() {
+  local saved_exclude="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  unset PROD_E2E_EXCLUDE_ONLINE_PAYMENT
   prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/generate_rest_route_matrix.py" --validate-only --no-write-manifest
+  local rc=$?
+  [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
+  return "${rc}"
 }
 
 prod_e2e_route_matrix_pipeline() {
@@ -179,7 +198,13 @@ prod_e2e_route_matrix_pipeline() {
 }
 
 prod_e2e_generate_postman() {
+  # Committed Postman must always reflect the full manifest; online payment exclusion is runtime-only.
+  local saved_exclude="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  unset PROD_E2E_EXCLUDE_ONLINE_PAYMENT
   prod_e2e_py "${PROD_E2E_REPO_ROOT}/postman/production/generate_postman_from_manifest.py"
+  local rc=$?
+  [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
+  return "${rc}"
 }
 
 prod_e2e_validate_postman_parity() {
@@ -257,7 +282,8 @@ prod_e2e_run_newman() {
 prod_e2e_flow_matches_suite() {
   local protocol="$1"
   local phase="$2"
-  case "${SUITE}" in
+  local eff="${EFFECTIVE_SUITE:-${SUITE}}"
+  case "${eff}" in
     all) return 0 ;;
     rest)
       [[ "$protocol" == "rest" ]] && return 0
@@ -296,10 +322,15 @@ prod_e2e_run_flows_from_manifest() {
   local failures=0
   while IFS= read -r flow; do
     [[ -n "$flow" ]] || continue
-    local protocol phase fid
-    protocol="$(echo "$flow" | jq -r '.protocol')"
-    phase="$(echo "$flow" | jq -r '.phase // ""')"
-    fid="$(echo "$flow" | jq -r '.id // ""')"
+    local protocol phase fid fpath skip_reason
+    protocol="$(echo "$flow" | jq -r '.protocol' | tr -d '\r')"
+    phase="$(echo "$flow" | jq -r '.phase // ""' | tr -d '\r')"
+    fid="$(echo "$flow" | jq -r '.id // ""' | tr -d '\r')"
+    fpath="$(echo "$flow" | jq -r '.path // .label // ""' | tr -d '\r')"
+    if skip_reason="$(prod_e2e_flow_skip_reason "$fid" "$fpath")"; then
+      prod_e2e_record_skipped_flow "$flow" "$skip_reason"
+      continue
+    fi
     if [[ "${PROD_E2E_PREFLIGHT_ONLY:-}" == "1" ]]; then
       case "$phase" in
         preflight) ;;
@@ -337,20 +368,22 @@ for f in m.get('flows', []):
 
 prod_e2e_run_flows() {
   local failures=0
+  local eff="${EFFECTIVE_SUITE:-${SUITE}}"
   prod_e2e_run_flows_from_manifest "${PROD_E2E_SCRIPT_DIR}/e2e-manifest.yaml" || failures=$?
-  if [[ "${SUITE}" == "rest" || "${SUITE}" == "all" ]]; then
-    if [[ -f "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-rest-coverage.yaml" ]]; then
+  if [[ "${eff}" == "rest" || "${eff}" == "all" ]]; then
+    if [[ -f "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-rest-coverage.yaml" && "${PROD_E2E_PREFLIGHT_ONLY:-}" != "1" ]]; then
+      prod_e2e_refresh_admin_token || true
       local rf=0
       prod_e2e_run_flows_from_manifest "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-rest-coverage.yaml" || rf=$?
       failures=$((failures + rf))
     fi
   fi
-  if [[ "${SUITE}" == "grpc" || "${SUITE}" == "all" ]]; then
+  if [[ "${eff}" == "grpc" || "${eff}" == "all" ]]; then
     local gf=0
     prod_e2e_run_flows_from_manifest "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-grpc.yaml" || gf=$?
     failures=$((failures + gf))
   fi
-  if [[ "${SUITE}" == "mqtt" || "${SUITE}" == "all" ]]; then
+  if [[ "${eff}" == "mqtt" || "${eff}" == "all" ]]; then
     local mf=0
     prod_e2e_run_flows_from_manifest "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-mqtt.yaml" || mf=$?
     failures=$((failures + mf))
@@ -358,12 +391,45 @@ prod_e2e_run_flows() {
   return "$failures"
 }
 
+prod_e2e_write_results_report() {
+  [[ "${MODE}" == "live" ]] || return 0
+  prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/generate_e2e_results_report.py" "${PROD_E2E_RUN_ID}" || true
+}
+
+prod_e2e_print_final_verdict() {
+  [[ "${MODE}" != "live" ]] && return 0
+  local failures_file="${PROD_E2E_RUN_DIR}/failures.classification.txt"
+  local fail_count=0
+  [[ -f "$failures_file" ]] && fail_count="$(wc -l <"$failures_file" | tr -d ' \r')"
+  local skipped_file="${PROD_E2E_RUN_DIR}/skipped.flows.txt"
+  local skipped_count=0
+  [[ -f "$skipped_file" ]] && skipped_count="$(wc -l <"$skipped_file" | tr -d ' \r')"
+  local verdict="PRODUCTION_E2E_NO_ONLINE_PAYMENT_FAILED"
+  if [[ "${fail_count:-0}" -eq 0 ]]; then
+    verdict="PRODUCTION_E2E_NO_ONLINE_PAYMENT_100_PERCENT_PASS"
+  fi
+  if [[ "${SUITE}" == "all-no-online-payment" ]]; then
+    echo ""
+    echo "== FINAL VERDICT =="
+    echo "RUN_ID=${PROD_E2E_RUN_ID}"
+    echo "RESULTS=docs/testing/production-e2e/RESULTS_${PROD_E2E_RUN_ID}.md"
+    echo "RAW=${PROD_E2E_RUN_DIR}/raw"
+    echo "NEWMAN=${PROD_E2E_RUN_DIR}/postman/newman-report.json"
+    echo "online_payment_excluded=YES"
+    echo "skipped_flows=${skipped_count}"
+    echo "final_verdict=${verdict}"
+  fi
+}
+
 main() {
   prod_e2e_load_env
+  prod_e2e_suite_profile_init
+  EFFECTIVE_SUITE="$(prod_e2e_suite_effective)"
+  export EFFECTIVE_SUITE
   prod_e2e_ids_init
   [[ "${DRY_RUN}" -eq 1 ]] && export PROD_E2E_DRY_RUN=1
 
-  echo "== production E2E harness mode=${MODE} suite=${SUITE} dry_run=${DRY_RUN} run_id=${PROD_E2E_RUN_ID} =="
+  echo "== production E2E harness mode=${MODE} suite=${SUITE} effective=${EFFECTIVE_SUITE} dry_run=${DRY_RUN} run_id=${PROD_E2E_RUN_ID} =="
   prod_e2e_validate_contract
 
   if [[ "${MODE}" == "route-matrix" ]]; then
@@ -371,7 +437,7 @@ main() {
     exit 0
   fi
 
-  if [[ "${SUITE}" != "rest" && "${SUITE}" != "all" ]]; then
+  if [[ "${EFFECTIVE_SUITE}" != "rest" && "${EFFECTIVE_SUITE}" != "all" ]]; then
     prod_e2e_generate_postman
   fi
 
@@ -408,10 +474,14 @@ main() {
       echo "FATAL: live mode requires ADMIN_TOKEN or ADMIN_EMAIL+ADMIN_PASSWORD (or E2E_PROD_* CI secrets)" >&2
       exit 2
     }
-    if [[ "${SUITE}" == "mqtt" || "${SUITE}" == "all" ]]; then
+    if [[ "${EFFECTIVE_SUITE}" == "mqtt" || "${EFFECTIVE_SUITE}" == "all" ]]; then
       [[ -n "${MQTT_HOST:-}" && -n "${MQTT_USERNAME:-}" && -n "${MQTT_PASSWORD:-}" ]] || {
         prod_e2e_fail_classify "d" "MQTT-CONN-000" "live MQTT suite requires E2E_PROD_MQTT_HOST/USERNAME/PASSWORD (or .env.production.e2e.local)"
         echo "FATAL: live MQTT suite requires MQTT_HOST, MQTT_USERNAME, MQTT_PASSWORD (map from E2E_PROD_MQTT_*)" >&2
+        exit 2
+      }
+      [[ -n "${GRPC_ADDR:-}" || -n "${E2E_PROD_GRPC_TARGET:-}" ]] || {
+        echo "FATAL: live suite requires E2E_PROD_GRPC_TARGET (or GRPC_ADDR)" >&2
         exit 2
       }
       prod_e2e_mqtt_ensure_clients || {
@@ -420,18 +490,27 @@ main() {
         exit 2
       }
     fi
+    if [[ "${EFFECTIVE_SUITE}" == "grpc" || "${EFFECTIVE_SUITE}" == "all" ]]; then
+      [[ -n "${GRPC_ADDR:-}" || -n "${E2E_PROD_GRPC_TARGET:-}" ]] || {
+        echo "FATAL: live gRPC suite requires E2E_PROD_GRPC_TARGET (or GRPC_ADDR)" >&2
+        exit 2
+      }
+    fi
     prod_e2e_evidence_init
+    printf '%s\n' "${SUITE}" >"${PROD_E2E_RUN_DIR}/suite.profile.txt"
     local failures=0
     prod_e2e_run_flows || failures=$?
-    if [[ "$failures" -eq 0 && "${SUITE}" != "grpc" && "${SUITE}" != "mqtt" ]]; then
+    if [[ "$failures" -eq 0 && "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" ]]; then
       prod_e2e_lock_postman_parity || failures=$((failures + 1))
     fi
-    if [[ "${SUITE}" != "grpc" && "${SUITE}" != "mqtt" ]]; then
+    if [[ "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" ]]; then
       prod_e2e_run_newman || failures=$((failures + 1))
     fi
     prod_e2e_write_postman_checksums || true
     prod_e2e_evidence_finalize
     prod_e2e_state_sync_json
+    prod_e2e_write_results_report
+    prod_e2e_print_final_verdict
     [[ "$failures" -eq 0 ]] || exit 1
     case "${SUITE}" in
       grpc) echo "GRPC_LIVE_OK run_dir=${PROD_E2E_RUN_DIR}" ;;

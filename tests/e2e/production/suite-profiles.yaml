@@ -1,0 +1,25 @@
+# Suite profiles for production E2E harness (see run_production_e2e.sh --suite).
+version: 1
+profiles:
+  all-no-online-payment:
+    description: >-
+      Full live production E2E excluding online/QR payment, PSP webhooks, and real payment charges.
+      Cash/manual commerce runs via gRPC handlers only.
+    exclude_flow_ids:
+      - REST-COMMERCE-001
+      - REST-COMMERCE-002
+      - REST-COMMERCE-003
+      - REST-COMMERCE-003-DUP
+      - REST-COMMERCE-004
+      - REST-COMMERCE-005
+      - REST-COMMERCE-006
+      - REST-NEG-002
+      - REST-NEG-003
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"

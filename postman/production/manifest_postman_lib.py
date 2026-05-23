@@ -119,13 +119,43 @@ def load_main_manifest(manifest_path: Path) -> dict[str, Any]:
     return yaml.safe_load(manifest_path.read_text(encoding="utf-8")) or {}
 
 
+def load_suite_exclude_config(repo_root: Path) -> dict[str, Any]:
+    path = repo_root / "tests" / "e2e" / "production" / "suite-profiles.yaml"
+    if not path.is_file() or yaml is None:
+        return {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return (data.get("profiles") or {}).get("all-no-online-payment") or {}
+
+
+def flow_excluded_online_payment(flow: dict[str, Any], repo_root: Path) -> str | None:
+    import os
+
+    if os.environ.get("PROD_E2E_EXCLUDE_ONLINE_PAYMENT") != "1":
+        return None
+    cfg = load_suite_exclude_config(repo_root)
+    fid = str(flow.get("id") or "")
+    if fid in (cfg.get("exclude_flow_ids") or []):
+        return str(cfg.get("skip_reason") or "excluded by operator request: no online payment test")
+    path = str(flow.get("path") or flow.get("label") or "")
+    for sub in cfg.get("exclude_coverage_path_substrings") or []:
+        if sub and sub in path:
+            return str(cfg.get("skip_reason") or "excluded by operator request: no online payment test")
+    return None
+
+
 def postman_exclude_phases(manifest: dict[str, Any]) -> set[str]:
     return set((manifest.get("postman") or {}).get("exclude_phases") or [])
 
 
-def collect_manifest_rest_flows(manifest: dict[str, Any], *, postman_only: bool = True) -> list[dict[str, Any]]:
+def collect_manifest_rest_flows(
+    manifest: dict[str, Any],
+    *,
+    postman_only: bool = True,
+    repo_root: Path | None = None,
+) -> list[dict[str, Any]]:
     """REST flows the shell harness executes that belong in Postman parity scope."""
     exclude = postman_exclude_phases(manifest) if postman_only else set()
+    root = repo_root or Path(__file__).resolve().parents[2]
     out: list[dict[str, Any]] = []
 
     def add(flow: dict[str, Any], parent_id: str | None = None) -> None:
@@ -139,6 +169,8 @@ def collect_manifest_rest_flows(manifest: dict[str, Any], *, postman_only: bool 
         entry = dict(flow)
         if parent_id:
             entry["_parent_handler"] = parent_id
+        if flow_excluded_online_payment(entry, root):
+            return
         out.append(entry)
 
     for flow in manifest.get("flows") or []:
@@ -148,7 +180,18 @@ def collect_manifest_rest_flows(manifest: dict[str, Any], *, postman_only: bool 
                 continue
             for sub in (flow.get("init_flow"), flow.get("complete_flow")):
                 if sub and sub.get("method"):
-                    add(sub, parent_id=str(flow.get("id")))
+                    entry = dict(sub)
+                    entry.setdefault("protocol", "rest")
+                    add(entry, parent_id=str(flow.get("id")))
+            continue
+        if handler == "media_cloudinary_upload":
+            if postman_only and (flow.get("phase") or "") in exclude:
+                continue
+            sub = flow.get("upload_flow")
+            if sub and sub.get("method"):
+                entry = dict(sub)
+                entry.setdefault("protocol", "rest")
+                add(entry, parent_id=str(flow.get("id")))
             continue
         if handler and not flow.get("method"):
             continue
@@ -369,8 +412,9 @@ def build_postman_events(flow: dict[str, Any], manifest: dict[str, Any]) -> list
 def build_postman_collection(manifest_path: Path) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     manifest = load_main_manifest(manifest_path)
     manifest_dir = manifest_path.parent
+    repo_root = manifest_path.parents[3]
     postman_cfg = manifest.get("postman") or {}
-    flows = collect_manifest_rest_flows(manifest, postman_only=True)
+    flows = collect_manifest_rest_flows(manifest, postman_only=True, repo_root=repo_root)
 
     folders: dict[str, list[dict[str, Any]]] = {}
     for flow in flows:
@@ -392,10 +436,10 @@ def build_postman_collection(manifest_path: Path) -> tuple[dict[str, Any], dict[
             )
         items.append({"name": phase, "item": children})
 
-    seed = hashlib.sha256(json.dumps(flows, sort_keys=True, default=str).encode()).hexdigest()
+    # Stable Postman IDs must not depend on flow count (runtime suite exclusions must not flip IDs).
     collection = {
         "info": {
-            "_postman_id": stable_uuid("collection:" + seed),
+            "_postman_id": stable_uuid("collection:avf-production-e2e-manifest-v1"),
             "name": postman_cfg.get("collection_name", "AVF Production E2E (manifest)"),
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
             "description": (
@@ -408,7 +452,7 @@ def build_postman_collection(manifest_path: Path) -> tuple[dict[str, Any], dict[
     }
 
     environment = {
-        "id": stable_uuid("environment:" + seed),
+        "id": stable_uuid("environment:avf-production-e2e-v1"),
         "name": postman_cfg.get("environment_name", "AVF Production E2E"),
         "values": [{"key": k, "value": v, "enabled": True, "type": "default"} for k, v in POSTMAN_ENV_KEYS],
         "_postman_variable_scope": "environment",
@@ -543,8 +587,9 @@ def _norm_headers(headers: dict[str, str]) -> dict[str, str]:
 def validate_shell_postman_parity(manifest_path: Path, collection_path: Path) -> list[str]:
     manifest = load_main_manifest(manifest_path)
     manifest_dir = manifest_path.parent
+    repo_root = manifest_path.parents[3]
     coll = json.loads(collection_path.read_text(encoding="utf-8"))
-    shell_flows = collect_manifest_rest_flows(manifest, postman_only=True)
+    shell_flows = collect_manifest_rest_flows(manifest, postman_only=True, repo_root=repo_root)
     shell_by_id = {str(f.get("id")): flow_request_spec(f, manifest_dir) for f in shell_flows if f.get("id")}
     postman_reqs = collect_postman_rest_requests(coll)
     postman_by_id = {str(r["flow_id"]): r for r in postman_reqs if r.get("flow_id")}

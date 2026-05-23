@@ -30,6 +30,15 @@ out.write_text(json.dumps(data, indent=2, sort_keys=True) + '\n', encoding='utf-
 "
 }
 
+prod_e2e_state_reload_key() {
+  local key="$1"
+  local line
+  line="$(grep "^${key}=" "${PROD_E2E_STATE_FILE}" 2>/dev/null | tail -1 || true)"
+  [[ -n "$line" ]] || return 0
+  # Values are written with %q; eval restores them safely (incl. long JWTs on Git Bash).
+  eval "export ${line}"
+}
+
 prod_e2e_state_set() {
   local key="$1"
   local val="$2"
@@ -37,14 +46,17 @@ prod_e2e_state_set() {
   grep -v "^${key}=" "${PROD_E2E_STATE_FILE}" 2>/dev/null >"${PROD_E2E_STATE_FILE}.tmp" || true
   printf '%s=%q\n' "$key" "$val" >>"${PROD_E2E_STATE_FILE}.tmp"
   mv "${PROD_E2E_STATE_FILE}.tmp" "${PROD_E2E_STATE_FILE}"
-  # shellcheck disable=SC2086
-  export "${key}=${val}"
+  if [[ ${#val} -le 512 ]]; then
+    # shellcheck disable=SC2086
+    export "${key}=${val}"
+  else
+    prod_e2e_state_reload_key "$key"
+  fi
   if [[ "$key" == "accessToken" ]]; then
-    export ADMIN_TOKEN="$val"
-    touch "${PROD_E2E_STATE_FILE}"
     grep -v "^ADMIN_TOKEN=" "${PROD_E2E_STATE_FILE}" 2>/dev/null >"${PROD_E2E_STATE_FILE}.tmp" || true
     printf 'ADMIN_TOKEN=%q\n' "$val" >>"${PROD_E2E_STATE_FILE}.tmp"
     mv "${PROD_E2E_STATE_FILE}.tmp" "${PROD_E2E_STATE_FILE}"
+    prod_e2e_state_reload_key ADMIN_TOKEN
   fi
   if [[ "$key" == "machineToken" ]]; then
     export MACHINE_TOKEN="$val"

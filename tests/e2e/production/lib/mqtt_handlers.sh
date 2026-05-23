@@ -184,7 +184,7 @@ prod_e2e_mqtt_handler_telemetry_publish() {
   local id evidence_label topic_key template
   id="$(echo "$flow_json" | jq -r '.id')"
   evidence_label="$(echo "$flow_json" | jq -r '.evidence_label')"
-  topic_key="$(echo "$flow_json" | jq -r '.topic_key // telemetry')"
+  topic_key="$(echo "$flow_json" | jq -r '.topic_key // "telemetry"')"
   prod_e2e_mqtt_resolve_topics || return 1
 
   local topic eid ts mid payload
@@ -319,7 +319,7 @@ prod_e2e_mqtt_handler_neg_duplicate_ack() {
   id="$(echo "$flow_json" | jq -r '.id')"
   evidence_label="$(echo "$flow_json" | jq -r '.evidence_label')"
   recv_file="${PROD_E2E_RAW_DIR}/mqtt-command-pipeline.command-received.json"
-  [[ -f "$recv_file" ]] || recv_file="${PROD_E2E_RAW_DIR}/$(echo "$flow_json" | jq -r '.source_evidence // mqtt-command-pipeline').command-received.json"
+  [[ -f "$recv_file" ]] || recv_file="${PROD_E2E_RAW_DIR}/$(echo "$flow_json" | jq -r '.source_evidence // "mqtt-command-pipeline"').command-received.json"
   [[ -f "$recv_file" ]] || {
     prod_e2e_mqtt_fail_hint "$id" "payload"
     return 1

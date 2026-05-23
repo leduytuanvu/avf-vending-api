@@ -25,7 +25,10 @@ prod_e2e_ids_init() {
   if [[ -f "${PROD_E2E_STATE_FILE}" ]]; then
     # shellcheck disable=SC1090
     set -a
-    source "${PROD_E2E_STATE_FILE}"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || continue
+      eval "export ${line}"
+    done <"${PROD_E2E_STATE_FILE}"
     set +a
   fi
 }
