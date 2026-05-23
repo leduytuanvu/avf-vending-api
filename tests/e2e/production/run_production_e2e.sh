@@ -173,13 +173,22 @@ prod_e2e_generate_route_matrix() {
   local -a args=()
   [[ "${FETCH_SWAGGER}" -eq 1 ]] && args+=(--fetch-swagger)
   args+=(--skip-postman-check)
-  export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  # Route matrix + Postman artifacts must reflect the full manifest; online payment exclusion is runtime-only.
+  local saved_exclude="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  unset PROD_E2E_EXCLUDE_ONLINE_PAYMENT
   prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/generate_rest_route_matrix.py" "${args[@]}"
+  local rc=$?
+  [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
+  return "${rc}"
 }
 
 prod_e2e_validate_route_matrix() {
-  export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  local saved_exclude="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  unset PROD_E2E_EXCLUDE_ONLINE_PAYMENT
   prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/generate_rest_route_matrix.py" --validate-only --no-write-manifest
+  local rc=$?
+  [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
+  return "${rc}"
 }
 
 prod_e2e_route_matrix_pipeline() {
