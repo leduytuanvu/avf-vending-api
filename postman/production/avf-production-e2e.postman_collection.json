@@ -1,0 +1,1987 @@
+{
+  "info": {
+    "_postman_id": "b9f21dd5-ff41-440c-a1aa-a5f21a3db066",
+    "name": "AVF Production E2E (manifest)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Generated from tests/e2e/production/e2e-manifest.yaml \u2014 do not edit by hand."
+  },
+  "item": [
+    {
+      "name": "preflight",
+      "item": [
+        {
+          "name": "REST-PREFLIGHT-001 \u2014 GET /health/live",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/live",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "live"
+              ],
+              "query": null
+            }
+          },
+          "event": null
+        },
+        {
+          "name": "REST-PREFLIGHT-002 \u2014 GET /health/ready",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/ready",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ],
+              "query": null
+            }
+          },
+          "event": null
+        },
+        {
+          "name": "REST-PREFLIGHT-003 \u2014 GET /version",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/version",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "version"
+              ],
+              "query": null
+            }
+          },
+          "event": null
+        }
+      ]
+    },
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "REST-AUTH-001 \u2014 POST /v1/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "login"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.tokens.accessToken !== undefined) pm.environment.set('accessToken', j.tokens.accessToken);",
+                  "  if (j.tokens.refreshToken !== undefined) pm.environment.set('refreshToken', j.tokens.refreshToken);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-AUTH-002 \u2014 GET /v1/auth/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "me"
+              ],
+              "query": null
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.id !== undefined) pm.environment.set('adminUserId', j.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "catalog",
+      "item": [
+        {
+          "name": "REST-CATALOG-001 \u2014 POST /v1/admin/categories",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "categories"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"{{runPrefix}}-cat\",\n  \"name\": \"{{runPrefix}} Category\",\n  \"active\": true\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.id !== undefined) pm.environment.set('categoryId', j.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-CATALOG-002 \u2014 POST /v1/admin/brands",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "brands"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"{{runPrefix}}-brand\",\n  \"name\": \"{{runPrefix}} Brand\",\n  \"active\": true\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.id !== undefined) pm.environment.set('brandId', j.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-CATALOG-003 \u2014 POST /v1/admin/tags",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/tags",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "tags"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"{{runPrefix}}-tag\",\n  \"name\": \"{{runPrefix}} Tag\",\n  \"active\": true\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.id !== undefined) pm.environment.set('tagId', j.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-CATALOG-004 \u2014 POST /v1/admin/products (with media)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "products"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{runPrefix}}-SKU\",\n  \"name\": \"{{runPrefix}} Product\",\n  \"status\": \"active\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"brandId\": \"{{brandId}}\",\n  \"tagIds\": [\n    \"{{tagId}}\"\n  ],\n  \"primaryMediaId\": \"{{mediaId}}\",\n  \"priceMinor\": 15000,\n  \"currency\": \"VND\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.id !== undefined) pm.environment.set('productId', j.id);",
+                  "  if (j.sku !== undefined) pm.environment.set('sku', j.sku);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-CATALOG-005 \u2014 GET /v1/admin/products/{productId}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/products/{{productId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "products",
+                "{{productId}}"
+              ],
+              "query": null
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "media",
+      "item": [
+        {
+          "name": "REST-MEDIA-001 \u2014 POST /v1/admin/media/uploads/init",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/media/uploads/init",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "media",
+                "uploads",
+                "init"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filename\": \"{{runPrefix}}-product.png\",\n  \"contentType\": \"image/png\",\n  \"purpose\": \"product_image\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.mediaId !== undefined) pm.environment.set('mediaId', j.mediaId);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-MEDIA-002 \u2014 POST /v1/admin/media/uploads/{mediaId}/complete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/media/uploads/{{mediaId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "media",
+                "uploads",
+                "{{mediaId}}",
+                "complete"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sizeBytes\": 70,\n  \"contentType\": \"image/png\",\n  \"sha256\": \"{{media_sha256}}\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "provisioning",
+      "item": [
+        {
+          "name": "REST-SITE-001 \u2014 POST /v1/admin/sites",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/sites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "sites"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{runPrefix}} Site\",\n  \"timezone\": \"UTC\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.id !== undefined) pm.environment.set('siteId', j.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-MACHINE-001 \u2014 POST /v1/admin/machines",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"siteId\": \"{{siteId}}\",\n  \"serialNumber\": \"{{runPrefix}}-MACHINE\",\n  \"model\": \"AVF-E2E\",\n  \"status\": \"provisioning\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.id !== undefined) pm.environment.set('machineId', j.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-MACHINE-002 \u2014 PATCH /v1/admin/machines/{id} active",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-MACHINE-003 \u2014 POST /v1/admin/machines/{id}/activation-codes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/activation-codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "activation-codes"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expiresInHours\": 24\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.code !== undefined) pm.environment.set('activationCode', j.code);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-MACHINE-004 \u2014 POST /v1/setup/activation-codes/claim",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/setup/activation-codes/claim",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "setup",
+                "activation-codes",
+                "claim"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activationCode\": \"{{activationCode}}\",\n  \"deviceFingerprint\": {\n    \"serial\": \"{{runPrefix}}-ANDROID\",\n    \"androidId\": \"{{runPrefix}}-aid\",\n    \"packageName\": \"dev.avf.vending.e2e\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.machineToken !== undefined) pm.environment.set('machineToken', j.machineToken);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-MACHINE-005 \u2014 GET /v1/setup/machines/{id}/bootstrap",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/setup/machines/{{machineId}}/bootstrap",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "setup",
+                "machines",
+                "{{machineId}}",
+                "bootstrap"
+              ],
+              "query": null
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "planogram",
+      "item": [
+        {
+          "name": "REST-PLANO-001 \u2014 POST /v1/machines/{id}/operator-sessions/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/machines/{{machineId}}/operator-sessions/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "machines",
+                "{{machineId}}",
+                "operator-sessions",
+                "login"
+              ],
+              "query": null
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.id !== undefined) pm.environment.set('operatorSessionId', j.id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-PLANO-002 \u2014 PUT /v1/admin/machines/{id}/topology",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/topology",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "topology"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cabinets\": [\n    {\n      \"code\": \"A\",\n      \"layout\": {\n        \"rows\": 1,\n        \"columns\": 1\n      }\n    }\n  ]\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-PLANO-003 \u2014 PUT /v1/admin/machines/{id}/planograms/draft",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/planograms/draft",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "planograms",
+                "draft"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slots\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"productId\": \"{{productId}}\",\n      \"priceMinor\": 15000,\n      \"currency\": \"VND\"\n    }\n  ]\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-PLANO-004 \u2014 POST /v1/admin/machines/{id}/planograms/publish",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/planograms/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "planograms",
+                "publish"
+              ],
+              "query": null
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-PLANO-005 \u2014 POST /v1/admin/machines/{id}/stock-adjustments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/stock-adjustments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "stock-adjustments"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"delta\": 10,\n      \"reason\": \"e2e_initial_stock\"\n    }\n  ]\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-MACHINE-006 \u2014 GET /v1/machines/{id}/sale-catalog",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/machines/{{machineId}}/sale-catalog",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "machines",
+                "{{machineId}}",
+                "sale-catalog"
+              ],
+              "query": [
+                {
+                  "key": "include_unavailable",
+                  "value": "true"
+                },
+                {
+                  "key": "include_images",
+                  "value": "true"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mqtt",
+      "item": [
+        {
+          "name": "MQTT-001 \u2014 REST dispatch catalog.refresh command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/commands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "commands"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"commandType\": \"catalog.refresh\",\n  \"payload\": {\n    \"reason\": \"e2e_prod_manifest\"\n  }\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.commandId !== undefined) pm.environment.set('commandId', j.commandId);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-CMD-001 \u2014 GET /v1/admin/commands/{commandId}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/commands/{{commandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "commands",
+                "{{commandId}}"
+              ],
+              "query": null
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "commerce",
+      "item": [
+        {
+          "name": "REST-COMMERCE-001 \u2014 POST /v1/commerce/orders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"machine_id\": \"{{machineId}}\",\n  \"product_id\": \"{{productId}}\",\n  \"currency\": \"VND\",\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\",\n  \"slot_index\": 1\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.order_id !== undefined) pm.environment.set('orderId', j.order_id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-COMMERCE-002 \u2014 POST /v1/commerce/orders/{id}/payment-session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payment-session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}",
+                "payment-session"
+              ],
+              "query": [
+                {
+                  "key": "slot_index",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"stripe\",\n  \"payment_state\": \"created\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"outbox_payload_json\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.payment_id !== undefined) pm.environment.set('paymentId', j.payment_id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-COMMERCE-003 \u2014 POST payment webhook (signed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}",
+                "payments",
+                "{{paymentId}}",
+                "webhooks"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"webhook_event_id\": \"{{webhook_event_id}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_{{runId}}\",\n  \"status\": \"succeeded\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"metadata\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}\n"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-COMMERCE-004 \u2014 GET /v1/commerce/orders/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}"
+              ],
+              "query": null
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-COMMERCE-005 \u2014 POST /v1/commerce/orders/{id}/vend/start",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/vend/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}",
+                "vend",
+                "start"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-COMMERCE-006 \u2014 POST /v1/commerce/orders/{id}/vend/success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/vend/success",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}",
+                "vend",
+                "success"
+              ],
+              "query": null
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "verify",
+      "item": [
+        {
+          "name": "REST-INV-001 \u2014 GET /v1/admin/machines/{id}/inventory",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/inventory",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "inventory"
+              ],
+              "query": null
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-AUDIT-001 \u2014 GET /v1/admin/audit/events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/audit/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "audit",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "REST-REPORT-001 \u2014 GET /v1/admin/reports/sales-summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/reports/sales-summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "reports",
+                "sales-summary"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.ldtv.dev"
+    }
+  ]
+}

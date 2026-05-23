@@ -9,6 +9,7 @@
 tests/e2e/.env
 tests/e2e/.env.local
 tests/e2e/.env.production.destructive.local
+tests/e2e/production/.env.production.e2e.local
 # Node env files (examples *.example are tracked; see negated rules above)
 deployments/prod/**/.env.app-node
 deployments/prod/**/.env.data-node

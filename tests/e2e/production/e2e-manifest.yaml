@@ -1,0 +1,774 @@
+# Production release E2E manifest — single source of truth for REST, gRPC, MQTT, and Postman.
+# Derived from docs/testing/05_PRODUCTION_TEST_EXECUTION_ORDER.md and integrated verification guide.
+# All mutable test entities use prefix: E2E-PROD-{{run_id}} (see lib/ids.sh).
+version: 1
+name: avf-production-release-e2e
+description: >-
+  End-to-end production release verification (REST + gRPC + MQTT). Postman collection is generated
+  from this file only — do not hand-edit postman/production/avf-production-e2e.postman_collection.json.
+
+env:
+  local_file: tests/e2e/production/.env.production.e2e.local
+  github_secrets:
+    E2E_PROD_BASE_URL: BASE_URL
+    E2E_PROD_ADMIN_EMAIL: ADMIN_EMAIL
+    E2E_PROD_ADMIN_PASSWORD: ADMIN_PASSWORD
+    E2E_PROD_GRPC_TARGET: GRPC_ADDR
+    E2E_PROD_MQTT_HOST: MQTT_HOST
+    E2E_PROD_MQTT_USERNAME: MQTT_USERNAME
+    E2E_PROD_MQTT_PASSWORD: MQTT_PASSWORD
+    E2E_PROD_PAYMENT_WEBHOOK_SECRET: COMMERCE_PAYMENT_WEBHOOK_SECRET
+  required_confirmations:
+    production_writes: I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION
+  prefix_template: "E2E-PROD-{{run_id}}"
+
+flows:
+  # --- Phase 0: Preflight ---
+  - id: REST-PREFLIGHT-001
+    label: GET /health/live
+    phase: preflight
+    protocol: rest
+    evidence_label: rest-health-live
+    auth: none
+    method: GET
+    path: /health/live
+    request_template: {}
+    expected_status: 200
+    assertions:
+      - type: body_not_empty
+    cleanup: none
+
+  - id: REST-PREFLIGHT-002
+    label: GET /health/ready
+    phase: preflight
+    protocol: rest
+    evidence_label: rest-health-ready
+    auth: none
+    method: GET
+    path: /health/ready
+    request_template: {}
+    expected_status: 200
+    assertions:
+      - type: body_not_empty
+    cleanup: none
+
+  - id: REST-PREFLIGHT-003
+    label: GET /version
+    phase: preflight
+    protocol: rest
+    evidence_label: rest-version
+    auth: none
+    method: GET
+    path: /version
+    request_template: {}
+    expected_status: 200
+    assertions:
+      - type: json_path_exists
+        path: version
+    cleanup: none
+
+  # --- Phase 1: Admin auth ---
+  - id: REST-AUTH-001
+    label: POST /v1/auth/login
+    phase: auth
+    protocol: rest
+    evidence_label: rest-auth-login
+    auth: none
+    method: POST
+    path: /v1/auth/login
+    headers:
+      Content-Type: application/json
+    request_template:
+      email: "{{admin_email}}"
+      password: "{{admin_password}}"
+    expected_status: 200
+    assertions:
+      - type: json_path_exists
+        path: tokens.accessToken
+    capture:
+      accessToken: tokens.accessToken
+      refreshToken: tokens.refreshToken
+    cleanup: none
+    skip_if_env: ADMIN_TOKEN
+
+  - id: REST-AUTH-002
+    label: GET /v1/auth/me
+    phase: auth
+    protocol: rest
+    evidence_label: rest-auth-me
+    auth: bearer_admin
+    method: GET
+    path: /v1/auth/me
+    request_template: {}
+    expected_status: 200
+    assertions:
+      - type: json_path_exists
+        path: id
+    capture:
+      adminUserId: id
+    cleanup: none
+
+  # --- Phase 2: Catalog CRUD ---
+  - id: REST-CATALOG-001
+    label: POST /v1/admin/categories
+    phase: catalog
+    protocol: rest
+    evidence_label: rest-category-create
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/categories
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      slug: "{{run_prefix}}-cat"
+      name: "{{run_prefix}} Category"
+      active: true
+    expected_status: 200
+    assertions:
+      - type: json_path_exists
+        path: id
+    capture:
+      categoryId: id
+    cleanup: delete_if_e2e_prefix
+    cleanup_note: Manual or future admin DELETE; never delete non-E2E-prefixed rows
+
+  - id: REST-CATALOG-002
+    label: POST /v1/admin/brands
+    phase: catalog
+    protocol: rest
+    evidence_label: rest-brand-create
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/brands
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      slug: "{{run_prefix}}-brand"
+      name: "{{run_prefix}} Brand"
+      active: true
+    expected_status: 200
+    assertions:
+      - type: json_path_exists
+        path: id
+    capture:
+      brandId: id
+    cleanup: delete_if_e2e_prefix
+
+  - id: REST-CATALOG-003
+    label: POST /v1/admin/tags
+    phase: catalog
+    protocol: rest
+    evidence_label: rest-tag-create
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/tags
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      slug: "{{run_prefix}}-tag"
+      name: "{{run_prefix}} Tag"
+      active: true
+    expected_status: 200
+    assertions:
+      - type: json_path_exists
+        path: id
+    capture:
+      tagId: id
+    cleanup: delete_if_e2e_prefix
+
+  # --- Phase 3: Media upload ---
+  - id: REST-MEDIA-001
+    label: POST /v1/admin/media/uploads/init
+    phase: media
+    protocol: rest
+    evidence_label: rest-media-init
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/media/uploads/init
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      filename: "{{run_prefix}}-product.png"
+      contentType: image/png
+      purpose: product_image
+    expected_status: 200
+    assertions:
+      - type: json_path_exists
+        path: mediaId
+    capture:
+      mediaId: mediaId
+    cleanup: delete_if_e2e_prefix
+
+  - id: REST-MEDIA-002
+    label: POST /v1/admin/media/uploads/{mediaId}/complete
+    phase: media
+    protocol: rest
+    evidence_label: rest-media-complete
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/media/uploads/{{mediaId}}/complete
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      sizeBytes: 70
+      contentType: image/png
+      sha256: "{{media_sha256}}"
+    expected_status: 200
+    assertions:
+      - type: body_not_empty
+    cleanup: none
+
+  - id: REST-CATALOG-004
+    label: POST /v1/admin/products (with media)
+    phase: catalog
+    protocol: rest
+    evidence_label: rest-product-create
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/products
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      sku: "{{run_prefix}}-SKU"
+      name: "{{run_prefix}} Product"
+      status: active
+      categoryId: "{{categoryId}}"
+      brandId: "{{brandId}}"
+      tagIds: ["{{tagId}}"]
+      primaryMediaId: "{{mediaId}}"
+      priceMinor: 15000
+      currency: VND
+    expected_status: 200
+    assertions:
+      - type: json_path_exists
+        path: id
+    capture:
+      productId: id
+      sku: sku
+    cleanup: delete_if_e2e_prefix
+
+  - id: REST-CATALOG-005
+    label: GET /v1/admin/products/{productId}
+    phase: catalog
+    protocol: rest
+    evidence_label: rest-product-get
+    auth: bearer_admin
+    method: GET
+    path: /v1/admin/products/{{productId}}
+    request_template: {}
+    expected_status: 200
+    assertions:
+      - type: json_path_equals
+        path: id
+        value: "{{productId}}"
+    cleanup: none
+
+  # --- Phase 4: Site, machine, activation ---
+  - id: REST-SITE-001
+    label: POST /v1/admin/sites
+    phase: provisioning
+    protocol: rest
+    evidence_label: rest-site-create
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/sites
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      name: "{{run_prefix}} Site"
+      timezone: UTC
+    expected_status: 201
+    assertions:
+      - type: json_path_exists
+        path: id
+    capture:
+      siteId: id
+    cleanup: delete_if_e2e_prefix
+
+  - id: REST-MACHINE-001
+    label: POST /v1/admin/machines
+    phase: provisioning
+    protocol: rest
+    evidence_label: rest-machine-create
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/machines
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      siteId: "{{siteId}}"
+      serialNumber: "{{run_prefix}}-MACHINE"
+      model: AVF-E2E
+      status: provisioning
+    expected_status: 201
+    assertions:
+      - type: json_path_exists
+        path: id
+    capture:
+      machineId: id
+    cleanup: delete_if_e2e_prefix
+
+  - id: REST-MACHINE-002
+    label: PATCH /v1/admin/machines/{id} active
+    phase: provisioning
+    protocol: rest
+    evidence_label: rest-machine-activate
+    auth: bearer_admin
+    method: PATCH
+    path: /v1/admin/machines/{{machineId}}
+    headers:
+      Content-Type: application/json
+    request_template:
+      status: active
+    expected_status: 200
+    cleanup: none
+
+  - id: REST-MACHINE-003
+    label: POST /v1/admin/machines/{id}/activation-codes
+    phase: provisioning
+    protocol: rest
+    evidence_label: rest-activation-code
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/machines/{{machineId}}/activation-codes
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      expiresInHours: 24
+    expected_status: 201
+    assertions:
+      - type: json_path_exists
+        path: code
+    capture:
+      activationCode: code
+    cleanup: none
+
+  - id: REST-MACHINE-004
+    label: POST /v1/setup/activation-codes/claim
+    phase: provisioning
+    protocol: rest
+    evidence_label: rest-activation-claim
+    auth: none
+    method: POST
+    path: /v1/setup/activation-codes/claim
+    headers:
+      Content-Type: application/json
+    request_template:
+      activationCode: "{{activationCode}}"
+      deviceFingerprint:
+        serial: "{{run_prefix}}-ANDROID"
+        androidId: "{{run_prefix}}-aid"
+        packageName: dev.avf.vending.e2e
+    expected_status: 200
+    assertions:
+      - type: json_path_exists
+        path: machineToken
+    capture:
+      machineToken: machineToken
+    cleanup: none
+
+  - id: REST-MACHINE-005
+    label: GET /v1/setup/machines/{id}/bootstrap
+    phase: provisioning
+    protocol: rest
+    evidence_label: rest-machine-bootstrap
+    auth: bearer_machine
+    method: GET
+    path: /v1/setup/machines/{{machineId}}/bootstrap
+    request_template: {}
+    expected_status: 200
+    cleanup: none
+
+  # --- Phase 5: Planogram / topology ---
+  - id: REST-PLANO-001
+    label: POST /v1/machines/{id}/operator-sessions/login
+    phase: planogram
+    protocol: rest
+    evidence_label: rest-operator-session
+    auth: bearer_admin
+    method: POST
+    path: /v1/machines/{{machineId}}/operator-sessions/login
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template: {}
+    expected_status: 200
+    capture:
+      operatorSessionId: id
+    cleanup: none
+
+  - id: REST-PLANO-002
+    label: PUT /v1/admin/machines/{id}/topology
+    phase: planogram
+    protocol: rest
+    evidence_label: rest-topology-put
+    auth: bearer_admin
+    method: PUT
+    path: /v1/admin/machines/{{machineId}}/topology
+    headers:
+      Content-Type: application/json
+    request_template:
+      cabinets:
+        - code: A
+          layout:
+            rows: 1
+            columns: 1
+    expected_status: 204
+    cleanup: none
+
+  - id: REST-PLANO-003
+    label: PUT /v1/admin/machines/{id}/planograms/draft
+    phase: planogram
+    protocol: rest
+    evidence_label: rest-planogram-draft
+    auth: bearer_admin
+    method: PUT
+    path: /v1/admin/machines/{{machineId}}/planograms/draft
+    headers:
+      Content-Type: application/json
+    request_template:
+      slots:
+        - cabinetCode: A
+          slotCode: A1
+          productId: "{{productId}}"
+          priceMinor: 15000
+          currency: VND
+    expected_status: 204
+    cleanup: none
+
+  - id: REST-PLANO-004
+    label: POST /v1/admin/machines/{id}/planograms/publish
+    phase: planogram
+    protocol: rest
+    evidence_label: rest-planogram-publish
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/machines/{{machineId}}/planograms/publish
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template: {}
+    expected_status: 200
+    cleanup: none
+
+  - id: REST-PLANO-005
+    label: POST /v1/admin/machines/{id}/stock-adjustments
+    phase: planogram
+    protocol: rest
+    evidence_label: rest-stock-adjust
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/machines/{{machineId}}/stock-adjustments
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      lines:
+        - cabinetCode: A
+          slotCode: A1
+          delta: 10
+          reason: e2e_initial_stock
+    expected_status: 200
+    cleanup: none
+
+  - id: REST-MACHINE-006
+    label: GET /v1/machines/{id}/sale-catalog
+    phase: planogram
+    protocol: rest
+    evidence_label: rest-sale-catalog
+    auth: bearer_machine
+    method: GET
+    path: /v1/machines/{{machineId}}/sale-catalog?include_unavailable=true&include_images=true
+    request_template: {}
+    expected_status: 200
+    cleanup: none
+
+  # --- Phase 6: gRPC (evidence section — not Postman) ---
+  - id: GRPC-001
+    label: MachineBootstrapService/GetBootstrap
+    phase: grpc
+    protocol: grpc
+    evidence_label: grpc-get-bootstrap
+    auth: bearer_machine
+    service: avf.machine.v1.MachineBootstrapService
+    rpc: GetBootstrap
+    request_template:
+      machine_id: "{{machineId}}"
+    expected_code: OK
+    assertions:
+      - type: body_not_empty
+    cleanup: none
+
+  - id: GRPC-002
+    label: MachineCatalogService/GetSaleCatalog
+    phase: grpc
+    protocol: grpc
+    evidence_label: grpc-get-sale-catalog
+    auth: bearer_machine
+    service: avf.machine.v1.MachineCatalogService
+    rpc: GetSaleCatalog
+    request_template:
+      machine_id: "{{machineId}}"
+    expected_code: OK
+    cleanup: none
+
+  - id: GRPC-003
+    label: MachineMediaService/GetMediaManifest
+    phase: grpc
+    protocol: grpc
+    evidence_label: grpc-media-manifest
+    auth: bearer_machine
+    service: avf.machine.v1.MachineMediaService
+    rpc: GetMediaManifest
+    request_template:
+      machine_id: "{{machineId}}"
+    expected_code: OK
+    cleanup: none
+
+  # --- Phase 7: MQTT catalog.refresh ---
+  - id: MQTT-001
+    label: REST dispatch catalog.refresh command
+    phase: mqtt
+    protocol: rest
+    evidence_label: rest-command-dispatch
+    auth: bearer_admin
+    method: POST
+    path: /v1/admin/machines/{{machineId}}/commands
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      commandType: catalog.refresh
+      payload:
+        reason: e2e_prod_manifest
+    expected_status: 202
+    capture:
+      commandId: commandId
+    cleanup: none
+
+  - id: MQTT-002
+    label: MQTT publish catalog.refresh ACK
+    phase: mqtt
+    protocol: mqtt
+    evidence_label: mqtt-catalog-refresh-ack
+    auth: mqtt_credentials
+    topic: "{{mqtt_topic_prefix}}/machines/{{machineId}}/commands/ack"
+    publish_template:
+      command_id: "{{commandId}}"
+      machine_id: "{{machineId}}"
+      payload:
+        type: catalog.refresh
+        mediaSynced: true
+        status: success
+    expected_code: PUBACK
+    cleanup: none
+
+  - id: REST-CMD-001
+    label: GET /v1/admin/commands/{commandId}
+    phase: mqtt
+    protocol: rest
+    evidence_label: rest-command-status
+    auth: bearer_admin
+    method: GET
+    path: /v1/admin/commands/{{commandId}}
+    request_template: {}
+    expected_status: 200
+    cleanup: none
+
+  # --- Phase 8: Commerce + webhook ---
+  - id: REST-COMMERCE-001
+    label: POST /v1/commerce/orders
+    phase: commerce
+    protocol: rest
+    evidence_label: rest-commerce-order
+    auth: bearer_machine
+    method: POST
+    path: /v1/commerce/orders
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      machine_id: "{{machineId}}"
+      product_id: "{{productId}}"
+      currency: VND
+      cabinet_code: A
+      slot_code: A1
+      slot_index: 1
+    expected_status: 201
+    capture:
+      orderId: order_id
+    cleanup: none
+
+  - id: REST-COMMERCE-002
+    label: POST /v1/commerce/orders/{id}/payment-session
+    phase: commerce
+    protocol: rest
+    evidence_label: rest-payment-session
+    auth: bearer_machine
+    method: POST
+    path: /v1/commerce/orders/{{orderId}}/payment-session?slot_index=1
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      provider: stripe
+      payment_state: created
+      amount_minor: 15000
+      currency: VND
+      outbox_payload_json:
+        source: e2e_prod_manifest
+    expected_status: 200
+    capture:
+      paymentId: payment_id
+    cleanup: none
+
+  - id: REST-COMMERCE-003
+    label: POST payment webhook (signed)
+    phase: commerce
+    protocol: rest
+    evidence_label: rest-payment-webhook
+    auth: webhook_hmac
+    method: POST
+    path: /v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks
+    headers:
+      Content-Type: application/json
+    request_template_file: fixtures/webhook-payment-success.json
+    expected_status: 200
+    cleanup: none
+
+  - id: REST-COMMERCE-004
+    label: GET /v1/commerce/orders/{id}
+    phase: commerce
+    protocol: rest
+    evidence_label: rest-order-get
+    auth: bearer_machine
+    method: GET
+    path: /v1/commerce/orders/{{orderId}}
+    request_template: {}
+    expected_status: 200
+    cleanup: none
+
+  - id: REST-COMMERCE-005
+    label: POST /v1/commerce/orders/{id}/vend/start
+    phase: commerce
+    protocol: rest
+    evidence_label: rest-vend-start
+    auth: bearer_machine
+    method: POST
+    path: /v1/commerce/orders/{{orderId}}/vend/start
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      cabinet_code: A
+      slot_code: A1
+    expected_status: 200
+    cleanup: none
+
+  - id: REST-COMMERCE-006
+    label: POST /v1/commerce/orders/{id}/vend/success
+    phase: commerce
+    protocol: rest
+    evidence_label: rest-vend-success
+    auth: bearer_machine
+    method: POST
+    path: /v1/commerce/orders/{{orderId}}/vend/success
+    idempotency: true
+    headers:
+      Content-Type: application/json
+    request_template:
+      cabinet_code: A
+      slot_code: A1
+    expected_status: 200
+    cleanup: none
+
+  # --- Phase 9: Inventory, audit, reports ---
+  - id: REST-INV-001
+    label: GET /v1/admin/machines/{id}/inventory
+    phase: verify
+    protocol: rest
+    evidence_label: rest-inventory
+    auth: bearer_admin
+    method: GET
+    path: /v1/admin/machines/{{machineId}}/inventory
+    request_template: {}
+    expected_status: 200
+    cleanup: none
+
+  - id: REST-AUDIT-001
+    label: GET /v1/admin/audit/events
+    phase: verify
+    protocol: rest
+    evidence_label: rest-audit-events
+    auth: bearer_admin
+    method: GET
+    path: /v1/admin/audit/events?limit=10
+    request_template: {}
+    expected_status: 200
+    cleanup: none
+
+  - id: REST-REPORT-001
+    label: GET /v1/admin/reports/sales-summary
+    phase: verify
+    protocol: rest
+    evidence_label: rest-sales-summary
+    auth: bearer_admin
+    method: GET
+    path: /v1/admin/reports/sales-summary?limit=5
+    request_template: {}
+    expected_status: 200
+    cleanup: none
+
+  # --- Negative (REST only; documented expected signals) ---
+  - id: REST-NEG-001
+    label: GET /v1/auth/me without token
+    phase: negative
+    protocol: rest
+    evidence_label: rest-neg-no-auth
+    auth: none
+    method: GET
+    path: /v1/auth/me
+    request_template: {}
+    expected_status: 401
+    optional: true
+    cleanup: none
+
+  - id: REST-NEG-002
+    label: POST payment webhook invalid HMAC
+    phase: negative
+    protocol: rest
+    evidence_label: rest-neg-webhook-bad-hmac
+    auth: webhook_hmac_invalid
+    method: POST
+    path: /v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks
+    request_template_file: fixtures/webhook-payment-failed.json
+    expected_status: 401
+    optional: true
+    cleanup: none
+
+postman:
+  collection_name: AVF Production E2E (manifest)
+  environment_name: AVF Production E2E
+  include_protocols: [rest]
+  exclude_phases: [negative]
+
+evidence:
+  raw_dir: raw
+  result_file: RESULT.md
+  redact_fields:
+    - password
+    - accessToken
+    - refreshToken
+    - machineToken
+    - authorization
+    - COMMERCE_PAYMENT_WEBHOOK_SECRET
+    - webhookSecret

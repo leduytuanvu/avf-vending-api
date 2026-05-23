@@ -1,0 +1,9 @@
+{
+  "webhook_event_id": "{{webhook_event_id}}",
+  "provider": "stripe",
+  "provider_reference": "pi_e2e_prod_failed_{{run_id}}",
+  "status": "failed",
+  "amount_minor": 15000,
+  "currency": "VND",
+  "failure_reason": "e2e_negative_test"
+}
