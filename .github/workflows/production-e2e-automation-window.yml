@@ -1,0 +1,107 @@
+# Temporary production E2E automation window — manual governance only.
+# Opens/closes a time-bounded bypass for automation actors and production deploy approval.
+# Never runs automatically on push. See docs/runbooks/production-e2e-automation-window.md
+name: Production E2E automation window
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "enable | restore | status"
+        required: true
+        type: choice
+        options:
+          - enable
+          - restore
+          - status
+      ttl_minutes:
+        description: "Window TTL in minutes (enable only; default 120, max 480)"
+        required: false
+        default: "120"
+        type: string
+      confirmation:
+        description: "Enable only — type exactly I_ACCEPT_TEMPORARY_PRODUCTION_AUTOMATION_RISK"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-e2e-automation-window
+  cancel-in-progress: false
+
+jobs:
+  governance-window:
+    name: Governance window
+    runs-on: ubuntu-latest
+    # Intentionally NOT `environment: production` — enable must run before deploy approval is lifted.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Validate inputs
+        env:
+          ACTION: ${{ inputs.action }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          case "${ACTION}" in
+            enable|restore|status) ;;
+            *) echo "error: action must be enable, restore, or status" >&2; exit 1 ;;
+          esac
+          if [[ "${ACTION}" == "enable" && "${CONFIRMATION}" != "I_ACCEPT_TEMPORARY_PRODUCTION_AUTOMATION_RISK" ]]; then
+            echo "error: enable requires confirmation input I_ACCEPT_TEMPORARY_PRODUCTION_AUTOMATION_RISK" >&2
+            exit 1
+          fi
+
+      - name: Enable automation window
+        if: inputs.action == 'enable'
+        env:
+          GH_AUTOMATION_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
+          GOVERNANCE_AUDIT_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          AVF_E2E_AUTOMATION_WINDOW_CONFIRM: ${{ inputs.confirmation }}
+          AVF_E2E_AUTOMATION_BYPASS_ACTOR_ID: ${{ vars.AVF_E2E_AUTOMATION_BYPASS_ACTOR_ID }}
+          AVF_E2E_AUTOMATION_BYPASS_ACTOR_TYPE: ${{ vars.AVF_E2E_AUTOMATION_BYPASS_ACTOR_TYPE }}
+          AVF_E2E_AUTOMATION_TTL_MINUTES: ${{ inputs.ttl_minutes }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/governance/enable-production-e2e-automation-window.sh
+          bash scripts/governance/enable-production-e2e-automation-window.sh --ttl-minutes "${AVF_E2E_AUTOMATION_TTL_MINUTES:-120}"
+
+      - name: Restore production protections
+        if: inputs.action == 'restore'
+        env:
+          GH_AUTOMATION_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
+          GOVERNANCE_AUDIT_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/governance/restore-production-protections.sh
+          bash scripts/governance/restore-production-protections.sh
+
+      - name: Status (dry-run restore path documented)
+        if: inputs.action == 'status'
+        env:
+          GH_AUTOMATION_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
+          GOVERNANCE_AUDIT_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/governance/restore-production-protections.sh
+          bash scripts/governance/restore-production-protections.sh --status --dry-run
+
+      - name: Summary
+        if: always()
+        env:
+          ACTION: ${{ inputs.action }}
+        run: |
+          {
+            echo "## Production E2E automation window"
+            echo "- action: \`${ACTION}\`"
+            echo "- restore: \`bash scripts/governance/restore-production-protections.sh\`"
+            echo "- runbook: [production-e2e-automation-window.md](../../docs/runbooks/production-e2e-automation-window.md)"
+            echo "- canonical production deploy remains **Deploy Production** (\`deploy-prod.yml\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
