@@ -41,6 +41,7 @@ Use this when onboarding a repo or when `verify_github_governance` reports API *
 | `deploy-develop.yml` | Staging Deployment Contract | Staging **only**; after successful Security Release on `develop`. |
 | `deploy-prod.yml` | Deploy Production | **Only** file that can deploy/rollback **production** (`environment: production`). |
 | `deploy-production.yml` | Legacy pointer (no deploy) | **Not** a deploy: notice-only, legacy filename. Use **`deploy-prod.yml`**. |
+| `production-e2e-automation-window.yml` | Production E2E automation window | **`workflow_dispatch` only** -- temporary governance bypass for E2E; see [production-e2e-automation-window.md](./production-e2e-automation-window.md). |
 | `nightly-security.yml` | Nightly Security Rescan | Scheduled rescans; not merge/deploy gates. |
 | `nightly-ops.yml` | Manual Ops Evidence Check | `workflow_dispatch` only (no `schedule`); deployments/docker/observability/evidence, restore drill; **not** deploy. |
 | `environment-separation-gates.yml` | Environment separation gates | Policy checks. |
@@ -301,3 +302,4 @@ If the repository uses **repository rulesets** instead of classic **branch prote
 - `scripts/ci/verify_workflow_contracts.sh` — static workflow graph contracts (no GitHub API), including **Security** blocking jobs and **CodeQL** triggers.  
 - `tools/verify_github_workflow_cicd_contract.py` — same graph plus explicit **govulncheck PR+push**, **Dependency Review PR-only**, and **CodeQL** gates.  
 - `tools/verify_github_governance.py` — implementation of API checks.
+- [production-e2e-automation-window.md](./production-e2e-automation-window.md) -- temporary, TTL-bounded automation window (bypass actor + production deploy approval) for production E2E; **restore is mandatory** after use.
