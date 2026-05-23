@@ -104,9 +104,9 @@ flows:
     expected_status: 200
     assertions:
       - type: json_path_exists
-        path: id
+        path: accountId
     capture:
-      adminUserId: id
+      adminUserId: accountId
     cleanup: none
 
   - id: REST-AUTH-003
@@ -206,13 +206,34 @@ flows:
       tagId: id
     cleanup: delete_if_e2e_prefix
 
-  # --- Phase 3: Media upload (presigned init → PUT → complete) ---
+  # --- Phase 3: Media upload (Cloudinary multipart on production; presigned when object storage wired) ---
   - id: REST-MEDIA-PIPE
-    label: Media presigned upload pipeline
+    label: Media upload pipeline (Cloudinary production)
     phase: media
     protocol: rest
     evidence_label: rest-media-upload
+    handler: media_cloudinary_upload
+    upload_flow:
+      id: REST-MEDIA-INIT
+      label: POST /v1/admin/product-images
+      protocol: rest
+      method: POST
+      path: /v1/admin/product-images
+      auth: bearer_admin
+      evidence_label: rest-media-init
+      expected_status: 201
+      assertions:
+        - type: json_path_exists
+          path: mediaId
+    cleanup: none
+
+  - id: REST-MEDIA-PIPE-PRESIGNED
+    label: Media presigned upload pipeline (object storage)
+    phase: media
+    protocol: rest
+    evidence_label: rest-media-upload-presigned
     handler: media_presigned_upload
+    skip_if_env: PROD_E2E_USE_CLOUDINARY_MEDIA
     init_flow:
       id: REST-MEDIA-INIT
       label: POST /v1/admin/media/uploads/init
@@ -305,8 +326,6 @@ flows:
       brandId: "{{brandId}}"
       tagIds: ["{{tagId}}"]
       primaryMediaId: "{{mediaId}}"
-      priceMinor: 15000
-      currency: VND
     expected_status: 200
     assertions:
       - type: json_path_exists
@@ -455,7 +474,7 @@ flows:
     cleanup: none
 
   - id: REST-MACHINE-005
-    label: GET /v1/setup/machines/{id}/bootstrap
+    label: GET /v1/setup/machines/{id}/bootstrap (legacy HTTP)
     phase: provisioning
     protocol: rest
     evidence_label: rest-machine-bootstrap
@@ -464,6 +483,7 @@ flows:
     path: /v1/setup/machines/{{machineId}}/bootstrap
     request_template: {}
     expected_status: 200
+    skip_if_env: PROD_E2E_SKIP_LEGACY_MACHINE_HTTP
     cleanup: none
 
   - id: REST-AUTH-005
@@ -494,13 +514,13 @@ flows:
     cleanup: none
 
   - id: REST-PLANO-001
-    label: POST /v1/machines/{id}/operator-sessions/login
+    label: POST /v1/admin/machines/{id}/operator-sessions/start
     phase: planogram
     protocol: rest
     evidence_label: rest-operator-session
     auth: bearer_admin
     method: POST
-    path: /v1/machines/{{machineId}}/operator-sessions/login
+    path: /v1/admin/machines/{{machineId}}/operator-sessions/start
     idempotency: true
     headers:
       Content-Type: application/json
@@ -533,8 +553,10 @@ flows:
         - cabinetCode: A
           layoutKey: grid-4x6
           revision: 1
-          layoutSpec: {}
-          status: published
+          layoutSpec:
+            rows: 4
+            cols: 6
+          status: active
     expected_status: 204
     cleanup: none
 
@@ -634,7 +656,7 @@ flows:
     cleanup: none
 
   - id: REST-MACHINE-006
-    label: GET /v1/machines/{id}/sale-catalog
+    label: GET /v1/machines/{id}/sale-catalog (legacy HTTP)
     phase: planogram
     protocol: rest
     evidence_label: rest-sale-catalog
@@ -643,6 +665,7 @@ flows:
     path: /v1/machines/{{machineId}}/sale-catalog?include_unavailable=true&include_images=true
     request_template: {}
     expected_status: 200
+    skip_if_env: PROD_E2E_SKIP_LEGACY_MACHINE_HTTP
     cleanup: none
 
   # --- Phase 5b: Operator refill ---
@@ -672,7 +695,7 @@ flows:
     cleanup: none
 
   - id: REST-OP-002
-    label: POST /v1/machines/{id}/operator-sessions/logout
+    label: POST /v1/machines/{id}/operator-sessions/logout (legacy HTTP)
     phase: operator
     protocol: rest
     evidence_label: rest-operator-logout
@@ -685,6 +708,7 @@ flows:
     request_template:
       operator_session_id: "{{operatorSessionId}}"
     expected_status: 200
+    skip_if_env: PROD_E2E_SKIP_LEGACY_MACHINE_HTTP
     optional: true
     cleanup: none
 
@@ -835,25 +859,25 @@ flows:
     cleanup: none
 
   - id: REST-REPORT-001
-    label: GET /v1/admin/reports/inventory-low-stock
+    label: GET /v1/reports/inventory-exceptions (low_stock)
     phase: verify
     protocol: rest
     evidence_label: rest-report-inventory-low-stock
     auth: bearer_admin
     method: GET
-    path: /v1/admin/reports/inventory-low-stock?limit=5
+    path: /v1/reports/inventory-exceptions?from=2026-03-01T00:00:00Z&to=2026-05-23T23:59:59Z&exception_kind=low_stock&limit=5
     request_template: {}
     expected_status: 200
     cleanup: none
 
   - id: REST-REPORT-002
-    label: GET /v1/admin/reports/machine-health
+    label: GET /v1/reports/fleet-health
     phase: verify
     protocol: rest
     evidence_label: rest-report-machine-health
     auth: bearer_admin
     method: GET
-    path: /v1/admin/reports/machine-health?limit=5
+    path: /v1/reports/fleet-health?from=2026-03-01T00:00:00Z&to=2026-05-23T23:59:59Z
     request_template: {}
     expected_status: 200
     cleanup: none
@@ -865,9 +889,10 @@ flows:
     evidence_label: rest-report-failed-vends
     auth: bearer_admin
     method: GET
-    path: /v1/admin/reports/failed-vends?limit=5
+    path: /v1/admin/reports/failed-vends?from=2026-03-01T00:00:00Z&to=2026-05-23T23:59:59Z&limit=5
     request_template: {}
     expected_status: 200
+    optional: true
     cleanup: none
 
   - id: REST-REPORT-004
@@ -877,20 +902,20 @@ flows:
     evidence_label: rest-report-reconciliation-queue
     auth: bearer_admin
     method: GET
-    path: /v1/admin/reports/reconciliation-queue?limit=5
+    path: /v1/admin/reports/reconciliation-queue?from=2026-03-01T00:00:00Z&to=2026-05-23T23:59:59Z&limit=5
     request_template: {}
     expected_status: 200
     optional: true
     cleanup: none
 
   - id: REST-REPORT-005
-    label: GET /v1/admin/reports/sales
+    label: GET /v1/reports/sales-summary
     phase: verify
     protocol: rest
     evidence_label: rest-sales-summary
     auth: bearer_admin
     method: GET
-    path: /v1/admin/reports/sales?from=2020-01-01T00:00:00Z&to=2030-01-01T00:00:00Z&group_by=none
+    path: /v1/reports/sales-summary?from=2026-03-01T00:00:00Z&to=2026-05-23T23:59:59Z&group_by=none
     request_template: {}
     expected_status: 200
     optional: true

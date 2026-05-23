@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import urllib.error
@@ -504,6 +505,42 @@ def postman_route_to_openapi_key(
     return entry_key(method, templated)
 
 
+def load_online_payment_exclude_profile() -> dict[str, Any]:
+    if os.environ.get("PROD_E2E_EXCLUDE_ONLINE_PAYMENT") != "1":
+        return {}
+    profile_path = PROD_E2E / "suite-profiles.yaml"
+    if not profile_path.is_file():
+        return {}
+    data = load_yaml(profile_path)
+    return (data.get("profiles") or {}).get("all-no-online-payment") or {}
+
+
+def apply_online_payment_exclusions(entries: dict[str, CoverageEntry]) -> None:
+    cfg = load_online_payment_exclude_profile()
+    if not cfg:
+        return
+    skip_reason = str(
+        cfg.get("skip_reason") or "excluded by operator request: no online payment test"
+    )
+    exclude_ids = {str(x) for x in (cfg.get("exclude_flow_ids") or [])}
+    subs = [str(x) for x in (cfg.get("exclude_coverage_path_substrings") or []) if x]
+    for ent in entries.values():
+        if exclude_ids.intersection(ent.flow_ids):
+            ent.coverage = "documented_skip"
+            ent.skip_reason = skip_reason
+            ent.postman = False
+            ent.non_postman = True
+            ent.non_postman_reason = skip_reason
+            continue
+        hay = f"{ent.path} {ent.method}"
+        if any(sub in hay for sub in subs):
+            ent.coverage = "documented_skip"
+            ent.skip_reason = skip_reason
+            ent.postman = False
+            ent.non_postman = True
+            ent.non_postman_reason = skip_reason
+
+
 def validate_matrix(
     entries: dict[str, CoverageEntry],
     swagger_ops: list[tuple[str, str, dict[str, Any]]],
@@ -516,7 +553,8 @@ def validate_matrix(
     swagger_keys = {entry_key(m, p) for m, p, _ in swagger_ops}
 
     missing = swagger_keys - set(entries.keys())
-    extra = set(entries.keys()) - swagger_keys
+    manifest_only = {k for k, e in entries.items() if e.source == "manifest_only"}
+    extra = set(entries.keys()) - swagger_keys - manifest_only
     if missing:
         errors.append(
             f"uncovered swagger routes ({len(missing)}): " + ", ".join(sorted(missing)[:20])
@@ -696,6 +734,36 @@ def main() -> int:
         ent.openapi_summary = summ[:300]
         ent.openapi_tags = tags
         entries[key] = ent
+
+    for key, flows in manifest_main.items():
+        if key in entries:
+            continue
+        parts = key.split(" ", 1)
+        if len(parts) != 2:
+            continue
+        method, path = parts[0], parts[1]
+        cov = infer_manifest_coverage(flows[0])
+        has_handler = bool(flows[0].get("handler"))
+        entries[key] = CoverageEntry(
+            method=method,
+            path=path,
+            coverage=cov,
+            flow_ids=[str(f.get("id")) for f in flows if f.get("id")],
+            postman=flows[0].get("phase") not in ("negative",),
+            non_postman=flows[0].get("phase") == "negative"
+            or (has_handler and flows[0].get("handler") == "media_presigned_upload"),
+            non_postman_reason="Negative phase excluded from Postman per manifest postman.exclude_phases"
+            if flows[0].get("phase") == "negative"
+            else (
+                "Media handler parent — init/complete sub-flows are in Postman"
+                if has_handler and flows[0].get("handler") == "media_presigned_upload"
+                else None
+            ),
+            openapi_summary="Main E2E manifest route (pending OpenAPI sync)",
+            source="manifest_only",
+        )
+
+    apply_online_payment_exclusions(entries)
 
     # Attach auto flows
     auto_entries = [e for e in entries.values() if e.source != "manifest" and e.coverage != "documented_skip"]

@@ -56,9 +56,13 @@ prod_e2e_rest_execute_flow() {
     return 0
   fi
 
-  local -a curl_opts=(-sS -L -D "$hdr_file" -o "$resp_file" -w '%{http_code}')
+  local -a curl_opts=(--globoff -sS -L -D "$hdr_file" -o "$resp_file" -w '%{http_code}')
   case "$auth" in
     bearer_admin)
+      if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
+        prod_e2e_state_reload_key accessToken || true
+        prod_e2e_state_reload_key ADMIN_TOKEN || true
+      fi
       if [[ -n "${ADMIN_TOKEN:-}" ]]; then
         curl_opts+=(-H "Authorization: Bearer ${ADMIN_TOKEN}")
       elif [[ -n "${accessToken:-}" ]]; then
@@ -141,8 +145,67 @@ prod_e2e_rest_execute_flow() {
   return 0
 }
 
+# Re-authenticate admin before long REST-COV phase (JWT may expire during main manifest).
+prod_e2e_refresh_admin_token() {
+  [[ "${PROD_E2E_DRY_RUN:-}" == "1" ]] && return 0
+  prod_e2e_state_reload_key refreshToken || true
+  prod_e2e_state_reload_key accessToken || true
+  prod_e2e_state_reload_key ADMIN_TOKEN || true
+
+  if [[ -n "${refreshToken:-}" ]]; then
+    local body resp_file code
+    body="$(jq -nc --arg rt "$refreshToken" '{refreshToken:$rt}')"
+    resp_file="${PROD_E2E_RAW_DIR}/rest-auth-refresh-pre-coverage.response.json"
+    mkdir -p "${PROD_E2E_RAW_DIR}"
+    code="$(curl -sS -o "$resp_file" -w '%{http_code}' \
+      -H "Content-Type: application/json" \
+      -X POST "${BASE_URL%/}/v1/auth/refresh" \
+      -d "$body" 2>/dev/null || echo "000")"
+    if [[ "$code" == "200" ]] && jq -e '.tokens.accessToken // .accessToken' "$resp_file" >/dev/null 2>&1; then
+      local at rt
+      at="$(jq -r '.tokens.accessToken // .accessToken // empty' "$resp_file")"
+      rt="$(jq -r '.tokens.refreshToken // .refreshToken // empty' "$resp_file")"
+      [[ -n "$at" ]] && prod_e2e_state_set accessToken "$at"
+      [[ -n "$rt" ]] && prod_e2e_state_set refreshToken "$rt"
+      echo "ADMIN_TOKEN_REFRESH ok (pre REST-COV)"
+      return 0
+    fi
+  fi
+
+  if [[ -n "${ADMIN_EMAIL:-}" && -n "${ADMIN_PASSWORD:-}" ]]; then
+    local login_body login_resp code
+    login_body="$(jq -nc --arg e "$ADMIN_EMAIL" --arg p "$ADMIN_PASSWORD" '{email:$e,password:$p}')"
+    login_resp="${PROD_E2E_RAW_DIR}/rest-auth-login-pre-coverage.response.json"
+    code="$(curl -sS -o "$login_resp" -w '%{http_code}' \
+      -H "Content-Type: application/json" \
+      -X POST "${BASE_URL%/}/v1/auth/login" \
+      -d "$login_body" 2>/dev/null || echo "000")"
+    if [[ "$code" == "200" ]]; then
+      local at rt
+      at="$(jq -r '.tokens.accessToken // empty' "$login_resp")"
+      rt="$(jq -r '.tokens.refreshToken // empty' "$login_resp")"
+      [[ -n "$at" ]] && prod_e2e_state_set accessToken "$at"
+      [[ -n "$rt" ]] && prod_e2e_state_set refreshToken "$rt"
+      echo "ADMIN_TOKEN_RELOGIN ok (pre REST-COV)"
+      return 0
+    fi
+  fi
+
+  echo "WARN: could not refresh admin token before REST-COV" >&2
+  return 1
+}
+
 prod_e2e_rest_run_flow() {
   local flow_json="$1"
+  local skip_if id label evidence_label
+  skip_if="$(echo "$flow_json" | jq -r '.skip_if_env // empty')"
+  if [[ -n "$skip_if" && -n "${!skip_if:-}" ]]; then
+    id="$(echo "$flow_json" | jq -r '.id // ""')"
+    label="$(echo "$flow_json" | jq -r '.label // ""')"
+    evidence_label="$(echo "$flow_json" | jq -r '.evidence_label // ""')"
+    prod_e2e_evidence_append_row "$id" "$label" "rest" "skipped" "$evidence_label"
+    return 0
+  fi
   local handler
   handler="$(echo "$flow_json" | jq -r '.handler // empty')"
   if [[ -n "$handler" && "$handler" != "null" ]]; then

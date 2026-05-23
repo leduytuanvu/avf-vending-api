@@ -56,10 +56,26 @@ prod_e2e_mqtt_client_args() {
     _out+=(-u "$user" -P "$pass")
   fi
   _out+=(-i "${MQTT_CLIENT_ID:-${PROD_E2E_PREFIX}-mqtt-${RANDOM}}")
+  _out+=(-V "${MQTT_PROTOCOL_VERSION:-mqttv311}")
   if [[ "${MQTT_USE_TLS:-true}" == "true" ]]; then
     local ca="${MQTT_CAFILE:-${MQTT_CA_CERT:-}}"
     if [[ -n "$ca" && -f "$ca" ]]; then
       _out+=(--cafile "$ca")
+    elif [[ -d /etc/ssl/certs ]]; then
+      _out+=(--capath /etc/ssl/certs)
+    else
+      local -a ca_candidates=(
+        "/c/Program Files/Git/usr/ssl/certs/ca-bundle.crt"
+        "/c/Program Files/Git/mingw64/ssl/certs/ca-bundle.crt"
+        "/usr/ssl/certs/ca-bundle.crt"
+      )
+      local c
+      for c in "${ca_candidates[@]}"; do
+        if [[ -f "$c" ]]; then
+          _out+=(--cafile "$c")
+          break
+        fi
+      done
     fi
   fi
 }

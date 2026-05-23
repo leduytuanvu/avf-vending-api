@@ -6,6 +6,55 @@ version: 1
 
 # Routes excluded from live Postman/CI but counted as documented_skip in the matrix.
 skip_patterns:
+  - methods: [GET, POST, PUT, PATCH, DELETE]
+    path_prefix: /v1/setup/
+    coverage: documented_skip
+    skip_reason: Legacy machine HTTP not mounted when ENABLE_LEGACY_MACHINE_HTTP=false (production default; use gRPC)
+    postman: false
+    non_postman: true
+
+  - methods: [GET]
+    path_regex: '^/v1/machines/\{machineId\}/sale-catalog'
+    coverage: documented_skip
+    skip_reason: Legacy machine sale-catalog HTTP superseded by gRPC MachineCatalogService in production
+    postman: false
+    non_postman: true
+
+  - methods: [GET, POST]
+    path_regex: '^/v1/machines/\{machineId\}/operator-sessions'
+    coverage: documented_skip
+    skip_reason: Legacy operator session HTTP; production uses POST /v1/admin/machines/{machineId}/operator-sessions/start
+    postman: false
+    non_postman: true
+
+  - methods: [GET, POST, PUT, PATCH, DELETE]
+    path_prefix: /v1/commerce/
+    coverage: documented_skip
+    skip_reason: Legacy machine commerce HTTP; production vending uses avf.machine.v1 gRPC
+    postman: false
+    non_postman: true
+
+  - methods: [GET, POST]
+    path_prefix: /v1/device/
+    coverage: documented_skip
+    skip_reason: Legacy device bridge HTTP; production command path is MQTT + admin REST dispatch
+    postman: false
+    non_postman: true
+
+  - methods: [GET]
+    path_regex: '^/v1/machines/\{machineId\}/(shadow|telemetry)'
+    coverage: documented_skip
+    skip_reason: Legacy machine telemetry/shadow HTTP; production uses gRPC and MQTT
+    postman: false
+    non_postman: true
+
+  - methods: [POST]
+    path_regex: '^/v1/machines/\{machineId\}/commands/dispatch$'
+    coverage: documented_skip
+    skip_reason: Machine-scoped command dispatch HTTP; E2E uses admin POST /v1/admin/machines/{machineId}/commands
+    postman: false
+    non_postman: true
+
   - methods: [GET]
     path_prefix: /swagger/
     coverage: documented_skip
@@ -78,6 +127,30 @@ routes:
     path: /v1/admin/machines/{machineId}/activation-codes/{activationCodeId}
     coverage: auth_negative
     expected_status: 401
+    postman: true
+
+  - method: POST
+    path: /v1/admin/machines/{machineId}/operator-sessions/start
+    coverage: success
+    auth: bearer_admin
+    postman: true
+
+  - method: GET
+    path: /v1/reports/fleet-health
+    coverage: success
+    auth: bearer_admin
+    postman: true
+
+  - method: GET
+    path: /v1/reports/inventory-exceptions
+    coverage: success
+    auth: bearer_admin
+    postman: true
+
+  - method: GET
+    path: /v1/reports/sales-summary
+    coverage: success
+    auth: bearer_admin
     postman: true
 
   - method: POST

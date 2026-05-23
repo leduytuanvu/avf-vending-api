@@ -64,6 +64,26 @@ func mountReportingRoutes(r chi.Router, app *api.HTTPApplication) {
 }
 
 func mountAdminCompanyReportingRoutes(r chi.Router, app *api.HTTPApplication) {
+	if app == nil || app.Reporting == nil {
+		return
+	}
+	svc := app.Reporting
+	r.Get("/reports/sales", getAdminOrgReportSales(app, svc))
+	r.Get("/reports/payments", getAdminOrgReportPayments(app, svc))
+	r.Get("/reports/refunds", getAdminOrgReportRefunds(app, svc))
+	r.Get("/reports/cash", getAdminOrgReportCash(app, svc))
+	r.Get("/reports/inventory-low-stock", getAdminOrgReportInventoryLowStock(app, svc))
+	r.Get("/reports/machine-health", getAdminOrgReportMachineHealth(app, svc))
+	r.Get("/reports/failed-vends", getAdminOrgReportFailedVends(app, svc))
+	r.Get("/reports/reconciliation-queue", getAdminOrgReportReconciliationQueue(app, svc))
+	r.Get("/reports/vends", getAdminOrgReportVends(app, svc))
+	r.Get("/reports/inventory", getAdminOrgReportInventoryUnified(app, svc))
+	r.Get("/reports/machines", getAdminOrgReportMachines(app, svc))
+	r.Get("/reports/products", getAdminOrgReportProducts(app, svc))
+	r.Get("/reports/reconciliation", getAdminOrgReportReconciliationBI(app, svc))
+	r.Get("/reports/commands", getAdminOrgReportCommandFailures(app, svc))
+	r.Get("/reports/fills", getAdminOrgReportTechnicianFills(app, svc))
+	r.Get("/reports/export", getAdminOrgReportExportCSV(app, svc))
 }
 
 func parseRequiredRFC3339Range(q url.Values) (time.Time, time.Time, error) {
