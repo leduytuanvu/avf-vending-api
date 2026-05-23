@@ -436,10 +436,10 @@ def build_postman_collection(manifest_path: Path) -> tuple[dict[str, Any], dict[
             )
         items.append({"name": phase, "item": children})
 
-    seed = hashlib.sha256(json.dumps(flows, sort_keys=True, default=str).encode()).hexdigest()
+    # Stable Postman IDs must not depend on flow count (runtime suite exclusions must not flip IDs).
     collection = {
         "info": {
-            "_postman_id": stable_uuid("collection:" + seed),
+            "_postman_id": stable_uuid("collection:avf-production-e2e-manifest-v1"),
             "name": postman_cfg.get("collection_name", "AVF Production E2E (manifest)"),
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
             "description": (
@@ -452,7 +452,7 @@ def build_postman_collection(manifest_path: Path) -> tuple[dict[str, Any], dict[
     }
 
     environment = {
-        "id": stable_uuid("environment:" + seed),
+        "id": stable_uuid("environment:avf-production-e2e-v1"),
         "name": postman_cfg.get("environment_name", "AVF Production E2E"),
         "values": [{"key": k, "value": v, "enabled": True, "type": "default"} for k, v in POSTMAN_ENV_KEYS],
         "_postman_variable_scope": "environment",

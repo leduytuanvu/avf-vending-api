@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "4794d37d-8faa-419a-4897-24d60de204c4",
+    "_postman_id": "ed644dcc-b5d4-4bff-293e-6b9d4a7590e0",
     "name": "AVF Production E2E (manifest)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "description": "Generated from tests/e2e/production/e2e-manifest.yaml only \u2014 do not edit by hand. Regenerate: python postman/production/generate_postman_from_manifest.py"
@@ -639,6 +639,474 @@
             }
           ],
           "_manifest_flow_id": "REST-CATALOG-005"
+        }
+      ]
+    },
+    {
+      "name": "commerce",
+      "item": [
+        {
+          "name": "REST-COMMERCE-001 \u2014 POST /v1/commerce/orders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-REST-COMMERCE-001"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"machine_id\": \"{{machineId}}\",\n  \"product_id\": \"{{productId}}\",\n  \"currency\": \"VND\",\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\",\n  \"slot_index\": 1\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status (manifest)', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.order_id !== undefined) pm.environment.set('orderId', j.order_id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "_manifest_flow_id": "REST-COMMERCE-001"
+        },
+        {
+          "name": "REST-COMMERCE-002 \u2014 POST /v1/commerce/orders/{id}/payment-session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-REST-COMMERCE-002"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payment-session?slot_index=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}",
+                "payment-session"
+              ],
+              "query": [
+                {
+                  "key": "slot_index",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"stripe\",\n  \"payment_state\": \"created\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"outbox_payload_json\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status (manifest)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.payment_id !== undefined) pm.environment.set('paymentId', j.payment_id);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "_manifest_flow_id": "REST-COMMERCE-002"
+        },
+        {
+          "name": "REST-COMMERCE-003 \u2014 POST payment webhook (signed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}",
+                "payments",
+                "{{paymentId}}",
+                "webhooks"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"webhook_event_id\": \"{{webhookEventId}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_{{runId}}\",\n  \"status\": \"succeeded\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"metadata\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}\n"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const secret = pm.environment.get('webhookSecret') || '';",
+                  "const body = pm.request.body ? (pm.request.body.raw || '') : '';",
+                  "const ts = Math.floor(Date.now() / 1000).toString();",
+                  "const sig = CryptoJS.HmacSHA256(ts + '.' + body, secret).toString(CryptoJS.enc.Hex);",
+                  "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: ts });",
+                  "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: sig });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status (manifest)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "_manifest_flow_id": "REST-COMMERCE-003"
+        },
+        {
+          "name": "REST-COMMERCE-003-DUP \u2014 POST payment webhook duplicate (idempotency)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}",
+                "payments",
+                "{{paymentId}}",
+                "webhooks"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"webhook_event_id\": \"{{webhookEventId}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_{{runId}}\",\n  \"status\": \"succeeded\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"metadata\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}\n"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const secret = pm.environment.get('webhookSecret') || '';",
+                  "const body = pm.request.body ? (pm.request.body.raw || '') : '';",
+                  "const ts = Math.floor(Date.now() / 1000).toString();",
+                  "const sig = CryptoJS.HmacSHA256(ts + '.' + body, secret).toString(CryptoJS.enc.Hex);",
+                  "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: ts });",
+                  "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: sig });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status (manifest)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "_manifest_flow_id": "REST-COMMERCE-003-DUP"
+        },
+        {
+          "name": "REST-COMMERCE-004 \u2014 GET /v1/commerce/orders/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status (manifest)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "_manifest_flow_id": "REST-COMMERCE-004"
+        },
+        {
+          "name": "REST-COMMERCE-005 \u2014 POST /v1/commerce/orders/{id}/vend/start",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-REST-COMMERCE-005"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/vend/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}",
+                "vend",
+                "start"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status (manifest)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "_manifest_flow_id": "REST-COMMERCE-005"
+        },
+        {
+          "name": "REST-COMMERCE-006 \u2014 POST /v1/commerce/orders/{id}/vend/success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{runPrefix}}-REST-COMMERCE-006"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/vend/success",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "commerce",
+                "orders",
+                "{{orderId}}",
+                "vend",
+                "success"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status (manifest)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "_manifest_flow_id": "REST-COMMERCE-006"
         }
       ]
     },
