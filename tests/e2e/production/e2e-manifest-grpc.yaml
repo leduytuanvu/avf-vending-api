@@ -1,0 +1,229 @@
+# Production gRPC E2E manifest — grpcurl against E2E_PROD_GRPC_TARGET with machine JWT.
+# REST setup (auth → activation) runs from e2e-manifest.yaml before these flows when --suite grpc.
+version: 1
+name: avf-production-grpc-e2e
+description: >-
+  Machine-scoped gRPC production verification. Uses machine JWT from REST activation claim;
+  never admin JWT on machine RPCs.
+
+flows:
+  - id: GRPC-TOKEN-001
+    label: MachineTokenService/RefreshMachineToken
+    phase: grpc-auth
+    protocol: grpc
+    evidence_label: grpc-refresh-token
+    service: MachineTokenService
+    rpc: RefreshMachineToken
+    auth: none
+    request_template:
+      refreshToken: "{{machineRefreshToken}}"
+    expected_code: OK
+    capture:
+      machineToken: accessToken
+      machineRefreshToken: refreshToken
+    skip_if_empty: machineRefreshToken
+    cleanup: none
+
+  - id: GRPC-BOOT-001
+    label: MachineBootstrapService/GetBootstrap
+    phase: grpc-bootstrap
+    protocol: grpc
+    evidence_label: grpc-get-bootstrap
+    service: MachineBootstrapService
+    rpc: GetBootstrap
+    auth: machine
+    request_template: {}
+    expected_code: OK
+    cleanup: none
+
+  - id: GRPC-BOOT-002
+    label: MachineBootstrapService/CheckIn
+    phase: grpc-bootstrap
+    protocol: grpc
+    evidence_label: grpc-check-in
+    service: MachineBootstrapService
+    rpc: CheckIn
+    auth: machine
+    idempotency_key: "{{run_prefix}}-checkin-ik"
+    request_template:
+      bootId: "{{run_prefix}}-boot"
+      networkState: online
+      attributes:
+        source: e2e-prod-grpc
+    expected_code: OK
+    cleanup: none
+
+  - id: GRPC-CAT-001
+    label: Catalog sync + published item assertions
+    phase: grpc-catalog
+    protocol: grpc
+    evidence_label: grpc-catalog-sync
+    handler: catalog_sync_assert
+    catalog_flow:
+      id: GRPC-CAT-001-inner
+      label: MachineCatalogService/GetSaleCatalog
+      service: MachineCatalogService
+      rpc: GetSaleCatalog
+      evidence_label: grpc-sale-catalog
+      auth: machine
+      request_template:
+        machineId: "{{machineId}}"
+        includeUnavailable: true
+        includeImages: true
+      expected_code: OK
+    cleanup: none
+
+  - id: GRPC-CAT-002
+    label: MachineCatalogService/GetCatalogDelta
+    phase: grpc-catalog
+    protocol: grpc
+    evidence_label: grpc-catalog-delta
+    service: MachineCatalogService
+    rpc: GetCatalogDelta
+    auth: machine
+    request_template:
+      machineId: "{{machineId}}"
+      basisCatalogVersion: "{{catalogVersion}}"
+    expected_code: OK
+    cleanup: none
+
+  - id: GRPC-CAT-003
+    label: MachineCatalogService/AckCatalogVersion
+    phase: grpc-catalog
+    protocol: grpc
+    evidence_label: grpc-ack-catalog
+    service: MachineCatalogService
+    rpc: AckCatalogVersion
+    auth: machine
+    idempotency_key: "{{run_prefix}}-ack-cat-ik"
+    request_template:
+      acknowledgedCatalogVersion: "{{catalogVersion}}"
+    expected_code: OK
+    cleanup: none
+
+  - id: GRPC-MED-001
+    label: Media manifest + download cache
+    phase: grpc-media
+    protocol: grpc
+    evidence_label: grpc-media-pipeline
+    handler: media_download_cache
+    manifest_flow:
+      id: GRPC-MED-001-inner
+      label: MachineMediaService/GetMediaManifest
+      service: MachineMediaService
+      rpc: GetMediaManifest
+      evidence_label: grpc-media-manifest
+      auth: machine
+      request_template:
+        machineId: "{{machineId}}"
+        includeUnavailable: true
+      expected_code: OK
+    delta_flow:
+      id: GRPC-MED-002-inner
+      label: MachineMediaService/GetMediaDelta
+      service: MachineMediaService
+      rpc: GetMediaDelta
+      evidence_label: grpc-media-delta
+      auth: machine
+      request_template:
+        machineId: "{{machineId}}"
+        basisMediaFingerprint: "{{mediaFingerprint}}"
+        includeUnavailable: true
+      expected_code: OK
+    ack_flow:
+      id: GRPC-MED-003-inner
+      label: MachineMediaService/AckMediaVersion
+      service: MachineMediaService
+      rpc: AckMediaVersion
+      evidence_label: grpc-ack-media
+      auth: machine
+      idempotency_key: "{{run_prefix}}-ack-media-ik"
+      request_template:
+        acknowledgedMediaFingerprint: "{{mediaFingerprint}}"
+      expected_code: OK
+    cleanup: none
+
+  - id: GRPC-INV-001
+    label: MachineInventoryService/GetInventorySnapshot (baseline)
+    phase: grpc-inventory
+    protocol: grpc
+    evidence_label: grpc-inv-snapshot
+    handler: inventory_snapshot_capture
+    service: MachineInventoryService
+    rpc: GetInventorySnapshot
+    auth: machine
+    request_template: {}
+    expected_code: OK
+    cleanup: none
+
+  - id: GRPC-INV-002
+    label: MachineInventoryService/AckInventorySync
+    phase: grpc-inventory
+    protocol: grpc
+    evidence_label: grpc-inv-ack
+    service: MachineInventoryService
+    rpc: AckInventorySync
+    auth: machine
+    request_template:
+      syncCursor: "{{run_prefix}}-inv-cursor"
+    expected_code: OK
+    cleanup: none
+
+  - id: GRPC-COMM-CASH-001
+    label: Commerce cash path (CreateOrder → ConfirmCash → Vend)
+    phase: grpc-commerce
+    protocol: grpc
+    evidence_label: grpc-commerce-cash
+    handler: commerce_cash
+    cleanup: none
+
+  - id: GRPC-COMM-QR-001
+    label: Commerce QR path + REST webhook
+    phase: grpc-commerce
+    protocol: grpc
+    evidence_label: grpc-commerce-qr
+    handler: commerce_qr
+    webhook_flow:
+      id: GRPC-COMM-QR-WH
+      label: POST payment webhook (signed)
+      protocol: rest
+      method: POST
+      path: /v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks
+      auth: webhook_hmac
+      evidence_label: grpc-qr-webhook
+      request_template_file: fixtures/webhook-payment-success.json
+      expected_status: 200
+    skip_if_env: SKIP_GRPC_QR_WEBHOOK
+    cleanup: none
+
+  - id: GRPC-COMM-FAIL-001
+    label: Vend failure path
+    phase: grpc-commerce
+    protocol: grpc
+    evidence_label: grpc-commerce-vend-fail
+    handler: commerce_vend_failure
+    cleanup: none
+
+  - id: GRPC-COMM-CANCEL-001
+    label: Cancel order idempotency
+    phase: grpc-commerce
+    protocol: grpc
+    evidence_label: grpc-commerce-cancel
+    handler: commerce_cancel
+    cleanup: none
+
+  - id: GRPC-IDEM-001
+    label: CreateOrder idempotency replay
+    phase: grpc-idempotency
+    protocol: grpc
+    evidence_label: grpc-idempotency-create-order
+    handler: commerce_idempotency
+    cleanup: none
+
+  - id: GRPC-OFFLINE-001
+    label: Offline event replay
+    phase: grpc-offline
+    protocol: grpc
+    evidence_label: grpc-offline-replay
+    handler: offline_replay
+    cleanup: none
